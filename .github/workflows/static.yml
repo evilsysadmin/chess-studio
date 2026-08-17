@@ -33,9 +33,9 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        run: npm run build
+        run: npm run
 
-      - name: DEploy frontend
+      - name: Deploy frontend
         working-directory: frontend
         run: npm run deploy
 
