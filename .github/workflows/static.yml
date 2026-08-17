@@ -35,13 +35,17 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: DEploy frontend
+        working-directory: frontend
+        run: npm run deploy
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: chess-studio
+          path: frontend/dist
 
       - name: Deploy to GitHub Pages
         id: deployment
