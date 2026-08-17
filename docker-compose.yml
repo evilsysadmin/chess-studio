@@ -1,0 +1,42 @@
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend-python
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    environment:
+      PORT: 4000
+      MONGO_URL: mongodb://mongo:27017
+      MONGO_DB_NAME: chess_study
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Le decimos al build del frontend en qué URL va a encontrar al backend.
+        # Como el navegador corre en el host (no dentro de la red de Docker),
+        # tiene que ser el puerto publicado, no el nombre del servicio.
+        VITE_API_URL: http://localhost:${BACKEND_PORT:-4000}/api
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

@@ -1,0 +1,164 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  loadRoster,
+  applyRosterToRegistry,
+  saveSurvivorsToRoster,
+  revivePiece,
+  expireDeadPieces,
+} from './combatRoster.js';
+import { createInitialRegistry } from './combat.js';
+import { Chess } from 'chess.js';
+
+beforeEach(() => localStorage.clear());
+
+describe('loadRoster', () => {
+  it('sanea retroactivamente piezas muertas sin progreso real, guardadas antes del fix a saveSurvivorsToRoster', () => {
+    localStorage.setItem(
+      'chess-study-combat-roster',
+      JSON.stringify({
+        pieces: {
+          'r-h': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false }, // sin progreso -> debe desaparecer
+          'q-d': { strengthPoints: 3, speedPoints: 2, bankedXp: 0, alive: false }, // con progreso -> debe quedarse
+        },
+        combatXp: 50,
+        revivesUsed: 0,
+      })
+    );
+
+    const loaded = loadRoster();
+    expect(loaded.pieces['r-h']).toBeUndefined();
+    expect(loaded.pieces['q-d']).toBeDefined();
+
+    // La limpieza queda persistida, no hace falta repetirla en cada carga.
+    const rawAfter = JSON.parse(localStorage.getItem('chess-study-combat-roster'));
+    expect(rawAfter.pieces['r-h']).toBeUndefined();
+  });
+});
+
+describe('saveSurvivorsToRoster', () => {
+  it('una pieza capturada CON progreso real queda marcada muerta, NO conserva su nivel de antes', () => {
+    // Esto es justamente el bug que se encontró y arregló: antes, una pieza
+    // capturada se quedaba con el progreso de ANTES de la partida en vez de
+    // "morir" de verdad.
+    const startRoster = { pieces: { 'n-b': { strengthPoints: 4, speedPoints: 4, bankedXp: 0, alive: true } }, combatXp: 0 };
+    const registryWithoutKnight = {}; // el caballo ya no está: lo capturaron
+    const next = saveSurvivorsToRoster(registryWithoutKnight, startRoster, 'w', 'loss');
+    expect(next.pieces['n-b'].alive).toBe(false);
+  });
+
+  it('una pieza capturada SIN haber subido nunca de nivel desaparece, no queda como "caída"', () => {
+    // Revivir una pieza en nivel 1 devolvería la mitad de 0 puntos — nada.
+    // No tiene sentido cobrar XP de combate por eso, así que ni se registra.
+    const next = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'loss');
+    expect(next.pieces['n-b']).toBeUndefined();
+  });
+
+  it('solo guarda piezas del color del humano, nunca las del rival', () => {
+    // Registro con las 16 piezas de cada bando, todas presentes (nadie
+    // capturado), solo para chequear que ninguna clave del rival se cuele.
+    const registry = {
+      d1: { id: 'w-q-d1', type: 'q', color: 'w', square: 'd1', strengthPoints: 1, speedPoints: 0, bankedXp: 0 },
+      d8: { id: 'b-q-d8', type: 'q', color: 'b', square: 'd8', strengthPoints: 5, speedPoints: 5, bankedXp: 0 },
+      ...Object.fromEntries(
+        ['a1', 'b1', 'c1', 'e1', 'f1', 'g1', 'h1', 'a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2']
+          .map((sq, i) => [sq, { id: `w-p-${sq}`, type: 'p', color: 'w', square: sq, strengthPoints: 0, speedPoints: 0, bankedXp: 0 }]),
+      ),
+    };
+    const next = saveSurvivorsToRoster(registry, { pieces: {}, combatXp: 0 }, 'w', 'win');
+    // si se hubiera colado la dama negra (strengthPoints:5), este valor
+    // sería otro — confirma que la del rival nunca pisa la del humano.
+    expect(next.pieces['q-d'].strengthPoints).toBe(1);
+    expect(next.pieces['q-d'].alive).toBe(true);
+  });
+
+  it('otorga XP de combate según el resultado (ganar > tablas > perder)', () => {
+    const win = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'win');
+    const draw = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'draw');
+    const loss = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'loss');
+    expect(win.combatXp).toBeGreaterThan(draw.combatXp);
+    expect(draw.combatXp).toBeGreaterThan(loss.combatXp);
+  });
+  it('el rey nunca entra al roster, aunque haya sobrevivido con XP', () => {
+    const registry = {
+      e1: { id: 'w-k-e1', type: 'k', color: 'w', square: 'e1', strengthPoints: 0, speedPoints: 0, bankedXp: 50 },
+    };
+    const next = saveSurvivorsToRoster(registry, { pieces: {}, combatXp: 0 }, 'w', 'win');
+    // el rey nunca debe aparecer como clave, ni vivo ni muerto — no participa del roster
+    expect(next.pieces['k-e']).toBeUndefined();
+  });
+});
+
+describe('applyRosterToRegistry', () => {
+  it('una pieza muerta (no revivida) arranca fresca, no con su nivel viejo', () => {
+    const roster = { pieces: { 'q-d': { strengthPoints: 6, speedPoints: 6, bankedXp: 0, alive: false } }, combatXp: 0 };
+    const fresh = applyRosterToRegistry(createInitialRegistry(new Chess()), roster, 'w');
+    expect(fresh.d1.strengthPoints).toBe(0);
+    expect(fresh.d1.speedPoints).toBe(0);
+  });
+
+  it('una pieza viva aplica su progreso guardado', () => {
+    const roster = { pieces: { 'q-d': { strengthPoints: 3, speedPoints: 2, bankedXp: 1, alive: true } }, combatXp: 0 };
+    const applied = applyRosterToRegistry(createInitialRegistry(new Chess()), roster, 'w');
+    expect(applied.d1.strengthPoints).toBe(3);
+    expect(applied.d1.speedPoints).toBe(2);
+  });
+
+  it('nunca toca las piezas del color rival, aunque tengan progreso guardado', () => {
+    const roster = { pieces: { 'q-d': { strengthPoints: 8, speedPoints: 8, bankedXp: 0, alive: true } }, combatXp: 0 };
+    // el humano juega NEGRAS esta vez: las blancas (rival) no deberian tocarse
+    const applied = applyRosterToRegistry(createInitialRegistry(new Chess()), roster, 'b');
+    expect(applied.d1.strengthPoints).toBe(0); // dama blanca (rival) intacta
+    expect(applied.d8.strengthPoints).toBe(8); // dama negra (humano) con el progreso
+  });
+});
+
+describe('revivePiece', () => {
+  it('revive con la MITAD de los puntos que tenía al morir, no intacta', () => {
+    const roster = { pieces: { 'q-d': { strengthPoints: 6, speedPoints: 4, bankedXp: 0, alive: false } }, combatXp: 100 };
+    const revived = revivePiece(roster, 'q-d', 'q');
+    expect(revived.pieces['q-d'].strengthPoints).toBe(3);
+    expect(revived.pieces['q-d'].speedPoints).toBe(2);
+    expect(revived.pieces['q-d'].alive).toBe(true);
+  });
+
+  it('no revive si no alcanza el XP de combate', () => {
+    const roster = { pieces: { 'q-d': { strengthPoints: 6, speedPoints: 6, bankedXp: 0, alive: false } }, combatXp: 1 };
+    const result = revivePiece(roster, 'q-d', 'q'); // la dama cuesta 30
+    expect(result).toBe(roster); // no cambia nada
+  });
+
+  it('no hace nada si la pieza no está muerta', () => {
+    const roster = { pieces: { 'q-d': { strengthPoints: 1, speedPoints: 1, bankedXp: 0, alive: true } }, combatXp: 100 };
+    const result = revivePiece(roster, 'q-d', 'q');
+    expect(result).toBe(roster);
+  });
+
+  it('guard defensivo: no revive una pieza sin progreso real (nada que devolver)', () => {
+    const roster = { pieces: { 'q-d': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false } }, combatXp: 100 };
+    const result = revivePiece(roster, 'q-d', 'q');
+    expect(result).toBe(roster); // sin cambios, aunque sobre XP de combate
+  });
+});
+
+describe('expireDeadPieces — la ventana de revivir se cierra', () => {
+  it('una pieza muerta sin revivir desaparece del roster (queda fresca para siempre)', () => {
+    const roster = {
+      pieces: {
+        'n-b': { strengthPoints: 4, speedPoints: 4, bankedXp: 0, alive: false },
+        'q-d': { strengthPoints: 2, speedPoints: 1, bankedXp: 3, alive: true },
+      },
+      combatXp: 3,
+    };
+    const expired = expireDeadPieces(roster);
+    expect(expired.pieces['n-b']).toBeUndefined();
+    expect(expired.pieces['q-d']).toEqual(roster.pieces['q-d']); // la viva no se toca
+  });
+
+  it('si se revivió a tiempo, sobrevive el cierre de la ventana', () => {
+    let roster = { pieces: { 'q-d': { strengthPoints: 6, speedPoints: 6, bankedXp: 0, alive: false } }, combatXp: 30 };
+    roster = revivePiece(roster, 'q-d', 'q');
+    const expired = expireDeadPieces(roster);
+    expect(expired.pieces['q-d'].alive).toBe(true);
+    expect(expired.pieces['q-d'].strengthPoints).toBe(3);
+  });
+});
