@@ -37,6 +37,8 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
+        env:
+          VITE_BASE_API_URL: ${{ vars.VITE_BASE_API_URL }}
         run: npm run build
 
       - name: Setup Pages
