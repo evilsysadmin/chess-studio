@@ -1,18 +1,49 @@
+name: Deploy Frontend to GitHub Pages
+
 on:
   push:
-    branches:
-      - "main" # change to the branch you wish to deploy from
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
+    branches: ["main"]
+    paths:
+      - 'frontend/**' 
+      - .github/workflows/static.yml
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-    - id: build-publish
-      uses: bitovi/github-actions-react-to-github-pages@v1.2.4
-      with:
-        path: dist # change to your build folder
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: chess-studio
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
