@@ -15,6 +15,8 @@ const PROGRESS_KEYS = [
   'chess-study-worst-move-cache',
   'chess-study-selected-title',
   'chess-study-selected-skin',
+  'chess-study-roguelike-run',
+  'chess-study-roguelike-best-floor',
 ];
 
 // Estas NUNCA deberían tocarse con un reset de progreso — son sesión de

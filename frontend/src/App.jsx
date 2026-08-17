@@ -12,6 +12,7 @@ const Board3DExperiment = React.lazy(() => import('./components/Board3DExperimen
 import { loadCombatHistory, clearCombatHistory } from './combatHistory.js';
 import PuzzleScreen from './components/PuzzleScreen.jsx';
 import CombatScreen from './components/CombatScreen.jsx';
+import RoguelikeScreen from './components/RoguelikeScreen.jsx';
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
 import RatingDetailModal from './components/RatingDetailModal.jsx';
 import MuteToggle from './components/MuteToggle.jsx';
@@ -334,6 +335,7 @@ function AppInner() {
             onPuzzle={() => setView('puzzle')}
             onSpectator={() => setView('spectator')}
             onCombat={() => setView('combat')}
+            onCombatRoguelike={() => setView('roguelike')}
             onHistory={() => setView('history')}
             onInsights={() => setView('insights')}
             onBoard3D={() => setView('board3d')}
@@ -374,6 +376,15 @@ function AppInner() {
 
         {view === 'combat' && (
           <CombatScreen
+            onExit={() => setView('menu')}
+            onError={setError}
+            onHistory={() => setView('history')}
+            onViewBattle={openHistoryRecord}
+          />
+        )}
+
+        {view === 'roguelike' && (
+          <RoguelikeScreen
             onExit={() => setView('menu')}
             onError={setError}
             onHistory={() => setView('history')}

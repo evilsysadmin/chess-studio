@@ -2,7 +2,7 @@ import React from 'react';
 import { BASE_STATS, statsFor, costForNextPoint, derivedLevel, STRENGTH_POINT_VALUE, SPEED_POINT_VALUE } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
-export default function PieceInfoModal({ piece, canManage, onBuy, onClose }) {
+export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, onClose }) {
   useEscapeToClose(onClose);
   if (!piece) return null;
   const isKing = piece.type === 'k';
@@ -61,6 +61,11 @@ export default function PieceInfoModal({ piece, canManage, onBuy, onClose }) {
               </button>
             </div>
           </>
+        ) : duringBattle ? (
+          <p className="hint-text">
+            Esta XP se gasta al terminar la batalla, no a mitad de combate — así no puedes reaccionar
+            en caliente subiendo justo la pieza que más te conviene en este instante.
+          </p>
         ) : (
           <p className="hint-text">Es una pieza rival — no puedes gastar XP en ella.</p>
         )}

@@ -6,6 +6,7 @@ import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, Ic
 import ProfileBackupModal from './ProfileBackupModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
+import MirrorModeModal from './MirrorModeModal.jsx';
 
 export default function Menu({
   onNewGame,
@@ -15,6 +16,7 @@ export default function Menu({
   onOpenings,
   onPuzzle,
   onCombat,
+  onCombatRoguelike,
   onSpectator,
   onHistory,
   onInsights,
@@ -30,6 +32,7 @@ export default function Menu({
   const [timeControlId, setTimeControlId] = useState('none');
   const [showBackup, setShowBackup] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
+  const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const tournamentLevel = levelForPoints(tournament.points);
   const username = getUsername();
@@ -57,7 +60,7 @@ export default function Menu({
 
       <div className="menu-group">
         <span className="section-label">Jugar</span>
-        <div className="menu-grid menu-grid-3">
+        <div className="menu-grid menu-grid-4">
           <button type="button" className="menu-card accent-hint" onClick={() => setShowQuickMatch(true)}>
             <IconPawn className="menu-card-icon" />
             <h3>Partida rápida</h3>
@@ -77,6 +80,13 @@ export default function Menu({
             <h3>Combate</h3>
             <p>Ajedrez con niveles y esquive: las capturas se deciden a los dados según fuerza y velocidad.</p>
             <span className="menu-card-cta">Entrar en combate →</span>
+          </button>
+
+          <button type="button" className="menu-card accent-danger" onClick={onCombatRoguelike}>
+            <IconSword className="menu-card-icon" />
+            <h3>Combate Roguelike</h3>
+            <p>Una escalera de rivales cada vez más raros — cada piso le suma material extra a la CPU.</p>
+            <span className="menu-card-cta">Empezar corrida →</span>
           </button>
         </div>
       </div>
@@ -115,6 +125,13 @@ export default function Menu({
             <h3>Puzzle</h3>
             <p>Posiciones cortas para resolver: mate en 1, mate en 2, o encontrar la jugada que gana material.</p>
             <span className="menu-card-cta">Resolver →</span>
+          </button>
+
+          <button type="button" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
+            <IconEye className="menu-card-icon" />
+            <h3>Espejo de ti mismo</h3>
+            <p>Una CPU calibrada a tu propio historial de errores — no un nivel fijo elegido a mano.</p>
+            <span className="menu-card-cta">Ver mi perfil →</span>
           </button>
 
           <button type="button" className="menu-card accent-hint" onClick={onSpectator}>
@@ -163,6 +180,15 @@ export default function Menu({
           rating={rating}
           onStart={() => { onNewGame(difficulty, color, { timeControlId }); setShowQuickMatch(false); }}
           onClose={() => setShowQuickMatch(false)}
+        />
+      )}
+      {showMirrorMode && (
+        <MirrorModeModal
+          onStart={(mirrorDifficulty) => {
+            onNewGame(mirrorDifficulty, 'random', { mirror: true });
+            setShowMirrorMode(false);
+          }}
+          onClose={() => setShowMirrorMode(false)}
         />
       )}
     </div>

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: chess-study-backend
+    runtime: docker
+    dockerfilePath: ./backend-python/Dockerfile
+    dockerContext: ./backend-python
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: MONGO_DB_NAME
+        value: chess_study

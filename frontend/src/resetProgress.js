@@ -14,6 +14,7 @@ import { resetAchievements } from './achievements.js';
 import { resetAllPuzzleStats } from './puzzleStats.js';
 import { clearWorstMoveCache } from './worstMoveCache.js';
 import { resetRewardsSelection } from './tournamentRewards.js';
+import { resetRoguelikeRun } from './roguelikeRun.js';
 
 export function resetAllProgress() {
   resetTournament();
@@ -26,4 +27,5 @@ export function resetAllProgress() {
   resetAllPuzzleStats();
   clearWorstMoveCache();
   resetRewardsSelection();
+  resetRoguelikeRun();
 }

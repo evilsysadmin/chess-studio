@@ -62,7 +62,7 @@ function buildLogEntry(result, humanColor) {
   return { text, tone: defender.color === humanColor ? 'good' : 'neutral' };
 }
 
-export default function CombatScreen({ onExit, onError, onHistory, onViewBattle }) {
+export default function CombatScreen({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleResult, difficultyOverride, forcedHumanColor }) {
   const [phase, setPhase] = useState('setup'); // 'setup' | 'battle' | 'over'
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
@@ -79,7 +79,10 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
   // fuerza mientras estás peleando).
   const rating = useMemo(() => loadRating(), []);
   const ratingInfo = useMemo(() => ratingProgress(rating.rating), [rating]);
-  const difficulty = useMemo(() => difficultyForRating(rating.rating), [rating]);
+  const difficulty = useMemo(
+    () => (difficultyOverride != null ? difficultyOverride : difficultyForRating(rating.rating)),
+    [rating, difficultyOverride]
+  );
   const [colorChoice, setColorChoice] = useState('random');
   const [autoLevelUpEnabled, setAutoLevelUpEnabled] = useState(true);
   const [humanColor, setHumanColor] = useState('w');
@@ -176,7 +179,7 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
   }
 
   function startBattle() {
-    const resolved = resolveHumanColor(colorChoice);
+    const resolved = forcedHumanColor || resolveHumanColor(colorChoice);
 
     // Se cierra acá la ventana de revivir: cualquier pieza que sigue caída
     // sin que la hayas revivido se pierde para siempre a partir de ahora.
@@ -187,13 +190,14 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
     }
 
     const chess = new Chess();
-    const initialFen = chess.fen();
+    if (initialFen) chess.load(initialFen);
+    const startFen = chess.fen();
     const initialRegistry = applyRosterToRegistry(createInitialRegistry(chess), activeRoster, resolved);
 
     setHumanColor(resolved);
     setCombatLog([]);
     setBattleRecap(null);
-    setFen(initialFen);
+    setFen(startFen);
     setRegistry(initialRegistry);
     setSelected(null);
     setPendingPromotion(null);
@@ -207,7 +211,7 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
     // la partida se queda esperando para siempre a que "alguien" mueva.
     if (resolved === 'b') {
       setBusy(true);
-      setTimeout(() => runCpuTurn(initialFen, initialRegistry, resolved, []), CPU_DELAY_MS);
+      setTimeout(() => runCpuTurn(startFen, initialRegistry, resolved, []), CPU_DELAY_MS);
     } else {
       setBusy(false);
     }
@@ -288,17 +292,13 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
           },
         ];
     setCombatLog(updatedLog);
-    // Si el modo auto-subida está activo, la pieza que acaba de bancar XP
-    // (el atacante si conectó, el defensor si esquivó) lo gasta sola, de a
-    // pares fuerza+velocidad — así funcionaba antes de que hubiera compra
-    // manual.
-    let finalRegistry = result.registry;
-    if (autoLevelUpEnabled && result.isCapture) {
-      const xpSquare = result.hit ? to : capturedSquareFor(result.applied);
-      if (finalRegistry[xpSquare]) {
-        finalRegistry = { ...finalRegistry, [xpSquare]: autoLevelUp(finalRegistry[xpSquare]) };
-      }
-    }
+    // La XP se banca durante la batalla, pero ya NO se gasta acá — ni
+    // sola (auto-nivelado) ni a mano (comprando fuerza/velocidad): eso
+    // ahora pasa una sola vez, al terminar la batalla, para que no se
+    // pueda reaccionar en caliente a la posición actual subiendo justo la
+    // pieza que más te conviene en ese instante. Ver el final de la
+    // batalla, donde se aplica autoLevelUp de una sola vez si corresponde.
+    const finalRegistry = result.registry;
     setRegistry(finalRegistry);
 
     if (result.isCapture && result.attacker && result.defender) {
@@ -328,7 +328,21 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
       const isLoss = chessAfter.isCheckmate() && chessAfter.turn() === currentHumanColor;
       const outcome = isWin ? 'win' : isLoss ? 'loss' : 'draw';
       if (isWin) playSuccessSound();
-      const nextRoster = saveSurvivorsToRoster(finalRegistry, roster, currentHumanColor, outcome);
+
+      // Acá, y solo acá, se gasta la XP bancada durante toda la batalla —
+      // de una sola vez, al terminar, en vez de en caliente jugada a
+      // jugada. Evita poder reaccionar a la posición actual subiendo justo
+      // la pieza que más conviene en ese instante puntual.
+      let leveledRegistry = finalRegistry;
+      if (autoLevelUpEnabled) {
+        leveledRegistry = Object.fromEntries(
+          Object.entries(finalRegistry).map(([sq, piece]) =>
+            piece.color === currentHumanColor ? [sq, autoLevelUp(piece)] : [sq, piece]
+          )
+        );
+      }
+
+      const nextRoster = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome);
       saveRoster(nextRoster);
       setRoster(nextRoster);
 
@@ -362,6 +376,7 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
         record: battleRecord,
       });
 
+      onBattleResult?.(outcome);
       setPhase('over');
       return;
     }
@@ -606,8 +621,8 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
           </label>
           <p className="hint-text" style={{ marginTop: '0.4rem' }}>
             {autoLevelUpEnabled
-              ? 'Activada: cada pieza gasta su XP sola, comprando fuerza y velocidad en pareja apenas alcanza. Simple, sin decisiones.'
-              : 'Desactivada: eliges en qué gastar el XP de cada pieza (toca dos veces cualquier pieza tuya para hacerlo). Más control, pero hay que estar pendiente.'}
+              ? 'Activada: al terminar la batalla, cada pieza gasta su XP sola, comprando fuerza y velocidad en pareja. Simple, sin decisiones — pero ya no en caliente, jugada a jugada.'
+              : 'Desactivada: eliges en qué gastar el XP de cada pieza, pero recién al terminar la batalla (toca dos veces cualquier pieza tuya en el tablero final para hacerlo). Más control, sin poder reaccionar a mitad de combate.'}
           </p>
         </div>
 
@@ -816,7 +831,8 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle 
       {infoPiece && (
         <PieceInfoModal
           piece={infoPiece}
-          canManage={infoPiece.color === humanColor}
+          canManage={infoPiece.color === humanColor && phase !== 'battle'}
+          duringBattle={infoPiece.color === humanColor && phase === 'battle'}
           onBuy={handleBuyStat}
           onClose={() => setInfoSquare(null)}
         />
