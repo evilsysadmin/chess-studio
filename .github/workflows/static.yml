@@ -7,14 +7,18 @@ on:
       - 'frontend/**'
       - '.github/workflows/static.yml'
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
 
     environment:
       name: github-pages
@@ -38,7 +42,7 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
-          VITE_BASE_API_URL: ${{ vars.VITE_BASE_API_URL }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
         run: npm run build
 
       - name: Setup Pages
