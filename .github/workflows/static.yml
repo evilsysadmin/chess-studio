@@ -4,8 +4,8 @@ on:
   push:
     branches: ["main"]
     paths:
-      - 'frontend/**'  # Solo ejecuta si hay cambios en la carpeta frontend
-
+      - 'frontend/**' 
+      - .github/workflows/static.yml
 jobs:
   deploy:
     runs-on: ubuntu-latest
