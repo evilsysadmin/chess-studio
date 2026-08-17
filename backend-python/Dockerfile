@@ -20,6 +20,16 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
+# "slim" recorta ca-certificates para achicar la imagen — pero sin eso el
+# contenedor no tiene ninguna autoridad certificadora raíz en la que confiar,
+# y no puede validar la cadena TLS de MongoDB Atlas al conectarse. Sin este
+# paquete, la conexión a Mongo falla con SSL: TLSV1_ALERT_INTERNAL_ERROR (o
+# similar) y el backend cae en silencio al respaldo en memoria — visto en un
+# despliegue real, no en teoría.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
