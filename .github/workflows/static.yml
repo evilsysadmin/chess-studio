@@ -37,7 +37,7 @@ jobs:
 
       - name: Deploy frontend
         working-directory: frontend
-        run: npm run deploy
+        run: npm run
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
