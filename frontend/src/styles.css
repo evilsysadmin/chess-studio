@@ -48,6 +48,7 @@ button:focus-visible,
   flex-direction: column;
   align-items: center;
   padding: 2.5rem 1.25rem 4rem;
+  position: relative;
 }
 
 .masthead {
@@ -2305,6 +2306,30 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   align-self: flex-start;
 }
 .back-link:hover { color: var(--brass); }
+
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.admin-users-table th,
+.admin-users-table td {
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  border-bottom: 1px solid var(--ink-3);
+  white-space: nowrap;
+}
+
+.admin-users-table th {
+  color: var(--brass);
+  font-weight: 600;
+}
+
+.admin-users-table tr:hover td {
+  background: var(--ink-2);
+}
 
 @media (max-width: 640px) {
   .board-grid, .rank-labels, .file-labels {

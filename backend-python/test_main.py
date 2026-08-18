@@ -402,3 +402,90 @@ def test_me_endpoint_without_token_rejected():
 def test_me_endpoint_with_garbage_token_rejected():
     r = client.get("/api/auth/me", headers={"Authorization": "Bearer esto-no-es-un-token-valido"})
     assert r.status_code == 401
+
+
+# ---------- Auth: panel de admin ----------
+
+def test_me_reports_is_admin_false_for_normal_user(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", set())
+    r = client.post("/api/auth/register", json={"username": "usuario_normal", "password": "clave123456"})
+    token = r.json()["token"]
+    r2 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r2.json()["isAdmin"] is False
+
+
+def test_me_reports_is_admin_true_when_configured(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"stan"})
+    r = client.post("/api/auth/register", json={"username": "stan", "password": "clave123456"})
+    token = r.json()["token"]
+    r2 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r2.json()["isAdmin"] is True
+
+
+def test_admin_endpoint_rejects_non_admin_user(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"stan"})
+    r = client.post("/api/auth/register", json={"username": "no_soy_admin", "password": "clave123456"})
+    token = r.json()["token"]
+    r2 = client.get("/api/admin/users", headers={"Authorization": f"Bearer {token}"})
+    assert r2.status_code == 403
+
+
+def test_admin_endpoint_rejects_no_token():
+    r = client.get("/api/admin/users")
+    assert r.status_code == 401
+
+
+def test_admin_endpoint_lists_users_with_stats(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_test"})
+    r = client.post("/api/auth/register", json={"username": "admin_test", "password": "clave123456"})
+    admin_token = r.json()["token"]
+
+    r2 = client.post("/api/auth/register", json={"username": "jugador_con_stats", "password": "clave123456"})
+    player_token = r2.json()["token"]
+    client.put(
+        "/api/profile",
+        json={"data": {
+            "chess-study-tournament": '{"points": 340, "wins": 7}',
+            "chess-study-player-rating": '{"rating": 812}',
+        }},
+        headers={"Authorization": f"Bearer {player_token}"},
+    )
+
+    r3 = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r3.status_code == 200
+    users = {u["username"]: u for u in r3.json()["users"]}
+    assert "jugador_con_stats" in users
+    assert users["jugador_con_stats"]["tournamentPoints"] == 340
+    assert users["jugador_con_stats"]["tournamentWins"] == 7
+    assert users["jugador_con_stats"]["rating"] == 812
+
+
+def test_admin_endpoint_handles_user_with_no_profile_yet(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_test2"})
+    r = client.post("/api/auth/register", json={"username": "admin_test2", "password": "clave123456"})
+    admin_token = r.json()["token"]
+    client.post("/api/auth/register", json={"username": "recien_registrado", "password": "clave123456"})
+
+    r2 = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r2.status_code == 200  # no revienta aunque el usuario nunca haya guardado un perfil
+    users = {u["username"]: u for u in r2.json()["users"]}
+    assert users["recien_registrado"]["tournamentPoints"] is None
+
+
+def test_admin_endpoint_handles_malformed_profile_json(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_test3"})
+    r = client.post("/api/auth/register", json={"username": "admin_test3", "password": "clave123456"})
+    admin_token = r.json()["token"]
+
+    r2 = client.post("/api/auth/register", json={"username": "perfil_roto", "password": "clave123456"})
+    player_token = r2.json()["token"]
+    client.put(
+        "/api/profile",
+        json={"data": {"chess-study-tournament": "esto no es JSON válido {{{"}},
+        headers={"Authorization": f"Bearer {player_token}"},
+    )
+
+    r3 = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r3.status_code == 200  # un campo roto no tumba el endpoint entero
+    users = {u["username"]: u for u in r3.json()["users"]}
+    assert users["perfil_roto"]["tournamentPoints"] is None

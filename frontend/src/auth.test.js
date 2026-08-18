@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader } from './auth.js';
+import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe } from './auth.js';
 
 function mockFetchOnce(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -56,6 +56,26 @@ describe('login', () => {
   });
 });
 
+describe('fetchMe', () => {
+  it('devuelve username e isAdmin cuando el backend responde bien', async () => {
+    mockFetchOnce(200, { username: 'stan', isAdmin: true });
+    const me = await fetchMe();
+    expect(me).toEqual({ username: 'stan', isAdmin: true });
+  });
+
+  it('devuelve null si el backend responde con error (401, etc.)', async () => {
+    mockFetchOnce(401, { detail: 'no autorizado' });
+    const me = await fetchMe();
+    expect(me).toBeNull();
+  });
+
+  it('devuelve null, nunca rechaza, si el fetch en sí falla (red caída, backend dormido)', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('network error'));
+    const me = await fetchMe();
+    expect(me).toBeNull();
+  });
+});
+
 describe('logout', () => {
   it('borra el token y el username', async () => {
     mockFetchOnce(200, { token: 'x', username: 'juan' });
@@ -74,5 +94,18 @@ describe('authHeader', () => {
     mockFetchOnce(200, { token: 'mi-token', username: 'ana' });
     await login('ana', 'clave123456');
     expect(authHeader()).toEqual({ Authorization: 'Bearer mi-token' });
+  });
+});
+
+describe('wakeBackend', () => {
+  it('pega a /api/health', () => {
+    mockFetchOnce(200, { ok: true });
+    wakeBackend();
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/health'));
+  });
+
+  it('no revienta si el fetch falla (fire and forget)', () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('backend dormido, timeout'));
+    expect(() => wakeBackend()).not.toThrow();
   });
 });

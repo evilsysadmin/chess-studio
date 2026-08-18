@@ -17,6 +17,8 @@ export default function Menu({
   onPuzzle,
   onCombat,
   onCombatRoguelike,
+  isAdminUser,
+  onAdmin,
   onSpectator,
   onHistory,
   onInsights,
@@ -161,6 +163,11 @@ export default function Menu({
         <button type="button" className="backup-link" onClick={onBoard3D}>
           Experimento 3D (jugable, experimental)
         </button>
+        {isAdminUser && (
+          <button type="button" className="backup-link" onClick={onAdmin}>
+            Panel de admin
+          </button>
+        )}
         <button type="button" className="backup-link" onClick={handleLogout}>
           Cerrar sesión{username ? ` (${username})` : ''}
         </button>
@@ -168,6 +175,15 @@ export default function Menu({
 
       {showBackup && <ProfileBackupModal onClose={() => setShowBackup(false)} />}
       {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} />}
+      {showMirrorMode && (
+        <MirrorModeModal
+          onClose={() => setShowMirrorMode(false)}
+          onStart={(mirrorDifficulty) => {
+            setShowMirrorMode(false);
+            onNewGame(mirrorDifficulty, color, { timeControlId, mirror: true });
+          }}
+        />
+      )}
       {showQuickMatch && (
         <QuickMatchModal
           difficulty={difficulty}
@@ -180,15 +196,6 @@ export default function Menu({
           rating={rating}
           onStart={() => { onNewGame(difficulty, color, { timeControlId }); setShowQuickMatch(false); }}
           onClose={() => setShowQuickMatch(false)}
-        />
-      )}
-      {showMirrorMode && (
-        <MirrorModeModal
-          onStart={(mirrorDifficulty) => {
-            onNewGame(mirrorDifficulty, 'random', { mirror: true });
-            setShowMirrorMode(false);
-          }}
-          onClose={() => setShowMirrorMode(false)}
         />
       )}
     </div>

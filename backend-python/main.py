@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import random
@@ -73,6 +74,21 @@ def get_api_key(request: Request) -> Optional[str]:
 
 def has_valid_api_key(request: Request) -> bool:
     return get_api_key(request) is not None
+
+
+# `ADMIN_USERNAMES` — mismo espíritu que M2M_API_KEYS: una lista separada
+# por comas en una variable de entorno, no un flag hardcodeado en el
+# código ni una columna nueva que migrar en cada usuario. Sin configurar
+# (caso por defecto), el set queda vacío — nadie es admin, cero cambio de
+# comportamiento respecto a como estaba antes. Los usernames ya se
+# normalizan a minúscula en el registro/login, así que la comparación acá
+# también lo hace, para no depender de que quien configure la variable
+# recuerde escribirlo exactamente igual.
+_ADMIN_USERNAMES = {u.strip().lower() for u in os.environ.get("ADMIN_USERNAMES", "").split(",") if u.strip()}
+
+
+def is_admin(username: str) -> bool:
+    return username.lower() in _ADMIN_USERNAMES
 
 
 def api_key_bucket(request: Request) -> str:
@@ -303,7 +319,64 @@ async def login(body: LoginRequest):
 
 @app.get("/api/auth/me")
 async def me(username: str = Depends(get_current_user)):
-    return {"username": username}
+    return {"username": username, "isAdmin": is_admin(username)}
+
+
+def _extract_summary_stats(profile: Optional[dict]) -> dict:
+    """Parseo defensivo del perfil para el panel de admin — cada valor es
+    un string JSON (así los guarda profileBackup.js), y cualquier usuario
+    puede tener datos parciales, viejos, o corruptos. Un campo roto no
+    debe tumbar el resumen entero, así que cada `json.loads` va con su
+    propio try/except."""
+    data = (profile or {}).get("data") or {}
+
+    tournament_points = None
+    tournament_wins = None
+    try:
+        tournament = json.loads(data.get("chess-study-tournament", "{}"))
+        tournament_points = tournament.get("points")
+        tournament_wins = tournament.get("wins")
+    except (json.JSONDecodeError, AttributeError):
+        pass
+
+    rating = None
+    try:
+        rating_data = json.loads(data.get("chess-study-player-rating", "{}"))
+        rating = rating_data.get("rating")
+    except (json.JSONDecodeError, AttributeError):
+        pass
+
+    games_played = None
+    try:
+        history = json.loads(data.get("chess-study-game-history", "[]"))
+        games_played = len(history) if isinstance(history, list) else None
+    except (json.JSONDecodeError, AttributeError):
+        pass
+
+    return {
+        "tournamentPoints": tournament_points,
+        "tournamentWins": tournament_wins,
+        "rating": rating,
+        "gamesPlayed": games_played,
+    }
+
+
+@app.get("/api/admin/users")
+async def admin_list_users(username: str = Depends(get_current_user)):
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permiso para ver esto.")
+
+    usernames = await ustore.list_usernames()
+    result = []
+    for uname in usernames:
+        user = await ustore.get_user(uname)
+        profile = await pstore.get_profile(uname)
+        result.append({
+            "username": uname,
+            "createdAt": (user or {}).get("created_at"),
+            **_extract_summary_stats(profile),
+        })
+    return {"users": result}
 
 
 @app.post("/api/games", status_code=201)

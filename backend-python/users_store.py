@@ -5,12 +5,13 @@ salvedad de que en memoria los usuarios no sobreviven a un reinicio del
 proceso, así que en producción de verdad hace falta Mongo corriendo.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from db import get_db
 
 COLLECTION = "users"
-_memory_users: dict[str, dict] = {}  # username -> {username, password_hash}
+_memory_users: dict[str, dict] = {}  # username -> {username, password_hash, created_at}
 
 
 async def _get_collection():
@@ -30,10 +31,21 @@ async def get_user(username: str) -> Optional[dict]:
 
 
 async def create_user(username: str, password_hash: str) -> dict:
-    doc = {"username": username, "password_hash": password_hash}
+    created_at = datetime.now(timezone.utc).isoformat()
+    doc = {"username": username, "password_hash": password_hash, "created_at": created_at}
     col = await _get_collection()
     if col is not None:
-        await col.insert_one({"_id": username, "password_hash": password_hash})
+        await col.insert_one({"_id": username, "password_hash": password_hash, "created_at": created_at})
     else:
         _memory_users[username] = doc
     return doc
+
+
+async def list_usernames() -> list[str]:
+    """Todos los usuarios registrados — para el panel de administración
+    nada más (`is_admin`), no se expone en ninguna ruta pública."""
+    col = await _get_collection()
+    if col is not None:
+        cursor = col.find({}, {"_id": 1})
+        return [doc["_id"] async for doc in cursor]
+    return list(_memory_users.keys())

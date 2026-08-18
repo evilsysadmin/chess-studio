@@ -29,7 +29,8 @@ import InsightsScreen from './components/InsightsScreen.jsx';
 import { timeControlById } from './clock.js';
 import { checkAchievements } from './achievements.js';
 import { pullProfileFromServer, pushProfileToServer } from './profileBackup.js';
-import { isLoggedIn } from './auth.js';
+import { isLoggedIn, fetchMe } from './auth.js';
+import AdminScreen from './components/AdminScreen.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
@@ -39,7 +40,7 @@ import LoginScreen from './components/LoginScreen.jsx';
 const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
-function AppInner() {
+function AppInner({ isAdminUser }) {
   const [view, setView] = useState('menu');
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -144,7 +145,11 @@ function AppInner() {
     setLoading(true);
     setError(null);
     try {
-      const handicap = handicapForGap(rating.rating, difficulty);
+      // En modo Espejo la dificultad YA está calibrada a propósito (más baja
+      // cuanto más te equivocas tú) — aplicar el hándicap dinámico encima
+      // compensaría dos veces la misma brecha, dejando una CPU mucho más
+      // floja de lo que el propio modo Espejo pretendía.
+      const handicap = opts?.mirror ? null : handicapForGap(rating.rating, difficulty);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null);
       setLearningMode(!!opts?.learning);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
@@ -336,6 +341,8 @@ function AppInner() {
             onSpectator={() => setView('spectator')}
             onCombat={() => setView('combat')}
             onCombatRoguelike={() => setView('roguelike')}
+            isAdminUser={isAdminUser}
+            onAdmin={() => setView('admin')}
             onHistory={() => setView('history')}
             onInsights={() => setView('insights')}
             onBoard3D={() => setView('board3d')}
@@ -391,6 +398,8 @@ function AppInner() {
             onViewBattle={openHistoryRecord}
           />
         )}
+
+        {view === 'admin' && <AdminScreen onExit={() => setView('menu')} />}
 
         {view === 'tournament' && (
           <TournamentScreen
@@ -465,12 +474,15 @@ function AppInner() {
 function App() {
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [ready, setReady] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
     if (!loggedIn) return;
     let cancelled = false;
-    pullProfileFromServer().finally(() => {
-      if (!cancelled) setReady(true);
+    Promise.all([pullProfileFromServer(), fetchMe()]).then(([, me]) => {
+      if (cancelled) return;
+      setIsAdminUser(!!me?.isAdmin);
+      setReady(true);
     });
     return () => { cancelled = true; };
   }, [loggedIn]);
@@ -499,7 +511,7 @@ function App() {
     );
   }
 
-  return <AppInner />;
+  return <AppInner isAdminUser={isAdminUser} />;
 }
 
 export default App;

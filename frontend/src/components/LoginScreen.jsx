@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { register, login } from '../auth.js';
+import React, { useState, useEffect } from 'react';
+import { register, login, wakeBackend } from '../auth.js';
+import MuteToggle from './MuteToggle.jsx';
 
 export default function LoginScreen({ onLoggedIn }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
@@ -7,6 +8,13 @@ export default function LoginScreen({ onLoggedIn }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Apenas se muestra la pantalla de login, no cuando se manda el
+  // formulario — así el backend ya está despierto para cuando el
+  // usuario termina de escribir sus credenciales.
+  useEffect(() => {
+    wakeBackend();
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -25,6 +33,9 @@ export default function LoginScreen({ onLoggedIn }) {
 
   return (
     <div className="app-shell">
+      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <MuteToggle />
+      </div>
       <div className="menu" style={{ maxWidth: 420 }}>
         <div className="menu-section">
           <span className="eyebrow">Escuela de Ajedrez</span>

@@ -72,3 +72,29 @@ export function authHeader() {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+// "Despertar" el backend antes de que haga falta de verdad — el free tier
+// de Render duerme el servicio tras 15 minutos sin tráfico, y el primer
+// pedido real después tarda 30-60s en responder mientras arranca de
+// nuevo. Disparando esto apenas carga la pantalla de login (no al
+// mandar el formulario), el backend ya está despierto para cuando el
+// usuario termina de escribir usuario/contraseña, en vez de que el
+// cold-start le pegue justo en el login real. `/api/health` en vez de
+// la raíz: está exento del rate limiting, y devuelve algo mínimo — no
+// hace falta más que eso para despertar el contenedor. "Fire and
+// forget" a propósito: si falla o tarda, no debe bloquear ni mostrar
+// error — el login en sí sigue funcionando igual, solo que más lento.
+export async function fetchMe() {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/me`, { headers: { ...authHeader() } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    // sin backend disponible -> seguimos sin saber si es admin, no bloquea el arranque
+    return null;
+  }
+}
+
+export function wakeBackend() {
+  fetch(`${BASE_URL}/health`).catch(() => {});
+}

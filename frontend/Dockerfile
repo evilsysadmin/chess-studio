@@ -14,7 +14,13 @@ COPY . .
 ARG VITE_API_URL=http://localhost:4000/api
 ENV VITE_API_URL=$VITE_API_URL
 
-RUN npm run build
+# Docker Compose siempre sirve desde la raíz (nginx sirve /usr/share/nginx/html
+# directo en "/"), a diferencia de GitHub Pages (usuario.github.io/nombre-repo/).
+# --base=/ pisa a propósito lo que diga vite.config.js — sin esto, un `base`
+# fijo pensado para GitHub Pages rompería el build local: el index.html
+# pediría los assets con un prefijo que nginx no tiene, y el bundle nunca
+# llegaría a cargar.
+RUN npx vite build --base=/
 
 # --- Etapa 2: servir el build estático con Nginx ---
 FROM nginx:1.27-alpine
