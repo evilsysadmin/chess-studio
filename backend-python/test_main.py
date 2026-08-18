@@ -13,6 +13,21 @@ from main import app
 
 client = TestClient(app)
 
+_auth_counter = 0
+
+
+def _auth_headers():
+    """Registra un usuario nuevo (nombre único por llamada, para no chocar
+    entre tests) y devuelve el header Authorization con su token — usado
+    en los tests de /api/analyze y /api/analyze-move, que ahora exigen
+    sesión (o una API key M2M válida)."""
+    global _auth_counter
+    _auth_counter += 1
+    username = f"analyze_test_{_auth_counter}"
+    r = client.post("/api/auth/register", json={"username": username, "password": "clave123456"})
+    token = r.json()["token"]
+    return {"Authorization": f"Bearer {token}"}
+
 
 def _seed(game_id: str, moves: list[str], human_color: str, difficulty: int = 0):
     """Sobreescribe una partida ya creada con una secuencia de jugadas SAN
@@ -140,6 +155,7 @@ def test_promotion_move_via_analyze():
     r = client.post(
         "/api/analyze-move",
         json={"fen": fen, "from": "a7", "to": "a8", "promotion": "n", "level": 10},
+        headers=_auth_headers(),
     )
     assert r.status_code == 200
     body = r.json()
@@ -152,6 +168,7 @@ def test_castling_move_via_analyze():
     r = client.post(
         "/api/analyze-move",
         json={"fen": fen, "from": "e1", "to": "g1", "level": 10},
+        headers=_auth_headers(),
     )
     assert r.status_code == 200
     body = r.json()
@@ -203,6 +220,7 @@ def test_analyze_endpoint():
     r = client.post(
         "/api/analyze",
         json={"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "level": 30},
+        headers=_auth_headers(),
     )
     assert r.status_code == 200
     body = r.json()
@@ -211,13 +229,15 @@ def test_analyze_endpoint():
 
 def test_analyze_rejects_finished_position():
     fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"  # fool's mate consumado
-    r = client.post("/api/analyze", json={"fen": fen, "level": 30})
+    r = client.post("/api/analyze", json={"fen": fen, "level": 30}, headers=_auth_headers())
     assert r.status_code == 400
 
 
 def test_analyze_move_endpoint():
     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
-    r = client.post("/api/analyze-move", json={"fen": fen, "from": "e7", "to": "e5", "level": 30})
+    r = client.post(
+        "/api/analyze-move", json={"fen": fen, "from": "e7", "to": "e5", "level": 30}, headers=_auth_headers()
+    )
     assert r.status_code == 200
     body = r.json()
     assert "suggested" in body
@@ -239,7 +259,8 @@ def test_analyze_move_with_forced_mate_does_not_crash():
     # ("Out of range float values are not JSON compliant: -inf") en vez de
     # una respuesta válida. Torre y rey solos contra rey — mate en 1 con Ra8#.
     fen = "6k1/5ppp/8/8/8/8/8/R6K w - - 0 1"
-    r = client.post("/api/analyze-move", json={"fen": fen, "level": 80})
+    headers = _auth_headers()
+    r = client.post("/api/analyze-move", json={"fen": fen, "level": 80}, headers=headers)
     assert r.status_code == 200
     body = r.json()
     assert body["suggested"]["san"] == "Ra8#"
@@ -247,7 +268,7 @@ def test_analyze_move_with_forced_mate_does_not_crash():
 
     # mismo caso pero con la jugada explícita que da mate, para activar
     # tambien el otro punto del bug (evalAfterPlayed via evaluate_board directo)
-    r2 = client.post("/api/analyze-move", json={"fen": fen, "from": "a1", "to": "a8", "level": 80})
+    r2 = client.post("/api/analyze-move", json={"fen": fen, "from": "a1", "to": "a8", "level": 80}, headers=headers)
     assert r2.status_code == 200
     body2 = r2.json()
     assert body2["evalAfterPlayed"] == 100000.0
@@ -300,20 +321,51 @@ def test_get_api_key_sin_header(monkeypatch):
     assert main_module.has_valid_api_key(request) is False
 
 
-def test_analyze_move_funciona_igual_con_o_sin_api_key_valida():
+def test_analyze_move_funciona_igual_con_o_sin_api_key_valida(monkeypatch):
     # La key no cambia el RESULTADO del análisis, solo el límite de ritmo
-    # (que se verificó en vivo aparte) — una request individual con key
-    # válida debe dar exactamente la misma respuesta que sin key.
+    # (que se verificó en vivo aparte) — entrar con sesión de usuario debe
+    # dar exactamente la misma respuesta que entrar con una API key M2M
+    # válida. (Antes este test comparaba "sin nada" contra "key inválida" —
+    # ya no tiene sentido: el endpoint ahora exige una de las dos formas
+    # de entrar, así que hace falta una key de verdad configurada.)
+    monkeypatch.setattr("main._M2M_API_KEYS", {"key-de-test-valida"})
     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
-    r_sin_key = client.post("/api/analyze-move", json={"fen": fen, "from": "e7", "to": "e5", "level": 30})
+    r_con_usuario = client.post(
+        "/api/analyze-move", json={"fen": fen, "from": "e7", "to": "e5", "level": 30}, headers=_auth_headers()
+    )
     r_con_key = client.post(
         "/api/analyze-move",
         json={"fen": fen, "from": "e7", "to": "e5", "level": 30},
-        headers={"X-API-Key": "no-configurada-en-este-entorno-de-test"},
+        headers={"X-API-Key": "key-de-test-valida"},
     )
-    assert r_sin_key.status_code == 200
+    assert r_con_usuario.status_code == 200
     assert r_con_key.status_code == 200
-    assert r_sin_key.json()["evalAfterSuggested"] == r_con_key.json()["evalAfterSuggested"]
+    assert r_con_usuario.json()["evalAfterSuggested"] == r_con_key.json()["evalAfterSuggested"]
+
+
+def test_analyze_move_rejects_no_auth_and_no_api_key():
+    # El punto central de todo este cambio: sin sesión y sin key, no entra.
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
+    r = client.post("/api/analyze-move", json={"fen": fen, "from": "e7", "to": "e5", "level": 30})
+    assert r.status_code == 401
+
+
+def test_analyze_move_rejects_invalid_api_key_without_session():
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
+    r = client.post(
+        "/api/analyze-move",
+        json={"fen": fen, "from": "e7", "to": "e5", "level": 30},
+        headers={"X-API-Key": "esta-key-no-esta-configurada"},
+    )
+    assert r.status_code == 401
+
+
+def test_analyze_rejects_no_auth_and_no_api_key():
+    r = client.post(
+        "/api/analyze",
+        json={"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "level": 30},
+    )
+    assert r.status_code == 401
 
 
 def test_game_ends_in_checkmate_and_cpu_does_not_respond():

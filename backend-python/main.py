@@ -110,6 +110,23 @@ def has_valid_api_key(request: Request) -> bool:
     return get_api_key(request) is not None
 
 
+def require_user_or_m2m(request: Request) -> Optional[str]:
+    """Exige o bien un token de usuario válido, o bien una API key M2M
+    válida — cualquiera de las dos alcanza. Usado en `/api/analyze` y
+    `/api/analyze-move`: corren el motor de verdad (cómputo caro) y
+    quedaban abiertos a cualquiera con internet, con nada más que el
+    rate limit por IP como freno — el log de producción mostró tráfico
+    anónimo real golpeándolos, sin ninguna cuenta ni key de por medio."""
+    if has_valid_api_key(request):
+        return None
+    header = request.headers.get("authorization")
+    if header and header.startswith("Bearer "):
+        username = verify_token(header[len("Bearer "):])
+        if username:
+            return username
+    raise HTTPException(401, "Hace falta iniciar sesión o mandar una API key válida.")
+
+
 # `ADMIN_USERNAMES` — mismo espíritu que M2M_API_KEYS: una lista separada
 # por comas en una variable de entorno, no un flag hardcodeado en el
 # código ni una columna nueva que migrar en cada usuario. Sin configurar
@@ -684,7 +701,7 @@ async def undo(game_id: str):
 @app.post("/api/analyze")
 @limiter.limit("60/minute", exempt_when=has_valid_api_key)
 @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
-async def analyze(request: Request, body: AnalyzeRequest):
+async def analyze(request: Request, body: AnalyzeRequest, _: Optional[str] = Depends(require_user_or_m2m)):
     try:
         board = chess.Board(body.fen)
     except ValueError:
@@ -753,7 +770,7 @@ def sanitize_eval(score: Optional[float]) -> Optional[float]:
 @app.post("/api/analyze-move")
 @limiter.limit("180/minute", exempt_when=has_valid_api_key)
 @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
-async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest):
+async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest, _: Optional[str] = Depends(require_user_or_m2m)):
     try:
         board = chess.Board(body.fen)
     except ValueError:

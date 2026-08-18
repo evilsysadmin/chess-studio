@@ -30,14 +30,14 @@ export const api = {
   analyzePosition(fen, level) {
     return fetch(`${BASE_URL}/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ fen, level }),
     }).then(handle);
   },
   analyzeMove(fen, from, to, promotion, level) {
     return fetch(`${BASE_URL}/analyze-move`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ fen, from, to, promotion, level }),
     }).then(handle);
   },
