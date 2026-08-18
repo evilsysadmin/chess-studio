@@ -9,7 +9,7 @@ import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { announceCpuCapture, announceHumanCapture, announceCheck, announceCheckmate } from '../voiceCommentary.js';
-import { formatLongMove } from '../notation.js';
+import { formatLongMove, castlingRookMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
 import { formatClock } from '../clock.js';
 
@@ -160,9 +160,9 @@ export default function GameScreen({
     onGameEnd?.(outcome, game);
   }, [game.isGameOver, game.status, game.turn, humanColor, onGameEnd]);
 
-  function triggerAnim(from, to, capture = false) {
+  function triggerAnim(from, to, capture = false, rookMove = null) {
     animSeqRef.current += 1;
-    setPendingAnim({ from, to, capture, seq: animSeqRef.current });
+    setPendingAnim({ from, to, capture, rookMove, seq: animSeqRef.current });
     if (capture) playCaptureSound();
     else playMoveSound();
   }
@@ -211,7 +211,7 @@ export default function GameScreen({
 
     setBoardFen(optimistic.fen());
     setLastMoveSquares({ from, to });
-    triggerAnim(from, to, !!humanMove.captured);
+    triggerAnim(from, to, !!humanMove.captured, castlingRookMove(humanMove.piece, from, to));
     setSelected(null);
     setTurnBanner(null);
     setBusy(true);
@@ -253,7 +253,12 @@ export default function GameScreen({
         // 2) Llegó la respuesta de la CPU: animamos su jugada por separado.
         setBoardFen(updated.fen);
         setLastMoveSquares({ from: updated.lastMove.from, to: updated.lastMove.to });
-        triggerAnim(updated.lastMove.from, updated.lastMove.to, !!updated.lastMove.captured);
+        triggerAnim(
+          updated.lastMove.from,
+          updated.lastMove.to,
+          !!updated.lastMove.captured,
+          castlingRookMove(updated.lastMove.piece, updated.lastMove.from, updated.lastMove.to)
+        );
         if (hasClock && timeControl.increment) {
           const cpuColor = humanColor === 'w' ? 'b' : 'w';
           if (cpuColor === 'w') setWhiteTime((t) => (t ?? 0) + timeControl.increment);

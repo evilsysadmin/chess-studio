@@ -86,6 +86,16 @@ def has_valid_api_key(request: Request) -> bool:
 # recuerde escribirlo exactamente igual.
 _ADMIN_USERNAMES = {u.strip().lower() for u in os.environ.get("ADMIN_USERNAMES", "").split(",") if u.strip()}
 
+# `INVITE_CODES` — mismo patrón otra vez: lista separada por comas en una
+# variable de entorno. Sin configurar (caso por defecto), el set queda
+# vacío y el registro sigue abierto, cero cambio de comportamiento. Con
+# la variable configurada, registrarse exige mandar uno de estos códigos
+# — pensado para compartir un link tipo "tu-app.com/?invite=XYZ" con
+# conocidos, no para gestionar invitaciones individuales (eso sería un
+# sistema bastante más grande: base de datos de códigos, de un solo uso,
+# revocables — decisión consciente de no construir eso todavía).
+_INVITE_CODES = {c.strip() for c in os.environ.get("INVITE_CODES", "").split(",") if c.strip()}
+
 
 def is_admin(username: str) -> bool:
     return username.lower() in _ADMIN_USERNAMES
@@ -229,9 +239,16 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
 # `from_square` en el código pero se sigue mandando/recibiendo como "from"
 # en el JSON (alias) — el frontend no ve ninguna diferencia.
 
+class AdminEditUserRequest(BaseModel):
+    rating: Optional[int] = None
+    tournamentPoints: Optional[int] = None
+    tournamentWins: Optional[int] = None
+
+
 class RegisterRequest(BaseModel):
     username: str
     password: str
+    inviteCode: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
@@ -301,6 +318,8 @@ async def register(body: RegisterRequest):
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
     if len(body.password) < 6:
         raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
+    if _INVITE_CODES and (body.inviteCode or "").strip() not in _INVITE_CODES:
+        raise HTTPException(403, "Código de invitación inválido o faltante.")
     existing = await ustore.get_user(username)
     if existing:
         raise HTTPException(409, "Ese usuario ya existe.")
@@ -361,6 +380,44 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
     }
 
 
+def _extract_detail_stats(profile: Optional[dict]) -> dict:
+    """Igual criterio defensivo que _extract_summary_stats — más campos,
+    para la vista de detalle de un usuario puntual (no la lista completa,
+    ahí alcanza con el resumen)."""
+    data = (profile or {}).get("data") or {}
+    detail = _extract_summary_stats(profile)
+
+    win_streak = None
+    best_win_streak = None
+    try:
+        tournament = json.loads(data.get("chess-study-tournament", "{}"))
+        win_streak = tournament.get("winStreak")
+        best_win_streak = tournament.get("bestWinStreak")
+    except (json.JSONDecodeError, AttributeError):
+        pass
+
+    achievements_count = None
+    try:
+        achievements = json.loads(data.get("chess-study-achievements", "[]"))
+        achievements_count = len(achievements) if isinstance(achievements, list) else None
+    except (json.JSONDecodeError, AttributeError):
+        pass
+
+    puzzles_solved = None
+    try:
+        puzzles_solved = int(data.get("chess-study-puzzles-solved", "0"))
+    except (ValueError, TypeError):
+        pass
+
+    detail.update({
+        "winStreak": win_streak,
+        "bestWinStreak": best_win_streak,
+        "achievementsCount": achievements_count,
+        "puzzlesSolved": puzzles_solved,
+    })
+    return detail
+
+
 @app.get("/api/admin/users")
 async def admin_list_users(username: str = Depends(get_current_user)):
     if not is_admin(username):
@@ -377,6 +434,86 @@ async def admin_list_users(username: str = Depends(get_current_user)):
             **_extract_summary_stats(profile),
         })
     return {"users": result}
+
+
+@app.get("/api/admin/users/{target_username}")
+async def admin_get_user(target_username: str, username: str = Depends(get_current_user)):
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permiso para ver esto.")
+
+    target = target_username.strip().lower()
+    user = await ustore.get_user(target)
+    if not user:
+        raise HTTPException(404, "Ese usuario no existe.")
+
+    profile = await pstore.get_profile(target)
+    return {
+        "username": target,
+        "createdAt": user.get("created_at"),
+        **_extract_detail_stats(profile),
+    }
+
+
+@app.patch("/api/admin/users/{target_username}")
+async def admin_edit_user(target_username: str, body: AdminEditUserRequest, username: str = Depends(get_current_user)):
+    """Edita campos puntuales del perfil de otro usuario — escribe
+    directo en los mismos JSON strings que ya usa profileBackup.js, para
+    que el propio usuario los vea sincronizados normal la próxima vez que
+    abra la app, sin ningún camino especial."""
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permiso para hacer esto.")
+
+    target = target_username.strip().lower()
+    user = await ustore.get_user(target)
+    if not user:
+        raise HTTPException(404, "Ese usuario no existe.")
+
+    profile = await pstore.get_profile(target) or {}
+    data = dict(profile.get("data") or {})
+
+    if body.rating is not None:
+        try:
+            rating_data = json.loads(data.get("chess-study-player-rating", "{}"))
+        except (json.JSONDecodeError, AttributeError):
+            rating_data = {}
+        rating_data["rating"] = body.rating
+        data["chess-study-player-rating"] = json.dumps(rating_data)
+
+    if body.tournamentPoints is not None or body.tournamentWins is not None:
+        try:
+            tournament = json.loads(data.get("chess-study-tournament", "{}"))
+        except (json.JSONDecodeError, AttributeError):
+            tournament = {}
+        if body.tournamentPoints is not None:
+            tournament["points"] = body.tournamentPoints
+        if body.tournamentWins is not None:
+            tournament["wins"] = body.tournamentWins
+        data["chess-study-tournament"] = json.dumps(tournament)
+
+    await pstore.save_profile(target, {**profile, "data": data})
+    updated_profile = await pstore.get_profile(target)
+    return {
+        "username": target,
+        "createdAt": user.get("created_at"),
+        **_extract_detail_stats(updated_profile),
+    }
+
+
+@app.delete("/api/admin/users/{target_username}")
+async def admin_delete_user(target_username: str, username: str = Depends(get_current_user)):
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permiso para hacer esto.")
+
+    target = target_username.strip().lower()
+    if target == username.strip().lower():
+        raise HTTPException(400, "No puedes borrar tu propia cuenta desde acá.")
+
+    deleted = await ustore.delete_user(target)
+    if not deleted:
+        raise HTTPException(404, "Ese usuario no existe.")
+
+    await pstore.delete_profile(target)
+    return {"deleted": True, "username": target}
 
 
 @app.post("/api/games", status_code=201)

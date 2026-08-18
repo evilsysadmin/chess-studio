@@ -40,6 +40,14 @@ describe('register', () => {
     await expect(register('repetido', 'clave123456')).rejects.toThrow('Ese usuario ya existe.');
     expect(isLoggedIn()).toBe(false); // no queda sesión a medias si falló
   });
+
+  it('manda el código de invitación en el body del request', async () => {
+    mockFetchOnce(201, { token: 'x', username: 'con_invitacion' });
+    await register('con_invitacion', 'clave123456', 'MI-CODIGO');
+    const [, options] = global.fetch.mock.calls[0];
+    const sentBody = JSON.parse(options.body);
+    expect(sentBody.inviteCode).toBe('MI-CODIGO');
+  });
 });
 
 describe('login', () => {

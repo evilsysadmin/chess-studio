@@ -276,7 +276,45 @@ export default function Board({
     };
     pieceEl.addEventListener('transitionend', cleanup, { once: true });
 
-    return () => cancelAnimationFrame(raf);
+    // Enroque: la torre se mueve al mismo tiempo que el rey — sin esto,
+    // el rey desliza suave pero la torre aparece de golpe en su casilla
+    // nueva, inconsistente con cualquier otra jugada de la app (todo lo
+    // demás desliza). Misma técnica, aplicada a un segundo elemento.
+    let rookCleanup = null;
+    if (animate.rookMove) {
+      const rookFromEl = squareRefs.current[animate.rookMove.from];
+      const rookToEl = squareRefs.current[animate.rookMove.to];
+      const rookPieceEl = rookToEl?.querySelector('img.piece');
+      if (rookFromEl && rookToEl && rookPieceEl) {
+        const rookFromRect = rookFromEl.getBoundingClientRect();
+        const rookToRect = rookToEl.getBoundingClientRect();
+        const rookDx = rookFromRect.left - rookToRect.left;
+        const rookDy = rookFromRect.top - rookToRect.top;
+
+        rookPieceEl.style.transition = 'none';
+        rookPieceEl.style.transform = `translate(${rookDx}px, ${rookDy}px)`;
+        rookPieceEl.style.zIndex = '5';
+        // eslint-disable-next-line no-unused-expressions
+        rookPieceEl.getBoundingClientRect();
+
+        requestAnimationFrame(() => {
+          rookPieceEl.style.transition = 'transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
+          rookPieceEl.style.transform = 'translate(0, 0)';
+        });
+
+        rookCleanup = () => {
+          rookPieceEl.style.transition = '';
+          rookPieceEl.style.transform = '';
+          rookPieceEl.style.zIndex = '';
+        };
+        rookPieceEl.addEventListener('transitionend', rookCleanup, { once: true });
+      }
+    }
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (rookCleanup) rookCleanup();
+    };
   }, [animate, fen]);
 
   return (

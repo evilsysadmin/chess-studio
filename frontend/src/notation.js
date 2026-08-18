@@ -11,3 +11,20 @@ export function formatLongMove(move) {
   const sep = move.captured ? 'x' : '-';
   return `${letter}${move.from}${sep}${move.to}`;
 }
+
+// Si `piece`/`from`/`to` corresponden a un enroque, devuelve el from/to de
+// la TORRE que se mueve junto con el rey — o null si no es un enroque.
+// No depende de las `flags` de chess.js a propósito: así sirve igual para
+// la jugada del humano (que sí trae flags) y la de la CPU (que llega del
+// backend solo con from/to/piece, sin flags).
+const CASTLING_ROOK_MOVES = {
+  e1g1: { from: 'h1', to: 'f1' },
+  e1c1: { from: 'a1', to: 'd1' },
+  e8g8: { from: 'h8', to: 'f8' },
+  e8c8: { from: 'a8', to: 'd8' },
+};
+
+export function castlingRookMove(piece, from, to) {
+  if (piece !== 'k') return null;
+  return CASTLING_ROOK_MOVES[`${from}${to}`] || null;
+}

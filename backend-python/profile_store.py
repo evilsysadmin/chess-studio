@@ -42,3 +42,11 @@ async def save_profile(username: str, data: dict) -> dict:
     else:
         _memory_profiles[username] = data
     return data
+
+
+async def delete_profile(username: str) -> None:
+    col = await _get_collection()
+    if col is not None:
+        await col.delete_one({"_id": username})
+    else:
+        _memory_profiles.pop(username, None)

@@ -9,6 +9,7 @@ import AttackConfirmModal from './AttackConfirmModal.jsx';
 import ColorSelector from './ColorSelector.jsx';
 import { api } from '../api.js';
 import { playMoveSound, playCaptureSound, playMissSound, playSuccessSound } from '../sound.js';
+import { castlingRookMove } from '../notation.js';
 import {
   BASE_STATS,
   createInitialRegistry,
@@ -312,6 +313,7 @@ export default function CombatScreen({ onExit, onError, onHistory, onViewBattle,
       seq: animSeqRef.current,
       kind: result.hit === false ? 'miss' : 'move',
       capture: result.hit === true,
+      rookMove: result.hit !== false ? castlingRookMove(result.applied.piece, from, to) : null,
     });
 
     if (result.hit === false) playMissSound();

@@ -4,6 +4,7 @@ conectar a un Mongo real).
 """
 
 import asyncio
+import json
 
 from fastapi.testclient import TestClient
 
@@ -368,6 +369,50 @@ def test_register_username_case_insensitive():
     assert r.status_code == 409
 
 
+# ---------- Auth: código de invitación ----------
+
+def test_register_works_without_invite_code_when_not_configured():
+    # Sin INVITE_CODES configurado (default), el registro sigue abierto —
+    # cero cambio de comportamiento, mismo espíritu que M2M_API_KEYS/ADMIN_USERNAMES.
+    r = client.post("/api/auth/register", json={"username": "sin_invitacion", "password": "clave123456"})
+    assert r.status_code == 201
+
+
+def test_register_rejects_missing_invite_code_when_configured(monkeypatch):
+    monkeypatch.setattr("main._INVITE_CODES", {"CODIGO-SECRETO"})
+    r = client.post("/api/auth/register", json={"username": "sin_codigo", "password": "clave123456"})
+    assert r.status_code == 403
+
+
+def test_register_rejects_wrong_invite_code(monkeypatch):
+    monkeypatch.setattr("main._INVITE_CODES", {"CODIGO-SECRETO"})
+    r = client.post(
+        "/api/auth/register",
+        json={"username": "codigo_malo", "password": "clave123456", "inviteCode": "codigo-inventado"},
+    )
+    assert r.status_code == 403
+
+
+def test_register_accepts_correct_invite_code(monkeypatch):
+    monkeypatch.setattr("main._INVITE_CODES", {"CODIGO-SECRETO"})
+    r = client.post(
+        "/api/auth/register",
+        json={"username": "codigo_bueno", "password": "clave123456", "inviteCode": "CODIGO-SECRETO"},
+    )
+    assert r.status_code == 201
+
+
+def test_register_invite_code_is_case_sensitive(monkeypatch):
+    # A propósito, a diferencia del username -- un código de invitación
+    # es más parecido a una contraseña que a un nombre de usuario.
+    monkeypatch.setattr("main._INVITE_CODES", {"CODIGO-SECRETO"})
+    r = client.post(
+        "/api/auth/register",
+        json={"username": "codigo_minuscula", "password": "clave123456", "inviteCode": "codigo-secreto"},
+    )
+    assert r.status_code == 403
+
+
 def test_login_with_correct_password():
     client.post("/api/auth/register", json={"username": "login_ok", "password": "clave123456"})
     r = client.post("/api/auth/login", json={"username": "login_ok", "password": "clave123456"})
@@ -489,3 +534,147 @@ def test_admin_endpoint_handles_malformed_profile_json(monkeypatch):
     assert r3.status_code == 200  # un campo roto no tumba el endpoint entero
     users = {u["username"]: u for u in r3.json()["users"]}
     assert users["perfil_roto"]["tournamentPoints"] is None
+
+
+# ---------- Auth: panel de admin, detalle/editar/borrar usuarios ----------
+
+def test_admin_detail_endpoint_rejects_non_admin():
+    r = client.post("/api/auth/register", json={"username": "no_admin_detalle", "password": "clave123456"})
+    token = r.json()["token"]
+    r2 = client.get("/api/admin/users/cualquiera", headers={"Authorization": f"Bearer {token}"})
+    assert r2.status_code == 403
+
+
+def test_admin_detail_endpoint_404_for_nonexistent_user(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_detalle1"})
+    r = client.post("/api/auth/register", json={"username": "admin_detalle1", "password": "clave123456"})
+    admin_token = r.json()["token"]
+    r2 = client.get("/api/admin/users/no-existe-este-usuario", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r2.status_code == 404
+
+
+def test_admin_detail_endpoint_returns_extra_fields(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_detalle2"})
+    r = client.post("/api/auth/register", json={"username": "admin_detalle2", "password": "clave123456"})
+    admin_token = r.json()["token"]
+
+    r2 = client.post("/api/auth/register", json={"username": "jugador_detalle", "password": "clave123456"})
+    player_token = r2.json()["token"]
+    client.put(
+        "/api/profile",
+        json={"data": {
+            "chess-study-tournament": '{"points": 300, "wins": 5, "winStreak": 2, "bestWinStreak": 4}',
+            "chess-study-achievements": '["first_game", "ten_games"]',
+            "chess-study-puzzles-solved": "7",
+        }},
+        headers={"Authorization": f"Bearer {player_token}"},
+    )
+
+    r3 = client.get("/api/admin/users/jugador_detalle", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r3.status_code == 200
+    body = r3.json()
+    assert body["winStreak"] == 2
+    assert body["bestWinStreak"] == 4
+    assert body["achievementsCount"] == 2
+    assert body["puzzlesSolved"] == 7
+
+
+def test_admin_edit_endpoint_rejects_non_admin():
+    r = client.post("/api/auth/register", json={"username": "no_admin_editar", "password": "clave123456"})
+    token = r.json()["token"]
+    r2 = client.patch(
+        "/api/admin/users/cualquiera",
+        json={"rating": 999},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r2.status_code == 403
+
+
+def test_admin_edit_endpoint_updates_rating_and_tournament(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_editar1"})
+    r = client.post("/api/auth/register", json={"username": "admin_editar1", "password": "clave123456"})
+    admin_token = r.json()["token"]
+
+    client.post("/api/auth/register", json={"username": "jugador_editar", "password": "clave123456"})
+
+    r2 = client.patch(
+        "/api/admin/users/jugador_editar",
+        json={"rating": 1500, "tournamentPoints": 800, "tournamentWins": 12},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body["rating"] == 1500
+    assert body["tournamentPoints"] == 800
+    assert body["tournamentWins"] == 12
+
+    # se guardó de verdad -- lo confirma un GET aparte, no solo la respuesta del PATCH
+    r3 = client.get("/api/admin/users/jugador_editar", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r3.json()["rating"] == 1500
+
+
+def test_admin_edit_endpoint_partial_update_does_not_clobber_other_fields(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_editar2"})
+    r = client.post("/api/auth/register", json={"username": "admin_editar2", "password": "clave123456"})
+    admin_token = r.json()["token"]
+
+    r2 = client.post("/api/auth/register", json={"username": "jugador_parcial", "password": "clave123456"})
+    player_token = r2.json()["token"]
+    client.put(
+        "/api/profile",
+        json={"data": {"chess-study-tournament": '{"points": 200, "wins": 3, "losses": 1}'}},
+        headers={"Authorization": f"Bearer {player_token}"},
+    )
+
+    # solo se edita wins -- points y losses no deberían tocarse
+    client.patch(
+        "/api/admin/users/jugador_parcial",
+        json={"tournamentWins": 99},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    r3 = client.get("/api/profile", headers={"Authorization": f"Bearer {player_token}"})
+    tournament = json.loads(r3.json()["data"]["chess-study-tournament"])
+    assert tournament["wins"] == 99
+    assert tournament["points"] == 200  # intacto
+    assert tournament["losses"] == 1  # intacto
+
+
+def test_admin_delete_endpoint_rejects_non_admin():
+    r = client.post("/api/auth/register", json={"username": "no_admin_borrar", "password": "clave123456"})
+    token = r.json()["token"]
+    r2 = client.delete("/api/admin/users/cualquiera", headers={"Authorization": f"Bearer {token}"})
+    assert r2.status_code == 403
+
+
+def test_admin_delete_endpoint_removes_user_and_profile(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_borrar1"})
+    r = client.post("/api/auth/register", json={"username": "admin_borrar1", "password": "clave123456"})
+    admin_token = r.json()["token"]
+
+    r2 = client.post("/api/auth/register", json={"username": "jugador_borrar", "password": "clave123456"})
+    player_token = r2.json()["token"]
+    client.put("/api/profile", json={"data": {"a": "1"}}, headers={"Authorization": f"Bearer {player_token}"})
+
+    r3 = client.delete("/api/admin/users/jugador_borrar", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r3.status_code == 200
+    assert r3.json()["deleted"] is True
+
+    # ya no puede loguearse -- la cuenta de verdad desapareció
+    r4 = client.post("/api/auth/login", json={"username": "jugador_borrar", "password": "clave123456"})
+    assert r4.status_code == 401
+
+
+def test_admin_delete_endpoint_404_for_nonexistent_user(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_borrar2"})
+    r = client.post("/api/auth/register", json={"username": "admin_borrar2", "password": "clave123456"})
+    admin_token = r.json()["token"]
+    r2 = client.delete("/api/admin/users/no-existe-nadie-asi", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r2.status_code == 404
+
+
+def test_admin_cannot_delete_own_account_via_this_endpoint(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_no_se_autoborra"})
+    r = client.post("/api/auth/register", json={"username": "admin_no_se_autoborra", "password": "clave123456"})
+    admin_token = r.json()["token"]
+    r2 = client.delete("/api/admin/users/admin_no_se_autoborra", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r2.status_code == 400

@@ -49,3 +49,16 @@ async def list_usernames() -> list[str]:
         cursor = col.find({}, {"_id": 1})
         return [doc["_id"] async for doc in cursor]
     return list(_memory_users.keys())
+
+
+async def delete_user(username: str) -> bool:
+    """Borra la cuenta — no borra el perfil (eso es responsabilidad de
+    quien llama, ver profile_store.delete_profile). Devuelve True si de
+    verdad había algo para borrar."""
+    col = await _get_collection()
+    if col is not None:
+        result = await col.delete_one({"_id": username})
+        return result.deleted_count > 0
+    existed = username in _memory_users
+    _memory_users.pop(username, None)
+    return existed
