@@ -568,7 +568,7 @@ async def admin_delete_user(target_username: str, username: str = Depends(get_cu
 
 
 @app.post("/api/games", status_code=201)
-async def create_game(body: NewGameRequest):
+async def create_game(body: NewGameRequest, _: Optional[str] = Depends(require_user_or_m2m)):
     if not is_valid_difficulty(body.difficulty):
         raise HTTPException(400, "Dificultad inválida. Tiene que ser un número entre 0 y 100.")
     if body.color not in ("w", "b", "random"):
@@ -606,7 +606,7 @@ async def create_game(body: NewGameRequest):
 
 
 @app.get("/api/games/{game_id}")
-async def get_game(game_id: str):
+async def get_game(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -614,7 +614,7 @@ async def get_game(game_id: str):
 
 
 @app.get("/api/games/{game_id}/moves")
-async def legal_moves(game_id: str, square: str):
+async def legal_moves(game_id: str, square: str, _: Optional[str] = Depends(require_user_or_m2m)):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -638,7 +638,7 @@ async def legal_moves(game_id: str, square: str):
 
 
 @app.get("/api/games/{game_id}/hint")
-async def hint(game_id: str):
+async def hint(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -657,7 +657,7 @@ async def hint(game_id: str):
 
 
 @app.post("/api/games/{game_id}/undo")
-async def undo(game_id: str):
+async def undo(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -808,7 +808,7 @@ async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest, _: O
 
 
 @app.post("/api/games/{game_id}/move")
-async def play_move(game_id: str, body: MoveRequest):
+async def play_move(game_id: str, body: MoveRequest, _: Optional[str] = Depends(require_user_or_m2m)):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -856,7 +856,7 @@ async def play_move(game_id: str, body: MoveRequest):
 
 
 @app.delete("/api/games/{game_id}", status_code=204)
-async def delete_game(game_id: str):
+async def delete_game(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
     existed = await store.delete_game(game_id)
     if not existed:
         raise HTTPException(404, "Partida no encontrada.")

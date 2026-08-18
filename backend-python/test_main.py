@@ -48,7 +48,7 @@ def test_health():
 
 
 def test_create_game_default():
-    r = client.post("/api/games", json={"difficulty": 50, "color": "w"})
+    r = client.post("/api/games", json={"difficulty": 50, "color": "w"}, headers=_auth_headers())
     assert r.status_code == 201
     body = r.json()
     assert body["humanColor"] == "w"
@@ -58,17 +58,17 @@ def test_create_game_default():
 
 
 def test_create_game_rejects_invalid_difficulty():
-    r = client.post("/api/games", json={"difficulty": 500, "color": "w"})
+    r = client.post("/api/games", json={"difficulty": 500, "color": "w"}, headers=_auth_headers())
     assert r.status_code == 400
 
 
 def test_create_game_rejects_invalid_color():
-    r = client.post("/api/games", json={"difficulty": 50, "color": "purple"})
+    r = client.post("/api/games", json={"difficulty": 50, "color": "purple"}, headers=_auth_headers())
     assert r.status_code == 400
 
 
 def test_create_game_black_gets_opening_move_from_cpu():
-    r = client.post("/api/games", json={"difficulty": 30, "color": "b"})
+    r = client.post("/api/games", json={"difficulty": 30, "color": "b"}, headers=_auth_headers())
     body = r.json()
     assert body["humanColor"] == "b"
     assert len(body["history"]) == 1
@@ -77,7 +77,9 @@ def test_create_game_black_gets_opening_move_from_cpu():
 
 def test_create_game_with_handicap_removes_cpu_piece_not_human_piece():
     # humano juega blancas -> el handicap le saca la pieza a las NEGRAS (la CPU)
-    r = client.post("/api/games", json={"difficulty": 50, "color": "w", "handicap": "queen"})
+    r = client.post(
+        "/api/games", json={"difficulty": 50, "color": "w", "handicap": "queen"}, headers=_auth_headers()
+    )
     body = r.json()
     assert body["fen"].split(" ")[0] == "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
     # confirma que es la dama NEGRA (d8) la que falta, no la blanca (d1) -- las blancas
@@ -85,7 +87,8 @@ def test_create_game_with_handicap_removes_cpu_piece_not_human_piece():
 
 
 def test_create_game_with_handicap_survives_get():
-    r = client.post("/api/games", json={"difficulty": 50, "color": "b", "handicap": "rook"})
+    headers = _auth_headers()
+    r = client.post("/api/games", json={"difficulty": 50, "color": "b", "handicap": "rook"}, headers=headers)
     game_id = r.json()["id"]
     # humano juega negras -> el handicap le saca la pieza a las BLANCAS (la CPU) — que además
     # ya movió su apertura acá (por eso no comparamos un string de fila exacto: la apertura de
@@ -94,15 +97,16 @@ def test_create_game_with_handicap_survives_get():
     fen_after_create = r.json()["fen"]
     assert fen_after_create.split(" ")[0].count("R") == 1  # empezaba con 2 torres blancas, el hándicap sacó una
 
-    r2 = client.get(f"/api/games/{game_id}")
+    r2 = client.get(f"/api/games/{game_id}", headers=headers)
     assert r2.json()["fen"] == fen_after_create  # el GET reconstruye exactamente el mismo estado, hándicap incluido
 
 
 def test_create_game_with_handicap_survives_after_move():
-    r = client.post("/api/games", json={"difficulty": 30, "color": "b", "handicap": "rook"})
+    headers = _auth_headers()
+    r = client.post("/api/games", json={"difficulty": 30, "color": "b", "handicap": "rook"}, headers=headers)
     game_id = r.json()["id"]
 
-    r2 = client.post(f"/api/games/{game_id}/move", json={"from": "d7", "to": "d5"})
+    r2 = client.post(f"/api/games/{game_id}/move", json={"from": "d7", "to": "d5"}, headers=headers)
     assert r2.status_code == 200
     fen_after_move = r2.json()["fen"]
     # la torre blanca sigue faltando después de jugar, no reaparece al reconstruir el tablero
@@ -111,19 +115,22 @@ def test_create_game_with_handicap_survives_after_move():
 
 
 def test_create_game_invalid_handicap_is_ignored_silently():
-    r = client.post("/api/games", json={"difficulty": 50, "color": "w", "handicap": "algo-que-no-existe"})
+    r = client.post(
+        "/api/games", json={"difficulty": 50, "color": "w", "handicap": "algo-que-no-existe"}, headers=_auth_headers()
+    )
     assert r.status_code == 201
     assert r.json()["fen"].split(" ")[0] == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"  # posición estándar, sin romper nada
 
 
 def test_get_game_not_found():
-    r = client.get("/api/games/no-existe")
+    r = client.get("/api/games/no-existe", headers=_auth_headers())
     assert r.status_code == 404
 
 
 def test_play_legal_move():
-    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
-    r = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"})
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}, headers=headers).json()
+    r = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"}, headers=headers)
     assert r.status_code == 200
     body = r.json()
     # el humano jugó e4, y la CPU ya debería haber respondido
@@ -133,16 +140,18 @@ def test_play_legal_move():
 
 
 def test_play_illegal_move_rejected():
-    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
-    r = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e5"})
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}, headers=headers).json()
+    r = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e5"}, headers=headers)
     assert r.status_code == 400
 
 
 def test_play_move_wrong_turn_rejected():
-    created = client.post("/api/games", json={"difficulty": 20, "color": "b"}).json()
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 20, "color": "b"}, headers=headers).json()
     # Le tocó abrir a la CPU (blancas). Que el humano (negras) intente
     # mover una pieza blanca tiene que rechazarse.
-    r = client.post(f"/api/games/{created['id']}/move", json={"from": "a2", "to": "a4"})
+    r = client.post(f"/api/games/{created['id']}/move", json={"from": "a2", "to": "a4"}, headers=headers)
     assert r.status_code == 400
 
 
@@ -176,43 +185,47 @@ def test_castling_move_via_analyze():
 
 
 def test_undo_no_moves_yet():
-    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
-    r = client.post(f"/api/games/{created['id']}/undo")
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}, headers=headers).json()
+    r = client.post(f"/api/games/{created['id']}/undo", headers=headers)
     assert r.status_code == 400
 
 
 def test_undo_after_human_and_cpu_move():
-    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}, headers=headers).json()
     game_id = created["id"]
-    client.post(f"/api/games/{game_id}/move", json={"from": "e2", "to": "e4"})
-    r = client.post(f"/api/games/{game_id}/undo")
+    client.post(f"/api/games/{game_id}/move", json={"from": "e2", "to": "e4"}, headers=headers)
+    r = client.post(f"/api/games/{game_id}/undo", headers=headers)
     assert r.status_code == 200
     assert r.json()["history"] == []
 
 
 def test_undo_twice_then_error():
-    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}, headers=headers).json()
     game_id = created["id"]
-    client.post(f"/api/games/{game_id}/move", json={"from": "e2", "to": "e4"})
-    client.post(f"/api/games/{game_id}/move", json={"from": "d2", "to": "d4"})
-    r1 = client.post(f"/api/games/{game_id}/undo")
+    client.post(f"/api/games/{game_id}/move", json={"from": "e2", "to": "e4"}, headers=headers)
+    client.post(f"/api/games/{game_id}/move", json={"from": "d2", "to": "d4"}, headers=headers)
+    r1 = client.post(f"/api/games/{game_id}/undo", headers=headers)
     assert len(r1.json()["history"]) == 2  # vuelve justo despues de la 1ra jugada+respuesta
-    r2 = client.post(f"/api/games/{game_id}/undo")
+    r2 = client.post(f"/api/games/{game_id}/undo", headers=headers)
     assert r2.json()["history"] == []
-    r3 = client.post(f"/api/games/{game_id}/undo")
+    r3 = client.post(f"/api/games/{game_id}/undo", headers=headers)
     assert r3.status_code == 400
 
 
 def test_delete_game():
-    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
-    r = client.delete(f"/api/games/{created['id']}")
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}, headers=headers).json()
+    r = client.delete(f"/api/games/{created['id']}", headers=headers)
     assert r.status_code == 204
-    r2 = client.get(f"/api/games/{created['id']}")
+    r2 = client.get(f"/api/games/{created['id']}", headers=headers)
     assert r2.status_code == 404
 
 
 def test_delete_nonexistent_game():
-    r = client.delete("/api/games/no-existe")
+    r = client.delete("/api/games/no-existe", headers=_auth_headers())
     assert r.status_code == 404
 
 
@@ -372,11 +385,12 @@ def test_game_ends_in_checkmate_and_cpu_does_not_respond():
     # Fool's mate: f3 e5 g4 Qh4# — sembramos las primeras 3 jugadas directo
     # en el store (sin depender del azar de la CPU) y el humano (negras)
     # remata con la última.
-    created = client.post("/api/games", json={"difficulty": 0, "color": "b"}).json()
+    headers = _auth_headers()
+    created = client.post("/api/games", json={"difficulty": 0, "color": "b"}, headers=headers).json()
     game_id = created["id"]
     _seed(game_id, ["f3", "e5", "g4"], human_color="b")
 
-    r = client.post(f"/api/games/{game_id}/move", json={"from": "d8", "to": "h4"})
+    r = client.post(f"/api/games/{game_id}/move", json={"from": "d8", "to": "h4"}, headers=headers)
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "checkmate"
