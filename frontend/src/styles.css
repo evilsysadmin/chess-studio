@@ -2331,6 +2331,17 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   background: var(--ink-2);
 }
 
+.admin-row-selected td {
+  background: var(--ink-3);
+}
+
+.admin-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
 @media (max-width: 640px) {
   .board-grid, .rank-labels, .file-labels {
     grid-template-columns: repeat(8, min(10.5vw, 40px));

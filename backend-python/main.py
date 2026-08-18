@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import random
@@ -33,6 +34,39 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Uvicorn ya imprime su propia línea de acceso (algo tipo `INFO: IP:puerto
+# - "METODO /ruta HTTP/1.1" status`), pero esa línea no tiene forma de
+# saber quién hizo el request — uvicorn no entiende nada de JWT ni de esta
+# app, solo ve bytes ASGI. Se desactiva esa línea por defecto (para que
+# nunca quede una duplicada) y se reemplaza por esta, mismo espíritu, con
+# el username agregado si el request vino con un token válido. Puramente
+# informativo — a diferencia de get_current_user (que SÍ exige un token
+# válido para las rutas protegidas), esto no exige nada, solo registra lo
+# que haya, incluido "anon" para tráfico sin autenticar.
+logging.getLogger("uvicorn.access").disabled = True
+
+access_logger = logging.getLogger("chess.access")
+access_logger.setLevel(logging.INFO)
+if not access_logger.handlers:
+    _access_handler = logging.StreamHandler()
+    _access_handler.setFormatter(logging.Formatter("%(message)s"))
+    access_logger.addHandler(_access_handler)
+    access_logger.propagate = False
+
+
+@app.middleware("http")
+async def log_request_with_user(request: Request, call_next):
+    response = await call_next(request)
+    header = request.headers.get("authorization")
+    username = None
+    if header and header.startswith("Bearer "):
+        username = verify_token(header[len("Bearer "):])
+    client = f"{request.client.host}:{request.client.port}" if request.client else "?"
+    access_logger.info(
+        f'INFO:     {client} - "{request.method} {request.url.path} HTTP/1.1" {response.status_code} - user={username or "anon"}'
+    )
+    return response
 
 # Rate limiting por IP — sin esto, cualquiera con curl puede hacer que un
 # hosting gratuito (o de pago) se quede corto de cómputo mandando cientos

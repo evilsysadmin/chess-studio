@@ -678,3 +678,25 @@ def test_admin_cannot_delete_own_account_via_this_endpoint(monkeypatch):
     admin_token = r.json()["token"]
     r2 = client.delete("/api/admin/users/admin_no_se_autoborra", headers={"Authorization": f"Bearer {admin_token}"})
     assert r2.status_code == 400
+
+
+# ---------- Log de acceso con usuario ----------
+
+def test_access_log_shows_anon_for_unauthenticated_request(caplog):
+    with caplog.at_level("INFO", logger="chess.access"):
+        client.get("/api/health")
+    assert any("user=anon" in msg for msg in caplog.messages)
+
+
+def test_access_log_shows_username_for_authenticated_request(caplog):
+    r = client.post("/api/auth/register", json={"username": "usuario_del_log", "password": "clave123456"})
+    token = r.json()["token"]
+    with caplog.at_level("INFO", logger="chess.access"):
+        client.get("/api/profile", headers={"Authorization": f"Bearer {token}"})
+    assert any("user=usuario_del_log" in msg for msg in caplog.messages)
+
+
+def test_access_log_falls_back_to_anon_for_invalid_token(caplog):
+    with caplog.at_level("INFO", logger="chess.access"):
+        client.get("/api/profile", headers={"Authorization": "Bearer token-invalido"})
+    assert any("user=anon" in msg for msg in caplog.messages)
