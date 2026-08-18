@@ -62,3 +62,17 @@ async def delete_user(username: str) -> bool:
     existed = username in _memory_users
     _memory_users.pop(username, None)
     return existed
+
+
+async def update_created_at(username: str, created_at: str) -> bool:
+    """Solo para el panel de admin — corregir una fecha de registro mal
+    cargada, o ajustarla a mano por el motivo que sea. Devuelve True si el
+    usuario existía de verdad."""
+    col = await _get_collection()
+    if col is not None:
+        result = await col.update_one({"_id": username}, {"$set": {"created_at": created_at}})
+        return result.matched_count > 0
+    if username not in _memory_users:
+        return False
+    _memory_users[username]["created_at"] = created_at
+    return True

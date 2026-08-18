@@ -2,6 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { fetchAdminUsers, fetchAdminUserDetail, editAdminUser, deleteAdminUser } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
+// El backend guarda/devuelve la fecha de registro como ISO completo
+// (con hora), pero <input type="date"> solo entiende "YYYY-MM-DD" —
+// esto recorta lo que sobra para precargar el campo.
+function toDateInputValue(isoString) {
+  if (!isoString) return '';
+  return isoString.slice(0, 10);
+}
+
 export default function AdminScreen({ onExit }) {
   useEscapeToClose(onExit);
   const [users, setUsers] = useState(null);
@@ -9,7 +17,7 @@ export default function AdminScreen({ onExit }) {
   const [selected, setSelected] = useState(null); // username seleccionado, o null
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [editForm, setEditForm] = useState(null); // { rating, tournamentPoints, tournamentWins } en edición
+  const [editForm, setEditForm] = useState(null); // { rating, tournamentPoints, tournamentWins, createdAt, winStreak, bestWinStreak, puzzlesSolved } en edición
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -37,7 +45,15 @@ export default function AdminScreen({ onExit }) {
     fetchAdminUserDetail(username)
       .then((d) => {
         setDetail(d);
-        setEditForm({ rating: d.rating ?? '', tournamentPoints: d.tournamentPoints ?? '', tournamentWins: d.tournamentWins ?? '' });
+        setEditForm({
+          rating: d.rating ?? '',
+          tournamentPoints: d.tournamentPoints ?? '',
+          tournamentWins: d.tournamentWins ?? '',
+          createdAt: toDateInputValue(d.createdAt),
+          winStreak: d.winStreak ?? '',
+          bestWinStreak: d.bestWinStreak ?? '',
+          puzzlesSolved: d.puzzlesSolved ?? '',
+        });
       })
       .catch((e) => setError(e.message))
       .finally(() => setDetailLoading(false));
@@ -51,6 +67,10 @@ export default function AdminScreen({ onExit }) {
       if (editForm.rating !== '') changes.rating = Number(editForm.rating);
       if (editForm.tournamentPoints !== '') changes.tournamentPoints = Number(editForm.tournamentPoints);
       if (editForm.tournamentWins !== '') changes.tournamentWins = Number(editForm.tournamentWins);
+      if (editForm.createdAt !== '') changes.createdAt = `${editForm.createdAt}T00:00:00+00:00`;
+      if (editForm.winStreak !== '') changes.winStreak = Number(editForm.winStreak);
+      if (editForm.bestWinStreak !== '') changes.bestWinStreak = Number(editForm.bestWinStreak);
+      if (editForm.puzzlesSolved !== '') changes.puzzlesSolved = Number(editForm.puzzlesSolved);
       const updated = await editAdminUser(selected, changes);
       setDetail(updated);
       loadUsers(); // refresca la lista para que la fila también muestre los valores nuevos
@@ -170,6 +190,42 @@ export default function AdminScreen({ onExit }) {
                       className="text-input"
                       value={editForm.tournamentWins}
                       onChange={(e) => setEditForm({ ...editForm, tournamentWins: e.target.value })}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Fecha de registro
+                    <input
+                      type="date"
+                      className="text-input"
+                      value={editForm.createdAt}
+                      onChange={(e) => setEditForm({ ...editForm, createdAt: e.target.value })}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Racha de victorias
+                    <input
+                      type="number"
+                      className="text-input"
+                      value={editForm.winStreak}
+                      onChange={(e) => setEditForm({ ...editForm, winStreak: e.target.value })}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Mejor racha
+                    <input
+                      type="number"
+                      className="text-input"
+                      value={editForm.bestWinStreak}
+                      onChange={(e) => setEditForm({ ...editForm, bestWinStreak: e.target.value })}
+                    />
+                  </label>
+                  <label className="field-label">
+                    Puzzles resueltos
+                    <input
+                      type="number"
+                      className="text-input"
+                      value={editForm.puzzlesSolved}
+                      onChange={(e) => setEditForm({ ...editForm, puzzlesSolved: e.target.value })}
                     />
                   </label>
                 </div>

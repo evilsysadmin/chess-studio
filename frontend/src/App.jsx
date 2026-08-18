@@ -38,6 +38,7 @@ import LoginScreen from './components/LoginScreen.jsx';
 // del servidor (que no sabe nada de esta marca, es solo del cliente), así
 // que si viviera ahí se perdería en la primera jugada.
 const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
+const MIRROR_STORAGE_KEY = 'chess-study-active-game-mirror';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -47,6 +48,7 @@ function AppInner({ isAdminUser }) {
   const [error, setError] = useState(null);
   const [hasSavedGame, setHasSavedGame] = useState(!!localStorage.getItem(STORAGE_KEY));
   const [learningMode, setLearningMode] = useState(() => localStorage.getItem(LEARNING_STORAGE_KEY) === '1');
+  const [mirrorMode, setMirrorMode] = useState(() => localStorage.getItem(MIRROR_STORAGE_KEY) === '1');
 
   const [tournament, setTournament] = useState(() => loadTournament());
   const [tournamentGame, setTournamentGame] = useState(null);
@@ -129,6 +131,10 @@ function AppInner({ isAdminUser }) {
   }, [learningMode]);
 
   useEffect(() => {
+    localStorage.setItem(MIRROR_STORAGE_KEY, mirrorMode ? '1' : '0');
+  }, [mirrorMode]);
+
+  useEffect(() => {
     setRating(loadRating());
     setCombatXp(loadCombatRoster().combatXp);
     setCombatHistoryList(loadCombatHistory());
@@ -152,6 +158,7 @@ function AppInner({ isAdminUser }) {
       const handicap = opts?.mirror ? null : handicapForGap(rating.rating, difficulty);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null);
       setLearningMode(!!opts?.learning);
+      setMirrorMode(!!opts?.mirror);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
       setGame(created);
       setHasSavedGame(true);
@@ -172,6 +179,7 @@ function AppInner({ isAdminUser }) {
       const found = await api.getGame(savedId);
       setGame(found);
       setLearningMode(localStorage.getItem(LEARNING_STORAGE_KEY) === '1');
+      setMirrorMode(localStorage.getItem(MIRROR_STORAGE_KEY) === '1');
       // El reloj vive solo en memoria del navegador (no se guarda en el
       // servidor) — al continuar una partida no hay forma de saber cuánto
       // tiempo quedaba, así que arranca sin reloj.
@@ -189,17 +197,24 @@ function AppInner({ isAdminUser }) {
   function handleExitGame() {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEARNING_STORAGE_KEY);
+    localStorage.removeItem(MIRROR_STORAGE_KEY);
     setHasSavedGame(false);
     setGame(null);
     setLearningMode(false);
+    setMirrorMode(false);
     setView('menu');
   }
 
   // Las partidas normales (menú "Nueva partida") también cuentan para el
   // rating tipo ELO — cualquier partida contra una CPU de dificultad
-  // conocida, no hace falta que sea de torneo. "Partida de práctica" queda
-  // afuera a propósito: ahí las pistas son gratis e ilimitadas, así que
-  // ganar no dice mucho de tu nivel jugando sin ayuda.
+  // conocida, no hace falta que sea de torneo. "Partida de práctica" y
+  // "Espejo de ti mismo" quedan afuera a propósito: en Práctica las
+  // pistas son gratis e ilimitadas, así que ganar no dice mucho de tu
+  // nivel jugando sin ayuda; en Espejo, la CPU está calibrada A PROPÓSITO
+  // para jugar peor que un rival "justo" (mientras más te equivocas tú,
+  // más floja la CPU) — dejarla subir el rating premiaría ganarle a un
+  // rival deliberadamente débil, exactamente lo contrario de lo que un
+  // rating debería medir (vencer a alguien mejor, no a alguien peor).
   //
   // También se guardan en el historial (igual que las de torneo), para que
   // la "pista inversa" del Historial funcione acá también, no solo en
@@ -207,7 +222,7 @@ function AppInner({ isAdminUser }) {
   function handleCasualGameEnd(outcome, finishedGame) {
     if (!finishedGame) return;
 
-    if (!learningMode) {
+    if (!learningMode && !mirrorMode) {
       const score = outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
       setRating((prev) => {
         const next = updateRating(prev, finishedGame.difficulty, score);

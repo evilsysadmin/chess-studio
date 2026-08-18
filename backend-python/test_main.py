@@ -705,6 +705,57 @@ def test_admin_edit_endpoint_partial_update_does_not_clobber_other_fields(monkey
     assert tournament["losses"] == 1  # intacto
 
 
+def test_admin_edit_endpoint_updates_created_at(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_editar_fecha"})
+    r = client.post("/api/auth/register", json={"username": "admin_editar_fecha", "password": "clave123456"})
+    admin_token = r.json()["token"]
+    client.post("/api/auth/register", json={"username": "jugador_fecha", "password": "clave123456"})
+
+    r2 = client.patch(
+        "/api/admin/users/jugador_fecha",
+        json={"createdAt": "2020-01-15T00:00:00+00:00"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["createdAt"] == "2020-01-15T00:00:00+00:00"
+
+    # se guardó de verdad -- lo confirma un GET aparte, no solo la respuesta del PATCH
+    r3 = client.get("/api/admin/users/jugador_fecha", headers={"Authorization": f"Bearer {admin_token}"})
+    assert r3.json()["createdAt"] == "2020-01-15T00:00:00+00:00"
+
+
+def test_admin_edit_endpoint_rejects_invalid_date(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_fecha_mala"})
+    r = client.post("/api/auth/register", json={"username": "admin_fecha_mala", "password": "clave123456"})
+    admin_token = r.json()["token"]
+    client.post("/api/auth/register", json={"username": "jugador_fecha_mala", "password": "clave123456"})
+
+    r2 = client.patch(
+        "/api/admin/users/jugador_fecha_mala",
+        json={"createdAt": "esto-no-es-una-fecha"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert r2.status_code == 400
+
+
+def test_admin_edit_endpoint_updates_streak_and_puzzles(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_editar_racha"})
+    r = client.post("/api/auth/register", json={"username": "admin_editar_racha", "password": "clave123456"})
+    admin_token = r.json()["token"]
+    client.post("/api/auth/register", json={"username": "jugador_racha", "password": "clave123456"})
+
+    r2 = client.patch(
+        "/api/admin/users/jugador_racha",
+        json={"winStreak": 3, "bestWinStreak": 8, "puzzlesSolved": 15},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert r2.status_code == 200
+    body = r2.json()
+    assert body["winStreak"] == 3
+    assert body["bestWinStreak"] == 8
+    assert body["puzzlesSolved"] == 15
+
+
 def test_admin_delete_endpoint_rejects_non_admin():
     r = client.post("/api/auth/register", json={"username": "no_admin_borrar", "password": "clave123456"})
     token = r.json()["token"]

@@ -8,6 +8,7 @@ import math
 import os
 import random
 import uuid
+from datetime import datetime
 from typing import Optional
 
 import chess
@@ -294,6 +295,10 @@ class AdminEditUserRequest(BaseModel):
     rating: Optional[int] = None
     tournamentPoints: Optional[int] = None
     tournamentWins: Optional[int] = None
+    createdAt: Optional[str] = None  # fecha de registro, formato ISO (lo que ya entiende `datetime.fromisoformat`)
+    winStreak: Optional[int] = None
+    bestWinStreak: Optional[int] = None
+    puzzlesSolved: Optional[int] = None
 
 
 class RegisterRequest(BaseModel):
@@ -510,7 +515,9 @@ async def admin_edit_user(target_username: str, body: AdminEditUserRequest, user
     """Edita campos puntuales del perfil de otro usuario — escribe
     directo en los mismos JSON strings que ya usa profileBackup.js, para
     que el propio usuario los vea sincronizados normal la próxima vez que
-    abra la app, sin ningún camino especial."""
+    abra la app, sin ningún camino especial. La fecha de registro es la
+    única excepción — esa vive en la propia cuenta (users_store.py), no
+    en el perfil."""
     if not is_admin(username):
         raise HTTPException(403, "No tienes permiso para hacer esto.")
 
@@ -518,6 +525,14 @@ async def admin_edit_user(target_username: str, body: AdminEditUserRequest, user
     user = await ustore.get_user(target)
     if not user:
         raise HTTPException(404, "Ese usuario no existe.")
+
+    if body.createdAt is not None:
+        try:
+            datetime.fromisoformat(body.createdAt)
+        except ValueError:
+            raise HTTPException(400, "Fecha de registro inválida — usa formato ISO (ej. 2026-01-15).")
+        await ustore.update_created_at(target, body.createdAt)
+        user = await ustore.get_user(target)  # releer, para que la respuesta final refleje el cambio
 
     profile = await pstore.get_profile(target) or {}
     data = dict(profile.get("data") or {})
@@ -530,7 +545,7 @@ async def admin_edit_user(target_username: str, body: AdminEditUserRequest, user
         rating_data["rating"] = body.rating
         data["chess-study-player-rating"] = json.dumps(rating_data)
 
-    if body.tournamentPoints is not None or body.tournamentWins is not None:
+    if any(v is not None for v in (body.tournamentPoints, body.tournamentWins, body.winStreak, body.bestWinStreak)):
         try:
             tournament = json.loads(data.get("chess-study-tournament", "{}"))
         except (json.JSONDecodeError, AttributeError):
@@ -539,7 +554,14 @@ async def admin_edit_user(target_username: str, body: AdminEditUserRequest, user
             tournament["points"] = body.tournamentPoints
         if body.tournamentWins is not None:
             tournament["wins"] = body.tournamentWins
+        if body.winStreak is not None:
+            tournament["winStreak"] = body.winStreak
+        if body.bestWinStreak is not None:
+            tournament["bestWinStreak"] = body.bestWinStreak
         data["chess-study-tournament"] = json.dumps(tournament)
+
+    if body.puzzlesSolved is not None:
+        data["chess-study-puzzles-solved"] = str(body.puzzlesSolved)
 
     await pstore.save_profile(target, {**profile, "data": data})
     updated_profile = await pstore.get_profile(target)
