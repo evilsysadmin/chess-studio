@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import Board from './Board.jsx';
 
 const FILES=['a','b','c','d','e','f','g','h'];
 const RANKS=['8','7','6','5','4','3','2','1'];
@@ -42,7 +43,13 @@ export default function LabScreen({ onExit, onStart }){
       <button className="secondary-btn" onClick={()=>setMap({e1:'K',e8:'k'})}>Vaciar</button>
       <button className="secondary-btn" onClick={applyFen}>Pegar FEN</button>
     </div>
-    <div className="lab-board" role="grid">{RANKS.flatMap((rank,ri)=>FILES.map((file,fi)=>{const sq=file+rank;return <button key={sq} className={`lab-square ${(ri+fi)%2?'dark':'light'}`} onClick={()=>setMap(prev=>({...prev,[sq]:brush||undefined}))} aria-label={sq}>{GLYPH[map[sq]||'']}</button>}))}</div>
+    <div className="lab-board-editor">
+      <Board
+        fen={fen}
+        orientation="white"
+        onSquareClick={(sq)=>setMap((prev)=>{const next={...prev};if(brush)next[sq]=brush;else delete next[sq];return next;})}
+      />
+    </div>
     <div className="lab-config">
       <label>Turno <select value={turn} onChange={e=>setTurn(e.target.value)}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
       <label>Dificultad CPU <input type="range" min="0" max="100" value={difficulty} onChange={e=>setDifficulty(Number(e.target.value))}/><b>{difficulty}</b></label>

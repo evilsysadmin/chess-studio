@@ -8,6 +8,14 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 const KEY = 'chess-study-game-history';
 const MAX_RECORDS = 120;
 
+// Partidas que forman parte de la rivalidad/rating normal. Los modos de
+// entrenamiento se guardan en Historial, pero no deben inflar el marcador
+// competitivo del Centro de Operaciones.
+export function isCompetitiveHistoryRecord(record) {
+  const mode = String(record?.mode || 'casual');
+  return !['practice', 'lab', 'rescue', 'sudden'].includes(mode);
+}
+
 export function loadGameHistory() {
   try {
     const raw = localStorage.getItem(KEY);

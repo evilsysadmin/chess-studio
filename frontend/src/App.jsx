@@ -34,7 +34,7 @@ import { isLoggedIn, fetchMe, logout, watchSessionIdentity } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import AdminScreen from './components/AdminScreen.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
-import { loadRivalry, recordRivalryResult } from './rivalry.js';
+import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
 import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
 import ShareResultModal from './components/ShareResultModal.jsx';
@@ -42,7 +42,7 @@ import SharedResultScreen from './components/SharedResultScreen.jsx';
 import { shareRecordFromHash } from './shareResult.js';
 import CareerScreen from './components/CareerScreen.jsx';
 import LabScreen from './components/LabScreen.jsx';
-import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
+import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
 // objeto de partida: ese objeto se reemplaza por completo con cada respuesta
@@ -197,6 +197,16 @@ function AppInner({ isAdminUser }) {
       cancelScheduledProfileSync();
     };
   }, []);
+
+
+  // V15.1: usuarios veteranos pueden tener decenas de partidas anteriores a
+  // Centro de Operaciones. Reconciliamos los contadores demostrables desde
+  // Historial una sola vez cuando éste cambia; las funciones sólo escriben si
+  // detectan que el historial contiene más datos que el expediente nuevo.
+  useEffect(() => {
+    reconcileCareerHistory(historyList);
+    reconcileRivalryHistory(historyList);
+  }, [historyList]);
 
   useEffect(() => {
     if (game) localStorage.setItem(STORAGE_KEY, game.id);

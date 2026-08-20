@@ -108,6 +108,77 @@ export function recordCareerGame(record, meta={}) {
   return saveCareer(state);
 }
 
+
+// Backfill seguro para usuarios que ya tenían partidas antes de que existiera
+// Centro de Operaciones. El Historial es la fuente de verdad para estadísticas
+// básicas demostrables; no reconstruimos contratos, presión ni logros que no se
+// medían en aquellas versiones.
+export function reconcileCareerHistory(history = []) {
+  const rows = (Array.isArray(history) ? history : [])
+    .filter((r) => ['win', 'draw', 'loss'].includes(r?.outcome))
+    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+  let state = loadCareer();
+  if (!rows.length) return state;
+
+  const sid = monthId();
+  const currentMonth = rows.filter((r) => {
+    const d = new Date(r.date || 0);
+    return Number.isFinite(d.getTime()) && monthId(d) === sid;
+  });
+  const trackedGames = Object.values(state.byTimeControl || {}).reduce((sum, row) => sum + Number(row?.games || 0), 0);
+  let changed = false;
+
+  if (state.season?.id !== sid || currentMonth.length > Number(state.season?.games || 0)) {
+    const season = { id: sid, games: currentMonth.length, wins: 0, draws: 0, losses: 0, startedAt: currentMonth[0]?.date || new Date().toISOString() };
+    for (const row of currentMonth) season[row.outcome === 'win' ? 'wins' : row.outcome === 'loss' ? 'losses' : 'draws'] += 1;
+    state = { ...state, season };
+    changed = true;
+  }
+
+  if (rows.length > trackedGames) {
+    const byTimeControl = {};
+    let fastestWinPlies = null;
+    let longestGamePlies = 0;
+    let highestDifficultyWin = 0;
+    let bestWinStreak = 0;
+    let currentWinStreak = 0;
+
+    for (const row of rows) {
+      const plies = row.moves?.length || 0;
+      longestGamePlies = Math.max(longestGamePlies, plies);
+      if (row.outcome === 'win') {
+        currentWinStreak += 1;
+        bestWinStreak = Math.max(bestWinStreak, currentWinStreak);
+        if (!fastestWinPlies || (plies > 0 && plies < fastestWinPlies)) fastestWinPlies = plies || fastestWinPlies;
+        highestDifficultyWin = Math.max(highestDifficultyWin, Number(row.difficulty || 0));
+      } else {
+        currentWinStreak = 0;
+      }
+      const rhythm = row.timeControl?.id || 'none';
+      const bucket = { games: 0, wins: 0, draws: 0, losses: 0, ...(byTimeControl[rhythm] || {}) };
+      bucket.games += 1;
+      bucket[row.outcome === 'win' ? 'wins' : row.outcome === 'loss' ? 'losses' : 'draws'] += 1;
+      byTimeControl[rhythm] = bucket;
+    }
+
+    state = {
+      ...state,
+      byTimeControl,
+      records: {
+        ...state.records,
+        fastestWinPlies: fastestWinPlies ?? state.records?.fastestWinPlies ?? null,
+        longestGamePlies: Math.max(Number(state.records?.longestGamePlies || 0), longestGamePlies),
+        highestDifficultyWin: Math.max(Number(state.records?.highestDifficultyWin || 0), highestDifficultyWin),
+        bestWinStreak: Math.max(Number(state.records?.bestWinStreak || 0), bestWinStreak),
+        currentWinStreak,
+      },
+    };
+    changed = true;
+  }
+
+  return changed ? saveCareer(state) : state;
+}
+
 export function startSpecialRun(mode='streak') {
   const baseRun = {id:`${mode}-${Date.now()}`,mode,active:true,stage:0,completedStages:0,wins:0,draws:0,losses:0,points:0,startedAt:new Date().toISOString()};
   const run = mode==='boss'

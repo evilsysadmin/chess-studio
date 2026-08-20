@@ -31,11 +31,11 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
 
   return <div className="menu tournament-panel career-screen">
     <button className="back-link" onClick={onExit}>← Volver al menú</button>
-    <div className="menu-section career-hero"><span className="section-label">Centro de operaciones · V14</span><h2>Tu carrera ajedrecística</h2><p className="hero-scope-note">Datos reales, entrenamiento y una cantidad administrativamente irresponsable de pruebas contra ti.</p></div>
+    <div className="menu-section career-hero"><span className="section-label">Centro de operaciones · V15.1</span><h2>Tu carrera ajedrecística</h2><p className="hero-scope-note">Datos reales, entrenamiento y una cantidad administrativamente irresponsable de pruebas contra ti.</p></div>
 
     <div className="career-hero-grid">
       <article className="career-card"><span className="eyebrow">Temporada {season.id}</span><h3>{season.wins||0}V · {season.draws||0}T · {season.losses||0}D</h3><p>{season.games||0} partidas este mes.</p></article>
-      <article className="career-card"><span className="eyebrow">Rivalidad</span><h3>{rivalry.record?.wins||0}–{rivalry.record?.losses||0}</h3><p>{rivalry.record?.draws||0} tablas · racha {rivalry.record?.currentStreak||0}.</p></article>
+      <article className="career-card"><span className="eyebrow">Rivalidad competitiva</span><h3>{rivalry.record?.wins||0}–{rivalry.record?.losses||0}</h3><p>{rivalry.record?.draws||0} tablas · racha {rivalry.record?.currentStreak||0}.</p></article>
       <article className="career-card"><span className="eyebrow">Accuracy propia</span><h3>{pct(avgAccuracy)}</h3><p>{analyses.length} autopsias archivadas.</p></article>
       <article className="career-card"><span className="eyebrow">Índice de reincidencia</span><h3>{recurrence.score}/100</h3><p>{recurrence.repeated} repeticiones de errores ya conocidos.</p></article>
     </div>

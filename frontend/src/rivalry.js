@@ -1,4 +1,5 @@
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { isCompetitiveHistoryRecord } from './gameHistory.js';
 
 const KEY = 'chess-study-cpu-rivalry';
 const MAX_RECENT_GAMES = 80;
@@ -93,6 +94,82 @@ export function loadRivalry() {
   } catch {
     return blank();
   }
+}
+
+
+// Las versiones anteriores a V12 ya tenían Historial, pero todavía no
+// escribían el expediente de rivalidad. Si el Historial contiene más partidas
+// competitivas que el contador persistido, reconstruimos SOLO los datos que se
+// pueden demostrar a partir de esas partidas. Incidentes y recuerdos tácticos
+// se conservan: no inventamos eventos que el historial antiguo no midió.
+export function reconcileRivalryHistory(history = []) {
+  const state = loadRivalry();
+  const rows = (Array.isArray(history) ? history : [])
+    .filter(isCompetitiveHistoryRecord)
+    .filter((r) => ['win', 'draw', 'loss'].includes(r?.outcome))
+    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+  if (rows.length <= Number(state.record?.games || 0)) return state;
+
+  const record = emptyRecord();
+  record.incidents = { ...(state.record?.incidents || {}) };
+  record.memories = Array.isArray(state.record?.memories) ? [...state.record.memories] : [];
+
+  for (const row of rows) {
+    const outcome = row.outcome;
+    record.games += 1;
+    if (outcome === 'win') {
+      record.wins += 1;
+      record.currentStreak = record.currentStreak >= 0 ? record.currentStreak + 1 : 1;
+      record.bestHumanStreak = Math.max(record.bestHumanStreak, record.currentStreak);
+    } else if (outcome === 'loss') {
+      record.losses += 1;
+      record.currentStreak = record.currentStreak <= 0 ? record.currentStreak - 1 : -1;
+      record.bestCpuStreak = Math.max(record.bestCpuStreak, Math.abs(record.currentStreak));
+    } else {
+      record.draws += 1;
+      record.currentStreak = 0;
+    }
+
+    const rhythm = row.timeControl?.id || 'none';
+    const rhythmRow = { games: 0, wins: 0, draws: 0, losses: 0, ...(record.byTimeControl[rhythm] || {}) };
+    rhythmRow.games += 1;
+    rhythmRow[outcome === 'win' ? 'wins' : outcome === 'loss' ? 'losses' : 'draws'] += 1;
+    record.byTimeControl[rhythm] = rhythmRow;
+
+    const opening = row.opening || 'Sin identificar';
+    const openingRow = { games: 0, wins: 0, draws: 0, losses: 0, ...(record.byOpening[opening] || {}) };
+    openingRow.games += 1;
+    openingRow[outcome === 'win' ? 'wins' : outcome === 'loss' ? 'losses' : 'draws'] += 1;
+    record.byOpening[opening] = openingRow;
+
+    updateMilestones(record, outcome, {
+      date: row.date,
+      difficulty: row.difficulty,
+      moves: row.moves?.length || 0,
+    });
+  }
+
+  record.recentGames = [...rows].reverse().slice(0, MAX_RECENT_GAMES).map((row) => ({
+    date: row.date || null,
+    outcome: row.outcome,
+    difficulty: row.difficulty ?? null,
+    humanColor: row.humanColor || null,
+    opening: row.opening || null,
+    moves: row.moves?.length || 0,
+    timeControlId: row.timeControl?.id || 'none',
+    seriesId: row.series?.id || null,
+    rematch: !!row.rematch,
+    runMode: row.runMode || null,
+  }));
+
+  const next = {
+    ...state,
+    version: 3,
+    totalGames: Math.max(Number(state.totalGames || 0), rows.length),
+    record,
+  };
+  return save(next);
 }
 
 function save(state) {
