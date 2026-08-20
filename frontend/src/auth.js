@@ -80,11 +80,11 @@ export function logout() {
   localStorage.removeItem(USERNAME_KEY);
 }
 
-export async function register(username, password) {
+export async function register(username, password, inviteCode = '') {
   const body = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: withRequestId({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, inviteCode }),
   }).then(handle);
   saveSession(body.token, body.username);
   return body;

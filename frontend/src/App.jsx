@@ -371,13 +371,13 @@ function AppInner({ isAdminUser }) {
       <div className="app-shell">
         <div className="masthead">
           <div className="masthead-top-row">
-            <div className="masthead-audio-controls">
-              <MuteToggle />
-              <MusicSelector />
-            </div>
             <div className="masthead-text">
               <h1>Escuela de Ajedrez</h1>
             </div>
+          </div>
+          <div className="masthead-audio-controls" aria-label="Controles de audio">
+            <MuteToggle />
+            <MusicSelector />
           </div>
           <PlayerStatusBar
             tournament={tournament}

@@ -14,6 +14,11 @@ services:
       PORT: 4000
       MONGO_URL: mongodb://mongo:27017
       MONGO_DB_NAME: chess_study
+      ENVIRONMENT: development
+      EXPOSE_API_DOCS: "false"
+      ALLOW_REGISTRATION: "true"
+      INVITE_CODE: ${INVITE_CODE:-}
+      CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-5173},http://127.0.0.1:${FRONTEND_PORT:-5173}
       # Desarrollo local: cualquier cuenta autenticada es admin.
       ADMIN_USERNAMES: "*"
     depends_on:

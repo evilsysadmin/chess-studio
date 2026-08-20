@@ -699,3 +699,46 @@ def test_registration_can_be_closed(monkeypatch):
     monkeypatch.setattr(main_module, "ALLOW_REGISTRATION", False)
     r = raw_client.post("/api/auth/register", json={"username": "intruso", "password": "clave123456"})
     assert r.status_code == 403
+
+# ---------- Security V11: CORS + invite code ----------
+
+def test_github_pages_login_preflight_is_allowed():
+    """Regresión del 400 OPTIONS visto desde evilsysadmin.github.io/chess-studio/."""
+    r = raw_client.options(
+        "/api/auth/login",
+        headers={
+            "Origin": "https://evilsysadmin.github.io",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-request-id",
+        },
+    )
+    assert r.status_code == 200
+    assert r.headers.get("access-control-allow-origin") == "https://evilsysadmin.github.io"
+
+
+def test_cors_config_with_github_pages_path_is_normalized():
+    import main as main_module
+    assert main_module._normalize_cors_origin("https://evilsysadmin.github.io/chess-studio/") == "https://evilsysadmin.github.io"
+
+
+def test_registration_requires_invite_code_when_configured(monkeypatch):
+    import main as main_module
+    monkeypatch.setattr(main_module, "ALLOW_REGISTRATION", True)
+    monkeypatch.setattr(main_module, "INVITE_CODE", "caballo-de-troya")
+
+    missing = raw_client.post(
+        "/api/auth/register",
+        json={"username": "sin_invite", "password": "clave123456"},
+    )
+    wrong = raw_client.post(
+        "/api/auth/register",
+        json={"username": "invite_mal", "password": "clave123456", "inviteCode": "nope"},
+    )
+    ok = raw_client.post(
+        "/api/auth/register",
+        json={"username": "invite_ok", "password": "clave123456", "inviteCode": "caballo-de-troya"},
+    )
+
+    assert missing.status_code == 403
+    assert wrong.status_code == 403
+    assert ok.status_code == 201

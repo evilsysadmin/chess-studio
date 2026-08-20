@@ -34,6 +34,13 @@ describe('register/login', () => {
     expect(getUsername()).toBe('nuevo');
   });
 
+  it('envía el código de invitación cuando se registra', async () => {
+    mockFetchOnce(201, { token: 'invite-token', username: 'invitado' });
+    await register('invitado', 'clave123456', 'codigo-secreto');
+    const [, options] = global.fetch.mock.calls[0];
+    expect(JSON.parse(options.body).inviteCode).toBe('codigo-secreto');
+  });
+
   it('crear Bob en el mismo navegador no hereda la caché de Alice', async () => {
     localStorage.setItem('chess-study-auth-token', 'alice-token');
     localStorage.setItem('chess-study-auth-username', 'alice');

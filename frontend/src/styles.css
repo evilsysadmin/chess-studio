@@ -61,22 +61,27 @@ button:focus-visible,
 }
 
 .masthead-top-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 1rem;
-}
-
-.masthead-audio-controls {
-  justify-self: start;
   display: flex;
   align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* Los controles de audio viven en su propia fila. Antes compartían una
+   grid de tres columnas con el título y un selector largo podía invadir la
+   columna central. Aquí no existe geométricamente la posibilidad de pisarlo. */
+.masthead-audio-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 0.55rem;
   min-width: 0;
 }
 
 .masthead-text {
-  min-width: 0; /* permite que achique en vez de desbordar */
+  min-width: 0;
+  text-align: center;
 }
 
 .eyebrow {
@@ -267,18 +272,12 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 
 @media (max-width: 640px) {
-  .masthead-top-row {
-    grid-template-columns: 1fr;
-    justify-items: center;
-  }
-
   .masthead-audio-controls {
-    justify-self: center;
-    order: 2;
+    width: 100%;
   }
 
-  .masthead-text {
-    order: 1;
+  .music-selector {
+    max-width: min(100%, 260px);
   }
 }
 

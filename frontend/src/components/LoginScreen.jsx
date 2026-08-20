@@ -6,6 +6,7 @@ export default function LoginScreen({ onLoggedIn }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +22,7 @@ export default function LoginScreen({ onLoggedIn }) {
     setError(null);
     setLoading(true);
     try {
-      if (mode === 'register') await register(username, password);
+      if (mode === 'register') await register(username, password, inviteCode);
       else await login(username, password);
       onLoggedIn();
     } catch (err) {
@@ -72,6 +73,22 @@ export default function LoginScreen({ onLoggedIn }) {
               required
               style={{ width: '100%', marginBottom: '0.7rem' }}
             />
+
+            {mode === 'register' && (
+              <>
+                <label className="field-label" htmlFor="login-invite-code">Código de invitación</label>
+                <input
+                  id="login-invite-code"
+                  type="password"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  className="text-input"
+                  autoComplete="off"
+                  placeholder="Sólo si el servidor lo exige"
+                  style={{ width: '100%', marginBottom: '0.7rem' }}
+                />
+              </>
+            )}
 
             {error && <p className="error-text" style={{ marginBottom: '0.7rem' }}>{error}</p>}
 

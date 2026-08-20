@@ -578,7 +578,170 @@ const AMBIENT_THEMES = {
     instruments: ['guitar', 'oud'],
     keyChangeBars: 10,
   },
-};
+ };
+
+// V11: Al-Ándalus conserva deliberadamente el motor original de arriba.
+// El resto deja de ser una variación del mismo generador oud/guitarra/saxo:
+// cada tema usa un secuenciador estructurado y una familia tímbrica propia.
+// Son composiciones originales y deterministas por secciones; no MP3s, no
+// samples externos y, sobre todo, no once clones con bigote postizo.
+Object.assign(AMBIENT_THEMES, {
+  nocturne: {
+    id: 'nocturne', engine: 'structured', label: 'Nocturno de piezas blancas',
+    description: 'Piano amortiguado y bajo de arco; lento, íntimo y sin batería.',
+    stepMs: 230, stepsPerSection: 32, leadInstrument: 'felt', chordInstrument: 'felt', bassInstrument: 'cello',
+    sections: [
+      {
+        lead: { 0: 69, 4: 72, 8: 76, 12: 74, 16: 72, 20: 69, 24: 67, 28: 64 },
+        chords: { 0: [57, 60, 64], 16: [53, 57, 60] },
+        bass: { 0: 45, 8: 40, 16: 41, 24: 40 },
+      },
+      {
+        lead: { 0: 64, 4: 67, 8: 69, 12: 72, 16: 71, 20: 67, 24: 64, 28: 62 },
+        chords: { 0: [52, 55, 59], 16: [50, 53, 57] },
+        bass: { 0: 40, 8: 43, 16: 38, 24: 45 },
+      },
+    ],
+  },
+  gambit: {
+    id: 'gambit', engine: 'structured', label: 'Gambito de marfil',
+    description: 'Clave seco y contrapunto rápido: barroco sin peluca prestada.',
+    stepMs: 105, stepsPerSection: 32, leadInstrument: 'harpsichord', chordInstrument: 'harpsichord', bassInstrument: 'pizz',
+    sections: [
+      {
+        lead: { 0: 69, 2: 72, 4: 76, 6: 81, 8: 80, 10: 76, 12: 72, 14: 69, 16: 71, 18: 74, 20: 77, 22: 83, 24: 81, 26: 77, 28: 74, 30: 71 },
+        chords: { 0: [57, 60, 64], 8: [52, 57, 60], 16: [55, 59, 62], 24: [52, 56, 59] },
+        bass: { 0: 45, 4: 52, 8: 48, 12: 52, 16: 43, 20: 50, 24: 40, 28: 47 },
+        drums: { 0: 'W', 8: 'W', 16: 'W', 24: 'W' },
+      },
+    ],
+  },
+  casablanca: {
+    id: 'casablanca', engine: 'structured', label: 'Club de medianoche',
+    description: 'Piano eléctrico, vibráfono, walking bass y escobillas de club vacío.',
+    stepMs: 145, stepsPerSection: 32, leadInstrument: 'vibes', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 2: 67, 6: 70, 10: 72, 14: 74, 18: 72, 22: 69, 26: 67, 30: 65 },
+        chords: { 0: [48, 55, 58, 64], 8: [53, 57, 60, 64], 16: [50, 57, 60, 65], 24: [55, 59, 62, 65] },
+        bass: { 0: 36, 4: 43, 8: 41, 12: 45, 16: 38, 20: 45, 24: 43, 28: 47 },
+        drums: { 0: 'B', 4: 'B', 8: 'B', 12: 'B', 16: 'B', 20: 'B', 24: 'B', 28: 'B', 7: 'H', 15: 'H', 23: 'H', 31: 'H' },
+      },
+    ],
+  },
+  march: {
+    id: 'march', engine: 'structured', label: 'Asedio',
+    description: 'Metales sintéticos, tambor seco y una marcha que no pide permiso.',
+    stepMs: 125, stepsPerSection: 32, leadInstrument: 'brass', chordInstrument: 'brass', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 55, 4: 55, 8: 58, 12: 57, 16: 55, 20: 62, 24: 60, 28: 58 },
+        chords: { 0: [43, 50, 55], 16: [41, 48, 53] },
+        bass: { 0: 31, 8: 31, 16: 29, 24: 26 },
+        drums: { 0: 'K', 4: 'S', 8: 'K', 12: 'S', 16: 'K', 20: 'S', 24: 'K', 28: 'S', 30: 'K' },
+      },
+    ],
+  },
+  clockwork: {
+    id: 'clockwork', engine: 'structured', label: 'Relojería',
+    description: 'Caja de música, clicks mecánicos y un ostinato de reloj de torneo.',
+    stepMs: 112, stepsPerSection: 32, leadInstrument: 'musicbox', chordInstrument: 'bell', bassInstrument: 'pizz',
+    sections: [
+      {
+        lead: { 0: 72, 2: 79, 4: 76, 6: 79, 8: 74, 10: 81, 12: 77, 14: 81, 16: 71, 18: 77, 20: 74, 22: 77, 24: 69, 26: 76, 28: 72, 30: 76 },
+        chords: { 0: [60, 64, 67], 8: [62, 65, 69], 16: [59, 62, 65], 24: [57, 60, 64] },
+        bass: { 0: 48, 8: 50, 16: 47, 24: 45 },
+        drums: { 0: 'W', 4: 'W', 8: 'W', 12: 'W', 16: 'W', 20: 'W', 24: 'W', 28: 'W' },
+      },
+    ],
+  },
+  velvet: {
+    id: 'velvet', engine: 'structured', label: 'Acero y terciopelo',
+    description: 'Vibráfono amplio, acordes eléctricos y silencio entre frases.',
+    stepMs: 170, stepsPerSection: 32, leadInstrument: 'vibes', chordInstrument: 'epiano', bassInstrument: 'cello',
+    sections: [
+      {
+        lead: { 0: 72, 6: 75, 10: 79, 16: 77, 22: 74, 28: 70 },
+        chords: { 0: [48, 55, 59, 63], 16: [46, 53, 57, 62] },
+        bass: { 0: 36, 8: 43, 16: 34, 24: 41 },
+        drums: { 6: 'B', 14: 'B', 22: 'B', 30: 'B' },
+      },
+    ],
+  },
+  electricDesert: {
+    id: 'electricDesert', engine: 'structured', label: 'Neón sobre el tablero',
+    description: 'Bajo pulsante, lead analógico y batería electrónica contenida.',
+    stepMs: 108, stepsPerSection: 32, leadInstrument: 'synth', chordInstrument: 'pad', bassInstrument: 'synthbass',
+    sections: [
+      {
+        lead: { 0: 64, 3: 65, 6: 71, 10: 69, 14: 65, 16: 64, 19: 72, 22: 71, 26: 65, 30: 64 },
+        chords: { 0: [52, 59, 64], 16: [53, 60, 65] },
+        bass: { 0: 40, 4: 40, 8: 43, 12: 40, 16: 41, 20: 41, 24: 36, 28: 39 },
+        drums: { 0: 'K', 4: 'H', 8: 'S', 12: 'H', 16: 'K', 20: 'K', 24: 'S', 28: 'H' },
+      },
+    ],
+  },
+  cathedral: {
+    id: 'cathedral', engine: 'structured', label: 'Catedral vacía',
+    description: 'Órgano sostenido y voces graves; sin batería, sin prisas, sin absolución.',
+    stepMs: 260, stepsPerSection: 32, leadInstrument: 'organ', chordInstrument: 'organ', bassInstrument: 'organbass',
+    sections: [
+      {
+        lead: { 8: 67, 24: 65 },
+        chords: { 0: [48, 55, 60, 63], 16: [46, 53, 58, 62] },
+        bass: { 0: 36, 16: 34 },
+      },
+      {
+        lead: { 8: 70, 24: 67 },
+        chords: { 0: [43, 50, 55, 58], 16: [41, 48, 53, 57] },
+        bass: { 0: 31, 16: 29 },
+      },
+    ],
+  },
+  duel: {
+    id: 'duel', engine: 'structured', label: 'Duelo al amanecer',
+    description: 'Cuerda seca, notas aisladas y madera: dos miradas y un tablero entre medias.',
+    stepMs: 190, stepsPerSection: 32, leadInstrument: 'tremolo', chordInstrument: 'guitar2', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 64, 7: 67, 14: 71, 21: 69, 28: 64 },
+        chords: { 0: [52, 59, 64], 16: [50, 57, 62] },
+        bass: { 0: 40, 16: 38 },
+        drums: { 0: 'W', 16: 'W', 24: 'W' },
+      },
+    ],
+  },
+  storm: {
+    id: 'storm', engine: 'structured', label: 'Tormenta táctica',
+    description: 'Arpegiador, bajo agresivo y golpes sincopados para posiciones que arden.',
+    stepMs: 82, stepsPerSection: 32, leadInstrument: 'arp', chordInstrument: 'pad', bassInstrument: 'synthbass',
+    sections: [
+      {
+        lead: { 0: 62, 2: 65, 4: 69, 6: 74, 8: 72, 10: 69, 12: 65, 14: 62, 16: 63, 18: 67, 20: 70, 22: 75, 24: 74, 26: 70, 28: 67, 30: 63 },
+        chords: { 0: [50, 57, 62], 16: [51, 58, 63] },
+        bass: { 0: 38, 4: 38, 8: 41, 12: 36, 16: 39, 20: 39, 24: 34, 28: 36 },
+        drums: { 0: 'K', 2: 'H', 4: 'S', 6: 'H', 8: 'K', 10: 'K', 12: 'S', 14: 'H', 16: 'K', 18: 'H', 20: 'S', 22: 'K', 24: 'K', 26: 'H', 28: 'S', 30: 'H' },
+      },
+    ],
+  },
+  lateEndgame: {
+    id: 'lateEndgame', engine: 'structured', label: 'Final de madrugada',
+    description: 'Piano de fieltro, campanas lejanas y mucho aire para calcular finales.',
+    stepMs: 245, stepsPerSection: 32, leadInstrument: 'felt', chordInstrument: 'felt', bassInstrument: 'cello',
+    sections: [
+      {
+        lead: { 0: 72, 8: 67, 16: 69, 24: 64 },
+        chords: { 0: [48, 55, 60], 16: [45, 52, 57] },
+        bass: { 0: 36, 16: 33 },
+      },
+      {
+        lead: { 4: 76, 12: 72, 20: 71, 28: 67 },
+        chords: { 0: [53, 57, 60], 16: [50, 55, 59] },
+        bass: { 0: 41, 16: 38 },
+      },
+    ],
+  },
+});
 
 export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description }) => ({
   id, label, description,
@@ -905,11 +1068,196 @@ function playHighTak(volume) {
   noiseSource.start(start);
 }
 
+function midiToFreq(note) {
+  return 440 * Math.pow(2, (note - 69) / 12);
+}
+
+function voicePreset(kind) {
+  switch (kind) {
+    case 'felt': return { waves: [['triangle', 1, 1], ['sine', 2, 0.22]], gain: 0.024, attack: 0.012, release: 1.65, cutoff: 1800 };
+    case 'harpsichord': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.13]], gain: 0.018, attack: 0.003, release: 0.48, cutoff: 3900 };
+    case 'vibes': return { waves: [['sine', 1, 1], ['sine', 4, 0.16]], gain: 0.026, attack: 0.008, release: 2.35, cutoff: 5200, tremolo: 5.2 };
+    case 'epiano': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18]], gain: 0.021, attack: 0.018, release: 1.45, cutoff: 2600 };
+    case 'cello': return { waves: [['sawtooth', 1, 1], ['triangle', 0.5, 0.18]], gain: 0.017, attack: 0.09, release: 2.1, cutoff: 920 };
+    case 'pizz': return { waves: [['triangle', 1, 1], ['sine', 2, 0.12]], gain: 0.026, attack: 0.004, release: 0.52, cutoff: 1700 };
+    case 'bass': return { waves: [['triangle', 1, 1], ['sine', 0.5, 0.18]], gain: 0.029, attack: 0.008, release: 0.72, cutoff: 760 };
+    case 'brass': return { waves: [['sawtooth', 1, 1], ['square', 0.5, 0.1]], gain: 0.016, attack: 0.065, release: 1.2, cutoff: 1250 };
+    case 'musicbox': return { waves: [['sine', 1, 1], ['sine', 3, 0.25], ['sine', 5, 0.08]], gain: 0.019, attack: 0.002, release: 1.55, cutoff: 6500 };
+    case 'bell': return { waves: [['sine', 1, 1], ['sine', 2.01, 0.2], ['sine', 3.99, 0.08]], gain: 0.018, attack: 0.004, release: 2.3, cutoff: 7000 };
+    case 'synth': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.08]], gain: 0.017, attack: 0.018, release: 0.52, cutoff: 1450 };
+    case 'synthbass': return { waves: [['square', 1, 0.55], ['triangle', 1, 1]], gain: 0.026, attack: 0.006, release: 0.42, cutoff: 640 };
+    case 'pad': return { waves: [['sine', 1, 1], ['triangle', 2, 0.08]], gain: 0.014, attack: 0.28, release: 2.9, cutoff: 1600 };
+    case 'organ': return { waves: [['sine', 1, 1], ['sine', 2, 0.28], ['sine', 3, 0.09]], gain: 0.014, attack: 0.22, release: 4.25, cutoff: 2100 };
+    case 'organbass': return { waves: [['sine', 1, 1], ['triangle', 0.5, 0.2]], gain: 0.022, attack: 0.18, release: 4.0, cutoff: 580 };
+    case 'tremolo': return { waves: [['triangle', 1, 1], ['sawtooth', 1, 0.09]], gain: 0.019, attack: 0.02, release: 1.9, cutoff: 2100, tremolo: 7.0 };
+    case 'guitar2': return { waves: [['triangle', 1, 1], ['sawtooth', 2, 0.07]], gain: 0.018, attack: 0.004, release: 0.82, cutoff: 2300 };
+    case 'arp': return { waves: [['square', 1, 0.45], ['sawtooth', 1, 1]], gain: 0.014, attack: 0.004, release: 0.28, cutoff: 1800 };
+    default: return { waves: [['sine', 1, 1]], gain: 0.02, attack: 0.01, release: 0.8, cutoff: 2500 };
+  }
+}
+
+function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride = null) {
+  if (isMusicMuted() || midiNote == null) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+  const preset = voicePreset(kind);
+  const freq = midiToFreq(midiNote);
+  const start = ctx.currentTime;
+  const release = durationOverride || preset.release;
+  const filter = ctx.createBiquadFilter();
+  const gainNode = ctx.createGain();
+  filter.type = 'lowpass';
+  filter.frequency.value = preset.cutoff;
+  filter.Q.value = kind === 'synth' || kind === 'arp' ? 1.4 : 0.55;
+
+  const peak = preset.gain * volumeScale;
+  gainNode.gain.setValueAtTime(0.0001, start);
+  gainNode.gain.linearRampToValueAtTime(peak, start + preset.attack);
+  if (kind === 'organ' || kind === 'organbass' || kind === 'pad') {
+    gainNode.gain.setValueAtTime(peak * 0.82, start + Math.max(preset.attack + 0.05, release * 0.7));
+  }
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
+
+  filter.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  const oscillators = preset.waves.map(([type, ratio, mix], index) => {
+    const osc = ctx.createOscillator();
+    const mixGain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq * ratio;
+    // Un desafinado microscópico evita que acordes de osciladores idénticos
+    // se conviertan en una onda clínica sin vida.
+    osc.detune.value = index === 0 ? -2 : 2 + index;
+    mixGain.gain.value = mix;
+    osc.connect(mixGain);
+    mixGain.connect(filter);
+    return osc;
+  });
+
+  let lfo = null;
+  let lfoGain = null;
+  if (preset.tremolo) {
+    lfo = ctx.createOscillator();
+    lfoGain = ctx.createGain();
+    lfo.frequency.value = preset.tremolo;
+    lfoGain.gain.value = peak * 0.2;
+    lfo.connect(lfoGain);
+    lfoGain.connect(gainNode.gain);
+    lfo.start(start);
+    lfo.stop(start + release + 0.05);
+  }
+
+  oscillators.forEach((osc) => {
+    osc.start(start);
+    osc.stop(start + release + 0.05);
+  });
+}
+
+function playStructuredChord(kind, notes, duration = null) {
+  if (!Array.isArray(notes)) return;
+  const scale = Math.max(0.42, 1 / Math.sqrt(notes.length));
+  notes.forEach((note) => playStructuredVoice(kind, note, scale, duration));
+}
+
+function playNoiseHit(kind, volume = 0.03) {
+  if (isMusicMuted()) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  const duration = kind === 'brush' ? 0.18 : 0.085;
+  const size = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < size; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / size);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = kind === 'brush' || kind === 'hat' ? 'highpass' : 'bandpass';
+  filter.frequency.value = kind === 'brush' ? 1900 : kind === 'hat' ? 4800 : 1500;
+  filter.Q.value = kind === 'snare' ? 1.0 : 0.5;
+  const gain = ctx.createGain();
+  const start = ctx.currentTime;
+  gain.gain.setValueAtTime(volume, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  source.start(start);
+}
+
+function playWoodblock() {
+  if (isMusicMuted()) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  const start = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(780, start);
+  osc.frequency.exponentialRampToValueAtTime(520, start + 0.055);
+  gain.gain.setValueAtTime(0.028, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.08);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + 0.09);
+}
+
+function playStructuredDrum(code) {
+  if (code === 'K') playSoftPercussion(0.055);
+  else if (code === 'S') playNoiseHit('snare', 0.028);
+  else if (code === 'H') playNoiseHit('hat', 0.014);
+  else if (code === 'B') playNoiseHit('brush', 0.012);
+  else if (code === 'W') playWoodblock();
+}
+
+function startStructuredMusic(theme) {
+  let step = 0;
+  const stepsPerSection = Math.max(1, theme.stepsPerSection || 32);
+
+  function tick() {
+    if (isMusicMuted()) {
+      stepTimer = null;
+      return;
+    }
+    const sectionIndex = Math.floor(step / stepsPerSection) % theme.sections.length;
+    const localStep = step % stepsPerSection;
+    const section = theme.sections[sectionIndex];
+
+    const lead = section.lead?.[localStep];
+    const bass = section.bass?.[localStep];
+    const chord = section.chords?.[localStep];
+    const drum = section.drums?.[localStep];
+
+    if (lead != null) playStructuredVoice(theme.leadInstrument, lead, 1);
+    if (bass != null) playStructuredVoice(theme.bassInstrument, bass, 0.9);
+    if (chord) {
+      const longChord = ['organ', 'pad'].includes(theme.chordInstrument);
+      const duration = longChord ? (theme.stepMs * 15.5) / 1000 : null;
+      playStructuredChord(theme.chordInstrument, chord, duration);
+    }
+    if (drum) playStructuredDrum(drum);
+
+    step += 1;
+    stepTimer = setTimeout(tick, theme.stepMs);
+  }
+
+  tick();
+}
+
 export function startAmbientMusic() {
   if (isMusicMuted()) return;
   if (stepTimer) return; // ya está sonando, no duplicar el loop
 
   const theme = getActiveAmbientTheme();
+  if (theme.engine === 'structured') {
+    startStructuredMusic(theme);
+    return;
+  }
+  // Al-Ándalus cae por aquí y conserva el generador original intacto.
   const bassScale = theme.scale.map((f) => f / 2);
   const keyChangeSteps = STEPS_PER_BAR * theme.keyChangeBars;
   let step = 0;

@@ -9,7 +9,9 @@ import os
 import random
 import time
 import uuid
+import hmac
 from typing import Optional
+from urllib.parse import urlsplit
 
 import chess
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -32,6 +34,7 @@ from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower() in {"1", "true", "yes", "on"}
+INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 
 app = FastAPI(
     title="Estudio de Ajedrez API",
@@ -140,24 +143,37 @@ async def persistent_storage_unavailable_handler(request: Request, exc: Persiste
         headers={"X-Request-ID": _request_id(request)},
     )
 
-_DEFAULT_CORS_ORIGINS = [
+# CORS: el navegador manda únicamente el *origin* (scheme + host + puerto),
+# nunca la ruta de GitHub Pages. Es fácil configurar por accidente
+# CORS_ORIGINS=https://evilsysadmin.github.io/chess-studio/ en Render y que
+# Starlette lo rechace porque el Origin real es https://evilsysadmin.github.io.
+# Normalizamos cualquier URL configurada y conservamos siempre los orígenes
+# conocidos de desarrollo + GitHub Pages. CORS no es una barrera de auth:
+# los endpoints siguen exigiendo JWT; esto sólo permite al navegador llegar.
+def _normalize_cors_origin(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    try:
+        parsed = urlsplit(value if "://" in value else f"https://{value}")
+    except ValueError:
+        return ""
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
+
+
+_DEFAULT_CORS_ORIGINS = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
-_CORS_ORIGINS = [
-    origin.strip().rstrip("/")
-    for origin in os.environ.get("CORS_ORIGINS", ",".join(_DEFAULT_CORS_ORIGINS)).split(",")
-    if origin.strip()
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_CORS_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-API-Key"],
-    expose_headers=["X-Request-ID"],
-)
+    "https://evilsysadmin.github.io",
+}
+_CONFIGURED_CORS_ORIGINS = {
+    normalized
+    for raw in os.environ.get("CORS_ORIGINS", "").split(",")
+    if (normalized := _normalize_cors_origin(raw))
+}
+_CORS_ORIGINS = sorted(_DEFAULT_CORS_ORIGINS | _CONFIGURED_CORS_ORIGINS)
 
 # Rate limiting por IP — sin esto, cualquiera con curl puede hacer que un
 # hosting gratuito (o de pago) se quede corto de cómputo mandando cientos
@@ -229,6 +245,18 @@ def api_key_bucket(request: Request) -> str:
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# Añadido DESPUÉS de SlowAPI para que CORS sea la capa exterior y pueda
+# contestar los preflight OPTIONS incluso antes de rate-limit/routing.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
+    max_age=600,
+)
 
 # Fuerza que usa el motor cuando el humano pide una pista: casi siempre
 # juega su mejor jugada, independientemente de la dificultad de la CPU en
@@ -358,8 +386,10 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
 # en el JSON (alias) — el frontend no ve ninguna diferencia.
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     username: str
     password: str
+    invite_code: Optional[str] = Field(default=None, alias="inviteCode")
 
 
 class LoginRequest(BaseModel):
@@ -396,10 +426,9 @@ class AnalyzeMoveRequest(BaseModel):
 
 # ---------- Rutas ----------
 
-# Auth: registro abierto (cualquiera con el link se crea una cuenta),
-# usuario+contraseña nada más — sin email, sin OAuth. Para "compartir con
-# unos conocidos", es la opción con menos piezas externas (no depende de
-# un proveedor ni de mandar mails).
+# Auth humano: usuario+contraseña, sin email ni OAuth. `INVITE_CODE` puede
+# gatear las altas y `ALLOW_REGISTRATION` cerrarlas por completo. Login y
+# registro son las únicas rutas de identidad que necesariamente son públicas.
 
 def get_current_user_optional(authorization: Optional[str] = None) -> Optional[str]:
     """No se usa como Depends() de FastAPI directo -- ver get_current_user
@@ -457,7 +486,13 @@ async def get_owned_game(game_id: str, username: str) -> dict:
 @limiter.limit("5/hour")
 async def register(body: RegisterRequest, request: Request):
     if not ALLOW_REGISTRATION:
-        raise HTTPException(403, "El registro público está deshabilitado.")
+        raise HTTPException(403, "El registro está deshabilitado temporalmente.")
+    if INVITE_CODE:
+        supplied = (body.invite_code or "").strip()
+        if not supplied or not hmac.compare_digest(supplied, INVITE_CODE):
+            # No distinguimos entre ausente e incorrecto: menos información
+            # gratis para quien esté tanteando el endpoint.
+            raise HTTPException(403, "Código de invitación no válido.")
     username = body.username.strip().lower()
     if len(username) < 3:
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
