@@ -68,3 +68,69 @@ def test_two_users_have_completely_separate_profiles():
 
     assert r_alice.json() == {"data": {"nivel": "alice-nivel-50"}}
     assert r_bob.json() == {"data": {"nivel": "bob-nivel-3"}}
+
+
+def test_profile_returns_503_instead_of_empty_when_configured_mongo_is_down(monkeypatch):
+    """Una caída de Mongo no puede parecer una cuenta nueva/perfil vacío."""
+    headers = _auth_headers()
+    monkeypatch.setattr("profile_store.persistent_storage_required", lambda: True)
+
+    r = client.get("/api/profile", headers=headers)
+
+    assert r.status_code == 503
+    assert "base de datos" in r.json()["detail"].lower()
+
+
+def test_register_returns_503_when_configured_mongo_is_down(monkeypatch):
+    monkeypatch.setattr("users_store.persistent_storage_required", lambda: True)
+
+    r = client.post(
+        "/api/auth/register",
+        json={"username": "mongo_caido", "password": "clave123456"},
+    )
+
+    assert r.status_code == 503
+
+
+def test_profile_store_forces_authenticated_username_as_mongo_id(monkeypatch):
+    """El body nunca puede sobreescribir el _id/propietario autenticado."""
+    import asyncio
+    import profile_store
+
+    captured = {}
+
+    class FakeCollection:
+        async def replace_one(self, query, doc, upsert=False):
+            captured["query"] = query
+            captured["doc"] = doc
+            captured["upsert"] = upsert
+
+    async def fake_collection():
+        return FakeCollection()
+
+    monkeypatch.setattr(profile_store, "_get_collection", fake_collection)
+    asyncio.run(profile_store.save_profile("alice", {"_id": "bob", "data": {"x": "1"}}))
+
+    assert captured["query"] == {"_id": "alice"}
+    assert captured["doc"]["_id"] == "alice"
+    assert captured["doc"]["data"] == {"x": "1"}
+
+
+def test_register_duplicate_race_stays_409(monkeypatch):
+    """Un DuplicateKey concurrente es 'ya existe', no 'Mongo caído'."""
+    async def fake_get_user(username):
+        return None
+
+    async def fake_create_user(username, password_hash):
+        raise __import__('users_store').UserAlreadyExists(username)
+
+    monkeypatch.setattr('users_store.get_user', fake_get_user)
+    monkeypatch.setattr('users_store.create_user', fake_create_user)
+
+    r = client.post(
+        '/api/auth/register',
+        json={'username': 'carrera', 'password': 'clave123456'},
+    )
+
+    assert r.status_code == 409
+    assert 'ya existe' in r.json()['detail'].lower()

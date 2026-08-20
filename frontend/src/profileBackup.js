@@ -1,34 +1,28 @@
-// profileBackup.js — Exporta/importa TODO tu progreso persistente, y lo
-// sincroniza con el backend (un único perfil en Mongo, sin cuentas — eres
-// el único usuario, así que no hace falta login). Todo esto vivía SOLO en
-// localStorage del navegador: si lo limpiabas, cambiabas de dispositivo, o
-// pisabas la carpeta del proyecto con un zip nuevo, se perdía sin aviso.
+// profileBackup.js — Capa de sincronización del perfil.
 //
-// A propósito NO incluye los punteros de "partida activa" (el id de la
-// partida guardada en el backend, o si estás en "Partida de práctica"): esos
-// apuntan a un estado del servidor que puede no existir más al importar en
-// otro navegador/dispositivo.
+// MongoDB es la fuente persistente de verdad. localStorage sigue siendo una
+// caché de trabajo síncrona porque muchas pantallas ya leen/escriben desde
+// ahí; esta capa se ocupa de bajar Mongo ANTES de montar la app y de subir
+// cambios sin permitir que dos PUT concurrentes terminen fuera de orden.
 
 import { api } from './api.js';
+import { getToken, getUsername } from './auth.js';
+import {
+  PROFILE_STORAGE_KEYS,
+  clearProfileCache,
+  clearProfileDirty,
+  hasDirtyProfileForCurrentUser,
+  markProfileDirtyForCurrentUser,
+} from './profileKeys.js';
 
-const EXPORTABLE_KEYS = [
-  'chess-study-tournament',
-  'chess-study-game-history',
-  'chess-study-combat-history',
-  'chess-study-combat-roster',
-  'chess-study-player-rating',
-  'chess-study-rating-history',
-  'chess-study-achievements',
-  'chess-study-puzzles-solved',
-  'chess-study-puzzle-streak',
-  'chess-study-puzzle-best-streak',
-  'chess-study-muted',
-  'chess-study-worst-move-cache',
-  'chess-study-selected-title',
-  'chess-study-selected-skin',
-  'chess-study-roguelike-run',
-  'chess-study-roguelike-best-floor',
-];
+const EXPORTABLE_KEYS = PROFILE_STORAGE_KEYS;
+
+// Serializa todos los PUT. Como /api/profile reemplaza el documento entero,
+// dos requests concurrentes que terminen en orden inverso podrían restaurar
+// una foto vieja del perfil. Esta cola garantiza el mismo orden en que el
+// cliente pidió guardar.
+let saveQueue = Promise.resolve();
+let scheduledTimer = null;
 
 export function exportProfile() {
   const data = {};
@@ -57,25 +51,30 @@ export function downloadProfile() {
   URL.revokeObjectURL(url);
 }
 
-// Sobreescribe el progreso actual con lo que venga en el archivo/objeto.
-// Acepta tanto un string JSON (como el que produce `downloadProfile`) como
-// un objeto ya parseado (como el que devuelve el backend). Devuelve cuántas
-// claves se restauraron. Tira un error con mensaje legible si no tiene la
-// forma esperada — quien llama lo puede mostrar tal cual.
-export function importProfile(rawTextOrObject) {
+function parseProfile(rawTextOrObject) {
   let parsed;
   if (typeof rawTextOrObject === 'string') {
     try {
       parsed = JSON.parse(rawTextOrObject);
-    } catch (e) {
+    } catch {
       throw new Error('El archivo no es un JSON válido.');
     }
   } else {
     parsed = rawTextOrObject;
   }
-  if (!parsed || typeof parsed !== 'object' || typeof parsed.data !== 'object') {
+
+  if (!parsed || typeof parsed !== 'object' || !parsed.data || typeof parsed.data !== 'object' || Array.isArray(parsed.data)) {
     throw new Error('El archivo no tiene el formato esperado de un backup de esta app.');
   }
+  return parsed;
+}
+
+// Restaura únicamente claves conocidas. Con replace=true, las claves que no
+// estén en el backup desaparecen: "importar" significa reemplazar el perfil,
+// no mezclarlo con restos del perfil anterior.
+export function importProfile(rawTextOrObject, { replace = false, markDirty = false } = {}) {
+  const parsed = parseProfile(rawTextOrObject);
+  if (replace) clearProfileCache();
 
   let restored = 0;
   for (const key of EXPORTABLE_KEYS) {
@@ -84,34 +83,100 @@ export function importProfile(rawTextOrObject) {
       restored += 1;
     }
   }
+  // Las restauraciones traídas desde Mongo usan markDirty=false: son la
+  // copia autoritativa. Una importación/rollback iniciado por el usuario sí
+  // debe quedar marcado como pendiente hasta que el servidor lo confirme.
+  if (markDirty) markProfileDirtyForCurrentUser();
   return restored;
 }
 
-// Baja el perfil guardado en el backend (Mongo) y pisa el localStorage
-// local — se llama una sola vez, al arrancar la app, ANTES de que se lea
-// cualquier otro estado de localStorage. Si no hay backend disponible, o
-// todavía no se guardó nada ahí, no rompe nada: seguimos con lo que haya
-// localmente. Devuelve true si de verdad restauró algo.
+// Baja el perfil del usuario autenticado. Nunca usamos como fallback una
+// caché arbitraria si la API/Mongo falla: eso fue exactamente lo que permitía
+// que un usuario nuevo heredara datos del anterior.
+//
+// loaded       -> perfil remoto cargado
+// empty        -> cuenta válida todavía sin perfil
+// offline      -> API/Mongo no disponible
+// unauthorized -> token inválido/expirado
 export async function pullProfileFromServer() {
+  cancelScheduledProfileSync();
+
+  // Si una sesión anterior dejó cambios sin confirmar (por ejemplo se cayó
+  // la red justo después de ganar XP), esa caché local es deliberadamente
+  // más nueva que Mongo. La salvamos primero para no perderla al hacer pull.
+  if (hasDirtyProfileForCurrentUser()) {
+    try {
+      await pushProfileToServer({ throwOnError: true });
+      return { status: 'recovered-local', restored: 0 };
+    } catch (error) {
+      if (error?.status === 401) return { status: 'unauthorized', restored: 0, error };
+      return { status: 'offline', restored: 0, error };
+    }
+  }
+
   try {
     const remote = await api.getProfile();
-    if (remote && remote.data && Object.keys(remote.data).length > 0) {
-      importProfile(remote);
-      return true;
+    const data = remote?.data;
+
+    if (!data || Object.keys(data).length === 0) {
+      // Solo limpiamos el perfil persistente. Una partida activa pertenece a
+      // esta sesión y puede seguir siendo válida tras un simple refresh.
+      clearProfileCache();
+      clearProfileDirty();
+      return { status: 'empty', restored: 0 };
     }
-  } catch (e) {
-    // sin backend disponible -> seguimos con lo que haya en localStorage
+
+    const restored = importProfile(remote, { replace: true });
+    clearProfileDirty();
+    return { status: 'loaded', restored };
+  } catch (error) {
+    if (error?.status === 401) return { status: 'unauthorized', restored: 0, error };
+    return { status: 'offline', restored: 0, error };
   }
-  return false;
 }
 
-// Sube el progreso actual al backend. Se llama de fondo en momentos clave
-// (cambios de pantalla) — si falla, no es grave, se reintenta en el
-// próximo evento; no bloquea ni avisa nada al usuario.
-export async function pushProfileToServer() {
-  try {
-    await api.saveProfile(exportProfile());
-  } catch (e) {
-    // sin backend disponible -> el progreso sigue local, se reintenta después
+// Guarda una foto concreta del perfil, en cola. Capturar el snapshot ANTES
+// de entrar a la cola es intencionado: si se piden A y luego B, se envían A
+// y B en ese mismo orden; B siempre gana al final.
+export function pushProfileToServer({ throwOnError = false, keepalive = false } = {}) {
+  // Un guardado explícito sustituye cualquier debounce pendiente.
+  cancelScheduledProfileSync();
+  const snapshot = exportProfile();
+  const token = getToken();
+  const username = getUsername();
+  const runSave = () => api.saveProfile(snapshot, { keepalive, token });
+  // Un solo .then con manejador de éxito y error mantiene la cola viva sin
+  // añadir un salto de microtarea innecesario. Además hace que el primer PUT
+  // empiece en cuanto la cola anterior queda resuelta.
+  const operation = saveQueue.then(runSave, runSave);
+
+  const confirmed = operation.then((result) => {
+    // No limpies el dirty flag si mientras este PUT estaba en vuelo hubo un
+    // cambio posterior. Ese cambio necesita su propio guardado.
+    if (getUsername() === username && JSON.stringify(exportProfile().data) === JSON.stringify(snapshot.data)) {
+      clearProfileDirty();
+    }
+    return result;
+  });
+
+  saveQueue = confirmed;
+  return throwOnError ? confirmed : confirmed.catch(() => null);
+}
+
+// Cambios pequeños (XP, puzzle, rating, etc.) pueden ocurrir varias veces en
+// pocos milisegundos. Agrupamos el ruido, pero no esperamos a que el usuario
+// cambie de pantalla para persistirlo.
+export function scheduleProfileSync(delayMs = 300) {
+  cancelScheduledProfileSync();
+  scheduledTimer = setTimeout(() => {
+    scheduledTimer = null;
+    pushProfileToServer();
+  }, delayMs);
+}
+
+export function cancelScheduledProfileSync() {
+  if (scheduledTimer !== null) {
+    clearTimeout(scheduledTimer);
+    scheduledTimer = null;
   }
 }

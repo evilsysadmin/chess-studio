@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // combatHistory.js — Historial de batallas del Modo Combate, para poder
 // reproducirlas después con la "pista inversa".
 //
@@ -28,11 +30,11 @@ export function saveCombatBattle(record) {
   const list = loadCombatHistory();
   list.unshift(record); // la más reciente primero
   const trimmed = list.slice(0, MAX_RECORDS);
-  localStorage.setItem(KEY, JSON.stringify(trimmed));
+  setProfileStorageItem(KEY, JSON.stringify(trimmed));
   return trimmed;
 }
 
 export function clearCombatHistory() {
-  localStorage.removeItem(KEY);
+  removeProfileStorageItem(KEY);
   return [];
 }

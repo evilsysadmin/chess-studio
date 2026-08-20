@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import json
-import logging
 import math
 import os
 import random
 import uuid
-from datetime import datetime
 from typing import Optional
 
 import chess
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -23,11 +22,23 @@ from slowapi.util import get_remote_address
 import game_store as store
 import profile_store as pstore
 import users_store as ustore
+from db import PersistentStorageUnavailable
 from auth import hash_password, verify_password, create_token, verify_token
 from chess_ai import analyze_move as ai_analyze_move
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 
 app = FastAPI(title="Estudio de Ajedrez API")
+
+
+@app.exception_handler(PersistentStorageUnavailable)
+async def persistent_storage_unavailable_handler(request: Request, exc: PersistentStorageUnavailable):
+    # Si MONGO_URL está configurada, una caída de Mongo NO equivale a
+    # "usuario/perfil inexistente". Devolvemos 503 para que el frontend no
+    # borre ni reemplace datos válidos por una caché/default local.
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "La base de datos no está disponible temporalmente."},
+    )
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,39 +46,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Uvicorn ya imprime su propia línea de acceso (algo tipo `INFO: IP:puerto
-# - "METODO /ruta HTTP/1.1" status`), pero esa línea no tiene forma de
-# saber quién hizo el request — uvicorn no entiende nada de JWT ni de esta
-# app, solo ve bytes ASGI. Se desactiva esa línea por defecto (para que
-# nunca quede una duplicada) y se reemplaza por esta, mismo espíritu, con
-# el username agregado si el request vino con un token válido. Puramente
-# informativo — a diferencia de get_current_user (que SÍ exige un token
-# válido para las rutas protegidas), esto no exige nada, solo registra lo
-# que haya, incluido "anon" para tráfico sin autenticar.
-logging.getLogger("uvicorn.access").disabled = True
-
-access_logger = logging.getLogger("chess.access")
-access_logger.setLevel(logging.INFO)
-if not access_logger.handlers:
-    _access_handler = logging.StreamHandler()
-    _access_handler.setFormatter(logging.Formatter("%(message)s"))
-    access_logger.addHandler(_access_handler)
-    access_logger.propagate = False
-
-
-@app.middleware("http")
-async def log_request_with_user(request: Request, call_next):
-    response = await call_next(request)
-    header = request.headers.get("authorization")
-    username = None
-    if header and header.startswith("Bearer "):
-        username = verify_token(header[len("Bearer "):])
-    client = f"{request.client.host}:{request.client.port}" if request.client else "?"
-    access_logger.info(
-        f'INFO:     {client} - "{request.method} {request.url.path} HTTP/1.1" {response.status_code} - user={username or "anon"}'
-    )
-    return response
 
 # Rate limiting por IP — sin esto, cualquiera con curl puede hacer que un
 # hosting gratuito (o de pago) se quede corto de cómputo mandando cientos
@@ -111,23 +89,6 @@ def has_valid_api_key(request: Request) -> bool:
     return get_api_key(request) is not None
 
 
-def require_user_or_m2m(request: Request) -> Optional[str]:
-    """Exige o bien un token de usuario válido, o bien una API key M2M
-    válida — cualquiera de las dos alcanza. Usado en `/api/analyze` y
-    `/api/analyze-move`: corren el motor de verdad (cómputo caro) y
-    quedaban abiertos a cualquiera con internet, con nada más que el
-    rate limit por IP como freno — el log de producción mostró tráfico
-    anónimo real golpeándolos, sin ninguna cuenta ni key de por medio."""
-    if has_valid_api_key(request):
-        return None
-    header = request.headers.get("authorization")
-    if header and header.startswith("Bearer "):
-        username = verify_token(header[len("Bearer "):])
-        if username:
-            return username
-    raise HTTPException(401, "Hace falta iniciar sesión o mandar una API key válida.")
-
-
 # `ADMIN_USERNAMES` — mismo espíritu que M2M_API_KEYS: una lista separada
 # por comas en una variable de entorno, no un flag hardcodeado en el
 # código ni una columna nueva que migrar en cada usuario. Sin configurar
@@ -138,19 +99,12 @@ def require_user_or_m2m(request: Request) -> Optional[str]:
 # recuerde escribirlo exactamente igual.
 _ADMIN_USERNAMES = {u.strip().lower() for u in os.environ.get("ADMIN_USERNAMES", "").split(",") if u.strip()}
 
-# `INVITE_CODES` — mismo patrón otra vez: lista separada por comas en una
-# variable de entorno. Sin configurar (caso por defecto), el set queda
-# vacío y el registro sigue abierto, cero cambio de comportamiento. Con
-# la variable configurada, registrarse exige mandar uno de estos códigos
-# — pensado para compartir un link tipo "tu-app.com/?invite=XYZ" con
-# conocidos, no para gestionar invitaciones individuales (eso sería un
-# sistema bastante más grande: base de datos de códigos, de un solo uso,
-# revocables — decisión consciente de no construir eso todavía).
-_INVITE_CODES = {c.strip() for c in os.environ.get("INVITE_CODES", "").split(",") if c.strip()}
-
 
 def is_admin(username: str) -> bool:
-    return username.lower() in _ADMIN_USERNAMES
+    # Comodín pensado para desarrollo local: ADMIN_USERNAMES="*" convierte
+    # cualquier cuenta autenticada en admin. En producción conviene usar una
+    # lista explícita de usernames.
+    return "*" in _ADMIN_USERNAMES or username.lower() in _ADMIN_USERNAMES
 
 
 def api_key_bucket(request: Request) -> str:
@@ -291,20 +245,9 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
 # `from_square` en el código pero se sigue mandando/recibiendo como "from"
 # en el JSON (alias) — el frontend no ve ninguna diferencia.
 
-class AdminEditUserRequest(BaseModel):
-    rating: Optional[int] = None
-    tournamentPoints: Optional[int] = None
-    tournamentWins: Optional[int] = None
-    createdAt: Optional[str] = None  # fecha de registro, formato ISO (lo que ya entiende `datetime.fromisoformat`)
-    winStreak: Optional[int] = None
-    bestWinStreak: Optional[int] = None
-    puzzlesSolved: Optional[int] = None
-
-
 class RegisterRequest(BaseModel):
     username: str
     password: str
-    inviteCode: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
@@ -374,12 +317,14 @@ async def register(body: RegisterRequest):
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
     if len(body.password) < 6:
         raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
-    if _INVITE_CODES and (body.inviteCode or "").strip() not in _INVITE_CODES:
-        raise HTTPException(403, "Código de invitación inválido o faltante.")
     existing = await ustore.get_user(username)
     if existing:
         raise HTTPException(409, "Ese usuario ya existe.")
-    await ustore.create_user(username, hash_password(body.password))
+    try:
+        await ustore.create_user(username, hash_password(body.password))
+    except ustore.UserAlreadyExists:
+        # Cubre la carrera entre el GET anterior y el INSERT único de Mongo.
+        raise HTTPException(409, "Ese usuario ya existe.")
     return {"token": create_token(username), "username": username}
 
 
@@ -397,81 +342,185 @@ async def me(username: str = Depends(get_current_user)):
     return {"username": username, "isAdmin": is_admin(username)}
 
 
+def _profile_json(data: dict, key: str, default):
+    raw = data.get(key)
+    if not isinstance(raw, str):
+        return default
+    try:
+        value = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return default
+    return value
+
+
+def _longest_win_streak(records: list[dict]) -> int:
+    ordered = sorted(
+        (r for r in records if isinstance(r, dict)),
+        key=lambda r: str(r.get("date") or ""),
+    )
+    best = current = 0
+    for record in ordered:
+        if record.get("outcome") == "win":
+            current += 1
+            best = max(best, current)
+        else:
+            current = 0
+    return best
+
+
 def _extract_summary_stats(profile: Optional[dict]) -> dict:
-    """Parseo defensivo del perfil para el panel de admin — cada valor es
-    un string JSON (así los guarda profileBackup.js), y cualquier usuario
-    puede tener datos parciales, viejos, o corruptos. Un campo roto no
-    debe tumbar el resumen entero, así que cada `json.loads` va con su
-    propio try/except."""
+    """Resumen enriquecido para el panel de admin.
+
+    Todo sale de la foto de perfil que ya sincroniza el frontend: abrir el
+    panel NO dispara análisis del motor ni recorre partidas activas. Si un
+    dato todavía no existe (por ejemplo, nunca se buscó la peor jugada), se
+    devuelve None y la UI muestra un guion.
+    """
     data = (profile or {}).get("data") or {}
 
-    tournament_points = None
-    tournament_wins = None
-    try:
-        tournament = json.loads(data.get("chess-study-tournament", "{}"))
-        tournament_points = tournament.get("points")
-        tournament_wins = tournament.get("wins")
-    except (json.JSONDecodeError, AttributeError):
-        pass
+    tournament = _profile_json(data, "chess-study-tournament", {})
+    if not isinstance(tournament, dict):
+        tournament = {}
 
-    rating = None
-    try:
-        rating_data = json.loads(data.get("chess-study-player-rating", "{}"))
-        rating = rating_data.get("rating")
-    except (json.JSONDecodeError, AttributeError):
-        pass
+    rating_data = _profile_json(data, "chess-study-player-rating", {})
+    if not isinstance(rating_data, dict):
+        rating_data = {}
 
-    games_played = None
+    rating_history = _profile_json(data, "chess-study-rating-history", [])
+    if not isinstance(rating_history, list):
+        rating_history = []
+
+    game_history = _profile_json(data, "chess-study-game-history", [])
+    if not isinstance(game_history, list):
+        game_history = []
+
+    combat_history = _profile_json(data, "chess-study-combat-history", [])
+    if not isinstance(combat_history, list):
+        combat_history = []
+
+    worst_cache = _profile_json(data, "chess-study-worst-move-cache", {})
+    if not isinstance(worst_cache, dict):
+        worst_cache = {}
+
+    achievements = _profile_json(data, "chess-study-achievements", [])
+    if not isinstance(achievements, list):
+        achievements = []
+
+    puzzles_solved = _profile_json(data, "chess-study-puzzles-solved", 0)
+    puzzle_best_streak = _profile_json(data, "chess-study-puzzle-best-streak", 0)
+
+    all_records = [r for r in [*game_history, *combat_history] if isinstance(r, dict)]
+    wins = sum(1 for r in all_records if r.get("outcome") == "win")
+    draws = sum(1 for r in all_records if r.get("outcome") == "draw")
+    losses = sum(1 for r in all_records if r.get("outcome") == "loss")
+    total_games = len(all_records)
+
+    best_difficulty_win = None
+    for record in all_records:
+        if record.get("outcome") != "win":
+            continue
+        try:
+            difficulty = int(round(float(record.get("difficulty"))))
+        except (TypeError, ValueError):
+            continue
+        best_difficulty_win = difficulty if best_difficulty_win is None else max(best_difficulty_win, difficulty)
+
+    human_captures = queens_captured = queens_lost = 0
+    white_games = black_games = 0
+    for record in game_history:
+        if not isinstance(record, dict):
+            continue
+        human_color = record.get("humanColor")
+        if human_color == "w":
+            white_games += 1
+        elif human_color == "b":
+            black_games += 1
+        for index, move in enumerate(record.get("moves") or []):
+            if not isinstance(move, dict):
+                continue
+            mover = "w" if index % 2 == 0 else "b"
+            if not move.get("captured"):
+                continue
+            captured_piece = move.get("capturedPiece")
+            if mover == human_color:
+                human_captures += 1
+                if captured_piece == "q":
+                    queens_captured += 1
+            elif captured_piece == "q":
+                queens_lost += 1
+
+    worst_move = None
+    analyzed_games = 0
+    for game_id, cached in worst_cache.items():
+        if not isinstance(cached, dict):
+            continue
+        worst = cached.get("worst")
+        if not isinstance(worst, dict):
+            continue
+        analyzed_games += 1
+        try:
+            loss = int(worst.get("loss"))
+        except (TypeError, ValueError):
+            continue
+        candidate = {
+            "gameId": game_id,
+            "played": worst.get("played"),
+            "suggested": worst.get("suggested"),
+            "loss": loss,
+            "moveNumber": worst.get("moveNumber"),
+            "severity": worst.get("severity"),
+            "analyzedAt": cached.get("analyzedAt"),
+        }
+        if worst_move is None or loss > worst_move["loss"]:
+            worst_move = candidate
+
+    rating_values = []
+    for point in rating_history:
+        if not isinstance(point, dict):
+            continue
+        try:
+            rating_values.append(int(round(float(point.get("rating")))))
+        except (TypeError, ValueError):
+            pass
+    current_rating = rating_data.get("rating")
     try:
-        history = json.loads(data.get("chess-study-game-history", "[]"))
-        games_played = len(history) if isinstance(history, list) else None
-    except (json.JSONDecodeError, AttributeError):
-        pass
+        current_rating = int(round(float(current_rating))) if current_rating is not None else None
+    except (TypeError, ValueError):
+        current_rating = None
+    if current_rating is not None:
+        rating_values.append(current_rating)
+
+    recent = sorted(all_records, key=lambda r: str(r.get("date") or ""), reverse=True)[:5]
 
     return {
-        "tournamentPoints": tournament_points,
-        "tournamentWins": tournament_wins,
-        "rating": rating,
-        "gamesPlayed": games_played,
+        "tournamentPoints": tournament.get("points"),
+        "tournamentWins": tournament.get("wins"),
+        "rating": current_rating,
+        "ratingGames": rating_data.get("games"),
+        "ratingPeak": max(rating_values) if rating_values else current_rating,
+        # Compatibilidad con la columna que ya existía: partidas normales
+        # guardadas en game-history, sin mezclar Combate.
+        "gamesPlayed": len(game_history),
+        "combatBattles": len(combat_history),
+        "totalGames": total_games,
+        "wins": wins,
+        "draws": draws,
+        "losses": losses,
+        "winPct": round((wins / total_games) * 100) if total_games else None,
+        "longestWinStreak": _longest_win_streak(all_records),
+        "bestDifficultyWin": best_difficulty_win,
+        "humanCaptures": human_captures,
+        "queensCaptured": queens_captured,
+        "queensLost": queens_lost,
+        "whiteGames": white_games,
+        "blackGames": black_games,
+        "analyzedGames": analyzed_games,
+        "worstMove": worst_move,
+        "achievements": len(achievements),
+        "puzzlesSolved": puzzles_solved if isinstance(puzzles_solved, (int, float)) else 0,
+        "puzzleBestStreak": puzzle_best_streak if isinstance(puzzle_best_streak, (int, float)) else 0,
+        "recentForm": [r.get("outcome") for r in recent if r.get("outcome") in {"win", "draw", "loss"}],
     }
-
-
-def _extract_detail_stats(profile: Optional[dict]) -> dict:
-    """Igual criterio defensivo que _extract_summary_stats — más campos,
-    para la vista de detalle de un usuario puntual (no la lista completa,
-    ahí alcanza con el resumen)."""
-    data = (profile or {}).get("data") or {}
-    detail = _extract_summary_stats(profile)
-
-    win_streak = None
-    best_win_streak = None
-    try:
-        tournament = json.loads(data.get("chess-study-tournament", "{}"))
-        win_streak = tournament.get("winStreak")
-        best_win_streak = tournament.get("bestWinStreak")
-    except (json.JSONDecodeError, AttributeError):
-        pass
-
-    achievements_count = None
-    try:
-        achievements = json.loads(data.get("chess-study-achievements", "[]"))
-        achievements_count = len(achievements) if isinstance(achievements, list) else None
-    except (json.JSONDecodeError, AttributeError):
-        pass
-
-    puzzles_solved = None
-    try:
-        puzzles_solved = int(data.get("chess-study-puzzles-solved", "0"))
-    except (ValueError, TypeError):
-        pass
-
-    detail.update({
-        "winStreak": win_streak,
-        "bestWinStreak": best_win_streak,
-        "achievementsCount": achievements_count,
-        "puzzlesSolved": puzzles_solved,
-    })
-    return detail
 
 
 @app.get("/api/admin/users")
@@ -492,105 +541,8 @@ async def admin_list_users(username: str = Depends(get_current_user)):
     return {"users": result}
 
 
-@app.get("/api/admin/users/{target_username}")
-async def admin_get_user(target_username: str, username: str = Depends(get_current_user)):
-    if not is_admin(username):
-        raise HTTPException(403, "No tienes permiso para ver esto.")
-
-    target = target_username.strip().lower()
-    user = await ustore.get_user(target)
-    if not user:
-        raise HTTPException(404, "Ese usuario no existe.")
-
-    profile = await pstore.get_profile(target)
-    return {
-        "username": target,
-        "createdAt": user.get("created_at"),
-        **_extract_detail_stats(profile),
-    }
-
-
-@app.patch("/api/admin/users/{target_username}")
-async def admin_edit_user(target_username: str, body: AdminEditUserRequest, username: str = Depends(get_current_user)):
-    """Edita campos puntuales del perfil de otro usuario — escribe
-    directo en los mismos JSON strings que ya usa profileBackup.js, para
-    que el propio usuario los vea sincronizados normal la próxima vez que
-    abra la app, sin ningún camino especial. La fecha de registro es la
-    única excepción — esa vive en la propia cuenta (users_store.py), no
-    en el perfil."""
-    if not is_admin(username):
-        raise HTTPException(403, "No tienes permiso para hacer esto.")
-
-    target = target_username.strip().lower()
-    user = await ustore.get_user(target)
-    if not user:
-        raise HTTPException(404, "Ese usuario no existe.")
-
-    if body.createdAt is not None:
-        try:
-            datetime.fromisoformat(body.createdAt)
-        except ValueError:
-            raise HTTPException(400, "Fecha de registro inválida — usa formato ISO (ej. 2026-01-15).")
-        await ustore.update_created_at(target, body.createdAt)
-        user = await ustore.get_user(target)  # releer, para que la respuesta final refleje el cambio
-
-    profile = await pstore.get_profile(target) or {}
-    data = dict(profile.get("data") or {})
-
-    if body.rating is not None:
-        try:
-            rating_data = json.loads(data.get("chess-study-player-rating", "{}"))
-        except (json.JSONDecodeError, AttributeError):
-            rating_data = {}
-        rating_data["rating"] = body.rating
-        data["chess-study-player-rating"] = json.dumps(rating_data)
-
-    if any(v is not None for v in (body.tournamentPoints, body.tournamentWins, body.winStreak, body.bestWinStreak)):
-        try:
-            tournament = json.loads(data.get("chess-study-tournament", "{}"))
-        except (json.JSONDecodeError, AttributeError):
-            tournament = {}
-        if body.tournamentPoints is not None:
-            tournament["points"] = body.tournamentPoints
-        if body.tournamentWins is not None:
-            tournament["wins"] = body.tournamentWins
-        if body.winStreak is not None:
-            tournament["winStreak"] = body.winStreak
-        if body.bestWinStreak is not None:
-            tournament["bestWinStreak"] = body.bestWinStreak
-        data["chess-study-tournament"] = json.dumps(tournament)
-
-    if body.puzzlesSolved is not None:
-        data["chess-study-puzzles-solved"] = str(body.puzzlesSolved)
-
-    await pstore.save_profile(target, {**profile, "data": data})
-    updated_profile = await pstore.get_profile(target)
-    return {
-        "username": target,
-        "createdAt": user.get("created_at"),
-        **_extract_detail_stats(updated_profile),
-    }
-
-
-@app.delete("/api/admin/users/{target_username}")
-async def admin_delete_user(target_username: str, username: str = Depends(get_current_user)):
-    if not is_admin(username):
-        raise HTTPException(403, "No tienes permiso para hacer esto.")
-
-    target = target_username.strip().lower()
-    if target == username.strip().lower():
-        raise HTTPException(400, "No puedes borrar tu propia cuenta desde acá.")
-
-    deleted = await ustore.delete_user(target)
-    if not deleted:
-        raise HTTPException(404, "Ese usuario no existe.")
-
-    await pstore.delete_profile(target)
-    return {"deleted": True, "username": target}
-
-
 @app.post("/api/games", status_code=201)
-async def create_game(body: NewGameRequest, _: Optional[str] = Depends(require_user_or_m2m)):
+async def create_game(body: NewGameRequest):
     if not is_valid_difficulty(body.difficulty):
         raise HTTPException(400, "Dificultad inválida. Tiene que ser un número entre 0 y 100.")
     if body.color not in ("w", "b", "random"):
@@ -628,7 +580,7 @@ async def create_game(body: NewGameRequest, _: Optional[str] = Depends(require_u
 
 
 @app.get("/api/games/{game_id}")
-async def get_game(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
+async def get_game(game_id: str):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -636,7 +588,7 @@ async def get_game(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)
 
 
 @app.get("/api/games/{game_id}/moves")
-async def legal_moves(game_id: str, square: str, _: Optional[str] = Depends(require_user_or_m2m)):
+async def legal_moves(game_id: str, square: str):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -660,7 +612,7 @@ async def legal_moves(game_id: str, square: str, _: Optional[str] = Depends(requ
 
 
 @app.get("/api/games/{game_id}/hint")
-async def hint(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
+async def hint(game_id: str):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -679,7 +631,7 @@ async def hint(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
 
 
 @app.post("/api/games/{game_id}/undo")
-async def undo(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
+async def undo(game_id: str):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -723,7 +675,7 @@ async def undo(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
 @app.post("/api/analyze")
 @limiter.limit("60/minute", exempt_when=has_valid_api_key)
 @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
-async def analyze(request: Request, body: AnalyzeRequest, _: Optional[str] = Depends(require_user_or_m2m)):
+async def analyze(request: Request, body: AnalyzeRequest):
     try:
         board = chess.Board(body.fen)
     except ValueError:
@@ -792,7 +744,7 @@ def sanitize_eval(score: Optional[float]) -> Optional[float]:
 @app.post("/api/analyze-move")
 @limiter.limit("180/minute", exempt_when=has_valid_api_key)
 @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
-async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest, _: Optional[str] = Depends(require_user_or_m2m)):
+async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest):
     try:
         board = chess.Board(body.fen)
     except ValueError:
@@ -830,7 +782,7 @@ async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest, _: O
 
 
 @app.post("/api/games/{game_id}/move")
-async def play_move(game_id: str, body: MoveRequest, _: Optional[str] = Depends(require_user_or_m2m)):
+async def play_move(game_id: str, body: MoveRequest):
     entry = await store.get_game(game_id)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
@@ -878,17 +830,16 @@ async def play_move(game_id: str, body: MoveRequest, _: Optional[str] = Depends(
 
 
 @app.delete("/api/games/{game_id}", status_code=204)
-async def delete_game(game_id: str, _: Optional[str] = Depends(require_user_or_m2m)):
+async def delete_game(game_id: str):
     existed = await store.delete_game(game_id)
     if not existed:
         raise HTTPException(404, "Partida no encontrada.")
     return None
 
 
-# Perfil único (sin cuentas): torneo, ejército de combate, rating, logros...
-# todo lo que el frontend ya sabe exportar/importar como JSON
-# (profileBackup.js) se guarda acá tal cual, sin que el backend necesite
-# entender su forma interna — es un passthrough puro.
+# Perfil por usuario autenticado: torneo, ejército, rating, logros, etc.
+# El backend lo trata como un passthrough; el dueño siempre sale del JWT,
+# nunca del body enviado por el cliente.
 
 @app.get("/api/profile")
 async def get_profile(username: str = Depends(get_current_user)):

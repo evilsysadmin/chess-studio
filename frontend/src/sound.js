@@ -1,3 +1,5 @@
+import { setProfileStorageItem } from './profileKeys.js';
+
 // sound.js — Efectos de sonido cortitos generados con la Web Audio API. Nada
 // de archivos de audio: son un par de "beeps" sintetizados al vuelo, así que
 // no suman peso ni dependen de una CDN. El estado de silencio se guarda en
@@ -21,7 +23,7 @@ export function isMuted() {
 }
 
 export function setMuted(muted) {
-  localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+  setProfileStorageItem(MUTE_KEY, muted ? '1' : '0');
 }
 
 function beep({ freq, duration, type = 'sine', gain = 0.06, delay = 0 }) {

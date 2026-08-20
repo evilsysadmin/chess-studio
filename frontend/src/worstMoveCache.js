@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // worstMoveCache.js — Cachea el resultado de analizar cada partida/batalla
 // para "Buscar mi peor jugada de siempre", matcheado por el id del
 // registro (`gameHistory.js`/`combatHistory.js` ya le dan un id estable a
@@ -22,9 +24,9 @@ export function loadWorstMoveCache() {
 }
 
 export function saveWorstMoveCache(cache) {
-  localStorage.setItem(KEY, JSON.stringify(cache));
+  setProfileStorageItem(KEY, JSON.stringify(cache));
 }
 
 export function clearWorstMoveCache() {
-  localStorage.removeItem(KEY);
+  removeProfileStorageItem(KEY);
 }

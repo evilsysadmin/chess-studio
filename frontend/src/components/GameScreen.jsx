@@ -5,13 +5,15 @@ import NotationPanel from './NotationPanel.jsx';
 import PromotionModal from './PromotionModal.jsx';
 import GameReportModal from './GameReportModal.jsx';
 import VoiceToggle from './VoiceToggle.jsx';
+import CpuPersona from './CpuPersona.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { announceCpuCapture, announceHumanCapture, announceCheck, announceCheckmate } from '../voiceCommentary.js';
-import { formatLongMove, castlingRookMove } from '../notation.js';
+import { formatLongMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
 import { formatClock } from '../clock.js';
+import { noteworthyComment } from '../cpuCommentary.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -77,6 +79,9 @@ export default function GameScreen({
   // Aviso de "la CPU ya jugó, te toca a ti".
   const [turnBanner, setTurnBanner] = useState(null);
   const turnBannerTimeout = useRef(null);
+  const [cpuComment, setCpuComment] = useState(null);
+  const [cpuCommentSeq, setCpuCommentSeq] = useState(0);
+  const cpuCommentTimeout = useRef(null);
   const reportedResultRef = useRef(false);
 
   // Pista: sugerencia del motor para la jugada del humano.
@@ -97,6 +102,7 @@ export default function GameScreen({
     setSelected(null);
     setPendingAnim(null);
     setTurnBanner(null);
+    setCpuComment(null);
     setHint(null);
     setHintsUsedThisGame(0);
     setCaptureFeedback(null);
@@ -160,11 +166,19 @@ export default function GameScreen({
     onGameEnd?.(outcome, game);
   }, [game.isGameOver, game.status, game.turn, humanColor, onGameEnd]);
 
-  function triggerAnim(from, to, capture = false, rookMove = null) {
+  function triggerAnim(from, to, capture = false) {
     animSeqRef.current += 1;
-    setPendingAnim({ from, to, capture, rookMove, seq: animSeqRef.current });
+    setPendingAnim({ from, to, capture, seq: animSeqRef.current });
     if (capture) playCaptureSound();
     else playMoveSound();
+  }
+
+  function showCpuComment(comment) {
+    if (!comment?.text) return;
+    setCpuComment(comment.text);
+    setCpuCommentSeq((n) => n + 1);
+    if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
+    cpuCommentTimeout.current = setTimeout(() => setCpuComment(null), 6500);
   }
 
   function announceCpuMove(move) {
@@ -177,6 +191,7 @@ export default function GameScreen({
   useEffect(() => () => {
     if (turnBannerTimeout.current) clearTimeout(turnBannerTimeout.current);
     if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
+    if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
   }, []);
 
   // Instancia local de chess.js sólo para calcular jugadas legales y resaltarlas,
@@ -195,8 +210,9 @@ export default function GameScreen({
     setHint(null);
 
     // 1) Aplicamos y animamos la jugada propia de inmediato, sin esperar al servidor.
+    const beforeHumanFen = boardFen;
     const optimistic = new Chess();
-    optimistic.load(boardFen);
+    optimistic.load(beforeHumanFen);
     let humanMove;
     try {
       humanMove = optimistic.move({ from, to, promotion: promotion || 'q' });
@@ -211,10 +227,13 @@ export default function GameScreen({
 
     setBoardFen(optimistic.fen());
     setLastMoveSquares({ from, to });
-    triggerAnim(from, to, !!humanMove.captured, castlingRookMove(humanMove.piece, from, to));
+    triggerAnim(from, to, !!humanMove.captured);
     setSelected(null);
     setTurnBanner(null);
     setBusy(true);
+
+    const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
+    showCpuComment(humanComment);
 
     // Incremento tipo Fischer: se suma al terminar la jugada, antes de que
     // arranque a correr el reloj del rival.
@@ -250,15 +269,12 @@ export default function GameScreen({
       setGame(updated);
 
       if (updated.lastMove && updated.lastMove.by === 'cpu') {
+        const cpuCommentary = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu');
+        showCpuComment(cpuCommentary);
         // 2) Llegó la respuesta de la CPU: animamos su jugada por separado.
         setBoardFen(updated.fen);
         setLastMoveSquares({ from: updated.lastMove.from, to: updated.lastMove.to });
-        triggerAnim(
-          updated.lastMove.from,
-          updated.lastMove.to,
-          !!updated.lastMove.captured,
-          castlingRookMove(updated.lastMove.piece, updated.lastMove.from, updated.lastMove.to)
-        );
+        triggerAnim(updated.lastMove.from, updated.lastMove.to, !!updated.lastMove.captured);
         if (hasClock && timeControl.increment) {
           const cpuColor = humanColor === 'w' ? 'b' : 'w';
           if (cpuColor === 'w') setWhiteTime((t) => (t ?? 0) + timeControl.increment);
@@ -358,6 +374,7 @@ export default function GameScreen({
     setBusy(true);
     setHint(null);
     setTurnBanner(null);
+    setCpuComment(null);
     try {
       const updated = await api.undoMove(game.id);
       setGame(updated);
@@ -432,6 +449,7 @@ export default function GameScreen({
             {statusText}
             <VoiceToggle />
           </div>
+          <CpuPersona key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} />
           {renderClock(topColor, topTime)}
           <Board
             fen={boardFen}

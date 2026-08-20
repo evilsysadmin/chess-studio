@@ -1,8 +1,9 @@
-"""db.py — Conexión a MongoDB (async, vía motor). Si no está disponible (por
-ejemplo corriendo `uvicorn main:app` a pelo, sin Docker Compose), quien la
-usa (game_store.py) cae automáticamente a un diccionario en memoria — así el
-desarrollo local sigue funcionando sin depender de tener Mongo instalado a
-mano.
+"""db.py — Conexión async a MongoDB.
+
+En desarrollo local, si MONGO_URL no está configurada, los stores pueden usar
+su respaldo en memoria. En producción, si MONGO_URL sí está configurada y la
+conexión falla, usuarios/perfiles deben fallar de forma explícita: tratar una
+caída de Mongo como "perfil vacío" puede destruir progreso válido.
 """
 
 import os
@@ -16,6 +17,16 @@ _db = None
 _warned = False
 
 
+class PersistentStorageUnavailable(RuntimeError):
+    """Mongo está configurado como persistencia real pero no está accesible."""
+
+
+def persistent_storage_required() -> bool:
+    # Se consulta el entorno en cada llamada para que tests/entornos que lo
+    # monkeypatchean no dependan del orden de imports.
+    return bool(os.environ.get("MONGO_URL"))
+
+
 async def get_db():
     global _db, _warned
     if _db is not None:
@@ -25,15 +36,16 @@ async def get_db():
         client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=3000)
         await client.admin.command("ping")
         _db = client[MONGO_DB_NAME]
-        print(f"Conectado a MongoDB en {MONGO_URL} (base: {MONGO_DB_NAME})")
+        # No imprimir MONGO_URL: en servicios gestionados suele contener
+        # usuario/contraseña y terminaría expuesta en los logs de Render.
+        print(f"Conectado a MongoDB (base: {MONGO_DB_NAME})")
         return _db
-    except Exception as e:
+    except Exception as exc:
         if not _warned:
             print(
-                f"No se pudo conectar a MongoDB ({e}). "
-                "Usando almacenamiento en memoria como respaldo — "
-                "las partidas no sobrevivirán a un reinicio."
+                f"No se pudo conectar a MongoDB ({type(exc).__name__}). "
+                "Se reintentará en la próxima operación."
             )
             _warned = True
-        _db = None  # deja la puerta abierta para reintentar en la próxima llamada
+        _db = None
         return None

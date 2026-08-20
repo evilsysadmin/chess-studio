@@ -1,105 +1,39 @@
 import React, { useEffect, useState } from 'react';
-import { fetchAdminUsers, fetchAdminUserDetail, editAdminUser, deleteAdminUser } from '../admin.js';
+import { fetchAdminUsers } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
-// El backend guarda/devuelve la fecha de registro como ISO completo
-// (con hora), pero <input type="date"> solo entiende "YYYY-MM-DD" —
-// esto recorta lo que sobra para precargar el campo.
-function toDateInputValue(isoString) {
-  if (!isoString) return '';
-  return isoString.slice(0, 10);
+const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
+
+function WorstMove({ move }) {
+  if (!move) return <span className="admin-muted">Sin analizar todavía</span>;
+  return (
+    <span>
+      <strong>{move.played || '—'}</strong>
+      {move.suggested ? <> · mejor: {move.suggested}</> : null}
+      {Number.isFinite(move.loss) ? <> · pérdida {move.loss} cp</> : null}
+    </span>
+  );
 }
 
 export default function AdminScreen({ onExit }) {
   useEscapeToClose(onExit);
   const [users, setUsers] = useState(null);
   const [error, setError] = useState(null);
-  const [selected, setSelected] = useState(null); // username seleccionado, o null
-  const [detail, setDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [editForm, setEditForm] = useState(null); // { rating, tournamentPoints, tournamentWins, createdAt, winStreak, bestWinStreak, puzzlesSolved } en edición
-  const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [expanded, setExpanded] = useState(null);
 
-  function loadUsers() {
+  useEffect(() => {
     fetchAdminUsers()
       .then(setUsers)
       .catch((e) => setError(e.message));
-  }
-
-  useEffect(() => { loadUsers(); }, []);
-
-  function selectUser(username) {
-    if (selected === username) {
-      setSelected(null);
-      setDetail(null);
-      setEditForm(null);
-      setConfirmingDelete(false);
-      return;
-    }
-    setSelected(username);
-    setDetail(null);
-    setEditForm(null);
-    setConfirmingDelete(false);
-    setDetailLoading(true);
-    fetchAdminUserDetail(username)
-      .then((d) => {
-        setDetail(d);
-        setEditForm({
-          rating: d.rating ?? '',
-          tournamentPoints: d.tournamentPoints ?? '',
-          tournamentWins: d.tournamentWins ?? '',
-          createdAt: toDateInputValue(d.createdAt),
-          winStreak: d.winStreak ?? '',
-          bestWinStreak: d.bestWinStreak ?? '',
-          puzzlesSolved: d.puzzlesSolved ?? '',
-        });
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setDetailLoading(false));
-  }
-
-  async function handleSaveEdit() {
-    setSaving(true);
-    setError(null);
-    try {
-      const changes = {};
-      if (editForm.rating !== '') changes.rating = Number(editForm.rating);
-      if (editForm.tournamentPoints !== '') changes.tournamentPoints = Number(editForm.tournamentPoints);
-      if (editForm.tournamentWins !== '') changes.tournamentWins = Number(editForm.tournamentWins);
-      if (editForm.createdAt !== '') changes.createdAt = `${editForm.createdAt}T00:00:00+00:00`;
-      if (editForm.winStreak !== '') changes.winStreak = Number(editForm.winStreak);
-      if (editForm.bestWinStreak !== '') changes.bestWinStreak = Number(editForm.bestWinStreak);
-      if (editForm.puzzlesSolved !== '') changes.puzzlesSolved = Number(editForm.puzzlesSolved);
-      const updated = await editAdminUser(selected, changes);
-      setDetail(updated);
-      loadUsers(); // refresca la lista para que la fila también muestre los valores nuevos
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleConfirmDelete() {
-    setError(null);
-    try {
-      await deleteAdminUser(selected);
-      setConfirmingDelete(false);
-      setSelected(null);
-      setDetail(null);
-      loadUsers();
-    } catch (e) {
-      setError(e.message);
-    }
-  }
+  }, []);
 
   return (
-    <div className="menu">
+    <div className="menu admin-screen">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section">
         <span className="section-label">Admin</span>
         <h2>Usuarios registrados</h2>
+        <p className="hint-text">Resumen general arriba; “Cotillear” abre el expediente ajedrecístico.</p>
 
         {error && <p className="error-text">{error}</p>}
         {!error && !users && <p className="hint-text">Cargando…</p>}
@@ -108,13 +42,6 @@ export default function AdminScreen({ onExit }) {
         )}
 
         {!error && users && users.length > 0 && (
-          // La tabla en sí puede necesitar scroll horizontal en pantallas
-          // angostas (son muchas columnas) — pero el panel de detalle/edición
-          // vive AFUERA de este contenedor a propósito, como bloque aparte más
-          // abajo. Antes estaba adentro de una fila de la tabla (colSpan), y
-          // heredaba el mismo scroll horizontal: los campos de edición
-          // terminaban enterrados fuera de vista, había que scrollear para
-          // usarlos.
           <div style={{ overflowX: 'auto' }}>
             <table className="admin-users-table">
               <thead>
@@ -122,136 +49,62 @@ export default function AdminScreen({ onExit }) {
                   <th>Usuario</th>
                   <th>Registrado</th>
                   <th>Rating</th>
-                  <th>Puntos torneo</th>
-                  <th>Victorias torneo</th>
-                  <th>Partidas jugadas</th>
+                  <th>Partidas</th>
+                  <th>V/T/D</th>
+                  <th>% victoria</th>
+                  <th>Peor jugada</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.username} className={selected === u.username ? 'admin-row-selected' : ''}>
-                    <td>{u.username}</td>
-                    <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
-                    <td>{u.rating ?? '—'}</td>
-                    <td>{u.tournamentPoints ?? '—'}</td>
-                    <td>{u.tournamentWins ?? '—'}</td>
-                    <td>{u.gamesPlayed ?? '—'}</td>
-                    <td>
-                      <button type="button" className="backup-link" style={{ margin: 0 }} onClick={() => selectUser(u.username)}>
-                        {selected === u.username ? 'Cerrar' : 'Ver detalle'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {users.map((u) => {
+                  const isOpen = expanded === u.username;
+                  return (
+                    <React.Fragment key={u.username}>
+                      <tr>
+                        <td>{u.username}</td>
+                        <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
+                        <td>{u.rating ?? '—'}{u.ratingPeak && u.ratingPeak !== u.rating ? ` (máx. ${u.ratingPeak})` : ''}</td>
+                        <td>{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
+                        <td>{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
+                        <td>{u.winPct == null ? '—' : `${u.winPct}%`}</td>
+                        <td className="admin-worst-cell"><WorstMove move={u.worstMove} /></td>
+                        <td>
+                          <button className="admin-peek-button" onClick={() => setExpanded(isOpen ? null : u.username)}>
+                            {isOpen ? 'Cerrar' : 'Cotillear'}
+                          </button>
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="admin-detail-row">
+                          <td colSpan="8">
+                            <div className="admin-detail-grid">
+                              <div><span>Rating / partidas ELO</span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>
+                              <div><span>Pico de rating</span><strong>{u.ratingPeak ?? '—'}</strong></div>
+                              <div><span>Racha máx. victorias</span><strong>{u.longestWinStreak ?? 0}</strong></div>
+                              <div><span>Victoria más difícil</span><strong>{u.bestDifficultyWin == null ? '—' : `CPU ${u.bestDifficultyWin}`}</strong></div>
+                              <div><span>Partidas normales</span><strong>{u.gamesPlayed ?? 0}</strong></div>
+                              <div><span>Batallas combate</span><strong>{u.combatBattles ?? 0}</strong></div>
+                              <div><span>Capturas humanas</span><strong>{u.humanCaptures ?? 0}</strong></div>
+                              <div><span>Damas capturadas</span><strong>{u.queensCaptured ?? 0}</strong></div>
+                              <div><span>Damas perdidas</span><strong>{u.queensLost ?? 0}</strong></div>
+                              <div><span>Blancas / negras</span><strong>{u.whiteGames ?? 0} / {u.blackGames ?? 0}</strong></div>
+                              <div><span>Puntos / victorias torneo</span><strong>{u.tournamentPoints ?? '—'} / {u.tournamentWins ?? '—'}</strong></div>
+                              <div><span>Partidas analizadas</span><strong>{u.analyzedGames ?? 0}</strong></div>
+                              <div><span>Puzzles resueltos</span><strong>{u.puzzlesSolved ?? 0}</strong></div>
+                              <div><span>Mejor racha puzzles</span><strong>{u.puzzleBestStreak ?? 0}</strong></div>
+                              <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>
+                              <div><span>Forma reciente</span><strong>{(u.recentForm || []).map((r) => OUTCOME_LABEL[r]).join(' · ') || '—'}</strong></div>
+                              <div className="admin-detail-wide"><span>Peor jugada registrada</span><strong><WorstMove move={u.worstMove} /></strong></div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {selected && (
-          <div className="menu-section" style={{ marginTop: '1rem' }}>
-            <h3 style={{ fontSize: '1rem' }}>{selected}</h3>
-
-            {detailLoading && <p className="hint-text">Cargando detalle…</p>}
-
-            {!detailLoading && detail && editForm && (
-              <>
-                <p className="hint-text">
-                  Racha de victorias: <b>{detail.winStreak ?? '—'}</b> · mejor racha:{' '}
-                  <b>{detail.bestWinStreak ?? '—'}</b> · logros desbloqueados:{' '}
-                  <b>{detail.achievementsCount ?? '—'}</b> · puzzles resueltos:{' '}
-                  <b>{detail.puzzlesSolved ?? '—'}</b>
-                </p>
-
-                <div className="admin-edit-fields">
-                  <label className="field-label">
-                    Rating
-                    <input
-                      type="number"
-                      className="text-input"
-                      value={editForm.rating}
-                      onChange={(e) => setEditForm({ ...editForm, rating: e.target.value })}
-                    />
-                  </label>
-                  <label className="field-label">
-                    Puntos de torneo
-                    <input
-                      type="number"
-                      className="text-input"
-                      value={editForm.tournamentPoints}
-                      onChange={(e) => setEditForm({ ...editForm, tournamentPoints: e.target.value })}
-                    />
-                  </label>
-                  <label className="field-label">
-                    Victorias de torneo
-                    <input
-                      type="number"
-                      className="text-input"
-                      value={editForm.tournamentWins}
-                      onChange={(e) => setEditForm({ ...editForm, tournamentWins: e.target.value })}
-                    />
-                  </label>
-                  <label className="field-label">
-                    Fecha de registro
-                    <input
-                      type="date"
-                      className="text-input"
-                      value={editForm.createdAt}
-                      onChange={(e) => setEditForm({ ...editForm, createdAt: e.target.value })}
-                    />
-                  </label>
-                  <label className="field-label">
-                    Racha de victorias
-                    <input
-                      type="number"
-                      className="text-input"
-                      value={editForm.winStreak}
-                      onChange={(e) => setEditForm({ ...editForm, winStreak: e.target.value })}
-                    />
-                  </label>
-                  <label className="field-label">
-                    Mejor racha
-                    <input
-                      type="number"
-                      className="text-input"
-                      value={editForm.bestWinStreak}
-                      onChange={(e) => setEditForm({ ...editForm, bestWinStreak: e.target.value })}
-                    />
-                  </label>
-                  <label className="field-label">
-                    Puzzles resueltos
-                    <input
-                      type="number"
-                      className="text-input"
-                      value={editForm.puzzlesSolved}
-                      onChange={(e) => setEditForm({ ...editForm, puzzlesSolved: e.target.value })}
-                    />
-                  </label>
-                </div>
-
-                <div className="game-controls" style={{ marginTop: '0.8rem' }}>
-                  <button type="button" className="primary-btn" disabled={saving} onClick={handleSaveEdit}>
-                    {saving ? 'Guardando…' : 'Guardar cambios'}
-                  </button>
-
-                  {confirmingDelete ? (
-                    <>
-                      <button type="button" className="danger-btn" onClick={handleConfirmDelete}>
-                        Sí, borrar la cuenta — no hay vuelta atrás
-                      </button>
-                      <button type="button" className="secondary-btn" onClick={() => setConfirmingDelete(false)}>
-                        No, dejarlo
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" className="danger-btn" onClick={() => setConfirmingDelete(true)}>
-                      Borrar cuenta
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
           </div>
         )}
       </div>

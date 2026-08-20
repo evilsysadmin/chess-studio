@@ -1,7 +1,8 @@
-// tournament.js — Progreso del modo torneo. Se guarda en localStorage porque
-// todavía no hay base de datos (fase 2 del roadmap); el día que la haya,
-// estas mismas funciones pueden pasar a llamar a la API en vez de tocar
-// localStorage directamente.
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
+// tournament.js — Progreso del modo torneo. Se guarda en la caché local síncrona y la capa de perfil la
+// sincroniza con MongoDB. Así las funciones siguen siendo rápidas y simples
+// para React sin convertir cada cambio de puntos en una llamada bloqueante.
 
 const STORAGE_KEY = 'chess-study-tournament';
 export const POINTS_PER_LEVEL = 50;
@@ -20,11 +21,11 @@ export function loadTournament() {
 }
 
 export function saveTournament(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  setProfileStorageItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 export function resetTournament() {
-  localStorage.removeItem(STORAGE_KEY);
+  removeProfileStorageItem(STORAGE_KEY);
   return { ...EMPTY_STATE };
 }
 

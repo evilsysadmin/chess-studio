@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // tournamentRewards.js — Recompensas cosméticas por nivel de Torneo:
 // títulos junto al nombre de nivel, y skins de color alternativas para
 // las piezas. Se desbloquean solas al subir de nivel — no hace falta
@@ -50,7 +52,7 @@ export function loadSelectedTitle() {
 }
 
 export function saveSelectedTitle(id) {
-  localStorage.setItem(TITLE_KEY, id);
+  setProfileStorageItem(TITLE_KEY, id);
 }
 
 export function loadSelectedSkin() {
@@ -58,13 +60,13 @@ export function loadSelectedSkin() {
 }
 
 export function saveSelectedSkin(id) {
-  localStorage.setItem(SKIN_KEY, id);
+  setProfileStorageItem(SKIN_KEY, id);
 }
 
 // Vuelve a los valores por defecto — se usa junto con el reset de nivel de
 // torneo: no tiene sentido dejar elegido un título/skin que ya no está
 // desbloqueado si el nivel vuelve a 1.
 export function resetRewardsSelection() {
-  localStorage.removeItem(TITLE_KEY);
-  localStorage.removeItem(SKIN_KEY);
+  removeProfileStorageItem(TITLE_KEY);
+  removeProfileStorageItem(SKIN_KEY);
 }

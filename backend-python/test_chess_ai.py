@@ -15,9 +15,8 @@ from chess_ai import (
 
 def test_evaluate_board_symmetric_at_start():
     board = chess.Board()
-    # Posición inicial: material simétrico, la única asimetría es el bono de
-    # movilidad (le toca a blancas, que tienen 20 jugadas legales).
-    assert evaluate_board(board) == board.legal_moves.count()
+    # Posición inicial: material, estructura y movilidad simétricos.
+    assert evaluate_board(board) == 0
 
 
 def test_evaluate_board_checkmate_is_infinite():
@@ -50,10 +49,6 @@ def test_settings_for_level_clamps_out_of_range():
 
 
 def test_get_cpu_move_finds_mate_in_one():
-    # Dificultad 100 a propósito, no 95: es la ÚNICA con randomness exactamente
-    # en 0 (settings_for_level: 0.55*(1-nivel/100)). A 95 daba ~2.75% de chance
-    # de que la CPU jugara al azar en vez de encontrar el mate -- el test era
-    # intermitente, fallaba más o menos 1 de cada 36 corridas.
     board = chess.Board("6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1")
     move = get_cpu_move(board, 100)
     assert move["san"] == "Ra8#"

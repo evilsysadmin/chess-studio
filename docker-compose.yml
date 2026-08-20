@@ -14,6 +14,7 @@ services:
       PORT: 4000
       MONGO_URL: mongodb://mongo:27017
       MONGO_DB_NAME: chess_study
+      # Desarrollo local: cualquier cuenta autenticada es admin.
       ADMIN_USERNAMES: "*"
     depends_on:
       - mongo

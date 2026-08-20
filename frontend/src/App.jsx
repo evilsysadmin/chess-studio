@@ -28,8 +28,9 @@ import { computeInsights } from './insights.js';
 import InsightsScreen from './components/InsightsScreen.jsx';
 import { timeControlById } from './clock.js';
 import { checkAchievements } from './achievements.js';
-import { pullProfileFromServer, pushProfileToServer } from './profileBackup.js';
-import { isLoggedIn, fetchMe } from './auth.js';
+import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
+import { isLoggedIn, fetchMe, logout, watchSessionIdentity } from './auth.js';
+import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import AdminScreen from './components/AdminScreen.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 
@@ -38,7 +39,6 @@ import LoginScreen from './components/LoginScreen.jsx';
 // del servidor (que no sabe nada de esta marca, es solo del cliente), así
 // que si viviera ahí se perdería en la primera jugada.
 const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
-const MIRROR_STORAGE_KEY = 'chess-study-active-game-mirror';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -48,7 +48,6 @@ function AppInner({ isAdminUser }) {
   const [error, setError] = useState(null);
   const [hasSavedGame, setHasSavedGame] = useState(!!localStorage.getItem(STORAGE_KEY));
   const [learningMode, setLearningMode] = useState(() => localStorage.getItem(LEARNING_STORAGE_KEY) === '1');
-  const [mirrorMode, setMirrorMode] = useState(() => localStorage.getItem(MIRROR_STORAGE_KEY) === '1');
 
   const [tournament, setTournament] = useState(() => loadTournament());
   const [tournamentGame, setTournamentGame] = useState(null);
@@ -122,6 +121,26 @@ function AppInner({ isAdminUser }) {
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
 
+  // Cualquier helper de progreso emite este evento al cambiar la caché.
+  // Persistimos con debounce para no hacer un PUT por cada punto de XP, y
+  // hacemos un flush adicional al ocultar la pestaña para reducir la ventana
+  // de pérdida si el usuario cierra el navegador justo después de jugar.
+  useEffect(() => {
+    const handleProfileChanged = () => scheduleProfileSync();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        pushProfileToServer({ keepalive: true });
+      }
+    };
+    window.addEventListener(PROFILE_CHANGED_EVENT, handleProfileChanged);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener(PROFILE_CHANGED_EVENT, handleProfileChanged);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      cancelScheduledProfileSync();
+    };
+  }, []);
+
   useEffect(() => {
     if (game) localStorage.setItem(STORAGE_KEY, game.id);
   }, [game]);
@@ -129,10 +148,6 @@ function AppInner({ isAdminUser }) {
   useEffect(() => {
     localStorage.setItem(LEARNING_STORAGE_KEY, learningMode ? '1' : '0');
   }, [learningMode]);
-
-  useEffect(() => {
-    localStorage.setItem(MIRROR_STORAGE_KEY, mirrorMode ? '1' : '0');
-  }, [mirrorMode]);
 
   useEffect(() => {
     setRating(loadRating());
@@ -151,14 +166,9 @@ function AppInner({ isAdminUser }) {
     setLoading(true);
     setError(null);
     try {
-      // En modo Espejo la dificultad YA está calibrada a propósito (más baja
-      // cuanto más te equivocas tú) — aplicar el hándicap dinámico encima
-      // compensaría dos veces la misma brecha, dejando una CPU mucho más
-      // floja de lo que el propio modo Espejo pretendía.
-      const handicap = opts?.mirror ? null : handicapForGap(rating.rating, difficulty);
+      const handicap = handicapForGap(rating.rating, difficulty);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null);
       setLearningMode(!!opts?.learning);
-      setMirrorMode(!!opts?.mirror);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
       setGame(created);
       setHasSavedGame(true);
@@ -179,7 +189,6 @@ function AppInner({ isAdminUser }) {
       const found = await api.getGame(savedId);
       setGame(found);
       setLearningMode(localStorage.getItem(LEARNING_STORAGE_KEY) === '1');
-      setMirrorMode(localStorage.getItem(MIRROR_STORAGE_KEY) === '1');
       // El reloj vive solo en memoria del navegador (no se guarda en el
       // servidor) — al continuar una partida no hay forma de saber cuánto
       // tiempo quedaba, así que arranca sin reloj.
@@ -197,24 +206,17 @@ function AppInner({ isAdminUser }) {
   function handleExitGame() {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEARNING_STORAGE_KEY);
-    localStorage.removeItem(MIRROR_STORAGE_KEY);
     setHasSavedGame(false);
     setGame(null);
     setLearningMode(false);
-    setMirrorMode(false);
     setView('menu');
   }
 
   // Las partidas normales (menú "Nueva partida") también cuentan para el
   // rating tipo ELO — cualquier partida contra una CPU de dificultad
-  // conocida, no hace falta que sea de torneo. "Partida de práctica" y
-  // "Espejo de ti mismo" quedan afuera a propósito: en Práctica las
-  // pistas son gratis e ilimitadas, así que ganar no dice mucho de tu
-  // nivel jugando sin ayuda; en Espejo, la CPU está calibrada A PROPÓSITO
-  // para jugar peor que un rival "justo" (mientras más te equivocas tú,
-  // más floja la CPU) — dejarla subir el rating premiaría ganarle a un
-  // rival deliberadamente débil, exactamente lo contrario de lo que un
-  // rating debería medir (vencer a alguien mejor, no a alguien peor).
+  // conocida, no hace falta que sea de torneo. "Partida de práctica" queda
+  // afuera a propósito: ahí las pistas son gratis e ilimitadas, así que
+  // ganar no dice mucho de tu nivel jugando sin ayuda.
   //
   // También se guardan en el historial (igual que las de torneo), para que
   // la "pista inversa" del Historial funcione acá también, no solo en
@@ -222,7 +224,7 @@ function AppInner({ isAdminUser }) {
   function handleCasualGameEnd(outcome, finishedGame) {
     if (!finishedGame) return;
 
-    if (!learningMode && !mirrorMode) {
+    if (!learningMode) {
       const score = outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
       setRating((prev) => {
         const next = updateRating(prev, finishedGame.difficulty, score);
@@ -477,36 +479,52 @@ function AppInner({ isAdminUser }) {
   );
 }
 
-// Envuelve AppInner con la sincronización inicial: al arrancar, intenta
-// bajar el perfil guardado en el backend (Mongo) y pisar localStorage ANTES
-// de que AppInner monte y sus `useState(() => loadX())` lean esos valores
-// — por eso es un componente aparte, no un simple `if` dentro de AppInner:
-// los hooks de useState solo ejecutan su inicializador en el primer render,
-// así que hace falta que ese primer render de AppInner ocurra DESPUÉS de la
-// sincronización, no antes. Si no hay backend disponible (por ejemplo
-// corriendo el frontend solo, sin Docker Compose), sigue con lo que haya
-// localmente — no bloquea el uso normal de la app.
+// Envuelve AppInner con la sincronización inicial. Mongo se lee ANTES de
+// montar AppInner, porque sus useState(() => loadX()) solo leen localStorage
+// una vez. Si la API/Mongo no está disponible no montamos la aplicación con
+// una caché potencialmente perteneciente a otra identidad.
 function App() {
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [ready, setReady] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+
+  useEffect(() => {
+    // Una sesión puede cambiar desde otra pestaña porque localStorage es
+    // compartido. Recargar desmonta inmediatamente cualquier estado React
+    // perteneciente a la identidad anterior antes de que pueda sincronizarse.
+    return watchSessionIdentity(() => window.location.reload());
+  }, [loggedIn]);
 
   useEffect(() => {
     if (!loggedIn) return;
     let cancelled = false;
-    Promise.all([pullProfileFromServer(), fetchMe()]).then(([, me]) => {
+    setReady(false);
+    setSyncError(null);
+    setIsAdminUser(false);
+
+    Promise.all([pullProfileFromServer(), fetchMe()]).then(([profile, me]) => {
       if (cancelled) return;
+
+      if (profile.status === 'unauthorized') {
+        // Token caducado/corrupto: evitar un bucle infinito de recargas.
+        logout();
+        setLoggedIn(false);
+        return;
+      }
+
+      if (profile.status === 'offline') {
+        setSyncError('No se pudo leer tu perfil desde MongoDB. No se ha abierto la caché local para evitar mezclar o sobrescribir cuentas.');
+        return;
+      }
+
       setIsAdminUser(!!me?.isAdmin);
       setReady(true);
     });
+
     return () => { cancelled = true; };
   }, [loggedIn]);
 
-  // Música ambiental a nivel de toda la app, no solo el menú — arranca una
-  // sola vez al cargar y sigue sonando en cualquier pantalla, hasta que se
-  // mutee con el botón (cada nota individual ya chequea isMuted() por su
-  // cuenta en sound.js, así que mutear no necesita parar este efecto,
-  // solo silencia lo que sigue sonando de fondo).
   useEffect(() => {
     startAmbientMusic();
     return () => stopAmbientMusic();
@@ -519,9 +537,22 @@ function App() {
   if (!ready) {
     return (
       <div className="app-shell">
-        <p className="hint-text" style={{ margin: '3rem auto', textAlign: 'center' }}>
-          Sincronizando tu perfil…
-        </p>
+        <div className="menu" style={{ maxWidth: 560, margin: '3rem auto' }}>
+          <div className="menu-section">
+            <span className="eyebrow">Escuela de Ajedrez</span>
+            <h2>{syncError ? 'No se pudo sincronizar' : 'Sincronizando tu perfil…'}</h2>
+            {syncError ? (
+              <>
+                <p className="error-text">{syncError}</p>
+                <button type="button" className="primary-btn" onClick={() => window.location.reload()}>
+                  Reintentar
+                </button>
+              </>
+            ) : (
+              <p className="hint-text">Cargando tu progreso antes de abrir la aplicación.</p>
+            )}
+          </div>
+        </div>
       </div>
     );
   }

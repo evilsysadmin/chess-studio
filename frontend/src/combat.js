@@ -124,13 +124,9 @@ function combatPower(piece) {
 // Probabilidad de que el ataque CONECTE (o sea, que la captura se concrete).
 // Base: proporción entre el poder del atacante y el poder combinado de los
 // dos (fórmula clásica de "precisión vs. evasión"). Encima se suman el bono
-// por casilla de partida y el bono por fuego concentrado. Acotada entre 40%
-// y 90% (antes 20%-90%) — con 20% de piso, un enfrentamiento muy desparejo
-// (ej. peón atacando dama) daba ~19% de por sí, básicamente pegado al piso:
-// quien atacaba sabiendo ese número prácticamente ya sabía que iba a
-// perder la pieza 8 de cada 10 veces, lo cual no se sentía como un riesgo
-// razonable sino como tirar la pieza directamente. 40% deja un margen real
-// de "podría salir bien" incluso en el peor enfrentamiento posible.
+// por casilla de partida y el bono por fuego concentrado. Acotada entre 20%
+// y 90%: nunca es un resultado garantizado, pero tampoco una apuesta casi
+// imposible.
 export function hitChance(attacker, defender, focusStreak = 0) {
   if (!defender || defender.type === 'k') return 1; // el rey nunca esquiva (y nunca debería llegar a ser el defensor real)
   if (attacker.type === 'k') return 1; // el rey también acierta siempre cuando ataca: rara vez lo hace, y es demasiado valioso para dejarlo a la suerte
@@ -147,7 +143,7 @@ export function hitChance(attacker, defender, focusStreak = 0) {
     chance += Math.min(focusStreak, FOCUS_MAX_STACKS) * FOCUS_BONUS_PER_STACK;
   }
 
-  return Math.min(0.9, Math.max(0.4, chance));
+  return Math.min(0.9, Math.max(0.2, chance));
 }
 
 // Construye el registro inicial de piezas (una entrada por cada una de las

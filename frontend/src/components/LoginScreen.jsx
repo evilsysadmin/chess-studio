@@ -6,7 +6,6 @@ export default function LoginScreen({ onLoggedIn }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -15,17 +14,6 @@ export default function LoginScreen({ onLoggedIn }) {
   // usuario termina de escribir sus credenciales.
   useEffect(() => {
     wakeBackend();
-
-    // Un link tipo "tu-app.com/?invite=XYZ" precarga el código y salta
-    // directo al modo de registro — así el link que se comparte con
-    // conocidos hace lo que promete, no hace falta que además adivinen
-    // que tienen que cambiar de pestaña a "Crear cuenta" a mano.
-    const params = new URLSearchParams(window.location.search);
-    const invite = params.get('invite');
-    if (invite) {
-      setInviteCode(invite);
-      setMode('register');
-    }
   }, []);
 
   async function handleSubmit(e) {
@@ -33,7 +21,7 @@ export default function LoginScreen({ onLoggedIn }) {
     setError(null);
     setLoading(true);
     try {
-      if (mode === 'register') await register(username, password, inviteCode);
+      if (mode === 'register') await register(username, password);
       else await login(username, password);
       onLoggedIn();
     } catch (err) {
@@ -84,20 +72,6 @@ export default function LoginScreen({ onLoggedIn }) {
               required
               style={{ width: '100%', marginBottom: '0.7rem' }}
             />
-
-            {mode === 'register' && (
-              <>
-                <label className="field-label" htmlFor="login-invite">Código de invitación</label>
-                <input
-                  id="login-invite"
-                  type="text"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  className="text-input"
-                  style={{ width: '100%', marginBottom: '0.7rem' }}
-                />
-              </>
-            )}
 
             {error && <p className="error-text" style={{ marginBottom: '0.7rem' }}>{error}</p>}
 

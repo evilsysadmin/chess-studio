@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // combatRoster.js — Progreso de TU ejército del Modo Combate ENTRE
 // partidas (localStorage, todavía sin base de datos para esto).
 //
@@ -61,11 +63,11 @@ function pruneUnrevivablePieces(state) {
 }
 
 export function saveRoster(state) {
-  localStorage.setItem(ROSTER_KEY, JSON.stringify(state));
+  setProfileStorageItem(ROSTER_KEY, JSON.stringify(state));
 }
 
 export function resetRoster() {
-  localStorage.removeItem(ROSTER_KEY);
+  removeProfileStorageItem(ROSTER_KEY);
   return emptyState();
 }
 

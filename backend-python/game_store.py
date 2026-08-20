@@ -10,7 +10,9 @@ guardadas.
 from datetime import datetime, timezone
 from typing import Optional
 
-from db import get_db
+from pymongo.errors import PyMongoError
+
+from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
 COLLECTION = "games"
 _memory_store: dict[str, dict] = {}
@@ -18,14 +20,21 @@ _memory_store: dict[str, dict] = {}
 
 async def _get_collection():
     db = await get_db()
-    return db[COLLECTION] if db is not None else None
+    if db is not None:
+        return db[COLLECTION]
+    if persistent_storage_required():
+        raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.")
+    return None
 
 
 async def create_game(game_id: str, data: dict) -> dict:
     doc = {"_id": game_id, **data, "updatedAt": datetime.now(timezone.utc)}
     col = await _get_collection()
     if col is not None:
-        await col.insert_one(doc)
+        try:
+            await col.insert_one(doc)
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
     else:
         _memory_store[game_id] = doc
     return doc
@@ -34,7 +43,10 @@ async def create_game(game_id: str, data: dict) -> dict:
 async def get_game(game_id: str) -> Optional[dict]:
     col = await _get_collection()
     if col is not None:
-        return await col.find_one({"_id": game_id})
+        try:
+            return await col.find_one({"_id": game_id})
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
     return _memory_store.get(game_id)
 
 
@@ -42,7 +54,10 @@ async def update_game(game_id: str, data: dict) -> dict:
     doc = {"_id": game_id, **data, "updatedAt": datetime.now(timezone.utc)}
     col = await _get_collection()
     if col is not None:
-        await col.replace_one({"_id": game_id}, doc, upsert=True)
+        try:
+            await col.replace_one({"_id": game_id}, doc, upsert=True)
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
     else:
         _memory_store[game_id] = doc
     return doc
@@ -51,8 +66,11 @@ async def update_game(game_id: str, data: dict) -> dict:
 async def delete_game(game_id: str) -> bool:
     col = await _get_collection()
     if col is not None:
-        result = await col.delete_one({"_id": game_id})
-        return result.deleted_count > 0
+        try:
+            result = await col.delete_one({"_id": game_id})
+            return result.deleted_count > 0
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
     if game_id in _memory_store:
         del _memory_store[game_id]
         return True

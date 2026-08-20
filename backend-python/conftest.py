@@ -11,6 +11,11 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def no_real_mongo(monkeypatch):
+    # La suite debe ser determinista incluso si el runner/CI define MONGO_URL.
+    # Los tests que quieren simular almacenamiento persistente lo activan
+    # explícitamente mediante monkeypatch en el store correspondiente.
+    monkeypatch.delenv("MONGO_URL", raising=False)
+
     async def fake_get_db():
         return None
 

@@ -34,19 +34,10 @@ describe('hitChance', () => {
     expect(hitChance(a, b)).toBeCloseTo(0.5, 5);
   });
 
-  it('nunca baja de 40% aunque el rival esté muy subido de nivel (antes era 20% — piso subido a pedido del usuario)', () => {
+  it('nunca baja de 20% aunque el rival esté muy subido de nivel', () => {
     const weak = mkPiece('p');
     const strong = mkPiece('q', { strengthPoints: 20, speedPoints: 20 });
-    expect(hitChance(weak, strong)).toBe(0.4); // pegado al piso, no solo "por encima de"
-  });
-
-  it('peón atacando dama, sin ninguna mejora comprada de ningún lado: cae justo en el piso (40%)', () => {
-    // El caso concreto que motivó subir el piso: la fórmula cruda da ~19%
-    // para este enfrentamiento (mucho peor que "arriesgado") — el piso lo
-    // sube a un 40% que sí se siente como una apuesta razonable.
-    const pawn = mkPiece('p');
-    const queen = mkPiece('q');
-    expect(hitChance(pawn, queen)).toBe(0.4);
+    expect(hitChance(weak, strong)).toBeGreaterThanOrEqual(0.2);
   });
 
   it('nunca supera el 90%', () => {

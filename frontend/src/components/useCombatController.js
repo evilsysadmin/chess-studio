@@ -1,0 +1,575 @@
+import { useMemo, useRef, useState } from 'react';
+import { Chess } from 'chess.js';
+import { useEscapeToClose } from '../useEscapeToClose.js';
+import { api } from '../api.js';
+import { playMoveSound, playCaptureSound, playMissSound, playSuccessSound } from '../sound.js';
+import {
+  BASE_STATS,
+  createInitialRegistry,
+  resolveCombatMove,
+  hitChance,
+  capturedSquareFor,
+  derivedLevel,
+  buyStatPoint,
+  autoLevelUp,
+} from '../combat.js';
+import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces } from '../combatRoster.js';
+import { saveCombatBattle } from '../combatHistory.js';
+import { checkAchievements } from '../achievements.js';
+import { loadRating, ratingProgress, difficultyForRating } from '../playerRating.js';
+
+const STATUS_LABELS = {
+  playing: '',
+  check: 'Jaque',
+  checkmate: 'Jaque mate',
+  stalemate: 'Tablas por ahogado',
+  draw: 'Tablas',
+  repetition: 'Tablas por repetición',
+};
+
+// Tiempo (ms) antes de que la CPU juegue, tanto en su primera jugada como
+// en las siguientes — para que se note que "está pensando".
+const CPU_DELAY_MS = 500;
+
+function resolveHumanColor(choice) {
+  if (choice === 'w' || choice === 'b') return choice;
+  return Math.random() < 0.5 ? 'w' : 'b';
+}
+
+function buildLogEntry(result, humanColor) {
+  if (!result.isCapture) return null;
+  const { attacker, defender, hit, chance, survivalXp } = result;
+  if (!attacker || !defender) return null; // red de seguridad: sin datos suficientes, no arriesgamos un crash
+  const attackerIsHuman = attacker.color === humanColor;
+  const attackerName = BASE_STATS[attacker.type].name;
+  const defenderName = BASE_STATS[defender.type].name;
+  const pct = Math.round(chance * 100);
+
+  if (hit) {
+    const subject = attackerIsHuman ? 'Tu' : 'La CPU: su';
+    const text = `${subject} ${attackerName} (nv.${derivedLevel(attacker)}) elimina ${defenderName} (nv.${derivedLevel(defender)}) · ${pct}% de acierto`;
+    return { text, tone: attackerIsHuman ? 'good' : 'bad' };
+  }
+
+  const attackerLabel = attackerIsHuman ? 'tu' : 'la CPU';
+  const text = `${defenderName} (nv.${derivedLevel(defender)}) esquiva el ataque de ${attackerLabel} ${attackerName} · +${survivalXp} XP por sobrevivir`;
+  return { text, tone: defender.color === humanColor ? 'good' : 'neutral' };
+}
+
+
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleResult, difficultyOverride, forcedHumanColor }) {
+  const [phase, setPhase] = useState('setup'); // 'setup' | 'battle' | 'over'
+  // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
+  // historial de Combate. No es un historial SAN normal (los fallos/esquives
+  // NO mueven la pieza, solo pasan el turno — eso rompe el supuesto de
+  // "alternancia estricta blanco/negro" del que depende chess.js para
+  // reproducir una partida jugada a jugada), así que se guarda el FEN
+  // resultante de cada paso directamente, en vez de reconstruirlo después.
+  const [combatLog, setCombatLog] = useState([]);
+  const [battleRecap, setBattleRecap] = useState(null);
+  // Dificultad automática, según "cómo te ve la CPU" (tu rating) — antes
+  // era un slider que elegías tú mismo, sin relación con tu progreso
+  // real. Se recalcula cada vez que se monta la pantalla (no es reactivo
+  // a mitad de partida a propósito: el rival no debería cambiar de
+  // fuerza mientras estás peleando).
+  const rating = useMemo(() => loadRating(), []);
+  const ratingInfo = useMemo(() => ratingProgress(rating.rating), [rating]);
+  const difficulty = useMemo(
+    () => (difficultyOverride != null ? difficultyOverride : difficultyForRating(rating.rating)),
+    [rating, difficultyOverride]
+  );
+  const [colorChoice, setColorChoice] = useState('random');
+  const [autoLevelUpEnabled, setAutoLevelUpEnabled] = useState(true);
+  const [humanColor, setHumanColor] = useState('w');
+
+  const [fen, setFen] = useState(new Chess().fen());
+  const [registry, setRegistry] = useState(() => createInitialRegistry(new Chess()));
+  const [selected, setSelected] = useState(null);
+  const [pendingPromotion, setPendingPromotion] = useState(null);
+  const [pendingAttack, setPendingAttack] = useState(null); // { from, to, promotion, attacker, defender, chance }
+  const [infoSquare, setInfoSquare] = useState(null); // casilla inspeccionada (para poder refrescar tras comprar)
+  const [busy, setBusy] = useState(false);
+  const [pendingAnim, setPendingAnim] = useState(null);
+  const [log, setLog] = useState([]);
+  const [roster, setRoster] = useState(() => loadRoster());
+  const [showArmy, setShowArmy] = useState(false);
+  const [showExpireWarning, setShowExpireWarning] = useState(false);
+  // El único modal inline de esta pantalla (los demás — PieceInfoModal,
+  // AttackConfirmModal, ArmyScreen — ya traen su propio ESC incorporado).
+  // Un solo listener de ESC para toda la pantalla, con prioridad: si hay un
+  // modal abierto encima (la advertencia de piezas caídas), lo cierra a él
+  // primero. Si no, vuelve al menú principal — salvo en medio de una
+  // batalla ('battle'), donde un ESC sin querer no debería sacarte de una
+  // pelea activa sin avisar.
+  useEscapeToClose(() => {
+    if (showExpireWarning) {
+      setShowExpireWarning(false);
+      return;
+    }
+    if (phase === 'setup' || phase === 'over') {
+      onExit();
+    }
+  });
+  // Fuego concentrado: a quién le viene pegando cada bando (por id de la
+  // pieza objetivo) y cuántos ataques consecutivos lleva contra ella.
+  const [focus, setFocus] = useState({ w: null, b: null }); // { targetId, streak } | null
+  const animSeqRef = useRef(0);
+
+  const localChess = useMemo(() => {
+    const c = new Chess();
+    c.load(fen);
+    return c;
+  }, [fen]);
+
+  const legalTargets = selected
+    ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
+    : [];
+
+  const pieceLevels = useMemo(() => {
+    const map = {};
+    for (const [square, piece] of Object.entries(registry)) {
+      const lvl = derivedLevel(piece);
+      if (lvl > 1) map[square] = lvl;
+    }
+    return map;
+  }, [registry]);
+
+  const pieceXp = useMemo(() => {
+    const map = {};
+    for (const [square, piece] of Object.entries(registry)) {
+      if (piece.bankedXp > 0) map[square] = piece.bankedXp;
+    }
+    return map;
+  }, [registry]);
+
+  // Resumen rápido de tu ejército en pie, sin tener que hacer doble clic
+  // pieza por pieza — cuántas piezas tuyas siguen vivas, su nivel sumado, y
+  // cuánto XP sin gastar hay dando vueltas entre todas.
+  const armySummary = useMemo(() => {
+    let aliveCount = 0;
+    let totalLevel = 0;
+    let totalXp = 0;
+    for (const piece of Object.values(registry)) {
+      if (piece.color !== humanColor) continue;
+      aliveCount += 1;
+      totalLevel += derivedLevel(piece);
+      totalXp += piece.bankedXp || 0;
+    }
+    return { aliveCount, totalLevel, totalXp };
+  }, [registry, humanColor]);
+
+  const infoPiece = infoSquare ? registry[infoSquare] : null;
+
+  const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
+
+  // El botón "Empezar combate" pasa por acá primero: si hay piezas caídas
+  // sin revivir, avisamos antes de que se pierdan para siempre en vez de
+  // borrarlas en silencio.
+  function handleStartBattleClick() {
+    if (deadRosterEntries.length > 0) {
+      setShowExpireWarning(true);
+      return;
+    }
+    startBattle();
+  }
+
+  function startBattle() {
+    const resolved = forcedHumanColor || resolveHumanColor(colorChoice);
+
+    // Se cierra acá la ventana de revivir: cualquier pieza que sigue caída
+    // sin que la hayas revivido se pierde para siempre a partir de ahora.
+    const activeRoster = expireDeadPieces(roster);
+    if (activeRoster !== roster) {
+      setRoster(activeRoster);
+      saveRoster(activeRoster);
+    }
+
+    const chess = new Chess();
+    if (initialFen) chess.load(initialFen);
+    const startFen = chess.fen();
+    const initialRegistry = applyRosterToRegistry(createInitialRegistry(chess), activeRoster, resolved);
+
+    setHumanColor(resolved);
+    setCombatLog([]);
+    setBattleRecap(null);
+    setFen(startFen);
+    setRegistry(initialRegistry);
+    setSelected(null);
+    setPendingPromotion(null);
+    setInfoSquare(null);
+    setPendingAnim(null);
+    setLog([]);
+    setFocus({ w: null, b: null });
+    setPhase('battle');
+
+    // Si te tocaron negras, las blancas (la CPU) mueven primero — sin esto
+    // la partida se queda esperando para siempre a que "alguien" mueva.
+    if (resolved === 'b') {
+      setBusy(true);
+      setTimeout(() => runCpuTurn(startFen, initialRegistry, resolved, []), CPU_DELAY_MS);
+    } else {
+      setBusy(false);
+    }
+  }
+
+  function pushLog(entry) {
+    if (!entry) return;
+    setLog((prev) => [entry, ...prev].slice(0, 8));
+  }
+
+  // Cuántos ataques consecutivos ya lleva ESTE bando contra ESTE objetivo,
+  // antes del ataque que se está por resolver.
+  function currentFocusStreak(attackerColor, defenderId) {
+    const f = focus[attackerColor];
+    if (!f || f.targetId !== defenderId) return 0;
+    return f.streak;
+  }
+
+  // Actualiza el fuego concentrado después de resolver un ataque: si dio en
+  // el blanco, ese objetivo ya no existe — se limpia. Si falló, suma un
+  // stack más para el próximo intento contra la misma pieza.
+  function updateFocusAfterAttack(attackerColor, defenderId, hit) {
+    setFocus((prev) => {
+      if (hit) return { ...prev, [attackerColor]: null };
+      const current = prev[attackerColor];
+      const streak = current && current.targetId === defenderId ? current.streak + 1 : 1;
+      return { ...prev, [attackerColor]: { targetId: defenderId, streak } };
+    });
+  }
+
+  // Todo lo que necesita esta función viaja como parámetro explícito (fen,
+  // registro, de qué color juega el humano) en vez de leerse del estado de
+  // React — así nunca usa un valor "viejo" por un closure desactualizado,
+  // ni siquiera cuando se llama desde dentro de un setTimeout.
+  // combatLog viaja como parámetro explícito por la MISMA razón que fen,
+  // registry y humanColor ya lo hacían (ver comentario arriba): esta
+  // función se llama también desde dentro de un setTimeout encadenado (el
+  // turno de la CPU), y ese callback queda "congelado" con el closure de
+  // cuando se programó — leer combatLog del estado de React ahí adentro
+  // daría un valor viejo, sin la jugada que se acaba de agregar, y cada
+  // jugada de la CPU terminaría PISANDO el registro en vez de sumarle.
+  function performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, from, to, promotion) {
+    const attackerBefore = currentRegistry[from];
+    let defenderBefore = currentRegistry[to];
+    if (!defenderBefore) {
+      // por si es al paso: buscamos con la misma lógica que combat.js
+      const tempChess = new Chess();
+      tempChess.load(currentFen);
+      const move = tempChess.moves({ square: from, verbose: true }).find((m) => m.to === to);
+      if (move) defenderBefore = currentRegistry[capturedSquareFor(move)];
+    }
+    const streak = attackerBefore && defenderBefore
+      ? currentFocusStreak(attackerBefore.color, defenderBefore.id)
+      : 0;
+
+    const result = resolveCombatMove({ fen: currentFen, registry: currentRegistry, from, to, promotion, focusStreak: streak });
+    if (!result) return;
+
+    setSelected(null);
+    setFen(result.fen);
+
+    // Solo se registra si el ataque conectó (o no era una captura, que
+    // siempre "acierta"). Un esquive no mueve la pieza — no hay una jugada
+    // real que analizar ahí, así que ni se guarda.
+    const updatedLog = result.hit === false
+      ? currentCombatLog
+      : [
+          ...currentCombatLog,
+          {
+            fenBefore: currentFen, // necesario para la pista inversa: analizamos la posición ANTES de mover
+            fenAfter: result.fen,
+            san: result.applied.san,
+            from: result.applied.from,
+            to: result.applied.to,
+            piece: result.applied.piece,
+            captured: result.isCapture,
+            by: attackerBefore.color === currentHumanColor ? 'human' : 'cpu',
+          },
+        ];
+    setCombatLog(updatedLog);
+    // La XP se banca durante la batalla, pero ya NO se gasta acá — ni
+    // sola (auto-nivelado) ni a mano (comprando fuerza/velocidad): eso
+    // ahora pasa una sola vez, al terminar la batalla, para que no se
+    // pueda reaccionar en caliente a la posición actual subiendo justo la
+    // pieza que más te conviene en ese instante. Ver el final de la
+    // batalla, donde se aplica autoLevelUp de una sola vez si corresponde.
+    const finalRegistry = result.registry;
+    setRegistry(finalRegistry);
+
+    if (result.isCapture && result.attacker && result.defender) {
+      updateFocusAfterAttack(result.attacker.color, result.defender.id, result.hit);
+    }
+
+    animSeqRef.current += 1;
+    setPendingAnim({
+      from,
+      to,
+      seq: animSeqRef.current,
+      kind: result.hit === false ? 'miss' : 'move',
+      capture: result.hit === true,
+    });
+
+    if (result.hit === false) playMissSound();
+    else if (result.isCapture) playCaptureSound();
+    else playMoveSound();
+
+    pushLog(buildLogEntry(result, currentHumanColor));
+
+    const chessAfter = new Chess();
+    chessAfter.load(result.fen);
+
+    if (chessAfter.isGameOver()) {
+      const isWin = chessAfter.isCheckmate() && chessAfter.turn() !== currentHumanColor;
+      const isLoss = chessAfter.isCheckmate() && chessAfter.turn() === currentHumanColor;
+      const outcome = isWin ? 'win' : isLoss ? 'loss' : 'draw';
+      if (isWin) playSuccessSound();
+
+      // Acá, y solo acá, se gasta la XP bancada durante toda la batalla —
+      // de una sola vez, al terminar, en vez de en caliente jugada a
+      // jugada. Evita poder reaccionar a la posición actual subiendo justo
+      // la pieza que más conviene en ese instante puntual.
+      let leveledRegistry = finalRegistry;
+      if (autoLevelUpEnabled) {
+        leveledRegistry = Object.fromEntries(
+          Object.entries(finalRegistry).map(([sq, piece]) =>
+            piece.color === currentHumanColor ? [sq, autoLevelUp(piece)] : [sq, piece]
+          )
+        );
+      }
+
+      const nextRoster = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome);
+      saveRoster(nextRoster);
+      setRoster(nextRoster);
+
+      // A propósito NO actualiza el rating tipo ELO: acá el resultado
+      // depende bastante del dado de las capturas (una jugada objetivamente
+      // buena puede fallar el % y no conectar), así que el resultado final
+      // no es una señal limpia de nivel de ajedrez — el mismo motivo por el
+      // que "Partida de práctica" tampoco cuenta (ahí distorsiona al revés,
+      // con pistas gratis). Para medir la calidad real de tus decisiones en
+      // Combate está la "pista inversa" del historial, que analiza el
+      // intento sin el ruido del dado.
+
+      const battleRecord = {
+        id: `combat-${Date.now()}`,
+        date: new Date().toISOString(),
+        difficulty,
+        humanColor: currentHumanColor,
+        outcome,
+        log: updatedLog,
+      };
+      saveCombatBattle(battleRecord);
+
+      // Victoria perfecta: ganaste sin perder ninguna de tus 16 piezas.
+      const survivorCount = Object.values(finalRegistry).filter((p) => p.color === currentHumanColor).length;
+      checkAchievements({ combatFlawlessWin: isWin && survivorCount === 16 });
+
+      setBattleRecap({
+        survivorCount,
+        totalCount: 16,
+        xpGained: Math.max(0, nextRoster.combatXp - roster.combatXp),
+        record: battleRecord,
+      });
+
+      onBattleResult?.(outcome);
+      setPhase('over');
+      return;
+    }
+
+    if (chessAfter.turn() !== currentHumanColor) {
+      setBusy(true);
+      setTimeout(() => runCpuTurn(result.fen, finalRegistry, currentHumanColor, updatedLog), CPU_DELAY_MS);
+    }
+  }
+
+  async function runCpuTurn(currentFen, currentRegistry, currentHumanColor, currentCombatLog) {
+    let suggestion;
+    try {
+      suggestion = await api.analyzePosition(currentFen, difficulty);
+    } catch (e) {
+      onError?.(e.message);
+      setBusy(false);
+      return;
+    }
+    performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, suggestion.from, suggestion.to, undefined);
+    setBusy(false);
+  }
+
+  function openPieceInfo(square) {
+    if (registry[square]) setInfoSquare(square);
+  }
+
+  function handleBuyStat(stat) {
+    if (!infoSquare) return;
+    const piece = registry[infoSquare];
+    if (!piece) return;
+    const updated = buyStatPoint(piece, stat);
+    if (!updated) return; // no alcanza el XP, el botón ya debería estar deshabilitado igual
+    setRegistry((prev) => ({ ...prev, [infoSquare]: updated }));
+  }
+
+  function handleSquareClick(square) {
+    if (phase !== 'battle' || busy || localChess.turn() !== humanColor) return;
+
+    if (!selected) {
+      const piece = localChess.get(square);
+      if (piece && piece.color === humanColor) setSelected(square);
+      return;
+    }
+
+    if (square === selected) {
+      setSelected(null);
+      return;
+    }
+
+    const move = localChess.moves({ square: selected, verbose: true }).find((m) => m.to === square);
+    if (!move) {
+      const piece = localChess.get(square);
+      if (piece && piece.color === humanColor) setSelected(square);
+      else setSelected(null);
+      return;
+    }
+
+    if (move.promotion) {
+      setPendingPromotion({ from: selected, to: square });
+      return;
+    }
+
+    proposeOrCommitMove(selected, square, undefined, move);
+  }
+
+  // Si la jugada captura algo, primero mostramos el % de acierto y esperamos
+  // confirmación (un segundo clic en "Atacar") antes de comprometerla. Si no
+  // es una captura, se aplica directo — no tiene sentido "confirmar" un
+  // movimiento normal, sin riesgo.
+  function proposeOrCommitMove(from, to, promotion, moveInfo) {
+    if (moveInfo?.captured) {
+      const attacker = registry[from];
+      const capturedSquare = capturedSquareFor(moveInfo);
+      const defender = registry[capturedSquare];
+
+      // En ajedrez real NUNCA se captura al rey — cuando queda amenazado es
+      // jaque, y si no hay escapatoria es mate; chess.js jamás genera una
+      // jugada que "capture" un rey. Si esto pasa es que el registro se
+      // desincronizó (dato corrupto), no una captura real: aplicamos la
+      // jugada directo, sin tirada ni modal de ataque.
+      if (defender?.type === 'k') {
+        performMove(fen, registry, humanColor, combatLog, from, to, promotion);
+        return;
+      }
+
+      // Si ya está en jaque, esta jugada tiene que resolverlo sí o sí — el
+      // motor la va a forzar a conectar igual, así que reflejamos eso acá
+      // para no mostrar un % que después no se cumple.
+      const mustSucceed = localChess.inCheck();
+      const streak = attacker && defender ? currentFocusStreak(attacker.color, defender.id) : 0;
+      const chance = mustSucceed ? 1 : hitChance(attacker, defender, streak);
+      setPendingAttack({ from, to, promotion, attacker, defender, chance });
+      setSelected(null);
+      return;
+    }
+    performMove(fen, registry, humanColor, combatLog, from, to, promotion);
+  }
+
+  function confirmAttack() {
+    if (!pendingAttack) return;
+    const { from, to, promotion } = pendingAttack;
+    setPendingAttack(null);
+    performMove(fen, registry, humanColor, combatLog, from, to, promotion);
+  }
+
+  function cancelAttack() {
+    setPendingAttack(null);
+  }
+
+  // Doble clic: siempre muestra la info de la pieza (sea tuya o rival, te
+  // toque el turno o no). Es un gesto aparte del click simple, así no
+  // interfiere con seleccionar/mover.
+  function handleSquareDoubleClick(square) {
+    if (phase !== 'battle') return;
+    openPieceInfo(square);
+  }
+
+  function choosePromotion(code) {
+    const { from, to } = pendingPromotion;
+    setPendingPromotion(null);
+    const moveInfo = localChess.moves({ square: from, verbose: true }).find((m) => m.to === to);
+    proposeOrCommitMove(from, to, code, moveInfo);
+  }
+
+  function backToSetup() {
+    setPhase('setup');
+  }
+
+  function handleResetRoster() {
+    setRoster(resetRoster());
+  }
+
+  // Compra un punto de fuerza/velocidad directo sobre el roster guardado,
+  // fuera de una batalla — reconstruye una "pieza virtual" a partir del
+  // slot (tipo + lo guardado), la actualiza, y persiste el resultado.
+  function handleBuyRosterStat(key, stat) {
+    setRoster((prev) => {
+      const saved = prev.pieces[key] || { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: true };
+      if (saved.alive === false) return prev; // no se puede invertir en una pieza caída, primero hay que revivirla
+      const virtualPiece = { type: key.split('-')[0], ...saved };
+      const updated = buyStatPoint(virtualPiece, stat);
+      if (!updated) return prev;
+      const next = {
+        ...prev,
+        pieces: {
+          ...prev.pieces,
+          [key]: { strengthPoints: updated.strengthPoints, speedPoints: updated.speedPoints, bankedXp: updated.bankedXp, alive: true },
+        },
+      };
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleReviveRosterPiece(key, type) {
+    setRoster((prev) => {
+      const next = revivePiece(prev, key, type);
+      if (next === prev) return prev; // no alcanzaba el XP de combate
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  const rosterCount = Object.values(roster.pieces).filter((p) => p.alive !== false).length;
+  const deadCount = Object.values(roster.pieces).filter((p) => p.alive === false).length;
+
+
+  const status = localChess.isCheckmate()
+    ? 'checkmate'
+    : localChess.isStalemate()
+    ? 'stalemate'
+    : localChess.isThreefoldRepetition()
+    ? 'repetition'
+    : localChess.isDraw()
+    ? 'draw'
+    : localChess.isCheck()
+    ? 'check'
+    : 'playing';
+  const statusLabel = STATUS_LABELS[status];
+  const statusClass = ['checkmate', 'stalemate', 'draw', 'repetition'].includes(status)
+    ? 'danger'
+    : status === 'check'
+    ? 'success'
+    : '';
+  const statusText = busy
+    ? 'La CPU está pensando…'
+    : statusLabel || (localChess.turn() === humanColor ? 'Tu turno' : 'Turno de la CPU');
+
+  return {
+    phase, combatLog, battleRecap, ratingInfo, difficulty, colorChoice, setColorChoice,
+    autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
+    pendingPromotion, pendingAttack, infoSquare, busy, pendingAnim, log, roster,
+    showArmy, setShowArmy, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
+    pieceLevels, pieceXp, armySummary, infoPiece, deadRosterEntries, handleStartBattleClick,
+    startBattle, confirmAttack, cancelAttack, choosePromotion, backToSetup, handleResetRoster,
+    handleBuyRosterStat, handleReviveRosterPiece, handleBuyStat,
+    handleSquareClick, handleSquareDoubleClick, setInfoSquare,
+    status, statusLabel, statusClass, statusText,
+  };
+}

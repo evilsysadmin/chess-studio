@@ -3,8 +3,12 @@
 // — cada usuario necesita loguearse para que `/api/profile` sepa de
 // quién es el progreso que está subiendo o bajando.
 
-const TOKEN_KEY = 'chess-study-auth-token';
-const USERNAME_KEY = 'chess-study-auth-username';
+import { clearLocalUserState } from './profileKeys.js';
+
+export const TOKEN_KEY = 'chess-study-auth-token';
+export const USERNAME_KEY = 'chess-study-auth-username';
+
+export const AUTH_STORAGE_KEYS = Object.freeze([TOKEN_KEY, USERNAME_KEY]);
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -34,21 +38,51 @@ export function isLoggedIn() {
   return !!getToken();
 }
 
+// localStorage se comparte entre pestañas. Si una pestaña cambia de cuenta,
+// otra que siga montada conserva estado React de la identidad anterior y
+// podría volver a escribirlo usando la nueva sesión compartida. Escuchamos
+// solo las claves de autenticación y obligamos a la pestaña obsoleta a
+// reinicializarse antes de que pueda persistir nada.
+export function sessionFingerprint() {
+  return `${getUsername() || ''}\n${getToken() || ''}`;
+}
+
+export function watchSessionIdentity(onChange) {
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+    return () => {};
+  }
+
+  const expected = sessionFingerprint();
+  const handleStorage = (event) => {
+    // key === null corresponde a localStorage.clear() en otra pestaña.
+    if (event?.key !== null && !AUTH_STORAGE_KEYS.includes(event?.key)) return;
+    if (sessionFingerprint() !== expected) onChange();
+  };
+
+  window.addEventListener('storage', handleStorage);
+  return () => window.removeEventListener('storage', handleStorage);
+}
+
 function saveSession(token, username) {
+  // El login acaba de confirmar una identidad nueva. Borramos la caché del
+  // usuario anterior ANTES de guardar la nueva sesión; Mongo la rellenará en
+  // el arranque autenticado. Esto evita la herencia Alice -> Bob.
+  clearLocalUserState();
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USERNAME_KEY, username);
 }
 
 export function logout() {
+  clearLocalUserState();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USERNAME_KEY);
 }
 
-export async function register(username, password, inviteCode) {
+export async function register(username, password) {
   const body = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password, inviteCode }),
+    body: JSON.stringify({ username, password }),
   }).then(handle);
   saveSession(body.token, body.username);
   return body;

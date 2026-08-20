@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // puzzleStats.js — Cuántos puzzles resolviste en total, de por vida (no solo
 // en la sesión actual). PuzzleScreen ya lleva su propio contador en estado
 // de React para mostrar "resueltos: N" mientras estás jugando, pero eso se
@@ -14,7 +16,7 @@ export function loadPuzzlesSolved() {
 
 export function incrementPuzzlesSolved() {
   const next = loadPuzzlesSolved() + 1;
-  localStorage.setItem(KEY, String(next));
+  setProfileStorageItem(KEY, String(next));
   return next;
 }
 
@@ -39,15 +41,15 @@ export function loadBestPuzzleStreak() {
 
 export function incrementPuzzleStreak() {
   const next = loadPuzzleStreak() + 1;
-  localStorage.setItem(STREAK_KEY, String(next));
+  setProfileStorageItem(STREAK_KEY, String(next));
   if (next > loadBestPuzzleStreak()) {
-    localStorage.setItem(BEST_STREAK_KEY, String(next));
+    setProfileStorageItem(BEST_STREAK_KEY, String(next));
   }
   return next;
 }
 
 export function resetPuzzleStreak() {
-  localStorage.setItem(STREAK_KEY, '0');
+  setProfileStorageItem(STREAK_KEY, '0');
   return 0;
 }
 
@@ -56,7 +58,7 @@ export function resetPuzzleStreak() {
 // todo — resueltos de por vida, racha actual, y mejor marca — para un
 // reset completo de progreso ("empezar de cero").
 export function resetAllPuzzleStats() {
-  localStorage.removeItem(KEY);
-  localStorage.removeItem(STREAK_KEY);
-  localStorage.removeItem(BEST_STREAK_KEY);
+  removeProfileStorageItem(KEY);
+  removeProfileStorageItem(STREAK_KEY);
+  removeProfileStorageItem(BEST_STREAK_KEY);
 }

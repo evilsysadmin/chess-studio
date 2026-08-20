@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // roguelikeRun.js — Estado de una corrida de Combate roguelike: en qué
 // piso estás, si hay una corrida en curso, y tu mejor marca histórica
 // (persiste incluso cuando pierdes una corrida — mismo criterio que la
@@ -22,7 +24,7 @@ export function loadRun() {
 }
 
 function saveRun(run) {
-  localStorage.setItem(KEY, JSON.stringify(run));
+  setProfileStorageItem(KEY, JSON.stringify(run));
   return run;
 }
 
@@ -41,7 +43,7 @@ export function advanceFloor(run) {
 export function endRun(run) {
   const reached = run.floor;
   if (reached > loadBestFloor()) {
-    localStorage.setItem(BEST_FLOOR_KEY, String(reached));
+    setProfileStorageItem(BEST_FLOOR_KEY, String(reached));
   }
   saveRun(defaultRun());
   return reached;
@@ -54,8 +56,8 @@ export function loadBestFloor() {
 }
 
 export function resetRoguelikeRun() {
-  localStorage.removeItem(KEY);
-  localStorage.removeItem(BEST_FLOOR_KEY);
+  removeProfileStorageItem(KEY);
+  removeProfileStorageItem(BEST_FLOOR_KEY);
 }
 
 // La dificultad de la CPU escala con el piso — más allá del material

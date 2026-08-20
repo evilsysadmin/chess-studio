@@ -1,19 +1,10 @@
-"""profile_store.py — Guarda el perfil de cada usuario (torneo, ejército de
-combate, rating, logros...) en Mongo, un documento por usuario (antes de
-la cuenta de usuarios, era un único documento fijo compartido por
-cualquiera que corriera la app — con cuentas, cada quien tiene el suyo).
-Mismo patrón de respaldo en memoria que game_store.py si Mongo no está
-disponible.
-
-El backend no necesita entender la FORMA de este JSON — es un passthrough
-puro. La forma la define el frontend (`profileBackup.js`, la misma que ya
-usa para exportar/importar a un archivo): acá solo se guarda y se devuelve
-tal cual, bajo la clave del usuario dueño.
-"""
+"""Persistencia del perfil, un documento por username autenticado."""
 
 from typing import Optional
 
-from db import get_db
+from pymongo.errors import PyMongoError
+
+from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
 COLLECTION = "profile"
 _memory_profiles: dict[str, dict] = {}
@@ -21,13 +12,20 @@ _memory_profiles: dict[str, dict] = {}
 
 async def _get_collection():
     db = await get_db()
-    return db[COLLECTION] if db is not None else None
+    if db is not None:
+        return db[COLLECTION]
+    if persistent_storage_required():
+        raise PersistentStorageUnavailable("MongoDB no está disponible para perfiles.")
+    return None
 
 
 async def get_profile(username: str) -> Optional[dict]:
     col = await _get_collection()
     if col is not None:
-        doc = await col.find_one({"_id": username})
+        try:
+            doc = await col.find_one({"_id": username})
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para perfiles.") from exc
         if doc:
             doc.pop("_id", None)
         return doc
@@ -35,18 +33,17 @@ async def get_profile(username: str) -> Optional[dict]:
 
 
 async def save_profile(username: str, data: dict) -> dict:
+    # `_id` es propiedad del servidor. Aunque el endpoint acepte un dict
+    # flexible para poder evolucionar el perfil sin migraciones, el cliente
+    # nunca puede elegir el dueño del documento.
+    safe_data = {key: value for key, value in data.items() if key != "_id"}
     col = await _get_collection()
     if col is not None:
-        doc = {"_id": username, **data}
-        await col.replace_one({"_id": username}, doc, upsert=True)
+        doc = {**safe_data, "_id": username}
+        try:
+            await col.replace_one({"_id": username}, doc, upsert=True)
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para perfiles.") from exc
     else:
-        _memory_profiles[username] = data
-    return data
-
-
-async def delete_profile(username: str) -> None:
-    col = await _get_collection()
-    if col is not None:
-        await col.delete_one({"_id": username})
-    else:
-        _memory_profiles.pop(username, None)
+        _memory_profiles[username] = safe_data
+    return safe_data

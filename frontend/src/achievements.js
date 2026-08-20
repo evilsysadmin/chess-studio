@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // achievements.js — Logros: condiciones simples chequeadas contra el
 // progreso que ya vive en otros módulos (torneo, rating, ejército de
 // combate, puzzles). Los IDs desbloqueados se persisten aparte; una vez
@@ -43,7 +45,7 @@ export function loadUnlocked() {
 }
 
 function saveUnlocked(set) {
-  localStorage.setItem(KEY, JSON.stringify([...set]));
+  setProfileStorageItem(KEY, JSON.stringify([...set]));
 }
 
 // Revisa las condiciones "de hito" (comprobables en cualquier momento
@@ -88,5 +90,5 @@ export function checkAchievements(extra = {}) {
 }
 
 export function resetAchievements() {
-  localStorage.removeItem(KEY);
+  removeProfileStorageItem(KEY);
 }

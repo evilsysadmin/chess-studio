@@ -1,3 +1,5 @@
+import { setProfileStorageItem } from './profileKeys.js';
+
 // voiceCommentary.js — La CPU "habla" en capturas, jaque y jaque mate,
 // usando la Web Speech API nativa del navegador (SpeechSynthesisUtterance)
 // — sin librerías externas ni archivos de audio, igual criterio que
@@ -11,7 +13,7 @@ export function isVoiceEnabled() {
 }
 
 export function setVoiceEnabled(enabled) {
-  localStorage.setItem(VOICE_KEY, enabled ? '1' : '0');
+  setProfileStorageItem(VOICE_KEY, enabled ? '1' : '0');
 }
 
 function speechAvailable() {

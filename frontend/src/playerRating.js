@@ -1,3 +1,5 @@
+import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+
 // playerRating.js — Estimación de nivel del jugador tipo ELO, calculada a
 // partir de tus resultados contra la CPU en Torneo y en Combate (los dos
 // modos donde juegas contra una dificultad conocida de 0 a 100). Es la
@@ -61,11 +63,11 @@ export function loadRating() {
 }
 
 export function saveRating(state) {
-  localStorage.setItem(RATING_KEY, JSON.stringify(state));
+  setProfileStorageItem(RATING_KEY, JSON.stringify(state));
 }
 
 export function resetRating() {
-  localStorage.removeItem(RATING_KEY);
+  removeProfileStorageItem(RATING_KEY);
   return emptyState();
 }
 
@@ -91,12 +93,12 @@ export function recordRatingHistory(rating) {
   const history = loadRatingHistory();
   history.push({ date: new Date().toISOString(), rating });
   const trimmed = history.slice(-MAX_HISTORY_POINTS);
-  localStorage.setItem(RATING_HISTORY_KEY, JSON.stringify(trimmed));
+  setProfileStorageItem(RATING_HISTORY_KEY, JSON.stringify(trimmed));
   return trimmed;
 }
 
 export function resetRatingHistory() {
-  localStorage.removeItem(RATING_HISTORY_KEY);
+  removeProfileStorageItem(RATING_HISTORY_KEY);
   return [];
 }
 

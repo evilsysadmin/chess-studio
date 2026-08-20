@@ -3,16 +3,6 @@
 // la secuencia de `solution` realmente termina en jaque mate (o, en los de
 // "gana material", en una captura legal de una pieza sin defensa).
 //
-// Para los de "mate en 2" en particular, hay un criterio extra que no es
-// obvio a simple vista: la posición inicial NO puede tener ningún mate en
-// 1 jugada disponible (de ninguna pieza, no solo de la que "se supone"
-// resuelve el puzzle) — si lo tiene, un jugador que encuentre ese mate más
-// corto y correcto se lleva un "está mal" del validador, que solo compara
-// contra la secuencia guardada acá. Las 3 posiciones actuales de mate en 2
-// se verificaron con una búsqueda exhaustiva (todas las combinaciones de
-// rey blanco + dama blanca contra el rey negro en la esquina) antes de
-// quedar elegidas — no son solo "se me ocurrió y probé una vez".
-//
 // `solution` es la secuencia COMPLETA en notación SAN, alternando humano/CPU
 // cuando hace falta una respuesta forzada del rival (por ejemplo, un jaque
 // que solo se puede responder de una manera). Los índices pares (0, 2, 4…)
@@ -73,15 +63,15 @@ export const PUZZLES = [
     kind: 'mate2',
     title: 'Mate en 2',
     description: 'Un jaque fuerza al rey a una única casilla. Desde ahí, hay mate.',
-    fen: 'k7/8/1K6/8/8/8/8/1Q6 w - - 0 1',
-    solution: ['Qa2+', 'Kb8', 'Qg8#'],
+    fen: 'k7/8/1K6/8/8/8/Q7/8 w - - 0 1',
+    solution: ['Qa3+', 'Kb8', 'Qf8#'],
   },
   {
     id: 'mate2_a2',
     kind: 'mate2',
     title: 'Mate en 2',
     description: 'Otra vez rey y dama solos contra el rey negro. Encuentra los dos jaques.',
-    fen: 'k7/8/2K5/8/2Q5/8/8/8 w - - 0 1',
+    fen: 'k7/8/1K6/8/Q7/8/8/8 w - - 0 1',
     solution: ['Qa6+', 'Kb8', 'Qb7#'],
   },
   {
@@ -89,8 +79,8 @@ export const PUZZLES = [
     kind: 'mate2',
     title: 'Mate en 2',
     description: 'El rey negro está en la esquina contraria. La técnica es la misma: encontrala.',
-    fen: '7k/8/6K1/8/8/8/8/6Q1 w - - 0 1',
-    solution: ['Qh2+', 'Kg8', 'Qb8#'],
+    fen: '7k/8/6K1/8/8/8/Q7/8 w - - 0 1',
+    solution: ['Qb2+', 'Kg8', 'Qb8#'],
   },
 ];
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints } from '../tournament.js';
 import { logout, getUsername } from '../auth.js';
+import { pushProfileToServer } from '../profileBackup.js';
 import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn } from './Icons.jsx';
 import ProfileBackupModal from './ProfileBackupModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
@@ -36,15 +37,32 @@ export default function Menu({
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [logoutError, setLogoutError] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const tournamentLevel = levelForPoints(tournament.points);
   const username = getUsername();
 
-  function handleLogout() {
-    // Recarga completa a propósito: fuerza que App.jsx vuelva a chequear
-    // isLoggedIn() desde cero al montar, sin necesidad de encadenar un
-    // callback onLogout por 3 niveles de componentes hasta acá.
-    logout();
-    window.location.reload();
+  async function handleLogout() {
+    // Antes de borrar la caché local intentamos persistir la última foto. Si
+    // Mongo no confirma el guardado, no cerramos sesión: es preferible pedir
+    // reintento a perder silenciosamente progreso reciente.
+    setLogoutError(null);
+    setLoggingOut(true);
+    try {
+      await pushProfileToServer({ throwOnError: true });
+      logout();
+      window.location.reload();
+    } catch (error) {
+      // Si la sesión ya expiró, el servidor no aceptará ningún guardado con
+      // ese token. No atrapamos al usuario en una sesión imposible de cerrar.
+      if (error?.status === 401) {
+        logout();
+        window.location.reload();
+        return;
+      }
+      setLogoutError('No se pudo guardar tu progreso antes de cerrar sesión. Reintenta cuando vuelva la conexión.');
+      setLoggingOut(false);
+    }
   }
 
   return (
@@ -168,22 +186,14 @@ export default function Menu({
             Panel de admin
           </button>
         )}
-        <button type="button" className="backup-link" onClick={handleLogout}>
-          Cerrar sesión{username ? ` (${username})` : ''}
+        <button type="button" className="backup-link" onClick={handleLogout} disabled={loggingOut}>
+          {loggingOut ? 'Guardando…' : `Cerrar sesión${username ? ` (${username})` : ''}`}
         </button>
+        {logoutError && <p className="error-text" style={{ marginTop: '0.5rem' }}>{logoutError}</p>}
       </div>
 
       {showBackup && <ProfileBackupModal onClose={() => setShowBackup(false)} />}
       {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} />}
-      {showMirrorMode && (
-        <MirrorModeModal
-          onClose={() => setShowMirrorMode(false)}
-          onStart={(mirrorDifficulty) => {
-            setShowMirrorMode(false);
-            onNewGame(mirrorDifficulty, color, { timeControlId, mirror: true });
-          }}
-        />
-      )}
       {showQuickMatch && (
         <QuickMatchModal
           difficulty={difficulty}
@@ -196,6 +206,15 @@ export default function Menu({
           rating={rating}
           onStart={() => { onNewGame(difficulty, color, { timeControlId }); setShowQuickMatch(false); }}
           onClose={() => setShowQuickMatch(false)}
+        />
+      )}
+      {showMirrorMode && (
+        <MirrorModeModal
+          onStart={(mirrorDifficulty) => {
+            onNewGame(mirrorDifficulty, 'random', { mirror: true });
+            setShowMirrorMode(false);
+          }}
+          onClose={() => setShowMirrorMode(false)}
         />
       )}
     </div>
