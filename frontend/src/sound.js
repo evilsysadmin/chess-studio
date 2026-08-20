@@ -769,6 +769,98 @@ Object.assign(AMBIENT_THEMES, {
       },
     ],
   },
+  rigaRain: {
+    id: 'rigaRain', engine: 'structured', label: 'Lluvia en Riga',
+    description: 'Marimba húmeda, cristal y pizzicato: caminar de noche con el tablero aún en la cabeza.',
+    stepMs: 152, stepsPerSection: 32, leadInstrument: 'marimba', chordInstrument: 'glass', bassInstrument: 'pizz',
+    sections: [
+      {
+        lead: { 0: 67, 5: 70, 9: 74, 14: 72, 18: 65, 23: 69, 27: 67 },
+        chords: { 0: [55, 62, 67], 16: [53, 60, 65] },
+        bass: { 0: 43, 8: 38, 16: 41, 24: 36 },
+        drums: { 3: 'H', 7: 'B', 11: 'H', 15: 'B', 19: 'H', 23: 'B', 27: 'H', 31: 'B' },
+      },
+      {
+        lead: { 2: 69, 6: 72, 12: 76, 17: 74, 21: 70, 26: 67, 30: 65 },
+        chords: { 0: [57, 64, 69], 16: [50, 57, 62] },
+        bass: { 0: 45, 8: 40, 16: 38, 24: 43 },
+        drums: { 5: 'H', 13: 'B', 21: 'H', 29: 'B' },
+      },
+    ],
+  },
+  kingTango: {
+    id: 'kingTango', engine: 'structured', label: 'Tango del rey',
+    description: 'Bandoneón sintético, contrabajo y golpes secos: elegante, tenso y con cuchillo bajo la mesa.',
+    stepMs: 118, stepsPerSection: 32, leadInstrument: 'bandoneon', chordInstrument: 'bandoneon', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 69, 3: 72, 6: 71, 8: 69, 11: 76, 14: 74, 16: 72, 19: 71, 22: 67, 24: 69, 27: 65, 30: 64 },
+        chords: { 0: [57, 60, 64], 8: [55, 59, 62], 16: [53, 57, 60], 24: [52, 56, 59] },
+        bass: { 0: 45, 3: 52, 8: 43, 11: 50, 16: 41, 19: 48, 24: 40, 27: 47 },
+        drums: { 0: 'K', 3: 'W', 8: 'K', 11: 'S', 16: 'K', 19: 'W', 24: 'K', 27: 'S' },
+      },
+    ],
+  },
+  orbitalMonastery: {
+    id: 'orbitalMonastery', engine: 'structured', label: 'Monasterio orbital',
+    description: 'Voces sintéticas y drones suspendidos; ajedrez a trescientos kilómetros sobre cualquier parroquia.',
+    stepMs: 325, stepsPerSection: 32, leadInstrument: 'choir', chordInstrument: 'pad', bassInstrument: 'organbass',
+    sections: [
+      {
+        lead: { 8: 72, 24: 67 },
+        chords: { 0: [48, 55, 60, 67], 16: [46, 53, 58, 65] },
+        bass: { 0: 36, 16: 34 },
+      },
+      {
+        lead: { 8: 74, 24: 69 },
+        chords: { 0: [50, 57, 62, 69], 16: [45, 52, 57, 64] },
+        bass: { 0: 38, 16: 33 },
+      },
+    ],
+  },
+  metro317: {
+    id: 'metro317', engine: 'structured', label: 'Metro 03:17',
+    description: 'Pulsos cortos, bajo eléctrico y síncopas: fluorescentes, túneles y una última combinación antes de casa.',
+    stepMs: 92, stepsPerSection: 32, leadInstrument: 'pulse', chordInstrument: 'synth', bassInstrument: 'synthbass',
+    sections: [
+      {
+        lead: { 0: 64, 3: 67, 5: 71, 8: 64, 10: 72, 13: 67, 16: 63, 19: 67, 21: 70, 24: 63, 26: 72, 29: 70 },
+        chords: { 0: [52, 59, 64], 16: [51, 58, 63] },
+        bass: { 0: 40, 4: 40, 7: 43, 12: 38, 16: 39, 20: 39, 23: 34, 28: 36 },
+        drums: { 0: 'K', 2: 'H', 6: 'S', 7: 'H', 10: 'K', 14: 'S', 16: 'K', 18: 'H', 22: 'S', 23: 'H', 26: 'K', 30: 'S' },
+      },
+    ],
+  },
+  glassAsh: {
+    id: 'glassAsh', engine: 'structured', label: 'Vidrio y ceniza',
+    description: 'Armónicos de cristal, notas aisladas y graves largos. Casi inmóvil; bastante incómodo.',
+    stepMs: 238, stepsPerSection: 32, leadInstrument: 'glass', chordInstrument: 'glass', bassInstrument: 'cello',
+    sections: [
+      {
+        lead: { 1: 79, 9: 76, 18: 72, 27: 74 },
+        chords: { 0: [55, 62, 67], 16: [53, 60, 65] },
+        bass: { 0: 31, 16: 29 },
+      },
+      {
+        lead: { 5: 81, 13: 77, 21: 74, 29: 72 },
+        chords: { 0: [57, 64, 69], 16: [50, 57, 62] },
+        bass: { 0: 33, 16: 26 },
+      },
+    ],
+  },
+  machineRoom: {
+    id: 'machineRoom', engine: 'structured', label: 'Sala de máquinas',
+    description: 'Metal, subgrave y patrones industriales contenidos. Algo enorme está funcionando detrás de la pared.',
+    stepMs: 104, stepsPerSection: 32, leadInstrument: 'metallic', chordInstrument: 'pad', bassInstrument: 'synthbass',
+    sections: [
+      {
+        lead: { 0: 52, 6: 55, 12: 59, 18: 58, 24: 55, 30: 52 },
+        chords: { 0: [40, 47, 52], 16: [39, 46, 51] },
+        bass: { 0: 28, 4: 28, 8: 31, 12: 28, 16: 27, 20: 27, 24: 34, 28: 31 },
+        drums: { 0: 'M', 4: 'K', 8: 'M', 12: 'S', 16: 'M', 20: 'K', 24: 'M', 28: 'S' },
+      },
+    ],
+  },
 });
 
 export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description }) => ({
@@ -1120,6 +1212,12 @@ function voicePreset(kind) {
     case 'tremolo': return { waves: [['triangle', 1, 1], ['sawtooth', 1, 0.09]], gain: 0.019, attack: 0.02, release: 1.9, cutoff: 2100, tremolo: 7.0 };
     case 'guitar2': return { waves: [['triangle', 1, 1], ['sawtooth', 2, 0.07]], gain: 0.018, attack: 0.004, release: 0.82, cutoff: 2300 };
     case 'arp': return { waves: [['square', 1, 0.45], ['sawtooth', 1, 1]], gain: 0.014, attack: 0.004, release: 0.28, cutoff: 1800 };
+    case 'marimba': return { waves: [['sine', 1, 1], ['sine', 4, 0.2], ['triangle', 2, 0.08]], gain: 0.025, attack: 0.003, release: 0.72, cutoff: 4200 };
+    case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.2], ['sine', 5.4, 0.08]], gain: 0.017, attack: 0.018, release: 3.2, cutoff: 7600, tremolo: 3.1 };
+    case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
+    case 'choir': return { waves: [['sine', 1, 1], ['triangle', 1, 0.24], ['sine', 2, 0.12]], gain: 0.013, attack: 0.38, release: 4.4, cutoff: 1550, tremolo: 4.2 };
+    case 'pulse': return { waves: [['square', 1, 0.5], ['sine', 1, 0.5]], gain: 0.015, attack: 0.003, release: 0.22, cutoff: 2400 };
+    case 'metallic': return { waves: [['square', 1, 0.42], ['sine', 2.41, 0.34], ['sine', 4.83, 0.12]], gain: 0.014, attack: 0.004, release: 0.48, cutoff: 3200 };
     default: return { waves: [['sine', 1, 1]], gain: 0.02, attack: 0.01, release: 0.8, cutoff: 2500 };
   }
 }
@@ -1234,12 +1332,40 @@ function playWoodblock() {
   osc.stop(start + 0.09);
 }
 
+function playMetalHit() {
+  if (isMusicMuted()) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  const start = ctx.currentTime;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.024, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.34);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 1180;
+  filter.Q.value = 2.8;
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  [1, 1.47, 2.17].forEach((ratio, i) => {
+    const osc = ctx.createOscillator();
+    const mix = ctx.createGain();
+    osc.type = i === 0 ? 'triangle' : 'sine';
+    osc.frequency.value = 430 * ratio;
+    mix.gain.value = i === 0 ? 0.7 : 0.34;
+    osc.connect(mix);
+    mix.connect(filter);
+    osc.start(start);
+    osc.stop(start + 0.36);
+  });
+}
+
 function playStructuredDrum(code) {
   if (code === 'K') playSoftPercussion(0.055);
   else if (code === 'S') playNoiseHit('snare', 0.028);
   else if (code === 'H') playNoiseHit('hat', 0.014);
   else if (code === 'B') playNoiseHit('brush', 0.012);
   else if (code === 'W') playWoodblock();
+  else if (code === 'M') playMetalHit();
 }
 
 function startStructuredMusic(theme) {

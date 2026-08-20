@@ -4,10 +4,13 @@ import { AMBIENT_THEME_OPTIONS, getAmbientThemeId, setAmbientTheme } from './sou
 describe('ambient music catalog', () => {
   beforeEach(() => localStorage.clear());
 
-  it('expone doce temas seleccionables', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(12);
+  it('expone dieciocho temas seleccionables', () => {
+    expect(AMBIENT_THEME_OPTIONS).toHaveLength(18);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Final de madrugada');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tango del rey');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Monasterio orbital');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Sala de máquinas');
   });
 
   it('persiste la selección y hace fallback seguro', () => {
