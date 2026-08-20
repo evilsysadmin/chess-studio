@@ -34,6 +34,7 @@ import { isLoggedIn, fetchMe, logout, watchSessionIdentity } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import AdminScreen from './components/AdminScreen.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
+import { recordRivalryResult } from './rivalry.js';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
 // objeto de partida: ese objeto se reemplaza por completo con cada respuesta
@@ -262,6 +263,7 @@ function AppInner({ isAdminUser }) {
   // Torneo — con una etiqueta de modo para distinguirlas al navegar la lista.
   function handleCasualGameEnd(outcome, finishedGame) {
     if (!finishedGame) return;
+    recordRivalryResult(outcome);
 
     if (!learningMode) {
       const score = outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
@@ -305,6 +307,7 @@ function AppInner({ isAdminUser }) {
   }
 
   function handleTournamentGameEnd(outcome, finishedGame) {
+    recordRivalryResult(outcome);
     setTournament((prev) => {
       const { state, gained, leveledUp, newLevel } = applyResult(prev, outcome);
       saveTournament(state);
@@ -332,7 +335,7 @@ function AppInner({ isAdminUser }) {
         moves: finishedGame.history,
         finalFen: finishedGame.fen,
         mode: 'tournament',
-      };
+        };
       setHistoryList(saveGameRecord(record));
     }
   }

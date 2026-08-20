@@ -20,7 +20,6 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-muted', // legado: fallback para perfiles anteriores
   'chess-study-music-muted',
   'chess-study-fx-muted',
-  'chess-study-cpu-personality',
   'chess-study-ambient-theme',
   'chess-study-voice-enabled',
   'chess-study-worst-move-cache',
@@ -28,6 +27,9 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-selected-skin',
   'chess-study-roguelike-run',
   'chess-study-roguelike-best-floor',
+  'chess-study-personal-puzzles',
+  'chess-study-cpu-rivalry',
+  'chess-study-daily-challenge',
 ];
 
 // Estado local de sesión. No se sincroniza porque apunta a partidas activas
@@ -78,6 +80,7 @@ export function removeProfileStorageItem(key) {
 
 export function clearProfileCache({ notify = false } = {}) {
   for (const key of PROFILE_STORAGE_KEYS) localStorage.removeItem(key);
+  localStorage.removeItem('chess-study-cpu-personality'); // legado de versiones con selector: ya no existe
   if (notify) emitProfileChanged();
 }
 

@@ -11,8 +11,36 @@ from fastapi.testclient import TestClient
 
 import game_store as store
 from main import app
+from auth import create_token
 
-client = TestClient(app)
+raw_client = TestClient(app)
+_TEST_TOKEN = create_token("testuser")
+_TEST_AUTH = {"Authorization": f"Bearer {_TEST_TOKEN}"}
+
+
+class _AuthenticatedClient:
+    """Compatibilidad para los tests históricos: por defecto ejercitan la
+    API como un usuario autenticado. Los tests de seguridad usan raw_client
+    para verificar explícitamente los 401.
+    """
+    def request(self, method, url, **kwargs):
+        headers = {**_TEST_AUTH, **(kwargs.pop("headers", {}) or {})}
+        return raw_client.request(method, url, headers=headers, **kwargs)
+
+    def get(self, url, **kwargs):
+        return self.request("GET", url, **kwargs)
+
+    def post(self, url, **kwargs):
+        return self.request("POST", url, **kwargs)
+
+    def put(self, url, **kwargs):
+        return self.request("PUT", url, **kwargs)
+
+    def delete(self, url, **kwargs):
+        return self.request("DELETE", url, **kwargs)
+
+
+client = _AuthenticatedClient()
 
 
 def _seed(game_id: str, moves: list[str], human_color: str, difficulty: int = 0):
@@ -22,7 +50,7 @@ def _seed(game_id: str, moves: list[str], human_color: str, difficulty: int = 0)
     asyncio.run(
         store.update_game(
             game_id,
-            {"moves": moves, "difficulty": difficulty, "humanColor": human_color, "lastMove": None},
+            {"owner": "testuser", "moves": moves, "difficulty": difficulty, "humanColor": human_color, "lastMove": None},
         )
     )
 
@@ -311,8 +339,8 @@ def test_get_api_key_sin_header(monkeypatch):
     assert main_module.has_valid_api_key(request) is False
 
 
-def test_analyze_move_funciona_igual_con_o_sin_api_key_valida():
-    # La key no cambia el RESULTADO del análisis, solo el límite de ritmo
+def test_analyze_move_funciona_igual_con_jwt_y_con_header_api_key_no_configurado():
+    # Un header X-API-Key no configurado no invalida una sesión JWT válida.
     # (que se verificó en vivo aparte) — una request individual con key
     # válida debe dar exactamente la misma respuesta que sin key.
     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
@@ -627,3 +655,47 @@ def test_admin_endpoint_exposes_richer_chess_stats(monkeypatch):
     assert target["worstMove"]["loss"] == 420
     assert target["achievements"] == 2
     assert target["puzzlesSolved"] == 12
+
+# ---------- Security V10 ----------
+
+def test_game_endpoints_reject_anonymous_requests():
+    assert raw_client.post("/api/games", json={"difficulty": 10, "color": "w"}).status_code == 401
+    assert raw_client.get("/api/games/cualquier-id").status_code == 401
+    assert raw_client.post("/api/games/cualquier-id/undo").status_code == 401
+    assert raw_client.post("/api/games/cualquier-id/move", json={"from": "e2", "to": "e4"}).status_code == 401
+    assert raw_client.delete("/api/games/cualquier-id").status_code == 401
+
+
+def test_analysis_rejects_anonymous_without_m2m_key():
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    assert raw_client.post("/api/analyze", json={"fen": fen, "level": 10}).status_code == 401
+    assert raw_client.post("/api/analyze-move", json={"fen": fen, "level": 10}).status_code == 401
+
+
+def test_profile_admin_and_root_reject_anonymous_requests():
+    assert raw_client.get("/api/profile").status_code == 401
+    assert raw_client.put("/api/profile", json={}).status_code == 401
+    assert raw_client.get("/api/admin/users").status_code == 401
+    assert raw_client.get("/").status_code == 401
+
+
+def test_health_is_intentionally_public():
+    assert raw_client.get("/api/health").status_code == 200
+
+
+def test_game_is_private_to_its_owner():
+    alice = {"Authorization": f"Bearer {create_token('alice')}"}
+    bob = {"Authorization": f"Bearer {create_token('bob')}"}
+    created = raw_client.post("/api/games", json={"difficulty": 10, "color": "w"}, headers=alice)
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+    assert raw_client.get(f"/api/games/{game_id}", headers=alice).status_code == 200
+    assert raw_client.get(f"/api/games/{game_id}", headers=bob).status_code == 404
+    assert raw_client.delete(f"/api/games/{game_id}", headers=bob).status_code == 404
+
+
+def test_registration_can_be_closed(monkeypatch):
+    import main as main_module
+    monkeypatch.setattr(main_module, "ALLOW_REGISTRATION", False)
+    r = raw_client.post("/api/auth/register", json={"username": "intruso", "password": "clave123456"})
+    assert r.status_code == 403

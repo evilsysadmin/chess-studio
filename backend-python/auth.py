@@ -16,9 +16,18 @@ import jwt
 # problema de seguridad real para correr esto en tu propia máquina, pero
 # para un despliegue real hace falta configurar JWT_SECRET en el entorno
 # (si no, cualquiera que lea el código fuente podría firmar tokens él mismo).
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-cambiar-en-produccion")
+_DEV_JWT_SECRET = "dev-secret-cambiar-en-produccion"
+JWT_SECRET = os.environ.get("JWT_SECRET", _DEV_JWT_SECRET)
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_DAYS = 30  # una sesión larga, no hay "recordarme" aparte
+
+# Fallar cerrado en Internet. Es preferible que Render marque el deploy como
+# fallido a arrancar con una clave conocida por cualquiera que vea el repo.
+_ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
+if _ENVIRONMENT in {"production", "prod"} and (
+    JWT_SECRET == _DEV_JWT_SECRET or len(JWT_SECRET) < 32
+):
+    raise RuntimeError("JWT_SECRET debe configurarse con al menos 32 caracteres en producción.")
 
 
 def hash_password(password: str) -> str:

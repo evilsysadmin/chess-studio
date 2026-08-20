@@ -392,6 +392,192 @@ const AMBIENT_THEMES = {
     instruments: ['oud', 'guitar'],
     keyChangeBars: 4,
   },
+  clockwork: {
+    id: 'clockwork',
+    sequenceMode: 'cycle',
+    label: 'Relojería',
+    description: 'Pulso preciso, arpegios secos y sensación de reloj de torneo.',
+    scale: [130.81, 146.83, 164.81, 174.61, 196.0, 220.0, 246.94], // C major
+    keyCenters: [0, 7, 5, 2],
+    phrases: [[0, 2, 4, 2], [1, 3, 5, 3], [4, 2, 1, 0], [0, 4, 6, 4], [2, 5, 4, 2]],
+    saxPhrases: [[4], [2, 4], [6, 4, 2]],
+    padNotes: [261.63, 329.63, 392.0, 493.88],
+    bassPattern: [0, 4, 2, 4],
+    percussionPatterns: [
+      parsePattern('D.t.T.t.D.t.T.t.', 0.105, 0.075),
+      parsePattern('D...T.t.D...T.t.', 0.11, 0.08),
+      parsePattern('D.t.T...D.t.T...', 0.105, 0.075),
+      parsePattern('................', 0, 0),
+    ],
+    stepMs: 104,
+    phraseNoteGapMs: 132,
+    pluckGapSteps: 8,
+    pluckChance: 0.88,
+    saxNoteGapMs: 470,
+    saxGapSteps: 64,
+    saxChance: 0.08,
+    instruments: ['guitar', 'guitar', 'oud'],
+    keyChangeBars: 4,
+  },
+  velvet: {
+    id: 'velvet',
+    label: 'Acero y terciopelo',
+    description: 'Jazz oscuro, suave por fuera y con dientes por dentro.',
+    scale: [130.81, 146.83, 155.56, 174.61, 196.0, 220.0, 246.94], // C dorian / major 7 color
+    keyCenters: [0, -2, 5, 7],
+    phrases: [[0, 2, 4, 6], [6, 5, 4, 2], [2, 3, 5, 4], [0, 3, 4, 2], [5, 4, 2, 1]],
+    saxPhrases: [[2, 4, 6], [5, 4, 2], [6, 4], [3, 5, 4, 2]],
+    padNotes: [261.63, 311.13, 392.0, 493.88],
+    bassPattern: [0, 4, 5, 2],
+    percussionPatterns: [
+      parsePattern('D.....t.T...t...', 0.09, 0.065),
+      parsePattern('D...t...D.....T.', 0.095, 0.07),
+      parsePattern('................', 0, 0),
+      parsePattern('................', 0, 0),
+    ],
+    stepMs: 150,
+    phraseNoteGapMs: 245,
+    pluckGapSteps: 12,
+    pluckChance: 0.56,
+    saxNoteGapMs: 610,
+    saxGapSteps: 24,
+    saxChance: 0.72,
+    instruments: ['guitar', 'oud'],
+    keyChangeBars: 8,
+  },
+  electricDesert: {
+    id: 'electricDesert',
+    label: 'Desierto eléctrico',
+    description: 'Frigio nervioso, bajo insistente y ataques cortos.',
+    scale: [123.47, 130.81, 155.56, 164.81, 185.0, 196.0, 220.0], // B phrygian-ish
+    keyCenters: [0, 1, 6, 5],
+    phrases: [[0, 1, 3, 2, 0], [4, 3, 1, 0], [0, 3, 5, 3], [6, 5, 3, 1], [1, 4, 3, 0]],
+    saxPhrases: [[3], [5, 3], [6, 4, 3]],
+    padNotes: [246.94, 261.63, 369.99, 329.63],
+    bassPattern: [0, 3, 0, 5],
+    percussionPatterns: [
+      parsePattern('D..tT.D...t.T...', 0.15, 0.1),
+      parsePattern('D.t...T.D.t.T...', 0.15, 0.095),
+      parsePattern('D...T...D.t.T.t.', 0.145, 0.095),
+      parsePattern('................', 0, 0),
+    ],
+    stepMs: 116,
+    phraseNoteGapMs: 158,
+    pluckGapSteps: 8,
+    pluckChance: 0.8,
+    saxNoteGapMs: 520,
+    saxGapSteps: 48,
+    saxChance: 0.2,
+    instruments: ['oud', 'oud', 'guitar'],
+    keyChangeBars: 5,
+  },
+  cathedral: {
+    id: 'cathedral',
+    sequenceMode: 'cycle',
+    label: 'Catedral de humo',
+    description: 'Muy lenta, grave y espaciosa; casi sin percusión.',
+    scale: [110.0, 123.47, 130.81, 146.83, 164.81, 174.61, 207.65], // A harmonic minor
+    keyCenters: [0, 5, -2, 3],
+    phrases: [[0, 4, 6], [6, 4, 2, 0], [0, 3, 5], [5, 3, 2], [4, 2, 0]],
+    saxPhrases: [[0], [4], [6, 4]],
+    padNotes: [220.0, 261.63, 329.63, 349.23],
+    bassPattern: [0, 0, 4, 0],
+    percussionPatterns: [
+      parsePattern('D...............', 0.07, 0),
+      parsePattern('........T.......', 0, 0.045),
+      parsePattern('................', 0, 0),
+      parsePattern('................', 0, 0),
+    ],
+    stepMs: 192,
+    phraseNoteGapMs: 330,
+    pluckGapSteps: 24,
+    pluckChance: 0.42,
+    saxNoteGapMs: 850,
+    saxGapSteps: 64,
+    saxChance: 0.28,
+    instruments: ['oud', 'guitar'],
+    keyChangeBars: 10,
+  },
+  duel: {
+    id: 'duel',
+    sequenceMode: 'cycle',
+    label: 'Duelo al amanecer',
+    description: 'Tenso, seco y con silencios largos antes del golpe.',
+    scale: [110.0, 123.47, 130.81, 146.83, 164.81, 185.0, 196.0], // A minor color
+    keyCenters: [0, 7, 3, 5],
+    phrases: [[0, 4], [4, 2, 0], [0, 3, 6], [6, 3, 1, 0], [2, 4, 3]],
+    saxPhrases: [[4], [6], [4, 2]],
+    padNotes: [220.0, 261.63, 329.63, 392.0],
+    bassPattern: [0, 0, 4, 6],
+    percussionPatterns: [
+      parsePattern('D.......T.......', 0.14, 0.08),
+      parsePattern('D...........T...', 0.14, 0.08),
+      parsePattern('................', 0, 0),
+      parsePattern('D.......D.......', 0.12, 0),
+    ],
+    stepMs: 138,
+    phraseNoteGapMs: 205,
+    pluckGapSteps: 16,
+    pluckChance: 0.61,
+    saxNoteGapMs: 700,
+    saxGapSteps: 64,
+    saxChance: 0.1,
+    instruments: ['guitar', 'oud'],
+    keyChangeBars: 6,
+  },
+  storm: {
+    id: 'storm',
+    label: 'Tormenta táctica',
+    description: 'La opción rápida: percusión activa y frases cortantes.',
+    scale: [146.83, 155.56, 174.61, 196.0, 207.65, 233.08, 261.63], // D phrygian
+    keyCenters: [0, 5, 7, 1],
+    phrases: [[0, 2, 4, 6], [6, 5, 3, 1], [0, 3, 2, 5], [4, 2, 0, 1], [2, 5, 6, 4]],
+    saxPhrases: [[4, 6], [6, 4], [3, 5, 4]],
+    padNotes: [293.66, 349.23, 440.0, 523.25],
+    bassPattern: [0, 4, 0, 6],
+    percussionPatterns: [
+      parsePattern('D.t.T.D.t...T.t.', 0.17, 0.11),
+      parsePattern('D..Tt.D.D.t.T...', 0.17, 0.105),
+      parsePattern('D.t.T...D.t.T.D.', 0.165, 0.105),
+      parsePattern('D...T...D...T...', 0.16, 0.1),
+    ],
+    stepMs: 92,
+    phraseNoteGapMs: 118,
+    pluckGapSteps: 6,
+    pluckChance: 0.9,
+    saxNoteGapMs: 430,
+    saxGapSteps: 32,
+    saxChance: 0.22,
+    instruments: ['guitar', 'oud', 'guitar'],
+    keyChangeBars: 4,
+  },
+  lateEndgame: {
+    id: 'lateEndgame',
+    sequenceMode: 'cycle',
+    label: 'Final de madrugada',
+    description: 'Minimalista, casi sin batería, para pensar sin que te empuje.',
+    scale: [130.81, 146.83, 164.81, 196.0, 220.0, 261.63, 293.66], // pentatonic-ish expanded
+    keyCenters: [0, 5, -2, 7],
+    phrases: [[0, 2, 4], [4, 2, 0], [1, 3, 5], [5, 3, 1], [0, 4, 3]],
+    saxPhrases: [[2], [4], [5, 3]],
+    padNotes: [261.63, 329.63, 440.0, 392.0],
+    bassPattern: [0, 4, 0, 3],
+    percussionPatterns: [
+      parsePattern('................', 0, 0),
+      parsePattern('D...............', 0.055, 0),
+      parsePattern('................', 0, 0),
+      parsePattern('...............t', 0, 0.035),
+    ],
+    stepMs: 176,
+    phraseNoteGapMs: 300,
+    pluckGapSteps: 24,
+    pluckChance: 0.46,
+    saxNoteGapMs: 820,
+    saxGapSteps: 80,
+    saxChance: 0.12,
+    instruments: ['guitar', 'oud'],
+    keyChangeBars: 10,
+  },
 };
 
 export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description }) => ({
@@ -727,13 +913,18 @@ export function startAmbientMusic() {
   const bassScale = theme.scale.map((f) => f / 2);
   const keyChangeSteps = STEPS_PER_BAR * theme.keyChangeBars;
   let step = 0;
+  let phraseIndex = 0;
+  let saxPhraseIndex = 0;
+  let percussionIndex = 0;
   let currentPercussionPattern = theme.percussionPatterns[0];
 
   function tick() {
     const barStep = step % STEPS_PER_BAR;
 
     if (barStep === 0) {
-      currentPercussionPattern = theme.percussionPatterns[Math.floor(Math.random() * theme.percussionPatterns.length)];
+      currentPercussionPattern = theme.sequenceMode === 'cycle'
+        ? theme.percussionPatterns[percussionIndex++ % theme.percussionPatterns.length]
+        : theme.percussionPatterns[Math.floor(Math.random() * theme.percussionPatterns.length)];
     }
     const percStep = currentPercussionPattern[barStep];
     if (percStep) {
@@ -753,13 +944,19 @@ export function startAmbientMusic() {
     }
 
     if (step % theme.pluckGapSteps === 0 && Math.random() < theme.pluckChance) {
-      const phrase = theme.phrases[Math.floor(Math.random() * theme.phrases.length)];
-      const instrument = theme.instruments[Math.floor(Math.random() * theme.instruments.length)];
+      const phrase = theme.sequenceMode === 'cycle'
+        ? theme.phrases[phraseIndex++ % theme.phrases.length]
+        : theme.phrases[Math.floor(Math.random() * theme.phrases.length)];
+      const instrument = theme.sequenceMode === 'cycle'
+        ? theme.instruments[(phraseIndex - 1) % theme.instruments.length]
+        : theme.instruments[Math.floor(Math.random() * theme.instruments.length)];
       playPhrase(phrase, instrument, theme.scale, currentOffset(theme), theme.phraseNoteGapMs);
     }
 
     if (step % theme.saxGapSteps === 0 && Math.random() < theme.saxChance) {
-      const phrase = theme.saxPhrases[Math.floor(Math.random() * theme.saxPhrases.length)];
+      const phrase = theme.sequenceMode === 'cycle'
+        ? theme.saxPhrases[saxPhraseIndex++ % theme.saxPhrases.length]
+        : theme.saxPhrases[Math.floor(Math.random() * theme.saxPhrases.length)];
       playSaxPhrase(phrase, theme.scale, currentOffset(theme), theme.saxNoteGapMs);
     }
 

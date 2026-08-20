@@ -11,6 +11,14 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def no_real_mongo(monkeypatch):
+    # Los límites reales se prueban de forma dirigida; no queremos que una
+    # suite completa se auto-bloquee por compartir la IP de TestClient.
+    try:
+        from main import app
+        app.state.limiter.enabled = False
+    except Exception:
+        pass
+
     # La suite debe ser determinista incluso si el runner/CI define MONGO_URL.
     # Los tests que quieren simular almacenamiento persistente lo activan
     # explícitamente mediante monkeypatch en el store correspondiente.

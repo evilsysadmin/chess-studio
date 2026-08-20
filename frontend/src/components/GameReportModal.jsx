@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { analyzeGame } from '../gameReport.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
 
 function incidentTitle(index, mistake, total) {
   if (index === 0 && mistake.loss >= 300) return 'Hora aproximada del fallecimiento';
@@ -20,10 +21,12 @@ function forensicVerdict(report) {
   return 'Dictamen: pequeñas contusiones, nada que requiera cerrar el club ni cambiar de identidad.';
 }
 
-export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene }) {
+export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, meta = {} }) {
   useEscapeToClose(onClose);
   const [status, setStatus] = useState('loading'); // 'loading' | 'done' | 'error'
   const [report, setReport] = useState(null);
+  const [personalPuzzleInfo, setPersonalPuzzleInfo] = useState(null);
+  const archivedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +43,13 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     })();
     return () => { cancelled = true; };
   }, [history, humanColor]);
+
+  useEffect(() => {
+    if (status !== 'done' || !report || archivedRef.current) return;
+    archivedRef.current = true;
+    const info = savePersonalPuzzlesFromReport(history, humanColor, report, meta);
+    setPersonalPuzzleInfo(info);
+  }, [status, report, history, humanColor, meta]);
 
   const incidents = report?.topMistakes?.filter((m) => m.loss > 15) || [];
 
@@ -97,6 +107,12 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
                   <b>DICTAMEN DE LA CPU</b>
                   <p>{forensicVerdict(report)}</p>
                 </div>
+
+                {personalPuzzleInfo?.added > 0 && (
+                  <div className="autopsy-training-note">
+                    🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.
+                  </div>
+                )}
 
                 {report.worst && report.worst.loss > 15 && onOpenCrimeScene && (
                   <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>

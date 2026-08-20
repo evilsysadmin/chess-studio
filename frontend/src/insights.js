@@ -29,6 +29,27 @@ function favoriteOpening(games) {
   return entries.length ? { name: entries[0][0], count: entries[0][1] } : null;
 }
 
+function openingDossier(games) {
+  const stats = {};
+  for (const g of games) {
+    const sans = (g.moves || []).map((m) => m.san);
+    const opening = identifyOpening(sans);
+    if (!opening) continue;
+    if (!stats[opening]) stats[opening] = { name: opening, games: 0, wins: 0, draws: 0, losses: 0, white: 0, black: 0 };
+    const row = stats[opening];
+    row.games += 1;
+    if (g.outcome === 'win') row.wins += 1;
+    else if (g.outcome === 'draw') row.draws += 1;
+    else row.losses += 1;
+    if (g.humanColor === 'w') row.white += 1;
+    else if (g.humanColor === 'b') row.black += 1;
+  }
+  return Object.values(stats)
+    .map((row) => ({ ...row, winPct: Math.round((row.wins / row.games) * 100) }))
+    .sort((a, b) => b.games - a.games || b.winPct - a.winPct)
+    .slice(0, 8);
+}
+
 function colorPreference(games) {
   const white = games.filter((g) => g.humanColor === 'w').length;
   const black = games.filter((g) => g.humanColor === 'b').length;
@@ -103,6 +124,7 @@ export function computeInsights(gameHistory, combatHistory, ratingHistory) {
     overall: winStats(allGames),
     byMode,
     favoriteOpening: favoriteOpening(allGames),
+    openingDossier: openingDossier(taggedGameHistory),
     colorPreference: colorPreference(allGames),
     longestWinStreak: longestWinStreak(allGames),
     ratingTrend: ratingTrend(ratingHistory),
@@ -292,6 +314,41 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     }
   }
 
+
+  const rivalryRecord = extras.rivalryRecord;
+  if (rivalryRecord?.games >= 5) {
+    const losses = Number(rivalryRecord.losses || 0);
+    const wins = Number(rivalryRecord.wins || 0);
+    if (losses >= wins * 2 && losses >= 4) {
+      lines.push(pickRoastLine([
+        `La CPU te lleva ${losses} derrotas por ${wins} victorias. Esto ya no es una rivalidad; es una domiciliación bancaria.`,
+        `${wins} victorias tuyas y ${losses} de la CPU. Sigues llamándolo rivalidad por autoestima, lo entiendo.`,
+        'Tu marcador contra la CPU tiene la alegría cromática de una esquela. Al menos la constancia es admirable.',
+      ], seed + losses));
+    } else if (wins >= losses * 2 && wins >= 4) {
+      lines.push(pickRoastLine([
+        `Le estás ganando claramente a la CPU (${wins}-${losses}). Bien. Ya puedes dejar de mirar el marcador cada treinta segundos.`,
+        `El cara a cara va ${wins}-${losses} a tu favor. Empieza a ser ofensivo. Para la máquina, digo.`,
+      ], seed + wins));
+    }
+  }
+
+  const incidentEntries = Object.entries(extras.incidents || {}).sort((a, b) => Number(b[1]) - Number(a[1]));
+  if (incidentEntries.length && Number(incidentEntries[0][1]) >= 3) {
+    const [crime, countRaw] = incidentEntries[0];
+    const count = Number(countRaw);
+    const crimeRoasts = {
+      'human:MISSED_MATE': `Has ignorado mate inmediato ${count} veces. A estas alturas el botón de rematar debería parpadear y emitir humo.`,
+      'human:ALLOWED_MATE': `Has regalado mate en una ${count} veces. La hospitalidad está bien; entregar el rey en recepción ya es demasiado.`,
+      'human:QUEEN_EN_PRISE_TO_PAWN': `Has dejado la dama a tiro de peón ${count} veces. Tus damas merecen sindicato, casco y plus de peligrosidad.`,
+      'cpu:PAWN_TAKES_QUEEN': `${count} damas tuyas han muerto contra peones. No es mala suerte cuando ya puedes hacer una estadística con ello.`,
+      'cpu:KNIGHT_FORK': `${count} horquillas serias de caballo sufridas. Los caballos rivales ya entran al tablero con reserva.`,
+      'cpu:PAWN_FORK': `${count} horquillas de peón sufridas. Una pieza que no sabe retroceder te ha convertido en cliente recurrente.`,
+      'human:STALEMATE_BLUNDER': `${count} ahogados desde posición ganadora. La victoria te llega a casa y tú finges que no estabas esperando ningún paquete.`,
+    };
+    if (crimeRoasts[crime]) lines.push(crimeRoasts[crime]);
+  }
+
   if (worstMove) {
     lines.push(pickRoastLine([
       `Y no hablemos de esa ${worstMove.moveReport.played}, que te costó ${worstMove.moveReport.loss} puntos de evaluación de un plumazo — el motor todavía se está riendo de esa.`,
@@ -304,6 +361,151 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
   }
 
   return lines;
+}
+
+
+const INCIDENT_COACHING = {
+  'human:MISSED_MATE': {
+    title: 'Deja de perdonar mates',
+    diagnosis: (n) => `${n} mate${n === 1 ? '' : 's'} inmediato${n === 1 ? '' : 's'} ignorado${n === 1 ? '' : 's'}. El rival estaba listo para firmar la defunción y tú le diste prórroga.`,
+    action: 'Antes de cada jugada candidata haz un barrido CCT: jaques, capturas y amenazas. Si hay jaque, comprueba primero si alguno es mate.',
+  },
+  'human:ALLOWED_MATE': {
+    title: 'Mira qué amenaza el otro',
+    diagnosis: (n) => `${n} mate${n === 1 ? '' : 's'} en una concedido${n === 1 ? '' : 's'}. La defensa no puede consistir en esperar que el rival sea educado.`,
+    action: 'Antes de soltar una pieza, pregunta: “si paso turno, ¿qué jaques tiene?”. Hazlo especialmente cuando tu rey tenga pocas casillas.',
+  },
+  'human:QUEEN_EN_PRISE_TO_PAWN': {
+    title: 'La dama no es material fungible',
+    diagnosis: (n) => `${n} ${n === 1 ? 'vez' : 'veces'} dejando la dama a tiro de peón. Nueve puntos aparcados en zona de carga y descarga.`,
+    action: 'Tras mover la dama, revisa las dos diagonales de ataque de los peones enemigos. Son dos casillas; no hace falta convocar a la NASA.',
+  },
+  'cpu:PAWN_TAKES_QUEEN': {
+    title: 'Vacuna antidiagnóstico de dama',
+    diagnosis: (n) => `${n} dama${n === 1 ? '' : 's'} tuya${n === 1 ? '' : 's'} capturada${n === 1 ? '' : 's'} por un peón. Ya hay suficiente evidencia para llamarlo patrón.`,
+    action: 'En posiciones tácticas, marca mentalmente las casillas atacadas por peones antes de calcular líneas largas. Lo barato también mata.',
+  },
+  'human:STALEMATE_BLUNDER': {
+    title: 'Aprende a rematar sin resucitar al cadáver',
+    diagnosis: (n) => `${n} victoria${n === 1 ? '' : 's'} convertida${n === 1 ? '' : 's'} en ahogado. Generosidad reglamentaria no solicitada.`,
+    action: 'En finales ganados, conserva al menos una casilla legal para el rey enemigo hasta que tengas el mate preparado. Practica mates básicos de dama y torre.',
+  },
+  'cpu:KNIGHT_FORK': {
+    title: 'Los caballos no aparecen por magia',
+    diagnosis: (n) => `${n} horquilla${n === 1 ? '' : 's'} seria${n === 1 ? '' : 's'} de caballo sufrida${n === 1 ? '' : 's'}. La L también cuenta como geometría.`,
+    action: 'Antes de colocar rey, dama o torres cerca, visualiza los saltos de caballo hacia casillas centrales y de jaque. Prioriza las horquillas con jaque.',
+  },
+  'cpu:PAWN_FORK': {
+    title: 'Respeta la infantería',
+    diagnosis: (n) => `${n} horquilla${n === 1 ? '' : 's'} de peón sufrida${n === 1 ? '' : 's'}. Presupuesto de un punto, daños de consejo de administración.`,
+    action: 'Cuando dos piezas caras queden separadas por una casilla de avance de peón, comprueba si el rival puede empujar con tempo y atacar ambas.',
+  },
+};
+
+function coachingPriority(count) {
+  if (count >= 4) return { priority: 'high', priorityLabel: 'ALTA' };
+  if (count >= 2) return { priority: 'medium', priorityLabel: 'MEDIA' };
+  return { priority: 'low', priorityLabel: 'VIGILAR' };
+}
+
+// Consejos accionables a partir de hechos ya guardados. No pretende adivinar
+// debilidades posicionales que no se hayan medido: usa reincidencias tácticas,
+// resultados por apertura, sesgo de color, puzzles y tendencia de rating.
+export function generateCoaching(insights, rivalry = null, extras = {}) {
+  if (!insights || insights.totalGames === 0) return [];
+  const items = [];
+  const incidents = rivalry?.incidents || extras.incidents || {};
+
+  const tactical = Object.entries(incidents)
+    .filter(([key, count]) => INCIDENT_COACHING[key] && Number(count) > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  for (const [key, rawCount] of tactical.slice(0, 2)) {
+    const count = Number(rawCount);
+    const rule = INCIDENT_COACHING[key];
+    items.push({ ...coachingPriority(count), title: rule.title, diagnosis: rule.diagnosis(count), action: rule.action });
+  }
+
+  const dossier = (insights.openingDossier || []).filter((row) => row.games >= 3);
+  const worstOpening = [...dossier].sort((a, b) => a.winPct - b.winPct || b.games - a.games)[0];
+  if (worstOpening && worstOpening.winPct <= 40) {
+    items.push({
+      priority: worstOpening.winPct <= 25 ? 'high' : 'medium',
+      priorityLabel: worstOpening.winPct <= 25 ? 'ALTA' : 'MEDIA',
+      title: `Revisa ${worstOpening.name}`,
+      diagnosis: `${worstOpening.games} partidas y ${worstOpening.winPct}% de victorias. Esa apertura te está cobrando alquiler y ni siquiera te deja las llaves.`,
+      action: 'Repasa sus primeras 8–10 jugadas en “Aperturas famosas” y revisa dos derrotas tuyas en replay buscando el primer momento en que abandonaste el plan normal.',
+    });
+  }
+
+  if (insights.favoriteOpening && insights.totalGames >= 8) {
+    const repeatRate = insights.favoriteOpening.count / insights.totalGames;
+    if (repeatRate >= 0.65) {
+      items.push({
+        priority: 'low', priorityLabel: 'AMPLIAR',
+        title: 'Tu repertorio cabe en una servilleta',
+        diagnosis: `${insights.favoriteOpening.name} aparece en ${Math.round(repeatRate * 100)}% de tus partidas. Saberla bien está genial; depender de ella para respirar, menos.`,
+        action: 'Añade una segunda apertura para blancas o una defensa alternativa para negras y juega al menos 5 partidas antes de juzgarla.',
+      });
+    }
+  }
+
+  const { white = 0, black = 0 } = insights.colorPreference || {};
+  const colorTotal = white + black;
+  if (colorTotal >= 8) {
+    const dominant = Math.max(white, black) / colorTotal;
+    if (dominant >= 0.78) {
+      const weakColor = white > black ? 'negras' : 'blancas';
+      items.push({
+        priority: 'low', priorityLabel: 'EQUILIBRAR',
+        title: `Juega más con ${weakColor}`,
+        diagnosis: `Tu historial está muy cargado hacia ${white > black ? 'blancas' : 'negras'}. Muy cómodo todo hasta que el color te lo elige otro.`,
+        action: `Fuerza 5 partidas seguidas con ${weakColor}. No busques rating: busca posiciones que hoy te resultan menos familiares.`,
+      });
+    }
+  }
+
+  const puzzlesSolved = Number(extras.puzzlesSolved || 0);
+  const personalPuzzles = Number(extras.personalPuzzles || 0);
+  if (insights.totalGames >= 6 && puzzlesSolved < 5) {
+    items.push({
+      priority: tactical.length ? 'high' : 'medium',
+      priorityLabel: tactical.length ? 'ALTA' : 'MEDIA',
+      title: 'Menos partidas automáticas, más táctica',
+      diagnosis: `${puzzlesSolved} ${puzzlesSolved === 1 ? 'puzzle resuelto' : 'puzzles resueltos'} frente a ${insights.totalGames} partidas. Estás acumulando experiencia, pero no necesariamente corrigiendo hábitos.`,
+      action: personalPuzzles > 0
+        ? `Haz primero 3 de “Tus crímenes” antes de tu próxima partida. Tienes ${personalPuzzles} posiciones sacadas de errores reales tuyos.`
+        : 'Haz 5 puzzles cortos antes de tu próxima partida y luego juega a la misma dificultad. El objetivo es reconocer patrones, no coleccionar partidas.',
+    });
+  }
+
+  if (insights.ratingTrend?.delta <= -30) {
+    items.push({
+      priority: 'high', priorityLabel: 'ALTA',
+      title: 'Deja de hacer volumen por hacer volumen',
+      diagnosis: `El rating ha caído ${Math.abs(insights.ratingTrend.delta)} puntos desde el primer registro. Seguir encadenando partidas puede entrenar exactamente los errores que quieres quitar.`,
+      action: 'Abre Autopsia tras cada derrota durante las próximas 3 partidas y revisa sólo el peor incidente. Una corrección concreta por partida, no veinte.',
+    });
+  } else if (insights.ratingTrend?.delta >= 60 && insights.totalGames >= 10) {
+    items.push({
+      priority: 'low', priorityLabel: 'SUBIR LISTÓN',
+      title: 'Te estás quedando cómodo',
+      diagnosis: `Has ganado ${insights.ratingTrend.delta} puntos. Bien. Ahora deja de admirar la gráfica como si fuera una estatua ecuestre.`,
+      action: 'Si encadenas 3 victorias más con margen, sube un nivel de dificultad y conserva el mismo repertorio unas partidas para comparar.',
+    });
+  }
+
+  if (items.length === 0) {
+    items.push({
+      priority: 'low', priorityLabel: 'MANTENER',
+      title: 'No hay un incendio dominante',
+      diagnosis: 'Tus datos no muestran una reincidencia clara todavía. Molesto para el sarcasmo; buena señal para ti.',
+      action: 'Sigue jugando y abre Autopsia en las derrotas. Cuando aparezca un patrón repetido, esta sección lo convertirá en prioridad.',
+    });
+  }
+
+  const order = { high: 0, medium: 1, low: 2 };
+  return items.sort((a, b) => order[a.priority] - order[b.priority]).slice(0, 5);
 }
 
 // Genérico a propósito a la hora de sugerir qué hacer — no analiza tus

@@ -1924,6 +1924,90 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   font-size: 0.75rem;
 }
 
+
+.coaching-section {
+  border: 1px solid var(--brass-dim);
+  background: rgba(191, 152, 82, 0.045);
+}
+
+.coaching-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.coaching-heading h2 { margin-bottom: 0; }
+
+.coaching-count {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--parchment-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.24rem 0.5rem;
+}
+
+.coaching-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.7rem;
+}
+
+.coaching-card {
+  padding: 0.78rem;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--ink-2);
+}
+
+.coaching-card.priority-high { border-left-color: var(--danger); }
+.coaching-card.priority-medium { border-left-color: var(--brass); }
+.coaching-card.priority-low { border-left-color: var(--parchment-dim); }
+
+.coaching-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.coaching-card-top b {
+  color: var(--parchment);
+  font-size: 0.84rem;
+}
+
+.coaching-priority {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  color: var(--brass);
+}
+
+.coaching-card.priority-high .coaching-priority { color: var(--danger); }
+
+.coaching-card p {
+  margin: 0 0 0.58rem;
+  color: var(--parchment-dim);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.coaching-action {
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--line);
+  color: var(--parchment);
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+
+.coaching-action strong { color: var(--brass); }
+.coaching-footnote { margin: 0.75rem 0 0; }
+
 .insights-facts-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -2431,8 +2515,8 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   * { transition: none !important; animation: none !important; }
 }
 
-/* ---------- CPU persona / comentarios selectivos ---------- */
-.cpu-persona {
+/* ---------- Presencia CPU / comentarios selectivos ---------- */
+.cpu-presence {
   width: min(100%, 520px);
   display: flex;
   align-items: center;
@@ -2461,26 +2545,26 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .cpu-avatar-eyes { position: absolute; top: 8px; letter-spacing: 4px; margin-left: 4px; }
 .cpu-avatar-mouth { position: absolute; bottom: 5px; font-size: 1.05rem; }
-.cpu-persona-copy { min-width: 0; text-align: left; }
-.cpu-persona-name {
+.cpu-presence-copy { min-width: 0; text-align: left; }
+.cpu-presence-name {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--brass-dim);
 }
-.cpu-persona-comment {
+.cpu-presence-comment {
   margin-top: 0.1rem;
   font-size: 0.84rem;
   line-height: 1.25;
   color: var(--parchment-dim);
 }
-.cpu-persona.speaking {
+.cpu-presence.speaking {
   border-color: var(--brass-dim);
   background: var(--ink-2);
 }
-.cpu-persona.speaking .cpu-persona-comment { color: var(--parchment); }
-.cpu-persona.pulse { animation: statusPulse 0.42s cubic-bezier(0.22, 1, 0.36, 1); }
+.cpu-presence.speaking .cpu-presence-comment { color: var(--parchment); }
+.cpu-presence.pulse { animation: statusPulse 0.42s cubic-bezier(0.22, 1, 0.36, 1); }
 
 /* ---------- Admin: expediente/cotilleo ---------- */
 .admin-screen { max-width: 1180px; }
@@ -2527,10 +2611,10 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 @media (max-width: 520px) {
   .admin-detail-grid { grid-template-columns: 1fr; }
   .admin-detail-wide { grid-column: auto; }
-  .cpu-persona { max-width: 340px; }
+  .cpu-presence { max-width: 340px; }
 }
 
-/* ---------- V6 · personalidades, trofeos y autopsia ---------- */
+/* ---------- V6+ · trofeos y autopsia ---------- */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2543,33 +2627,6 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   border: 0;
 }
 
-.cpu-persona-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-
-.cpu-personality-picker select {
-  max-width: 150px;
-  border: 1px solid var(--ink-3);
-  border-radius: 5px;
-  background: var(--ink);
-  color: var(--parchment-dim);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  padding: 0.18rem 0.3rem;
-}
-
-.cpu-personality-picker select:hover,
-.cpu-personality-picker select:focus {
-  border-color: var(--brass-dim);
-  color: var(--parchment);
-  outline: none;
-}
-
-.personality-hal .cpu-avatar-mouth { opacity: 0.35; }
-.personality-caster .cpu-avatar-mouth { transform: rotate(-8deg); }
 
 .achievement-toast {
   width: min(100%, 520px);
@@ -2712,8 +2769,104 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .crime-rewind-btn { margin-top: 0.45rem; }
 
 @media (max-width: 640px) {
-  .cpu-persona-title-row { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
-  .cpu-personality-picker select { max-width: 180px; }
   .autopsy-summary { grid-template-columns: 1fr; }
   .crime-scene-banner { align-items: stretch; flex-direction: column; }
+}
+
+/* v7 — entrenamiento personalizado, rivalidad y expediente */
+.cpu-rivalry-mini {
+  margin-top: 0.28rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--parchment-dim);
+  opacity: 0.82;
+}
+
+.autopsy-training-note {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--brass-dim);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.14);
+  color: var(--parchment-dim);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.puzzle-source-picker {
+  width: min(100%, 900px);
+  margin: 0 auto 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.personal-puzzle-note,
+.daily-challenge-note {
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid var(--brass);
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+
+.opening-dossier-grid,
+.rivalry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.opening-dossier-card,
+.rivalry-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ink-2);
+}
+
+.opening-dossier-card b,
+.rivalry-card strong { color: var(--parchment); }
+.opening-dossier-card span,
+.rivalry-card span,
+.rivalry-card small { color: var(--parchment-dim); font-size: 0.75rem; }
+
+.sin-heatmap {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.sin-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.4fr) minmax(100px, 2fr) 2rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.76rem;
+  color: var(--parchment-dim);
+}
+
+.sin-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sin-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--danger);
+}
+
+.sin-row b { color: var(--danger); text-align: right; }
+
+@media (max-width: 640px) {
+  .sin-row { grid-template-columns: 1fr 1.2fr 1.7rem; gap: 0.4rem; }
+  .puzzle-source-picker > button { flex: 1 1 140px; }
 }

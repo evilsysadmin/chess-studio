@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeInsights, generateRoast, tierTrendComment } from './insights.js';
+import { computeInsights, generateCoaching, generateRoast, tierTrendComment } from './insights.js';
 
 const gameHistory = [
   {
@@ -192,5 +192,36 @@ describe('generateRoast — extras (logros y puzzles)', () => {
   it('sin datos de extras, no revienta ni agrega nada de logros/puzzles', () => {
     const lines = generateRoast(base);
     expect(lines.some((l) => l.includes('logro') || l.includes('puzzle'))).toBe(false);
+  });
+});
+
+
+describe('generateCoaching', () => {
+  const base = {
+    totalGames: 12,
+    overall: { wins: 4, draws: 1, losses: 7, total: 12, winPct: 33 },
+    byMode: {},
+    favoriteOpening: { name: 'Defensa Siciliana', count: 8 },
+    openingDossier: [{ name: 'Defensa Siciliana', games: 5, wins: 1, draws: 0, losses: 4, winPct: 20, white: 1, black: 4 }],
+    colorPreference: { white: 2, black: 10 },
+    longestWinStreak: 2,
+    ratingTrend: { min: 520, max: 600, first: 600, last: 550, delta: -50 },
+    humanCaptures: 30,
+  };
+
+  it('convierte reincidencias tácticas en consejos accionables', () => {
+    const rivalry = { incidents: { 'human:MISSED_MATE': 3 } };
+    const tips = generateCoaching(base, rivalry, { puzzlesSolved: 8, personalPuzzles: 2 });
+    expect(tips.some((t) => t.title.includes('mates') && t.action.includes('jaques'))).toBe(true);
+  });
+
+  it('prioriza una apertura con mal rendimiento sin inventar evaluación del motor', () => {
+    const tips = generateCoaching(base, { incidents: {} }, { puzzlesSolved: 8 });
+    expect(tips.some((t) => t.title.includes('Defensa Siciliana') && t.action.includes('Aperturas famosas'))).toBe(true);
+  });
+
+  it('sugiere puzzles personales cuando hay poca táctica entrenada', () => {
+    const tips = generateCoaching(base, { incidents: { 'cpu:KNIGHT_FORK': 2 } }, { puzzlesSolved: 1, personalPuzzles: 4 });
+    expect(tips.some((t) => t.action.includes('Tus crímenes'))).toBe(true);
   });
 });

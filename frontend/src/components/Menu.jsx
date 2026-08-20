@@ -143,7 +143,7 @@ export default function Menu({
           <button type="button" className="menu-card accent-hint" onClick={onPuzzle}>
             <IconPuzzle className="menu-card-icon" />
             <h3>Puzzle</h3>
-            <p>Posiciones cortas para resolver: mate en 1, mate en 2, o encontrar la jugada que gana material.</p>
+            <p>Puzzles clásicos, desafío diario y posiciones nacidas de tus propias autopsias.</p>
             <span className="menu-card-cta">Resolver →</span>
           </button>
 

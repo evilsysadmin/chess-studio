@@ -493,79 +493,16 @@ const LINES = {
   },
 };
 
-const EVENT_FACTS = {
-  MATE_FOUND: ['has aparecido con jaque mate', 'he encontrado jaque mate'],
-  MISSED_MATE: ['tenías mate en una y lo has ignorado', 'tenía mate en una y lo he ignorado'],
-  STALEMATE_BLUNDER: ['has convertido una posición ganadora en ahogado', 'he convertido una posición ganadora en ahogado'],
-  STALEMATE: ['has cerrado la partida por ahogado', 'he cerrado la partida por ahogado'],
-  ALLOWED_MATE: ['has dejado mate en una', 'he dejado mate en una'],
-  PAWN_TAKES_QUEEN: ['tu peón se ha comido mi dama', 'mi peón se ha comido tu dama'],
-  QUEEN_CAPTURE: ['te has llevado mi dama', 'me he llevado tu dama'],
-  QUEEN_SACRIFICE_OFFER: ['has ofrecido la dama con jaque', 'he ofrecido la dama con jaque'],
-  SKEWER: ['has montado un ensartado', 'he montado un ensartado'],
-  DISCOVERED_CHECK: ['has encontrado un jaque a la descubierta', 'he encontrado un jaque a la descubierta'],
-  ROOK_SACRIFICE_OFFER: ['has ofrecido una torre con jaque', 'he ofrecido una torre con jaque'],
-  PROMOTION: ['has coronado un peón', 'he coronado un peón'],
-  KNIGHT_FORK: ['has clavado una horquilla de caballo', 'he clavado una horquilla de caballo'],
-  PAWN_FORK: ['has clavado una horquilla de peón', 'he clavado una horquilla de peón'],
-  QUEEN_EN_PRISE_TO_PAWN: ['has dejado la dama al alcance de un peón', 'he dejado mi dama al alcance de un peón'],
-  PAWN_TAKES_ROOK: ['tu peón se ha llevado mi torre', 'mi peón se ha llevado tu torre'],
-};
 
-function factFor(event, actor) {
-  const pair = EVENT_FACTS[event.type] || ['has hecho algo tácticamente notable', 'he hecho algo tácticamente notable'];
-  return pair[actor === 'cpu' ? 1 : 0];
-}
-
-function gentlemanComment(event, actor) {
-  const fact = factFor(event, actor);
-  const praise = ['MATE_FOUND', 'PAWN_TAKES_QUEEN', 'QUEEN_CAPTURE', 'SKEWER', 'DISCOVERED_CHECK', 'PROMOTION', 'KNIGHT_FORK', 'PAWN_FORK', 'PAWN_TAKES_ROOK'].includes(event.type);
-  if (actor === 'human' && praise) return `Debo concedértelo: ${fact}. Una jugada muy digna.`;
-  if (actor === 'human') return `Con todo respeto: ${fact}. Quizá convenga revisar ese momento con calma.`;
-  if (praise) return `Me permitirás una pequeña satisfacción: ${fact}. Continuemos.`;
-  return `Debo admitir una imprecisión: ${fact}. Nada honorable en ocultarlo.`;
-}
-
-function masterComment(event, actor) {
-  const fact = factFor(event, actor);
-  const catastrophic = ['MISSED_MATE', 'STALEMATE_BLUNDER', 'ALLOWED_MATE', 'QUEEN_EN_PRISE_TO_PAWN'].includes(event.type);
-  if (actor === 'human' && catastrophic) return `En mi club, ${fact} y el reloj se paraba por vergüenza. Apúntalo y no lo repitas.`;
-  if (actor === 'human') return `Ajá: ${fact}. Al menos hoy alguien ha venido a estudiar.`;
-  if (catastrophic) return `Magnífico: ${fact}. Décadas de teoría para terminar haciendo esto. No digas que fui yo.`;
-  return `Esto sí lo enseñábamos antes de que todo el mundo quisiera resolverlo con una app: ${fact}.`;
-}
-
-function halComment(event, actor) {
-  const fact = factFor(event, actor);
-  const catastrophic = ['MISSED_MATE', 'STALEMATE_BLUNDER', 'ALLOWED_MATE', 'QUEEN_EN_PRISE_TO_PAWN'].includes(event.type);
-  if (actor === 'human' && catastrophic) return `Anomalía crítica detectada: ${fact}. Probabilidad de que esto fuese intencionado: despreciable.`;
-  if (actor === 'human') return `Patrón táctico registrado: ${fact}. Actualizando mi estimación sobre ti.`;
-  if (catastrophic) return `Error interno de criterio: ${fact}. Recomiendo no usar esta secuencia como material promocional.`;
-  return `Secuencia óptima interesante: ${fact}. Satisfacción computacional dentro de parámetros.`;
-}
-
-function casterComment(event, actor) {
-  const fact = factFor(event, actor);
-  const catastrophic = ['MISSED_MATE', 'STALEMATE_BLUNDER', 'ALLOWED_MATE', 'QUEEN_EN_PRISE_TO_PAWN'].includes(event.type);
-  if (actor === 'human' && catastrophic) return `¡ATENCIÓN AL TABLERO! ${fact}. El público no sabe si mirar la posición o llamar a emergencias.`;
-  if (actor === 'human') return `¡Y ahí está! ${fact}. Jugada de repetición instantánea.`;
-  if (catastrophic) return `¡Giro dramático! ${fact}. La cabina pide revisar la cinta porque esto cuesta creerlo en directo.`;
-  return `¡Señoras y señores! ${fact}. La partida acaba de subir dos marchas.`;
-}
-
-export function commentForEvent(event, actor = 'human', personality = 'bco') {
+export function commentForEvent(event, actor = 'human') {
   if (!event) return null;
-  if (personality === 'gentleman') return gentlemanComment(event, actor);
-  if (personality === 'master') return masterComment(event, actor);
-  if (personality === 'hal') return halComment(event, actor);
-  if (personality === 'caster') return casterComment(event, actor);
   const pool = LINES[actor]?.[event.type] || LINES.human[event.type];
   if (!pool?.length) return null;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-export function noteworthyComment(beforeFen, move, actor = 'human', personality = 'bco') {
+export function noteworthyComment(beforeFen, move, actor = 'human') {
   const event = detectNoteworthyMove(beforeFen, move);
   if (!event) return null;
-  return { event, text: commentForEvent(event, actor, personality) };
+  return { event, text: commentForEvent(event, actor) };
 }

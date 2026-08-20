@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
-import { randomPuzzle } from '../puzzles.js';
+import { PUZZLES, randomPuzzle } from '../puzzles.js';
+import { loadPersonalPuzzles, randomPersonalPuzzle } from '../personalPuzzles.js';
+import { dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
 import { puzzleRetryCost } from '../tournament.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
-const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material' };
+const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
 
 // Tiempo (ms) que se espera antes de aplicar la respuesta forzada del
 // rival, para que se note que hubo dos jugadas separadas.
@@ -15,7 +17,10 @@ const REPLY_DELAY_MS = 550;
 
 export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
   useEscapeToClose(onExit);
+  const [source, setSource] = useState('curated'); // curated | personal | daily
+  const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const [puzzle, setPuzzle] = useState(() => randomPuzzle());
+  const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [fen, setFen] = useState(puzzle.fen);
   const [stepIndex, setStepIndex] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -56,8 +61,21 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
     ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
     : [];
 
+  function choosePuzzle(nextSource, excludeId = null) {
+    if (nextSource === 'personal') return randomPersonalPuzzle(excludeId) || randomPuzzle(excludeId);
+    if (nextSource === 'daily') return dailyPuzzle(PUZZLES);
+    return randomPuzzle(excludeId);
+  }
+
+  function changeSource(nextSource) {
+    if (nextSource === 'personal' && personalPuzzles.length === 0) return;
+    setSource(nextSource);
+    setPuzzle(choosePuzzle(nextSource));
+  }
+
   function newPuzzle() {
-    setPuzzle(randomPuzzle(puzzle.id));
+    setPersonalPuzzles(loadPersonalPuzzles());
+    setPuzzle(choosePuzzle(source, puzzle.id));
   }
 
   function handleSquareClick(square) {
@@ -119,6 +137,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
       setStatus('solved');
       setSolvedCount((n) => n + 1);
       incrementPuzzlesSolved();
+      if (source === 'daily' && puzzle.dailyKey) {
+        setDailyStats(markDailySolved(puzzle.dailyKey));
+      }
       if (wrongThisPuzzle) {
         resetPuzzleStreak();
         setStreak(0);
@@ -176,6 +197,13 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
   return (
     <div className="tutorial-shell">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
+      <div className="puzzle-source-picker" role="group" aria-label="Tipo de puzzle">
+        <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
+        <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={personalPuzzles.length === 0} onClick={() => changeSource('personal')}>
+          Tus crímenes ({personalPuzzles.length})
+        </button>
+        <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
+      </div>
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         <div className="board-column">
           <div className={`status-line ${status === 'solved' ? 'success' : ''}`}>
@@ -215,7 +243,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
             {status === 'playing' && (
               <button className="secondary-btn" onClick={revealSolution}>Ver solución</button>
             )}
-            <button className="primary-btn" onClick={newPuzzle}>Siguiente puzzle</button>
+            {source !== 'daily' && <button className="primary-btn" onClick={newPuzzle}>Siguiente puzzle</button>}
           </div>
         </div>
 
@@ -223,8 +251,19 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
           <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'} · resueltos: {solvedCount}</span>
           <h2>{puzzle.title}</h2>
           <p>{puzzle.description}</p>
+          {source === 'personal' && (
+            <p className="hint-text personal-puzzle-note">
+              ☠ Nació de una de tus propias autopsias. La máquina guarda rencor documental.
+            </p>
+          )}
+          {source === 'daily' && (
+            <p className="hint-text daily-challenge-note">
+              📅 Reto de hoy · racha diaria: <b>{dailyStats.streak || 0}</b> · mejor: <b>{dailyStats.bestStreak || 0}</b>
+              {dailyStats.solvedDates?.includes(puzzle.dailyKey) ? ' · ya resuelto hoy' : ''}
+            </p>
+          )}
           <p className="hint-text" style={{ marginTop: '0.5rem' }}>
-            Racha actual: <b>{streak}</b> · mejor racha: <b>{bestStreak}</b>
+            Racha de puzzles: <b>{streak}</b> · mejor racha: <b>{bestStreak}</b>
           </p>
           <p className="hint-text" style={{ marginTop: '0.75rem' }}>
             Juegas con {humanColor === 'w' ? 'blancas' : 'negras'}. Elige la pieza y la casilla de destino como en una

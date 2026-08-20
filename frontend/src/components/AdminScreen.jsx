@@ -93,6 +93,10 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Partidas analizadas</span><strong>{u.analyzedGames ?? 0}</strong></div>
                               <div><span>Puzzles resueltos</span><strong>{u.puzzlesSolved ?? 0}</strong></div>
                               <div><span>Mejor racha puzzles</span><strong>{u.puzzleBestStreak ?? 0}</strong></div>
+                              <div><span>Puzzles de sus cagadas</span><strong>{u.personalPuzzles ?? 0}</strong></div>
+                              <div><span>Racha diaria máx.</span><strong>{u.dailyBestStreak ?? 0}</strong></div>
+                              <div><span>Partidas con rivalidad</span><strong>{u.rivalryGames ?? 0}</strong></div>
+                              <div><span>Pecado más repetido</span><strong>{u.mostCommonSin ? `${u.mostCommonSin.label} ×${u.mostCommonSin.count}` : '—'}</strong></div>
                               <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>
                               <div><span>Forma reciente</span><strong>{(u.recentForm || []).map((r) => OUTCOME_LABEL[r]).join(' · ') || '—'}</strong></div>
                               <div className="admin-detail-wide"><span>Peor jugada registrada</span><strong><WorstMove move={u.worstMove} /></strong></div>

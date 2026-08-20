@@ -32,14 +32,11 @@ describe('cpuCommentary', () => {
   });
 
 
-  it('las personalidades cambian el tono sin cambiar el evento', () => {
+  it('usa siempre el repertorio sarcástico fijo', () => {
     const event = { type: 'MISSED_MATE' };
-    const gentleman = commentForEvent(event, 'human', 'gentleman');
-    const hal = commentForEvent(event, 'human', 'hal');
-    const caster = commentForEvent(event, 'human', 'caster');
-    expect(gentleman).toContain('Con todo respeto');
-    expect(hal).toContain('Anomalía crítica');
-    expect(caster).toContain('ATENCIÓN AL TABLERO');
+    const line = commentForEvent(event, 'human');
+    expect(typeof line).toBe('string');
+    expect(line.length).toBeGreaterThan(20);
   });
 
   it('no comenta una jugada normal de apertura', () => {

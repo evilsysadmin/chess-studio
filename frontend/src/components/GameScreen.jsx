@@ -5,7 +5,7 @@ import NotationPanel from './NotationPanel.jsx';
 import PromotionModal from './PromotionModal.jsx';
 import GameReportModal from './GameReportModal.jsx';
 import VoiceToggle from './VoiceToggle.jsx';
-import CpuPersona from './CpuPersona.jsx';
+import CpuPresence from './CpuPresence.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
@@ -15,7 +15,7 @@ import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
 import { formatClock } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
-import { loadCpuPersonality, saveCpuPersonality } from '../cpuPersonality.js';
+import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -70,7 +70,6 @@ export default function GameScreen({
   const [flagFallen, setFlagFallen] = useState(null); // 'w' | 'b' | null
   const tickRef = useRef(null);
   const [showReport, setShowReport] = useState(false);
-  const [cpuPersonality, setCpuPersonality] = useState(() => loadCpuPersonality());
   const [achievementToast, setAchievementToast] = useState(null);
 
   // Estado visual del tablero: se actualiza en dos pasos (jugada propia,
@@ -190,7 +189,8 @@ export default function GameScreen({
 
   function showNoteworthy(comment, actor) {
     if (!comment) return;
-    showCpuComment(comment);
+    const recurrenceCount = recordRivalryIncident(comment.event, actor);
+    showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` });
     const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
     if (!unlocked) return;
     setAchievementToast(unlocked);
@@ -198,11 +198,6 @@ export default function GameScreen({
     achievementToastTimeout.current = setTimeout(() => setAchievementToast(null), 5200);
   }
 
-  function handlePersonalityChange(id) {
-    const saved = saveCpuPersonality(id);
-    setCpuPersonality(saved);
-    setCpuComment(null);
-  }
 
   function announceCpuMove(move) {
     const text = formatLongMove(move);
@@ -256,7 +251,7 @@ export default function GameScreen({
     setTurnBanner(null);
     setBusy(true);
 
-    const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human', cpuPersonality);
+    const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
     showNoteworthy(humanComment, 'human');
 
     // Incremento tipo Fischer: se suma al terminar la jugada, antes de que
@@ -293,7 +288,7 @@ export default function GameScreen({
       setGame(updated);
 
       if (updated.lastMove && updated.lastMove.by === 'cpu') {
-        const cpuCommentary = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu', cpuPersonality);
+        const cpuCommentary = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu');
         showNoteworthy(cpuCommentary, 'cpu');
         // 2) Llegó la respuesta de la CPU: animamos su jugada por separado.
         setBoardFen(updated.fen);
@@ -473,7 +468,7 @@ export default function GameScreen({
             {statusText}
             <VoiceToggle />
           </div>
-          <CpuPersona key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} personality={cpuPersonality} onPersonalityChange={handlePersonalityChange} />
+          <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />
           {achievementToast && (
             <div className={`achievement-toast ${achievementToast.kind === 'shame' ? 'shame' : 'glory'}`}>
               <b>{achievementToast.kind === 'shame' ? '☠ Trofeo de vergüenza' : '🏆 Logro desbloqueado'}</b>
@@ -544,6 +539,7 @@ export default function GameScreen({
           history={game.history}
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
+          meta={{ difficulty: game.difficulty, mode: hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, {
             outcome: flagFallen
               ? (flagFallen === humanColor ? 'loss' : 'win')

@@ -29,7 +29,16 @@ from auth import hash_password, verify_password, create_token, verify_token
 from chess_ai import analyze_move as ai_analyze_move
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 
-app = FastAPI(title="Estudio de Ajedrez API")
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
+EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
+ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower() in {"1", "true", "yes", "on"}
+
+app = FastAPI(
+    title="Estudio de Ajedrez API",
+    docs_url="/docs" if EXPOSE_API_DOCS else None,
+    redoc_url="/redoc" if EXPOSE_API_DOCS else None,
+    openapi_url="/openapi.json" if EXPOSE_API_DOCS else None,
+)
 
 # Logger de acceso propio. Uvicorn mantiene sus access logs normales, pero
 # esta línea añade el dato que más nos interesa al depurar una partida:
@@ -131,11 +140,22 @@ async def persistent_storage_unavailable_handler(request: Request, exc: Persiste
         headers={"X-Request-ID": _request_id(request)},
     )
 
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+_CORS_ORIGINS = [
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("CORS_ORIGINS", ",".join(_DEFAULT_CORS_ORIGINS)).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-API-Key"],
     expose_headers=["X-Request-ID"],
 )
 
@@ -402,8 +422,42 @@ async def get_current_user(request: Request) -> str:
     return username
 
 
+async def get_user_or_m2m(request: Request) -> str:
+    """Autenticación para endpoints de cálculo reutilizables.
+
+    Un humano entra con JWT. Automatizaciones de confianza pueden usar una
+    X-API-Key configurada en M2M_API_KEYS. No existe acceso anónimo.
+    """
+    if has_valid_api_key(request):
+        request.state.username = "m2m"
+        return "m2m"
+    return await get_current_user(request)
+
+
+async def get_owned_game(game_id: str, username: str) -> dict:
+    """Carga una partida únicamente si pertenece al usuario autenticado.
+
+    Las partidas creadas antes de V10 no tenían owner. Se rechazan en lugar
+    de adjudicárselas al primer usuario que conozca el UUID: seguridad antes
+    que una migración implícita ambigua.
+    """
+    entry = await store.get_game(game_id)
+    if not entry:
+        raise HTTPException(404, "Partida no encontrada.")
+    owner = entry.get("owner")
+    if owner is None:
+        raise HTTPException(409, "Partida antigua sin propietario. Inicia una partida nueva.")
+    if owner != username:
+        # 404 evita confirmar a otro usuario que ese UUID existe.
+        raise HTTPException(404, "Partida no encontrada.")
+    return entry
+
+
 @app.post("/api/auth/register", status_code=201)
+@limiter.limit("5/hour")
 async def register(body: RegisterRequest, request: Request):
+    if not ALLOW_REGISTRATION:
+        raise HTTPException(403, "El registro público está deshabilitado.")
     username = body.username.strip().lower()
     if len(username) < 3:
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
@@ -422,6 +476,7 @@ async def register(body: RegisterRequest, request: Request):
 
 
 @app.post("/api/auth/login")
+@limiter.limit("10/minute")
 async def login(body: LoginRequest, request: Request):
     username = body.username.strip().lower()
     user = await ustore.get_user(username)
@@ -502,6 +557,18 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
 
     puzzles_solved = _profile_json(data, "chess-study-puzzles-solved", 0)
     puzzle_best_streak = _profile_json(data, "chess-study-puzzle-best-streak", 0)
+
+    personal_puzzles = _profile_json(data, "chess-study-personal-puzzles", [])
+    if not isinstance(personal_puzzles, list):
+        personal_puzzles = []
+
+    rivalry = _profile_json(data, "chess-study-cpu-rivalry", {})
+    if not isinstance(rivalry, dict):
+        rivalry = {}
+
+    daily_challenge = _profile_json(data, "chess-study-daily-challenge", {})
+    if not isinstance(daily_challenge, dict):
+        daily_challenge = {}
 
     all_records = [r for r in [*game_history, *combat_history] if isinstance(r, dict)]
     wins = sum(1 for r in all_records if r.get("outcome") == "win")
@@ -586,6 +653,47 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
 
     recent = sorted(all_records, key=lambda r: str(r.get("date") or ""), reverse=True)[:5]
 
+    rivalry_games = 0
+    rivalry_record = rivalry.get("record")
+    if isinstance(rivalry_record, dict):
+        try:
+            rivalry_games = int(rivalry_record.get("games") or rivalry.get("totalGames") or 0)
+        except (TypeError, ValueError):
+            rivalry_games = 0
+    else:
+        # Compatibilidad con perfiles V7: antes había un marcador por personalidad.
+        for row in (rivalry.get("byPersona") or {}).values():
+            if isinstance(row, dict):
+                try:
+                    rivalry_games += int(row.get("games") or 0)
+                except (TypeError, ValueError):
+                    pass
+
+    sin_labels = {
+        "human:MISSED_MATE": "mates ignorados",
+        "human:ALLOWED_MATE": "mates regalados",
+        "human:QUEEN_EN_PRISE_TO_PAWN": "damas expuestas a peón",
+        "human:STALEMATE_BLUNDER": "ahogados criminales",
+        "cpu:PAWN_TAKES_QUEEN": "damas perdidas contra peón",
+        "cpu:KNIGHT_FORK": "horquillas de caballo sufridas",
+        "cpu:PAWN_FORK": "horquillas de peón sufridas",
+    }
+    incidents = rivalry.get("incidents") or {}
+    most_common_sin = None
+    if isinstance(incidents, dict):
+        candidates = []
+        for key, value in incidents.items():
+            if key not in sin_labels:
+                continue
+            try:
+                count = int(value)
+            except (TypeError, ValueError):
+                continue
+            candidates.append((count, key))
+        if candidates:
+            count, key = max(candidates)
+            most_common_sin = {"label": sin_labels[key], "count": count}
+
     return {
         "tournamentPoints": tournament.get("points"),
         "tournamentWins": tournament.get("wins"),
@@ -613,6 +721,10 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         "achievements": len(achievements),
         "puzzlesSolved": puzzles_solved if isinstance(puzzles_solved, (int, float)) else 0,
         "puzzleBestStreak": puzzle_best_streak if isinstance(puzzle_best_streak, (int, float)) else 0,
+        "personalPuzzles": len(personal_puzzles),
+        "rivalryGames": rivalry_games,
+        "mostCommonSin": most_common_sin,
+        "dailyBestStreak": daily_challenge.get("bestStreak", 0) if isinstance(daily_challenge, dict) else 0,
         "recentForm": [r.get("outcome") for r in recent if r.get("outcome") in {"win", "draw", "loss"}],
     }
 
@@ -636,7 +748,7 @@ async def admin_list_users(username: str = Depends(get_current_user)):
 
 
 @app.post("/api/games", status_code=201)
-async def create_game(body: NewGameRequest):
+async def create_game(body: NewGameRequest, username: str = Depends(get_current_user)):
     if not is_valid_difficulty(body.difficulty):
         raise HTTPException(400, "Dificultad inválida. Tiene que ser un número entre 0 y 100.")
     if body.color not in ("w", "b", "random"):
@@ -663,6 +775,7 @@ async def create_game(body: NewGameRequest):
             }
 
     entry = {
+        "owner": username,
         "moves": board_sans(board, body.handicap, cpu_color),
         "difficulty": rounded_difficulty,
         "humanColor": human_color,
@@ -674,18 +787,14 @@ async def create_game(body: NewGameRequest):
 
 
 @app.get("/api/games/{game_id}")
-async def get_game(game_id: str):
-    entry = await store.get_game(game_id)
-    if not entry:
-        raise HTTPException(404, "Partida no encontrada.")
+async def get_game(game_id: str, username: str = Depends(get_current_user)):
+    entry = await get_owned_game(game_id, username)
     return serialize_game(game_id, entry, load_board(entry))
 
 
 @app.get("/api/games/{game_id}/moves")
-async def legal_moves(game_id: str, square: str):
-    entry = await store.get_game(game_id)
-    if not entry:
-        raise HTTPException(404, "Partida no encontrada.")
+async def legal_moves(game_id: str, square: str, username: str = Depends(get_current_user)):
+    entry = await get_owned_game(game_id, username)
     board = load_board(entry)
     try:
         from_sq = chess.parse_square(square)
@@ -706,10 +815,8 @@ async def legal_moves(game_id: str, square: str):
 
 
 @app.get("/api/games/{game_id}/hint")
-async def hint(game_id: str):
-    entry = await store.get_game(game_id)
-    if not entry:
-        raise HTTPException(404, "Partida no encontrada.")
+async def hint(game_id: str, username: str = Depends(get_current_user)):
+    entry = await get_owned_game(game_id, username)
     board = load_board(entry)
 
     if board.is_game_over():
@@ -725,10 +832,8 @@ async def hint(game_id: str):
 
 
 @app.post("/api/games/{game_id}/undo")
-async def undo(game_id: str):
-    entry = await store.get_game(game_id)
-    if not entry:
-        raise HTTPException(404, "Partida no encontrada.")
+async def undo(game_id: str, username: str = Depends(get_current_user)):
+    entry = await get_owned_game(game_id, username)
     board = load_board(entry)
 
     if len(board.move_stack) == 0:
@@ -769,7 +874,7 @@ async def undo(game_id: str):
 @app.post("/api/analyze")
 @limiter.limit("60/minute", exempt_when=has_valid_api_key)
 @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
-async def analyze(request: Request, body: AnalyzeRequest):
+async def analyze(request: Request, body: AnalyzeRequest, _actor: str = Depends(get_user_or_m2m)):
     try:
         board = chess.Board(body.fen)
     except ValueError:
@@ -838,7 +943,7 @@ def sanitize_eval(score: Optional[float]) -> Optional[float]:
 @app.post("/api/analyze-move")
 @limiter.limit("180/minute", exempt_when=has_valid_api_key)
 @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
-async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest):
+async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest, _actor: str = Depends(get_user_or_m2m)):
     try:
         board = chess.Board(body.fen)
     except ValueError:
@@ -876,10 +981,8 @@ async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest):
 
 
 @app.post("/api/games/{game_id}/move")
-async def play_move(game_id: str, body: MoveRequest):
-    entry = await store.get_game(game_id)
-    if not entry:
-        raise HTTPException(404, "Partida no encontrada.")
+async def play_move(game_id: str, body: MoveRequest, username: str = Depends(get_current_user)):
+    entry = await get_owned_game(game_id, username)
     board = load_board(entry)
 
     if board.is_game_over():
@@ -924,7 +1027,8 @@ async def play_move(game_id: str, body: MoveRequest):
 
 
 @app.delete("/api/games/{game_id}", status_code=204)
-async def delete_game(game_id: str):
+async def delete_game(game_id: str, username: str = Depends(get_current_user)):
+    await get_owned_game(game_id, username)
     existed = await store.delete_game(game_id)
     if not existed:
         raise HTTPException(404, "Partida no encontrada.")
@@ -949,7 +1053,7 @@ async def save_profile(body: dict, username: str = Depends(get_current_user)):
 
 @app.get("/")
 @limiter.exempt
-async def root():
+async def root(_username: str = Depends(get_current_user)):
     # Útil especialmente detrás de un dominio propio: abrir el hostname en el
     # navegador confirma que el tráfico ha llegado a ESTA app en vez de mostrar
     # el 404 genérico que FastAPI devolvía antes al no existir la ruta raíz.
