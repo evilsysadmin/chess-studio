@@ -20,7 +20,6 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-muted', // legado: fallback para perfiles anteriores
   'chess-study-music-muted',
   'chess-study-fx-muted',
-  'chess-study-ambient-theme',
   'chess-study-voice-enabled',
   'chess-study-worst-move-cache',
   'chess-study-selected-title',
@@ -90,6 +89,7 @@ export function removeProfileStorageItem(key) {
 export function clearProfileCache({ notify = false } = {}) {
   for (const key of PROFILE_STORAGE_KEYS) localStorage.removeItem(key);
   localStorage.removeItem('chess-study-cpu-personality'); // legado de versiones con selector: ya no existe
+  localStorage.removeItem('chess-study-ambient-theme'); // V15.4: la música pasa a ser de sesión, no de perfil
   if (notify) emitProfileChanged();
 }
 

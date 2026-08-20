@@ -656,6 +656,92 @@ def test_admin_endpoint_exposes_richer_chess_stats(monkeypatch):
     assert target["achievements"] == 2
     assert target["puzzlesSolved"] == 12
 
+
+
+def test_admin_can_load_same_insights_payload_as_player(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_insights"})
+    admin = client.post("/api/auth/register", json={"username": "admin_insights", "password": "clave123456"})
+    admin_token = admin.json()["token"]
+
+    player = client.post("/api/auth/register", json={"username": "jugador_observable", "password": "clave123456"})
+    player_token = player.json()["token"]
+    game_history = [{
+        "id": "insight-g1", "date": "2026-08-20T18:00:00Z", "difficulty": 65,
+        "humanColor": "w", "outcome": "win",
+        "moves": [{"san": "e4"}, {"san": "e5"}, {"san": "Nf3"}, {"san": "Nc6"}, {"san": "Bb5"}],
+    }]
+    rivalry = {"record": {"games": 4, "wins": 2, "draws": 0, "losses": 2}, "incidents": {"human:MISSED_MATE": 2}}
+    client.put(
+        "/api/profile",
+        json={"data": {
+            "chess-study-game-history": json.dumps(game_history),
+            "chess-study-combat-history": json.dumps([]),
+            "chess-study-rating-history": json.dumps([{"rating": 800}, {"rating": 825}]),
+            "chess-study-cpu-rivalry": json.dumps(rivalry),
+            "chess-study-achievements": json.dumps(["first_game"]),
+            "chess-study-puzzles-solved": json.dumps(7),
+            "chess-study-personal-puzzles": json.dumps([{"id": "crime-1"}]),
+        }},
+        headers={"Authorization": f"Bearer {player_token}"},
+    )
+
+    response = client.get(
+        "/api/admin/users/jugador_observable/insights",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["username"] == "jugador_observable"
+    assert body["gameHistory"][0]["id"] == "insight-g1"
+    assert body["ratingHistory"][-1]["rating"] == 825
+    assert body["rivalry"]["incidents"]["human:MISSED_MATE"] == 2
+    assert body["extras"]["achievementsUnlocked"] == 1
+    assert body["extras"]["puzzlesSolved"] == 7
+    assert body["extras"]["personalPuzzles"] == 1
+
+
+def test_admin_insights_rejects_non_admin(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"otro_admin"})
+    player = client.post("/api/auth/register", json={"username": "curioso_no_admin", "password": "clave123456"})
+    token = player.json()["token"]
+    response = client.get(
+        "/api/admin/users/curioso_no_admin/insights",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+
+
+def test_admin_insights_post_handles_username_outside_url_path(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_json_insights"})
+    admin = client.post("/api/auth/register", json={"username": "admin_json_insights", "password": "clave123456"})
+    admin_token = admin.json()["token"]
+
+    # Las versiones antiguas no restringían caracteres de username. Un slash
+    # dentro del path puede convertirse en 404 al decodificarse; en JSON no.
+    odd = client.post("/api/auth/register", json={"username": "usuario/con-barra", "password": "clave123456"})
+    assert odd.status_code == 201
+
+    response = client.post(
+        "/api/admin/user-insights",
+        json={"username": "usuario/con-barra"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["username"] == "usuario/con-barra"
+
+
+def test_admin_insights_post_rejects_non_admin(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"solo_admin_post"})
+    player = client.post("/api/auth/register", json={"username": "usuario_normal_post", "password": "clave123456"})
+    token = player.json()["token"]
+    response = client.post(
+        "/api/admin/user-insights",
+        json={"username": "usuario_normal_post"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+
+
 # ---------- Security V10 ----------
 
 def test_game_endpoints_reject_anonymous_requests():
@@ -676,6 +762,7 @@ def test_profile_admin_and_root_reject_anonymous_requests():
     assert raw_client.get("/api/profile").status_code == 401
     assert raw_client.put("/api/profile", json={}).status_code == 401
     assert raw_client.get("/api/admin/users").status_code == 401
+    assert raw_client.post("/api/admin/user-insights", json={"username": "x"}).status_code == 401
     assert raw_client.get("/").status_code == 401
 
 

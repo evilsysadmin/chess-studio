@@ -11,6 +11,7 @@ function mockFetchOnce(status, body) {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -32,6 +33,12 @@ describe('register/login', () => {
     await register('nuevo', 'clave123456');
     expect(getToken()).toBe('un-token-jwt');
     expect(getUsername()).toBe('nuevo');
+  });
+
+  it('cada login inicializa un tema musical para esa sesión', async () => {
+    mockFetchOnce(200, { token: 'music-token', username: 'melomano' });
+    await login('melomano', 'clave123456');
+    expect(sessionStorage.getItem('chess-study-ambient-theme-session')).toBeTruthy();
   });
 
   it('envía el código de invitación cuando se registra', async () => {

@@ -404,6 +404,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class AdminInsightsRequest(BaseModel):
+    username: str
+
+
 class NewGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     difficulty: float = 50
@@ -859,6 +863,59 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
     }
 
 
+def _extract_admin_insights_payload(profile: Optional[dict]) -> dict:
+    """Datos necesarios para reutilizar en Admin el mismo ``Así juegas``.
+
+    Se entrega sólo bajo una ruta admin autenticada y sólo al pedir los
+    detalles de un usuario. No se devuelve el perfil entero ni secretos de
+    sesión: únicamente historiales/estadísticas que la propia pantalla
+    ``Así juegas`` consume en el navegador del dueño de la cuenta.
+    """
+    data = (profile or {}).get("data") or {}
+
+    game_history = _profile_json(data, "chess-study-game-history", [])
+    if not isinstance(game_history, list):
+        game_history = []
+
+    combat_history = _profile_json(data, "chess-study-combat-history", [])
+    if not isinstance(combat_history, list):
+        combat_history = []
+
+    rating_history = _profile_json(data, "chess-study-rating-history", [])
+    if not isinstance(rating_history, list):
+        rating_history = []
+
+    rivalry = _profile_json(data, "chess-study-cpu-rivalry", {})
+    if not isinstance(rivalry, dict):
+        rivalry = {}
+
+    achievements = _profile_json(data, "chess-study-achievements", [])
+    if not isinstance(achievements, list):
+        achievements = []
+
+    personal_puzzles = _profile_json(data, "chess-study-personal-puzzles", [])
+    if not isinstance(personal_puzzles, list):
+        personal_puzzles = []
+
+    puzzles_solved = _profile_json(data, "chess-study-puzzles-solved", 0)
+    if not isinstance(puzzles_solved, (int, float)):
+        puzzles_solved = 0
+
+    summary = _extract_summary_stats(profile)
+    return {
+        "gameHistory": game_history,
+        "combatHistory": combat_history,
+        "ratingHistory": rating_history,
+        "rivalry": rivalry,
+        "extras": {
+            "achievementsUnlocked": len(achievements),
+            "puzzlesSolved": puzzles_solved,
+            "personalPuzzles": len(personal_puzzles),
+            "worstMove": summary.get("worstMove"),
+        },
+    }
+
+
 @app.get("/api/admin/users")
 async def admin_list_users(username: str = Depends(get_current_user)):
     if not is_admin(username):
@@ -875,6 +932,60 @@ async def admin_list_users(username: str = Depends(get_current_user)):
             **_extract_summary_stats(profile),
         })
     return {"users": result}
+
+
+async def _resolve_admin_target_username(raw_username: str) -> str:
+    """Resuelve una cuenta sin depender de que el username sea URL-safe.
+
+    Las versiones históricas sólo exigían longitud mínima, por lo que puede
+    haber nombres con caracteres reservados. El endpoint POST nuevo recibe el
+    valor en JSON; esta resolución conserva además compatibilidad de mayúsculas
+    con cuentas antiguas.
+    """
+    candidate = (raw_username or "").strip()
+    if not candidate:
+        raise HTTPException(400, "Falta el usuario a consultar.")
+
+    if await ustore.get_user(candidate):
+        return candidate
+
+    lowered = candidate.lower()
+    if lowered != candidate and await ustore.get_user(lowered):
+        return lowered
+
+    # Compatibilidad con cuentas muy antiguas creadas antes de normalizar a
+    # minúsculas. Sólo se ejecuta en el panel admin y únicamente tras fallar
+    # las búsquedas directas.
+    for existing in await ustore.list_usernames():
+        if str(existing).casefold() == candidate.casefold():
+            return str(existing)
+
+    raise HTTPException(404, "Usuario no encontrado.")
+
+
+async def _admin_insights_response(target_username: str) -> dict:
+    resolved = await _resolve_admin_target_username(target_username)
+    profile = await pstore.get_profile(resolved)
+    return {
+        "username": resolved,
+        **_extract_admin_insights_payload(profile),
+    }
+
+
+@app.post("/api/admin/user-insights")
+async def admin_user_insights_post(body: AdminInsightsRequest, username: str = Depends(get_current_user)):
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permiso para ver esto.")
+    return await _admin_insights_response(body.username)
+
+
+# Compatibilidad con V15.2/V15.3 ya desplegadas. La UI nueva usa POST para
+# evitar problemas con caracteres reservados dentro del username.
+@app.get("/api/admin/users/{target_username}/insights")
+async def admin_user_insights(target_username: str, username: str = Depends(get_current_user)):
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permiso para ver esto.")
+    return await _admin_insights_response(target_username)
 
 
 @app.post("/api/games", status_code=201)

@@ -872,9 +872,9 @@ function App() {
       }
 
       setIsAdminUser(!!me?.isAdmin);
-      // El perfil remoto puede cambiar tema o mute de música respecto a la
-      // caché previa al login. Reiniciar el loop aplica esas preferencias
-      // sin esperar a que el usuario toque ningún control.
+      // El perfil remoto puede cambiar el mute de música respecto a la caché
+      // previa al login. El tema, en cambio, ya fue sorteado para esta sesión
+      // al autenticarse. Reiniciar el loop aplica ambas cosas inmediatamente.
       stopAmbientMusic();
       startAmbientMusic();
       setReady(true);

@@ -64,7 +64,7 @@ export default function AdminScreen({ onExit }) {
   }, []);
 
   useEffect(() => {
-    if (!expanded || insightsByUser[expanded] || insightsLoading[expanded]) return;
+    if (!expanded || insightsByUser[expanded] || insightsLoading[expanded] || insightsErrors[expanded]) return;
     setInsightsLoading((prev) => ({ ...prev, [expanded]: true }));
     setInsightsErrors((prev) => ({ ...prev, [expanded]: null }));
     fetchAdminUserInsights(expanded)
@@ -77,7 +77,7 @@ export default function AdminScreen({ onExit }) {
       .finally(() => {
         setInsightsLoading((prev) => ({ ...prev, [expanded]: false }));
       });
-  }, [expanded, insightsByUser, insightsLoading]);
+  }, [expanded, insightsByUser, insightsLoading, insightsErrors]);
 
   return (
     <div className="menu admin-screen">
@@ -179,7 +179,17 @@ export default function AdminScreen({ onExit }) {
                               </div>
 
                               {insightsLoading[u.username] && <p className="hint-text">Leyendo el historial y preparando el informe…</p>}
-                              {insightsErrors[u.username] && <p className="error-text">{insightsErrors[u.username]}</p>}
+                              {insightsErrors[u.username] && (
+                                <div className="admin-insights-error">
+                                  <p className="error-text">{insightsErrors[u.username]}</p>
+                                  <button
+                                    className="secondary-button"
+                                    onClick={() => setInsightsErrors((prev) => ({ ...prev, [u.username]: null }))}
+                                  >
+                                    Reintentar informe
+                                  </button>
+                                </div>
+                              )}
 
                               {insightsByUser[u.username] && insightsByUser[u.username].insights.totalGames === 0 && (
                                 <p className="hint-text">Todavía no tiene partidas suficientes para levantar acta. Sospechosamente limpio.</p>

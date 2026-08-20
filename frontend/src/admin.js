@@ -19,8 +19,14 @@ export async function fetchAdminUsers() {
 }
 
 export async function fetchAdminUserInsights(username) {
-  const res = await fetch(`${BASE_URL}/admin/users/${encodeURIComponent(username)}/insights`, {
-    headers: withRequestId({ ...authHeader() }),
+  // POST deliberado: los usernames antiguos no tenían una whitelist de
+  // caracteres y meterlos en el path podía convertir caracteres reservados
+  // (/, %, ?, #...) en un 404 antes incluso de llegar al handler. En el body
+  // viajan sin ambigüedad y el endpoint sigue protegido por JWT + rol admin.
+  const res = await fetch(`${BASE_URL}/admin/user-insights`, {
+    method: 'POST',
+    headers: withRequestId({ 'Content-Type': 'application/json', ...authHeader() }),
+    body: JSON.stringify({ username }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

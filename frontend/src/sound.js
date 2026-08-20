@@ -8,7 +8,8 @@ import { setProfileStorageItem } from './profileKeys.js';
 const LEGACY_MUTE_KEY = 'chess-study-muted';
 const MUSIC_MUTED_KEY = 'chess-study-music-muted';
 const FX_MUTED_KEY = 'chess-study-fx-muted';
-const AMBIENT_THEME_KEY = 'chess-study-ambient-theme';
+const LEGACY_AMBIENT_THEME_KEY = 'chess-study-ambient-theme';
+const AMBIENT_THEME_SESSION_KEY = 'chess-study-ambient-theme-session';
 const DEFAULT_AMBIENT_THEME = 'andalus';
 
 let audioCtx = null;
@@ -848,6 +849,84 @@ Object.assign(AMBIENT_THEMES, {
       },
     ],
   },
+  alexandria241: {
+    id: 'alexandria241', engine: 'structured', label: 'Alejandría 02:41',
+    description: 'Ney sintético, oud seco, Rhodes, contrabajo y escobillas: jazz árabe nocturno para pensar sin prisa.',
+    stepMs: 140, stepsPerSection: 64, leadInstrument: 'ney', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        // D Hijaz: frase contenida, mucho aire y respuesta del Rhodes.
+        leadInstrument: 'ney',
+        lead: { 4: 62, 8: 63, 12: 66, 18: 67, 24: 69, 30: 67, 36: 66, 42: 63, 50: 62, 58: 61.5 },
+        chords: { 0: [50, 57, 60, 64], 16: [51, 57, 60, 66], 32: [55, 60, 64, 69], 48: [50, 57, 61, 64] },
+        bass: { 0: 38, 8: 45, 16: 39, 24: 45, 32: 43, 40: 38, 48: 42, 56: 45 },
+        drums: { 0: 'B', 4: 'H', 8: 'B', 12: 'H', 16: 'B', 20: 'H', 24: 'B', 28: 'H', 32: 'B', 36: 'H', 40: 'B', 44: 'H', 48: 'B', 52: 'H', 56: 'B', 60: 'H' },
+      },
+      {
+        // El oud toma el relevo: frases cortas y sincopadas, sin copiar ninguna melodía externa.
+        leadInstrument: 'oudJazz',
+        lead: { 2: 62, 6: 66, 10: 67, 15: 69, 19: 70, 23: 69, 28: 66, 34: 63, 38: 66, 44: 69, 49: 73, 54: 70, 60: 67 },
+        chords: { 0: [50, 57, 60, 64], 16: [46, 53, 57, 62], 32: [48, 55, 58, 62], 48: [49, 55, 58, 64] },
+        bass: { 0: 38, 6: 45, 12: 50, 16: 34, 24: 41, 32: 36, 40: 43, 48: 37, 56: 44 },
+        drums: { 0: 'B', 7: 'H', 12: 'B', 15: 'H', 20: 'B', 28: 'B', 31: 'H', 36: 'B', 44: 'B', 47: 'H', 52: 'B', 60: 'B' },
+      },
+      {
+        // Sección más jazzística: la melodía sube de registro y el walking bass camina más.
+        leadInstrument: 'ney',
+        lead: { 0: 69, 5: 70, 10: 73, 16: 74, 22: 73, 27: 69, 33: 67, 39: 66, 45: 63, 52: 66, 58: 62 },
+        chords: { 0: [53, 57, 60, 64], 16: [55, 59, 62, 66], 32: [50, 57, 60, 64], 48: [51, 57, 60, 66] },
+        bass: { 0: 41, 4: 45, 8: 48, 12: 52, 16: 43, 20: 47, 24: 50, 28: 54, 32: 38, 36: 42, 40: 45, 44: 49, 48: 39, 52: 43, 56: 46, 60: 50 },
+        drums: { 0: 'B', 4: 'H', 8: 'B', 12: 'H', 16: 'B', 20: 'H', 24: 'B', 28: 'H', 32: 'B', 36: 'H', 40: 'B', 44: 'H', 48: 'B', 52: 'H', 56: 'B', 60: 'H' },
+      },
+      {
+        // Coda espaciosa: menos notas, más noche.
+        leadInstrument: 'oudJazz',
+        lead: { 6: 74, 14: 70, 22: 69, 31: 66, 40: 63.5, 49: 62, 58: 66 },
+        chords: { 0: [50, 57, 60, 64], 24: [46, 53, 57, 62], 40: [55, 60, 64, 69], 56: [50, 57, 61, 64] },
+        bass: { 0: 38, 16: 34, 32: 43, 48: 38 },
+        drums: { 0: 'B', 12: 'H', 24: 'B', 36: 'H', 48: 'B', 60: 'H' },
+      },
+    ],
+  },
+  cairo0047: {
+    id: 'cairo0047', engine: 'structured', label: 'Cairo 00:47',
+    description: 'Jazz árabe de madrugada: qanun, trompeta apagada, Rhodes, contrabajo y escobillas con mucho espacio.',
+    stepMs: 168, stepsPerSection: 64, longFormMs: 300000, leadInstrument: 'mutedHorn', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        // Apertura casi vacía: el Rhodes marca el horizonte y el qanun responde con pocas notas.
+        leadInstrument: 'qanun',
+        lead: { 6: 62, 12: 63, 18: 66, 26: 67, 34: 66, 42: 63, 52: 61.5, 60: 62 },
+        chords: { 0: [50, 57, 60, 64], 20: [46, 53, 57, 62], 40: [55, 60, 64, 69], 56: [50, 57, 61, 64] },
+        bass: { 0: 38, 12: 45, 20: 34, 32: 41, 40: 43, 52: 38 },
+        drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'H', 32: 'B', 40: 'H', 48: 'B', 56: 'H' },
+      },
+      {
+        // Entra la voz de metal apagado, lenta y casi conversacional.
+        leadInstrument: 'mutedHorn',
+        lead: { 3: 69, 11: 70, 19: 67, 27: 66, 35: 63.5, 43: 66, 51: 69, 59: 67 },
+        chords: { 0: [53, 57, 60, 64], 16: [51, 57, 60, 66], 32: [48, 55, 58, 62], 48: [50, 57, 60, 64] },
+        bass: { 0: 41, 8: 45, 16: 39, 24: 46, 32: 36, 40: 43, 48: 38, 56: 45 },
+        drums: { 0: 'B', 12: 'H', 16: 'B', 28: 'H', 32: 'B', 44: 'H', 48: 'B', 60: 'H' },
+      },
+      {
+        // Sección central algo más jazzística: walking bass suave y pregunta/respuesta.
+        leadInstrument: 'qanun',
+        lead: { 2: 66, 7: 69, 13: 70, 20: 74, 27: 70, 33: 69, 39: 66, 46: 63, 53: 66, 61: 62 },
+        chords: { 0: [50, 57, 60, 64], 16: [55, 59, 62, 66], 32: [53, 57, 60, 64], 48: [46, 53, 57, 62] },
+        bass: { 0: 38, 4: 45, 8: 50, 12: 45, 16: 43, 20: 47, 24: 50, 28: 47, 32: 41, 36: 45, 40: 48, 44: 45, 48: 34, 52: 41, 56: 46, 60: 41 },
+        drums: { 0: 'B', 6: 'H', 12: 'B', 18: 'H', 24: 'B', 30: 'H', 36: 'B', 42: 'H', 48: 'B', 54: 'H', 60: 'B' },
+      },
+      {
+        // Coda: trompeta muy escasa y acordes suspendidos. Debe sentirse como una calle vacía, no como un solo.
+        leadInstrument: 'mutedHorn',
+        lead: { 8: 74, 20: 70, 31: 69, 43: 66, 55: 63.5 },
+        chords: { 0: [50, 57, 60, 64], 24: [51, 57, 60, 66], 44: [55, 60, 64, 69] },
+        bass: { 0: 38, 16: 39, 32: 43, 48: 38 },
+        drums: { 0: 'B', 16: 'H', 32: 'B', 48: 'H' },
+      },
+    ],
+  },
   machineRoom: {
     id: 'machineRoom', engine: 'structured', label: 'Sala de máquinas',
     description: 'Metal, subgrave y patrones industriales contenidos. Algo enorme está funcionando detrás de la pared.',
@@ -880,10 +959,39 @@ export function getAmbientThemeVariationDurationMs(themeId) {
   return cycleMs * span;
 }
 
+function randomAmbientThemeId() {
+  const ids = Object.keys(AMBIENT_THEMES);
+  if (!ids.length) return DEFAULT_AMBIENT_THEME;
+  let index = 0;
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const value = new Uint32Array(1);
+    crypto.getRandomValues(value);
+    index = value[0] % ids.length;
+  } else {
+    index = Math.floor(Math.random() * ids.length);
+  }
+  return ids[index] || DEFAULT_AMBIENT_THEME;
+}
+
+export function resetAmbientThemeForSession() {
+  const nextId = randomAmbientThemeId();
+  if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+  // V15.4: el tema ya NO forma parte del perfil persistente. Borramos la
+  // preferencia histórica local para que un login nuevo no herede la pista
+  // que eligió el usuario en una sesión anterior.
+  if (typeof localStorage !== 'undefined') localStorage.removeItem(LEGACY_AMBIENT_THEME_KEY);
+  return nextId;
+}
+
+export function clearAmbientThemeSession() {
+  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(AMBIENT_THEME_SESSION_KEY);
+}
+
 export function getAmbientThemeId() {
-  if (typeof localStorage === 'undefined') return DEFAULT_AMBIENT_THEME;
-  const saved = localStorage.getItem(AMBIENT_THEME_KEY);
-  return AMBIENT_THEMES[saved] ? saved : DEFAULT_AMBIENT_THEME;
+  if (typeof sessionStorage === 'undefined') return DEFAULT_AMBIENT_THEME;
+  const saved = sessionStorage.getItem(AMBIENT_THEME_SESSION_KEY);
+  if (AMBIENT_THEMES[saved]) return saved;
+  return resetAmbientThemeForSession();
 }
 
 function getActiveAmbientTheme() {
@@ -893,7 +1001,7 @@ function getActiveAmbientTheme() {
 export function setAmbientTheme(themeId) {
   const nextId = AMBIENT_THEMES[themeId] ? themeId : DEFAULT_AMBIENT_THEME;
   const wasPlaying = !!stepTimer;
-  setProfileStorageItem(AMBIENT_THEME_KEY, nextId);
+  if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
   if (wasPlaying) {
     stopAmbientMusic();
     startAmbientMusic();
@@ -1230,6 +1338,12 @@ function voicePreset(kind) {
     case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
     case 'choir': return { waves: [['sine', 1, 1], ['triangle', 1, 0.24], ['sine', 2, 0.12]], gain: 0.013, attack: 0.38, release: 4.4, cutoff: 1550, tremolo: 4.2 };
     case 'pulse': return { waves: [['square', 1, 0.5], ['sine', 1, 0.5]], gain: 0.015, attack: 0.003, release: 0.22, cutoff: 2400 };
+    // V15.3: timbres dedicados al jazz árabe nocturno. El ney prioriza aire y vibrato;
+    // el oud estructurado es más seco y oscuro que la guitarra genérica.
+    case 'ney': return { waves: [['sine', 1, 1], ['triangle', 2, 0.11], ['sine', 3, 0.035]], gain: 0.021, attack: 0.075, release: 1.45, cutoff: 1850, tremolo: 5.0 };
+    case 'oudJazz': return { waves: [['sawtooth', 1, 0.48], ['triangle', 1, 0.72], ['sine', 2, 0.08]], gain: 0.019, attack: 0.004, release: 0.62, cutoff: 1750 };
+    case 'qanun': return { waves: [['triangle', 1, 0.82], ['sine', 2, 0.22], ['sine', 3, 0.09]], gain: 0.018, attack: 0.003, release: 0.88, cutoff: 3650 };
+    case 'mutedHorn': return { waves: [['triangle', 1, 0.76], ['sawtooth', 1, 0.16], ['sine', 0.5, 0.12]], gain: 0.017, attack: 0.085, release: 1.75, cutoff: 1180, tremolo: 4.4 };
     case 'metallic': return { waves: [['square', 1, 0.42], ['sine', 2.41, 0.34], ['sine', 4.83, 0.12]], gain: 0.014, attack: 0.004, release: 0.48, cutoff: 3200 };
     default: return { waves: [['sine', 1, 1]], gain: 0.02, attack: 0.01, release: 0.8, cutoff: 2500 };
   }
@@ -1463,7 +1577,7 @@ function startStructuredMusic(theme) {
     const t = arrangement.transpose;
 
     if (lead != null && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
-      playStructuredVoice(theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume);
+      playStructuredVoice(section.leadInstrument || theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume);
     }
     if (bass != null) playStructuredVoice(theme.bassInstrument, bass + t, arrangement.bassVolume);
     if (chord) {
