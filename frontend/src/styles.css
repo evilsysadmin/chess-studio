@@ -61,10 +61,18 @@ button:focus-visible,
 }
 
 .masthead-top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+}
+
+.masthead-audio-controls {
+  justify-self: start;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
+  gap: 0.55rem;
+  min-width: 0;
 }
 
 .masthead-text {
@@ -193,6 +201,65 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .mute-toggle svg { width: 17px; height: 17px; }
 .mute-toggle:hover { border-color: var(--brass-dim); color: var(--brass); }
+
+
+.music-selector {
+  min-width: 0;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 999px;
+  background: var(--ink-2);
+  color: var(--parchment-dim);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.music-selector:hover,
+.music-selector:focus-within {
+  border-color: var(--brass-dim);
+  color: var(--brass);
+}
+
+.music-selector-icon {
+  color: var(--brass-dim);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.music-selector select {
+  max-width: 145px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  cursor: pointer;
+}
+
+.music-selector option {
+  background: var(--ink-2);
+  color: var(--parchment);
+}
+
+@media (max-width: 640px) {
+  .masthead-top-row {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .masthead-audio-controls {
+    justify-self: center;
+    order: 2;
+  }
+
+  .masthead-text {
+    order: 1;
+  }
+}
 
 /* ---------- Menu ---------- */
 .menu {

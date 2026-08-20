@@ -16,6 +16,7 @@ import RoguelikeScreen from './components/RoguelikeScreen.jsx';
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
 import RatingDetailModal from './components/RatingDetailModal.jsx';
 import MuteToggle from './components/MuteToggle.jsx';
+import MusicSelector from './components/MusicSelector.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { startAmbientMusic, stopAmbientMusic } from './sound.js';
 import { api, STORAGE_KEY } from './api.js';
@@ -329,7 +330,10 @@ function AppInner({ isAdminUser }) {
       <div className="app-shell">
         <div className="masthead">
           <div className="masthead-top-row">
-            <MuteToggle />
+            <div className="masthead-audio-controls">
+              <MuteToggle />
+              <MusicSelector />
+            </div>
             <div className="masthead-text">
               <h1>Escuela de Ajedrez</h1>
             </div>

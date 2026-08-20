@@ -33,7 +33,7 @@ export default function AdminScreen({ onExit }) {
       <div className="menu-section">
         <span className="section-label">Admin</span>
         <h2>Usuarios registrados</h2>
-        <p className="hint-text">Resumen general arriba; “Cotillear” abre el expediente ajedrecístico.</p>
+        <p className="hint-text">Resumen general arriba; “Ver detalles” abre el expediente ajedrecístico.</p>
 
         {error && <p className="error-text">{error}</p>}
         {!error && !users && <p className="hint-text">Cargando…</p>}
@@ -71,7 +71,7 @@ export default function AdminScreen({ onExit }) {
                         <td className="admin-worst-cell"><WorstMove move={u.worstMove} /></td>
                         <td>
                           <button className="admin-peek-button" onClick={() => setExpanded(isOpen ? null : u.username)}>
-                            {isOpen ? 'Cerrar' : 'Cotillear'}
+                            {isOpen ? 'Cerrar' : 'Ver detalles'}
                           </button>
                         </td>
                       </tr>

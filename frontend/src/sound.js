@@ -6,6 +6,8 @@ import { setProfileStorageItem } from './profileKeys.js';
 // localStorage para que se recuerde entre sesiones.
 
 const MUTE_KEY = 'chess-study-muted';
+const AMBIENT_THEME_KEY = 'chess-study-ambient-theme';
+const DEFAULT_AMBIENT_THEME = 'andalus';
 
 let audioCtx = null;
 function getContext() {
@@ -107,8 +109,9 @@ function transpose(freq, semitones) {
   return freq * Math.pow(2, semitones / 12);
 }
 
-function currentOffset() {
-  return KEY_CENTERS_SEMITONES[keyCenterIndex % KEY_CENTERS_SEMITONES.length];
+function currentOffset(theme) {
+  const centers = theme?.keyCenters || KEY_CENTERS_SEMITONES;
+  return centers[keyCenterIndex % centers.length];
 }
 
 const OUD_SCALE = [130.81, 138.59, 164.81, 174.61, 195.99, 207.65, 233.08]; // C3 Db3 E3 F3 G3 Ab3 Bb3
@@ -218,6 +221,172 @@ const PERCUSSION_PATTERNS = [
   // silencio -- un compás entero de respiro real, no todo constante
   parsePattern('................', 0, 0),
 ];
+
+
+// Temas ambientales originales. Comparten el mismo motor de síntesis, pero
+// cambian escala, tempo, fraseo, bajo, percusión y densidad de solista. Así el
+// usuario puede elegir una melodía/ambiente sin depender de MP3 externos ni
+// sumar peso al frontend.
+const AMBIENT_THEMES = {
+  andalus: {
+    id: 'andalus',
+    label: 'Al-Ándalus',
+    description: 'Oud, guitarra y saxo con color frigio.',
+    scale: OUD_SCALE,
+    keyCenters: KEY_CENTERS_SEMITONES,
+    phrases: PHRASES,
+    saxPhrases: SAX_PHRASES,
+    padNotes: PAD_NOTES,
+    bassPattern: BASS_PATTERN,
+    percussionPatterns: PERCUSSION_PATTERNS,
+    stepMs: STEP_MS,
+    phraseNoteGapMs: PHRASE_NOTE_GAP_MS,
+    pluckGapSteps: PLUCK_GAP_STEPS,
+    pluckChance: PLUCK_CHANCE,
+    saxNoteGapMs: SAX_NOTE_GAP_MS,
+    saxGapSteps: SAX_GAP_STEPS,
+    saxChance: SAX_CHANCE,
+    instruments: ['oud', 'guitar'],
+    keyChangeBars: 6,
+  },
+  nocturne: {
+    id: 'nocturne',
+    label: 'Nocturno',
+    description: 'Más lento, menor y espacioso.',
+    scale: [130.81, 146.83, 155.56, 174.61, 196.0, 207.65, 233.08], // C natural minor
+    keyCenters: [0, 3, 5, -2],
+    phrases: [
+      [4, 3, 2, 0], [6, 5, 3, 2], [0, 2, 3], [5, 4, 2, 0], [2, 3, 5, 3], [6, 4, 3, 0],
+    ],
+    saxPhrases: [[2], [4], [6, 4], [3, 2, 0], [5, 3]],
+    padNotes: [261.63, 311.13, 392.0, 349.23],
+    bassPattern: [0, 4, 5, 4],
+    percussionPatterns: [
+      parsePattern('D.......T.......', 0.11, 0.07),
+      parsePattern('D.........t...T.', 0.1, 0.065),
+      parsePattern('................', 0, 0),
+      parsePattern('................', 0, 0),
+    ],
+    stepMs: 165,
+    phraseNoteGapMs: 260,
+    pluckGapSteps: 16,
+    pluckChance: 0.58,
+    saxNoteGapMs: 760,
+    saxGapSteps: 48,
+    saxChance: 0.25,
+    instruments: ['guitar', 'oud'],
+    keyChangeBars: 8,
+  },
+  gambit: {
+    id: 'gambit',
+    label: 'Gambito barroco',
+    description: 'Arpegios rápidos y tensión de menor armónica.',
+    scale: [110.0, 123.47, 130.81, 146.83, 164.81, 174.61, 207.65], // A harmonic minor
+    keyCenters: [0, 5, 7, 2],
+    phrases: [
+      [0, 2, 4, 6], [6, 4, 2, 0], [0, 4, 2, 6], [4, 3, 2, 1, 0],
+      [0, 2, 3, 4], [5, 4, 2, 0], [2, 4, 6, 5, 4],
+    ],
+    saxPhrases: [[4, 6], [6, 5, 4], [2, 0]],
+    padNotes: [220.0, 329.63, 261.63, 329.63],
+    bassPattern: [0, 4, 2, 6],
+    percussionPatterns: [
+      parsePattern('D...T...D...T...', 0.14, 0.09),
+      parsePattern('D..tT...D.t.T...', 0.14, 0.085),
+      parsePattern('D...T.D.....T...', 0.14, 0.09),
+      parsePattern('................', 0, 0),
+    ],
+    stepMs: 112,
+    phraseNoteGapMs: 145,
+    pluckGapSteps: 8,
+    pluckChance: 0.84,
+    saxNoteGapMs: 520,
+    saxGapSteps: 48,
+    saxChance: 0.16,
+    instruments: ['guitar', 'guitar', 'oud'],
+    keyChangeBars: 6,
+  },
+  casablanca: {
+    id: 'casablanca',
+    label: 'Café de Casablanca',
+    description: 'Jazz cálido, bajo caminante y más saxo.',
+    scale: [130.81, 146.83, 155.56, 174.61, 196.0, 220.0, 233.08], // C dorian
+    keyCenters: [0, 5, 7, -2],
+    phrases: [
+      [0, 2, 4, 5], [6, 4, 2, 0], [2, 4, 6, 5], [0, 3, 5, 4],
+      [4, 5, 6, 4], [3, 2, 0], [5, 3, 2, 4],
+    ],
+    saxPhrases: [[2, 4], [5, 4, 2], [6, 5, 4], [3, 5, 4], [4, 6, 5, 2]],
+    padNotes: [261.63, 311.13, 392.0, 466.16],
+    bassPattern: [0, 4, 5, 6],
+    percussionPatterns: [
+      parsePattern('D..t..T...D.T...', 0.12, 0.085),
+      parsePattern('D.....T.D...t.T.', 0.12, 0.085),
+      parsePattern('D...t.T.....T...', 0.115, 0.08),
+      parsePattern('................', 0, 0),
+    ],
+    stepMs: 142,
+    phraseNoteGapMs: 215,
+    pluckGapSteps: 8,
+    pluckChance: 0.62,
+    saxNoteGapMs: 560,
+    saxGapSteps: 24,
+    saxChance: 0.66,
+    instruments: ['oud', 'guitar'],
+    keyChangeBars: 8,
+  },
+  march: {
+    id: 'march',
+    label: 'Marcha del rey',
+    description: 'Percusiva, seca y con aire de asedio.',
+    scale: [130.81, 138.59, 155.56, 174.61, 196.0, 207.65, 233.08], // C phrygian
+    keyCenters: [0, 1, -1, 5],
+    phrases: [[0, 1, 0], [0, 4, 3, 0], [4, 3, 1, 0], [0, 3, 4], [6, 4, 3, 1, 0]],
+    saxPhrases: [[0], [4], [3, 1, 0]],
+    padNotes: [261.63, 277.18, 392.0, 349.23],
+    bassPattern: [0, 0, 4, 3],
+    percussionPatterns: [
+      parsePattern('D...T...D...T...', 0.18, 0.12),
+      parsePattern('D.D.T...D...T...', 0.17, 0.11),
+      parsePattern('D...T.D.D...T...', 0.18, 0.11),
+      parsePattern('D.......D...T...', 0.16, 0.1),
+    ],
+    stepMs: 120,
+    phraseNoteGapMs: 175,
+    pluckGapSteps: 12,
+    pluckChance: 0.68,
+    saxNoteGapMs: 580,
+    saxGapSteps: 64,
+    saxChance: 0.12,
+    instruments: ['oud', 'guitar'],
+    keyChangeBars: 4,
+  },
+};
+
+export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description }) => ({
+  id, label, description,
+}));
+
+export function getAmbientThemeId() {
+  if (typeof localStorage === 'undefined') return DEFAULT_AMBIENT_THEME;
+  const saved = localStorage.getItem(AMBIENT_THEME_KEY);
+  return AMBIENT_THEMES[saved] ? saved : DEFAULT_AMBIENT_THEME;
+}
+
+function getActiveAmbientTheme() {
+  return AMBIENT_THEMES[getAmbientThemeId()] || AMBIENT_THEMES[DEFAULT_AMBIENT_THEME];
+}
+
+export function setAmbientTheme(themeId) {
+  const nextId = AMBIENT_THEMES[themeId] ? themeId : DEFAULT_AMBIENT_THEME;
+  const wasPlaying = !!stepTimer;
+  setProfileStorageItem(AMBIENT_THEME_KEY, nextId);
+  if (wasPlaying) {
+    stopAmbientMusic();
+    startAmbientMusic();
+  }
+  return nextId;
+}
 
 let stepTimer = null;
 let padIndex = 0;
@@ -363,10 +532,10 @@ function playGuitarPluck(freq) {
 // como un instrumento tocando de verdad, no una mezcla rara). Cada nota
 // vuelve a chequear isMuted() por su cuenta al disparar, así que
 // silenciar a mitad de una frase la corta ahí sin dejar nada raro sonando.
-function playPhrase(scaleIndices, instrument) {
+function playPhrase(scaleIndices, instrument, scale = OUD_SCALE, offset = 0, noteGapMs = PHRASE_NOTE_GAP_MS) {
   const playNote = instrument === 'guitar' ? playGuitarPluck : playOudPluck;
   scaleIndices.forEach((idx, i) => {
-    setTimeout(() => playNote(transpose(OUD_SCALE[idx], currentOffset())), i * PHRASE_NOTE_GAP_MS);
+    setTimeout(() => playNote(transpose(scale[idx], offset)), i * noteGapMs);
   });
 }
 
@@ -417,9 +586,9 @@ function playSax(freq) {
   lfo.stop(start + SAX_DURATION_S + 0.05);
 }
 
-function playSaxPhrase(scaleIndices) {
+function playSaxPhrase(scaleIndices, scale = OUD_SCALE, offset = 0, noteGapMs = SAX_NOTE_GAP_MS) {
   scaleIndices.forEach((idx, i) => {
-    setTimeout(() => playSax(transpose(OUD_SCALE[idx], currentOffset())), i * SAX_NOTE_GAP_MS);
+    setTimeout(() => playSax(transpose(scale[idx], offset)), i * noteGapMs);
   });
 }
 
@@ -522,17 +691,17 @@ function playHighTak(volume) {
 export function startAmbientMusic() {
   if (stepTimer) return; // ya está sonando, no duplicar el loop
 
+  const theme = getActiveAmbientTheme();
+  const bassScale = theme.scale.map((f) => f / 2);
+  const keyChangeSteps = STEPS_PER_BAR * theme.keyChangeBars;
   let step = 0;
-  let currentPercussionPattern = PERCUSSION_PATTERNS[0];
+  let currentPercussionPattern = theme.percussionPatterns[0];
 
   function tick() {
     const barStep = step % STEPS_PER_BAR;
 
-    // se elige una frase rítmica nueva al empezar cada compás, no una
-    // sola vez para siempre — misma idea que antes, ahora alineada al
-    // pulso compartido en vez de tener su propio contador de pasos.
     if (barStep === 0) {
-      currentPercussionPattern = PERCUSSION_PATTERNS[Math.floor(Math.random() * PERCUSSION_PATTERNS.length)];
+      currentPercussionPattern = theme.percussionPatterns[Math.floor(Math.random() * theme.percussionPatterns.length)];
     }
     const percStep = currentPercussionPattern[barStep];
     if (percStep) {
@@ -541,44 +710,33 @@ export function startAmbientMusic() {
       else playHighTak(volume);
     }
 
-    // contrabajo: walking bass, un compás completo de patrón fijo — usa
-    // barStep (la posición DENTRO del compás), no el contador absoluto de
-    // pasos, para que nunca se desalinee con el resto. Misma lección que
-    // el desajuste del saxo de una vuelta anterior.
     if (barStep % BASS_STEP_GAP === 0) {
-      const bassIndex = BASS_PATTERN[Math.floor(barStep / BASS_STEP_GAP) % BASS_PATTERN.length];
-      playBass(transpose(BASS_SCALE[bassIndex], currentOffset()));
+      const bassIndex = theme.bassPattern[Math.floor(barStep / BASS_STEP_GAP) % theme.bassPattern.length];
+      playBass(transpose(bassScale[bassIndex], currentOffset(theme)));
     }
 
-    // pad: una nota por compás completo, siempre en el mismo punto del
-    // pulso — antes tenía su propio intervalo (2100ms) sin relación con
-    // el resto.
     if (step % PAD_GAP_STEPS === 0) {
-      playPadNote(transpose(PAD_NOTES[padIndex % PAD_NOTES.length], currentOffset()));
+      playPadNote(transpose(theme.padNotes[padIndex % theme.padNotes.length], currentOffset(theme)));
       padIndex += 1;
     }
 
-    // punteo: intenta una frase cada medio compás, siempre arrancando en
-    // un límite de paso exacto.
-    if (step % PLUCK_GAP_STEPS === 0 && Math.random() < PLUCK_CHANCE) {
-      const phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
-      const instrument = Math.random() < 0.5 ? 'oud' : 'guitar';
-      playPhrase(phrase, instrument);
+    if (step % theme.pluckGapSteps === 0 && Math.random() < theme.pluckChance) {
+      const phrase = theme.phrases[Math.floor(Math.random() * theme.phrases.length)];
+      const instrument = theme.instruments[Math.floor(Math.random() * theme.instruments.length)];
+      playPhrase(phrase, instrument, theme.scale, currentOffset(theme), theme.phraseNoteGapMs);
     }
 
-    // saxo: la voz solista, entra con menos frecuencia que el punteo.
-    if (step % SAX_GAP_STEPS === 0 && Math.random() < SAX_CHANCE) {
-      const phrase = SAX_PHRASES[Math.floor(Math.random() * SAX_PHRASES.length)];
-      playSaxPhrase(phrase);
+    if (step % theme.saxGapSteps === 0 && Math.random() < theme.saxChance) {
+      const phrase = theme.saxPhrases[Math.floor(Math.random() * theme.saxPhrases.length)];
+      playSaxPhrase(phrase, theme.scale, currentOffset(theme), theme.saxNoteGapMs);
     }
 
-    // centro tonal: rota cada 6 compases, también alineado al mismo pulso.
-    if (step > 0 && step % KEY_CHANGE_STEPS === 0) {
+    if (step > 0 && step % keyChangeSteps === 0) {
       keyCenterIndex += 1;
     }
 
     step += 1;
-    stepTimer = setTimeout(tick, STEP_MS);
+    stepTimer = setTimeout(tick, theme.stepMs);
   }
 
   tick();
@@ -590,4 +748,5 @@ export function stopAmbientMusic() {
     stepTimer = null;
   }
   keyCenterIndex = 0; // vuelve a empezar en la tónica la próxima vez, no donde quedó
+  padIndex = 0;
 }
