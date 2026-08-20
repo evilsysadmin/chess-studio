@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { fetchAdminUsers } from '../admin.js';
+import { fetchAdminUsers, fetchAdminUserInsights } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { computeInsights, generateRoast, generateCoaching } from '../insights.js';
+import { ACHIEVEMENTS } from '../achievements.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -15,17 +17,67 @@ function WorstMove({ move }) {
   );
 }
 
+function buildAdminInsights(payload) {
+  if (!payload) return null;
+  const insights = computeInsights(
+    payload.gameHistory || [],
+    payload.combatHistory || [],
+    payload.ratingHistory || [],
+  );
+  const rivalry = payload.rivalry || {};
+  const rawExtras = payload.extras || {};
+  const extras = {
+    achievementsUnlocked: Number(rawExtras.achievementsUnlocked || 0),
+    achievementsTotal: ACHIEVEMENTS.length,
+    puzzlesSolved: Number(rawExtras.puzzlesSolved || 0),
+    personalPuzzles: Number(rawExtras.personalPuzzles || 0),
+    rivalryRecord: rivalry.record,
+    incidents: rivalry.incidents,
+  };
+  const worst = rawExtras.worstMove
+    ? { moveReport: {
+      played: rawExtras.worstMove.played,
+      suggested: rawExtras.worstMove.suggested,
+      loss: rawExtras.worstMove.loss,
+    } }
+    : null;
+  return {
+    insights,
+    roast: generateRoast(insights, worst, extras),
+    coaching: generateCoaching(insights, rivalry, extras),
+  };
+}
+
 export default function AdminScreen({ onExit }) {
   useEscapeToClose(onExit);
   const [users, setUsers] = useState(null);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [insightsByUser, setInsightsByUser] = useState({});
+  const [insightsLoading, setInsightsLoading] = useState({});
+  const [insightsErrors, setInsightsErrors] = useState({});
 
   useEffect(() => {
     fetchAdminUsers()
       .then(setUsers)
       .catch((e) => setError(e.message));
   }, []);
+
+  useEffect(() => {
+    if (!expanded || insightsByUser[expanded] || insightsLoading[expanded]) return;
+    setInsightsLoading((prev) => ({ ...prev, [expanded]: true }));
+    setInsightsErrors((prev) => ({ ...prev, [expanded]: null }));
+    fetchAdminUserInsights(expanded)
+      .then((payload) => {
+        setInsightsByUser((prev) => ({ ...prev, [expanded]: buildAdminInsights(payload) }));
+      })
+      .catch((e) => {
+        setInsightsErrors((prev) => ({ ...prev, [expanded]: e.message }));
+      })
+      .finally(() => {
+        setInsightsLoading((prev) => ({ ...prev, [expanded]: false }));
+      });
+  }, [expanded, insightsByUser, insightsLoading]);
 
   return (
     <div className="menu admin-screen">
@@ -116,6 +168,61 @@ export default function AdminScreen({ onExit }) {
                               <div className="admin-detail-wide"><span>Peor jugada registrada</span><strong><WorstMove move={u.worstMove} /></strong></div>
                               <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}>{a.date ? new Date(a.date).toLocaleString() : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</em>) : '—'}</strong></div>
                             </div>
+
+                            <section className="admin-insights-panel">
+                              <div className="admin-insights-heading">
+                                <div>
+                                  <span className="section-label">Expediente técnico y moral</span>
+                                  <h3>Así juega {u.username}</h3>
+                                </div>
+                                <span className="admin-insights-badge">mismo análisis que ve el jugador</span>
+                              </div>
+
+                              {insightsLoading[u.username] && <p className="hint-text">Leyendo el historial y preparando el informe…</p>}
+                              {insightsErrors[u.username] && <p className="error-text">{insightsErrors[u.username]}</p>}
+
+                              {insightsByUser[u.username] && insightsByUser[u.username].insights.totalGames === 0 && (
+                                <p className="hint-text">Todavía no tiene partidas suficientes para levantar acta. Sospechosamente limpio.</p>
+                              )}
+
+                              {insightsByUser[u.username]?.insights.totalGames > 0 && (
+                                <>
+                                  <div className="admin-insights-facts">
+                                    <div><span>Partidas</span><strong>{insightsByUser[u.username].insights.totalGames}</strong></div>
+                                    <div><span>Victorias</span><strong>{insightsByUser[u.username].insights.overall?.winPct ?? 0}%</strong></div>
+                                    <div><span>Apertura habitual</span><strong>{insightsByUser[u.username].insights.favoriteOpening?.name || 'Sin patrón claro'}</strong></div>
+                                    <div><span>Racha máxima</span><strong>{insightsByUser[u.username].insights.longestWinStreak}</strong></div>
+                                  </div>
+
+                                  {insightsByUser[u.username].roast.length > 0 && (
+                                    <div className="admin-roast-box">
+                                      <h4>Cómo lo ve la CPU, sin filtro</h4>
+                                      <ul className="roast-list">
+                                        {insightsByUser[u.username].roast.slice(0, 6).map((line, i) => <li key={i}>{line}</li>)}
+                                      </ul>
+                                    </div>
+                                  )}
+
+                                  {insightsByUser[u.username].coaching.length > 0 && (
+                                    <div>
+                                      <h4>Qué debería entrenar</h4>
+                                      <div className="coaching-grid admin-coaching-grid">
+                                        {insightsByUser[u.username].coaching.map((item, i) => (
+                                          <article className={`coaching-card priority-${item.priority}`} key={`${item.title}-${i}`}>
+                                            <div className="coaching-card-top">
+                                              <span className="coaching-priority">{item.priorityLabel}</span>
+                                              <b>{item.title}</b>
+                                            </div>
+                                            <p>{item.diagnosis}</p>
+                                            <div className="coaching-action"><strong>Haz esto:</strong> {item.action}</div>
+                                          </article>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </section>
                           </td>
                         </tr>
                       )}

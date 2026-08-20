@@ -17,3 +17,14 @@ export async function fetchAdminUsers() {
   const body = await res.json();
   return body.users;
 }
+
+export async function fetchAdminUserInsights(username) {
+  const res = await fetch(`${BASE_URL}/admin/users/${encodeURIComponent(username)}/insights`, {
+    headers: withRequestId({ ...authHeader() }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(requestErrorMessage(res, body).message);
+  }
+  return res.json();
+}

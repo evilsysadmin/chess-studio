@@ -867,6 +867,19 @@ export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, la
   id, label, description,
 }));
 
+// Útil para tests y para futuras UIs: duración mínima antes de que un tema
+// estructurado vuelva al principio de su forma larga. Al-Ándalus es
+// estocástico y no tiene un bucle exacto equivalente.
+export function getAmbientThemeVariationDurationMs(themeId) {
+  const theme = AMBIENT_THEMES[themeId];
+  if (!theme || theme.engine !== 'structured') return null;
+  const sections = Math.max(1, theme.sections?.length || 1);
+  const steps = Math.max(1, theme.stepsPerSection || 32);
+  const cycleMs = sections * steps * theme.stepMs;
+  const span = Math.max(8, Math.ceil((theme.longFormMs || STRUCTURED_LONG_FORM_MS) / cycleMs));
+  return cycleMs * span;
+}
+
 export function getAmbientThemeId() {
   if (typeof localStorage === 'undefined') return DEFAULT_AMBIENT_THEME;
   const saved = localStorage.getItem(AMBIENT_THEME_KEY);
@@ -1282,9 +1295,9 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   });
 }
 
-function playStructuredChord(kind, notes, duration = null) {
+function playStructuredChord(kind, notes, duration = null, volumeScale = 1) {
   if (!Array.isArray(notes)) return;
-  const scale = Math.max(0.42, 1 / Math.sqrt(notes.length));
+  const scale = Math.max(0.42, 1 / Math.sqrt(notes.length)) * volumeScale;
   notes.forEach((note) => playStructuredVoice(kind, note, scale, duration));
 }
 
@@ -1368,32 +1381,97 @@ function playStructuredDrum(code) {
   else if (code === 'M') playMetalHit();
 }
 
+// Los temas estructurados nacieron como miniaturas de 1–3 secciones. Eso
+// funcionaba bien para probar timbres, pero algunos daban una vuelta completa
+// en 4–15 segundos y el oído detectaba el bucle enseguida. En V15.2 la
+// composición base NO cambia: añadimos una capa de arreglo largo y
+// determinista. La misma pieza respira, modula y cambia de registro durante
+// ~2 minutos antes de volver exactamente al mismo estado. Al-Ándalus no pasa
+// por este motor y conserva intacto su generador estocástico original.
+const STRUCTURED_LONG_FORM_MS = 120000;
+const STRUCTURED_HARMONY_PATH = [0, 0, 5, 5, 0, -2, -2, 0, 7, 7, 3, 0];
+
+function stableThemeSeed(id = '') {
+  let seed = 0;
+  for (let i = 0; i < id.length; i += 1) seed = ((seed * 31) + id.charCodeAt(i)) >>> 0;
+  return seed;
+}
+
+function structuredArrangement(theme, cycleIndex) {
+  const sections = Math.max(1, theme.sections?.length || 1);
+  const stepsPerSection = Math.max(1, theme.stepsPerSection || 32);
+  const cycleMs = Math.max(1, sections * stepsPerSection * theme.stepMs);
+  const span = Math.max(8, Math.ceil((theme.longFormMs || STRUCTURED_LONG_FORM_MS) / cycleMs));
+  const phase = cycleIndex % span;
+  const seed = stableThemeSeed(theme.id);
+  const harmonicIndex = Math.floor((phase / span) * STRUCTURED_HARMONY_PATH.length);
+  const transpose = STRUCTURED_HARMONY_PATH[(harmonicIndex + (seed % 3)) % STRUCTURED_HARMONY_PATH.length];
+  const texture = (phase + (seed % 7)) % 9;
+
+  return {
+    span,
+    transpose,
+    // Cambios de registro puntuales, no una octava arriba cada dos vueltas.
+    leadOctave: texture === 3 ? 12 : texture === 7 ? -12 : 0,
+    leadVolume: texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1,
+    bassVolume: texture === 4 ? 0.68 : 0.9,
+    chordVolume: texture === 5 ? 0.72 : 1,
+    // Unas vueltas dejan respirar la melodía o la batería. La forma base
+    // sigue reconocible, pero no tenemos la misma pared de sonido cada 4 s.
+    leadMode: texture === 2 ? 'late' : texture === 8 ? 'sparse' : 'full',
+    drumMode: texture === 0 ? 'full' : texture === 4 ? 'sparse' : texture === 6 ? 'none' : 'full',
+    sectionShift: sections > 1 ? Math.floor(phase / 2 + (seed % sections)) % sections : 0,
+  };
+}
+
+function shouldPlayStructuredLead(mode, localStep, stepsPerSection) {
+  if (mode === 'late') return localStep >= Math.floor(stepsPerSection / 2);
+  if (mode === 'sparse') return localStep % 4 !== 0;
+  return true;
+}
+
+function shouldPlayStructuredDrum(mode, localStep) {
+  if (mode === 'none') return false;
+  if (mode === 'sparse') return localStep % 8 === 0 || localStep % 8 === 4;
+  return true;
+}
+
 function startStructuredMusic(theme) {
   let step = 0;
   const stepsPerSection = Math.max(1, theme.stepsPerSection || 32);
+  const sectionCount = Math.max(1, theme.sections?.length || 1);
+  const cycleSteps = stepsPerSection * sectionCount;
 
   function tick() {
     if (isMusicMuted()) {
       stepTimer = null;
       return;
     }
-    const sectionIndex = Math.floor(step / stepsPerSection) % theme.sections.length;
-    const localStep = step % stepsPerSection;
+
+    const cycleIndex = Math.floor(step / cycleSteps);
+    const arrangement = structuredArrangement(theme, cycleIndex);
+    const stepInsideCycle = step % cycleSteps;
+    const rawSectionIndex = Math.floor(stepInsideCycle / stepsPerSection) % sectionCount;
+    const sectionIndex = (rawSectionIndex + arrangement.sectionShift) % sectionCount;
+    const localStep = stepInsideCycle % stepsPerSection;
     const section = theme.sections[sectionIndex];
 
     const lead = section.lead?.[localStep];
     const bass = section.bass?.[localStep];
     const chord = section.chords?.[localStep];
     const drum = section.drums?.[localStep];
+    const t = arrangement.transpose;
 
-    if (lead != null) playStructuredVoice(theme.leadInstrument, lead, 1);
-    if (bass != null) playStructuredVoice(theme.bassInstrument, bass, 0.9);
+    if (lead != null && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
+      playStructuredVoice(theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume);
+    }
+    if (bass != null) playStructuredVoice(theme.bassInstrument, bass + t, arrangement.bassVolume);
     if (chord) {
       const longChord = ['organ', 'pad'].includes(theme.chordInstrument);
       const duration = longChord ? (theme.stepMs * 15.5) / 1000 : null;
-      playStructuredChord(theme.chordInstrument, chord, duration);
+      playStructuredChord(theme.chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume);
     }
-    if (drum) playStructuredDrum(drum);
+    if (drum && shouldPlayStructuredDrum(arrangement.drumMode, localStep)) playStructuredDrum(drum);
 
     step += 1;
     stepTimer = setTimeout(tick, theme.stepMs);
