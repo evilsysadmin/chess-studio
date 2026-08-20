@@ -30,6 +30,14 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-personal-puzzles',
   'chess-study-cpu-rivalry',
   'chess-study-daily-challenge',
+  'chess-study-series-history',
+  'chess-study-career-meta',
+  'chess-study-special-run',
+  'chess-study-active-contract',
+  'chess-study-board-theme',
+  'chess-study-meta-progress',
+  'chess-study-career',
+  'chess-study-analysis-archive',
 ];
 
 // Estado local de sesión. No se sincroniza porque apunta a partidas activas
@@ -38,6 +46,7 @@ export const PROFILE_STORAGE_KEYS = [
 export const SESSION_STATE_KEYS = [
   'chess-study-active-game',
   'chess-study-active-game-learning',
+  'chess-study-active-series',
 ];
 
 function emitProfileChanged() {

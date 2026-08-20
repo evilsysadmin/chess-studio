@@ -96,6 +96,10 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
           suggestedPiece: result.suggested.piece,
           loss,
           severity: mistakeSeverity(loss),
+          evalAfterSuggested: result.evalAfterSuggested,
+          evalAfterPlayed: result.evalAfterPlayed,
+          suggestedPerspectiveEval: Number.isFinite(result.evalAfterSuggested) ? (humanColor === 'w' ? result.evalAfterSuggested : -result.evalAfterSuggested) : null,
+          playedPerspectiveEval: Number.isFinite(result.evalAfterPlayed) ? (humanColor === 'w' ? result.evalAfterPlayed : -result.evalAfterPlayed) : null,
         });
       } catch (e) {
         // si falla el análisis de una jugada puntual, seguimos con el resto
@@ -153,6 +157,10 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
         suggestedPiece: result.suggested.piece,
         loss,
         severity: mistakeSeverity(loss),
+        evalAfterSuggested: result.evalAfterSuggested,
+        evalAfterPlayed: result.evalAfterPlayed,
+        suggestedPerspectiveEval: Number.isFinite(result.evalAfterSuggested) ? (humanColor === 'w' ? result.evalAfterSuggested : -result.evalAfterSuggested) : null,
+        playedPerspectiveEval: Number.isFinite(result.evalAfterPlayed) ? (humanColor === 'w' ? result.evalAfterPlayed : -result.evalAfterPlayed) : null,
       });
     } catch (e) {
       // si falla el análisis de una jugada puntual, seguimos con el resto

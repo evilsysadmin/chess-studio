@@ -8,7 +8,7 @@ import VoiceToggle from './VoiceToggle.jsx';
 import CpuPresence from './CpuPresence.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
-import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
+import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playTimePressureSound } from '../sound.js';
 import { announceCpuCapture, announceHumanCapture, announceCheck, announceCheckmate } from '../voiceCommentary.js';
 import { formatLongMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
@@ -16,6 +16,9 @@ import { formatClock } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
+import { startMemoryComment, openingMemoryComment, resultMemoryComment } from '../cpuMemory.js';
+import { seriesStatusText } from '../series.js';
+import { preGamePrediction } from '../advancedCareer.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -33,6 +36,10 @@ const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una 
 // la respuesta puede llegar tan rápido que la animación del jugador ni
 // alcanza a verse antes de que se dispare la de la CPU encima.
 const MIN_CPU_THINK_MS = 350;
+
+const HUMAN_SERIOUS_INCIDENTS = new Set(['MISSED_MATE','STALEMATE_BLUNDER','ALLOWED_MATE','QUEEN_EN_PRISE_TO_PAWN','QUEEN_SACRIFICE_OFFER','ROOK_SACRIFICE_OFFER']);
+function isSeriousHumanIncident(comment) { return !!comment?.event?.type && HUMAN_SERIOUS_INCIDENTS.has(comment.event.type); }
+
 
 /**
  * hintMode:
@@ -53,7 +60,17 @@ export default function GameScreen({
   onSpendPoints,
   onCapturePoints,
   onOpenCrimeScene,
+  onShareResult,
+  onShareIncident,
+  seriesState = null,
+  onNextSeriesGame,
   timeControl = null, // { initial, increment } en segundos, o null/sin reloj
+  activeContract = null,
+  runState = null,
+  onNextRunGame,
+  onRematch,
+  memoryContext = {},
+  onTrainPersonal,
 }) {
   const humanColor = game.humanColor || 'w';
   const [selected, setSelected] = useState(null);
@@ -71,6 +88,13 @@ export default function GameScreen({
   const tickRef = useRef(null);
   const [showReport, setShowReport] = useState(false);
   const [achievementToast, setAchievementToast] = useState(null);
+  const [suddenLives, setSuddenLives] = useState(3);
+  const [forcedOutcome, setForcedOutcome] = useState(null);
+  const [controlPrompt, setControlPrompt] = useState(null);
+  const controlResolveRef = useRef(null);
+  const pressureMovesRef = useRef(0);
+  const pressureIncidentsRef = useRef(0);
+  const pressureAlertRef = useRef(false);
 
   // Estado visual del tablero: se actualiza en dos pasos (jugada propia,
   // después jugada de la CPU) para poder animar cada una por separado, en
@@ -88,6 +112,9 @@ export default function GameScreen({
   const cpuCommentTimeout = useRef(null);
   const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
+  const openingMemoryShownRef = useRef(false);
+  const resultMemoryTimeout = useRef(null);
+  const startMemoryTimeout = useRef(null);
 
   // Pista: sugerencia del motor para la jugada del humano.
   const [hint, setHint] = useState(null); // { from, to, san }
@@ -113,9 +140,27 @@ export default function GameScreen({
     setCaptureFeedback(null);
     captureStreakRef.current = 0;
     reportedResultRef.current = false;
+    openingMemoryShownRef.current = false;
+    if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
+    if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
     setWhiteTime(timeControl?.initial ?? null);
     setBlackTime(timeControl?.initial ?? null);
     setFlagFallen(null);
+    setSuddenLives(3);
+    setForcedOutcome(null);
+    setControlPrompt(null);
+    pressureMovesRef.current = 0;
+    pressureIncidentsRef.current = 0;
+    pressureAlertRef.current = false;
+  }, [game.id]);
+
+  useEffect(() => {
+    const text = startMemoryComment(loadRivalry(), { difficulty: game.difficulty, humanColor, ...memoryContext });
+    if (!text) return undefined;
+    startMemoryTimeout.current = setTimeout(() => showCpuComment({ text }), 700);
+    return () => {
+      if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
+    };
   }, [game.id]);
 
   // Reloj — tick: cada 200ms, le resta el tiempo transcurrido de verdad
@@ -125,7 +170,7 @@ export default function GameScreen({
   // no cambió en `game.turn` — por eso se calcula "a quién le toca de
   // verdad" en vez de confiar directo en ese campo.
   useEffect(() => {
-    if (!hasClock || game.isGameOver || flagFallen) return;
+    if (!hasClock || game.isGameOver || flagFallen || forcedOutcome) return;
     tickRef.current = performance.now();
     const interval = setInterval(() => {
       const now = performance.now();
@@ -136,7 +181,7 @@ export default function GameScreen({
       else setBlackTime((t) => Math.max(0, (t ?? 0) - elapsed));
     }, 200);
     return () => clearInterval(interval);
-  }, [hasClock, game.id, game.isGameOver, flagFallen, busy, game.turn, humanColor]);
+  }, [hasClock, game.id, game.isGameOver, flagFallen, forcedOutcome, busy, game.turn, humanColor]);
 
   // Reloj — bandera: en cuanto un lado llega a 0, se declara perdedor por
   // tiempo (simplificación consciente: no contempla la excepción de "el
@@ -148,6 +193,16 @@ export default function GameScreen({
     else if (blackTime !== null && blackTime <= 0) setFlagFallen('b');
   }, [whiteTime, blackTime, hasClock, flagFallen, game.isGameOver]);
 
+  useEffect(() => {
+    if (!hasClock || pressureAlertRef.current || game.isGameOver || flagFallen || forcedOutcome) return;
+    const mine = humanColor === 'w' ? whiteTime : blackTime;
+    if (mine !== null && mine <= 30) {
+      pressureAlertRef.current = true;
+      playTimePressureSound();
+      setTurnBanner('30 segundos. Ahora cada clic viene con auditoría.');
+    }
+  }, [whiteTime, blackTime, hasClock, humanColor, game.isGameOver, flagFallen, forcedOutcome]);
+
   // Avisa el resultado por bandera caída, igual que el efecto de jaque mate
   // de más abajo — comparten `reportedResultRef` para no informar dos veces.
   useEffect(() => {
@@ -155,7 +210,13 @@ export default function GameScreen({
     reportedResultRef.current = true;
     const outcome = flagFallen === humanColor ? 'loss' : 'win';
     if (outcome === 'win') playSuccessSound();
-    onGameEnd?.(outcome, game);
+    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath });
+    if (!seriesState) {
+      resultMemoryTimeout.current = setTimeout(() => {
+        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0 });
+        if (text) showCpuComment({ text });
+      }, 1100);
+    }
   }, [flagFallen, humanColor, onGameEnd]);
 
   // Avisa una sola vez, cuando la partida termina, quién ganó — lo usa el
@@ -168,8 +229,31 @@ export default function GameScreen({
     if (game.status === 'checkmate') outcome = game.turn === humanColor ? 'loss' : 'win';
     else outcome = 'draw';
     if (outcome === 'win') playSuccessSound();
-    onGameEnd?.(outcome, game);
+    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: game.status, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath });
+    if (!seriesState) {
+      resultMemoryTimeout.current = setTimeout(() => {
+        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0 });
+        if (text) showCpuComment({ text });
+      }, 1100);
+    }
   }, [game.isGameOver, game.status, game.turn, humanColor, onGameEnd]);
+
+  useEffect(() => {
+    if (!(game.isGameOver || flagFallen) || !seriesState?.games?.length) return;
+    const last = seriesState.games[seriesState.games.length - 1];
+    if (last?.gameId && last.gameId !== game.id) return;
+    if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
+    resultMemoryTimeout.current = setTimeout(() => {
+      const text = resultMemoryComment(last?.outcome || 'draw', loadRivalry(), {
+        moves: game.history?.length || 0,
+        series: seriesState,
+      });
+      if (text) showCpuComment({ text });
+    }, 900);
+    return () => {
+      if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
+    };
+  }, [seriesState?.games?.length, seriesState?.winner, game.id, game.isGameOver, flagFallen]);
 
   function triggerAnim(from, to, capture = false) {
     animSeqRef.current += 1;
@@ -189,6 +273,7 @@ export default function GameScreen({
 
   function showNoteworthy(comment, actor) {
     if (!comment) return;
+    playNoteworthySound(comment.event, actor);
     const recurrenceCount = recordRivalryIncident(comment.event, actor);
     showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` });
     const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
@@ -211,6 +296,14 @@ export default function GameScreen({
     if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
     if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
+    if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
+    if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
+    // Si el usuario abandona/cambia de vista mientras está abierto el control
+    // táctico, no dejamos colgada la promesa que estaba pausando el flujo.
+    if (controlResolveRef.current) {
+      controlResolveRef.current();
+      controlResolveRef.current = null;
+    }
   }, []);
 
   // Instancia local de chess.js sólo para calcular jugadas legales y resaltarlas,
@@ -220,6 +313,8 @@ export default function GameScreen({
     c.load(boardFen);
     return c;
   }, [boardFen]);
+
+  const prediction = useMemo(() => preGamePrediction(loadRivalry(), { difficulty: game.difficulty, timeControlId: timeControl?.id || 'none' }), [game.id, game.difficulty, timeControl?.id]);
 
   const legalTargets = selected
     ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
@@ -252,7 +347,38 @@ export default function GameScreen({
     setBusy(true);
 
     const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
+    let cpuNoteworthy = null;
     showNoteworthy(humanComment, 'human');
+
+    const humanClock = humanColor === 'w' ? whiteTime : blackTime;
+    if (hasClock && Number(humanClock) <= 40) {
+      pressureMovesRef.current += 1;
+      if (isSeriousHumanIncident(humanComment)) pressureIncidentsRef.current += 1;
+    }
+
+    if (memoryContext.suddenDeath && isSeriousHumanIncident(humanComment)) {
+      const nextLives = suddenLives - 1;
+      setSuddenLives(nextLives);
+      if (nextLives <= 0) {
+        const forcedGame = { ...game, history: [...(game.history || []), humanMove], fen: optimistic.fen(), isGameOver: true, status: 'sudden-death' };
+        setGame(forcedGame); setForcedOutcome('loss'); setBusy(false);
+        if (!reportedResultRef.current) {
+          reportedResultRef.current = true;
+          onGameEnd?.('loss', forcedGame, { hintsUsed: hintsUsedThisGame, endReason: 'sudden-death', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: true });
+        }
+        showCpuComment({ text: 'Tres incidentes graves. Sudden Death terminado. El tablero aún tenía piezas; tu licencia competitiva, temporalmente no.' });
+        return;
+      }
+    }
+
+    if (memoryContext.threatCheck && isSeriousHumanIncident(humanComment)) {
+      await new Promise((resolve) => {
+        controlResolveRef.current = resolve;
+        setControlPrompt('¿Qué amenaza tiene ahora el rival? No deshagas la jugada: mira el tablero y nombra mentalmente jaques, capturas y amenazas antes de continuar.');
+      });
+      controlResolveRef.current = null;
+      setControlPrompt(null);
+    }
 
     // Incremento tipo Fischer: se suma al terminar la jugada, antes de que
     // arranque a correr el reloj del rival.
@@ -288,8 +414,8 @@ export default function GameScreen({
       setGame(updated);
 
       if (updated.lastMove && updated.lastMove.by === 'cpu') {
-        const cpuCommentary = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu');
-        showNoteworthy(cpuCommentary, 'cpu');
+        cpuNoteworthy = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu');
+        showNoteworthy(cpuNoteworthy, 'cpu');
         // 2) Llegó la respuesta de la CPU: animamos su jugada por separado.
         setBoardFen(updated.fen);
         setLastMoveSquares({ from: updated.lastMove.from, to: updated.lastMove.to });
@@ -318,6 +444,14 @@ export default function GameScreen({
         setBoardFen(updated.fen);
         if (updated.status === 'checkmate') announceCheckmate(true); // el humano dio el mate
       }
+
+      if (!openingMemoryShownRef.current && !humanComment && !cpuNoteworthy && !updated.isGameOver) {
+        const memory = openingMemoryComment(updated.history, loadRivalry());
+        if (memory) {
+          openingMemoryShownRef.current = true;
+          setTimeout(() => showCpuComment({ text: memory }), 550);
+        }
+      }
     } catch (e) {
       onError?.(e.message);
       // Revertimos al último estado confirmado por el servidor.
@@ -329,7 +463,7 @@ export default function GameScreen({
   }
 
   function handleSquareClick(square) {
-    if (busy || game.isGameOver || flagFallen || game.turn !== humanColor) return;
+    if (busy || game.isGameOver || flagFallen || forcedOutcome || game.turn !== humanColor) return;
 
     if (!selected) {
       const piece = localChess.get(square);
@@ -430,8 +564,15 @@ export default function GameScreen({
     ? 'success'
     : '';
 
+  const finalOutcome = forcedOutcome || (flagFallen
+    ? (flagFallen === humanColor ? 'loss' : 'win')
+    : game.status === 'checkmate'
+      ? (game.turn === humanColor ? 'loss' : 'win')
+      : 'draw');
+
   let statusText;
-  if (flagFallen) statusText = `Se acabó el tiempo (${flagFallen === 'w' ? 'blancas' : 'negras'})`;
+  if (forcedOutcome) statusText = 'Sudden Death · tres vidas agotadas';
+  else if (flagFallen) statusText = `Se acabó el tiempo (${flagFallen === 'w' ? 'blancas' : 'negras'})`;
   else if (busy) statusText = 'La CPU está pensando…';
   else if (turnBanner) statusText = turnBanner;
   else statusText = statusLabel || (game.turn === humanColor ? 'Tu turno' : 'Turno de la CPU');
@@ -444,7 +585,7 @@ export default function GameScreen({
   const bottomColor = humanColor;
   const topTime = topColor === 'w' ? whiteTime : blackTime;
   const bottomTime = bottomColor === 'w' ? whiteTime : blackTime;
-  const tickingColor = flagFallen || game.isGameOver ? null : busy ? (humanColor === 'w' ? 'b' : 'w') : game.turn;
+  const tickingColor = flagFallen || game.isGameOver || forcedOutcome ? null : busy ? (humanColor === 'w' ? 'b' : 'w') : game.turn;
 
   // Función normal, NO un componente: si fuera un componente definido acá
   // adentro (con mayúscula), React lo trataría como un tipo nuevo en cada
@@ -469,6 +610,12 @@ export default function GameScreen({
             <VoiceToggle />
           </div>
           <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />
+          {prediction && <div className="prediction-strip">{prediction.text}</div>}
+          {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
+          {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
+          {seriesState && <div className={`series-strip ${seriesState.winner ? 'finished' : ''}`}>{seriesStatusText(seriesState)}</div>}
+          {runState?.active && <div className="series-strip">{runState.mode === 'boss' ? `Boss Run · fase ${runState.stage + 1}/6 · CPU ${runState.difficulty}` : runState.mode === 'cup' ? `Copa · ${runState.completedStages || 0}/8 · ${runState.points || 0} pts · CPU ${runState.difficulty}` : `Racha · ${runState.wins} victorias · CPU ${runState.difficulty}`}</div>}
+          {activeContract && <div className="contract-strip"><b>Contrato:</b> {activeContract.label} · {activeContract.text}</div>}
           {achievementToast && (
             <div className={`achievement-toast ${achievementToast.kind === 'shame' ? 'shame' : 'glory'}`}>
               <b>{achievementToast.kind === 'shame' ? '☠ Trofeo de vergüenza' : '🏆 Logro desbloqueado'}</b>
@@ -514,17 +661,34 @@ export default function GameScreen({
         <NotationPanel history={game.history} difficulty={game.difficulty} />
       </div>
 
-      {(game.isGameOver || flagFallen) && (
+      {(game.isGameOver || flagFallen || forcedOutcome) && (
         <div className="endgame-banner">
-          <h2>{flagFallen ? 'Se acabó el tiempo' : statusLabel}</h2>
+          <h2>{forcedOutcome ? 'Sudden Death' : flagFallen ? 'Se acabó el tiempo' : statusLabel}</h2>
           <p>
-            {flagFallen
+            {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al ELO.' : flagFallen
               ? (flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
               : game.status === 'checkmate'
               ? game.turn === humanColor ? 'Ganó la CPU.' : '¡Ganaste la partida!'
               : 'La partida terminó en tablas.'}
           </p>
-          <button className="primary-btn" onClick={handleAbandon}>Volver al menú</button>
+          {seriesState && !seriesState.winner && onNextSeriesGame ? (
+            <button className="primary-btn" onClick={onNextSeriesGame}>Siguiente partida de la serie</button>
+          ) : runState?.active && onNextRunGame ? (
+            <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
+          ) : (
+            <button className="primary-btn" onClick={handleAbandon}>Volver al menú</button>
+          )}
+          {onRematch && !seriesState && !runState?.active && (
+            <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onRematch({ difficulty: game.difficulty, humanColor, timeControl })}>
+              Revancha inmediata
+            </button>
+          )}
+          {onShareResult && (
+            <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
+              Compartir resultado
+            </button>
+          )}
+          {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
           {game.history.length > 0 && (
             <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => setShowReport(true)}>
               Ver autopsia de la partida
@@ -539,12 +703,9 @@ export default function GameScreen({
           history={game.history}
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
-          meta={{ difficulty: game.difficulty, mode: hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
-          onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, {
-            outcome: flagFallen
-              ? (flagFallen === humanColor ? 'loss' : 'win')
-              : (game.status === 'checkmate' ? (game.turn === humanColor ? 'loss' : 'win') : 'draw'),
-          })}
+          meta={{ gameId: game.id, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: null, timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
+          onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
+          onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
         />
       )}
     </div>

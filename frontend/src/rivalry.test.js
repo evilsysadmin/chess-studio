@@ -26,7 +26,7 @@ describe('cpu rivalry', () => {
       incidents: { 'human:MISSED_MATE': 2 },
     }));
     const state = loadRivalry();
-    expect(state.version).toBe(2);
+    expect(state.version).toBe(3);
     expect(state.record.games).toBe(5);
     expect(state.record.wins).toBe(2);
     expect(state.record.draws).toBe(1);

@@ -302,16 +302,17 @@ def apply_handicap(board: chess.Board, handicap: Optional[str], cpu_color: str) 
 
 
 def load_board(entry: dict) -> chess.Board:
-    board = chess.Board()
+    board = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
     human_color = entry.get("humanColor", "w")
     cpu_color = "b" if human_color == "w" else "w"
-    apply_handicap(board, entry.get("handicap"), cpu_color)
+    if not entry.get("initialFen"):
+        apply_handicap(board, entry.get("handicap"), cpu_color)
     for san in entry.get("moves") or []:
         board.push_san(san)
     return board
 
 
-def board_sans(board: chess.Board, handicap: Optional[str] = None, cpu_color: Optional[str] = None) -> list[str]:
+def board_sans(board: chess.Board, handicap: Optional[str] = None, cpu_color: Optional[str] = None, initial_fen: Optional[str] = None) -> list[str]:
     """La lista de jugadas en SAN, reconstruida jugada por jugada desde el
     inicio (SAN depende del contexto de la posición, no se puede sacar
     directo de los objetos Move sin reproducir la partida). Si la partida
@@ -320,8 +321,9 @@ def board_sans(board: chess.Board, handicap: Optional[str] = None, cpu_color: Op
     (una jugada que era legal/no ambigua solo porque faltaba una pieza del
     hándicap, reproducida contra un tablero que sí la tiene)."""
     sans = []
-    temp = chess.Board()
-    apply_handicap(temp, handicap, cpu_color)
+    temp = chess.Board(initial_fen) if initial_fen else chess.Board()
+    if not initial_fen:
+        apply_handicap(temp, handicap, cpu_color)
     for mv in board.move_stack:
         sans.append(temp.san(mv))
         temp.push(mv)
@@ -343,7 +345,11 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
         status = "playing"
 
     history = []
-    temp = chess.Board()
+    temp = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
+    if not entry.get("initialFen"):
+        human_color = entry.get("humanColor", "w")
+        cpu_color = "b" if human_color == "w" else "w"
+        apply_handicap(temp, entry.get("handicap"), cpu_color)
     for mv in board.move_stack:
         san = temp.san(mv)
         captured = temp.is_capture(mv)
@@ -377,6 +383,7 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
         "isGameOver": board.is_game_over(),
         "history": history,
         "lastMove": entry.get("lastMove"),
+        "initialFen": entry.get("initialFen"),
     }
 
 
@@ -398,9 +405,11 @@ class LoginRequest(BaseModel):
 
 
 class NewGameRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     difficulty: float = 50
     color: str = "w"
     handicap: Optional[str] = None  # None | "pawn" | "knight" | "rook" | "queen" — ver HANDICAP_SQUARES
+    starting_fen: Optional[str] = Field(default=None, alias="startingFen")
 
 
 class MoveRequest(BaseModel):
@@ -605,6 +614,52 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
     if not isinstance(daily_challenge, dict):
         daily_challenge = {}
 
+    series_history = _profile_json(data, "chess-study-series-history", [])
+    if not isinstance(series_history, list):
+        series_history = []
+
+    # V13: "chess-study-career". Conservamos lectura del prototipo
+    # "career-meta" por compatibilidad con alguna build intermedia.
+    career_meta = _profile_json(data, "chess-study-career", None)
+    if not isinstance(career_meta, dict):
+        career_meta = _profile_json(data, "chess-study-career-meta", {})
+    if not isinstance(career_meta, dict):
+        career_meta = {}
+    career_activity = career_meta.get("milestones") if isinstance(career_meta.get("milestones"), list) else career_meta.get("activity") if isinstance(career_meta.get("activity"), list) else []
+    current_season = career_meta.get("season") if isinstance(career_meta.get("season"), dict) else None
+    puzzle_rush = career_meta.get("puzzleRush") if isinstance(career_meta.get("puzzleRush"), dict) else {}
+    run_records = career_meta.get("runRecords") if isinstance(career_meta.get("runRecords"), dict) else {}
+    career_records = career_meta.get("records") if isinstance(career_meta.get("records"), dict) else {}
+    contract_stats = career_meta.get("contracts") if isinstance(career_meta.get("contracts"), dict) else career_meta.get("contractStats") if isinstance(career_meta.get("contractStats"), dict) else {}
+    analysis_archive = _profile_json(data, "chess-study-analysis-archive", {})
+    if not isinstance(analysis_archive, dict):
+        analysis_archive = {}
+    analysis_rows = [row for row in analysis_archive.values() if isinstance(row, dict)]
+    accuracy_values = []
+    pressure_moves = pressure_incidents = missed_conversions = desperate_saves = 0
+    for row in analysis_rows:
+        try:
+            acc = float(row.get("accuracy"))
+            if math.isfinite(acc): accuracy_values.append(acc)
+        except (TypeError, ValueError):
+            pass
+        try: pressure_moves += int(row.get("pressureMoves") or 0)
+        except (TypeError, ValueError): pass
+        try: pressure_incidents += int(row.get("pressureIncidents") or 0)
+        except (TypeError, ValueError): pass
+        try:
+            peak = float(row.get("peakPerspectiveEval"))
+            if math.isfinite(peak) and peak >= 300 and row.get("outcome") not in {None, "win"}: missed_conversions += 1
+        except (TypeError, ValueError):
+            pass
+        try:
+            trough = float(row.get("troughPerspectiveEval"))
+            if math.isfinite(trough) and trough <= -300 and row.get("outcome") in {"win", "draw"}: desperate_saves += 1
+        except (TypeError, ValueError):
+            pass
+    series_won = sum(1 for row in series_history if isinstance(row, dict) and row.get("winner") == "human")
+    series_lost = sum(1 for row in series_history if isinstance(row, dict) and row.get("winner") == "cpu")
+
     all_records = [r for r in [*game_history, *combat_history] if isinstance(r, dict)]
     wins = sum(1 for r in all_records if r.get("outcome") == "win")
     draws = sum(1 for r in all_records if r.get("outcome") == "draw")
@@ -622,6 +677,8 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         best_difficulty_win = difficulty if best_difficulty_win is None else max(best_difficulty_win, difficulty)
 
     human_captures = queens_captured = queens_lost = 0
+    material_donated = 0
+    piece_values = {"p": 1, "n": 3, "b": 3, "r": 5, "q": 9, "k": 0}
     white_games = black_games = 0
     for record in game_history:
         if not isinstance(record, dict):
@@ -637,13 +694,15 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
             mover = "w" if index % 2 == 0 else "b"
             if not move.get("captured"):
                 continue
-            captured_piece = move.get("capturedPiece")
+            captured_piece = move.get("capturedPiece") or move.get("captured")
             if mover == human_color:
                 human_captures += 1
                 if captured_piece == "q":
                     queens_captured += 1
-            elif captured_piece == "q":
-                queens_lost += 1
+            else:
+                material_donated += piece_values.get(captured_piece or move.get("captured"), 0)
+                if captured_piece == "q" or move.get("captured") == "q":
+                    queens_lost += 1
 
     worst_move = None
     analyzed_games = 0
@@ -687,6 +746,12 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         rating_values.append(current_rating)
 
     recent = sorted(all_records, key=lambda r: str(r.get("date") or ""), reverse=True)[:5]
+    recent_game_activity = []
+    for row in recent:
+        outcome = row.get("outcome")
+        result_label = {"win": "victoria", "loss": "derrota", "draw": "tablas"}.get(outcome, outcome or "partida")
+        detail = f"CPU {row.get('difficulty')}" if row.get("difficulty") is not None else None
+        recent_game_activity.append({"date": row.get("date"), "text": f"Partida: {result_label}", "detail": detail, "type": "game"})
 
     rivalry_games = 0
     rivalry_record = rivalry.get("record")
@@ -760,7 +825,37 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         "rivalryGames": rivalry_games,
         "mostCommonSin": most_common_sin,
         "dailyBestStreak": daily_challenge.get("bestStreak", 0) if isinstance(daily_challenge, dict) else 0,
+        "seriesPlayed": len(series_history),
+        "seriesWon": series_won,
+        "seriesLost": series_lost,
         "recentForm": [r.get("outcome") for r in recent if r.get("outcome") in {"win", "draw", "loss"}],
+        "recentActivity": sorted([
+            *recent_game_activity,
+            *[
+                {"date": row.get("date"), "text": row.get("text"), "detail": row.get("detail"), "type": row.get("type")}
+                for row in career_activity[:8] if isinstance(row, dict)
+            ],
+        ], key=lambda row: str(row.get("date") or ""), reverse=True)[:8],
+        "currentSeason": {
+            "number": current_season.get("id") or current_season.get("number"),
+            "games": current_season.get("games", 0) if isinstance(current_season.get("games"), (int, float)) else len(current_season.get("games") or []),
+            "target": current_season.get("targetGames", 20),
+        } if current_season else None,
+        "puzzleRushBest": career_records.get("puzzleRushBest", puzzle_rush.get("bestScore", 0)),
+        "streakRunBest": career_records.get("bestStreakRun", run_records.get("streakBest", 0)),
+        "bossBestStage": career_records.get("bestBossStage", run_records.get("bossBestStage", 0)),
+        "cupBestScore": career_records.get("bestCupScore", 0),
+        "suddenDeathWins": career_records.get("suddenDeathWins", 0),
+        "avgAccuracy": round(sum(accuracy_values) / len(accuracy_values)) if accuracy_values else None,
+        "analysisArchiveGames": len(analysis_rows),
+        "pressureMoves": pressure_moves,
+        "pressureIncidents": pressure_incidents,
+        "pressureIncidentPct": round((pressure_incidents / pressure_moves) * 100) if pressure_moves else None,
+        "missedConversions": missed_conversions,
+        "desperateSaves": desperate_saves,
+        "materialDonated": material_donated,
+        "contractsCompleted": contract_stats.get("completed", 0),
+        "contractsOffered": contract_stats.get("offered", 0),
     }
 
 
@@ -790,14 +885,29 @@ async def create_game(body: NewGameRequest, username: str = Depends(get_current_
         raise HTTPException(400, "Color inválido. Usa 'w', 'b' o 'random'.")
 
     game_id = str(uuid.uuid4())
-    board = chess.Board()
     human_color = resolve_human_color(body.color)
     cpu_color = "b" if human_color == "w" else "w"
-    apply_handicap(board, body.handicap, cpu_color)
     rounded_difficulty = round(float(body.difficulty))
     last_move = None
+    initial_fen = None
 
-    if human_color == "b":
+    if body.starting_fen:
+        try:
+            board = chess.Board(body.starting_fen)
+            initial_fen = board.fen()
+        except ValueError:
+            raise HTTPException(400, "FEN inicial inválido.")
+        if board.is_game_over():
+            raise HTTPException(400, "La posición inicial ya está terminada.")
+    else:
+        board = chess.Board()
+        apply_handicap(board, body.handicap, cpu_color)
+
+    # Si la posición de laboratorio deja a la CPU al turno, juega una vez
+    # antes de devolver el tablero. En una partida normal esto conserva el
+    # comportamiento clásico de CPU abriendo cuando el humano lleva negras.
+    cpu_to_move = (board.turn == chess.WHITE and cpu_color == "w") or (board.turn == chess.BLACK and cpu_color == "b")
+    if cpu_to_move:
         opening = get_cpu_move(board, rounded_difficulty)
         if opening:
             board.push_san(opening["san"])
@@ -811,10 +921,11 @@ async def create_game(body: NewGameRequest, username: str = Depends(get_current_
 
     entry = {
         "owner": username,
-        "moves": board_sans(board, body.handicap, cpu_color),
+        "moves": board_sans(board, body.handicap, cpu_color, initial_fen),
         "difficulty": rounded_difficulty,
         "humanColor": human_color,
-        "handicap": body.handicap,
+        "handicap": None if initial_fen else body.handicap,
+        "initialFen": initial_fen,
         "lastMove": last_move,
     }
     await store.create_game(game_id, entry)

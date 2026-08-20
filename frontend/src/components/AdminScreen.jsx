@@ -96,10 +96,25 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Puzzles de sus cagadas</span><strong>{u.personalPuzzles ?? 0}</strong></div>
                               <div><span>Racha diaria máx.</span><strong>{u.dailyBestStreak ?? 0}</strong></div>
                               <div><span>Partidas con rivalidad</span><strong>{u.rivalryGames ?? 0}</strong></div>
+                              <div><span>Series CPU</span><strong>{u.seriesWon ?? 0} ganadas / {u.seriesLost ?? 0} perdidas</strong></div>
+                              <div><span>Puzzle Rush récord</span><strong>{u.puzzleRushBest ?? 0}</strong></div>
+                              <div><span>Racha survival récord</span><strong>{u.streakRunBest ?? 0}</strong></div>
+                              <div><span>Boss Run</span><strong>fase {u.bossBestStage ?? 0}/6</strong></div>
+                              <div><span>Mejor Copa personal</span><strong>{u.cupBestScore ?? 0}/8 pts</strong></div>
+                              <div><span>Sudden Death ganados</span><strong>{u.suddenDeathWins ?? 0}</strong></div>
+                              <div><span>Accuracy media</span><strong>{u.avgAccuracy == null ? '—' : `${u.avgAccuracy}%`}</strong></div>
+                              <div><span>Autopsias V14</span><strong>{u.analysisArchiveGames ?? 0}</strong></div>
+                              <div><span>Apuros de tiempo</span><strong>{u.pressureIncidentPct == null ? '—' : `${u.pressureIncidents}/${u.pressureMoves} · ${u.pressureIncidentPct}%`}</strong></div>
+                              <div><span>Ventajas no convertidas</span><strong>{u.missedConversions ?? 0}</strong></div>
+                              <div><span>Defensas desesperadas</span><strong>{u.desperateSaves ?? 0}</strong></div>
+                              <div><span>Material donado</span><strong>{u.materialDonated ?? 0} pts</strong></div>
+                              <div><span>Contratos</span><strong>{u.contractsCompleted ?? 0}/{u.contractsOffered ?? 0}</strong></div>
+                              <div><span>Temporada actual</span><strong>{u.currentSeason ? `#${u.currentSeason.number} · ${u.currentSeason.games}/${u.currentSeason.target}` : '—'}</strong></div>
                               <div><span>Pecado más repetido</span><strong>{u.mostCommonSin ? `${u.mostCommonSin.label} ×${u.mostCommonSin.count}` : '—'}</strong></div>
                               <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>
                               <div><span>Forma reciente</span><strong>{(u.recentForm || []).map((r) => OUTCOME_LABEL[r]).join(' · ') || '—'}</strong></div>
                               <div className="admin-detail-wide"><span>Peor jugada registrada</span><strong><WorstMove move={u.worstMove} /></strong></div>
+                              <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}>{a.date ? new Date(a.date).toLocaleString() : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</em>) : '—'}</strong></div>
                             </div>
                           </td>
                         </tr>

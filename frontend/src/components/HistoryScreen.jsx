@@ -2,7 +2,7 @@ import React from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
 const OUTCOME_LABEL = { win: 'Victoria', draw: 'Tablas', loss: 'Derrota' };
-const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', combat: 'Combate' };
+const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', combat: 'Combate', lab: 'Laboratorio', rescue: 'Salvar cadáver', boss: 'Boss Run', streak: 'Racha' };
 
 function formatDate(iso) {
   try {
@@ -17,7 +17,7 @@ function formatDate(iso) {
   }
 }
 
-export default function HistoryScreen({ records, onOpen, onExit, onClear, title = 'Historial de partidas', emptyText, backLabel = '← Volver' }) {
+export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExit, onClear, title = 'Historial de partidas', emptyText, backLabel = '← Volver' }) {
   useEscapeToClose(onExit);
   return (
     <div className="menu tournament-panel">
@@ -39,12 +39,22 @@ export default function HistoryScreen({ records, onOpen, onExit, onClear, title 
           {records.map((r) => {
             const moveCount = (r.moves || r.log || []).length;
             return (
-              <button key={r.id} className="history-row" onClick={() => onOpen(r)}>
-                <span className={`history-outcome ${r.outcome}`}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span>
-                <span className="history-mode-tag">{MODE_LABEL[r.mode] || 'Torneo'}</span>
-                <span className="history-meta">CPU nivel {r.difficulty} · {moveCount} jugadas</span>
-                <span className="history-date">{formatDate(r.date)}</span>
-              </button>
+              <div key={r.id} className="history-row-wrap">
+                <button className="history-row" onClick={() => onOpen(r)}>
+                  <span className={`history-outcome ${r.outcome}`}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span>
+                  <span className="history-mode-tag">{MODE_LABEL[r.mode] || 'Torneo'}</span>
+                  <span className="history-meta">CPU nivel {r.difficulty} · {moveCount} jugadas{r.timeControl?.label ? ` · ${r.timeControl.label}` : ''}</span>
+                  <span className="history-date">{formatDate(r.date)}</span>
+                </button>
+                <div className="history-side-actions">
+                  {onMovie && !r.log && (
+                    <button className="history-share-btn" onClick={() => onMovie(r)} aria-label="Ver película de la partida">Película</button>
+                  )}
+                  {onShare && !r.log && (
+                    <button className="history-share-btn" onClick={() => onShare(r)} aria-label="Compartir partida">Compartir</button>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>

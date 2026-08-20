@@ -15,6 +15,11 @@ import { resetAllPuzzleStats } from './puzzleStats.js';
 import { clearWorstMoveCache } from './worstMoveCache.js';
 import { resetRewardsSelection } from './tournamentRewards.js';
 import { resetRoguelikeRun } from './roguelikeRun.js';
+import { clearSeriesHistory } from './series.js';
+import { clearCareer } from './career.js';
+import { clearRivalry } from './rivalry.js';
+import { clearPersonalPuzzles } from './personalPuzzles.js';
+import { clearAdvancedCareer } from './advancedCareer.js';
 
 export function resetAllProgress() {
   resetTournament();
@@ -28,4 +33,9 @@ export function resetAllProgress() {
   clearWorstMoveCache();
   resetRewardsSelection();
   resetRoguelikeRun();
+  clearSeriesHistory();
+  clearCareer();
+  clearRivalry();
+  clearPersonalPuzzles();
+  clearAdvancedCareer();
 }

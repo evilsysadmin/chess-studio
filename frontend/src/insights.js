@@ -109,7 +109,7 @@ function humanCaptures(gameHistory, combatHistory) {
 }
 
 export function computeInsights(gameHistory, combatHistory, ratingHistory) {
-  const taggedGameHistory = gameHistory.map((g) => ({ ...g, category: g.mode || 'tournament' }));
+  const taggedGameHistory = gameHistory.filter((g) => !['lab', 'rescue'].includes(g.mode)).map((g) => ({ ...g, category: g.mode || 'tournament' }));
   const taggedCombatHistory = combatHistory.map((g) => ({ ...g, category: 'combat' }));
   const allGames = [...taggedGameHistory, ...taggedCombatHistory];
 

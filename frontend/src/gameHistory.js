@@ -6,7 +6,7 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 // limitamos cuántas partidas guardamos.
 
 const KEY = 'chess-study-game-history';
-const MAX_RECORDS = 25;
+const MAX_RECORDS = 120;
 
 export function loadGameHistory() {
   try {

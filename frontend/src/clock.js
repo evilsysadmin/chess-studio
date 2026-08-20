@@ -5,6 +5,7 @@
 
 export const TIME_CONTROLS = [
   { id: 'none', label: 'Sin reloj', initial: null, increment: 0 },
+  { id: '1+0', label: '1 min · Bullet', initial: 60, increment: 0 },
   { id: '3+2', label: '3 min + 2s', initial: 180, increment: 2 },
   { id: '5+0', label: '5 min', initial: 300, increment: 0 },
   { id: '10+0', label: '10 min', initial: 600, increment: 0 },

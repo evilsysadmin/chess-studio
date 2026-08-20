@@ -16,11 +16,11 @@ async function handle(res) {
 }
 
 export const api = {
-  createGame(difficulty, color = 'w', handicap = null) {
+  createGame(difficulty, color = 'w', handicap = null, startingFen = null) {
     return fetch(`${BASE_URL}/games`, {
       method: 'POST',
       headers: withRequestId({ 'Content-Type': 'application/json', ...authHeader() }),
-      body: JSON.stringify({ difficulty, color, handicap }),
+      body: JSON.stringify({ difficulty, color, handicap, startingFen }),
     }).then(handle);
   },
   getGame(id) {

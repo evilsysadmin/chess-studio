@@ -40,6 +40,7 @@ import wP_esmeralda from '../pieces-medieval-esmeralda/wP.png';
 import wQ_esmeralda from '../pieces-medieval-esmeralda/wQ.png';
 import wR_esmeralda from '../pieces-medieval-esmeralda/wR.png';
 import { loadSelectedSkin } from '../tournamentRewards.js';
+import { loadBoardTheme } from '../career.js';
 
 const CAPTURE_PARTICLE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
@@ -280,7 +281,7 @@ export default function Board({
   }, [animate, fen]);
 
   return (
-    <div className="board-wrap">
+    <div className={`board-wrap board-theme-${loadBoardTheme()}`}>
       <div className="rank-labels">
         {ranks.map((r) => <span key={r}>{r}</span>)}
       </div>

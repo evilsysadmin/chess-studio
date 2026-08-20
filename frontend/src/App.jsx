@@ -34,7 +34,15 @@ import { isLoggedIn, fetchMe, logout, watchSessionIdentity } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import AdminScreen from './components/AdminScreen.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
-import { recordRivalryResult } from './rivalry.js';
+import { loadRivalry, recordRivalryResult } from './rivalry.js';
+import { identifyOpening } from './openings.js';
+import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
+import ShareResultModal from './components/ShareResultModal.jsx';
+import SharedResultScreen from './components/SharedResultScreen.jsx';
+import { shareRecordFromHash } from './shareResult.js';
+import CareerScreen from './components/CareerScreen.jsx';
+import LabScreen from './components/LabScreen.jsx';
+import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
 // objeto de partida: ese objeto se reemplaza por completo con cada respuesta
@@ -100,6 +108,7 @@ function AppInner({ isAdminUser }) {
   // `moves` = partida normal/torneo/práctica (SAN reproducible). El
   // historial no necesita saber esta distinción, solo abrir lo que le toque.
   function openHistoryRecord(record) {
+    setReplayMovieMode(false);
     setReplayCrimeMode(false);
     setReplayInitialStep(undefined);
     setPinnedReport(null);
@@ -133,6 +142,7 @@ function AppInner({ isAdminUser }) {
       outcome,
       moves: finishedGame.history,
       finalFen: finishedGame.fen,
+      initialFen: finishedGame.initialFen || null,
       mode,
     };
     if (mode === 'casual' || mode === 'practice') {
@@ -159,6 +169,13 @@ function AppInner({ isAdminUser }) {
   const [rating, setRating] = useState(() => loadRating());
   const [combatXp, setCombatXp] = useState(() => loadCombatRoster().combatXp);
   const [activeTimeControl, setActiveTimeControl] = useState(null);
+  const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
+  const [shareRecord, setShareRecord] = useState(null);
+  const [puzzleLaunch, setPuzzleLaunch] = useState({ source: 'curated', rush: false });
+  const [activeContract, setActiveContract] = useState(() => loadActiveContract());
+  const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
+  const [gameContext, setGameContext] = useState({});
+  const [replayMovieMode, setReplayMovieMode] = useState(false);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
 
   // Cualquier helper de progreso emite este evento al cambiar la caché.
@@ -208,8 +225,30 @@ function AppInner({ isAdminUser }) {
     try {
       const handicap = handicapForGap(rating.rating, difficulty);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null);
-      setLearningMode(!!opts?.learning);
+      const isLearning = !!opts?.learning;
+      setLearningMode(isLearning);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
+      setGameContext({ rematch: !!opts?.rematch, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck });
+      const shouldOfferContract = !isLearning && !opts?.runMode && !opts?.lab && !opts?.rescue && Number(opts?.seriesBestOf || 1) <= 1;
+      const contract = shouldOfferContract ? chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents }) : null;
+      if (contract) saveActiveContract(contract); else clearActiveContract();
+      setActiveContract(contract);
+
+      if (!isLearning && Number(opts?.seriesBestOf) > 1) {
+        const series = createSeries({
+          bestOf: Number(opts.seriesBestOf),
+          difficulty,
+          firstColor: created.humanColor,
+          timeControlId: opts?.timeControlId || 'none',
+        });
+        const withGame = { ...series, currentGameId: created.id };
+        saveActiveSeries(withGame);
+        setActiveSeries(withGame);
+      } else {
+        clearActiveSeries();
+        setActiveSeries(null);
+      }
+
       setGame(created);
       setHasSavedGame(true);
       setView('game');
@@ -229,10 +268,21 @@ function AppInner({ isAdminUser }) {
       const found = await api.getGame(savedId);
       setGame(found);
       setLearningMode(localStorage.getItem(LEARNING_STORAGE_KEY) === '1');
-      // El reloj vive solo en memoria del navegador (no se guarda en el
-      // servidor) — al continuar una partida no hay forma de saber cuánto
-      // tiempo quedaba, así que arranca sin reloj.
-      setActiveTimeControl(null);
+      setActiveContract(loadActiveContract());
+      const storedRun = loadSpecialRun();
+      setSpecialRun(storedRun);
+      setGameContext(storedRun?.active && storedRun.currentGameId === found.id ? { runMode: storedRun.mode } : {});
+      const storedSeries = loadActiveSeries();
+      if (storedSeries?.currentGameId === found.id && !storedSeries.winner) {
+        setActiveSeries(storedSeries);
+        setActiveTimeControl(timeControlById(storedSeries.timeControlId));
+      } else {
+        clearActiveSeries();
+        setActiveSeries(null);
+        // Una partida suelta continuada no conserva con rigor los segundos
+        // restantes: preferimos quitar el reloj a inventarnos tiempo.
+        setActiveTimeControl(null);
+      }
       setView('game');
     } catch (e) {
       setError('No se encontró esa partida en el servidor (puede haberse reiniciado).');
@@ -244,11 +294,20 @@ function AppInner({ isAdminUser }) {
   }
 
   function handleExitGame() {
+    if (gameContext.runMode && specialRun?.active) {
+      const endedRun = recordSpecialRunResult(specialRun, 'loss');
+      setSpecialRun(endedRun);
+    }
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEARNING_STORAGE_KEY);
     setHasSavedGame(false);
     setGame(null);
     setLearningMode(false);
+    clearActiveContract();
+    setActiveContract(null);
+    setGameContext({});
+    clearActiveSeries();
+    setActiveSeries(null);
     setView('menu');
   }
 
@@ -261,11 +320,36 @@ function AppInner({ isAdminUser }) {
   // También se guardan en el historial (igual que las de torneo), para que
   // la "pista inversa" del Historial funcione acá también, no solo en
   // Torneo — con una etiqueta de modo para distinguirlas al navegar la lista.
-  function handleCasualGameEnd(outcome, finishedGame) {
+  function handleCasualGameEnd(outcome, finishedGame, endMeta = {}) {
     if (!finishedGame) return;
-    recordRivalryResult(outcome);
+    const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
+    const opening = identifyOpening(moveSans);
+    let seriesSnapshot = activeSeries;
+    const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
 
-    if (!learningMode) {
+    if (!learningMode && !trainingPosition) {
+      if (activeSeries && !activeSeries.winner) {
+        seriesSnapshot = recordSeriesGame(activeSeries, outcome, {
+          gameId: finishedGame.id,
+          humanColor: finishedGame.humanColor,
+          moves: finishedGame.history?.length || 0,
+          opening,
+        });
+        setActiveSeries(seriesSnapshot);
+      }
+      recordRivalryResult(outcome, {
+        difficulty: finishedGame.difficulty,
+        humanColor: finishedGame.humanColor,
+        opening,
+        moves: finishedGame.history?.length || 0,
+        timeControlId: activeTimeControl?.id || 'none',
+        seriesId: seriesSnapshot?.id || null,
+        rematch: !!gameContext.rematch,
+        runMode: gameContext.runMode || null,
+      suddenDeath: !!gameContext.suddenDeath,
+      pressureMoves: Number(endMeta.pressureMoves || 0),
+      pressureIncidents: Number(endMeta.pressureIncidents || 0),
+      });
       const score = outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
       setRating((prev) => {
         const next = updateRating(prev, finishedGame.difficulty, score);
@@ -277,15 +361,176 @@ function AppInner({ isAdminUser }) {
 
     const record = {
       id: `${finishedGame.id}-${Date.now()}`,
+      sourceGameId: finishedGame.id,
       date: new Date().toISOString(),
       difficulty: finishedGame.difficulty,
       humanColor: finishedGame.humanColor,
       outcome,
       moves: finishedGame.history,
       finalFen: finishedGame.fen,
-      mode: learningMode ? 'practice' : 'casual',
+      initialFen: finishedGame.initialFen || null,
+      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : learningMode ? 'practice' : 'casual',
+      opening,
+      timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,
+      rematch: !!gameContext.rematch,
+      runMode: gameContext.runMode || null,
+      suddenDeath: !!gameContext.suddenDeath,
+      pressureMoves: Number(endMeta.pressureMoves || 0),
+      pressureIncidents: Number(endMeta.pressureIncidents || 0),
+      series: seriesSnapshot ? {
+        id: seriesSnapshot.id,
+        bestOf: seriesSnapshot.bestOf,
+        humanWins: seriesSnapshot.humanWins,
+        cpuWins: seriesSnapshot.cpuWins,
+        draws: seriesSnapshot.draws,
+        winner: seriesSnapshot.winner,
+      } : null,
     };
     setHistoryList(saveGameRecord(record));
+    recordCareerGame(record, { ...endMeta, contract: activeContract });
+    clearActiveContract();
+    setActiveContract(null);
+    if (specialRun?.active && gameContext.runMode) {
+      const nextRun = recordSpecialRunResult(specialRun, outcome);
+      setSpecialRun(nextRun);
+    }
+  }
+
+  async function handleNextSeriesGame() {
+    if (!activeSeries || activeSeries.winner) return;
+    setLoading(true);
+    setError(null);
+    try {
+      if (game?.id) await api.deleteGame(game.id).catch(() => {});
+      const handicap = handicapForGap(rating.rating, activeSeries.difficulty);
+      const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null);
+      const updatedSeries = { ...activeSeries, currentGameId: created.id };
+      saveActiveSeries(updatedSeries);
+      setActiveSeries(updatedSeries);
+      setLearningMode(false);
+      setActiveTimeControl(timeControlById(updatedSeries.timeControlId));
+      setGame(created);
+      setHasSavedGame(true);
+      setView('game');
+    } catch (e) {
+      setError(e?.requestId ? e.message : 'No se pudo crear la siguiente partida de la serie.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function buildLiveShareRecord(finishedGame, outcome, mode, series = null) {
+    const moves = finishedGame?.history || [];
+    return {
+      id: `share-${finishedGame?.id || Date.now()}`,
+      date: new Date().toISOString(),
+      difficulty: finishedGame?.difficulty || 0,
+      humanColor: finishedGame?.humanColor || 'w',
+      outcome,
+      moves,
+      finalFen: finishedGame?.fen || null,
+      mode,
+      opening: identifyOpening(moves.map((m) => m.san).filter(Boolean)),
+      timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,
+      series: series ? {
+        id: series.id,
+        bestOf: series.bestOf,
+        humanWins: series.humanWins,
+        cpuWins: series.cpuWins,
+        draws: series.draws,
+        winner: series.winner,
+      } : null,
+    };
+  }
+
+  async function handleRematch({ difficulty, humanColor, timeControl }) {
+    setLoading(true);
+    setError(null);
+    try {
+      if (game?.id) await api.deleteGame(game.id).catch(() => {});
+      const nextColor = humanColor === 'w' ? 'b' : 'w';
+      const created = await api.createGame(difficulty, nextColor, null);
+      const contract = chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents });
+      saveActiveContract(contract);
+      setActiveContract(contract);
+      setGameContext({ rematch: true });
+      setActiveTimeControl(timeControl || null);
+      setLearningMode(false);
+      clearActiveSeries();
+      setActiveSeries(null);
+      setGame(created);
+      setHasSavedGame(true);
+      setView('game');
+    } catch (e) {
+      setError(e?.requestId ? e.message : 'No se pudo preparar la revancha.');
+    } finally { setLoading(false); }
+  }
+
+  async function handlePlayFromHere(fen, humanColor, difficulty, meta = {}) {
+    setLoading(true);
+    setError(null);
+    try {
+      const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen);
+      clearActiveSeries();
+      setActiveSeries(null);
+      clearActiveContract();
+      setActiveContract(null);
+      setSpecialRun(loadSpecialRun());
+      setGameContext({ lab: true, rescue: !!meta.rescue, sourceRecordId: meta.sourceRecord?.id || null });
+      setLearningMode(true);
+      setActiveTimeControl(null);
+      setGame(created);
+      setHasSavedGame(true);
+      setView('game');
+    } catch (e) {
+      setError(e?.requestId ? e.message : 'No se pudo arrancar la posición del laboratorio.');
+    } finally { setLoading(false); }
+  }
+
+  function openMovie(record) {
+    setReplayCrimeMode(false);
+    setReplayInitialStep(0);
+    setPinnedReport(null);
+    setReplayRecord(record);
+    setReplayMovieMode(true);
+    setView('replay');
+  }
+
+  function openPuzzleMode(source = 'curated', rush = false) {
+    setPuzzleLaunch({ source, rush });
+    setView('puzzle');
+  }
+
+  async function launchRun(run) {
+    setLoading(true);
+    setError(null);
+    try {
+      if (game?.id) await api.deleteGame(game.id).catch(() => {});
+      const created = await api.createGame(run.difficulty, 'random', null);
+      clearActiveSeries();
+      setActiveSeries(null);
+      clearActiveContract();
+      setActiveContract(null);
+      const withGame = saveSpecialRun({ ...run, currentGameId: created.id });
+      setSpecialRun(withGame);
+      setGameContext({ runMode: run.mode });
+      setLearningMode(false);
+      setActiveTimeControl(timeControlById('5+0'));
+      setGame(created);
+      setHasSavedGame(true);
+      setView('game');
+    } catch (e) {
+      setError(e?.requestId ? e.message : 'No se pudo iniciar el desafío.');
+    } finally { setLoading(false); }
+  }
+
+  function handleStartRun(mode) {
+    const run = startSpecialRun(mode);
+    launchRun(run);
+  }
+
+  function handleContinueRun(run = specialRun) {
+    if (run?.active) launchRun(run);
   }
 
   // --- Modo torneo ---
@@ -307,7 +552,16 @@ function AppInner({ isAdminUser }) {
   }
 
   function handleTournamentGameEnd(outcome, finishedGame) {
-    recordRivalryResult(outcome);
+    if (finishedGame) {
+      const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
+      recordRivalryResult(outcome, {
+        difficulty: finishedGame.difficulty,
+        humanColor: finishedGame.humanColor,
+        opening: identifyOpening(moveSans),
+        moves: finishedGame.history?.length || 0,
+        timeControlId: null,
+      });
+    }
     setTournament((prev) => {
       const { state, gained, leveledUp, newLevel } = applyResult(prev, outcome);
       saveTournament(state);
@@ -328,6 +582,7 @@ function AppInner({ isAdminUser }) {
 
       const record = {
         id: `${finishedGame.id}-${Date.now()}`,
+      sourceGameId: finishedGame.id,
         date: new Date().toISOString(),
         difficulty: finishedGame.difficulty,
         humanColor: finishedGame.humanColor,
@@ -335,8 +590,12 @@ function AppInner({ isAdminUser }) {
         moves: finishedGame.history,
         finalFen: finishedGame.fen,
         mode: 'tournament',
+        opening: identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)),
+        timeControl: null,
+        series: null,
         };
       setHistoryList(saveGameRecord(record));
+      recordCareerGame(record, {});
     }
   }
 
@@ -399,7 +658,7 @@ function AppInner({ isAdminUser }) {
             onTournament={() => setView('tournament')}
             onTutorial={() => setView('tutorial')}
             onOpenings={() => setView('openings')}
-            onPuzzle={() => setView('puzzle')}
+            onPuzzle={() => openPuzzleMode('curated', false)}
             onSpectator={() => setView('spectator')}
             onCombat={() => setView('combat')}
             onCombatRoguelike={() => setView('roguelike')}
@@ -407,6 +666,8 @@ function AppInner({ isAdminUser }) {
             onAdmin={() => setView('admin')}
             onHistory={() => setView('history')}
             onInsights={() => setView('insights')}
+            onCareer={() => setView('career')}
+            onLab={() => setView('lab')}
             onBoard3D={() => setView('board3d')}
             hasSavedGame={hasSavedGame}
             loading={loading}
@@ -425,7 +686,17 @@ function AppInner({ isAdminUser }) {
             onGameEnd={handleCasualGameEnd}
             hintMode={learningMode ? 'free' : 'off'}
             timeControl={activeTimeControl}
-            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, learningMode ? 'practice' : 'casual', meta?.outcome)}
+            seriesState={activeSeries}
+            onNextSeriesGame={handleNextSeriesGame}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
+            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : learningMode ? 'practice' : 'casual', meta?.outcome)}
+            activeContract={activeContract}
+            runState={specialRun && gameContext.runMode ? specialRun : null}
+            onNextRunGame={() => handleContinueRun(specialRun)}
+            onRematch={handleRematch}
+            memoryContext={gameContext}
+            onTrainPersonal={() => openPuzzleMode('personal', false)}
           />
         )}
 
@@ -433,10 +704,14 @@ function AppInner({ isAdminUser }) {
         {view === 'openings' && <OpeningsScreen onExit={() => setView('menu')} />}
 
         {view === 'puzzle' && (
-          <PuzzleScreen onExit={() => setView('menu')} points={tournament.points} onSpendPoints={handleSpendPoints} />
+          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} onExit={() => setView('menu')} points={tournament.points} onSpendPoints={handleSpendPoints} />
         )}
 
         {view === 'spectator' && <SpectatorScreen onExit={() => setView('menu')} />}
+
+        {view === 'lab' && (
+          <LabScreen onExit={() => setView('menu')} onStart={(fen, color, difficulty, meta) => handlePlayFromHere(fen, color, difficulty, meta)} />
+        )}
 
         {view === 'board3d' && (
           <React.Suspense fallback={<p className="hint-text" style={{ textAlign: 'center' }}>Cargando el visor 3D…</p>}>
@@ -487,19 +762,35 @@ function AppInner({ isAdminUser }) {
           />
         )}
 
+        {view === 'career' && (
+          <CareerScreen
+            history={historyList}
+            ratingHistory={loadRatingHistory()}
+            onExit={() => setView('menu')}
+            onOpenRecord={openHistoryRecord}
+            onMovie={openMovie}
+            onPlayFromHere={handlePlayFromHere}
+            onOpenPuzzles={openPuzzleMode}
+            onStartRun={handleStartRun}
+            onContinueRun={handleContinueRun}
+          />
+        )}
+
         {view === 'history' && (
           <HistoryScreen
             records={allHistory}
             onOpen={openHistoryRecord}
             onExit={() => setView('menu')}
             onClear={clearAllHistory}
+            onShare={(record) => setShareRecord(record)}
+            onMovie={openMovie}
             title="Historial de partidas"
             emptyText='Todavía no jugaste ninguna partida. Normal, Torneo, Práctica y Combate quedan todas acá juntas, con "pista inversa" para revisar dónde te equivocaste.'
           />
         )}
 
         {view === 'replay' && replayRecord && (
-          <ReplayScreen record={replayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} crimeMode={replayCrimeMode} onExit={() => setView('history')} />
+          <ReplayScreen record={replayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} crimeMode={replayCrimeMode} movieMode={replayMovieMode} onPlayFromHere={handlePlayFromHere} onExit={() => setView('history')} />
         )}
 
         {view === 'combatReplay' && combatReplayRecord && (
@@ -518,9 +809,13 @@ function AppInner({ isAdminUser }) {
             points={tournament.points}
             onSpendPoints={handleSpendPoints}
             onCapturePoints={handleCapturePoints}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
             onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(tournamentGame, moveReport, 'tournament', meta?.outcome)}
           />
         )}
+
+        {shareRecord && <ShareResultModal record={shareRecord} onClose={() => setShareRecord(null)} />}
       </div>
     </ErrorBoundary>
   );
@@ -531,6 +826,7 @@ function AppInner({ isAdminUser }) {
 // una vez. Si la API/Mongo no está disponible no montamos la aplicación con
 // una caché potencialmente perteneciente a otra identidad.
 function App() {
+  const sharedRecord = shareRecordFromHash();
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [ready, setReady] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
@@ -581,6 +877,13 @@ function App() {
     startAmbientMusic();
     return () => stopAmbientMusic();
   }, []);
+
+  if (sharedRecord) {
+    return <SharedResultScreen record={sharedRecord} onOpenApp={() => {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+      window.location.reload();
+    }} />;
+  }
 
   if (!loggedIn) {
     return <LoginScreen onLoggedIn={() => setLoggedIn(true)} />;

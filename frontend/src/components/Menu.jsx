@@ -23,6 +23,8 @@ export default function Menu({
   onSpectator,
   onHistory,
   onInsights,
+  onCareer,
+  onLab,
   onBoard3D,
   hasSavedGame,
   loading,
@@ -33,6 +35,9 @@ export default function Menu({
   const [difficulty, setDifficulty] = useState(50);
   const [color, setColor] = useState('random');
   const [timeControlId, setTimeControlId] = useState('none');
+  const [seriesBestOf, setSeriesBestOf] = useState(1);
+  const [suddenDeath, setSuddenDeath] = useState(false);
+  const [threatCheck, setThreatCheck] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
@@ -147,6 +152,20 @@ export default function Menu({
             <span className="menu-card-cta">Resolver →</span>
           </button>
 
+          <button type="button" className="menu-card accent-hint" onClick={onCareer}>
+            <IconTrophy className="menu-card-icon" />
+            <h3>Centro de operaciones</h3>
+            <p>Temporadas, entrenador personal, récords, cementerio, runs, mapa de aperturas y hemeroteca.</p>
+            <span className="menu-card-cta">Abrir expediente →</span>
+          </button>
+
+          <button type="button" className="menu-card accent-success" onClick={onLab}>
+            <IconPuzzle className="menu-card-icon" />
+            <h3>Laboratorio libre</h3>
+            <p>Coloca piezas o pega un FEN y juega la posición contra la CPU sin tocar tu ELO.</p>
+            <span className="menu-card-cta">Abrir laboratorio →</span>
+          </button>
+
           <button type="button" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
             <IconEye className="menu-card-icon" />
             <h3>Espejo de ti mismo</h3>
@@ -202,9 +221,15 @@ export default function Menu({
           setColor={setColor}
           timeControlId={timeControlId}
           setTimeControlId={setTimeControlId}
+          seriesBestOf={seriesBestOf}
+          setSeriesBestOf={setSeriesBestOf}
+          suddenDeath={suddenDeath}
+          setSuddenDeath={setSuddenDeath}
+          threatCheck={threatCheck}
+          setThreatCheck={setThreatCheck}
           loading={loading}
           rating={rating}
-          onStart={() => { onNewGame(difficulty, color, { timeControlId }); setShowQuickMatch(false); }}
+          onStart={() => { onNewGame(difficulty, color, { timeControlId, seriesBestOf, suddenDeath, threatCheck }); setShowQuickMatch(false); }}
           onClose={() => setShowQuickMatch(false)}
         />
       )}

@@ -10,6 +10,7 @@ import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { loadWorstMoveCache, saveWorstMoveCache } from '../worstMoveCache.js';
 import RatingChart from './RatingChart.jsx';
 import { loadRivalry } from '../rivalry.js';
+import { loadSeriesHistory } from '../series.js';
 
 const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', combat: 'Combate' };
 
@@ -36,6 +37,12 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   const [searchResult, setSearchResult] = useState(null);
   const stopRef = useRef(false);
   const rivalry = useMemo(() => loadRivalry(), []);
+  const seriesHistory = useMemo(() => loadSeriesHistory(), []);
+  const seriesStats = useMemo(() => {
+    const won = seriesHistory.filter((s) => s.winner === 'human').length;
+    const lost = seriesHistory.filter((s) => s.winner === 'cpu').length;
+    return { total: seriesHistory.length, won, lost };
+  }, [seriesHistory]);
   const sinRows = useMemo(() => {
     const labels = {
       'human:MISSED_MATE': 'Mates ignorados',
@@ -249,6 +256,20 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
               <strong>☠ CPU</strong>
               <span>{rivalry.record.wins}V · {rivalry.record.draws}T · {rivalry.record.losses}D</span>
               <small>Mejor racha tuya: {rivalry.record.bestHumanStreak || 0} · de la CPU: {rivalry.record.bestCpuStreak || 0}</small>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {seriesStats.total > 0 && (
+        <div className="menu-section">
+          <h2>Series contra la CPU</h2>
+          <p className="hint-text">Las partidas sueltas son discusión. Una serie ya es jurisprudencia.</p>
+          <div className="rivalry-grid">
+            <div className="rivalry-card">
+              <strong>{seriesStats.won} series ganadas · {seriesStats.lost} perdidas</strong>
+              <span>{seriesStats.total} series terminadas</span>
+              {seriesHistory[0] && <small>Última: mejor de {seriesHistory[0].bestOf} · tú {seriesHistory[0].humanWins} / CPU {seriesHistory[0].cpuWins}</small>}
             </div>
           </div>
         </div>

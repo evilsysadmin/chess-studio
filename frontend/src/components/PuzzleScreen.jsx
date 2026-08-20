@@ -8,6 +8,7 @@ import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
 import { puzzleRetryCost } from '../tournament.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { recordPuzzleRush } from '../career.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
 
@@ -15,11 +16,12 @@ const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana ma
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
+export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false }) {
   useEscapeToClose(onExit);
-  const [source, setSource] = useState('curated'); // curated | personal | daily
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
-  const [puzzle, setPuzzle] = useState(() => randomPuzzle());
+  const resolvedInitialSource = initialSource === 'personal' && loadPersonalPuzzles().length === 0 ? 'curated' : initialSource;
+  const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
+  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle() || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES) : randomPuzzle());
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [fen, setFen] = useState(puzzle.fen);
   const [stepIndex, setStepIndex] = useState(0);
@@ -33,6 +35,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
   const [wrongThisPuzzle, setWrongThisPuzzle] = useState(false); // hubo un fallo SIN proteger en el intento actual
   const [retryOffer, setRetryOffer] = useState(false); // mostrando el prompt de "¿pagar para proteger la racha?"
   const replyTimeout = useRef(null);
+  const rushNextTimeout = useRef(null);
+  const rushSavedRef = useRef(false);
+  const [rushSeconds, setRushSeconds] = useState(rushMode ? 180 : null);
+  const [rushEnded, setRushEnded] = useState(false);
 
   const humanColor = useMemo(() => new Chess(puzzle.fen).turn(), [puzzle]);
 
@@ -49,7 +55,25 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
 
   useEffect(() => () => {
     if (replyTimeout.current) clearTimeout(replyTimeout.current);
+    if (rushNextTimeout.current) clearTimeout(rushNextTimeout.current);
   }, []);
+
+  useEffect(() => {
+    if (!rushMode || rushEnded) return undefined;
+    const timer = setInterval(() => {
+      setRushSeconds((s) => {
+        if (s <= 1) { setRushEnded(true); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [rushMode, rushEnded]);
+
+  useEffect(() => {
+    if (!rushMode || !rushEnded || rushSavedRef.current) return;
+    rushSavedRef.current = true;
+    recordPuzzleRush(solvedCount);
+  }, [rushMode, rushEnded, solvedCount]);
 
   const localChess = useMemo(() => {
     const c = new Chess();
@@ -79,7 +103,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
   }
 
   function handleSquareClick(square) {
-    if (status !== 'playing' || busy || retryOffer) return;
+    if (status !== 'playing' || busy || retryOffer || rushEnded) return;
 
     if (!selected) {
       const piece = localChess.get(square);
@@ -115,6 +139,12 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
 
     const expected = puzzle.solution[stepIndex];
     if (move.san !== expected) {
+      if (rushMode) {
+        setFeedback('Incorrecta. Siguiente caso: el reloj no negocia.');
+        setWrongThisPuzzle(true);
+        rushNextTimeout.current = setTimeout(() => { setPuzzle(choosePuzzle(source, puzzle.id)); setFeedback(null); }, 450);
+        return;
+      }
       // Primer fallo de este intento, con una racha real para proteger —
       // se ofrece pagar en vez de romperla directamente.
       if (!wrongThisPuzzle && streak > 0) {
@@ -148,6 +178,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
         setBestStreak(loadBestPuzzleStreak());
       }
       playSuccessSound();
+      if (rushMode) {
+        rushNextTimeout.current = setTimeout(() => setPuzzle(choosePuzzle(source, puzzle.id)), 350);
+      }
       return;
     }
 
@@ -197,19 +230,20 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
   return (
     <div className="tutorial-shell">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
-      <div className="puzzle-source-picker" role="group" aria-label="Tipo de puzzle">
+      {!rushMode && <div className="puzzle-source-picker" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
         <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={personalPuzzles.length === 0} onClick={() => changeSource('personal')}>
           Tus crímenes ({personalPuzzles.length})
         </button>
         <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
-      </div>
+      </div>}
+      {rushMode && <div className={`puzzle-rush-banner ${rushSeconds <= 30 ? 'danger' : ''}`}><b>PUZZLE RUSH PERSONAL</b><span>{Math.floor((rushSeconds || 0) / 60)}:{String((rushSeconds || 0) % 60).padStart(2, '0')} · {solvedCount} aciertos</span></div>}
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         <div className="board-column">
           <div className={`status-line ${status === 'solved' ? 'success' : ''}`}>
             {status === 'solved' && '¡Resuelto!'}
             {status === 'revealed' && 'Esta era la solución'}
-            {status === 'playing' && (busy ? 'El rival responde…' : 'Tu turno')}
+            {status === 'playing' && (rushEnded ? `Tiempo. ${solvedCount} aciertos.` : busy ? 'El rival responde…' : 'Tu turno')}
           </div>
           <Board
             fen={fen}
@@ -240,10 +274,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints }) {
             </div>
           )}
           <div className="game-controls">
-            {status === 'playing' && (
+            {!rushMode && status === 'playing' && (
               <button className="secondary-btn" onClick={revealSolution}>Ver solución</button>
             )}
-            {source !== 'daily' && <button className="primary-btn" onClick={newPuzzle}>Siguiente puzzle</button>}
+            {!rushMode && source !== 'daily' && <button className="primary-btn" onClick={newPuzzle}>Siguiente puzzle</button>}
+            {rushMode && rushEnded && <button className="primary-btn" onClick={onExit}>Guardar marca y salir</button>}
           </div>
         </div>
 

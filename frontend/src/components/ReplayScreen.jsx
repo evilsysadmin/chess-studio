@@ -13,8 +13,8 @@ import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
 // Reconstruye el FEN en cada punto de la partida a partir de la lista de
 // jugadas guardada. positions[0] es la posición inicial; positions[i] es la
 // posición después de la jugada i-1 de la lista.
-function buildPositions(moves) {
-  const c = new Chess();
+function buildPositions(moves, initialFen = null) {
+  const c = initialFen ? new Chess(initialFen) : new Chess();
   const positions = [c.fen()];
   for (const m of moves) {
     try {
@@ -52,14 +52,15 @@ function outcomeToPgnResult(outcome, humanColor) {
   return humanColor === 'w' ? '0-1' : '1-0';
 }
 
-export default function ReplayScreen({ record, initialStep, pinnedReport, crimeMode = false, onExit }) {
+export default function ReplayScreen({ record, initialStep, pinnedReport, crimeMode = false, movieMode = false, onPlayFromHere, onExit }) {
   useEscapeToClose(onExit);
-  const positions = useMemo(() => buildPositions(record.moves), [record]);
+  const positions = useMemo(() => buildPositions(record.moves, record.initialFen), [record]);
   const pairs = useMemo(() => toPairs(record.moves), [record]);
   const [step, setStep] = useState(initialStep ?? positions.length - 1);
   const [report, setReport] = useState(null);
   const [analyzing, setAnalyzing] = useState(true);
   const [analyzeError, setAnalyzeError] = useState(null);
+  const [moviePlaying, setMoviePlaying] = useState(false);
 
   // Analiza la partida ENTERA una sola vez al entrar — no hace falta pedirlo
   // jugada por jugada, así se puede recorrer el cuaderno de jugadas y ver de
@@ -76,6 +77,10 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
     return () => { cancelled = true; };
   }, [record]);
 
+  useEffect(() => {
+    if (movieMode && report && step === 0) setMoviePlaying(true);
+  }, [movieMode, report]);
+
   // Índice-en-history -> su reporte de análisis, para no recorrer el
   // arreglo entero cada vez que cambia el paso actual.
   // pinnedReport (si viene de "Buscar mi peor jugada de siempre", donde ya
@@ -91,6 +96,15 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
     if (pinnedReport) map.set(pinnedReport.index, pinnedReport);
     return map;
   }, [report, pinnedReport]);
+
+  useEffect(() => {
+    if (!moviePlaying) return undefined;
+    if (step >= positions.length - 1) { setMoviePlaying(false); return undefined; }
+    const currentReport = step > 0 ? reportByIndex.get(step - 1) : null;
+    const dramatic = currentReport && ['mistake', 'blunder'].includes(currentReport.severity);
+    const timer = setTimeout(() => setStep((s) => Math.min(positions.length - 1, s + 1)), dramatic ? 1500 : 720);
+    return () => clearTimeout(timer);
+  }, [moviePlaying, step, positions.length, reportByIndex]);
 
   function goTo(i) {
     setStep(Math.max(0, Math.min(positions.length - 1, i)));
@@ -132,6 +146,13 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
   return (
     <div className="tutorial-shell">
       <button className="back-link" onClick={onExit}>← Volver al historial</button>
+
+      {movieMode && (
+        <div className="movie-banner">
+          <div><span className="eyebrow">PELÍCULA DE LA PARTIDA</span><b>{moviePlaying ? 'Reproduciendo el expediente…' : step >= positions.length - 1 ? 'Fin del metraje' : 'Pausa dramática'}</b></div>
+          <button className="primary-btn" onClick={() => { if (step >= positions.length - 1) setStep(0); setMoviePlaying((v) => !v); }}>{moviePlaying ? 'Pausar' : '▶ Reproducir'}</button>
+        </div>
+      )}
 
       {analyzing && (
         <p className="hint-text replay-analyzing-banner">
@@ -188,6 +209,11 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
           <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleDownloadPGN}>
             Descargar PGN
           </button>
+          {onPlayFromHere && (
+            <button className="primary-btn lab-from-here-btn" style={{ marginTop: '0.6rem' }} onClick={() => onPlayFromHere(fen, record.humanColor, record.difficulty, { sourceRecord: record })}>
+              🧪 Jugar desde aquí contra la CPU
+            </button>
+          )}
 
           <div className="replay-current-move">
             <span className="eyebrow">Jugada {step} de {record.moves.length}</span>

@@ -2,6 +2,7 @@ import React from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import ColorSelector from './ColorSelector.jsx';
 import { TIME_CONTROLS } from '../clock.js';
+import { SERIES_OPTIONS } from '../series.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { handicapForGap } from '../handicap.js';
 
@@ -12,6 +13,12 @@ export default function QuickMatchModal({
   setColor,
   timeControlId,
   setTimeControlId,
+  seriesBestOf,
+  setSeriesBestOf,
+  suddenDeath,
+  setSuddenDeath,
+  threatCheck,
+  setThreatCheck,
   loading,
   rating,
   onStart,
@@ -27,7 +34,7 @@ export default function QuickMatchModal({
         <span className="eyebrow">Partida rápida</span>
         <h3>Elige tu rival</h3>
         <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
-          También se aplica a "Partida de práctica" — Torneo y Combate tienen su propia configuración.
+          El ritmo elegido también se usa en "Partida de práctica". Las series son sólo para Partida rápida; Torneo y Combate tienen su propia configuración.
         </p>
 
         <div className="difficulty-slider-row">
@@ -65,6 +72,26 @@ export default function QuickMatchModal({
               <option key={tc.id} value={tc.id}>{tc.label}</option>
             ))}
           </select>
+          <select
+            value={seriesBestOf}
+            onChange={(e) => setSeriesBestOf(Number(e.target.value))}
+            className="time-control-select quick-match-series-select"
+            aria-label="Formato de serie"
+          >
+            {SERIES_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+        {seriesBestOf > 1 && (
+          <p className="hint-text" style={{ marginTop: '0.65rem' }}>
+            La dificultad y el reloj se mantienen durante la serie. El color alterna en cada partida.
+          </p>
+        )}
+
+        <div className="quick-match-advanced">
+          <label><input type="checkbox" checked={suddenDeath} onChange={(e)=>setSuddenDeath(e.target.checked)} /> <b>Sudden Death</b> · 3 incidentes tácticos graves y pierdes, aunque el tablero aún respire.</label>
+          <label><input type="checkbox" checked={threatCheck} onChange={(e)=>setThreatCheck(e.target.checked)} /> <b>Control táctico</b> · ante una cagada seria, la CPU espera y te obliga a preguntarte qué amenaza el rival.</label>
         </div>
 
         <button
