@@ -6,6 +6,8 @@ import PromotionModal from './PromotionModal.jsx';
 import GameReportModal from './GameReportModal.jsx';
 import VoiceToggle from './VoiceToggle.jsx';
 import CpuPresence from './CpuPresence.jsx';
+import GameChat from './GameChat.jsx';
+import MusicPlayer from './MusicPlayer.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playTimePressureSound } from '../sound.js';
@@ -19,6 +21,7 @@ import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry
 import { startMemoryComment, openingMemoryComment, resultMemoryComment } from '../cpuMemory.js';
 import { seriesStatusText } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
+import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -71,6 +74,7 @@ export default function GameScreen({
   onRematch,
   memoryContext = {},
   onTrainPersonal,
+  onChatUpdate,
 }) {
   const humanColor = game.humanColor || 'w';
   const [selected, setSelected] = useState(null);
@@ -109,6 +113,7 @@ export default function GameScreen({
   const turnBannerTimeout = useRef(null);
   const [cpuComment, setCpuComment] = useState(null);
   const [cpuCommentSeq, setCpuCommentSeq] = useState(0);
+  const [gameChat, setGameChat] = useState(() => loadActiveGameChat(game.id));
   const cpuCommentTimeout = useRef(null);
   const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
@@ -135,6 +140,7 @@ export default function GameScreen({
     setPendingAnim(null);
     setTurnBanner(null);
     setCpuComment(null);
+    setGameChat(loadActiveGameChat(game.id));
     setHint(null);
     setHintsUsedThisGame(0);
     setCaptureFeedback(null);
@@ -210,7 +216,7 @@ export default function GameScreen({
     reportedResultRef.current = true;
     const outcome = flagFallen === humanColor ? 'loss' : 'win';
     if (outcome === 'win') playSuccessSound();
-    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath });
+    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
         const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0 });
@@ -229,7 +235,7 @@ export default function GameScreen({
     if (game.status === 'checkmate') outcome = game.turn === humanColor ? 'loss' : 'win';
     else outcome = 'draw';
     if (outcome === 'win') playSuccessSound();
-    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: game.status, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath });
+    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: game.status, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
         const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0 });
@@ -262,10 +268,17 @@ export default function GameScreen({
     else playMoveSound();
   }
 
-  function showCpuComment(comment) {
+  function showCpuComment(comment, meta = {}) {
     if (!comment?.text) return;
     setCpuComment(comment.text);
     setCpuCommentSeq((n) => n + 1);
+    const transcript = appendActiveGameChat(game.id, comment, {
+      event: meta.event || comment.event?.type || null,
+      actor: meta.actor || null,
+      ply: Number.isFinite(meta.ply) ? meta.ply : game.history?.length ?? null,
+    });
+    setGameChat(transcript);
+    onChatUpdate?.(game.id, transcript);
     if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
     cpuCommentTimeout.current = setTimeout(() => setCpuComment(null), 6500);
   }
@@ -275,7 +288,7 @@ export default function GameScreen({
     if (!comment) return;
     playNoteworthySound(comment.event, actor);
     const recurrenceCount = recordRivalryIncident(comment.event, actor);
-    showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` });
+    showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` }, { actor, event: comment.event?.type });
     const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
     if (!unlocked) return;
     setAchievementToast(unlocked);
@@ -364,7 +377,7 @@ export default function GameScreen({
         setGame(forcedGame); setForcedOutcome('loss'); setBusy(false);
         if (!reportedResultRef.current) {
           reportedResultRef.current = true;
-          onGameEnd?.('loss', forcedGame, { hintsUsed: hintsUsedThisGame, endReason: 'sudden-death', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: true });
+          onGameEnd?.('loss', forcedGame, { hintsUsed: hintsUsedThisGame, endReason: 'sudden-death', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: true, gameChat: loadActiveGameChat(game.id) });
         }
         showCpuComment({ text: 'Tres incidentes graves. Sudden Death terminado. El tablero aún tenía piezas; tu licencia competitiva, temporalmente no.' });
         return;
@@ -623,16 +636,29 @@ export default function GameScreen({
             </div>
           )}
           {renderClock(topColor, topTime)}
-          <Board
-            fen={boardFen}
-            onSquareClick={handleSquareClick}
-            selectedSquare={selected}
-            legalTargets={legalTargets}
-            lastMove={lastMoveSquares}
-            animate={pendingAnim}
-            hintMove={hint}
-            orientation={humanColor === 'b' ? 'black' : 'white'}
-          />
+          <div className="board-live-row">
+            <aside className="game-music-rail" aria-label="Música de la partida">
+              <MusicPlayer />
+            </aside>
+            <div className="game-board-stack">
+              <Board
+                fen={boardFen}
+                onSquareClick={handleSquareClick}
+                selectedSquare={selected}
+                legalTargets={legalTargets}
+                lastMove={lastMoveSquares}
+                animate={pendingAnim}
+                hintMove={hint}
+                orientation={humanColor === 'b' ? 'black' : 'white'}
+              />
+              <div className="game-notation-row">
+                <NotationPanel history={game.history} difficulty={game.difficulty} />
+              </div>
+            </div>
+            <aside className="game-side-column" aria-label="Game Chat de la partida">
+              <GameChat messages={gameChat} />
+            </aside>
+          </div>
           {renderClock(bottomColor, bottomTime)}
           {hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
           {captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
@@ -658,7 +684,6 @@ export default function GameScreen({
             <button className="secondary-btn" onClick={handleAbandon}>Abandonar partida</button>
           </div>
         </div>
-        <NotationPanel history={game.history} difficulty={game.difficulty} />
       </div>
 
       {(game.isGameOver || flagFallen || forcedOutcome) && (

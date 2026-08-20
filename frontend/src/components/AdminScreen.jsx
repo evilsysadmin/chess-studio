@@ -6,6 +6,35 @@ import { ACHIEVEMENTS } from '../achievements.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
+function formatPresenceAge(seconds) {
+  if (!Number.isFinite(seconds)) return null;
+  if (seconds < 60) return 'ahora';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `hace ${days} d`;
+}
+
+function Presence({ user }) {
+  const status = user?.presence || 'never';
+  const label = status === 'online'
+    ? 'En línea'
+    : status === 'recent'
+      ? `Reciente · ${formatPresenceAge(user.presenceAgeSeconds) || ''}`.replace(/ · $/, '')
+      : status === 'offline'
+        ? (formatPresenceAge(user.presenceAgeSeconds) || 'Offline')
+        : 'Sin actividad';
+  const exact = user?.lastActivity ? new Date(user.lastActivity).toLocaleString() : 'Sin actividad registrada';
+  return (
+    <span className={`admin-presence admin-presence-${status}`} title={exact}>
+      <span className="admin-presence-dot" aria-hidden="true" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
 function WorstMove({ move }) {
   if (!move) return <span className="admin-muted">Sin analizar todavía</span>;
   return (
@@ -58,9 +87,24 @@ export default function AdminScreen({ onExit }) {
   const [insightsErrors, setInsightsErrors] = useState({});
 
   useEffect(() => {
-    fetchAdminUsers()
-      .then(setUsers)
-      .catch((e) => setError(e.message));
+    let mounted = true;
+    async function refreshUsers(silent = false) {
+      try {
+        const next = await fetchAdminUsers();
+        if (!mounted) return;
+        setUsers(next);
+        setError(null);
+      } catch (e) {
+        if (!mounted || silent) return;
+        setError(e.message);
+      }
+    }
+    refreshUsers();
+    const timer = window.setInterval(() => refreshUsers(true), 30000);
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -100,6 +144,7 @@ export default function AdminScreen({ onExit }) {
                 <tr>
                   <th>Usuario</th>
                   <th>Registrado</th>
+                  <th>Última actividad</th>
                   <th>Rating</th>
                   <th>Partidas</th>
                   <th>V/T/D</th>
@@ -116,6 +161,7 @@ export default function AdminScreen({ onExit }) {
                       <tr>
                         <td>{u.username}</td>
                         <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
+                        <td><Presence user={u} /></td>
                         <td>{u.rating ?? '—'}{u.ratingPeak && u.ratingPeak !== u.rating ? ` (máx. ${u.ratingPeak})` : ''}</td>
                         <td>{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
                         <td>{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
@@ -129,8 +175,10 @@ export default function AdminScreen({ onExit }) {
                       </tr>
                       {isOpen && (
                         <tr className="admin-detail-row">
-                          <td colSpan="8">
+                          <td colSpan="9">
                             <div className="admin-detail-grid">
+                              <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
+                              <div><span>Última actividad exacta</span><strong>{u.lastActivity ? new Date(u.lastActivity).toLocaleString() : '—'}</strong></div>
                               <div><span>Rating / partidas ELO</span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>
                               <div><span>Pico de rating</span><strong>{u.ratingPeak ?? '—'}</strong></div>
                               <div><span>Racha máx. victorias</span><strong>{u.longestWinStreak ?? 0}</strong></div>

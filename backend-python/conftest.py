@@ -10,7 +10,12 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def no_real_mongo(monkeypatch):
+def no_real_mongo(monkeypatch, request):
+    # Motor + reglas puras forman un gate deliberadamente independiente de
+    # FastAPI/Mongo. Así `make gate-core` solo necesita pytest + python-chess.
+    if request.path.name in {"test_chess_ai.py", "test_core_game.py"}:
+        return
+
     # Los límites reales se prueban de forma dirigida; no queremos que una
     # suite completa se auto-bloquee por compartir la IP de TestClient.
     try:
@@ -35,3 +40,4 @@ def no_real_mongo(monkeypatch):
 
     monkeypatch.setattr("users_store.get_db", fake_get_db)
     monkeypatch.setattr("users_store._memory_users", {})
+    monkeypatch.setattr("users_store._last_activity_write_monotonic", {})

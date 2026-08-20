@@ -9,6 +9,7 @@ import { identifyOpening } from '../openings.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
+import GameChat from './GameChat.jsx';
 
 // Reconstruye el FEN en cada punto de la partida a partir de la lista de
 // jugadas guardada. positions[0] es la posición inicial; positions[i] es la
@@ -239,42 +240,45 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
           </div>
         </div>
 
-        <aside className="notation-panel">
-          <WorstMovesPanel report={report} onJump={goTo} />
+        <div className="game-side-column">
+          {record.gameChat?.length > 0 && <GameChat messages={record.gameChat} compact title="Game Chat · archivo" />}
+          <aside className="notation-panel">
+            <WorstMovesPanel report={report} onJump={goTo} />
 
-          <h3>Cuaderno de jugadas</h3>
-          {opening && <p className="opening-tag">{opening}</p>}
-          <div className="notation-list">
-            {pairs.length === 0 && <p className="notation-empty">Esta partida no tiene jugadas.</p>}
-            {pairs.map((p) => {
-              const whiteReport = reportByIndex.get(p.white.index);
-              const blackReport = p.black ? reportByIndex.get(p.black.index) : null;
-              return (
-                <div className="notation-row" key={p.num}>
-                  <span className="num">{p.num}.</span>
-                  <button
-                    type="button"
-                    className={`move-chip ${whiteReport ? `sev-${whiteReport.severity}` : ''} ${step === p.white.index + 1 ? 'active' : ''}`}
-                    onClick={() => goTo(p.white.index + 1)}
-                    title={whiteReport ? `${SEVERITY_LABEL[whiteReport.severity]} (-${whiteReport.loss})` : undefined}
-                  >
-                    {formatLongMove(p.white.move)}
-                  </button>
-                  {p.black && (
+            <h3>Cuaderno de jugadas</h3>
+            {opening && <p className="opening-tag">{opening}</p>}
+            <div className="notation-list">
+              {pairs.length === 0 && <p className="notation-empty">Esta partida no tiene jugadas.</p>}
+              {pairs.map((p) => {
+                const whiteReport = reportByIndex.get(p.white.index);
+                const blackReport = p.black ? reportByIndex.get(p.black.index) : null;
+                return (
+                  <div className="notation-row" key={p.num}>
+                    <span className="num">{p.num}.</span>
                     <button
                       type="button"
-                      className={`move-chip ${blackReport ? `sev-${blackReport.severity}` : ''} ${step === p.black.index + 1 ? 'active' : ''}`}
-                      onClick={() => goTo(p.black.index + 1)}
-                      title={blackReport ? `${SEVERITY_LABEL[blackReport.severity]} (-${blackReport.loss})` : undefined}
+                      className={`move-chip ${whiteReport ? `sev-${whiteReport.severity}` : ''} ${step === p.white.index + 1 ? 'active' : ''}`}
+                      onClick={() => goTo(p.white.index + 1)}
+                      title={whiteReport ? `${SEVERITY_LABEL[whiteReport.severity]} (-${whiteReport.loss})` : undefined}
                     >
-                      {formatLongMove(p.black.move)}
+                      {formatLongMove(p.white.move)}
                     </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </aside>
+                    {p.black && (
+                      <button
+                        type="button"
+                        className={`move-chip ${blackReport ? `sev-${blackReport.severity}` : ''} ${step === p.black.index + 1 ? 'active' : ''}`}
+                        onClick={() => goTo(p.black.index + 1)}
+                        title={blackReport ? `${SEVERITY_LABEL[blackReport.severity]} (-${blackReport.loss})` : undefined}
+                      >
+                        {formatLongMove(p.black.move)}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

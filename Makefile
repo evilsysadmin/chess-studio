@@ -1,23 +1,15 @@
-# Makefile — atajos para levantar el juego con Docker Compose.
-#
-# Uso rápido:
-#   make game     -> construye (si hace falta) y levanta backend + frontend
-#   make ungame   -> para y elimina los contenedores
-#   make logs     -> sigue los logs de ambos servicios
-#   make status   -> muestra el estado de los contenedores
-#   make clean    -> ungame + borra imágenes construidas por este proyecto
-#
+# Makefile — atajos para levantar, probar y revisar Chess Studio.
 # Puertos configurables: make game BACKEND_PORT=4001 FRONTEND_PORT=5174
 
 COMPOSE := docker compose
 
-.PHONY: game ungame restart logs status build clean help
+.PHONY: game game-bg ungame restart logs status build clean help install frontend-install backend-install test test-frontend test-backend gate-core frontend-build
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
 game:
 	$(COMPOSE) up --build
 
-## Igual que "game" pero en segundo plano (no bloquea la terminal).
+## Igual que "game" pero en segundo plano.
 game-bg:
 	$(COMPOSE) up --build -d
 	@echo "Levantado en segundo plano. Backend en :$${BACKEND_PORT:-4000}, frontend en :$${FRONTEND_PORT:-5173}."
@@ -38,22 +30,50 @@ logs:
 status:
 	$(COMPOSE) ps
 
-## Solo construye las imágenes, sin levantar nada.
+## Construye las imágenes Docker, sin levantar nada.
 build:
 	$(COMPOSE) build
 
-## Para todo y además borra las imágenes construidas (libera espacio en disco).
+## Para todo y borra imágenes/volúmenes locales del proyecto.
 clean: ungame
 	$(COMPOSE) down --rmi local --volumes --remove-orphans
 
-## Lista los comandos disponibles.
+## Instala dependencias locales para desarrollo/tests sin Docker.
+install: frontend-install backend-install
+
+frontend-install:
+	cd frontend && npm ci
+
+backend-install:
+	python -m pip install -r backend-python/requirements-dev.txt
+
+## Gate rápido y explícito del motor/IA.
+gate-core:
+	cd backend-python && pytest -q test_chess_ai.py test_core_game.py -x
+
+## Suite completa.
+test: test-frontend test-backend
+
+test-frontend:
+	cd frontend && npm test
+
+test-backend:
+	cd backend-python && pytest -v
+
+frontend-build:
+	cd frontend && npm run build
+
 help:
 	@echo "Comandos disponibles:"
-	@echo "  make game      - levanta el juego (backend + frontend) en primer plano"
-	@echo "  make game-bg   - igual, pero en segundo plano"
-	@echo "  make ungame    - para y elimina los contenedores"
-	@echo "  make restart   - ungame + game"
-	@echo "  make logs      - sigue los logs de ambos servicios"
-	@echo "  make status    - muestra el estado de los contenedores"
-	@echo "  make build     - solo construye las imágenes"
-	@echo "  make clean     - ungame + borra las imágenes construidas"
+	@echo "  make game           - levanta backend + frontend en primer plano"
+	@echo "  make game-bg        - igual, pero en segundo plano"
+	@echo "  make ungame         - para y elimina los contenedores"
+	@echo "  make restart        - ungame + game"
+	@echo "  make logs           - sigue los logs"
+	@echo "  make status         - muestra el estado de los contenedores"
+	@echo "  make build          - construye imágenes Docker"
+	@echo "  make clean          - borra contenedores/imágenes/volúmenes locales"
+	@echo "  make install        - instala dependencias locales"
+	@echo "  make gate-core      - ejecuta el gate del motor/IA"
+	@echo "  make test           - ejecuta frontend + backend tests"
+	@echo "  make frontend-build - compila el frontend fuera de Docker"

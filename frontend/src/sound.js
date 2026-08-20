@@ -41,8 +41,11 @@ export function isFxMuted() {
 
 export function setMusicMuted(muted) {
   setProfileStorageItem(MUSIC_MUTED_KEY, muted ? '1' : '0');
-  if (muted) stopAmbientMusic();
-  else startAmbientMusic();
+  // Mute y transporte son cosas distintas: silenciar no reinicia ni pausa el
+  // tema. Los secuenciadores siguen avanzando en silencio y al desmutear se
+  // recupera exactamente el punto musical de esa sesión. Si la música estaba
+  // detenida, desmutearla no inventa un Play implícito.
+  notifyAmbientTransport();
 }
 
 export function setFxMuted(muted) {
@@ -851,13 +854,14 @@ Object.assign(AMBIENT_THEMES, {
   },
   alexandria241: {
     id: 'alexandria241', engine: 'structured', label: 'Alejandría 02:41',
-    description: 'Ney sintético, oud seco, Rhodes, contrabajo y escobillas: jazz árabe nocturno para pensar sin prisa.',
-    stepMs: 140, stepsPerSection: 64, leadInstrument: 'ney', chordInstrument: 'epiano', bassInstrument: 'bass',
+    description: 'Ney, oud y contramelodías sobre Rhodes, contrabajo y escobillas: jazz árabe nocturno con más conversación y profundidad.',
+    stepMs: 140, stepsPerSection: 64, leadInstrument: 'ney', counterInstrument: 'oudJazz', chordInstrument: 'epiano', bassInstrument: 'bass',
     sections: [
       {
         // D Hijaz: frase contenida, mucho aire y respuesta del Rhodes.
         leadInstrument: 'ney',
         lead: { 4: 62, 8: 63, 12: 66, 18: 67, 24: 69, 30: 67, 36: 66, 42: 63, 50: 62, 58: 61.5 },
+        counter: { 14: 57, 22: 60, 34: 59, 46: 57, 60: 54 },
         chords: { 0: [50, 57, 60, 64], 16: [51, 57, 60, 66], 32: [55, 60, 64, 69], 48: [50, 57, 61, 64] },
         bass: { 0: 38, 8: 45, 16: 39, 24: 45, 32: 43, 40: 38, 48: 42, 56: 45 },
         drums: { 0: 'B', 4: 'H', 8: 'B', 12: 'H', 16: 'B', 20: 'H', 24: 'B', 28: 'H', 32: 'B', 36: 'H', 40: 'B', 44: 'H', 48: 'B', 52: 'H', 56: 'B', 60: 'H' },
@@ -866,6 +870,8 @@ Object.assign(AMBIENT_THEMES, {
         // El oud toma el relevo: frases cortas y sincopadas, sin copiar ninguna melodía externa.
         leadInstrument: 'oudJazz',
         lead: { 2: 62, 6: 66, 10: 67, 15: 69, 19: 70, 23: 69, 28: 66, 34: 63, 38: 66, 44: 69, 49: 73, 54: 70, 60: 67 },
+        counterInstrument: 'ney',
+        counter: { 12: 74, 25: 70, 41: 67, 56: 69 },
         chords: { 0: [50, 57, 60, 64], 16: [46, 53, 57, 62], 32: [48, 55, 58, 62], 48: [49, 55, 58, 64] },
         bass: { 0: 38, 6: 45, 12: 50, 16: 34, 24: 41, 32: 36, 40: 43, 48: 37, 56: 44 },
         drums: { 0: 'B', 7: 'H', 12: 'B', 15: 'H', 20: 'B', 28: 'B', 31: 'H', 36: 'B', 44: 'B', 47: 'H', 52: 'B', 60: 'B' },
@@ -874,6 +880,7 @@ Object.assign(AMBIENT_THEMES, {
         // Sección más jazzística: la melodía sube de registro y el walking bass camina más.
         leadInstrument: 'ney',
         lead: { 0: 69, 5: 70, 10: 73, 16: 74, 22: 73, 27: 69, 33: 67, 39: 66, 45: 63, 52: 66, 58: 62 },
+        counter: { 7: 57, 18: 60, 30: 62, 42: 59, 55: 57 },
         chords: { 0: [53, 57, 60, 64], 16: [55, 59, 62, 66], 32: [50, 57, 60, 64], 48: [51, 57, 60, 66] },
         bass: { 0: 41, 4: 45, 8: 48, 12: 52, 16: 43, 20: 47, 24: 50, 28: 54, 32: 38, 36: 42, 40: 45, 44: 49, 48: 39, 52: 43, 56: 46, 60: 50 },
         drums: { 0: 'B', 4: 'H', 8: 'B', 12: 'H', 16: 'B', 20: 'H', 24: 'B', 28: 'H', 32: 'B', 36: 'H', 40: 'B', 44: 'H', 48: 'B', 52: 'H', 56: 'B', 60: 'H' },
@@ -890,13 +897,15 @@ Object.assign(AMBIENT_THEMES, {
   },
   cairo0047: {
     id: 'cairo0047', engine: 'structured', label: 'Cairo 00:47',
-    description: 'Jazz árabe de madrugada: qanun, trompeta apagada, Rhodes, contrabajo y escobillas con mucho espacio.',
-    stepMs: 168, stepsPerSection: 64, longFormMs: 300000, leadInstrument: 'mutedHorn', chordInstrument: 'epiano', bassInstrument: 'bass',
+    description: 'Jazz árabe de madrugada: qanun y trompeta se contestan sobre Rhodes, contrabajo y escobillas, con más melodía sin perder espacio.',
+    stepMs: 168, stepsPerSection: 64, longFormMs: 300000, leadInstrument: 'mutedHorn', counterInstrument: 'qanun', chordInstrument: 'epiano', bassInstrument: 'bass',
     sections: [
       {
         // Apertura casi vacía: el Rhodes marca el horizonte y el qanun responde con pocas notas.
         leadInstrument: 'qanun',
         lead: { 6: 62, 12: 63, 18: 66, 26: 67, 34: 66, 42: 63, 52: 61.5, 60: 62 },
+        counterInstrument: 'mutedHorn',
+        counter: { 22: 69, 38: 67, 56: 66 },
         chords: { 0: [50, 57, 60, 64], 20: [46, 53, 57, 62], 40: [55, 60, 64, 69], 56: [50, 57, 61, 64] },
         bass: { 0: 38, 12: 45, 20: 34, 32: 41, 40: 43, 52: 38 },
         drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'H', 32: 'B', 40: 'H', 48: 'B', 56: 'H' },
@@ -905,6 +914,7 @@ Object.assign(AMBIENT_THEMES, {
         // Entra la voz de metal apagado, lenta y casi conversacional.
         leadInstrument: 'mutedHorn',
         lead: { 3: 69, 11: 70, 19: 67, 27: 66, 35: 63.5, 43: 66, 51: 69, 59: 67 },
+        counter: { 7: 62, 23: 66, 39: 63, 55: 62 },
         chords: { 0: [53, 57, 60, 64], 16: [51, 57, 60, 66], 32: [48, 55, 58, 62], 48: [50, 57, 60, 64] },
         bass: { 0: 41, 8: 45, 16: 39, 24: 46, 32: 36, 40: 43, 48: 38, 56: 45 },
         drums: { 0: 'B', 12: 'H', 16: 'B', 28: 'H', 32: 'B', 44: 'H', 48: 'B', 60: 'H' },
@@ -913,6 +923,8 @@ Object.assign(AMBIENT_THEMES, {
         // Sección central algo más jazzística: walking bass suave y pregunta/respuesta.
         leadInstrument: 'qanun',
         lead: { 2: 66, 7: 69, 13: 70, 20: 74, 27: 70, 33: 69, 39: 66, 46: 63, 53: 66, 61: 62 },
+        counterInstrument: 'mutedHorn',
+        counter: { 10: 62, 24: 67, 36: 66, 50: 63, 58: 66 },
         chords: { 0: [50, 57, 60, 64], 16: [55, 59, 62, 66], 32: [53, 57, 60, 64], 48: [46, 53, 57, 62] },
         bass: { 0: 38, 4: 45, 8: 50, 12: 45, 16: 43, 20: 47, 24: 50, 28: 47, 32: 41, 36: 45, 40: 48, 44: 45, 48: 34, 52: 41, 56: 46, 60: 41 },
         drums: { 0: 'B', 6: 'H', 12: 'B', 18: 'H', 24: 'B', 30: 'H', 36: 'B', 42: 'H', 48: 'B', 54: 'H', 60: 'B' },
@@ -924,6 +936,455 @@ Object.assign(AMBIENT_THEMES, {
         chords: { 0: [50, 57, 60, 64], 24: [51, 57, 60, 66], 44: [55, 60, 64, 69] },
         bass: { 0: 38, 16: 39, 32: 43, 48: 38 },
         drums: { 0: 'B', 16: 'H', 32: 'B', 48: 'H' },
+      },
+    ],
+  },
+  beirut0113: {
+    id: 'beirut0113', engine: 'structured', label: 'Beirut 01:13',
+    description: 'Jazz levantino de madrugada: buzuq y clarinete en pregunta/respuesta, Rhodes, contrabajo y escobillas en un 6/8 con más fondo.',
+    stepMs: 154, stepsPerSection: 72, longFormMs: 330000, leadInstrument: 'buzuq', counterInstrument: 'clarinet', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        // Apertura: buzuq seco sobre un 6/8 muy aireado. La escala sugiere
+        // color levantino sin reutilizar las frases de Cairo/Alejandría.
+        leadInstrument: 'buzuq',
+        lead: { 3: 64, 8: 65, 13: 68, 19: 71, 26: 69, 32: 68, 39: 65, 46: 64, 55: 62.5, 64: 64, 69: 68 },
+        counter: { 16: 59, 29: 62, 43: 60, 58: 59 },
+        chords: { 0: [52, 59, 62, 67], 18: [50, 57, 60, 65], 36: [55, 62, 65, 69], 54: [51, 58, 62, 67] },
+        bass: { 0: 40, 9: 47, 18: 38, 27: 45, 36: 43, 45: 50, 54: 39, 63: 46 },
+        drums: { 0: 'B', 6: 'H', 12: 'W', 18: 'B', 24: 'H', 30: 'W', 36: 'B', 42: 'H', 48: 'W', 54: 'B', 60: 'H', 66: 'W' },
+      },
+      {
+        // Respuesta de clarinete: notas largas, casi conversación, mientras
+        // el bajo se mueve un poco más que en la primera sección.
+        leadInstrument: 'clarinet',
+        lead: { 4: 71, 12: 73, 21: 69, 29: 68, 38: 65, 47: 68, 56: 71, 66: 69 },
+        counterInstrument: 'buzuq',
+        counter: { 8: 64, 25: 65, 42: 62.5, 61: 64 },
+        chords: { 0: [55, 59, 62, 67], 18: [53, 60, 64, 69], 36: [50, 57, 60, 65], 54: [52, 59, 62, 67] },
+        bass: { 0: 43, 6: 47, 12: 50, 18: 41, 24: 45, 30: 48, 36: 38, 42: 45, 48: 50, 54: 40, 60: 47, 66: 45 },
+        drums: { 0: 'B', 9: 'H', 18: 'B', 27: 'H', 36: 'B', 45: 'H', 54: 'B', 63: 'H' },
+      },
+      {
+        // Parte central más jazzística, con pregunta/respuesta entre registros
+        // y acordes algo más tensos. Sigue siendo fondo, no un solo invasivo.
+        leadInstrument: 'buzuq',
+        lead: { 2: 68, 7: 71, 13: 73, 20: 76, 27: 73, 34: 71, 40: 68, 47: 65, 53: 68, 60: 71, 67: 64 },
+        counter: { 10: 64, 24: 68, 37: 65, 50: 64, 63: 62.5 },
+        chords: { 0: [52, 59, 62, 67], 18: [57, 62, 65, 69], 36: [53, 60, 64, 69], 54: [50, 57, 60, 65] },
+        bass: { 0: 40, 6: 47, 12: 52, 18: 45, 24: 43, 30: 50, 36: 41, 42: 48, 48: 45, 54: 38, 60: 45, 66: 50 },
+        drums: { 0: 'B', 6: 'H', 12: 'W', 18: 'B', 24: 'H', 30: 'W', 36: 'B', 42: 'H', 48: 'W', 54: 'B', 60: 'H', 66: 'W' },
+      },
+      {
+        // Coda de azotea: clarinete escaso, Rhodes suspendido y muy poco
+        // movimiento. La pista termina respirando en vez de perseguirse.
+        leadInstrument: 'clarinet',
+        lead: { 8: 76, 20: 73, 31: 71, 43: 68, 55: 65, 67: 64 },
+        chords: { 0: [52, 59, 62, 67], 24: [50, 57, 60, 65], 48: [55, 62, 65, 69] },
+        bass: { 0: 40, 18: 38, 36: 43, 54: 40 },
+        drums: { 0: 'B', 18: 'H', 36: 'B', 54: 'H' },
+      },
+    ],
+  },
+  damascusBlueHour: {
+    id: 'damascusBlueHour', engine: 'structured', label: 'Damasco · hora azul',
+    description: 'Ney, oud oscuro y cello sobre Rhodes: una melodía lenta que vuelve transformada entre calle vacía y humo de madrugada.',
+    stepMs: 176, stepsPerSection: 64, longFormMs: 320000, leadInstrument: 'ney', counterInstrument: 'oudJazz', chordInstrument: 'epiano', bassInstrument: 'cello',
+    sections: [
+      {
+        lead: { 4: 62, 10: 63, 17: 66, 24: 69, 31: 67, 38: 66, 46: 63, 54: 62, 60: 57 },
+        counter: { 13: 54, 28: 57, 42: 59, 58: 54 },
+        chords: { 0: [50, 57, 60, 64], 16: [51, 57, 60, 66], 32: [46, 53, 57, 62], 48: [50, 57, 61, 64] },
+        bass: { 0: 38, 16: 39, 32: 34, 48: 38 },
+        drums: { 0: 'B', 16: 'H', 32: 'B', 48: 'H' },
+      },
+      {
+        leadInstrument: 'oudJazz', counterInstrument: 'ney',
+        lead: { 2: 62, 7: 66, 12: 67, 18: 70, 24: 69, 30: 66, 36: 63, 43: 66, 50: 69, 57: 67, 62: 62 },
+        counter: { 15: 74, 33: 70, 47: 67, 60: 69 },
+        chords: { 0: [53, 57, 60, 64], 16: [50, 57, 60, 65], 32: [55, 59, 62, 66], 48: [51, 57, 60, 66] },
+        bass: { 0: 41, 8: 45, 16: 38, 24: 45, 32: 43, 40: 47, 48: 39, 56: 46 },
+        drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'H', 32: 'B', 40: 'H', 48: 'B', 56: 'H' },
+      },
+      {
+        lead: { 0: 69, 5: 70, 11: 73, 17: 74, 23: 70, 29: 69, 35: 66, 41: 63, 47: 66, 53: 69, 59: 62 },
+        counter: { 8: 57, 20: 60, 32: 59, 44: 57, 56: 54 },
+        chords: { 0: [55, 60, 64, 69], 16: [53, 57, 60, 64], 32: [50, 57, 60, 64], 48: [46, 53, 57, 62] },
+        bass: { 0: 43, 4: 47, 8: 50, 12: 47, 16: 41, 20: 45, 24: 48, 28: 45, 32: 38, 36: 42, 40: 45, 44: 42, 48: 34, 52: 41, 56: 46, 60: 41 },
+        drums: { 0: 'B', 6: 'H', 12: 'B', 18: 'H', 24: 'B', 30: 'H', 36: 'B', 42: 'H', 48: 'B', 54: 'H', 60: 'B' },
+      },
+      {
+        leadInstrument: 'cello', counterInstrument: 'ney',
+        lead: { 6: 50, 18: 53, 30: 55, 42: 51, 54: 50 },
+        counter: { 12: 69, 28: 66, 44: 63, 60: 62 },
+        chords: { 0: [50, 57, 60, 64], 24: [46, 53, 57, 62], 48: [55, 60, 64, 69] },
+        bass: { 0: 38, 24: 34, 48: 43 },
+        drums: { 0: 'B', 32: 'H' },
+      },
+    ],
+  },
+  istanbul0326: {
+    id: 'istanbul0326', engine: 'structured', label: 'Estambul 03:26',
+    description: 'Clarinete, qanun y piano eléctrico en compás quebrado: elegante, nocturno y con una inquietud que nunca termina de sentarse.',
+    stepMs: 132, stepsPerSection: 56, longFormMs: 300000, leadInstrument: 'clarinet', counterInstrument: 'qanun', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 67, 5: 68, 9: 71, 14: 74, 19: 72, 24: 71, 29: 68, 35: 67, 41: 65, 48: 67, 53: 71 },
+        counter: { 7: 60, 16: 63, 27: 62, 38: 60, 50: 63 },
+        chords: { 0: [55, 62, 65, 70], 14: [53, 60, 64, 69], 28: [50, 57, 60, 65], 42: [55, 62, 66, 70] },
+        bass: { 0: 43, 7: 50, 14: 41, 21: 48, 28: 38, 35: 45, 42: 43, 49: 50 },
+        drums: { 0: 'W', 7: 'B', 14: 'W', 21: 'H', 28: 'W', 35: 'B', 42: 'W', 49: 'H' },
+      },
+      {
+        leadInstrument: 'qanun', counterInstrument: 'clarinet',
+        lead: { 2: 67, 4: 71, 8: 72, 11: 74, 16: 77, 20: 74, 24: 72, 30: 71, 34: 68, 39: 65, 44: 68, 49: 71, 54: 67 },
+        counter: { 13: 79, 27: 76, 40: 74, 52: 72 },
+        chords: { 0: [57, 64, 67, 72], 14: [55, 62, 65, 70], 28: [52, 59, 63, 68], 42: [53, 60, 64, 69] },
+        bass: { 0: 45, 7: 52, 14: 43, 21: 50, 28: 40, 35: 47, 42: 41, 49: 48 },
+        drums: { 0: 'W', 5: 'H', 14: 'B', 19: 'H', 28: 'W', 33: 'H', 42: 'B', 47: 'H' },
+      },
+      {
+        lead: { 1: 74, 6: 76, 12: 79, 17: 77, 22: 74, 27: 72, 32: 71, 37: 68, 43: 71, 49: 74, 54: 72 },
+        counter: { 9: 67, 20: 71, 30: 68, 40: 65, 51: 67 },
+        chords: { 0: [50, 57, 60, 65], 14: [55, 62, 65, 70], 28: [53, 60, 64, 69], 42: [57, 64, 67, 72] },
+        bass: { 0: 38, 4: 45, 7: 50, 11: 45, 14: 43, 18: 50, 21: 55, 25: 50, 28: 41, 32: 48, 35: 53, 39: 48, 42: 45, 46: 52, 49: 57, 53: 52 },
+        drums: { 0: 'W', 4: 'H', 7: 'B', 14: 'W', 18: 'H', 21: 'B', 28: 'W', 32: 'H', 35: 'B', 42: 'W', 46: 'H', 49: 'B' },
+      },
+      {
+        lead: { 4: 79, 14: 76, 24: 74, 34: 71, 44: 68, 52: 67 },
+        counter: { 9: 60, 27: 63, 45: 62 },
+        chords: { 0: [55, 62, 65, 70], 20: [53, 60, 64, 69], 40: [50, 57, 60, 65] },
+        bass: { 0: 43, 14: 41, 28: 38, 42: 43 },
+        drums: { 0: 'B', 14: 'H', 28: 'B', 42: 'H' },
+      },
+    ],
+  },
+  tangierSmoke: {
+    id: 'tangierSmoke', engine: 'structured', label: 'Tánger · humo',
+    description: 'Trompeta apagada, guitarra seca y vibráfono: club marroquí imaginario, humo espeso y un walking bass con malas intenciones.',
+    stepMs: 148, stepsPerSection: 64, longFormMs: 310000, leadInstrument: 'mutedHorn', counterInstrument: 'guitar2', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 3: 65, 9: 68, 15: 70, 22: 72, 29: 70, 36: 68, 44: 65, 52: 63, 59: 65 },
+        counter: { 12: 56, 26: 60, 40: 58, 55: 56 },
+        chords: { 0: [53, 60, 63, 68], 16: [50, 57, 60, 65], 32: [55, 62, 65, 70], 48: [51, 58, 62, 67] },
+        bass: { 0: 41, 8: 48, 16: 38, 24: 45, 32: 43, 40: 50, 48: 39, 56: 46 },
+        drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'W', 32: 'B', 40: 'H', 48: 'B', 56: 'W' },
+      },
+      {
+        leadInstrument: 'guitar2', counterInstrument: 'mutedHorn',
+        lead: { 1: 65, 5: 68, 10: 72, 14: 70, 19: 68, 24: 65, 29: 63, 35: 65, 41: 68, 46: 70, 52: 72, 58: 68, 62: 65 },
+        counter: { 16: 77, 32: 72, 48: 70, 60: 68 },
+        chords: { 0: [50, 57, 60, 65], 16: [53, 60, 63, 68], 32: [48, 55, 58, 63], 48: [55, 62, 65, 70] },
+        bass: { 0: 38, 4: 45, 8: 50, 12: 45, 16: 41, 20: 48, 24: 53, 28: 48, 32: 36, 36: 43, 40: 48, 44: 43, 48: 43, 52: 50, 56: 55, 60: 50 },
+        drums: { 0: 'B', 4: 'H', 8: 'B', 12: 'H', 16: 'B', 20: 'H', 24: 'B', 28: 'H', 32: 'B', 36: 'H', 40: 'B', 44: 'H', 48: 'B', 52: 'H', 56: 'B', 60: 'H' },
+      },
+      {
+        leadInstrument: 'vibes', counterInstrument: 'mutedHorn',
+        lead: { 0: 72, 6: 75, 12: 77, 18: 80, 24: 77, 30: 75, 36: 72, 42: 70, 48: 72, 54: 75, 60: 68 },
+        counter: { 9: 65, 21: 68, 33: 70, 45: 68, 57: 65 },
+        chords: { 0: [53, 60, 63, 68], 16: [55, 62, 65, 70], 32: [50, 57, 60, 65], 48: [51, 58, 62, 67] },
+        bass: { 0: 41, 8: 48, 16: 43, 24: 50, 32: 38, 40: 45, 48: 39, 56: 46 },
+        drums: { 0: 'B', 7: 'H', 16: 'B', 23: 'H', 32: 'B', 39: 'H', 48: 'B', 55: 'H' },
+      },
+      {
+        lead: { 8: 77, 20: 72, 32: 70, 44: 68, 56: 65 },
+        counter: { 14: 56, 38: 58 },
+        chords: { 0: [53, 60, 63, 68], 24: [50, 57, 60, 65], 48: [55, 62, 65, 70] },
+        bass: { 0: 41, 16: 38, 32: 43, 48: 41 },
+        drums: { 0: 'B', 16: 'H', 32: 'B', 48: 'H' },
+      },
+    ],
+  },
+  bosphorusRain: {
+    id: 'bosphorusRain', engine: 'structured', label: 'Bósforo bajo la lluvia',
+    description: 'Piano de fieltro, clarinete y cristal sobre cello: lluvia nocturna, reflejos de ciudad y una melodía que aparece y desaparece.',
+    stepMs: 198, stepsPerSection: 64, longFormMs: 340000, leadInstrument: 'felt', counterInstrument: 'clarinet', chordInstrument: 'glass', bassInstrument: 'cello',
+    sections: [
+      {
+        lead: { 0: 69, 8: 72, 16: 76, 24: 74, 32: 72, 40: 69, 48: 67, 56: 64 },
+        counter: { 12: 81, 28: 79, 44: 76, 60: 74 },
+        chords: { 0: [57, 60, 64, 69], 16: [53, 57, 60, 64], 32: [55, 59, 62, 67], 48: [52, 57, 60, 64] },
+        bass: { 0: 45, 16: 41, 32: 43, 48: 40 },
+        drums: { 7: 'H', 23: 'H', 39: 'H', 55: 'H' },
+      },
+      {
+        leadInstrument: 'clarinet', counterInstrument: 'felt',
+        lead: { 5: 76, 13: 79, 21: 81, 29: 79, 37: 76, 45: 74, 53: 72, 61: 69 },
+        counter: { 1: 60, 17: 64, 33: 62, 49: 60 },
+        chords: { 0: [53, 57, 60, 64], 16: [55, 59, 62, 67], 32: [50, 55, 59, 62], 48: [57, 60, 64, 69] },
+        bass: { 0: 41, 16: 43, 32: 38, 48: 45 },
+        drums: { 8: 'H', 24: 'B', 40: 'H', 56: 'B' },
+      },
+      {
+        lead: { 0: 72, 6: 76, 12: 79, 18: 81, 24: 79, 30: 76, 36: 74, 42: 72, 48: 69, 54: 67, 60: 64 },
+        counter: { 9: 67, 21: 69, 33: 67, 45: 64, 57: 62 },
+        chords: { 0: [57, 60, 64, 69], 16: [55, 59, 62, 67], 32: [53, 57, 60, 64], 48: [50, 55, 59, 62] },
+        bass: { 0: 45, 8: 40, 16: 43, 24: 38, 32: 41, 40: 36, 48: 38, 56: 45 },
+        drums: { 4: 'H', 12: 'B', 20: 'H', 28: 'B', 36: 'H', 44: 'B', 52: 'H', 60: 'B' },
+      },
+      {
+        leadInstrument: 'glass', counterInstrument: 'clarinet',
+        lead: { 8: 81, 24: 76, 40: 72, 56: 69 },
+        counter: { 16: 67, 32: 64, 48: 62 },
+        chords: { 0: [57, 60, 64, 69], 24: [53, 57, 60, 64], 48: [55, 59, 62, 67] },
+        bass: { 0: 45, 24: 41, 48: 43 },
+        drums: { 16: 'H', 48: 'H' },
+      },
+    ],
+  },
+  beirutRooftop0412: {
+    id: 'beirutRooftop0412', engine: 'structured', label: 'Beirut rooftop 04:12',
+    description: 'Clarinete más suelto, buzuq, Rhodes y contrabajo: el primo más jazzístico de Beirut 01:13, ya con la noche torcida.',
+    stepMs: 146, stepsPerSection: 72, longFormMs: 350000, leadInstrument: 'clarinet', counterInstrument: 'buzuq', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 4: 68, 10: 71, 17: 73, 25: 76, 33: 73, 41: 71, 49: 68, 58: 65, 67: 68 },
+        counter: { 13: 59, 29: 62, 45: 60, 61: 59 },
+        chords: { 0: [52, 59, 62, 67], 18: [55, 62, 65, 69], 36: [50, 57, 60, 65], 54: [53, 60, 64, 69] },
+        bass: { 0: 40, 9: 47, 18: 43, 27: 50, 36: 38, 45: 45, 54: 41, 63: 48 },
+        drums: { 0: 'B', 6: 'H', 12: 'W', 18: 'B', 24: 'H', 30: 'W', 36: 'B', 42: 'H', 48: 'W', 54: 'B', 60: 'H', 66: 'W' },
+      },
+      {
+        leadInstrument: 'buzuq', counterInstrument: 'clarinet',
+        lead: { 1: 64, 5: 68, 9: 71, 14: 73, 20: 76, 26: 73, 32: 71, 38: 68, 44: 65, 50: 68, 56: 71, 62: 73, 68: 64 },
+        counter: { 17: 80, 35: 76, 53: 73, 66: 71 },
+        chords: { 0: [55, 62, 65, 69], 18: [52, 59, 62, 67], 36: [57, 62, 65, 69], 54: [50, 57, 60, 65] },
+        bass: { 0: 43, 6: 47, 12: 50, 18: 40, 24: 47, 30: 52, 36: 45, 42: 50, 48: 53, 54: 38, 60: 45, 66: 50 },
+        drums: { 0: 'B', 6: 'H', 12: 'W', 18: 'B', 24: 'H', 30: 'W', 36: 'B', 42: 'H', 48: 'W', 54: 'B', 60: 'H', 66: 'W' },
+      },
+      {
+        lead: { 0: 76, 5: 78, 11: 80, 17: 83, 23: 80, 29: 78, 35: 76, 41: 73, 47: 71, 53: 73, 59: 76, 65: 68, 70: 71 },
+        counter: { 8: 64, 20: 68, 32: 71, 44: 68, 56: 65, 68: 64 },
+        chords: { 0: [57, 62, 65, 69], 18: [55, 62, 65, 69], 36: [53, 60, 64, 69], 54: [52, 59, 62, 67] },
+        bass: { 0: 45, 6: 52, 12: 57, 18: 43, 24: 50, 30: 55, 36: 41, 42: 48, 48: 53, 54: 40, 60: 47, 66: 52 },
+        drums: { 0: 'B', 4: 'H', 9: 'W', 18: 'B', 22: 'H', 27: 'W', 36: 'B', 40: 'H', 45: 'W', 54: 'B', 58: 'H', 63: 'W' },
+      },
+      {
+        lead: { 8: 80, 20: 76, 32: 73, 44: 71, 56: 68, 68: 64 },
+        counter: { 14: 59, 38: 62, 62: 60 },
+        chords: { 0: [52, 59, 62, 67], 24: [50, 57, 60, 65], 48: [55, 62, 65, 69] },
+        bass: { 0: 40, 18: 38, 36: 43, 54: 40 },
+        drums: { 0: 'B', 18: 'H', 36: 'B', 54: 'H' },
+      },
+    ],
+  },
+  casablancaLastCall: {
+    id: 'casablancaLastCall', engine: 'structured', label: 'Casablanca · Last Call',
+    description: 'Rhodes, trompeta apagada, vibráfono y contrabajo: el camarero recoge vasos y aún queda una última partida.',
+    stepMs: 162, stepsPerSection: 64, longFormMs: 330000, leadInstrument: 'mutedHorn', counterInstrument: 'vibes', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 5: 67, 13: 70, 21: 72, 29: 74, 37: 72, 45: 69, 53: 67, 61: 65 },
+        counter: { 9: 79, 25: 76, 41: 74, 57: 72 },
+        chords: { 0: [48, 55, 58, 64], 16: [53, 57, 60, 64], 32: [50, 57, 60, 65], 48: [55, 59, 62, 65] },
+        bass: { 0: 36, 8: 43, 16: 41, 24: 45, 32: 38, 40: 45, 48: 43, 56: 47 },
+        drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'H', 32: 'B', 40: 'H', 48: 'B', 56: 'H' },
+      },
+      {
+        leadInstrument: 'vibes', counterInstrument: 'mutedHorn',
+        lead: { 2: 72, 8: 75, 14: 79, 20: 77, 26: 74, 32: 72, 38: 69, 44: 67, 50: 69, 56: 72, 62: 65 },
+        counter: { 11: 67, 27: 70, 43: 69, 59: 67 },
+        chords: { 0: [53, 57, 60, 64], 16: [50, 57, 60, 65], 32: [55, 59, 62, 65], 48: [48, 55, 58, 64] },
+        bass: { 0: 41, 4: 45, 8: 48, 12: 45, 16: 38, 20: 45, 24: 50, 28: 45, 32: 43, 36: 47, 40: 50, 44: 47, 48: 36, 52: 43, 56: 48, 60: 43 },
+        drums: { 0: 'B', 4: 'H', 8: 'B', 12: 'H', 16: 'B', 20: 'H', 24: 'B', 28: 'H', 32: 'B', 36: 'H', 40: 'B', 44: 'H', 48: 'B', 52: 'H', 56: 'B', 60: 'H' },
+      },
+      {
+        lead: { 0: 70, 6: 74, 12: 77, 18: 79, 24: 77, 30: 74, 36: 72, 42: 69, 48: 67, 54: 70, 60: 65 },
+        counter: { 9: 76, 21: 74, 33: 72, 45: 70, 57: 67 },
+        chords: { 0: [50, 57, 60, 65], 16: [55, 59, 62, 65], 32: [53, 57, 60, 64], 48: [48, 55, 58, 64] },
+        bass: { 0: 38, 8: 45, 16: 43, 24: 50, 32: 41, 40: 48, 48: 36, 56: 43 },
+        drums: { 0: 'B', 7: 'H', 14: 'B', 21: 'H', 28: 'B', 35: 'H', 42: 'B', 49: 'H', 56: 'B' },
+      },
+      {
+        lead: { 8: 74, 20: 72, 32: 69, 44: 67, 56: 65 },
+        counter: { 14: 79, 38: 76 },
+        chords: { 0: [48, 55, 58, 64], 24: [53, 57, 60, 64], 48: [50, 57, 60, 65] },
+        bass: { 0: 36, 16: 41, 32: 38, 48: 36 },
+        drums: { 0: 'B', 16: 'H', 32: 'B', 48: 'H' },
+      },
+    ],
+  },
+  cairoQuietHours: {
+    id: 'cairoQuietHours', engine: 'structured', label: 'Cairo · Quiet Hours',
+    description: 'Jazz árabe introspectivo: trompeta apagada, oud, Rhodes y contrabajo; melodías largas que dejan respirar el silencio entre frase y frase.',
+    stepMs: 184, stepsPerSection: 64, longFormMs: 360000, leadInstrument: 'mutedHorn', counterInstrument: 'oudJazz', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 6: 67, 14: 70, 22: 72, 31: 74, 39: 72, 47: 70, 55: 67, 61: 65 },
+        counter: { 10: 58, 27: 62, 43: 60, 59: 58 },
+        chords: { 0: [48, 55, 58, 62], 16: [53, 57, 60, 64], 32: [50, 57, 60, 65], 48: [55, 59, 62, 67] },
+        bass: { 0: 36, 16: 41, 32: 38, 48: 43 },
+        drums: { 0: 'B', 16: 'H', 32: 'B', 48: 'H' },
+      },
+      {
+        leadInstrument: 'oudJazz', counterInstrument: 'mutedHorn',
+        lead: { 2: 65, 8: 67, 13: 70, 19: 72, 25: 74, 31: 72, 37: 70, 43: 67, 49: 65, 55: 67, 61: 62 },
+        counter: { 17: 77, 34: 74, 50: 72, 60: 70 },
+        chords: { 0: [53, 57, 60, 64], 16: [48, 55, 58, 62], 32: [55, 59, 62, 67], 48: [50, 57, 60, 65] },
+        bass: { 0: 41, 8: 45, 16: 36, 24: 43, 32: 43, 40: 47, 48: 38, 56: 45 },
+        drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'H', 32: 'B', 40: 'H', 48: 'B', 56: 'H' },
+      },
+      {
+        lead: { 4: 72, 10: 74, 16: 77, 22: 79, 28: 77, 34: 74, 40: 72, 46: 70, 52: 67, 58: 65 },
+        counter: { 13: 62, 25: 65, 37: 67, 49: 65, 61: 62 },
+        chords: { 0: [50, 57, 60, 65], 16: [55, 59, 62, 67], 32: [53, 57, 60, 64], 48: [48, 55, 58, 62] },
+        bass: { 0: 38, 8: 45, 16: 43, 24: 50, 32: 41, 40: 48, 48: 36, 56: 43 },
+        drums: { 0: 'B', 12: 'H', 24: 'B', 36: 'H', 48: 'B', 60: 'H' },
+      },
+      {
+        lead: { 8: 74, 20: 72, 32: 70, 44: 67, 56: 65 },
+        counter: { 15: 58, 39: 60 },
+        chords: { 0: [48, 55, 58, 62], 24: [53, 57, 60, 64], 48: [50, 57, 60, 65] },
+        bass: { 0: 36, 24: 41, 48: 38 },
+        drums: { 0: 'B', 32: 'H' },
+      },
+    ],
+  },
+  nileBalcony0152: {
+    id: 'nileBalcony0152', engine: 'structured', label: 'Nilo · balcón 01:52',
+    description: 'Ney, vibráfono y piano eléctrico flotando sobre cello; una pieza lenta de balcón abierto, río oscuro y ciudad todavía despierta.',
+    stepMs: 202, stepsPerSection: 64, longFormMs: 370000, leadInstrument: 'ney', counterInstrument: 'vibes', chordInstrument: 'epiano', bassInstrument: 'cello',
+    sections: [
+      {
+        lead: { 4: 69, 12: 72, 20: 76, 28: 74, 36: 72, 44: 69, 52: 67, 60: 64 },
+        counter: { 8: 81, 24: 79, 40: 76, 56: 74 },
+        chords: { 0: [57, 60, 64, 69], 16: [53, 57, 60, 64], 32: [55, 59, 62, 67], 48: [52, 57, 60, 64] },
+        bass: { 0: 45, 16: 41, 32: 43, 48: 40 },
+        drums: { 15: 'H', 31: 'H', 47: 'H', 63: 'H' },
+      },
+      {
+        leadInstrument: 'vibes', counterInstrument: 'ney',
+        lead: { 2: 72, 10: 76, 18: 79, 26: 81, 34: 79, 42: 76, 50: 74, 58: 72 },
+        counter: { 14: 67, 30: 69, 46: 67, 62: 64 },
+        chords: { 0: [53, 57, 60, 64], 16: [55, 59, 62, 67], 32: [50, 55, 59, 62], 48: [57, 60, 64, 69] },
+        bass: { 0: 41, 16: 43, 32: 38, 48: 45 },
+        drums: { 8: 'H', 24: 'B', 40: 'H', 56: 'B' },
+      },
+      {
+        lead: { 0: 76, 6: 79, 12: 81, 18: 83, 24: 81, 30: 79, 36: 76, 42: 74, 48: 72, 54: 69, 60: 67 },
+        counter: { 9: 64, 21: 67, 33: 69, 45: 67, 57: 64 },
+        chords: { 0: [57, 60, 64, 69], 16: [55, 59, 62, 67], 32: [53, 57, 60, 64], 48: [50, 55, 59, 62] },
+        bass: { 0: 45, 8: 40, 16: 43, 24: 38, 32: 41, 40: 36, 48: 38, 56: 45 },
+        drums: { 4: 'H', 20: 'B', 36: 'H', 52: 'B' },
+      },
+      {
+        leadInstrument: 'ney', counterInstrument: 'vibes',
+        lead: { 8: 79, 24: 76, 40: 72, 56: 69 },
+        counter: { 16: 83, 32: 79, 48: 76 },
+        chords: { 0: [57, 60, 64, 69], 24: [53, 57, 60, 64], 48: [55, 59, 62, 67] },
+        bass: { 0: 45, 24: 41, 48: 43 },
+        drums: { 32: 'H' },
+      },
+    ],
+  },
+  aleppoAfterRain: {
+    id: 'aleppoAfterRain', engine: 'structured', label: 'Alepo · después de la lluvia',
+    description: 'Clarinete cálido, qanun y piano de fieltro: gotas en piedra, calles vacías y un motivo que reaparece cada vez un poco más cansado.',
+    stepMs: 188, stepsPerSection: 64, longFormMs: 350000, leadInstrument: 'clarinet', counterInstrument: 'qanun', chordInstrument: 'felt', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 5: 65, 13: 68, 21: 72, 29: 70, 37: 68, 45: 65, 53: 63, 61: 65 },
+        counter: { 9: 60, 25: 63, 41: 62, 57: 60 },
+        chords: { 0: [53, 60, 63, 68], 16: [50, 57, 60, 65], 32: [55, 62, 65, 70], 48: [51, 58, 62, 67] },
+        bass: { 0: 41, 16: 38, 32: 43, 48: 39 },
+        drums: { 0: 'B', 16: 'H', 32: 'B', 48: 'H' },
+      },
+      {
+        leadInstrument: 'qanun', counterInstrument: 'clarinet',
+        lead: { 1: 65, 5: 68, 9: 72, 14: 74, 20: 72, 26: 70, 32: 68, 38: 65, 44: 63, 50: 65, 56: 68, 62: 65 },
+        counter: { 17: 77, 33: 74, 49: 72, 60: 70 },
+        chords: { 0: [50, 57, 60, 65], 16: [53, 60, 63, 68], 32: [48, 55, 58, 63], 48: [55, 62, 65, 70] },
+        bass: { 0: 38, 8: 45, 16: 41, 24: 48, 32: 36, 40: 43, 48: 43, 56: 50 },
+        drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'H', 32: 'B', 40: 'H', 48: 'B', 56: 'H' },
+      },
+      {
+        lead: { 0: 72, 6: 75, 12: 77, 18: 80, 24: 77, 30: 75, 36: 72, 42: 70, 48: 68, 54: 65, 60: 63 },
+        counter: { 9: 65, 21: 68, 33: 70, 45: 68, 57: 65 },
+        chords: { 0: [53, 60, 63, 68], 16: [55, 62, 65, 70], 32: [50, 57, 60, 65], 48: [51, 58, 62, 67] },
+        bass: { 0: 41, 8: 48, 16: 43, 24: 50, 32: 38, 40: 45, 48: 39, 56: 46 },
+        drums: { 0: 'B', 12: 'H', 24: 'B', 36: 'H', 48: 'B', 60: 'H' },
+      },
+      {
+        lead: { 8: 77, 20: 72, 32: 70, 44: 68, 56: 65 },
+        counter: { 14: 60, 38: 62 },
+        chords: { 0: [53, 60, 63, 68], 24: [50, 57, 60, 65], 48: [55, 62, 65, 70] },
+        bass: { 0: 41, 24: 38, 48: 43 },
+        drums: { 0: 'B', 32: 'H' },
+      },
+    ],
+  },
+  ammanVelvetRoom: {
+    id: 'ammanVelvetRoom', engine: 'structured', label: 'Amán · habitación de terciopelo',
+    description: 'Rhodes, buzuq y vibráfono con un bajo perezoso: jazz de hotel pequeño, luz ámbar y conversación a media voz.',
+    stepMs: 170, stepsPerSection: 64, longFormMs: 345000, leadInstrument: 'buzuq', counterInstrument: 'vibes', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 3: 64, 9: 68, 15: 71, 22: 73, 29: 71, 36: 68, 43: 66, 50: 64, 57: 62.5 },
+        counter: { 12: 76, 28: 73, 44: 71, 60: 68 },
+        chords: { 0: [52, 59, 62, 67], 16: [55, 62, 65, 69], 32: [50, 57, 60, 65], 48: [53, 60, 64, 69] },
+        bass: { 0: 40, 8: 47, 16: 43, 24: 50, 32: 38, 40: 45, 48: 41, 56: 48 },
+        drums: { 0: 'B', 8: 'H', 16: 'B', 24: 'H', 32: 'B', 40: 'H', 48: 'B', 56: 'H' },
+      },
+      {
+        leadInstrument: 'vibes', counterInstrument: 'buzuq',
+        lead: { 2: 71, 8: 74, 14: 78, 20: 76, 26: 73, 32: 71, 38: 68, 44: 66, 50: 68, 56: 71, 62: 64 },
+        counter: { 11: 64, 27: 68, 43: 66, 59: 64 },
+        chords: { 0: [55, 62, 65, 69], 16: [52, 59, 62, 67], 32: [57, 62, 65, 69], 48: [50, 57, 60, 65] },
+        bass: { 0: 43, 8: 50, 16: 40, 24: 47, 32: 45, 40: 52, 48: 38, 56: 45 },
+        drums: { 0: 'B', 12: 'H', 24: 'B', 36: 'H', 48: 'B', 60: 'H' },
+      },
+      {
+        lead: { 0: 73, 5: 76, 11: 78, 17: 80, 23: 78, 29: 76, 35: 73, 41: 71, 47: 68, 53: 71, 59: 64 },
+        counter: { 8: 64, 20: 68, 32: 71, 44: 68, 56: 66 },
+        chords: { 0: [57, 62, 65, 69], 16: [55, 62, 65, 69], 32: [53, 60, 64, 69], 48: [52, 59, 62, 67] },
+        bass: { 0: 45, 8: 52, 16: 43, 24: 50, 32: 41, 40: 48, 48: 40, 56: 47 },
+        drums: { 0: 'B', 6: 'H', 12: 'W', 24: 'B', 30: 'H', 36: 'W', 48: 'B', 54: 'H', 60: 'W' },
+      },
+      {
+        leadInstrument: 'vibes', counterInstrument: 'buzuq',
+        lead: { 8: 78, 20: 73, 32: 71, 44: 68, 56: 64 },
+        counter: { 16: 59, 40: 62 },
+        chords: { 0: [52, 59, 62, 67], 24: [50, 57, 60, 65], 48: [55, 62, 65, 69] },
+        bass: { 0: 40, 24: 38, 48: 43 },
+        drums: { 0: 'B', 32: 'H' },
+      },
+    ],
+  },
+  medinaBlueSmoke: {
+    id: 'medinaBlueSmoke', engine: 'structured', label: 'Medina · humo azul',
+    description: 'Oud jazz, clarinete y Rhodes con percusión mínima: nocturno cálido, algo turbio y hecho para pensar sin prisa.',
+    stepMs: 178, stepsPerSection: 72, longFormMs: 365000, leadInstrument: 'oudJazz', counterInstrument: 'clarinet', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 4: 62, 10: 65, 16: 69, 23: 71, 30: 69, 37: 65, 44: 62, 52: 60, 60: 62, 68: 65 },
+        counter: { 14: 74, 32: 71, 50: 69, 66: 67 },
+        chords: { 0: [50, 57, 60, 65], 18: [53, 60, 63, 68], 36: [55, 62, 65, 70], 54: [51, 58, 62, 67] },
+        bass: { 0: 38, 9: 45, 18: 41, 27: 48, 36: 43, 45: 50, 54: 39, 63: 46 },
+        drums: { 0: 'B', 12: 'H', 24: 'W', 36: 'B', 48: 'H', 60: 'W' },
+      },
+      {
+        leadInstrument: 'clarinet', counterInstrument: 'oudJazz',
+        lead: { 5: 69, 13: 72, 21: 74, 29: 72, 37: 69, 45: 67, 53: 65, 61: 62, 69: 65 },
+        counter: { 9: 58, 27: 62, 45: 60, 63: 58 },
+        chords: { 0: [53, 60, 63, 68], 18: [50, 57, 60, 65], 36: [48, 55, 58, 63], 54: [55, 62, 65, 70] },
+        bass: { 0: 41, 9: 48, 18: 38, 27: 45, 36: 36, 45: 43, 54: 43, 63: 50 },
+        drums: { 0: 'B', 18: 'H', 36: 'B', 54: 'H' },
+      },
+      {
+        lead: { 0: 69, 6: 72, 12: 76, 18: 78, 24: 76, 30: 72, 36: 69, 42: 67, 48: 65, 54: 67, 60: 69, 66: 62 },
+        counter: { 9: 62, 21: 65, 33: 69, 45: 67, 57: 65, 69: 62 },
+        chords: { 0: [55, 62, 65, 70], 18: [53, 60, 63, 68], 36: [50, 57, 60, 65], 54: [51, 58, 62, 67] },
+        bass: { 0: 43, 6: 50, 12: 55, 18: 41, 24: 48, 30: 53, 36: 38, 42: 45, 48: 50, 54: 39, 60: 46, 66: 51 },
+        drums: { 0: 'B', 6: 'H', 12: 'W', 18: 'B', 24: 'H', 30: 'W', 36: 'B', 42: 'H', 48: 'W', 54: 'B', 60: 'H', 66: 'W' },
+      },
+      {
+        leadInstrument: 'clarinet', counterInstrument: 'oudJazz',
+        lead: { 8: 74, 20: 72, 32: 69, 44: 67, 56: 65, 68: 62 },
+        counter: { 14: 58, 38: 60, 62: 58 },
+        chords: { 0: [50, 57, 60, 65], 24: [53, 60, 63, 68], 48: [55, 62, 65, 70] },
+        bass: { 0: 38, 18: 41, 36: 43, 54: 38 },
+        drums: { 0: 'B', 36: 'H' },
       },
     ],
   },
@@ -998,18 +1459,76 @@ function getActiveAmbientTheme() {
   return AMBIENT_THEMES[getAmbientThemeId()] || AMBIENT_THEMES[DEFAULT_AMBIENT_THEME];
 }
 
+function transportNowMs() {
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now();
+  return Date.now();
+}
+
+let stepTimer = null;
+let ambientResumeFn = null;
+const ambientTransport = {
+  status: 'stopped', // playing | paused | stopped
+  themeId: null,
+  positionMs: 0,
+  startedAtMs: 0,
+};
+
+function transportElapsedMs() {
+  const live = ambientTransport.status === 'playing'
+    ? Math.max(0, transportNowMs() - ambientTransport.startedAtMs)
+    : 0;
+  return Math.max(0, ambientTransport.positionMs + live);
+}
+
+function notifyAmbientTransport() {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  window.dispatchEvent(new CustomEvent('chess-ambient-transport'));
+}
+
+export function getAmbientPlaybackState() {
+  const themeId = ambientTransport.themeId || getAmbientThemeId();
+  const durationMs = getAmbientThemeVariationDurationMs(themeId);
+  const elapsedMs = transportElapsedMs();
+  const visualCycleMs = durationMs || 180000;
+  return {
+    status: ambientTransport.status,
+    themeId,
+    elapsedMs,
+    durationMs,
+    cyclePositionMs: visualCycleMs ? elapsedMs % visualCycleMs : elapsedMs,
+    visualCycleMs,
+    muted: isMusicMuted(),
+  };
+}
+
 export function setAmbientTheme(themeId) {
   const nextId = AMBIENT_THEMES[themeId] ? themeId : DEFAULT_AMBIENT_THEME;
-  const wasPlaying = !!stepTimer;
+  const previousStatus = ambientTransport.status;
+  stopAmbientMusic();
   if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
-  if (wasPlaying) {
-    stopAmbientMusic();
+  ambientTransport.themeId = nextId;
+
+  if (previousStatus === 'playing') {
     startAmbientMusic();
+  } else if (previousStatus === 'paused') {
+    // Cambiar de pista mientras está pausada deja la nueva al principio,
+    // también pausada. Play arrancará esa pista desde 00:00.
+    ambientTransport.status = 'paused';
+    notifyAmbientTransport();
+  } else {
+    notifyAmbientTransport();
   }
   return nextId;
 }
 
-let stepTimer = null;
+export function selectRelativeAmbientTheme(delta) {
+  const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
+  const current = getAmbientThemeId();
+  const index = Math.max(0, ids.indexOf(current));
+  const next = ids[(index + delta + ids.length) % ids.length] || DEFAULT_AMBIENT_THEME;
+  return setAmbientTheme(next);
+}
+
 let padIndex = 0;
 const KEY_CHANGE_STEPS = STEPS_PER_BAR * 6; // cada 6 compases (~13.4s)
 
@@ -1344,6 +1863,8 @@ function voicePreset(kind) {
     case 'oudJazz': return { waves: [['sawtooth', 1, 0.48], ['triangle', 1, 0.72], ['sine', 2, 0.08]], gain: 0.019, attack: 0.004, release: 0.62, cutoff: 1750 };
     case 'qanun': return { waves: [['triangle', 1, 0.82], ['sine', 2, 0.22], ['sine', 3, 0.09]], gain: 0.018, attack: 0.003, release: 0.88, cutoff: 3650 };
     case 'mutedHorn': return { waves: [['triangle', 1, 0.76], ['sawtooth', 1, 0.16], ['sine', 0.5, 0.12]], gain: 0.017, attack: 0.085, release: 1.75, cutoff: 1180, tremolo: 4.4 };
+    case 'buzuq': return { waves: [['triangle', 1, 0.72], ['sawtooth', 2, 0.11], ['sine', 3, 0.06]], gain: 0.019, attack: 0.003, release: 0.74, cutoff: 2450 };
+    case 'clarinet': return { waves: [['square', 1, 0.19], ['sine', 1, 0.76], ['sine', 3, 0.09]], gain: 0.016, attack: 0.07, release: 1.85, cutoff: 1480, tremolo: 4.0 };
     case 'metallic': return { waves: [['square', 1, 0.42], ['sine', 2.41, 0.34], ['sine', 4.83, 0.12]], gain: 0.014, attack: 0.004, release: 0.48, cutoff: 3200 };
     default: return { waves: [['sine', 1, 1]], gain: 0.02, attack: 0.01, release: 0.8, cutoff: 2500 };
   }
@@ -1530,6 +2051,8 @@ function structuredArrangement(theme, cycleIndex) {
     leadVolume: texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1,
     bassVolume: texture === 4 ? 0.68 : 0.9,
     chordVolume: texture === 5 ? 0.72 : 1,
+    counterVolume: texture === 3 ? 0.34 : texture === 7 ? 0.46 : 0.4,
+    counterOctave: texture === 6 ? -12 : 0,
     // Unas vueltas dejan respirar la melodía o la batería. La forma base
     // sigue reconocible, pero no tenemos la misma pared de sonido cada 4 s.
     leadMode: texture === 2 ? 'late' : texture === 8 ? 'sparse' : 'full',
@@ -1557,7 +2080,7 @@ function startStructuredMusic(theme) {
   const cycleSteps = stepsPerSection * sectionCount;
 
   function tick() {
-    if (isMusicMuted()) {
+    if (ambientTransport.status !== 'playing') {
       stepTimer = null;
       return;
     }
@@ -1571,6 +2094,7 @@ function startStructuredMusic(theme) {
     const section = theme.sections[sectionIndex];
 
     const lead = section.lead?.[localStep];
+    const counter = section.counter?.[localStep];
     const bass = section.bass?.[localStep];
     const chord = section.chords?.[localStep];
     const drum = section.drums?.[localStep];
@@ -1579,11 +2103,19 @@ function startStructuredMusic(theme) {
     if (lead != null && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
       playStructuredVoice(section.leadInstrument || theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume);
     }
-    if (bass != null) playStructuredVoice(theme.bassInstrument, bass + t, arrangement.bassVolume);
+    if (counter != null && arrangement.leadMode !== 'sparse') {
+      playStructuredVoice(
+        section.counterInstrument || theme.counterInstrument || theme.leadInstrument,
+        counter + t + arrangement.counterOctave,
+        arrangement.counterVolume,
+      );
+    }
+    if (bass != null) playStructuredVoice(section.bassInstrument || theme.bassInstrument, bass + t, arrangement.bassVolume);
     if (chord) {
-      const longChord = ['organ', 'pad'].includes(theme.chordInstrument);
+      const chordInstrument = section.chordInstrument || theme.chordInstrument;
+      const longChord = ['organ', 'pad'].includes(chordInstrument);
       const duration = longChord ? (theme.stepMs * 15.5) / 1000 : null;
-      playStructuredChord(theme.chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume);
+      playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume);
     }
     if (drum && shouldPlayStructuredDrum(arrangement.drumMode, localStep)) playStructuredDrum(drum);
 
@@ -1591,14 +2123,41 @@ function startStructuredMusic(theme) {
     stepTimer = setTimeout(tick, theme.stepMs);
   }
 
+  ambientResumeFn = tick;
   tick();
 }
 
 export function startAmbientMusic() {
-  if (isMusicMuted()) return;
-  if (stepTimer) return; // ya está sonando, no duplicar el loop
+  // V16.2: Play/Stop sustituyen al antiguo mute general de música. Un perfil
+  // viejo puede traer el flag MUSIC_MUTED_KEY; al pulsar Play (o arrancar la
+  // sesión) lo limpiamos para que nunca exista un estado 'playing pero mudo'.
+  if (isMusicMuted()) setMusicMuted(false);
+  if (ambientTransport.status === 'playing' && stepTimer) return;
+
+  // Resume real: conserva el closure/contador del secuenciador. No reinicia la
+  // composición como haría Stop + Play.
+  if (ambientTransport.status === 'paused' && ambientResumeFn) {
+    ambientTransport.status = 'playing';
+    ambientTransport.startedAtMs = transportNowMs();
+    notifyAmbientTransport();
+    ambientResumeFn();
+    return;
+  }
+
+  // Si se seleccionó otra pista estando pausado no existe closure que reanudar:
+  // Play comienza esa pista desde el principio.
+  if (ambientTransport.status === 'paused' && !ambientResumeFn) {
+    ambientTransport.status = 'stopped';
+    ambientTransport.positionMs = 0;
+  }
 
   const theme = getActiveAmbientTheme();
+  ambientTransport.status = 'playing';
+  ambientTransport.themeId = theme.id;
+  ambientTransport.positionMs = 0;
+  ambientTransport.startedAtMs = transportNowMs();
+  notifyAmbientTransport();
+
   if (theme.engine === 'structured') {
     startStructuredMusic(theme);
     return;
@@ -1613,6 +2172,10 @@ export function startAmbientMusic() {
   let currentPercussionPattern = theme.percussionPatterns[0];
 
   function tick() {
+    if (ambientTransport.status !== 'playing') {
+      stepTimer = null;
+      return;
+    }
     const barStep = step % STEPS_PER_BAR;
 
     if (barStep === 0) {
@@ -1662,7 +2225,20 @@ export function startAmbientMusic() {
     stepTimer = setTimeout(tick, theme.stepMs);
   }
 
+  ambientResumeFn = tick;
   tick();
+}
+
+export function pauseAmbientMusic() {
+  if (ambientTransport.status !== 'playing') return;
+  ambientTransport.positionMs = transportElapsedMs();
+  ambientTransport.startedAtMs = 0;
+  ambientTransport.status = 'paused';
+  if (stepTimer) {
+    clearTimeout(stepTimer);
+    stepTimer = null;
+  }
+  notifyAmbientTransport();
 }
 
 export function stopAmbientMusic() {
@@ -1670,6 +2246,12 @@ export function stopAmbientMusic() {
     clearTimeout(stepTimer);
     stepTimer = null;
   }
+  ambientResumeFn = null;
+  ambientTransport.status = 'stopped';
+  ambientTransport.positionMs = 0;
+  ambientTransport.startedAtMs = 0;
+  ambientTransport.themeId = getAmbientThemeId();
   keyCenterIndex = 0; // vuelve a empezar en la tónica la próxima vez, no donde quedó
   padIndex = 0;
+  notifyAmbientTransport();
 }

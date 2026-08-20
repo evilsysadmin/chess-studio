@@ -1,6 +1,9 @@
 """test_chess_ai.py — Tests del motor de la CPU (chess_ai.py)."""
 
 import math
+import time
+
+import chess_ai as ai_module
 
 import chess
 
@@ -81,3 +84,121 @@ def test_move_to_dict_reports_capture():
     assert d["from"] == "e4"
     assert d["to"] == "d5"
     assert d["piece"] == "p"
+
+
+def test_intermediate_and_above_disable_intentional_random_blunders():
+    # Desde Intermedio los errores deben venir de la fuerza real de búsqueda,
+    # no de una ruleta que pueda escoger cualquier legal después de pensar.
+    for level in (45, 60, 70, 90, 100):
+        settings = settings_for_level(level)
+        assert settings.randomness == 0
+        assert settings.noise == 0
+
+
+def test_beginner_keeps_some_deliberate_imperfection():
+    beginner = settings_for_level(10)
+    amateur = settings_for_level(30)
+    assert beginner.randomness > amateur.randomness > 0
+    assert beginner.noise > amateur.noise > 0
+
+
+def test_high_level_takes_a_free_queen_instead_of_wandering_off():
+    # Negras pueden capturar la dama blanca de e4 inmediatamente.
+    # Es una guardia de regresión muy barata contra el clásico "nivel alto
+    # decide hacer turismo con el rey mientras hay 900 cp gratis".
+    board = chess.Board("4k3/8/8/3q4/4Q3/8/8/4K3 b - - 0 1")
+    move = get_cpu_move(board, 100)
+    assert move is not None
+    assert move["from"] == "d5"
+    assert move["to"] == "e4"
+
+
+def test_high_level_promotes_winning_pawn_to_queen():
+    board = chess.Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
+    move = get_cpu_move(board, 100)
+    assert move is not None
+    assert move["from"] == "a7"
+    assert move["to"] == "a8"
+    assert "=Q" in move["san"]
+
+
+def test_cpu_always_returns_legal_moves_on_representative_core_positions():
+    positions = [
+        chess.Board(),
+        chess.Board("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"),  # enroques disponibles
+        chess.Board("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1"),        # en passant disponible
+        chess.Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1"),          # promoción
+        chess.Board("8/8/8/8/8/2k5/4K3/5R2 w - - 0 1"),         # final simple
+    ]
+    for board in positions:
+        before = board.copy(stack=True)
+        result = get_cpu_move(board, 45)
+        assert result is not None
+        move = chess.Move.from_uci(result["from"] + result["to"] + ("q" if "=Q" in result["san"] else ""))
+        # Para promociones no-dama reconstruimos por SAN, para el resto UCI basta.
+        if move not in board.legal_moves:
+            move = board.parse_san(result["san"])
+        assert move in board.legal_moves
+        assert board.fen() == before.fen()  # pensar nunca muta la partida
+
+
+def test_endgame_evaluation_wants_the_king_active():
+    active = chess.Board("7k/7p/8/8/3K4/8/P7/8 w - - 0 1")
+    passive = chess.Board("7k/7p/8/8/8/8/P7/K7 w - - 0 1")
+    assert evaluate_board(active) > evaluate_board(passive)
+
+
+def test_depth_tiers_match_the_visible_difficulty_bands():
+    assert settings_for_level(19).max_depth == 2
+    assert settings_for_level(20).max_depth == 3
+    assert settings_for_level(44).max_depth == 3
+    assert settings_for_level(45).max_depth == 4
+    assert settings_for_level(69).max_depth == 4
+    assert settings_for_level(70).max_depth == 5
+    assert settings_for_level(89).max_depth == 5
+    assert settings_for_level(90).max_depth == 6
+
+
+def test_quiescence_never_uses_stand_pat_while_in_check(monkeypatch):
+    # En esta posición blancas están en jaque. Simulamos una evaluación
+    # estática muy optimista del tablero EN jaque y mala tras evadirlo. La
+    # quiescence antigua podía quedarse con ese +1000 imposible, como si
+    # "pasar turno" estando en jaque fuese una opción legal.
+    board = chess.Board("7k/8/8/8/8/8/7r/7K w - - 0 1")
+    assert board.is_check()
+
+    def fake_eval(position, **_kwargs):
+        return 1000.0 if position.is_check() else -500.0
+
+    monkeypatch.setattr(ai_module, "evaluate_board", fake_eval)
+    score = ai_module._quiescence(
+        board,
+        -math.inf,
+        math.inf,
+        0,
+        time.monotonic() + 1.0,
+        qdepth=1,
+    )
+    assert score != 1000.0
+    assert board.fen() == "7k/8/8/8/8/8/7r/7K w - - 0 1"
+
+
+def test_high_level_prefers_mate_over_immediate_stalemate():
+    # Qg6?? dejaría a negras sin jugadas y sin jaque (ahogado). Qg7# gana.
+    board = chess.Board("7k/5K2/8/6Q1/8/8/8/8 w - - 0 1")
+    move = get_cpu_move(board, 100)
+    assert move is not None
+    trial = board.copy(stack=True)
+    trial.push_san(move["san"])
+    assert trial.is_checkmate()
+    assert not trial.is_stalemate()
+
+
+def test_high_level_pawn_takes_hanging_queen():
+    # Guardia explícita para una de las humillaciones que NO queremos en
+    # niveles altos: un peón puede comerse una dama gratis y la CPU la ignora.
+    board = chess.Board("4k3/8/8/4q3/3P4/8/8/4K3 w - - 0 1")
+    move = get_cpu_move(board, 100)
+    assert move is not None
+    assert move["from"] == "d4"
+    assert move["to"] == "e5"

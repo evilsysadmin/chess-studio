@@ -46,6 +46,7 @@ export const SESSION_STATE_KEYS = [
   'chess-study-active-game',
   'chess-study-active-game-learning',
   'chess-study-active-series',
+  'chess-study-active-game-chat',
 ];
 
 function emitProfileChanged() {

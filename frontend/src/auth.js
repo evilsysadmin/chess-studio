@@ -139,3 +139,11 @@ export async function fetchMe() {
 export function wakeBackend() {
   fetch(`${BASE_URL}/health`, { headers: withRequestId() }).catch(() => {});
 }
+
+export function touchActivity() {
+  if (!getToken()) return;
+  fetch(`${BASE_URL}/auth/activity`, {
+    method: 'POST',
+    headers: withRequestId({ ...authHeader() }),
+  }).catch(() => {});
+}

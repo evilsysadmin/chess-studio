@@ -40,3 +40,19 @@ export function clearGameHistory() {
   removeProfileStorageItem(KEY);
   return [];
 }
+
+// Actualiza únicamente el transcript de una partida ya archivada. Se usa
+// porque algunos comentarios de resultado aparecen ~1 s después de terminar
+// la partida: el registro base ya existe, y este parche añade esas últimas
+// pullas sin duplicar ni recrear la partida completa.
+export function updateGameRecordChat(sourceGameId, gameChat) {
+  if (!sourceGameId || !Array.isArray(gameChat)) return loadGameHistory();
+  const list = loadGameHistory();
+  const index = list.findIndex((record) => record?.sourceGameId === sourceGameId || record?.id === sourceGameId);
+  if (index < 0) return list;
+  const previous = list[index]?.gameChat || [];
+  if (previous.length === gameChat.length && previous.at(-1)?.id === gameChat.at(-1)?.id) return list;
+  list[index] = { ...list[index], gameChat };
+  setProfileStorageItem(KEY, JSON.stringify(list));
+  return list;
+}

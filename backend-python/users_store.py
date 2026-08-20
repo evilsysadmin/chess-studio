@@ -1,6 +1,7 @@
 """Persistencia de cuentas de usuario."""
 
 from datetime import datetime, timezone
+import time
 from typing import Optional
 
 from pymongo.errors import DuplicateKeyError, PyMongoError
@@ -9,6 +10,8 @@ from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
 COLLECTION = "users"
 _memory_users: dict[str, dict] = {}
+_last_activity_write_monotonic: dict[str, float] = {}
+_ACTIVITY_WRITE_INTERVAL_S = 30.0
 
 
 class UserAlreadyExists(RuntimeError):
@@ -40,11 +43,11 @@ async def get_user(username: str) -> Optional[dict]:
 
 async def create_user(username: str, password_hash: str) -> dict:
     created_at = datetime.now(timezone.utc).isoformat()
-    doc = {"username": username, "password_hash": password_hash, "created_at": created_at}
+    doc = {"username": username, "password_hash": password_hash, "created_at": created_at, "last_activity": created_at}
     col = await _get_collection()
     if col is not None:
         try:
-            await col.insert_one({"_id": username, "password_hash": password_hash, "created_at": created_at})
+            await col.insert_one({"_id": username, "password_hash": password_hash, "created_at": created_at, "last_activity": created_at})
         except DuplicateKeyError as exc:
             # El GET previo del endpoint evita el caso normal, pero dos POST
             # simultáneos todavía pueden llegar al INSERT. Eso es un 409 de
@@ -66,3 +69,35 @@ async def list_usernames() -> list[str]:
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
     return list(_memory_users.keys())
+
+
+async def touch_last_activity(username: str, *, force: bool = False) -> str:
+    """Actualiza la última actividad con coalescing para no martillear Mongo.
+
+    Cada request autenticada puede pasar por aquí, pero una cuenta activa escribe
+    como máximo una vez cada 30 segundos por proceso. La presencia del panel de
+    admin es deliberadamente aproximada: sirve para saber si alguien está usando
+    la app, no pretende ser un websocket de presencia en tiempo real.
+    """
+    now_mono = time.monotonic()
+    previous = _last_activity_write_monotonic.get(username)
+    if not force and previous is not None and now_mono - previous < _ACTIVITY_WRITE_INTERVAL_S:
+        return ""
+
+    value = datetime.now(timezone.utc).isoformat()
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.update_one({"_id": username}, {"$set": {"last_activity": value}})
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
+        # Tokens válidos de cuentas borradas no deberían recrear usuarios.
+        if result.matched_count == 0:
+            return value
+    else:
+        user = _memory_users.get(username)
+        if user is not None:
+            user["last_activity"] = value
+
+    _last_activity_write_monotonic[username] = now_mono
+    return value

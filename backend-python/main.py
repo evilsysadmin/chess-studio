@@ -10,6 +10,7 @@ import random
 import time
 import uuid
 import hmac
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlsplit
 
@@ -30,6 +31,7 @@ from db import PersistentStorageUnavailable
 from auth import hash_password, verify_password, create_token, verify_token
 from chess_ai import analyze_move as ai_analyze_move
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
+from chess_core import apply_handicap, board_sans, load_board, resolve_move, serialize_game
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -278,113 +280,7 @@ def resolve_human_color(color: str) -> str:
     return random.choice(["w", "b"])
 
 
-# Hándicap de material — convención clásica de ajedrez ("odds"), siglos de
-# uso: quitarle una pieza al rival más fuerte en vez de que el más débil
-# reciba puntos extra o parta con ventaja de tiempo. Casillas del lado
-# de rey (knight/rook) porque es la convención habitual, y f2/f7 para el
-# peón (el clásico "pawn odds"). Formato: {nombre: (casilla_blancas, casilla_negras)}.
-HANDICAP_SQUARES = {
-    "pawn": (chess.F2, chess.F7),
-    "knight": (chess.G1, chess.G8),
-    "rook": (chess.H1, chess.H8),
-    "queen": (chess.D1, chess.D8),
-}
-
-
-def apply_handicap(board: chess.Board, handicap: Optional[str], cpu_color: str) -> None:
-    """Saca del tablero la pieza del hándicap, del lado de la CPU nada más
-    — el humano siempre juega con las 16 piezas completas."""
-    if not handicap or handicap not in HANDICAP_SQUARES:
-        return
-    white_sq, black_sq = HANDICAP_SQUARES[handicap]
-    square = white_sq if cpu_color == "w" else black_sq
-    board.remove_piece_at(square)
-
-
-def load_board(entry: dict) -> chess.Board:
-    board = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
-    human_color = entry.get("humanColor", "w")
-    cpu_color = "b" if human_color == "w" else "w"
-    if not entry.get("initialFen"):
-        apply_handicap(board, entry.get("handicap"), cpu_color)
-    for san in entry.get("moves") or []:
-        board.push_san(san)
-    return board
-
-
-def board_sans(board: chess.Board, handicap: Optional[str] = None, cpu_color: Optional[str] = None, initial_fen: Optional[str] = None) -> list[str]:
-    """La lista de jugadas en SAN, reconstruida jugada por jugada desde el
-    inicio (SAN depende del contexto de la posición, no se puede sacar
-    directo de los objetos Move sin reproducir la partida). Si la partida
-    tiene hándicap, hay que reaplicarlo en el tablero temporal también —
-    si no, la notación podría salir ambigua o directamente incorrecta
-    (una jugada que era legal/no ambigua solo porque faltaba una pieza del
-    hándicap, reproducida contra un tablero que sí la tiene)."""
-    sans = []
-    temp = chess.Board(initial_fen) if initial_fen else chess.Board()
-    if not initial_fen:
-        apply_handicap(temp, handicap, cpu_color)
-    for mv in board.move_stack:
-        sans.append(temp.san(mv))
-        temp.push(mv)
-    return sans
-
-
-def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
-    if board.is_checkmate():
-        status = "checkmate"
-    elif board.is_stalemate():
-        status = "stalemate"
-    elif board.can_claim_threefold_repetition():
-        status = "repetition"
-    elif board.is_insufficient_material() or board.can_claim_fifty_moves():
-        status = "draw"
-    elif board.is_check():
-        status = "check"
-    else:
-        status = "playing"
-
-    history = []
-    temp = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
-    if not entry.get("initialFen"):
-        human_color = entry.get("humanColor", "w")
-        cpu_color = "b" if human_color == "w" else "w"
-        apply_handicap(temp, entry.get("handicap"), cpu_color)
-    for mv in board.move_stack:
-        san = temp.san(mv)
-        captured = temp.is_capture(mv)
-        captured_piece = None
-        if captured:
-            target = temp.piece_at(mv.to_square)
-            if target is not None:
-                captured_piece = chess.piece_symbol(target.piece_type)
-            elif temp.is_en_passant(mv):
-                captured_piece = "p"
-        mover = temp.piece_at(mv.from_square)
-        history.append(
-            {
-                "san": san,
-                "from": chess.square_name(mv.from_square),
-                "to": chess.square_name(mv.to_square),
-                "piece": chess.piece_symbol(mover.piece_type) if mover else None,
-                "captured": captured,
-                "capturedPiece": captured_piece,
-            }
-        )
-        temp.push(mv)
-
-    return {
-        "id": game_id,
-        "fen": board.fen(),
-        "turn": "w" if board.turn == chess.WHITE else "b",
-        "humanColor": entry["humanColor"],
-        "difficulty": entry["difficulty"],
-        "status": status,
-        "isGameOver": board.is_game_over(),
-        "history": history,
-        "lastMove": entry.get("lastMove"),
-        "initialFen": entry.get("initialFen"),
-    }
+# Las reglas puras/replay/serialización viven en chess_core.py.
 
 
 # ---------- Modelos de entrada ----------
@@ -451,6 +347,20 @@ def get_current_user_optional(authorization: Optional[str] = None) -> Optional[s
     return verify_token(authorization[len("Bearer "):])
 
 
+async def _touch_activity_best_effort(username: str, *, force: bool = False) -> None:
+    """La presencia es telemetría útil, nunca una dependencia del juego.
+
+    Si Mongo tiene un tropiezo puntual no vamos a convertir un heartbeat o un
+    análisis perfectamente válido en un 503 solo porque no pudimos actualizar
+    el puntito verde del panel admin. Las operaciones que SÍ necesitan Mongo
+    siguen propagando su error normalmente.
+    """
+    try:
+        await ustore.touch_last_activity(username, force=force)
+    except PersistentStorageUnavailable:
+        access_logger.warning("No se pudo actualizar last_activity para user=%s", username)
+
+
 async def get_current_user(request: Request) -> str:
     """Dependencia real para las rutas protegidas — 401 si no hay token
     válido. El username va adentro del token (firmado), no hace falta ir
@@ -461,6 +371,7 @@ async def get_current_user(request: Request) -> str:
     username = verify_token(header[len("Bearer "):])
     if not username:
         raise HTTPException(401, "Sesión inválida o expirada. Inicia sesión de nuevo.")
+    await _touch_activity_best_effort(username)
     return username
 
 
@@ -531,12 +442,21 @@ async def login(body: LoginRequest, request: Request):
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Usuario o contraseña incorrectos.")
     request.state.username = username
+    await _touch_activity_best_effort(username, force=True)
     return {"token": create_token(username), "username": username}
 
 
 @app.get("/api/auth/me")
 async def me(username: str = Depends(get_current_user)):
     return {"username": username, "isAdmin": is_admin(username)}
+
+
+@app.post("/api/auth/activity", status_code=204)
+async def activity_heartbeat(_username: str = Depends(get_current_user)):
+    # get_current_user ya actualiza last_activity con throttling. Este endpoint
+    # existe para que una pestaña abierta pero quieta siga figurando online sin
+    # forzar lecturas de perfil, partidas ni análisis del motor.
+    return None
 
 
 def _profile_json(data: dict, key: str, default):
@@ -916,6 +836,26 @@ def _extract_admin_insights_payload(profile: Optional[dict]) -> dict:
     }
 
 
+def _presence_summary(last_activity) -> dict:
+    if not last_activity:
+        return {"lastActivity": None, "presence": "never", "presenceAgeSeconds": None}
+    try:
+        parsed = datetime.fromisoformat(str(last_activity).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        age = max(0, int((datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()))
+    except (TypeError, ValueError):
+        return {"lastActivity": str(last_activity), "presence": "offline", "presenceAgeSeconds": None}
+
+    if age <= 90:
+        presence = "online"
+    elif age <= 15 * 60:
+        presence = "recent"
+    else:
+        presence = "offline"
+    return {"lastActivity": parsed.astimezone(timezone.utc).isoformat(), "presence": presence, "presenceAgeSeconds": age}
+
+
 @app.get("/api/admin/users")
 async def admin_list_users(username: str = Depends(get_current_user)):
     if not is_admin(username):
@@ -929,6 +869,7 @@ async def admin_list_users(username: str = Depends(get_current_user)):
         result.append({
             "username": uname,
             "createdAt": (user or {}).get("created_at"),
+            **_presence_summary((user or {}).get("last_activity")),
             **_extract_summary_stats(profile),
         })
     return {"users": result}
@@ -1008,7 +949,7 @@ async def create_game(body: NewGameRequest, username: str = Depends(get_current_
             initial_fen = board.fen()
         except ValueError:
             raise HTTPException(400, "FEN inicial inválido.")
-        if board.is_game_over():
+        if board.is_game_over(claim_draw=True):
             raise HTTPException(400, "La posición inicial ya está terminada.")
     else:
         board = chess.Board()
@@ -1076,7 +1017,7 @@ async def hint(game_id: str, username: str = Depends(get_current_user)):
     entry = await get_owned_game(game_id, username)
     board = load_board(entry)
 
-    if board.is_game_over():
+    if board.is_game_over(claim_draw=True):
         raise HTTPException(400, "La partida ya terminó.")
     turn = "w" if board.turn == chess.WHITE else "b"
     if turn != entry["humanColor"]:
@@ -1103,16 +1044,23 @@ async def undo(game_id: str, username: str = Depends(get_current_user)):
         board.pop()
 
     cpu_color_for_entry = "b" if entry.get("humanColor", "w") == "w" else "w"
-    remaining_sans = board_sans(board, entry.get("handicap"), cpu_color_for_entry)
+    remaining_sans = board_sans(board, entry.get("handicap"), cpu_color_for_entry, entry.get("initialFen"))
     if not remaining_sans:
         entry["lastMove"] = None
     else:
-        # Reconstruimos el último movimiento verbose reproduciendo hasta el final.
+        # Reconstruimos el último movimiento desde el MISMO origen de la
+        # partida. Antes se usaba siempre chess.Board() y además se deducía el
+        # color por paridad; eso era incorrecto para posiciones de laboratorio
+        # que empiezan con negras o para partidas con hándicap.
         last_mv = board.move_stack[-1]
-        mover_before = chess.Board()
+        mover_before = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
+        if not entry.get("initialFen"):
+            human_color = entry.get("humanColor", "w")
+            cpu_color = "b" if human_color == "w" else "w"
+            apply_handicap(mover_before, entry.get("handicap"), cpu_color)
         for mv in board.move_stack[:-1]:
             mover_before.push(mv)
-        side_that_moved = "w" if (len(remaining_sans) - 1) % 2 == 0 else "b"
+        side_that_moved = "w" if mover_before.turn == chess.WHITE else "b"
         captured = mover_before.is_capture(last_mv)
         piece = mover_before.piece_at(last_mv.from_square)
         entry["lastMove"] = {
@@ -1136,7 +1084,7 @@ async def analyze(request: Request, body: AnalyzeRequest, _actor: str = Depends(
         board = chess.Board(body.fen)
     except ValueError:
         raise HTTPException(400, "FEN inválido.")
-    if board.is_game_over():
+    if board.is_game_over(claim_draw=True):
         raise HTTPException(400, "Esa posición ya está terminada.")
 
     level = body.level if is_valid_difficulty(body.level) else HINT_STRENGTH
@@ -1146,34 +1094,7 @@ async def analyze(request: Request, body: AnalyzeRequest, _actor: str = Depends(
     return suggestion
 
 
-_PROMOTION_PIECES = {"q": chess.QUEEN, "r": chess.ROOK, "b": chess.BISHOP, "n": chess.KNIGHT}
-
-
-def resolve_move(board: chess.Board, from_sq: str, to_sq: str, promotion: Optional[str]) -> Optional[chess.Move]:
-    """Encuentra la jugada legal que corresponde a un from/to (más la pieza
-    de coronación, si hace falta elegir). Construir el UCI a mano
-    (`f"{from}{to}{promo}"`) es tentador pero incorrecto: agregar la letra
-    de coronación a un movimiento que NO corona lo corrompe. Buscar entre
-    las jugadas legales de verdad evita ese problema de raíz."""
-    try:
-        from_square = chess.parse_square(from_sq)
-        to_square = chess.parse_square(to_sq)
-    except ValueError:
-        return None
-
-    candidates = [m for m in board.legal_moves if m.from_square == from_square and m.to_square == to_square]
-    if not candidates:
-        return None
-    if len(candidates) == 1:
-        return candidates[0]
-
-    # Más de una candidata solo pasa en una coronación (una jugada por cada
-    # pieza posible) — elegimos la que pidieron, o dama por defecto.
-    wanted = _PROMOTION_PIECES.get((promotion or "q").lower(), chess.QUEEN)
-    for move in candidates:
-        if move.promotion == wanted:
-            return move
-    return candidates[0]
+# resolve_move vive en chess_core.py.
 
 
 MATE_SCORE_SENTINEL = 100000.0
@@ -1205,7 +1126,7 @@ async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest, _act
         board = chess.Board(body.fen)
     except ValueError:
         raise HTTPException(400, "FEN inválido.")
-    if board.is_game_over():
+    if board.is_game_over(claim_draw=True):
         raise HTTPException(400, "Esa posición ya está terminada.")
 
     level = body.level if is_valid_difficulty(body.level) else 45
@@ -1242,7 +1163,7 @@ async def play_move(game_id: str, body: MoveRequest, username: str = Depends(get
     entry = await get_owned_game(game_id, username)
     board = load_board(entry)
 
-    if board.is_game_over():
+    if board.is_game_over(claim_draw=True):
         raise HTTPException(400, "La partida ya terminó.")
     turn = "w" if board.turn == chess.WHITE else "b"
     if turn != entry["humanColor"]:
@@ -1265,7 +1186,7 @@ async def play_move(game_id: str, body: MoveRequest, username: str = Depends(get
         "piece": human_move["piece"],
     }
 
-    if not board.is_game_over():
+    if not board.is_game_over(claim_draw=True):
         cpu_move = get_cpu_move(board, entry["difficulty"])
         if cpu_move:
             board.push_san(cpu_move["san"])
@@ -1278,7 +1199,7 @@ async def play_move(game_id: str, body: MoveRequest, username: str = Depends(get
             }
 
     cpu_color_for_move = "b" if entry["humanColor"] == "w" else "w"
-    entry["moves"] = board_sans(board, entry.get("handicap"), cpu_color_for_move)
+    entry["moves"] = board_sans(board, entry.get("handicap"), cpu_color_for_move, entry.get("initialFen"))
     await store.update_game(game_id, entry)
     return serialize_game(game_id, entry, board)
 

@@ -74,6 +74,16 @@ KING_TABLE = [
     -30, -40, -40, -50, -50, -40, -40, -30,
     -30, -40, -40, -50, -50, -40, -40, -30,
 ]
+KING_ENDGAME_TABLE = [
+    -50, -40, -30, -20, -20, -30, -40, -50,
+    -30, -20, -10, 0, 0, -10, -20, -30,
+    -30, -10, 20, 30, 30, 20, -10, -30,
+    -30, -10, 30, 40, 40, 30, -10, -30,
+    -30, -10, 30, 40, 40, 30, -10, -30,
+    -30, -10, 20, 30, 30, 20, -10, -30,
+    -30, -30, 0, 0, 0, 0, -30, -30,
+    -50, -30, -30, -30, -30, -30, -30, -50,
+]
 TABLES = {
     chess.PAWN: PAWN_TABLE,
     chess.KNIGHT: KNIGHT_TABLE,
@@ -111,9 +121,9 @@ def settings_for_level(raw_level) -> LevelSettings:
 
     # Antes el máximo real era profundidad 3 para casi todo el tramo alto.
     # Ahora la dificultad también se traduce en más profundidad y tiempo.
-    if level < 15:
+    if level < 20:
         max_depth = 2
-    elif level < 40:
+    elif level < 45:
         max_depth = 3
     elif level < 70:
         max_depth = 4
@@ -123,10 +133,21 @@ def settings_for_level(raw_level) -> LevelSettings:
         max_depth = 6
 
     t = level / 100
-    # Curva cuadrática: los niveles bajos siguen cometiendo errores visibles,
-    # pero cerca de 100 desaparece casi por completo el azar puro.
-    randomness = 0.55 * ((1 - t) ** 2)
-    noise = 90 * (1 - t)
+    # El azar PURO sólo pertenece a niveles bajos. Antes seguía existiendo
+    # incluso en niveles avanzados (nivel 70 rondaba el 5%), lo que permitía
+    # que una CPU que acababa de calcular bien eligiera después cualquier
+    # movimiento legal y regalara material sin motivo. Desde Intermedio (45)
+    # no hay ruleta: si se equivoca, será por horizonte/profundidad, como un
+    # rival real, no porque un random() haya decidido incendiar la dama.
+    if level >= 40:
+        randomness = 0.0
+    else:
+        randomness = 0.48 * (((40 - level) / 40) ** 1.7)
+
+    # Las alternativas deliberadamente imperfectas también desaparecen al
+    # entrar en Intermedio. Aficionado puede escoger una jugada cercana a la
+    # mejor; Avanzado/Implacable siempre conservan la búsqueda encontrada.
+    noise = 0.0 if level >= 45 else 110 * (((45 - level) / 45) ** 1.4)
     time_budget_s = 0.15 + 2.35 * t
 
     return LevelSettings(level, max_depth, randomness, noise, time_budget_s)
@@ -135,33 +156,46 @@ def settings_for_level(raw_level) -> LevelSettings:
 def _terminal_score(board: chess.Board, ply: int = 0) -> float:
     if not board.is_checkmate():
         return 0.0
-    # Puntuación constante para que una entrada de la tabla de transposiciones
-    # siga siendo válida aunque la misma posición aparezca a distinto ply.
-    return -MATE_SCORE if board.turn == chess.WHITE else MATE_SCORE
+    # Preferimos dar mate antes y, si estamos perdidos, retrasarlo. Como esta
+    # puntuación depende del ply, _minimax incluye el ply en la clave TT.
+    return (-MATE_SCORE + ply) if board.turn == chess.WHITE else (MATE_SCORE - ply)
 
 
-def evaluate_board(board: chess.Board) -> float:
-    if board.is_checkmate():
-        return -INF if board.turn == chess.WHITE else INF
-    if (
-        board.is_stalemate()
-        or board.is_insufficient_material()
-        or board.can_claim_threefold_repetition()
-        or board.can_claim_fifty_moves()
-    ):
-        return 0.0
+def evaluate_board(board: chess.Board, *, terminal_checked: bool = False) -> float:
+    if not terminal_checked:
+        if board.is_checkmate():
+            return -INF if board.turn == chess.WHITE else INF
+        # En las hojas de búsqueda solo necesitamos detectar tablas que YA se
+        # han materializado. `can_claim_threefold_repetition()` también explora
+        # si una jugada futura permitiría reclamar y es demasiado caro para
+        # ejecutarlo en cada nodo del minimax.
+        outcome = board.outcome(claim_draw=False)
+        if outcome is not None:
+            return 0.0
+        if board.halfmove_clock >= 100 and board.is_fifty_moves():
+            return 0.0
+        if len(board.move_stack) >= 8 and board.is_repetition(3):
+            return 0.0
 
     score = 0.0
     bishops = {chess.WHITE: 0, chess.BLACK: 0}
     pawn_files = {chess.WHITE: [], chess.BLACK: []}
+    pieces = board.piece_map()
 
-    for square in chess.SQUARES:
-        piece = board.piece_at(square)
-        if piece is None:
-            continue
+    # En finales el rey deja de ser una pieza que esconder detrás de peones y
+    # pasa a ser una pieza activa. Reutilizamos el mismo piece_map para no
+    # recorrer las 64 casillas dos veces en cada hoja.
+    non_pawn_material = sum(
+        PIECE_VALUES[piece.piece_type]
+        for piece in pieces.values()
+        if piece.piece_type not in (chess.PAWN, chess.KING)
+    )
+    endgame = non_pawn_material <= 2600
+
+    for square, piece in pieces.items():
 
         value = PIECE_VALUES[piece.piece_type]
-        table = TABLES.get(piece.piece_type)
+        table = KING_ENDGAME_TABLE if piece.piece_type == chess.KING and endgame else TABLES.get(piece.piece_type)
         if table is not None:
             idx = square if piece.color == chess.WHITE else chess.square_mirror(square)
             value += table[idx]
@@ -214,18 +248,11 @@ def evaluate_board(board: chess.Board) -> float:
                 advance = rank if color == chess.WHITE else 7 - rank
                 score += sign * (8 + advance * 3)
 
-    # Movilidad de ambos bandos. El null move solo es una aproximación para
-    # obtener la movilidad rival y no debe usarse cuando el bando al turno
-    # está en jaque (esa posición tras "pasar" no sería legal).
-    if not board.is_check():
-        side = board.turn
-        own_mobility = board.legal_moves.count()
-        board.push(chess.Move.null())
-        try:
-            enemy_mobility = board.legal_moves.count()
-        finally:
-            board.pop()
-        score += (own_mobility - enemy_mobility) * (1 if side == chess.WHITE else -1)
+    # La versión anterior contaba todos los movimientos legales de ambos bandos
+    # (incluyendo un null-move) en CADA hoja por una bonificación de apenas 1
+    # punto por movimiento. Ese coste impedía completar un ply adicional en
+    # posiciones normales. Centro, desarrollo y estructura ya capturan buena
+    # parte de ese valor posicional; preferimos gastar el reloj en buscar más.
 
     return score
 
@@ -254,14 +281,11 @@ def _move_order_score(board: chess.Board, move: chess.Move, tt_move: Optional[ch
         score += 100_000 + victim_value * 10 - attacker_value
     if move.promotion:
         score += 80_000 + PIECE_VALUES.get(move.promotion, 0)
-    try:
-        san = board.san(move)
-        if '+' in san:
-            score += 50_000
-        if '#' in san:
-            score += 100_000
-    except Exception:
-        pass
+    # SAN en cada candidato es sorprendentemente caro (y vuelve a recorrer
+    # legalidad). Para ordenar basta saber si da jaque; el mate lo descubrirá
+    # inmediatamente el propio search con su puntuación terminal.
+    if board.gives_check(move):
+        score += 50_000
     return score
 
 
@@ -270,15 +294,44 @@ def _order_moves(board: chess.Board, moves: list[chess.Move], tt_move: Optional[
 
 
 def _tt_key(board: chess.Board) -> tuple:
-    # Incluimos derechos de enroque y al paso. No incluimos los contadores de
-    # medio movimiento porque no cambian la posición táctica que nos interesa.
+    # Clave numérica: evita construir un FEN de texto en cada nodo. El reloj de
+    # 50 jugadas sí forma parte de la posición a efectos de nuestra política de
+    # tablas; enroque y en-passant también deben distinguir transposiciones.
     return (
-        board.board_fen(),
+        board.pawns,
+        board.knights,
+        board.bishops,
+        board.rooks,
+        board.queens,
+        board.kings,
+        board.occupied_co[chess.WHITE],
+        board.occupied_co[chess.BLACK],
         board.turn,
-        board.castling_rights,
+        board.clean_castling_rights(),
         board.ep_square,
         board.halfmove_clock,
     )
+
+
+def _search_terminal_score(board: chess.Board, ply: int) -> Optional[float]:
+    """Terminales baratos para el árbol de búsqueda.
+
+    Fuera del search la aplicación usa `claim_draw=True`, es decir, considera
+    terminada una partida en cuanto la regla permite reclamar tablas. Dentro
+    del árbol evitamos `can_claim_*` en cada nodo: una jugada que habilita la
+    reclamación crea una posición hija donde la repetición/50 jugadas ya es
+    efectiva y se detecta aquí.
+    """
+    outcome = board.outcome(claim_draw=False)
+    if outcome is not None:
+        if outcome.termination == chess.Termination.CHECKMATE:
+            return _terminal_score(board, ply)
+        return 0.0
+    if board.halfmove_clock >= 100 and board.is_fifty_moves():
+        return 0.0
+    if len(board.move_stack) >= 8 and board.is_repetition(3):
+        return 0.0
+    return None
 
 
 def _quiescence(
@@ -292,14 +345,15 @@ def _quiescence(
     if time.monotonic() >= deadline:
         raise TimeoutError
 
-    if board.is_checkmate():
-        return _terminal_score(board, ply)
+    terminal = _search_terminal_score(board, ply)
+    if terminal is not None:
+        return terminal
 
     # Si estamos en jaque hay que considerar todas las evasiones, no solo
     # capturas. De lo contrario una hoja puede "evaluar" una posición ilegal
     # como si el rey pudiera quedarse en jaque.
     in_check = board.is_check()
-    stand_pat = evaluate_board(board)
+    stand_pat = evaluate_board(board, terminal_checked=True)
 
     if not in_check:
         if board.turn == chess.WHITE:
@@ -311,7 +365,12 @@ def _quiescence(
                 return stand_pat
             beta = min(beta, stand_pat)
 
-    if qdepth == 0:
+    # Fuera de jaque, qdepth 0 significa "ya está: evalúa la posición".
+    # En jaque NO podemos hacer stand-pat: quedarse quieto no es una jugada
+    # legal. La versión anterior lo permitía implícitamente y podía valorar una
+    # hoja como si el rey pudiera ignorar el jaque cuando todas las evasiones
+    # empeoraban la evaluación.
+    if qdepth == 0 and not in_check:
         return stand_pat
 
     moves = list(board.legal_moves)
@@ -322,8 +381,27 @@ def _quiescence(
     if not moves:
         return stand_pat
 
+    # Último nivel de quiescence y estamos en jaque: extendemos SOLO la
+    # evasión obligatoria un ply. Así nunca evaluamos "quedarse en jaque" y
+    # tampoco abrimos una cadena ilimitada de jaques hasta agotar el reloj.
+    if qdepth == 0:
+        maximizing = board.turn == chess.WHITE
+        best = -INF if maximizing else INF
+        for move in moves:
+            if time.monotonic() >= deadline:
+                raise TimeoutError
+            board.push(move)
+            try:
+                terminal = _search_terminal_score(board, ply + 1)
+                score = terminal if terminal is not None else evaluate_board(board, terminal_checked=True)
+            finally:
+                board.pop()
+            best = max(best, score) if maximizing else min(best, score)
+        return best
+
     if board.turn == chess.WHITE:
-        best = stand_pat
+        # Stand-pat solo es candidato si no estamos en jaque.
+        best = -INF if in_check else stand_pat
         for move in moves:
             if time.monotonic() >= deadline:
                 raise TimeoutError
@@ -338,7 +416,7 @@ def _quiescence(
                 break
         return best
 
-    best = stand_pat
+    best = INF if in_check else stand_pat
     for move in moves:
         if time.monotonic() >= deadline:
             raise TimeoutError
@@ -366,12 +444,11 @@ def _minimax(
     if time.monotonic() >= deadline:
         raise TimeoutError
 
-    if board.is_game_over():
-        if board.is_checkmate():
-            return _terminal_score(board, ply), None
-        return 0.0, None
+    terminal = _search_terminal_score(board, ply)
+    if terminal is not None:
+        return terminal, None
 
-    key = _tt_key(board)
+    key = (*_tt_key(board), ply)
     alpha_orig, beta_orig = alpha, beta
     cached = tt.get(key)
     if cached is not None and cached.depth >= depth:
@@ -475,6 +552,27 @@ def move_to_dict(board: chess.Board, move: chess.Move) -> dict:
     }
 
 
+def _static_best_move(board: chess.Board, legal_moves: list[chess.Move]) -> tuple[chess.Move, float]:
+    """Fallback barato pero digno si el reloj corta antes de completar depth 1.
+
+    Antes devolvíamos simplemente `legal_moves[0]`: bajo carga extrema podía
+    convertirse en una jugada arbitraria. Un barrido estático de un ply cuesta
+    poco y evita que un timeout transforme un nivel alto en un chimpancé.
+    """
+    maximizing = board.turn == chess.WHITE
+    best = legal_moves[0]
+    best_score = -INF if maximizing else INF
+    for move in legal_moves:
+        board.push(move)
+        try:
+            score = evaluate_board(board)
+        finally:
+            board.pop()
+        if (maximizing and score > best_score) or (not maximizing and score < best_score):
+            best, best_score = move, score
+    return best, best_score
+
+
 def _search(board: chess.Board, settings: LevelSettings) -> tuple[Optional[chess.Move], float]:
     legal_moves = list(board.legal_moves)
     if not legal_moves:
@@ -482,8 +580,7 @@ def _search(board: chess.Board, settings: LevelSettings) -> tuple[Optional[chess
 
     deadline = time.monotonic() + settings.time_budget_s
     tt: dict[tuple, TTEntry] = {}
-    best = legal_moves[0]
-    best_score = -INF if board.turn == chess.WHITE else INF
+    best, best_score = _static_best_move(board, legal_moves)
 
     # El último resultado COMPLETO de una profundidad es el que se conserva.
     # Si el reloj corta una profundidad nueva, nunca devolvemos una jugada

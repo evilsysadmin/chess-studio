@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 
+import chess
 from fastapi.testclient import TestClient
 
 import game_store as store
@@ -829,3 +830,138 @@ def test_registration_requires_invite_code_when_configured(monkeypatch):
     assert missing.status_code == 403
     assert wrong.status_code == 403
     assert ok.status_code == 201
+
+
+# ---------- V16: presencia admin + core gate ----------
+
+def test_presence_summary_classifies_online_recent_and_offline():
+    from datetime import datetime, timedelta, timezone
+    from main import _presence_summary
+
+    now = datetime.now(timezone.utc)
+    assert _presence_summary(now.isoformat())["presence"] == "online"
+    assert _presence_summary((now - timedelta(minutes=5)).isoformat())["presence"] == "recent"
+    assert _presence_summary((now - timedelta(hours=2)).isoformat())["presence"] == "offline"
+    assert _presence_summary(None)["presence"] == "never"
+
+
+def test_admin_users_exposes_last_activity_and_presence(monkeypatch):
+    import users_store as ustore
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    asyncio.run(ustore.create_user("active_player", "hash-no-usado"))
+
+    response = client.get("/api/admin/users")
+    assert response.status_code == 200
+    row = next(u for u in response.json()["users"] if u["username"] == "active_player")
+    assert row["lastActivity"]
+    assert row["presence"] == "online"
+    assert isinstance(row["presenceAgeSeconds"], int)
+
+
+def test_resolve_move_core_rules_cover_castling_en_passant_and_promotion():
+    from main import resolve_move
+
+    castle = chess.Board("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
+    assert resolve_move(castle, "e1", "g1", None) == chess.Move.from_uci("e1g1")
+    assert resolve_move(castle, "e1", "c1", None) == chess.Move.from_uci("e1c1")
+
+    ep = chess.Board("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1")
+    ep_move = resolve_move(ep, "e5", "d6", None)
+    assert ep_move == chess.Move.from_uci("e5d6")
+    assert ep.is_en_passant(ep_move)
+
+    promotion = chess.Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
+    assert resolve_move(promotion, "a7", "a8", None) == chess.Move.from_uci("a7a8q")
+    assert resolve_move(promotion, "a7", "a8", "n") == chess.Move.from_uci("a7a8n")
+
+
+def test_activity_heartbeat_is_protected_and_lightweight():
+    assert raw_client.post("/api/auth/activity").status_code == 401
+    assert client.post("/api/auth/activity").status_code == 204
+
+
+def test_claimable_threefold_is_consistently_a_finished_draw():
+    from main import serialize_game
+
+    board = chess.Board()
+    for san in ["Nf3", "Nf6", "Ng1", "Ng8", "Nf3", "Nf6", "Ng1", "Ng8"]:
+        board.push_san(san)
+    assert board.can_claim_threefold_repetition()
+
+    entry = {
+        "humanColor": "w",
+        "difficulty": 50,
+        "moves": ["Nf3", "Nf6", "Ng1", "Ng8", "Nf3", "Nf6", "Ng1", "Ng8"],
+        "lastMove": None,
+        "initialFen": None,
+        "handicap": None,
+    }
+    payload = serialize_game("repeat-gate", entry, board)
+    assert payload["status"] == "repetition"
+    assert payload["isGameOver"] is True
+
+
+def test_undo_reconstructs_last_move_from_custom_starting_fen():
+    start_fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"
+    created = client.post("/api/games", json={"difficulty": 45, "color": "w", "startingFen": start_fen})
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+
+    first = client.post(f"/api/games/{game_id}/move", json={"from": "e2", "to": "e4"})
+    assert first.status_code == 200
+
+    # Elegimos dinámicamente una legal del humano después de la respuesta de
+    # la CPU para no acoplar el test a una jugada concreta del minimax.
+    current = chess.Board(first.json()["fen"])
+    human_move = next(iter(current.legal_moves))
+    second = client.post(
+        f"/api/games/{game_id}/move",
+        json={"from": chess.square_name(human_move.from_square), "to": chess.square_name(human_move.to_square)},
+    )
+    assert second.status_code == 200
+
+    undone = client.post(f"/api/games/{game_id}/undo")
+    assert undone.status_code == 200
+    # Quedan el primer movimiento humano y la primera respuesta CPU; el
+    # lastMove reconstruido debe seguir perteneciendo a la CPU y no explotar
+    # intentando reproducir el laboratorio desde la posición inicial normal.
+    assert len(undone.json()["history"]) == 2
+    assert undone.json()["lastMove"]["by"] == "cpu"
+
+
+def test_core_serialization_terminal_statuses_are_consistent():
+    from main import serialize_game
+
+    cases = [
+        (chess.Board("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"), "stalemate"),
+        (chess.Board("8/8/8/8/8/2k5/4K3/5R2 w - - 100 51"), "draw"),
+        (chess.Board("8/8/8/8/8/k7/8/K6N w - - 0 1"), "draw"),
+    ]
+    for index, (board, expected_status) in enumerate(cases):
+        entry = {
+            "humanColor": "w",
+            "difficulty": 50,
+            "moves": [],
+            "lastMove": None,
+            "initialFen": board.fen(),
+            "handicap": None,
+        }
+        payload = serialize_game(f"terminal-{index}", entry, board)
+        assert payload["status"] == expected_status
+        assert payload["isGameOver"] is True
+
+
+def test_presence_write_failure_never_blocks_authenticated_core(monkeypatch):
+    import users_store as ustore
+    from db import PersistentStorageUnavailable
+
+    async def fail_presence(*_args, **_kwargs):
+        raise PersistentStorageUnavailable("presence down")
+
+    monkeypatch.setattr(ustore, "touch_last_activity", fail_presence)
+    headers = {"Authorization": f"Bearer {create_token('telemetry_user')}"}
+    response = raw_client.get("/api/auth/me", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["username"] == "telemetry_user"

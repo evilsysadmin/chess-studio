@@ -15,13 +15,12 @@ import CombatScreen from './components/CombatScreen.jsx';
 import RoguelikeScreen from './components/RoguelikeScreen.jsx';
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
 import RatingDetailModal from './components/RatingDetailModal.jsx';
-import MuteToggle from './components/MuteToggle.jsx';
-import MusicSelector from './components/MusicSelector.jsx';
+import MusicPlayer from './components/MusicPlayer.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { startAmbientMusic, stopAmbientMusic } from './sound.js';
 import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, difficultyForLevel, levelForPoints } from './tournament.js';
-import { loadGameHistory, saveGameRecord, clearGameHistory } from './gameHistory.js';
+import { loadGameHistory, saveGameRecord, clearGameHistory, updateGameRecordChat } from './gameHistory.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadRating, saveRating, updateRating, recordRatingHistory, loadRatingHistory } from './playerRating.js';
 import { handicapForGap } from './handicap.js';
@@ -30,7 +29,7 @@ import InsightsScreen from './components/InsightsScreen.jsx';
 import { timeControlById } from './clock.js';
 import { checkAchievements } from './achievements.js';
 import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
-import { isLoggedIn, fetchMe, logout, watchSessionIdentity } from './auth.js';
+import { isLoggedIn, fetchMe, logout, touchActivity, watchSessionIdentity } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import AdminScreen from './components/AdminScreen.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
@@ -43,6 +42,7 @@ import { shareRecordFromHash } from './shareResult.js';
 import CareerScreen from './components/CareerScreen.jsx';
 import LabScreen from './components/LabScreen.jsx';
 import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
+import { loadActiveGameChat } from './gameChat.js';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
 // objeto de partida: ese objeto se reemplaza por completo con cada respuesta
@@ -144,6 +144,7 @@ function AppInner({ isAdminUser }) {
       finalFen: finishedGame.fen,
       initialFen: finishedGame.initialFen || null,
       mode,
+      gameChat: loadActiveGameChat(finishedGame.id),
     };
     if (mode === 'casual' || mode === 'practice') {
       localStorage.removeItem(STORAGE_KEY);
@@ -387,6 +388,7 @@ function AppInner({ isAdminUser }) {
       suddenDeath: !!gameContext.suddenDeath,
       pressureMoves: Number(endMeta.pressureMoves || 0),
       pressureIncidents: Number(endMeta.pressureIncidents || 0),
+      gameChat: Array.isArray(endMeta.gameChat) ? endMeta.gameChat : loadActiveGameChat(finishedGame.id),
       series: seriesSnapshot ? {
         id: seriesSnapshot.id,
         bestOf: seriesSnapshot.bestOf,
@@ -561,7 +563,7 @@ function AppInner({ isAdminUser }) {
     }
   }
 
-  function handleTournamentGameEnd(outcome, finishedGame) {
+  function handleTournamentGameEnd(outcome, finishedGame, endMeta = {}) {
     if (finishedGame) {
       const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
       recordRivalryResult(outcome, {
@@ -602,10 +604,20 @@ function AppInner({ isAdminUser }) {
         mode: 'tournament',
         opening: identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)),
         timeControl: null,
+        gameChat: Array.isArray(endMeta.gameChat) ? endMeta.gameChat : loadActiveGameChat(finishedGame.id),
         series: null,
         };
       setHistoryList(saveGameRecord(record));
       recordCareerGame(record, {});
+    }
+  }
+
+  function handleGameChatUpdate(gameId, transcript) {
+    const updated = updateGameRecordChat(gameId, transcript);
+    // Evita renders extra mientras la partida sigue viva: solo hay que
+    // refrescar History si ya existe un registro archivado para este gameId.
+    if (updated.some((record) => record?.sourceGameId === gameId || record?.id === gameId)) {
+      setHistoryList(updated);
     }
   }
 
@@ -635,18 +647,18 @@ function AppInner({ isAdminUser }) {
     setLastResult(null);
   }
 
+  const isBoardGameView = view === 'game' || view === 'tournamentGame';
+
   return (
-    <ErrorBoundary onReset={() => setView('menu')}>
+    <>
+      {!isBoardGameView && <GlobalMusicDock />}
+      <ErrorBoundary onReset={() => setView('menu')}>
       <div className="app-shell">
         <div className="masthead">
           <div className="masthead-top-row">
             <div className="masthead-text">
               <h1>Escuela de Ajedrez</h1>
             </div>
-          </div>
-          <div className="masthead-audio-controls" aria-label="Controles de audio">
-            <MuteToggle />
-            <MusicSelector />
           </div>
           <PlayerStatusBar
             tournament={tournament}
@@ -694,6 +706,7 @@ function AppInner({ isAdminUser }) {
             onExit={handleExitGame}
             onError={setError}
             onGameEnd={handleCasualGameEnd}
+            onChatUpdate={handleGameChatUpdate}
             hintMode={learningMode ? 'free' : 'off'}
             timeControl={activeTimeControl}
             seriesState={activeSeries}
@@ -814,6 +827,7 @@ function AppInner({ isAdminUser }) {
             onExit={handleExitTournamentGame}
             onError={setError}
             onGameEnd={handleTournamentGameEnd}
+            onChatUpdate={handleGameChatUpdate}
             hintMode="paid"
             tournamentLevel={levelForPoints(tournament.points)}
             points={tournament.points}
@@ -827,7 +841,16 @@ function AppInner({ isAdminUser }) {
 
         {shareRecord && <ShareResultModal record={shareRecord} onClose={() => setShareRecord(null)} />}
       </div>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </>
+  );
+}
+
+function GlobalMusicDock() {
+  return (
+    <div className="global-music-dock" aria-label="Reproductor global">
+      <MusicPlayer />
+    </div>
   );
 }
 
@@ -847,6 +870,13 @@ function App() {
     // compartido. Recargar desmonta inmediatamente cualquier estado React
     // perteneciente a la identidad anterior antes de que pueda sincronizarse.
     return watchSessionIdentity(() => window.location.reload());
+  }, [loggedIn]);
+
+  useEffect(() => {
+    if (!loggedIn) return undefined;
+    touchActivity();
+    const timer = window.setInterval(touchActivity, 60000);
+    return () => window.clearInterval(timer);
   }, [loggedIn]);
 
   useEffect(() => {
@@ -872,11 +902,9 @@ function App() {
       }
 
       setIsAdminUser(!!me?.isAdmin);
-      // El perfil remoto puede cambiar el mute de música respecto a la caché
-      // previa al login. El tema, en cambio, ya fue sorteado para esta sesión
-      // al autenticarse. Reiniciar el loop aplica ambas cosas inmediatamente.
-      stopAmbientMusic();
-      startAmbientMusic();
+      // La pantalla de login y la sincronización permanecen en silencio.
+      // El tema ya fue sorteado al autenticarse y arrancará cuando el perfil
+      // esté listo, en el efecto [loggedIn, ready] de abajo.
       setReady(true);
     });
 
@@ -884,15 +912,26 @@ function App() {
   }, [loggedIn]);
 
   useEffect(() => {
+    // Nada de música para login, enlaces públicos ni bots que solo despiertan
+    // el frontend. La banda entra cuando existe un usuario autenticado y su
+    // perfil ya terminó de sincronizarse.
+    if (!loggedIn || !ready) {
+      stopAmbientMusic();
+      return undefined;
+    }
     startAmbientMusic();
     return () => stopAmbientMusic();
-  }, []);
+  }, [loggedIn, ready]);
 
   if (sharedRecord) {
-    return <SharedResultScreen record={sharedRecord} onOpenApp={() => {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
-      window.location.reload();
-    }} />;
+    return (
+      <>
+        <SharedResultScreen record={sharedRecord} onOpenApp={() => {
+          window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+          window.location.reload();
+        }} />
+      </>
+    );
   }
 
   if (!loggedIn) {
@@ -901,24 +940,26 @@ function App() {
 
   if (!ready) {
     return (
-      <div className="app-shell">
-        <div className="menu" style={{ maxWidth: 560, margin: '3rem auto' }}>
-          <div className="menu-section">
-            <span className="eyebrow">Escuela de Ajedrez</span>
-            <h2>{syncError ? 'No se pudo sincronizar' : 'Sincronizando tu perfil…'}</h2>
-            {syncError ? (
-              <>
-                <p className="error-text">{syncError}</p>
-                <button type="button" className="primary-btn" onClick={() => window.location.reload()}>
-                  Reintentar
-                </button>
-              </>
-            ) : (
-              <p className="hint-text">Cargando tu progreso antes de abrir la aplicación.</p>
-            )}
+      <>
+        <div className="app-shell">
+          <div className="menu" style={{ maxWidth: 560, margin: '3rem auto' }}>
+            <div className="menu-section">
+              <span className="eyebrow">Escuela de Ajedrez</span>
+              <h2>{syncError ? 'No se pudo sincronizar' : 'Sincronizando tu perfil…'}</h2>
+              {syncError ? (
+                <>
+                  <p className="error-text">{syncError}</p>
+                  <button type="button" className="primary-btn" onClick={() => window.location.reload()}>
+                    Reintentar
+                  </button>
+                </>
+              ) : (
+                <p className="hint-text">Cargando tu progreso antes de abrir la aplicación.</p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 

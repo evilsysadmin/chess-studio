@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, watchSessionIdentity } from './auth.js';
+import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity } from './auth.js';
 
 function mockFetchOnce(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -132,6 +132,24 @@ describe('fetchMe/authHeader/wakeBackend', () => {
 
     global.fetch = vi.fn().mockRejectedValue(new Error('timeout'));
     expect(() => wakeBackend()).not.toThrow();
+  });
+
+  it('touchActivity manda un heartbeat autenticado y no propaga errores', async () => {
+    mockFetchOnce(200, { token: 'heartbeat-token', username: 'vivo' });
+    await login('vivo', 'clave123456');
+
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+    expect(() => touchActivity()).not.toThrow();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/activity'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer heartbeat-token' }),
+      }),
+    );
+
+    global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
+    expect(() => touchActivity()).not.toThrow();
   });
 });
 

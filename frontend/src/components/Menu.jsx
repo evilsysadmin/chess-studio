@@ -118,6 +118,17 @@ export default function Menu({
 
       <div className="menu-group">
         <span className="section-label">Aprender y practicar</span>
+
+        <button type="button" className="insights-feature-card" onClick={onInsights}>
+          <span className="insights-feature-icon" aria-hidden="true"><IconEye /></span>
+          <span className="insights-feature-copy">
+            <span className="insights-feature-kicker">TU EXPEDIENTE DE JUEGO</span>
+            <strong>Así juegas</strong>
+            <span>Patrones reales de tus partidas: evolución, errores repetidos, aperturas y puntos fuertes medidos con tu historial.</span>
+          </span>
+          <span className="insights-feature-cta">Analizar mi juego →</span>
+        </button>
+
         <div className="menu-grid menu-grid-4">
           <button
             type="button"
@@ -187,9 +198,6 @@ export default function Menu({
       <div className="footer-links-row">
         <button type="button" className="backup-link" onClick={onHistory}>
           Historial de partidas
-        </button>
-        <button type="button" className="backup-link" onClick={onInsights}>
-          Así juegas
         </button>
         <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>
           Ver logros
