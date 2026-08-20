@@ -52,7 +52,7 @@ function outcomeToPgnResult(outcome, humanColor) {
   return humanColor === 'w' ? '0-1' : '1-0';
 }
 
-export default function ReplayScreen({ record, initialStep, pinnedReport, onExit }) {
+export default function ReplayScreen({ record, initialStep, pinnedReport, crimeMode = false, onExit }) {
   useEscapeToClose(onExit);
   const positions = useMemo(() => buildPositions(record.moves), [record]);
   const pairs = useMemo(() => toPairs(record.moves), [record]);
@@ -151,6 +151,19 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, onExit
         </p>
       )}
 
+      {crimeMode && pinnedReport && (
+        <div className="crime-scene-banner">
+          <div>
+            <span className="eyebrow">CÁMARA DEL CRIMEN</span>
+            <b>Jugada {pinnedReport.moveNumber}: {pinnedReport.played} · −{pinnedReport.loss} cp</b>
+            <p>Estás justo antes del impacto. Reproduce la jugada y compara después con la alternativa marcada por el motor.</p>
+          </div>
+          <button className="primary-btn" onClick={() => goTo(pinnedReport.index + 1)}>
+            ▶ Reproducir crimen
+          </button>
+        </div>
+      )}
+
       <div className="game-layout">
         <div className="board-column">
           <Board
@@ -167,6 +180,11 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, onExit
             <button className="secondary-btn" onClick={() => goTo(positions.length - 1)} disabled={step === positions.length - 1}>Final ⏭</button>
           </div>
           <p className="hint-text replay-key-hint">← → del teclado también navegan</p>
+          {crimeMode && pinnedReport && (
+            <button className="secondary-btn crime-rewind-btn" onClick={() => goTo(Math.max(0, pinnedReport.index))}>
+              ↶ Volver a antes del crimen
+            </button>
+          )}
           <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleDownloadPGN}>
             Descargar PGN
           </button>

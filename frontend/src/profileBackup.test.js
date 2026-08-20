@@ -22,6 +22,8 @@ describe('export/import', () => {
   it('exporta progreso y preferencias, pero no la partida activa', () => {
     localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 100 }));
     localStorage.setItem('chess-study-muted', '1');
+    localStorage.setItem('chess-study-music-muted', '1');
+    localStorage.setItem('chess-study-fx-muted', '0');
     localStorage.setItem('chess-study-voice-enabled', '1');
     localStorage.setItem('chess-study-active-game', 'algun-id');
 
@@ -29,6 +31,8 @@ describe('export/import', () => {
 
     expect(exported.data['chess-study-tournament']).toBeDefined();
     expect(exported.data['chess-study-muted']).toBe('1');
+    expect(exported.data['chess-study-music-muted']).toBe('1');
+    expect(exported.data['chess-study-fx-muted']).toBe('0');
     expect(exported.data['chess-study-voice-enabled']).toBe('1');
     expect(exported.data['chess-study-active-game']).toBeUndefined();
   });

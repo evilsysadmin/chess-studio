@@ -14,6 +14,8 @@ import { formatLongMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
 import { formatClock } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
+import { recordNoteworthyAchievement } from '../achievements.js';
+import { loadCpuPersonality, saveCpuPersonality } from '../cpuPersonality.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -50,6 +52,7 @@ export default function GameScreen({
   points = 0,
   onSpendPoints,
   onCapturePoints,
+  onOpenCrimeScene,
   timeControl = null, // { initial, increment } en segundos, o null/sin reloj
 }) {
   const humanColor = game.humanColor || 'w';
@@ -67,6 +70,8 @@ export default function GameScreen({
   const [flagFallen, setFlagFallen] = useState(null); // 'w' | 'b' | null
   const tickRef = useRef(null);
   const [showReport, setShowReport] = useState(false);
+  const [cpuPersonality, setCpuPersonality] = useState(() => loadCpuPersonality());
+  const [achievementToast, setAchievementToast] = useState(null);
 
   // Estado visual del tablero: se actualiza en dos pasos (jugada propia,
   // después jugada de la CPU) para poder animar cada una por separado, en
@@ -82,6 +87,7 @@ export default function GameScreen({
   const [cpuComment, setCpuComment] = useState(null);
   const [cpuCommentSeq, setCpuCommentSeq] = useState(0);
   const cpuCommentTimeout = useRef(null);
+  const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
 
   // Pista: sugerencia del motor para la jugada del humano.
@@ -181,6 +187,23 @@ export default function GameScreen({
     cpuCommentTimeout.current = setTimeout(() => setCpuComment(null), 6500);
   }
 
+
+  function showNoteworthy(comment, actor) {
+    if (!comment) return;
+    showCpuComment(comment);
+    const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
+    if (!unlocked) return;
+    setAchievementToast(unlocked);
+    if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
+    achievementToastTimeout.current = setTimeout(() => setAchievementToast(null), 5200);
+  }
+
+  function handlePersonalityChange(id) {
+    const saved = saveCpuPersonality(id);
+    setCpuPersonality(saved);
+    setCpuComment(null);
+  }
+
   function announceCpuMove(move) {
     const text = formatLongMove(move);
     setTurnBanner(text ? `La CPU jugó ${text} · te toca a ti` : 'La CPU jugó · te toca a ti');
@@ -192,6 +215,7 @@ export default function GameScreen({
     if (turnBannerTimeout.current) clearTimeout(turnBannerTimeout.current);
     if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
     if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
+    if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
   }, []);
 
   // Instancia local de chess.js sólo para calcular jugadas legales y resaltarlas,
@@ -232,8 +256,8 @@ export default function GameScreen({
     setTurnBanner(null);
     setBusy(true);
 
-    const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
-    showCpuComment(humanComment);
+    const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human', cpuPersonality);
+    showNoteworthy(humanComment, 'human');
 
     // Incremento tipo Fischer: se suma al terminar la jugada, antes de que
     // arranque a correr el reloj del rival.
@@ -269,8 +293,8 @@ export default function GameScreen({
       setGame(updated);
 
       if (updated.lastMove && updated.lastMove.by === 'cpu') {
-        const cpuCommentary = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu');
-        showCpuComment(cpuCommentary);
+        const cpuCommentary = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu', cpuPersonality);
+        showNoteworthy(cpuCommentary, 'cpu');
         // 2) Llegó la respuesta de la CPU: animamos su jugada por separado.
         setBoardFen(updated.fen);
         setLastMoveSquares({ from: updated.lastMove.from, to: updated.lastMove.to });
@@ -449,7 +473,13 @@ export default function GameScreen({
             {statusText}
             <VoiceToggle />
           </div>
-          <CpuPersona key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} />
+          <CpuPersona key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} personality={cpuPersonality} onPersonalityChange={handlePersonalityChange} />
+          {achievementToast && (
+            <div className={`achievement-toast ${achievementToast.kind === 'shame' ? 'shame' : 'glory'}`}>
+              <b>{achievementToast.kind === 'shame' ? '☠ Trofeo de vergüenza' : '🏆 Logro desbloqueado'}</b>
+              <span>{achievementToast.name}</span>
+            </div>
+          )}
           {renderClock(topColor, topTime)}
           <Board
             fen={boardFen}
@@ -502,7 +532,7 @@ export default function GameScreen({
           <button className="primary-btn" onClick={handleAbandon}>Volver al menú</button>
           {game.history.length > 0 && (
             <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => setShowReport(true)}>
-              Ver informe de la partida
+              Ver autopsia de la partida
             </button>
           )}
         </div>
@@ -510,7 +540,16 @@ export default function GameScreen({
 
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
       {showReport && (
-        <GameReportModal history={game.history} humanColor={humanColor} onClose={() => setShowReport(false)} />
+        <GameReportModal
+          history={game.history}
+          humanColor={humanColor}
+          onClose={() => setShowReport(false)}
+          onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, {
+            outcome: flagFallen
+              ? (flagFallen === humanColor ? 'loss' : 'win')
+              : (game.status === 'checkmate' ? (game.turn === humanColor ? 'loss' : 'win') : 'draw'),
+          })}
+        />
       )}
     </div>
   );

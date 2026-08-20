@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectNoteworthyMove } from './cpuCommentary.js';
+import { commentForEvent, detectNoteworthyMove } from './cpuCommentary.js';
 
 function fenAfter(moves) {
   // Helper sin importar Chess aquí: posiciones conocidas mantienen los tests legibles.
@@ -29,6 +29,17 @@ describe('cpuCommentary', () => {
       { from: 'e4', to: 'd5' },
     );
     expect(event?.type).toBe('PAWN_TAKES_QUEEN');
+  });
+
+
+  it('las personalidades cambian el tono sin cambiar el evento', () => {
+    const event = { type: 'MISSED_MATE' };
+    const gentleman = commentForEvent(event, 'human', 'gentleman');
+    const hal = commentForEvent(event, 'human', 'hal');
+    const caster = commentForEvent(event, 'human', 'caster');
+    expect(gentleman).toContain('Con todo respeto');
+    expect(hal).toContain('Anomalía crítica');
+    expect(caster).toContain('ATENCIÓN AL TABLERO');
   });
 
   it('no comenta una jugada normal de apertura', () => {

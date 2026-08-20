@@ -4,6 +4,7 @@
 // quién es el progreso que está subiendo o bajando.
 
 import { clearLocalUserState } from './profileKeys.js';
+import { withRequestId, requestErrorMessage } from './requestId.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 export const USERNAME_KEY = 'chess-study-auth-username';
@@ -17,9 +18,10 @@ async function handle(response) {
     let message = `Error ${response.status}`;
     try {
       const body = await response.json();
-      if (body?.detail) message = body.detail;
+      message = requestErrorMessage(response, body).message;
     } catch (e) {
-      // respuesta sin cuerpo JSON — nos quedamos con el mensaje genérico
+      const requestId = response.headers.get('x-request-id');
+      if (requestId) message += ` · Ref: ${requestId}`;
     }
     throw new Error(message);
   }
@@ -81,7 +83,7 @@ export function logout() {
 export async function register(username, password) {
   const body = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withRequestId({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ username, password }),
   }).then(handle);
   saveSession(body.token, body.username);
@@ -91,7 +93,7 @@ export async function register(username, password) {
 export async function login(username, password) {
   const body = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withRequestId({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ username, password }),
   }).then(handle);
   saveSession(body.token, body.username);
@@ -120,7 +122,7 @@ export function authHeader() {
 // error — el login en sí sigue funcionando igual, solo que más lento.
 export async function fetchMe() {
   try {
-    const res = await fetch(`${BASE_URL}/auth/me`, { headers: { ...authHeader() } });
+    const res = await fetch(`${BASE_URL}/auth/me`, { headers: withRequestId({ ...authHeader() }) });
     if (!res.ok) return null;
     return await res.json();
   } catch (e) {
@@ -130,5 +132,5 @@ export async function fetchMe() {
 }
 
 export function wakeBackend() {
-  fetch(`${BASE_URL}/health`).catch(() => {});
+  fetch(`${BASE_URL}/health`, { headers: withRequestId() }).catch(() => {});
 }

@@ -1,0 +1,59 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { api } from './api.js';
+
+function ok(body = {}) {
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    json: async () => body,
+  });
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  localStorage.setItem('chess-study-auth-token', 'token-de-prueba');
+  global.fetch = vi.fn(() => ok({ id: 'g1' }));
+});
+
+describe('trazabilidad de usuario en llamadas de juego', () => {
+  it('manda Authorization al crear una partida', async () => {
+    await api.createGame(50, 'w');
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/games'),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer token-de-prueba' }),
+      }),
+    );
+  });
+
+  it('manda Authorization al analizar y mover', async () => {
+    await api.analyzePosition('fen', 50);
+    await api.playMove('g1', 'e2', 'e4');
+
+    for (const [, options] of global.fetch.mock.calls) {
+      expect(options.headers.Authorization).toBe('Bearer token-de-prueba');
+    }
+  });
+
+
+  it('manda un X-Request-ID distinto en cada request', async () => {
+    await api.getGame('g1');
+    await api.getHint('g1');
+    const first = global.fetch.mock.calls[0][1].headers['X-Request-ID'];
+    const second = global.fetch.mock.calls[1][1].headers['X-Request-ID'];
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(first).not.toBe(second);
+  });
+
+  it('manda Authorization también en GET y DELETE de partida', async () => {
+    await api.getGame('g1');
+    await api.getHint('g1');
+    await api.undoMove('g1');
+    await api.deleteGame('g1');
+
+    for (const [, options] of global.fetch.mock.calls) {
+      expect(options.headers.Authorization).toBe('Bearer token-de-prueba');
+    }
+  });
+});

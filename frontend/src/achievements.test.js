@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { checkAchievements, loadUnlocked, ACHIEVEMENTS } from './achievements.js';
+import { checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS } from './achievements.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -58,6 +58,20 @@ describe('checkAchievements', () => {
     }));
     const { unlocked } = checkAchievements();
     expect(unlocked.has('combat_gold_piece')).toBe(false);
+  });
+
+
+  it('registra trofeos tácticos puntuales sin duplicarlos', () => {
+    const first = recordNoteworthyAchievement({ type: 'MISSED_MATE' }, 'human');
+    const second = recordNoteworthyAchievement({ type: 'MISSED_MATE' }, 'human');
+    expect(first[0]?.id).toBe('crime_missed_mate');
+    expect(second).toEqual([]);
+    expect(loadUnlocked().has('crime_missed_mate')).toBe(true);
+  });
+
+  it('distingue una hazaña propia de una humillación causada por la CPU', () => {
+    expect(recordNoteworthyAchievement({ type: 'PAWN_TAKES_QUEEN' }, 'human')[0]?.id).toBe('feat_pawn_queen');
+    expect(recordNoteworthyAchievement({ type: 'PAWN_TAKES_QUEEN' }, 'cpu')[0]?.id).toBe('crime_queen_to_pawn');
   });
 
   it('persiste entre llamadas (usa loadUnlocked)', () => {

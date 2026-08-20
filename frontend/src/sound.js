@@ -5,7 +5,9 @@ import { setProfileStorageItem } from './profileKeys.js';
 // no suman peso ni dependen de una CDN. El estado de silencio se guarda en
 // localStorage para que se recuerde entre sesiones.
 
-const MUTE_KEY = 'chess-study-muted';
+const LEGACY_MUTE_KEY = 'chess-study-muted';
+const MUSIC_MUTED_KEY = 'chess-study-music-muted';
+const FX_MUTED_KEY = 'chess-study-fx-muted';
 const AMBIENT_THEME_KEY = 'chess-study-ambient-theme';
 const DEFAULT_AMBIENT_THEME = 'andalus';
 
@@ -20,16 +22,45 @@ function getContext() {
   return audioCtx;
 }
 
+function readChannelMuted(key) {
+  if (typeof localStorage === 'undefined') return false;
+  const explicit = localStorage.getItem(key);
+  if (explicit !== null) return explicit === '1';
+  // Compatibilidad con perfiles anteriores que solo tenían un mute global.
+  return localStorage.getItem(LEGACY_MUTE_KEY) === '1';
+}
+
+export function isMusicMuted() {
+  return readChannelMuted(MUSIC_MUTED_KEY);
+}
+
+export function isFxMuted() {
+  return readChannelMuted(FX_MUTED_KEY);
+}
+
+export function setMusicMuted(muted) {
+  setProfileStorageItem(MUSIC_MUTED_KEY, muted ? '1' : '0');
+  if (muted) stopAmbientMusic();
+  else startAmbientMusic();
+}
+
+export function setFxMuted(muted) {
+  setProfileStorageItem(FX_MUTED_KEY, muted ? '1' : '0');
+}
+
+// API heredada: conservarla evita romper imports antiguos y permite que un
+// perfil viejo con mute global siga teniendo una transición limpia.
 export function isMuted() {
-  return localStorage.getItem(MUTE_KEY) === '1';
+  return isMusicMuted() && isFxMuted();
 }
 
 export function setMuted(muted) {
-  setProfileStorageItem(MUTE_KEY, muted ? '1' : '0');
+  setMusicMuted(muted);
+  setFxMuted(muted);
 }
 
 function beep({ freq, duration, type = 'sine', gain = 0.06, delay = 0 }) {
-  if (isMuted()) return;
+  if (isFxMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -393,7 +424,7 @@ let padIndex = 0;
 const KEY_CHANGE_STEPS = STEPS_PER_BAR * 6; // cada 6 compases (~13.4s)
 
 function playPadNote(freq) {
-  if (isMuted()) return;
+  if (isMusicMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -419,7 +450,7 @@ function playPadNote(freq) {
 // ataque, tipo pizzicato — no un tono puro, que sonaría a sintetizador y
 // no a cuerda grave punteada.
 function playBass(freq) {
-  if (isMuted()) return;
+  if (isMusicMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -457,7 +488,7 @@ function playBass(freq) {
 }
 
 function playOudPluck(freq) {
-  if (isMuted()) return;
+  if (isMusicMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -492,7 +523,7 @@ function playOudPluck(freq) {
 // pura. Se deja pasar un poco más de brillo en el filtro que en el oud,
 // que es más apagado/redondo por diseño.
 function playGuitarPluck(freq) {
-  if (isMuted()) return;
+  if (isMusicMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -530,7 +561,7 @@ function playGuitarPluck(freq) {
 // Toca una frase completa sobre UN instrumento (oud o guitarra, elegido
 // una vez para toda la frase, no nota por nota — así cada frase suena
 // como un instrumento tocando de verdad, no una mezcla rara). Cada nota
-// vuelve a chequear isMuted() por su cuenta al disparar, así que
+// vuelve a chequear isMusicMuted() por su cuenta al disparar, así que
 // silenciar a mitad de una frase la corta ahí sin dejar nada raro sonando.
 function playPhrase(scaleIndices, instrument, scale = OUD_SCALE, offset = 0, noteGapMs = PHRASE_NOTE_GAP_MS) {
   const playNote = instrument === 'guitar' ? playGuitarPluck : playOudPluck;
@@ -547,7 +578,7 @@ function playPhrase(scaleIndices, instrument, scale = OUD_SCALE, offset = 0, not
 // Ataque más lento que el punteo (un sax "entra" en la nota, no la
 // golpea) y bastante más sostenido.
 function playSax(freq) {
-  if (isMuted()) return;
+  if (isMusicMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -603,7 +634,7 @@ function playSaxPhrase(scaleIndices, scale = OUD_SCALE, offset = 0, noteGapMs = 
 // JUNTO con el ruido de siempre, no en su lugar: el tono da el peso, el
 // ruido sigue dando la definición del golpe.
 function playSoftPercussion(volume) {
-  if (isMuted() || volume <= 0) return;
+  if (isMusicMuted() || volume <= 0) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -656,7 +687,7 @@ function playSoftPercussion(volume) {
 // (1400Hz) en vez de pasa-bajos, para un "click" seco tipo borde de
 // pandero en vez de un golpe sordo de centro.
 function playHighTak(volume) {
-  if (isMuted() || volume <= 0) return;
+  if (isMusicMuted() || volume <= 0) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -689,6 +720,7 @@ function playHighTak(volume) {
 }
 
 export function startAmbientMusic() {
+  if (isMusicMuted()) return;
   if (stepTimer) return; // ya está sonando, no duplicar el loop
 
   const theme = getActiveAmbientTheme();

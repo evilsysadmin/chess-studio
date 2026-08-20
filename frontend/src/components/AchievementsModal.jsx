@@ -11,7 +11,7 @@ export default function AchievementsModal({ onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <h3>Logros</h3>
+        <h3>Logros y expediente</h3>
         <p className="hint-text" style={{ marginBottom: '1rem' }}>
           {unlockedCount} de {ACHIEVEMENTS.length} desbloqueados.
         </p>
@@ -21,9 +21,9 @@ export default function AchievementsModal({ onClose }) {
             const done = unlocked.has(a.id);
             return (
               <div className={`army-row ${done ? '' : 'army-row-dead'}`} key={a.id}>
-                <span className={`army-aura ${done ? 'tier-gold' : 'tier-dead'}`}>{done ? '✓' : '?'}</span>
+                <span className={`army-aura ${done ? 'tier-gold' : 'tier-dead'}`}>{done ? (a.kind === 'shame' ? '☠' : '✓') : '?'}</span>
                 <div className="army-row-info">
-                  <span className="army-row-name">{a.name}</span>
+                  <span className="army-row-name">{a.name}{a.kind === 'shame' ? ' · Trofeo de vergüenza' : ''}</span>
                   <span className="army-row-stats">{a.description}</span>
                 </div>
               </div>

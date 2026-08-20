@@ -1,7 +1,7 @@
 // resetProgress.js — Un solo "empezar de cero" que junta todos los resets
 // individuales que ya existían sueltos por distintos módulos. A propósito
 // NO toca: la sesión de login (`chess-study-auth-*`, cerraría tu cuenta,
-// no es "progreso"), la preferencia de mute/voz (son ajustes de UI, no
+// no es "progreso"), las preferencias de audio/voz (son ajustes de UI, no
 // avance), ni la partida activa (`chess-study-active-game-learning`, es
 // efímera por diseño, ya no sincroniza a propósito).
 

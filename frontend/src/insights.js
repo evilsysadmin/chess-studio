@@ -269,7 +269,7 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const rate = extras.achievementsUnlocked / extras.achievementsTotal;
     if (extras.achievementsUnlocked === 0) {
       lines.push(pickRoastLine([
-        'Cero logros desbloqueados. Ni uno. Hay 14 esperando y ni te asomaste.',
+        `Cero logros desbloqueados. Ni uno. Hay ${extras.achievementsTotal} esperando y ni te asomaste.`,
         'Ningún logro todavía — capaz ni sabías que existían, sinceramente.',
       ], seed));
     } else if (rate >= 0.7) {

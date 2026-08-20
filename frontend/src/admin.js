@@ -4,14 +4,15 @@
 // la barrera de seguridad real.
 
 import { authHeader } from './auth.js';
+import { withRequestId, requestErrorMessage } from './requestId.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 export async function fetchAdminUsers() {
-  const res = await fetch(`${BASE_URL}/admin/users`, { headers: { ...authHeader() } });
+  const res = await fetch(`${BASE_URL}/admin/users`, { headers: withRequestId({ ...authHeader() }) });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `Error ${res.status}`);
+    throw new Error(requestErrorMessage(res, body).message);
   }
   const body = await res.json();
   return body.users;

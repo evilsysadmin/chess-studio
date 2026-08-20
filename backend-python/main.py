@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import random
+import time
 import uuid
 from typing import Optional
 
@@ -29,6 +31,94 @@ from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 
 app = FastAPI(title="Estudio de Ajedrez API")
 
+# Logger de acceso propio. Uvicorn mantiene sus access logs normales, pero
+# esta línea añade el dato que más nos interesa al depurar una partida:
+# quién generó la petición. Usamos el logger ya configurado por Uvicorn para
+# que funcione igual en Docker, local y Render sin inventar otra configuración.
+access_logger = logging.getLogger("uvicorn.error")
+
+
+def _request_id(request: Request) -> str:
+    existing = getattr(request.state, "request_id", None)
+    if existing:
+        return str(existing)
+    incoming = (request.headers.get("x-request-id") or "").strip()
+    if 6 <= len(incoming) <= 80 and all(c.isalnum() or c in "-_." for c in incoming):
+        value = incoming
+    else:
+        value = uuid.uuid4().hex[:12]
+    request.state.request_id = value
+    return value
+
+
+def _request_username(request: Request) -> str:
+    """Identidad asociada a la request, si existe.
+
+    Para rutas autenticadas podemos leer el JWT sin tocar Mongo. Login y
+    registro no traen JWT todavía; esas rutas escriben ``request.state.username``
+    después de autenticar/crear la cuenta para que el middleware también las
+    atribuya correctamente. Nunca se loguea el token ni la contraseña.
+    """
+    state_username = getattr(request.state, "username", None)
+    if state_username:
+        return str(state_username)
+
+    header = request.headers.get("authorization")
+    if not header or not header.startswith("Bearer "):
+        return "-"
+    username = verify_token(header[len("Bearer "):])
+    return username or "-"
+
+
+@app.middleware("http")
+async def log_request_with_user(request: Request, call_next):
+    started = time.perf_counter()
+    request_id = _request_id(request)
+    username_before = _request_username(request)
+    status_code = 500
+    raised = False
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception:
+        raised = True
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        username = _request_username(request)
+        if username == "-":
+            username = username_before
+        access_logger.exception(
+            "request request_id=%s user=%s method=%s path=%s status=500 duration_ms=%.1f",
+            request_id,
+            username,
+            request.method,
+            request.url.path,
+            elapsed_ms,
+        )
+        # El detalle técnico completo queda en el traceback de Render; al
+        # navegador sólo vuelve una referencia segura para correlacionarlo.
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Error interno del servidor.", "requestId": request_id},
+            headers={"X-Request-ID": request_id},
+        )
+    finally:
+        if not raised:
+            elapsed_ms = (time.perf_counter() - started) * 1000
+            username = _request_username(request)
+            if username == "-":
+                username = username_before
+            access_logger.info(
+                "request request_id=%s user=%s method=%s path=%s status=%s duration_ms=%.1f",
+                request_id,
+                username,
+                request.method,
+                request.url.path,
+                status_code,
+                elapsed_ms,
+            )
+
 
 @app.exception_handler(PersistentStorageUnavailable)
 async def persistent_storage_unavailable_handler(request: Request, exc: PersistentStorageUnavailable):
@@ -37,7 +127,8 @@ async def persistent_storage_unavailable_handler(request: Request, exc: Persiste
     # borre ni reemplace datos válidos por una caché/default local.
     return JSONResponse(
         status_code=503,
-        content={"detail": "La base de datos no está disponible temporalmente."},
+        content={"detail": "La base de datos no está disponible temporalmente.", "requestId": _request_id(request)},
+        headers={"X-Request-ID": _request_id(request)},
     )
 
 app.add_middleware(
@@ -45,6 +136,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
 
 # Rate limiting por IP — sin esto, cualquiera con curl puede hacer que un
@@ -311,7 +403,7 @@ async def get_current_user(request: Request) -> str:
 
 
 @app.post("/api/auth/register", status_code=201)
-async def register(body: RegisterRequest):
+async def register(body: RegisterRequest, request: Request):
     username = body.username.strip().lower()
     if len(username) < 3:
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
@@ -325,15 +417,17 @@ async def register(body: RegisterRequest):
     except ustore.UserAlreadyExists:
         # Cubre la carrera entre el GET anterior y el INSERT único de Mongo.
         raise HTTPException(409, "Ese usuario ya existe.")
+    request.state.username = username
     return {"token": create_token(username), "username": username}
 
 
 @app.post("/api/auth/login")
-async def login(body: LoginRequest):
+async def login(body: LoginRequest, request: Request):
     username = body.username.strip().lower()
     user = await ustore.get_user(username)
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Usuario o contraseña incorrectos.")
+    request.state.username = username
     return {"token": create_token(username), "username": username}
 
 
@@ -851,6 +945,19 @@ async def get_profile(username: str = Depends(get_current_user)):
 async def save_profile(body: dict, username: str = Depends(get_current_user)):
     saved = await pstore.save_profile(username, body)
     return saved
+
+
+@app.get("/")
+@limiter.exempt
+async def root():
+    # Útil especialmente detrás de un dominio propio: abrir el hostname en el
+    # navegador confirma que el tráfico ha llegado a ESTA app en vez de mostrar
+    # el 404 genérico que FastAPI devolvía antes al no existir la ruta raíz.
+    return {
+        "ok": True,
+        "service": "Chess Studio API",
+        "health": "/api/health",
+    }
 
 
 @app.get("/api/health")

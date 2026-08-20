@@ -17,7 +17,10 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-puzzles-solved',
   'chess-study-puzzle-streak',
   'chess-study-puzzle-best-streak',
-  'chess-study-muted',
+  'chess-study-muted', // legado: fallback para perfiles anteriores
+  'chess-study-music-muted',
+  'chess-study-fx-muted',
+  'chess-study-cpu-personality',
   'chess-study-ambient-theme',
   'chess-study-voice-enabled',
   'chess-study-worst-move-cache',

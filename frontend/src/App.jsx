@@ -59,11 +59,13 @@ function AppInner({ isAdminUser }) {
   const [combatReplayRecord, setCombatReplayRecord] = useState(null);
   const [replayInitialStep, setReplayInitialStep] = useState(undefined);
   const [pinnedReport, setPinnedReport] = useState(null);
+  const [replayCrimeMode, setReplayCrimeMode] = useState(false);
 
   // Desde "Así juegas" → "Ver esta jugada": abre el replay que corresponda
   // (normal o de combate, según de dónde vino) parado justo en esa jugada,
   // no en el final de la partida como el resto de los accesos al historial.
   function jumpToMove(record, kind, moveReport) {
+    setReplayCrimeMode(false);
     setReplayInitialStep(moveReport.index + 1);
     setPinnedReport(moveReport);
     if (kind === 'combat') {
@@ -97,6 +99,7 @@ function AppInner({ isAdminUser }) {
   // `moves` = partida normal/torneo/práctica (SAN reproducible). El
   // historial no necesita saber esta distinción, solo abrir lo que le toque.
   function openHistoryRecord(record) {
+    setReplayCrimeMode(false);
     setReplayInitialStep(undefined);
     setPinnedReport(null);
     if (record.log) {
@@ -111,6 +114,41 @@ function AppInner({ isAdminUser }) {
   function clearAllHistory() {
     setHistoryList(clearGameHistory());
     setCombatHistoryList(clearCombatHistory());
+  }
+
+
+  function openGameCrimeScene(finishedGame, moveReport, mode, outcomeOverride) {
+    if (!finishedGame || !moveReport) return;
+    const outcome = outcomeOverride || (
+      finishedGame.status === 'checkmate'
+        ? (finishedGame.turn === finishedGame.humanColor ? 'loss' : 'win')
+        : 'draw'
+    );
+    const record = {
+      id: `crime-${finishedGame.id}`,
+      date: new Date().toISOString(),
+      difficulty: finishedGame.difficulty,
+      humanColor: finishedGame.humanColor,
+      outcome,
+      moves: finishedGame.history,
+      finalFen: finishedGame.fen,
+      mode,
+    };
+    if (mode === 'casual' || mode === 'practice') {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEARNING_STORAGE_KEY);
+      setHasSavedGame(false);
+      setGame(null);
+      setLearningMode(false);
+    } else if (mode === 'tournament') {
+      setTournamentGame(null);
+    }
+    setReplayRecord(record);
+    setPinnedReport(moveReport);
+    // Antes del impacto: el botón de Cámara del crimen reproduce la jugada.
+    setReplayInitialStep(Math.max(0, moveReport.index));
+    setReplayCrimeMode(true);
+    setView('replay');
   }
 
   // Estos dos viven en localStorage manejados por otras pantallas (el
@@ -175,7 +213,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       setView('game');
     } catch (e) {
-      setError('No se pudo conectar con el servidor. ¿Está corriendo el backend?');
+      setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
     } finally {
       setLoading(false);
     }
@@ -260,7 +298,7 @@ function AppInner({ isAdminUser }) {
       setTournamentGame(created);
       setView('tournamentGame');
     } catch (e) {
-      setError('No se pudo conectar con el servidor. ¿Está corriendo el backend?');
+      setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
     } finally {
       setLoading(false);
     }
@@ -384,6 +422,7 @@ function AppInner({ isAdminUser }) {
             onGameEnd={handleCasualGameEnd}
             hintMode={learningMode ? 'free' : 'off'}
             timeControl={activeTimeControl}
+            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, learningMode ? 'practice' : 'casual', meta?.outcome)}
           />
         )}
 
@@ -457,7 +496,7 @@ function AppInner({ isAdminUser }) {
         )}
 
         {view === 'replay' && replayRecord && (
-          <ReplayScreen record={replayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} onExit={() => setView('history')} />
+          <ReplayScreen record={replayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} crimeMode={replayCrimeMode} onExit={() => setView('history')} />
         )}
 
         {view === 'combatReplay' && combatReplayRecord && (
@@ -476,6 +515,7 @@ function AppInner({ isAdminUser }) {
             points={tournament.points}
             onSpendPoints={handleSpendPoints}
             onCapturePoints={handleCapturePoints}
+            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(tournamentGame, moveReport, 'tournament', meta?.outcome)}
           />
         )}
       </div>
@@ -523,6 +563,11 @@ function App() {
       }
 
       setIsAdminUser(!!me?.isAdmin);
+      // El perfil remoto puede cambiar tema o mute de música respecto a la
+      // caché previa al login. Reiniciar el loop aplica esas preferencias
+      // sin esperar a que el usuario toque ningún control.
+      stopAmbientMusic();
+      startAmbientMusic();
       setReady(true);
     });
 

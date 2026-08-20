@@ -5,6 +5,7 @@ conectar a un Mongo real).
 
 import asyncio
 import json
+import logging
 
 from fastapi.testclient import TestClient
 
@@ -30,6 +31,16 @@ def test_health():
     r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json() == {"ok": True}
+
+
+def test_root_identifies_backend_instead_of_returning_404():
+    r = client.get("/")
+    assert r.status_code == 200
+    assert r.json() == {
+        "ok": True,
+        "service": "Chess Studio API",
+        "health": "/api/health",
+    }
 
 
 def test_create_game_default():
@@ -393,6 +404,52 @@ def test_me_endpoint_with_valid_token():
     r2 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert r2.status_code == 200
     assert r2.json()["username"] == "usuario_me"
+
+
+def test_access_log_includes_authenticated_username(caplog):
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    registered = client.post(
+        "/api/auth/register",
+        json={"username": "usuario_logs", "password": "clave123456"},
+    )
+    token = registered.json()["token"]
+
+    caplog.clear()
+    response = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert any(
+        "user=usuario_logs method=GET path=/api/auth/me status=200" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+def test_request_id_is_echoed_and_logged(caplog):
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    request_id = "web-test-abc123"
+    caplog.clear()
+    response = client.get("/api/health", headers={"X-Request-ID": request_id})
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == request_id
+    assert any(f"request_id={request_id}" in record.getMessage() for record in caplog.records)
+
+
+def test_register_access_log_attributes_new_username(caplog):
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "alta_logueada", "password": "clave123456"},
+    )
+
+    assert response.status_code == 201
+    assert any(
+        "user=alta_logueada method=POST path=/api/auth/register status=201" in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_me_endpoint_without_token_rejected():

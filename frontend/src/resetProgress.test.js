@@ -25,6 +25,10 @@ const UNTOUCHED_KEYS = [
   'chess-study-auth-token',
   'chess-study-auth-username',
   'chess-study-muted',
+  'chess-study-music-muted',
+  'chess-study-fx-muted',
+  'chess-study-cpu-personality',
+  'chess-study-ambient-theme',
   'chess-study-voice-enabled',
 ];
 
