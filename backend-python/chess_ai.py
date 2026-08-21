@@ -119,15 +119,17 @@ class TTEntry:
 def settings_for_level(raw_level) -> LevelSettings:
     level = max(0, min(100, round(float(raw_level))))
 
-    # Antes el máximo real era profundidad 3 para casi todo el tramo alto.
-    # Ahora la dificultad también se traduce en más profundidad y tiempo.
+    # V16.6y — curva recalibrada. Profundidad 4 desde 45 hacía que casi
+    # todo el tramo Intermedio fuese mucho más fuerte de lo que sugería la
+    # etiqueta: nivel 64 ya era alpha-beta + TT + quiescence a profundidad 4.
+    # Conservamos cero ruleta en Intermedio, pero retrasamos los saltos caros.
     if level < 20:
         max_depth = 2
-    elif level < 45:
-        max_depth = 3
     elif level < 70:
-        max_depth = 4
+        max_depth = 3
     elif level < 90:
+        max_depth = 4
+    elif level < 98:
         max_depth = 5
     else:
         max_depth = 6
@@ -148,7 +150,10 @@ def settings_for_level(raw_level) -> LevelSettings:
     # entrar en Intermedio. Aficionado puede escoger una jugada cercana a la
     # mejor; Avanzado/Implacable siempre conservan la búsqueda encontrada.
     noise = 0.0 if level >= 45 else 110 * (((45 - level) / 45) ** 1.4)
-    time_budget_s = 0.15 + 2.35 * t
+    # El tiempo ya no crece linealmente. Los niveles medios tenían demasiado
+    # presupuesto para su etiqueta; la curva convexa reserva el músculo para
+    # Avanzado/Implacable. Ej.: nivel 64 ~1.26 s en vez de ~1.65 s.
+    time_budget_s = 0.12 + 2.38 * (t ** 1.65)
 
     return LevelSettings(level, max_depth, randomness, noise, time_budget_s)
 

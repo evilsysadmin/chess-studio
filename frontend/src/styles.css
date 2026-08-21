@@ -200,6 +200,18 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   white-space: nowrap;
 }
 
+.status-chip-sub-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.status-chip {
+  min-height: 88px;
+}
+
 .status-chip-bar {
   display: block;
   height: 4px;

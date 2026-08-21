@@ -67,6 +67,10 @@ describe('ambient music catalog', () => {
     expect(istanbul.percussionPeriod).toBe(14);
     expect(beirut.chordInstrument).toBe('rhodesWarm');
     expect(cairo.bassInstrument).toBe('uprightBass');
+    expect(beirut.percussionKit).toBe('darbuka');
+    expect(cairo.percussionKit).toBe('cairo-hand');
+    expect(alexandria.percussionKit).toBe('brush-jazz');
+    expect(beirut.percussionPunch).toBeGreaterThan(1);
   });
 
   it('los temas estructurados tardan al menos dos minutos en repetir su forma larga', () => {

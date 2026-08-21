@@ -1670,7 +1670,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.08, warmth: 0.82, releaseScale: 1.18,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 13, bassHoldSteps: 4.8,
-    percussion: { period: 16, pattern: { 0: 'B', 4: 'H', 8: 'K', 12: 'H' } },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 1.08, pattern: { 0: 'B', 4: 'H', 8: 'K', 12: 'H' } },
   }),
   cairoAfterHours: Object.freeze({
     family: 'cairo-after-hours', preserveSectionOrder: true,
@@ -1678,7 +1678,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.14, warmth: 0.76, releaseScale: 1.28,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 15, bassHoldSteps: 5.4,
-    percussion: { period: 16, pattern: { 0: 'K', 4: 'H', 8: 'B', 12: 'H' } },
+    percussion: { period: 16, kit: 'cairo-hand', punch: 1.16, pattern: { 0: 'K', 4: 'H', 8: 'B', 12: 'H' } },
   }),
   beirutSixEight: Object.freeze({
     family: 'beirut-six-eight', preserveSectionOrder: true,
@@ -1686,7 +1686,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.035, warmth: 0.8, releaseScale: 1.16,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 14, bassHoldSteps: 4.2,
-    percussion: { period: 12, pattern: { 0: 'K', 3: 'H', 6: 'S', 9: 'H' } },
+    percussion: { period: 12, kit: 'darbuka', punch: 1.2, pattern: { 0: 'K', 3: 'H', 6: 'S', 9: 'H' } },
   }),
   beirutRooftop: Object.freeze({
     family: 'beirut-rooftop', preserveSectionOrder: true,
@@ -1694,21 +1694,21 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.17, warmth: 0.84, releaseScale: 1.12,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 11, bassHoldSteps: 3.8,
-    percussion: { period: 16, pattern: { 0: 'B', 4: 'H', 8: 'S', 12: 'H' } },
+    percussion: { period: 16, kit: 'rooftop-jazz', punch: 1.14, pattern: { 0: 'B', 4: 'H', 8: 'S', 12: 'H' } },
   }),
   levantBlue: Object.freeze({
     family: 'levant-blue', preserveSectionOrder: true,
     harmonyPath: [0, 0, 0, -2, -2, 0, 0, 3, 0],
     swing: 0.06, warmth: 0.72, releaseScale: 1.34,
     bassInstrument: 'uprightBass', chordHoldSteps: 16, bassHoldSteps: 5.5,
-    percussion: { period: 16, pattern: { 0: 'K', 8: 'B', 12: 'H' } },
+    percussion: { period: 16, kit: 'frame-drum', punch: 1.1, pattern: { 0: 'K', 8: 'B', 12: 'H' } },
   }),
   istanbulBroken: Object.freeze({
     family: 'istanbul-broken-meter', preserveSectionOrder: true,
     harmonyPath: [0, 0, 0, 2, 2, 0, -2, -2, 0],
     swing: 0.0, warmth: 0.86, releaseScale: 1.08,
     bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.6,
-    percussion: { period: 14, pattern: { 0: 'K', 4: 'H', 7: 'S', 10: 'H' } },
+    percussion: { period: 14, kit: 'istanbul-frame', punch: 1.18, pattern: { 0: 'K', 4: 'H', 7: 'S', 10: 'H' } },
   }),
   tangierWalking: Object.freeze({
     family: 'tangier-walking', preserveSectionOrder: true,
@@ -1716,7 +1716,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.19, warmth: 0.8, releaseScale: 1.12,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 12, bassHoldSteps: 3.4,
-    percussion: { period: 16, pattern: { 0: 'B', 4: 'H', 8: 'B', 12: 'H' } },
+    percussion: { period: 16, kit: 'walking-brush', punch: 1.12, pattern: { 0: 'B', 4: 'H', 8: 'B', 12: 'H' } },
   }),
   maghrebVelvet: Object.freeze({
     family: 'maghreb-velvet', preserveSectionOrder: true,
@@ -1724,14 +1724,14 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.12, warmth: 0.74, releaseScale: 1.26,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 14, bassHoldSteps: 4.4,
-    percussion: { period: 16, pattern: { 0: 'K', 4: 'H', 8: 'B', 12: 'H' } },
+    percussion: { period: 16, kit: 'maghreb-hand', punch: 1.12, pattern: { 0: 'K', 4: 'H', 8: 'B', 12: 'H' } },
   }),
   andalusWarm: Object.freeze({
     family: 'andalus-warm', preserveSectionOrder: true,
     harmonyPath: [0, 0, 5, 5, 0, 0, -2, 0],
     swing: 0.09, warmth: 0.9, releaseScale: 1.08,
     bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.5,
-    percussion: { period: 16, pattern: { 0: 'K', 4: 'H', 8: 'S', 12: 'H' } },
+    percussion: { period: 16, kit: 'andalus-hand', punch: 1.16, pattern: { 0: 'K', 4: 'H', 8: 'S', 12: 'H' } },
   }),
 });
 
@@ -1763,11 +1763,14 @@ export function getAmbientThemeSoundProfile(themeId) {
     warmth: feel.warmth || 1,
     groovePeriod: feel.percussion?.period || null,
     percussionPeriod: feel.percussion?.period || null,
+    percussionKit: feel.percussion?.kit || 'legacy',
+    percussionPunch: feel.percussion?.punch || 1,
     chordInstrument: feel.chordInstrument || theme.chordInstrument,
     bassInstrument: feel.bassInstrument || theme.bassInstrument,
   } : {
     family: 'legacy-structured', preserveSectionOrder: false, swing: 0, warmth: 1,
-    groovePeriod: null, percussionPeriod: null, chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
+    groovePeriod: null, percussionPeriod: null, percussionKit: 'legacy', percussionPunch: 1,
+    chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
   };
 }
 
@@ -1911,6 +1914,7 @@ export function selectRelativeAmbientTheme(delta) {
 }
 
 let ambientOutputNode = null;
+let ambientPercussionBus = null;
 let ambientDuckFactor = 1;
 
 function clearAmbientTrackEndTimer() {
@@ -1952,6 +1956,24 @@ function getAmbientOutput(ctx) {
     ambientOutputNode.connect(ctx.destination);
   }
   return ambientOutputNode;
+}
+
+function getAmbientPercussionOutput(ctx) {
+  if (!ctx) return null;
+  if (!ambientPercussionBus || ambientPercussionBus.context !== ctx) {
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -22;
+    compressor.knee.value = 14;
+    compressor.ratio.value = 3.2;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.11;
+
+    ambientPercussionBus = ctx.createGain();
+    ambientPercussionBus.gain.value = 1.08;
+    ambientPercussionBus.connect(compressor);
+    compressor.connect(getAmbientOutput(ctx));
+  }
+  return ambientPercussionBus;
 }
 
 function scheduleAmbientTrackEnd() {
@@ -2274,7 +2296,7 @@ function playSoftPercussion(volume) {
 
   noiseSource.connect(filter);
   filter.connect(noiseGain);
-  noiseGain.connect(getAmbientOutput(ctx));
+  noiseGain.connect(getAmbientPercussionOutput(ctx));
   noiseSource.start(start);
 }
 
@@ -2448,7 +2470,7 @@ function playNoiseHit(kind, volume = 0.03) {
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   source.connect(filter);
   filter.connect(gain);
-  gain.connect(getAmbientOutput(ctx));
+  gain.connect(getAmbientPercussionOutput(ctx));
   source.start(start);
 }
 
@@ -2465,7 +2487,7 @@ function playWoodblock() {
   gain.gain.setValueAtTime(0.028, start);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.08);
   osc.connect(gain);
-  gain.connect(getAmbientOutput(ctx));
+  gain.connect(getAmbientPercussionOutput(ctx));
   osc.start(start);
   osc.stop(start + 0.09);
 }
@@ -2483,7 +2505,7 @@ function playMetalHit() {
   filter.frequency.value = 1180;
   filter.Q.value = 2.8;
   filter.connect(gain);
-  gain.connect(getAmbientOutput(ctx));
+  gain.connect(getAmbientPercussionOutput(ctx));
   [1, 1.47, 2.17].forEach((ratio, i) => {
     const osc = ctx.createOscillator();
     const mix = ctx.createGain();
@@ -2497,11 +2519,107 @@ function playMetalHit() {
   });
 }
 
-function playStructuredDrum(code) {
-  if (code === 'K') playSoftPercussion(0.055);
-  else if (code === 'S') playNoiseHit('snare', 0.028);
-  else if (code === 'H') playNoiseHit('hat', 0.014);
-  else if (code === 'B') playNoiseHit('brush', 0.012);
+function deterministicPercussionVelocity(feel, localStep, code) {
+  const period = Math.max(1, feel?.percussion?.period || 16);
+  const pos = ((localStep % period) + period) % period;
+  const half = Math.floor(period / 2);
+  let accent = pos === 0 ? 1.18 : pos === half ? 1.08 : 1;
+  if (code === 'H') accent *= 0.82;
+  if (code === 'B') accent *= 0.9;
+  const seed = stableThemeSeed(`${feel?.family || 'legacy'}:${localStep}:${code}`);
+  const microDynamics = 0.95 + ((seed % 11) / 100); // 0.95 .. 1.05, timing stays quantized
+  return accent * microDynamics * (feel?.percussion?.punch || 1);
+}
+
+function playMembraneHit(kind, volume = 0.04) {
+  if (isMusicMuted() || volume <= 0) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+  const start = ctx.currentTime;
+  const isDum = kind === 'dum';
+  const bodyDuration = isDum ? 0.34 : 0.115;
+  const body = ctx.createOscillator();
+  const overtone = ctx.createOscillator();
+  const bodyGain = ctx.createGain();
+  const overtoneGain = ctx.createGain();
+
+  body.type = 'sine';
+  overtone.type = 'triangle';
+  body.frequency.setValueAtTime(isDum ? 185 : 410, start);
+  body.frequency.exponentialRampToValueAtTime(isDum ? 58 : 205, start + (isDum ? 0.09 : 0.035));
+  overtone.frequency.setValueAtTime(isDum ? 310 : 980, start);
+  overtone.frequency.exponentialRampToValueAtTime(isDum ? 170 : 620, start + bodyDuration * 0.55);
+
+  bodyGain.gain.setValueAtTime(volume * (isDum ? 1.35 : 0.78), start);
+  bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDuration);
+  overtoneGain.gain.setValueAtTime(volume * (isDum ? 0.34 : 0.58), start);
+  overtoneGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDuration * 0.72);
+
+  body.connect(bodyGain);
+  overtone.connect(overtoneGain);
+  bodyGain.connect(getAmbientPercussionOutput(ctx));
+  overtoneGain.connect(getAmbientPercussionOutput(ctx));
+  body.start(start);
+  overtone.start(start);
+  body.stop(start + bodyDuration + 0.03);
+  overtone.stop(start + bodyDuration + 0.03);
+
+  // Ataque de piel/dedos: ruido muy corto, filtrado distinto para dum/tak.
+  const clickDuration = isDum ? 0.038 : 0.026;
+  const size = Math.max(1, Math.floor(ctx.sampleRate * clickDuration));
+  const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < size; i += 1) {
+    const envelope = Math.pow(1 - (i / size), 2.2);
+    data[i] = (Math.random() * 2 - 1) * envelope;
+  }
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const clickGain = ctx.createGain();
+  source.buffer = buffer;
+  filter.type = 'bandpass';
+  filter.frequency.value = isDum ? 720 : 2450;
+  filter.Q.value = isDum ? 0.8 : 1.5;
+  clickGain.gain.setValueAtTime(volume * (isDum ? 0.38 : 0.72), start);
+  clickGain.gain.exponentialRampToValueAtTime(0.0001, start + clickDuration);
+  source.connect(filter);
+  filter.connect(clickGain);
+  clickGain.connect(getAmbientPercussionOutput(ctx));
+  source.start(start);
+}
+
+function playStructuredDrum(code, feel = null, localStep = 0) {
+  const kit = feel?.percussion?.kit || 'legacy';
+  const velocity = deterministicPercussionVelocity(feel, localStep, code);
+  const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(kit);
+  const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush'].includes(kit);
+
+  if (handKit) {
+    if (code === 'K') playMembraneHit('dum', 0.052 * velocity);
+    else if (code === 'S') playMembraneHit('tak', 0.042 * velocity);
+    else if (code === 'H') playMembraneHit('tak', 0.021 * velocity);
+    else if (code === 'B') playNoiseHit('brush', 0.012 * velocity);
+    else if (code === 'W') playWoodblock();
+    else if (code === 'M') playMetalHit();
+    return;
+  }
+
+  if (brushKit) {
+    if (code === 'K') playSoftPercussion(0.05 * velocity);
+    else if (code === 'S') playNoiseHit('snare', 0.028 * velocity);
+    else if (code === 'H') playNoiseHit('hat', 0.011 * velocity);
+    else if (code === 'B') playNoiseHit('brush', 0.016 * velocity);
+    else if (code === 'W') playWoodblock();
+    else if (code === 'M') playMetalHit();
+    return;
+  }
+
+  if (code === 'K') playSoftPercussion(0.055 * velocity);
+  else if (code === 'S') playNoiseHit('snare', 0.028 * velocity);
+  else if (code === 'H') playNoiseHit('hat', 0.014 * velocity);
+  else if (code === 'B') playNoiseHit('brush', 0.012 * velocity);
   else if (code === 'W') playWoodblock();
   else if (code === 'M') playMetalHit();
 }
@@ -2639,7 +2757,7 @@ function startStructuredMusic(theme) {
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
       playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, tone);
     }
-    if (drum && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum);
+    if (drum && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum, feel, localStep);
 
     step += 1;
     // Reloj absoluto: setTimeout puede llegar tarde, pero el retraso ya no se

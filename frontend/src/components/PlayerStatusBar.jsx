@@ -32,7 +32,10 @@ export default function PlayerStatusBar({ tournament, combatXp, rating, onTourna
           <span className="status-chip-bar">
             <span className="status-chip-bar-fill" style={{ width: `${progressPct}%` }} />
           </span>
-          <span className="status-chip-sub">{into}/{POINTS_PER_LEVEL} XP · {tournament.points || 0} pts pista</span>
+          <span className="status-chip-sub status-chip-sub-stack">
+            <span>{into}/{POINTS_PER_LEVEL} XP</span>
+            <span>{tournament.points || 0} pts</span>
+          </span>
         </span>
       </button>
 

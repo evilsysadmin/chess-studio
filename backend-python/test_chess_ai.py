@@ -148,15 +148,25 @@ def test_endgame_evaluation_wants_the_king_active():
     assert evaluate_board(active) > evaluate_board(passive)
 
 
-def test_depth_tiers_match_the_visible_difficulty_bands():
+def test_depth_tiers_keep_intermediate_human_and_scale_progressively():
     assert settings_for_level(19).max_depth == 2
     assert settings_for_level(20).max_depth == 3
-    assert settings_for_level(44).max_depth == 3
-    assert settings_for_level(45).max_depth == 4
-    assert settings_for_level(69).max_depth == 4
-    assert settings_for_level(70).max_depth == 5
-    assert settings_for_level(89).max_depth == 5
-    assert settings_for_level(90).max_depth == 6
+    assert settings_for_level(45).max_depth == 3
+    assert settings_for_level(64).max_depth == 3
+    assert settings_for_level(69).max_depth == 3
+    assert settings_for_level(70).max_depth == 4
+    assert settings_for_level(89).max_depth == 4
+    assert settings_for_level(90).max_depth == 5
+    assert settings_for_level(97).max_depth == 5
+    assert settings_for_level(98).max_depth == 6
+
+
+def test_time_budget_is_monotonic_but_reserves_cpu_for_high_levels():
+    levels = [0, 20, 45, 64, 70, 90, 100]
+    budgets = [settings_for_level(level).time_budget_s for level in levels]
+    assert budgets == sorted(budgets)
+    assert settings_for_level(64).time_budget_s < 1.35
+    assert settings_for_level(100).time_budget_s >= 2.4
 
 
 def test_quiescence_never_uses_stand_pat_while_in_check(monkeypatch):

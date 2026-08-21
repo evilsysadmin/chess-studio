@@ -1,6 +1,17 @@
-node_modules
-frontend/dist
-backend-python/__pycache__/
+node_modules/
+dist/
+.env
+*.log
+
+# Python (backend-python/)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Local security tooling / reports
+.tools/
+.security/
 .trivy-cache/
-.tools
-.security
