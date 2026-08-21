@@ -1664,30 +1664,94 @@ export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, la
 // el arco A→B→C escrito en cada pieza. Los perfiles conservan la composición
 // original y cambian feel, sustain, timbre de base y micro-groove por escena.
 const STRUCTURED_FEELS = Object.freeze({
+  // V16.6aa: identidad por AUSENCIA además de timbre. Cada familia decide
+  // qué capas existen; no todo tema necesita lead+counter+chords+bass+drums.
+  // El objetivo es que la silueta se reconozca antes que el preset.
   alexandriaLounge: Object.freeze({
-    family: 'alexandria-lounge', preserveSectionOrder: true,
-    harmonyPath: [0, 0, 0, -2, -2, 0, 0, 5, 5, 0],
-    swing: 0.08, warmth: 0.82, releaseScale: 1.18,
-    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
-    chordHoldSteps: 13, bassHoldSteps: 4.8,
-    percussion: { period: 16, kit: 'brush-jazz', punch: 1.08, pattern: { 0: 'B', 4: 'H', 8: 'K', 12: 'H' } },
+    family: 'alexandria-minimal-piano-trio', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, 0, 3, 0],
+    swing: 0.16, warmth: 0.98, releaseScale: 1.22, space: 0.13, delayMs: 165,
+    leadInstrument: 'felt', chordInstrument: 'felt', bassInstrument: 'uprightBass',
+    chordHoldSteps: 16, bassHoldSteps: 4.2,
+    layers: { lead: false, counter: false, chords: true, bass: true, drums: true, signature: true },
+    mix: { lead: 0, counter: 0, bass: 0.9, chord: 0.58 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.82, pattern: { 0: 'B', 8: 'H' } },
+    signature: { instrument: 'felt', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 32,
+      durationSteps: 6.5, volume: 0.56, motif: { 2: 74, 10: 69, 18: 72, 27: 67 } },
   }),
   cairoAfterHours: Object.freeze({
-    family: 'cairo-after-hours', preserveSectionOrder: true,
-    harmonyPath: [0, 0, -2, -2, 0, 0, 3, 3, 0, 0],
-    swing: 0.14, warmth: 0.76, releaseScale: 1.28,
-    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
-    chordHoldSteps: 15, bassHoldSteps: 5.4,
-    percussion: { period: 16, kit: 'cairo-hand', punch: 1.16, pattern: { 0: 'K', 4: 'H', 8: 'B', 12: 'H' } },
+    family: 'cairo-rhodes-horn-noir', preserveSectionOrder: true,
+    harmonyPath: [0, -2, 0, 0, -5, 0],
+    swing: 0.035, warmth: 0.74, releaseScale: 1.48, space: 0.24, delayMs: 285,
+    leadInstrument: 'mutedHorn', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 22, bassHoldSteps: 7,
+    layers: { lead: false, counter: false, chords: true, bass: true, drums: true, signature: true },
+    mix: { lead: 0, counter: 0, bass: 1.08, chord: 0.86 },
+    percussion: { period: 32, kit: 'brush-jazz', punch: 0.72, pattern: { 0: 'B', 24: 'H' } },
+    signature: { instrument: 'mutedHorn', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 32,
+      durationSteps: 10, volume: 0.62, motif: { 5: 69, 17: 65.5, 29: 62 } },
   }),
   beirutSixEight: Object.freeze({
-    family: 'beirut-six-eight', preserveSectionOrder: true,
-    harmonyPath: [0, 0, 0, 0, -2, -2, 0, 0, 5, 5, 0],
-    swing: 0.035, warmth: 0.8, releaseScale: 1.16,
-    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
-    chordHoldSteps: 14, bassHoldSteps: 4.2,
-    percussion: { period: 12, kit: 'darbuka', punch: 1.2, pattern: { 0: 'K', 3: 'H', 6: 'S', 9: 'H' } },
+    family: 'beirut-buzuq-darbuka-6-8', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 0, -2, 0, 5],
+    swing: 0, warmth: 0.86, releaseScale: 0.96, space: 0.07, delayMs: 105,
+    bassInstrument: 'uprightBass', bassHoldSteps: 3.2,
+    layers: { lead: false, counter: false, chords: false, bass: true, drums: true, signature: true },
+    mix: { lead: 0, counter: 0, bass: 0.72, chord: 0 },
+    percussion: { period: 12, kit: 'darbuka', punch: 1.42, pattern: { 0: 'K', 3: 'H', 5: 'W', 6: 'S', 9: 'H', 11: 'W' } },
+    signature: { instrument: 'buzuq', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 24,
+      durationSteps: 2.4, volume: 0.9, motif: { 0: 64, 3: 68, 6: 71, 10: 69, 15: 65, 21: 62.5 } },
   }),
+  damascusDrone: Object.freeze({
+    family: 'damascus-cello-ney-drone', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, -2, 0, 0],
+    swing: 0, warmth: 0.6, releaseScale: 1.78, space: 0.34, delayMs: 380,
+    chordInstrument: 'pad', bassInstrument: 'cello', chordHoldSteps: 40, bassHoldSteps: 16,
+    drumMode: 'none',
+    layers: { lead: false, counter: false, chords: true, bass: true, drums: false, signature: true },
+    mix: { lead: 0, counter: 0, bass: 0.56, chord: 0.52 },
+    percussion: { period: 64, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'ney', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 64,
+      durationSteps: 15, volume: 0.54, motif: { 9: 74, 31: 69, 53: 66 } },
+  }),
+  istanbulBroken: Object.freeze({
+    family: 'istanbul-clarinet-frame-9-8', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 2, 0, -2, 0],
+    swing: 0, warmth: 0.82, releaseScale: 0.94, space: 0.075, delayMs: 92,
+    bassInstrument: 'uprightBass', bassHoldSteps: 5.0,
+    layers: { lead: false, counter: false, chords: false, bass: true, drums: true, signature: true },
+    mix: { lead: 0, counter: 0, bass: 0.68, chord: 0 },
+    // 18 pasos = 9/8. Acentos 2+2+2+3; nada de batería de jazz debajo.
+    percussion: { period: 18, kit: 'istanbul-frame', punch: 1.18, pattern: { 0: 'W', 4: 'H', 8: 'W', 12: 'H', 16: 'S' } },
+    signature: { instrument: 'clarinet', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 18,
+      durationSteps: 3.4, volume: 0.76, motif: { 0: 67, 4: 68, 8: 71, 12: 65, 16: 67 } },
+  }),
+  tangierWalking: Object.freeze({
+    family: 'tangier-dry-walking-club', preserveSectionOrder: true,
+    harmonyPath: [0, -2, 0, 5, 0, -2],
+    swing: 0.11, warmth: 0.76, releaseScale: 0.9, space: 0.045, delayMs: 78,
+    bassInstrument: 'uprightBass', bassHoldSteps: 2.4,
+    layers: { lead: false, counter: false, chords: false, bass: true, drums: true, signature: true },
+    mix: { lead: 0, counter: 0, bass: 1.26, chord: 0 },
+    percussion: { period: 12, kit: 'maghreb-hand', punch: 1.22, pattern: { 0: 'K', 5: 'W', 6: 'S', 11: 'W' } },
+    signature: { instrument: 'mutedHorn', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 24,
+      durationSteps: 4.8, volume: 0.58, motif: { 3: 65, 11: 63, 19: 70 } },
+  }),
+  granadaChamber: Object.freeze({
+    family: 'granada-guitar-chamber', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 5, 3, 0, 0],
+    swing: 0, warmth: 1.0, releaseScale: 1.1, space: 0.2, delayMs: 210,
+    chordInstrument: 'felt', bassInstrument: 'pizz', chordHoldSteps: 18, bassHoldSteps: 3.0,
+    drumMode: 'none',
+    layers: { lead: false, counter: false, chords: true, bass: true, drums: false, signature: true },
+    mix: { lead: 0, counter: 0, bass: 0.5, chord: 0.48 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'guitar2', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 32,
+      durationSteps: 3.1, volume: 0.72, motif: { 0: 64, 7: 65, 15: 68, 23: 63, 30: 64 } },
+  }),
+
+  // Familias secundarias conservan el refactor anterior hasta que las siete
+  // siluetas principales estén validadas al oído.
   beirutRooftop: Object.freeze({
     family: 'beirut-rooftop', preserveSectionOrder: true,
     harmonyPath: [0, 0, -2, 0, 0, 5, 0, -2, 0],
@@ -1702,21 +1766,6 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.06, warmth: 0.72, releaseScale: 1.34,
     bassInstrument: 'uprightBass', chordHoldSteps: 16, bassHoldSteps: 5.5,
     percussion: { period: 16, kit: 'frame-drum', punch: 1.1, pattern: { 0: 'K', 8: 'B', 12: 'H' } },
-  }),
-  istanbulBroken: Object.freeze({
-    family: 'istanbul-broken-meter', preserveSectionOrder: true,
-    harmonyPath: [0, 0, 0, 2, 2, 0, -2, -2, 0],
-    swing: 0.0, warmth: 0.86, releaseScale: 1.08,
-    bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.6,
-    percussion: { period: 14, kit: 'istanbul-frame', punch: 1.18, pattern: { 0: 'K', 4: 'H', 7: 'S', 10: 'H' } },
-  }),
-  tangierWalking: Object.freeze({
-    family: 'tangier-walking', preserveSectionOrder: true,
-    harmonyPath: [0, 0, -2, -2, 0, 5, 5, 0, 0],
-    swing: 0.19, warmth: 0.8, releaseScale: 1.12,
-    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
-    chordHoldSteps: 12, bassHoldSteps: 3.4,
-    percussion: { period: 16, kit: 'walking-brush', punch: 1.12, pattern: { 0: 'B', 4: 'H', 8: 'B', 12: 'H' } },
   }),
   maghrebVelvet: Object.freeze({
     family: 'maghreb-velvet', preserveSectionOrder: true,
@@ -1734,15 +1783,14 @@ const STRUCTURED_FEELS = Object.freeze({
     percussion: { period: 16, kit: 'andalus-hand', punch: 1.16, pattern: { 0: 'K', 4: 'H', 8: 'S', 12: 'H' } },
   }),
 });
-
 const STRUCTURED_FEEL_BY_THEME = Object.freeze({
   alexandria241: 'alexandriaLounge',
   cairo0047: 'cairoAfterHours', cairoQuietHours: 'cairoAfterHours', cairoRedLantern: 'cairoAfterHours', nileBalcony0152: 'cairoAfterHours',
   beirut0113: 'beirutSixEight', beirutRooftop0412: 'beirutRooftop', beirutNightTaxi: 'beirutRooftop',
-  damascusBlueHour: 'levantBlue', aleppoAfterRain: 'levantBlue', ammanVelvetRoom: 'levantBlue',
+  damascusBlueHour: 'damascusDrone', aleppoAfterRain: 'levantBlue', ammanVelvetRoom: 'levantBlue',
   istanbul0326: 'istanbulBroken', bosphorusRain: 'levantBlue', istanbulBackgammon: 'istanbulBroken',
   tangierSmoke: 'tangierWalking', tangierRedTable: 'tangierWalking', casablancaLastCall: 'maghrebVelvet', medinaBlueSmoke: 'maghrebVelvet',
-  andalusianCoast: 'andalusWarm', granadaPatio: 'andalusWarm', cadizLanterns: 'andalusWarm',
+  andalusianCoast: 'andalusWarm', granadaPatio: 'granadaChamber', cadizLanterns: 'andalusWarm',
 });
 
 function structuredFeel(theme) {
@@ -1765,6 +1813,12 @@ export function getAmbientThemeSoundProfile(themeId) {
     percussionPeriod: feel.percussion?.period || null,
     percussionKit: feel.percussion?.kit || 'legacy',
     percussionPunch: feel.percussion?.punch || 1,
+    drumMode: feel.drumMode || 'dynamic',
+    signatureInstrument: feel.signature?.instrument || null,
+    signatureSteps: Object.keys(feel.signature?.motif || {}).length,
+    signatureRepeatPeriod: feel.signature?.repeatPeriod || null,
+    enabledLayers: Object.entries(feel.layers || {}).filter(([, enabled]) => enabled !== false).map(([name]) => name),
+    space: feel.space || 0,
     chordInstrument: feel.chordInstrument || theme.chordInstrument,
     bassInstrument: feel.bassInstrument || theme.bassInstrument,
   } : {
@@ -2407,7 +2461,19 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
 
   filter.connect(gainNode);
-  gainNode.connect(getAmbientOutput(ctx));
+  const output = getAmbientOutput(ctx);
+  gainNode.connect(output);
+  // Un eco único y muy bajo da profundidad sin convertir el generador en una
+  // sopa reverberante. Cada familia decide cuánto espacio necesita.
+  if (tone?.space > 0 && typeof ctx.createDelay === 'function') {
+    const delay = ctx.createDelay(0.6);
+    const wet = ctx.createGain();
+    delay.delayTime.value = Math.min(0.55, Math.max(0.06, (tone.delayMs || 180) / 1000));
+    wet.gain.value = Math.min(0.3, Math.max(0, tone.space));
+    gainNode.connect(delay);
+    delay.connect(wet);
+    wet.connect(output);
+  }
 
   const oscillators = preset.waves.map(([type, ratio, mix], index) => {
     const osc = ctx.createOscillator();
@@ -2663,19 +2729,19 @@ function structuredArrangement(theme, cycleIndex) {
     feel,
     // Cambios de registro puntuales, no una octava arriba cada dos vueltas.
     leadOctave: texture === 3 ? 12 : texture === 7 ? -12 : 0,
-    leadVolume: texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1,
-    bassVolume: texture === 4 ? 0.68 : 0.9,
-    chordVolume: texture === 5 ? 0.72 : 1,
-    counterVolume: texture === 3 ? 0.34 : texture === 7 ? 0.46 : 0.4,
+    leadVolume: (texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1) * (feel?.mix?.lead || 1),
+    bassVolume: (texture === 4 ? 0.68 : 0.9) * (feel?.mix?.bass || 1),
+    chordVolume: (texture === 5 ? 0.72 : 1) * (feel?.mix?.chord || 1),
+    counterVolume: (texture === 3 ? 0.34 : texture === 7 ? 0.46 : 0.4) * (feel?.mix?.counter || 1),
     counterOctave: texture === 6 ? -12 : 0,
     // Unas vueltas dejan respirar la melodía o la batería. La forma base
     // sigue reconocible, pero no tenemos la misma pared de sonido cada 4 s.
     leadMode: feel
       ? (texture === 8 ? 'sparse' : 'full')
       : (texture === 2 ? 'late' : texture === 8 ? 'sparse' : 'full'),
-    drumMode: feel
+    drumMode: feel?.drumMode || (feel
       ? (texture === 6 ? 'sparse' : 'full')
-      : (texture === 0 ? 'full' : texture === 4 ? 'sparse' : texture === 6 ? 'none' : 'full'),
+      : (texture === 0 ? 'full' : texture === 4 ? 'sparse' : texture === 6 ? 'none' : 'full')),
     sectionShift: feel?.preserveSectionOrder ? 0 : (sections > 1 ? Math.floor(phase / 2 + (seed % sections)) % sections : 0),
   };
 }
@@ -2700,6 +2766,17 @@ function structuredDrumAtStep(section, feel, localStep) {
   const { period, pattern } = feel.percussion;
   if (!period || !pattern) return null;
   return pattern[localStep % period] || null;
+}
+
+function structuredSignatureAtStep(feel, localStep, sectionIndex, cycleIndex) {
+  const signature = feel?.signature;
+  if (!signature?.motif) return null;
+  if (Array.isArray(signature.sections) && !signature.sections.includes(sectionIndex)) return null;
+  const every = Math.max(1, signature.everyCycles || 1);
+  if (cycleIndex % every !== 0) return null;
+  const motifStep = signature.repeatPeriod ? (localStep % signature.repeatPeriod) : localStep;
+  const note = signature.motif[motifStep];
+  return note == null ? null : { ...signature, note };
 }
 
 function startStructuredMusic(theme) {
@@ -2730,34 +2807,47 @@ function startStructuredMusic(theme) {
     const t = arrangement.transpose;
 
     const feel = arrangement.feel;
+    const layers = feel?.layers || {};
+    const layerEnabled = (name) => layers[name] !== false;
     const drum = structuredDrumAtStep(section, feel, localStep);
-    const tone = feel ? { warmth: feel.warmth, releaseScale: feel.releaseScale } : null;
+    const signature = structuredSignatureAtStep(feel, localStep, rawSectionIndex, cycleIndex);
+    const tone = feel ? {
+      warmth: feel.warmth,
+      releaseScale: feel.releaseScale,
+      space: feel.space || 0,
+      delayMs: feel.delayMs || 180,
+    } : null;
 
-    if (lead != null && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
-      playStructuredVoice(section.leadInstrument || theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume, null, tone);
+    if (signature && layerEnabled('signature')) {
+      const signatureDuration = (theme.stepMs * (signature.durationSteps || 3)) / 1000;
+      playStructuredVoice(signature.instrument || theme.leadInstrument, signature.note + t, signature.volume || 0.55, signatureDuration, tone);
     }
-    if (counter != null && arrangement.leadMode !== 'sparse') {
+
+    if (lead != null && layerEnabled('lead') && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
+      playStructuredVoice(feel?.leadInstrument || section.leadInstrument || theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume, null, tone);
+    }
+    if (counter != null && layerEnabled('counter') && arrangement.leadMode !== 'sparse') {
       playStructuredVoice(
-        section.counterInstrument || theme.counterInstrument || theme.leadInstrument,
+        feel?.counterInstrument || section.counterInstrument || theme.counterInstrument || theme.leadInstrument,
         counter + t + arrangement.counterOctave,
         arrangement.counterVolume,
         null,
         tone,
       );
     }
-    if (bass != null) {
+    if (bass != null && layerEnabled('bass')) {
       const bassInstrument = feel?.bassInstrument || section.bassInstrument || theme.bassInstrument;
       const bassDuration = feel?.bassHoldSteps ? (theme.stepMs * feel.bassHoldSteps) / 1000 : null;
       playStructuredVoice(bassInstrument, bass + t, arrangement.bassVolume, bassDuration, tone);
     }
-    if (chord) {
+    if (chord && layerEnabled('chords')) {
       const chordInstrument = feel?.chordInstrument || section.chordInstrument || theme.chordInstrument;
       const longChord = ['organ', 'pad'].includes(chordInstrument);
       const chordHoldSteps = feel?.chordHoldSteps || (longChord ? 15.5 : null);
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
       playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, tone);
     }
-    if (drum && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum, feel, localStep);
+    if (drum && layerEnabled('drums') && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum, feel, localStep);
 
     step += 1;
     // Reloj absoluto: setTimeout puede llegar tarde, pero el retraso ya no se

@@ -50,27 +50,47 @@ describe('ambient music catalog', () => {
   });
 
 
-  it('da identidades de groove distintas al jazz mediterráneo nocturno', () => {
+  it('da identidades compositivas realmente distintas a los prototipos mediterráneos', () => {
     const alexandria = getAmbientThemeSoundProfile('alexandria241');
     const beirut = getAmbientThemeSoundProfile('beirut0113');
     const cairo = getAmbientThemeSoundProfile('cairo0047');
+    const damascus = getAmbientThemeSoundProfile('damascusBlueHour');
     const istanbul = getAmbientThemeSoundProfile('istanbul0326');
+    const tangier = getAmbientThemeSoundProfile('tangierSmoke');
+    const granada = getAmbientThemeSoundProfile('granadaPatio');
+    const prototypes = [alexandria, beirut, cairo, damascus, istanbul, tangier, granada];
 
-    expect(alexandria.preserveSectionOrder).toBe(true);
-    expect(beirut.preserveSectionOrder).toBe(true);
-    expect(cairo.preserveSectionOrder).toBe(true);
-    expect(istanbul.preserveSectionOrder).toBe(true);
-    expect(new Set([alexandria.family, beirut.family, cairo.family, istanbul.family]).size).toBe(4);
-    expect(new Set([alexandria.groovePeriod, beirut.groovePeriod, istanbul.groovePeriod]).size).toBe(3);
+    expect(prototypes.every((profile) => profile.preserveSectionOrder)).toBe(true);
+    expect(new Set(prototypes.map((profile) => profile.family)).size).toBe(7);
+    expect(new Set(prototypes.map((profile) => profile.signatureInstrument)).size).toBeGreaterThanOrEqual(6);
+    expect(prototypes.every((profile) => profile.signatureSteps >= 3)).toBe(true);
+
     expect(alexandria.percussionPeriod).toBe(16);
     expect(beirut.percussionPeriod).toBe(12);
-    expect(istanbul.percussionPeriod).toBe(14);
-    expect(beirut.chordInstrument).toBe('rhodesWarm');
-    expect(cairo.bassInstrument).toBe('uprightBass');
+    expect(istanbul.percussionPeriod).toBe(18);
+    expect(tangier.percussionPeriod).toBe(12);
+    expect(damascus.drumMode).toBe('none');
+
+    expect(alexandria.chordInstrument).toBe('felt');
+    expect(cairo.chordInstrument).toBe('rhodesWarm');
+    expect(granada.bassInstrument).toBe('pizz');
+
+    // Las familias ya no se distinguen solo por presets: también por las capas
+    // que deliberadamente NO existen en cada arreglo.
+    expect(alexandria.enabledLayers).toEqual(expect.arrayContaining(['chords', 'bass', 'drums', 'signature']));
+    expect(alexandria.enabledLayers).not.toContain('lead');
+    expect(alexandria.enabledLayers).not.toContain('counter');
+    expect(beirut.enabledLayers).not.toContain('chords');
+    expect(istanbul.enabledLayers).not.toContain('chords');
+    expect(damascus.enabledLayers).not.toContain('drums');
+    expect(granada.enabledLayers).not.toContain('drums');
+    expect(new Set(prototypes.map((profile) => profile.signatureRepeatPeriod)).size).toBeGreaterThanOrEqual(5);
+
     expect(beirut.percussionKit).toBe('darbuka');
-    expect(cairo.percussionKit).toBe('cairo-hand');
-    expect(alexandria.percussionKit).toBe('brush-jazz');
-    expect(beirut.percussionPunch).toBeGreaterThan(1);
+    expect(istanbul.percussionKit).toBe('istanbul-frame');
+    expect(tangier.percussionKit).toBe('maghreb-hand');
+    expect(beirut.percussionPunch).toBeGreaterThan(1.25);
+    expect(damascus.space).toBeGreaterThan(cairo.space);
   });
 
   it('los temas estructurados tardan al menos dos minutos en repetir su forma larga', () => {
