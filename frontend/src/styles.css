@@ -5666,3 +5666,290 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .army-dossier-medals,
   .army-dossier-button-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- v16.6bf · Campaña: roster visible + hoja global compacta ---------- */
+.combat-service-card.compact {
+  padding: 0.68rem 0.78rem;
+}
+.combat-service-card.compact .combat-service-stats { margin-top: 0.5rem; }
+.combat-service-card.compact .combat-service-next { margin-top: 0.5rem; }
+.combat-service-card.compact .combat-service-medals {
+  margin-top: 0.52rem;
+  padding-top: 0.48rem;
+}
+.combat-medal-compact-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin-top: 0.4rem;
+}
+.combat-medal-compact-line > span {
+  padding: 0.18rem 0.36rem;
+  border: 1px solid rgba(154, 172, 130, 0.23);
+  border-radius: 999px;
+  color: #c5d2ad;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  line-height: 1.2;
+}
+.combat-medal-compact-line > .hint-text {
+  padding: 0;
+  border: 0;
+  color: var(--parchment-dim);
+}
+
+.army-roster-panel.embedded {
+  margin: 0.9rem 0 1rem;
+  padding: 0.82rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 30%, var(--ink-3));
+  border-radius: 10px;
+  background:
+    linear-gradient(160deg, rgba(191, 152, 82, 0.035), transparent 50%),
+    rgba(8, 11, 10, 0.42);
+}
+.army-roster-panel h3 {
+  margin: 0.12rem 0 0.35rem;
+  color: var(--parchment);
+  font-family: var(--font-display);
+  font-size: 1.16rem;
+  font-style: italic;
+}
+.army-roster-panel.embedded .army-roster-intro { margin-top: 0.25rem; }
+.army-roster-panel.embedded .army-roster-grid { margin-top: 0.72rem; }
+.army-roster-panel.embedded .army-unit-tile { min-height: 138px; }
+
+@media (max-width: 560px) {
+  .army-roster-panel.embedded { padding: 0.65rem; }
+  .combat-service-next-copy { align-items: flex-start; flex-direction: column; gap: 0.2rem; }
+  .combat-service-next-copy small { text-align: left; }
+}
+
+/* ---------- v16.6bf · Tutorial + glosario ---------- */
+.tutorial-shell { max-width: 980px; }
+.tutorial-main {
+  width: 100%;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.tutorial-section-tabs {
+  width: 100%;
+  display: flex;
+  gap: 0.45rem;
+  padding: 0.3rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 9px;
+  background: rgba(0,0,0,.12);
+}
+.tutorial-section-tabs button {
+  flex: 1;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+.tutorial-section-tabs button.active {
+  border-color: color-mix(in srgb, var(--brass) 42%, var(--ink-3));
+  background: color-mix(in srgb, var(--brass) 8%, transparent);
+  color: var(--brass);
+}
+.chess-glossary {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 10px;
+  background: var(--ink-2);
+}
+.chess-glossary-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.chess-glossary-heading h2 {
+  margin: 0.22rem 0 0.45rem;
+  font-family: var(--font-display);
+  font-style: italic;
+}
+.chess-glossary-count {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.48rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 999px;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+}
+.chess-glossary-search {
+  display: grid;
+  gap: 0.28rem;
+  margin: 0.8rem 0;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+.chess-glossary-search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--parchment);
+  font: inherit;
+  font-size: 0.76rem;
+}
+.chess-glossary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+.chess-glossary-entry {
+  padding: 0.68rem 0.72rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 8px;
+  background: rgba(0,0,0,.10);
+}
+.chess-glossary-entry strong {
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+.chess-glossary-entry small {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--parchment-dim);
+  font-size: 0.61rem;
+}
+.chess-glossary-entry p {
+  margin: 0.38rem 0 0;
+  color: var(--parchment-dim);
+  font-size: 0.78rem;
+  line-height: 1.48;
+}
+
+.autopsy-glossary {
+  margin: 0.55rem 0 0.72rem;
+  padding: 0.52rem 0.62rem;
+  border: 1px solid rgba(198,164,93,.22);
+  border-radius: 8px;
+  background: rgba(0,0,0,.10);
+}
+.autopsy-glossary summary {
+  cursor: pointer;
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+.autopsy-glossary p {
+  margin: 0.45rem 0 0;
+  color: var(--parchment-dim);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+.autopsy-glossary b { color: var(--parchment); }
+.autopsy-glossary small { display: block; margin-top: 0.42rem; color: var(--parchment-dim); opacity: .75; }
+
+@media (max-width: 700px) {
+  .chess-glossary-grid { grid-template-columns: 1fr; }
+  .chess-glossary-heading { align-items: flex-start; }
+  .chess-glossary-count { display: none; }
+}
+
+/* Glosario contextual: discreto en reposo, legible al pedir ayuda. */
+.glossary-term {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  color: inherit;
+  cursor: help;
+  outline: none;
+  vertical-align: baseline;
+}
+.glossary-term-label {
+  border-bottom: 1px dotted color-mix(in srgb, var(--brass) 72%, transparent);
+  text-decoration: none;
+}
+.glossary-term:hover .glossary-term-label,
+.glossary-term:focus-visible .glossary-term-label,
+.glossary-term.is-open .glossary-term-label {
+  color: var(--brass);
+}
+.glossary-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.48rem);
+  z-index: 1200;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 2rem));
+  padding: 0.58rem 0.66rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ink-3));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 94%, black);
+  color: var(--parchment-dim);
+  box-shadow: 0 12px 28px rgba(0,0,0,.32);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.42;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+.glossary-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ink-3));
+  border-bottom: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ink-3));
+  background: color-mix(in srgb, var(--ink) 94%, black);
+  transform: translate(-50%, -4px) rotate(45deg);
+}
+.glossary-tooltip strong {
+  display: block;
+  margin-bottom: 0.16rem;
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+.glossary-tooltip span { display: block; }
+.glossary-tooltip small {
+  display: block;
+  margin-top: 0.34rem;
+  color: var(--parchment-dim);
+  font-size: 0.61rem;
+  opacity: .68;
+}
+.glossary-term:hover .glossary-tooltip,
+.glossary-term:focus-visible .glossary-tooltip,
+.glossary-term.is-open .glossary-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (hover: none) {
+  .glossary-term:hover .glossary-tooltip { opacity: 0; transform: translate(-50%, 4px); }
+  .glossary-term.is-open .glossary-tooltip,
+  .glossary-term:focus-visible .glossary-tooltip { opacity: 1; transform: translate(-50%, 0); }
+}
+.tutorial-context-help,
+.glossary-inline-hint {
+  color: var(--parchment-dim);
+  font-size: 0.7rem;
+  opacity: .82;
+}
+.tutorial-context-help {
+  margin-top: 0.8rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--ink-3);
+}
+.glossary-inline-hint { margin: 0.3rem 0 0; }

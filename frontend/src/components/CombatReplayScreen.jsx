@@ -7,6 +7,7 @@ import { identifyOpening } from '../openings.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -91,7 +92,7 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
       )}
       {report && (
         <p className="hint-text replay-analyzing-banner">
-          {report.label} Pérdida promedio de evaluación: <b>{report.averageLoss}</b>
+          {report.label} Pérdida promedio de <GlossaryTerm term="Evaluación">evaluación</GlossaryTerm>: <b>{report.averageLoss}</b>
           {' · '}se revisaron {report.analyzedCount} de tus intentos.
         </p>
       )}

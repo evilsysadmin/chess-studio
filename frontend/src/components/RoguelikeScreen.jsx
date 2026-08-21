@@ -2,9 +2,14 @@ import React, { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import CombatScreen from './CombatScreen.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
+import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatCampaignMap from './CombatCampaignMap.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { applyModifierToFen, encounterForRun } from '../roguelikeModifiers.js';
+import { buyStatPoint } from '../combat.js';
+import { loadRoster, saveRoster, revivePiece } from '../combatRoster.js';
+import { setRosterDeploymentType } from '../combatMetamorphosis.js';
+import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
@@ -55,6 +60,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [endResult, setEndResult] = useState(null); // { type, reached, newBest }
   const [combatSessionActive, setCombatSessionActive] = useState(false);
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
+  const [roster, setRoster] = useState(() => loadRoster());
   const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
 
   useEscapeToClose(onExit, {
@@ -131,6 +137,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleCampaignBattleResult(outcome) {
     setCombatSessionActive(false);
     setServiceRecord(loadCombatService());
+    setRoster(loadRoster());
     if (outcome === 'win') {
       setCampaign((current) => markCampaignBattleWon(current));
       setTowerCompleted(loadTowerCompleted());
@@ -147,6 +154,64 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   function handleCampaignEvent(choiceId) {
     setCampaign((current) => resolveCampaignEvent(current, choiceId));
+  }
+
+  function handleBuyRosterStat(key, stat) {
+    setRoster((current) => {
+      const saved = current.pieces?.[key] || { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: true };
+      if (saved.alive === false) return current;
+      const virtualPiece = { type: saved.deploymentType || key.split('-')[0], ...saved };
+      const updated = buyStatPoint(virtualPiece, stat);
+      if (!updated) return current;
+      const next = {
+        ...current,
+        pieces: {
+          ...current.pieces,
+          [key]: {
+            ...saved,
+            strengthPoints: updated.strengthPoints,
+            speedPoints: updated.speedPoints,
+            bankedXp: updated.bankedXp,
+            alive: true,
+            deploymentType: saved.deploymentType || null,
+          },
+        },
+      };
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleReviveRosterPiece(key, type) {
+    setRoster((current) => {
+      const next = revivePiece(current, key, type);
+      if (next !== current) saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleMetamorphoseRosterPiece(key, targetType) {
+    setRoster((current) => {
+      const next = setRosterDeploymentType(current, key, targetType);
+      if (next !== current) saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleUnlockRosterTechnique(key, techniqueId) {
+    setRoster((current) => {
+      const next = unlockRosterTechnique(current, key, techniqueId);
+      if (next !== current) saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleEquipRosterTechnique(key, techniqueId) {
+    setRoster((current) => {
+      const next = setRosterEquippedTechnique(current, key, techniqueId);
+      if (next !== current) saveRoster(next);
+      return next;
+    });
   }
 
   function handleStartRun() {
@@ -174,6 +239,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleBattleResult(outcome) {
     setCombatSessionActive(false);
     setServiceRecord(loadCombatService());
+    setRoster(loadRoster());
     if (outcome === 'win') {
       if (run.mode === 'tower' && run.floor === ROGUELIKE_BOSS_FLOOR) {
         setRun((current) => completeTower(current));
@@ -430,6 +496,16 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         </div>
 
         <CombatServicePanel summary={serviceSummary} compact />
+
+        <ArmyRosterPanel
+          roster={roster}
+          embedded
+          onBuy={handleBuyRosterStat}
+          onRevive={handleReviveRosterPiece}
+          onMetamorphose={handleMetamorphoseRosterPiece}
+          onUnlockTechnique={handleUnlockRosterTechnique}
+          onEquipTechnique={handleEquipRosterTechnique}
+        />
 
         {campaignBestStage > 0 && <p className="hint-text">Mejor sector de campaña alcanzado: <b>{campaignBestStage}/7</b></p>}
         {bestFloor > 0 && <p className="hint-text">Marca histórica de La Torre clásica: <b>piso {bestFloor}</b></p>}

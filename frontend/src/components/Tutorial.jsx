@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
+import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 const LESSONS = [
   {
@@ -128,10 +130,12 @@ function withTurn(fen, color) {
 }
 
 export default function Tutorial({ onExit }) {
-  useEscapeToClose(onExit);
+  const [section, setSection] = useState('lessons');
   const [index, setIndex] = useState(0);
   const [practiceFen, setPracticeFen] = useState(LESSONS[0].fen);
   const [selected, setSelected] = useState(null);
+
+  useEscapeToClose(section === 'glossary' ? () => setSection('lessons') : onExit);
 
   const lesson = LESSONS[index];
 
@@ -172,38 +176,51 @@ export default function Tutorial({ onExit }) {
 
   return (
     <div className="tutorial-shell">
-      <button className="back-link" onClick={onExit}>← Volver al menú</button>
-      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-        <div className="board-column">
-          <Board
-            fen={practiceFen}
-            onSquareClick={handleSquareClick}
-            selectedSquare={selected}
-            legalTargets={legalTargets}
-          />
-          <button className="secondary-btn" onClick={() => { setPracticeFen(lesson.fen); setSelected(null); }}>
-            Reiniciar posición
-          </button>
-        </div>
+      <button className="back-link" onClick={section === 'glossary' ? () => setSection('lessons') : onExit}>
+        ← {section === 'glossary' ? 'Volver a las lecciones' : 'Volver al menú'}
+      </button>
 
-        <div className="tutorial-text">
-          <span className="eyebrow">{lesson.eyebrow}</span>
-          <h2>{lesson.title}</h2>
-          {lesson.text.map((p, i) => <p key={i}>{p}</p>)}
+      <nav className="tutorial-section-tabs" aria-label="Aprendizaje">
+        <button type="button" className={section === 'lessons' ? 'active' : ''} onClick={() => setSection('lessons')}>Lecciones</button>
+        <button type="button" className={section === 'glossary' ? 'active' : ''} onClick={() => setSection('glossary')}>Glosario</button>
+      </nav>
 
-          <div className="tutorial-nav">
-            <button className="secondary-btn" onClick={() => goTo(index - 1)} disabled={index === 0}>
-              Anterior
+      {section === 'glossary' ? (
+        <ChessGlossary />
+      ) : (
+        <div className="tutorial-main">
+          <div className="board-column">
+            <Board
+              fen={practiceFen}
+              onSquareClick={handleSquareClick}
+              selectedSquare={selected}
+              legalTargets={legalTargets}
+            />
+            <button className="secondary-btn" onClick={() => { setPracticeFen(lesson.fen); setSelected(null); }}>
+              Reiniciar posición
             </button>
-            <span className="tutorial-progress">Lección {index + 1} de {LESSONS.length}</span>
-            {index < LESSONS.length - 1 ? (
-              <button className="primary-btn" onClick={() => goTo(index + 1)}>Siguiente</button>
-            ) : (
-              <button className="primary-btn" onClick={onExit}>Ir a jugar</button>
-            )}
+          </div>
+
+          <div className="tutorial-text">
+            <span className="eyebrow">{lesson.eyebrow}</span>
+            <h2>{lesson.title}</h2>
+            {lesson.text.map((p, i) => <p key={i}>{p}</p>)}
+            <p className="tutorial-context-help">¿Ves un término punteado? Pasa el ratón o tócala: <GlossaryTerm term="CCT">CCT</GlossaryTerm>, <GlossaryTerm term="cp">cp</GlossaryTerm>, etc. La definición larga sigue en Glosario.</p>
+
+            <div className="tutorial-nav">
+              <button className="secondary-btn" onClick={() => goTo(index - 1)} disabled={index === 0}>
+                Anterior
+              </button>
+              <span className="tutorial-progress">Lección {index + 1} de {LESSONS.length}</span>
+              {index < LESSONS.length - 1 ? (
+                <button className="primary-btn" onClick={() => goTo(index + 1)}>Siguiente</button>
+              ) : (
+                <button className="primary-btn" onClick={onExit}>Ir a jugar</button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

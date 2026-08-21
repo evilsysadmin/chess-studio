@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import Board from './Board.jsx';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
 const BRUSHES=['','K','Q','R','B','N','P','k','q','r','b','n','p'];
@@ -57,7 +58,7 @@ export default function LabScreen({ onExit, onStart }){
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={onExit}>← Volver al menú</button>
-    <div className="menu-section"><span className="section-label">Laboratorio libre</span><h2>Construye una posición</h2><p className="hint-text">Coloca piezas, elige quién mueve y juégala contra la CPU. Es entrenamiento: no toca ELO.</p></div>
+    <div className="menu-section"><span className="section-label">Laboratorio libre</span><h2>Construye una posición</h2><p className="hint-text">Coloca piezas, elige quién mueve y juégala contra la CPU. Es entrenamiento: no toca <GlossaryTerm term="ELO">ELO</GlossaryTerm>.</p></div>
     <div className="lab-toolbar">
       <div className="lab-brushes">{BRUSHES.map(p=><button key={p||'erase'} className={`lab-brush ${brush===p?'active':''}`} onClick={()=>setBrush(p)} title={p?'Colocar pieza':'Borrar'}>{p?GLYPH[p]:'⌫'}</button>)}</div>
       <button className="secondary-btn" onClick={resetInitial}>Posición inicial</button>
@@ -71,7 +72,7 @@ export default function LabScreen({ onExit, onStart }){
       <label>Turno <select value={turn} onChange={e=>{setTurn(e.target.value);setEp('-');}}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
       <label>Dificultad CPU <input type="range" min="0" max="100" value={difficulty} onChange={e=>setDifficulty(Number(e.target.value))}/><b>{difficulty}</b></label>
       <div className="lab-fen-readout">
-        <span className="section-label">FEN de la posición</span>
+        <span className="section-label"><GlossaryTerm term="FEN">FEN</GlossaryTerm> de la posición</span>
         <code>{fen}</code>
         <small>Notación portátil: piezas · turno · enroques · en passant · contador de 50 movimientos · número de jugada.</small>
       </div>

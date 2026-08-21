@@ -4,6 +4,11 @@ import { analyzeGame } from '../gameReport.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
 import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, moveContextLines, pointOfNoReturn } from '../advancedCareer.js';
+import { glossaryEntry } from '../chessGlossary.js';
+import GlossaryTerm from './GlossaryTerm.jsx';
+
+const CP_GLOSSARY = glossaryEntry('cp');
+const CCT_GLOSSARY = glossaryEntry('CCT');
 
 function incidentTitle(index, mistake, total) {
   if (index === 0 && mistake.loss >= 300) return 'Hora aproximada del fallecimiento';
@@ -72,24 +77,31 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
         {status === 'done' && report && <>
           {report.analyzedCount === 0 ? <p className="hint-text">No hubo suficientes jugadas propias para analizar.</p> : <>
             <div className="autopsy-summary">
-              <div><span>Accuracy propia</span><b>{accuracy}%</b></div>
-              <div><span>Pérdida media</span><b>−{report.averageLoss} cp</b></div>
+              <div><span><GlossaryTerm term="Accuracy">Accuracy</GlossaryTerm> propia</span><b>{accuracy}%</b></div>
+              <div><span>Pérdida media</span><b>−{report.averageLoss} <GlossaryTerm term="cp">cp</GlossaryTerm></b></div>
               <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
             </div>
-            <p className="hint-text">La accuracy es una escala propia de Chess Studio basada en pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+            <p className="hint-text">La <GlossaryTerm term="Accuracy">accuracy</GlossaryTerm> es una escala propia de Chess Studio basada en pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+
+            <details className="autopsy-glossary">
+              <summary>Glosario rápido · cp / CCT</summary>
+              <p><b><GlossaryTerm term="cp">cp</GlossaryTerm>.</b> {CP_GLOSSARY?.definition}</p>
+              <p><b><GlossaryTerm term="CCT">CCT</GlossaryTerm>.</b> {CCT_GLOSSARY?.definition}</p>
+              <small>El glosario completo está en Aprendizaje → Glosario.</small>
+            </details>
 
             <div className="autopsy-express">
               <b>Resumen de 30 segundos</b>
-              <span>{best ? `💎 Jugada de la partida: ${best.played} · pérdida ${best.loss} cp.` : '💎 Sin jugada destacada disponible.'}</span>
-              <span>{noReturn ? `☠ Punto de no retorno: jugada ${noReturn.moveNumber}, ${noReturn.played} (−${noReturn.loss} cp).` : '✓ No aparece un punto de no retorno claro en las jugadas analizadas.'}</span>
-              <span>{report.worst ? `⚰ Mayor impacto: ${report.worst.played}, −${report.worst.loss} cp.` : ''}</span>
+              <span>{best ? <>💎 Jugada de la partida: {best.played} · pérdida {best.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>.</> : '💎 Sin jugada destacada disponible.'}</span>
+              <span>{noReturn ? <>☠ Punto de no retorno: jugada {noReturn.moveNumber}, {noReturn.played} (−{noReturn.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>).</> : '✓ No aparece un punto de no retorno claro en las jugadas analizadas.'}</span>
+              <span>{report.worst ? <>⚰ Mayor impacto: {report.worst.played}, −{report.worst.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>.</> : ''}</span>
             </div>
 
             {best && <div className="autopsy-best-move"><b>💎 Jugada de la partida · {best.played}</b><MoveContext move={best} /><p>{explainMoveReport(best)}</p></div>}
 
             {incidents.length ? <div className="autopsy-timeline">{incidents.map((m, i) => <div className={`autopsy-incident sev-${m.severity}`} key={m.index}>
               <div className="autopsy-incident-number">#{i + 1}</div>
-              <div><b>{noReturn?.index === m.index ? '☠ Punto de no retorno' : incidentTitle(i, m, incidents.length)}</b><p>Jugada {m.moveNumber}: <strong>{m.played}</strong> en vez de <strong>{m.suggested}</strong> · pérdida aproximada: <strong>−{m.loss} cp</strong></p><MoveContext move={m} /><small>{explainMoveReport(m)}</small></div>
+              <div><b>{noReturn?.index === m.index ? '☠ Punto de no retorno' : incidentTitle(i, m, incidents.length)}</b><p>Jugada {m.moveNumber}: <strong>{m.played}</strong> en vez de <strong>{m.suggested}</strong> · pérdida aproximada: <strong>−{m.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></strong></p><MoveContext move={m} /><small>{explainMoveReport(m)}</small></div>
             </div>)}</div> : <p className="hint-text">No encontramos heridas tácticas de consideración. Francamente decepcionante para el departamento forense.</p>}
 
             <div className="autopsy-verdict"><b>DICTAMEN DE LA CPU</b><p>{forensicVerdict(report)}</p></div>

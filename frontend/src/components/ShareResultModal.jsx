@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { buildShareText, buildShareUrl, normalizeShareRecord } from '../shareResult.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 const OUTCOME = { win: 'Victoria', loss: 'Derrota', draw: 'Tablas' };
 
@@ -53,7 +54,7 @@ export default function ShareResultModal({ record, onClose }) {
             {data.timeControl?.label && <span>{data.timeControl.label}</span>}
           </div>
           {data.incident ? (
-            <p>Jugada {data.incident.moveNumber}: <b>{data.incident.played}</b> en vez de <b>{data.incident.suggested}</b> · −{data.incident.loss} cp</p>
+            <p>Jugada {data.incident.moveNumber}: <b>{data.incident.played}</b> en vez de <b>{data.incident.suggested}</b> · −{data.incident.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></p>
           ) : data.opening ? <p>{data.opening}</p> : null}
           {data.series && !data.incident && <p>Serie: Tú {data.series.humanWins} · CPU {data.series.cpuWins}{data.series.draws ? ` · tablas ${data.series.draws}` : ''}</p>}
         </div>

@@ -25,6 +25,7 @@ import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
 import { loadZenMode, saveZenMode, zenModeSummary } from '../zenMode.js';
 import { identifyOpening } from '../openings.js';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 const STATUS_LABELS = {
   playing: '',
@@ -710,7 +711,7 @@ export default function GameScreen({
               />
               {!zenMode && selectionNotice && (
                 <div className={`move-availability-note ${selectionNotice.kind}`} role="status" aria-live="polite">
-                  <b>{selectionNotice.kind === 'pinned' ? 'Pieza clavada' : 'Sin jugadas legales'}</b>
+                  <b>{selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
                   <span>{selectionNotice.text}</span>
                 </div>
               )}

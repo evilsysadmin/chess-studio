@@ -5,6 +5,7 @@ import { TIME_CONTROLS } from '../clock.js';
 import { SERIES_OPTIONS } from '../series.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { handicapForGap } from '../handicap.js';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 export default function QuickMatchModal({
   difficulty,
@@ -91,7 +92,7 @@ export default function QuickMatchModal({
 
         <div className="quick-match-advanced">
           <label><input type="checkbox" checked={suddenDeath} onChange={(e)=>setSuddenDeath(e.target.checked)} /> <b>Sudden Death</b> · 3 incidentes tácticos graves y pierdes, aunque el tablero aún respire.</label>
-          <label><input type="checkbox" checked={threatCheck} onChange={(e)=>setThreatCheck(e.target.checked)} /> <b>Control táctico</b> · ante una cagada seria, la CPU espera y te obliga a preguntarte qué amenaza el rival.</label>
+          <label><input type="checkbox" checked={threatCheck} onChange={(e)=>setThreatCheck(e.target.checked)} /> <b>Control táctico</b> · ante una cagada seria, la CPU espera y te obliga a preguntarte qué amenaza el rival. Rutina <GlossaryTerm term="CCT">CCT</GlossaryTerm>.</label>
         </div>
 
         <button

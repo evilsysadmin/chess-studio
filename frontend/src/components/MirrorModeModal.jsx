@@ -1,6 +1,7 @@
 import React from 'react';
 import { computeMirrorProfile } from '../mirrorMode.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 export default function MirrorModeModal({ onStart, onClose }) {
   useEscapeToClose(onClose);
@@ -29,7 +30,7 @@ export default function MirrorModeModal({ onStart, onClose }) {
             <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
               Perfil de confianza <b>{profile.confidence}</b>, calculado con {profile.gamesSampled} partidas de
               estilo y {profile.errorGamesSampled} autopsias. Tu peor jugada pierde en promedio <b>{profile.avgLoss}</b>
-              {' '}centipawns; el fantasma queda en nivel <b>{profile.difficulty}</b>. El motor sólo usa tu estilo
+              {' '}<GlossaryTerm term="cp">centipawns</GlossaryTerm>; el fantasma queda en nivel <b>{profile.difficulty}</b>. El motor sólo usa tu estilo
               para desempatar jugadas casi equivalentes: no regalará una torre por hacer cosplay de tus peores tardes.
             </p>
 

@@ -13,6 +13,7 @@ import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
 import CareerScreen from './CareerScreen.jsx';
 import { combatRecordModeLabel } from '../combatChessBrand.js';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combat Chess' };
 
@@ -216,7 +217,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                   to: searchResult.moveReport.playedTo,
                 })}
               </span>
-              <span className="worst-move-loss">-{searchResult.moveReport.loss} cp</span>
+              <span className="worst-move-loss">-{searchResult.moveReport.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></span>
             </span>
             <span className="worst-move-detail">
               Debías jugar{' '}
@@ -253,7 +254,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             </div>
             <p className="hint-text">
               Revisando {searchProgress.done} de {searchProgress.total}…
-              {searchResult && ` Peor hasta ahora: ${searchResult.moveReport.played} (-${searchResult.moveReport.loss} cp).`}
+              {searchResult && <> Peor hasta ahora: {searchResult.moveReport.played} (-{searchResult.moveReport.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>).</>}
             </p>
             <button type="button" className="secondary-btn" onClick={cancelSearch}>Cancelar</button>
           </div>

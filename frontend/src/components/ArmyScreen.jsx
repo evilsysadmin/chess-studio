@@ -325,50 +325,66 @@ function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTe
   );
 }
 
-export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, embedded = false, showMemorial = true }) {
   const [selectedKey, setSelectedKey] = useState(null);
-  useEscapeToClose(selectedKey ? () => setSelectedKey(null) : onClose);
+  useEscapeToClose(() => setSelectedKey(null), { disabled: !selectedKey });
   const selectedSlot = selectedKey ? CANONICAL_ROSTER_SLOTS.find((slot) => rosterSlotKey(slot) === selectedKey) : null;
 
+  return (
+    <section className={`army-roster-panel ${embedded ? 'embedded' : ''}`} aria-label="Orden de batalla de Combat Chess">
+      <div className="army-roster-heading">
+        <div>
+          <span className="army-memorial-kicker">COMBAT CHESS · ORDEN DE BATALLA</span>
+          <h3>Tu ejército</h3>
+        </div>
+        <span className="army-roster-count">16 unidades</span>
+      </div>
+      <p className="hint-text army-roster-intro">
+        Todo el destacamento de un vistazo. Las 16 identidades tienen alias desde que nacen; 15 piezas desarrollan carrera militar y el Rey actúa como mando sin XP. Pulsa una unidad para abrir su expediente, mejorarla o preparar su despliegue.
+      </p>
+      <p className="hint-text army-combat-xp">
+        XP de combate disponible: <b>{roster.combatXp}</b> · reservado para revivir bajas recuperables.
+      </p>
+
+      <div className="army-roster-grid" aria-label="Formación completa del ejército">
+        {CANONICAL_ROSTER_SLOTS.map((slot) => (
+          <UnitRosterCard key={rosterSlotKey(slot)} roster={roster} slot={slot} onOpen={setSelectedKey} />
+        ))}
+      </div>
+
+      <p className="hint-text army-roster-footnote">Formación: primera línea = piezas mayores y mando; segunda = ocho peones. El color del tablero puede cambiar entre partidas, pero cada identidad sigue siendo la misma.</p>
+      {showMemorial && <Memorial roster={roster} />}
+
+      {selectedSlot && (
+        <UnitDossier
+          roster={roster}
+          slot={selectedSlot}
+          onBuy={onBuy}
+          onRevive={onRevive}
+          onMetamorphose={onMetamorphose}
+          onUnlockTechnique={onUnlockTechnique}
+          onEquipTechnique={onEquipTechnique}
+          onClose={() => setSelectedKey(null)}
+        />
+      )}
+    </section>
+  );
+}
+
+export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+  useEscapeToClose(onClose);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card army-roster-card" onClick={(e) => e.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <div className="army-roster-heading">
-          <div>
-            <span className="army-memorial-kicker">COMBAT CHESS · ORDEN DE BATALLA</span>
-            <h3>Tu ejército</h3>
-          </div>
-          <span className="army-roster-count">16 unidades</span>
-        </div>
-        <p className="hint-text army-roster-intro">
-          Todo el destacamento de un vistazo. Las 16 identidades tienen alias desde que nacen; 15 piezas desarrollan carrera militar y el Rey actúa como mando sin XP. Pulsa una unidad para abrir su expediente, mejorarla o preparar su despliegue.
-        </p>
-        <p className="hint-text army-combat-xp">
-          XP de combate disponible: <b>{roster.combatXp}</b> · reservado para revivir bajas recuperables.
-        </p>
-
-        <div className="army-roster-grid" aria-label="Formación completa del ejército">
-          {CANONICAL_ROSTER_SLOTS.map((slot) => (
-            <UnitRosterCard key={rosterSlotKey(slot)} roster={roster} slot={slot} onOpen={setSelectedKey} />
-          ))}
-        </div>
-
-        <p className="hint-text army-roster-footnote">Formación: primera línea = piezas mayores y mando; segunda = ocho peones. El color del tablero puede cambiar entre partidas, pero cada identidad sigue siendo la misma.</p>
-        <Memorial roster={roster} />
-
-        {selectedSlot && (
-          <UnitDossier
-            roster={roster}
-            slot={selectedSlot}
-            onBuy={onBuy}
-            onRevive={onRevive}
-            onMetamorphose={onMetamorphose}
-            onUnlockTechnique={onUnlockTechnique}
-            onEquipTechnique={onEquipTechnique}
-            onClose={() => setSelectedKey(null)}
-          />
-        )}
+        <ArmyRosterPanel
+          roster={roster}
+          onBuy={onBuy}
+          onRevive={onRevive}
+          onMetamorphose={onMetamorphose}
+          onUnlockTechnique={onUnlockTechnique}
+          onEquipTechnique={onEquipTechnique}
+        />
       </div>
     </div>
   );

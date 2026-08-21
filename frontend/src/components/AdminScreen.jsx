@@ -7,6 +7,7 @@ import { getUsername } from '../auth.js';
 import { formatLongMove } from '../notation.js';
 import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -44,12 +45,12 @@ function Presence({ user, compact = false }) {
 
 function WorstMove({ move, compact = false }) {
   if (!move) return <span className="admin-muted">—</span>;
-  if (compact) return <strong className="admin-worst-malus">−{move.loss} cp</strong>;
+  if (compact) return <strong className="admin-worst-malus">−{move.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></strong>;
   return (
     <span>
       <strong>{move.played || '—'}</strong>
       {move.suggested ? <> · mejor: {move.suggested}</> : null}
-      {Number.isFinite(move.loss) ? <> · pérdida {move.loss} cp</> : null}
+      {Number.isFinite(move.loss) ? <> · pérdida {move.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></> : null}
     </span>
   );
 }
@@ -65,7 +66,7 @@ function WorstMoveAutopsy({ move, data }) {
     <div className="admin-autopsy">
       <div className="admin-autopsy-summary">
         <span className="admin-autopsy-verdict">{autopsy.incident}</span>
-        <strong>−{move.loss} cp</strong>
+        <strong>−{move.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></strong>
         <small>Jugada {move.moveNumber || Math.floor(autopsy.index / 2) + 1} · {autopsy.mode}{autopsy.record?.date ? ` · ${new Date(autopsy.record.date).toLocaleDateString()}` : ''}</small>
       </div>
       <div className="admin-autopsy-moves">
@@ -259,7 +260,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
                               <div><span>Última actividad exacta</span><strong>{u.lastActivity ? new Date(u.lastActivity).toLocaleString() : '—'}</strong></div>
                               <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>
-                              <div><span>Rating / partidas ELO</span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>
+                              <div><span>Rating / partidas <GlossaryTerm term="ELO">ELO</GlossaryTerm></span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>
                               <div><span>Pico de rating</span><strong>{u.ratingPeak ?? '—'}</strong></div>
                               <div><span>Racha máx. victorias</span><strong>{u.longestWinStreak ?? 0}</strong></div>
                               <div><span>Victoria más difícil</span><strong>{u.bestDifficultyWin == null ? '—' : `CPU ${u.bestDifficultyWin}`}</strong></div>
@@ -282,7 +283,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Boss Run</span><strong>fase {u.bossBestStage ?? 0}/6</strong></div>
                               <div><span>Mejor Copa personal</span><strong>{u.cupBestScore ?? 0}/8 pts</strong></div>
                               <div><span>Sudden Death ganados</span><strong>{u.suddenDeathWins ?? 0}</strong></div>
-                              <div><span>Accuracy media</span><strong>{u.avgAccuracy == null ? '—' : `${u.avgAccuracy}%`}</strong></div>
+                              <div><span><GlossaryTerm term="Accuracy">Accuracy</GlossaryTerm> media</span><strong>{u.avgAccuracy == null ? '—' : `${u.avgAccuracy}%`}</strong></div>
                               <div><span>Autopsias V14</span><strong>{u.analysisArchiveGames ?? 0}</strong></div>
                               <div><span>Apuros de tiempo</span><strong>{u.pressureIncidentPct == null ? '—' : `${u.pressureIncidents}/${u.pressureMoves} · ${u.pressureIncidentPct}%`}</strong></div>
                               <div><span>Ventajas no convertidas</span><strong>{u.missedConversions ?? 0}</strong></div>

@@ -10,6 +10,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
 import GameChat from './GameChat.jsx';
+import GlossaryTerm from './GlossaryTerm.jsx';
 
 // Reconstruye el FEN en cada punto de la partida a partir de la lista de
 // jugadas guardada. positions[0] es la posición inicial; positions[i] es la
@@ -168,7 +169,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
       )}
       {report && (
         <p className="hint-text replay-analyzing-banner">
-          {report.label} Pérdida promedio de evaluación: <b>{report.averageLoss}</b>
+          {report.label} Pérdida promedio de <GlossaryTerm term="Evaluación">evaluación</GlossaryTerm>: <b>{report.averageLoss}</b>
           {' · '}se revisaron {report.analyzedCount} de tus jugadas.
         </p>
       )}
@@ -177,7 +178,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
         <div className="crime-scene-banner">
           <div>
             <span className="eyebrow">CÁMARA DEL CRIMEN</span>
-            <b>Jugada {pinnedReport.moveNumber}: {pinnedReport.played} · −{pinnedReport.loss} cp</b>
+            <b>Jugada {pinnedReport.moveNumber}: {pinnedReport.played} · −{pinnedReport.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></b>
             <p>Estás justo antes del impacto. Reproduce la jugada y compara después con la alternativa marcada por el motor.</p>
           </div>
           <button className="primary-btn" onClick={() => goTo(pinnedReport.index + 1)}>
@@ -210,6 +211,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
           <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleDownloadPGN}>
             Descargar PGN
           </button>
+          <p className="hint-text glossary-inline-hint">Formato de exportación: <GlossaryTerm term="PGN">PGN</GlossaryTerm>.</p>
           {onPlayFromHere && (
             <button className="primary-btn lab-from-here-btn" style={{ marginTop: '0.6rem' }} onClick={() => onPlayFromHere(fen, record.humanColor, record.difficulty, { sourceRecord: record })}>
               🧪 Jugar desde aquí contra la CPU

@@ -147,7 +147,7 @@ export default function Menu({
           <button type="button" className="menu-card accent-success" onClick={onTutorial}>
             <IconBook className="menu-card-icon" />
             <h3>Aprendizaje</h3>
-            <p>Diez lecciones interactivas: cómo se mueve cada pieza, enroque, jaque mate.</p>
+            <p>Diez lecciones interactivas y glosario: piezas, enroque, jaque mate, cp, CCT y terminología útil.</p>
             <span className="menu-card-cta">Ver tutorial →</span>
           </button>
 

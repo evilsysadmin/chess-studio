@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const source = fs.readFileSync(path.resolve(process.cwd(), 'src/components/ArmyScreen.jsx'), 'utf8');
 const css = fs.readFileSync(path.resolve(process.cwd(), 'src/styles.css'), 'utf8');
+const campaignSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/RoguelikeScreen.jsx'), 'utf8');
 
 describe('roster visual completo de Combat Chess', () => {
   it('muestra los 16 slots, incluido el rey, sin filtrar reclutas sin progreso', () => {
@@ -18,6 +19,13 @@ describe('roster visual completo de Combat Chess', () => {
     expect(source).toContain('unitAlias(roster, key)');
     expect(source).toContain('<UnitDossier');
     expect(source).toContain('HOJA DE SERVICIO');
+  });
+
+  it('Campaña incrusta el roster completo en vez de enseñar sólo la hoja global', () => {
+    expect(source).toContain('export function ArmyRosterPanel');
+    expect(campaignSource).toContain('<ArmyRosterPanel');
+    expect(campaignSource).toContain('embedded');
+    expect(campaignSource).toContain('roster={roster}');
   });
 
   it('usa formación de ocho columnas en escritorio y se adapta en móvil', () => {

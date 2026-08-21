@@ -9,7 +9,7 @@ export default function CombatServicePanel({ summary, compact = false }) {
     <section className={`combat-service-card ${compact ? 'compact' : ''}`} aria-label="Hoja de servicio de Combat Chess">
       <div className="combat-service-heading">
         <div>
-          <span className="combat-service-kicker">HOJA DE SERVICIO</span>
+          <span className="combat-service-kicker">{compact ? 'CARRERA DE CAMPAÑA' : 'HOJA DE SERVICIO'}</span>
           <strong className="combat-service-rank"><span aria-hidden="true">{rank.insignia}</span> {rank.label}</strong>
         </div>
         <div className="combat-service-merit">
@@ -40,12 +40,19 @@ export default function CombatServicePanel({ summary, compact = false }) {
         <p className="combat-service-max">Rango máximo. Ya sólo queda intentar no hacer el ridículo en el informe.</p>
       )}
 
-      <div className="combat-service-medals">
+      <div className={`combat-service-medals ${compact ? 'compact' : ''}`}>
         <div className="combat-service-medals-title">
           <span>Condecoraciones</span>
           <b>{decorations.length}/{COMBAT_DECORATIONS.length}</b>
         </div>
-        {decorations.length > 0 ? (
+        {compact ? (
+          <div className="combat-medal-compact-line">
+            {decorations.length > 0
+              ? decorations.slice(0, 5).map((medal) => <span key={medal.id} title={`${medal.label}: ${medal.description}`}>✦ {medal.short}</span>)
+              : <span className="hint-text">Sin condecoraciones todavía.</span>}
+            {decorations.length > 5 && <span>+{decorations.length - 5}</span>}
+          </div>
+        ) : decorations.length > 0 ? (
           <div className="combat-medal-grid">
             {decorations.map((medal) => (
               <span key={medal.id} className="combat-medal" title={`${medal.label}: ${medal.description}`}>
