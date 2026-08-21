@@ -1688,8 +1688,8 @@ const STRUCTURED_FEELS = Object.freeze({
     layers: { lead: false, counter: false, chords: true, bass: true, drums: true, signature: true },
     mix: { lead: 0, counter: 0, bass: 1.08, chord: 0.86 },
     percussion: { period: 32, kit: 'brush-jazz', punch: 0.72, pattern: { 0: 'B', 24: 'H' } },
-    signature: { instrument: 'mutedHorn', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 32,
-      durationSteps: 10, volume: 0.62, motif: { 5: 69, 17: 65.5, 29: 62 } },
+    signature: { instrument: 'mutedHorn', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 40,
+      durationSteps: 10, volume: 0.62, motif: { 5: 69, 17: 65.5, 29: 62, 37: 60.5 } },
   }),
   beirutSixEight: Object.freeze({
     family: 'beirut-buzuq-darbuka-6-8', preserveSectionOrder: true,
@@ -1746,8 +1746,8 @@ const STRUCTURED_FEELS = Object.freeze({
     layers: { lead: false, counter: false, chords: true, bass: true, drums: false, signature: true },
     mix: { lead: 0, counter: 0, bass: 0.5, chord: 0.48 },
     percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
-    signature: { instrument: 'guitar2', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 32,
-      durationSteps: 3.1, volume: 0.72, motif: { 0: 64, 7: 65, 15: 68, 23: 63, 30: 64 } },
+    signature: { instrument: 'guitar2', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 48,
+      durationSteps: 3.1, volume: 0.72, motif: { 0: 64, 7: 65, 15: 68, 23: 63, 30: 64, 39: 61, 46: 64 } },
   }),
 
   // Familias secundarias conservan el refactor anterior hasta que las siete
