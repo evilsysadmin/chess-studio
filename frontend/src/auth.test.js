@@ -128,7 +128,12 @@ describe('fetchMe/authHeader/wakeBackend', () => {
   it('wakeBackend pega a /api/health sin propagar errores', () => {
     mockFetchOnce(200, { ok: true });
     wakeBackend();
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/health'));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/health'),
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'X-Request-ID': expect.any(String) }),
+      }),
+    );
 
     global.fetch = vi.fn().mockRejectedValue(new Error('timeout'));
     expect(() => wakeBackend()).not.toThrow();
