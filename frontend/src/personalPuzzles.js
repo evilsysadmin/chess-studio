@@ -57,6 +57,9 @@ export function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
     moveNumber: moveReport.moveNumber ?? (Math.floor(moveReport.index / 2) + 1),
     difficulty: meta.difficulty ?? null,
     mode: meta.mode ?? null,
+    opening: meta.opening || null,
+    sourceGameId: meta.gameId || null,
+    humanColor,
   };
 }
 
@@ -82,10 +85,16 @@ export function savePersonalPuzzlesFromReport(history, humanColor, report, meta 
   return { added, total: next.length };
 }
 
-export function randomPersonalPuzzle(excludeId) {
+export function personalPuzzlesForFilter(filter = null) {
   const all = loadPersonalPuzzles();
-  const pool = excludeId ? all.filter((p) => p.id !== excludeId) : all;
-  const list = pool.length ? pool : all;
+  if (!filter?.opening) return all;
+  return all.filter((p) => p.opening === filter.opening);
+}
+
+export function randomPersonalPuzzle(excludeId, filter = null) {
+  const eligible = personalPuzzlesForFilter(filter);
+  const pool = excludeId ? eligible.filter((p) => p.id !== excludeId) : eligible;
+  const list = pool.length ? pool : eligible;
   return list.length ? list[Math.floor(Math.random() * list.length)] : null;
 }
 

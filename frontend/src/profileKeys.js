@@ -11,6 +11,7 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-game-history',
   'chess-study-combat-history',
   'chess-study-combat-roster',
+  'chess-study-combat-service',
   'chess-study-player-rating',
   'chess-study-rating-history',
   'chess-study-achievements',

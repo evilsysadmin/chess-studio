@@ -71,6 +71,23 @@ describe('saveSurvivorsToRoster', () => {
     expect(next.pieces['q-d'].alive).toBe(true);
   });
 
+
+  it('conserva la metamorfosis de un veterano vivo al guardar la batalla', () => {
+    const registry = {
+      a4: { id: 'w-p-a2', type: 'n', color: 'w', square: 'a4', strengthPoints: 3, speedPoints: 2, bankedXp: 5, metamorphosis: 'n' },
+    };
+    const next = saveSurvivorsToRoster(registry, { pieces: {}, combatXp: 0 }, 'w', 'win');
+    expect(next.pieces['p-a']).toMatchObject({ alive: true, metamorphosis: 'n', strengthPoints: 3, speedPoints: 2, bankedXp: 5 });
+  });
+
+  it('conserva la metamorfosis mientras la pieza está caída y si se revive', () => {
+    const roster = { pieces: { 'p-a': { strengthPoints: 4, speedPoints: 4, bankedXp: 0, alive: true, metamorphosis: 'b' } }, combatXp: 50 };
+    const dead = saveSurvivorsToRoster({}, roster, 'w', 'loss');
+    expect(dead.pieces['p-a']).toMatchObject({ alive: false, metamorphosis: 'b' });
+    const revived = revivePiece(dead, 'p-a', 'b');
+    expect(revived.pieces['p-a']).toMatchObject({ alive: true, metamorphosis: 'b', strengthPoints: 2, speedPoints: 2 });
+  });
+
   it('otorga XP de combate según el resultado (ganar > tablas > perder)', () => {
     const win = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'win');
     const draw = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'draw');

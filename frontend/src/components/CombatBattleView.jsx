@@ -85,10 +85,23 @@ export default function CombatBattleView({
               : 'Terminó en tablas.'}
           </p>
           {battleRecap && (
-            <p className="hint-text combat-recap-line">
-              {battleRecap.survivorCount}/{battleRecap.totalCount} piezas sobrevivieron
-              {battleRecap.xpGained > 0 ? ` · +${battleRecap.xpGained} XP de combate` : ''}
-            </p>
+            <>
+              <p className="hint-text combat-recap-line">
+                {battleRecap.survivorCount}/{battleRecap.totalCount} piezas sobrevivieron
+                {battleRecap.xpGained > 0 ? ` · +${battleRecap.xpGained} XP de combate` : ''}
+                {battleRecap.serviceResult?.meritGained > 0 ? ` · +${battleRecap.serviceResult.meritGained} méritos` : ''}
+              </p>
+              {battleRecap.serviceResult?.promoted && (
+                <p className="combat-service-promotion">ASCENSO · {battleRecap.serviceResult.currentRank.insignia} {battleRecap.serviceResult.currentRank.label}</p>
+              )}
+              {battleRecap.serviceResult?.newDecorations?.length > 0 && (
+                <div className="combat-service-awards-earned">
+                  {battleRecap.serviceResult.newDecorations.map((medal) => (
+                    <span key={medal.id}>✦ {medal.label}</span>
+                  ))}
+                </div>
+              )}
+            </>
           )}
           <button className="primary-btn" onClick={backToSetup}>Volver a jugar</button>
           {battleRecap && onViewBattle && (

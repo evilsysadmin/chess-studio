@@ -92,6 +92,7 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
       strengthPoints: saved.strengthPoints || 0,
       speedPoints: saved.speedPoints || 0,
       bankedXp: saved.bankedXp || 0,
+      metamorphosis: saved.metamorphosis || null,
     };
   }
   return next;
@@ -118,6 +119,7 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
       speedPoints: piece.speedPoints || 0,
       bankedXp: piece.bankedXp || 0,
       alive: true,
+      metamorphosis: piece.metamorphosis || null,
     };
   }
 
@@ -140,7 +142,7 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
       // Recién capturada esta partida, con progreso real invertido: guarda
       // su último nivel conocido (para el costo/beneficio de revivirla) y
       // queda marcada muerta.
-      pieces[key] = { strengthPoints: strength, speedPoints: speed, bankedXp: prev?.bankedXp || 0, alive: false };
+      pieces[key] = { strengthPoints: strength, speedPoints: speed, bankedXp: prev?.bankedXp || 0, alive: false, metamorphosis: prev?.metamorphosis || null };
     }
   }
 
@@ -163,6 +165,7 @@ export function revivePiece(rosterState, key, type) {
     speedPoints: Math.floor((dead.speedPoints || 0) / 2),
     bankedXp: 0,
     alive: true,
+    metamorphosis: dead.metamorphosis || null,
   };
 
   return {

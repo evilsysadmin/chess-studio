@@ -24,6 +24,7 @@ import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
 import { loadZenMode, saveZenMode, zenModeSummary } from '../zenMode.js';
+import { identifyOpening } from '../openings.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -679,6 +680,7 @@ export default function GameScreen({
           {!zenMode && prediction && <div className="prediction-strip">{prediction.text}</div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
+          {!zenMode && memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin ELO</div>}
           {!zenMode && game.ghostStyle && <div className="series-strip ghost-strip">Modo Rival Fantasma · nivel {game.difficulty} · estilo derivado de tus partidas</div>}
           {!zenMode && seriesState && <div className={`series-strip ${seriesState.winner ? 'finished' : ''}`}>{seriesStatusText(seriesState)}</div>}
           {!zenMode && runState?.active && <div className="series-strip">{runState.mode === 'boss' ? `Boss Run · fase ${runState.stage + 1}/6 · CPU ${runState.difficulty}` : runState.mode === 'cup' ? `Copa · ${runState.completedStages || 0}/8 · ${runState.points || 0} pts · CPU ${runState.difficulty}` : `Racha · ${runState.wins} victorias · CPU ${runState.difficulty}`}</div>}
@@ -800,7 +802,7 @@ export default function GameScreen({
           history={game.history}
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
-          meta={{ gameId: game.id, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: null, timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
+          meta={{ gameId: game.id, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: memoryContext.nemesisOpening || identifyOpening((game.history || []).map((m) => m.san).filter(Boolean)), timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.nemesis ? 'nemesis-training' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
           onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
         />

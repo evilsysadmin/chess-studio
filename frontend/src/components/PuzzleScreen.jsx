@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, randomPuzzle } from '../puzzles.js';
-import { loadPersonalPuzzles, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
+import { loadPersonalPuzzles, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
 import { dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
@@ -16,12 +16,13 @@ const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana ma
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false }) {
+export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
-  const resolvedInitialSource = initialSource === 'personal' && loadPersonalPuzzles().length === 0 ? 'curated' : initialSource;
+  const filteredInitialPersonal = personalPuzzlesForFilter(initialFilter);
+  const resolvedInitialSource = initialSource === 'personal' && filteredInitialPersonal.length === 0 ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
-  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle() || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES) : randomPuzzle());
+  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES) : randomPuzzle());
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [fen, setFen] = useState(puzzle.fen);
   const [stepIndex, setStepIndex] = useState(0);
@@ -43,6 +44,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
   const humanColor = useMemo(() => new Chess(puzzle.fen).turn(), [puzzle]);
   const personalStats = useMemo(() => personalTrainingSummary(), [personalPuzzles]);
+  const filteredPersonalCount = useMemo(() => initialFilter?.opening ? personalPuzzles.filter((p) => p.opening === initialFilter.opening).length : personalPuzzles.length, [personalPuzzles, initialFilter]);
 
   useEffect(() => {
     setFen(puzzle.fen);
@@ -89,13 +91,13 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     : [];
 
   function choosePuzzle(nextSource, excludeId = null) {
-    if (nextSource === 'personal') return randomPersonalPuzzle(excludeId) || randomPuzzle(excludeId);
+    if (nextSource === 'personal') return randomPersonalPuzzle(excludeId, initialFilter) || randomPuzzle(excludeId);
     if (nextSource === 'daily') return dailyPuzzle(PUZZLES);
     return randomPuzzle(excludeId);
   }
 
   function changeSource(nextSource) {
-    if (nextSource === 'personal' && personalPuzzles.length === 0) return;
+    if (nextSource === 'personal' && filteredPersonalCount === 0) return;
     setSource(nextSource);
     setPuzzle(choosePuzzle(nextSource));
   }
@@ -245,8 +247,8 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       {!rushMode && <div className="puzzle-source-picker" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
-        <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={personalPuzzles.length === 0} onClick={() => changeSource('personal')}>
-          Tus crímenes ({personalPuzzles.length})
+        <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalCount === 0} onClick={() => changeSource('personal')}>
+          {initialFilter?.opening ? `Crímenes · ${initialFilter.opening} (${filteredPersonalCount})` : `Tus crímenes (${personalPuzzles.length})`}
         </button>
         <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
       </div>}
@@ -301,7 +303,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           <p>{puzzle.description}</p>
           {source === 'personal' && (
             <p className="hint-text personal-puzzle-note">
-              ☠ Nació de una de tus propias autopsias. La máquina guarda rencor documental. {personalStats.attempts ? ` Entrenamiento: ${personalStats.cleanSolves}/${personalStats.attempts} limpias${personalStats.cleanRate !== null ? ` · ${personalStats.cleanRate}%` : ''}.` : ''}
+              ☠ Nació de una de tus propias autopsias. La máquina guarda rencor documental.{initialFilter?.opening ? ` Filtro némesis: ${initialFilter.opening}.` : ''} {personalStats.attempts ? ` Entrenamiento: ${personalStats.cleanSolves}/${personalStats.attempts} limpias${personalStats.cleanRate !== null ? ` · ${personalStats.cleanRate}%` : ''}.` : ''}
             </p>
           )}
           {source === 'daily' && (

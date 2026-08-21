@@ -4832,3 +4832,252 @@ button.status-chip:hover { border-color: var(--brass-dim); }
     justify-items: center;
   }
 }
+
+/* V16.6aq — Némesis adaptativa: evidencia real + entrenamiento dirigido. */
+.nemesis-section {
+  border-color: rgba(190, 70, 70, .28);
+  background: linear-gradient(145deg, rgba(120, 35, 35, .07), rgba(255, 255, 255, .018));
+}
+.nemesis-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .8rem;
+  flex-wrap: wrap;
+}
+.nemesis-heading h2 { margin-bottom: .2rem; }
+.nemesis-confidence {
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 999px;
+  padding: .3rem .6rem;
+  font-size: .78rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .82;
+}
+.nemesis-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, .65fr);
+  gap: 1rem;
+  align-items: center;
+  margin-top: .8rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, .13);
+}
+.nemesis-core h3 { margin: .2rem 0 .45rem; font-size: 1.25rem; }
+.nemesis-core p { margin: 0 0 .4rem; }
+.nemesis-core small { opacity: .68; }
+.nemesis-actions { display: flex; flex-direction: column; gap: .5rem; }
+.nemesis-actions button { width: 100%; }
+.nemesis-tactic {
+  margin-top: .75rem;
+  padding: .7rem .8rem;
+  border-left: 3px solid currentColor;
+  background: rgba(255, 255, 255, .025);
+  border-radius: 0 9px 9px 0;
+}
+.nemesis-footnote { margin-top: .7rem; }
+.nemesis-strip { border-color: rgba(190, 70, 70, .32); }
+
+@media (max-width: 700px) {
+  .nemesis-card { grid-template-columns: 1fr; align-items: stretch; }
+  .nemesis-actions { width: 100%; }
+}
+
+/* ---------- V16.6ar · hoja de servicio militar de Combate ---------- */
+.combat-service-card {
+  margin: 0.8rem 0;
+  padding: 0.85rem;
+  border: 1px solid rgba(154, 172, 130, 0.34);
+  border-left: 4px solid #9aac82;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(57, 72, 52, 0.26), transparent 58%),
+    rgba(10, 14, 12, 0.86);
+}
+.combat-service-card.compact { margin: 0.75rem 0 0.9rem; }
+.combat-service-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.combat-service-kicker {
+  display: block;
+  color: #9aac82;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  margin-bottom: 0.18rem;
+}
+.combat-service-rank {
+  display: block;
+  color: var(--parchment);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.combat-service-rank > span { color: var(--brass); letter-spacing: 0.06em; }
+.combat-service-merit {
+  min-width: 66px;
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.combat-service-merit b { display: block; color: var(--brass); font-size: 1.15rem; line-height: 1; }
+.combat-service-merit span { color: var(--parchment-dim); font-size: 0.62rem; }
+.combat-service-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-top: 0.72rem;
+  color: var(--parchment-dim);
+  font-size: 0.72rem;
+}
+.combat-service-stats span { white-space: nowrap; }
+.combat-service-stats b { color: var(--parchment); }
+.combat-service-next { margin-top: 0.72rem; }
+.combat-service-next-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  align-items: baseline;
+  color: var(--parchment-dim);
+  font-size: 0.72rem;
+}
+.combat-service-next-copy b { color: var(--brass); }
+.combat-service-next-copy small { text-align: right; color: var(--parchment-dim); }
+.combat-service-progress {
+  height: 5px;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.combat-service-progress > span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6f805f, var(--brass));
+}
+.combat-service-max {
+  margin: 0.65rem 0 0;
+  color: var(--brass);
+  font-size: 0.76rem;
+}
+.combat-service-medals { margin-top: 0.78rem; padding-top: 0.68rem; border-top: 1px solid rgba(255,255,255,0.07); }
+.combat-service-medals-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.combat-service-medals-title b { color: #9aac82; }
+.combat-medal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+  margin-top: 0.52rem;
+}
+.combat-medal {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid rgba(154, 172, 130, 0.24);
+  border-radius: 6px;
+  background: rgba(29, 38, 28, 0.56);
+}
+.combat-medal > i { color: var(--brass); font-style: normal; font-size: 0.9rem; }
+.combat-medal > span { min-width: 0; display: grid; }
+.combat-medal b {
+  color: #c5d2ad;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+}
+.combat-medal small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--parchment-dim);
+  font-size: 0.66rem;
+}
+.combat-service-empty { margin: 0.45rem 0 0; }
+.combat-service-promotion {
+  margin: 0.55rem 0 0;
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.combat-service-awards-earned {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+.combat-service-awards-earned span {
+  padding: 0.28rem 0.48rem;
+  border: 1px solid rgba(202, 160, 77, 0.38);
+  border-radius: 999px;
+  color: var(--brass);
+  background: rgba(202, 160, 77, 0.07);
+  font-size: 0.7rem;
+}
+@media (max-width: 520px) {
+  .combat-service-heading,
+  .combat-service-next-copy { align-items: flex-start; }
+  .combat-service-next-copy { flex-direction: column; gap: 0.15rem; }
+  .combat-service-next-copy small { text-align: left; }
+  .combat-medal-grid { grid-template-columns: 1fr; }
+}
+
+/* v16.6ar · rango militar individual de cada veterano */
+.army-piece-rank {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.45rem;
+  padding: 0.12rem 0.34rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--brass);
+  vertical-align: middle;
+}
+
+/* v16.6as · metamorfosis de veteranos */
+.army-metamorphosis-status {
+  display: block;
+  margin-top: 0.28rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.army-metamorphosis-status.ready {
+  color: var(--brass);
+  font-weight: 700;
+}
+.army-metamorphosis-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  width: 100%;
+}
+.army-metamorphosis-actions .metamorphosis-btn {
+  border-color: color-mix(in srgb, var(--brass) 65%, transparent);
+  font-weight: 800;
+}
+@media (max-width: 520px) {
+  .army-metamorphosis-actions { grid-template-columns: 1fr; }
+}

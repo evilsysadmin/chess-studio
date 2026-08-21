@@ -2,13 +2,14 @@ import React from 'react';
 import ArmyScreen from './ArmyScreen.jsx';
 import ColorSelector from './ColorSelector.jsx';
 import { BASE_STATS } from '../combat.js';
+import CombatServicePanel from './CombatServicePanel.jsx';
 
 export default function CombatSetupView({
   onExit, difficulty, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
   showExpireWarning, setShowExpireWarning, handleStartBattleClick, startBattle,
-  showArmy, setShowArmy, handleBuyRosterStat, handleReviveRosterPiece,
-  handleResetRoster, onHistory,
+  showArmy, setShowArmy, handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece,
+  handleResetRoster, onHistory, serviceSummary,
 }) {
 
     return (
@@ -37,9 +38,13 @@ export default function CombatSetupView({
             (gastando "XP de combate", una moneda aparte que se gana al terminar cada partida) antes de que
             empieces la siguiente: si no las recuperas a tiempo, se pierde para siempre su veteranía y ese hueco vuelve la próxima batalla con una pieza de nivel 1. El
             rey nunca esquiva y siempre acierta cuando ataca, y tampoco gana ni gasta XP: el jaque mate sigue
-            siendo 100% seguro, como en el ajedrez de siempre.
+            siendo 100% seguro, como en el ajedrez de siempre. A partir de <b>Capitán</b>, un peón veterano puede
+            metamorfosear una sola vez en Caballo o Alfil: conserva su identidad, rango y mejoras, pero entra al tablero
+            moviéndose como su nueva clase. Sí, rompe el ajedrez normal. Aquí estamos en Combate.
           </p>
         </div>
+
+        <CombatServicePanel summary={serviceSummary} />
 
         {combatVariant === 'roguelike' && Array.isArray(runPerks) && runPerks.length > 0 && (
           <div className="menu-section">
@@ -205,7 +210,7 @@ export default function CombatSetupView({
         )}
 
         {showArmy && (
-          <ArmyScreen roster={roster} onBuy={handleBuyRosterStat} onRevive={handleReviveRosterPiece} onClose={() => setShowArmy(false)} />
+          <ArmyScreen roster={roster} onBuy={handleBuyRosterStat} onRevive={handleReviveRosterPiece} onMetamorphose={handleMetamorphoseRosterPiece} onClose={() => setShowArmy(false)} />
         )}
       </div>
     );

@@ -40,6 +40,22 @@ describe('Laboratorio FEN', () => {
     expect(validateLabPosition('4k3/8/8/8/8/8/8/4K3 w - e6 0 1').valid).toBe(false);
   });
 
+  it('acepta en-passant declarado cuando existe el peón que acaba de hacer el doble avance', () => {
+    expect(validateLabPosition('4k3/8/8/4p3/8/8/8/4K3 w - e6 0 2').valid).toBe(true);
+  });
+
+  it('acepta también el doble avance blanco cuando mueven negras', () => {
+    expect(validateLabPosition('4k3/8/8/8/4P3/8/8/4K3 b - e3 0 1').valid).toBe(true);
+  });
+
+  it('rechaza en-passant si la casilla de origen del doble avance sigue ocupada', () => {
+    expect(validateLabPosition('4k3/4n3/8/4p3/8/8/8/4K3 w - e6 0 2').valid).toBe(false);
+  });
+
+  it('rechaza en-passant si la casilla objetivo no está vacía', () => {
+    expect(validateLabPosition('4k3/8/4N3/4p3/8/8/8/4K3 w - e6 0 2').valid).toBe(false);
+  });
+
 
   it('rechaza reyes adyacentes', () => {
     const result = validateLabPosition('8/8/8/8/8/8/4k3/4K3 w - - 0 1');

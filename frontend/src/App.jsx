@@ -205,7 +205,7 @@ function AppInner({ isAdminUser }) {
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
   const [shareRecord, setShareRecord] = useState(null);
-  const [puzzleLaunch, setPuzzleLaunch] = useState({ source: 'curated', rush: false });
+  const [puzzleLaunch, setPuzzleLaunch] = useState({ source: 'curated', rush: false, filter: null });
   const [activeContract, setActiveContract] = useState(() => loadActiveContract());
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
@@ -532,7 +532,7 @@ function AppInner({ isAdminUser }) {
       clearActiveContract();
       setActiveContract(null);
       setSpecialRun(loadSpecialRun());
-      setGameContext({ lab: true, rescue: !!meta.rescue, sourceRecordId: meta.sourceRecord?.id || null });
+      setGameContext({ lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null });
       setLearningMode(true);
       setActiveTimeControl(null);
       setGame(created);
@@ -552,8 +552,8 @@ function AppInner({ isAdminUser }) {
     navigateTo('replay');
   }
 
-  function openPuzzleMode(source = 'curated', rush = false) {
-    setPuzzleLaunch({ source, rush });
+  function openPuzzleMode(source = 'curated', rush = false, filter = null) {
+    setPuzzleLaunch({ source, rush, filter });
     navigateTo('puzzle');
   }
 
@@ -779,7 +779,7 @@ function AppInner({ isAdminUser }) {
         {view === 'openings' && <OpeningsScreen onExit={goBack} />}
 
         {view === 'puzzle' && (
-          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} onExit={goBack} points={tournament.points} onSpendPoints={handleSpendPoints} />
+          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} onExit={goBack} points={tournament.points} onSpendPoints={handleSpendPoints} />
         )}
 
         {view === 'spectator' && <SpectatorScreen onExit={goBack} />}

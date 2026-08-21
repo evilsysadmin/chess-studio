@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import CombatScreen from './CombatScreen.jsx';
+import CombatServicePanel from './CombatServicePanel.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { applyModifierToFen, encounterForRun } from '../roguelikeModifiers.js';
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
+import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import {
   loadRun,
   startNewRun,
@@ -30,6 +32,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [towerCompleted, setTowerCompleted] = useState(() => loadTowerCompleted());
   const [endResult, setEndResult] = useState(null); // { type, reached, newBest }
   const [combatSessionActive, setCombatSessionActive] = useState(false);
+  const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
+  const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
 
   useEscapeToClose(onExit, {
     disabled: run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && combatSessionActive)),
@@ -81,6 +85,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   function handleBattleResult(outcome) {
     setCombatSessionActive(false);
+    setServiceRecord(loadCombatService());
     if (outcome === 'win') {
       if (run.mode === 'tower' && run.floor === ROGUELIKE_BOSS_FLOOR) {
         setRun((current) => completeTower(current));
@@ -159,6 +164,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         bossConfig={isBoss ? ROGUELIKE_BOSS : null}
         onBattleStart={handleBattleStarted}
         onBattleResult={handleBattleResult}
+        roguelikeFloor={run.floor}
+        roguelikeMode={run.mode}
       />
     );
   }
@@ -185,6 +192,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <span>9 · élite</span>
           <span>10 · REY BOSS ♥♥♥♥♥</span>
         </div>
+
+        <CombatServicePanel summary={serviceSummary} compact />
 
         {bestFloor > 0 && <p className="hint-text">Mejor piso alcanzado: <b>{bestFloor}</b></p>}
         {towerCompleted && <p className="hint-text roguelike-completed-mark">✓ Torre completada al menos una vez · infinito desbloqueado</p>}

@@ -7,6 +7,7 @@ import { BOARD_THEMES, loadBoardTheme, loadCareer, loadSpecialRun, saveBoardThem
 import { buildCemetery, buildOpeningTree, deriveChessProfile, evolutionBuckets } from '../metaProgress.js';
 import { conversionStats, hallOfFameAndShame, loadAnalysisArchive, materialDonated, openingClinic, openingRivalry, recurrenceIndex, weeklyReport } from '../advancedCareer.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { buildNemesisDossier } from '../nemesis.js';
 
 const TIME_LABEL = { none:'Sin reloj','1+0':'1+0 Bullet','3+2':'3+2 Blitz','5+0':'5+0','10+0':'10+0','15+10':'15+10' };
 function TreeRows({ node, depth=0 }) { const rows=Object.values(node?.children||{}).sort((a,b)=>b.count-a.count).slice(0,depth===0?6:3);return <>{rows.map(r=><div className="career-tree-row" key={`${depth}-${r.move}-${r.count}`} style={{paddingLeft:`${depth*16}px`}}><span>{depth?'↳ ':''}{r.move}</span><b>{r.count}×</b><small>{Math.round((r.wins||0)/Math.max(1,r.count)*100)}% V</small>{depth<2&&<TreeRows node={r} depth={depth+1}/>}</div>)}</>; }
@@ -27,7 +28,9 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
   const cemetery=useMemo(()=>buildCemetery(history).slice(0,8),[history]); const tree=useMemo(()=>buildOpeningTree(history,8),[history]); const profile=useMemo(()=>deriveChessProfile(history),[history]); const evolution=useMemo(()=>evolutionBuckets(history,10),[history]);
   const archive=useMemo(()=>loadAnalysisArchive(),[history]); const weekly=useMemo(()=>weeklyReport(history,archive),[history,archive]); const hall=useMemo(()=>hallOfFameAndShame(history,archive),[history,archive]); const conversion=useMemo(()=>conversionStats(archive),[archive]); const pressure=useMemo(()=>{const moves=Number(career.pressure?.moves||0),incidents=Number(career.pressure?.incidents||0);return{moves,incidents,rate:moves?Math.round(incidents/moves*100):null};},[career]); const donations=useMemo(()=>materialDonated(history),[history]); const recurrence=useMemo(()=>recurrenceIndex(rivalry),[rivalry]); const openings=useMemo(()=>openingRivalry(history),[history]); const clinic=useMemo(()=>openingClinic(history),[history]);
   const run=loadSpecialRun(); const rec=career.records||{}; const season=career.season||{}; const memories=rivalry.record?.memories||[]; const themes=unlockedBoardThemes(career); const analyses=Object.values(archive); const avgAccuracy=analyses.length?Math.round(analyses.map(a=>a.accuracy).filter(Number.isFinite).reduce((s,n)=>s+n,0)/Math.max(1,analyses.filter(a=>Number.isFinite(a.accuracy)).length)):null;
-  const topIncident=useMemo(()=>{const labels={'human:MISSED_MATE':'mates en una ignorados','human:ALLOWED_MATE':'mates regalados','human:QUEEN_EN_PRISE_TO_PAWN':'damas expuestas a peones','human:STALEMATE_BLUNDER':'ahogados criminales','cpu:PAWN_TAKES_QUEEN':'damas devoradas por peones','cpu:KNIGHT_FORK':'horquillas de caballo sufridas','cpu:PAWN_FORK':'horquillas de peón sufridas'};return Object.entries(rivalry.incidents||{}).filter(([k])=>labels[k]).map(([k,v])=>({key:k,count:Number(v||0),label:labels[k]})).sort((a,b)=>b.count-a.count)[0]||null;},[rivalry]);
+  const nemesis=useMemo(()=>buildNemesisDossier(history,rivalry),[history,rivalry]);
+  const topIncident=nemesis.tactic;
+  const nemesisPersonalCount=useMemo(()=>nemesis.opening ? personal.filter((p)=>p.opening===nemesis.opening.opening).length : 0,[personal,nemesis.opening]);
 
   return <div className={embedded ? 'career-screen insights-embedded-page' : 'menu tournament-panel career-screen'}>
     {!embedded && (<>
@@ -47,6 +50,34 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
     <div className="menu-section"><h2>Entrenamiento personalizado</h2>{topIncident&&<div className="coaching-action" style={{marginBottom:'.8rem'}}><strong>Prioridad sugerida:</strong> {topIncident.label} ×{topIncident.count}. Entrena ese patrón antes de que solicite estatuto de costumbre local.</div>}<div className="career-action-grid">
       <button className="career-action" onClick={()=>onOpenPuzzles('personal',false)}><b>🧠 Tus crímenes</b><span>{personal.length} posiciones reales.</span></button><button className="career-action" onClick={()=>onOpenPuzzles('personal',true)}><b>⚡ Puzzle Rush personal</b><span>3 minutos contra tu propio expediente.</span></button><button className="career-action" onClick={()=>onOpenPuzzles('daily',false)}><b>📅 Posición del día</b><span>Racha {daily.streak||0} · mejor {daily.bestStreak||0}.</span></button><button className="career-action" onClick={()=>onOpenPuzzles('curated',true)}><b>🔥 Puzzle Rush clásico</b><span>Cuando quieras sufrir sin contexto autobiográfico.</span></button>
     </div></div>
+
+    <div className="menu-section nemesis-section">
+      <div className="nemesis-heading">
+        <div><span className="section-label">Objetivo adaptativo</span><h2>🩸 Némesis actual</h2></div>
+        {nemesis.opening && <span className={`nemesis-confidence confidence-${nemesis.opening.confidence.key}`}>confianza {nemesis.opening.confidence.label}</span>}
+      </div>
+      {nemesis.opening ? <>
+        <p className="hint-text">No es una etiqueta permanente: se recalcula con tu historial competitivo. Si mejoras, la némesis cambia o desaparece.</p>
+        <div className="nemesis-card">
+          <div className="nemesis-core">
+            <span className="eyebrow">Apertura que más pruebas acumula contra ti</span>
+            <h3>{nemesis.opening.opening}</h3>
+            <p>Con {nemesis.opening.humanColor==='w'?'blancas':'negras'} · <b>{nemesis.opening.scorePct}%</b> de puntuación · {nemesis.opening.wins}V/{nemesis.opening.draws}T/{nemesis.opening.losses}D en {nemesis.opening.games} partidas.</p>
+            <small>CPU media {nemesis.opening.avgDifficulty} · últimas {Math.min(5,nemesis.opening.games)}: {nemesis.opening.recentScorePct}%.</small>
+          </div>
+          <div className="nemesis-actions">
+            {nemesis.training && <button className="primary-btn" onClick={()=>onPlayFromHere(nemesis.training.fen,nemesis.training.humanColor,nemesis.training.difficulty,{sourceRecord:nemesis.training.sourceRecord,nemesis:true,nemesisLabel:`${nemesis.opening.opening} · ${nemesis.opening.humanColor==='w'?'blancas':'negras'}`,nemesisOpening:nemesis.opening.opening})}>Entrenar desde mi posición →</button>}
+            {nemesis.opening.latestLoss && <button className="secondary-btn" onClick={()=>onOpenRecord(nemesis.opening.latestLoss)}>Revisar derrota real</button>}
+            {nemesisPersonalCount>0 && <button className="secondary-btn" onClick={()=>onOpenPuzzles('personal',false,{opening:nemesis.opening.opening})}>Crímenes de esta apertura ({nemesisPersonalCount})</button>}
+          </div>
+        </div>
+        {nemesis.tactic && <div className="nemesis-tactic"><b>Patrón táctico reincidente:</b> {nemesis.tactic.label} · {nemesis.tactic.count} registros. Esto no se atribuye a la apertura: es un antecedente global separado.</div>}
+        {nemesisPersonalCount===0 && <p className="hint-text nemesis-footnote">Aún no hay puzzles personales etiquetados con esta apertura. Las próximas autopsias ya guardan esa procedencia para poder filtrarlos sin inventar relaciones.</p>}
+      </> : <>
+        <p className="hint-text">Todavía no hay una apertura que cumpla el umbral: al menos 4 partidas competitivas con el mismo color, 2 derrotas y ≤45% de puntuación. No voy a fabricar una némesis con tres anécdotas.</p>
+        {nemesis.tactic && <div className="nemesis-tactic"><b>Lo que sí está medido:</b> {nemesis.tactic.label} · {nemesis.tactic.count} registros.</div>}
+      </>}
+    </div>
 
     <div className="menu-section"><h2>⚙ Conversión y defensa</h2><div className="career-hero-grid"><article className="career-card"><span className="eyebrow">Ventajas ≥ +3</span><h3>{conversion.converted}/{conversion.winningChances}</h3><p>{conversion.conversionPct===null?'Faltan autopsias':`${conversion.conversionPct}% convertidas en victoria.`}</p></article><article className="career-card"><span className="eyebrow">Defensa desesperada ≤ −3</span><h3>{conversion.saved}/{conversion.desperatePositions}</h3><p>{conversion.defensePct===null?'Faltan autopsias':`${conversion.defensePct}% salvadas como tablas/victoria.`}</p></article><article className="career-card"><span className="eyebrow">Apuros de tiempo</span><h3>{pressure.incidents}/{pressure.moves}</h3><p>{pressure.rate===null?'Sin datos bajo 40 s':`${pressure.rate}% de movimientos bajo presión acabaron en incidente grave.`}</p></article><article className="career-card"><span className="eyebrow">Material donado</span><h3>{donations.points} pts</h3><p>{donations.pieces} piezas capturadas por la CPU · {donations.queens} damas. Filantropía táctica.</p></article></div></div>
 

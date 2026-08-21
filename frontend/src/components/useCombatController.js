@@ -19,6 +19,8 @@ import {
 } from '../combat.js';
 import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
+import { loadCombatService, recordCombatServiceEvent, summarizeCombatService } from '../combatService.js';
+import { applyRosterMetamorphosesToPosition, metamorphoseRosterPiece, persistMetamorphosedRoster } from '../combatMetamorphosis.js';
 import { checkAchievements } from '../achievements.js';
 import { loadRating, ratingProgress, difficultyForRating } from '../playerRating.js';
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
@@ -63,7 +65,7 @@ function buildLogEntry(result, humanColor) {
 }
 
 
-export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null }) {
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null }) {
   const [phase, setPhase] = useState('setup'); // 'setup' | 'battle' | 'over'
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
@@ -98,6 +100,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const [pendingAnim, setPendingAnim] = useState(null);
   const [log, setLog] = useState([]);
   const [roster, setRoster] = useState(() => loadRoster());
+  const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [showArmy, setShowArmy] = useState(false);
   const [showExpireWarning, setShowExpireWarning] = useState(false);
   // El único modal inline de esta pantalla (los demás — PieceInfoModal,
@@ -173,6 +176,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }, [registry, humanColor]);
 
   const infoPiece = infoSquare ? registry[infoSquare] : null;
+  const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
 
   const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
 
@@ -200,8 +204,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     const chess = new Chess();
     if (initialFen) chess.load(initialFen);
+    const baseRegistry = createInitialRegistry(chess);
+    const metamorphosedRegistry = applyRosterMetamorphosesToPosition(chess, baseRegistry, activeRoster, resolved);
     const startFen = chess.fen();
-    const rosterRegistry = applyRosterToRegistry(createInitialRegistry(chess), activeRoster, resolved);
+    const rosterRegistry = applyRosterToRegistry(metamorphosedRegistry, activeRoster, resolved);
     const initialRegistry = applyRunPerksToRegistry(rosterRegistry, runPerks, resolved);
     battleStartRosterRef.current = activeRoster;
     if (bossConfig) {
@@ -287,6 +293,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     saveRoster(nextRoster);
     setRoster(nextRoster);
 
+    const survivorCount = Object.values(finalRegistry).filter((p) => p.color === currentHumanColor).length;
     const battleRecord = {
       id: `combat-${Date.now()}`,
       date: new Date().toISOString(),
@@ -295,11 +302,31 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       outcome,
       log: updatedLog,
       variant: combatVariant || 'combat',
+      survivorCount,
+      roguelikeFloor: combatVariant === 'roguelike' ? roguelikeFloor : null,
+      roguelikeMode: combatVariant === 'roguelike' ? (roguelikeMode || 'tower') : null,
       boss: bossConfig ? { id: bossConfig.id, maxHp: bossConfig.maxHp, remainingHp: bossHpRef.current } : null,
     };
+
+    // La hoja de servicio se actualiza ANTES de guardar la batalla en el historial.
+    // Así una migración perezosa no puede "ver" esta batalla como legacy y tragarse
+    // datos nuevos como supervivientes/piso antes de procesar el evento completo.
+    const veteranPieces = Object.values(nextRoster.pieces).filter((piece) => piece?.alive !== false && ((piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) >= 1).length;
+    const elitePieces = Object.values(nextRoster.pieces).filter((piece) => piece?.alive !== false && (1 + (piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) >= 6).length;
+    const serviceResult = recordCombatServiceEvent({
+      battleId: battleRecord.id,
+      outcome,
+      survivorCount,
+      veteranPieces,
+      elitePieces,
+      variant: battleRecord.variant,
+      roguelikeFloor: battleRecord.roguelikeFloor,
+      roguelikeMode: battleRecord.roguelikeMode,
+      bossDefeated: isWin && !!bossConfig,
+    });
+    setServiceRecord(serviceResult.record);
     saveCombatBattle(battleRecord);
 
-    const survivorCount = Object.values(finalRegistry).filter((p) => p.color === currentHumanColor).length;
     checkAchievements({ combatFlawlessWin: isWin && survivorCount === 16 });
 
     setBattleRecap({
@@ -307,6 +334,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       totalCount: 16,
       xpGained: Math.max(0, nextRoster.combatXp - roster.combatXp),
       record: battleRecord,
+      serviceResult,
     });
 
     onBattleResult?.(outcome);
@@ -317,8 +345,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     const chess = new Chess();
     if (initialFen) chess.load(initialFen);
     const baseRoster = battleStartRosterRef.current || roster;
+    const phaseBaseRegistry = createInitialRegistry(chess);
+    const phaseMetamorphosedRegistry = applyRosterMetamorphosesToPosition(chess, phaseBaseRegistry, baseRoster, currentHumanColor);
     let fresh = applyRunPerksToRegistry(
-      applyRosterToRegistry(createInitialRegistry(chess), baseRoster, currentHumanColor),
+      applyRosterToRegistry(phaseMetamorphosedRegistry, baseRoster, currentHumanColor),
       runPerks,
       currentHumanColor,
     );
@@ -347,6 +377,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         bankedXp: survivor.bankedXp || 0,
         runStrengthBonus: survivor.runStrengthBonus || piece.runStrengthBonus || 0,
         runSpeedBonus: survivor.runSpeedBonus || piece.runSpeedBonus || 0,
+        metamorphosis: survivor.metamorphosis || piece.metamorphosis || null,
       };
     }
 
@@ -629,7 +660,24 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       outcome: 'retired',
       log: combatLog,
       variant: combatVariant || 'combat',
+      survivorCount: Object.values(registry).filter((p) => p.color === humanColor).length,
+      roguelikeFloor: combatVariant === 'roguelike' ? roguelikeFloor : null,
+      roguelikeMode: combatVariant === 'roguelike' ? (roguelikeMode || 'tower') : null,
     };
+    const veteranPieces = Object.values(nextRoster.pieces).filter((piece) => piece?.alive !== false && ((piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) >= 1).length;
+    const elitePieces = Object.values(nextRoster.pieces).filter((piece) => piece?.alive !== false && (1 + (piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) >= 6).length;
+    const serviceResult = recordCombatServiceEvent({
+      battleId: battleRecord.id,
+      outcome: 'retired',
+      survivorCount: battleRecord.survivorCount,
+      veteranPieces,
+      elitePieces,
+      variant: battleRecord.variant,
+      roguelikeFloor: battleRecord.roguelikeFloor,
+      roguelikeMode: battleRecord.roguelikeMode,
+      bossDefeated: false,
+    });
+    setServiceRecord(serviceResult.record);
     saveCombatBattle(battleRecord);
     onBattleResult?.('retired');
     setPhase('over');
@@ -650,17 +698,27 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setRoster((prev) => {
       const saved = prev.pieces[key] || { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: true };
       if (saved.alive === false) return prev; // no se puede invertir en una pieza caída, primero hay que revivirla
-      const virtualPiece = { type: key.split('-')[0], ...saved };
+      const virtualPiece = { type: saved.metamorphosis || key.split('-')[0], ...saved };
       const updated = buyStatPoint(virtualPiece, stat);
       if (!updated) return prev;
       const next = {
         ...prev,
         pieces: {
           ...prev.pieces,
-          [key]: { strengthPoints: updated.strengthPoints, speedPoints: updated.speedPoints, bankedXp: updated.bankedXp, alive: true },
+          [key]: { strengthPoints: updated.strengthPoints, speedPoints: updated.speedPoints, bankedXp: updated.bankedXp, alive: true, metamorphosis: saved.metamorphosis || null },
         },
       };
       saveRoster(next);
+      return next;
+    });
+  }
+
+
+  function handleMetamorphoseRosterPiece(key, targetType) {
+    setRoster((prev) => {
+      const next = metamorphoseRosterPiece(prev, key, targetType);
+      if (next === prev) return prev;
+      persistMetamorphosedRoster(next);
       return next;
     });
   }
@@ -706,9 +764,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
     pendingPromotion, pendingAttack, infoSquare, busy, pendingAnim, log, roster,
     showArmy, setShowArmy, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
-    pieceLevels, pieceXp, armySummary, infoPiece, deadRosterEntries, handleStartBattleClick,
+    pieceLevels, pieceXp, armySummary, infoPiece, deadRosterEntries, serviceSummary, handleStartBattleClick,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
-    handleBuyRosterStat, handleReviveRosterPiece, handleBuyStat,
+    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };

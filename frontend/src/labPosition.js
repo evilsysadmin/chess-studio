@@ -94,11 +94,14 @@ function enPassantErrors(map, turn, ep) {
   // Si mueven blancas, el último movimiento tuvo que ser ...p7-p5 y el peón
   // negro queda en la fila 5. Si mueven negras, el peón blanco queda en 4.
   const pawnSq = turn === 'w' ? `${file}5` : `${file}4`;
+  const originSq = turn === 'w' ? `${file}7` : `${file}2`;
   const expectedPawn = turn === 'w' ? 'p' : 'P';
   if ((turn === 'w' && rank !== 6) || (turn === 'b' && rank !== 3)) {
     return ['La casilla en-passant no es compatible con el bando al turno.'];
   }
+  if (map[ep]) return ['La casilla objetivo de en-passant debe estar vacía.'];
   if (map[pawnSq] !== expectedPawn) return ['El FEN declara en-passant pero no existe el peón que acaba de avanzar dos casillas.'];
+  if (map[originSq]) return ['El FEN declara en-passant pero la casilla de origen del doble avance no quedó vacía.'];
   return [];
 }
 
@@ -112,6 +115,12 @@ export function validateLabPosition(raw, fallbackTurn = 'w') {
   }
 
   const { map, turn, castling, ep, fen } = parsed;
+  // chess.js normaliza algunos FEN y puede borrar un campo en-passant
+  // incoherente (por ejemplo, e6 -> -). Para validar lo que realmente
+  // declaró el usuario debemos conservar ese cuarto campo antes de que la
+  // normalización lo haga desaparecer.
+  const rawFields = String(raw || '').trim().split(/\s+/);
+  const declaredEp = rawFields.length === 6 ? rawFields[3] : ep;
   const whitePieces = countPieces(map, 'w');
   const blackPieces = countPieces(map, 'b');
   const whiteKings = whitePieces.filter((p) => p === 'K').length;
@@ -136,7 +145,7 @@ export function validateLabPosition(raw, fallbackTurn = 'w') {
     }
   }
   errors.push(...castlingErrors(map, castling));
-  errors.push(...enPassantErrors(map, turn, ep));
+  errors.push(...enPassantErrors(map, turn, declaredEp));
 
   if (whiteKings === 1 && blackKings === 1) {
     const whiteKingSquare = Object.entries(map).find(([, piece]) => piece === 'K')?.[0];

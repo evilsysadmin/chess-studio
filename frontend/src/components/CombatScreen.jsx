@@ -37,8 +37,10 @@ export default function CombatScreen(props) {
         setShowArmy={controller.setShowArmy}
         handleBuyRosterStat={controller.handleBuyRosterStat}
         handleReviveRosterPiece={controller.handleReviveRosterPiece}
+        handleMetamorphoseRosterPiece={controller.handleMetamorphoseRosterPiece}
         handleResetRoster={controller.handleResetRoster}
         onHistory={props.onHistory}
+        serviceSummary={controller.serviceSummary}
       />
     );
   }

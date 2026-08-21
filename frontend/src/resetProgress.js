@@ -9,6 +9,7 @@ import { resetTournament } from './tournament.js';
 import { clearGameHistory } from './gameHistory.js';
 import { clearCombatHistory } from './combatHistory.js';
 import { resetRoster } from './combatRoster.js';
+import { resetCombatService } from './combatService.js';
 import { resetRating, resetRatingHistory } from './playerRating.js';
 import { resetAchievements } from './achievements.js';
 import { resetAllPuzzleStats } from './puzzleStats.js';
@@ -26,6 +27,7 @@ export function resetAllProgress() {
   clearGameHistory();
   clearCombatHistory();
   resetRoster();
+  resetCombatService();
   resetRating();
   resetRatingHistory();
   resetAchievements();
