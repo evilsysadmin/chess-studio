@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity } from './auth.js';
+import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail } from './auth.js';
 
 function mockFetchOnce(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -30,7 +30,7 @@ describe('estado de sesión', () => {
 describe('register/login', () => {
   it('guarda token y username al registrarse', async () => {
     mockFetchOnce(201, { token: 'un-token-jwt', username: 'nuevo' });
-    await register('nuevo', 'clave123456');
+    await register('nuevo', 'clave123456', 'nuevo@example.com');
     expect(getToken()).toBe('un-token-jwt');
     expect(getUsername()).toBe('nuevo');
   });
@@ -43,9 +43,9 @@ describe('register/login', () => {
 
   it('envía el código de invitación cuando se registra', async () => {
     mockFetchOnce(201, { token: 'invite-token', username: 'invitado' });
-    await register('invitado', 'clave123456', 'codigo-secreto');
+    await register('invitado', 'clave123456', 'invitado@example.com', 'codigo-secreto');
     const [, options] = global.fetch.mock.calls[0];
-    expect(JSON.parse(options.body).inviteCode).toBe('codigo-secreto');
+    expect(JSON.parse(options.body)).toEqual(expect.objectContaining({ inviteCode: 'codigo-secreto', email: 'invitado@example.com' }));
   });
 
   it('crear Bob en el mismo navegador no hereda la caché de Alice', async () => {
@@ -56,7 +56,7 @@ describe('register/login', () => {
     localStorage.setItem('chess-study-active-game', 'alice-game');
 
     mockFetchOnce(201, { token: 'bob-token', username: 'bob' });
-    await register('bob', 'clave123456');
+    await register('bob', 'clave123456', 'bob@example.com');
 
     expect(getUsername()).toBe('bob');
     expect(localStorage.getItem('chess-study-tournament')).toBeNull();
@@ -180,5 +180,32 @@ describe('sincronización de sesión entre pestañas', () => {
     stop();
     expect(window.removeEventListener).toHaveBeenCalledTimes(1);
     expect(window.removeEventListener.mock.calls[0][0]).toBe('storage');
+  });
+});
+
+
+describe('recuperación por email', () => {
+  it('manda el email al endpoint de forgot password', async () => {
+    mockFetchOnce(200, { ok: true, message: 'Si ese email está registrado, recibirás un enlace de recuperación.' });
+    await forgotPassword('recover@example.com');
+    const [, options] = global.fetch.mock.calls[0];
+    expect(JSON.parse(options.body)).toEqual({ email: 'recover@example.com' });
+  });
+
+  it('guarda sesión al restablecer la contraseña', async () => {
+    mockFetchOnce(200, { token: 'reset-token-session', username: 'recuperado' });
+    await resetPassword('signed-reset-token', 'clave-nueva');
+    expect(getUsername()).toBe('recuperado');
+    expect(getToken()).toBe('reset-token-session');
+  });
+
+  it('actualiza el email enviando contraseña actual y bearer', async () => {
+    mockFetchOnce(200, { token: 'mail-token', username: 'ana' });
+    await login('ana', 'clave123456');
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ username: 'ana', email: 'new@example.com' }) });
+    await updateRecoveryEmail('new@example.com', 'clave123456');
+    const [, options] = global.fetch.mock.calls[0];
+    expect(options.headers.Authorization).toBe('Bearer mail-token');
+    expect(JSON.parse(options.body)).toEqual({ email: 'new@example.com', password: 'clave123456' });
   });
 });

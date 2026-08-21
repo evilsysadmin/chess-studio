@@ -51,7 +51,7 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onClose }) {
                       {BASE_STATS[slot.type].name} <span className="army-row-file">({slot.file})</span>
                     </span>
                     <span className="army-row-stats army-row-urgent">
-                      Caída · era nivel {lastLevel} · revive a la mitad ahora, o se pierde para siempre
+                      Caída · era nivel {lastLevel} · recupérala a la mitad ahora, o su veteranía se perderá y volverá como nivel 1
                     </span>
                   </div>
                   <div className="army-row-buy">

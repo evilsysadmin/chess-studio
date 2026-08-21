@@ -9,13 +9,23 @@ export default function CombatBattleView({
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
   pieceLevels, pieceXp, humanColor, busy, backToSetup, armySummary, log, battleRecap,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece,
-  handleBuyStat, setInfoSquare,
+  handleBuyStat, setInfoSquare, retireBattle, combatVariant, bossHp, bossPhase, bossConfig,
 }) {
   return (
     <div>
       <div className="game-layout">
         <div className="board-column">
           <div className={`status-line ${statusClass}`}>{statusText}</div>
+          {bossConfig && bossHp != null && (
+            <div className="roguelike-boss-hud" role="status" aria-label={`Rey Boss: ${bossHp} de ${bossConfig.maxHp} puntos de vida`}>
+              <span className="roguelike-boss-kicker">BOSS · FASE {bossPhase}</span>
+              <strong>{bossConfig.label}</strong>
+              <span className="roguelike-boss-hearts" aria-hidden="true">
+                {Array.from({ length: bossConfig.maxHp }, (_, i) => (i < bossHp ? '♥' : '♡')).join(' ')}
+              </span>
+              <small>{bossHp}/{bossConfig.maxHp} HP · jaque = 1 · mate = 2</small>
+            </div>
+          )}
           <Board
             fen={fen}
             onSquareClick={handleSquareClick}
@@ -28,7 +38,9 @@ export default function CombatBattleView({
             orientation={humanColor === 'b' ? 'black' : 'white'}
           />
           <div className="game-controls">
-            <button className="secondary-btn" onClick={backToSetup}>Salir del combate</button>
+            <button className="secondary-btn" onClick={combatVariant === 'roguelike' ? retireBattle : backToSetup}>
+              {combatVariant === 'roguelike' ? 'Abandonar intento' : 'Salir del combate'}
+            </button>
           </div>
         </div>
 
@@ -54,7 +66,7 @@ export default function CombatBattleView({
           <div className="combat-legend">
             <p className="hint-text"><b>Fuerza</b>: ayuda a acertar el ataque.</p>
             <p className="hint-text"><b>Velocidad</b>: ayuda a esquivar cuando te atacan.</p>
-            <p className="hint-text">Toca dos veces una pieza tuya para gastar su XP en fuerza o velocidad.</p>
+            <p className="hint-text">Toca dos veces una pieza para inspeccionarla. El XP se gasta entre batallas desde Tu ejército.</p>
             <p className="hint-text">La insignia verde (arriba a la izquierda) avisa que a esa pieza le quedó XP sin gastar.</p>
             <p className="hint-text" style={{ marginTop: '0.3rem' }}>
               <span className="legend-swatch bronze" /> nivel 2-3 · <span className="legend-swatch silver" /> nivel 4-5 ·{' '}

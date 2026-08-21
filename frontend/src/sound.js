@@ -8,9 +8,15 @@ import { setProfileStorageItem } from './profileKeys.js';
 const LEGACY_MUTE_KEY = 'chess-study-muted';
 const MUSIC_MUTED_KEY = 'chess-study-music-muted';
 const FX_MUTED_KEY = 'chess-study-fx-muted';
+const MUSIC_VOLUME_KEY = 'chess-study-music-volume';
 const LEGACY_AMBIENT_THEME_KEY = 'chess-study-ambient-theme';
 const AMBIENT_THEME_SESSION_KEY = 'chess-study-ambient-theme-session';
 const DEFAULT_AMBIENT_THEME = 'andalus';
+// La radio de sesión deja un pequeño hueco real entre piezas. No encadenamos
+// los finales como si fueran jingles publicitarios: termina el tema, respira,
+// y entra otro distinto.
+export const AMBIENT_INTER_TRACK_SILENCE_MS = 2400;
+const ANDALUS_TRACK_DURATION_MS = 240000;
 
 let audioCtx = null;
 function getContext() {
@@ -50,6 +56,22 @@ export function setMusicMuted(muted) {
 
 export function setFxMuted(muted) {
   setProfileStorageItem(FX_MUTED_KEY, muted ? '1' : '0');
+}
+
+
+export function getAmbientVolume() {
+  if (typeof localStorage === 'undefined') return 1;
+  const raw = Number.parseFloat(localStorage.getItem(MUSIC_VOLUME_KEY) || '1');
+  if (!Number.isFinite(raw)) return 1;
+  return Math.min(1, Math.max(0, raw));
+}
+
+export function setAmbientVolume(value) {
+  const normalized = Math.min(1, Math.max(0, Number(value) || 0));
+  setProfileStorageItem(MUSIC_VOLUME_KEY, String(normalized));
+  applyAmbientMasterGain(0.08);
+  notifyAmbientTransport();
+  return normalized;
 }
 
 // API heredada: conservarla evita romper imports antiguos y permite que un
@@ -113,6 +135,13 @@ export function playMissSound() {
 export function playTimePressureSound() {
   beep({ freq: 880, duration: 0.07, type: 'sine', gain: 0.028 });
   beep({ freq: 660, duration: 0.09, type: 'sine', gain: 0.025, delay: 0.08 });
+}
+
+// BEEP seco para un intento de movimiento ilegal que dejaría al rey en jaque.
+// Deliberadamente desagradable, corto y sin convertirse en una alarma de coche.
+export function playIllegalMoveSound() {
+  beep({ freq: 980, duration: 0.055, type: 'square', gain: 0.032 });
+  beep({ freq: 720, duration: 0.075, type: 'square', gain: 0.03, delay: 0.065 });
 }
 
 // FX contextuales: no sustituyen el comentario; sólo subrayan eventos realmente
@@ -1388,6 +1417,154 @@ Object.assign(AMBIENT_THEMES, {
       },
     ],
   },
+  cairoRedLantern: {
+    id: 'cairoRedLantern', engine: 'structured', label: 'Cairo · farol rojo 01:37',
+    description: 'Qanun, trompeta apagada y Rhodes con un pulso más vivo: calle nocturna, café lleno y una partida que ya se calentó.',
+    stepMs: 108, stepsPerSection: 64, longFormMs: 330000, leadInstrument: 'qanun', counterInstrument: 'mutedHorn', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 62, 4: 63, 7: 66, 10: 67, 14: 69, 18: 67, 21: 66, 24: 63, 28: 62, 32: 66, 36: 69, 39: 70, 42: 69, 46: 66, 50: 63, 55: 61.5, 60: 62 },
+        counter: { 12: 74, 26: 70, 44: 72, 58: 69 },
+        chords: { 0: [50, 57, 60, 64], 16: [51, 57, 60, 66], 32: [55, 60, 64, 69], 48: [50, 57, 61, 64] },
+        bass: { 0: 38, 4: 45, 8: 50, 12: 45, 16: 39, 20: 46, 24: 51, 28: 46, 32: 43, 36: 50, 40: 55, 44: 50, 48: 38, 52: 45, 56: 49, 60: 45 },
+        drums: { 0: 'K', 4: 'H', 8: 'W', 12: 'H', 16: 'K', 20: 'H', 24: 'S', 28: 'H', 32: 'K', 36: 'H', 40: 'W', 44: 'H', 48: 'K', 52: 'H', 56: 'S', 60: 'H' },
+      },
+      {
+        leadInstrument: 'mutedHorn', counterInstrument: 'qanun',
+        lead: { 2: 69, 7: 70, 12: 74, 17: 72, 22: 69, 27: 67, 32: 66, 37: 69, 42: 72, 47: 74, 52: 70, 57: 67, 62: 66 },
+        counter: { 5: 62, 15: 66, 25: 63, 35: 66, 45: 69, 55: 63 },
+        chords: { 0: [53, 57, 60, 64], 16: [55, 59, 62, 66], 32: [50, 57, 60, 64], 48: [46, 53, 57, 62] },
+        bass: { 0: 41, 4: 48, 8: 53, 12: 48, 16: 43, 20: 50, 24: 55, 28: 50, 32: 38, 36: 45, 40: 50, 44: 45, 48: 34, 52: 41, 56: 46, 60: 41 },
+        drums: { 0: 'K', 3: 'H', 8: 'S', 11: 'H', 16: 'K', 19: 'H', 24: 'W', 27: 'H', 32: 'K', 35: 'H', 40: 'S', 43: 'H', 48: 'K', 51: 'H', 56: 'W', 59: 'H' },
+      },
+      {
+        lead: { 0: 74, 3: 73, 6: 70, 10: 69, 13: 66, 17: 69, 20: 70, 24: 74, 28: 77, 32: 74, 35: 70, 39: 69, 43: 66, 47: 63, 51: 66, 55: 69, 59: 67, 63: 62 },
+        counter: { 8: 62, 22: 67, 38: 66, 54: 63 },
+        chords: { 0: [55, 60, 64, 69], 16: [53, 57, 60, 64], 32: [51, 57, 60, 66], 48: [50, 57, 60, 64] },
+        bass: { 0: 43, 4: 50, 8: 55, 12: 50, 16: 41, 20: 48, 24: 53, 28: 48, 32: 39, 36: 46, 40: 51, 44: 46, 48: 38, 52: 45, 56: 50, 60: 45 },
+        drums: { 0: 'K', 4: 'H', 8: 'S', 12: 'H', 16: 'K', 20: 'H', 24: 'W', 28: 'H', 32: 'K', 36: 'H', 40: 'S', 44: 'H', 48: 'K', 52: 'H', 56: 'W', 60: 'H' },
+      },
+      {
+        leadInstrument: 'mutedHorn', counterInstrument: 'qanun',
+        lead: { 4: 72, 12: 70, 20: 69, 28: 66, 36: 69, 44: 67, 52: 63.5, 60: 62 },
+        counter: { 8: 62, 24: 66, 40: 63, 56: 61.5 },
+        chords: { 0: [50, 57, 60, 64], 16: [46, 53, 57, 62], 32: [55, 60, 64, 69], 48: [50, 57, 61, 64] },
+        bass: { 0: 38, 8: 45, 16: 34, 24: 41, 32: 43, 40: 50, 48: 38, 56: 45 },
+        drums: { 0: 'K', 8: 'W', 16: 'K', 24: 'S', 32: 'K', 40: 'W', 48: 'K', 56: 'S' },
+      },
+    ],
+  },
+  beirutNightTaxi: {
+    id: 'beirutNightTaxi', engine: 'structured', label: 'Beirut · taxi nocturno 02:18',
+    description: 'Buzuq y clarinete sobre bajo caminante y percusión seca: más calle, más movimiento y menos sillón de terciopelo.',
+    stepMs: 102, stepsPerSection: 72, longFormMs: 345000, leadInstrument: 'buzuq', counterInstrument: 'clarinet', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 62, 3: 65, 6: 67, 9: 68, 12: 67, 15: 65, 18: 62, 21: 60, 24: 62, 27: 65, 30: 68, 33: 70, 36: 68, 39: 67, 42: 65, 45: 62, 48: 65, 51: 67, 54: 70, 57: 72, 60: 70, 63: 68, 66: 65, 69: 62 },
+        counter: { 10: 74, 22: 72, 34: 75, 46: 72, 58: 74, 70: 68 },
+        chords: { 0: [50, 57, 60, 65], 18: [53, 60, 63, 68], 36: [55, 62, 65, 70], 54: [51, 58, 62, 67] },
+        bass: { 0: 38, 6: 45, 12: 50, 18: 41, 24: 48, 30: 53, 36: 43, 42: 50, 48: 55, 54: 39, 60: 46, 66: 51 },
+        drums: { 0: 'K', 3: 'H', 6: 'W', 9: 'H', 12: 'S', 15: 'H', 18: 'K', 21: 'H', 24: 'W', 27: 'H', 30: 'S', 33: 'H', 36: 'K', 39: 'H', 42: 'W', 45: 'H', 48: 'S', 51: 'H', 54: 'K', 57: 'H', 60: 'W', 63: 'H', 66: 'S', 69: 'H' },
+      },
+      {
+        leadInstrument: 'clarinet', counterInstrument: 'buzuq',
+        lead: { 1: 69, 5: 72, 9: 74, 14: 72, 18: 69, 23: 67, 28: 65, 32: 67, 37: 70, 41: 74, 46: 75, 50: 72, 55: 70, 59: 67, 64: 65, 68: 62 },
+        counter: { 3: 58, 12: 62, 21: 65, 30: 62, 39: 67, 48: 65, 57: 62, 66: 58 },
+        chords: { 0: [53, 60, 63, 68], 18: [50, 57, 60, 65], 36: [48, 55, 58, 63], 54: [55, 62, 65, 70] },
+        bass: { 0: 41, 6: 48, 12: 53, 18: 38, 24: 45, 30: 50, 36: 36, 42: 43, 48: 48, 54: 43, 60: 50, 66: 55 },
+        drums: { 0: 'K', 6: 'W', 12: 'S', 18: 'K', 24: 'W', 30: 'S', 36: 'K', 42: 'W', 48: 'S', 54: 'K', 60: 'W', 66: 'S' },
+      },
+      {
+        lead: { 0: 70, 4: 72, 8: 75, 12: 77, 16: 75, 20: 72, 24: 70, 28: 68, 32: 65, 36: 68, 40: 70, 44: 72, 48: 75, 52: 72, 56: 70, 60: 68, 64: 65, 68: 62 },
+        counter: { 6: 62, 18: 65, 30: 68, 42: 67, 54: 65, 66: 62 },
+        chords: { 0: [55, 62, 65, 70], 18: [53, 60, 63, 68], 36: [50, 57, 60, 65], 54: [51, 58, 62, 67] },
+        bass: { 0: 43, 3: 50, 6: 55, 9: 50, 12: 41, 15: 48, 18: 53, 21: 48, 24: 38, 27: 45, 30: 50, 33: 45, 36: 39, 39: 46, 42: 51, 45: 46, 48: 43, 51: 50, 54: 55, 57: 50, 60: 38, 63: 45, 66: 50, 69: 45 },
+        drums: { 0: 'K', 3: 'H', 6: 'W', 9: 'H', 12: 'S', 15: 'H', 18: 'K', 21: 'H', 24: 'W', 27: 'H', 30: 'S', 33: 'H', 36: 'K', 39: 'H', 42: 'W', 45: 'H', 48: 'S', 51: 'H', 54: 'K', 57: 'H', 60: 'W', 63: 'H', 66: 'S', 69: 'H' },
+      },
+      {
+        leadInstrument: 'clarinet', counterInstrument: 'buzuq',
+        lead: { 6: 74, 18: 72, 30: 70, 42: 68, 54: 65, 66: 62 },
+        counter: { 12: 58, 24: 62, 48: 60, 60: 58 },
+        chords: { 0: [50, 57, 60, 65], 24: [53, 60, 63, 68], 48: [55, 62, 65, 70] },
+        bass: { 0: 38, 12: 45, 24: 41, 36: 48, 48: 43, 60: 38 },
+        drums: { 0: 'K', 12: 'W', 24: 'K', 36: 'S', 48: 'K', 60: 'W' },
+      },
+    ],
+  },
+  tangierRedTable: {
+    id: 'tangierRedTable', engine: 'structured', label: 'Tánger · mesa roja',
+    description: 'Oud, vibráfono y contrabajo con un groove ladeado de club: humo, fichas, vasos y demasiada confianza.',
+    stepMs: 116, stepsPerSection: 64, longFormMs: 325000, leadInstrument: 'oudJazz', counterInstrument: 'vibes', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 64, 5: 67, 9: 70, 13: 69, 17: 67, 21: 64, 25: 62, 29: 64, 33: 67, 37: 70, 41: 72, 45: 70, 49: 67, 53: 65, 57: 64, 61: 62 },
+        counter: { 7: 76, 19: 74, 31: 72, 43: 76, 55: 72 },
+        chords: { 0: [52, 59, 62, 67], 16: [50, 57, 60, 65], 32: [55, 62, 65, 70], 48: [53, 60, 63, 68] },
+        bass: { 0: 40, 4: 47, 8: 52, 12: 47, 16: 38, 20: 45, 24: 50, 28: 45, 32: 43, 36: 50, 40: 55, 44: 50, 48: 41, 52: 48, 56: 53, 60: 48 },
+        drums: { 0: 'K', 4: 'H', 7: 'W', 12: 'S', 16: 'K', 20: 'H', 23: 'W', 28: 'S', 32: 'K', 36: 'H', 39: 'W', 44: 'S', 48: 'K', 52: 'H', 55: 'W', 60: 'S' },
+      },
+      {
+        leadInstrument: 'vibes', counterInstrument: 'oudJazz',
+        lead: { 2: 72, 6: 76, 11: 74, 15: 72, 20: 69, 24: 67, 29: 69, 34: 72, 38: 76, 43: 77, 47: 74, 52: 72, 56: 69, 61: 67 },
+        counter: { 4: 60, 14: 64, 26: 62, 36: 65, 50: 64, 58: 60 },
+        chords: { 0: [55, 62, 65, 70], 16: [53, 60, 63, 68], 32: [50, 57, 60, 65], 48: [52, 59, 62, 67] },
+        bass: { 0: 43, 4: 50, 8: 55, 12: 50, 16: 41, 20: 48, 24: 53, 28: 48, 32: 38, 36: 45, 40: 50, 44: 45, 48: 40, 52: 47, 56: 52, 60: 47 },
+        drums: { 0: 'K', 6: 'W', 12: 'S', 16: 'K', 22: 'W', 28: 'S', 32: 'K', 38: 'W', 44: 'S', 48: 'K', 54: 'W', 60: 'S' },
+      },
+      {
+        lead: { 0: 67, 3: 70, 6: 72, 10: 74, 14: 72, 18: 70, 22: 67, 26: 65, 30: 64, 34: 67, 38: 70, 42: 74, 46: 77, 50: 74, 54: 72, 58: 69, 62: 67 },
+        counter: { 8: 76, 20: 74, 32: 72, 44: 76, 56: 74 },
+        chords: { 0: [53, 60, 63, 68], 16: [55, 62, 65, 70], 32: [52, 59, 62, 67], 48: [50, 57, 60, 65] },
+        bass: { 0: 41, 4: 48, 8: 53, 12: 48, 16: 43, 20: 50, 24: 55, 28: 50, 32: 40, 36: 47, 40: 52, 44: 47, 48: 38, 52: 45, 56: 50, 60: 45 },
+        drums: { 0: 'K', 4: 'H', 8: 'W', 12: 'S', 16: 'K', 20: 'H', 24: 'W', 28: 'S', 32: 'K', 36: 'H', 40: 'W', 44: 'S', 48: 'K', 52: 'H', 56: 'W', 60: 'S' },
+      },
+      {
+        leadInstrument: 'vibes', counterInstrument: 'oudJazz',
+        lead: { 4: 76, 12: 74, 20: 72, 28: 69, 36: 72, 44: 70, 52: 67, 60: 64 },
+        counter: { 8: 60, 24: 64, 40: 62, 56: 60 },
+        chords: { 0: [52, 59, 62, 67], 16: [50, 57, 60, 65], 32: [55, 62, 65, 70], 48: [53, 60, 63, 68] },
+        bass: { 0: 40, 8: 47, 16: 38, 24: 45, 32: 43, 40: 50, 48: 41, 56: 48 },
+        drums: { 0: 'K', 8: 'W', 16: 'K', 24: 'S', 32: 'K', 40: 'W', 48: 'K', 56: 'S' },
+      },
+    ],
+  },
+  istanbulBackgammon: {
+    id: 'istanbulBackgammon', engine: 'structured', label: 'Estambul · tavla 03:08',
+    description: 'Clarinete, qanun y bajo saltarín: una mesa de tavla al fondo, conversación alta y todavía queda noche.',
+    stepMs: 110, stepsPerSection: 72, longFormMs: 340000, leadInstrument: 'clarinet', counterInstrument: 'qanun', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      {
+        lead: { 0: 69, 4: 72, 8: 73, 12: 72, 16: 69, 20: 67, 24: 69, 28: 72, 32: 76, 36: 73, 40: 72, 44: 69, 48: 67, 52: 65, 56: 67, 60: 69, 64: 72, 68: 69 },
+        counter: { 6: 61, 14: 64, 22: 67, 30: 64, 38: 61, 46: 64, 54: 67, 62: 64, 70: 61 },
+        chords: { 0: [50, 57, 61, 64], 18: [53, 60, 64, 67], 36: [55, 62, 65, 69], 54: [48, 55, 59, 62] },
+        bass: { 0: 38, 3: 45, 6: 50, 9: 45, 12: 41, 15: 48, 18: 53, 21: 48, 24: 43, 27: 50, 30: 55, 33: 50, 36: 36, 39: 43, 42: 48, 45: 43, 48: 40, 51: 47, 54: 52, 57: 47, 60: 38, 63: 45, 66: 50, 69: 45 },
+        drums: { 0: 'K', 3: 'H', 6: 'W', 9: 'H', 12: 'S', 15: 'H', 18: 'K', 21: 'H', 24: 'W', 27: 'H', 30: 'S', 33: 'H', 36: 'K', 39: 'H', 42: 'W', 45: 'H', 48: 'S', 51: 'H', 54: 'K', 57: 'H', 60: 'W', 63: 'H', 66: 'S', 69: 'H' },
+      },
+      {
+        leadInstrument: 'qanun', counterInstrument: 'clarinet',
+        lead: { 2: 61, 5: 64, 8: 67, 11: 69, 14: 67, 17: 64, 20: 61, 23: 59, 26: 61, 29: 64, 32: 67, 35: 71, 38: 69, 41: 67, 44: 64, 47: 61, 50: 64, 53: 67, 56: 69, 59: 72, 62: 69, 65: 67, 68: 64, 71: 61 },
+        counter: { 10: 74, 22: 72, 34: 76, 46: 74, 58: 72, 70: 69 },
+        chords: { 0: [53, 60, 64, 67], 18: [50, 57, 61, 64], 36: [48, 55, 59, 62], 54: [55, 62, 65, 69] },
+        bass: { 0: 41, 6: 48, 12: 53, 18: 38, 24: 45, 30: 50, 36: 36, 42: 43, 48: 48, 54: 43, 60: 50, 66: 55 },
+        drums: { 0: 'K', 6: 'W', 12: 'S', 18: 'K', 24: 'W', 30: 'S', 36: 'K', 42: 'W', 48: 'S', 54: 'K', 60: 'W', 66: 'S' },
+      },
+      {
+        lead: { 0: 72, 3: 73, 6: 76, 9: 78, 12: 76, 15: 73, 18: 72, 21: 69, 24: 67, 27: 69, 30: 72, 33: 73, 36: 76, 39: 80, 42: 78, 45: 76, 48: 73, 51: 72, 54: 69, 57: 67, 60: 69, 63: 72, 66: 69, 69: 67 },
+        counter: { 6: 61, 18: 64, 30: 67, 42: 64, 54: 61, 66: 64 },
+        chords: { 0: [55, 62, 65, 69], 18: [53, 60, 64, 67], 36: [50, 57, 61, 64], 54: [48, 55, 59, 62] },
+        bass: { 0: 43, 3: 50, 6: 55, 9: 50, 12: 41, 15: 48, 18: 53, 21: 48, 24: 38, 27: 45, 30: 50, 33: 45, 36: 40, 39: 47, 42: 52, 45: 47, 48: 36, 51: 43, 54: 48, 57: 43, 60: 38, 63: 45, 66: 50, 69: 45 },
+        drums: { 0: 'K', 3: 'H', 6: 'W', 9: 'H', 12: 'S', 15: 'H', 18: 'K', 21: 'H', 24: 'W', 27: 'H', 30: 'S', 33: 'H', 36: 'K', 39: 'H', 42: 'W', 45: 'H', 48: 'S', 51: 'H', 54: 'K', 57: 'H', 60: 'W', 63: 'H', 66: 'S', 69: 'H' },
+      },
+      {
+        leadInstrument: 'qanun', counterInstrument: 'clarinet',
+        lead: { 6: 69, 18: 67, 30: 64, 42: 67, 54: 64, 66: 61 },
+        counter: { 12: 74, 36: 72, 60: 69 },
+        chords: { 0: [50, 57, 61, 64], 24: [53, 60, 64, 67], 48: [55, 62, 65, 69] },
+        bass: { 0: 38, 12: 45, 24: 41, 36: 48, 48: 43, 60: 38 },
+        drums: { 0: 'K', 12: 'W', 24: 'K', 36: 'S', 48: 'K', 60: 'W' },
+      },
+    ],
+  },
   machineRoom: {
     id: 'machineRoom', engine: 'structured', label: 'Sala de máquinas',
     description: 'Metal, subgrave y patrones industriales contenidos. Algo enorme está funcionando detrás de la pared.',
@@ -1399,6 +1576,78 @@ Object.assign(AMBIENT_THEMES, {
         bass: { 0: 28, 4: 28, 8: 31, 12: 28, 16: 27, 20: 27, 24: 34, 28: 31 },
         drums: { 0: 'M', 4: 'K', 8: 'M', 12: 'S', 16: 'M', 20: 'K', 24: 'M', 28: 'S' },
       },
+    ],
+  },
+});
+
+// V16.6 — otro bloque menos contemplativo: costa andalusí (oud + guitarra)
+// y chill-jazz luminoso con vibráfono/Rhodes. Inspiración de atmósfera, no
+// melodías ajenas: material original generado por este motor.
+Object.assign(AMBIENT_THEMES, {
+  andalusianCoast: {
+    id: 'andalusianCoast', engine: 'structured', label: 'Costa andalusí · tarde clara',
+    description: 'Oud y guitarra española imaginaria sobre bajo caminante y percusión ligera; cálido, melódico y con más paso que los temas de madrugada.',
+    stepMs: 138, stepsPerSection: 64, longFormMs: 330000, leadInstrument: 'guitar2', counterInstrument: 'oudJazz', chordInstrument: 'epiano', bassInstrument: 'bass',
+    sections: [
+      { lead:{0:64,4:67,8:69,12:71,16:69,20:67,24:64,28:62,32:64,36:67,40:71,44:72,48:71,52:69,56:67,60:64}, counter:{6:76,14:74,22:72,30:69,38:76,46:74,54:72,62:69}, chords:{0:[52,57,60,64],16:[55,59,62,67],32:[50,57,60,65],48:[53,57,60,65]}, bass:{0:40,4:47,8:52,12:47,16:43,20:50,24:55,28:50,32:38,36:45,40:50,44:45,48:41,52:48,56:53,60:48}, drums:{0:'K',4:'H',8:'W',12:'H',16:'S',20:'H',24:'W',28:'H',32:'K',36:'H',40:'W',44:'H',48:'S',52:'H',56:'W',60:'H'} },
+      { leadInstrument:'oudJazz', counterInstrument:'guitar2', lead:{2:64,6:67,10:71,14:72,18:74,22:72,26:69,30:67,34:64,38:67,42:69,46:71,50:74,54:76,58:72,62:69}, counter:{8:57,16:60,24:62,32:60,40:57,48:60,56:62}, chords:{0:[57,60,64,69],16:[52,57,60,64],32:[55,59,62,67],48:[50,57,60,65]}, bass:{0:45,8:40,16:40,24:47,32:43,40:50,48:38,56:45}, drums:{0:'K',6:'H',12:'W',18:'H',24:'S',30:'H',36:'W',42:'H',48:'K',54:'H',60:'S'} },
+      { lead:{0:69,5:71,10:74,15:76,20:74,25:71,30:69,35:67,40:69,45:72,50:74,55:77,60:76}, counter:{7:81,19:79,31:76,43:74,55:72}, chords:{0:[53,57,60,65],16:[55,59,62,67],32:[57,60,64,69],48:[50,57,60,65]}, bass:{0:41,4:48,8:53,12:48,16:43,20:50,24:55,28:50,32:45,36:52,40:57,44:52,48:38,52:45,56:50,60:45}, drums:{0:'K',4:'H',8:'W',12:'H',16:'S',20:'H',24:'W',28:'H',32:'K',36:'H',40:'W',44:'H',48:'S',52:'H',56:'W',60:'H'} },
+      { lead:{4:72,12:71,20:69,28:67,36:64,44:67,52:64,60:62}, counter:{10:76,26:74,42:72,58:69}, chords:{0:[52,57,60,64],24:[55,59,62,67],48:[50,57,60,65]}, bass:{0:40,16:43,32:38,48:40}, drums:{0:'K',16:'H',32:'W',48:'H'} },
+    ],
+  },
+  granadaPatio: {
+    id: 'granadaPatio', engine: 'structured', label: 'Granada · patio encendido',
+    description: 'Guitarra seca, qanun y oud en diálogo; palmas sugeridas con madera y una melodía que entra y sale del patio.',
+    stepMs: 132, stepsPerSection: 64, longFormMs: 320000, leadInstrument: 'oudJazz', counterInstrument: 'guitar2', chordInstrument: 'felt', bassInstrument: 'bass',
+    sections: [
+      {lead:{0:62,3:65,6:67,9:69,12:72,15:69,18:67,21:65,24:62,27:65,30:67,33:70,36:69,39:67,42:65,45:62,48:65,51:69,54:72,57:74,60:72},counter:{6:74,18:72,30:77,42:74,54:72},chords:{0:[50,57,60,65],16:[53,57,60,65],32:[55,62,65,69],48:[50,57,60,65]},bass:{0:38,8:45,16:41,24:48,32:43,40:50,48:38,56:45},drums:{0:'W',4:'H',8:'K',12:'H',16:'W',20:'H',24:'S',28:'H',32:'W',36:'H',40:'K',44:'H',48:'W',52:'H',56:'S',60:'H'}},
+      {leadInstrument:'guitar2',counterInstrument:'qanun',lead:{1:65,5:67,9:70,13:72,17:74,21:72,25:69,29:67,33:65,37:67,41:70,45:74,49:77,53:74,57:72,61:69},counter:{11:79,23:77,35:74,47:72,59:70},chords:{0:[53,57,60,65],16:[50,57,60,65],32:[57,60,64,69],48:[55,62,65,69]},bass:{0:41,4:48,8:53,12:48,16:38,20:45,24:50,28:45,32:45,36:52,40:57,44:52,48:43,52:50,56:55,60:50},drums:{0:'W',4:'H',8:'K',12:'H',16:'W',20:'H',24:'S',28:'H',32:'W',36:'H',40:'K',44:'H',48:'W',52:'H',56:'S',60:'H'}},
+      {lead:{0:69,6:72,12:74,18:77,24:74,30:72,36:69,42:67,48:65,54:69,60:62},counter:{9:60,21:64,33:67,45:64,57:60},chords:{0:[57,60,64,69],16:[55,62,65,69],32:[53,57,60,65],48:[50,57,60,65]},bass:{0:45,8:43,16:41,24:38,32:43,40:41,48:38,56:45},drums:{0:'W',6:'H',12:'K',18:'H',24:'S',30:'H',36:'W',42:'H',48:'K',54:'H',60:'S'}},
+      {lead:{8:74,20:72,32:69,44:67,56:62},counter:{14:77,38:74},chords:{0:[50,57,60,65],24:[53,57,60,65],48:[55,62,65,69]},bass:{0:38,24:41,48:43},drums:{0:'W',24:'H',48:'W'}},
+    ],
+  },
+  cadizLanterns: {
+    id:'cadizLanterns', engine:'structured', label:'Cádiz · faroles al viento',
+    description:'Oud brillante, guitarra y clarinete sobre un 6/8 ligero; costero, nocturno y bastante menos somnífero.',
+    stepMs:126, stepsPerSection:72, longFormMs:340000, leadInstrument:'guitar2', counterInstrument:'clarinet', chordInstrument:'epiano', bassInstrument:'bass',
+    sections:[
+      {lead:{0:64,6:67,12:69,18:71,24:72,30:71,36:69,42:67,48:64,54:67,60:69,66:72},counter:{9:76,21:74,33:72,45:71,57:69,69:67},chords:{0:[52,57,60,64],18:[55,59,62,67],36:[57,60,64,69],54:[50,57,60,65]},bass:{0:40,6:47,12:52,18:43,24:50,30:55,36:45,42:52,48:57,54:38,60:45,66:50},drums:{0:'K',6:'W',12:'S',18:'K',24:'W',30:'S',36:'K',42:'W',48:'S',54:'K',60:'W',66:'S'}},
+      {leadInstrument:'oudJazz',counterInstrument:'guitar2',lead:{3:67,9:71,15:74,21:76,27:74,33:71,39:69,45:67,51:69,57:72,63:74,69:67},counter:{12:60,30:64,48:62,66:60},chords:{0:[55,59,62,67],18:[52,57,60,64],36:[50,57,60,65],54:[57,60,64,69]},bass:{0:43,9:50,18:40,27:47,36:38,45:45,54:45,63:52},drums:{0:'K',6:'H',12:'W',18:'S',24:'H',30:'W',36:'K',42:'H',48:'W',54:'S',60:'H',66:'W'}},
+      {lead:{0:72,6:74,12:77,18:79,24:77,30:74,36:72,42:69,48:67,54:69,60:72,66:64},counter:{9:79,27:76,45:74,63:72},chords:{0:[57,60,64,69],18:[55,59,62,67],36:[53,57,60,65],54:[50,57,60,65]},bass:{0:45,6:52,12:57,18:43,24:50,30:55,36:41,42:48,48:53,54:38,60:45,66:50},drums:{0:'K',6:'W',12:'S',18:'K',24:'W',30:'S',36:'K',42:'W',48:'S',54:'K',60:'W',66:'S'}},
+      {lead:{6:76,18:74,30:72,42:69,54:67,66:64},counter:{12:60,36:62,60:60},chords:{0:[52,57,60,64],24:[55,59,62,67],48:[50,57,60,65]},bass:{0:40,24:43,48:38},drums:{0:'K',24:'W',48:'K'}},
+    ],
+  },
+  terraceFireflies: {
+    id:'terraceFireflies', engine:'structured', label:'Luciérnagas en la terraza',
+    description:'Vibráfono, Rhodes, clarinete y contrabajo: chill jazz luminoso, con swing suave y frases que se contestan sin ponerse solemnes.',
+    stepMs:142, stepsPerSection:64, longFormMs:350000, leadInstrument:'vibes', counterInstrument:'clarinet', chordInstrument:'epiano', bassInstrument:'bass',
+    sections:[
+      {lead:{0:67,4:71,8:74,12:76,16:74,20:71,24:69,28:67,32:69,36:72,40:74,44:77,48:76,52:74,56:71,60:67},counter:{6:79,14:77,22:74,30:72,38:79,46:77,54:74,62:72},chords:{0:[55,59,62,67],16:[52,57,60,64],32:[57,60,64,69],48:[53,57,60,64]},bass:{0:43,4:47,8:50,12:47,16:40,20:47,24:52,28:47,32:45,36:48,40:52,44:48,48:41,52:45,56:48,60:45},drums:{0:'B',4:'H',8:'B',12:'H',16:'B',20:'H',24:'B',28:'H',32:'B',36:'H',40:'B',44:'H',48:'B',52:'H',56:'B',60:'H'}},
+      {leadInstrument:'clarinet',counterInstrument:'vibes',lead:{2:69,7:72,12:74,17:77,22:76,27:74,32:72,37:69,42:67,47:69,52:72,57:74,62:67},counter:{10:81,26:79,42:76,58:74},chords:{0:[52,57,60,64],16:[55,59,62,67],32:[50,55,59,62],48:[57,60,64,69]},bass:{0:40,8:47,16:43,24:50,32:38,40:45,48:45,56:52},drums:{0:'B',6:'H',12:'B',18:'H',24:'B',30:'H',36:'B',42:'H',48:'B',54:'H',60:'B'}},
+      {lead:{0:74,5:77,10:79,15:81,20:79,25:77,30:74,35:72,40:69,45:72,50:74,55:77,60:69},counter:{8:67,20:71,32:69,44:67,56:64},chords:{0:[57,60,64,69],16:[55,59,62,67],32:[53,57,60,64],48:[50,55,59,62]},bass:{0:45,4:48,8:52,12:48,16:43,20:47,24:50,28:47,32:41,36:45,40:48,44:45,48:38,52:45,56:50,60:45},drums:{0:'B',4:'H',8:'B',12:'H',16:'B',20:'H',24:'B',28:'H',32:'B',36:'H',40:'B',44:'H',48:'B',52:'H',56:'B',60:'H'}},
+      {lead:{8:79,20:76,32:74,44:72,56:67},counter:{14:83,38:79},chords:{0:[55,59,62,67],24:[52,57,60,64],48:[57,60,64,69]},bass:{0:43,24:40,48:45},drums:{0:'B',16:'H',32:'B',48:'H'}},
+    ],
+  },
+  cafeFirelight: {
+    id:'cafeFirelight', engine:'structured', label:'Café · luces pequeñas',
+    description:'Rhodes, guitarra limpia y trompeta apagada con brushes: jazz de café sereno pero con pulso, más sonrisa que funeral.',
+    stepMs:148, stepsPerSection:64, longFormMs:330000, leadInstrument:'mutedHorn', counterInstrument:'guitar2', chordInstrument:'epiano', bassInstrument:'bass',
+    sections:[
+      {lead:{4:65,10:68,16:70,22:72,28:70,34:68,40:65,46:63,52:65,58:68},counter:{8:57,20:60,32:59,44:57,56:60},chords:{0:[53,57,60,64],16:[50,57,60,65],32:[55,59,62,67],48:[52,57,60,64]},bass:{0:41,8:45,16:38,24:45,32:43,40:47,48:40,56:47},drums:{0:'B',8:'H',16:'B',24:'H',32:'B',40:'H',48:'B',56:'H'}},
+      {leadInstrument:'guitar2',counterInstrument:'mutedHorn',lead:{2:65,6:68,10:70,14:73,18:75,22:73,26:70,30:68,34:65,38:68,42:70,46:73,50:77,54:73,58:70,62:65},counter:{12:77,28:75,44:73,60:70},chords:{0:[50,57,60,65],16:[53,57,60,64],32:[57,60,64,69],48:[55,59,62,67]},bass:{0:38,4:45,8:50,12:45,16:41,20:48,24:53,28:48,32:45,36:52,40:57,44:52,48:43,52:50,56:55,60:50},drums:{0:'B',4:'H',8:'B',12:'H',16:'B',20:'H',24:'B',28:'H',32:'B',36:'H',40:'B',44:'H',48:'B',52:'H',56:'B',60:'H'}},
+      {lead:{0:70,6:73,12:75,18:77,24:75,30:73,36:70,42:68,48:65,54:68,60:63},counter:{9:74,21:72,33:70,45:68,57:65},chords:{0:[57,60,64,69],16:[55,59,62,67],32:[53,57,60,64],48:[50,57,60,65]},bass:{0:45,8:43,16:41,24:38,32:43,40:40,48:38,56:45},drums:{0:'B',6:'H',12:'B',18:'H',24:'B',30:'H',36:'B',42:'H',48:'B',54:'H',60:'B'}},
+      {lead:{8:75,20:73,32:70,44:68,56:65},counter:{14:79,38:75},chords:{0:[53,57,60,64],24:[50,57,60,65],48:[55,59,62,67]},bass:{0:41,24:38,48:43},drums:{0:'B',16:'H',32:'B',48:'H'}},
+    ],
+  },
+  malagaLastTram: {
+    id:'malagaLastTram', engine:'structured', label:'Málaga · último tranvía',
+    description:'Guitarra, oud y vibráfono con un bajo que camina sin prisa; mediterráneo, elegante y claramente despierto.',
+    stepMs:134, stepsPerSection:64, longFormMs:340000, leadInstrument:'guitar2', counterInstrument:'vibes', chordInstrument:'epiano', bassInstrument:'bass',
+    sections:[
+      {lead:{0:64,4:67,8:71,12:72,16:71,20:67,24:64,28:62,32:64,36:67,40:69,44:72,48:74,52:72,56:69,60:64},counter:{6:76,18:79,30:76,42:74,54:72},chords:{0:[52,57,60,64],16:[55,59,62,67],32:[50,57,60,65],48:[57,60,64,69]},bass:{0:40,4:47,8:52,12:47,16:43,20:50,24:55,28:50,32:38,36:45,40:50,44:45,48:45,52:52,56:57,60:52},drums:{0:'K',4:'H',8:'B',12:'H',16:'S',20:'H',24:'B',28:'H',32:'K',36:'H',40:'B',44:'H',48:'S',52:'H',56:'B',60:'H'}},
+      {leadInstrument:'oudJazz',counterInstrument:'guitar2',lead:{2:67,7:69,12:72,17:74,22:76,27:74,32:72,37:69,42:67,47:69,52:72,57:74,62:67},counter:{10:60,26:64,42:62,58:60},chords:{0:[55,59,62,67],16:[52,57,60,64],32:[57,60,64,69],48:[50,57,60,65]},bass:{0:43,8:50,16:40,24:47,32:45,40:52,48:38,56:45},drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'B',42:'H',48:'K',54:'H',60:'S'}},
+      {lead:{0:72,5:74,10:77,15:79,20:77,25:74,30:72,35:69,40:67,45:69,50:72,55:76,60:69},counter:{8:81,20:79,32:76,44:74,56:72},chords:{0:[57,60,64,69],16:[55,59,62,67],32:[53,57,60,64],48:[50,57,60,65]},bass:{0:45,4:52,8:57,12:52,16:43,20:50,24:55,28:50,32:41,36:48,40:53,44:48,48:38,52:45,56:50,60:45},drums:{0:'K',4:'H',8:'B',12:'H',16:'S',20:'H',24:'B',28:'H',32:'K',36:'H',40:'B',44:'H',48:'S',52:'H',56:'B',60:'H'}},
+      {lead:{8:77,20:74,32:72,44:69,56:64},counter:{14:81,38:77},chords:{0:[52,57,60,64],24:[55,59,62,67],48:[50,57,60,65]},bass:{0:40,24:43,48:38},drums:{0:'K',16:'H',32:'B',48:'H'}},
     ],
   },
 });
@@ -1420,8 +1669,18 @@ export function getAmbientThemeVariationDurationMs(themeId) {
   return cycleMs * span;
 }
 
-function randomAmbientThemeId() {
-  const ids = Object.keys(AMBIENT_THEMES);
+// Duración de reproducción de una "pista" antes de pasar a otra. Los temas
+// estructurados usan su forma larga completa; Al-Ándalus es estocástico y no
+// tiene cierre natural, así que le damos una ventana de cuatro minutos.
+export function getAmbientTrackDurationMs(themeId) {
+  return getAmbientThemeVariationDurationMs(themeId) || ANDALUS_TRACK_DURATION_MS;
+}
+
+export function pickRandomAmbientThemeId(excludeId = null) {
+  const allIds = Object.keys(AMBIENT_THEMES);
+  const ids = allIds.length > 1 && excludeId
+    ? allIds.filter((id) => id !== excludeId)
+    : allIds;
   if (!ids.length) return DEFAULT_AMBIENT_THEME;
   let index = 0;
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
@@ -1435,7 +1694,7 @@ function randomAmbientThemeId() {
 }
 
 export function resetAmbientThemeForSession() {
-  const nextId = randomAmbientThemeId();
+  const nextId = pickRandomAmbientThemeId();
   if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
   // V15.4: el tema ya NO forma parte del perfil persistente. Borramos la
   // preferencia histórica local para que un login nuevo no herede la pista
@@ -1465,9 +1724,12 @@ function transportNowMs() {
 }
 
 let stepTimer = null;
+let ambientTrackEndTimer = null;
+let ambientTransitionTimer = null;
+let queuedAmbientThemeId = null;
 let ambientResumeFn = null;
 const ambientTransport = {
-  status: 'stopped', // playing | paused | stopped
+  status: 'stopped', // playing | paused | gap | stopped
   themeId: null,
   positionMs: 0,
   startedAtMs: 0,
@@ -1487,17 +1749,21 @@ function notifyAmbientTransport() {
 
 export function getAmbientPlaybackState() {
   const themeId = ambientTransport.themeId || getAmbientThemeId();
-  const durationMs = getAmbientThemeVariationDurationMs(themeId);
+  const durationMs = getAmbientTrackDurationMs(themeId);
   const elapsedMs = transportElapsedMs();
   const visualCycleMs = durationMs || 180000;
+  const cyclePositionMs = ambientTransport.status === 'gap' && durationMs
+    ? durationMs
+    : visualCycleMs ? elapsedMs % visualCycleMs : elapsedMs;
   return {
     status: ambientTransport.status,
     themeId,
     elapsedMs,
     durationMs,
-    cyclePositionMs: visualCycleMs ? elapsedMs % visualCycleMs : elapsedMs,
+    cyclePositionMs,
     visualCycleMs,
     muted: isMusicMuted(),
+    volume: getAmbientVolume(),
   };
 }
 
@@ -1508,7 +1774,7 @@ export function setAmbientTheme(themeId) {
   if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
   ambientTransport.themeId = nextId;
 
-  if (previousStatus === 'playing') {
+  if (previousStatus === 'playing' || previousStatus === 'gap') {
     startAmbientMusic();
   } else if (previousStatus === 'paused') {
     // Cambiar de pista mientras está pausada deja la nueva al principio,
@@ -1527,6 +1793,113 @@ export function selectRelativeAmbientTheme(delta) {
   const index = Math.max(0, ids.indexOf(current));
   const next = ids[(index + delta + ids.length) % ids.length] || DEFAULT_AMBIENT_THEME;
   return setAmbientTheme(next);
+}
+
+let ambientOutputNode = null;
+let ambientDuckFactor = 1;
+
+function clearAmbientTrackEndTimer() {
+  if (!ambientTrackEndTimer) return;
+  clearTimeout(ambientTrackEndTimer);
+  ambientTrackEndTimer = null;
+}
+
+function clearAmbientTransitionTimer() {
+  if (!ambientTransitionTimer) return;
+  clearTimeout(ambientTransitionTimer);
+  ambientTransitionTimer = null;
+}
+
+function ambientMasterTarget() {
+  return getAmbientVolume() * ambientDuckFactor;
+}
+
+function applyAmbientMasterGain(rampSeconds = 0.12) {
+  const ctx = audioCtx;
+  if (!ctx || !ambientOutputNode) return;
+  const now = ctx.currentTime;
+  const gain = ambientOutputNode.gain;
+  const target = ambientMasterTarget();
+  try {
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(Math.max(0.0001, gain.value), now);
+    gain.linearRampToValueAtTime(target, now + rampSeconds);
+  } catch {
+    gain.value = target;
+  }
+}
+
+function getAmbientOutput(ctx) {
+  if (!ctx) return null;
+  if (!ambientOutputNode || ambientOutputNode.context !== ctx) {
+    ambientOutputNode = ctx.createGain();
+    ambientOutputNode.gain.value = ambientMasterTarget();
+    ambientOutputNode.connect(ctx.destination);
+  }
+  return ambientOutputNode;
+}
+
+function scheduleAmbientTrackEnd() {
+  clearAmbientTrackEndTimer();
+  if (ambientTransport.status !== 'playing') return;
+  const durationMs = getAmbientTrackDurationMs(ambientTransport.themeId || getAmbientThemeId());
+  const remainingMs = Math.max(0, durationMs - transportElapsedMs());
+  ambientTrackEndTimer = setTimeout(finishAmbientTrackNaturally, remainingMs);
+}
+
+function finishAmbientTrackNaturally() {
+  ambientTrackEndTimer = null;
+  if (ambientTransport.status !== 'playing') return;
+
+  const finishedThemeId = ambientTransport.themeId || getAmbientThemeId();
+  const durationMs = getAmbientTrackDurationMs(finishedThemeId);
+  queuedAmbientThemeId = pickRandomAmbientThemeId(finishedThemeId);
+
+  if (stepTimer) {
+    clearTimeout(stepTimer);
+    stepTimer = null;
+  }
+  ambientResumeFn = null;
+  ambientTransport.status = 'gap';
+  ambientTransport.positionMs = durationMs;
+  ambientTransport.startedAtMs = 0;
+
+  // Apagado corto para cortar limpiamente cualquier cola de pad/acorde. El
+  // resto del intervalo sí es silencio completo antes de la siguiente pista.
+  if (ambientOutputNode) {
+    const ctx = ambientOutputNode.context;
+    const gain = ambientOutputNode.gain;
+    const now = ctx.currentTime;
+    try {
+      gain.cancelScheduledValues(now);
+      gain.setValueAtTime(Math.max(0.0001, gain.value), now);
+      gain.linearRampToValueAtTime(0, now + 0.28);
+    } catch {
+      gain.value = 0;
+    }
+  }
+  notifyAmbientTransport();
+
+  clearAmbientTransitionTimer();
+  ambientTransitionTimer = setTimeout(() => {
+    ambientTransitionTimer = null;
+    if (ambientTransport.status !== 'gap') return;
+    const nextId = queuedAmbientThemeId || pickRandomAmbientThemeId(finishedThemeId);
+    queuedAmbientThemeId = null;
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+    ambientTransport.status = 'stopped';
+    ambientTransport.themeId = nextId;
+    ambientTransport.positionMs = 0;
+    ambientTransport.startedAtMs = 0;
+    startAmbientMusic();
+  }, AMBIENT_INTER_TRACK_SILENCE_MS);
+}
+
+// Cuando habla el Game Chat, el ducking se multiplica por el volumen elegido
+// por el usuario. Si estaba al 35 %, baja sobre ESE 35 %, no salta a otro nivel.
+export function duckAmbientMusic(ducked) {
+  ambientDuckFactor = ducked ? 0.24 : 1;
+  applyAmbientMasterGain(ducked ? 0.08 : 0.28);
 }
 
 let padIndex = 0;
@@ -1549,7 +1922,7 @@ function playPadNote(freq) {
   gainNode.gain.linearRampToValueAtTime(0, start + PAD_DURATION_S);
 
   osc.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  gainNode.connect(getAmbientOutput(ctx));
   osc.start(start);
   osc.stop(start + PAD_DURATION_S + 0.05);
 }
@@ -1574,7 +1947,7 @@ function playBass(freq) {
   bodyGain.gain.linearRampToValueAtTime(0.05, start + 0.02); // ataque rápido, tipo pizzicato
   bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + BASS_DURATION_S);
   body.connect(bodyGain);
-  bodyGain.connect(ctx.destination);
+  bodyGain.connect(getAmbientOutput(ctx));
 
   const edge = ctx.createOscillator();
   const edgeGain = ctx.createGain();
@@ -1588,7 +1961,7 @@ function playBass(freq) {
   edgeGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.25); // mucho más corto que el cuerpo — solo el ataque
   edge.connect(edgeFilter);
   edgeFilter.connect(edgeGain);
-  edgeGain.connect(ctx.destination);
+  edgeGain.connect(getAmbientOutput(ctx));
 
   body.start(start);
   body.stop(start + BASS_DURATION_S + 0.05);
@@ -1620,7 +1993,7 @@ function playOudPluck(freq) {
 
   osc.connect(filter);
   filter.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  gainNode.connect(getAmbientOutput(ctx));
   osc.start(start);
   osc.stop(start + PLUCK_DURATION_S + 0.05);
 }
@@ -1649,7 +2022,7 @@ function playGuitarPluck(freq) {
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + PLUCK_DURATION_S * 1.15);
 
   filter.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  gainNode.connect(getAmbientOutput(ctx));
 
   const detunesCents = [-6, 6]; // dos voces, una levemente grave y otra aguda
   const oscs = detunesCents.map((cents) => {
@@ -1718,7 +2091,7 @@ function playSax(freq) {
 
   osc.connect(filter);
   filter.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  gainNode.connect(getAmbientOutput(ctx));
 
   lfo.start(start);
   osc.start(start);
@@ -1760,7 +2133,7 @@ function playSoftPercussion(volume) {
   oscGain.gain.setValueAtTime(volume * 1.6, start); // el tono lleva más peso que el ruido en la mezcla
   oscGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDurationS);
   osc.connect(oscGain);
-  oscGain.connect(ctx.destination);
+  oscGain.connect(getAmbientOutput(ctx));
   osc.start(start);
   osc.stop(start + bodyDurationS + 0.05);
 
@@ -1786,7 +2159,7 @@ function playSoftPercussion(volume) {
 
   noiseSource.connect(filter);
   filter.connect(noiseGain);
-  noiseGain.connect(ctx.destination);
+  noiseGain.connect(getAmbientOutput(ctx));
   noiseSource.start(start);
 }
 
@@ -1824,7 +2197,7 @@ function playHighTak(volume) {
 
   noiseSource.connect(filter);
   filter.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  gainNode.connect(getAmbientOutput(ctx));
   noiseSource.start(start);
 }
 
@@ -1895,7 +2268,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
 
   filter.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  gainNode.connect(getAmbientOutput(ctx));
 
   const oscillators = preset.waves.map(([type, ratio, mix], index) => {
     const osc = ctx.createOscillator();
@@ -1958,7 +2331,7 @@ function playNoiseHit(kind, volume = 0.03) {
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   source.connect(filter);
   filter.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getAmbientOutput(ctx));
   source.start(start);
 }
 
@@ -1975,7 +2348,7 @@ function playWoodblock() {
   gain.gain.setValueAtTime(0.028, start);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.08);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getAmbientOutput(ctx));
   osc.start(start);
   osc.stop(start + 0.09);
 }
@@ -1993,7 +2366,7 @@ function playMetalHit() {
   filter.frequency.value = 1180;
   filter.Q.value = 2.8;
   filter.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getAmbientOutput(ctx));
   [1, 1.47, 2.17].forEach((ratio, i) => {
     const osc = ctx.createOscillator();
     const mix = ctx.createGain();
@@ -2134,11 +2507,27 @@ export function startAmbientMusic() {
   if (isMusicMuted()) setMusicMuted(false);
   if (ambientTransport.status === 'playing' && stepTimer) return;
 
+  // Si el usuario pulsa Play durante la pausa automática entre pistas,
+  // adelantamos la siguiente en vez de reiniciar la que acaba de terminar.
+  if (ambientTransport.status === 'gap') {
+    clearAmbientTransitionTimer();
+    const previousThemeId = ambientTransport.themeId || getAmbientThemeId();
+    const nextId = queuedAmbientThemeId || pickRandomAmbientThemeId(previousThemeId);
+    queuedAmbientThemeId = null;
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+    ambientTransport.status = 'stopped';
+    ambientTransport.themeId = nextId;
+    ambientTransport.positionMs = 0;
+    ambientTransport.startedAtMs = 0;
+  }
+
   // Resume real: conserva el closure/contador del secuenciador. No reinicia la
   // composición como haría Stop + Play.
   if (ambientTransport.status === 'paused' && ambientResumeFn) {
     ambientTransport.status = 'playing';
     ambientTransport.startedAtMs = transportNowMs();
+    applyAmbientMasterGain(0.18);
+    scheduleAmbientTrackEnd();
     notifyAmbientTransport();
     ambientResumeFn();
     return;
@@ -2156,6 +2545,8 @@ export function startAmbientMusic() {
   ambientTransport.themeId = theme.id;
   ambientTransport.positionMs = 0;
   ambientTransport.startedAtMs = transportNowMs();
+  applyAmbientMasterGain(0.32);
+  scheduleAmbientTrackEnd();
   notifyAmbientTransport();
 
   if (theme.engine === 'structured') {
@@ -2230,7 +2621,21 @@ export function startAmbientMusic() {
 }
 
 export function pauseAmbientMusic() {
+  if (ambientTransport.status === 'gap') {
+    clearAmbientTransitionTimer();
+    const previousThemeId = ambientTransport.themeId || getAmbientThemeId();
+    const nextId = queuedAmbientThemeId || pickRandomAmbientThemeId(previousThemeId);
+    queuedAmbientThemeId = null;
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+    ambientTransport.status = 'paused';
+    ambientTransport.themeId = nextId;
+    ambientTransport.positionMs = 0;
+    ambientTransport.startedAtMs = 0;
+    notifyAmbientTransport();
+    return;
+  }
   if (ambientTransport.status !== 'playing') return;
+  clearAmbientTrackEndTimer();
   ambientTransport.positionMs = transportElapsedMs();
   ambientTransport.startedAtMs = 0;
   ambientTransport.status = 'paused';
@@ -2242,6 +2647,11 @@ export function pauseAmbientMusic() {
 }
 
 export function stopAmbientMusic() {
+  const wasGap = ambientTransport.status === 'gap';
+  const queuedTheme = queuedAmbientThemeId;
+  clearAmbientTrackEndTimer();
+  clearAmbientTransitionTimer();
+  queuedAmbientThemeId = null;
   if (stepTimer) {
     clearTimeout(stepTimer);
     stepTimer = null;
@@ -2250,8 +2660,25 @@ export function stopAmbientMusic() {
   ambientTransport.status = 'stopped';
   ambientTransport.positionMs = 0;
   ambientTransport.startedAtMs = 0;
+  if (wasGap && queuedTheme && typeof sessionStorage !== 'undefined') {
+    // Si se pulsa Stop justo durante el silencio, dejamos preparada la pista
+    // que ya estaba sorteada. El siguiente Play no repite la recién terminada.
+    sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, queuedTheme);
+  }
   ambientTransport.themeId = getAmbientThemeId();
   keyCenterIndex = 0; // vuelve a empezar en la tónica la próxima vez, no donde quedó
   padIndex = 0;
+  if (ambientOutputNode) {
+    const ctx = ambientOutputNode.context;
+    const gain = ambientOutputNode.gain;
+    const now = ctx.currentTime;
+    try {
+      gain.cancelScheduledValues(now);
+      gain.setValueAtTime(Math.max(0.0001, gain.value), now);
+      gain.linearRampToValueAtTime(0, now + 0.08);
+    } catch {
+      gain.value = 0;
+    }
+  }
   notifyAmbientTransport();
 }

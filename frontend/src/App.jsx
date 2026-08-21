@@ -19,10 +19,10 @@ import MusicPlayer from './components/MusicPlayer.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { startAmbientMusic, stopAmbientMusic } from './sound.js';
 import { api, STORAGE_KEY } from './api.js';
-import { loadTournament, saveTournament, resetTournament, applyResult, difficultyForLevel, levelForPoints } from './tournament.js';
+import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { loadGameHistory, saveGameRecord, clearGameHistory, updateGameRecordChat } from './gameHistory.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
-import { loadRating, saveRating, updateRating, recordRatingHistory, loadRatingHistory } from './playerRating.js';
+import { loadRating, saveRating, updateRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
 import { handicapForGap } from './handicap.js';
 import { computeInsights } from './insights.js';
 import InsightsScreen from './components/InsightsScreen.jsx';
@@ -361,7 +361,7 @@ function AppInner({ isAdminUser }) {
       pressureMoves: Number(endMeta.pressureMoves || 0),
       pressureIncidents: Number(endMeta.pressureIncidents || 0),
       });
-      const score = outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
+      const score = ratingScoreForOutcome(outcome);
       setRating((prev) => {
         const next = updateRating(prev, finishedGame.difficulty, score);
         saveRating(next);
@@ -551,7 +551,7 @@ function AppInner({ isAdminUser }) {
     setLoading(true);
     setError(null);
     try {
-      const level = levelForPoints(tournament.points);
+      const level = levelForPoints(tournament.progressPoints || 0);
       const cpuDifficulty = difficultyForLevel(level);
       const created = await api.createGame(cpuDifficulty, color);
       setTournamentGame(created);
@@ -584,12 +584,20 @@ function AppInner({ isAdminUser }) {
     if (finishedGame) {
       // Actualizamos también el rating tipo ELO: cuenta como una partida
       // más contra una CPU de dificultad conocida.
-      const score = outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
+      const score = ratingScoreForOutcome(outcome);
       setRating((prev) => {
-        const next = updateRating(prev, finishedGame.difficulty, score);
-        saveRating(next);
-        recordRatingHistory(next.rating);
-        return next;
+        const details = ratingChangeDetails(prev, finishedGame.difficulty, score);
+        saveRating(details.next);
+        recordRatingHistory(details.next.rating);
+        setLastResult((current) => ({
+          ...(current || { outcome }),
+          eloDelta: details.delta,
+          eloBefore: prev.rating,
+          eloAfter: details.next.rating,
+          cpuRating: details.cpuRating,
+          expectedScore: details.expectedScore,
+        }));
+        return details.next;
       });
 
       const record = {
@@ -631,7 +639,8 @@ function AppInner({ isAdminUser }) {
 
   function handleCapturePoints(gained) {
     setTournament((prev) => {
-      const next = { ...prev, points: prev.points + gained };
+      // Moneda de pistas exclusivamente. No altera progreso de torneo ni ELO.
+      const next = applyCaptureReward(prev, gained);
       saveTournament(next);
       return next;
     });
@@ -829,7 +838,7 @@ function AppInner({ isAdminUser }) {
             onGameEnd={handleTournamentGameEnd}
             onChatUpdate={handleGameChatUpdate}
             hintMode="paid"
-            tournamentLevel={levelForPoints(tournament.points)}
+            tournamentLevel={levelForPoints(tournament.progressPoints || 0)}
             points={tournament.points}
             onSpendPoints={handleSpendPoints}
             onCapturePoints={handleCapturePoints}

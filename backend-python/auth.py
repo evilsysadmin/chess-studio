@@ -5,6 +5,7 @@ espíritu que M2M_API_KEYS (una variable de entorno, sin base de datos de
 sesiones aparte) pero para humanos con contraseña en vez de una key fija.
 """
 
+import hashlib
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -20,6 +21,7 @@ _DEV_JWT_SECRET = "dev-secret-cambiar-en-produccion"
 JWT_SECRET = os.environ.get("JWT_SECRET", _DEV_JWT_SECRET)
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_DAYS = 30  # una sesión larga, no hay "recordarme" aparte
+PASSWORD_RESET_MINUTES = 30
 
 # Fallar cerrado en Internet. Es preferible que Render marque el deploy como
 # fallido a arrancar con una clave conocida por cualquiera que vea el repo.
@@ -55,6 +57,32 @@ def verify_token(token: str) -> Optional[str]:
     excepción, para que el llamador solo tenga que chequear None."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload.get("sub")
+    except jwt.PyJWTError:
+        return None
+
+
+def _password_fingerprint(password_hash: str) -> str:
+    return hashlib.sha256(password_hash.encode("utf-8")).hexdigest()[:24]
+
+
+def create_password_reset_token(username: str, password_hash: str) -> str:
+    payload = {
+        "sub": username,
+        "purpose": "password_reset",
+        "pwd": _password_fingerprint(password_hash),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_MINUTES),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def verify_password_reset_token(token: str, password_hash: str) -> Optional[str]:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("purpose") != "password_reset":
+            return None
+        if payload.get("pwd") != _password_fingerprint(password_hash):
+            return None
         return payload.get("sub")
     except jwt.PyJWTError:
         return None

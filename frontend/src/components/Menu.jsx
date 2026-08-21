@@ -8,6 +8,7 @@ import ProfileBackupModal from './ProfileBackupModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
+import AccountModal from './AccountModal.jsx';
 
 export default function Menu({
   onNewGame,
@@ -42,9 +43,10 @@ export default function Menu({
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [logoutError, setLogoutError] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
-  const tournamentLevel = levelForPoints(tournament.points);
+  const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const username = getUsername();
 
   async function handleLogout() {
@@ -96,8 +98,8 @@ export default function Menu({
           <button type="button" className="menu-card accent-brass" onClick={onTournament}>
             <IconTrophy className="menu-card-icon" />
             <h3>Torneo</h3>
-            <p>Sube de nivel, gana puntos por victorias y capturas, y gástalos en pistas.</p>
-            <span className="menu-card-cta">Nivel {tournamentLevel} · {tournament.points} pts →</span>
+            <p>Sube de nivel por resultados; las capturas llenan tu cartera de pistas sin tocar tu ELO.</p>
+            <span className="menu-card-cta">Nivel {tournamentLevel} · {tournament.points} pts de pista →</span>
           </button>
 
           <button type="button" className="menu-card accent-danger" onClick={onCombat}>
@@ -110,8 +112,8 @@ export default function Menu({
           <button type="button" className="menu-card accent-danger" onClick={onCombatRoguelike}>
             <IconSword className="menu-card-icon" />
             <h3>Combate Roguelike</h3>
-            <p>Una escalera de rivales cada vez más raros — cada piso le suma material extra a la CPU.</p>
-            <span className="menu-card-cta">Empezar corrida →</span>
+            <p>Diez pisos, encuentros, recompensas temporales y un Rey Boss con 5 HP. Si sobrevives, se abre el infinito.</p>
+            <span className="menu-card-cta">Empezar intento →</span>
           </button>
         </div>
       </div>
@@ -152,7 +154,7 @@ export default function Menu({
           <button type="button" className="menu-card accent-success" onClick={onOpenings}>
             <IconBookmark className="menu-card-icon" />
             <h3>Aperturas famosas</h3>
-            <p>Dieciocho aperturas clásicas, recorridas jugada por jugada con explicación en cada una.</p>
+            <p>Dieciocho aperturas clásicas, reintentos jugada por jugada con explicación en cada una.</p>
             <span className="menu-card-cta">Ver aperturas →</span>
           </button>
 
@@ -202,6 +204,9 @@ export default function Menu({
         <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>
           Ver logros
         </button>
+        <button type="button" className="backup-link" onClick={() => setShowAccount(true)}>
+          Mi cuenta
+        </button>
         <button type="button" className="backup-link" onClick={() => setShowBackup(true)}>
           Exportar / importar mi progreso
         </button>
@@ -219,6 +224,7 @@ export default function Menu({
         {logoutError && <p className="error-text" style={{ marginTop: '0.5rem' }}>{logoutError}</p>}
       </div>
 
+      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
       {showBackup && <ProfileBackupModal onClose={() => setShowBackup(false)} />}
       {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} />}
       {showQuickMatch && (

@@ -5,6 +5,7 @@ import {
   hintCost,
   puzzleRetryCost,
   capturePoints,
+  applyCaptureReward,
   streakBonus,
   applyResult,
   POINTS_PER_LEVEL,
@@ -19,8 +20,9 @@ describe('nivel y dificultad', () => {
 
   it('la dificultad de la CPU escala con el nivel y tiene techo en 100', () => {
     expect(difficultyForLevel(1)).toBe(0);
-    expect(difficultyForLevel(13)).toBe(45); // antes llegaba a 96 con la curva lineal vieja
-    expect(difficultyForLevel(60)).toBe(100); // techo — ahora en el nivel 60, no en el 14
+    expect(difficultyForLevel(13)).toBe(35);
+    expect(difficultyForLevel(24)).toBe(48); // el antiguo ~62 era demasiado agresivo con el motor actual
+    expect(difficultyForLevel(101)).toBe(100);
   });
 
   it('el techo no se alcanza demasiado temprano (el problema real que se reportó)', () => {
@@ -68,6 +70,14 @@ describe('capturePoints', () => {
     const nivelAlto = capturePoints('n', 'p', 20);
     expect(nivelAlto).toBeGreaterThan(nivelBajo);
   });
+
+  it('las capturas sólo suman moneda de pistas, no XP/nivel de torneo', () => {
+    const base = { points: 10, progressPoints: 95, wins: 0, draws: 0, losses: 0 };
+    const next = applyCaptureReward(base, 9);
+    expect(next.points).toBe(19);
+    expect(next.progressPoints).toBe(95);
+    expect(levelForPoints(next.progressPoints)).toBe(levelForPoints(base.progressPoints));
+  });
 });
 
 describe('streakBonus', () => {
@@ -81,23 +91,27 @@ describe('streakBonus', () => {
 });
 
 describe('applyResult', () => {
-  it('ganar suma más puntos que empatar, y empatar más que perder', () => {
-    const base = { points: 0, wins: 0, draws: 0, losses: 0 };
+  it('ganar da más progreso que empatar, pero el resultado NO fabrica moneda de pistas', () => {
+    const base = { points: 17, progressPoints: 0, wins: 0, draws: 0, losses: 0 };
     const win = applyResult(base, 'win');
     const draw = applyResult(base, 'draw');
     const loss = applyResult(base, 'loss');
     expect(win.gained).toBeGreaterThan(draw.gained);
     expect(draw.gained).toBeGreaterThan(loss.gained);
+    expect(win.state.points).toBe(17);
+    expect(draw.state.points).toBe(17);
+    expect(loss.state.points).toBe(17);
+    expect(win.state.progressPoints).toBe(20);
   });
 
   it('detecta correctamente cuando se sube de nivel', () => {
-    const base = { points: POINTS_PER_LEVEL - 5, wins: 0, draws: 0, losses: 0 };
+    const base = { points: 0, progressPoints: POINTS_PER_LEVEL - 5, wins: 0, draws: 0, losses: 0 };
     const result = applyResult(base, 'win'); // gana 20, cruza el umbral
     expect(result.leveledUp).toBe(true);
   });
 
   it('la racha de victorias sube con cada victoria consecutiva', () => {
-    let state = { points: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
+    let state = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
     state = applyResult(state, 'win').state;
     state = applyResult(state, 'win').state;
     state = applyResult(state, 'win').state;
@@ -106,7 +120,7 @@ describe('applyResult', () => {
   });
 
   it('una derrota o unas tablas rompen la racha de victorias', () => {
-    let state = { points: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
+    let state = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
     state = applyResult(state, 'win').state;
     state = applyResult(state, 'win').state;
     state = applyResult(state, 'draw').state;
@@ -118,7 +132,7 @@ describe('applyResult', () => {
   });
 
   it('la mejor racha nunca baja, aunque la racha actual se rompa y vuelva a crecer más chica', () => {
-    let state = { points: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
+    let state = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
     for (let i = 0; i < 5; i++) state = applyResult(state, 'win').state;
     expect(state.bestWinStreak).toBe(5);
     state = applyResult(state, 'loss').state;

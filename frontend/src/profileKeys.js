@@ -19,6 +19,7 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-puzzle-best-streak',
   'chess-study-muted', // legado: fallback para perfiles anteriores
   'chess-study-music-muted',
+  'chess-study-music-volume',
   'chess-study-fx-muted',
   'chess-study-voice-enabled',
   'chess-study-worst-move-cache',
@@ -26,6 +27,7 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-selected-skin',
   'chess-study-roguelike-run',
   'chess-study-roguelike-best-floor',
+  'chess-study-roguelike-tower-completed',
   'chess-study-personal-puzzles',
   'chess-study-cpu-rivalry',
   'chess-study-daily-challenge',

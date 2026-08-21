@@ -41,9 +41,9 @@ export const SPEED_POINT_VALUE = 3;
 // de desarrollar todo de entrada.
 const HOME_SQUARE_BONUS = 0.12;
 
-// Bono de acierto por fuego concentrado: cada ataque consecutivo contra el
-// MISMO objetivo (sea que hayan acertado o fallado los anteriores) suma un
-// poco más, hasta un tope.
+// Bono de acierto por fuego concentrado: sólo los FALLOS consecutivos contra
+// el MISMO objetivo acumulan puntería. Acertar, cambiar de blanco o hacer una
+// jugada tranquila corta la racha.
 const FOCUS_BONUS_PER_STACK = 0.04;
 const FOCUS_MAX_STACKS = 5; // tope: +20%
 
@@ -74,8 +74,8 @@ export function levelTier(level) {
 export function statsFor(piece) {
   const base = BASE_STATS[piece.type];
   return {
-    strength: base.strength + (piece.strengthPoints || 0) * STRENGTH_POINT_VALUE,
-    speed: base.speed + (piece.speedPoints || 0) * SPEED_POINT_VALUE,
+    strength: base.strength + (piece.strengthPoints || 0) * STRENGTH_POINT_VALUE + (piece.runStrengthBonus || 0),
+    speed: base.speed + (piece.speedPoints || 0) * SPEED_POINT_VALUE + (piece.runSpeedBonus || 0),
   };
 }
 
@@ -112,27 +112,43 @@ export function autoLevelUp(piece) {
   return current;
 }
 
-// "Poder de combate" de una pieza: combina fuerza y velocidad en un solo
-// número. Se usa exactamente igual para el atacante y para el defensor —
-// así, si dos piezas idénticas (mismos puntos comprados) se enfrentan, el
-// resultado es 50/50 ni más ni menos, que es lo intuitivo.
-function combatPower(piece) {
-  const s = statsFor(piece);
-  return s.strength * 1.2 + s.speed * 0.4;
+// V16.5 — Fuerza y Velocidad dejan de ser dos nombres para la misma sopa.
+// Fuerza es OFENSIVA; Velocidad es DEFENSIVA. Además la velocidad INNATA del
+// tipo vuelve a importar: el primer arreglo separaba las mejoras, pero al
+// normalizar cada tipo contra su propia velocidad base conseguía la proeza de
+// que un caballo (V30) no fuese de base más esquivo que una torre (V6).
+//
+// Pasamos ambas magnitudes a una escala pequeña de "poder de combate". Cada
+// punto comprado de Fuerza (+1.5) suma 0.75 de ataque; cada punto comprado de
+// Velocidad (+3) suma también 0.75 de evasión. Los upgrades tienen por tanto
+// peso simétrico, mientras los stats base conservan el arquetipo de la pieza.
+const ATTACK_STRENGTH_SCALE = 0.50;
+const BASE_SPEED_EVASION_SCALE = 0.15;
+const SPEED_UPGRADE_EVASION_SCALE = 0.25;
+const POWER_TO_CHANCE = 0.05;
+
+function attackPower(piece) {
+  return statsFor(piece).strength * ATTACK_STRENGTH_SCALE;
+}
+
+function evasionPower(piece) {
+  const base = BASE_STATS[piece.type];
+  if (!base) return 1;
+  const purchasedSpeed = Math.max(0, statsFor(piece).speed - base.speed);
+  return base.speed * BASE_SPEED_EVASION_SCALE + purchasedSpeed * SPEED_UPGRADE_EVASION_SCALE;
 }
 
 // Probabilidad de que el ataque CONECTE (o sea, que la captura se concrete).
-// Base: proporción entre el poder del atacante y el poder combinado de los
-// dos (fórmula clásica de "precisión vs. evasión"). Encima se suman el bono
-// por casilla de partida y el bono por fuego concentrado. Acotada entre 20%
-// y 90%: nunca es un resultado garantizado, pero tampoco una apuesta casi
-// imposible.
+// Partimos de 50% y desplazamos según ataque - evasión. Esto evita que una
+// estadística grande convierta el denominador en una trituradora de porcentajes
+// y mantiene diferencias legibles entre arquetipos. Encima van reserva/foco.
+// Acotada 20–90%: nada normal es certeza absoluta ni lotería del 2%.
 export function hitChance(attacker, defender, focusStreak = 0) {
   if (!defender || defender.type === 'k') return 1; // el rey nunca esquiva (y nunca debería llegar a ser el defensor real)
-  if (attacker.type === 'k') return 1; // el rey también acierta siempre cuando ataca: rara vez lo hace, y es demasiado valioso para dejarlo a la suerte
-  const a = combatPower(attacker);
-  const d = combatPower(defender);
-  let chance = a / (a + d);
+  if (attacker.type === 'k') return 1; // el rey también acierta siempre cuando ataca
+  const a = attackPower(attacker);
+  const d = evasionPower(defender);
+  let chance = 0.5 + (a - d) * POWER_TO_CHANCE;
 
   const startSquare = attacker.id ? attacker.id.split('-')[2] : null;
   if (startSquare && attacker.square === startSquare) {
@@ -144,6 +160,34 @@ export function hitChance(attacker, defender, focusStreak = 0) {
   }
 
   return Math.min(0.9, Math.max(0.2, chance));
+}
+
+// Estado de fuego concentrado tras una acción. Sólo encadenan bono los
+// FALLOS consecutivos contra la misma pieza. Una jugada tranquila, cambiar de
+// objetivo o acertar la captura rompe la racha. Antes el controlador dejaba
+// viva la racha incluso después de hacer una jugada no capturadora, así que
+// podías pasearte por el tablero y volver varios turnos más tarde con un bono
+// que ya no tenía nada de "concentrado".
+export function nextFocusTracker(current, { isCapture, hit, defenderId } = {}) {
+  if (!isCapture || !defenderId || hit) return null;
+  const streak = current?.targetId === defenderId ? (current.streak || 0) + 1 : 1;
+  return { targetId: defenderId, streak };
+}
+
+// Devuelve si una captura legal tiene que conectar al 100 % por integridad
+// ajedrecística: porque el bando está saliendo de jaque o porque la propia
+// captura da mate. La UI usa exactamente la misma regla que el motor para no
+// enseñar "37 %" en un mate que luego el motor fuerza a 100 %.
+export function isForcedCombatCapture(fen, from, to, promotion) {
+  try {
+    const chess = new Chess(fen);
+    const startedInCheck = chess.inCheck();
+    const applied = chess.move({ from, to, promotion: promotion || 'q' });
+    if (!applied || !(applied.flags.includes('c') || applied.flags.includes('e'))) return false;
+    return startedInCheck || chess.isCheckmate();
+  } catch {
+    return false;
+  }
 }
 
 // Construye el registro inicial de piezas (una entrada por cada una de las
@@ -271,14 +315,35 @@ export function applySurvivalXp(registry, square, gained) {
   return { registry: next };
 }
 
+// Identidad relevante para repetición: tablero + turno + derechos de enroque
+// + casilla al paso. Los contadores halfmove/fullmove NO forman parte de la
+// posición a efectos de triple repetición. El controlador de Combate tiene
+// que llevar este conteo por su cuenta porque reconstruye chess.js desde FEN
+// después de cada turno y los fallos son turnos nulos que no existen en el
+// historial interno de chess.js.
+export function repetitionKey(fen) {
+  return String(fen || '').trim().split(/\s+/).slice(0, 4).join(' ');
+}
+
 // Cambia de turno sin mover ninguna pieza (para cuando un ataque falla). Es
 // una modificación directa del campo de turno en el FEN — no es una jugada
 // de ajedrez "real", es la regla de la casa de este modo. Solo se usa
 // cuando quien mueve NO estaba en jaque (ver resolveCombatMove).
 export function passTurnFen(fen) {
   const parts = fen.split(' ');
-  parts[1] = parts[1] === 'w' ? 'b' : 'w';
-  parts[3] = '-'; // invalidamos captura al paso pendiente, por prolijidad
+  const sideThatMissed = parts[1];
+  parts[1] = sideThatMissed === 'w' ? 'b' : 'w';
+  parts[3] = '-'; // un turno nulo invalida cualquier captura al paso pendiente
+
+  // El fallo consume un turno real de este modo. Mantener los contadores FEN
+  // coherentes permite que la regla de 50 jugadas siga teniendo sentido y que
+  // el número de jugada avance tras un fallo de negras.
+  const halfmove = Number.parseInt(parts[4] || '0', 10);
+  parts[4] = String(Number.isFinite(halfmove) ? halfmove + 1 : 1);
+  if (sideThatMissed === 'b') {
+    const fullmove = Number.parseInt(parts[5] || '1', 10);
+    parts[5] = String(Number.isFinite(fullmove) ? fullmove + 1 : 2);
+  }
   return parts.join(' ');
 }
 
@@ -289,7 +354,7 @@ export function passTurnFen(fen) {
 // los dos lados. `focusStreak` es cuántos ataques consecutivos ya se
 // dirigieron contra este mismo objetivo (lo calcula quien llama, según su
 // propio seguimiento de "a quién le vengo pegando").
-export function resolveCombatMove({ fen, registry, from, to, promotion, focusStreak = 0 }) {
+export function resolveCombatMove({ fen, registry, from, to, promotion, focusStreak = 0, randomFn = Math.random }) {
   const chess = new Chess();
   chess.load(fen);
   const attacker = registry[from];
@@ -317,8 +382,15 @@ export function resolveCombatMove({ fen, registry, from, to, promotion, focusStr
   const capturedSquare = capturedSquareFor(applied);
   const defender = registry[capturedSquare] || null;
 
-  const chance = mustSucceed ? 1 : hitChance(attacker, defender, focusStreak);
-  const hit = mustSucceed || Math.random() < chance;
+  // Una captura que DA MATE tampoco se somete al dado. La UI y las reglas
+  // del modo prometen que el jaque mate sigue siendo 100% seguro; antes sólo
+  // se forzaban capturas para SALIR de jaque, por lo que un mate capturando
+  // podía fallar y convertir una victoria forzada en una lotería.
+  const deliversMate = chess.isCheckmate();
+  const forcedHit = mustSucceed || deliversMate;
+  const chance = forcedHit ? 1 : hitChance(attacker, defender, focusStreak);
+  const roll = typeof randomFn === 'function' ? Number(randomFn()) : Math.random();
+  const hit = forcedHit || roll < chance;
 
   if (hit || !defender) {
     // Si por algún motivo no encontramos al defensor en el registro (no
@@ -341,7 +413,13 @@ export function resolveCombatMove({ fen, registry, from, to, promotion, focusStr
   const passedFen = passTurnFen(fen);
   const afterMiss = new Chess();
   afterMiss.load(passedFen);
-  if (afterMiss.isGameOver()) {
+  // Sólo forzamos el golpe si el turno nulo dejaría al rival literalmente
+  // sin jugadas (mate/ahogado fantasma). Otras reglas de tablas SÍ deben
+  // poder activarse con un fallo: por ejemplo, si el turno nulo lleva el
+  // contador de 50 jugadas a 100, la partida termina en tablas como promete
+  // passTurnFen. Antes `isGameOver()` mezclaba ambos casos y "resucitaba"
+  // capturas para esquivar una tabla legítima.
+  if (afterMiss.moves().length === 0) {
     const { registry: nextRegistry } = applyMoveToRegistry(registry, applied);
     return {
       fen: chess.fen(), registry: nextRegistry, isCapture: true, hit: true,

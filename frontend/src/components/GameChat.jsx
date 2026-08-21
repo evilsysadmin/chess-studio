@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import VoiceToggle from './VoiceToggle.jsx';
 
 function timeLabel(iso) {
   if (!iso) return '';
@@ -18,11 +19,14 @@ export default function GameChat({ messages = [], compact = false, title = 'Game
   return (
     <aside className={`game-chat${compact ? ' compact' : ''}`} aria-label="Chat de la partida">
       <div className="game-chat-heading">
-        <div>
+        <div className="game-chat-title-block">
           <span className="game-chat-kicker">CPU // LIVE LOG</span>
           <h3>{title}</h3>
         </div>
-        <span className="game-chat-count" title="Comentarios registrados">{messages.length}</span>
+        <div className="game-chat-tools">
+          {!compact && <VoiceToggle />}
+          <span className="game-chat-count" title="Comentarios registrados">{messages.length}</span>
+        </div>
       </div>
       <div className="game-chat-log" ref={scrollRef} aria-live={compact ? 'off' : 'polite'}>
         {messages.length === 0 ? (

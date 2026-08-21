@@ -15,6 +15,11 @@ services:
       MONGO_URL: mongodb://mongo:27017
       MONGO_DB_NAME: chess_study
       ENVIRONMENT: development
+      ENABLE_EMAIL_RECOVERY: "false"
+      # Sin RESEND_API_KEY, el backend imprime el enlace de recuperación en logs.
+      PASSWORD_RESET_URL: http://localhost:${FRONTEND_PORT:-5173}/
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      PASSWORD_RESET_FROM: "${PASSWORD_RESET_FROM:-Chess Studio <onboarding@resend.dev>}"
       EXPOSE_API_DOCS: "false"
       ALLOW_REGISTRATION: "true"
       INVITE_CODE: ${INVITE_CODE:-}

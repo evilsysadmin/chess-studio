@@ -59,22 +59,6 @@ export const PUZZLES = [
     solution: ['Nc7+', 'Kd8', 'Nxa8'],
   },
   {
-    id: 'mate2_a1',
-    kind: 'mate2',
-    title: 'Mate en 2',
-    description: 'Un jaque fuerza al rey a una única casilla. Desde ahí, hay mate.',
-    fen: 'k7/8/1K6/8/8/8/Q7/8 w - - 0 1',
-    solution: ['Qa3+', 'Kb8', 'Qf8#'],
-  },
-  {
-    id: 'mate2_a2',
-    kind: 'mate2',
-    title: 'Mate en 2',
-    description: 'Otra vez rey y dama solos contra el rey negro. Encuentra los dos jaques.',
-    fen: 'k7/8/1K6/8/Q7/8/8/8 w - - 0 1',
-    solution: ['Qa6+', 'Kb8', 'Qb7#'],
-  },
-  {
     id: 'mate2_h8',
     kind: 'mate2',
     title: 'Mate en 2',

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import math
@@ -10,9 +11,10 @@ import random
 import time
 import uuid
 import hmac
+import re
 from datetime import datetime, timezone
 from typing import Optional
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import chess
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -28,15 +30,21 @@ import game_store as store
 import profile_store as pstore
 import users_store as ustore
 from db import PersistentStorageUnavailable
-from auth import hash_password, verify_password, create_token, verify_token
+from auth import (
+    hash_password, verify_password, create_token, verify_token,
+    create_password_reset_token, verify_password_reset_token,
+)
 from chess_ai import analyze_move as ai_analyze_move
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 from chess_core import apply_handicap, board_sans, load_board, resolve_move, serialize_game
+from email_service import send_password_reset_email
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower() in {"1", "true", "yes", "on"}
 INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
+PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
+ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 app = FastAPI(
     title="Estudio de Ajedrez API",
@@ -292,11 +300,27 @@ class RegisterRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     username: str
     password: str
+    email: Optional[str] = None
     invite_code: Optional[str] = Field(default=None, alias="inviteCode")
 
 
 class LoginRequest(BaseModel):
     username: str
+    password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    token: str
+    new_password: str = Field(alias="newPassword")
+
+
+class UpdateEmailRequest(BaseModel):
+    email: str
     password: str
 
 
@@ -333,11 +357,31 @@ class AnalyzeMoveRequest(BaseModel):
     level: float = 45
 
 
+
+
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+def _normalize_email(value: str | None) -> str | None:
+    email = (value or "").strip().lower()
+    if not email:
+        return None
+    if len(email) > 254 or not _EMAIL_RE.fullmatch(email):
+        raise HTTPException(400, "Introduce un email válido.")
+    return email
+
+
+def _password_reset_link(token: str) -> str:
+    base = PASSWORD_RESET_URL or "http://localhost:5173/"
+    separator = "&" if "?" in base else "?"
+    return f"{base}{separator}resetToken={quote(token, safe='')}"
+
+
 # ---------- Rutas ----------
 
-# Auth humano: usuario+contraseña, sin email ni OAuth. `INVITE_CODE` puede
-# gatear las altas y `ALLOW_REGISTRATION` cerrarlas por completo. Login y
-# registro son las únicas rutas de identidad que necesariamente son públicas.
+# Auth humano: usuario+contraseña + email opcional de recuperación, sin OAuth.
+# `INVITE_CODE` puede gatear las altas y `ALLOW_REGISTRATION` cerrarlas por
+# completo. Login/registro y el flujo de reset son las rutas de identidad que
+# necesariamente son públicas.
 
 def get_current_user_optional(authorization: Optional[str] = None) -> Optional[str]:
     """No se usa como Depends() de FastAPI directo -- ver get_current_user
@@ -422,11 +466,18 @@ async def register(body: RegisterRequest, request: Request):
         raise HTTPException(400, "El usuario tiene que tener al menos 3 caracteres.")
     if len(body.password) < 6:
         raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
+    email = _normalize_email(body.email) if ENABLE_EMAIL_RECOVERY else None
+    if ENABLE_EMAIL_RECOVERY and not email:
+        raise HTTPException(400, "El email es obligatorio para cuentas nuevas.")
     existing = await ustore.get_user(username)
     if existing:
         raise HTTPException(409, "Ese usuario ya existe.")
+    if email and await ustore.get_user_by_email(email):
+        raise HTTPException(409, "Ese email ya está asociado a otra cuenta.")
     try:
-        await ustore.create_user(username, hash_password(body.password))
+        await ustore.create_user(username, hash_password(body.password), email=email)
+    except ustore.UserEmailAlreadyExists:
+        raise HTTPException(409, "Ese email ya está asociado a otra cuenta.")
     except ustore.UserAlreadyExists:
         # Cubre la carrera entre el GET anterior y el INSERT único de Mongo.
         raise HTTPException(409, "Ese usuario ya existe.")
@@ -446,9 +497,73 @@ async def login(body: LoginRequest, request: Request):
     return {"token": create_token(username), "username": username}
 
 
+@app.post("/api/auth/forgot-password")
+@limiter.limit("5/hour")
+async def forgot_password(body: ForgotPasswordRequest, request: Request):
+    if not ENABLE_EMAIL_RECOVERY:
+        raise HTTPException(404, "Recuperación por email no habilitada.")
+    # Respuesta deliberadamente idéntica exista o no la cuenta: no regalamos
+    # un enumerador de usuarios/emails a Internet.
+    email = _normalize_email(body.email)
+    user = await ustore.get_user_by_email(email) if email else None
+    if user and user.get("password_hash"):
+        reset_token = create_password_reset_token(user["username"], user["password_hash"])
+        reset_url = _password_reset_link(reset_token)
+        await asyncio.to_thread(send_password_reset_email, email, reset_url)
+    return {"ok": True, "message": "Si ese email está registrado, recibirás un enlace de recuperación."}
+
+
+@app.post("/api/auth/reset-password")
+@limiter.limit("10/hour")
+async def reset_password(body: ResetPasswordRequest, request: Request):
+    if not ENABLE_EMAIL_RECOVERY:
+        raise HTTPException(404, "Recuperación por email no habilitada.")
+    if len(body.new_password) < 6:
+        raise HTTPException(400, "La contraseña tiene que tener al menos 6 caracteres.")
+    # El username está firmado dentro del token, pero necesitamos el hash
+    # actual para que el enlace quede invalidado en cuanto se use/cambie.
+    try:
+        import jwt as _jwt
+        unverified = _jwt.decode(body.token, options={"verify_signature": False})
+        username = str(unverified.get("sub") or "").strip().lower()
+    except Exception:
+        username = ""
+    user = await ustore.get_user(username) if username else None
+    if not user or verify_password_reset_token(body.token, user.get("password_hash", "")) != username:
+        raise HTTPException(400, "El enlace de recuperación no es válido o ha caducado.")
+    await ustore.update_password(username, hash_password(body.new_password))
+    request.state.username = username
+    await _touch_activity_best_effort(username, force=True)
+    return {"token": create_token(username), "username": username}
+
+
+@app.put("/api/auth/email")
+async def update_recovery_email(body: UpdateEmailRequest, username: str = Depends(get_current_user)):
+    if not ENABLE_EMAIL_RECOVERY:
+        raise HTTPException(404, "Recuperación por email no habilitada.")
+    user = await ustore.get_user(username)
+    if not user or not verify_password(body.password, user.get("password_hash", "")):
+        raise HTTPException(401, "La contraseña actual no es correcta.")
+    email = _normalize_email(body.email)
+    if not email:
+        raise HTTPException(400, "El email de recuperación no puede quedar vacío.")
+    owner = await ustore.get_user_by_email(email)
+    if owner and owner.get("username") != username:
+        raise HTTPException(409, "Ese email ya está asociado a otra cuenta.")
+    try:
+        await ustore.update_email(username, email)
+    except ustore.UserEmailAlreadyExists:
+        raise HTTPException(409, "Ese email ya está asociado a otra cuenta.")
+    return {"username": username, "email": email}
+
+
 @app.get("/api/auth/me")
 async def me(username: str = Depends(get_current_user)):
-    return {"username": username, "isAdmin": is_admin(username)}
+    user = await ustore.get_user(username)
+    payload = {"username": username, "isAdmin": is_admin(username)}
+    if ENABLE_EMAIL_RECOVERY:
+        payload["email"] = (user or {}).get("email")
+    return payload
 
 
 @app.post("/api/auth/activity", status_code=204)
@@ -866,10 +981,16 @@ async def admin_list_users(username: str = Depends(get_current_user)):
     for uname in usernames:
         user = await ustore.get_user(uname)
         profile = await pstore.get_profile(uname)
+        user_doc = user or {}
+        # Cuentas antiguas podían no tener `last_activity`. Desde V16.6 el
+        # login fuerza también `last_login`; mientras migran, created_at es
+        # mejor fallback que mostrar “Sin actividad” como si nunca hubieran
+        # existido. El siguiente login/heartbeat reemplaza enseguida ese dato.
+        activity_anchor = user_doc.get("last_activity") or user_doc.get("last_login") or user_doc.get("created_at")
         result.append({
             "username": uname,
-            "createdAt": (user or {}).get("created_at"),
-            **_presence_summary((user or {}).get("last_activity")),
+            "createdAt": user_doc.get("created_at"),
+            **_presence_summary(activity_anchor),
             **_extract_summary_stats(profile),
         })
     return {"users": result}

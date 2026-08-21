@@ -30,7 +30,10 @@ function Presence({ user }) {
   return (
     <span className={`admin-presence admin-presence-${status}`} title={exact}>
       <span className="admin-presence-dot" aria-hidden="true" />
-      <span>{label}</span>
+      <span className="admin-presence-copy">
+        <span>{label}</span>
+        {user?.lastActivity && <small>{new Date(user.lastActivity).toLocaleString()}</small>}
+      </span>
     </span>
   );
 }

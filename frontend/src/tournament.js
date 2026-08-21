@@ -7,14 +7,20 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 const STORAGE_KEY = 'chess-study-tournament';
 export const POINTS_PER_LEVEL = 50;
 
-const EMPTY_STATE = { points: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
+const EMPTY_STATE = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
 
 export function loadTournament() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...EMPTY_STATE };
     const parsed = JSON.parse(raw);
-    return { ...EMPTY_STATE, ...parsed };
+    // Migración V16.6: antes `points` era a la vez moneda de pistas y XP de
+    // torneo. Conservamos el nivel histórico una vez, pero a partir de ahora
+    // ambas economías avanzan por caminos independientes.
+    const progressPoints = Number.isFinite(Number(parsed.progressPoints))
+      ? Number(parsed.progressPoints)
+      : Number(parsed.points) || 0;
+    return { ...EMPTY_STATE, ...parsed, progressPoints };
   } catch {
     return { ...EMPTY_STATE };
   }
@@ -39,19 +45,14 @@ export function pointsIntoLevel(points) {
   return points % POINTS_PER_LEVEL;
 }
 
-// Traduce el nivel del torneo a una dificultad de la CPU en escala 0–100.
-// Cada nivel suma 8 puntos de dificultad; a partir del nivel 13 la CPU ya
-// juega al tope (100).
-// Curva de dificultad: raíz cuadrada, no lineal. Con la fórmula lineal
-// original ((nivel-1)*8) el tope de 100 llegaba en el nivel 14 — a partir
-// de ahí, toda la "progresión" restante del torneo era jugar siempre
-// contra la CPU al máximo, sin margen para seguir subiendo la exigencia.
-// Con raíz cuadrada la dificultad sube rápido al principio (sensación de
-// progreso temprano) pero se estira mucho más antes de tocar el techo —
-// ahora llega a 100 recién en el nivel 60, dando un arco de progresión
-// real en vez de agotarse en los primeros minutos de juego.
+// Traduce el nivel del torneo a dificultad CPU 0–100. El motor V16.x es
+// bastante más serio que cuando nació la curva anterior (alpha-beta + TT +
+// quiescence y sin azar bruto en Intermedio), así que V16.6 la recalibra un
+// hacia abajo. El nivel ~24 pasa del antiguo ~62 a ~48: el torneo conserva
+// progresión, pero no mete al jugador aficionado en el tramo Intermedio duro
+// demasiado pronto. El techo se alcanza mucho más tarde, alrededor del 101.
 export function difficultyForLevel(level) {
-  return Math.min(100, Math.round(13 * Math.sqrt(level - 1)));
+  return Math.min(100, Math.round(10 * Math.sqrt(Math.max(0, level - 1))));
 }
 
 // Coste en puntos de pedir una pista, dado el nivel del torneo y cuántas
@@ -104,22 +105,34 @@ export function streakBonus(streakCount, level) {
   return (streakCount - 1) * 2 * levelMultiplier;
 }
 
+// Las capturas alimentan SOLO la cartera de pistas. No alteran XP/nivel de
+// torneo y, por supuesto, jamás tocan el rating ELO. Esto evita que capturar
+// una dama te empuje sin querer a una CPU más fuerte y que gastar una pista
+// pueda hacerte bajar de nivel.
+export function applyCaptureReward(state, gained) {
+  const amount = Math.max(0, Math.round(Number(gained) || 0));
+  return { ...state, points: (state.points || 0) + amount };
+}
+
 // Aplica el resultado de una partida al estado del torneo. No penaliza las
 // derrotas (siempre se puede reintentar): victoria +20, tablas +5, derrota +0.
 export function applyResult(state, outcome) {
   const gained = outcome === 'win' ? 20 : outcome === 'draw' ? 5 : 0;
-  const prevLevel = levelForPoints(state.points);
-  const points = state.points + gained;
+  const priorProgress = Number.isFinite(Number(state.progressPoints)) ? Number(state.progressPoints) : Number(state.points) || 0;
+  const prevLevel = levelForPoints(priorProgress);
+  const points = state.points || 0;
+  const progressPoints = priorProgress + gained;
   const winStreak = outcome === 'win' ? (state.winStreak || 0) + 1 : 0;
   const bestWinStreak = Math.max(state.bestWinStreak || 0, winStreak);
   const next = {
     points,
+    progressPoints,
     wins: state.wins + (outcome === 'win' ? 1 : 0),
     draws: state.draws + (outcome === 'draw' ? 1 : 0),
     losses: state.losses + (outcome === 'loss' ? 1 : 0),
     winStreak,
     bestWinStreak,
   };
-  const newLevel = levelForPoints(points);
+  const newLevel = levelForPoints(progressPoints);
   return { state: next, gained, leveledUp: newLevel > prevLevel, newLevel };
 }

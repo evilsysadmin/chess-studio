@@ -173,8 +173,8 @@ export function revivePiece(rosterState, key, type) {
 }
 
 // La ventana para revivir a una pieza caída se cierra apenas arranca la
-// SIGUIENTE batalla: si no se revivió a tiempo, se pierde para siempre — no
-// queda dando vueltas por si algún día se junta el XP de combate necesario.
+// SIGUIENTE batalla: si no se recuperó a tiempo, se pierde para siempre SU PROGRESO — el slot
+// vuelve como una pieza nueva de nivel 1 y el veterano ya no queda guardado.
 // Se llama justo antes de armar el tablero inicial de una partida nueva.
 export function expireDeadPieces(rosterState) {
   const pieces = { ...rosterState.pieces };

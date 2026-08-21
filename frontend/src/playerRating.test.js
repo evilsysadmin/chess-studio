@@ -1,7 +1,23 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { updateRating, ratingLabel, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating } from './playerRating.js';
+import { updateRating, ratingChangeDetails, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating } from './playerRating.js';
 
 beforeEach(() => localStorage.clear());
+
+
+describe('ratingScoreForOutcome — partidas y torneo', () => {
+  it('victoria=1, tablas=0.5 y derrota/abandono=0', () => {
+    expect(ratingScoreForOutcome('win')).toBe(1);
+    expect(ratingScoreForOutcome('draw')).toBe(0.5);
+    expect(ratingScoreForOutcome('loss')).toBe(0);
+    expect(ratingScoreForOutcome('retired')).toBe(0);
+  });
+
+  it('una derrota competitiva reduce rating si no estás pegado al piso', () => {
+    const before = { rating: 1100, games: 20 };
+    const after = updateRating(before, 60, ratingScoreForOutcome('loss'));
+    expect(after.rating).toBeLessThan(before.rating);
+  });
+});
 
 describe('updateRating', () => {
   it('ganarle a un rival fuerte sube más que ganarle a uno flojo', () => {
@@ -69,6 +85,32 @@ describe('updateRating', () => {
     const deltaDespues = updateRating(justoDespues, 60, 1).rating - justoDespues.rating;
 
     expect(deltaAntes).toBeGreaterThan(deltaDespues);
+  });
+});
+
+describe('ELO dinámico por fuerza efectiva de la CPU', () => {
+  it('la fuerza efectiva crece con la dificultad y respeta los saltos del motor', () => {
+    const levels = [0, 20, 45, 60, 65, 70, 90, 100];
+    const ratings = levels.map(cpuRatingForDifficulty);
+    for (let i = 1; i < ratings.length; i += 1) expect(ratings[i]).toBeGreaterThan(ratings[i - 1]);
+    expect(cpuRatingForDifficulty(65)).toBeGreaterThan(cpuRatingForDifficulty(60));
+    expect(cpuRatingForDifficulty(65)).toBeLessThan(cpuRatingForDifficulty(70));
+  });
+
+  it('devuelve el delta exacto, rating rival y expectativa usados en el cálculo', () => {
+    const base = { rating: 900, games: 20 };
+    const win = ratingChangeDetails(base, 65, 1);
+    const loss = ratingChangeDetails(base, 65, 0);
+    expect(win.delta).toBeGreaterThan(0);
+    expect(loss.delta).toBeLessThan(0);
+    expect(win.cpuRating).toBe(cpuRatingForDifficulty(65));
+    expect(win.expectedScore).toBeGreaterThan(0);
+    expect(win.expectedScore).toBeLessThan(1);
+  });
+
+  it('la performance competitiva es el resultado: ganar a 65 paga más que ganar a 20', () => {
+    const base = { rating: 900, games: 20 };
+    expect(ratingChangeDetails(base, 65, 1).delta).toBeGreaterThan(ratingChangeDetails(base, 20, 1).delta);
   });
 });
 

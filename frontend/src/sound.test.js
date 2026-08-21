@@ -1,11 +1,22 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AMBIENT_THEME_OPTIONS, getAmbientThemeId, getAmbientThemeVariationDurationMs, resetAmbientThemeForSession, setAmbientTheme } from './sound.js';
+import {
+  AMBIENT_INTER_TRACK_SILENCE_MS,
+  AMBIENT_THEME_OPTIONS,
+  getAmbientThemeId,
+  getAmbientThemeVariationDurationMs,
+  getAmbientTrackDurationMs,
+  getAmbientVolume,
+  pickRandomAmbientThemeId,
+  resetAmbientThemeForSession,
+  setAmbientTheme,
+  setAmbientVolume,
+} from './sound.js';
 
 describe('ambient music catalog', () => {
   beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
-  it('expone treinta y dos temas seleccionables', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(32);
+  it('expone cuarenta y dos temas seleccionables', () => {
+    expect(AMBIENT_THEME_OPTIONS).toHaveLength(42);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Final de madrugada');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tango del rey');
@@ -25,15 +36,42 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Alepo · después de la lluvia');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Amán · habitación de terciopelo');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Medina · humo azul');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cairo · farol rojo 01:37');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Beirut · taxi nocturno 02:18');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tánger · mesa roja');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Estambul · tavla 03:08');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Costa andalusí · tarde clara');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Granada · patio encendido');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cádiz · faroles al viento');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Luciérnagas en la terraza');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Café · luces pequeñas');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Málaga · último tranvía');
   });
 
   it('los temas estructurados tardan al menos dos minutos en repetir su forma larga', () => {
     const structured = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus');
-    expect(structured.length).toBe(31);
+    expect(structured.length).toBe(41);
     for (const theme of structured) {
       expect(getAmbientThemeVariationDurationMs(theme.id)).toBeGreaterThanOrEqual(120000);
     }
     expect(getAmbientThemeVariationDurationMs('andalus')).toBeNull();
+  });
+
+  it('todas las pistas tienen una duración finita para poder encadenarse', () => {
+    for (const theme of AMBIENT_THEME_OPTIONS) {
+      expect(getAmbientTrackDurationMs(theme.id)).toBeGreaterThanOrEqual(120000);
+    }
+  });
+
+  it('sortea la pista siguiente sin repetir la que acaba de sonar', () => {
+    for (const theme of AMBIENT_THEME_OPTIONS) {
+      expect(pickRandomAmbientThemeId(theme.id)).not.toBe(theme.id);
+    }
+  });
+
+  it('deja una pausa breve y deliberada entre pistas', () => {
+    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeGreaterThanOrEqual(1500);
+    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeLessThanOrEqual(5000);
   });
 
   it('mantiene la selección durante la sesión y hace fallback seguro', () => {
@@ -41,6 +79,17 @@ describe('ambient music catalog', () => {
     expect(getAmbientThemeId()).toBe('storm');
     expect(setAmbientTheme('no-existe')).toBe('andalus');
     expect(getAmbientThemeId()).toBe('andalus');
+  });
+
+  it('el volumen arranca al 100%, se persiste y se acota entre 0 y 1', () => {
+    expect(getAmbientVolume()).toBe(1);
+    expect(setAmbientVolume(0.42)).toBeCloseTo(0.42, 8);
+    expect(getAmbientVolume()).toBeCloseTo(0.42, 8);
+    expect(localStorage.getItem('chess-study-music-volume')).toBe('0.42');
+    setAmbientVolume(9);
+    expect(getAmbientVolume()).toBe(1);
+    setAmbientVolume(-3);
+    expect(getAmbientVolume()).toBe(0);
   });
 
   it('puede sortear un tema nuevo para una sesión nueva', () => {

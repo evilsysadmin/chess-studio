@@ -7,6 +7,8 @@ import asyncio
 import json
 import logging
 
+import pytest
+
 import chess
 from fastapi.testclient import TestClient
 
@@ -860,6 +862,28 @@ def test_admin_users_exposes_last_activity_and_presence(monkeypatch):
     assert isinstance(row["presenceAgeSeconds"], int)
 
 
+def test_forced_activity_records_last_login_and_admin_legacy_fallback(monkeypatch):
+    import users_store as ustore
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    asyncio.run(ustore.create_user("legacy_player", "hash-no-usado"))
+    # Simula una cuenta antigua sin last_activity, pero que vuelve a entrar en
+    # V16.6: el login forzado deja last_login + last_activity.
+    ustore._memory_users["legacy_player"].pop("last_activity", None)
+    asyncio.run(ustore.touch_last_activity("legacy_player", force=True))
+    stored = ustore._memory_users["legacy_player"]
+    assert stored["last_login"] == stored["last_activity"]
+
+    # Y si por datos legacy sólo queda last_login, el panel sigue mostrando
+    # una última actividad concreta en vez de “Sin actividad”.
+    stored.pop("last_activity", None)
+    response = client.get("/api/admin/users")
+    row = next(u for u in response.json()["users"] if u["username"] == "legacy_player")
+    assert row["lastActivity"] == stored["last_login"]
+    assert row["presence"] in {"online", "recent", "offline"}
+
+
 def test_resolve_move_core_rules_cover_castling_en_passant_and_promotion():
     from main import resolve_move
 
@@ -965,3 +989,140 @@ def test_presence_write_failure_never_blocks_authenticated_core(monkeypatch):
     response = raw_client.get("/api/auth/me", headers=headers)
     assert response.status_code == 200
     assert response.json()["username"] == "telemetry_user"
+
+# ---------- Recuperación de cuenta por email (compatibilidad, desactivada por defecto en V16.6) ----------
+
+@pytest.fixture
+def email_recovery_enabled(monkeypatch):
+    import main as main_module
+    monkeypatch.setattr(main_module, "ENABLE_EMAIL_RECOVERY", True)
+
+
+def test_register_requires_email_when_recovery_enabled(email_recovery_enabled):
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "sin_correo", "password": "clave123456"},
+    )
+    assert response.status_code == 400
+    assert "email" in response.json()["detail"].lower()
+
+
+def test_register_stores_normalized_recovery_email(email_recovery_enabled):
+    registered = client.post(
+        "/api/auth/register",
+        json={"username": "correo_ok", "password": "clave123456", "email": "  USER@Example.COM  "},
+    )
+    assert registered.status_code == 201
+    token = registered.json()["token"]
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["email"] == "user@example.com"
+
+
+def test_register_rejects_recovery_email_already_owned(email_recovery_enabled):
+    first = client.post(
+        "/api/auth/register",
+        json={"username": "correo_uno", "password": "clave123456", "email": "same@example.com"},
+    )
+    assert first.status_code == 201
+    second = client.post(
+        "/api/auth/register",
+        json={"username": "correo_dos", "password": "clave123456", "email": "SAME@example.com"},
+    )
+    assert second.status_code == 409
+
+
+def test_recovery_email_can_be_edited_only_with_current_password(email_recovery_enabled):
+    registered = client.post(
+        "/api/auth/register",
+        json={"username": "edita_correo", "password": "clave123456", "email": "old@example.com"},
+    )
+    token = registered.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    denied = client.put(
+        "/api/auth/email",
+        headers=headers,
+        json={"email": "new@example.com", "password": "mal"},
+    )
+    assert denied.status_code == 401
+
+    updated = client.put(
+        "/api/auth/email",
+        headers=headers,
+        json={"email": "NEW@example.com", "password": "clave123456"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["email"] == "new@example.com"
+    assert client.get("/api/auth/me", headers=headers).json()["email"] == "new@example.com"
+
+
+def test_forgot_password_never_reveals_if_email_exists(monkeypatch, email_recovery_enabled):
+    import main as main_module
+
+    sent = []
+    monkeypatch.setattr(main_module, "send_password_reset_email", lambda email, url: sent.append((email, url)) or True)
+
+    missing = client.post("/api/auth/forgot-password", json={"email": "nadie@example.com"})
+    assert missing.status_code == 200
+    assert "Si ese email está registrado" in missing.json()["message"]
+    assert sent == []
+
+    client.post(
+        "/api/auth/register",
+        json={"username": "recuperable", "password": "clave123456", "email": "recover@example.com"},
+    )
+    existing = client.post("/api/auth/forgot-password", json={"email": "recover@example.com"})
+    assert existing.status_code == 200
+    assert existing.json()["message"] == missing.json()["message"]
+    assert len(sent) == 1
+    assert sent[0][0] == "recover@example.com"
+    assert "resetToken=" in sent[0][1]
+
+
+def test_password_reset_token_is_one_use_and_invalidates_old_password(monkeypatch, email_recovery_enabled):
+    from urllib.parse import parse_qs, urlsplit
+    import main as main_module
+
+    sent = []
+    monkeypatch.setattr(main_module, "send_password_reset_email", lambda email, url: sent.append((email, url)) or True)
+
+    client.post(
+        "/api/auth/register",
+        json={"username": "reset_one_use", "password": "clave-vieja", "email": "reset@example.com"},
+    )
+    client.post("/api/auth/forgot-password", json={"email": "reset@example.com"})
+    assert len(sent) == 1
+    token = parse_qs(urlsplit(sent[0][1]).query)["resetToken"][0]
+
+    reset = client.post(
+        "/api/auth/reset-password",
+        json={"token": token, "newPassword": "clave-nueva-123"},
+    )
+    assert reset.status_code == 200
+    assert "token" in reset.json()
+
+    assert client.post(
+        "/api/auth/login",
+        json={"username": "reset_one_use", "password": "clave-vieja"},
+    ).status_code == 401
+    assert client.post(
+        "/api/auth/login",
+        json={"username": "reset_one_use", "password": "clave-nueva-123"},
+    ).status_code == 200
+
+    # El token lleva una huella del hash anterior. Una vez cambiada la clave,
+    # reutilizar el mismo enlace deja de ser válido aunque aún no hayan pasado 30 min.
+    reused = client.post(
+        "/api/auth/reset-password",
+        json={"token": token, "newPassword": "otra-clave-123"},
+    )
+    assert reused.status_code == 400
+
+
+def test_password_reset_rejects_garbage_token(email_recovery_enabled):
+    response = client.post(
+        "/api/auth/reset-password",
+        json={"token": "no-es-un-jwt", "newPassword": "clave-nueva-123"},
+    )
+    assert response.status_code == 400

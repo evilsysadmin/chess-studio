@@ -85,11 +85,11 @@ export function logout() {
   localStorage.removeItem(USERNAME_KEY);
 }
 
-export async function register(username, password, inviteCode = '') {
+export async function register(username, password, email, inviteCode = '') {
   const body = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: withRequestId({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ username, password, inviteCode }),
+    body: JSON.stringify({ username, password, email, inviteCode }),
   }).then(handle);
   saveSession(body.token, body.username);
   return body;
@@ -103,6 +103,32 @@ export async function login(username, password) {
   }).then(handle);
   saveSession(body.token, body.username);
   return body;
+}
+
+export async function forgotPassword(email) {
+  return fetch(`${BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: withRequestId({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ email }),
+  }).then(handle);
+}
+
+export async function resetPassword(token, newPassword) {
+  const body = await fetch(`${BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: withRequestId({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ token, newPassword }),
+  }).then(handle);
+  saveSession(body.token, body.username);
+  return body;
+}
+
+export async function updateRecoveryEmail(email, password) {
+  return fetch(`${BASE_URL}/auth/email`, {
+    method: 'PUT',
+    headers: withRequestId({ 'Content-Type': 'application/json', ...authHeader() }),
+    body: JSON.stringify({ email, password }),
+  }).then(handle);
 }
 
 // Header listo para adjuntar a cualquier fetch que necesite autenticarse

@@ -43,8 +43,8 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
   const [color, setColor] = useState('random');
   const [selectedTitle, setSelectedTitle] = useState(loadSelectedTitle());
   const [selectedSkin, setSelectedSkin] = useState(loadSelectedSkin());
-  const level = levelForPoints(tournament.points);
-  const into = pointsIntoLevel(tournament.points);
+  const level = levelForPoints(tournament.progressPoints || 0);
+  const into = pointsIntoLevel(tournament.progressPoints || 0);
   const cpuLevel = difficultyForLevel(level);
   const progressPct = Math.round((into / POINTS_PER_LEVEL) * 100);
   const maxedOut = cpuLevel >= 100;
@@ -89,15 +89,22 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
           <span className="tournament-progress-label">{into} / {POINTS_PER_LEVEL} XP</span>
         </div>
         <p className="tournament-xp-remaining">
-          Faltan <b>{POINTS_PER_LEVEL - into}</b> puntos para el nivel {level + 1}
+          Faltan <b>{POINTS_PER_LEVEL - into}</b> XP de resultados para el nivel {level + 1}
         </p>
       </div>
 
       {lastResult && (
         <div className={`tournament-result ${lastResult.leveledUp ? 'level-up' : ''}`}>
-          {lastResult.outcome === 'win' && <p>Ganaste la última partida · +{lastResult.gained} puntos</p>}
-          {lastResult.outcome === 'draw' && <p>Tablas en la última partida · +{lastResult.gained} puntos</p>}
-          {lastResult.outcome === 'loss' && <p>Perdiste la última partida · sin puntos, pero puedes reintentar</p>}
+          {lastResult.outcome === 'win' && <p>Ganaste la última partida · +{lastResult.gained} XP</p>}
+          {lastResult.outcome === 'draw' && <p>Tablas en la última partida · +{lastResult.gained} XP</p>}
+          {lastResult.outcome === 'loss' && <p>Perdiste la última partida · sin XP, pero puedes reintentar</p>}
+          {Number.isFinite(lastResult.eloDelta) && (
+            <p>
+              ELO {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta}
+              {' · '}{lastResult.eloBefore} → {lastResult.eloAfter}
+              {Number.isFinite(lastResult.cpuRating) ? ` · rival efectivo ${lastResult.cpuRating}` : ''}
+            </p>
+          )}
           {lastResult.leveledUp && <p className="level-up-text">¡Subiste al nivel {lastResult.newLevel}!</p>}
         </div>
       )}
@@ -105,7 +112,7 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
       <div className="menu-section">
         <h2>Estadísticas</h2>
         <p className="hint-text">
-          {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · {tournament.points} puntos totales
+          {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · {tournament.points} puntos disponibles para pistas
         </p>
         {(tournament.winStreak > 0 || tournament.bestWinStreak > 0) && (
           <p className="hint-text" style={{ marginTop: '0.3rem' }}>

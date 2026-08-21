@@ -4,14 +4,13 @@ import Board from './Board.jsx';
 import NotationPanel from './NotationPanel.jsx';
 import PromotionModal from './PromotionModal.jsx';
 import GameReportModal from './GameReportModal.jsx';
-import VoiceToggle from './VoiceToggle.jsx';
 import CpuPresence from './CpuPresence.jsx';
 import GameChat from './GameChat.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
-import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playTimePressureSound } from '../sound.js';
-import { announceCpuCapture, announceHumanCapture, announceCheck, announceCheckmate } from '../voiceCommentary.js';
+import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playTimePressureSound, playIllegalMoveSound } from '../sound.js';
+import { speakCpuComment, stopCpuSpeech } from '../voiceCommentary.js';
 import { formatLongMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
 import { formatClock } from '../clock.js';
@@ -22,6 +21,7 @@ import { startMemoryComment, openingMemoryComment, resultMemoryComment } from '.
 import { seriesStatusText } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
+import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -99,6 +99,7 @@ export default function GameScreen({
   const pressureMovesRef = useRef(0);
   const pressureIncidentsRef = useRef(0);
   const pressureAlertRef = useRef(false);
+  const illegalKingSafetyCommentShownRef = useRef(false);
 
   // Estado visual del tablero: se actualiza en dos pasos (jugada propia,
   // después jugada de la CPU) para poder animar cada una por separado, en
@@ -158,6 +159,7 @@ export default function GameScreen({
     pressureMovesRef.current = 0;
     pressureIncidentsRef.current = 0;
     pressureAlertRef.current = false;
+    illegalKingSafetyCommentShownRef.current = false;
   }, [game.id]);
 
   useEffect(() => {
@@ -279,6 +281,7 @@ export default function GameScreen({
     });
     setGameChat(transcript);
     onChatUpdate?.(game.id, transcript);
+    speakCpuComment(comment.text);
     if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
     cpuCommentTimeout.current = setTimeout(() => setCpuComment(null), 6500);
   }
@@ -311,6 +314,7 @@ export default function GameScreen({
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
+    stopCpuSpeech();
     // Si el usuario abandona/cambia de vista mientras está abierto el control
     // táctico, no dejamos colgada la promesa que estaba pausando el flujo.
     if (controlResolveRef.current) {
@@ -332,6 +336,9 @@ export default function GameScreen({
   const legalTargets = selected
     ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
     : [];
+  const selectionNotice = selected && legalTargets.length === 0
+    ? immobilityReason(localChess, selected, humanColor)
+    : null;
 
   async function sendMove(from, to, promotion) {
     setHint(null);
@@ -417,7 +424,6 @@ export default function GameScreen({
         if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
         captureFeedbackTimeout.current = setTimeout(() => setCaptureFeedback(null), 2400);
       }
-      announceHumanCapture(PIECE_NAMES_ES[humanMove.captured] || 'una pieza');
     }
 
     const minThink = new Promise((resolve) => setTimeout(resolve, MIN_CPU_THINK_MS));
@@ -442,20 +448,11 @@ export default function GameScreen({
           // La CPU nos comió algo: se corta la racha.
           captureStreakRef.current = 0;
         }
-        if (updated.lastMove.captured) {
-          announceCpuCapture(PIECE_NAMES_ES[updated.lastMove.captured] || 'una pieza');
-        }
-        if (updated.status === 'checkmate') {
-          announceCheckmate(updated.turn === humanColor); // el turno que quedó "atascado" es quien recibió el mate
-        } else if (updated.status === 'check') {
-          announceCheck();
-        }
         const cpuMoveEntry = updated.history[updated.history.length - 1];
         announceCpuMove(cpuMoveEntry);
       } else {
         // La partida terminó con la jugada propia (jaque mate/ahogado): no hay respuesta de la CPU.
         setBoardFen(updated.fen);
-        if (updated.status === 'checkmate') announceCheckmate(true); // el humano dio el mate
       }
 
       if (!openingMemoryShownRef.current && !humanComment && !cpuNoteworthy && !updated.isGameOver) {
@@ -493,8 +490,18 @@ export default function GameScreen({
     if (!move) {
       // Click en otra pieza propia: cambia la selección en vez de intentar mover.
       const piece = localChess.get(square);
-      if (piece && piece.color === humanColor) setSelected(square);
-      else setSelected(null);
+      if (piece && piece.color === humanColor) {
+        setSelected(square);
+      } else {
+        if (isKingSafetyIllegalAttempt(localChess, selected, square, humanColor)) {
+          playIllegalMoveSound();
+          if (!illegalKingSafetyCommentShownRef.current) {
+            illegalKingSafetyCommentShownRef.current = true;
+            showCpuComment({ text: 'A ver. Ese movimiento es ilegal: dejaría a su rey en jaque. Procure no obligarme a repetirlo.' }, { event: 'ILLEGAL_KING_SAFETY', actor: 'human' });
+          }
+        }
+        setSelected(null);
+      }
       return;
     }
 
@@ -620,7 +627,6 @@ export default function GameScreen({
         <div className="board-column">
           <div className={`status-line ${statusClass} ${turnBanner && !busy ? 'pulse' : ''}`}>
             {statusText}
-            <VoiceToggle />
           </div>
           <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />
           {prediction && <div className="prediction-strip">{prediction.text}</div>}
@@ -651,6 +657,12 @@ export default function GameScreen({
                 hintMove={hint}
                 orientation={humanColor === 'b' ? 'black' : 'white'}
               />
+              {selectionNotice && (
+                <div className={`move-availability-note ${selectionNotice.kind}`} role="status" aria-live="polite">
+                  <b>{selectionNotice.kind === 'pinned' ? 'Pieza clavada' : 'Sin jugadas legales'}</b>
+                  <span>{selectionNotice.text}</span>
+                </div>
+              )}
               <div className="game-notation-row">
                 <NotationPanel history={game.history} difficulty={game.difficulty} />
               </div>

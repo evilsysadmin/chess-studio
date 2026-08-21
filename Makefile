@@ -3,7 +3,7 @@
 
 COMPOSE := docker compose
 
-.PHONY: game game-bg ungame restart logs status build clean help install frontend-install backend-install test test-frontend test-backend gate-core frontend-build
+.PHONY: game game-bg ungame restart logs status build clean help install frontend-install backend-install test test-frontend test-backend gate-core gate-frontend-critical gate-critical frontend-build
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
 game:
@@ -51,6 +51,13 @@ backend-install:
 gate-core:
 	cd backend-python && pytest -q test_chess_ai.py test_core_game.py -x
 
+## Gate rápido de reglas críticas que viven en el cliente.
+gate-frontend-critical:
+	cd frontend && npx vitest run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/sound.test.js
+
+## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
+gate-critical: gate-core gate-frontend-critical
+
 ## Suite completa.
 test: test-frontend test-backend
 
@@ -75,5 +82,7 @@ help:
 	@echo "  make clean          - borra contenedores/imágenes/volúmenes locales"
 	@echo "  make install        - instala dependencias locales"
 	@echo "  make gate-core      - ejecuta el gate del motor/IA"
+	@echo "  make gate-frontend-critical - gate de Combate/Roguelike/TTS/rating/UX"
+	@echo "  make gate-critical  - ejecuta ambos gates críticos"
 	@echo "  make test           - ejecuta frontend + backend tests"
 	@echo "  make frontend-build - compila el frontend fuera de Docker"

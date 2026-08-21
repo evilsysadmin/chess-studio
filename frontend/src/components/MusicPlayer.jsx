@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AMBIENT_THEME_OPTIONS,
   getAmbientPlaybackState,
+  getAmbientVolume,
   getAmbientThemeId,
   isFxMuted,
   pauseAmbientMusic,
   selectRelativeAmbientTheme,
   setAmbientTheme,
+  setAmbientVolume,
   setFxMuted,
   startAmbientMusic,
   stopAmbientMusic,
@@ -26,11 +28,13 @@ function snapshot() {
 export default function MusicPlayer() {
   const [state, setState] = useState(() => snapshot());
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
+  const [volume, setVolume] = useState(() => Math.round(getAmbientVolume() * 100));
 
   useEffect(() => {
     const refresh = () => {
       setState(snapshot());
       setFxMutedState(isFxMuted());
+      setVolume(Math.round(getAmbientVolume() * 100));
     };
     refresh();
     window.addEventListener('chess-ambient-transport', refresh);
@@ -50,7 +54,10 @@ export default function MusicPlayer() {
   const cycleMs = Math.max(1, state.visualCycleMs || 1);
   const progress = Math.min(100, Math.max(0, ((state.cyclePositionMs || 0) / cycleMs) * 100));
   const totalLabel = state.durationMs ? formatTime(state.durationMs) : '∞';
-  const playing = state.status === 'playing';
+  // Durante el pequeño silencio automático la "radio" sigue activa: el botón
+  // permanece en Pausa y permite detener la cola antes de que entre el tema
+  // siguiente.
+  const playing = state.status === 'playing' || state.status === 'gap';
   const paused = state.status === 'paused';
 
   function chooseTheme(event) {
@@ -83,6 +90,12 @@ export default function MusicPlayer() {
     const nextMuted = !fxMuted;
     setFxMuted(nextMuted);
     setFxMutedState(nextMuted);
+  }
+
+  function changeVolume(event) {
+    const next = Number(event.target.value);
+    setVolume(next);
+    setAmbientVolume(next / 100);
   }
 
   return (
@@ -125,18 +138,34 @@ export default function MusicPlayer() {
           </select>
         </label>
 
-        <div className="music-deck-channels" role="group" aria-label="Canales de audio">
-          <button
-            type="button"
-            className={`music-deck-channel${fxMuted ? ' is-off' : ' is-on'}`}
-            onClick={toggleFx}
-            aria-pressed={!fxMuted}
-            aria-label={fxMuted ? 'Activar efectos de sonido' : 'Desactivar efectos de sonido'}
-            title={fxMuted ? 'Activar efectos de sonido' : 'Desactivar efectos de sonido'}
-          >
-            <span aria-hidden="true">FX</span>
-            <span>{fxMuted ? 'OFF' : 'ON'}</span>
-          </button>
+        <div className="music-deck-bottom-row">
+          <label className="music-deck-volume" title={`Volumen de música: ${volume}%`}>
+            <span>VOL</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={volume}
+              onChange={changeVolume}
+              aria-label="Volumen de música"
+            />
+            <output>{volume}%</output>
+          </label>
+
+          <div className="music-deck-channels" role="group" aria-label="Canales de audio">
+            <button
+              type="button"
+              className={`music-deck-channel${fxMuted ? ' is-off' : ' is-on'}`}
+              onClick={toggleFx}
+              aria-pressed={!fxMuted}
+              aria-label={fxMuted ? 'Activar efectos de sonido' : 'Desactivar efectos de sonido'}
+              title={fxMuted ? 'Activar efectos de sonido' : 'Desactivar efectos de sonido'}
+            >
+              <span aria-hidden="true">FX</span>
+              <span>{fxMuted ? 'OFF' : 'ON'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

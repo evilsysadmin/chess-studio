@@ -12,6 +12,15 @@ export default function CombatScreen(props) {
         onExit={props.onExit}
         difficulty={controller.difficulty}
         ratingInfo={controller.ratingInfo}
+        difficultyOverride={props.difficultyOverride}
+        difficultyLabel={props.difficultyLabel}
+        forcedHumanColor={props.forcedHumanColor}
+        encounterLabel={props.encounterLabel}
+        encounterDescription={props.encounterDescription}
+        encounterTier={props.encounterTier}
+        bossConfig={props.bossConfig}
+        runPerks={props.runPerkDetails}
+        combatVariant={props.combatVariant}
         colorChoice={controller.colorChoice}
         setColorChoice={controller.setColorChoice}
         autoLevelUpEnabled={controller.autoLevelUpEnabled}
@@ -39,6 +48,7 @@ export default function CombatScreen(props) {
       {...controller}
       onExit={props.onExit}
       onViewBattle={props.onViewBattle}
+      combatVariant={props.combatVariant}
     />
   );
 }

@@ -32,9 +32,41 @@ export default function ShareResultModal({ record, onClose }) {
 
   async function nativeShare(){if(!navigator.share){await copy(`${text}\n\n${url}`,'Resumen y enlace copiados.');return;}try{await navigator.share({title:data.incident?'Chess Studio · Cámara del crimen':'Chess Studio · Resultado',text,url});setFeedback('Compartido. Que empiece la chulería o el velatorio.');}catch(error){if(error?.name!=='AbortError')setFeedback('No se pudo abrir el diálogo de compartir.');}}
 
-  return <div className="modal-backdrop" onClick={onClose}><div className="army-card share-result-modal" onClick={e=>e.stopPropagation()}>
-    <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button><span className="eyebrow">Pruebas documentales</span><h3>{data.incident?'Compartir el desastre':'Compartir partida'}</h3>
-    <div className={`share-result-card ${data.outcome}`}><div className="share-result-mark">♟</div><div><strong>{data.incident?'Cámara del crimen':OUTCOME[data.outcome]||data.outcome}</strong><span>contra CPU · nivel {data.difficulty}</span></div><div className="share-result-stats"><span>{data.moves.length} jugadas</span><span>{data.humanColor==='w'?'Blancas':'Negras'}</span>{data.timeControl?.label&&<span>{data.timeControl.label}</span>}</div>{data.incident?<p>Jugada {data.incident.moveNumber}: <b>{data.incident.played}</b> en vez de <b>{data.incident.suggested}</b> · −{data.incident.loss} cp</p>:data.opening&&<p>{data.opening}</p>}{data.series&&!data.incident&&<p>Serie: Tú {data.series.humanWins} · CPU {data.series.cpuWins}{data.series.draws?` · tablas ${data.series.draws}`:''}</p>}</div>
-    <p className="hint-text">El enlace contiene sólo datos de esta partida. No incluye sesión, JWT ni perfil.</p><div className="share-result-actions"><button className="primary-btn" onClick={nativeShare}>Compartir</button><button className="secondary-btn" onClick={()=>copy(url,'Enlace copiado.')}>Copiar enlace</button><button className="secondary-btn" onClick={()=>copy(text,'Resumen copiado.')}>Copiar resumen</button><button className="secondary-btn" onClick={downloadCard}>Tarjeta PNG</button></div>{feedback&&<p className="hint-text share-feedback">{feedback}</p>}
-  </div></div>;
+  return (
+    <div className="modal-backdrop share-result-backdrop" onClick={onClose}>
+      <div className="army-card share-result-modal" onClick={(event) => event.stopPropagation()}>
+        <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
+        <header className="share-result-header">
+          <span className="eyebrow">Pruebas documentales</span>
+          <h3>{data.incident ? 'Compartir el desastre' : 'Compartir partida'}</h3>
+        </header>
+
+        <div className={`share-result-card ${data.outcome}`}>
+          <div className="share-result-mark">♟</div>
+          <div className="share-result-summary">
+            <strong>{data.incident ? 'Cámara del crimen' : OUTCOME[data.outcome] || data.outcome}</strong>
+            <span>contra CPU · nivel {data.difficulty}</span>
+          </div>
+          <div className="share-result-stats">
+            <span>{data.moves.length} jugadas</span>
+            <span>{data.humanColor === 'w' ? 'Blancas' : 'Negras'}</span>
+            {data.timeControl?.label && <span>{data.timeControl.label}</span>}
+          </div>
+          {data.incident ? (
+            <p>Jugada {data.incident.moveNumber}: <b>{data.incident.played}</b> en vez de <b>{data.incident.suggested}</b> · −{data.incident.loss} cp</p>
+          ) : data.opening ? <p>{data.opening}</p> : null}
+          {data.series && !data.incident && <p>Serie: Tú {data.series.humanWins} · CPU {data.series.cpuWins}{data.series.draws ? ` · tablas ${data.series.draws}` : ''}</p>}
+        </div>
+
+        <p className="hint-text share-result-privacy">El enlace contiene sólo datos de esta partida. No incluye sesión, JWT ni perfil.</p>
+        <div className="share-result-actions">
+          <button className="primary-btn" onClick={nativeShare}>Compartir</button>
+          <button className="secondary-btn" onClick={() => copy(url,'Enlace copiado.')}>Copiar enlace</button>
+          <button className="secondary-btn" onClick={() => copy(text,'Resumen copiado.')}>Copiar resumen</button>
+          <button className="secondary-btn" onClick={downloadCard}>Tarjeta PNG</button>
+        </div>
+        {feedback && <p className="hint-text share-feedback">{feedback}</p>}
+      </div>
+    </div>
+  );
 }

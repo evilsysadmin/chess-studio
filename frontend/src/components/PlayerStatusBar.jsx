@@ -16,10 +16,10 @@ function ratingTierClass(rating) {
 // progreso de los tres sistemas que hoy viven separados en localStorage:
 // el nivel del torneo, el XP de combate acumulado, y el rating tipo ELO
 // (una estimación de "qué tan bueno eres" según tus resultados contra la
-// CPU en torneo y combate).
+// CPU en partidas normales y torneo).
 export default function PlayerStatusBar({ tournament, combatXp, rating, onTournamentClick, onRatingClick }) {
-  const level = levelForPoints(tournament.points);
-  const into = pointsIntoLevel(tournament.points);
+  const level = levelForPoints(tournament.progressPoints || 0);
+  const into = pointsIntoLevel(tournament.progressPoints || 0);
   const progressPct = Math.round((into / POINTS_PER_LEVEL) * 100);
 
   return (
@@ -32,7 +32,7 @@ export default function PlayerStatusBar({ tournament, combatXp, rating, onTourna
           <span className="status-chip-bar">
             <span className="status-chip-bar-fill" style={{ width: `${progressPct}%` }} />
           </span>
-          <span className="status-chip-sub">{into}/{POINTS_PER_LEVEL} XP</span>
+          <span className="status-chip-sub">{into}/{POINTS_PER_LEVEL} XP · {tournament.points || 0} pts pista</span>
         </span>
       </button>
 

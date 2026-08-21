@@ -1,8 +1,9 @@
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // playerRating.js — Estimación de nivel del jugador tipo ELO, calculada a
-// partir de tus resultados contra la CPU en Torneo y en Combate (los dos
-// modos donde juegas contra una dificultad conocida de 0 a 100). Es la
+// partir de tus partidas normales y de Torneo contra una dificultad conocida.
+// Práctica y Combate no cuentan: una regala pistas y el otro mete azar en las
+// capturas, así que ambos contaminarían la señal de nivel ajedrecístico. Es la
 // versión "cómo te percibe la CPU" que se muestra siempre en la cabecera.
 //
 // Es un ELO simplificado: le ganas a un rival con rating alto, subes
@@ -73,11 +74,9 @@ export function resetRating() {
 
 // Historial de rating para el gráfico de evolución — una foto {date,
 // rating} cada vez que el rating cambia. A propósito NO se reconstruye
-// retroactivamente desde el historial de partidas: Combate también cambia
-// el rating pero no guarda un historial de jugadas, así que una
-// reconstrucción "desde ya" quedaría incompleta y el último punto no
-// coincidiría con tu rating real. Se graba desde cero a partir de ahora, en
-// los 3 lugares donde el rating cambia (torneo, partida normal, combate).
+// retroactivamente desde el historial de partidas: se conserva como serie
+// incremental para no reescribir la historia cada vez que cambie el cálculo.
+// Se graba en los modos que sí puntúan: partida normal y Torneo.
 export function loadRatingHistory() {
   try {
     const raw = localStorage.getItem(RATING_HISTORY_KEY);
@@ -102,20 +101,60 @@ export function resetRatingHistory() {
   return [];
 }
 
-// Traduce la dificultad de la CPU (0-100) a un rating equivalente, para
-// poder compararla contra el rating del jugador con la fórmula de ELO.
-function cpuRatingForDifficulty(difficulty) {
-  return 600 + difficulty * 12; // nivel 0 -> 600, nivel 100 -> 1800
+// Rating efectivo INTERNO de la CPU. No pretende ser una equivalencia FIDE:
+// sirve para que el cambio ELO tenga sentido relativo a la fuerza real del
+// motor. La curva sigue los saltos de búsqueda del motor (0/20/45/70/90) en
+// vez de asumir que cada punto de dificultad vale exactamente lo mismo.
+const CPU_RATING_ANCHORS = [
+  [0, 450],
+  [20, 650],
+  [45, 900],
+  [60, 1100],
+  [70, 1275],
+  [90, 1600],
+  [100, 1800],
+];
+
+export function cpuRatingForDifficulty(rawDifficulty) {
+  const difficulty = Math.max(0, Math.min(100, Number(rawDifficulty) || 0));
+  for (let i = 1; i < CPU_RATING_ANCHORS.length; i += 1) {
+    const [rightDifficulty, rightRating] = CPU_RATING_ANCHORS[i];
+    const [leftDifficulty, leftRating] = CPU_RATING_ANCHORS[i - 1];
+    if (difficulty <= rightDifficulty) {
+      const span = rightDifficulty - leftDifficulty || 1;
+      const t = (difficulty - leftDifficulty) / span;
+      return Math.round(leftRating + (rightRating - leftRating) * t);
+    }
+  }
+  return CPU_RATING_ANCHORS[CPU_RATING_ANCHORS.length - 1][1];
+}
+
+// Conversión única de resultados competitivos a score ELO. Torneo y partida
+// normal usan exactamente esta función: una derrota nunca queda "gratis" por
+// haber ocurrido dentro de una copa.
+export function ratingScoreForOutcome(outcome) {
+  return outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
 }
 
 // Actualiza el rating tras una partida contra la CPU a una dificultad dada.
 // `score` es 1 (ganaste), 0.5 (tablas) o 0 (perdiste).
-export function updateRating(state, cpuDifficulty, score) {
+export function ratingChangeDetails(state, cpuDifficulty, score) {
   const cpuRating = cpuRatingForDifficulty(cpuDifficulty);
   const expected = 1 / (1 + Math.pow(10, (cpuRating - state.rating) / 400));
   const k = state.games < PROVISIONAL_GAMES ? PROVISIONAL_K_FACTOR : K_FACTOR;
-  const nextRating = Math.round(state.rating + k * (score - expected));
-  return { rating: Math.max(400, nextRating), games: state.games + 1 };
+  const unclamped = Math.round(state.rating + k * (score - expected));
+  const nextRating = Math.max(400, unclamped);
+  return {
+    next: { rating: nextRating, games: state.games + 1 },
+    delta: nextRating - state.rating,
+    cpuRating,
+    expectedScore: expected,
+    kFactor: k,
+  };
+}
+
+export function updateRating(state, cpuDifficulty, score) {
+  return ratingChangeDetails(state, cpuDifficulty, score).next;
 }
 
 // Etiqueta legible para el rating numérico.

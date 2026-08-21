@@ -8,15 +8,21 @@ import {
   createInitialRegistry,
   resolveCombatMove,
   hitChance,
+  isForcedCombatCapture,
+  nextFocusTracker,
   capturedSquareFor,
   derivedLevel,
   buyStatPoint,
   autoLevelUp,
+  repetitionKey,
+  rosterKeyFor,
 } from '../combat.js';
 import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
 import { checkAchievements } from '../achievements.js';
 import { loadRating, ratingProgress, difficultyForRating } from '../playerRating.js';
+import { applyRunPerksToRegistry } from '../roguelikePerks.js';
+import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -57,7 +63,7 @@ function buildLogEntry(result, humanColor) {
 }
 
 
-export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleResult, difficultyOverride, forcedHumanColor }) {
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null }) {
   const [phase, setPhase] = useState('setup'); // 'setup' | 'battle' | 'over'
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
@@ -112,8 +118,16 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   });
   // Fuego concentrado: a quién le viene pegando cada bando (por id de la
   // pieza objetivo) y cuántos ataques consecutivos lleva contra ella.
-  const [focus, setFocus] = useState({ w: null, b: null }); // { targetId, streak } | null
+  // Refs, no estado React: los turnos de CPU viajan por setTimeout y una
+  // closure vieja no debe olvidar el fuego concentrado ni las repeticiones.
+  const focusRef = useRef({ w: null, b: null }); // { targetId, streak } | null
+  const positionCountsRef = useRef(new Map());
+  const [repetitionDraw, setRepetitionDraw] = useState(false);
   const animSeqRef = useRef(0);
+  const bossHpRef = useRef(bossConfig?.maxHp || null);
+  const [bossHp, setBossHp] = useState(bossConfig?.maxHp || null);
+  const [bossPhase, setBossPhase] = useState(1);
+  const battleStartRosterRef = useRef(null);
 
   const localChess = useMemo(() => {
     const c = new Chess();
@@ -163,7 +177,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
 
   // El botón "Empezar combate" pasa por acá primero: si hay piezas caídas
-  // sin revivir, avisamos antes de que se pierdan para siempre en vez de
+  // sin recuperar, avisamos antes de que pierdan su veteranía en vez de
   // borrarlas en silencio.
   function handleStartBattleClick() {
     if (deadRosterEntries.length > 0) {
@@ -177,7 +191,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     const resolved = forcedHumanColor || resolveHumanColor(colorChoice);
 
     // Se cierra acá la ventana de revivir: cualquier pieza que sigue caída
-    // sin que la hayas revivido se pierde para siempre a partir de ahora.
+    // sin que la hayas recuperado pierde su veteranía a partir de ahora; el slot volverá como nivel 1.
     const activeRoster = expireDeadPieces(roster);
     if (activeRoster !== roster) {
       setRoster(activeRoster);
@@ -187,7 +201,14 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     const chess = new Chess();
     if (initialFen) chess.load(initialFen);
     const startFen = chess.fen();
-    const initialRegistry = applyRosterToRegistry(createInitialRegistry(chess), activeRoster, resolved);
+    const rosterRegistry = applyRosterToRegistry(createInitialRegistry(chess), activeRoster, resolved);
+    const initialRegistry = applyRunPerksToRegistry(rosterRegistry, runPerks, resolved);
+    battleStartRosterRef.current = activeRoster;
+    if (bossConfig) {
+      bossHpRef.current = bossConfig.maxHp;
+      setBossHp(bossConfig.maxHp);
+      setBossPhase(1);
+    }
 
     setHumanColor(resolved);
     setCombatLog([]);
@@ -199,8 +220,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setInfoSquare(null);
     setPendingAnim(null);
     setLog([]);
-    setFocus({ w: null, b: null });
+    focusRef.current = { w: null, b: null };
+    positionCountsRef.current = new Map([[repetitionKey(startFen), 1]]);
+    setRepetitionDraw(false);
     setPhase('battle');
+    onBattleStart?.();
 
     // Si te tocaron negras, las blancas (la CPU) mueven primero — sin esto
     // la partida se queda esperando para siempre a que "alguien" mueva.
@@ -220,21 +244,124 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // Cuántos ataques consecutivos ya lleva ESTE bando contra ESTE objetivo,
   // antes del ataque que se está por resolver.
   function currentFocusStreak(attackerColor, defenderId) {
-    const f = focus[attackerColor];
+    const f = focusRef.current[attackerColor];
     if (!f || f.targetId !== defenderId) return 0;
     return f.streak;
   }
 
-  // Actualiza el fuego concentrado después de resolver un ataque: si dio en
-  // el blanco, ese objetivo ya no existe — se limpia. Si falló, suma un
-  // stack más para el próximo intento contra la misma pieza.
-  function updateFocusAfterAttack(attackerColor, defenderId, hit) {
-    setFocus((prev) => {
-      if (hit) return { ...prev, [attackerColor]: null };
-      const current = prev[attackerColor];
-      const streak = current && current.targetId === defenderId ? current.streak + 1 : 1;
-      return { ...prev, [attackerColor]: { targetId: defenderId, streak } };
+  // Actualiza el fuego concentrado tras CUALQUIER acción. Una jugada no
+  // capturadora rompe la racha; sólo los fallos seguidos contra la misma pieza
+  // la incrementan. Se guarda en ref para que el callback de CPU programado
+  // medio segundo antes vea el valor actual y no un closure viejo.
+  function updateFocusAfterAction(result) {
+    const attackerColor = result?.attacker?.color;
+    if (!attackerColor) return;
+    const defenderId = result?.defender?.id || null;
+    const current = focusRef.current[attackerColor];
+    focusRef.current = {
+      ...focusRef.current,
+      [attackerColor]: nextFocusTracker(current, {
+        isCapture: result.isCapture,
+        hit: result.hit,
+        defenderId,
+      }),
+    };
+  }
+
+  function finalizeBattle(outcome, finalRegistry, updatedLog, currentHumanColor) {
+    const isWin = outcome === 'win';
+    if (isWin) playSuccessSound();
+
+    let leveledRegistry = finalRegistry;
+    if (autoLevelUpEnabled) {
+      leveledRegistry = Object.fromEntries(
+        Object.entries(finalRegistry).map(([sq, piece]) =>
+          piece.color === currentHumanColor ? [sq, autoLevelUp(piece)] : [sq, piece]
+        )
+      );
+    }
+
+    // Los bonus del intento (`runStrengthBonus/runSpeedBonus`) no se guardan:
+    // saveSurvivorsToRoster sólo persiste puntos comprados + XP bancado.
+    const nextRoster = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome);
+    saveRoster(nextRoster);
+    setRoster(nextRoster);
+
+    const battleRecord = {
+      id: `combat-${Date.now()}`,
+      date: new Date().toISOString(),
+      difficulty,
+      humanColor: currentHumanColor,
+      outcome,
+      log: updatedLog,
+      variant: combatVariant || 'combat',
+      boss: bossConfig ? { id: bossConfig.id, maxHp: bossConfig.maxHp, remainingHp: bossHpRef.current } : null,
+    };
+    saveCombatBattle(battleRecord);
+
+    const survivorCount = Object.values(finalRegistry).filter((p) => p.color === currentHumanColor).length;
+    checkAchievements({ combatFlawlessWin: isWin && survivorCount === 16 });
+
+    setBattleRecap({
+      survivorCount,
+      totalCount: 16,
+      xpGained: Math.max(0, nextRoster.combatXp - roster.combatXp),
+      record: battleRecord,
     });
+
+    onBattleResult?.(outcome);
+    setPhase('over');
+  }
+
+  function resetBossPhase(currentHumanColor, survivorRegistry) {
+    const chess = new Chess();
+    if (initialFen) chess.load(initialFen);
+    const baseRoster = battleStartRosterRef.current || roster;
+    let fresh = applyRunPerksToRegistry(
+      applyRosterToRegistry(createInitialRegistry(chess), baseRoster, currentHumanColor),
+      runPerks,
+      currentHumanColor,
+    );
+
+    // El boss recompone SU posición entre fases, pero no resucita por cortesía
+    // las piezas humanas que ya consiguió capturar. Mapeamos los supervivientes
+    // por slot de roster (su `id` conserva la casilla/tipo de origen aunque la
+    // pieza se haya movido) y llevamos sus stats/XP actuales a la nueva fase.
+    const survivorsBySlot = new Map(
+      Object.values(survivorRegistry || {})
+        .filter((piece) => piece.color === currentHumanColor)
+        .map((piece) => [rosterKeyFor(piece), piece]),
+    );
+    for (const [square, piece] of Object.entries({ ...fresh })) {
+      if (piece.color !== currentHumanColor || piece.type === 'k') continue;
+      const survivor = survivorsBySlot.get(rosterKeyFor(piece));
+      if (!survivor) {
+        chess.remove(square);
+        delete fresh[square];
+        continue;
+      }
+      fresh[square] = {
+        ...piece,
+        strengthPoints: survivor.strengthPoints || 0,
+        speedPoints: survivor.speedPoints || 0,
+        bankedXp: survivor.bankedXp || 0,
+        runStrengthBonus: survivor.runStrengthBonus || piece.runStrengthBonus || 0,
+        runSpeedBonus: survivor.runSpeedBonus || piece.runSpeedBonus || 0,
+      };
+    }
+
+    const nextFen = chess.fen();
+    setFen(nextFen);
+    setRegistry(fresh);
+    setSelected(null);
+    setPendingAttack(null);
+    setPendingPromotion(null);
+    focusRef.current = { w: null, b: null };
+    positionCountsRef.current = new Map([[repetitionKey(nextFen), 1]]);
+    setRepetitionDraw(false);
+    setBossPhase(bossPhaseForHp(bossHpRef.current, bossConfig?.maxHp));
+    setBusy(false);
+    pushLog({ text: `El Rey Viejo rompe la posición y abre una nueva fase · ${bossHpRef.current}/${bossConfig?.maxHp} HP · tus bajas se arrastran`, tone: 'bad' });
   }
 
   // Todo lo que necesita esta función viaja como parámetro explícito (fen,
@@ -296,9 +423,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     const finalRegistry = result.registry;
     setRegistry(finalRegistry);
 
-    if (result.isCapture && result.attacker && result.defender) {
-      updateFocusAfterAttack(result.attacker.color, result.defender.id, result.hit);
-    }
+    updateFocusAfterAction(result);
 
     animSeqRef.current += 1;
     setPendingAnim({
@@ -318,61 +443,51 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     const chessAfter = new Chess();
     chessAfter.load(result.fen);
 
-    if (chessAfter.isGameOver()) {
+    // chess.js pierde su historial interno porque Combate reconstruye desde
+    // FEN tras cada turno (y nuestros fallos son turnos nulos). Por eso la
+    // triple repetición se cuenta explícitamente con los 4 campos posicionales
+    // del FEN, incluidos los turnos fallidos.
+    const posKey = repetitionKey(result.fen);
+    const occurrence = (positionCountsRef.current.get(posKey) || 0) + 1;
+    positionCountsRef.current.set(posKey, occurrence);
+    const reachedRepetition = occurrence >= 3;
+    if (reachedRepetition) setRepetitionDraw(true);
+
+    // Boss: sólo el rey del piso final usa HP. Cada jaque humano hace daño;
+    // el mate hace 2. Si el mate no lo mata, rompe la fase y reinicia el
+    // tablero del boss de forma explícita — no fingimos una captura del rey.
+    if (bossConfig && attackerBefore?.color === currentHumanColor) {
+      const damage = bossDamageAfterHumanMove(chessAfter, currentHumanColor);
+      if (damage > 0) {
+        const nextHp = Math.max(0, (bossHpRef.current ?? bossConfig.maxHp) - damage);
+        bossHpRef.current = nextHp;
+        setBossHp(nextHp);
+        setBossPhase(bossPhaseForHp(nextHp, bossConfig.maxHp));
+        pushLog({
+          text: damage === 2
+            ? `JAQUE MATE CRÍTICO · -2 HP al Rey Viejo · ${nextHp}/${bossConfig.maxHp} HP`
+            : `Jaque al Rey Viejo · -1 HP · ${nextHp}/${bossConfig.maxHp} HP`,
+          tone: 'good',
+        });
+
+        if (nextHp <= 0) {
+          finalizeBattle('win', finalRegistry, updatedLog, currentHumanColor);
+          return;
+        }
+        if (chessAfter.isCheckmate()) {
+          setBusy(true);
+          setTimeout(() => resetBossPhase(currentHumanColor, finalRegistry), 650);
+          return;
+        }
+      }
+    }
+
+    if (chessAfter.isGameOver() || reachedRepetition) {
       const isWin = chessAfter.isCheckmate() && chessAfter.turn() !== currentHumanColor;
       const isLoss = chessAfter.isCheckmate() && chessAfter.turn() === currentHumanColor;
+      // En boss, un mate humano que no bajó HP a cero ya se interceptó arriba.
       const outcome = isWin ? 'win' : isLoss ? 'loss' : 'draw';
-      if (isWin) playSuccessSound();
-
-      // Acá, y solo acá, se gasta la XP bancada durante toda la batalla —
-      // de una sola vez, al terminar, en vez de en caliente jugada a
-      // jugada. Evita poder reaccionar a la posición actual subiendo justo
-      // la pieza que más conviene en ese instante puntual.
-      let leveledRegistry = finalRegistry;
-      if (autoLevelUpEnabled) {
-        leveledRegistry = Object.fromEntries(
-          Object.entries(finalRegistry).map(([sq, piece]) =>
-            piece.color === currentHumanColor ? [sq, autoLevelUp(piece)] : [sq, piece]
-          )
-        );
-      }
-
-      const nextRoster = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome);
-      saveRoster(nextRoster);
-      setRoster(nextRoster);
-
-      // A propósito NO actualiza el rating tipo ELO: acá el resultado
-      // depende bastante del dado de las capturas (una jugada objetivamente
-      // buena puede fallar el % y no conectar), así que el resultado final
-      // no es una señal limpia de nivel de ajedrez — el mismo motivo por el
-      // que "Partida de práctica" tampoco cuenta (ahí distorsiona al revés,
-      // con pistas gratis). Para medir la calidad real de tus decisiones en
-      // Combate está la "pista inversa" del historial, que analiza el
-      // intento sin el ruido del dado.
-
-      const battleRecord = {
-        id: `combat-${Date.now()}`,
-        date: new Date().toISOString(),
-        difficulty,
-        humanColor: currentHumanColor,
-        outcome,
-        log: updatedLog,
-      };
-      saveCombatBattle(battleRecord);
-
-      // Victoria perfecta: ganaste sin perder ninguna de tus 16 piezas.
-      const survivorCount = Object.values(finalRegistry).filter((p) => p.color === currentHumanColor).length;
-      checkAchievements({ combatFlawlessWin: isWin && survivorCount === 16 });
-
-      setBattleRecap({
-        survivorCount,
-        totalCount: 16,
-        xpGained: Math.max(0, nextRoster.combatXp - roster.combatXp),
-        record: battleRecord,
-      });
-
-      onBattleResult?.(outcome);
-      setPhase('over');
+      finalizeBattle(outcome, finalRegistry, updatedLog, currentHumanColor);
       return;
     }
 
@@ -461,9 +576,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       // Si ya está en jaque, esta jugada tiene que resolverlo sí o sí — el
       // motor la va a forzar a conectar igual, así que reflejamos eso acá
       // para no mostrar un % que después no se cumple.
-      const mustSucceed = localChess.inCheck();
+      const forcedHit = isForcedCombatCapture(fen, from, to, promotion);
       const streak = attacker && defender ? currentFocusStreak(attacker.color, defender.id) : 0;
-      const chance = mustSucceed ? 1 : hitChance(attacker, defender, streak);
+      const chance = forcedHit ? 1 : hitChance(attacker, defender, streak);
       setPendingAttack({ from, to, promotion, attacker, defender, chance });
       setSelected(null);
       return;
@@ -495,6 +610,29 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setPendingPromotion(null);
     const moveInfo = localChess.moves({ square: from, verbose: true }).find((m) => m.to === to);
     proposeOrCommitMove(from, to, code, moveInfo);
+  }
+
+  function retireBattle() {
+    if (phase !== 'battle') return;
+
+    // En Roguelike, "Salir del combate" no puede ser un reset gratuito del
+    // piso. Conservamos el progreso/bajas que existen en ESTE estado, pero no
+    // damos XP de combate por retirarse (COMBAT_XP_REWARD no tiene 'retired').
+    const nextRoster = saveSurvivorsToRoster(registry, roster, humanColor, 'retired');
+    saveRoster(nextRoster);
+    setRoster(nextRoster);
+    const battleRecord = {
+      id: `combat-${Date.now()}`,
+      date: new Date().toISOString(),
+      difficulty,
+      humanColor,
+      outcome: 'retired',
+      log: combatLog,
+      variant: combatVariant || 'combat',
+    };
+    saveCombatBattle(battleRecord);
+    onBattleResult?.('retired');
+    setPhase('over');
   }
 
   function backToSetup() {
@@ -540,8 +678,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const deadCount = Object.values(roster.pieces).filter((p) => p.alive === false).length;
 
 
-  const status = localChess.isCheckmate()
+  const status = localChess.isCheckmate() && !(bossConfig && (bossHpRef.current || 0) > 0)
     ? 'checkmate'
+    : repetitionDraw
+    ? 'repetition'
     : localChess.isStalemate()
     ? 'stalemate'
     : localChess.isThreefoldRepetition()
@@ -567,9 +707,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     pendingPromotion, pendingAttack, infoSquare, busy, pendingAnim, log, roster,
     showArmy, setShowArmy, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, deadRosterEntries, handleStartBattleClick,
-    startBattle, confirmAttack, cancelAttack, choosePromotion, backToSetup, handleResetRoster,
+    startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
     handleBuyRosterStat, handleReviveRosterPiece, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, setInfoSquare,
-    status, statusLabel, statusClass, statusText,
+    status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };
 }

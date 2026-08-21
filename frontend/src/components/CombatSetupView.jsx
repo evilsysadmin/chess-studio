@@ -4,7 +4,7 @@ import ColorSelector from './ColorSelector.jsx';
 import { BASE_STATS } from '../combat.js';
 
 export default function CombatSetupView({
-  onExit, difficulty, ratingInfo, colorChoice, setColorChoice, autoLevelUpEnabled,
+  onExit, difficulty, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
   showExpireWarning, setShowExpireWarning, handleStartBattleClick, startBattle,
   showArmy, setShowArmy, handleBuyRosterStat, handleReviveRosterPiece,
@@ -15,27 +15,50 @@ export default function CombatSetupView({
       <div className="menu combat-setup">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section">
-          <span className="eyebrow">Modo combate</span>
-          <h2 style={{ marginTop: '0.35rem' }}>Ajedrez con niveles y esquive</h2>
+          <span className="eyebrow">{combatVariant === 'roguelike' ? 'Combate Roguelike' : 'Modo combate'}</span>
+          <h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? 'Piso con reglas de combate' : 'Ajedrez con niveles y esquive'}</h2>
+          {encounterLabel && (
+            <div className="combat-encounter-card">
+              <span>ENCUENTRO</span>
+              <strong>{encounterLabel}</strong>
+              {encounterTier && <em className="combat-encounter-tier">{encounterTier}</em>}
+              {encounterDescription && <p>{encounterDescription}</p>}
+              {bossConfig && <p><b>Regla del jefe:</b> su rey tiene {bossConfig.maxHp} HP. Cada jaque hace 1 daño; el mate hace 2 y abre una nueva fase si todavía sigue vivo.</p>}
+            </div>
+          )}
           <p className="hint-text">
             Es ajedrez normal, con una vuelta: cuando intentas capturar una pieza, primero ves el % de acierto
-            y confirmas si te compensa el riesgo. Si falla, tu pieza esquivó — no pasa nada, pero pierdes el
-            turno (y la que esquivó banca algo de XP por sobrevivir). Capturar también banca XP, que se puede
+            y confirmas si te compensa el riesgo. Si falla, la pieza atacada esquiva: el tablero no cambia, pero
+            el atacante pierde el turno (y la pieza que esquivó banca algo de XP por sobrevivir). Capturar también banca XP, que se puede
             gastar en fuerza o velocidad — automático o a mano, según la opción de abajo. Atacar sin haberte
-            movido de tu casilla de partida da un bono ("en reserva"), y seguir atacando al mismo objetivo varias
-            veces seguidas también suma bono. Las piezas que lleguen vivas al final de la partida guardan su
+            movido de tu casilla de partida da un bono ("en reserva"), y fallar varias veces seguidas contra el
+            mismo objetivo afina la puntería; mover tranquilo, cambiar de blanco o acertar rompe esa racha. Las piezas que lleguen vivas al final de la partida guardan su
             progreso para la próxima batalla — las que caigan, tienen una única ventana para revivirlas
             (gastando "XP de combate", una moneda aparte que se gana al terminar cada partida) antes de que
-            empieces la siguiente: si no las revives a tiempo, se pierden para siempre y vuelven a nivel 1. El
+            empieces la siguiente: si no las recuperas a tiempo, se pierde para siempre su veteranía y ese hueco vuelve la próxima batalla con una pieza de nivel 1. El
             rey nunca esquiva y siempre acierta cuando ataca, y tampoco gana ni gasta XP: el jaque mate sigue
             siendo 100% seguro, como en el ajedrez de siempre.
           </p>
         </div>
 
+        {combatVariant === 'roguelike' && Array.isArray(runPerks) && runPerks.length > 0 && (
+          <div className="menu-section">
+            <h2>Ventajas de este intento</h2>
+            <div className="roguelike-active-perks">
+              {runPerks.map((perk, index) => (
+                <span key={`${perk.id}-${index}`} className="roguelike-perk-chip" title={perk.description}>{perk.label}</span>
+              ))}
+            </div>
+            <p className="hint-text" style={{ marginTop: '0.45rem' }}>Son temporales: desaparecen cuando termina el intento.</p>
+          </div>
+        )}
+
         <div className="menu-section">
           <h2>Dificultad de la CPU</h2>
           <p className="hint-text" style={{ marginBottom: '0.6rem' }}>
-            Automática, según cómo te ve la CPU — no se elige a mano en Combate.
+            {difficultyOverride != null
+              ? 'Fijada por este encuentro: el piso manda, no tu rating.'
+              : 'Automática, según cómo te ve la CPU — no se elige a mano en Combate.'}
           </p>
           <div className="difficulty-slider-row">
             <div className="difficulty-slider" style={{ background: 'transparent', pointerEvents: 'none', flex: 1 }}>
@@ -65,14 +88,20 @@ export default function CombatSetupView({
             </div>
             <div className="difficulty-readout">
               <span className="difficulty-number">{difficulty}</span>
-              <span className="difficulty-word">{ratingInfo.tier.label}</span>
+              <span className="difficulty-word">{difficultyLabel || ratingInfo.tier.label}</span>
             </div>
           </div>
         </div>
 
         <div className="menu-section">
           <h2>Color</h2>
-          <ColorSelector value={colorChoice} onChange={setColorChoice} />
+          {forcedHumanColor ? (
+            <p className="hint-text">
+              Fijo en esta modalidad: juegas con <b>{forcedHumanColor === 'w' ? 'blancas' : 'negras'}</b>.
+            </p>
+          ) : (
+            <ColorSelector value={colorChoice} onChange={setColorChoice} />
+          )}
         </div>
 
         <div className="menu-section">
@@ -88,7 +117,7 @@ export default function CombatSetupView({
           <p className="hint-text" style={{ marginTop: '0.4rem' }}>
             {autoLevelUpEnabled
               ? 'Activada: al terminar la batalla, cada pieza gasta su XP sola, comprando fuerza y velocidad en pareja. Simple, sin decisiones — pero ya no en caliente, jugada a jugada.'
-              : 'Desactivada: eliges en qué gastar el XP de cada pieza, pero recién al terminar la batalla (toca dos veces cualquier pieza tuya en el tablero final para hacerlo). Más control, sin poder reaccionar a mitad de combate.'}
+              : 'Desactivada: el XP queda bancado al terminar y lo gastas desde Tu ejército antes de la siguiente batalla. Más control, sin poder reaccionar a mitad de combate.'}
           </p>
         </div>
 
@@ -155,7 +184,7 @@ export default function CombatSetupView({
                 Tienes {deadRosterEntries.length} pieza{deadRosterEntries.length === 1 ? '' : 's'} caída
                 {deadRosterEntries.length === 1 ? '' : 's'} sin revivir
                 {' '}({deadRosterEntries.map(([key]) => BASE_STATS[key.split('-')[0]].name).join(', ')}).
-                Si empiezas ahora, se pierden para siempre.
+                Si empiezas ahora, se pierde para siempre su veteranía; esos huecos volverán como piezas de nivel 1.
               </p>
               <div className="attack-confirm-buttons">
                 <button
