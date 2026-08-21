@@ -32,6 +32,7 @@ import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancel
 import { isLoggedIn, fetchMe, logout, touchActivity, watchSessionIdentity } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import AdminScreen from './components/AdminScreen.jsx';
+import LiveServiceStatus from './components/LiveServiceStatus.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
@@ -702,6 +703,7 @@ function AppInner({ isAdminUser }) {
       <div className="app-shell">
         <div className="masthead">
           <div className="masthead-top-row">
+            <LiveServiceStatus />
             <div className="masthead-text">
               <h1>Escuela de Ajedrez</h1>
             </div>

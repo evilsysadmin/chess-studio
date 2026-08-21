@@ -1409,3 +1409,20 @@ async def root(_username: str = Depends(get_current_user)):
 @limiter.exempt
 async def health():
     return {"ok": True}
+
+
+@app.get("/api/status")
+@limiter.exempt
+async def public_status():
+    """Estado ligero para la cabecera autenticada.
+
+    Es público como /health, pero solo expone un agregado (nunca usernames).
+    Si Mongo está temporalmente indisponible el proceso sigue estando UP; en
+    ese caso la presencia queda como desconocida en vez de convertir un fallo
+    de storage en un falso "backend DOWN".
+    """
+    try:
+        online_users = await ustore.count_online_users(window_seconds=90)
+        return {"ok": True, "onlineUsers": online_users, "presenceAvailable": True}
+    except PersistentStorageUnavailable:
+        return {"ok": True, "onlineUsers": None, "presenceAvailable": False}

@@ -1,6 +1,6 @@
 """Persistencia de cuentas de usuario."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import time
 from typing import Optional
 
@@ -199,6 +199,37 @@ async def list_usernames() -> list[str]:
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
     return list(_memory_users.keys())
+
+async def count_online_users(*, window_seconds: int = 90) -> int:
+    """Cuenta actividad reciente sin exponer identidades.
+
+    El frontend ya manda heartbeat cada 60 s; una ventana de 90 s tolera una
+    pequeña deriva de red sin mantener usuarios fantasma durante minutos.
+    En Mongo hacemos un único count_documents en vez de leer cada cuenta.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=max(1, int(window_seconds)))
+    cutoff_iso = cutoff.isoformat()
+    col = await _get_collection()
+    if col is not None:
+        try:
+            return int(await col.count_documents({"last_activity": {"$gte": cutoff_iso}}))
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para contar presencia.") from exc
+
+    count = 0
+    for user in _memory_users.values():
+        raw = user.get("last_activity")
+        if not raw:
+            continue
+        try:
+            parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            if parsed.astimezone(timezone.utc) >= cutoff:
+                count += 1
+        except (TypeError, ValueError):
+            continue
+    return count
 
 
 async def touch_last_activity(username: str, *, force: bool = False) -> str:

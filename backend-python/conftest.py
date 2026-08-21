@@ -29,6 +29,12 @@ def no_real_mongo(monkeypatch, request):
     # explícitamente mediante monkeypatch en el store correspondiente.
     monkeypatch.delenv("MONGO_URL", raising=False)
 
+    # Bcrypt de producción usa 12 rounds. En tests mantenemos bcrypt real pero
+    # con el mínimo válido (4) para que las numerosas altas/login no dominen
+    # el tiempo de la suite.
+    import auth as auth_module
+    monkeypatch.setattr(auth_module, "BCRYPT_ROUNDS", 4)
+
     async def fake_get_db():
         return None
 

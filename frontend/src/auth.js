@@ -169,6 +169,21 @@ export function wakeBackend() {
   fetch(`${BASE_URL}/health`, { headers: withRequestId() }).catch(() => {});
 }
 
+export async function fetchLiveStatus() {
+  try {
+    const res = await fetch(`${BASE_URL}/status`, { headers: withRequestId() });
+    if (!res.ok) return { backend: 'down', onlineUsers: null, presenceAvailable: false };
+    const body = await res.json();
+    return {
+      backend: 'up',
+      onlineUsers: Number.isInteger(body?.onlineUsers) ? body.onlineUsers : null,
+      presenceAvailable: body?.presenceAvailable !== false,
+    };
+  } catch {
+    return { backend: 'down', onlineUsers: null, presenceAvailable: false };
+  }
+}
+
 export function touchActivity() {
   if (!getToken()) return;
   fetch(`${BASE_URL}/auth/activity`, {

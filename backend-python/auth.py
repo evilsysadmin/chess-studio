@@ -23,6 +23,15 @@ JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_DAYS = 30  # una sesión larga, no hay "recordarme" aparte
 PASSWORD_RESET_MINUTES = 30
 
+# Coste bcrypt de producción. Los tests lo bajan temporalmente a 4 mediante
+# monkeypatch para conservar hashing real sin pagar el coste CPU de 12 rounds
+# en cada alta/login de la suite.
+try:
+    BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
+except ValueError:
+    BCRYPT_ROUNDS = 12
+BCRYPT_ROUNDS = max(4, min(BCRYPT_ROUNDS, 16))
+
 # Fallar cerrado en Internet. Es preferible que Render marque el deploy como
 # fallido a arrancar con una clave conocida por cualquiera que vea el repo.
 _ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
@@ -33,7 +42,7 @@ if _ENVIRONMENT in {"production", "prod"} and (
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:

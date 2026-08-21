@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail } from './auth.js';
+import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
 
 function mockFetchOnce(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -137,6 +137,18 @@ describe('fetchMe/authHeader/wakeBackend', () => {
 
     global.fetch = vi.fn().mockRejectedValue(new Error('timeout'));
     expect(() => wakeBackend()).not.toThrow();
+  });
+
+  it('fetchLiveStatus informa backend y presencia agregada', async () => {
+    mockFetchOnce(200, { ok: true, onlineUsers: 3, presenceAvailable: true });
+    expect(await fetchLiveStatus()).toEqual({ backend: 'up', onlineUsers: 3, presenceAvailable: true });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/status'),
+      expect.objectContaining({ headers: expect.objectContaining({ 'X-Request-ID': expect.any(String) }) }),
+    );
+
+    global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
+    expect(await fetchLiveStatus()).toEqual({ backend: 'down', onlineUsers: null, presenceAvailable: false });
   });
 
   it('touchActivity manda un heartbeat autenticado y no propaga errores', async () => {

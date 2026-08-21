@@ -59,12 +59,12 @@ export const PUZZLES = [
     solution: ['Nc7+', 'Kd8', 'Nxa8'],
   },
   {
-    id: 'mate2_h8',
-    kind: 'mate2',
-    title: 'Mate en 2',
-    description: 'El rey negro está en la esquina contraria. La técnica es la misma: encontrala.',
+    id: 'mate1_h8',
+    kind: 'mate1',
+    title: 'Mate en 1',
+    description: 'El rey negro está atrapado en h8. La dama puede cerrar la partida de inmediato.',
     fen: '7k/8/6K1/8/8/8/Q7/8 w - - 0 1',
-    solution: ['Qb2+', 'Kg8', 'Qb8#'],
+    solution: ['Qa8#'],
   },
 ];
 

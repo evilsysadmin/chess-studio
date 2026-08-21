@@ -13,6 +13,7 @@ import chess
 from fastapi.testclient import TestClient
 
 import game_store as store
+import users_store as ustore
 from main import app
 from auth import create_token
 
@@ -62,6 +63,14 @@ def test_health():
     r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json() == {"ok": True}
+
+
+def test_public_status_counts_recent_users_without_exposing_identities():
+    asyncio.run(ustore.touch_last_activity("testuser", force=True))
+    r = raw_client.get("/api/status")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "onlineUsers": 1, "presenceAvailable": True}
+    assert "testuser" not in r.text
 
 
 def test_root_identifies_backend_instead_of_returning_404():

@@ -65,7 +65,42 @@ button:focus-visible,
   align-items: center;
   justify-content: center;
   min-width: 0;
+  position: relative;
+  min-height: 2.6rem;
 }
+
+.live-service-status {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.34rem 0.48rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--ink-2) 88%, transparent);
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.live-service-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--parchment-dim);
+  opacity: 0.65;
+}
+
+.live-service-status strong { font-weight: 700; }
+.live-service-status.is-up strong { color: #8fcf8a; }
+.live-service-status.is-up .live-service-dot { background: #8fcf8a; box-shadow: 0 0 8px rgba(143, 207, 138, 0.42); }
+.live-service-status.is-down strong { color: #e2a4a4; }
+.live-service-status.is-down .live-service-dot { background: #e2a4a4; }
+.live-service-separator { opacity: 0.45; }
 
 /* Los controles de audio viven en su propia fila. Antes compartían una
    grid de tres columnas con el título y un selector largo podía invadir la
@@ -2702,18 +2737,20 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 /* ---------- Admin: expediente/cotilleo ---------- */
 .admin-screen { max-width: 1240px; }
 .admin-table-wrap { width: 100%; overflow-x: auto; border-radius: 8px; }
-.admin-users-table { table-layout: fixed; min-width: 760px; }
-.admin-users-table th:nth-child(1), .admin-users-table td:nth-child(1) { width: 15%; }
-.admin-users-table th:nth-child(2), .admin-users-table td:nth-child(2) { width: 18%; }
-.admin-users-table th:nth-child(3), .admin-users-table td:nth-child(3) { width: 9%; }
-.admin-users-table th:nth-child(4), .admin-users-table td:nth-child(4) { width: 9%; }
-.admin-users-table th:nth-child(5), .admin-users-table td:nth-child(5) { width: 10%; }
-.admin-users-table th:nth-child(6), .admin-users-table td:nth-child(6) { width: 12%; }
-.admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width: 220px; }
+/* Tabla deliberadamente compacta: las columnas numéricas ocupan solo lo que
+   necesitan y Acciones queda junto a Peor, sin un solar vacío en medio. */
+.admin-users-table { table-layout: auto; width: max-content; min-width: min(100%, 980px); }
+.admin-users-table th:nth-child(1), .admin-users-table td:nth-child(1) { min-width: 120px; max-width: 180px; }
+.admin-users-table th:nth-child(2), .admin-users-table td:nth-child(2) { min-width: 165px; }
+.admin-users-table th:nth-child(3), .admin-users-table td:nth-child(3) { width: 78px; }
+.admin-users-table th:nth-child(4), .admin-users-table td:nth-child(4) { width: 82px; }
+.admin-users-table th:nth-child(5), .admin-users-table td:nth-child(5) { width: 92px; }
+.admin-users-table th:nth-child(6), .admin-users-table td:nth-child(6) { width: 120px; }
+.admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width: 190px; }
 .admin-user-cell { overflow: hidden; text-overflow: ellipsis; }
 .admin-worst-cell { overflow: hidden; text-overflow: ellipsis; }
 .admin-worst-malus { color: #e2a4a4; font-variant-numeric: tabular-nums; }
-.admin-actions-cell { position: sticky; right: 0; z-index: 2; background: var(--ink); box-shadow: -10px 0 18px rgba(22, 27, 38, 0.82); }
+.admin-actions-cell { position: sticky; right: 0; z-index: 2; background: var(--ink); box-shadow: -5px 0 10px rgba(22, 27, 38, 0.48); }
 .admin-users-table tr:hover .admin-actions-cell { background: var(--ink-2); }
 .admin-muted { color: var(--parchment-dim); }
 .admin-peek-button {
@@ -4365,4 +4402,21 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .worst-move-spotlight-empty { align-items: stretch; flex-direction: column; }
   .worst-move-spotlight-count { width: fit-content; }
   .worst-move-spotlight-actions > button { flex: 1 1 150px; }
+}
+
+
+@media (max-width: 700px) {
+  .masthead-top-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .live-service-status {
+    position: static;
+    transform: none;
+    align-self: flex-start;
+  }
+
+  .masthead-text { text-align: center; }
 }
