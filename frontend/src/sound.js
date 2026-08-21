@@ -1656,6 +1656,120 @@ export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, la
   id, label, description,
 }));
 
+
+// V16.6m — identidad de mezcla/arreglo para el bloque de jazz mediterráneo.
+// Antes todos estos temas pasaban por la misma "máquina de variación": misma
+// ruta armónica, misma forma de mover secciones y el mismo pulso básico. Eso
+// evitaba loops cortos pero homogeneizaba demasiado el catálogo y podía romper
+// el arco A→B→C escrito en cada pieza. Los perfiles conservan la composición
+// original y cambian feel, sustain, timbre de base y micro-groove por escena.
+const STRUCTURED_FEELS = Object.freeze({
+  alexandriaLounge: Object.freeze({
+    family: 'alexandria-lounge', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 0, -2, -2, 0, 0, 5, 5, 0],
+    swing: 0.08, warmth: 0.82, releaseScale: 1.18,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 13, bassHoldSteps: 4.8,
+    groove: { period: 16, accents: [0, 10], volume: 0.014 },
+  }),
+  cairoAfterHours: Object.freeze({
+    family: 'cairo-after-hours', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, -2, 0, 0, 3, 3, 0, 0],
+    swing: 0.14, warmth: 0.76, releaseScale: 1.28,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 15, bassHoldSteps: 5.4,
+    groove: { period: 16, accents: [0, 6, 12], volume: 0.012 },
+  }),
+  beirutSixEight: Object.freeze({
+    family: 'beirut-six-eight', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 0, 0, -2, -2, 0, 0, 5, 5, 0],
+    swing: 0.035, warmth: 0.8, releaseScale: 1.16,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 14, bassHoldSteps: 4.2,
+    groove: { period: 18, accents: [0, 6, 12], volume: 0.017 },
+  }),
+  beirutRooftop: Object.freeze({
+    family: 'beirut-rooftop', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, 0, 0, 5, 0, -2, 0],
+    swing: 0.17, warmth: 0.84, releaseScale: 1.12,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 11, bassHoldSteps: 3.8,
+    groove: { period: 18, accents: [0, 9, 14], volume: 0.015 },
+  }),
+  levantBlue: Object.freeze({
+    family: 'levant-blue', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 0, -2, -2, 0, 0, 3, 0],
+    swing: 0.06, warmth: 0.72, releaseScale: 1.34,
+    bassInstrument: 'uprightBass', chordHoldSteps: 16, bassHoldSteps: 5.5,
+    groove: { period: 16, accents: [0, 12], volume: 0.009 },
+  }),
+  istanbulBroken: Object.freeze({
+    family: 'istanbul-broken-meter', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 0, 2, 2, 0, -2, -2, 0],
+    swing: 0.0, warmth: 0.86, releaseScale: 1.08,
+    bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.6,
+    groove: { period: 14, accents: [0, 5, 9], volume: 0.014 },
+  }),
+  tangierWalking: Object.freeze({
+    family: 'tangier-walking', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, -2, 0, 5, 5, 0, 0],
+    swing: 0.19, warmth: 0.8, releaseScale: 1.12,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 12, bassHoldSteps: 3.4,
+    groove: { period: 16, accents: [0, 8, 14], volume: 0.014 },
+  }),
+  maghrebVelvet: Object.freeze({
+    family: 'maghreb-velvet', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 0, -2, 0, 0, 5, 0],
+    swing: 0.12, warmth: 0.74, releaseScale: 1.26,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 14, bassHoldSteps: 4.4,
+    groove: { period: 16, accents: [0, 11], volume: 0.011 },
+  }),
+  andalusWarm: Object.freeze({
+    family: 'andalus-warm', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 5, 5, 0, 0, -2, 0],
+    swing: 0.09, warmth: 0.9, releaseScale: 1.08,
+    bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.5,
+    groove: { period: 16, accents: [0, 8, 12], volume: 0.013 },
+  }),
+});
+
+const STRUCTURED_FEEL_BY_THEME = Object.freeze({
+  alexandria241: 'alexandriaLounge',
+  cairo0047: 'cairoAfterHours', cairoQuietHours: 'cairoAfterHours', cairoRedLantern: 'cairoAfterHours', nileBalcony0152: 'cairoAfterHours',
+  beirut0113: 'beirutSixEight', beirutRooftop0412: 'beirutRooftop', beirutNightTaxi: 'beirutRooftop',
+  damascusBlueHour: 'levantBlue', aleppoAfterRain: 'levantBlue', ammanVelvetRoom: 'levantBlue',
+  istanbul0326: 'istanbulBroken', bosphorusRain: 'levantBlue', istanbulBackgammon: 'istanbulBroken',
+  tangierSmoke: 'tangierWalking', tangierRedTable: 'tangierWalking', casablancaLastCall: 'maghrebVelvet', medinaBlueSmoke: 'maghrebVelvet',
+  andalusianCoast: 'andalusWarm', granadaPatio: 'andalusWarm', cadizLanterns: 'andalusWarm',
+});
+
+function structuredFeel(theme) {
+  const key = STRUCTURED_FEEL_BY_THEME[theme?.id];
+  return (key && STRUCTURED_FEELS[key]) || null;
+}
+
+// Diagnóstico estable para tests/UI de desarrollo. No expone las partituras,
+// sólo los parámetros que hacen que cada familia tenga una identidad distinta.
+export function getAmbientThemeSoundProfile(themeId) {
+  const theme = AMBIENT_THEMES[themeId];
+  const feel = structuredFeel(theme);
+  if (!theme || theme.engine !== 'structured') return null;
+  return feel ? {
+    family: feel.family,
+    preserveSectionOrder: !!feel.preserveSectionOrder,
+    swing: feel.swing || 0,
+    warmth: feel.warmth || 1,
+    groovePeriod: feel.groove?.period || null,
+    chordInstrument: feel.chordInstrument || theme.chordInstrument,
+    bassInstrument: feel.bassInstrument || theme.bassInstrument,
+  } : {
+    family: 'legacy-structured', preserveSectionOrder: false, swing: 0, warmth: 1,
+    groovePeriod: null, chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
+  };
+}
+
 // Útil para tests y para futuras UIs: duración mínima antes de que un tema
 // estructurado vuelva al principio de su forma larga. Al-Ándalus es
 // estocástico y no tiene un bucle exacto equivalente.
@@ -2211,9 +2325,11 @@ function voicePreset(kind) {
     case 'harpsichord': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.13]], gain: 0.018, attack: 0.003, release: 0.48, cutoff: 3900 };
     case 'vibes': return { waves: [['sine', 1, 1], ['sine', 4, 0.16]], gain: 0.026, attack: 0.008, release: 2.35, cutoff: 5200, tremolo: 5.2 };
     case 'epiano': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18]], gain: 0.021, attack: 0.018, release: 1.45, cutoff: 2600 };
+    case 'rhodesWarm': return { waves: [['sine', 1, 1], ['triangle', 2, 0.16], ['sine', 0.5, 0.1]], gain: 0.020, attack: 0.028, release: 2.15, cutoff: 1950, tremolo: 3.1 };
     case 'cello': return { waves: [['sawtooth', 1, 1], ['triangle', 0.5, 0.18]], gain: 0.017, attack: 0.09, release: 2.1, cutoff: 920 };
     case 'pizz': return { waves: [['triangle', 1, 1], ['sine', 2, 0.12]], gain: 0.026, attack: 0.004, release: 0.52, cutoff: 1700 };
     case 'bass': return { waves: [['triangle', 1, 1], ['sine', 0.5, 0.18]], gain: 0.029, attack: 0.008, release: 0.72, cutoff: 760 };
+    case 'uprightBass': return { waves: [['triangle', 1, 0.88], ['sine', 0.5, 0.34], ['sine', 2, 0.06]], gain: 0.027, attack: 0.014, release: 1.08, cutoff: 680 };
     case 'brass': return { waves: [['sawtooth', 1, 1], ['square', 0.5, 0.1]], gain: 0.016, attack: 0.065, release: 1.2, cutoff: 1250 };
     case 'musicbox': return { waves: [['sine', 1, 1], ['sine', 3, 0.25], ['sine', 5, 0.08]], gain: 0.019, attack: 0.002, release: 1.55, cutoff: 6500 };
     case 'bell': return { waves: [['sine', 1, 1], ['sine', 2.01, 0.2], ['sine', 3.99, 0.08]], gain: 0.018, attack: 0.004, release: 2.3, cutoff: 7000 };
@@ -2243,7 +2359,7 @@ function voicePreset(kind) {
   }
 }
 
-function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride = null) {
+function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride = null, tone = null) {
   if (isMusicMuted() || midiNote == null) return;
   const ctx = getContext();
   if (!ctx) return;
@@ -2252,11 +2368,11 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   const preset = voicePreset(kind);
   const freq = midiToFreq(midiNote);
   const start = ctx.currentTime;
-  const release = durationOverride || preset.release;
+  const release = durationOverride || preset.release * (tone?.releaseScale || 1);
   const filter = ctx.createBiquadFilter();
   const gainNode = ctx.createGain();
   filter.type = 'lowpass';
-  filter.frequency.value = preset.cutoff;
+  filter.frequency.value = Math.max(260, preset.cutoff * (tone?.warmth || 1));
   filter.Q.value = kind === 'synth' || kind === 'arp' ? 1.4 : 0.55;
 
   const peak = preset.gain * volumeScale;
@@ -2303,10 +2419,10 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   });
 }
 
-function playStructuredChord(kind, notes, duration = null, volumeScale = 1) {
+function playStructuredChord(kind, notes, duration = null, volumeScale = 1, tone = null) {
   if (!Array.isArray(notes)) return;
   const scale = Math.max(0.42, 1 / Math.sqrt(notes.length)) * volumeScale;
-  notes.forEach((note) => playStructuredVoice(kind, note, scale, duration));
+  notes.forEach((note) => playStructuredVoice(kind, note, scale, duration, tone));
 }
 
 function playNoiseHit(kind, volume = 0.03) {
@@ -2412,13 +2528,20 @@ function structuredArrangement(theme, cycleIndex) {
   const span = Math.max(8, Math.ceil((theme.longFormMs || STRUCTURED_LONG_FORM_MS) / cycleMs));
   const phase = cycleIndex % span;
   const seed = stableThemeSeed(theme.id);
-  const harmonicIndex = Math.floor((phase / span) * STRUCTURED_HARMONY_PATH.length);
-  const transpose = STRUCTURED_HARMONY_PATH[(harmonicIndex + (seed % 3)) % STRUCTURED_HARMONY_PATH.length];
+  const feel = structuredFeel(theme);
+  const harmonyPath = feel?.harmonyPath || STRUCTURED_HARMONY_PATH;
+  const harmonicIndex = Math.floor((phase / span) * harmonyPath.length);
+  // Las escenas nuevas priorizan continuidad tonal: empiezan siempre en su
+  // centro escrito y modulan sólo siguiendo su propia ruta. Los temas legacy
+  // conservan el offset histórico derivado de la seed.
+  const pathOffset = feel ? 0 : (seed % 3);
+  const transpose = harmonyPath[(harmonicIndex + pathOffset) % harmonyPath.length];
   const texture = (phase + (seed % 7)) % 9;
 
   return {
     span,
     transpose,
+    feel,
     // Cambios de registro puntuales, no una octava arriba cada dos vueltas.
     leadOctave: texture === 3 ? 12 : texture === 7 ? -12 : 0,
     leadVolume: texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1,
@@ -2428,9 +2551,13 @@ function structuredArrangement(theme, cycleIndex) {
     counterOctave: texture === 6 ? -12 : 0,
     // Unas vueltas dejan respirar la melodía o la batería. La forma base
     // sigue reconocible, pero no tenemos la misma pared de sonido cada 4 s.
-    leadMode: texture === 2 ? 'late' : texture === 8 ? 'sparse' : 'full',
-    drumMode: texture === 0 ? 'full' : texture === 4 ? 'sparse' : texture === 6 ? 'none' : 'full',
-    sectionShift: sections > 1 ? Math.floor(phase / 2 + (seed % sections)) % sections : 0,
+    leadMode: feel
+      ? (texture === 8 ? 'sparse' : 'full')
+      : (texture === 2 ? 'late' : texture === 8 ? 'sparse' : 'full'),
+    drumMode: feel
+      ? (texture === 6 ? 'sparse' : 'full')
+      : (texture === 0 ? 'full' : texture === 4 ? 'sparse' : texture === 6 ? 'none' : 'full'),
+    sectionShift: feel?.preserveSectionOrder ? 0 : (sections > 1 ? Math.floor(phase / 2 + (seed % sections)) % sections : 0),
   };
 }
 
@@ -2473,27 +2600,49 @@ function startStructuredMusic(theme) {
     const drum = section.drums?.[localStep];
     const t = arrangement.transpose;
 
+    const feel = arrangement.feel;
+    const tone = feel ? { warmth: feel.warmth, releaseScale: feel.releaseScale } : null;
+
     if (lead != null && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
-      playStructuredVoice(section.leadInstrument || theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume);
+      playStructuredVoice(section.leadInstrument || theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume, null, tone);
     }
     if (counter != null && arrangement.leadMode !== 'sparse') {
       playStructuredVoice(
         section.counterInstrument || theme.counterInstrument || theme.leadInstrument,
         counter + t + arrangement.counterOctave,
         arrangement.counterVolume,
+        null,
+        tone,
       );
     }
-    if (bass != null) playStructuredVoice(section.bassInstrument || theme.bassInstrument, bass + t, arrangement.bassVolume);
+    if (bass != null) {
+      const bassInstrument = feel?.bassInstrument || section.bassInstrument || theme.bassInstrument;
+      const bassDuration = feel?.bassHoldSteps ? (theme.stepMs * feel.bassHoldSteps) / 1000 : null;
+      playStructuredVoice(bassInstrument, bass + t, arrangement.bassVolume, bassDuration, tone);
+    }
     if (chord) {
-      const chordInstrument = section.chordInstrument || theme.chordInstrument;
+      const chordInstrument = feel?.chordInstrument || section.chordInstrument || theme.chordInstrument;
       const longChord = ['organ', 'pad'].includes(chordInstrument);
-      const duration = longChord ? (theme.stepMs * 15.5) / 1000 : null;
-      playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume);
+      const chordHoldSteps = feel?.chordHoldSteps || (longChord ? 15.5 : null);
+      const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
+      playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, tone);
     }
     if (drum && shouldPlayStructuredDrum(arrangement.drumMode, localStep)) playStructuredDrum(drum);
 
+    // Pulso fantasma muy suave: da cuerpo al groove sin convertir el ambient
+    // en una caja de ritmos. Cada familia usa otra métrica/acento.
+    const groove = feel?.groove;
+    if (groove && arrangement.drumMode !== 'none') {
+      const grooveStep = localStep % groove.period;
+      if (groove.accents.includes(grooveStep) && !drum) playSoftPercussion(groove.volume);
+    }
+
     step += 1;
-    stepTimer = setTimeout(tick, theme.stepMs);
+    // Swing real: alarga un paso y acorta el siguiente manteniendo el tempo
+    // medio. Es pequeño a propósito; queremos respiración, no mareo.
+    const swing = feel?.swing || 0;
+    const swingFactor = swing ? (step % 2 === 0 ? 1 - swing : 1 + swing) : 1;
+    stepTimer = setTimeout(tick, Math.max(45, Math.round(theme.stepMs * swingFactor)));
   }
 
   ambientResumeFn = tick;

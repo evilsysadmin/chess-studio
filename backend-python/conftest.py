@@ -39,5 +39,13 @@ def no_real_mongo(monkeypatch, request):
     monkeypatch.setattr("profile_store._memory_profiles", {})
 
     monkeypatch.setattr("users_store.get_db", fake_get_db)
-    monkeypatch.setattr("users_store._memory_users", {})
+    monkeypatch.setattr("users_store._memory_users", {
+        "testuser": {
+            "username": "testuser",
+            "password_hash": "fixture-only",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "last_activity": "2026-01-01T00:00:00+00:00",
+        },
+    })
     monkeypatch.setattr("users_store._last_activity_write_monotonic", {})
+    monkeypatch.setattr("users_store._user_existence_cache", {})

@@ -2714,6 +2714,19 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   cursor: pointer;
 }
 .admin-peek-button:hover { border-color: var(--brass-dim); }
+.admin-user-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+.admin-delete-button {
+  border: 1px solid rgba(194, 71, 71, 0.52);
+  background: rgba(110, 24, 24, 0.16);
+  color: #e2a4a4;
+  border-radius: 5px;
+  padding: 0.38rem 0.62rem;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.admin-delete-button:hover:not(:disabled) { border-color: rgba(225, 93, 93, 0.9); background: rgba(136, 32, 32, 0.28); }
+.admin-delete-button:disabled { opacity: 0.55; cursor: wait; }
 .admin-detail-row td { background: rgba(0, 0, 0, 0.14); white-space: normal; }
 .admin-detail-grid {
   display: grid;

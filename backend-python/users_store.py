@@ -12,6 +12,8 @@ COLLECTION = "users"
 _memory_users: dict[str, dict] = {}
 _last_activity_write_monotonic: dict[str, float] = {}
 _ACTIVITY_WRITE_INTERVAL_S = 30.0
+_USER_EXISTENCE_CACHE_TTL_S = 30.0
+_user_existence_cache: dict[str, tuple[float, bool]] = {}
 
 
 class UserAlreadyExists(RuntimeError):
@@ -88,7 +90,50 @@ async def create_user(username: str, password_hash: str, email: str | None = Non
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
     else:
         _memory_users[username] = doc
+    _user_existence_cache[username] = (time.monotonic(), True)
     return doc
+
+
+async def user_exists(username: str, *, force: bool = False) -> bool:
+    """Comprueba existencia con una caché corta para mantener JWT stateless-ish.
+
+    Esto permite revocar una cuenta eliminada sin convertir cada movimiento en
+    una consulta a Mongo. Tras un reinicio, la primera request vuelve a validar
+    contra la colección de usuarios.
+    """
+    now = time.monotonic()
+    cached = _user_existence_cache.get(username)
+    if not force and cached and now - cached[0] < _USER_EXISTENCE_CACHE_TTL_S:
+        return cached[1]
+
+    col = await _get_collection()
+    if col is not None:
+        try:
+            exists = await col.find_one({"_id": username}, {"_id": 1}) is not None
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
+    else:
+        exists = username in _memory_users
+
+    _user_existence_cache[username] = (now, exists)
+    return exists
+
+
+async def delete_user(username: str) -> bool:
+    """Elimina la cuenta persistida y limpia su estado de actividad local."""
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.delete_one({"_id": username})
+            existed = result.deleted_count > 0
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
+    else:
+        existed = _memory_users.pop(username, None) is not None
+
+    _last_activity_write_monotonic.pop(username, None)
+    _user_existence_cache[username] = (time.monotonic(), False)
+    return existed
 
 
 async def get_user_by_email(email: str) -> Optional[dict]:

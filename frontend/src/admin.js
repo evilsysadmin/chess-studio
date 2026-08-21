@@ -34,3 +34,19 @@ export async function fetchAdminUserInsights(username) {
   }
   return res.json();
 }
+
+
+export async function deleteAdminUser(username) {
+  // POST con JSON por la misma razón que user-insights: hay usernames legacy
+  // con caracteres que no queremos reinterpretar dentro de una URL.
+  const res = await fetch(`${BASE_URL}/admin/delete-user`, {
+    method: 'POST',
+    headers: withRequestId({ 'Content-Type': 'application/json', ...authHeader() }),
+    body: JSON.stringify({ username }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(requestErrorMessage(res, body).message);
+  }
+  return res.json();
+}

@@ -3,6 +3,7 @@ import {
   AMBIENT_INTER_TRACK_SILENCE_MS,
   AMBIENT_THEME_OPTIONS,
   getAmbientThemeId,
+  getAmbientThemeSoundProfile,
   getAmbientThemeVariationDurationMs,
   getAmbientTrackDurationMs,
   getAmbientVolume,
@@ -46,6 +47,23 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Luciérnagas en la terraza');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Café · luces pequeñas');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Málaga · último tranvía');
+  });
+
+
+  it('da identidades de groove distintas al jazz mediterráneo nocturno', () => {
+    const alexandria = getAmbientThemeSoundProfile('alexandria241');
+    const beirut = getAmbientThemeSoundProfile('beirut0113');
+    const cairo = getAmbientThemeSoundProfile('cairo0047');
+    const istanbul = getAmbientThemeSoundProfile('istanbul0326');
+
+    expect(alexandria.preserveSectionOrder).toBe(true);
+    expect(beirut.preserveSectionOrder).toBe(true);
+    expect(cairo.preserveSectionOrder).toBe(true);
+    expect(istanbul.preserveSectionOrder).toBe(true);
+    expect(new Set([alexandria.family, beirut.family, cairo.family, istanbul.family]).size).toBe(4);
+    expect(new Set([alexandria.groovePeriod, beirut.groovePeriod, istanbul.groovePeriod]).size).toBe(3);
+    expect(beirut.chordInstrument).toBe('rhodesWarm');
+    expect(cairo.bassInstrument).toBe('uprightBass');
   });
 
   it('los temas estructurados tardan al menos dos minutos en repetir su forma larga', () => {

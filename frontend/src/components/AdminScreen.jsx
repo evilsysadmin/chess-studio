@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { fetchAdminUsers, fetchAdminUserInsights } from '../admin.js';
+import { deleteAdminUser, fetchAdminUsers, fetchAdminUserInsights } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { computeInsights, generateRoast, generateCoaching } from '../insights.js';
 import { ACHIEVEMENTS } from '../achievements.js';
+import { getUsername } from '../auth.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -88,6 +89,8 @@ export default function AdminScreen({ onExit }) {
   const [insightsByUser, setInsightsByUser] = useState({});
   const [insightsLoading, setInsightsLoading] = useState({});
   const [insightsErrors, setInsightsErrors] = useState({});
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +112,30 @@ export default function AdminScreen({ onExit }) {
       window.clearInterval(timer);
     };
   }, []);
+
+  async function handleDeleteUser(targetUsername) {
+    const confirmed = window.confirm(
+      `Eliminar definitivamente la cuenta “${targetUsername}”?\n\nSe borrarán también su perfil y sus partidas activas. Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingUser(targetUsername);
+    setDeleteError(null);
+    try {
+      await deleteAdminUser(targetUsername);
+      setUsers((current) => (current || []).filter((user) => user.username !== targetUsername));
+      setExpanded((current) => (current === targetUsername ? null : current));
+      setInsightsByUser((current) => {
+        const next = { ...current };
+        delete next[targetUsername];
+        return next;
+      });
+    } catch (e) {
+      setDeleteError(e.message || 'No se pudo eliminar la cuenta.');
+    } finally {
+      setDeletingUser(null);
+    }
+  }
 
   useEffect(() => {
     if (!expanded || insightsByUser[expanded] || insightsLoading[expanded] || insightsErrors[expanded]) return;
@@ -135,6 +162,7 @@ export default function AdminScreen({ onExit }) {
         <p className="hint-text">Resumen general arriba; “Ver detalles” abre el expediente ajedrecístico.</p>
 
         {error && <p className="error-text">{error}</p>}
+        {deleteError && <p className="error-text">{deleteError}</p>}
         {!error && !users && <p className="hint-text">Cargando…</p>}
         {!error && users && users.length === 0 && (
           <p className="hint-text">Todavía no hay ningún usuario registrado.</p>
@@ -159,6 +187,7 @@ export default function AdminScreen({ onExit }) {
               <tbody>
                 {users.map((u) => {
                   const isOpen = expanded === u.username;
+                  const isSelf = getUsername() === u.username;
                   return (
                     <React.Fragment key={u.username}>
                       <tr>
@@ -171,9 +200,19 @@ export default function AdminScreen({ onExit }) {
                         <td>{u.winPct == null ? '—' : `${u.winPct}%`}</td>
                         <td className="admin-worst-cell"><WorstMove move={u.worstMove} /></td>
                         <td>
-                          <button className="admin-peek-button" onClick={() => setExpanded(isOpen ? null : u.username)}>
-                            {isOpen ? 'Cerrar' : 'Ver detalles'}
-                          </button>
+                          <div className="admin-user-actions">
+                            <button className="admin-peek-button" onClick={() => setExpanded(isOpen ? null : u.username)}>
+                              {isOpen ? 'Cerrar' : 'Ver detalles'}
+                            </button>
+                            <button
+                              className="admin-delete-button"
+                              disabled={isSelf || deletingUser === u.username}
+                              onClick={() => handleDeleteUser(u.username)}
+                              title={isSelf ? 'No puedes borrar desde aquí la cuenta con la que estás administrando' : `Eliminar definitivamente la cuenta ${u.username}`}
+                            >
+                              {isSelf ? 'Tu cuenta' : deletingUser === u.username ? 'Eliminando…' : 'Eliminar'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {isOpen && (

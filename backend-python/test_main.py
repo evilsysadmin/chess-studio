@@ -580,6 +580,73 @@ def test_admin_endpoint_handles_malformed_profile_json(monkeypatch):
     assert users["perfil_roto"]["tournamentPoints"] is None
 
 
+
+def test_admin_can_delete_user_and_cascade_profile_and_games(monkeypatch):
+    import asyncio
+    import users_store as ustore
+    import profile_store as pstore
+    import game_store as gstore
+
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_delete"})
+    admin = raw_client.post("/api/auth/register", json={"username": "admin_delete", "password": "clave123456"})
+    admin_token = admin.json()["token"]
+
+    victim = raw_client.post("/api/auth/register", json={"username": "victima_delete", "password": "clave123456"})
+    victim_token = victim.json()["token"]
+    raw_client.put(
+        "/api/profile",
+        json={"marker": "to-delete"},
+        headers={"Authorization": f"Bearer {victim_token}"},
+    )
+    game = raw_client.post(
+        "/api/games",
+        json={"difficulty": 0, "color": "w"},
+        headers={"Authorization": f"Bearer {victim_token}"},
+    )
+    assert game.status_code == 201
+    game_id = game.json()["id"]
+
+    deleted = raw_client.post(
+        "/api/admin/delete-user",
+        json={"username": "victima_delete"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    assert deleted.json()["username"] == "victima_delete"
+    assert deleted.json()["deletedGames"] == 1
+    assert asyncio.run(ustore.get_user("victima_delete")) is None
+    assert asyncio.run(pstore.get_profile("victima_delete")) is None
+    assert asyncio.run(gstore.get_game(game_id)) is None
+    assert raw_client.get("/api/auth/me", headers={"Authorization": f"Bearer {victim_token}"}).status_code == 401
+
+    relogin = raw_client.post("/api/auth/login", json={"username": "victima_delete", "password": "clave123456"})
+    assert relogin.status_code == 401
+
+
+def test_admin_cannot_delete_own_account(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_self"})
+    admin = raw_client.post("/api/auth/register", json={"username": "admin_self", "password": "clave123456"})
+    token = admin.json()["token"]
+    response = raw_client.post(
+        "/api/admin/delete-user",
+        json={"username": "admin_self"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 409
+
+
+def test_admin_delete_user_rejects_non_admin(monkeypatch):
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"real_admin"})
+    user = raw_client.post("/api/auth/register", json={"username": "not_admin_delete", "password": "clave123456"})
+    token = user.json()["token"]
+    response = raw_client.post(
+        "/api/admin/delete-user",
+        json={"username": "someone"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+
 def test_create_game_returns_503_when_configured_mongo_is_down(monkeypatch):
     """Con persistencia configurada, una caída de Mongo no crea partidas efímeras en RAM."""
     monkeypatch.setattr("game_store.persistent_storage_required", lambda: True)
@@ -774,8 +841,10 @@ def test_health_is_intentionally_public():
 
 
 def test_game_is_private_to_its_owner():
-    alice = {"Authorization": f"Bearer {create_token('alice')}"}
-    bob = {"Authorization": f"Bearer {create_token('bob')}"}
+    alice_token = raw_client.post("/api/auth/register", json={"username": "alice", "password": "clave123456"}).json()["token"]
+    bob_token = raw_client.post("/api/auth/register", json={"username": "bob", "password": "clave123456"}).json()["token"]
+    alice = {"Authorization": f"Bearer {alice_token}"}
+    bob = {"Authorization": f"Bearer {bob_token}"}
     created = raw_client.post("/api/games", json={"difficulty": 10, "color": "w"}, headers=alice)
     assert created.status_code == 201
     game_id = created.json()["id"]
@@ -984,8 +1053,9 @@ def test_presence_write_failure_never_blocks_authenticated_core(monkeypatch):
     async def fail_presence(*_args, **_kwargs):
         raise PersistentStorageUnavailable("presence down")
 
+    telemetry = raw_client.post("/api/auth/register", json={"username": "telemetry_user", "password": "clave123456"})
+    headers = {"Authorization": f"Bearer {telemetry.json()['token']}"}
     monkeypatch.setattr(ustore, "touch_last_activity", fail_presence)
-    headers = {"Authorization": f"Bearer {create_token('telemetry_user')}"}
     response = raw_client.get("/api/auth/me", headers=headers)
     assert response.status_code == 200
     assert response.json()["username"] == "telemetry_user"

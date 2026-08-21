@@ -328,6 +328,10 @@ class AdminInsightsRequest(BaseModel):
     username: str
 
 
+class AdminDeleteUserRequest(BaseModel):
+    username: str
+
+
 class NewGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     difficulty: float = 50
@@ -415,6 +419,15 @@ async def get_current_user(request: Request) -> str:
     username = verify_token(header[len("Bearer "):])
     if not username:
         raise HTTPException(401, "Sesión inválida o expirada. Inicia sesión de nuevo.")
+    try:
+        account_exists = await ustore.user_exists(username)
+    except PersistentStorageUnavailable:
+        # La autenticación sigue disponible durante un tropiezo de Mongo; no
+        # expulsamos a todo el mundo por perder temporalmente la comprobación
+        # de existencia. Cuando Mongo vuelva, la caché se refresca.
+        account_exists = True
+    if not account_exists:
+        raise HTTPException(401, "La cuenta ya no existe.")
     await _touch_activity_best_effort(username)
     return username
 
@@ -1039,6 +1052,26 @@ async def admin_user_insights_post(body: AdminInsightsRequest, username: str = D
     if not is_admin(username):
         raise HTTPException(403, "No tienes permiso para ver esto.")
     return await _admin_insights_response(body.username)
+
+
+@app.post("/api/admin/delete-user")
+async def admin_delete_user(body: AdminDeleteUserRequest, username: str = Depends(get_current_user)):
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permiso para hacer esto.")
+
+    target = await _resolve_admin_target_username(body.username)
+    if target == username:
+        raise HTTPException(409, "No puedes borrar tu propia cuenta desde el panel de admin.")
+
+    # Cascada deliberada: una cuenta borrada no debe dejar perfil ni savegames
+    # activos. El historial/estadísticas del jugador viven dentro del perfil.
+    deleted_games = await store.delete_games_by_owner(target)
+    await pstore.delete_profile(target)
+    deleted = await ustore.delete_user(target)
+    if not deleted:
+        raise HTTPException(404, "Usuario no encontrado.")
+
+    return {"deleted": True, "username": target, "deletedGames": deleted_games}
 
 
 # Compatibilidad con V15.2/V15.3 ya desplegadas. La UI nueva usa POST para

@@ -75,3 +75,19 @@ async def delete_game(game_id: str) -> bool:
         del _memory_store[game_id]
         return True
     return False
+
+
+async def delete_games_by_owner(username: str) -> int:
+    """Elimina savegames activos de una cuenta borrada."""
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.delete_many({"owner": username})
+            return int(result.deleted_count)
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
+
+    owned = [game_id for game_id, doc in _memory_store.items() if doc.get("owner") == username]
+    for game_id in owned:
+        _memory_store.pop(game_id, None)
+    return len(owned)

@@ -47,3 +47,14 @@ async def save_profile(username: str, data: dict) -> dict:
     else:
         _memory_profiles[username] = safe_data
     return safe_data
+
+
+async def delete_profile(username: str) -> bool:
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.delete_one({"_id": username})
+            return result.deleted_count > 0
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para perfiles.") from exc
+    return _memory_profiles.pop(username, None) is not None
