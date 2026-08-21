@@ -3,7 +3,7 @@ import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints } from '../tournament.js';
 import { logout, getUsername } from '../auth.js';
 import { pushProfileToServer } from '../profileBackup.js';
-import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn, IconHistory, IconShield } from './Icons.jsx';
+import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn } from './Icons.jsx';
 import ProfileBackupModal from './ProfileBackupModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
@@ -185,34 +185,15 @@ export default function Menu({
             <p>Elige el nivel de cada bando (o al azar) y mira cómo juega la CPU contra sí misma.</p>
             <span className="menu-card-cta">Ver partida →</span>
           </button>
-
-          <button type="button" className="menu-card accent-brass" onClick={onHistory}>
-            <IconHistory className="menu-card-icon" />
-            <h3>Historial de partidas</h3>
-            <p>Revisa todas tus partidas, autopsias, replays y crímenes documentados en un único archivo.</p>
-            <span className="menu-card-cta">Abrir historial →</span>
-          </button>
         </div>
       </div>
-
-      {isAdminUser && (
-        <div className="menu-group admin-menu-group">
-          <span className="section-label">Administración</span>
-          <button type="button" className="insights-feature-card admin-feature-card" onClick={onAdmin}>
-            <span className="insights-feature-icon" aria-hidden="true"><IconShield /></span>
-            <span className="insights-feature-copy">
-              <span className="insights-feature-kicker">SOLO ADMINISTRADORES</span>
-              <strong>Admin Panel</strong>
-              <span>Usuarios, presencia, actividad actual, expedientes y diagnóstico operativo de la instancia.</span>
-            </span>
-            <span className="insights-feature-cta">Abrir panel →</span>
-          </button>
-        </div>
-      )}
 
       {error && <p className="error-text">{error}</p>}
 
       <div className="footer-links-row">
+        <button type="button" className="backup-link" onClick={onHistory}>
+          Historial de partidas
+        </button>
         <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>
           Ver logros
         </button>
@@ -225,6 +206,11 @@ export default function Menu({
         <button type="button" className="backup-link" onClick={onBoard3D}>
           Experimento 3D (jugable, experimental)
         </button>
+        {isAdminUser && (
+          <button type="button" className="backup-link" onClick={onAdmin}>
+            Panel de admin
+          </button>
+        )}
         <button type="button" className="backup-link" onClick={handleLogout} disabled={loggingOut}>
           {loggingOut ? 'Guardando…' : `Cerrar sesión${username ? ` (${username})` : ''}`}
         </button>

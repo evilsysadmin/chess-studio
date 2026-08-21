@@ -1044,25 +1044,6 @@ def test_activity_heartbeat_is_protected_and_lightweight():
     assert client.post("/api/auth/activity").status_code == 204
 
 
-def test_activity_heartbeat_records_coarse_context_for_admin(monkeypatch):
-    import users_store as ustore
-    import main as main_module
-
-    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
-    response = client.post("/api/auth/activity", json={"activity": "combat_campaign"})
-    assert response.status_code == 204
-    stored = ustore._memory_users["testuser"]
-    assert stored["current_activity"] == "combat_campaign"
-    assert stored["activity_since"]
-
-    admin = client.get("/api/admin/users")
-    row = next(u for u in admin.json()["users"] if u["username"] == "testuser")
-    assert row["currentActivity"] == "combat_campaign"
-    assert row["currentActivitySince"] == stored["activity_since"]
-
-    assert client.post("/api/auth/activity", json={"activity": "inventando-secretos"}).status_code == 422
-
-
 def test_claimable_threefold_is_consistently_a_finished_draw():
     from main import serialize_game
 

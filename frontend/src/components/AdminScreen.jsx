@@ -9,7 +9,6 @@ import { formatLongMove } from '../notation.js';
 import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
-import { activityLabel } from '../presenceActivity.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -34,17 +33,11 @@ function Presence({ user, compact = false }) {
         ? (formatPresenceAge(user.presenceAgeSeconds) || 'Offline')
         : 'Sin actividad';
   const exact = user?.lastActivity ? new Date(user.lastActivity).toLocaleString() : 'Sin actividad registrada';
-  const activity = user?.currentActivity ? activityLabel(user.currentActivity) : null;
-  const sinceSeconds = user?.currentActivitySince
-    ? Math.max(0, Math.floor((Date.now() - new Date(user.currentActivitySince).getTime()) / 1000))
-    : null;
-  const since = Number.isFinite(sinceSeconds) ? formatPresenceAge(sinceSeconds) : null;
   return (
     <span className={`admin-presence admin-presence-${status}`} title={exact}>
       <span className="admin-presence-dot" aria-hidden="true" />
       <span className="admin-presence-copy">
         <span>{label}</span>
-        {activity && <small className="admin-current-activity">{activity}{since ? ` · ${since}` : ''}</small>}
         {!compact && user?.lastActivity && <small>{new Date(user.lastActivity).toLocaleString()}</small>}
       </span>
     </span>

@@ -232,50 +232,6 @@ async def count_online_users(*, window_seconds: int = 90) -> int:
     return count
 
 
-async def set_current_activity(username: str, activity: str) -> dict:
-    """Guarda una actividad funcional gruesa para el panel de admin.
-
-    No se almacena contenido de partidas, jugadas ni texto libre: sólo un código
-    corto validado por la API. ``activity_since`` cambia únicamente al cambiar
-    de actividad, mientras ``activity_updated_at`` confirma que el heartbeat
-    sigue vivo.
-    """
-    normalized = str(activity or "").strip()
-    if not normalized:
-        return {}
-
-    now = datetime.now(timezone.utc).isoformat()
-    col = await _get_collection()
-    if col is not None:
-        try:
-            previous = await col.find_one({"_id": username}, {"current_activity": 1, "activity_since": 1})
-            if not previous:
-                return {}
-            since = previous.get("activity_since") if previous.get("current_activity") == normalized else now
-            fields = {
-                "current_activity": normalized,
-                "activity_since": since or now,
-                "activity_updated_at": now,
-            }
-            await col.update_one({"_id": username}, {"$set": fields})
-            return fields
-        except PyMongoError as exc:
-            raise PersistentStorageUnavailable("MongoDB no está disponible para actualizar actividad.") from exc
-
-    user = _memory_users.get(username)
-    if user is None:
-        return {}
-    since = user.get("activity_since") if user.get("current_activity") == normalized else now
-    user["current_activity"] = normalized
-    user["activity_since"] = since or now
-    user["activity_updated_at"] = now
-    return {
-        "current_activity": normalized,
-        "activity_since": user["activity_since"],
-        "activity_updated_at": now,
-    }
-
-
 async def touch_last_activity(username: str, *, force: bool = False) -> str:
     """Actualiza la última actividad con coalescing para no martillear Mongo.
 

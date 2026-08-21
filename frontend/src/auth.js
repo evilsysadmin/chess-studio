@@ -8,6 +8,7 @@ import { withRequestId, requestErrorMessage } from './requestId.js';
 import { resetAmbientThemeForSession, clearAmbientThemeSession } from './sound.js';
 import { clearSessionView } from './viewState.js';
 import { clearAllClockSnapshots } from './clockPersistence.js';
+import { clearCombatSession } from './combatSession.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 export const USERNAME_KEY = 'chess-study-auth-username';
@@ -49,8 +50,11 @@ export function isLoggedIn() {
 // solo las claves de autenticación y obligamos a la pestaña obsoleta a
 // reinicializarse antes de que pueda persistir nada.
 export function sessionFingerprint() {
-  return `${getUsername() || ''}\n${getToken() || ''}`;
+  // Identidad, no valor exacto del JWT. Un re-login/rotación de token del
+  // MISMO usuario en otra pestaña no debe desmontar una batalla activa.
+  return `${getUsername() || ''}\n${getToken() ? 'authenticated' : 'anonymous'}`;
 }
+
 
 export function watchSessionIdentity(onChange) {
   if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
@@ -74,6 +78,7 @@ function saveSession(token, username) {
   // el arranque autenticado. Esto evita la herencia Alice -> Bob.
   clearLocalUserState();
   clearAllClockSnapshots();
+  clearCombatSession();
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USERNAME_KEY, username);
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
@@ -87,6 +92,7 @@ export function logout() {
   clearSessionView();
   clearLocalUserState();
   clearAllClockSnapshots();
+  clearCombatSession();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USERNAME_KEY);
 }
@@ -191,15 +197,10 @@ export async function fetchLiveStatus() {
   }
 }
 
-export function touchActivity(activity = null) {
+export function touchActivity() {
   if (!getToken()) return;
-  const options = {
+  fetch(`${BASE_URL}/auth/activity`, {
     method: 'POST',
     headers: withRequestId({ ...authHeader() }),
-  };
-  if (activity) {
-    options.headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify({ activity });
-  }
-  fetch(`${BASE_URL}/auth/activity`, options).catch(() => {});
+  }).catch(() => {});
 }

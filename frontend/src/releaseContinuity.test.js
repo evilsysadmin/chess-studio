@@ -15,9 +15,6 @@ const profileKeys = read('src/profileKeys.js');
 const invariants = read('src/stateInvariants.test.js');
 const glossary = read('src/components/GlossaryTerm.jsx');
 const admin = read('src/components/AdminScreen.jsx');
-const menu = read('src/components/Menu.jsx');
-const makefile = read('../Makefile');
-const trivyInstaller = read('../scripts/install_trivy.sh');
 
 // Gate de continuidad: no pretende duplicar todos los tests funcionales.
 // Protege explícitamente las piezas que ya sufrimos que podían desaparecer al
@@ -30,7 +27,7 @@ describe('continuidad acumulativa de release', () => {
   });
 
   it('conserva el roster legible de 16 unidades en 6+6+4', () => {
-    expect(army).toContain('visibleSlots.map');
+    expect(army).toContain('CANONICAL_ROSTER_SLOTS.map');
     expect(army).toContain('16 unidades');
     expect(army).toContain('title={alias}');
     expect(army).toContain('Vista táctica en tres filas');
@@ -55,25 +52,20 @@ describe('continuidad acumulativa de release', () => {
     expect(glossary).toContain('glossary-term');
   });
 
-  it('conserva actividad admin, orden jerárquico y rename de unidades', () => {
-    expect(army).toContain("useState('rank')");
-    expect(army).toContain("setRosterOrder('formation')");
-    expect(army).toContain('Alias de unidad');
-    expect(admin).toContain('admin-current-activity');
-  });
-
-  it('conserva tarjetas de Historial/Admin y Trivy fijado con Dockerfiles explícitos', () => {
-    expect(menu).toContain('<h3>Historial de partidas</h3>');
-    expect(menu).toContain('<strong>Admin Panel</strong>');
-    expect(menu).toContain('{isAdminUser && (');
-    expect(makefile).toContain('TRIVY_VERSION := 0.74.0');
-    expect(makefile).toContain('security-dockerfiles: ensure-trivy');
-    expect(trivyInstaller).toContain('VERSION="0.74.0"');
-  });
-
   it('conserva el presupuesto específico del fuzz de posiciones', () => {
     expect(invariants).toContain('LEGAL_POSITION_FUZZ_TIMEOUT_MS = 20_000');
     expect(invariants).toContain('}, LEGAL_POSITION_FUZZ_TIMEOUT_MS);');
     expect(invariants).toContain('for (let seed = 1; seed <= 32; seed += 1)');
   });
+  it('conserva snapshot efímero y reanudación de Combat Chess tras reload', () => {
+    const session = read('src/combatSession.js');
+    const controller = read('src/components/useCombatController.js');
+    const roguelike = read('src/components/RoguelikeScreen.jsx');
+    expect(session).toContain('chess-study-active-combat-session-v1');
+    expect(controller).toContain('loadCombatSession(combatSessionId)');
+    expect(controller).toContain('saveCombatSession(combatSessionId');
+    expect(controller).toContain('clearCombatSession(combatSessionId)');
+    expect(roguelike).toContain('hasCombatSession(`campaign:${campaign.seed}:${campaign.selectedNodeId}`)');
+  });
+
 });

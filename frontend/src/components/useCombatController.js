@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
@@ -29,7 +29,7 @@ import { loadRating, ratingProgress, difficultyForRating } from '../playerRating
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
 import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
-import { renameCombatIdentity } from '../combatIdentity.js';
+import { clearCombatSession, loadCombatSession, saveCombatSession } from '../combatSession.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -90,15 +90,18 @@ function buildLogEntry(result, humanColor) {
 }
 
 
-export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null }) {
-  const [phase, setPhase] = useState('setup'); // 'setup' | 'battle' | 'over'
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free' }) {
+  const restoredSessionRef = useRef(undefined);
+  if (restoredSessionRef.current === undefined) restoredSessionRef.current = loadCombatSession(combatSessionId) || null;
+  const restoredSession = restoredSessionRef.current;
+  const [phase, setPhase] = useState(restoredSession ? 'battle' : 'setup'); // 'setup' | 'battle' | 'over'
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
   // NO mueven la pieza, solo pasan el turno — eso rompe el supuesto de
   // "alternancia estricta blanco/negro" del que depende chess.js para
   // reproducir una partida jugada a jugada), así que se guarda el FEN
   // resultante de cada paso directamente, en vez de reconstruirlo después.
-  const [combatLog, setCombatLog] = useState([]);
+  const [combatLog, setCombatLog] = useState(() => restoredSession?.combatLog || []);
   const [battleRecap, setBattleRecap] = useState(null);
   // Dificultad automática, según "cómo te ve la CPU" (tu rating) — antes
   // era un slider que elegías tú mismo, sin relación con tu progreso
@@ -113,10 +116,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   );
   const [colorChoice, setColorChoice] = useState('random');
   const [autoLevelUpEnabled, setAutoLevelUpEnabled] = useState(true);
-  const [humanColor, setHumanColor] = useState('w');
+  const [humanColor, setHumanColor] = useState(() => restoredSession?.humanColor || 'w');
 
-  const [fen, setFen] = useState(new Chess().fen());
-  const [registry, setRegistry] = useState(() => createInitialRegistry(new Chess()));
+  const [fen, setFen] = useState(() => restoredSession?.fen || new Chess().fen());
+  const [registry, setRegistry] = useState(() => restoredSession?.registry || createInitialRegistry(new Chess()));
   const [selected, setSelected] = useState(null);
   const [activeTechnique, setActiveTechnique] = useState(null); // { from, techniqueId } durante selección de objetivo
   const [pendingPromotion, setPendingPromotion] = useState(null);
@@ -151,22 +154,61 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // pieza objetivo) y cuántos ataques consecutivos lleva contra ella.
   // Refs, no estado React: los turnos de CPU viajan por setTimeout y una
   // closure vieja no debe olvidar el fuego concentrado ni las repeticiones.
-  const focusRef = useRef({ w: null, b: null }); // { targetId, streak } | null
-  const positionCountsRef = useRef(new Map());
+  const focusRef = useRef(restoredSession?.focus || { w: null, b: null }); // { targetId, streak } | null
+  const positionCountsRef = useRef(new Map(restoredSession?.positionCounts || []));
   const [repetitionDraw, setRepetitionDraw] = useState(false);
   const animSeqRef = useRef(0);
-  const bossHpRef = useRef(bossConfig?.maxHp || null);
-  const [bossHp, setBossHp] = useState(bossConfig?.maxHp || null);
-  const [bossPhase, setBossPhase] = useState(1);
-  const battleStartRosterRef = useRef(null);
-  const battleParticipantsRef = useRef([]);
-  const unitBattleStatsRef = useRef(emptyUnitBattleStats());
+  const bossHpRef = useRef(restoredSession?.bossHp ?? bossConfig?.maxHp ?? null);
+  const [bossHp, setBossHp] = useState(restoredSession?.bossHp ?? bossConfig?.maxHp ?? null);
+  const [bossPhase, setBossPhase] = useState(restoredSession?.bossPhase || 1);
+  const battleStartRosterRef = useRef(restoredSession?.battleStartRoster || null);
+  const battleParticipantsRef = useRef(restoredSession?.battleParticipants || []);
+  const unitBattleStatsRef = useRef(restoredSession?.unitBattleStats || emptyUnitBattleStats());
 
   const localChess = useMemo(() => {
     const c = new Chess();
     c.load(fen);
     return c;
   }, [fen]);
+
+  function persistBattleSession({
+    nextFen = fen,
+    nextRegistry = registry,
+    nextCombatLog = combatLog,
+    nextBossHp = bossHpRef.current,
+    nextBossPhase = bossPhase,
+  } = {}) {
+    saveCombatSession(combatSessionId, {
+      phase: 'battle',
+      fen: nextFen,
+      registry: nextRegistry,
+      humanColor,
+      combatLog: nextCombatLog,
+      focus: focusRef.current,
+      positionCounts: [...positionCountsRef.current.entries()],
+      bossHp: nextBossHp,
+      bossPhase: nextBossPhase,
+      battleStartRoster: battleStartRosterRef.current,
+      battleParticipants: battleParticipantsRef.current,
+      unitBattleStats: unitBattleStatsRef.current,
+    });
+  }
+
+  // Si la pestaña se recargó en mitad de una batalla, retomamos exactamente
+  // el último snapshot. Si le tocaba mover a la CPU, reanudamos su turno una
+  // sola vez; no devolvemos al usuario a Setup por un remount accidental.
+  useEffect(() => {
+    if (!restoredSession || phase !== 'battle') return undefined;
+    if (localChess.turn() === humanColor) return undefined;
+    setBusy(true);
+    const timer = window.setTimeout(
+      () => runCpuTurn(fen, registry, humanColor, combatLog),
+      Math.min(350, CPU_DELAY_MS),
+    );
+    return () => window.clearTimeout(timer);
+    // El snapshot sólo se consume al montar este controlador.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const techniqueTargets = activeTechnique
     ? techniqueTargetsFor(fen, registry, activeTechnique.from)
@@ -278,6 +320,20 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     focusRef.current = { w: null, b: null };
     positionCountsRef.current = new Map([[repetitionKey(startFen), 1]]);
     setRepetitionDraw(false);
+    saveCombatSession(combatSessionId, {
+      phase: 'battle',
+      fen: startFen,
+      registry: initialRegistry,
+      humanColor: resolved,
+      combatLog: [],
+      focus: focusRef.current,
+      positionCounts: [...positionCountsRef.current.entries()],
+      bossHp: bossHpRef.current,
+      bossPhase: bossConfig ? 1 : null,
+      battleStartRoster: battleStartRosterRef.current,
+      battleParticipants: battleParticipantsRef.current,
+      unitBattleStats: unitBattleStatsRef.current,
+    });
     setPhase('battle');
     onBattleStart?.();
 
@@ -398,6 +454,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     checkAchievements({ combatFlawlessWin: isWin && survivorCount === 16 });
 
+    clearCombatSession(combatSessionId);
+
     setBattleRecap({
       survivorCount,
       totalCount: 16,
@@ -462,7 +520,22 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     focusRef.current = { w: null, b: null };
     positionCountsRef.current = new Map([[repetitionKey(nextFen), 1]]);
     setRepetitionDraw(false);
-    setBossPhase(bossPhaseForHp(bossHpRef.current, bossConfig?.maxHp));
+    const restoredBossPhase = bossPhaseForHp(bossHpRef.current, bossConfig?.maxHp);
+    setBossPhase(restoredBossPhase);
+    saveCombatSession(combatSessionId, {
+      phase: 'battle',
+      fen: nextFen,
+      registry: fresh,
+      humanColor: currentHumanColor,
+      combatLog,
+      focus: focusRef.current,
+      positionCounts: [...positionCountsRef.current.entries()],
+      bossHp: bossHpRef.current,
+      bossPhase: restoredBossPhase,
+      battleStartRoster: battleStartRosterRef.current,
+      battleParticipants: battleParticipantsRef.current,
+      unitBattleStats: unitBattleStatsRef.current,
+    });
     setBusy(false);
     pushLog({ text: `El Rey Viejo rompe la posición y abre una nueva fase · ${bossHpRef.current}/${bossConfig?.maxHp} HP · tus bajas se arrastran`, tone: 'bad' });
   }
@@ -614,6 +687,14 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       finalizeBattle(outcome, finalRegistry, updatedLog, currentHumanColor);
       return;
     }
+
+    persistBattleSession({
+      nextFen: result.fen,
+      nextRegistry: finalRegistry,
+      nextCombatLog: updatedLog,
+      nextBossHp: bossHpRef.current,
+      nextBossPhase: bossConfig ? bossPhaseForHp(bossHpRef.current, bossConfig.maxHp) : null,
+    });
 
     if (chessAfter.turn() !== currentHumanColor) {
       setBusy(true);
@@ -831,11 +912,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     });
     setServiceRecord(serviceResult.record);
     saveCombatBattle(battleRecord);
+    clearCombatSession(combatSessionId);
     onBattleResult?.('retired');
     setPhase('over');
   }
 
   function backToSetup() {
+    clearCombatSession(combatSessionId);
     setPhase('setup');
   }
 
@@ -893,15 +976,6 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     });
   }
 
-  function handleRenameRosterUnit(key, alias) {
-    setRoster((prev) => {
-      const next = renameCombatIdentity(prev, key, alias);
-      if (next === prev) return prev;
-      saveRoster(next);
-      return next;
-    });
-  }
-
   function handleReviveRosterPiece(key, type) {
     setRoster((prev) => {
       const next = revivePiece(prev, key, type);
@@ -947,7 +1021,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     showArmy, setShowArmy, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
-    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleRenameRosterUnit, handleBuyStat,
+    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };

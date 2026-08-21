@@ -9,12 +9,12 @@ import { applyModifierToFen, encounterForRun } from '../roguelikeModifiers.js';
 import { buyStatPoint } from '../combat.js';
 import { loadRoster, saveRoster, revivePiece } from '../combatRoster.js';
 import { setRosterDeploymentType } from '../combatMetamorphosis.js';
-import { renameCombatIdentity } from '../combatIdentity.js';
 import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE, COMBAT_CHESS_TAGLINE } from '../combatChessBrand.js';
+import { hasCombatSession } from '../combatSession.js';
 import {
   loadCampaign,
   startCampaign,
@@ -59,7 +59,15 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [bestFloor, setBestFloor] = useState(() => loadBestFloor());
   const [towerCompleted, setTowerCompleted] = useState(() => loadTowerCompleted());
   const [endResult, setEndResult] = useState(null); // { type, reached, newBest }
-  const [combatSessionActive, setCombatSessionActive] = useState(false);
+  const [combatSessionActive, setCombatSessionActive] = useState(() => {
+    if (campaign.active && campaign.phase === 'fighting' && campaign.selectedNodeId) {
+      return hasCombatSession(`campaign:${campaign.seed}:${campaign.selectedNodeId}`);
+    }
+    if (run.inRun && run.phase === 'fighting') {
+      return hasCombatSession(`run:${run.seed}:${run.floor}`);
+    }
+    return false;
+  });
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [roster, setRoster] = useState(() => loadRoster());
   const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
@@ -179,14 +187,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         },
       };
       saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleRenameRosterUnit(key, alias) {
-    setRoster((current) => {
-      const next = renameCombatIdentity(current, key, alias);
-      if (next !== current) saveRoster(next);
       return next;
     });
   }
@@ -327,6 +327,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onBattleResult={handleCampaignBattleResult}
         roguelikeFloor={node?.floor || node?.stage || 1}
         roguelikeMode="campaign"
+        combatSessionId={`campaign:${campaign.seed}:${node?.id || 'node'}`}
       />
     );
   }
@@ -378,6 +379,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onBattleResult={handleBattleResult}
         roguelikeFloor={run.floor}
         roguelikeMode={run.mode}
+        combatSessionId={`run:${run.seed}:${run.floor}`}
       />
     );
   }
@@ -514,7 +516,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           onMetamorphose={handleMetamorphoseRosterPiece}
           onUnlockTechnique={handleUnlockRosterTechnique}
           onEquipTechnique={handleEquipRosterTechnique}
-          onRename={handleRenameRosterUnit}
         />
 
         {campaignBestStage > 0 && <p className="hint-text">Mejor sector de campaña alcanzado: <b>{campaignBestStage}/7</b></p>}

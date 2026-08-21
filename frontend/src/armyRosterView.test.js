@@ -9,7 +9,7 @@ const serviceSource = fs.readFileSync(path.resolve(process.cwd(), 'src/component
 
 describe('roster visual completo de Combat Chess', () => {
   it('muestra los 16 slots, incluido el rey, sin filtrar reclutas sin progreso', () => {
-    expect(source).toContain('visibleSlots.map');
+    expect(source).toContain('CANONICAL_ROSTER_SLOTS.map');
     expect(source).not.toContain("CANONICAL_ROSTER_SLOTS.filter((slot) => slot.type !== 'k')");
     expect(source).toContain('16 unidades');
     expect(source).toContain("isKing ? 'MANDO'");
@@ -34,14 +34,6 @@ describe('roster visual completo de Combat Chess', () => {
     expect(serviceSource).toContain('Rango global de campaña');
     expect(serviceSource).toContain('no corresponde a ninguna unidad');
     expect(serviceSource).toContain('Orden de batalla');
-  });
-
-  it('permite ordenar por rango o formación y renombrar sin perder identidad', () => {
-    expect(source).toContain("useState('rank')");
-    expect(source).toContain("setRosterOrder('formation')");
-    expect(source).toContain('orderedRosterSlots');
-    expect(source).toContain('Alias de unidad');
-    expect(source).toContain('onRename?.(key, alias)');
   });
 
   it('usa tres filas legibles en escritorio y se adapta en móvil', () => {

@@ -166,13 +166,12 @@ describe('fetchMe/authHeader/wakeBackend', () => {
     await login('vivo', 'clave123456');
 
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
-    expect(() => touchActivity('combat_campaign')).not.toThrow();
+    expect(() => touchActivity()).not.toThrow();
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/auth/activity'),
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer heartbeat-token', 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ activity: 'combat_campaign' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer heartbeat-token' }),
       }),
     );
 
@@ -197,6 +196,12 @@ describe('sincronización de sesión entre pestañas', () => {
 
     // Una preferencia/progreso de otra pestaña no implica cambio de identidad.
     listeners.get('storage')({ key: 'chess-study-tournament' });
+    expect(changed).toHaveBeenCalledTimes(0);
+
+    // Rotar el token del MISMO usuario no cambia la identidad y no debe
+    // recargar una batalla de Combat Chess que esté en curso.
+    localStorage.setItem('chess-study-auth-token', 'alice-token-rotated');
+    listeners.get('storage')({ key: 'chess-study-auth-token' });
     expect(changed).toHaveBeenCalledTimes(0);
 
     // localStorage ya refleja el valor de la otra pestaña cuando llega storage.
