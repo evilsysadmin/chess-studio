@@ -4,7 +4,7 @@ set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 TOOLS="$ROOT/.tools"
 DEST="$TOOLS/trivy"
-VERSION="${TRIVY_VERSION:-0.72.0}"
+VERSION="${TRIVY_VERSION:-0.74.0}"
 
 if [ -x "$DEST" ] && "$DEST" --version 2>/dev/null | grep -q "Version: $VERSION"; then
   exit 0

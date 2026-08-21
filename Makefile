@@ -3,16 +3,20 @@
 
 COMPOSE := docker compose
 PYTHON ?= python3
-VENV := .venv
+VENV := $(CURDIR)/.venv
 VENV_PY := $(VENV)/bin/python
-BACKEND_VENV_PY := ../$(VENV_PY)
+BACKEND_VENV_PY := $(VENV_PY)
 FRONTEND_VITEST := ./node_modules/.bin/vitest
+TRIVY := .tools/trivy
+SECURITY_DIR := .security
+TRIVY_CACHE := .trivy-cache
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be \
 	test-frontend test-backend backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical frontend-build
+	gate-frontend-critical gate-critical frontend-build puzzles-check \
+	security security-fe security-be security-trivy ensure-trivy deps-status
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
 game:
@@ -117,7 +121,9 @@ frontend-install:
 
 backend-install:
 	@test -x "$(VENV_PY)" || $(PYTHON) -m venv "$(VENV)"
-	$(VENV_PY) -m pip install -r backend-python/requirements-dev.txt
+	$(VENV_PY) -m pip install --upgrade -r backend-python/requirements-dev.txt
+	@$(VENV_PY) -c "import jwt; print('PyJWT activo:', jwt.__version__)"
+	@sha256sum backend-python/requirements.txt backend-python/requirements-dev.txt | sha256sum | cut -d' ' -f1 > "$(VENV)/.chess-requirements.sha256"
 
 ## Bootstrap perezoso: make tests funciona también en un checkout recién clonado.
 ensure-frontend-deps:
@@ -127,8 +133,11 @@ ensure-frontend-deps:
 	fi
 
 ensure-backend-deps:
-	@if [ ! -x "$(VENV_PY)" ] || ! $(VENV_PY) -c "import pytest, chess, fastapi, httpx, jwt" >/dev/null 2>&1; then \
-		echo "==> Falta el entorno backend; preparando .venv..."; \
+	@req_hash="$$(sha256sum backend-python/requirements.txt backend-python/requirements-dev.txt | sha256sum | cut -d' ' -f1)"; \
+	stamp="$(VENV)/.chess-requirements.sha256"; \
+	installed_hash="$$(cat "$$stamp" 2>/dev/null || true)"; \
+	if [ ! -x "$(VENV_PY)" ] || [ "$$installed_hash" != "$$req_hash" ] || ! $(VENV_PY) -c "import pytest, chess, fastapi, httpx, jwt, pip_audit" >/dev/null 2>&1; then \
+		echo "==> Entorno backend ausente o requirements cambiados; actualizando .venv..."; \
 		$(MAKE) backend-install; \
 	fi
 
@@ -146,7 +155,7 @@ gate-critical: gate-core gate-frontend-critical
 
 ## Quality gate local completo. Replica las comprobaciones funcionales de CI.
 ## En un checkout limpio instala automáticamente lo que falte.
-tests: ensure-hooks tests-fe tests-be
+tests: ensure-hooks tests-fe tests-be security
 
 ## Alias: singular histórico y nombre explícito de quality gate.
 test: tests
@@ -166,13 +175,66 @@ test-frontend: ensure-frontend-deps
 	cd frontend && npm test
 
 test-backend: ensure-backend-deps
-	cd backend-python && $(BACKEND_VENV_PY) -m pytest -v
+	cd backend-python && $(BACKEND_VENV_PY) -m pytest -q test_main.py test_profile.py
 
 backend-check: ensure-backend-deps
 	$(VENV_PY) -m pip check
 
 frontend-build: ensure-frontend-deps
 	cd frontend && npm run build
+
+
+## Revalida exclusivamente el banco curado: FEN, reyes/piezas, secuencia,
+## mates prometidos y ganancia real en los puzzles de material.
+puzzles-check: ensure-frontend-deps
+	cd frontend && $(FRONTEND_VITEST) run src/puzzles.test.js
+
+## Trivy local fijado por versión. Se instala dentro del repo para que Nobara
+## no necesite paquetes globales ni sudo. La caché de la DB se conserva.
+ensure-trivy:
+	@command -v curl >/dev/null || { echo "ERROR: falta curl para instalar Trivy."; exit 2; }
+	@command -v sha256sum >/dev/null || { echo "ERROR: falta sha256sum para verificar Trivy."; exit 2; }
+	@command -v tar >/dev/null || { echo "ERROR: falta tar para instalar Trivy."; exit 2; }
+	@sh ./scripts/install_trivy.sh
+
+## Node: npm audit informa de todo, pero nuestro parser solo falla con CRITICAL.
+security-fe: ensure-frontend-deps
+	@mkdir -p "$(SECURITY_DIR)"
+	@rm -f "$(SECURITY_DIR)/npm-audit.json"
+	@cd frontend && set +e; npm audit --json > "../$(SECURITY_DIR)/npm-audit.json"; rc=$$?; set -e; \
+		if [ ! -s "../$(SECURITY_DIR)/npm-audit.json" ]; then echo "ERROR: npm audit no produjo informe."; exit $${rc:-2}; fi
+	$(PYTHON) scripts/npm_audit_gate.py "$(SECURITY_DIR)/npm-audit.json"
+
+## Python: pip-audit da inventario de advisories. Como pip-audit no expone un
+## umbral de severidad fiable, Trivy decide después qué es CRITICAL y bloquea.
+security-be: ensure-backend-deps
+	@mkdir -p "$(SECURITY_DIR)"
+	@rm -f "$(SECURITY_DIR)/pip-audit.json"
+	@cd backend-python && set +e; $(BACKEND_VENV_PY) -m pip_audit -r requirements.txt --format=json --output "../$(SECURITY_DIR)/pip-audit.json"; rc=$$?; set -e; \
+		if [ ! -s "../$(SECURITY_DIR)/pip-audit.json" ]; then echo "ERROR: pip-audit no produjo informe (rc=$$rc)."; exit 2; fi
+	$(PYTHON) scripts/pip_audit_report.py "$(SECURITY_DIR)/pip-audit.json"
+
+## Gate común: dependencias Node/Python + secretos + misconfiguraciones.
+## Política del proyecto: CRITICAL rompe; HIGH grita; MEDIUM/LOW informan.
+security-trivy: ensure-trivy
+	@mkdir -p "$(SECURITY_DIR)" "$(TRIVY_CACHE)"
+	TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" $(TRIVY) fs \
+		--skip-version-check \
+		--scanners vuln,secret,misconfig \
+		--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
+		--format json --output "$(SECURITY_DIR)/trivy.json" \
+		--skip-dirs node_modules --skip-dirs .venv --skip-dirs .git \
+		--skip-dirs .tools --skip-dirs "$(TRIVY_CACHE)" --skip-dirs "$(SECURITY_DIR)" .
+	$(PYTHON) scripts/security_report.py "$(SECURITY_DIR)/trivy.json"
+
+security: security-fe security-be security-trivy
+	@echo "==> Security gate completo: solo CRITICAL bloquea."
+
+## Diagnóstico rápido de versiones realmente usadas por el checkout local.
+deps-status: ensure-backend-deps
+	@echo "requirements: $$(grep -E '^[Pp]y[Jj][Ww][Tt]==' backend-python/requirements.txt || true)"
+	@$(VENV_PY) -c "import jwt; print('venv PyJWT:', jwt.__version__)"
+	@if [ -x "$(TRIVY)" ]; then $(TRIVY) --version | head -1; else echo "Trivy: no instalado"; fi
 
 help:
 	@echo "Comandos disponibles:"
@@ -196,3 +258,9 @@ help:
 	@echo "  make tests/be       - alias de tests-be"
 	@echo "  make test           - alias histórico de make tests"
 	@echo "  make frontend-build - compila el frontend fuera de Docker"
+	@echo "  make puzzles-check   - revalida íntegramente el banco de puzzles"
+	@echo "  make security        - npm audit + pip-audit + Trivy; solo CRITICAL bloquea"
+	@echo "  make security-fe     - auditoría de dependencias Node"
+	@echo "  make security-be     - auditoría de dependencias Python"
+	@echo "  make security-trivy  - vulns + secretos + misconfiguración"
+	@echo "  make deps-status     - muestra PyJWT del requirements/venv y versión de Trivy"

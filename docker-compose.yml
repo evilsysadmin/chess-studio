@@ -44,7 +44,7 @@ services:
         # tiene que ser el puerto publicado, no el nombre del servicio.
         VITE_API_URL: http://localhost:${BACKEND_PORT:-4000}/api
     ports:
-      - "${FRONTEND_PORT:-5173}:80"
+      - "${FRONTEND_PORT:-5173}:8080"
     depends_on:
       backend:
         condition: service_healthy

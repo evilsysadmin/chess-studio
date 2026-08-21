@@ -1,1 +1,6 @@
 node_modules
+frontend/dist
+backend-python/__pycache__/
+.trivy-cache/
+.tools
+.security
