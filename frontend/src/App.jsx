@@ -39,7 +39,6 @@ import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, re
 import ShareResultModal from './components/ShareResultModal.jsx';
 import SharedResultScreen from './components/SharedResultScreen.jsx';
 import { shareRecordFromHash } from './shareResult.js';
-import CareerScreen from './components/CareerScreen.jsx';
 import LabScreen from './components/LabScreen.jsx';
 import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
@@ -697,7 +696,6 @@ function AppInner({ isAdminUser }) {
             onAdmin={() => setView('admin')}
             onHistory={() => setView('history')}
             onInsights={() => setView('insights')}
-            onCareer={() => setView('career')}
             onLab={() => setView('lab')}
             onBoard3D={() => setView('board3d')}
             hasSavedGame={hasSavedGame}
@@ -791,14 +789,6 @@ function AppInner({ isAdminUser }) {
             ratingHistory={loadRatingHistory()}
             onExit={() => setView('menu')}
             onJumpToMove={jumpToMove}
-          />
-        )}
-
-        {view === 'career' && (
-          <CareerScreen
-            history={historyList}
-            ratingHistory={loadRatingHistory()}
-            onExit={() => setView('menu')}
             onOpenRecord={openHistoryRecord}
             onMovie={openMovie}
             onPlayFromHere={handlePlayFromHere}
@@ -807,6 +797,7 @@ function AppInner({ isAdminUser }) {
             onContinueRun={handleContinueRun}
           />
         )}
+
 
         {view === 'history' && (
           <HistoryScreen

@@ -24,7 +24,6 @@ export default function Menu({
   onSpectator,
   onHistory,
   onInsights,
-  onCareer,
   onLab,
   onBoard3D,
   hasSavedGame,
@@ -126,7 +125,7 @@ export default function Menu({
           <span className="insights-feature-copy">
             <span className="insights-feature-kicker">TU EXPEDIENTE DE JUEGO</span>
             <strong>Así juegas</strong>
-            <span>Patrones reales de tus partidas: evolución, errores repetidos, aperturas y puntos fuertes medidos con tu historial.</span>
+            <span>Diagnóstico, evolución, entrenamiento, aperturas, rivalidad y archivo completo: todo tu juego en un solo sitio.</span>
           </span>
           <span className="insights-feature-cta">Analizar mi juego →</span>
         </button>
@@ -163,13 +162,6 @@ export default function Menu({
             <h3>Puzzle</h3>
             <p>Puzzles clásicos, desafío diario y posiciones nacidas de tus propias autopsias.</p>
             <span className="menu-card-cta">Resolver →</span>
-          </button>
-
-          <button type="button" className="menu-card accent-hint" onClick={onCareer}>
-            <IconTrophy className="menu-card-icon" />
-            <h3>Centro de operaciones</h3>
-            <p>Temporadas, entrenador personal, récords, cementerio, runs, mapa de aperturas y hemeroteca.</p>
-            <span className="menu-card-cta">Abrir expediente →</span>
           </button>
 
           <button type="button" className="menu-card accent-success" onClick={onLab}>

@@ -285,7 +285,7 @@ def test_analyze_move_with_forced_mate_does_not_crash():
     assert r.status_code == 200
     body = r.json()
     assert body["suggested"]["san"] == "Ra8#"
-    assert body["evalAfterSuggested"] == 100000.0  # finito, no inf
+    assert 99000 <= body["evalAfterSuggested"] <= 100000  # mate decisivo y finito; conserva distancia al mate
 
     # mismo caso pero con la jugada explícita que da mate, para activar
     # tambien el otro punto del bug (evalAfterPlayed via evaluate_board directo)
@@ -484,7 +484,7 @@ def test_register_access_log_attributes_new_username(caplog):
 
 
 def test_me_endpoint_without_token_rejected():
-    r = client.get("/api/auth/me")
+    r = raw_client.get("/api/auth/me")
     assert r.status_code == 401
 
 
@@ -520,7 +520,7 @@ def test_admin_endpoint_rejects_non_admin_user(monkeypatch):
 
 
 def test_admin_endpoint_rejects_no_token():
-    r = client.get("/api/admin/users")
+    r = raw_client.get("/api/admin/users")
     assert r.status_code == 401
 
 

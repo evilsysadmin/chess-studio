@@ -121,7 +121,7 @@ def test_register_duplicate_race_stays_409(monkeypatch):
     async def fake_get_user(username):
         return None
 
-    async def fake_create_user(username, password_hash):
+    async def fake_create_user(username, password_hash, email=None):
         raise __import__('users_store').UserAlreadyExists(username)
 
     monkeypatch.setattr('users_store.get_user', fake_get_user)

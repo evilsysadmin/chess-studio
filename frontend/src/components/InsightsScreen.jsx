@@ -11,8 +11,46 @@ import { loadWorstMoveCache, saveWorstMoveCache } from '../worstMoveCache.js';
 import RatingChart from './RatingChart.jsx';
 import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory } from '../series.js';
+import CareerScreen from './CareerScreen.jsx';
 
 const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', combat: 'Combate' };
+
+function InsightsHubHeader({ section, onSectionChange, onExit }) {
+  return (
+    <>
+      <button className="back-link" onClick={onExit}>← Volver al menú</button>
+      <div className="menu-section insights-hub-hero">
+        <span className="section-label">Tu expediente de juego</span>
+        <h2>Así juegas</h2>
+        <p className="hero-scope-note">
+          Un solo sitio para diagnóstico, evolución, entrenamiento y todo el historial que el tablero pueda usar en tu contra.
+        </p>
+        <div className="insights-subnav" role="tablist" aria-label="Secciones de Así juegas">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={section === 'diagnosis'}
+            className={section === 'diagnosis' ? 'active' : ''}
+            onClick={() => onSectionChange('diagnosis')}
+          >
+            Diagnóstico
+            <small>Patrones, coaching y rating</small>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={section === 'career'}
+            className={section === 'career' ? 'active' : ''}
+            onClick={() => onSectionChange('career')}
+          >
+            Expediente
+            <small>Evolución, entrenamiento y archivo</small>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
 function WinBar({ stats }) {
   if (!stats || stats.total === 0) return null;
@@ -29,12 +67,27 @@ function WinBar({ stats }) {
   );
 }
 
-export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove }) {
+export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun }) {
   useEscapeToClose(onExit);
+  const [section, setSection] = useState('diagnosis');
 
   const [searchStatus, setSearchStatus] = useState('idle'); // 'idle' | 'running' | 'done'
   const [searchProgress, setSearchProgress] = useState({ done: 0, total: 0 });
-  const [searchResult, setSearchResult] = useState(null);
+  const [searchResult, setSearchResult] = useState(() => {
+    const cache = loadWorstMoveCache();
+    const records = [
+      ...gameHistory.map((record) => ({ record, kind: 'game' })),
+      ...combatHistory.map((record) => ({ record, kind: 'combat' })),
+    ];
+    let best = null;
+    for (const item of records) {
+      const worst = cache[item.record.id]?.worst;
+      if (worst && (!best || worst.loss > best.moveReport.loss)) {
+        best = { ...item, moveReport: worst };
+      }
+    }
+    return best;
+  });
   const stopRef = useRef(false);
   const rivalry = useMemo(() => loadRivalry(), []);
   const seriesHistory = useMemo(() => loadSeriesHistory(), []);
@@ -77,7 +130,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   async function startSearch() {
     stopRef.current = false;
     setSearchStatus('running');
-    setSearchResult(null);
+    // Conserva visible el mejor resultado cacheado mientras revisa lo nuevo.
     setSearchProgress({ done: 0, total: gameHistory.length + combatHistory.length });
 
     // Partidas ya analizadas en una búsqueda anterior no vuelven a
@@ -107,12 +160,32 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     stopRef.current = true;
   }
 
+  if (section === 'career') {
+    return (
+      <div className="menu tournament-panel insights-hub">
+        <InsightsHubHeader section={section} onSectionChange={setSection} onExit={onExit} />
+        <CareerScreen
+          embedded
+          history={gameHistory}
+          ratingHistory={ratingHistory}
+          onExit={onExit}
+          onOpenRecord={onOpenRecord}
+          onMovie={onMovie}
+          onPlayFromHere={onPlayFromHere}
+          onOpenPuzzles={onOpenPuzzles}
+          onStartRun={onStartRun}
+          onContinueRun={onContinueRun}
+        />
+      </div>
+    );
+  }
+
   if (insights.totalGames === 0) {
     return (
-      <div className="menu tournament-panel">
-        <button className="back-link" onClick={onExit}>← Volver al menú</button>
+      <div className="menu tournament-panel insights-hub">
+        <InsightsHubHeader section={section} onSectionChange={setSection} onExit={onExit} />
         <div className="menu-section">
-          <h2>Así juegas</h2>
+          <h2>Diagnóstico</h2>
           <p className="hint-text">
             Todavía no hay ninguna partida guardada — juega alguna (en el modo que sea) y esto se va a ir
             llenando solo.
@@ -123,12 +196,80 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   }
 
   return (
-    <div className="menu tournament-panel">
-      <button className="back-link" onClick={onExit}>← Volver al menú</button>
+    <div className="menu tournament-panel insights-hub">
+      <InsightsHubHeader section={section} onSectionChange={setSection} onExit={onExit} />
+
+      <div className="menu-section worst-move-spotlight">
+        <div className="worst-move-spotlight-heading">
+          <div>
+            <span className="section-label">Escena del crimen</span>
+            <h2>Tu peor jugada</h2>
+          </div>
+          <span className="worst-move-spotlight-count">{gameHistory.length + combatHistory.length} partidas</span>
+        </div>
+
+        {searchResult ? (
+          <div className={`worst-move-card sev-${searchResult.moveReport.severity} worst-move-spotlight-card`}>
+            <span className="worst-move-header">
+              <span className="worst-move-san">
+                {formatLongMove({
+                  piece: searchResult.moveReport.playedPiece,
+                  from: searchResult.moveReport.playedFrom,
+                  to: searchResult.moveReport.playedTo,
+                })}
+              </span>
+              <span className="worst-move-loss">-{searchResult.moveReport.loss} cp</span>
+            </span>
+            <span className="worst-move-detail">
+              Debías jugar{' '}
+              {formatLongMove({
+                piece: searchResult.moveReport.suggestedPiece,
+                from: searchResult.moveReport.suggestedFrom,
+                to: searchResult.moveReport.suggestedTo,
+              })}
+              {' · '}{new Date(searchResult.record.date).toLocaleDateString('es-ES')}
+              {' · '}{MODE_LABEL[searchResult.kind === 'combat' ? 'combat' : (searchResult.record.mode || 'tournament')]}
+            </span>
+            <div className="worst-move-spotlight-actions">
+              {onJumpToMove && (
+                <button type="button" className="primary-btn" onClick={() => onJumpToMove(searchResult.record, searchResult.kind, searchResult.moveReport)}>
+                  Ver posición →
+                </button>
+              )}
+              {searchStatus === 'idle' || searchStatus === 'done' ? (
+                <button type="button" className="secondary-btn" onClick={startSearch}>Actualizar análisis</button>
+              ) : null}
+            </div>
+          </div>
+        ) : searchStatus === 'idle' ? (
+          <div className="worst-move-spotlight-empty">
+            <p>Busca la mayor pérdida de evaluación de todo tu historial. Después queda guardada y aparecerá aquí nada más entrar.</p>
+            <button type="button" className="primary-btn" onClick={startSearch}>Buscar mi peor jugada</button>
+          </div>
+        ) : null}
+
+        {searchStatus === 'running' && (
+          <div className="insights-search-progress worst-move-spotlight-progress">
+            <div className="status-chip-bar">
+              <span className="status-chip-bar-fill" style={{ width: `${searchProgress.total ? (searchProgress.done / searchProgress.total) * 100 : 0}%` }} />
+            </div>
+            <p className="hint-text">
+              Revisando {searchProgress.done} de {searchProgress.total}…
+              {searchResult && ` Peor hasta ahora: ${searchResult.moveReport.played} (-${searchResult.moveReport.loss} cp).`}
+            </p>
+            <button type="button" className="secondary-btn" onClick={cancelSearch}>Cancelar</button>
+          </div>
+        )}
+
+        {searchStatus === 'done' && !searchResult && (
+          <p className="hint-text">No apareció ninguna jugada con pérdida evaluable en el historial analizado.</p>
+        )}
+        <p className="hint-text worst-move-spotlight-note">Las partidas ya analizadas salen del caché; al actualizar solo se trabaja de verdad sobre lo nuevo.</p>
+      </div>
 
       <div className="menu-section">
-        <span className="section-label">Estadísticas agregadas</span>
-        <h2>Así juegas</h2>
+        <span className="section-label">Diagnóstico rápido</span>
+        <h2>Patrones medidos</h2>
         <p className="hero-scope-note">
           Todo lo de abajo se calcula al instante con lo que ya está guardado — no vuelve a analizar cada
           partida contra el motor (eso tardaría segundos por partida). Para eso está el botón de "peor
@@ -294,77 +435,6 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         </div>
       )}
 
-
-      <div className="menu-section">
-        <h2>Tu peor jugada de siempre</h2>
-        <p className="hint-text" style={{ marginBottom: '0.7rem' }}>
-          Recorre TODO tu historial (hasta {gameHistory.length + combatHistory.length} partidas), analizando
-          cada una contra el motor — a diferencia de todo lo de arriba, esto sí es caro. Corre de a una
-          partida por vez para no saturar el backend, así que puede tardar un rato; puedes cancelar en
-          cualquier momento y te queda lo que encontró hasta ahí.
-        </p>
-
-        {searchStatus === 'idle' && (
-          <button type="button" className="secondary-btn" onClick={startSearch}>
-            Buscar mi peor jugada de siempre
-          </button>
-        )}
-
-        {searchStatus === 'running' && (
-          <div className="insights-search-progress">
-            <div className="status-chip-bar">
-              <span
-                className="status-chip-bar-fill"
-                style={{ width: `${searchProgress.total ? (searchProgress.done / searchProgress.total) * 100 : 0}%` }}
-              />
-            </div>
-            <p className="hint-text">
-              Analizando partida {searchProgress.done} de {searchProgress.total}…
-              {searchResult && ` Peor encontrada hasta ahora: ${searchResult.moveReport.played} (-${searchResult.moveReport.loss}).`}
-            </p>
-            <button type="button" className="secondary-btn" onClick={cancelSearch}>Cancelar</button>
-          </div>
-        )}
-
-        {searchStatus === 'done' && searchResult && (
-          <div className={`worst-move-card sev-${searchResult.moveReport.severity}`} style={{ cursor: 'default' }}>
-            <span className="worst-move-header">
-              <span className="worst-move-san">
-                {formatLongMove({
-                  piece: searchResult.moveReport.playedPiece,
-                  from: searchResult.moveReport.playedFrom,
-                  to: searchResult.moveReport.playedTo,
-                })}
-              </span>
-              <span className="worst-move-loss">-{searchResult.moveReport.loss}</span>
-            </span>
-            <span className="worst-move-detail">
-              El motor prefería{' '}
-              {formatLongMove({
-                piece: searchResult.moveReport.suggestedPiece,
-                from: searchResult.moveReport.suggestedFrom,
-                to: searchResult.moveReport.suggestedTo,
-              })}
-              {' · '}{new Date(searchResult.record.date).toLocaleDateString('es-ES')}
-              {' · '}{MODE_LABEL[searchResult.kind === 'combat' ? 'combat' : (searchResult.record.mode || 'tournament')]}
-            </span>
-            {onJumpToMove && (
-              <button
-                type="button"
-                className="secondary-btn"
-                style={{ marginTop: '0.5rem' }}
-                onClick={() => onJumpToMove(searchResult.record, searchResult.kind, searchResult.moveReport)}
-              >
-                Ver esta jugada →
-              </button>
-            )}
-          </div>
-        )}
-
-        {searchStatus === 'done' && !searchResult && (
-          <p className="hint-text">No se encontró ninguna jugada con pérdida real en todo el historial — juegas bastante limpio.</p>
-        )}
-      </div>
 
       {ratingHistory.length >= 2 && (
         <div className="menu-section">

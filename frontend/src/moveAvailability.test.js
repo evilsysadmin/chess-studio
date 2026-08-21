@@ -18,7 +18,7 @@ describe('immobilityReason', () => {
   });
 
   it('distingue una pieza simplemente bloqueada de una clavada', () => {
-    const chess = new Chess('4k3/8/8/8/8/1p6/P7/4K3 w - - 0 1');
+    const chess = new Chess('4k3/8/8/8/8/p7/P7/4K3 w - - 0 1');
     expect(immobilityReason(chess, 'a2', 'w')).toMatchObject({ kind: 'blocked' });
   });
 });

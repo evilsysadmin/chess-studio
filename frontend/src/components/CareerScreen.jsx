@@ -20,8 +20,8 @@ function rescueFen(record) {
   try { for (let i=0;i<target;i++) c.move(moves[i].san || {from:moves[i].from,to:moves[i].to,promotion:'q'}); return c.fen(); } catch { return null; }
 }
 
-export default function CareerScreen({ history, ratingHistory, onExit, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun }) {
-  useEscapeToClose(onExit);
+export default function CareerScreen({ history, ratingHistory, onExit, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, embedded = false }) {
+  useEscapeToClose(onExit, { disabled: embedded });
   const [theme,setTheme]=useState(()=>loadBoardTheme());
   const career=useMemo(()=>loadCareer(),[history,theme]); const rivalry=useMemo(()=>loadRivalry(),[history]); const personal=useMemo(()=>loadPersonalPuzzles(),[history]); const daily=useMemo(()=>currentDailyStreak(),[]);
   const cemetery=useMemo(()=>buildCemetery(history).slice(0,8),[history]); const tree=useMemo(()=>buildOpeningTree(history,8),[history]); const profile=useMemo(()=>deriveChessProfile(history),[history]); const evolution=useMemo(()=>evolutionBuckets(history,10),[history]);
@@ -29,9 +29,11 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
   const run=loadSpecialRun(); const rec=career.records||{}; const season=career.season||{}; const memories=rivalry.record?.memories||[]; const themes=unlockedBoardThemes(career); const analyses=Object.values(archive); const avgAccuracy=analyses.length?Math.round(analyses.map(a=>a.accuracy).filter(Number.isFinite).reduce((s,n)=>s+n,0)/Math.max(1,analyses.filter(a=>Number.isFinite(a.accuracy)).length)):null;
   const topIncident=useMemo(()=>{const labels={'human:MISSED_MATE':'mates en una ignorados','human:ALLOWED_MATE':'mates regalados','human:QUEEN_EN_PRISE_TO_PAWN':'damas expuestas a peones','human:STALEMATE_BLUNDER':'ahogados criminales','cpu:PAWN_TAKES_QUEEN':'damas devoradas por peones','cpu:KNIGHT_FORK':'horquillas de caballo sufridas','cpu:PAWN_FORK':'horquillas de peón sufridas'};return Object.entries(rivalry.incidents||{}).filter(([k])=>labels[k]).map(([k,v])=>({key:k,count:Number(v||0),label:labels[k]})).sort((a,b)=>b.count-a.count)[0]||null;},[rivalry]);
 
-  return <div className="menu tournament-panel career-screen">
-    <button className="back-link" onClick={onExit}>← Volver al menú</button>
-    <div className="menu-section career-hero"><span className="section-label">Centro de operaciones · V15.1</span><h2>Tu carrera ajedrecística</h2><p className="hero-scope-note">Datos reales, entrenamiento y una cantidad administrativamente irresponsable de pruebas contra ti.</p></div>
+  return <div className={embedded ? 'career-screen insights-embedded-page' : 'menu tournament-panel career-screen'}>
+    {!embedded && (<>
+      <button className="back-link" onClick={onExit}>← Volver al menú</button>
+      <div className="menu-section career-hero"><span className="section-label">Expediente completo</span><h2>Tu carrera ajedrecística</h2><p className="hero-scope-note">Datos reales, entrenamiento y una cantidad administrativamente irresponsable de pruebas contra ti.</p></div>
+    </>)}
 
     <div className="career-hero-grid">
       <article className="career-card"><span className="eyebrow">Temporada {season.id}</span><h3>{season.wins||0}V · {season.draws||0}T · {season.losses||0}D</h3><p>{season.games||0} partidas este mes.</p></article>
