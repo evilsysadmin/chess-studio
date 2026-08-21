@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { APP_RELEASE } from '../release.js';
 import { deleteAdminUser, fetchAdminUsers, fetchAdminUserInsights } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { computeInsights, generateRoast, generateCoaching } from '../insights.js';
@@ -200,7 +201,7 @@ export default function AdminScreen({ onExit }) {
         <span className="section-label">Admin</span>
         <h2>Usuarios registrados</h2>
         <p className="hint-text">Resumen general arriba; “Ver detalles” abre el expediente ajedrecístico.</p>
-        <p className="hint-text admin-build-id">Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
+        <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
 
         {error && <p className="error-text">{error}</p>}
         {deleteError && <p className="error-text">{deleteError}</p>}
