@@ -6,10 +6,11 @@ export default function CombatServicePanel({ summary, compact = false }) {
   const { stats, merit, rank, nextRank, nextProgress, nextRequirement, decorations, averageSurvivors } = summary;
 
   return (
-    <section className={`combat-service-card ${compact ? 'compact' : ''}`} aria-label="Hoja de servicio de Combat Chess">
+    <section className={`combat-service-card ${compact ? 'compact' : ''}`} aria-label="Carrera global de Combat Chess">
       <div className="combat-service-heading">
         <div>
-          <span className="combat-service-kicker">{compact ? 'CARRERA DE CAMPAÑA' : 'HOJA DE SERVICIO'}</span>
+          <span className="combat-service-kicker">{compact ? 'CARRERA DE CAMPAÑA' : 'CARRERA DE COMBAT CHESS'}</span>
+          <span className="combat-service-rank-caption">{compact ? 'Rango global de campaña' : 'Rango global de carrera'}</span>
           <strong className="combat-service-rank"><span aria-hidden="true">{rank.insignia}</span> {rank.label}</strong>
         </div>
         <div className="combat-service-merit">
@@ -25,6 +26,8 @@ export default function CombatServicePanel({ summary, compact = false }) {
         <span><b>{stats.highestFloorCleared}</b> mejor piso superado</span>
         {averageSurvivors != null && <span><b>{averageSurvivors.toFixed(1)}</b> supervivientes medios</span>}
       </div>
+
+      <p className="combat-service-scope-note">Este rango resume tu carrera de Combat Chess; no corresponde a ninguna unidad. Los nombres y rangos individuales están en el Orden de batalla.</p>
 
       {nextRank ? (
         <div className="combat-service-next">

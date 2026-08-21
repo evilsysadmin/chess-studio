@@ -5,6 +5,7 @@ import path from 'node:path';
 const source = fs.readFileSync(path.resolve(process.cwd(), 'src/components/ArmyScreen.jsx'), 'utf8');
 const css = fs.readFileSync(path.resolve(process.cwd(), 'src/styles.css'), 'utf8');
 const campaignSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/RoguelikeScreen.jsx'), 'utf8');
+const serviceSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/CombatServicePanel.jsx'), 'utf8');
 
 describe('roster visual completo de Combat Chess', () => {
   it('muestra los 16 slots, incluido el rey, sin filtrar reclutas sin progreso', () => {
@@ -16,7 +17,8 @@ describe('roster visual completo de Combat Chess', () => {
 
   it('hace el alias protagonista y abre un expediente por unidad', () => {
     expect(source).toContain('army-unit-alias');
-    expect(source).toContain('unitAlias(roster, key)');
+    expect(source).toContain('const alias = unitAlias(roster, key)');
+    expect(source).toContain('title={alias}');
     expect(source).toContain('<UnitDossier');
     expect(source).toContain('HOJA DE SERVICIO');
   });
@@ -28,8 +30,15 @@ describe('roster visual completo de Combat Chess', () => {
     expect(campaignSource).toContain('roster={roster}');
   });
 
-  it('usa formación de ocho columnas en escritorio y se adapta en móvil', () => {
-    expect(css).toContain('grid-template-columns: repeat(8, minmax(0, 1fr));');
+  it('deja claro que Soldado/Cabo/etc es un rango global y no el alias de una unidad', () => {
+    expect(serviceSource).toContain('Rango global de campaña');
+    expect(serviceSource).toContain('no corresponde a ninguna unidad');
+    expect(serviceSource).toContain('Orden de batalla');
+  });
+
+  it('usa tres filas legibles en escritorio y se adapta en móvil', () => {
+    expect(css).toContain('grid-template-columns: repeat(6, minmax(0, 1fr));');
+    expect(css).toContain('.army-roster-grid > :nth-child(13) { grid-column: 2; }');
     expect(css).toContain('grid-template-columns: repeat(4, minmax(0, 1fr));');
     expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
   });

@@ -4919,6 +4919,21 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   font-size: 1.25rem;
 }
 .combat-service-rank > span { color: var(--brass); letter-spacing: 0.06em; }
+.combat-service-rank-caption {
+  display: block;
+  margin: 0.22rem 0 0.08rem;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.combat-service-scope-note {
+  margin: 0.48rem 0 0;
+  color: var(--parchment-dim);
+  font-size: 0.66rem;
+  line-height: 1.42;
+}
 .combat-service-merit {
   min-width: 66px;
   text-align: right;
@@ -5389,7 +5404,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .army-roster-grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.55rem;
   margin-top: 0.9rem;
 }
@@ -5397,12 +5412,12 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .army-unit-tile {
   position: relative;
   min-width: 0;
-  min-height: 148px;
+  min-height: 132px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.18rem;
-  padding: 0.62rem 0.62rem 0.58rem;
+  gap: 0.24rem;
+  padding: 0.68rem 0.7rem 0.64rem;
   text-align: left;
   border: 1px solid var(--ink-3);
   border-radius: 9px;
@@ -5465,31 +5480,23 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .army-unit-state.mutant { color: var(--brass); border-color: color-mix(in srgb, var(--brass) 58%, transparent); }
 
 .army-unit-alias {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 1.15em;
+  overflow-wrap: anywhere;
   color: var(--parchment);
   font-family: var(--font-display);
-  font-size: 0.93rem;
+  font-size: 1.02rem;
+  line-height: 1.08;
   font-style: italic;
 }
 
-.army-unit-origin,
-.army-unit-rankline,
-.army-unit-quickstats,
-.army-unit-open {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.army-unit-meta,
+.army-unit-quickstats {
   font-family: var(--font-mono);
-  font-size: 0.57rem;
-  line-height: 1.35;
-  color: var(--parchment-dim);
+  font-size: 0.59rem;
+  line-height: 1.38;
 }
-
-.army-unit-rankline { color: var(--brass); font-weight: 700; }
-.army-unit-quickstats { margin-top: 0.08rem; }
-.army-unit-open { margin-top: auto; padding-top: 0.22rem; color: var(--parchment); opacity: .72; }
+.army-unit-meta { color: var(--brass); font-weight: 700; }
+.army-unit-quickstats { color: var(--parchment-dim); margin-top: auto; padding-top: 0.12rem; }
 
 .army-unit-medal-count {
   position: absolute;
@@ -5648,6 +5655,10 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .army-dossier-button-grid small { opacity: .72; }
 .army-dossier-actions.danger-zone { border-color: color-mix(in srgb, var(--danger) 42%, var(--ink-3)); }
 
+@media (min-width: 901px) {
+  .army-roster-grid > :nth-child(13) { grid-column: 2; }
+}
+
 @media (max-width: 900px) {
   .army-roster-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .army-dossier-service-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -5716,7 +5727,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 .army-roster-panel.embedded .army-roster-intro { margin-top: 0.25rem; }
 .army-roster-panel.embedded .army-roster-grid { margin-top: 0.72rem; }
-.army-roster-panel.embedded .army-unit-tile { min-height: 138px; }
+.army-roster-panel.embedded .army-unit-tile { min-height: 126px; }
 
 @media (max-width: 560px) {
   .army-roster-panel.embedded { padding: 0.65rem; }

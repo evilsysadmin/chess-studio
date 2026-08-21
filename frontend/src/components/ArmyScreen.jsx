@@ -106,6 +106,7 @@ function Memorial({ roster }) {
 
 function UnitRosterCard({ roster, slot, onOpen }) {
   const key = rosterSlotKey(slot);
+  const alias = unitAlias(roster, key);
   const saved = roster?.pieces?.[key];
   const isKing = slot.type === 'k';
   const isDead = !isKing && saved?.alive === false;
@@ -123,7 +124,8 @@ function UnitRosterCard({ roster, slot, onOpen }) {
       type="button"
       className={`army-unit-tile ${isDead ? 'dead' : ''} ${isKing ? 'command' : ''}`}
       onClick={() => onOpen(key)}
-      aria-label={`Abrir expediente de ${unitAlias(roster, key)}`}
+      aria-label={`Abrir expediente de ${alias}`}
+      title={`Abrir expediente de ${alias}`}
     >
       <span className="army-unit-tile-top">
         <span className="army-unit-glyph" aria-hidden="true">{PIECE_GLYPH[activeType] || '♟'}</span>
@@ -131,20 +133,18 @@ function UnitRosterCard({ roster, slot, onOpen }) {
           {isKing ? 'MANDO' : isDead ? 'CAÍDO' : activeType !== slot.type ? METAMORPHOSIS_LABELS[activeType] : 'EN PIE'}
         </span>
       </span>
-      <strong className="army-unit-alias">{unitAlias(roster, key)}</strong>
-      <span className="army-unit-origin">{BASE_STATS[slot.type].name} · columna {slot.file}</span>
-      <span className="army-unit-rankline">
-        {isKing ? 'Rey · identidad persistente' : `${rank.short} · ${rank.label} · nv.${level}`}
+      <strong className="army-unit-alias" title={alias}>{alias}</strong>
+      <span className="army-unit-meta">
+        {isKing ? 'Rey · Mando' : `${BASE_STATS[slot.type].name} · ${rank.label} · nv.${level}`}
       </span>
       <span className="army-unit-quickstats">
         {isKing
-          ? 'Sin XP · reglas normales'
+          ? 'Identidad persistente · sin XP'
           : (service.battles || 0) > 0
             ? `${service.battles} bat. · ${service.survivals || 0} surv. · ${service.kills || 0} bajas`
             : 'Sin bautismo de fuego'}
       </span>
       {medals.length > 0 && <span className="army-unit-medal-count">✦ {medals.length}</span>}
-      <span className="army-unit-open">Expediente →</span>
     </button>
   );
 }
@@ -352,7 +352,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnl
         ))}
       </div>
 
-      <p className="hint-text army-roster-footnote">Formación: primera línea = piezas mayores y mando; segunda = ocho peones. El color del tablero puede cambiar entre partidas, pero cada identidad sigue siendo la misma.</p>
+      <p className="hint-text army-roster-footnote">Vista táctica en tres filas para que alias y rango se lean completos. El orden conserva primero piezas mayores y mando, después la infantería; el color del tablero puede cambiar, pero cada identidad sigue siendo la misma.</p>
       {showMemorial && <Memorial roster={roster} />}
 
       {selectedSlot && (
