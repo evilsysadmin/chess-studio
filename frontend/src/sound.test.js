@@ -62,6 +62,9 @@ describe('ambient music catalog', () => {
     expect(istanbul.preserveSectionOrder).toBe(true);
     expect(new Set([alexandria.family, beirut.family, cairo.family, istanbul.family]).size).toBe(4);
     expect(new Set([alexandria.groovePeriod, beirut.groovePeriod, istanbul.groovePeriod]).size).toBe(3);
+    expect(alexandria.percussionPeriod).toBe(16);
+    expect(beirut.percussionPeriod).toBe(12);
+    expect(istanbul.percussionPeriod).toBe(14);
     expect(beirut.chordInstrument).toBe('rhodesWarm');
     expect(cairo.bassInstrument).toBe('uprightBass');
   });

@@ -45,11 +45,56 @@ export default function MusicPlayer() {
     };
   }, []);
 
+  useEffect(() => {
+    // Teclas multimedia del sistema: Media Session es la vía fiable cuando
+    // el navegador/desktop se queda las teclas dedicadas. El keydown es un
+    // fallback útil para teclados/navegadores que sí las exponen al DOM.
+    const handleMediaKey = (event) => {
+      if (event.key === 'MediaTrackPrevious') {
+        event.preventDefault();
+        previous();
+      } else if (event.key === 'MediaTrackNext') {
+        event.preventDefault();
+        next();
+      }
+    };
+    window.addEventListener('keydown', handleMediaKey);
+
+    const mediaSession = typeof navigator !== 'undefined' ? navigator.mediaSession : null;
+    if (mediaSession?.setActionHandler) {
+      try { mediaSession.setActionHandler('previoustrack', previous); } catch {}
+      try { mediaSession.setActionHandler('nexttrack', next); } catch {}
+      try { mediaSession.setActionHandler('play', () => { startAmbientMusic(); setState(snapshot()); }); } catch {}
+      try { mediaSession.setActionHandler('pause', () => { pauseAmbientMusic(); setState(snapshot()); }); } catch {}
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleMediaKey);
+      if (mediaSession?.setActionHandler) {
+        try { mediaSession.setActionHandler('previoustrack', null); } catch {}
+        try { mediaSession.setActionHandler('nexttrack', null); } catch {}
+        try { mediaSession.setActionHandler('play', null); } catch {}
+        try { mediaSession.setActionHandler('pause', null); } catch {}
+      }
+    };
+  }, []);
+
   const themeId = state.themeId || getAmbientThemeId();
   const current = useMemo(
     () => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === themeId) || AMBIENT_THEME_OPTIONS[0],
     [themeId],
   );
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaSession || typeof MediaMetadata === 'undefined') return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: current?.label || 'Música ambiental',
+        artist: 'Chess Studio',
+        album: 'Radio nocturna',
+      });
+    } catch {}
+  }, [current]);
 
   const cycleMs = Math.max(1, state.visualCycleMs || 1);
   const progress = Math.min(100, Math.max(0, ((state.cyclePositionMs || 0) / cycleMs) * 100));

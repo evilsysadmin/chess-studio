@@ -771,11 +771,20 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
             continue
         candidate = {
             "gameId": game_id,
+            "index": worst.get("index"),
             "played": worst.get("played"),
+            "playedFrom": worst.get("playedFrom"),
+            "playedTo": worst.get("playedTo"),
+            "playedPiece": worst.get("playedPiece"),
             "suggested": worst.get("suggested"),
+            "suggestedFrom": worst.get("suggestedFrom"),
+            "suggestedTo": worst.get("suggestedTo"),
+            "suggestedPiece": worst.get("suggestedPiece"),
             "loss": loss,
             "moveNumber": worst.get("moveNumber"),
             "severity": worst.get("severity"),
+            "evalAfterSuggested": worst.get("evalAfterSuggested"),
+            "evalAfterPlayed": worst.get("evalAfterPlayed"),
             "analyzedAt": cached.get("analyzedAt"),
         }
         if worst_move is None or loss > worst_move["loss"]:

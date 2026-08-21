@@ -2700,8 +2700,21 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .cpu-presence.pulse { animation: statusPulse 0.42s cubic-bezier(0.22, 1, 0.36, 1); }
 
 /* ---------- Admin: expediente/cotilleo ---------- */
-.admin-screen { max-width: 1180px; }
-.admin-worst-cell { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.admin-screen { max-width: 1240px; }
+.admin-table-wrap { width: 100%; overflow-x: auto; border-radius: 8px; }
+.admin-users-table { table-layout: fixed; min-width: 760px; }
+.admin-users-table th:nth-child(1), .admin-users-table td:nth-child(1) { width: 15%; }
+.admin-users-table th:nth-child(2), .admin-users-table td:nth-child(2) { width: 18%; }
+.admin-users-table th:nth-child(3), .admin-users-table td:nth-child(3) { width: 9%; }
+.admin-users-table th:nth-child(4), .admin-users-table td:nth-child(4) { width: 9%; }
+.admin-users-table th:nth-child(5), .admin-users-table td:nth-child(5) { width: 10%; }
+.admin-users-table th:nth-child(6), .admin-users-table td:nth-child(6) { width: 12%; }
+.admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width: 220px; }
+.admin-user-cell { overflow: hidden; text-overflow: ellipsis; }
+.admin-worst-cell { overflow: hidden; text-overflow: ellipsis; }
+.admin-worst-malus { color: #e2a4a4; font-variant-numeric: tabular-nums; }
+.admin-actions-cell { position: sticky; right: 0; z-index: 2; background: var(--ink); box-shadow: -10px 0 18px rgba(22, 27, 38, 0.82); }
+.admin-users-table tr:hover .admin-actions-cell { background: var(--ink-2); }
 .admin-muted { color: var(--parchment-dim); }
 .admin-peek-button {
   font-family: var(--font-mono);
@@ -2714,7 +2727,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   cursor: pointer;
 }
 .admin-peek-button:hover { border-color: var(--brass-dim); }
-.admin-user-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+.admin-user-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: nowrap; justify-content: flex-end; }
 .admin-delete-button {
   border: 1px solid rgba(194, 71, 71, 0.52);
   background: rgba(110, 24, 24, 0.16);
@@ -2750,9 +2763,27 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 .admin-detail-grid strong { color: var(--parchment); font-weight: 600; }
 .admin-detail-wide { grid-column: 1 / -1; }
+.admin-worst-detail { display: grid; gap: 0.45rem; }
+.admin-autopsy { display: grid; gap: 0.65rem; }
+.admin-autopsy-summary { display: flex; align-items: baseline; gap: 0.65rem; flex-wrap: wrap; }
+.admin-autopsy-summary strong { color: #e2a4a4; font-family: var(--font-mono); font-size: 1.05rem; }
+.admin-autopsy-summary small { color: var(--parchment-dim); }
+.admin-autopsy-verdict { color: var(--brass) !important; font-size: 0.82rem !important; letter-spacing: 0.03em !important; margin: 0 !important; }
+.admin-autopsy-moves { display: flex; gap: 0.55rem 1.4rem; flex-wrap: wrap; color: var(--parchment-dim); font-size: 0.78rem; }
+.admin-autopsy-moves span { margin: 0; text-transform: none; letter-spacing: 0; font-size: inherit; }
+.admin-autopsy-positions { margin-top: 0.15rem; }
+.admin-autopsy-positions summary { cursor: pointer; color: var(--brass); font-family: var(--font-mono); font-size: 0.75rem; }
+.admin-autopsy-boards { display: grid; grid-template-columns: repeat(3, minmax(210px, 1fr)); gap: 0.8rem; margin-top: 0.75rem; overflow-x: auto; }
+.admin-autopsy-boards figure { margin: 0; display: grid; gap: 0.35rem; justify-items: center; }
+.admin-autopsy-boards figcaption { color: var(--parchment-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.admin-autopsy-boards .board-grid { grid-template-columns: repeat(8, 24px); grid-template-rows: repeat(8, 24px); }
+.admin-autopsy-boards .rank-labels { grid-template-rows: repeat(8, 24px); }
+.admin-autopsy-boards .file-labels { grid-template-columns: repeat(8, 24px); }
+.admin-autopsy-boards .rank-labels span, .admin-autopsy-boards .file-labels span { font-size: 0.55rem; }
 
 @media (max-width: 900px) {
   .admin-detail-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+  .admin-autopsy-boards { grid-template-columns: repeat(3, 210px); }
 }
 @media (max-width: 520px) {
   .admin-detail-grid { grid-template-columns: 1fr; }

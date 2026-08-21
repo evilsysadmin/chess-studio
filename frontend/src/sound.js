@@ -1670,7 +1670,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.08, warmth: 0.82, releaseScale: 1.18,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 13, bassHoldSteps: 4.8,
-    groove: { period: 16, accents: [0, 10], volume: 0.014 },
+    percussion: { period: 16, pattern: { 0: 'B', 4: 'H', 8: 'K', 12: 'H' } },
   }),
   cairoAfterHours: Object.freeze({
     family: 'cairo-after-hours', preserveSectionOrder: true,
@@ -1678,7 +1678,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.14, warmth: 0.76, releaseScale: 1.28,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 15, bassHoldSteps: 5.4,
-    groove: { period: 16, accents: [0, 6, 12], volume: 0.012 },
+    percussion: { period: 16, pattern: { 0: 'K', 4: 'H', 8: 'B', 12: 'H' } },
   }),
   beirutSixEight: Object.freeze({
     family: 'beirut-six-eight', preserveSectionOrder: true,
@@ -1686,7 +1686,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.035, warmth: 0.8, releaseScale: 1.16,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 14, bassHoldSteps: 4.2,
-    groove: { period: 18, accents: [0, 6, 12], volume: 0.017 },
+    percussion: { period: 12, pattern: { 0: 'K', 3: 'H', 6: 'S', 9: 'H' } },
   }),
   beirutRooftop: Object.freeze({
     family: 'beirut-rooftop', preserveSectionOrder: true,
@@ -1694,21 +1694,21 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.17, warmth: 0.84, releaseScale: 1.12,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 11, bassHoldSteps: 3.8,
-    groove: { period: 18, accents: [0, 9, 14], volume: 0.015 },
+    percussion: { period: 16, pattern: { 0: 'B', 4: 'H', 8: 'S', 12: 'H' } },
   }),
   levantBlue: Object.freeze({
     family: 'levant-blue', preserveSectionOrder: true,
     harmonyPath: [0, 0, 0, -2, -2, 0, 0, 3, 0],
     swing: 0.06, warmth: 0.72, releaseScale: 1.34,
     bassInstrument: 'uprightBass', chordHoldSteps: 16, bassHoldSteps: 5.5,
-    groove: { period: 16, accents: [0, 12], volume: 0.009 },
+    percussion: { period: 16, pattern: { 0: 'K', 8: 'B', 12: 'H' } },
   }),
   istanbulBroken: Object.freeze({
     family: 'istanbul-broken-meter', preserveSectionOrder: true,
     harmonyPath: [0, 0, 0, 2, 2, 0, -2, -2, 0],
     swing: 0.0, warmth: 0.86, releaseScale: 1.08,
     bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.6,
-    groove: { period: 14, accents: [0, 5, 9], volume: 0.014 },
+    percussion: { period: 14, pattern: { 0: 'K', 4: 'H', 7: 'S', 10: 'H' } },
   }),
   tangierWalking: Object.freeze({
     family: 'tangier-walking', preserveSectionOrder: true,
@@ -1716,7 +1716,7 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.19, warmth: 0.8, releaseScale: 1.12,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 12, bassHoldSteps: 3.4,
-    groove: { period: 16, accents: [0, 8, 14], volume: 0.014 },
+    percussion: { period: 16, pattern: { 0: 'B', 4: 'H', 8: 'B', 12: 'H' } },
   }),
   maghrebVelvet: Object.freeze({
     family: 'maghreb-velvet', preserveSectionOrder: true,
@@ -1724,14 +1724,14 @@ const STRUCTURED_FEELS = Object.freeze({
     swing: 0.12, warmth: 0.74, releaseScale: 1.26,
     chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
     chordHoldSteps: 14, bassHoldSteps: 4.4,
-    groove: { period: 16, accents: [0, 11], volume: 0.011 },
+    percussion: { period: 16, pattern: { 0: 'K', 4: 'H', 8: 'B', 12: 'H' } },
   }),
   andalusWarm: Object.freeze({
     family: 'andalus-warm', preserveSectionOrder: true,
     harmonyPath: [0, 0, 5, 5, 0, 0, -2, 0],
     swing: 0.09, warmth: 0.9, releaseScale: 1.08,
     bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.5,
-    groove: { period: 16, accents: [0, 8, 12], volume: 0.013 },
+    percussion: { period: 16, pattern: { 0: 'K', 4: 'H', 8: 'S', 12: 'H' } },
   }),
 });
 
@@ -1761,12 +1761,13 @@ export function getAmbientThemeSoundProfile(themeId) {
     preserveSectionOrder: !!feel.preserveSectionOrder,
     swing: feel.swing || 0,
     warmth: feel.warmth || 1,
-    groovePeriod: feel.groove?.period || null,
+    groovePeriod: feel.percussion?.period || null,
+    percussionPeriod: feel.percussion?.period || null,
     chordInstrument: feel.chordInstrument || theme.chordInstrument,
     bassInstrument: feel.bassInstrument || theme.bassInstrument,
   } : {
     family: 'legacy-structured', preserveSectionOrder: false, swing: 0, warmth: 1,
-    groovePeriod: null, chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
+    groovePeriod: null, percussionPeriod: null, chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
   };
 }
 
@@ -2567,14 +2568,25 @@ function shouldPlayStructuredLead(mode, localStep, stepsPerSection) {
   return true;
 }
 
-function shouldPlayStructuredDrum(mode, localStep) {
+function shouldPlayStructuredDrum(mode, code) {
   if (mode === 'none') return false;
-  if (mode === 'sparse') return localStep % 8 === 0 || localStep % 8 === 4;
+  // En las vueltas con menos batería quitamos sobre todo hats/ornamentos,
+  // pero conservamos los golpes que definen el pulso. Antes se filtraba por
+  // el número absoluto de step y eso podía destruir una métrica 6/8 o 7/8.
+  if (mode === 'sparse') return code !== 'H';
   return true;
+}
+
+function structuredDrumAtStep(section, feel, localStep) {
+  if (!feel?.percussion) return section.drums?.[localStep] || null;
+  const { period, pattern } = feel.percussion;
+  if (!period || !pattern) return null;
+  return pattern[localStep % period] || null;
 }
 
 function startStructuredMusic(theme) {
   let step = 0;
+  let nextTickAtMs = transportNowMs();
   const stepsPerSection = Math.max(1, theme.stepsPerSection || 32);
   const sectionCount = Math.max(1, theme.sections?.length || 1);
   const cycleSteps = stepsPerSection * sectionCount;
@@ -2597,10 +2609,10 @@ function startStructuredMusic(theme) {
     const counter = section.counter?.[localStep];
     const bass = section.bass?.[localStep];
     const chord = section.chords?.[localStep];
-    const drum = section.drums?.[localStep];
     const t = arrangement.transpose;
 
     const feel = arrangement.feel;
+    const drum = structuredDrumAtStep(section, feel, localStep);
     const tone = feel ? { warmth: feel.warmth, releaseScale: feel.releaseScale } : null;
 
     if (lead != null && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
@@ -2627,22 +2639,19 @@ function startStructuredMusic(theme) {
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
       playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, tone);
     }
-    if (drum && shouldPlayStructuredDrum(arrangement.drumMode, localStep)) playStructuredDrum(drum);
-
-    // Pulso fantasma muy suave: da cuerpo al groove sin convertir el ambient
-    // en una caja de ritmos. Cada familia usa otra métrica/acento.
-    const groove = feel?.groove;
-    if (groove && arrangement.drumMode !== 'none') {
-      const grooveStep = localStep % groove.period;
-      if (groove.accents.includes(grooveStep) && !drum) playSoftPercussion(groove.volume);
-    }
+    if (drum && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum);
 
     step += 1;
-    // Swing real: alarga un paso y acorta el siguiente manteniendo el tempo
-    // medio. Es pequeño a propósito; queremos respiración, no mareo.
+    // Reloj absoluto: setTimeout puede llegar tarde, pero el retraso ya no se
+    // acumula compás tras compás. Esto mantiene percusión, bajo y melodía
+    // agarrados al mismo pulso durante pistas largas.
     const swing = feel?.swing || 0;
     const swingFactor = swing ? (step % 2 === 0 ? 1 - swing : 1 + swing) : 1;
-    stepTimer = setTimeout(tick, Math.max(45, Math.round(theme.stepMs * swingFactor)));
+    const intervalMs = Math.max(45, theme.stepMs * swingFactor);
+    const now = transportNowMs();
+    if (nextTickAtMs < now - (theme.stepMs * 2)) nextTickAtMs = now;
+    nextTickAtMs += intervalMs;
+    stepTimer = setTimeout(tick, Math.max(12, Math.round(nextTickAtMs - transportNowMs())));
   }
 
   ambientResumeFn = tick;

@@ -87,13 +87,6 @@ export default function Menu({
       <div className="menu-group">
         <span className="section-label">Jugar</span>
         <div className="menu-grid menu-grid-4">
-          <button type="button" className="menu-card accent-hint" onClick={() => setShowQuickMatch(true)}>
-            <IconPawn className="menu-card-icon" />
-            <h3>Partida rápida</h3>
-            <p>Elige dificultad, color, y ritmo de reloj — o déjalo en automático y juega ya.</p>
-            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} →</span>
-          </button>
-
           <button type="button" className="menu-card accent-brass" onClick={onTournament}>
             <IconTrophy className="menu-card-icon" />
             <h3>Torneo</h3>
@@ -113,6 +106,13 @@ export default function Menu({
             <h3>Combate Roguelike</h3>
             <p>Diez pisos, encuentros, recompensas temporales y un Rey Boss con 5 HP. Si sobrevives, se abre el infinito.</p>
             <span className="menu-card-cta">Empezar intento →</span>
+          </button>
+
+          <button type="button" className="menu-card accent-hint" onClick={() => setShowQuickMatch(true)}>
+            <IconPawn className="menu-card-icon" />
+            <h3>Partida rápida</h3>
+            <p>Elige dificultad, color, y ritmo de reloj — o déjalo en automático y juega ya.</p>
+            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} →</span>
           </button>
         </div>
       </div>

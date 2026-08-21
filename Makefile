@@ -9,7 +9,7 @@ BACKEND_VENV_PY := ../$(VENV_PY)
 FRONTEND_VITEST := ./node_modules/.bin/vitest
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
-	frontend-install backend-install ensure-frontend-deps ensure-backend-deps \
+	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be \
 	test-frontend test-backend backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical frontend-build
@@ -47,9 +47,70 @@ build:
 clean: ungame
 	$(COMPOSE) down --rmi local --volumes --remove-orphans
 
-## Instala dependencias locales para desarrollo/tests sin Docker.
+## Instala dependencias locales para desarrollo/tests sin Docker y activa
+## el hook versionado que bloquea un git push si falla `make tests`.
 ## Frontend queda en node_modules; backend queda aislado en .venv.
-install: frontend-install backend-install
+install: frontend-install backend-install install-hooks
+
+
+## Regenera el hook si el directorio oculto .githooks no llegó al copiar/descomprimir
+## el proyecto. De este modo `make tests` se autocura incluso sin dotfiles.
+ensure-hook-script:
+	@mkdir -p .githooks
+	@if [ ! -f .githooks/pre-push ]; then \
+		printf '%s\n' \
+			'#!/usr/bin/env sh' \
+			'set -eu' \
+			'' \
+			'ROOT="$$(git rev-parse --show-toplevel)"' \
+			'cd "$$ROOT"' \
+			'' \
+			'echo "==> Chess Studio pre-push quality gate: make tests"' \
+			'if ! make tests; then' \
+			'  echo >&2 ""' \
+			'  echo >&2 "Push cancelado: el quality gate local ha fallado."' \
+			'  echo >&2 "Corrige los tests o, solo si sabes exactamente por qué, usa: git push --no-verify"' \
+			'  exit 1' \
+			'fi' \
+			'' \
+			'echo "==> Quality gate local OK. Push permitido."' \
+			> .githooks/pre-push; \
+		echo "Hook .githooks/pre-push regenerado."; \
+	fi
+	@chmod +x .githooks/pre-push
+
+## Instala el hook pre-push versionado del repo. Usamos core.hooksPath para
+## no copiar scripts dentro de .git/hooks y mantener el hook bajo control de Git.
+install-hooks: ensure-hook-script
+	@if ! git rev-parse --show-toplevel >/dev/null 2>&1; then \
+		echo "ERROR: install-hooks debe ejecutarse dentro de un repositorio Git."; \
+		exit 1; \
+	fi
+	@current="$$(git config --local --get core.hooksPath || true)"; \
+	if [ -n "$$current" ] && [ "$$current" != ".githooks" ]; then \
+		echo "ERROR: core.hooksPath ya apunta a '$$current'. No lo sobrescribo automáticamente."; \
+		exit 1; \
+	fi
+	@chmod +x .githooks/pre-push
+	@git config --local core.hooksPath .githooks
+	@echo "Hook pre-push activo: git push ejecutará 'make tests'."
+
+## Activación perezosa: `make tests` instala el hook si este repo todavía
+## no tiene hooksPath. Si ya usas otro sistema de hooks, no lo pisa ni hace
+## fallar los tests: te avisa y deja tu configuración intacta.
+ensure-hooks:
+	@if git rev-parse --show-toplevel >/dev/null 2>&1; then \
+		current="$$(git config --local --get core.hooksPath || true)"; \
+		if [ -z "$$current" ]; then \
+			$(MAKE) --no-print-directory install-hooks; \
+		elif [ "$$current" = ".githooks" ]; then \
+			$(MAKE) --no-print-directory ensure-hook-script; \
+		else \
+			echo "AVISO: core.hooksPath ya apunta a '$$current'; no lo modifico."; \
+		fi; \
+	fi
+
+hooks: install-hooks
 
 frontend-install:
 	cd frontend && npm ci
@@ -78,14 +139,14 @@ gate-core: ensure-backend-deps
 ## Gate rápido de reglas críticas que viven en el cliente.
 ## Usa SIEMPRE el Vitest fijado por package-lock.json; nunca instala npx al vuelo.
 gate-frontend-critical: ensure-frontend-deps
-	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/sound.test.js src/puzzles.test.js
+	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/sound.test.js src/puzzles.test.js
 
 ## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
 gate-critical: gate-core gate-frontend-critical
 
 ## Quality gate local completo. Replica las comprobaciones funcionales de CI.
 ## En un checkout limpio instala automáticamente lo que falte.
-tests: tests-fe tests-be
+tests: ensure-hooks tests-fe tests-be
 
 ## Alias: singular histórico y nombre explícito de quality gate.
 test: tests
@@ -123,7 +184,8 @@ help:
 	@echo "  make status         - muestra el estado de los contenedores"
 	@echo "  make build          - construye imágenes Docker"
 	@echo "  make clean          - borra contenedores/imágenes/volúmenes locales"
-	@echo "  make install        - instala frontend + backend (.venv)"
+	@echo "  make install        - instala frontend + backend (.venv) y activa pre-push"
+	@echo "  make install-hooks  - activa/regenera .githooks/pre-push (alias: make hooks)"
 	@echo "  make gate-core      - ejecuta el gate del motor/IA"
 	@echo "  make gate-frontend-critical - gate frontend crítico"
 	@echo "  make gate-critical  - ejecuta ambos gates críticos"

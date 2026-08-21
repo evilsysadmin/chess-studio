@@ -4,6 +4,9 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { computeInsights, generateRoast, generateCoaching } from '../insights.js';
 import { ACHIEVEMENTS } from '../achievements.js';
 import { getUsername } from '../auth.js';
+import { formatLongMove } from '../notation.js';
+import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
+import Board from './Board.jsx';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -18,7 +21,7 @@ function formatPresenceAge(seconds) {
   return `hace ${days} d`;
 }
 
-function Presence({ user }) {
+function Presence({ user, compact = false }) {
   const status = user?.presence || 'never';
   const label = status === 'online'
     ? 'En línea'
@@ -33,20 +36,53 @@ function Presence({ user }) {
       <span className="admin-presence-dot" aria-hidden="true" />
       <span className="admin-presence-copy">
         <span>{label}</span>
-        {user?.lastActivity && <small>{new Date(user.lastActivity).toLocaleString()}</small>}
+        {!compact && user?.lastActivity && <small>{new Date(user.lastActivity).toLocaleString()}</small>}
       </span>
     </span>
   );
 }
 
-function WorstMove({ move }) {
-  if (!move) return <span className="admin-muted">Sin analizar todavía</span>;
+function WorstMove({ move, compact = false }) {
+  if (!move) return <span className="admin-muted">—</span>;
+  if (compact) return <strong className="admin-worst-malus">−{move.loss} cp</strong>;
   return (
     <span>
       <strong>{move.played || '—'}</strong>
       {move.suggested ? <> · mejor: {move.suggested}</> : null}
       {Number.isFinite(move.loss) ? <> · pérdida {move.loss} cp</> : null}
     </span>
+  );
+}
+
+function WorstMoveAutopsy({ move, data }) {
+  if (!move) return <span className="admin-muted">Sin analizar todavía</span>;
+  const autopsy = data?.autopsy;
+  if (!autopsy) return <WorstMove move={move} />;
+  const orientation = autopsy.record?.humanColor === 'b' ? 'black' : 'white';
+  const playedLong = formatLongMove({ piece: move.playedPiece, from: move.playedFrom, to: move.playedTo }) || move.played || '—';
+  const bestLong = formatLongMove({ piece: move.suggestedPiece, from: move.suggestedFrom, to: move.suggestedTo }) || move.suggested || '—';
+  return (
+    <div className="admin-autopsy">
+      <div className="admin-autopsy-summary">
+        <span className="admin-autopsy-verdict">{autopsy.incident}</span>
+        <strong>−{move.loss} cp</strong>
+        <small>Jugada {move.moveNumber || Math.floor(autopsy.index / 2) + 1} · {autopsy.mode}{autopsy.record?.date ? ` · ${new Date(autopsy.record.date).toLocaleDateString()}` : ''}</small>
+      </div>
+      <div className="admin-autopsy-moves">
+        <span><b>Jugó:</b> {autopsy.playedPiece} {autopsy.playedFrom || '?'} → {autopsy.playedTo || '?'} · {playedLong}</span>
+        <span><b>Motor:</b> {autopsy.suggestedPiece} {move.suggestedFrom || '?'} → {move.suggestedTo || '?'} · {bestLong}</span>
+      </div>
+      {autopsy.fenBefore && autopsy.fenAfter && (
+        <details className="admin-autopsy-positions">
+          <summary>Ver posiciones</summary>
+          <div className="admin-autopsy-boards">
+            <figure><figcaption>Antes</figcaption><Board fen={autopsy.fenBefore} orientation={orientation} /></figure>
+            <figure><figcaption>Después del error</figcaption><Board fen={autopsy.fenAfter} orientation={orientation} lastMove={{ from: autopsy.playedFrom, to: autopsy.playedTo }} /></figure>
+            {autopsy.bestFen && <figure><figcaption>Alternativa correcta</figcaption><Board fen={autopsy.bestFen} orientation={orientation} hintMove={{ from: move.suggestedFrom, to: move.suggestedTo }} /></figure>}
+          </div>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -78,6 +114,7 @@ function buildAdminInsights(payload) {
     insights,
     roast: generateRoast(insights, worst, extras),
     coaching: generateCoaching(insights, rivalry, extras),
+    autopsy: buildWorstMoveAutopsy(payload, rawExtras.worstMove),
   };
 }
 
@@ -169,19 +206,17 @@ export default function AdminScreen({ onExit }) {
         )}
 
         {!error && users && users.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="admin-table-wrap">
             <table className="admin-users-table">
               <thead>
                 <tr>
                   <th>Usuario</th>
-                  <th>Registrado</th>
-                  <th>Última actividad</th>
+                  <th>Actividad</th>
                   <th>Rating</th>
                   <th>Partidas</th>
                   <th>V/T/D</th>
-                  <th>% victoria</th>
-                  <th>Peor jugada</th>
-                  <th></th>
+                  <th>Peor</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -191,15 +226,13 @@ export default function AdminScreen({ onExit }) {
                   return (
                     <React.Fragment key={u.username}>
                       <tr>
-                        <td>{u.username}</td>
-                        <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
-                        <td><Presence user={u} /></td>
-                        <td>{u.rating ?? '—'}{u.ratingPeak && u.ratingPeak !== u.rating ? ` (máx. ${u.ratingPeak})` : ''}</td>
+                        <td className="admin-user-cell">{u.username}</td>
+                        <td><Presence user={u} compact /></td>
+                        <td>{u.rating ?? '—'}</td>
                         <td>{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
                         <td>{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
-                        <td>{u.winPct == null ? '—' : `${u.winPct}%`}</td>
-                        <td className="admin-worst-cell"><WorstMove move={u.worstMove} /></td>
-                        <td>
+                        <td className="admin-worst-cell"><WorstMove move={u.worstMove} compact /></td>
+                        <td className="admin-actions-cell">
                           <div className="admin-user-actions">
                             <button className="admin-peek-button" onClick={() => setExpanded(isOpen ? null : u.username)}>
                               {isOpen ? 'Cerrar' : 'Ver detalles'}
@@ -217,10 +250,12 @@ export default function AdminScreen({ onExit }) {
                       </tr>
                       {isOpen && (
                         <tr className="admin-detail-row">
-                          <td colSpan="9">
+                          <td colSpan="7">
                             <div className="admin-detail-grid">
+                              <div><span>Registrado</span><strong>{u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'}</strong></div>
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
                               <div><span>Última actividad exacta</span><strong>{u.lastActivity ? new Date(u.lastActivity).toLocaleString() : '—'}</strong></div>
+                              <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>
                               <div><span>Rating / partidas ELO</span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>
                               <div><span>Pico de rating</span><strong>{u.ratingPeak ?? '—'}</strong></div>
                               <div><span>Racha máx. victorias</span><strong>{u.longestWinStreak ?? 0}</strong></div>
@@ -255,7 +290,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Pecado más repetido</span><strong>{u.mostCommonSin ? `${u.mostCommonSin.label} ×${u.mostCommonSin.count}` : '—'}</strong></div>
                               <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>
                               <div><span>Forma reciente</span><strong>{(u.recentForm || []).map((r) => OUTCOME_LABEL[r]).join(' · ') || '—'}</strong></div>
-                              <div className="admin-detail-wide"><span>Peor jugada registrada</span><strong><WorstMove move={u.worstMove} /></strong></div>
+                              <div className="admin-detail-wide admin-worst-detail"><span>Peor jugada registrada</span><WorstMoveAutopsy move={u.worstMove} data={insightsByUser[u.username]} /></div>
                               <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}>{a.date ? new Date(a.date).toLocaleString() : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</em>) : '—'}</strong></div>
                             </div>
 

@@ -696,7 +696,12 @@ def test_admin_endpoint_exposes_richer_chess_stats(monkeypatch):
         },
     ]
     worst_cache = {
-        "g1": {"worst": {"played": "??", "suggested": "Qh7#", "loss": 420, "severity": "blunder"}, "analyzedAt": "2026-01-03T00:00:00Z"}
+        "g1": {"worst": {
+            "index": 2, "moveNumber": 2,
+            "played": "Q??", "playedFrom": "d1", "playedTo": "h5", "playedPiece": "q",
+            "suggested": "Qh7#", "suggestedFrom": "d3", "suggestedTo": "h7", "suggestedPiece": "q",
+            "loss": 420, "severity": "blunder",
+        }, "analyzedAt": "2026-01-03T00:00:00Z"}
     }
     client.put(
         "/api/profile",
@@ -723,6 +728,9 @@ def test_admin_endpoint_exposes_richer_chess_stats(monkeypatch):
     assert target["queensCaptured"] == 1
     assert target["queensLost"] == 1
     assert target["worstMove"]["loss"] == 420
+    assert target["worstMove"]["index"] == 2
+    assert target["worstMove"]["playedFrom"] == "d1"
+    assert target["worstMove"]["suggestedTo"] == "h7"
     assert target["achievements"] == 2
     assert target["puzzlesSolved"] == 12
 
