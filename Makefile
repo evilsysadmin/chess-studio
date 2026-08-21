@@ -3,7 +3,7 @@
 
 COMPOSE := docker compose
 
-.PHONY: game game-bg ungame restart logs status build clean help install frontend-install backend-install test test-frontend test-backend gate-core gate-frontend-critical gate-critical frontend-build
+.PHONY: game game-bg ungame restart logs status build clean help install frontend-install backend-install test tests test-fe test-be tests-fe tests-be tests/fe tests/be test-frontend test-backend backend-check quality-gate gate-core gate-frontend-critical gate-critical frontend-build
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
 game:
@@ -53,19 +53,37 @@ gate-core:
 
 ## Gate rápido de reglas críticas que viven en el cliente.
 gate-frontend-critical:
-	cd frontend && npx vitest run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/sound.test.js
+	cd frontend && npx vitest run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/sound.test.js src/puzzles.test.js
 
 ## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
 gate-critical: gate-core gate-frontend-critical
 
-## Suite completa.
-test: test-frontend test-backend
+## Quality gate local completo. Replica las comprobaciones funcionales de CI
+## (sin reinstalar dependencias en cada ejecución).
+tests: tests-fe tests-be
+
+## Alias: singular histórico y nombre explícito de quality gate.
+test: tests
+quality-gate: tests
+
+## Frontend: gate crítico + suite completa + build de producción.
+tests-fe: gate-frontend-critical test-frontend frontend-build
+test-fe: tests-fe
+tests/fe: tests-fe
+
+## Backend: gate del core + suite completa + integridad de dependencias.
+tests-be: gate-core test-backend backend-check
+test-be: tests-be
+tests/be: tests-be
 
 test-frontend:
 	cd frontend && npm test
 
 test-backend:
 	cd backend-python && pytest -v
+
+backend-check:
+	cd backend-python && python -m pip check
 
 frontend-build:
 	cd frontend && npm run build
@@ -84,5 +102,10 @@ help:
 	@echo "  make gate-core      - ejecuta el gate del motor/IA"
 	@echo "  make gate-frontend-critical - gate de Combate/Roguelike/TTS/rating/UX"
 	@echo "  make gate-critical  - ejecuta ambos gates críticos"
-	@echo "  make test           - ejecuta frontend + backend tests"
+	@echo "  make tests          - quality gate local completo (frontend + backend)"
+	@echo "  make tests-fe       - frontend: gate crítico + suite + build"
+	@echo "  make tests-be       - backend: gate core + suite + pip check"
+	@echo "  make tests/fe       - alias de tests-fe"
+	@echo "  make tests/be       - alias de tests-be"
+	@echo "  make test           - alias histórico de make tests"
 	@echo "  make frontend-build - compila el frontend fuera de Docker"
