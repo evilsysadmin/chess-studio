@@ -7,6 +7,7 @@ import {
   isFxMuted,
   pauseAmbientMusic,
   selectRelativeAmbientTheme,
+  seekAmbientMusic,
   setAmbientTheme,
   setAmbientVolume,
   setFxMuted,
@@ -29,6 +30,7 @@ export default function MusicPlayer() {
   const [state, setState] = useState(() => snapshot());
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => Math.round(getAmbientVolume() * 100));
+  const [seekPreviewMs, setSeekPreviewMs] = useState(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -97,7 +99,8 @@ export default function MusicPlayer() {
   }, [current]);
 
   const cycleMs = Math.max(1, state.visualCycleMs || 1);
-  const progress = Math.min(100, Math.max(0, ((state.cyclePositionMs || 0) / cycleMs) * 100));
+  const displayedPositionMs = seekPreviewMs == null ? (state.cyclePositionMs || 0) : seekPreviewMs;
+  const progress = Math.min(100, Math.max(0, (displayedPositionMs / cycleMs) * 100));
   const totalLabel = state.durationMs ? formatTime(state.durationMs) : '∞';
   // Durante el pequeño silencio automático la "radio" sigue activa: el botón
   // permanece en Pausa y permite detener la cola antes de que entre el tema
@@ -143,6 +146,21 @@ export default function MusicPlayer() {
     setAmbientVolume(next / 100);
   }
 
+  function previewSeek(event) {
+    setSeekPreviewMs(Number(event.target.value));
+  }
+
+  function commitSeek(event) {
+    const next = Number(event.currentTarget.value);
+    seekAmbientMusic(next);
+    setSeekPreviewMs(null);
+    setState(snapshot());
+  }
+
+  function seekKeyUp(event) {
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) commitSeek(event);
+  }
+
   return (
     <div className="music-deck" role="group" aria-label="Reproductor y controles de audio">
       <div className="music-deck-display" title={current?.description || 'Música ambiental'}>
@@ -150,12 +168,24 @@ export default function MusicPlayer() {
           <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />
           <span className="music-deck-track">{current?.label || 'Música ambiental'}</span>
           <span className="music-deck-time">
-            {formatTime(state.cyclePositionMs)} / {totalLabel}
+            {formatTime(displayedPositionMs)} / {totalLabel}
           </span>
         </div>
-        <div className="music-deck-progress" aria-hidden="true">
-          <span className="music-deck-progress-fill" style={{ width: `${progress}%` }} />
-        </div>
+        <input
+          className="music-deck-progress music-deck-seek"
+          type="range"
+          min="0"
+          max={Math.max(1, state.durationMs || cycleMs)}
+          step="250"
+          value={Math.min(displayedPositionMs, Math.max(1, state.durationMs || cycleMs))}
+          onChange={previewSeek}
+          onPointerUp={commitSeek}
+          onKeyUp={seekKeyUp}
+          onBlur={(event) => { if (seekPreviewMs != null) commitSeek(event); }}
+          aria-label="Posición de la pista"
+          title="Arrastra para saltar a otro punto de la pista"
+          style={{ '--seek-progress': `${progress}%` }}
+        />
       </div>
 
       <div className="music-deck-controls">

@@ -9,6 +9,8 @@ import {
   getAmbientVolume,
   pickRandomAmbientThemeId,
   resetAmbientThemeForSession,
+  seekAmbientMusic,
+  getAmbientPlaybackState,
   setAmbientTheme,
   setAmbientVolume,
 } from './sound.js';
@@ -124,6 +126,15 @@ describe('ambient music catalog', () => {
     for (const theme of AMBIENT_THEME_OPTIONS) {
       expect(getAmbientTrackDurationMs(theme.id)).toBeGreaterThanOrEqual(120000);
     }
+  });
+
+  it('permite posicionar el transporte y acota el seek a la duración de la pista', () => {
+    setAmbientTheme('cairo0047');
+    const duration = getAmbientTrackDurationMs('cairo0047');
+    expect(seekAmbientMusic(90_000)).toBe(90_000);
+    expect(getAmbientPlaybackState().cyclePositionMs).toBe(90_000);
+    expect(seekAmbientMusic(duration + 50_000)).toBe(duration - 1);
+    expect(getAmbientPlaybackState().cyclePositionMs).toBe(duration - 1);
   });
 
   it('sortea la pista siguiente sin repetir la que acaba de sonar', () => {

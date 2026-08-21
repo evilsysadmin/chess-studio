@@ -2080,6 +2080,36 @@ export function selectRelativeAmbientTheme(delta) {
   return setAmbientTheme(next);
 }
 
+export function seekAmbientMusic(positionMs) {
+  const themeId = ambientTransport.themeId || getAmbientThemeId();
+  const durationMs = getAmbientTrackDurationMs(themeId);
+  if (!durationMs) return 0;
+  const target = Math.min(Math.max(0, Number(positionMs) || 0), Math.max(0, durationMs - 1));
+  const previousStatus = ambientTransport.status;
+
+  clearAmbientTrackEndTimer();
+  clearAmbientTransitionTimer();
+  queuedAmbientThemeId = null;
+  if (stepTimer) { clearTimeout(stepTimer); stepTimer = null; }
+  ambientResumeFn = null;
+
+  ambientTransport.themeId = themeId;
+  ambientTransport.positionMs = target;
+  ambientTransport.startedAtMs = 0;
+
+  if (previousStatus === 'playing' || previousStatus === 'gap') {
+    // startAmbientMusic reconstruye la escena sintética desde la posición
+    // solicitada. No intentamos mover osciladores ya creados: se dejan decaer
+    // y la nueva frase entra desde el step correspondiente.
+    ambientTransport.status = 'paused';
+    startAmbientMusic();
+  } else {
+    ambientTransport.status = previousStatus === 'paused' ? 'paused' : 'stopped';
+    notifyAmbientTransport();
+  }
+  return target;
+}
+
 let ambientOutputNode = null;
 let ambientPercussionBus = null;
 let ambientDuckFactor = 1;
@@ -2892,8 +2922,8 @@ function structuredSignatureAtStep(feel, localStep, sectionIndex, cycleIndex) {
   return note == null ? null : { ...signature, note };
 }
 
-function startStructuredMusic(theme) {
-  let step = 0;
+function startStructuredMusic(theme, startPositionMs = 0) {
+  let step = Math.max(0, Math.floor((Number(startPositionMs) || 0) / Math.max(1, theme.stepMs)));
   let nextTickAtMs = transportNowMs();
   const stepsPerSection = Math.max(1, theme.stepsPerSection || 32);
   const sectionCount = Math.max(1, theme.sections?.length || 1);
@@ -3012,34 +3042,40 @@ export function startAmbientMusic() {
     return;
   }
 
-  // Si se seleccionó otra pista estando pausado no existe closure que reanudar:
-  // Play comienza esa pista desde el principio.
+  // Si se seleccionó otra pista o se hizo seek estando pausado no existe un
+  // closure que reanudar. Conservamos la posición solicitada y reconstruimos
+  // el secuenciador desde ese punto al pulsar Play.
+  let startPositionMs = 0;
   if (ambientTransport.status === 'paused' && !ambientResumeFn) {
+    startPositionMs = Math.max(0, Number(ambientTransport.positionMs) || 0);
     ambientTransport.status = 'stopped';
-    ambientTransport.positionMs = 0;
   }
 
   const theme = getActiveAmbientTheme();
+  const durationMs = getAmbientTrackDurationMs(theme.id);
+  if (durationMs) startPositionMs = Math.min(startPositionMs, Math.max(0, durationMs - 1));
   ambientTransport.status = 'playing';
   ambientTransport.themeId = theme.id;
-  ambientTransport.positionMs = 0;
+  ambientTransport.positionMs = startPositionMs;
   ambientTransport.startedAtMs = transportNowMs();
   applyAmbientMasterGain(0.32);
   scheduleAmbientTrackEnd();
   notifyAmbientTransport();
 
   if (theme.engine === 'structured') {
-    startStructuredMusic(theme);
+    startStructuredMusic(theme, startPositionMs);
     return;
   }
   // Al-Ándalus cae por aquí y conserva el generador original intacto.
   const bassScale = theme.scale.map((f) => f / 2);
   const keyChangeSteps = STEPS_PER_BAR * theme.keyChangeBars;
-  let step = 0;
-  let phraseIndex = 0;
-  let saxPhraseIndex = 0;
-  let percussionIndex = 0;
-  let currentPercussionPattern = theme.percussionPatterns[0];
+  let step = Math.max(0, Math.floor(startPositionMs / Math.max(1, theme.stepMs)));
+  let phraseIndex = Math.floor(step / Math.max(1, theme.pluckGapSteps));
+  let saxPhraseIndex = Math.floor(step / Math.max(1, theme.saxGapSteps));
+  let percussionIndex = Math.floor(step / STEPS_PER_BAR);
+  let currentPercussionPattern = theme.percussionPatterns[percussionIndex % theme.percussionPatterns.length] || theme.percussionPatterns[0];
+  keyCenterIndex = Math.floor(step / Math.max(1, keyChangeSteps));
+  padIndex = Math.floor(step / PAD_GAP_STEPS);
 
   function tick() {
     if (ambientTransport.status !== 'playing') {

@@ -10,6 +10,7 @@ FRONTEND_VITEST := ./node_modules/.bin/vitest
 TRIVY := .tools/trivy
 SECURITY_DIR := .security
 TRIVY_CACHE := .trivy-cache
+TRIVY_DB_TTL_MINUTES ?= 720
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
@@ -158,7 +159,7 @@ gate-core: ensure-backend-deps
 ## Gate rápido de reglas críticas que viven en el cliente.
 ## Usa SIEMPRE el Vitest fijado por package-lock.json; nunca instala npx al vuelo.
 gate-frontend-critical: ensure-frontend-deps
-	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/sound.test.js src/puzzles.test.js
+	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/labPosition.test.js src/sound.test.js src/puzzles.test.js
 
 ## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
 gate-critical: gate-core gate-frontend-critical
@@ -228,13 +229,10 @@ security-be: ensure-backend-deps
 ## Política del proyecto: CRITICAL rompe; HIGH grita; MEDIUM/LOW informan.
 security-trivy: ensure-trivy
 	@mkdir -p "$(SECURITY_DIR)" "$(TRIVY_CACHE)"
-	TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" $(TRIVY) fs \
-		--skip-version-check \
-		--scanners vuln,secret,misconfig \
-		--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
-		--format json --output "$(SECURITY_DIR)/trivy.json" \
-		--skip-dirs node_modules --skip-dirs .venv --skip-dirs .git \
-		--skip-dirs .tools --skip-dirs "$(TRIVY_CACHE)" --skip-dirs "$(SECURITY_DIR)" .
+	TRIVY="$(CURDIR)/$(TRIVY)" \
+	TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" \
+	TRIVY_DB_TTL_MINUTES="$(TRIVY_DB_TTL_MINUTES)" \
+		sh ./scripts/trivy_fs_cached.sh "$(CURDIR)/$(SECURITY_DIR)/trivy.json" "$(CURDIR)"
 	$(PYTHON) scripts/security_report.py "$(SECURITY_DIR)/trivy.json"
 
 security: security-fe security-be security-trivy

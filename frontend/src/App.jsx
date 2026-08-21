@@ -703,7 +703,6 @@ function AppInner({ isAdminUser }) {
       <div className="app-shell">
         <div className="masthead">
           <div className="masthead-top-row">
-            <LiveServiceStatus />
             <div className="masthead-text">
               <h1>Escuela de Ajedrez</h1>
             </div>
@@ -890,6 +889,7 @@ function GlobalMusicDock() {
   return (
     <div className="global-music-dock" aria-label="Reproductor global">
       <MusicPlayer />
+      <LiveServiceStatus />
     </div>
   );
 }
