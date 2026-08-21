@@ -8,6 +8,7 @@ VENV_PY := $(VENV)/bin/python
 BACKEND_VENV_PY := $(VENV_PY)
 FRONTEND_VITEST := ./node_modules/.bin/vitest
 TRIVY := .tools/trivy
+TRIVY_VERSION := 0.74.0
 SECURITY_DIR := .security
 TRIVY_CACHE := .trivy-cache
 TRIVY_DB_TTL_MINUTES ?= 720
@@ -17,7 +18,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-install release-gate \
 	test-frontend test-backend backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical frontend-build puzzles-check \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status
+	security security-full security-images security-fe security-be security-trivy security-dockerfiles security-api ensure-trivy deps-status
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
 game:
@@ -159,7 +160,7 @@ gate-core: ensure-backend-deps
 ## Gate rápido de reglas críticas que viven en el cliente.
 ## Usa SIEMPRE el Vitest fijado por package-lock.json; nunca instala npx al vuelo.
 gate-frontend-critical: ensure-frontend-deps
-	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/combatUnitService.test.js src/combatService.test.js src/combatRanks.test.js src/combatMetamorphosis.test.js src/combatBalance.test.js src/combatChessBrand.test.js src/combatCampaign.test.js src/armyRosterView.test.js src/releaseContinuity.test.js src/chessGlossary.test.js src/combatIdentity.test.js src/combatTechniques.test.js src/narrativeProvider.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/clockPersistence.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/nemesis.test.js src/mirrorMode.test.js src/zenMode.test.js src/labPosition.test.js src/stateInvariants.test.js src/sound.test.js src/puzzles.test.js
+	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/combatUnitService.test.js src/combatService.test.js src/combatRanks.test.js src/combatMetamorphosis.test.js src/combatBalance.test.js src/combatChessBrand.test.js src/combatCampaign.test.js src/armyRosterView.test.js src/combatIdentityRename.test.js src/presenceActivity.test.js src/releaseContinuity.test.js src/chessGlossary.test.js src/combatIdentity.test.js src/combatTechniques.test.js src/narrativeProvider.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/clockPersistence.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/nemesis.test.js src/mirrorMode.test.js src/zenMode.test.js src/labPosition.test.js src/stateInvariants.test.js src/sound.test.js src/puzzles.test.js
 
 ## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
 gate-critical: gate-core gate-frontend-critical
@@ -239,6 +240,17 @@ security-be: ensure-backend-deps
 		if [ ! -s "../$(SECURITY_DIR)/pip-audit.json" ]; then echo "ERROR: pip-audit no produjo informe (rc=$$rc)."; exit 2; fi
 	$(PYTHON) scripts/pip_audit_report.py "$(SECURITY_DIR)/pip-audit.json"
 
+## Escaneo explícito de los Dockerfiles, separado del fs scan para que una
+## regresión de configuración de contenedor no dependa de autodetección.
+security-dockerfiles: ensure-trivy
+	@mkdir -p "$(SECURITY_DIR)" "$(TRIVY_CACHE)"
+	@echo "==> Trivy $(TRIVY_VERSION): Dockerfile frontend"
+	@TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" "$(CURDIR)/$(TRIVY)" config --skip-version-check --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --format json --output "$(CURDIR)/$(SECURITY_DIR)/trivy-dockerfile-frontend.json" frontend/Dockerfile
+	@$(PYTHON) scripts/security_report.py "$(SECURITY_DIR)/trivy-dockerfile-frontend.json"
+	@echo "==> Trivy $(TRIVY_VERSION): Dockerfile backend"
+	@TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" "$(CURDIR)/$(TRIVY)" config --skip-version-check --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --format json --output "$(CURDIR)/$(SECURITY_DIR)/trivy-dockerfile-backend.json" backend-python/Dockerfile
+	@$(PYTHON) scripts/security_report.py "$(SECURITY_DIR)/trivy-dockerfile-backend.json"
+
 ## Gate común: dependencias Node/Python + secretos + misconfiguraciones.
 ## Política del proyecto: CRITICAL rompe; HIGH grita; MEDIUM/LOW informan.
 security-trivy: ensure-trivy
@@ -252,7 +264,7 @@ security-trivy: ensure-trivy
 security-api:
 	$(PYTHON) scripts/api_surface_gate.py
 
-security: security-api security-fe security-be security-trivy
+security: security-api security-fe security-be security-trivy security-dockerfiles
 	@echo "==> Security gate completo: superficie API + dependencias + Trivy; solo CVE CRITICAL bloquea."
 
 ## Gate de release/contenedor: construye las dos imágenes reales y escanea también
@@ -298,6 +310,7 @@ help:
 	@echo "  make security-fe     - auditoría de dependencias Node"
 	@echo "  make security-be     - auditoría de dependencias Python"
 	@echo "  make security-trivy  - vulns + secretos + misconfiguración"
+	@echo "  make security-dockerfiles - Trivy 0.74.0 explícito sobre ambos Dockerfiles"
 	@echo "  make security-images - construye y escanea frontend/backend Docker reales"
 	@echo "  make security-full   - security + security-images"
 	@echo "  make deps-status     - muestra PyJWT del requirements/venv y versión de Trivy"

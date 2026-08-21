@@ -12,12 +12,36 @@ import {
   SPEED_POINT_VALUE,
 } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { pieceRankForLevel } from '../combatRanks.js';
+import { PIECE_RANKS, pieceRankForLevel } from '../combatRanks.js';
 import { METAMORPHOSIS_LABELS, deploymentUnlockStatus, unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { techniquesEligibleToUnlock, unlockedTechniquesFor } from '../combatTechniques.js';
 import { unitRecordForKey, unitDecorations } from '../combatUnitService.js';
+import { normalizeCombatAlias } from '../combatIdentity.js';
 
 const PIECE_GLYPH = Object.freeze({ k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' });
+
+const PIECE_ORDER = Object.freeze({ q: 5, r: 4, b: 3, n: 2, p: 1, k: 6 });
+
+export function orderedRosterSlots(roster, order = 'rank') {
+  const slots = [...CANONICAL_ROSTER_SLOTS];
+  if (order !== 'rank') return slots;
+  const rankWeight = new Map(PIECE_RANKS.map((rank, index) => [rank.id, index]));
+  return slots.sort((a, b) => {
+    if (a.type === 'k' && b.type !== 'k') return -1;
+    if (b.type === 'k' && a.type !== 'k') return 1;
+    const keyA = rosterSlotKey(a);
+    const keyB = rosterSlotKey(b);
+    const savedA = roster?.pieces?.[keyA];
+    const savedB = roster?.pieces?.[keyB];
+    const levelA = 1 + (savedA?.strengthPoints || 0) + (savedA?.speedPoints || 0);
+    const levelB = 1 + (savedB?.strengthPoints || 0) + (savedB?.speedPoints || 0);
+    const rankA = rankWeight.get(pieceRankForLevel(levelA).id) || 0;
+    const rankB = rankWeight.get(pieceRankForLevel(levelB).id) || 0;
+    if (rankA !== rankB) return rankB - rankA;
+    if ((PIECE_ORDER[a.type] || 0) !== (PIECE_ORDER[b.type] || 0)) return (PIECE_ORDER[b.type] || 0) - (PIECE_ORDER[a.type] || 0);
+    return unitAlias(roster, keyA).localeCompare(unitAlias(roster, keyB), 'es');
+  });
+}
 
 function unitAlias(roster, key) {
   return roster?.identities?.[key]?.alias || 'Sin alias';
@@ -149,7 +173,7 @@ function UnitRosterCard({ roster, slot, onOpen }) {
   );
 }
 
-function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onRename, onClose }) {
   if (!slot) return null;
   const key = rosterSlotKey(slot);
   const saved = roster?.pieces?.[key];
@@ -176,6 +200,28 @@ function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTe
   const reviveType = saved?.deploymentType || slot.type;
   const revivePrice = isDead ? reviveCost(reviveType) : 0;
   const service = unitRecord?.stats || {};
+  const currentAlias = unitAlias(roster, key);
+  const [renameValue, setRenameValue] = useState(currentAlias);
+  const [renameError, setRenameError] = useState(null);
+
+  function handleRenameSubmit(event) {
+    event.preventDefault();
+    const alias = normalizeCombatAlias(renameValue);
+    if (alias.length < 2) {
+      setRenameError('Usa al menos 2 caracteres.');
+      return;
+    }
+    const duplicate = Object.entries(roster?.identities || {}).some(([otherKey, identity]) =>
+      otherKey !== key && String(identity?.alias || '').trim().toLocaleLowerCase('es') === alias.toLocaleLowerCase('es')
+    );
+    if (duplicate) {
+      setRenameError('Ese alias ya pertenece a otra unidad activa.');
+      return;
+    }
+    setRenameError(null);
+    setRenameValue(alias);
+    onRename?.(key, alias);
+  }
 
   return (
     <div className="army-unit-detail-backdrop" onClick={onClose}>
@@ -189,6 +235,21 @@ function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTe
             <p>{BASE_STATS[slot.type].name} de origen · columna {slot.file}{activeType !== slot.type ? ` · despliegue como ${METAMORPHOSIS_LABELS[activeType]}` : ''}</p>
           </div>
         </div>
+
+        <form className="army-rename-form" onSubmit={handleRenameSubmit}>
+          <label>Alias de unidad</label>
+          <div>
+            <input
+              value={renameValue}
+              maxLength={24}
+              onChange={(event) => { setRenameValue(event.target.value); setRenameError(null); }}
+              aria-label={`Nuevo alias para ${currentAlias}`}
+            />
+            <button type="submit" className="secondary-btn" disabled={normalizeCombatAlias(renameValue) === currentAlias}>Renombrar</button>
+          </div>
+          {renameError && <small className="error-text">{renameError}</small>}
+          <small>El nombre cambia; la identidad, rango, medallas e historial permanecen intactos.</small>
+        </form>
 
         {isKing ? (
           <div className="army-command-note">
@@ -325,8 +386,10 @@ function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTe
   );
 }
 
-export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, embedded = false, showMemorial = true }) {
+export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onRename, embedded = false, showMemorial = true }) {
   const [selectedKey, setSelectedKey] = useState(null);
+  const [rosterOrder, setRosterOrder] = useState('rank');
+  const visibleSlots = orderedRosterSlots(roster, rosterOrder);
   useEscapeToClose(() => setSelectedKey(null), { disabled: !selectedKey });
   const selectedSlot = selectedKey ? CANONICAL_ROSTER_SLOTS.find((slot) => rosterSlotKey(slot) === selectedKey) : null;
 
@@ -346,13 +409,19 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnl
         XP de combate disponible: <b>{roster.combatXp}</b> · reservado para revivir bajas recuperables.
       </p>
 
+      <div className="army-roster-toolbar" aria-label="Orden del roster">
+        <span>Orden</span>
+        <button type="button" className={rosterOrder === 'rank' ? 'active' : ''} aria-pressed={rosterOrder === 'rank'} onClick={() => setRosterOrder('rank')}>Rango</button>
+        <button type="button" className={rosterOrder === 'formation' ? 'active' : ''} aria-pressed={rosterOrder === 'formation'} onClick={() => setRosterOrder('formation')}>Formación</button>
+      </div>
+
       <div className="army-roster-grid" aria-label="Formación completa del ejército">
-        {CANONICAL_ROSTER_SLOTS.map((slot) => (
+        {visibleSlots.map((slot) => (
           <UnitRosterCard key={rosterSlotKey(slot)} roster={roster} slot={slot} onOpen={setSelectedKey} />
         ))}
       </div>
 
-      <p className="hint-text army-roster-footnote">Vista táctica en tres filas para que alias y rango se lean completos. El orden conserva primero piezas mayores y mando, después la infantería; el color del tablero puede cambiar, pero cada identidad sigue siendo la misma.</p>
+      <p className="hint-text army-roster-footnote">Vista táctica en tres filas. Por defecto prioriza Mando y rango militar; puedes volver a la formación ajedrecística clásica cuando quieras. El color del tablero puede cambiar, pero cada identidad sigue siendo la misma.</p>
       {showMemorial && <Memorial roster={roster} />}
 
       {selectedSlot && (
@@ -364,6 +433,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnl
           onMetamorphose={onMetamorphose}
           onUnlockTechnique={onUnlockTechnique}
           onEquipTechnique={onEquipTechnique}
+          onRename={onRename}
           onClose={() => setSelectedKey(null)}
         />
       )}
@@ -371,7 +441,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnl
   );
 }
 
-export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onRename, onClose }) {
   useEscapeToClose(onClose);
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -384,6 +454,7 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, on
           onMetamorphose={onMetamorphose}
           onUnlockTechnique={onUnlockTechnique}
           onEquipTechnique={onEquipTechnique}
+          onRename={onRename}
         />
       </div>
     </div>

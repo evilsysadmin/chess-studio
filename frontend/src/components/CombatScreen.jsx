@@ -41,6 +41,7 @@ export default function CombatScreen(props) {
         handleMetamorphoseRosterPiece={controller.handleMetamorphoseRosterPiece}
         handleUnlockRosterTechnique={controller.handleUnlockRosterTechnique}
         handleEquipRosterTechnique={controller.handleEquipRosterTechnique}
+        handleRenameRosterUnit={controller.handleRenameRosterUnit}
         handleResetRoster={controller.handleResetRoster}
         onHistory={props.onHistory}
         serviceSummary={controller.serviceSummary}

@@ -40,3 +40,28 @@ export function ensureCombatIdentities(rosterState, rng = Math.random, now = Dat
 export function combatIdentityFor(rosterState, key) {
   return rosterState?.identities?.[key] || null;
 }
+export function normalizeCombatAlias(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+}
+
+export function renameCombatIdentity(rosterState, key, value) {
+  const alias = normalizeCombatAlias(value);
+  if (alias.length < 2) return rosterState;
+  const current = rosterState?.identities?.[key];
+  if (!current) return rosterState;
+  const duplicate = Object.entries(rosterState.identities || {}).some(([otherKey, identity]) =>
+    otherKey !== key && String(identity?.alias || '').trim().toLocaleLowerCase('es') === alias.toLocaleLowerCase('es')
+  );
+  if (duplicate || current.alias === alias) return rosterState;
+  const record = rosterState?.unitRecords?.[current.identityId];
+  return {
+    ...rosterState,
+    identities: {
+      ...(rosterState.identities || {}),
+      [key]: { ...current, alias },
+    },
+    unitRecords: record
+      ? { ...(rosterState.unitRecords || {}), [current.identityId]: { ...record, alias } }
+      : rosterState?.unitRecords,
+  };
+}

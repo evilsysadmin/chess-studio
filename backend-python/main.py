@@ -348,6 +348,10 @@ class UpdateEmailRequest(BaseModel):
     password: str
 
 
+class ActivityRequest(BaseModel):
+    activity: Optional[str] = Field(default=None, max_length=40)
+
+
 class AdminInsightsRequest(BaseModel):
     username: str
 
@@ -620,11 +624,24 @@ async def me(username: str = Depends(get_current_user)):
     return payload
 
 
+_ALLOWED_ACTIVITY_CODES = {
+    "menu", "game", "practice", "tournament", "combat_free", "combat_campaign",
+    "insights", "worst_move_analysis", "history", "replay", "daily_challenge",
+    "puzzle", "tutorial", "openings", "lab", "spectator", "board3d", "admin",
+}
+
+
 @app.post("/api/auth/activity", status_code=204)
-async def activity_heartbeat(_username: str = Depends(get_current_user)):
+async def activity_heartbeat(body: Optional[ActivityRequest] = None, _username: str = Depends(get_current_user)):
     # get_current_user ya actualiza last_activity con throttling. Este endpoint
     # existe para que una pestaña abierta pero quieta siga figurando online sin
-    # forzar lecturas de perfil, partidas ni análisis del motor.
+    # forzar lecturas de perfil, partidas ni análisis del motor. Si el cliente
+    # manda contexto, sólo aceptamos códigos coarse-grained predefinidos.
+    activity = (body.activity if body else None) or None
+    if activity is not None:
+        if activity not in _ALLOWED_ACTIVITY_CODES:
+            raise HTTPException(422, "Actividad no reconocida.")
+        await ustore.set_current_activity(_username, activity)
     return None
 
 
@@ -1051,6 +1068,9 @@ async def admin_list_users(username: str = Depends(require_admin)):
         result.append({
             "username": uname,
             "createdAt": user_doc.get("created_at"),
+            "currentActivity": user_doc.get("current_activity"),
+            "currentActivitySince": user_doc.get("activity_since"),
+            "currentActivityUpdatedAt": user_doc.get("activity_updated_at"),
             **_presence_summary(activity_anchor),
             **_extract_summary_stats(profile),
         })

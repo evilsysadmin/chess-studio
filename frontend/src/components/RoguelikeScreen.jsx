@@ -9,6 +9,7 @@ import { applyModifierToFen, encounterForRun } from '../roguelikeModifiers.js';
 import { buyStatPoint } from '../combat.js';
 import { loadRoster, saveRoster, revivePiece } from '../combatRoster.js';
 import { setRosterDeploymentType } from '../combatMetamorphosis.js';
+import { renameCombatIdentity } from '../combatIdentity.js';
 import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
@@ -178,6 +179,14 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         },
       };
       saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleRenameRosterUnit(key, alias) {
+    setRoster((current) => {
+      const next = renameCombatIdentity(current, key, alias);
+      if (next !== current) saveRoster(next);
       return next;
     });
   }
@@ -505,6 +514,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           onMetamorphose={handleMetamorphoseRosterPiece}
           onUnlockTechnique={handleUnlockRosterTechnique}
           onEquipTechnique={handleEquipRosterTechnique}
+          onRename={handleRenameRosterUnit}
         />
 
         {campaignBestStage > 0 && <p className="hint-text">Mejor sector de campaña alcanzado: <b>{campaignBestStage}/7</b></p>}

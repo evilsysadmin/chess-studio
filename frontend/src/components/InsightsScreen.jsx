@@ -14,6 +14,7 @@ import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series
 import CareerScreen from './CareerScreen.jsx';
 import { combatRecordModeLabel } from '../combatChessBrand.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import { touchActivity } from '../auth.js';
 
 const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combat Chess' };
 
@@ -129,6 +130,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   async function startSearch() {
     stopRef.current = false;
     setSearchStatus('running');
+    touchActivity('worst_move_analysis');
     // Conserva visible el mejor resultado cacheado mientras revisa lo nuevo.
     setSearchProgress({ done: 0, total: gameHistory.length + combatHistory.length });
 
@@ -153,6 +155,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     saveWorstMoveCache(updatedCache);
     setSearchResult(best);
     setSearchStatus('done');
+    touchActivity('insights');
   }
 
   function cancelSearch() {

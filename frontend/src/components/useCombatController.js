@@ -29,6 +29,7 @@ import { loadRating, ratingProgress, difficultyForRating } from '../playerRating
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
 import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
+import { renameCombatIdentity } from '../combatIdentity.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -892,6 +893,15 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     });
   }
 
+  function handleRenameRosterUnit(key, alias) {
+    setRoster((prev) => {
+      const next = renameCombatIdentity(prev, key, alias);
+      if (next === prev) return prev;
+      saveRoster(next);
+      return next;
+    });
+  }
+
   function handleReviveRosterPiece(key, type) {
     setRoster((prev) => {
       const next = revivePiece(prev, key, type);
@@ -937,7 +947,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     showArmy, setShowArmy, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
-    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
+    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleRenameRosterUnit, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };

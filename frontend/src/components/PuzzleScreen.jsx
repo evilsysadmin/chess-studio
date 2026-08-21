@@ -9,6 +9,7 @@ import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetP
 import { puzzleRetryCost } from '../tournament.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { recordPuzzleRush } from '../career.js';
+import { touchActivity } from '../auth.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
 
@@ -24,6 +25,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
   const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES) : randomPuzzle());
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
+
+  useEffect(() => {
+    touchActivity(source === 'daily' ? 'daily_challenge' : 'puzzle');
+  }, [source]);
   const [fen, setFen] = useState(puzzle.fen);
   const [stepIndex, setStepIndex] = useState(0);
   const [selected, setSelected] = useState(null);

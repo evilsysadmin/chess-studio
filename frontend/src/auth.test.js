@@ -166,12 +166,13 @@ describe('fetchMe/authHeader/wakeBackend', () => {
     await login('vivo', 'clave123456');
 
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
-    expect(() => touchActivity()).not.toThrow();
+    expect(() => touchActivity('combat_campaign')).not.toThrow();
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/auth/activity'),
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer heartbeat-token' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer heartbeat-token', 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ activity: 'combat_campaign' }),
       }),
     );
 

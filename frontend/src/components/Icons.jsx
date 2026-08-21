@@ -109,3 +109,22 @@ export function IconSword(props) {
     </svg>
   );
 }
+
+export function IconHistory(props) {
+  return (
+    <svg {...common} {...props}>
+      <path d="M4 5v5h5" />
+      <path d="M5.5 9A8 8 0 1 1 4 14" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+export function IconShield(props) {
+  return (
+    <svg {...common} {...props}>
+      <path d="M12 3l7 3v5c0 4.8-2.8 8.2-7 10-4.2-1.8-7-5.2-7-10V6l7-3z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}

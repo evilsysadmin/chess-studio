@@ -191,10 +191,15 @@ export async function fetchLiveStatus() {
   }
 }
 
-export function touchActivity() {
+export function touchActivity(activity = null) {
   if (!getToken()) return;
-  fetch(`${BASE_URL}/auth/activity`, {
+  const options = {
     method: 'POST',
     headers: withRequestId({ ...authHeader() }),
-  }).catch(() => {});
+  };
+  if (activity) {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify({ activity });
+  }
+  fetch(`${BASE_URL}/auth/activity`, options).catch(() => {});
 }

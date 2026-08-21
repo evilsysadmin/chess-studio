@@ -5964,3 +5964,76 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   border-top: 1px dashed var(--ink-3);
 }
 .glossary-inline-hint { margin: 0.3rem 0 0; }
+
+/* v16.6bk · orden jerárquico, rename y atajos de navegación */
+.army-roster-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--parchment-dim);
+}
+.army-roster-toolbar > span { margin-right: 0.2rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.army-roster-toolbar button {
+  padding: 0.28rem 0.52rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 999px;
+  background: var(--ink-2);
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+}
+.army-roster-toolbar button.active {
+  color: var(--brass);
+  border-color: var(--brass-dim);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brass) 35%, transparent);
+}
+.army-rename-form {
+  display: grid;
+  gap: 0.32rem;
+  margin: 0.15rem 0 0.8rem;
+  padding: 0.65rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.018);
+}
+.army-rename-form > label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass-dim);
+}
+.army-rename-form > div { display: flex; gap: 0.45rem; }
+.army-rename-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.58rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--parchment);
+}
+.army-rename-form small { color: var(--parchment-dim); line-height: 1.35; }
+.army-rename-form .error-text { color: var(--danger); }
+.admin-current-activity { color: var(--brass) !important; opacity: 0.9 !important; }
+.admin-feature-card { border-left-color: var(--danger); }
+.admin-feature-card .insights-feature-icon { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--ink-3)); }
+.admin-menu-group { margin-top: -0.4rem; }
+
+@media (hover: hover) and (pointer: fine) {
+  .back-link::after {
+    content: ' · clic derecho';
+    margin-left: 0.28rem;
+    color: var(--parchment-dim);
+    font-size: 0.65rem;
+    opacity: 0.72;
+  }
+}
+@media (max-width: 520px) {
+  .army-roster-toolbar { justify-content: flex-start; flex-wrap: wrap; }
+  .army-rename-form > div { flex-direction: column; }
+}

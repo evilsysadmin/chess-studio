@@ -31,6 +31,7 @@ import { clearClockSnapshot, loadClockSnapshot } from './clockPersistence.js';
 import { checkAchievements } from './achievements.js';
 import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
 import { isLoggedIn, fetchMe, logout, touchActivity, watchSessionIdentity } from './auth.js';
+import { activityForView } from './presenceActivity.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import AdminScreen from './components/AdminScreen.jsx';
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
@@ -216,7 +217,11 @@ function AppInner({ isAdminUser }) {
   // Las vistas efímeras (partida/replay) no pisan el padre seguro guardado.
   useEffect(() => {
     rememberSessionView(view);
-  }, [view]);
+    touchActivity(activityForView(view, {
+      learningMode,
+      puzzleSource: puzzleLaunch?.source,
+    }));
+  }, [view, learningMode, puzzleLaunch?.source]);
 
   // Cualquier helper de progreso emite este evento al cambiar la caché.
   // Persistimos con debounce para no hacer un PUT por cada punto de XP, y
