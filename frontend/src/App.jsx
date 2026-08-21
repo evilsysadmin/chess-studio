@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Menu from './components/Menu.jsx';
 import GameScreen from './components/GameScreen.jsx';
 import Tutorial from './components/Tutorial.jsx';
@@ -42,6 +42,7 @@ import { shareRecordFromHash } from './shareResult.js';
 import LabScreen from './components/LabScreen.jsx';
 import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
+import { loadSessionView, loadSessionViewHistory, rememberSessionView, rememberSessionViewHistory } from './viewState.js';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
 // objeto de partida: ese objeto se reemplaza por completo con cada respuesta
@@ -51,7 +52,38 @@ const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
-  const [view, setView] = useState('menu');
+  const [view, setViewRaw] = useState(() => loadSessionView({ isAdminUser }));
+  const currentViewRef = useRef(view);
+  const viewHistoryRef = useRef(loadSessionViewHistory({ isAdminUser }));
+  currentViewRef.current = view;
+
+  function navigateTo(nextView) {
+    const current = currentViewRef.current;
+    if (!nextView || nextView === current) return;
+    viewHistoryRef.current = [...viewHistoryRef.current, current].slice(-40);
+    rememberSessionViewHistory(viewHistoryRef.current);
+    currentViewRef.current = nextView;
+    setViewRaw(nextView);
+  }
+
+  function goBack() {
+    const history = [...viewHistoryRef.current];
+    const current = currentViewRef.current;
+    let previous = history.pop();
+    while (previous === current && history.length) previous = history.pop();
+    previous = previous && previous !== current ? previous : 'menu';
+    viewHistoryRef.current = history;
+    rememberSessionViewHistory(history);
+    currentViewRef.current = previous;
+    setViewRaw(previous);
+  }
+
+  function resetNavigation() {
+    viewHistoryRef.current = [];
+    rememberSessionViewHistory([]);
+    currentViewRef.current = 'menu';
+    setViewRaw('menu');
+  }
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -78,10 +110,10 @@ function AppInner({ isAdminUser }) {
     setPinnedReport(moveReport);
     if (kind === 'combat') {
       setCombatReplayRecord(record);
-      setView('combatReplay');
+      navigateTo('combatReplay');
     } else {
       setReplayRecord(record);
-      setView('replay');
+      navigateTo('replay');
     }
   }
 
@@ -113,10 +145,10 @@ function AppInner({ isAdminUser }) {
     setPinnedReport(null);
     if (record.log) {
       setCombatReplayRecord(record);
-      setView('combatReplay');
+      navigateTo('combatReplay');
     } else {
       setReplayRecord(record);
-      setView('replay');
+      navigateTo('replay');
     }
   }
 
@@ -159,7 +191,7 @@ function AppInner({ isAdminUser }) {
     // Antes del impacto: el botón de Cámara del crimen reproduce la jugada.
     setReplayInitialStep(Math.max(0, moveReport.index));
     setReplayCrimeMode(true);
-    setView('replay');
+    navigateTo('replay');
   }
 
   // Estos dos viven en localStorage manejados por otras pantallas (el
@@ -177,6 +209,12 @@ function AppInner({ isAdminUser }) {
   const [gameContext, setGameContext] = useState({});
   const [replayMovieMode, setReplayMovieMode] = useState(false);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
+
+  // Conserva la última pantalla reconstruible durante esta pestaña/sesión.
+  // Las vistas efímeras (partida/replay) no pisan el padre seguro guardado.
+  useEffect(() => {
+    rememberSessionView(view);
+  }, [view]);
 
   // Cualquier helper de progreso emite este evento al cambiar la caché.
   // Persistimos con debounce para no hacer un PUT por cada punto de XP, y
@@ -261,7 +299,7 @@ function AppInner({ isAdminUser }) {
 
       setGame(created);
       setHasSavedGame(true);
-      setView('game');
+      navigateTo('game');
     } catch (e) {
       setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
     } finally {
@@ -293,7 +331,7 @@ function AppInner({ isAdminUser }) {
         // restantes: preferimos quitar el reloj a inventarnos tiempo.
         setActiveTimeControl(null);
       }
-      setView('game');
+      navigateTo('game');
     } catch (e) {
       setError('No se encontró esa partida en el servidor (puede haberse reiniciado).');
       localStorage.removeItem(STORAGE_KEY);
@@ -318,7 +356,7 @@ function AppInner({ isAdminUser }) {
     setGameContext({});
     clearActiveSeries();
     setActiveSeries(null);
-    setView('menu');
+    goBack();
   }
 
   // Las partidas normales (menú "Nueva partida") también cuentan para el
@@ -422,7 +460,7 @@ function AppInner({ isAdminUser }) {
       setActiveTimeControl(timeControlById(updatedSeries.timeControlId));
       setGame(created);
       setHasSavedGame(true);
-      setView('game');
+      navigateTo('game');
     } catch (e) {
       setError(e?.requestId ? e.message : 'No se pudo crear la siguiente partida de la serie.');
     } finally {
@@ -471,7 +509,7 @@ function AppInner({ isAdminUser }) {
       setActiveSeries(null);
       setGame(created);
       setHasSavedGame(true);
-      setView('game');
+      navigateTo('game');
     } catch (e) {
       setError(e?.requestId ? e.message : 'No se pudo preparar la revancha.');
     } finally { setLoading(false); }
@@ -492,7 +530,7 @@ function AppInner({ isAdminUser }) {
       setActiveTimeControl(null);
       setGame(created);
       setHasSavedGame(true);
-      setView('game');
+      navigateTo('game');
     } catch (e) {
       setError(e?.requestId ? e.message : 'No se pudo arrancar la posición del laboratorio.');
     } finally { setLoading(false); }
@@ -504,12 +542,12 @@ function AppInner({ isAdminUser }) {
     setPinnedReport(null);
     setReplayRecord(record);
     setReplayMovieMode(true);
-    setView('replay');
+    navigateTo('replay');
   }
 
   function openPuzzleMode(source = 'curated', rush = false) {
     setPuzzleLaunch({ source, rush });
-    setView('puzzle');
+    navigateTo('puzzle');
   }
 
   async function launchRun(run) {
@@ -529,7 +567,7 @@ function AppInner({ isAdminUser }) {
       setActiveTimeControl(timeControlById('5+0'));
       setGame(created);
       setHasSavedGame(true);
-      setView('game');
+      navigateTo('game');
     } catch (e) {
       setError(e?.requestId ? e.message : 'No se pudo iniciar el desafío.');
     } finally { setLoading(false); }
@@ -554,7 +592,7 @@ function AppInner({ isAdminUser }) {
       const cpuDifficulty = difficultyForLevel(level);
       const created = await api.createGame(cpuDifficulty, color);
       setTournamentGame(created);
-      setView('tournamentGame');
+      navigateTo('tournamentGame');
     } catch (e) {
       setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
     } finally {
@@ -647,7 +685,7 @@ function AppInner({ isAdminUser }) {
 
   function handleExitTournamentGame() {
     setTournamentGame(null);
-    setView('tournament');
+    goBack();
   }
 
   function handleResetTournament() {
@@ -660,7 +698,7 @@ function AppInner({ isAdminUser }) {
   return (
     <>
       {!isBoardGameView && <GlobalMusicDock />}
-      <ErrorBoundary onReset={() => setView('menu')}>
+      <ErrorBoundary onReset={resetNavigation}>
       <div className="app-shell">
         <div className="masthead">
           <div className="masthead-top-row">
@@ -672,7 +710,7 @@ function AppInner({ isAdminUser }) {
             tournament={tournament}
             combatXp={combatXp}
             rating={rating}
-            onTournamentClick={() => setView('tournament')}
+            onTournamentClick={() => navigateTo('tournament')}
             onRatingClick={() => setShowRatingDetail(true)}
           />
         </div>
@@ -685,19 +723,19 @@ function AppInner({ isAdminUser }) {
           <Menu
             onNewGame={handleNewGame}
             onContinue={handleContinue}
-            onTournament={() => setView('tournament')}
-            onTutorial={() => setView('tutorial')}
-            onOpenings={() => setView('openings')}
+            onTournament={() => navigateTo('tournament')}
+            onTutorial={() => navigateTo('tutorial')}
+            onOpenings={() => navigateTo('openings')}
             onPuzzle={() => openPuzzleMode('curated', false)}
-            onSpectator={() => setView('spectator')}
-            onCombat={() => setView('combat')}
-            onCombatRoguelike={() => setView('roguelike')}
+            onSpectator={() => navigateTo('spectator')}
+            onCombat={() => navigateTo('combat')}
+            onCombatRoguelike={() => navigateTo('roguelike')}
             isAdminUser={isAdminUser}
-            onAdmin={() => setView('admin')}
-            onHistory={() => setView('history')}
-            onInsights={() => setView('insights')}
-            onLab={() => setView('lab')}
-            onBoard3D={() => setView('board3d')}
+            onAdmin={() => navigateTo('admin')}
+            onHistory={() => navigateTo('history')}
+            onInsights={() => navigateTo('insights')}
+            onLab={() => navigateTo('lab')}
+            onBoard3D={() => navigateTo('board3d')}
             hasSavedGame={hasSavedGame}
             loading={loading}
             error={error}
@@ -730,52 +768,52 @@ function AppInner({ isAdminUser }) {
           />
         )}
 
-        {view === 'tutorial' && <Tutorial onExit={() => setView('menu')} />}
-        {view === 'openings' && <OpeningsScreen onExit={() => setView('menu')} />}
+        {view === 'tutorial' && <Tutorial onExit={goBack} />}
+        {view === 'openings' && <OpeningsScreen onExit={goBack} />}
 
         {view === 'puzzle' && (
-          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} onExit={() => setView('menu')} points={tournament.points} onSpendPoints={handleSpendPoints} />
+          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} onExit={goBack} points={tournament.points} onSpendPoints={handleSpendPoints} />
         )}
 
-        {view === 'spectator' && <SpectatorScreen onExit={() => setView('menu')} />}
+        {view === 'spectator' && <SpectatorScreen onExit={goBack} />}
 
         {view === 'lab' && (
-          <LabScreen onExit={() => setView('menu')} onStart={(fen, color, difficulty, meta) => handlePlayFromHere(fen, color, difficulty, meta)} />
+          <LabScreen onExit={goBack} onStart={(fen, color, difficulty, meta) => handlePlayFromHere(fen, color, difficulty, meta)} />
         )}
 
         {view === 'board3d' && (
           <React.Suspense fallback={<p className="hint-text" style={{ textAlign: 'center' }}>Cargando el visor 3D…</p>}>
-            <Board3DExperiment onExit={() => setView('menu')} />
+            <Board3DExperiment onExit={goBack} />
           </React.Suspense>
         )}
 
         {view === 'combat' && (
           <CombatScreen
-            onExit={() => setView('menu')}
+            onExit={goBack}
             onError={setError}
-            onHistory={() => setView('history')}
+            onHistory={() => navigateTo('history')}
             onViewBattle={openHistoryRecord}
           />
         )}
 
         {view === 'roguelike' && (
           <RoguelikeScreen
-            onExit={() => setView('menu')}
+            onExit={goBack}
             onError={setError}
-            onHistory={() => setView('history')}
+            onHistory={() => navigateTo('history')}
             onViewBattle={openHistoryRecord}
           />
         )}
 
-        {view === 'admin' && <AdminScreen onExit={() => setView('menu')} />}
+        {view === 'admin' && <AdminScreen onExit={goBack} />}
 
         {view === 'tournament' && (
           <TournamentScreen
             tournament={tournament}
             onPlay={handlePlayTournament}
-            onExit={() => setView('menu')}
+            onExit={goBack}
             onReset={handleResetTournament}
-            onHistory={() => setView('history')}
+            onHistory={() => navigateTo('history')}
             loading={loading}
             lastResult={lastResult}
           />
@@ -787,7 +825,7 @@ function AppInner({ isAdminUser }) {
             gameHistory={historyList}
             combatHistory={combatHistoryList}
             ratingHistory={loadRatingHistory()}
-            onExit={() => setView('menu')}
+            onExit={goBack}
             onJumpToMove={jumpToMove}
             onOpenRecord={openHistoryRecord}
             onMovie={openMovie}
@@ -803,7 +841,7 @@ function AppInner({ isAdminUser }) {
           <HistoryScreen
             records={allHistory}
             onOpen={openHistoryRecord}
-            onExit={() => setView('menu')}
+            onExit={goBack}
             onClear={clearAllHistory}
             onShare={(record) => setShareRecord(record)}
             onMovie={openMovie}
@@ -813,11 +851,11 @@ function AppInner({ isAdminUser }) {
         )}
 
         {view === 'replay' && replayRecord && (
-          <ReplayScreen record={replayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} crimeMode={replayCrimeMode} movieMode={replayMovieMode} onPlayFromHere={handlePlayFromHere} onExit={() => setView('history')} />
+          <ReplayScreen record={replayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} crimeMode={replayCrimeMode} movieMode={replayMovieMode} onPlayFromHere={handlePlayFromHere} onExit={goBack} />
         )}
 
         {view === 'combatReplay' && combatReplayRecord && (
-          <CombatReplayScreen record={combatReplayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} onExit={() => setView('history')} />
+          <CombatReplayScreen record={combatReplayRecord} initialStep={replayInitialStep} pinnedReport={pinnedReport} onExit={goBack} />
         )}
 
         {view === 'tournamentGame' && tournamentGame && (

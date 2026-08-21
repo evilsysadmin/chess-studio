@@ -6,6 +6,7 @@
 import { clearLocalUserState } from './profileKeys.js';
 import { withRequestId, requestErrorMessage } from './requestId.js';
 import { resetAmbientThemeForSession, clearAmbientThemeSession } from './sound.js';
+import { clearSessionView } from './viewState.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 export const USERNAME_KEY = 'chess-study-auth-username';
@@ -76,10 +77,12 @@ function saveSession(token, username) {
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
   // puede cambiar el tema después y se conservará hasta logout/nuevo login.
   resetAmbientThemeForSession();
+  clearSessionView();
 }
 
 export function logout() {
   clearAmbientThemeSession();
+  clearSessionView();
   clearLocalUserState();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USERNAME_KEY);
