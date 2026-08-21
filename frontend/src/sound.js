@@ -665,7 +665,7 @@ Object.assign(AMBIENT_THEMES, {
     ],
   },
   gambit: {
-    id: 'gambit', engine: 'structured', label: 'Gambito de marfil',
+    id: 'gambit', engine: 'structured', label: 'Gambito del rey',
     description: 'Clave seco y contrapunto rápido: barroco sin peluca prestada.',
     stepMs: 105, stepsPerSection: 32, leadInstrument: 'harpsichord', chordInstrument: 'harpsichord', bassInstrument: 'pizz',
     sections: [
@@ -1652,6 +1652,67 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
+
+// V16.6ac — segundo bloque de estilos: deliberadamente NO mediterráneo.
+// Aquí no cambiamos sólo el timbre: cambian métrica implícita, densidad,
+// función del bajo y presencia/ausencia de percusión para ampliar el catálogo.
+Object.assign(AMBIENT_THEMES, {
+  zugzwangWaltz: {
+    id: 'zugzwangWaltz', engine: 'structured', label: 'Vals del zugzwang',
+    description: 'Piano de salón en tres, cello y silencios incómodos: elegante hasta que toca mover.',
+    stepMs: 178, stepsPerSection: 24, leadInstrument: 'felt', chordInstrument: 'felt', bassInstrument: 'cello',
+    sections: [
+      { lead: {0:69,4:72,8:76,12:74,16:71,20:67}, chords: {0:[57,60,64],8:[55,59,62],16:[53,57,60]}, bass: {0:45,8:43,16:41}, drums: {0:'W',8:'W',16:'W'} },
+      { lead: {0:72,4:76,8:79,12:77,16:74,20:69}, chords: {0:[60,64,67],8:[57,62,65],16:[55,59,64]}, bass: {0:48,8:45,16:43}, drums: {0:'W',8:'W',16:'W'} },
+    ],
+  },
+  bishopBlues: {
+    id: 'bishopBlues', engine: 'structured', label: 'Blues del alfil',
+    description: 'Rhodes, contrabajo, trompeta apagada y escobillas; doce compases con diagonales largas.',
+    stepMs: 132, stepsPerSection: 48, leadInstrument: 'mutedHorn', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    sections: [
+      { lead: {2:67,8:70,14:72,20:70,26:67,32:65,38:63,44:67}, chords: {0:[48,55,58,62],16:[53,57,60,64],32:[50,57,60,65]}, bass: {0:36,4:43,8:46,12:47,16:41,20:48,24:50,28:52,32:38,36:45,40:48,44:50}, drums: {0:'B',6:'H',12:'B',18:'H',24:'B',30:'H',36:'B',42:'H'} },
+      { lead: {4:70,10:72,16:74,22:72,28:69,34:67,40:65,46:63}, chords: {0:[53,57,60,64],16:[48,55,58,62],32:[55,59,62,65]}, bass: {0:41,4:48,8:50,12:52,16:36,20:43,24:46,28:47,32:43,36:50,40:52,44:53}, drums: {0:'B',6:'H',12:'B',18:'H',24:'B',30:'H',36:'B',42:'H'} },
+    ],
+  },
+  winterLibrary: {
+    id: 'winterLibrary', engine: 'structured', label: 'Biblioteca bajo nieve',
+    description: 'Fieltro, cello y una campana muy lejana. Sin batería; casi todo lo importante ocurre entre las notas.',
+    stepMs: 285, stepsPerSection: 32, leadInstrument: 'felt', chordInstrument: 'felt', bassInstrument: 'cello',
+    sections: [
+      { lead: {4:72,14:67,25:69}, chords: {0:[48,55,60],16:[45,52,57]}, bass: {0:36,16:33} },
+      { lead: {7:74,18:69,28:65}, chords: {0:[50,57,62],16:[46,53,58]}, bass: {0:38,16:34} },
+    ],
+  },
+  analogBunker: {
+    id: 'analogBunker', engine: 'structured', label: 'Búnker analógico',
+    description: 'Secuenciador seco, bajo monofónico y golpes mecánicos: luces verdes, hormigón y cálculo frío.',
+    stepMs: 96, stepsPerSection: 40, leadInstrument: 'pulse', chordInstrument: 'synth', bassInstrument: 'synthbass',
+    sections: [
+      { lead: {0:52,5:55,10:59,15:55,20:51,25:58,30:55,35:52}, chords: {}, bass: {0:28,4:28,8:31,12:28,16:27,20:27,24:34,28:31,32:28,36:27}, drums: {0:'K',5:'H',10:'S',15:'H',20:'K',25:'H',30:'S',35:'H'} },
+      { lead: {0:55,4:58,9:63,14:58,20:54,24:61,29:58,34:55}, chords: {}, bass: {0:31,5:31,10:34,15:29,20:30,25:30,30:37,35:34}, drums: {0:'K',4:'H',9:'S',14:'H',20:'K',24:'H',29:'S',34:'H'} },
+    ],
+  },
+  queenRequiem: {
+    id: 'queenRequiem', engine: 'structured', label: 'Réquiem para una dama',
+    description: 'Órgano grave y coro suspendido. Sin percusión; dedicado a todas las damas entregadas por un peón.',
+    stepMs: 315, stepsPerSection: 32, leadInstrument: 'choir', chordInstrument: 'organ', bassInstrument: 'organbass',
+    sections: [
+      { lead: {10:67,26:65}, chords: {0:[45,52,57,60],16:[43,50,55,59]}, bass: {0:33,16:31} },
+      { lead: {8:70,24:67}, chords: {0:[41,48,53,57],16:[38,45,50,55]}, bass: {0:29,16:26} },
+    ],
+  },
+  nightFreight: {
+    id: 'nightFreight', engine: 'structured', label: 'Mercancías 04:12',
+    description: 'Pulso ferroviario, metal lejano y bajo obstinado; motorik nocturno sin postal mediterránea.',
+    stepMs: 116, stepsPerSection: 48, leadInstrument: 'metallic', chordInstrument: 'pad', bassInstrument: 'synthbass',
+    sections: [
+      { lead: {7:64,19:67,31:63,43:70}, chords: {0:[52,59,64],24:[51,58,63]}, bass: {0:40,6:40,12:43,18:40,24:39,30:39,36:46,42:43}, drums: {0:'K',6:'H',12:'W',18:'H',24:'K',30:'H',36:'M',42:'H'} },
+      { lead: {5:67,17:70,29:66,41:72}, chords: {0:[55,62,67],24:[53,60,65]}, bass: {0:43,6:43,12:46,18:41,24:41,30:41,36:48,42:45}, drums: {0:'K',6:'H',12:'W',18:'H',24:'K',30:'H',36:'M',42:'H'} },
+    ],
+  },
+});
+
 export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description }) => ({
   id, label, description,
 }));
@@ -1782,8 +1843,60 @@ const STRUCTURED_FEELS = Object.freeze({
     bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.5,
     percussion: { period: 16, kit: 'andalus-hand', punch: 1.16, pattern: { 0: 'K', 4: 'H', 8: 'S', 12: 'H' } },
   }),
+
+  zugzwangWaltz: Object.freeze({
+    family: 'viennese-waltz-chamber', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 5, 0, -2, 0], swing: 0, warmth: 0.96, releaseScale: 1.2, space: 0.16, delayMs: 185,
+    chordInstrument: 'felt', bassInstrument: 'cello', chordHoldSteps: 8, bassHoldSteps: 7,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: false },
+    mix: { lead: 0.72, counter: 0, bass: 0.58, chord: 0.52 },
+    percussion: { period: 24, kit: 'legacy', punch: 0.42, pattern: {0:'W',8:'W',16:'W'} },
+  }),
+  bishopBlues: Object.freeze({
+    family: 'late-night-blues-12-8', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 5, 0, 7, 5], swing: 0.24, warmth: 0.82, releaseScale: 1.18, space: 0.11, delayMs: 145,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass', chordHoldSteps: 12, bassHoldSteps: 3,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: false },
+    mix: { lead: 0.67, counter: 0, bass: 1.05, chord: 0.55 },
+    percussion: { period: 12, kit: 'brush-jazz', punch: 0.92, pattern: {0:'B',6:'H'} },
+  }),
+  winterLibrary: Object.freeze({
+    family: 'snow-library-minimal', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, 0], swing: 0, warmth: 0.72, releaseScale: 1.72, space: 0.3, delayMs: 360,
+    chordInstrument: 'felt', bassInstrument: 'cello', chordHoldSteps: 18, bassHoldSteps: 16, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: true },
+    mix: { lead: 0.42, counter: 0, bass: 0.42, chord: 0.38 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'bell', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 9, volume: 0.22, motif: {15:79,47:76} },
+  }),
+  analogBunker: Object.freeze({
+    family: 'cold-analog-sequencer', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 1, 0, -1, 0], swing: 0, warmth: 0.58, releaseScale: 0.72, space: 0.025, delayMs: 70,
+    bassInstrument: 'synthbass', bassHoldSteps: 2,
+    layers: { lead: true, counter: false, chords: false, bass: true, drums: true, signature: false },
+    mix: { lead: 0.72, counter: 0, bass: 1.2, chord: 0 },
+    percussion: { period: 20, kit: 'legacy', punch: 1.2, pattern: {0:'K',5:'H',10:'S',15:'H'} },
+  }),
+  queenRequiem: Object.freeze({
+    family: 'organ-choir-requiem', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, -5, 0], swing: 0, warmth: 0.66, releaseScale: 1.85, space: 0.32, delayMs: 410,
+    chordInstrument: 'organ', bassInstrument: 'organbass', chordHoldSteps: 24, bassHoldSteps: 18, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: false },
+    mix: { lead: 0.42, counter: 0, bass: 0.52, chord: 0.56 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+  }),
+  nightFreight: Object.freeze({
+    family: 'motorik-night-freight', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -1, 0, 2, 0], swing: 0, warmth: 0.68, releaseScale: 0.82, space: 0.06, delayMs: 105,
+    bassInstrument: 'synthbass', chordInstrument: 'pad', chordHoldSteps: 24, bassHoldSteps: 3,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: false },
+    mix: { lead: 0.44, counter: 0, bass: 1.08, chord: 0.32 },
+    percussion: { period: 24, kit: 'legacy', punch: 1.05, pattern: {0:'K',6:'H',12:'W',18:'H'} },
+  }),
 });
 const STRUCTURED_FEEL_BY_THEME = Object.freeze({
+  zugzwangWaltz: 'zugzwangWaltz', bishopBlues: 'bishopBlues', winterLibrary: 'winterLibrary',
+  analogBunker: 'analogBunker', queenRequiem: 'queenRequiem', nightFreight: 'nightFreight',
   alexandria241: 'alexandriaLounge',
   cairo0047: 'cairoAfterHours', cairoQuietHours: 'cairoAfterHours', cairoRedLantern: 'cairoAfterHours', nileBalcony0152: 'cairoAfterHours',
   beirut0113: 'beirutSixEight', beirutRooftop0412: 'beirutRooftop', beirutNightTaxi: 'beirutRooftop',

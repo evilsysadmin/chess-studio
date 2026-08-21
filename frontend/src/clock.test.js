@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatClock, timeControlById, TIME_CONTROLS } from './clock.js';
+import { flagOutcome, flagPgnResult, formatClock, timeControlById, TIME_CONTROLS } from './clock.js';
 
 describe('formatClock', () => {
   it('formatea segundos como m:ss', () => {
@@ -24,5 +24,20 @@ describe('timeControlById', () => {
   it('cae a "sin reloj" si el id no existe', () => {
     expect(timeControlById('inventado')).toBe(TIME_CONTROLS[0]);
     expect(timeControlById('inventado').initial).toBeNull();
+  });
+});
+
+
+describe('bandera y material de mate', () => {
+  it('da victoria/derrota normal si el rival conserva material de mate', () => {
+    expect(flagOutcome('w', 'w', { w: false, b: false })).toBe('loss');
+    expect(flagOutcome('b', 'w', { w: false, b: false })).toBe('win');
+    expect(flagPgnResult('w', { w: false, b: false })).toBe('0-1');
+  });
+
+  it('declara tablas si el bando con tiempo no puede dar mate', () => {
+    expect(flagOutcome('w', 'w', { w: false, b: true })).toBe('draw');
+    expect(flagOutcome('b', 'w', { w: true, b: false })).toBe('draw');
+    expect(flagPgnResult('w', { w: false, b: true })).toBe('1/2-1/2');
   });
 });

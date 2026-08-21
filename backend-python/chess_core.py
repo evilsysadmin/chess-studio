@@ -118,6 +118,13 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
         "humanColor": entry["humanColor"],
         "difficulty": entry["difficulty"],
         "status": status,
+        # Para adjudicar correctamente una caída de bandera en el cliente:
+        # si el bando que conservaría tiempo no puede dar mate por ninguna
+        # secuencia legal, la partida es tablas en vez de victoria por tiempo.
+        "insufficientMatingMaterial": {
+            "w": board.has_insufficient_material(chess.WHITE),
+            "b": board.has_insufficient_material(chess.BLACK),
+        },
         # La aplicación adopta reclamaciones de 3x/50 movimientos de forma
         # automática; el flag debe usar exactamente la misma política.
         "isGameOver": board.is_game_over(claim_draw=True),

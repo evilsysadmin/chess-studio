@@ -20,4 +20,11 @@ describe('memoria contextual CPU', () => {
     const text = resultMemoryComment('win', { record: {} }, { series: { winner: 'human', humanWins: 2, cpuWins: 0 } });
     expect(text).toContain('2-0');
   });
+
+  it('recuerda reincidencias tácticas reales sin inventarlas', () => {
+    const rivalry = { record: { games: 5, currentStreak: 0, recentGames: [], incidents: { 'human:MISSED_MATE': 3, 'cpu:KNIGHT_FORK': 2 } } };
+    const text = startMemoryComment(rivalry, { difficulty: 64 });
+    expect(text).toContain('3 mates ignorados');
+  });
+
 });

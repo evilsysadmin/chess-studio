@@ -5,6 +5,7 @@ rompen, significan que el tablero deja de jugar ajedrez correctamente.
 """
 
 import chess
+import random
 
 from chess_core import board_sans, load_board, resolve_move, serialize_game
 
@@ -96,3 +97,52 @@ def test_checkmate_status_wins_over_generic_game_over():
     payload = serialize_game("mate", _entry(moves=["f3", "e5", "g4", "Qh4#"]), board)
     assert payload["status"] == "checkmate"
     assert payload["isGameOver"] is True
+
+
+def test_serialization_exposes_mating_material_for_clock_flags():
+    lone_bishop = chess.Board("8/8/8/8/8/2k5/4K3/5B2 w - - 0 1")
+    payload = serialize_game("clock-bishop", _entry(initial_fen=lone_bishop.fen()), lone_bishop)
+    assert payload["insufficientMatingMaterial"] == {"w": True, "b": True}
+
+    rook = chess.Board("8/8/8/8/8/2k5/4K3/5R2 w - - 0 1")
+    payload = serialize_game("clock-rook", _entry(initial_fen=rook.fen()), rook)
+    assert payload["insufficientMatingMaterial"] == {"w": False, "b": True}
+
+
+def test_property_random_legal_games_preserve_core_invariants():
+    """Mini fuzz determinista: muchas partidas legales, mismo resultado al reconstruir.
+
+    No sustituye tests dirigidos de enroque/promoción/en-passant; busca combinaciones
+    no previstas que rompan resolve_move, SAN, serialización o el roundtrip.
+    """
+    for seed in range(24):
+        rng = random.Random(seed)
+        board = chess.Board()
+        sans = []
+        for _ply in range(90):
+            assert board.is_valid()
+            assert board.king(chess.WHITE) is not None
+            assert board.king(chess.BLACK) is not None
+            if board.is_game_over(claim_draw=True):
+                break
+            legal = list(board.legal_moves)
+            assert legal
+            move = rng.choice(legal)
+            promotion = chess.piece_symbol(move.promotion) if move.promotion else None
+            resolved = resolve_move(
+                board,
+                chess.square_name(move.from_square),
+                chess.square_name(move.to_square),
+                promotion,
+            )
+            assert resolved == move
+            sans.append(board.san(move))
+            board.push(move)
+
+        restored = load_board(_entry(moves=sans))
+        assert restored.fen() == board.fen()
+        assert board_sans(restored) == sans
+        payload = serialize_game(f"fuzz-{seed}", _entry(moves=sans), restored)
+        assert payload["fen"] == board.fen()
+        assert payload["turn"] in {"w", "b"}
+        assert payload["status"] in {"playing", "check", "checkmate", "stalemate", "draw", "repetition"}

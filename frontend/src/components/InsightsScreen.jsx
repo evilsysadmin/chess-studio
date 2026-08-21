@@ -116,14 +116,15 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   // Se recalcula si cambian los insights o si aparece un resultado nuevo
   // de "Buscar mi peor jugada de siempre" — sin volver a llamar al
   // backend, todo esto ya está calculado.
+  const personalPuzzleCount = useMemo(() => loadPersonalPuzzles().length, [gameHistory.length]);
   const roastExtras = useMemo(() => ({
     achievementsUnlocked: loadUnlocked().size,
     achievementsTotal: ACHIEVEMENTS.length,
     puzzlesSolved: loadPuzzlesSolved(),
-    personalPuzzles: loadPersonalPuzzles().length,
+    personalPuzzles: personalPuzzleCount,
     rivalryRecord: rivalry.record,
     incidents: rivalry.incidents,
-  }), [rivalry]);
+  }), [rivalry, personalPuzzleCount]);
   const roastLines = useMemo(() => generateRoast(insights, searchResult, roastExtras), [insights, searchResult, roastExtras]);
   const coaching = useMemo(() => generateCoaching(insights, rivalry, roastExtras), [insights, rivalry, roastExtras]);
 
@@ -265,6 +266,21 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
           <p className="hint-text">No apareció ninguna jugada con pérdida evaluable en el historial analizado.</p>
         )}
         <p className="hint-text worst-move-spotlight-note">Las partidas ya analizadas salen del caché; al actualizar solo se trabaja de verdad sobre lo nuevo.</p>
+      </div>
+
+      <div className="menu-section personal-training-spotlight">
+        <div>
+          <span className="section-label">Entrenamiento autobiográfico</span>
+          <h2>🧠 Entrena tus cagadas</h2>
+          <p className="hint-text">Posiciones reales extraídas de errores que ya cometiste. Mucho más educativo que fingir que nunca pasó.</p>
+        </div>
+        <div className="personal-training-spotlight-actions">
+          <strong>{personalPuzzleCount} posiciones</strong>
+          <button className="primary-btn" disabled={personalPuzzleCount === 0} onClick={() => onOpenPuzzles('personal', false)}>
+            {personalPuzzleCount ? 'Entrenar ahora' : 'Aún sin crímenes'}
+          </button>
+          {personalPuzzleCount > 2 && <button className="secondary-btn" onClick={() => onOpenPuzzles('personal', true)}>Puzzle Rush personal</button>}
+        </div>
       </div>
 
       <div className="menu-section">

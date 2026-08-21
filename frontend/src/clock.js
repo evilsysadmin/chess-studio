@@ -26,3 +26,21 @@ export function formatClock(seconds) {
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   return `${m}:${String(sec).padStart(2, '0')}`;
 }
+
+
+// Resultado reglamentario cuando cae una bandera. El servidor adjunta si
+// cada color tiene material insuficiente para dar mate en la posición actual.
+// Si el bando que aún conserva tiempo no puede dar mate, es tablas.
+export function flagOutcome(flagColor, humanColor, insufficientMatingMaterial = {}) {
+  if (flagColor !== 'w' && flagColor !== 'b') return null;
+  const survivingColor = flagColor === 'w' ? 'b' : 'w';
+  if (insufficientMatingMaterial?.[survivingColor]) return 'draw';
+  return flagColor === humanColor ? 'loss' : 'win';
+}
+
+export function flagPgnResult(flagColor, insufficientMatingMaterial = {}) {
+  if (flagColor !== 'w' && flagColor !== 'b') return '*';
+  const survivingColor = flagColor === 'w' ? 'b' : 'w';
+  if (insufficientMatingMaterial?.[survivingColor]) return '1/2-1/2';
+  return flagColor === 'w' ? '0-1' : '1-0';
+}

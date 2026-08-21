@@ -120,7 +120,17 @@ frontend-install:
 	cd frontend && npm ci
 
 backend-install:
-	@test -x "$(VENV_PY)" || $(PYTHON) -m venv "$(VENV)"
+	@set -eu; \
+	if [ ! -x "$(VENV_PY)" ] || ! "$(VENV_PY)" -m pip --version >/dev/null 2>&1; then \
+		echo "==> .venv ausente o dañada (python/pip); recreando..."; \
+		rm -rf "$(VENV)"; \
+		$(PYTHON) -m venv "$(VENV)"; \
+	fi; \
+	if ! "$(VENV_PY)" -m pip --version >/dev/null 2>&1; then \
+		echo "==> pip no vino con venv; intentando ensurepip..."; \
+		"$(VENV_PY)" -m ensurepip --upgrade; \
+	fi
+	$(VENV_PY) -m pip install --upgrade pip
 	$(VENV_PY) -m pip install --upgrade -r backend-python/requirements-dev.txt
 	@$(VENV_PY) -c "import jwt; print('PyJWT activo:', jwt.__version__)"
 	@sha256sum backend-python/requirements.txt backend-python/requirements-dev.txt | sha256sum | cut -d' ' -f1 > "$(VENV)/.chess-requirements.sha256"
@@ -136,7 +146,7 @@ ensure-backend-deps:
 	@req_hash="$$(sha256sum backend-python/requirements.txt backend-python/requirements-dev.txt | sha256sum | cut -d' ' -f1)"; \
 	stamp="$(VENV)/.chess-requirements.sha256"; \
 	installed_hash="$$(cat "$$stamp" 2>/dev/null || true)"; \
-	if [ ! -x "$(VENV_PY)" ] || [ "$$installed_hash" != "$$req_hash" ] || ! $(VENV_PY) -c "import pytest, chess, fastapi, httpx, jwt, pip_audit" >/dev/null 2>&1; then \
+	if [ ! -x "$(VENV_PY)" ] || ! "$(VENV_PY)" -m pip --version >/dev/null 2>&1 || [ "$$installed_hash" != "$$req_hash" ] || ! $(VENV_PY) -c "import pytest, chess, fastapi, httpx, jwt, pip_audit" >/dev/null 2>&1; then \
 		echo "==> Entorno backend ausente o requirements cambiados; actualizando .venv..."; \
 		$(MAKE) backend-install; \
 	fi
@@ -148,7 +158,7 @@ gate-core: ensure-backend-deps
 ## Gate rápido de reglas críticas que viven en el cliente.
 ## Usa SIEMPRE el Vitest fijado por package-lock.json; nunca instala npx al vuelo.
 gate-frontend-critical: ensure-frontend-deps
-	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/sound.test.js src/puzzles.test.js
+	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/sound.test.js src/puzzles.test.js
 
 ## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
 gate-critical: gate-core gate-frontend-critical

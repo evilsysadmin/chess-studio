@@ -26,6 +26,7 @@ function stableId(fen, suggested) {
 
 export function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
   if (!moveReport || !Array.isArray(history) || !moveReport.suggested || moveReport.loss < 80) return null;
+  if (moveReport.played && moveReport.suggested === moveReport.played) return null;
   const chess = new Chess();
   try {
     for (let i = 0; i < moveReport.index; i++) chess.move(history[i].san);

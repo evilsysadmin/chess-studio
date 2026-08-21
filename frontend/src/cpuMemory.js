@@ -4,6 +4,20 @@ function recordOf(rivalry) {
   return rivalry?.record || {};
 }
 
+
+function recurringIncidentComment(record) {
+  const incidents = record?.incidents && typeof record.incidents === 'object' ? record.incidents : {};
+  const candidates = [
+    ['human:MISSED_MATE', Number(incidents['human:MISSED_MATE'] || 0), (n) => `El expediente conserva ${n} mates ignorados. Si aparece otro hoy, ya podemos llamarlo especialidad.`],
+    ['human:QUEEN_EN_PRISE_TO_PAWN', Number(incidents['human:QUEEN_EN_PRISE_TO_PAWN'] || 0), (n) => `Tus damas han quedado expuestas a peones ${n} veces. Las piezas mayores han solicitado representación sindical.`],
+    ['human:ALLOWED_MATE', Number(incidents['human:ALLOWED_MATE'] || 0), (n) => `Has permitido mate ${n} veces en posiciones registradas. Conviene revisar las amenazas antes de redactar el testamento.`],
+    ['cpu:KNIGHT_FORK', Number(incidents['cpu:KNIGHT_FORK'] || 0), (n) => `Constan ${n} horquillas de caballo sufridas. Los caballos de esta casa ya te reconocen por el ruido.`],
+    ['cpu:PAWN_FORK', Number(incidents['cpu:PAWN_FORK'] || 0), (n) => `El archivo cuenta ${n} horquillas de peón contra ti. La infantería está adquiriendo demasiada confianza.`],
+  ].filter(([, count]) => count >= 2).sort((a, b) => b[1] - a[1]);
+  if (!candidates.length) return null;
+  return candidates[0][2](candidates[0][1]);
+}
+
 export function startMemoryComment(rivalry, context = {}) {
   const record = recordOf(rivalry);
   const streak = Number(record.currentStreak || 0);
@@ -31,6 +45,13 @@ export function startMemoryComment(rivalry, context = {}) {
   }
   if (streak >= 2) {
     return `Dos victorias seguidas o más. Veo que hoy has venido con intenciones y, sorprendentemente, algunas pruebas.`;
+  }
+
+  // No lo soltamos en cada partida: una de cada cuatro aperturas de sesión,
+  // siempre a partir de datos registrados y sólo si existe reincidencia real.
+  if (Number(record.games || 0) >= 4 && Number(record.games || 0) % 4 === 1) {
+    const incident = recurringIncidentComment(record);
+    if (incident) return incident;
   }
 
   const memories = Array.isArray(record.memories) ? record.memories : [];

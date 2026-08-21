@@ -13,7 +13,7 @@ import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound,
 import { speakCpuComment, stopCpuSpeech } from '../voiceCommentary.js';
 import { formatLongMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
-import { formatClock } from '../clock.js';
+import { flagOutcome, flagPgnResult, formatClock } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
@@ -216,9 +216,9 @@ export default function GameScreen({
   useEffect(() => {
     if (!flagFallen || reportedResultRef.current) return;
     reportedResultRef.current = true;
-    const outcome = flagFallen === humanColor ? 'loss' : 'win';
+    const outcome = flagOutcome(flagFallen, humanColor, game.insufficientMatingMaterial);
     if (outcome === 'win') playSuccessSound();
-    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
+    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: outcome === 'draw' ? 'flag-insufficient-material' : 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
         const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0 });
@@ -569,7 +569,7 @@ export default function GameScreen({
 
   function handleDownloadPGN() {
     const result = flagFallen
-      ? (flagFallen === 'w' ? '0-1' : '1-0')
+      ? flagPgnResult(flagFallen, game.insufficientMatingMaterial)
       : pgnResult(game.status, game.turn, humanColor);
     const white = humanColor === 'w' ? 'Jugador' : `CPU (nivel ${game.difficulty})`;
     const black = humanColor === 'b' ? 'Jugador' : `CPU (nivel ${game.difficulty})`;
@@ -584,15 +584,18 @@ export default function GameScreen({
     ? 'success'
     : '';
 
+  const flagFinalOutcome = flagFallen ? flagOutcome(flagFallen, humanColor, game.insufficientMatingMaterial) : null;
   const finalOutcome = forcedOutcome || (flagFallen
-    ? (flagFallen === humanColor ? 'loss' : 'win')
+    ? flagFinalOutcome
     : game.status === 'checkmate'
       ? (game.turn === humanColor ? 'loss' : 'win')
       : 'draw');
 
   let statusText;
   if (forcedOutcome) statusText = 'Sudden Death · tres vidas agotadas';
-  else if (flagFallen) statusText = `Se acabó el tiempo (${flagFallen === 'w' ? 'blancas' : 'negras'})`;
+  else if (flagFallen) statusText = flagFinalOutcome === 'draw'
+    ? 'Tiempo agotado · tablas por material insuficiente'
+    : `Se acabó el tiempo (${flagFallen === 'w' ? 'blancas' : 'negras'})`;
   else if (busy) statusText = 'La CPU está pensando…';
   else if (turnBanner) statusText = turnBanner;
   else statusText = statusLabel || (game.turn === humanColor ? 'Tu turno' : 'Turno de la CPU');
@@ -700,10 +703,10 @@ export default function GameScreen({
 
       {(game.isGameOver || flagFallen || forcedOutcome) && (
         <div className="endgame-banner">
-          <h2>{forcedOutcome ? 'Sudden Death' : flagFallen ? 'Se acabó el tiempo' : statusLabel}</h2>
+          <h2>{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
           <p>
             {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al ELO.' : flagFallen
-              ? (flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
+              ? (flagFinalOutcome === 'draw' ? 'Cayó una bandera, pero el rival no tenía material suficiente para dar mate.' : flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
               : game.status === 'checkmate'
               ? game.turn === humanColor ? 'Ganó la CPU.' : '¡Ganaste la partida!'
               : 'La partida terminó en tablas.'}

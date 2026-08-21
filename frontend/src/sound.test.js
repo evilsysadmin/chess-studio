@@ -16,9 +16,16 @@ import {
 describe('ambient music catalog', () => {
   beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
-  it('expone cuarenta y dos temas seleccionables', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(42);
+  it('expone cuarenta y ocho temas seleccionables', () => {
+    expect(AMBIENT_THEME_OPTIONS).toHaveLength(48);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Gambito del rey');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Vals del zugzwang');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Blues del alfil');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Biblioteca bajo nieve');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Búnker analógico');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Réquiem para una dama');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Mercancías 04:12');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Final de madrugada');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tango del rey');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Monasterio orbital');
@@ -93,9 +100,20 @@ describe('ambient music catalog', () => {
     expect(damascus.space).toBeGreaterThan(cairo.space);
   });
 
+  it('añade estilos no mediterráneos con siluetas claramente distintas', () => {
+    const ids = ['zugzwangWaltz', 'bishopBlues', 'winterLibrary', 'analogBunker', 'queenRequiem', 'nightFreight'];
+    const profiles = ids.map(getAmbientThemeSoundProfile);
+    expect(new Set(profiles.map((p) => p.family)).size).toBe(6);
+    expect(getAmbientThemeSoundProfile('winterLibrary').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('queenRequiem').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('bishopBlues').swing).toBeGreaterThan(0.2);
+    expect(getAmbientThemeSoundProfile('analogBunker').enabledLayers).not.toContain('chords');
+    expect(getAmbientThemeSoundProfile('nightFreight').percussionPeriod).toBe(24);
+  });
+
   it('los temas estructurados tardan al menos dos minutos en repetir su forma larga', () => {
     const structured = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus');
-    expect(structured.length).toBe(41);
+    expect(structured.length).toBe(47);
     for (const theme of structured) {
       expect(getAmbientThemeVariationDurationMs(theme.id)).toBeGreaterThanOrEqual(120000);
     }

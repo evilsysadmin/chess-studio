@@ -4432,3 +4432,12 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
   .masthead-text { text-align: center; }
 }
+
+
+/* V16.6ae — acceso visible a entrenamiento desde errores reales. */
+.personal-training-spotlight { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.personal-training-spotlight > div:first-child { min-width:0; }
+.personal-training-spotlight h2 { margin:.15rem 0 .35rem; }
+.personal-training-spotlight-actions { display:flex; align-items:center; justify-content:flex-end; gap:.55rem; flex-wrap:wrap; }
+.personal-training-spotlight-actions strong { white-space:nowrap; color:var(--parchment); }
+@media (max-width: 760px) { .personal-training-spotlight { align-items:stretch; flex-direction:column; } .personal-training-spotlight-actions { justify-content:flex-start; } }
