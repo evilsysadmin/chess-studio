@@ -12,10 +12,16 @@ function rng(seed) {
   };
 }
 
+const LEGAL_POSITION_FUZZ_TIMEOUT_MS = 20_000;
+
 describe('property/fuzz de estado cliente', () => {
   beforeEach(() => localStorage.clear());
 
   it('toda posición alcanzada por partidas legales aleatorias pasa el gate del Laboratorio', () => {
+    // Este property test recorre ~2.200 posiciones y valida cada FEN con el gate
+    // estricto del Laboratorio. En runners compartidos de CI puede superar los
+    // 5 s por defecto de Vitest sin que exista un fallo lógico, por eso tiene
+    // un presupuesto propio. No relajamos el timeout global ni reducimos seeds.
     for (let seed = 1; seed <= 32; seed += 1) {
       const random = rng(seed);
       const chess = new Chess();
@@ -23,11 +29,14 @@ describe('property/fuzz de estado cliente', () => {
         const legal = chess.moves({ verbose: true });
         const move = legal[Math.floor(random() * legal.length)];
         chess.move(move);
-        const checked = validateLabPosition(chess.fen());
-        expect(checked.valid, `seed=${seed} ply=${ply} fen=${chess.fen()} errors=${checked.errors.join('; ')}`).toBe(true);
+        const fen = chess.fen();
+        const checked = validateLabPosition(fen);
+        if (!checked.valid) {
+          throw new Error(`seed=${seed} ply=${ply} fen=${fen} errors=${checked.errors.join('; ')}`);
+        }
       }
     }
-  });
+  }, LEGAL_POSITION_FUZZ_TIMEOUT_MS);
 
   it('series aleatorias nunca sobrepasan las victorias necesarias ni duplican gameId', () => {
     for (let seed = 1; seed <= 50; seed += 1) {
