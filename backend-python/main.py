@@ -1457,6 +1457,13 @@ async def public_status(_username: str = Depends(get_current_user)):
     """
     try:
         online_users = await ustore.count_online_users(window_seconds=90)
+        # Privacidad: la presencia pública autenticada representa jugadores,
+        # no al operador de la instancia. El request autenticado acaba de
+        # refrescar su propia actividad, así que si quien consulta es admin lo
+        # retiramos del agregado. Resultado: admin solo -> 0 usuarios online;
+        # admin + N jugadores -> N. Nunca exponemos identidades.
+        if is_admin(_username):
+            online_users = max(0, online_users - 1)
         return {"ok": True, "onlineUsers": online_users, "presenceAvailable": True}
     except PersistentStorageUnavailable:
         return {"ok": True, "onlineUsers": None, "presenceAvailable": False}

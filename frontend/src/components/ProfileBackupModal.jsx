@@ -114,7 +114,7 @@ export default function ProfileBackupModal({ onClose }) {
         <div className="menu-section">
           <h2>Empezar de cero</h2>
           <p className="hint-text">
-            Borra tu progreso (torneo, rating, logros, historial, ejército de combate, títulos y skins elegidos) y guarda el perfil vacío en MongoDB.
+            Borra tu progreso (torneo, rating, logros, historial, ejército de Combat Chess, títulos y skins elegidos) y guarda el perfil vacío en MongoDB.
             <b> Esto no se puede deshacer.</b> No cierra tu sesión ni cambia tus preferencias de sonido/voz.
           </p>
           {!confirmingReset && !resetDone && (

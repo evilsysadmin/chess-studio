@@ -42,7 +42,7 @@ export default function PlayerStatusBar({ tournament, combatXp, rating, onTourna
       <div className="status-chip" title="XP de combate acumulado, para revivir piezas caídas">
         <IconSword className="status-chip-icon" />
         <span className="status-chip-body">
-          <span className="status-chip-label">Combate</span>
+          <span className="status-chip-label">Combat Chess</span>
           <span className="status-chip-value">{combatXp} XP</span>
         </span>
       </div>

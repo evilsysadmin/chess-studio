@@ -3,19 +3,23 @@ import {
   COMBAT_CHESS_GENRE,
   COMBAT_CHESS_NAME,
   COMBAT_CHESS_TAGLINE,
+  COMBAT_CHESS_FREE_LABEL,
+  COMBAT_CHESS_CAMPAIGN_LABEL,
   combatRecordModeLabel,
 } from './combatChessBrand.js';
 
 describe('identidad visible de Combat Chess', () => {
-  it('mantiene Combat Chess como nombre y roguelike como descriptor', () => {
+  it('mantiene Combat Chess como paraguas y roguelike como descriptor', () => {
     expect(COMBAT_CHESS_NAME).toBe('Combat Chess');
     expect(COMBAT_CHESS_GENRE.toLowerCase()).toContain('roguelike');
     expect(COMBAT_CHESS_TAGLINE).toContain('Rompe las reglas');
+    expect(COMBAT_CHESS_FREE_LABEL).toContain('Combat Chess');
+    expect(COMBAT_CHESS_CAMPAIGN_LABEL).toContain('Combat Chess');
   });
 
-  it('distingue La Torre del combate libre en el historial', () => {
-    expect(combatRecordModeLabel({ log: [], variant: 'roguelike' })).toBe('Combat Chess');
-    expect(combatRecordModeLabel({ log: [], variant: 'combat' })).toBe('Combate');
+  it('distingue batalla libre y campaña sin crear dos marcas distintas', () => {
+    expect(combatRecordModeLabel({ log: [], variant: 'roguelike' })).toBe('Combat Chess · Campaña');
+    expect(combatRecordModeLabel({ log: [], variant: 'combat' })).toBe('Combat Chess · Batalla libre');
     expect(combatRecordModeLabel({ moves: [] })).toBeNull();
   });
 });

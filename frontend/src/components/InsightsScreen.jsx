@@ -14,7 +14,7 @@ import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series
 import CareerScreen from './CareerScreen.jsx';
 import { combatRecordModeLabel } from '../combatChessBrand.js';
 
-const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combate' };
+const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combat Chess' };
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
   return (

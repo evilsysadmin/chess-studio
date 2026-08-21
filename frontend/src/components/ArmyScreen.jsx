@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BASE_STATS,
   statsFor,
@@ -16,6 +16,24 @@ import { pieceRankForLevel } from '../combatRanks.js';
 import { METAMORPHOSIS_LABELS, deploymentUnlockStatus, unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { techniquesEligibleToUnlock, unlockedTechniquesFor } from '../combatTechniques.js';
 import { unitRecordForKey, unitDecorations } from '../combatUnitService.js';
+
+const PIECE_GLYPH = Object.freeze({ k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' });
+
+function unitAlias(roster, key) {
+  return roster?.identities?.[key]?.alias || 'Sin alias';
+}
+
+function basePieceFor(slot, saved, activeType = slot.type) {
+  return {
+    type: activeType,
+    strengthPoints: saved?.strengthPoints || 0,
+    speedPoints: saved?.speedPoints || 0,
+    bankedXp: saved?.bankedXp || 0,
+    deploymentType: saved?.deploymentType || null,
+    unlockedTechniques: Array.isArray(saved?.unlockedTechniques) ? saved.unlockedTechniques : [],
+    equippedTechnique: saved?.equippedTechnique || null,
+  };
+}
 
 function UnitServiceLine({ record }) {
   if (!record) return null;
@@ -86,201 +104,271 @@ function Memorial({ roster }) {
   );
 }
 
-export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
-  useEscapeToClose(onClose);
+function UnitRosterCard({ roster, slot, onOpen }) {
+  const key = rosterSlotKey(slot);
+  const saved = roster?.pieces?.[key];
+  const isKing = slot.type === 'k';
+  const isDead = !isKing && saved?.alive === false;
+  const unitRecord = unitRecordForKey(roster, key);
+  const level = isKing ? null : 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
+  const rank = isKing ? null : pieceRankForLevel(level);
+  const deploymentChoices = isKing ? [slot.type] : unlockedDeploymentTypes(key, saved, unitRecord);
+  const requestedType = saved?.deploymentType || slot.type;
+  const activeType = deploymentChoices.includes(requestedType) ? requestedType : slot.type;
+  const service = unitRecord?.stats || {};
+  const medals = unitDecorations(unitRecord);
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" onClick={(e) => e.stopPropagation()}>
-        <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <h3>Tu ejército</h3>
-        <p className="hint-text" style={{ marginBottom: '0.4rem' }}>
-          El progreso guardado de tus 15 piezas (el rey no cuenta — sigue las reglas normales de ajedrez, sin
-          nivel ni XP), sea cual sea el color que te toque jugar. Puedes gastar XP acá
-          mismo, sin esperar a la próxima batalla.
-        </p>
-        <p className="hint-text army-combat-xp" style={{ marginBottom: '1rem' }}>
-          XP de combate disponible: <b>{roster.combatXp}</b> · se usa para revivir piezas caídas.
-        </p>
+    <button
+      type="button"
+      className={`army-unit-tile ${isDead ? 'dead' : ''} ${isKing ? 'command' : ''}`}
+      onClick={() => onOpen(key)}
+      aria-label={`Abrir expediente de ${unitAlias(roster, key)}`}
+    >
+      <span className="army-unit-tile-top">
+        <span className="army-unit-glyph" aria-hidden="true">{PIECE_GLYPH[activeType] || '♟'}</span>
+        <span className={`army-unit-state ${isDead ? 'dead' : activeType !== slot.type ? 'mutant' : ''}`}>
+          {isKing ? 'MANDO' : isDead ? 'CAÍDO' : activeType !== slot.type ? METAMORPHOSIS_LABELS[activeType] : 'EN PIE'}
+        </span>
+      </span>
+      <strong className="army-unit-alias">{unitAlias(roster, key)}</strong>
+      <span className="army-unit-origin">{BASE_STATS[slot.type].name} · columna {slot.file}</span>
+      <span className="army-unit-rankline">
+        {isKing ? 'Rey · identidad persistente' : `${rank.short} · ${rank.label} · nv.${level}`}
+      </span>
+      <span className="army-unit-quickstats">
+        {isKing
+          ? 'Sin XP · reglas normales'
+          : (service.battles || 0) > 0
+            ? `${service.battles} bat. · ${service.survivals || 0} surv. · ${service.kills || 0} bajas`
+            : 'Sin bautismo de fuego'}
+      </span>
+      {medals.length > 0 && <span className="army-unit-medal-count">✦ {medals.length}</span>}
+      <span className="army-unit-open">Expediente →</span>
+    </button>
+  );
+}
 
-        <div className="army-list">
-          {CANONICAL_ROSTER_SLOTS.filter((slot) => slot.type !== 'k').map((slot) => {
-            const key = rosterSlotKey(slot);
-            const saved = roster.pieces[key];
-            const isDead = saved?.alive === false;
-            const canRevive = isDead && (saved.strengthPoints || 0) + (saved.speedPoints || 0) > 0;
-            const unitRecord = unitRecordForKey(roster, key);
+function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+  if (!slot) return null;
+  const key = rosterSlotKey(slot);
+  const saved = roster?.pieces?.[key];
+  const isKing = slot.type === 'k';
+  const isDead = !isKing && saved?.alive === false;
+  const unitRecord = unitRecordForKey(roster, key);
+  const medals = unitDecorations(unitRecord);
+  const rawLevel = isKing ? 1 : 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
+  const militaryRank = isKing ? null : pieceRankForLevel(rawLevel);
+  const deploymentStatuses = isKing ? [] : deploymentUnlockStatus(key, saved, unitRecord);
+  const deploymentChoices = isKing ? [slot.type] : unlockedDeploymentTypes(key, saved, unitRecord);
+  const requestedType = saved?.deploymentType || slot.type;
+  const activeType = deploymentChoices.includes(requestedType) ? requestedType : slot.type;
+  const piece = basePieceFor(slot, saved, activeType);
+  const stats = statsFor(piece);
+  const tier = isKing ? 'command' : levelTier(rawLevel);
+  const nextLockedMetamorphosis = deploymentStatuses.find((status) => status.type !== slot.type && !status.unlocked);
+  const unlockableTechniques = isKing || isDead ? [] : techniquesEligibleToUnlock(key, saved);
+  const unlockedTechniques = isKing ? [] : unlockedTechniquesFor(key, saved);
+  const equippedTechnique = saved?.equippedTechnique || null;
+  const strCost = isKing ? null : costForNextPoint(piece.strengthPoints);
+  const spdCost = isKing ? null : costForNextPoint(piece.speedPoints);
+  const canRevive = isDead && (saved?.strengthPoints || 0) + (saved?.speedPoints || 0) > 0;
+  const reviveType = saved?.deploymentType || slot.type;
+  const revivePrice = isDead ? reviveCost(reviveType) : 0;
+  const service = unitRecord?.stats || {};
 
-            if (isDead) {
-              const lastLevel = 1 + (saved.strengthPoints || 0) + (saved.speedPoints || 0);
-              const activeType = saved.deploymentType || slot.type;
-              const deadRank = pieceRankForLevel(lastLevel);
-              const cost = reviveCost(activeType);
-              return (
-                <div className="army-row army-row-dead" key={key}>
-                  <span className="army-aura tier-dead">✕</span>
-                  <div className="army-row-info">
-                    <span className="army-row-name">
-                      {roster.identities?.[key]?.alias || 'Sin alias'} — {BASE_STATS[slot.type].name} <span className="army-row-file">({slot.file})</span>
-                      <span className="army-piece-rank">{deadRank.short} · {deadRank.label}</span>
-                    </span>
-                    <span className="army-row-stats army-row-urgent">
-                      {canRevive
-                        ? `Baja crítica · era nivel ${lastLevel} · una única ventana para recuperarla; si partes sin hacerlo, pasa al Memorial`
-                        : `Baja definitiva de recluta · nivel ${lastLevel} · sin progreso recuperable; pasará al Memorial al iniciar la siguiente batalla`}
-                    </span>
-                    <UnitServiceLine record={unitRecord} />
+  return (
+    <div className="army-unit-detail-backdrop" onClick={onClose}>
+      <section className="army-unit-detail" onClick={(e) => e.stopPropagation()} aria-label={`Expediente de ${unitAlias(roster, key)}`}>
+        <button className="piece-info-close" onClick={onClose} aria-label="Cerrar expediente">×</button>
+        <div className="army-unit-detail-heading">
+          <span className={`army-unit-detail-glyph tier-${tier}`} aria-hidden="true">{PIECE_GLYPH[activeType] || '♟'}</span>
+          <div>
+            <span className="army-memorial-kicker">HOJA DE SERVICIO · {key.toUpperCase()}</span>
+            <h3>{unitAlias(roster, key)}</h3>
+            <p>{BASE_STATS[slot.type].name} de origen · columna {slot.file}{activeType !== slot.type ? ` · despliegue como ${METAMORPHOSIS_LABELS[activeType]}` : ''}</p>
+          </div>
+        </div>
+
+        {isKing ? (
+          <div className="army-command-note">
+            <strong>Mando del ejército</strong>
+            <span>El Rey tiene alias e identidad persistente, pero no gana XP, rango, medallas ni metamorfosis. Sigue las reglas normales de ajedrez.</span>
+          </div>
+        ) : (
+          <>
+            <div className="army-dossier-facts">
+              <div><span>Rango</span><b>{militaryRank.short} · {militaryRank.label}</b></div>
+              <div><span>Nivel</span><b>{rawLevel}</b></div>
+              <div><span>Fuerza</span><b>{stats.strength.toFixed(1)}</b></div>
+              <div><span>Velocidad</span><b>{stats.speed.toFixed(1)}</b></div>
+              <div><span>XP pieza</span><b>{piece.bankedXp || 0}</b></div>
+              <div><span>Estado</span><b className={isDead ? 'danger-text' : ''}>{isDead ? 'Caído' : 'En pie'}</b></div>
+            </div>
+
+            <div className="army-dossier-service">
+              <strong>Expediente de combate</strong>
+              <div className="army-dossier-service-grid">
+                <span>{service.battles || 0}<small>batallas</small></span>
+                <span>{service.survivals || 0}<small>supervivencias</small></span>
+                <span>{service.kills || 0}<small>bajas</small></span>
+                <span>{service.bestSurvivalStreak || 0}<small>mejor racha</small></span>
+                <span>{service.bossVictories || 0}<small>bosses</small></span>
+                <span>{service.revives || 0}<small>revividas</small></span>
+              </div>
+              {medals.length > 0 ? (
+                <div className="army-dossier-medals">
+                  {medals.map((medal) => (
+                    <span key={medal.id} title={medal.description}>✦ <b>{medal.label}</b><small>{medal.description}</small></span>
+                  ))}
+                </div>
+              ) : (
+                <p className="hint-text">Sin condecoraciones todavía.</p>
+              )}
+            </div>
+
+            {isDead ? (
+              <div className="army-dossier-actions danger-zone">
+                <strong>{canRevive ? 'Ventana de recuperación abierta' : 'Baja definitiva de recluta'}</strong>
+                <p className="hint-text">
+                  {canRevive
+                    ? 'Si empiezas otra batalla sin revivir esta identidad, pasará al Memorial y el puesto recibirá un recluta nuevo.'
+                    : 'No hay progreso invertido que recuperar. Al iniciar otra batalla pasará al Memorial y será reemplazado.'}
+                </p>
+                {canRevive && (
+                  <button type="button" className="primary-btn" disabled={roster.combatXp < revivePrice} onClick={() => onRevive(key, reviveType)}>
+                    Revivir {unitAlias(roster, key)} · {revivePrice} XP de combate
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="army-dossier-actions">
+                  <strong>Mejoras</strong>
+                  <div className="army-dossier-button-grid">
+                    <button type="button" className="secondary-btn" disabled={piece.bankedXp < strCost} onClick={() => onBuy(key, 'strength')}>
+                      + Fuerza ({strCost} XP) <small>→ {(stats.strength + STRENGTH_POINT_VALUE).toFixed(1)}</small>
+                    </button>
+                    <button type="button" className="secondary-btn" disabled={piece.bankedXp < spdCost} onClick={() => onBuy(key, 'speed')}>
+                      + Velocidad ({spdCost} XP) <small>→ {(stats.speed + SPEED_POINT_VALUE).toFixed(1)}</small>
+                    </button>
                   </div>
-                  <div className="army-row-buy">
-                    {canRevive ? (
-                      <button
-                        type="button"
-                        className="secondary-btn"
-                        disabled={roster.combatXp < cost}
-                        onClick={() => onRevive(key, activeType)}
-                      >
-                        Revivir ({cost} XP)
-                      </button>
-                    ) : (
-                      <span className="army-no-revive">Sin revivir</span>
+                </div>
+
+                {(deploymentChoices.length > 1 || nextLockedMetamorphosis) && (
+                  <div className="army-dossier-actions">
+                    <strong>Metamorfosis de despliegue</strong>
+                    {deploymentChoices.length > 1 && (
+                      <div className="army-metamorphosis-actions">
+                        {deploymentChoices.map((targetType) => (
+                          <button
+                            key={targetType}
+                            type="button"
+                            className={`secondary-btn metamorphosis-btn ${activeType === targetType ? 'active' : ''}`}
+                            aria-pressed={activeType === targetType}
+                            onClick={() => onMetamorphose?.(key, targetType)}
+                          >
+                            {activeType === targetType ? '✓ ' : ''}{METAMORPHOSIS_LABELS[targetType]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {nextLockedMetamorphosis && (
+                      <p className="army-metamorphosis-status locked">
+                        Siguiente · {nextLockedMetamorphosis.label}: {nextLockedMetamorphosis.rankLabel} + {nextLockedMetamorphosis.requirementLabel}. Progreso: {nextLockedMetamorphosis.progressLabel}.
+                      </p>
                     )}
                   </div>
-                </div>
-              );
-            }
+                )}
 
-            const deploymentStatuses = deploymentUnlockStatus(key, saved, unitRecord);
-            const deploymentChoices = unlockedDeploymentTypes(key, saved, unitRecord);
-            const requestedType = saved?.deploymentType || slot.type;
-            const activeType = deploymentChoices.includes(requestedType) ? requestedType : slot.type;
-            const piece = { type: activeType, ...(saved || { strengthPoints: 0, speedPoints: 0, bankedXp: 0 }) };
-            piece.type = activeType;
-            const stats = statsFor(piece);
-            const level = derivedLevel(piece);
-            const tier = levelTier(level);
-            const militaryRank = pieceRankForLevel(level);
-            const hasMetamorphosisChoices = deploymentChoices.length > 1;
-            const nextLockedMetamorphosis = deploymentStatuses.find((status) => status.type !== slot.type && !status.unlocked);
-            const unlockableTechniques = techniquesEligibleToUnlock(key, saved);
-            const unlockedTechniques = unlockedTechniquesFor(key, saved);
-            const equippedTechnique = saved?.equippedTechnique || null;
-            const strCost = costForNextPoint(piece.strengthPoints);
-            const spdCost = costForNextPoint(piece.speedPoints);
+                {(unlockableTechniques.length > 0 || unlockedTechniques.length > 0) && (
+                  <div className="army-dossier-actions">
+                    <strong>Técnica especial · 1 uso por batalla</strong>
+                    {unlockableTechniques.map((technique) => (
+                      <button
+                        key={technique.id}
+                        type="button"
+                        className="secondary-btn army-technique-unlock"
+                        disabled={(piece.bankedXp || 0) < technique.unlockCost}
+                        onClick={() => onUnlockTechnique?.(key, technique.id)}
+                        title={technique.description}
+                      >
+                        Desbloquear {technique.label} ({technique.unlockCost} XP)
+                      </button>
+                    ))}
+                    {unlockedTechniques.length > 0 && (
+                      <div className="army-technique-actions">
+                        <button type="button" className={`secondary-btn ${equippedTechnique == null ? 'active' : ''}`} onClick={() => onEquipTechnique?.(key, null)}>
+                          {equippedTechnique == null ? '✓ ' : ''}Ninguna
+                        </button>
+                        {unlockedTechniques.map((technique) => (
+                          <button
+                            key={technique.id}
+                            type="button"
+                            className={`secondary-btn ${equippedTechnique === technique.id ? 'active' : ''}`}
+                            onClick={() => onEquipTechnique?.(key, technique.id)}
+                            title={technique.description}
+                          >
+                            {equippedTechnique === technique.id ? '✓ ' : ''}{technique.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
 
-            return (
-              <div className="army-row" key={key}>
-                <span className={`army-aura tier-${tier}`}>{level}</span>
-                <div className="army-row-info">
-                  <span className="army-row-name">
-                    {roster.identities?.[key]?.alias || 'Sin alias'} — {BASE_STATS[slot.type].name} <span className="army-row-file">({slot.file})</span>
-                    <span className="army-piece-rank">{militaryRank.short} · {militaryRank.label}</span>
-                  </span>
-                  <span className="army-row-stats">
-                    Fuerza {stats.strength.toFixed(1)} · Velocidad {stats.speed.toFixed(1)} · XP {piece.bankedXp}
-                  </span>
-                  <UnitServiceLine record={unitRecord} />
-                  {activeType !== slot.type && (
-                    <span className="army-metamorphosis-status">Próximo despliegue: {METAMORPHOSIS_LABELS[activeType]}. La identidad y clase de origen no cambian.</span>
-                  )}
-                  {hasMetamorphosisChoices && (
-                    <span className="army-metamorphosis-status ready">{militaryRank.label}: el servicio de esta unidad ya habilita formas alternativas. Elige el despliegue antes de combatir.</span>
-                  )}
-                  {slot.type === 'p' && nextLockedMetamorphosis && level >= 6 && (
-                    <span className="army-metamorphosis-status locked">
-                      Siguiente forma · {nextLockedMetamorphosis.label}: requiere {nextLockedMetamorphosis.rankLabel} + {nextLockedMetamorphosis.requirementLabel}.
-                      {' '}Progreso: {nextLockedMetamorphosis.progressLabel}.
-                    </span>
-                  )}
-                  {(unlockableTechniques.length > 0 || unlockedTechniques.length > 0) && (
-                    <div className="army-technique-block">
-                      <span className="army-technique-title">Técnica especial · 1 uso por batalla</span>
-                      {unlockableTechniques.map((technique) => (
-                        <button
-                          key={technique.id}
-                          type="button"
-                          className="secondary-btn army-technique-unlock"
-                          disabled={(piece.bankedXp || 0) < technique.unlockCost}
-                          onClick={() => onUnlockTechnique?.(key, technique.id)}
-                          title={technique.description}
-                        >
-                          Desbloquear {technique.label} ({technique.unlockCost} XP)
-                        </button>
-                      ))}
-                      {unlockedTechniques.length > 0 && (
-                        <>
-                          <span className="army-technique-description">
-                            {equippedTechnique
-                              ? `Equipada para la próxima batalla: ${unlockedTechniques.find((t) => t.id === equippedTechnique)?.label || equippedTechnique}.`
-                              : 'Sin técnica equipada para la próxima batalla.'}
-                          </span>
-                          <div className="army-technique-actions">
-                            <button
-                              type="button"
-                              className={`secondary-btn ${equippedTechnique == null ? 'active' : ''}`}
-                              aria-pressed={equippedTechnique == null}
-                              onClick={() => onEquipTechnique?.(key, null)}
-                            >
-                              {equippedTechnique == null ? '✓ ' : ''}Ninguna
-                            </button>
-                            {unlockedTechniques.map((technique) => (
-                              <button
-                                key={technique.id}
-                                type="button"
-                                className={`secondary-btn ${equippedTechnique === technique.id ? 'active' : ''}`}
-                                aria-pressed={equippedTechnique === technique.id}
-                                onClick={() => onEquipTechnique?.(key, technique.id)}
-                                title={technique.description}
-                              >
-                                {equippedTechnique === technique.id ? '✓ ' : ''}{technique.label}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="army-row-buy">
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    disabled={piece.bankedXp < strCost}
-                    onClick={() => onBuy(key, 'strength')}
-                    title="Comprar un punto de fuerza"
-                  >
-                    <span>+F ({strCost})</span>
-                    <span className="buy-preview">→ {(stats.strength + STRENGTH_POINT_VALUE).toFixed(1)}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    disabled={piece.bankedXp < spdCost}
-                    onClick={() => onBuy(key, 'speed')}
-                    title="Comprar un punto de velocidad"
-                  >
-                    <span>+V ({spdCost})</span>
-                    <span className="buy-preview">→ {(stats.speed + SPEED_POINT_VALUE).toFixed(1)}</span>
-                  </button>
-                  {hasMetamorphosisChoices && onMetamorphose && (
-                    <div className="army-metamorphosis-actions">
-                      {deploymentChoices.map((targetType) => (
-                        <button
-                          key={targetType}
-                          type="button"
-                          className={`secondary-btn metamorphosis-btn ${activeType === targetType ? 'active' : ''}`}
-                          aria-pressed={activeType === targetType}
-                          onClick={() => onMetamorphose(key, targetType)}
-                        >
-                          {activeType === targetType ? '✓ ' : ''}{METAMORPHOSIS_LABELS[targetType]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+  const [selectedKey, setSelectedKey] = useState(null);
+  useEscapeToClose(selectedKey ? () => setSelectedKey(null) : onClose);
+  const selectedSlot = selectedKey ? CANONICAL_ROSTER_SLOTS.find((slot) => rosterSlotKey(slot) === selectedKey) : null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="army-card army-roster-card" onClick={(e) => e.stopPropagation()}>
+        <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
+        <div className="army-roster-heading">
+          <div>
+            <span className="army-memorial-kicker">COMBAT CHESS · ORDEN DE BATALLA</span>
+            <h3>Tu ejército</h3>
+          </div>
+          <span className="army-roster-count">16 unidades</span>
         </div>
+        <p className="hint-text army-roster-intro">
+          Todo el destacamento de un vistazo. Las 16 identidades tienen alias desde que nacen; 15 piezas desarrollan carrera militar y el Rey actúa como mando sin XP. Pulsa una unidad para abrir su expediente, mejorarla o preparar su despliegue.
+        </p>
+        <p className="hint-text army-combat-xp">
+          XP de combate disponible: <b>{roster.combatXp}</b> · reservado para revivir bajas recuperables.
+        </p>
+
+        <div className="army-roster-grid" aria-label="Formación completa del ejército">
+          {CANONICAL_ROSTER_SLOTS.map((slot) => (
+            <UnitRosterCard key={rosterSlotKey(slot)} roster={roster} slot={slot} onOpen={setSelectedKey} />
+          ))}
+        </div>
+
+        <p className="hint-text army-roster-footnote">Formación: primera línea = piezas mayores y mando; segunda = ocho peones. El color del tablero puede cambiar entre partidas, pero cada identidad sigue siendo la misma.</p>
         <Memorial roster={roster} />
+
+        {selectedSlot && (
+          <UnitDossier
+            roster={roster}
+            slot={selectedSlot}
+            onBuy={onBuy}
+            onRevive={onRevive}
+            onMetamorphose={onMetamorphose}
+            onUnlockTechnique={onUnlockTechnique}
+            onEquipTechnique={onEquipTechnique}
+            onClose={() => setSelectedKey(null)}
+          />
+        )}
       </div>
     </div>
   );

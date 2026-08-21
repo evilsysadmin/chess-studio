@@ -74,6 +74,16 @@ def test_status_requires_auth_and_counts_recent_users_without_exposing_identitie
     assert "testuser" not in r.text
 
 
+def test_status_hides_authenticated_admin_from_public_presence(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    asyncio.run(ustore.touch_last_activity("testuser", force=True))
+    r = client.get("/api/status")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "onlineUsers": 0, "presenceAvailable": True}
+
+
 def test_root_identifies_backend_instead_of_returning_404():
     r = client.get("/")
     assert r.status_code == 200

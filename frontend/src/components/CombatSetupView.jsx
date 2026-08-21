@@ -4,7 +4,7 @@ import ColorSelector from './ColorSelector.jsx';
 import { BASE_STATS } from '../combat.js';
 import CombatServicePanel from './CombatServicePanel.jsx';
 
-import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE } from '../combatChessBrand.js';
+import { COMBAT_CHESS_NAME, COMBAT_CHESS_FREE_DESCRIPTION, COMBAT_CHESS_CAMPAIGN_DESCRIPTION } from '../combatChessBrand.js';
 export default function CombatSetupView({
   onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
@@ -17,8 +17,9 @@ export default function CombatSetupView({
       <div className="menu combat-setup">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section">
-          <span className="eyebrow">{combatVariant === 'roguelike' ? COMBAT_CHESS_NAME : 'Modo combate'}</span>
-          <h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? `${COMBAT_CHESS_GENRE} · piso de campaña` : 'Ajedrez con niveles y esquive'}</h2>
+          <span className="eyebrow">{COMBAT_CHESS_NAME}</span>
+          <h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? 'Campaña roguelike' : 'Batalla libre'}</h2>
+          <p className="hint-text combat-mode-summary">{combatVariant === 'roguelike' ? COMBAT_CHESS_CAMPAIGN_DESCRIPTION : COMBAT_CHESS_FREE_DESCRIPTION}</p>
           {encounterLabel && (
             <div className="combat-encounter-card">
               <span>ENCUENTRO</span>
@@ -66,7 +67,7 @@ export default function CombatSetupView({
           <p className="hint-text" style={{ marginBottom: '0.6rem' }}>
             {difficultyOverride != null
               ? 'La base la fija este encuentro: el piso manda; un ejército veterano puede añadir compensación de amenaza.'
-              : 'Automática, según cómo te ve la CPU — no se elige a mano en Combate.'}
+              : 'Automática, según cómo te ve la CPU — no se elige a mano en Combat Chess.'}
           </p>
           {difficultyBalance?.threat?.bonus > 0 && (
             <p className="combat-threat-note">
@@ -169,7 +170,7 @@ export default function CombatSetupView({
             style={{ width: '100%', marginTop: '0.6rem' }}
             onClick={() => setShowArmy(true)}
           >
-            Ver tu ejército {roster.combatXp > 0 ? `(${roster.combatXp} XP de combate)` : ''}
+            Orden de batalla · 16 unidades {roster.combatXp > 0 ? `(${roster.combatXp} XP)` : ''}
           </button>
           {onHistory && (
             <button

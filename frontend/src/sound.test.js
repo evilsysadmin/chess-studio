@@ -100,6 +100,12 @@ describe('ambient music catalog', () => {
     expect(istanbul.percussionKit).toBe('istanbul-frame');
     expect(tangier.percussionKit).toBe('maghreb-hand');
     expect(beirut.percussionPunch).toBeGreaterThan(1.25);
+    expect(istanbul.percussionPunch).toBeGreaterThan(1.3);
+    expect(istanbul.enabledLayers).toEqual(expect.arrayContaining(['lead', 'counter', 'bass', 'drums', 'signature']));
+    expect(istanbul.estimatedBpm).toBeGreaterThanOrEqual(124);
+    expect(istanbul.estimatedBpm).toBeLessThanOrEqual(130);
+    expect(getAmbientThemeSoundProfile('istanbulBackgammon').estimatedBpm).toBeGreaterThanOrEqual(127);
+    expect(getAmbientThemeSoundProfile('istanbulBackgammon').estimatedBpm).toBeLessThanOrEqual(131);
     expect(damascus.space).toBeGreaterThan(cairo.space);
   });
 

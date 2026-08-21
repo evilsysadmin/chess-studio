@@ -10,7 +10,7 @@ import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import AccountModal from './AccountModal.jsx';
 
-import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE, COMBAT_CHESS_TAGLINE } from '../combatChessBrand.js';
+import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL, COMBAT_CHESS_FREE_DESCRIPTION, COMBAT_CHESS_CAMPAIGN_DESCRIPTION } from '../combatChessBrand.js';
 export default function Menu({
   onNewGame,
   onContinue,
@@ -97,16 +97,16 @@ export default function Menu({
 
           <button type="button" className="menu-card accent-danger" onClick={onCombat}>
             <IconSword className="menu-card-icon" />
-            <h3>Combate</h3>
-            <p>Ajedrez con niveles y esquive: las capturas se deciden a los dados según fuerza y velocidad.</p>
-            <span className="menu-card-cta">Entrar en combate →</span>
+            <h3>{COMBAT_CHESS_FREE_LABEL}</h3>
+            <p>{COMBAT_CHESS_FREE_DESCRIPTION}</p>
+            <span className="menu-card-cta">Preparar batalla →</span>
           </button>
 
           <button type="button" className="menu-card accent-danger" onClick={onCombatRoguelike}>
             <IconSword className="menu-card-icon" />
-            <h3>{COMBAT_CHESS_NAME}</h3>
-            <p><b>{COMBAT_CHESS_GENRE}.</b> {COMBAT_CHESS_TAGLINE} Diez pisos y un Rey Boss con 5 HP.</p>
-            <span className="menu-card-cta">Entrar en La Torre →</span>
+            <h3>{COMBAT_CHESS_CAMPAIGN_LABEL}</h3>
+            <p>{COMBAT_CHESS_CAMPAIGN_DESCRIPTION}</p>
+            <span className="menu-card-cta">Abrir mapa de campaña →</span>
           </button>
 
           <button type="button" className="menu-card accent-hint" onClick={() => setShowQuickMatch(true)}>

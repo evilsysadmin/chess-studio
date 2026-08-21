@@ -1054,8 +1054,8 @@ Object.assign(AMBIENT_THEMES, {
   },
   istanbul0326: {
     id: 'istanbul0326', engine: 'structured', label: 'Estambul 03:26',
-    description: 'Clarinete, qanun y piano eléctrico en compás quebrado: elegante, nocturno y con una inquietud que nunca termina de sentarse.',
-    stepMs: 132, stepsPerSection: 56, longFormMs: 300000, leadInstrument: 'clarinet', counterInstrument: 'qanun', chordInstrument: 'epiano', bassInstrument: 'bass',
+    description: 'Clarinete largo, qanun y bajo con pulso grave en compás quebrado: nocturno, melódico y con más pecho que click.',
+    stepMs: 118, stepsPerSection: 56, longFormMs: 300000, leadInstrument: 'clarinet', counterInstrument: 'qanun', chordInstrument: 'epiano', bassInstrument: 'bass',
     sections: [
       {
         lead: { 0: 67, 5: 68, 9: 71, 14: 74, 19: 72, 24: 71, 29: 68, 35: 67, 41: 65, 48: 67, 53: 71 },
@@ -1530,8 +1530,8 @@ Object.assign(AMBIENT_THEMES, {
   },
   istanbulBackgammon: {
     id: 'istanbulBackgammon', engine: 'structured', label: 'Estambul · tavla 03:08',
-    description: 'Clarinete, qanun y bajo saltarín: una mesa de tavla al fondo, conversación alta y todavía queda noche.',
-    stepMs: 110, stepsPerSection: 72, longFormMs: 340000, leadInstrument: 'clarinet', counterInstrument: 'qanun', chordInstrument: 'epiano', bassInstrument: 'bass',
+    description: 'Clarinete y qanun sobre un 9/8 grave y caminante: tavla al fondo, bajo con cuerpo y melodía que respira.',
+    stepMs: 116, stepsPerSection: 72, longFormMs: 340000, leadInstrument: 'clarinet', counterInstrument: 'qanun', chordInstrument: 'epiano', bassInstrument: 'bass',
     sections: [
       {
         lead: { 0: 69, 4: 72, 8: 73, 12: 72, 16: 69, 20: 67, 24: 69, 28: 72, 32: 76, 36: 73, 40: 72, 44: 69, 48: 67, 52: 65, 56: 67, 60: 69, 64: 72, 68: 69 },
@@ -1778,14 +1778,18 @@ const STRUCTURED_FEELS = Object.freeze({
   istanbulBroken: Object.freeze({
     family: 'istanbul-clarinet-frame-9-8', preserveSectionOrder: true,
     harmonyPath: [0, 0, 2, 0, -2, 0],
-    swing: 0, warmth: 0.82, releaseScale: 0.94, space: 0.075, delayMs: 92,
-    bassInstrument: 'uprightBass', bassHoldSteps: 5.0,
-    layers: { lead: false, counter: false, chords: false, bass: true, drums: true, signature: true },
-    mix: { lead: 0, counter: 0, bass: 0.68, chord: 0 },
-    // 18 pasos = 9/8. Acentos 2+2+2+3; nada de batería de jazz debajo.
-    percussion: { period: 18, kit: 'istanbul-frame', punch: 1.18, pattern: { 0: 'W', 4: 'H', 8: 'W', 12: 'H', 16: 'S' } },
-    signature: { instrument: 'clarinet', sections: [0, 1, 2, 3], everyCycles: 1, repeatPeriod: 18,
-      durationSteps: 3.4, volume: 0.76, motif: { 0: 67, 4: 68, 8: 71, 12: 65, 16: 67 } },
+    swing: 0, warmth: 0.86, releaseScale: 1.03, space: 0.09, delayMs: 108,
+    bassInstrument: 'uprightBass', bassHoldSteps: 5.6,
+    // Estambul deja de ser un motivo corto sobre clicks. Recuperamos las frases
+    // completas de clarinete/qanun escritas en cada sección y mantenemos la
+    // firma sólo como respuesta ocasional. Más melodía, menos metrónomo con fez.
+    layers: { lead: true, counter: true, chords: false, bass: true, drums: true, signature: true },
+    mix: { lead: 0.76, counter: 0.58, bass: 0.90, chord: 0 },
+    // 18 pasos = 9/8. Dos dums/kicks sostienen el ciclo; brush y tak quedan
+    // atrás. Eliminamos los woodblocks que daban buena parte del "chiu-chiu".
+    percussion: { period: 18, kit: 'istanbul-frame', punch: 1.34, pattern: { 0: 'K', 4: 'B', 8: 'K', 12: 'H', 16: 'B' } },
+    signature: { instrument: 'clarinet', sections: [0, 1, 2, 3], everyCycles: 2, repeatPeriod: 54,
+      durationSteps: 4.4, volume: 0.42, motif: { 2: 67, 10: 71, 18: 68, 28: 65, 38: 63, 47: 67 } },
   }),
   tangierWalking: Object.freeze({
     family: 'tangier-dry-walking-club', preserveSectionOrder: true,
@@ -1919,6 +1923,8 @@ export function getAmbientThemeSoundProfile(themeId) {
   if (!theme || theme.engine !== 'structured') return null;
   return feel ? {
     family: feel.family,
+    stepMs: theme.stepMs,
+    estimatedBpm: Math.round((60000 / (theme.stepMs * 4)) * 10) / 10,
     preserveSectionOrder: !!feel.preserveSectionOrder,
     swing: feel.swing || 0,
     warmth: feel.warmth || 1,
@@ -1937,7 +1943,7 @@ export function getAmbientThemeSoundProfile(themeId) {
     chordInstrument: feel.chordInstrument || theme.chordInstrument,
     bassInstrument: feel.bassInstrument || theme.bassInstrument,
   } : {
-    family: 'legacy-structured', preserveSectionOrder: false, swing: 0, warmth: 1,
+    family: 'legacy-structured', stepMs: theme.stepMs, estimatedBpm: Math.round((60000 / (theme.stepMs * 4)) * 10) / 10, preserveSectionOrder: false, swing: 0, warmth: 1,
     groovePeriod: null, percussionPeriod: null, percussionKit: 'legacy', percussionPunch: 1,
     percussionHumanized: true, percussionMicrotimingMs: 6,
     chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
@@ -2161,16 +2167,25 @@ function getAmbientOutput(ctx) {
 function getAmbientPercussionOutput(ctx) {
   if (!ctx) return null;
   if (!ambientPercussionBus || ambientPercussionBus.context !== ctx) {
+    // V16.6bc: la percusión sintetizada tenía demasiado ataque medio/agudo y
+    // poco peso. Un low-shelf suave antes del compresor conserva darbukas,
+    // brushes y hats, pero deja sitio a un dum/kick que realmente empuje aire.
+    const lowShelf = ctx.createBiquadFilter();
+    lowShelf.type = 'lowshelf';
+    lowShelf.frequency.value = 118;
+    lowShelf.gain.value = 3.2;
+
     const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.value = -22;
-    compressor.knee.value = 14;
-    compressor.ratio.value = 3.2;
-    compressor.attack.value = 0.004;
-    compressor.release.value = 0.11;
+    compressor.threshold.value = -24;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 4.0;
+    compressor.attack.value = 0.006;
+    compressor.release.value = 0.14;
 
     ambientPercussionBus = ctx.createGain();
-    ambientPercussionBus.gain.value = 1.08;
-    ambientPercussionBus.connect(compressor);
+    ambientPercussionBus.gain.value = 1.06;
+    ambientPercussionBus.connect(lowShelf);
+    lowShelf.connect(compressor);
     compressor.connect(getAmbientOutput(ctx));
   }
   return ambientPercussionBus;
@@ -2795,6 +2810,52 @@ export function getPercussionHumanizationPreview(themeId, localStep, code = 'K')
   return percussionHumanization(feel, Number(localStep) || 0, code);
 }
 
+function playBassDrum(volume = 0.04, options = {}) {
+  if (isMusicMuted() || volume <= 0) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+  const delayS = Math.max(0, Number(options.delayMs) || 0) / 1000;
+  const tone = Math.max(-1, Math.min(1, Number(options.tone) || 0));
+  const decay = Math.max(0.72, Math.min(1.28, Number(options.decay) || 1));
+  const pan = Math.max(-0.18, Math.min(0.18, Number(options.pan) || 0));
+  const start = ctx.currentTime + delayS;
+  const duration = 0.38 * decay;
+
+  // El cuerpo es deliberadamente subgrave: una caída rápida 118 -> 48 Hz da
+  // el golpe inicial sin ese "chiu" de oscilador agudo. La cola estable en
+  // ~48 Hz aporta pecho sin invadir el bajo musical durante medio compás.
+  const body = ctx.createOscillator();
+  const bodyGain = ctx.createGain();
+  body.type = 'sine';
+  body.frequency.setValueAtTime(118 * (1 + tone * 0.025), start);
+  body.frequency.exponentialRampToValueAtTime(52 * (1 + tone * 0.018), start + 0.055);
+  body.frequency.exponentialRampToValueAtTime(46 * (1 + tone * 0.014), start + duration * 0.82);
+  bodyGain.gain.setValueAtTime(volume * 1.7, start);
+  bodyGain.gain.exponentialRampToValueAtTime(volume * 0.42, start + 0.055);
+  bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  body.connect(bodyGain);
+  connectPercussionWithPan(ctx, bodyGain, pan * 0.35);
+
+  // Segundo seno muy corto = thump, no click. Mantenerlo por debajo de 150 Hz
+  // evita recuperar el carácter de pistola láser que queríamos quitar.
+  const thump = ctx.createOscillator();
+  const thumpGain = ctx.createGain();
+  thump.type = 'sine';
+  thump.frequency.setValueAtTime(146, start);
+  thump.frequency.exponentialRampToValueAtTime(72, start + 0.032);
+  thumpGain.gain.setValueAtTime(volume * 0.72, start);
+  thumpGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.075);
+  thump.connect(thumpGain);
+  connectPercussionWithPan(ctx, thumpGain, pan * 0.2);
+
+  body.start(start);
+  thump.start(start);
+  body.stop(start + duration + 0.03);
+  thump.stop(start + 0.085);
+}
+
 function playMembraneHit(kind, volume = 0.04, options = {}) {
   if (isMusicMuted() || volume <= 0) return;
   const ctx = getContext();
@@ -2815,10 +2876,10 @@ function playMembraneHit(kind, volume = 0.04, options = {}) {
 
   body.type = 'sine';
   overtone.type = 'triangle';
-  body.frequency.setValueAtTime((isDum ? 185 : 410) * (1 + tone * 0.055), start);
-  body.frequency.exponentialRampToValueAtTime((isDum ? 58 : 205) * (1 + tone * 0.035), start + (isDum ? 0.09 : 0.035) * decay);
-  overtone.frequency.setValueAtTime((isDum ? 310 : 980) * (1 + tone * 0.08), start);
-  overtone.frequency.exponentialRampToValueAtTime((isDum ? 170 : 620) * (1 + tone * 0.05), start + bodyDuration * 0.55);
+  body.frequency.setValueAtTime((isDum ? 142 : 410) * (1 + tone * 0.055), start);
+  body.frequency.exponentialRampToValueAtTime((isDum ? 52 : 205) * (1 + tone * 0.035), start + (isDum ? 0.085 : 0.035) * decay);
+  overtone.frequency.setValueAtTime((isDum ? 238 : 980) * (1 + tone * 0.08), start);
+  overtone.frequency.exponentialRampToValueAtTime((isDum ? 126 : 620) * (1 + tone * 0.05), start + bodyDuration * 0.55);
 
   bodyGain.gain.setValueAtTime(volume * (isDum ? 1.35 : 0.78), start);
   bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDuration);
@@ -2848,9 +2909,9 @@ function playMembraneHit(kind, volume = 0.04, options = {}) {
   const clickGain = ctx.createGain();
   source.buffer = buffer;
   filter.type = 'bandpass';
-  filter.frequency.value = (isDum ? 720 : 2450) * (1 + tone * 0.18);
+  filter.frequency.value = (isDum ? 560 : 2450) * (1 + tone * 0.18);
   filter.Q.value = isDum ? 0.8 : 1.5;
-  clickGain.gain.setValueAtTime(volume * (isDum ? 0.38 : 0.72), start);
+  clickGain.gain.setValueAtTime(volume * (isDum ? 0.24 : 0.72), start);
   clickGain.gain.exponentialRampToValueAtTime(0.0001, start + clickDuration);
   source.connect(filter);
   filter.connect(clickGain);
@@ -2877,8 +2938,19 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     else playNoiseHit('brush', baseVolume * 0.18, ghostOptions);
   };
 
+  if (kit === 'istanbul-frame') {
+    // Este kit es deliberadamente grave: el dum manda y el borde sólo marca
+    // respiraciones. Evitamos ghosts agudos para que no reaparezca el viejo
+    // "chiu-chiu" al humanizar el patrón.
+    if (code === 'K') { playMembraneHit('dum', 0.058 * velocity, { ...human, tone: Math.min(human.tone, -0.08), decay: Math.max(human.decay, 1.06) }); playBassDrum(0.042 * velocity, human); }
+    else if (code === 'H') playMembraneHit('tak', 0.010 * velocity, { ...human, tone: Math.min(human.tone, -0.18), decay: 0.82 });
+    else if (code === 'B') playNoiseHit('brush', 0.008 * velocity, human);
+    else if (code === 'S') playMembraneHit('tak', 0.016 * velocity, { ...human, tone: Math.min(human.tone, -0.12) });
+    return;
+  }
+
   if (handKit) {
-    if (code === 'K') playMembraneHit('dum', 0.052 * velocity, human);
+    if (code === 'K') { playMembraneHit('dum', 0.050 * velocity, human); playBassDrum(0.026 * velocity, human); }
     else if (code === 'S') playMembraneHit('tak', 0.042 * velocity, human);
     else if (code === 'H') playMembraneHit('tak', 0.021 * velocity, human);
     else if (code === 'B') playNoiseHit('brush', 0.012 * velocity, human);
@@ -2889,7 +2961,7 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
   }
 
   if (brushKit) {
-    if (code === 'K') playSoftPercussion(0.05 * velocity, human);
+    if (code === 'K') { playSoftPercussion(0.034 * velocity, human); playBassDrum(0.032 * velocity, human); }
     else if (code === 'S') playNoiseHit('snare', 0.028 * velocity, human);
     else if (code === 'H') playNoiseHit('hat', 0.011 * velocity, human);
     else if (code === 'B') playNoiseHit('brush', 0.016 * velocity, human);
@@ -2899,7 +2971,7 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
-  if (code === 'K') playSoftPercussion(0.055 * velocity, human);
+  if (code === 'K') { playSoftPercussion(0.036 * velocity, human); playBassDrum(0.034 * velocity, human); }
   else if (code === 'S') playNoiseHit('snare', 0.028 * velocity, human);
   else if (code === 'H') playNoiseHit('hat', 0.014 * velocity, human);
   else if (code === 'B') playNoiseHit('brush', 0.012 * velocity, human);

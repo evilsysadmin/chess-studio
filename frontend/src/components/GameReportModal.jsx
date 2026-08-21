@@ -3,13 +3,19 @@ import { api } from '../api.js';
 import { analyzeGame } from '../gameReport.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
-import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, pointOfNoReturn } from '../advancedCareer.js';
+import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, moveContextLines, pointOfNoReturn } from '../advancedCareer.js';
 
 function incidentTitle(index, mistake, total) {
   if (index === 0 && mistake.loss >= 300) return 'Hora aproximada del fallecimiento';
   if (index === 0) return 'Punto de inflexión';
   if (index === total - 1) return 'Daños colaterales';
   return 'Segundo impacto';
+}
+
+function MoveContext({ move }) {
+  const lines = moveContextLines(move);
+  if (!lines.length) return null;
+  return <div className="autopsy-move-context">{lines.map((line, index) => <span key={`${move.index ?? 'move'}-${index}`}>{line}</span>)}</div>;
 }
 
 function forensicVerdict(report) {
@@ -79,11 +85,11 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <span>{report.worst ? `⚰ Mayor impacto: ${report.worst.played}, −${report.worst.loss} cp.` : ''}</span>
             </div>
 
-            {best && <div className="autopsy-best-move"><b>💎 Jugada de la partida · {best.played}</b><p>{explainMoveReport(best)}</p></div>}
+            {best && <div className="autopsy-best-move"><b>💎 Jugada de la partida · {best.played}</b><MoveContext move={best} /><p>{explainMoveReport(best)}</p></div>}
 
             {incidents.length ? <div className="autopsy-timeline">{incidents.map((m, i) => <div className={`autopsy-incident sev-${m.severity}`} key={m.index}>
               <div className="autopsy-incident-number">#{i + 1}</div>
-              <div><b>{noReturn?.index === m.index ? '☠ Punto de no retorno' : incidentTitle(i, m, incidents.length)}</b><p>Jugada {m.moveNumber}: <strong>{m.played}</strong> en vez de <strong>{m.suggested}</strong> · pérdida aproximada: <strong>−{m.loss} cp</strong></p><small>{explainMoveReport(m)}</small></div>
+              <div><b>{noReturn?.index === m.index ? '☠ Punto de no retorno' : incidentTitle(i, m, incidents.length)}</b><p>Jugada {m.moveNumber}: <strong>{m.played}</strong> en vez de <strong>{m.suggested}</strong> · pérdida aproximada: <strong>−{m.loss} cp</strong></p><MoveContext move={m} /><small>{explainMoveReport(m)}</small></div>
             </div>)}</div> : <p className="hint-text">No encontramos heridas tácticas de consideración. Francamente decepcionante para el departamento forense.</p>}
 
             <div className="autopsy-verdict"><b>DICTAMEN DE LA CPU</b><p>{forensicVerdict(report)}</p></div>

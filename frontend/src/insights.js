@@ -280,7 +280,7 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const [bestMode, bestStats] = sorted[0];
     const [worstModeName, worstStats] = sorted[sorted.length - 1];
     if (bestStats.winPct - worstStats.winPct >= 30) {
-      const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combate' };
+      const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combat Chess' };
       lines.push(pickRoastLine([
         `Se te da bastante mejor ${MODE_LABEL[bestMode] || bestMode} que ${MODE_LABEL[worstModeName] || worstModeName}. Cuestión de estilo, o de que en un modo te dejan pensar más.`,
       ], seed));
@@ -525,7 +525,7 @@ export function tierTrendComment(tierLabel, trend) {
     Aficionado: 'capaz vale la pena revisar tus partidas guardadas con la "pista inversa" — ahí ves exactamente dónde el motor prefería otra cosa.',
     Intermedio: 'a este nivel, "Buscar mi peor jugada de siempre" (en Así juegas) suele ser más revelador que jugar más partidas sueltas.',
     Avanzado: 'quizá subir la dificultad de la CPU en las próximas partidas — a este nivel, un rival más flojo enseña poco.',
-    Experto: 'a este nivel ya no hay mucho que la app pueda "enseñarte" de forma genérica — el Modo Combate al menos mantiene las cosas interesantes.',
+    Experto: 'a este nivel ya no hay mucho que la app pueda "enseñarte" de forma genérica — Combat Chess al menos mantiene las cosas interesantes.',
     Maestro: 'llegaste arriba de todo lo que mide este rating — a partir de acá, jugar más no cambia mucho el número.',
   };
   const tip = TIER_TIPS[tierLabel] || '';

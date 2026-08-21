@@ -34,7 +34,7 @@ export default function QuickMatchModal({
         <span className="eyebrow">Partida rápida</span>
         <h3>Elige tu rival</h3>
         <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
-          El ritmo elegido también se usa en "Partida de práctica". Las series son sólo para Partida rápida; Torneo y Combate tienen su propia configuración.
+          El ritmo elegido también se usa en "Partida de práctica". Las series son sólo para Partida rápida; Torneo y Combat Chess tienen su propia configuración.
         </p>
 
         <div className="difficulty-slider-row">

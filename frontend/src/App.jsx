@@ -853,7 +853,7 @@ function AppInner({ isAdminUser }) {
             onShare={(record) => setShareRecord(record)}
             onMovie={openMovie}
             title="Historial de partidas"
-            emptyText='Todavía no jugaste ninguna partida. Normal, Torneo, Práctica y Combate quedan todas acá juntas, con "pista inversa" para revisar dónde te equivocaste.'
+            emptyText='Todavía no jugaste ninguna partida. Normal, Torneo, Práctica y Combat Chess quedan todas acá juntas, con "pista inversa" para revisar dónde te equivocaste.'
           />
         )}
 

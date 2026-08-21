@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { moveLoss, performanceLabel, mistakeSeverity, analyzeGame, analyzeCombatLog, findWorstMoveEver } from './gameReport.js';
+import { moveLoss, performanceLabel, mistakeSeverity, analyzeGame, analyzeCombatLog, findWorstMoveEver, buildMoveContext } from './gameReport.js';
 import { loadCombatHistory, saveCombatBattle, clearCombatHistory } from './combatHistory.js';
+import { moveContextLines } from './advancedCareer.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -95,6 +96,29 @@ describe('analyzeGame', () => {
     };
     await analyzeGame(history, 'w', mockApi, { maxMoves: 5, throttleMs: 1 });
     expect(callCount).toBe(5);
+  });
+});
+
+
+describe('contexto táctico de autopsia', () => {
+  it('identifica piezas, captura y castigo real sin inventar contexto', () => {
+    // Posición tras 1.e4 e5 2.Nf3 Nc6. 3.Nxe5? Nxe5.
+    const fen = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3';
+    const context = buildMoveContext(
+      fen,
+      { san: 'Nxe5', from: 'f3', to: 'e5' },
+      { san: 'Bb5', from: 'f1', to: 'b5' },
+      { san: 'Nxe5', from: 'c6', to: 'e5' },
+    );
+    expect(context.played).toMatchObject({ piece: 'n', from: 'f3', to: 'e5', captured: 'p' });
+    expect(context.reply).toMatchObject({ piece: 'n', from: 'c6', to: 'e5', captured: 'n', capturedPlayedPiece: true });
+    expect(context.suggested).toMatchObject({ piece: 'b', from: 'f1', to: 'b5' });
+
+    const lines = moveContextLines({ context });
+    expect(lines.join(' ')).toContain('Caballo f3 → e5');
+    expect(lines.join(' ')).toContain('capturando Peón');
+    expect(lines.join(' ')).toContain('Caballo c6 → e5 capturó ese Caballo');
+    expect(lines.join(' ')).toContain('Alfil f1 → b5');
   });
 });
 

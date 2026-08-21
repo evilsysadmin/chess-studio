@@ -29,6 +29,8 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-roguelike-run',
   'chess-study-roguelike-best-floor',
   'chess-study-roguelike-tower-completed',
+  'chess-study-combat-campaign-v1',
+  'chess-study-combat-campaign-best-stage',
   'chess-study-personal-puzzles',
   'chess-study-cpu-rivalry',
   'chess-study-daily-challenge',

@@ -76,7 +76,7 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
 
   return (
     <div className="tutorial-shell">
-      <button className="back-link" onClick={onExit}>← Volver al historial de combate</button>
+      <button className="back-link" onClick={onExit}>← Volver al historial de Combat Chess</button>
 
       {analyzing && (
         <p className="hint-text replay-analyzing-banner">

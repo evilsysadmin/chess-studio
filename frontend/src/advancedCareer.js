@@ -48,6 +48,44 @@ export function pointOfNoReturn(report) {
   return report?.worst?.loss >= 180 ? report.worst : null;
 }
 
+const PIECE_LABEL = Object.freeze({ p: 'Peón', n: 'Caballo', b: 'Alfil', r: 'Torre', q: 'Dama', k: 'Rey' });
+
+function pieceLabel(symbol) {
+  return PIECE_LABEL[String(symbol || '').toLowerCase()] || 'Pieza';
+}
+
+function moveRoute(detail) {
+  if (!detail) return '';
+  return `${pieceLabel(detail.piece)} ${detail.from || '?'} → ${detail.to || '?'}`;
+}
+
+export function moveContextLines(move) {
+  const context = move?.context;
+  if (!context?.played) return [];
+  const lines = [];
+  const played = context.played;
+  const playedCapture = played.captured ? `, capturando ${pieceLabel(played.captured)}` : '';
+  const playedStatus = played.checkmate ? ' y dando mate' : played.givesCheck ? ' y dando jaque' : '';
+  lines.push(`Tu jugada: ${moveRoute(played)}${playedCapture}${playedStatus}.`);
+
+  if (context.reply?.capturedPlayedPiece) {
+    lines.push(`Respuesta real: ${moveRoute(context.reply)} capturó ese ${pieceLabel(played.piece)} en ${played.to}.`);
+  } else if (context.punisher) {
+    lines.push(`Consecuencia inmediata: el ${pieceLabel(played.piece)} en ${played.to} quedó capturable por ${moveRoute(context.punisher)}.`);
+  } else if (context.reply) {
+    const replyCapture = context.reply.captured ? `, capturando ${pieceLabel(context.reply.captured)}` : '';
+    lines.push(`Respuesta real: ${moveRoute(context.reply)}${replyCapture}.`);
+  }
+
+  if (context.suggested) {
+    const best = context.suggested;
+    const bestCapture = best.captured ? `, capturando ${pieceLabel(best.captured)}` : '';
+    const bestStatus = best.checkmate ? ' y dando mate' : best.givesCheck ? ' y dando jaque' : '';
+    lines.push(`Alternativa del motor: ${moveRoute(best)}${bestCapture}${bestStatus}.`);
+  }
+  return lines;
+}
+
 export function explainMoveReport(move) {
   if (!move) return '';
   const san = String(move.suggested || '');

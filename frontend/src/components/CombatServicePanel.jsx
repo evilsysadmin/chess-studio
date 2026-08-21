@@ -6,7 +6,7 @@ export default function CombatServicePanel({ summary, compact = false }) {
   const { stats, merit, rank, nextRank, nextProgress, nextRequirement, decorations, averageSurvivors } = summary;
 
   return (
-    <section className={`combat-service-card ${compact ? 'compact' : ''}`} aria-label="Hoja de servicio de Combate">
+    <section className={`combat-service-card ${compact ? 'compact' : ''}`} aria-label="Hoja de servicio de Combat Chess">
       <div className="combat-service-heading">
         <div>
           <span className="combat-service-kicker">HOJA DE SERVICIO</span>

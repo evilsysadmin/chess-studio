@@ -66,7 +66,7 @@ export default function RatingDetailModal({ rating, onClose }) {
           Se calcula tipo ELO: le ganas a un rival fuerte, subes bastante; le ganas a uno flojo, casi nada;
           perder contra algo débil te baja más que perder contra algo fuerte. Cuentan las partidas de Torneo y
           las normales sin "Partida de práctica" (ahí las pistas son gratis, no mide bien tu nivel real).
-          Combate queda afuera a propósito: el resultado depende bastante del dado de las capturas, no es una
+          Combat Chess queda afuera a propósito: el resultado depende bastante del dado de las capturas, no es una
           señal limpia — para eso está la "pista inversa" del historial de combate — hay{' '}
           <b>{rating.games}</b> partida{rating.games === 1 ? '' : 's'} contadas hasta ahora.
         </p>

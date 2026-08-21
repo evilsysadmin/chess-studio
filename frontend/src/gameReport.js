@@ -4,6 +4,73 @@
 
 import { Chess } from 'chess.js';
 
+const PIECE_VALUE_FOR_CONTEXT = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 99 });
+
+function moveDetails(chess, moveLike) {
+  if (!chess || !moveLike?.from || !moveLike?.to) return null;
+  try {
+    const result = chess.move({
+      from: moveLike.from,
+      to: moveLike.to,
+      promotion: moveLike.promotion || 'q',
+    });
+    if (!result) return null;
+    return {
+      piece: result.piece || moveLike.piece || null,
+      from: result.from,
+      to: result.to,
+      captured: result.captured || null,
+      san: result.san || moveLike.san || null,
+      givesCheck: chess.isCheck(),
+      checkmate: chess.isCheckmate(),
+      fenAfter: chess.fen(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Contexto forense calculado sólo con hechos reconstruibles de la posición.
+// Evitamos adjudicar una causa estratégica que el motor no haya demostrado.
+export function buildMoveContext(fenBefore, played, suggested, reply = null) {
+  try {
+    const before = new Chess(fenBefore);
+    const playedBoard = new Chess(fenBefore);
+    const playedDetails = moveDetails(playedBoard, played);
+    if (!playedDetails) return null;
+
+    let suggestedDetails = null;
+    if (suggested?.from && suggested?.to) suggestedDetails = moveDetails(new Chess(fenBefore), suggested);
+
+    let replyDetails = null;
+    if (reply?.from && reply?.to) {
+      replyDetails = moveDetails(new Chess(playedDetails.fenAfter), reply);
+      if (replyDetails) {
+        replyDetails.capturedPlayedPiece = Boolean(
+          replyDetails.captured
+          && replyDetails.to === playedDetails.to
+          && replyDetails.captured === playedDetails.piece,
+        );
+      }
+    }
+
+    const punishers = playedBoard.moves({ verbose: true })
+      .filter((candidate) => candidate.to === playedDetails.to && candidate.captured === playedDetails.piece)
+      .sort((a, b) => (PIECE_VALUE_FOR_CONTEXT[a.piece] || 20) - (PIECE_VALUE_FOR_CONTEXT[b.piece] || 20));
+    const punisher = punishers[0] ? {
+      piece: punishers[0].piece,
+      from: punishers[0].from,
+      to: punishers[0].to,
+      captured: punishers[0].captured || null,
+      san: punishers[0].san || null,
+    } : null;
+
+    return { fenBefore: before.fen(), played: playedDetails, suggested: suggestedDetails, reply: replyDetails, punisher };
+  } catch {
+    return null;
+  }
+}
+
 // Cuánto peor fue la jugada jugada respecto a la sugerida, en "centipawns"
 // (la unidad de evaluación de ai.js), desde la perspectiva de quien movió.
 // Siempre >= 0: si el humano jugó igual o mejor de lo que el motor
@@ -83,17 +150,19 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
       try {
         const result = await throttledAnalyzeMove(api, fenBefore, entry.from, entry.to, undefined, level, throttleMs);
         const loss = moveLoss(humanColor, result.evalAfterSuggested, result.evalAfterPlayed);
+        const context = buildMoveContext(fenBefore, entry, result.suggested, history[i + 1]);
         moveReports.push({
           index: i, // posición en `history` — para ubicar esta jugada al recorrer la partida
           moveNumber: Math.floor(i / 2) + 1,
           played: entry.san,
           playedFrom: entry.from,
           playedTo: entry.to,
-          playedPiece: entry.piece,
+          playedPiece: entry.piece || context?.played?.piece,
           suggested: result.suggested.san,
           suggestedFrom: result.suggested.from,
           suggestedTo: result.suggested.to,
-          suggestedPiece: result.suggested.piece,
+          suggestedPiece: result.suggested.piece || context?.suggested?.piece,
+          context,
           loss,
           severity: mistakeSeverity(loss),
           evalAfterSuggested: result.evalAfterSuggested,
@@ -145,16 +214,18 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
     try {
       const result = await throttledAnalyzeMove(api, entry.fenBefore, entry.from, entry.to, undefined, level, throttleMs);
       const loss = moveLoss(humanColor, result.evalAfterSuggested, result.evalAfterPlayed);
+      const context = buildMoveContext(entry.fenBefore, entry, result.suggested, log[i + 1]);
       moveReports.push({
         index: i,
         played: entry.san,
         playedFrom: entry.from,
         playedTo: entry.to,
-        playedPiece: entry.piece,
+        playedPiece: entry.piece || context?.played?.piece,
         suggested: result.suggested.san,
         suggestedFrom: result.suggested.from,
         suggestedTo: result.suggested.to,
-        suggestedPiece: result.suggested.piece,
+        suggestedPiece: result.suggested.piece || context?.suggested?.piece,
+        context,
         loss,
         severity: mistakeSeverity(loss),
         evalAfterSuggested: result.evalAfterSuggested,

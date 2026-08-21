@@ -18,6 +18,8 @@ const PROGRESS_KEYS = [
   'chess-study-roguelike-run',
   'chess-study-roguelike-best-floor',
   'chess-study-roguelike-tower-completed',
+  'chess-study-combat-campaign-v1',
+  'chess-study-combat-campaign-best-stage',
 ];
 
 // Estas NUNCA deberían tocarse con un reset de progreso — son sesión de
