@@ -66,7 +66,7 @@ export function buildShareText(record, extras = {}) {
   const result = OUTCOME[data.outcome] || data.outcome;
   const color = data.humanColor === 'w' ? 'blancas' : 'negras';
   const lines = [
-    `♟ ${result} contra la CPU · nivel ${data.difficulty}`,
+    data.mode === 'ghost' ? `♟ ${result} contra la CPU · nivel ${data.difficulty} · Modo Rival Fantasma` : `♟ ${result} contra la CPU · nivel ${data.difficulty}`,
     `${data.moves.length} jugadas · jugué con ${color}`,
   ];
   if (data.opening) lines.push(`Apertura: ${data.opening}`);

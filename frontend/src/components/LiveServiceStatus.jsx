@@ -4,7 +4,7 @@ import { fetchLiveStatus } from '../auth.js';
 const POLL_MS = 30_000;
 
 export default function LiveServiceStatus() {
-  const [status, setStatus] = useState({ backend: 'checking', onlineUsers: null, presenceAvailable: false });
+  const [status, setStatus] = useState({ backend: 'checking', onlineUsers: null, presenceAvailable: false, latencyMs: null });
 
   useEffect(() => {
     let active = true;
@@ -29,7 +29,8 @@ export default function LiveServiceStatus() {
   const onlineLabel = Number.isInteger(status.onlineUsers)
     ? `${status.onlineUsers} online`
     : '— online';
-  const backendLabel = checking ? 'Backend …' : `Backend ${backendUp ? 'UP' : 'DOWN'}`;
+  const latency = backendUp && Number.isInteger(status.latencyMs) ? ` · ${status.latencyMs} ms` : '';
+  const backendLabel = checking ? 'Backend …' : `Backend ${backendUp ? 'UP' : 'DOWN'}${latency}`;
 
   return (
     <aside className={`live-service-status ${backendUp ? 'is-up' : checking ? 'is-checking' : 'is-down'}`} aria-live="polite" title="Usuarios activos en los últimos 90 segundos">

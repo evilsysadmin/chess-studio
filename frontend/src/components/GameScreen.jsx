@@ -14,14 +14,16 @@ import { speakCpuComment, stopCpuSpeech } from '../voiceCommentary.js';
 import { formatLongMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
 import { flagOutcome, flagPgnResult, formatClock } from '../clock.js';
+import { clearClockSnapshot, restoreClockState, saveClockSnapshot } from '../clockPersistence.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
 import { startMemoryComment, openingMemoryComment, resultMemoryComment } from '../cpuMemory.js';
-import { seriesStatusText } from '../series.js';
+import { loadSeriesHistory, seriesHistoryStats, seriesStatusText } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
+import { loadZenMode, saveZenMode, zenModeSummary } from '../zenMode.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -80,15 +82,20 @@ export default function GameScreen({
   const [selected, setSelected] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [busy, setBusy] = useState(false);
+  const [zenMode, setZenMode] = useState(() => loadZenMode());
+  const zenModeRef = useRef(zenMode);
+  zenModeRef.current = zenMode;
 
   // Reloj: enteramente del lado del cliente (no vive en el backend — esta
   // app no necesita anti-trampas). null en cualquiera de los dos significa
   // "sin reloj para esta partida". `flagFallen` guarda el color a quien se
   // le acabó el tiempo, si pasó.
   const hasClock = !!timeControl?.initial;
-  const [whiteTime, setWhiteTime] = useState(timeControl?.initial ?? null);
-  const [blackTime, setBlackTime] = useState(timeControl?.initial ?? null);
-  const [flagFallen, setFlagFallen] = useState(null); // 'w' | 'b' | null
+  const initialClock = restoreClockState(game.id, timeControl, game.turn);
+  const [whiteTime, setWhiteTime] = useState(initialClock.whiteTime);
+  const [blackTime, setBlackTime] = useState(initialClock.blackTime);
+  const [flagFallen, setFlagFallen] = useState(initialClock.flagFallen); // 'w' | 'b' | null
+  const lastClockPersistRef = useRef(0);
   const tickRef = useRef(null);
   const [showReport, setShowReport] = useState(false);
   const [achievementToast, setAchievementToast] = useState(null);
@@ -150,9 +157,10 @@ export default function GameScreen({
     openingMemoryShownRef.current = false;
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
-    setWhiteTime(timeControl?.initial ?? null);
-    setBlackTime(timeControl?.initial ?? null);
-    setFlagFallen(null);
+    const restoredClock = restoreClockState(game.id, timeControl, game.turn);
+    setWhiteTime(restoredClock.whiteTime);
+    setBlackTime(restoredClock.blackTime);
+    setFlagFallen(restoredClock.flagFallen);
     setSuddenLives(3);
     setForcedOutcome(null);
     setControlPrompt(null);
@@ -163,7 +171,21 @@ export default function GameScreen({
   }, [game.id]);
 
   useEffect(() => {
-    const text = startMemoryComment(loadRivalry(), { difficulty: game.difficulty, humanColor, ...memoryContext });
+    if (!zenMode) return;
+    stopCpuSpeech();
+    setCpuComment(null);
+  }, [zenMode]);
+
+  useEffect(() => {
+    const historicalSeries = seriesState ? loadSeriesHistory() : [];
+    const text = startMemoryComment(loadRivalry(), {
+      difficulty: game.difficulty,
+      humanColor,
+      series: seriesState,
+      seriesHistory: historicalSeries,
+      seriesHistoryStats: seriesState ? seriesHistoryStats(historicalSeries) : null,
+      ...memoryContext,
+    });
     if (!text) return undefined;
     startMemoryTimeout.current = setTimeout(() => showCpuComment({ text }), 700);
     return () => {
@@ -191,14 +213,32 @@ export default function GameScreen({
     return () => clearInterval(interval);
   }, [hasClock, game.id, game.isGameOver, flagFallen, forcedOutcome, busy, game.turn, humanColor]);
 
+  // Snapshot del reloj: sobrevive a F5 y cobra el tiempo real que pasó
+  // mientras la pestaña se reconstruía. Limitamos escrituras a ~1/s.
+  useEffect(() => {
+    if (!hasClock || whiteTime === null || blackTime === null || game.isGameOver || flagFallen || forcedOutcome) return;
+    const now = Date.now();
+    if (now - lastClockPersistRef.current < 900) return;
+    lastClockPersistRef.current = now;
+    const activeColor = busy ? (humanColor === 'w' ? 'b' : 'w') : game.turn;
+    saveClockSnapshot({ gameId: game.id, timeControlId: timeControl.id, whiteTime, blackTime, activeColor, now });
+  }, [whiteTime, blackTime, busy, game.turn, game.id, game.isGameOver, flagFallen, forcedOutcome, hasClock, humanColor, timeControl?.id]);
+
+  useEffect(() => {
+    if (game.isGameOver) clearClockSnapshot(game.id);
+  }, [game.id, game.isGameOver]);
+
   // Reloj — bandera: en cuanto un lado llega a 0, se declara perdedor por
-  // tiempo (simplificación consciente: no contempla la excepción de "el
-  // rival no tiene material suficiente para dar mate" — un caso raro que,
-  // por ahora, se resuelve igual como derrota por tiempo).
+  // tiempo. La adjudicación posterior sí contempla material insuficiente.
   useEffect(() => {
     if (!hasClock || flagFallen || game.isGameOver) return;
-    if (whiteTime !== null && whiteTime <= 0) setFlagFallen('w');
-    else if (blackTime !== null && blackTime <= 0) setFlagFallen('b');
+    if (whiteTime !== null && whiteTime <= 0) {
+      saveClockSnapshot({ gameId: game.id, timeControlId: timeControl.id, whiteTime: 0, blackTime: blackTime ?? 0, activeColor: 'w' });
+      setFlagFallen('w');
+    } else if (blackTime !== null && blackTime <= 0) {
+      saveClockSnapshot({ gameId: game.id, timeControlId: timeControl.id, whiteTime: whiteTime ?? 0, blackTime: 0, activeColor: 'b' });
+      setFlagFallen('b');
+    }
   }, [whiteTime, blackTime, hasClock, flagFallen, game.isGameOver]);
 
   useEffect(() => {
@@ -272,8 +312,6 @@ export default function GameScreen({
 
   function showCpuComment(comment, meta = {}) {
     if (!comment?.text) return;
-    setCpuComment(comment.text);
-    setCpuCommentSeq((n) => n + 1);
     const transcript = appendActiveGameChat(game.id, comment, {
       event: meta.event || comment.event?.type || null,
       actor: meta.actor || null,
@@ -281,6 +319,11 @@ export default function GameScreen({
     });
     setGameChat(transcript);
     onChatUpdate?.(game.id, transcript);
+    // Zen no borra el expediente: conserva el comentario para el replay y la
+    // memoria histórica, pero no lo enseña ni lo pronuncia durante la partida.
+    if (zenModeRef.current) return;
+    setCpuComment(comment.text);
+    setCpuCommentSeq((n) => n + 1);
     speakCpuComment(comment.text);
     if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
     cpuCommentTimeout.current = setTimeout(() => setCpuComment(null), 6500);
@@ -289,7 +332,7 @@ export default function GameScreen({
 
   function showNoteworthy(comment, actor) {
     if (!comment) return;
-    playNoteworthySound(comment.event, actor);
+    if (!zenModeRef.current) playNoteworthySound(comment.event, actor);
     const recurrenceCount = recordRivalryIncident(comment.event, actor);
     showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` }, { actor, event: comment.event?.type });
     const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
@@ -571,8 +614,9 @@ export default function GameScreen({
     const result = flagFallen
       ? flagPgnResult(flagFallen, game.insufficientMatingMaterial)
       : pgnResult(game.status, game.turn, humanColor);
-    const white = humanColor === 'w' ? 'Jugador' : `CPU (nivel ${game.difficulty})`;
-    const black = humanColor === 'b' ? 'Jugador' : `CPU (nivel ${game.difficulty})`;
+    const cpuName = `CPU (nivel ${game.difficulty})`;
+    const white = humanColor === 'w' ? 'Jugador' : cpuName;
+    const black = humanColor === 'b' ? 'Jugador' : cpuName;
     const pgn = toPGN(game.history, { white, black, result });
     downloadPGN(pgn, `partida-${game.id.slice(0, 8)}.pgn`);
   }
@@ -597,7 +641,7 @@ export default function GameScreen({
     ? 'Tiempo agotado · tablas por material insuficiente'
     : `Se acabó el tiempo (${flagFallen === 'w' ? 'blancas' : 'negras'})`;
   else if (busy) statusText = 'La CPU está pensando…';
-  else if (turnBanner) statusText = turnBanner;
+  else if (!zenMode && turnBanner) statusText = turnBanner;
   else statusText = statusLabel || (game.turn === humanColor ? 'Tu turno' : 'Turno de la CPU');
 
   let hintButtonLabel = 'Pista';
@@ -628,24 +672,25 @@ export default function GameScreen({
     <div>
       <div className="game-layout">
         <div className="board-column">
-          <div className={`status-line ${statusClass} ${turnBanner && !busy ? 'pulse' : ''}`}>
+          <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`}>
             {statusText}
           </div>
-          <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />
-          {prediction && <div className="prediction-strip">{prediction.text}</div>}
+          {!zenMode && <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />}
+          {!zenMode && prediction && <div className="prediction-strip">{prediction.text}</div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
-          {seriesState && <div className={`series-strip ${seriesState.winner ? 'finished' : ''}`}>{seriesStatusText(seriesState)}</div>}
-          {runState?.active && <div className="series-strip">{runState.mode === 'boss' ? `Boss Run · fase ${runState.stage + 1}/6 · CPU ${runState.difficulty}` : runState.mode === 'cup' ? `Copa · ${runState.completedStages || 0}/8 · ${runState.points || 0} pts · CPU ${runState.difficulty}` : `Racha · ${runState.wins} victorias · CPU ${runState.difficulty}`}</div>}
+          {!zenMode && game.ghostStyle && <div className="series-strip ghost-strip">Modo Rival Fantasma · nivel {game.difficulty} · estilo derivado de tus partidas</div>}
+          {!zenMode && seriesState && <div className={`series-strip ${seriesState.winner ? 'finished' : ''}`}>{seriesStatusText(seriesState)}</div>}
+          {!zenMode && runState?.active && <div className="series-strip">{runState.mode === 'boss' ? `Boss Run · fase ${runState.stage + 1}/6 · CPU ${runState.difficulty}` : runState.mode === 'cup' ? `Copa · ${runState.completedStages || 0}/8 · ${runState.points || 0} pts · CPU ${runState.difficulty}` : `Racha · ${runState.wins} victorias · CPU ${runState.difficulty}`}</div>}
           {activeContract && <div className="contract-strip"><b>Contrato:</b> {activeContract.label} · {activeContract.text}</div>}
-          {achievementToast && (
+          {!zenMode && achievementToast && (
             <div className={`achievement-toast ${achievementToast.kind === 'shame' ? 'shame' : 'glory'}`}>
               <b>{achievementToast.kind === 'shame' ? '☠ Trofeo de vergüenza' : '🏆 Logro desbloqueado'}</b>
               <span>{achievementToast.name}</span>
             </div>
           )}
           {renderClock(topColor, topTime)}
-          <div className="board-live-row">
+          <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
             <aside className="game-music-rail" aria-label="Música de la partida">
               <MusicPlayer />
             </aside>
@@ -654,39 +699,42 @@ export default function GameScreen({
                 fen={boardFen}
                 onSquareClick={handleSquareClick}
                 selectedSquare={selected}
-                legalTargets={legalTargets}
-                lastMove={lastMoveSquares}
+                legalTargets={zenMode ? [] : legalTargets}
+                lastMove={zenMode ? null : lastMoveSquares}
                 animate={pendingAnim}
-                hintMove={hint}
+                hintMove={zenMode ? null : hint}
                 orientation={humanColor === 'b' ? 'black' : 'white'}
+                showCoordinates={!zenMode}
               />
-              {selectionNotice && (
+              {!zenMode && selectionNotice && (
                 <div className={`move-availability-note ${selectionNotice.kind}`} role="status" aria-live="polite">
                   <b>{selectionNotice.kind === 'pinned' ? 'Pieza clavada' : 'Sin jugadas legales'}</b>
                   <span>{selectionNotice.text}</span>
                 </div>
               )}
-              <div className="game-notation-row">
-                <NotationPanel history={game.history} difficulty={game.difficulty} />
-              </div>
+              {!zenMode && (
+                <div className="game-notation-row">
+                  <NotationPanel history={game.history} difficulty={game.difficulty} />
+                </div>
+              )}
             </div>
-            <aside className="game-side-column" aria-label="Game Chat de la partida">
+            {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
               <GameChat messages={gameChat} />
-            </aside>
+            </aside>}
           </div>
           {renderClock(bottomColor, bottomTime)}
-          {hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
-          {captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
-          {hintMode === 'paid' && (
+          {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
+          {!zenMode && captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
+          {!zenMode && hintMode === 'paid' && (
             <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
           )}
           <div className="game-controls">
-            {hintMode !== 'off' && (
+            {!zenMode && hintMode !== 'off' && (
               <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
                 {hintButtonLabel}
               </button>
             )}
-            {hintMode === 'free' && (
+            {!zenMode && hintMode === 'free' && (
               <button className="secondary-btn" disabled={busy || game.history.length === 0} onClick={handleUndo}>
                 Deshacer jugada
               </button>
@@ -696,6 +744,15 @@ export default function GameScreen({
                 Descargar PGN
               </button>
             )}
+            <button
+              type="button"
+              className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
+              aria-pressed={zenMode}
+              title={zenModeSummary(zenMode)}
+              onClick={() => setZenMode((current) => saveZenMode(!current))}
+            >
+              {zenMode ? 'Zen: ON' : 'Zen: OFF'}
+            </button>
             <button className="secondary-btn" onClick={handleAbandon}>Abandonar partida</button>
           </div>
         </div>
@@ -719,7 +776,7 @@ export default function GameScreen({
             <button className="primary-btn" onClick={handleAbandon}>Volver al menú</button>
           )}
           {onRematch && !seriesState && !runState?.active && (
-            <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onRematch({ difficulty: game.difficulty, humanColor, timeControl })}>
+            <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onRematch({ difficulty: game.difficulty, humanColor, timeControl, ghostStyle: game.ghostStyle || null })}>
               Revancha inmediata
             </button>
           )}
@@ -743,7 +800,7 @@ export default function GameScreen({
           history={game.history}
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
-          meta={{ gameId: game.id, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: null, timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
+          meta={{ gameId: game.id, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: null, timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
           onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
         />

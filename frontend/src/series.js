@@ -36,13 +36,30 @@ export function createSeries({ bestOf, difficulty, firstColor, timeControlId = '
   };
 }
 
+export function validateSeriesState(parsed) {
+  if (!parsed || ![3, 5].includes(Number(parsed.bestOf))) return null;
+  const bestOf = Number(parsed.bestOf);
+  const winsNeeded = Math.floor(bestOf / 2) + 1;
+  const humanWins = Math.max(0, Number(parsed.humanWins || 0));
+  const cpuWins = Math.max(0, Number(parsed.cpuWins || 0));
+  const draws = Math.max(0, Number(parsed.draws || 0));
+  const games = Array.isArray(parsed.games) ? parsed.games.filter((g) => ['win','loss','draw'].includes(g?.outcome)) : [];
+  if (humanWins + cpuWins + draws !== games.length) return null;
+  if (humanWins > winsNeeded || cpuWins > winsNeeded) return null;
+  const winner = humanWins >= winsNeeded ? 'human' : cpuWins >= winsNeeded ? 'cpu' : null;
+  if (parsed.winner && parsed.winner !== winner) return null;
+  return {
+    ...parsed, bestOf, winsNeeded, humanWins, cpuWins, draws, games,
+    nextColor: normalizeColor(parsed.nextColor), winner,
+    currentGameId: winner ? null : (parsed.currentGameId || null),
+  };
+}
+
 export function loadActiveSeries() {
   try {
     const raw = localStorage.getItem(ACTIVE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (![3, 5].includes(Number(parsed?.bestOf))) return null;
-    return parsed;
+    return validateSeriesState(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -86,6 +103,8 @@ function archiveCompletedSeries(series) {
 
 export function recordSeriesGame(series, outcome, meta = {}) {
   if (!series || series.winner) return series;
+  if (!['win', 'loss', 'draw'].includes(outcome)) throw new Error(`Resultado de serie inválido: ${outcome}`);
+  if (meta.gameId && (series.games || []).some((g) => g.gameId === meta.gameId)) return series;
   const next = {
     ...series,
     games: [...(series.games || [])],
@@ -131,4 +150,94 @@ export function seriesStatusText(series) {
 export function clearSeriesHistory() {
   removeProfileStorageItem(HISTORY_KEY);
   return [];
+}
+
+
+function completedSeriesRows(history) {
+  return (Array.isArray(history) ? history : []).filter((series) =>
+    series && [3, 5].includes(Number(series.bestOf)) && ['human', 'cpu'].includes(series.winner)
+  );
+}
+
+export function seriesFacts(series) {
+  if (!series || !['human', 'cpu'].includes(series.winner)) {
+    return { winner: null, sweep: false, comeback: false, decider: false };
+  }
+  const games = Array.isArray(series.games) ? series.games : [];
+  const winsNeeded = Number(series.winsNeeded || Math.floor(Number(series.bestOf || 3) / 2) + 1);
+  let human = 0;
+  let cpu = 0;
+  let humanTrailed = false;
+  let cpuTrailed = false;
+  let beforeLastHuman = 0;
+  let beforeLastCpu = 0;
+
+  games.forEach((game, index) => {
+    if (index === games.length - 1) {
+      beforeLastHuman = human;
+      beforeLastCpu = cpu;
+    }
+    if (game?.outcome === 'win') human += 1;
+    else if (game?.outcome === 'loss') cpu += 1;
+    if (human < cpu) humanTrailed = true;
+    if (cpu < human) cpuTrailed = true;
+  });
+
+  const loserWins = series.winner === 'human' ? Number(series.cpuWins || cpu) : Number(series.humanWins || human);
+  const sweep = loserWins === 0 && Number(series.draws || 0) === 0;
+  const comeback = series.winner === 'human' ? humanTrailed : cpuTrailed;
+  const decider = beforeLastHuman === winsNeeded - 1 && beforeLastCpu === winsNeeded - 1;
+  return { winner: series.winner, sweep, comeback, decider };
+}
+
+export function seriesHistoryStats(history = loadSeriesHistory()) {
+  const rows = completedSeriesRows(history);
+  const chronological = [...rows].sort((a, b) => new Date(a.completedAt || 0) - new Date(b.completedAt || 0));
+  const stats = {
+    total: rows.length,
+    won: 0,
+    lost: 0,
+    currentStreak: 0,
+    bestHumanStreak: 0,
+    bestCpuStreak: 0,
+    humanSweeps: 0,
+    cpuSweeps: 0,
+    humanComebacks: 0,
+    cpuComebacks: 0,
+    deciders: 0,
+  };
+
+  let signed = 0;
+  for (const series of chronological) {
+    const facts = seriesFacts(series);
+    if (series.winner === 'human') {
+      stats.won += 1;
+      signed = signed >= 0 ? signed + 1 : 1;
+      stats.bestHumanStreak = Math.max(stats.bestHumanStreak, signed);
+      if (facts.sweep) stats.humanSweeps += 1;
+      if (facts.comeback) stats.humanComebacks += 1;
+    } else {
+      stats.lost += 1;
+      signed = signed <= 0 ? signed - 1 : -1;
+      stats.bestCpuStreak = Math.max(stats.bestCpuStreak, Math.abs(signed));
+      if (facts.sweep) stats.cpuSweeps += 1;
+      if (facts.comeback) stats.cpuComebacks += 1;
+    }
+    if (facts.decider) stats.deciders += 1;
+  }
+  stats.currentStreak = signed;
+  return stats;
+}
+
+export function seriesHeadline(series) {
+  if (!series || !['human', 'cpu'].includes(series.winner)) return 'Serie sin cerrar';
+  const facts = seriesFacts(series);
+  const human = Number(series.humanWins || 0);
+  const cpu = Number(series.cpuWins || 0);
+  const score = `${human}-${cpu}`;
+  const owner = series.winner === 'human' ? 'Victoria' : 'Derrota';
+  if (facts.sweep) return `${owner} por barrida · ${score}`;
+  if (facts.comeback) return `${owner} con remontada · ${score}`;
+  if (facts.decider) return `${owner} en la decisiva · ${score}`;
+  return `${owner} · ${score}`;
 }

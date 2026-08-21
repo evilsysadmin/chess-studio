@@ -212,3 +212,35 @@ def test_high_level_pawn_takes_hanging_queen():
     assert move is not None
     assert move["from"] == "d4"
     assert move["to"] == "e5"
+
+
+def test_ghost_style_never_overrides_forced_mate():
+    board = chess.Board("6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1")
+    style = {"capture": -1, "pawn": 1, "queen": 1, "check": -1, "castle": 1}
+    move = get_cpu_move(board, 100, style)
+    assert move["san"] == "Ra8#"
+
+
+def test_ghost_style_never_refuses_a_free_queen_at_high_level():
+    board = chess.Board("4k3/8/8/3q4/4Q3/8/8/4K3 b - - 0 1")
+    style = {"capture": -1, "pawn": 1, "queen": -1, "check": -1, "castle": -1}
+    move = get_cpu_move(board, 100, style)
+    assert move is not None
+    assert move["from"] == "d5"
+    assert move["to"] == "e4"
+
+
+def test_ghost_style_score_rewards_only_requested_move_traits():
+    board = chess.Board("4k3/8/8/3q4/4Q3/8/8/4K3 b - - 0 1")
+    capture = chess.Move.from_uci("d5e4")
+    quiet = chess.Move.from_uci("d5d6")
+    aggressive = {"capture": 1, "pawn": 0, "queen": 0, "check": 0, "castle": 0}
+    shy = {"capture": -1, "pawn": 0, "queen": 0, "check": 0, "castle": 0}
+    assert ai_module._ghost_style_score(board, capture, aggressive) > ai_module._ghost_style_score(board, quiet, aggressive)
+    assert ai_module._ghost_style_score(board, capture, shy) < ai_module._ghost_style_score(board, quiet, shy)
+
+
+def test_ghost_tiebreak_does_not_touch_mate_sentinel_scores():
+    assert not ai_module._ghost_tiebreak_allowed(ai_module.MATE_SCORE - 2, ai_module.MATE_SCORE - 5, True)
+    assert ai_module._ghost_tiebreak_allowed(120.0, 110.0, True)
+    assert not ai_module._ghost_tiebreak_allowed(120.0, 90.0, True)

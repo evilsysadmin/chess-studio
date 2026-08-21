@@ -89,6 +89,34 @@ export function randomPersonalPuzzle(excludeId) {
   return list.length ? list[Math.floor(Math.random() * list.length)] : null;
 }
 
+export function recordPersonalPuzzleResult(id, { solved = false, clean = false } = {}) {
+  if (!id) return null;
+  const all = loadPersonalPuzzles();
+  const index = all.findIndex((p) => p.id === id);
+  if (index < 0) return null;
+  const now = new Date().toISOString();
+  const previous = all[index];
+  const updated = {
+    ...previous,
+    attempts: Number(previous.attempts || 0) + 1,
+    solves: Number(previous.solves || 0) + (solved ? 1 : 0),
+    cleanSolves: Number(previous.cleanSolves || 0) + (solved && clean ? 1 : 0),
+    lastAttemptAt: now,
+    lastSolvedAt: solved ? now : (previous.lastSolvedAt || null),
+  };
+  all[index] = updated;
+  setProfileStorageItem(KEY, JSON.stringify(all));
+  return updated;
+}
+
+export function personalTrainingSummary() {
+  const all = loadPersonalPuzzles();
+  const attempts = all.reduce((sum, p) => sum + Number(p.attempts || 0), 0);
+  const solves = all.reduce((sum, p) => sum + Number(p.solves || 0), 0);
+  const cleanSolves = all.reduce((sum, p) => sum + Number(p.cleanSolves || 0), 0);
+  return { total: all.length, attempts, solves, cleanSolves, cleanRate: attempts ? Math.round((cleanSolves / attempts) * 100) : null };
+}
+
 export function clearPersonalPuzzles() {
   removeProfileStorageItem(KEY);
 }

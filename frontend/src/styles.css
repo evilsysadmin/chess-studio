@@ -3643,9 +3643,6 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   z-index: 70;
   width: min(calc(100% - 2rem), 540px);
   margin: 0.55rem auto 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   pointer-events: none;
 }
 .global-music-dock .music-deck {
@@ -3659,10 +3656,10 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .global-music-dock .live-service-status {
   position: static;
   transform: none;
+  display: flex;
   width: fit-content;
-  max-width: 100%;
-  margin: 0.34rem 0 0;
-  align-self: center;
+  max-width: calc(100% - 1rem);
+  margin: 0.34rem auto 0;
   pointer-events: auto;
   background: color-mix(in srgb, var(--ink-2) 78%, transparent);
 }
@@ -4464,7 +4461,8 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .live-service-status {
     position: static;
     transform: none;
-    align-self: flex-start;
+    align-self: center;
+    margin-inline: auto;
   }
 
   .masthead-text { text-align: center; }
@@ -4501,4 +4499,336 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   color: var(--parchment-dim);
   font-size: 0.68rem;
   line-height: 1.45;
+}
+
+/* ---------- V16.6am · admin móvil legible ----------
+   En pantallas estrechas la tabla deja de fingir que sigue en escritorio:
+   cada usuario pasa a una ficha táctil y los detalles ocupan todo el ancho. */
+@media (max-width: 700px) {
+  .admin-screen {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem;
+    gap: 1.1rem;
+  }
+
+  .admin-screen .menu-section {
+    min-width: 0;
+  }
+
+  .admin-screen .menu-section h2 {
+    font-size: clamp(1.12rem, 6vw, 1.35rem);
+  }
+
+  .admin-screen .hint-text {
+    line-height: 1.45;
+  }
+
+  .admin-table-wrap {
+    overflow: visible;
+    border-radius: 0;
+  }
+
+  .admin-users-table,
+  .admin-users-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-users-table {
+    font-size: 0.78rem;
+  }
+
+  .admin-users-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    width: 100%;
+    margin: 0 0 0.85rem;
+    overflow: hidden;
+    border: 1px solid var(--ink-3);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row):hover td {
+    background: transparent;
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: start;
+    gap: 0.2rem;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 0.62rem 0.7rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    border-bottom: 1px solid var(--ink-3);
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td::before {
+    content: attr(data-label);
+    color: var(--brass-dim);
+    font-size: 0.61rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.065em;
+    text-transform: uppercase;
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(1),
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(2),
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(7) {
+    grid-column: 1 / -1;
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(1) {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--parchment);
+    background: rgba(255, 255, 255, 0.018);
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(2) {
+    padding-top: 0.52rem;
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(3),
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(5) {
+    border-right: 1px solid var(--ink-3);
+  }
+
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(7) {
+    border-bottom: 0;
+    padding: 0.7rem;
+  }
+
+  .admin-presence {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .admin-presence-copy,
+  .admin-presence-copy small {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-actions-cell {
+    position: static;
+    z-index: auto;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .admin-user-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.55rem;
+  }
+
+  .admin-peek-button,
+  .admin-delete-button {
+    min-height: 42px;
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.76rem;
+  }
+
+  .admin-detail-row {
+    display: block;
+    width: 100%;
+    margin: -0.55rem 0 1rem;
+  }
+
+  .admin-detail-row > td {
+    display: block;
+    width: 100%;
+    padding: 0.65rem 0;
+    border-bottom: 0;
+    white-space: normal;
+    background: transparent;
+  }
+
+  .admin-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .admin-detail-grid > div {
+    min-width: 0;
+    padding: 0.65rem;
+  }
+
+  .admin-detail-grid strong,
+  .admin-activity-list,
+  .admin-autopsy-moves,
+  .admin-roast-box,
+  .coaching-card {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-autopsy-boards {
+    grid-template-columns: 210px;
+    justify-content: start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.3rem;
+  }
+
+  .admin-insights-panel {
+    min-width: 0;
+    padding: 0.8rem;
+  }
+
+  .admin-insights-heading,
+  .admin-insights-facts,
+  .admin-coaching-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 390px) {
+  .admin-screen { padding: 0.8rem; }
+  .admin-user-actions { grid-template-columns: 1fr; }
+}
+
+/* v16.6an — expediente persistente de series */
+.series-dossier-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.series-dossier-heading h2 { margin-bottom: 0; }
+.series-dossier-heading > strong {
+  color: var(--parchment);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.series-dossier-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.series-dossier-stats > span {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.series-dossier-stats b {
+  color: var(--parchment);
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+}
+
+.series-dossier-stats small { color: var(--parchment-dim); }
+
+.series-dossier-history {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+
+.series-dossier-history article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.58rem 0.7rem;
+  border-left: 3px solid var(--brass-dim);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.series-dossier-history article > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.series-dossier-history small,
+.series-dossier-history time {
+  color: var(--parchment-dim);
+  font-size: 0.72rem;
+}
+
+.series-dossier-history time {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 650px) {
+  .series-dossier-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .series-dossier-heading > strong { text-align: left; }
+  .series-dossier-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .series-dossier-history article {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 380px) {
+  .series-dossier-stats { grid-template-columns: 1fr; }
+}
+
+/* ---------- V16.6ao · Modo Zen / examen ----------
+   El modo no altera reglas ni el historial: sólo retira ayudas y mobiliario
+   visual durante la partida. El Winamp permanece porque el silencio absoluto
+   ya sería una auditoría fiscal, no concentración. */
+.board-wrap.coordinates-hidden {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+.board-wrap.coordinates-hidden .board-grid {
+  grid-column: 1;
+  grid-row: 1;
+}
+.board-live-row.zen-mode {
+  grid-template-columns: 220px max-content;
+  grid-template-areas: "music board";
+  justify-content: center;
+}
+.zen-mode-toggle.active {
+  border-color: var(--brass);
+  color: var(--brass);
+  box-shadow: inset 0 0 0 1px rgba(198, 164, 93, 0.18);
+}
+
+@media (max-width: 820px) {
+  .board-live-row.zen-mode {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "music"
+      "board";
+    justify-items: center;
+  }
 }

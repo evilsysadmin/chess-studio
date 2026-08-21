@@ -173,9 +173,9 @@ export default function Menu({
 
           <button type="button" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
             <IconEye className="menu-card-icon" />
-            <h3>Espejo de ti mismo</h3>
-            <p>Una CPU calibrada a tu propio historial de errores — no un nivel fijo elegido a mano.</p>
-            <span className="menu-card-cta">Ver mi perfil →</span>
+            <h3>Rival Fantasma</h3>
+            <p>Una CPU calibrada a tus errores y a tendencias reales de tu estilo de juego.</p>
+            <span className="menu-card-cta">Construir mi fantasma →</span>
           </button>
 
           <button type="button" className="menu-card accent-hint" onClick={onSpectator}>
@@ -241,8 +241,8 @@ export default function Menu({
       )}
       {showMirrorMode && (
         <MirrorModeModal
-          onStart={(mirrorDifficulty) => {
-            onNewGame(mirrorDifficulty, 'random', { mirror: true });
+          onStart={(profile) => {
+            onNewGame(profile.difficulty, 'random', { ghost: true, ghostStyle: profile.style });
             setShowMirrorMode(false);
           }}
           onClose={() => setShowMirrorMode(false)}

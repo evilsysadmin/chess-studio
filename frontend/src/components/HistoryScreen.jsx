@@ -2,7 +2,7 @@ import React from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
 const OUTCOME_LABEL = { win: 'Victoria', draw: 'Tablas', loss: 'Derrota' };
-const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', combat: 'Combate', lab: 'Laboratorio', rescue: 'Salvar cadáver', boss: 'Boss Run', streak: 'Racha' };
+const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combate', lab: 'Laboratorio', rescue: 'Salvar cadáver', boss: 'Boss Run', streak: 'Racha' };
 
 function formatDate(iso) {
   try {

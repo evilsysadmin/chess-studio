@@ -118,6 +118,8 @@ function buildAdminInsights(payload) {
   };
 }
 
+const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'local';
+
 export default function AdminScreen({ onExit }) {
   useEscapeToClose(onExit);
   const [users, setUsers] = useState(null);
@@ -197,6 +199,7 @@ export default function AdminScreen({ onExit }) {
         <span className="section-label">Admin</span>
         <h2>Usuarios registrados</h2>
         <p className="hint-text">Resumen general arriba; “Ver detalles” abre el expediente ajedrecístico.</p>
+        <p className="hint-text admin-build-id">Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
 
         {error && <p className="error-text">{error}</p>}
         {deleteError && <p className="error-text">{deleteError}</p>}
@@ -226,13 +229,13 @@ export default function AdminScreen({ onExit }) {
                   return (
                     <React.Fragment key={u.username}>
                       <tr>
-                        <td className="admin-user-cell">{u.username}</td>
-                        <td><Presence user={u} compact /></td>
-                        <td>{u.rating ?? '—'}</td>
-                        <td>{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
-                        <td>{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
-                        <td className="admin-worst-cell"><WorstMove move={u.worstMove} compact /></td>
-                        <td className="admin-actions-cell">
+                        <td className="admin-user-cell" data-label="Usuario">{u.username}</td>
+                        <td data-label="Actividad"><Presence user={u} compact /></td>
+                        <td data-label="Rating">{u.rating ?? '—'}</td>
+                        <td data-label="Partidas">{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
+                        <td data-label="V/T/D">{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
+                        <td className="admin-worst-cell" data-label="Peor"><WorstMove move={u.worstMove} compact /></td>
+                        <td className="admin-actions-cell" data-label="Acciones">
                           <div className="admin-user-actions">
                             <button className="admin-peek-button" onClick={() => setExpanded(isOpen ? null : u.username)}>
                               {isOpen ? 'Cerrar' : 'Ver detalles'}

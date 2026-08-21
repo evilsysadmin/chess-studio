@@ -32,7 +32,9 @@ export function exportProfile() {
   }
   return {
     app: 'estudio-de-ajedrez',
-    version: 1,
+    version: 2,
+    username: getUsername() || null,
+    build: import.meta.env.VITE_BUILD_SHA || 'local',
     exportedAt: new Date().toISOString(),
     data,
   };

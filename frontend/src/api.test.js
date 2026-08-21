@@ -26,6 +26,16 @@ describe('trazabilidad de usuario en llamadas de juego', () => {
     );
   });
 
+  it('serializa el estilo del Rival Fantasma sólo al crear la partida', async () => {
+    const ghostStyle = { capture: 0.4, pawn: -0.2, queen: 0.1, check: 0.5, castle: -0.3 };
+    await api.createGame(62, 'b', null, null, ghostStyle);
+    const [, options] = global.fetch.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.ghostStyle).toEqual(ghostStyle);
+    expect(body.difficulty).toBe(62);
+    expect(body.color).toBe('b');
+  });
+
   it('manda Authorization al analizar y mover', async () => {
     await api.analyzePosition('fen', 50);
     await api.playMove('g1', 'e2', 'e4');

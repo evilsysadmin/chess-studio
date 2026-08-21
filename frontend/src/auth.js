@@ -7,6 +7,7 @@ import { clearLocalUserState } from './profileKeys.js';
 import { withRequestId, requestErrorMessage } from './requestId.js';
 import { resetAmbientThemeForSession, clearAmbientThemeSession } from './sound.js';
 import { clearSessionView } from './viewState.js';
+import { clearAllClockSnapshots } from './clockPersistence.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 export const USERNAME_KEY = 'chess-study-auth-username';
@@ -72,6 +73,7 @@ function saveSession(token, username) {
   // usuario anterior ANTES de guardar la nueva sesión; Mongo la rellenará en
   // el arranque autenticado. Esto evita la herencia Alice -> Bob.
   clearLocalUserState();
+  clearAllClockSnapshots();
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USERNAME_KEY, username);
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
@@ -84,6 +86,7 @@ export function logout() {
   clearAmbientThemeSession();
   clearSessionView();
   clearLocalUserState();
+  clearAllClockSnapshots();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USERNAME_KEY);
 }
@@ -170,17 +173,21 @@ export function wakeBackend() {
 }
 
 export async function fetchLiveStatus() {
+  const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
   try {
     const res = await fetch(`${BASE_URL}/status`, { headers: withRequestId({ ...authHeader() }) });
-    if (!res.ok) return { backend: 'down', onlineUsers: null, presenceAvailable: false };
+    const ended = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const latencyMs = Math.max(0, Math.round(ended - started));
+    if (!res.ok) return { backend: 'down', onlineUsers: null, presenceAvailable: false, latencyMs: null };
     const body = await res.json();
     return {
       backend: 'up',
       onlineUsers: Number.isInteger(body?.onlineUsers) ? body.onlineUsers : null,
       presenceAvailable: body?.presenceAvailable !== false,
+      latencyMs,
     };
   } catch {
-    return { backend: 'down', onlineUsers: null, presenceAvailable: false };
+    return { backend: 'down', onlineUsers: null, presenceAvailable: false, latencyMs: null };
   }
 }
 

@@ -10,10 +10,10 @@ import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { loadWorstMoveCache, saveWorstMoveCache } from '../worstMoveCache.js';
 import RatingChart from './RatingChart.jsx';
 import { loadRivalry } from '../rivalry.js';
-import { loadSeriesHistory } from '../series.js';
+import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
 import CareerScreen from './CareerScreen.jsx';
 
-const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', combat: 'Combate' };
+const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combate' };
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
   return (
@@ -91,11 +91,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   const stopRef = useRef(false);
   const rivalry = useMemo(() => loadRivalry(), []);
   const seriesHistory = useMemo(() => loadSeriesHistory(), []);
-  const seriesStats = useMemo(() => {
-    const won = seriesHistory.filter((s) => s.winner === 'human').length;
-    const lost = seriesHistory.filter((s) => s.winner === 'cpu').length;
-    return { total: seriesHistory.length, won, lost };
-  }, [seriesHistory]);
+  const seriesStats = useMemo(() => seriesHistoryStats(seriesHistory), [seriesHistory]);
   const sinRows = useMemo(() => {
     const labels = {
       'human:MISSED_MATE': 'Mates ignorados',
@@ -419,15 +415,35 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       )}
 
       {seriesStats.total > 0 && (
-        <div className="menu-section">
-          <h2>Series contra la CPU</h2>
-          <p className="hint-text">Las partidas sueltas son discusión. Una serie ya es jurisprudencia.</p>
-          <div className="rivalry-grid">
-            <div className="rivalry-card">
-              <strong>{seriesStats.won} series ganadas · {seriesStats.lost} perdidas</strong>
-              <span>{seriesStats.total} series terminadas</span>
-              {seriesHistory[0] && <small>Última: mejor de {seriesHistory[0].bestOf} · tú {seriesHistory[0].humanWins} / CPU {seriesHistory[0].cpuWins}</small>}
+        <div className="menu-section series-dossier">
+          <div className="series-dossier-heading">
+            <div>
+              <span className="section-label">Jurisprudencia</span>
+              <h2>Expediente de series</h2>
             </div>
+            <strong>{seriesStats.won} ganadas · {seriesStats.lost} perdidas</strong>
+          </div>
+          <p className="hint-text">Las partidas sueltas son discusión. Las series dejan antecedentes.</p>
+          <div className="series-dossier-stats">
+            <span><b>{seriesStats.currentStreak > 0 ? `Tú ×${seriesStats.currentStreak}` : seriesStats.currentStreak < 0 ? `CPU ×${Math.abs(seriesStats.currentStreak)}` : '—'}</b><small>racha actual de series</small></span>
+            <span><b>{seriesStats.bestHumanStreak}</b><small>mejor racha tuya</small></span>
+            <span><b>{seriesStats.bestCpuStreak}</b><small>mejor racha CPU</small></span>
+            <span><b>{seriesStats.humanSweeps} / {seriesStats.cpuSweeps}</b><small>barridas tú / CPU</small></span>
+            <span><b>{seriesStats.humanComebacks} / {seriesStats.cpuComebacks}</b><small>remontadas tú / CPU</small></span>
+            <span><b>{seriesStats.deciders}</b><small>series a la decisiva</small></span>
+          </div>
+          <div className="series-dossier-history">
+            {seriesHistory.slice(0, 5).map((series) => (
+              <article key={series.id || `${series.completedAt}-${series.bestOf}`}>
+                <div>
+                  <b>{seriesHeadline(series)}</b>
+                  <small>Mejor de {series.bestOf}{series.draws ? ` · ${series.draws} tablas` : ''}</small>
+                </div>
+                <time dateTime={series.completedAt || undefined}>
+                  {series.completedAt ? new Date(series.completedAt).toLocaleDateString('es-ES') : 'sin fecha'}
+                </time>
+              </article>
+            ))}
           </div>
         </div>
       )}

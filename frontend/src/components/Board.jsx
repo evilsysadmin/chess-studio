@@ -158,6 +158,7 @@ export default function Board({
   pieceXp, // { casilla: xpBancado } — insignia de "tiene XP sin gastar" (solo Modo Combate)
   onSquareDoubleClick, // (casilla) => void — doble clic para ver info de la pieza
   mistakeMove, // { from, to, piece } — la jugada jugada, en las pantallas de revisión de errores:
+  showCoordinates = true, // false en Modo Zen: no cambia reglas ni accesibilidad del tablero
   // encuadre rojo (distinto del dorado genérico de lastMove) + pieza fantasma semitransparente
   // en la casilla de origen, para que quede claro qué jugada se está señalando como error.
 }) {
@@ -281,10 +282,12 @@ export default function Board({
   }, [animate, fen]);
 
   return (
-    <div className={`board-wrap board-theme-${loadBoardTheme()}`}>
-      <div className="rank-labels">
-        {ranks.map((r) => <span key={r}>{r}</span>)}
-      </div>
+    <div className={`board-wrap board-theme-${loadBoardTheme()} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'}`}>
+      {showCoordinates && (
+        <div className="rank-labels">
+          {ranks.map((r) => <span key={r}>{r}</span>)}
+        </div>
+      )}
       <div className="board-grid">
         {ranks.map((rank, rIdxDisplay) => {
           const rIdx = RANKS.indexOf(rank);
@@ -352,10 +355,12 @@ export default function Board({
           });
         })}
       </div>
-      <div />
-      <div className="file-labels">
-        {files.map((f) => <span key={f}>{f}</span>)}
-      </div>
+      {showCoordinates && <div />}
+      {showCoordinates && (
+        <div className="file-labels">
+          {files.map((f) => <span key={f}>{f}</span>)}
+        </div>
+      )}
     </div>
   );
 }

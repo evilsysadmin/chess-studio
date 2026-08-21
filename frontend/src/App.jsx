@@ -27,6 +27,7 @@ import { handicapForGap } from './handicap.js';
 import { computeInsights } from './insights.js';
 import InsightsScreen from './components/InsightsScreen.jsx';
 import { timeControlById } from './clock.js';
+import { clearClockSnapshot, loadClockSnapshot } from './clockPersistence.js';
 import { checkAchievements } from './achievements.js';
 import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
 import { isLoggedIn, fetchMe, logout, touchActivity, watchSessionIdentity } from './auth.js';
@@ -178,7 +179,7 @@ function AppInner({ isAdminUser }) {
       mode,
       gameChat: loadActiveGameChat(finishedGame.id),
     };
-    if (mode === 'casual' || mode === 'practice') {
+    if (mode === 'casual' || mode === 'practice' || mode === 'ghost') {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(LEARNING_STORAGE_KEY);
       setHasSavedGame(false);
@@ -273,11 +274,11 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       const handicap = handicapForGap(rating.rating, difficulty);
-      const created = await api.createGame(difficulty, color, handicap?.id ?? null);
+      const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null);
       const isLearning = !!opts?.learning;
       setLearningMode(isLearning);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
-      setGameContext({ rematch: !!opts?.rematch, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck });
+      setGameContext({ rematch: !!opts?.rematch, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null });
       const shouldOfferContract = !isLearning && !opts?.runMode && !opts?.lab && !opts?.rescue && Number(opts?.seriesBestOf || 1) <= 1;
       const contract = shouldOfferContract ? chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents }) : null;
       if (contract) saveActiveContract(contract); else clearActiveContract();
@@ -320,7 +321,7 @@ function AppInner({ isAdminUser }) {
       setActiveContract(loadActiveContract());
       const storedRun = loadSpecialRun();
       setSpecialRun(storedRun);
-      setGameContext(storedRun?.active && storedRun.currentGameId === found.id ? { runMode: storedRun.mode } : {});
+      setGameContext(storedRun?.active && storedRun.currentGameId === found.id ? { runMode: storedRun.mode } : (found.ghostStyle ? { ghost: true, ghostStyle: found.ghostStyle } : {}));
       const storedSeries = loadActiveSeries();
       if (storedSeries?.currentGameId === found.id && !storedSeries.winner) {
         setActiveSeries(storedSeries);
@@ -328,9 +329,10 @@ function AppInner({ isAdminUser }) {
       } else {
         clearActiveSeries();
         setActiveSeries(null);
-        // Una partida suelta continuada no conserva con rigor los segundos
-        // restantes: preferimos quitar el reloj a inventarnos tiempo.
-        setActiveTimeControl(null);
+        const clockSnapshot = loadClockSnapshot(found.id);
+        setActiveTimeControl(clockSnapshot?.timeControlId && clockSnapshot.timeControlId !== 'none'
+          ? timeControlById(clockSnapshot.timeControlId)
+          : null);
       }
       navigateTo('game');
     } catch (e) {
@@ -347,6 +349,7 @@ function AppInner({ isAdminUser }) {
       const endedRun = recordSpecialRunResult(specialRun, 'loss');
       setSpecialRun(endedRun);
     }
+    if (game?.id) clearClockSnapshot(game.id);
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEARNING_STORAGE_KEY);
     setHasSavedGame(false);
@@ -371,6 +374,7 @@ function AppInner({ isAdminUser }) {
   // Torneo — con una etiqueta de modo para distinguirlas al navegar la lista.
   function handleCasualGameEnd(outcome, finishedGame, endMeta = {}) {
     if (!finishedGame) return;
+    clearClockSnapshot(finishedGame.id);
     const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
     const opening = identifyOpening(moveSans);
     let seriesSnapshot = activeSeries;
@@ -418,7 +422,7 @@ function AppInner({ isAdminUser }) {
       moves: finishedGame.history,
       finalFen: finishedGame.fen,
       initialFen: finishedGame.initialFen || null,
-      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : learningMode ? 'practice' : 'casual',
+      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual',
       opening,
       timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,
       rematch: !!gameContext.rematch,
@@ -448,6 +452,7 @@ function AppInner({ isAdminUser }) {
 
   async function handleNextSeriesGame() {
     if (!activeSeries || activeSeries.winner) return;
+    if (game?.id) clearClockSnapshot(game.id);
     setLoading(true);
     setError(null);
     try {
@@ -493,17 +498,18 @@ function AppInner({ isAdminUser }) {
     };
   }
 
-  async function handleRematch({ difficulty, humanColor, timeControl }) {
+  async function handleRematch({ difficulty, humanColor, timeControl, ghostStyle = null }) {
+    if (game?.id) clearClockSnapshot(game.id);
     setLoading(true);
     setError(null);
     try {
       if (game?.id) await api.deleteGame(game.id).catch(() => {});
       const nextColor = humanColor === 'w' ? 'b' : 'w';
-      const created = await api.createGame(difficulty, nextColor, null);
+      const created = await api.createGame(difficulty, nextColor, null, null, ghostStyle);
       const contract = chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents });
       saveActiveContract(contract);
       setActiveContract(contract);
-      setGameContext({ rematch: true });
+      setGameContext({ rematch: true, ghost: !!ghostStyle, ghostStyle });
       setActiveTimeControl(timeControl || null);
       setLearningMode(false);
       clearActiveSeries();
@@ -757,9 +763,9 @@ function AppInner({ isAdminUser }) {
             timeControl={activeTimeControl}
             seriesState={activeSeries}
             onNextSeriesGame={handleNextSeriesGame}
-            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries))}
-            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
-            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : learningMode ? 'practice' : 'casual', meta?.outcome)}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual', activeSeries))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
+            onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual', meta?.outcome)}
             activeContract={activeContract}
             runState={specialRun && gameContext.runMode ? specialRun : null}
             onNextRunGame={() => handleContinueRun(specialRun)}

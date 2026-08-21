@@ -39,6 +39,7 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-meta-progress',
   'chess-study-career',
   'chess-study-analysis-archive',
+  'chess-study-zen-mode',
 ];
 
 // Estado local de sesión. No se sincroniza porque apunta a partidas activas

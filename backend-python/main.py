@@ -38,6 +38,7 @@ from chess_ai import analyze_move as ai_analyze_move
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 from chess_core import apply_handicap, board_sans, load_board, resolve_move, serialize_game
 from email_service import send_password_reset_email
+from request_limits import RequestBodyLimitMiddleware
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -92,16 +93,6 @@ def _request_username(request: Request) -> str:
     return username or "-"
 
 
-def _apply_api_security_headers(response):
-    """Cabeceras seguras para todas las respuestas del backend JSON."""
-    response.headers.setdefault("Cache-Control", "no-store")
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "no-referrer")
-    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-    return response
-
-
 @app.middleware("http")
 async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
@@ -113,7 +104,7 @@ async def log_request_with_user(request: Request, call_next):
         response = await call_next(request)
         status_code = response.status_code
         response.headers["X-Request-ID"] = request_id
-        return _apply_api_security_headers(response)
+        return response
     except Exception:
         raised = True
         elapsed_ms = (time.perf_counter() - started) * 1000
@@ -130,12 +121,11 @@ async def log_request_with_user(request: Request, call_next):
         )
         # El detalle técnico completo queda en el traceback de Render; al
         # navegador sólo vuelve una referencia segura para correlacionarlo.
-        response = JSONResponse(
+        return JSONResponse(
             status_code=500,
             content={"detail": "Error interno del servidor.", "requestId": request_id},
             headers={"X-Request-ID": request_id},
         )
-        return _apply_api_security_headers(response)
     finally:
         if not raised:
             elapsed_ms = (time.perf_counter() - started) * 1000
@@ -184,15 +174,11 @@ def _normalize_cors_origin(raw: str) -> str:
     return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
 
-_DEFAULT_CORS_ORIGINS = (
-    {"https://evilsysadmin.github.io"}
-    if ENVIRONMENT in {"production", "prod"}
-    else {
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://evilsysadmin.github.io",
-    }
-)
+_DEFAULT_CORS_ORIGINS = {
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://evilsysadmin.github.io",
+}
 _CONFIGURED_CORS_ORIGINS = {
     normalized
     for raw in os.environ.get("CORS_ORIGINS", "").split(",")
@@ -235,7 +221,12 @@ _M2M_API_KEYS = {k.strip() for k in os.environ.get("M2M_API_KEYS", "").split(","
 
 def get_api_key(request: Request) -> Optional[str]:
     key = request.headers.get("x-api-key")
-    return key if key and key in _M2M_API_KEYS else None
+    if not key:
+        return None
+    for configured in _M2M_API_KEYS:
+        if hmac.compare_digest(key, configured):
+            return configured
+    return None
 
 
 def has_valid_api_key(request: Request) -> bool:
@@ -252,35 +243,14 @@ def has_valid_api_key(request: Request) -> bool:
 # recuerde escribirlo exactamente igual.
 _ADMIN_USERNAMES = {u.strip().lower() for u in os.environ.get("ADMIN_USERNAMES", "").split(",") if u.strip()}
 
-def _validate_security_config(
-    environment: str,
-    *,
-    allow_registration: bool,
-    invite_code: str,
-    admin_usernames: set[str],
-) -> None:
-    """Fail closed ante configuraciones peligrosas de producción."""
-    if environment not in {"production", "prod"}:
-        return
-    if "*" in admin_usernames:
-        raise RuntimeError("ADMIN_USERNAMES=\"*\" no está permitido en producción.")
-    if allow_registration and not invite_code:
-        raise RuntimeError("En producción, ALLOW_REGISTRATION=true requiere INVITE_CODE.")
-
-
-_validate_security_config(
-    ENVIRONMENT,
-    allow_registration=ALLOW_REGISTRATION,
-    invite_code=INVITE_CODE,
-    admin_usernames=_ADMIN_USERNAMES,
-)
-
 
 def is_admin(username: str) -> bool:
-    # Comodín pensado para desarrollo local: ADMIN_USERNAMES="*" convierte
-    # cualquier cuenta autenticada en admin. En producción conviene usar una
-    # lista explícita de usernames.
+    # Comodín pensado exclusivamente para desarrollo local.
     return "*" in _ADMIN_USERNAMES or username.lower() in _ADMIN_USERNAMES
+
+
+if ENVIRONMENT in {"production", "prod"} and "*" in _ADMIN_USERNAMES:
+    raise RuntimeError('ADMIN_USERNAMES="*" no está permitido en producción.')
 
 
 def api_key_bucket(request: Request) -> str:
@@ -294,17 +264,33 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# Añadido DESPUÉS de SlowAPI para que CORS sea la capa exterior y pueda
-# contestar los preflight OPTIONS incluso antes de rate-limit/routing.
+MAX_REQUEST_BODY_BYTES = 1_048_576  # 1 MiB; la API solo acepta JSON pequeño.
+# Cuenta bytes reales, no solo Content-Length: también cubre cuerpos chunked.
+app.add_middleware(RequestBodyLimitMiddleware, max_bytes=MAX_REQUEST_BODY_BYTES)
+
+# Añadido DESPUÉS de SlowAPI/body-limit para que CORS sea la capa exterior y
+# pueda contestar preflight OPTIONS antes de rate-limit/routing.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-API-Key"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-ID"],
     expose_headers=["X-Request-ID"],
     max_age=600,
 )
+
+@app.middleware("http")
+async def security_baseline(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+    if ENVIRONMENT in {"production", "prod"}:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 # Fuerza que usa el motor cuando el humano pide una pista: casi siempre
 # juega su mejor jugada, independientemente de la dificultad de la CPU en
@@ -370,12 +356,24 @@ class AdminDeleteUserRequest(BaseModel):
     username: str
 
 
+class GhostStyle(BaseModel):
+    # Sesgos derivados de partidas reales del usuario. El rango estrecho
+    # evita que un cliente manipulado convierta el desempate de estilo en una
+    # orden arbitraria para el motor.
+    capture: float = Field(default=0.0, ge=-1.0, le=1.0)
+    pawn: float = Field(default=0.0, ge=-1.0, le=1.0)
+    queen: float = Field(default=0.0, ge=-1.0, le=1.0)
+    check: float = Field(default=0.0, ge=-1.0, le=1.0)
+    castle: float = Field(default=0.0, ge=-1.0, le=1.0)
+
+
 class NewGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     difficulty: float = 50
     color: str = "w"
     handicap: Optional[str] = None  # None | "pawn" | "knight" | "rook" | "queen" — ver HANDICAP_SQUARES
     starting_fen: Optional[str] = Field(default=None, alias="startingFen")
+    ghost_style: Optional[GhostStyle] = Field(default=None, alias="ghostStyle")
 
 
 class MoveRequest(BaseModel):
@@ -459,14 +457,19 @@ async def get_current_user(request: Request) -> str:
         raise HTTPException(401, "Sesión inválida o expirada. Inicia sesión de nuevo.")
     try:
         account_exists = await ustore.user_exists(username)
-    except PersistentStorageUnavailable:
-        # La autenticación sigue disponible durante un tropiezo de Mongo; no
-        # expulsamos a todo el mundo por perder temporalmente la comprobación
-        # de existencia. Cuando Mongo vuelva, la caché se refresca.
-        account_exists = True
+    except PersistentStorageUnavailable as exc:
+        # Auth falla cerrado: si no podemos comprobar que la cuenta sigue
+        # existiendo, no concedemos acceso basándonos solo en un JWT viejo.
+        raise HTTPException(503, "No se puede verificar la sesión temporalmente.") from exc
     if not account_exists:
         raise HTTPException(401, "La cuenta ya no existe.")
     await _touch_activity_best_effort(username)
+    return username
+
+
+async def require_admin(username: str = Depends(get_current_user)) -> str:
+    if not is_admin(username):
+        raise HTTPException(403, "No tienes permisos de administrador.")
     return username
 
 
@@ -1032,9 +1035,7 @@ def _presence_summary(last_activity) -> dict:
 
 
 @app.get("/api/admin/users")
-async def admin_list_users(username: str = Depends(get_current_user)):
-    if not is_admin(username):
-        raise HTTPException(403, "No tienes permiso para ver esto.")
+async def admin_list_users(username: str = Depends(require_admin)):
 
     usernames = await ustore.list_usernames()
     result = []
@@ -1095,16 +1096,12 @@ async def _admin_insights_response(target_username: str) -> dict:
 
 
 @app.post("/api/admin/user-insights")
-async def admin_user_insights_post(body: AdminInsightsRequest, username: str = Depends(get_current_user)):
-    if not is_admin(username):
-        raise HTTPException(403, "No tienes permiso para ver esto.")
+async def admin_user_insights_post(body: AdminInsightsRequest, username: str = Depends(require_admin)):
     return await _admin_insights_response(body.username)
 
 
 @app.post("/api/admin/delete-user")
-async def admin_delete_user(body: AdminDeleteUserRequest, username: str = Depends(get_current_user)):
-    if not is_admin(username):
-        raise HTTPException(403, "No tienes permiso para hacer esto.")
+async def admin_delete_user(body: AdminDeleteUserRequest, username: str = Depends(require_admin)):
 
     target = await _resolve_admin_target_username(body.username)
     if target == username:
@@ -1124,9 +1121,7 @@ async def admin_delete_user(body: AdminDeleteUserRequest, username: str = Depend
 # Compatibilidad con V15.2/V15.3 ya desplegadas. La UI nueva usa POST para
 # evitar problemas con caracteres reservados dentro del username.
 @app.get("/api/admin/users/{target_username}/insights")
-async def admin_user_insights(target_username: str, username: str = Depends(get_current_user)):
-    if not is_admin(username):
-        raise HTTPException(403, "No tienes permiso para ver esto.")
+async def admin_user_insights(target_username: str, username: str = Depends(require_admin)):
     return await _admin_insights_response(target_username)
 
 
@@ -1141,6 +1136,7 @@ async def create_game(body: NewGameRequest, username: str = Depends(get_current_
     human_color = resolve_human_color(body.color)
     cpu_color = "b" if human_color == "w" else "w"
     rounded_difficulty = round(float(body.difficulty))
+    ghost_style = body.ghost_style.model_dump() if body.ghost_style is not None else None
     last_move = None
     initial_fen = None
 
@@ -1161,7 +1157,7 @@ async def create_game(body: NewGameRequest, username: str = Depends(get_current_
     # comportamiento clásico de CPU abriendo cuando el humano lleva negras.
     cpu_to_move = (board.turn == chess.WHITE and cpu_color == "w") or (board.turn == chess.BLACK and cpu_color == "b")
     if cpu_to_move:
-        opening = get_cpu_move(board, rounded_difficulty)
+        opening = get_cpu_move(board, rounded_difficulty, ghost_style)
         if opening:
             board.push_san(opening["san"])
             last_move = {
@@ -1180,6 +1176,7 @@ async def create_game(body: NewGameRequest, username: str = Depends(get_current_
         "handicap": None if initial_fen else body.handicap,
         "initialFen": initial_fen,
         "lastMove": last_move,
+        "ghostStyle": ghost_style,
     }
     await store.create_game(game_id, entry)
     return serialize_game(game_id, entry, board)
@@ -1388,7 +1385,7 @@ async def play_move(game_id: str, body: MoveRequest, username: str = Depends(get
     }
 
     if not board.is_game_over(claim_draw=True):
-        cpu_move = get_cpu_move(board, entry["difficulty"])
+        cpu_move = get_cpu_move(board, entry["difficulty"], entry.get("ghostStyle"))
         if cpu_move:
             board.push_san(cpu_move["san"])
             entry["lastMove"] = {
@@ -1450,11 +1447,10 @@ async def health():
 
 
 @app.get("/api/status")
-async def authenticated_status(_username: str = Depends(get_current_user)):
+async def public_status(_username: str = Depends(get_current_user)):
     """Estado ligero para la cabecera autenticada.
 
-    A diferencia de /health, la presencia no tiene por qué ser pública. Solo
-    devuelve un agregado y exige la misma sesión JWT que el resto de la app.
+    Solo está disponible tras login y expone un agregado (nunca usernames).
     Si Mongo está temporalmente indisponible el proceso sigue estando UP; en
     ese caso la presencia queda como desconocida en vez de convertir un fallo
     de storage en un falso "backend DOWN".

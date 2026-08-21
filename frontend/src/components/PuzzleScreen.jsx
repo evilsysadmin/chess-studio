@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, randomPuzzle } from '../puzzles.js';
-import { loadPersonalPuzzles, randomPersonalPuzzle } from '../personalPuzzles.js';
+import { loadPersonalPuzzles, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
 import { dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
@@ -32,7 +32,8 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const [busy, setBusy] = useState(false);
   const [streak, setStreak] = useState(() => loadPuzzleStreak());
   const [bestStreak, setBestStreak] = useState(() => loadBestPuzzleStreak());
-  const [wrongThisPuzzle, setWrongThisPuzzle] = useState(false); // hubo un fallo SIN proteger en el intento actual
+  const [wrongThisPuzzle, setWrongThisPuzzle] = useState(false); // fallo que rompe racha (si no se protege)
+  const [personalHadError, setPersonalHadError] = useState(false); // cualquier fallo: mide resolución limpia real
   const [retryOffer, setRetryOffer] = useState(false); // mostrando el prompt de "¿pagar para proteger la racha?"
   const replyTimeout = useRef(null);
   const rushNextTimeout = useRef(null);
@@ -41,6 +42,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const [rushEnded, setRushEnded] = useState(false);
 
   const humanColor = useMemo(() => new Chess(puzzle.fen).turn(), [puzzle]);
+  const personalStats = useMemo(() => personalTrainingSummary(), [personalPuzzles]);
 
   useEffect(() => {
     setFen(puzzle.fen);
@@ -50,6 +52,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     setFeedback(null);
     setBusy(false);
     setWrongThisPuzzle(false);
+    setPersonalHadError(false);
     setRetryOffer(false);
   }, [puzzle]);
 
@@ -139,8 +142,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
     const expected = puzzle.solution[stepIndex];
     if (move.san !== expected) {
+      setPersonalHadError(true);
       if (rushMode) {
         setFeedback('Incorrecta. Siguiente caso: el reloj no negocia.');
+        if (source === 'personal') recordPersonalPuzzleResult(puzzle.id, { solved: false, clean: false });
         setWrongThisPuzzle(true);
         rushNextTimeout.current = setTimeout(() => { setPuzzle(choosePuzzle(source, puzzle.id)); setFeedback(null); }, 450);
         return;
@@ -177,6 +182,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
         setStreak(incrementPuzzleStreak());
         setBestStreak(loadBestPuzzleStreak());
       }
+      if (source === 'personal') {
+        recordPersonalPuzzleResult(puzzle.id, { solved: true, clean: !personalHadError });
+        setPersonalPuzzles(loadPersonalPuzzles());
+      }
       playSuccessSound();
       if (rushMode) {
         rushNextTimeout.current = setTimeout(() => setPuzzle(choosePuzzle(source, puzzle.id)), 350);
@@ -212,6 +221,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }
 
   function revealSolution() {
+    if (source === 'personal') {
+      recordPersonalPuzzleResult(puzzle.id, { solved: false, clean: false });
+      setPersonalPuzzles(loadPersonalPuzzles());
+    }
     if (replyTimeout.current) clearTimeout(replyTimeout.current);
     const c = new Chess();
     c.load(puzzle.fen);
@@ -288,7 +301,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           <p>{puzzle.description}</p>
           {source === 'personal' && (
             <p className="hint-text personal-puzzle-note">
-              ☠ Nació de una de tus propias autopsias. La máquina guarda rencor documental.
+              ☠ Nació de una de tus propias autopsias. La máquina guarda rencor documental. {personalStats.attempts ? ` Entrenamiento: ${personalStats.cleanSolves}/${personalStats.attempts} limpias${personalStats.cleanRate !== null ? ` · ${personalStats.cleanRate}%` : ''}.` : ''}
             </p>
           )}
           {source === 'daily' && (

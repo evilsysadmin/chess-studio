@@ -55,6 +55,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 def create_token(username: str) -> str:
     payload = {
         "sub": username,
+        "purpose": "session",
         "exp": datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRY_DAYS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -66,6 +67,11 @@ def verify_token(token: str) -> Optional[str]:
     excepción, para que el llamador solo tenga que chequear None."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        # Tokens de recuperación comparten firma/secret pero NO privilegios.
+        # Los tokens legacy sin `purpose` siguen siendo sesiones válidas para
+        # no expulsar a todos los usuarios al desplegar este hardening.
+        if payload.get("purpose") not in (None, "session"):
+            return None
         return payload.get("sub")
     except jwt.PyJWTError:
         return None

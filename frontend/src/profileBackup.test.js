@@ -37,6 +37,16 @@ describe('export/import', () => {
     expect(exported.data['chess-study-active-game']).toBeUndefined();
   });
 
+  it('incluye metadatos de trazabilidad sin exportar secretos de sesión', () => {
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    localStorage.setItem('chess-study-auth-token', 'jwt-secreto');
+    const exported = exportProfile();
+    expect(exported).toMatchObject({ app: 'estudio-de-ajedrez', version: 2, username: 'alice' });
+    expect(exported.exportedAt).toEqual(expect.any(String));
+    expect(exported.build).toEqual(expect.any(String));
+    expect(JSON.stringify(exported)).not.toContain('jwt-secreto');
+  });
+
   it('replace=true elimina claves viejas que no vienen en el backup', () => {
     localStorage.setItem('chess-study-achievements', JSON.stringify(['old']));
     const backup = { data: { 'chess-study-tournament': JSON.stringify({ points: 12 }) } };

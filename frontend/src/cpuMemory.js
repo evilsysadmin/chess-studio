@@ -1,4 +1,5 @@
 import { identifyOpening } from './openings.js';
+import { seriesFacts } from './series.js';
 
 function recordOf(rivalry) {
   return rivalry?.record || {};
@@ -28,6 +29,24 @@ export function startMemoryComment(rivalry, context = {}) {
   if (context.runMode === 'cup') return 'Copa personal. Ocho partidas, un acta y suficientes oportunidades para que la estadística pierda la paciencia.';
   if (context.runMode === 'boss') return `Boss Run, nivel ${context.difficulty}. La escalera sólo tiene una dirección aceptable y sospecho que vas a explorar la otra.`;
   if (context.runMode === 'streak') return `Modo racha, nivel ${context.difficulty}. Cada victoria compra un rival peor. Excelente modelo de negocio.`;
+  if (context.series && !context.series.winner && Array.isArray(context.series.games) && context.series.games.length === 0) {
+    const seriesStats = context.seriesHistoryStats || {};
+    const seriesHistory = Array.isArray(context.seriesHistory) ? context.seriesHistory : [];
+    const seriesStreak = Number(seriesStats.currentStreak || 0);
+    if (seriesStreak <= -2) return `Nueva serie. Vienes de ${Math.abs(seriesStreak)} series perdidas seguidas contra mí. Ya no es una muestra: empieza a ser documentación.`;
+    if (seriesStreak >= 2) return `Nueva serie. Llevas ${seriesStreak} series ganadas seguidas. He abierto un expediente específico para esta insolencia.`;
+    const lastSeries = seriesHistory[0];
+    if (lastSeries?.winner === 'cpu') return `Nueva serie. La última terminó ${lastSeries.humanWins}-${lastSeries.cpuWins} para ti, es decir, peor de lo que suena cuando lo digo despacio.`;
+    if (lastSeries?.winner === 'human') return `Nueva serie. La anterior fue tuya ${lastSeries.humanWins}-${lastSeries.cpuWins}. Consta en acta; no significa que vaya a repetirse.`;
+  }
+  if (context.series && !context.series.winner && Array.isArray(context.series.games) && context.series.games.length) {
+    const previous = context.series.games[context.series.games.length - 1];
+    const score = `tú ${context.series.humanWins}, yo ${context.series.cpuWins}${context.series.draws ? `, tablas ${context.series.draws}` : ''}`;
+    if (previous?.outcome === 'loss') return `Seguimos la serie: ${score}. La anterior también quedó archivada a mi favor. No hace falta fingir que empezamos de cero.`;
+    if (previous?.outcome === 'win') return `Marcador de la serie: ${score}. Has ganado la anterior; he conservado el acta por motivos disciplinarios.`;
+    return `Marcador de la serie: ${score}. Las tablas anteriores sólo aplazaron el papeleo.`;
+  }
+
   if (context.rematch && recent[0]) {
     if (recent[0].outcome === 'loss') return 'Revancha inmediata. Perdiste la anterior y has vuelto antes de que el cadáver se enfríe. Admiro la eficiencia logística.';
     if (recent[0].outcome === 'win') return '¿Revancha después de ganar? Qué desagradable combinación de confianza y falta de pudor.';
@@ -62,6 +81,14 @@ export function startMemoryComment(rivalry, context = {}) {
     if (memory?.type === 'humanStreak') return `Tengo memoria y, por desgracia, consta que ${memory.text.toLowerCase()} Hoy podemos corregir ese exceso de confianza.`;
     if (memory?.type === 'cpuStreak') return `Archivo histórico: ${memory.text} Hubo una época bastante cómoda. Siempre podemos restaurarla.`;
     if (memory?.type === 'anniversary') return `${memory.text} Una relación suficientemente larga como para tener jurisprudencia y suficientemente mala como para seguir aquí.`;
+  }
+
+  if (recent[0] && Number(record.games || 0) >= 3 && Number(record.games || 0) % 5 === 2) {
+    const last = recent[0];
+    const opening = last.opening ? ` con ${last.opening}` : '';
+    const moves = last.moves ? ` en ${last.moves} medias jugadas` : '';
+    if (last.outcome === 'loss') return `La última fue para mí${opening}${moves}. Tranquilo: el expediente recuerda aunque tú prefieras no hacerlo.`;
+    if (last.outcome === 'win') return `La última te la llevaste tú${opening}${moves}. Lo recuerdo con una precisión bastante poco saludable.`;
   }
 
   const sameDifficulty = recent.filter((g) => Number(g.difficulty) === Number(context.difficulty));
@@ -102,8 +129,20 @@ export function resultMemoryComment(outcome, rivalry, context = {}) {
   const milestones = record.milestones || {};
   const series = context.series;
 
-  if (series?.winner === 'human') return `Te llevas la serie ${series.humanWins}-${series.cpuWins}. Disfruta del acta; pediré una auditoría.`;
-  if (series?.winner === 'cpu') return `Serie cerrada ${series.cpuWins}-${series.humanWins}. Puedes llamarlo revancha si eso ayuda al proceso de duelo.`;
+  if (series?.winner === 'human') {
+    const facts = seriesFacts(series);
+    if (facts.sweep) return `Barrida ${series.humanWins}-${series.cpuWins}. Te llevas la serie sin conceder una sola victoria. Esto requerirá auditoría externa.`;
+    if (facts.comeback) return `Te llevas la serie ${series.humanWins}-${series.cpuWins} remontando. Odio especialmente los expedientes que empiezan bien y terminan así.`;
+    if (facts.decider) return `Te llevas la decisiva y la serie ${series.humanWins}-${series.cpuWins}. Disfruta del acta; pediré una auditoría.`;
+    return `Te llevas la serie ${series.humanWins}-${series.cpuWins}. Disfruta del acta; pediré una auditoría.`;
+  }
+  if (series?.winner === 'cpu') {
+    const facts = seriesFacts(series);
+    if (facts.sweep) return `Serie cerrada con barrida ${series.cpuWins}-${series.humanWins}. La jurisprudencia acaba de ponerse bastante desagradable.`;
+    if (facts.comeback) return `Serie cerrada ${series.cpuWins}-${series.humanWins} después de remontarte. Gracias por aportar tensión antes del resultado correcto.`;
+    if (facts.decider) return `La decisiva es mía: serie ${series.cpuWins}-${series.humanWins}. El expediente agradece tu colaboración.`;
+    return `Serie cerrada ${series.cpuWins}-${series.humanWins}. Puedes llamarlo revancha si eso ayuda al proceso de duelo.`;
+  }
   if (series && !series.winner) return `Marcador de la serie: tú ${series.humanWins}, yo ${series.cpuWins}. Todavía quedan formas creativas de empeorarlo.`;
 
   const latest = Array.isArray(record.recentGames) ? record.recentGames[0] : null;

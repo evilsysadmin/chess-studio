@@ -280,7 +280,7 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const [bestMode, bestStats] = sorted[0];
     const [worstModeName, worstStats] = sorted[sorted.length - 1];
     if (bestStats.winPct - worstStats.winPct >= 30) {
-      const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', combat: 'Combate' };
+      const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combate' };
       lines.push(pickRoastLine([
         `Se te da bastante mejor ${MODE_LABEL[bestMode] || bestMode} que ${MODE_LABEL[worstModeName] || worstModeName}. Cuestión de estilo, o de que en un modo te dejan pensar más.`,
       ], seed));

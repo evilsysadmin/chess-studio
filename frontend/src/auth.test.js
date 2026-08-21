@@ -54,6 +54,7 @@ describe('register/login', () => {
     localStorage.setItem('chess-study-tournament', '{"points":999}');
     localStorage.setItem('chess-study-combat-roster', '{"combatXp":8000}');
     localStorage.setItem('chess-study-active-game', 'alice-game');
+    localStorage.setItem('chess-study-clock:alice-game', '{"version":1}');
 
     mockFetchOnce(201, { token: 'bob-token', username: 'bob' });
     await register('bob', 'clave123456', 'bob@example.com');
@@ -62,6 +63,7 @@ describe('register/login', () => {
     expect(localStorage.getItem('chess-study-tournament')).toBeNull();
     expect(localStorage.getItem('chess-study-combat-roster')).toBeNull();
     expect(localStorage.getItem('chess-study-active-game')).toBeNull();
+    expect(localStorage.getItem('chess-study-clock:alice-game')).toBeNull();
   });
 
   it('limpia la caché del usuario anterior solo después de un login correcto', async () => {
@@ -93,6 +95,7 @@ describe('logout', () => {
     localStorage.setItem('chess-study-tournament', '{"points":42}');
     localStorage.setItem('chess-study-muted', '1');
     localStorage.setItem('chess-study-active-game', 'game');
+    localStorage.setItem('chess-study-clock:game', '{"version":1}');
 
     logout();
 
@@ -102,6 +105,7 @@ describe('logout', () => {
     expect(localStorage.getItem('chess-study-tournament')).toBeNull();
     expect(localStorage.getItem('chess-study-muted')).toBeNull();
     expect(localStorage.getItem('chess-study-active-game')).toBeNull();
+    expect(localStorage.getItem('chess-study-clock:game')).toBeNull();
   });
 });
 
@@ -139,28 +143,22 @@ describe('fetchMe/authHeader/wakeBackend', () => {
     expect(() => wakeBackend()).not.toThrow();
   });
 
-  it('fetchLiveStatus informa backend y presencia agregada con sesión', async () => {
-    mockFetchOnce(200, { token: 'status-token', username: 'vivo' });
-    await login('vivo', 'clave123456');
-
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ ok: true, onlineUsers: 3, presenceAvailable: true }),
-    });
-    expect(await fetchLiveStatus()).toEqual({ backend: 'up', onlineUsers: 3, presenceAvailable: true });
+  it('fetchLiveStatus informa backend y presencia agregada usando sesión autenticada', async () => {
+    localStorage.setItem('chess-study-auth-token', 'status-token');
+    mockFetchOnce(200, { ok: true, onlineUsers: 3, presenceAvailable: true });
+    expect(await fetchLiveStatus()).toMatchObject({ backend: 'up', onlineUsers: 3, presenceAvailable: true });
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/status'),
       expect.objectContaining({
         headers: expect.objectContaining({
-          Authorization: 'Bearer status-token',
           'X-Request-ID': expect.any(String),
+          Authorization: 'Bearer status-token',
         }),
       }),
     );
 
     global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
-    expect(await fetchLiveStatus()).toEqual({ backend: 'down', onlineUsers: null, presenceAvailable: false });
+    expect(await fetchLiveStatus()).toMatchObject({ backend: 'down', onlineUsers: null, presenceAvailable: false });
   });
 
   it('touchActivity manda un heartbeat autenticado y no propaga errores', async () => {

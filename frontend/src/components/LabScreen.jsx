@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { LAB_START_FEN, fenFromLabState, mapFromPlacement, parseLabPosition } from '../labPosition.js';
+import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import Board from './Board.jsx';
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
@@ -51,7 +51,7 @@ export default function LabScreen({ onExit, onStart }){
   }
 
   function launch(){
-    try{const c=new Chess(fen); if(!Object.values(map).includes('K'))throw new Error('Falta rey blanco'); if(!Object.values(map).includes('k'))throw new Error('Falta rey negro'); setError(''); onStart(c.fen(),turn,difficulty,{lab:true});}
+    try{const legal=assertLegalLabPosition(fen,turn); const c=new Chess(legal.fen); setError(''); onStart(c.fen(),c.turn(),difficulty,{lab:true});}
     catch(e){setError(`Posición inválida: ${e.message}`);}
   }
 
@@ -68,7 +68,7 @@ export default function LabScreen({ onExit, onStart }){
       <Board fen={fen} orientation="white" onSquareClick={editSquare} />
     </div>
     <div className="lab-config">
-      <label>Turno <select value={turn} onChange={e=>setTurn(e.target.value)}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
+      <label>Turno <select value={turn} onChange={e=>{setTurn(e.target.value);setEp('-');}}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
       <label>Dificultad CPU <input type="range" min="0" max="100" value={difficulty} onChange={e=>setDifficulty(Number(e.target.value))}/><b>{difficulty}</b></label>
       <div className="lab-fen-readout">
         <span className="section-label">FEN de la posición</span>

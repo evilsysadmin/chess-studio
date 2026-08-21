@@ -8,17 +8,17 @@ export default function MirrorModeModal({ onStart, onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+      <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <span className="eyebrow">Espejo de ti mismo</span>
-        <h3>Una CPU calibrada a tus propios errores</h3>
+        <span className="eyebrow">Rival Fantasma</span>
+        <h3>La CPU intenta parecerse a cómo juegas tú</h3>
 
         {!profile.ready ? (
           <>
             <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
-              Todavía no hay suficientes datos — se necesitan al menos 3 partidas analizadas
-              (con "Buscar mi peor jugada de siempre" en "Así juegas") para calcular un perfil
-              confiable. Llevas {profile.gamesSampled} de 3.
+              No voy a inventarme un clon con tres migas de datos. Necesito al menos 3 partidas normales
+              archivadas y 3 partidas con autopsia de peor jugada. Ahora hay {profile.styleGamesSampled || 0}/3
+              para estilo y {profile.errorGamesSampled || 0}/3 para calibrar errores.
             </p>
             <button type="button" className="secondary-btn" style={{ width: '100%' }} onClick={onClose}>
               Entendido
@@ -27,20 +27,30 @@ export default function MirrorModeModal({ onStart, onClose }) {
         ) : (
           <>
             <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
-              No es un motor de reconocimiento de patrones — no imita el <i>tipo</i> de error que
-              cometes, sino qué tan seguido y qué tan grave. Se calcula sobre tus{' '}
-              {profile.gamesSampled} partidas ya analizadas: perdiste en promedio{' '}
-              <b>{profile.avgLoss}</b> puntos de evaluación en tu peor jugada de cada una — la CPU
-              va a jugar a nivel <b>{profile.difficulty}</b>, calibrada para blandir errores de un
-              tamaño parecido al tuyo.
+              Perfil de confianza <b>{profile.confidence}</b>, calculado con {profile.gamesSampled} partidas de
+              estilo y {profile.errorGamesSampled} autopsias. Tu peor jugada pierde en promedio <b>{profile.avgLoss}</b>
+              {' '}centipawns; el fantasma queda en nivel <b>{profile.difficulty}</b>. El motor sólo usa tu estilo
+              para desempatar jugadas casi equivalentes: no regalará una torre por hacer cosplay de tus peores tardes.
+            </p>
+
+            <div className="career-mini-grid" style={{ marginBottom: '0.8rem' }}>
+              <span><b>{profile.metrics.captures}%</b><small>jugadas con captura</small></span>
+              <span><b>{profile.metrics.pawns}%</b><small>movimientos de peón</small></span>
+              <span><b>{profile.metrics.queens}%</b><small>movimientos de dama</small></span>
+              <span><b>{profile.metrics.checks}%</b><small>jugadas con jaque</small></span>
+              <span><b>{profile.metrics.castles}%</b><small>partidas con enroque</small></span>
+            </div>
+
+            <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
+              Rasgos observados: <b>{profile.traits.join(' · ')}</b>.
             </p>
             <button
               type="button"
               className="primary-btn"
               style={{ width: '100%' }}
-              onClick={() => onStart(profile.difficulty)}
+              onClick={() => onStart(profile)}
             >
-              Empezar partida espejo
+              Jugar contra mi fantasma
             </button>
           </>
         )}

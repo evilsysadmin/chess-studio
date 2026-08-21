@@ -510,11 +510,59 @@ def _minimax(
     return best_score, best_move
 
 
+GHOST_STYLE_MARGIN_CP = 14.0
+
+
+def _ghost_style_value(style: Optional[dict], key: str) -> float:
+    if not isinstance(style, dict):
+        return 0.0
+    try:
+        return max(-1.0, min(1.0, float(style.get(key, 0.0))))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _ghost_style_score(board: chess.Board, move: chess.Move, style: Optional[dict]) -> float:
+    """Preferencia de estilo para desempatar variantes casi equivalentes.
+
+    No forma parte de la evaluación ajedrecística ni del minimax: sólo se usa
+    en la raíz cuando dos jugadas quedan dentro de un margen muy pequeño.
+    Así un perfil humano puede inclinar CAPTURA/PEÓN/DAMA/JAQUE/ENROQUE sin
+    convertir una preferencia estética en permiso para colgar material.
+    """
+    if not style:
+        return 0.0
+    piece = board.piece_at(move.from_square)
+    score = 0.0
+    if board.is_capture(move):
+        score += 2.2 * _ghost_style_value(style, "capture")
+    if piece is not None and piece.piece_type == chess.PAWN:
+        score += 1.35 * _ghost_style_value(style, "pawn")
+    if piece is not None and piece.piece_type == chess.QUEEN:
+        score += 1.25 * _ghost_style_value(style, "queen")
+    if board.gives_check(move):
+        score += 1.7 * _ghost_style_value(style, "check")
+    if board.is_castling(move):
+        score += 1.8 * _ghost_style_value(style, "castle")
+    return score
+
+
+def _ghost_tiebreak_allowed(best_score: float, candidate_score: float, maximizing: bool) -> bool:
+    # Nunca dejamos que el estilo retrase un mate o elija otra rama dentro de
+    # las puntuaciones centinela de mate. Fuera de eso toleramos sólo 14 cp,
+    # una diferencia deliberadamente minúscula.
+    if abs(best_score) >= MATE_SCORE - 1000 or abs(candidate_score) >= MATE_SCORE - 1000:
+        return False
+    gap = (best_score - candidate_score) if maximizing else (candidate_score - best_score)
+    return 0.0 <= gap <= GHOST_STYLE_MARGIN_CP
+
+
 def _root_search(
     board: chess.Board,
     depth: int,
     deadline: float,
     tt: dict[tuple, TTEntry],
+    ghost_style: Optional[dict] = None,
 ) -> tuple[Optional[chess.Move], float]:
     moves = _order_moves(board, list(board.legal_moves))
     if not moves:
@@ -523,19 +571,34 @@ def _root_search(
     maximizing = board.turn == chess.WHITE
     best = None
     best_score = -INF if maximizing else INF
+    best_style_score = -INF
     alpha, beta = -INF, INF
 
     for move in moves:
         if time.monotonic() >= deadline:
             raise TimeoutError
+        move_style_score = _ghost_style_score(board, move, ghost_style)
         board.push(move)
         try:
             score, _ = _minimax(board, depth - 1, alpha, beta, 1, deadline, tt)
         finally:
             board.pop()
 
-        if (maximizing and score > best_score) or (not maximizing and score < best_score):
+        is_better = (maximizing and score > best_score) or (not maximizing and score < best_score)
+        if is_better:
             best_score, best = score, move
+            best_style_score = move_style_score
+        elif (
+            ghost_style
+            and best is not None
+            and _ghost_tiebreak_allowed(best_score, score, maximizing)
+            and move_style_score > best_style_score
+        ):
+            # Conservamos `best_score` para alfa-beta: es la puntuación real
+            # óptima hallada. Sólo cambiamos qué jugada casi equivalente se
+            # devuelve al usuario.
+            best = move
+            best_style_score = move_style_score
 
         if maximizing:
             alpha = max(alpha, best_score)
@@ -578,7 +641,7 @@ def _static_best_move(board: chess.Board, legal_moves: list[chess.Move]) -> tupl
     return best, best_score
 
 
-def _search(board: chess.Board, settings: LevelSettings) -> tuple[Optional[chess.Move], float]:
+def _search(board: chess.Board, settings: LevelSettings, ghost_style: Optional[dict] = None) -> tuple[Optional[chess.Move], float]:
     legal_moves = list(board.legal_moves)
     if not legal_moves:
         return None, 0.0
@@ -594,7 +657,7 @@ def _search(board: chess.Board, settings: LevelSettings) -> tuple[Optional[chess
         if time.monotonic() >= deadline:
             break
         try:
-            move, score = _root_search(board, depth, deadline, tt)
+            move, score = _root_search(board, depth, deadline, tt, ghost_style)
         except TimeoutError:
             break
         if move is not None:
@@ -603,8 +666,12 @@ def _search(board: chess.Board, settings: LevelSettings) -> tuple[Optional[chess
     return best, best_score
 
 
-def get_cpu_move(board: chess.Board, level: float = 50) -> Optional[dict]:
-    """Devuelve una jugada para la CPU según dificultad 0-100."""
+def get_cpu_move(board: chess.Board, level: float = 50, ghost_style: Optional[dict] = None) -> Optional[dict]:
+    """Devuelve una jugada para la CPU según dificultad 0-100.
+
+    ``ghost_style`` es opcional y sólo desempata variantes casi equivalentes
+    en la raíz; no altera la evaluación ni la profundidad del motor.
+    """
     settings = settings_for_level(level)
     legal_moves = list(board.legal_moves)
     if not legal_moves:
@@ -614,9 +681,15 @@ def get_cpu_move(board: chess.Board, level: float = 50) -> Optional[dict]:
     # motor siempre piensa, pero los niveles bajos pueden preferir una jugada
     # cercana a la mejor para no resultar completamente idiotas.
     if random.random() < settings.randomness:
+        if ghost_style:
+            # En niveles bajos ya existe imperfección deliberada; al menos
+            # orientamos esa ruleta hacia los rasgos medidos del fantasma.
+            ranked = sorted(legal_moves, key=lambda move: _ghost_style_score(board, move, ghost_style), reverse=True)
+            pool_size = max(1, min(len(ranked), max(3, len(ranked) // 3)))
+            return move_to_dict(board, random.choice(ranked[:pool_size]))
         return move_to_dict(board, random.choice(legal_moves))
 
-    best, best_score = _search(board, settings)
+    best, best_score = _search(board, settings, ghost_style)
     if best is None:
         best = random.choice(legal_moves)
 
@@ -647,7 +720,7 @@ def get_cpu_move(board: chess.Board, level: float = 50) -> Optional[dict]:
                 static_best = min(score for _, score in scored)
                 near = [m for m, score in scored if score <= static_best + settings.noise]
             if near and random.random() < 0.35 * (settings.noise / 90):
-                best = random.choice(near)
+                best = max(near, key=lambda move: _ghost_style_score(board, move, ghost_style)) if ghost_style else random.choice(near)
 
     return move_to_dict(board, best)
 
