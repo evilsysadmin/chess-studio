@@ -171,7 +171,7 @@ export function wakeBackend() {
 
 export async function fetchLiveStatus() {
   try {
-    const res = await fetch(`${BASE_URL}/status`, { headers: withRequestId() });
+    const res = await fetch(`${BASE_URL}/status`, { headers: withRequestId({ ...authHeader() }) });
     if (!res.ok) return { backend: 'down', onlineUsers: null, presenceAvailable: false };
     const body = await res.json();
     return {

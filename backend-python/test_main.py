@@ -11,6 +11,7 @@ import pytest
 
 import chess
 from fastapi.testclient import TestClient
+from fastapi.routing import APIRoute
 
 import game_store as store
 import users_store as ustore
@@ -65,12 +66,70 @@ def test_health():
     assert r.json() == {"ok": True}
 
 
-def test_public_status_counts_recent_users_without_exposing_identities():
+def test_status_requires_auth_and_counts_recent_users_without_exposing_identities():
     asyncio.run(ustore.touch_last_activity("testuser", force=True))
-    r = raw_client.get("/api/status")
+    assert raw_client.get("/api/status").status_code == 401
+    r = client.get("/api/status")
     assert r.status_code == 200
     assert r.json() == {"ok": True, "onlineUsers": 1, "presenceAvailable": True}
     assert "testuser" not in r.text
+
+
+def test_api_route_inventory_fails_closed_for_new_endpoints():
+    """Toda ruta nueva debe declarar autenticación o entrar explícitamente
+    en la minúscula allowlist pública de bootstrap/health. Esto evita que una
+    futura feature nazca anónima por olvidar Depends(get_current_user).
+    """
+    intentionally_public = {
+        ("GET", "/api/health"),
+        ("POST", "/api/auth/register"),
+        ("POST", "/api/auth/login"),
+        ("POST", "/api/auth/forgot-password"),
+        ("POST", "/api/auth/reset-password"),
+    }
+    auth_dependencies = {"get_current_user", "get_user_or_m2m"}
+
+    uncovered = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        dependency_names = {getattr(dep.call, "__name__", "") for dep in route.dependant.dependencies}
+        for method in route.methods:
+            if method in {"HEAD", "OPTIONS"} or (method, route.path) in intentionally_public:
+                continue
+            if not dependency_names.intersection(auth_dependencies):
+                uncovered.append(f"{method} {route.path}")
+
+    assert uncovered == [], f"Rutas sin auth fuera de allowlist: {uncovered}"
+
+
+def test_production_security_config_fails_closed():
+    import main as main_module
+
+    with pytest.raises(RuntimeError, match="ADMIN_USERNAMES"):
+        main_module._validate_security_config(
+            "production", allow_registration=False, invite_code="", admin_usernames={"*"}
+        )
+    with pytest.raises(RuntimeError, match="INVITE_CODE"):
+        main_module._validate_security_config(
+            "production", allow_registration=True, invite_code="", admin_usernames={"stan"}
+        )
+    # Producción cerrada o con invite explícito sí es válida.
+    main_module._validate_security_config(
+        "production", allow_registration=False, invite_code="", admin_usernames={"stan"}
+    )
+    main_module._validate_security_config(
+        "production", allow_registration=True, invite_code="secreto", admin_usernames={"stan"}
+    )
+
+
+def test_api_responses_have_no_store_and_basic_security_headers():
+    r = raw_client.get("/api/health")
+    assert r.status_code == 200
+    assert r.headers["cache-control"] == "no-store"
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["x-frame-options"] == "DENY"
+    assert r.headers["referrer-policy"] == "no-referrer"
 
 
 def test_root_identifies_backend_instead_of_returning_404():

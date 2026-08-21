@@ -139,12 +139,24 @@ describe('fetchMe/authHeader/wakeBackend', () => {
     expect(() => wakeBackend()).not.toThrow();
   });
 
-  it('fetchLiveStatus informa backend y presencia agregada', async () => {
-    mockFetchOnce(200, { ok: true, onlineUsers: 3, presenceAvailable: true });
+  it('fetchLiveStatus informa backend y presencia agregada con sesión', async () => {
+    mockFetchOnce(200, { token: 'status-token', username: 'vivo' });
+    await login('vivo', 'clave123456');
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, onlineUsers: 3, presenceAvailable: true }),
+    });
     expect(await fetchLiveStatus()).toEqual({ backend: 'up', onlineUsers: 3, presenceAvailable: true });
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/status'),
-      expect.objectContaining({ headers: expect.objectContaining({ 'X-Request-ID': expect.any(String) }) }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer status-token',
+          'X-Request-ID': expect.any(String),
+        }),
+      }),
     );
 
     global.fetch = vi.fn().mockRejectedValue(new Error('offline'));

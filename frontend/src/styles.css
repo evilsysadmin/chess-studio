@@ -3643,6 +3643,9 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   z-index: 70;
   width: min(calc(100% - 2rem), 540px);
   margin: 0.55rem auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   pointer-events: none;
 }
 .global-music-dock .music-deck {
@@ -3656,9 +3659,10 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .global-music-dock .live-service-status {
   position: static;
   transform: none;
-  width: max-content;
+  width: fit-content;
   max-width: 100%;
-  margin: 0.34rem auto 0;
+  margin: 0.34rem 0 0;
+  align-self: center;
   pointer-events: auto;
   background: color-mix(in srgb, var(--ink-2) 78%, transparent);
 }

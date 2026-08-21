@@ -92,6 +92,16 @@ def _request_username(request: Request) -> str:
     return username or "-"
 
 
+def _apply_api_security_headers(response):
+    """Cabeceras seguras para todas las respuestas del backend JSON."""
+    response.headers.setdefault("Cache-Control", "no-store")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    return response
+
+
 @app.middleware("http")
 async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
@@ -103,7 +113,7 @@ async def log_request_with_user(request: Request, call_next):
         response = await call_next(request)
         status_code = response.status_code
         response.headers["X-Request-ID"] = request_id
-        return response
+        return _apply_api_security_headers(response)
     except Exception:
         raised = True
         elapsed_ms = (time.perf_counter() - started) * 1000
@@ -120,11 +130,12 @@ async def log_request_with_user(request: Request, call_next):
         )
         # El detalle técnico completo queda en el traceback de Render; al
         # navegador sólo vuelve una referencia segura para correlacionarlo.
-        return JSONResponse(
+        response = JSONResponse(
             status_code=500,
             content={"detail": "Error interno del servidor.", "requestId": request_id},
             headers={"X-Request-ID": request_id},
         )
+        return _apply_api_security_headers(response)
     finally:
         if not raised:
             elapsed_ms = (time.perf_counter() - started) * 1000
@@ -173,11 +184,15 @@ def _normalize_cors_origin(raw: str) -> str:
     return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}"
 
 
-_DEFAULT_CORS_ORIGINS = {
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://evilsysadmin.github.io",
-}
+_DEFAULT_CORS_ORIGINS = (
+    {"https://evilsysadmin.github.io"}
+    if ENVIRONMENT in {"production", "prod"}
+    else {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://evilsysadmin.github.io",
+    }
+)
 _CONFIGURED_CORS_ORIGINS = {
     normalized
     for raw in os.environ.get("CORS_ORIGINS", "").split(",")
@@ -237,6 +252,29 @@ def has_valid_api_key(request: Request) -> bool:
 # recuerde escribirlo exactamente igual.
 _ADMIN_USERNAMES = {u.strip().lower() for u in os.environ.get("ADMIN_USERNAMES", "").split(",") if u.strip()}
 
+def _validate_security_config(
+    environment: str,
+    *,
+    allow_registration: bool,
+    invite_code: str,
+    admin_usernames: set[str],
+) -> None:
+    """Fail closed ante configuraciones peligrosas de producción."""
+    if environment not in {"production", "prod"}:
+        return
+    if "*" in admin_usernames:
+        raise RuntimeError("ADMIN_USERNAMES=\"*\" no está permitido en producción.")
+    if allow_registration and not invite_code:
+        raise RuntimeError("En producción, ALLOW_REGISTRATION=true requiere INVITE_CODE.")
+
+
+_validate_security_config(
+    ENVIRONMENT,
+    allow_registration=ALLOW_REGISTRATION,
+    invite_code=INVITE_CODE,
+    admin_usernames=_ADMIN_USERNAMES,
+)
+
 
 def is_admin(username: str) -> bool:
     # Comodín pensado para desarrollo local: ADMIN_USERNAMES="*" convierte
@@ -262,8 +300,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-API-Key"],
     expose_headers=["X-Request-ID"],
     max_age=600,
 )
@@ -1412,11 +1450,11 @@ async def health():
 
 
 @app.get("/api/status")
-@limiter.exempt
-async def public_status():
+async def authenticated_status(_username: str = Depends(get_current_user)):
     """Estado ligero para la cabecera autenticada.
 
-    Es público como /health, pero solo expone un agregado (nunca usernames).
+    A diferencia de /health, la presencia no tiene por qué ser pública. Solo
+    devuelve un agregado y exige la misma sesión JWT que el resto de la app.
     Si Mongo está temporalmente indisponible el proceso sigue estando UP; en
     ese caso la presencia queda como desconocida en vez de convertir un fallo
     de storage en un falso "backend DOWN".
