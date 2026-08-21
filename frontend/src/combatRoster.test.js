@@ -5,6 +5,7 @@ import {
   saveSurvivorsToRoster,
   revivePiece,
   expireDeadPieces,
+  resetRoster,
 } from './combatRoster.js';
 import { createInitialRegistry } from './combat.js';
 import { Chess } from 'chess.js';
@@ -72,20 +73,20 @@ describe('saveSurvivorsToRoster', () => {
   });
 
 
-  it('conserva la metamorfosis de un veterano vivo al guardar la batalla', () => {
+  it('conserva el loadout elegido de una pieza viva al guardar la batalla', () => {
     const registry = {
-      a4: { id: 'w-p-a2', type: 'n', color: 'w', square: 'a4', strengthPoints: 3, speedPoints: 2, bankedXp: 5, metamorphosis: 'n' },
+      a4: { id: 'w-p-a2', type: 'n', color: 'w', square: 'a4', strengthPoints: 3, speedPoints: 2, bankedXp: 5, deploymentType: 'n' },
     };
     const next = saveSurvivorsToRoster(registry, { pieces: {}, combatXp: 0 }, 'w', 'win');
-    expect(next.pieces['p-a']).toMatchObject({ alive: true, metamorphosis: 'n', strengthPoints: 3, speedPoints: 2, bankedXp: 5 });
+    expect(next.pieces['p-a']).toMatchObject({ alive: true, deploymentType: 'n', strengthPoints: 3, speedPoints: 2, bankedXp: 5 });
   });
 
-  it('conserva la metamorfosis mientras la pieza está caída y si se revive', () => {
-    const roster = { pieces: { 'p-a': { strengthPoints: 4, speedPoints: 4, bankedXp: 0, alive: true, metamorphosis: 'b' } }, combatXp: 50 };
+  it('conserva el loadout mientras la pieza está caída y si se revive', () => {
+    const roster = { pieces: { 'p-a': { strengthPoints: 4, speedPoints: 4, bankedXp: 0, alive: true, deploymentType: 'b' } }, combatXp: 50 };
     const dead = saveSurvivorsToRoster({}, roster, 'w', 'loss');
-    expect(dead.pieces['p-a']).toMatchObject({ alive: false, metamorphosis: 'b' });
+    expect(dead.pieces['p-a']).toMatchObject({ alive: false, deploymentType: 'b' });
     const revived = revivePiece(dead, 'p-a', 'b');
-    expect(revived.pieces['p-a']).toMatchObject({ alive: true, metamorphosis: 'b', strengthPoints: 2, speedPoints: 2 });
+    expect(revived.pieces['p-a']).toMatchObject({ alive: true, deploymentType: 'b', strengthPoints: 2, speedPoints: 2 });
   });
 
   it('otorga XP de combate según el resultado (ganar > tablas > perder)', () => {
@@ -177,5 +178,37 @@ describe('expireDeadPieces — la ventana de revivir se cierra', () => {
     const expired = expireDeadPieces(roster);
     expect(expired.pieces['q-d'].alive).toBe(true);
     expect(expired.pieces['q-d'].strengthPoints).toBe(3);
+  });
+
+  it('una baja definitiva recibe identidad nueva al ser reemplazada por nivel 1', () => {
+    const roster = {
+      pieces: { 'p-a': { strengthPoints: 3, speedPoints: 2, bankedXp: 0, alive: false } },
+      identities: { 'p-a': { alias: 'Starky', identityId: 'old-starky' } },
+      combatXp: 0,
+    };
+    const expired = expireDeadPieces(roster);
+    expect(expired.pieces['p-a']).toBeUndefined();
+    expect(expired.identities['p-a']).toBeDefined();
+    expect(expired.identities['p-a'].identityId).not.toBe('old-starky');
+  });
+});
+
+
+describe('resetRoster', () => {
+  it('el reset específico crea y persiste un regimiento nuevo con identidades', () => {
+    localStorage.setItem('chess-study-combat-roster', JSON.stringify({ pieces: { 'p-a': { strengthPoints: 9 } }, combatXp: 99 }));
+    const fresh = resetRoster();
+    const stored = JSON.parse(localStorage.getItem('chess-study-combat-roster'));
+    expect(stored.combatXp).toBe(0);
+    expect(stored.identities).toEqual(fresh.identities);
+    expect(Object.keys(stored.identities).length).toBeGreaterThan(0);
+  });
+
+  it('puede limpiar sin repersistir para el reset global de progreso', () => {
+    localStorage.setItem('chess-study-combat-roster', JSON.stringify({ combatXp: 99 }));
+    const fresh = resetRoster({ persist: false });
+    expect(fresh.combatXp).toBe(0);
+    expect(Object.keys(fresh.identities).length).toBeGreaterThan(0);
+    expect(localStorage.getItem('chess-study-combat-roster')).toBeNull();
   });
 });

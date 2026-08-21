@@ -1,6 +1,6 @@
 // Rangos militares de CADA pieza veterana de Combate.
 // Se derivan únicamente de su nivel real (puntos comprados): no son XP
-// cosmética ni conceden estadísticas por sí mismos. A partir de Capitán
+// cosmética ni conceden estadísticas por sí mismos. A partir de Comandante
 // una pieza puede ser elegible para metamorfosis en reglas Roguelike.
 
 export const PIECE_RANKS = [
@@ -15,7 +15,7 @@ export const PIECE_RANKS = [
   { id: 'general', label: 'General', short: 'GEN', minLevel: 12 },
 ];
 
-export const METAMORPHOSIS_MIN_RANK_ID = 'captain';
+export const METAMORPHOSIS_MIN_RANK_ID = 'commander';
 
 export function pieceRankForLevel(level) {
   const normalized = Math.max(1, Math.floor(Number(level) || 1));

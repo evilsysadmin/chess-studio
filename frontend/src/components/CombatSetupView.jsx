@@ -38,9 +38,10 @@ export default function CombatSetupView({
             (gastando "XP de combate", una moneda aparte que se gana al terminar cada partida) antes de que
             empieces la siguiente: si no las recuperas a tiempo, se pierde para siempre su veteranía y ese hueco vuelve la próxima batalla con una pieza de nivel 1. El
             rey nunca esquiva y siempre acierta cuando ataca, y tampoco gana ni gasta XP: el jaque mate sigue
-            siendo 100% seguro, como en el ajedrez de siempre. A partir de <b>Capitán</b>, un peón veterano puede
-            metamorfosear una sola vez en Caballo o Alfil: conserva su identidad, rango y mejoras, pero entra al tablero
-            moviéndose como su nueva clase. Sí, rompe el ajedrez normal. Aquí estamos en Combate.
+            siendo 100% seguro, como en el ajedrez de siempre. Cada pieza de tu ejército tiene alias propio desde nivel 1.
+            La metamorfosis empieza mucho más tarde: un peón <b>Comandante</b> desbloquea Caballo, un <b>Coronel</b> añade
+            Alfil y un <b>General</b> añade Torre. No es permanente: eliges el despliegue antes de cada batalla y queda
+            bloqueado durante el combate. Sí, rompe el ajedrez normal. Aquí estamos en Combate.
           </p>
         </div>
 

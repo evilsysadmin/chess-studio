@@ -14,10 +14,10 @@ TRIVY_DB_TTL_MINUTES ?= 720
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
-	test tests test-fe test-be tests-fe tests-be tests/fe tests/be \
+	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-install release-gate \
 	test-frontend test-backend backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical frontend-build puzzles-check \
-	security security-fe security-be security-trivy ensure-trivy deps-status
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
 game:
@@ -159,7 +159,7 @@ gate-core: ensure-backend-deps
 ## Gate rápido de reglas críticas que viven en el cliente.
 ## Usa SIEMPRE el Vitest fijado por package-lock.json; nunca instala npx al vuelo.
 gate-frontend-critical: ensure-frontend-deps
-	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/labPosition.test.js src/sound.test.js src/puzzles.test.js
+	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/combatService.test.js src/combatRanks.test.js src/combatMetamorphosis.test.js src/combatIdentity.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/clockPersistence.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/nemesis.test.js src/mirrorMode.test.js src/zenMode.test.js src/labPosition.test.js src/stateInvariants.test.js src/sound.test.js src/puzzles.test.js
 
 ## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
 gate-critical: gate-core gate-frontend-critical
@@ -186,7 +186,7 @@ test-frontend: ensure-frontend-deps
 	cd frontend && npm test
 
 test-backend: ensure-backend-deps
-	cd backend-python && $(BACKEND_VENV_PY) -m pytest -q test_main.py test_profile.py
+	cd backend-python && $(BACKEND_VENV_PY) -m pytest -q test_main.py test_profile.py test_request_limits.py
 
 backend-check: ensure-backend-deps
 	$(VENV_PY) -m pip check
@@ -194,6 +194,20 @@ backend-check: ensure-backend-deps
 frontend-build: ensure-frontend-deps
 	cd frontend && npm run build
 
+
+## E2E real en navegador. No vive en el pre-push para no descargar Chromium
+## ni ralentizar cada push; CI sí lo trata como quality gate.
+e2e-install: ensure-frontend-deps
+	cd e2e && npm install --no-package-lock --no-save @playwright/test@1.62.1
+	cd e2e && ./node_modules/.bin/playwright install chromium
+
+e2e: e2e-install frontend-build
+	cd e2e && ./node_modules/.bin/playwright test
+
+## Gate pesado de release: todo lo local + imágenes reales + navegador real.
+## No va en pre-push porque Docker+Chromium sería demasiado caro para cada push.
+release-gate: tests security-images e2e
+	@echo "==> Release gate completo OK: unit/integration + security + Docker images + Playwright."
 
 ## Revalida exclusivamente el banco curado: FEN, reyes/piezas, secuencia,
 ## mates prometidos y ganancia real en los puzzles de material.
@@ -235,8 +249,19 @@ security-trivy: ensure-trivy
 		sh ./scripts/trivy_fs_cached.sh "$(CURDIR)/$(SECURITY_DIR)/trivy.json" "$(CURDIR)"
 	$(PYTHON) scripts/security_report.py "$(SECURITY_DIR)/trivy.json"
 
-security: security-fe security-be security-trivy
-	@echo "==> Security gate completo: solo CRITICAL bloquea."
+security-api:
+	$(PYTHON) scripts/api_surface_gate.py
+
+security: security-api security-fe security-be security-trivy
+	@echo "==> Security gate completo: superficie API + dependencias + Trivy; solo CVE CRITICAL bloquea."
+
+## Gate de release/contenedor: construye las dos imágenes reales y escanea también
+## paquetes del SO/base image. No vive en `make tests` para mantener rápido el pre-push.
+security-images: ensure-trivy
+	TRIVY="$(CURDIR)/$(TRIVY)" TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" TRIVY_DB_TTL_MINUTES="$(TRIVY_DB_TTL_MINUTES)" SECURITY_DIR="$(CURDIR)/$(SECURITY_DIR)" sh ./scripts/trivy_image_scan.sh
+
+security-full: security security-images
+	@echo "==> Security FULL: repo + dependencias + imágenes Docker."
 
 ## Diagnóstico rápido de versiones realmente usadas por el checkout local.
 deps-status: ensure-backend-deps
@@ -266,9 +291,13 @@ help:
 	@echo "  make tests/be       - alias de tests-be"
 	@echo "  make test           - alias histórico de make tests"
 	@echo "  make frontend-build - compila el frontend fuera de Docker"
+	@echo "  make e2e            - smoke E2E con Playwright/Chromium (pesado)"
+	@echo "  make release-gate   - tests + security + imágenes Docker + E2E; gate pesado de release"
 	@echo "  make puzzles-check   - revalida íntegramente el banco de puzzles"
-	@echo "  make security        - npm audit + pip-audit + Trivy; solo CRITICAL bloquea"
+	@echo "  make security        - API auth gate + npm audit + pip-audit + Trivy; solo CVE CRITICAL bloquea"
 	@echo "  make security-fe     - auditoría de dependencias Node"
 	@echo "  make security-be     - auditoría de dependencias Python"
 	@echo "  make security-trivy  - vulns + secretos + misconfiguración"
+	@echo "  make security-images - construye y escanea frontend/backend Docker reales"
+	@echo "  make security-full   - security + security-images"
 	@echo "  make deps-status     - muestra PyJWT del requirements/venv y versión de Trivy"

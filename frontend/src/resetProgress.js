@@ -26,7 +26,7 @@ export function resetAllProgress() {
   resetTournament();
   clearGameHistory();
   clearCombatHistory();
-  resetRoster();
+  resetRoster({ persist: false });
   resetCombatService();
   resetRating();
   resetRatingHistory();

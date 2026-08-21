@@ -20,7 +20,7 @@ import {
 import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
 import { loadCombatService, recordCombatServiceEvent, summarizeCombatService } from '../combatService.js';
-import { applyRosterMetamorphosesToPosition, metamorphoseRosterPiece, persistMetamorphosedRoster } from '../combatMetamorphosis.js';
+import { applyRosterMetamorphosesToPosition, setRosterDeploymentType, persistMetamorphosedRoster } from '../combatMetamorphosis.js';
 import { checkAchievements } from '../achievements.js';
 import { loadRating, ratingProgress, difficultyForRating } from '../playerRating.js';
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
@@ -49,8 +49,8 @@ function buildLogEntry(result, humanColor) {
   const { attacker, defender, hit, chance, survivalXp } = result;
   if (!attacker || !defender) return null; // red de seguridad: sin datos suficientes, no arriesgamos un crash
   const attackerIsHuman = attacker.color === humanColor;
-  const attackerName = BASE_STATS[attacker.type].name;
-  const defenderName = BASE_STATS[defender.type].name;
+  const attackerName = `${attacker.alias ? `${attacker.alias}, ` : ''}${BASE_STATS[attacker.type].name}`;
+  const defenderName = `${defender.alias ? `${defender.alias}, ` : ''}${BASE_STATS[defender.type].name}`;
   const pct = Math.round(chance * 100);
 
   if (hit) {
@@ -377,7 +377,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         bankedXp: survivor.bankedXp || 0,
         runStrengthBonus: survivor.runStrengthBonus || piece.runStrengthBonus || 0,
         runSpeedBonus: survivor.runSpeedBonus || piece.runSpeedBonus || 0,
-        metamorphosis: survivor.metamorphosis || piece.metamorphosis || null,
+        deploymentType: survivor.deploymentType || piece.deploymentType || null,
       };
     }
 
@@ -698,14 +698,14 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setRoster((prev) => {
       const saved = prev.pieces[key] || { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: true };
       if (saved.alive === false) return prev; // no se puede invertir en una pieza caída, primero hay que revivirla
-      const virtualPiece = { type: saved.metamorphosis || key.split('-')[0], ...saved };
+      const virtualPiece = { type: saved.deploymentType || key.split('-')[0], ...saved };
       const updated = buyStatPoint(virtualPiece, stat);
       if (!updated) return prev;
       const next = {
         ...prev,
         pieces: {
           ...prev.pieces,
-          [key]: { strengthPoints: updated.strengthPoints, speedPoints: updated.speedPoints, bankedXp: updated.bankedXp, alive: true, metamorphosis: saved.metamorphosis || null },
+          [key]: { ...saved, strengthPoints: updated.strengthPoints, speedPoints: updated.speedPoints, bankedXp: updated.bankedXp, alive: true, deploymentType: saved.deploymentType || null },
         },
       };
       saveRoster(next);
@@ -716,7 +716,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
   function handleMetamorphoseRosterPiece(key, targetType) {
     setRoster((prev) => {
-      const next = metamorphoseRosterPiece(prev, key, targetType);
+      const next = setRosterDeploymentType(prev, key, targetType);
       if (next === prev) return prev;
       persistMetamorphosedRoster(next);
       return next;

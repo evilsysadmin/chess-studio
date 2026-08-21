@@ -4,6 +4,7 @@ import {
   AMBIENT_THEME_OPTIONS,
   getAmbientThemeId,
   getAmbientThemeSoundProfile,
+  getPercussionHumanizationPreview,
   getAmbientThemeVariationDurationMs,
   getAmbientTrackDurationMs,
   getAmbientVolume,
@@ -100,6 +101,24 @@ describe('ambient music catalog', () => {
     expect(tangier.percussionKit).toBe('maghreb-hand');
     expect(beirut.percussionPunch).toBeGreaterThan(1.25);
     expect(damascus.space).toBeGreaterThan(cairo.space);
+  });
+
+  it('humaniza la percusión sin soltar el downbeat del pulso', () => {
+    const downbeat = getPercussionHumanizationPreview('beirut0113', 0, 'K');
+    const secondaryA = getPercussionHumanizationPreview('beirut0113', 3, 'H');
+    const secondaryB = getPercussionHumanizationPreview('beirut0113', 9, 'H');
+
+    expect(downbeat.delayMs).toBe(0);
+    expect(secondaryA.delayMs).toBeGreaterThanOrEqual(0);
+    expect(secondaryA.delayMs).toBeLessThanOrEqual(9);
+    expect(secondaryA).toEqual(getPercussionHumanizationPreview('beirut0113', 3, 'H'));
+    expect(secondaryA.tone).toBeGreaterThanOrEqual(-0.78);
+    expect(secondaryA.tone).toBeLessThanOrEqual(0.78);
+    expect(secondaryA.decay).toBeGreaterThanOrEqual(0.9);
+    expect(secondaryA.decay).toBeLessThanOrEqual(1.1);
+    expect(secondaryA.pan).toBeGreaterThanOrEqual(-0.13);
+    expect(secondaryA.pan).toBeLessThanOrEqual(0.13);
+    expect(secondaryA).not.toEqual(secondaryB);
   });
 
   it('añade estilos no mediterráneos con siluetas claramente distintas', () => {

@@ -1926,6 +1926,8 @@ export function getAmbientThemeSoundProfile(themeId) {
     percussionPeriod: feel.percussion?.period || null,
     percussionKit: feel.percussion?.kit || 'legacy',
     percussionPunch: feel.percussion?.punch || 1,
+    percussionHumanized: (feel.percussion?.kit || 'legacy') !== 'none',
+    percussionMicrotimingMs: (feel.percussion?.kit || 'legacy') === 'none' ? 0 : 12,
     drumMode: feel.drumMode || 'dynamic',
     signatureInstrument: feel.signature?.instrument || null,
     signatureSteps: Object.keys(feel.signature?.motif || {}).length,
@@ -1937,6 +1939,7 @@ export function getAmbientThemeSoundProfile(themeId) {
   } : {
     family: 'legacy-structured', preserveSectionOrder: false, swing: 0, warmth: 1,
     groovePeriod: null, percussionPeriod: null, percussionKit: 'legacy', percussionPunch: 1,
+    percussionHumanized: true, percussionMicrotimingMs: 6,
     chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
   };
 }
@@ -2449,30 +2452,48 @@ function playSaxPhrase(scaleIndices, scale = OUD_SCALE, offset = 0, noteGapMs = 
 // ~0.09s) — la técnica clásica de síntesis de bombo tipo 808 — sonando
 // JUNTO con el ruido de siempre, no en su lugar: el tono da el peso, el
 // ruido sigue dando la definición del golpe.
-function playSoftPercussion(volume) {
+function connectPercussionWithPan(ctx, node, pan = 0) {
+  const output = getAmbientPercussionOutput(ctx);
+  if (!output) return;
+  if (typeof ctx.createStereoPanner === 'function' && Math.abs(pan) > 0.001) {
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = Math.max(-0.22, Math.min(0.22, pan));
+    node.connect(panner);
+    panner.connect(output);
+    return;
+  }
+  node.connect(output);
+}
+
+function playSoftPercussion(volume, options = {}) {
   if (isMusicMuted() || volume <= 0) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-  const start = ctx.currentTime;
+  const delayS = Math.max(0, Number(options.delayMs) || 0) / 1000;
+  const tone = Math.max(-1, Math.min(1, Number(options.tone) || 0));
+  const decay = Math.max(0.72, Math.min(1.28, Number(options.decay) || 1));
+  const pan = Math.max(-0.22, Math.min(0.22, Number(options.pan) || 0));
+  const start = ctx.currentTime + delayS;
 
-  // Cuerpo tonal: la parte que faltaba.
-  const bodyDurationS = 0.32;
+  // Cuerpo tonal con una pequeña variación de parche/golpe. No buscamos un
+  // bombo distinto cada vez: apenas el cambio que produciría golpear unos mm
+  // más cerca del centro o con otra presión de mano.
+  const bodyDurationS = 0.32 * decay;
   const osc = ctx.createOscillator();
   const oscGain = ctx.createGain();
   osc.type = 'sine';
-  osc.frequency.setValueAtTime(150, start);
-  osc.frequency.exponentialRampToValueAtTime(45, start + 0.09);
-  oscGain.gain.setValueAtTime(volume * 1.6, start); // el tono lleva más peso que el ruido en la mezcla
+  osc.frequency.setValueAtTime(150 * (1 + tone * 0.055), start);
+  osc.frequency.exponentialRampToValueAtTime(45 * (1 + tone * 0.035), start + 0.09 * decay);
+  oscGain.gain.setValueAtTime(volume * 1.55, start);
   oscGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDurationS);
   osc.connect(oscGain);
-  oscGain.connect(getAmbientOutput(ctx));
+  connectPercussionWithPan(ctx, oscGain, pan * 0.5);
   osc.start(start);
   osc.stop(start + bodyDurationS + 0.05);
 
-  // Ruido para la definición del golpe (igual que antes).
-  const noiseDurationS = 0.22;
+  const noiseDurationS = 0.22 * decay;
   const bufferSize = Math.floor(ctx.sampleRate * noiseDurationS);
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -2485,7 +2506,7 @@ function playSoftPercussion(volume) {
 
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.value = 450;
+  filter.frequency.value = 450 * (1 + tone * 0.18);
 
   const noiseGain = ctx.createGain();
   noiseGain.gain.setValueAtTime(volume, start);
@@ -2493,7 +2514,7 @@ function playSoftPercussion(volume) {
 
   noiseSource.connect(filter);
   filter.connect(noiseGain);
-  noiseGain.connect(getAmbientPercussionOutput(ctx));
+  connectPercussionWithPan(ctx, noiseGain, pan);
   noiseSource.start(start);
 }
 
@@ -2502,13 +2523,17 @@ function playSoftPercussion(volume) {
 // (0.09s vs 0.22s) y con un filtro pasa-banda centrado bien arriba
 // (1400Hz) en vez de pasa-bajos, para un "click" seco tipo borde de
 // pandero en vez de un golpe sordo de centro.
-function playHighTak(volume) {
+function playHighTak(volume, options = {}) {
   if (isMusicMuted() || volume <= 0) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-  const durationS = 0.09;
+  const delayS = Math.max(0, Number(options.delayMs) || 0) / 1000;
+  const tone = Math.max(-1, Math.min(1, Number(options.tone) || 0));
+  const decay = Math.max(0.72, Math.min(1.28, Number(options.decay) || 1));
+  const pan = Math.max(-0.22, Math.min(0.22, Number(options.pan) || 0));
+  const durationS = 0.09 * decay;
   const bufferSize = Math.floor(ctx.sampleRate * durationS);
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -2521,17 +2546,17 @@ function playHighTak(volume) {
 
   const filter = ctx.createBiquadFilter();
   filter.type = 'bandpass';
-  filter.frequency.value = 1400;
+  filter.frequency.value = 1400 * (1 + tone * 0.22);
   filter.Q.value = 1.2;
 
   const gainNode = ctx.createGain();
-  const start = ctx.currentTime;
+  const start = ctx.currentTime + delayS;
   gainNode.gain.setValueAtTime(volume, start);
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + durationS);
 
   noiseSource.connect(filter);
   filter.connect(gainNode);
-  gainNode.connect(getAmbientOutput(ctx));
+  connectPercussionWithPan(ctx, gainNode, pan);
   noiseSource.start(start);
 }
 
@@ -2657,12 +2682,16 @@ function playStructuredChord(kind, notes, duration = null, volumeScale = 1, tone
   notes.forEach((note) => playStructuredVoice(kind, note, scale, duration, tone));
 }
 
-function playNoiseHit(kind, volume = 0.03) {
+function playNoiseHit(kind, volume = 0.03, options = {}) {
   if (isMusicMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-  const duration = kind === 'brush' ? 0.18 : 0.085;
+  const delayS = Math.max(0, Number(options.delayMs) || 0) / 1000;
+  const tone = Math.max(-1, Math.min(1, Number(options.tone) || 0));
+  const decay = Math.max(0.72, Math.min(1.28, Number(options.decay) || 1));
+  const pan = Math.max(-0.22, Math.min(0.22, Number(options.pan) || 0));
+  const duration = (kind === 'brush' ? 0.18 : 0.085) * decay;
   const size = Math.max(1, Math.floor(ctx.sampleRate * duration));
   const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -2671,15 +2700,15 @@ function playNoiseHit(kind, volume = 0.03) {
   source.buffer = buffer;
   const filter = ctx.createBiquadFilter();
   filter.type = kind === 'brush' || kind === 'hat' ? 'highpass' : 'bandpass';
-  filter.frequency.value = kind === 'brush' ? 1900 : kind === 'hat' ? 4800 : 1500;
+  filter.frequency.value = (kind === 'brush' ? 1900 : kind === 'hat' ? 4800 : 1500) * (1 + tone * 0.16);
   filter.Q.value = kind === 'snare' ? 1.0 : 0.5;
   const gain = ctx.createGain();
-  const start = ctx.currentTime;
+  const start = ctx.currentTime + delayS;
   gain.gain.setValueAtTime(volume, start);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   source.connect(filter);
   filter.connect(gain);
-  gain.connect(getAmbientPercussionOutput(ctx));
+  connectPercussionWithPan(ctx, gain, pan);
   source.start(start);
 }
 
@@ -2728,27 +2757,57 @@ function playMetalHit() {
   });
 }
 
-function deterministicPercussionVelocity(feel, localStep, code) {
+function percussionHumanization(feel, localStep, code) {
   const period = Math.max(1, feel?.percussion?.period || 16);
   const pos = ((localStep % period) + period) % period;
   const half = Math.floor(period / 2);
+  const seed = stableThemeSeed(`${feel?.family || 'legacy'}:${localStep}:${code}`);
+  const signed = (shift) => (((seed >>> shift) % 2001) / 1000) - 1;
   let accent = pos === 0 ? 1.18 : pos === half ? 1.08 : 1;
   if (code === 'H') accent *= 0.82;
   if (code === 'B') accent *= 0.9;
-  const seed = stableThemeSeed(`${feel?.family || 'legacy'}:${localStep}:${code}`);
-  const microDynamics = 0.95 + ((seed % 11) / 100); // 0.95 .. 1.05, timing stays quantized
-  return accent * microDynamics * (feel?.percussion?.punch || 1);
+
+  // Downbeats remain tight so the ensemble does not drift. Secondary hand
+  // strokes sit a few milliseconds behind/ahead perceptually (implemented as
+  // tiny positive scheduling offsets) and vary in patch, decay and stereo
+  // position like real hands/brushes hitting slightly different spots.
+  const anchored = pos === 0 || (code === 'K' && pos === half);
+  const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(feel?.percussion?.kit);
+  const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush'].includes(feel?.percussion?.kit);
+  const maxDelayMs = anchored ? 0 : handKit ? 9 : brushKit ? 12 : 6;
+  const delayMs = Math.max(0, signed(3) * maxDelayMs + maxDelayMs * 0.45);
+  const microDynamics = 0.92 + (((seed >>> 5) % 17) / 100); // 0.92 .. 1.08
+  const tone = signed(7) * (handKit ? 0.78 : 0.45);
+  const decay = 0.9 + (((seed >>> 9) % 21) / 100); // 0.90 .. 1.10
+  const pan = signed(11) * (handKit ? 0.13 : 0.09);
+  const ghost = !anchored && (handKit || brushKit) && ((seed >>> 13) % 9 === 0);
+
+  return {
+    velocity: accent * microDynamics * (feel?.percussion?.punch || 1),
+    delayMs, tone, decay, pan, ghost,
+  };
 }
 
-function playMembraneHit(kind, volume = 0.04) {
+export function getPercussionHumanizationPreview(themeId, localStep, code = 'K') {
+  const theme = AMBIENT_THEMES[themeId];
+  const feel = structuredFeel(theme);
+  if (!theme || theme.engine !== 'structured' || !feel?.percussion) return null;
+  return percussionHumanization(feel, Number(localStep) || 0, code);
+}
+
+function playMembraneHit(kind, volume = 0.04, options = {}) {
   if (isMusicMuted() || volume <= 0) return;
   const ctx = getContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-  const start = ctx.currentTime;
+  const delayS = Math.max(0, Number(options.delayMs) || 0) / 1000;
+  const tone = Math.max(-1, Math.min(1, Number(options.tone) || 0));
+  const decay = Math.max(0.72, Math.min(1.28, Number(options.decay) || 1));
+  const pan = Math.max(-0.22, Math.min(0.22, Number(options.pan) || 0));
+  const start = ctx.currentTime + delayS;
   const isDum = kind === 'dum';
-  const bodyDuration = isDum ? 0.34 : 0.115;
+  const bodyDuration = (isDum ? 0.34 : 0.115) * decay;
   const body = ctx.createOscillator();
   const overtone = ctx.createOscillator();
   const bodyGain = ctx.createGain();
@@ -2756,10 +2815,10 @@ function playMembraneHit(kind, volume = 0.04) {
 
   body.type = 'sine';
   overtone.type = 'triangle';
-  body.frequency.setValueAtTime(isDum ? 185 : 410, start);
-  body.frequency.exponentialRampToValueAtTime(isDum ? 58 : 205, start + (isDum ? 0.09 : 0.035));
-  overtone.frequency.setValueAtTime(isDum ? 310 : 980, start);
-  overtone.frequency.exponentialRampToValueAtTime(isDum ? 170 : 620, start + bodyDuration * 0.55);
+  body.frequency.setValueAtTime((isDum ? 185 : 410) * (1 + tone * 0.055), start);
+  body.frequency.exponentialRampToValueAtTime((isDum ? 58 : 205) * (1 + tone * 0.035), start + (isDum ? 0.09 : 0.035) * decay);
+  overtone.frequency.setValueAtTime((isDum ? 310 : 980) * (1 + tone * 0.08), start);
+  overtone.frequency.exponentialRampToValueAtTime((isDum ? 170 : 620) * (1 + tone * 0.05), start + bodyDuration * 0.55);
 
   bodyGain.gain.setValueAtTime(volume * (isDum ? 1.35 : 0.78), start);
   bodyGain.gain.exponentialRampToValueAtTime(0.0001, start + bodyDuration);
@@ -2768,8 +2827,8 @@ function playMembraneHit(kind, volume = 0.04) {
 
   body.connect(bodyGain);
   overtone.connect(overtoneGain);
-  bodyGain.connect(getAmbientPercussionOutput(ctx));
-  overtoneGain.connect(getAmbientPercussionOutput(ctx));
+  connectPercussionWithPan(ctx, bodyGain, pan * 0.55);
+  connectPercussionWithPan(ctx, overtoneGain, pan);
   body.start(start);
   overtone.start(start);
   body.stop(start + bodyDuration + 0.03);
@@ -2789,46 +2848,61 @@ function playMembraneHit(kind, volume = 0.04) {
   const clickGain = ctx.createGain();
   source.buffer = buffer;
   filter.type = 'bandpass';
-  filter.frequency.value = isDum ? 720 : 2450;
+  filter.frequency.value = (isDum ? 720 : 2450) * (1 + tone * 0.18);
   filter.Q.value = isDum ? 0.8 : 1.5;
   clickGain.gain.setValueAtTime(volume * (isDum ? 0.38 : 0.72), start);
   clickGain.gain.exponentialRampToValueAtTime(0.0001, start + clickDuration);
   source.connect(filter);
   filter.connect(clickGain);
-  clickGain.connect(getAmbientPercussionOutput(ctx));
+  connectPercussionWithPan(ctx, clickGain, pan);
   source.start(start);
 }
 
 function playStructuredDrum(code, feel = null, localStep = 0) {
   const kit = feel?.percussion?.kit || 'legacy';
-  const velocity = deterministicPercussionVelocity(feel, localStep, code);
+  const human = percussionHumanization(feel, localStep, code);
+  const velocity = human.velocity;
   const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(kit);
   const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush'].includes(kit);
 
+  const maybeGhost = (kind, baseVolume) => {
+    if (!human.ghost) return;
+    const ghostOptions = {
+      delayMs: human.delayMs + 24 + Math.abs(human.tone) * 12,
+      tone: -human.tone * 0.6,
+      decay: 0.72,
+      pan: -human.pan * 0.7,
+    };
+    if (kind === 'membrane') playMembraneHit('tak', baseVolume * 0.22, ghostOptions);
+    else playNoiseHit('brush', baseVolume * 0.18, ghostOptions);
+  };
+
   if (handKit) {
-    if (code === 'K') playMembraneHit('dum', 0.052 * velocity);
-    else if (code === 'S') playMembraneHit('tak', 0.042 * velocity);
-    else if (code === 'H') playMembraneHit('tak', 0.021 * velocity);
-    else if (code === 'B') playNoiseHit('brush', 0.012 * velocity);
+    if (code === 'K') playMembraneHit('dum', 0.052 * velocity, human);
+    else if (code === 'S') playMembraneHit('tak', 0.042 * velocity, human);
+    else if (code === 'H') playMembraneHit('tak', 0.021 * velocity, human);
+    else if (code === 'B') playNoiseHit('brush', 0.012 * velocity, human);
     else if (code === 'W') playWoodblock();
     else if (code === 'M') playMetalHit();
+    if (['K', 'S', 'H'].includes(code)) maybeGhost('membrane', 0.042 * velocity);
     return;
   }
 
   if (brushKit) {
-    if (code === 'K') playSoftPercussion(0.05 * velocity);
-    else if (code === 'S') playNoiseHit('snare', 0.028 * velocity);
-    else if (code === 'H') playNoiseHit('hat', 0.011 * velocity);
-    else if (code === 'B') playNoiseHit('brush', 0.016 * velocity);
+    if (code === 'K') playSoftPercussion(0.05 * velocity, human);
+    else if (code === 'S') playNoiseHit('snare', 0.028 * velocity, human);
+    else if (code === 'H') playNoiseHit('hat', 0.011 * velocity, human);
+    else if (code === 'B') playNoiseHit('brush', 0.016 * velocity, human);
     else if (code === 'W') playWoodblock();
     else if (code === 'M') playMetalHit();
+    if (['S', 'H', 'B'].includes(code)) maybeGhost('brush', 0.016 * velocity);
     return;
   }
 
-  if (code === 'K') playSoftPercussion(0.055 * velocity);
-  else if (code === 'S') playNoiseHit('snare', 0.028 * velocity);
-  else if (code === 'H') playNoiseHit('hat', 0.014 * velocity);
-  else if (code === 'B') playNoiseHit('brush', 0.012 * velocity);
+  if (code === 'K') playSoftPercussion(0.055 * velocity, human);
+  else if (code === 'S') playNoiseHit('snare', 0.028 * velocity, human);
+  else if (code === 'H') playNoiseHit('hat', 0.014 * velocity, human);
+  else if (code === 'B') playNoiseHit('brush', 0.012 * velocity, human);
   else if (code === 'W') playWoodblock();
   else if (code === 'M') playMetalHit();
 }

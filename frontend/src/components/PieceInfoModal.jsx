@@ -20,7 +20,7 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
       <div className="piece-info-card" onClick={(e) => e.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">{colorLabel}</span>
-        <h3>{base.name}{isKing ? '' : ` · nivel ${derivedLevel(piece)}`}</h3>
+        <h3>{piece.alias ? `${piece.alias} · ` : ''}{base.name}{isKing ? '' : ` · nivel ${derivedLevel(piece)}`}</h3>
 
         <div className="piece-info-stats">
           <div className="piece-info-stat">

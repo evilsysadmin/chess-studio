@@ -13,7 +13,7 @@ import {
 } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { pieceRankForLevel } from '../combatRanks.js';
-import { METAMORPHOSIS_LABELS, PAWN_METAMORPHOSIS_CHOICES, canMetamorphoseRosterPiece } from '../combatMetamorphosis.js';
+import { METAMORPHOSIS_LABELS, unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 
 export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onClose }) {
   useEscapeToClose(onClose);
@@ -44,14 +44,14 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, on
 
             if (isDead) {
               const lastLevel = 1 + (saved.strengthPoints || 0) + (saved.speedPoints || 0);
-              const activeType = saved.metamorphosis || slot.type;
+              const activeType = saved.deploymentType || slot.type;
               const cost = reviveCost(activeType);
               return (
                 <div className="army-row army-row-dead" key={key}>
                   <span className="army-aura tier-dead">✕</span>
                   <div className="army-row-info">
                     <span className="army-row-name">
-                      {saved.metamorphosis ? `${METAMORPHOSIS_LABELS[saved.metamorphosis]} ← ${BASE_STATS[slot.type].name}` : BASE_STATS[slot.type].name} <span className="army-row-file">({slot.file})</span>
+                      {roster.identities?.[key]?.alias || 'Sin alias'} — {BASE_STATS[slot.type].name} <span className="army-row-file">({slot.file})</span>
                     </span>
                     <span className="army-row-stats army-row-urgent">
                       Caída · era nivel {lastLevel} · recupérala a la mitad ahora, o su veteranía se perderá y volverá como nivel 1
@@ -71,14 +71,15 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, on
               );
             }
 
-            const activeType = saved?.metamorphosis || slot.type;
+            const activeType = saved?.deploymentType || slot.type;
             const piece = { type: activeType, ...(saved || { strengthPoints: 0, speedPoints: 0, bankedXp: 0 }) };
             piece.type = activeType;
             const stats = statsFor(piece);
             const level = derivedLevel(piece);
             const tier = levelTier(level);
             const militaryRank = pieceRankForLevel(level);
-            const canMetamorphose = canMetamorphoseRosterPiece(key, saved);
+            const deploymentChoices = unlockedDeploymentTypes(key, saved);
+            const hasMetamorphosisChoices = deploymentChoices.length > 1;
             const strCost = costForNextPoint(piece.strengthPoints);
             const spdCost = costForNextPoint(piece.speedPoints);
 
@@ -87,17 +88,17 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, on
                 <span className={`army-aura tier-${tier}`}>{level}</span>
                 <div className="army-row-info">
                   <span className="army-row-name">
-                    {saved?.metamorphosis ? `${METAMORPHOSIS_LABELS[saved.metamorphosis]} ← ${BASE_STATS[slot.type].name}` : BASE_STATS[slot.type].name} <span className="army-row-file">({slot.file})</span>
+                    {roster.identities?.[key]?.alias || 'Sin alias'} — {BASE_STATS[slot.type].name} <span className="army-row-file">({slot.file})</span>
                     <span className="army-piece-rank">{militaryRank.short} · {militaryRank.label}</span>
                   </span>
                   <span className="army-row-stats">
                     Fuerza {stats.strength.toFixed(1)} · Velocidad {stats.speed.toFixed(1)} · XP {piece.bankedXp}
                   </span>
-                  {saved?.metamorphosis && (
-                    <span className="army-metamorphosis-status">Metamorfosis permanente: se despliega y mueve como {METAMORPHOSIS_LABELS[saved.metamorphosis]}.</span>
+                  {saved?.deploymentType && (
+                    <span className="army-metamorphosis-status">Próximo despliegue: {METAMORPHOSIS_LABELS[saved.deploymentType]}. La identidad y clase de origen no cambian.</span>
                   )}
-                  {canMetamorphose && (
-                    <span className="army-metamorphosis-status ready">Capitán: metamorfosis disponible. Elige una clase; no se puede deshacer.</span>
+                  {hasMetamorphosisChoices && (
+                    <span className="army-metamorphosis-status ready">{militaryRank.label}: elige la forma de esta pieza para la próxima batalla. Puedes replantearla antes de cada combate.</span>
                   )}
                 </div>
                 <div className="army-row-buy">
@@ -121,19 +122,17 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, on
                     <span>+V ({spdCost})</span>
                     <span className="buy-preview">→ {(stats.speed + SPEED_POINT_VALUE).toFixed(1)}</span>
                   </button>
-                  {canMetamorphose && onMetamorphose && (
+                  {hasMetamorphosisChoices && onMetamorphose && (
                     <div className="army-metamorphosis-actions">
-                      {PAWN_METAMORPHOSIS_CHOICES.map((targetType) => (
+                      {deploymentChoices.map((targetType) => (
                         <button
                           key={targetType}
                           type="button"
-                          className="secondary-btn metamorphosis-btn"
-                          onClick={() => {
-                            const ok = typeof window === 'undefined' || window.confirm(`Metamorfosear este Peón ${militaryRank.label} en ${METAMORPHOSIS_LABELS[targetType]}? La decisión es permanente.`);
-                            if (ok) onMetamorphose(key, targetType);
-                          }}
+                          className={`secondary-btn metamorphosis-btn ${activeType === targetType ? 'active' : ''}`}
+                          aria-pressed={activeType === targetType}
+                          onClick={() => onMetamorphose(key, targetType)}
                         >
-                          → {METAMORPHOSIS_LABELS[targetType]}
+                          {activeType === targetType ? '✓ ' : ''}{METAMORPHOSIS_LABELS[targetType]}
                         </button>
                       ))}
                     </div>

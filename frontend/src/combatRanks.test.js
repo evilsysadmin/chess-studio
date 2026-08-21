@@ -9,13 +9,13 @@ describe('rangos militares de piezas de Combate', () => {
     expect(pieceRankForLevel(12).label).toBe('General');
   });
 
-  it('Capitán es el primer rango elegible para metamorfosis', () => {
-    expect(METAMORPHOSIS_MIN_RANK_ID).toBe('captain');
-    expect(pieceRankAtLeast(5, METAMORPHOSIS_MIN_RANK_ID)).toBe(false);
-    expect(pieceRankAtLeast(6, METAMORPHOSIS_MIN_RANK_ID)).toBe(true);
+  it('Comandante es el primer rango elegible para metamorfosis', () => {
+    expect(METAMORPHOSIS_MIN_RANK_ID).toBe('commander');
+    expect(pieceRankAtLeast(7, METAMORPHOSIS_MIN_RANK_ID)).toBe(false);
+    expect(pieceRankAtLeast(8, METAMORPHOSIS_MIN_RANK_ID)).toBe(true);
   });
 
-  it('el catálogo mantiene orden y ids únicos', () => {
+  it('el catálogo mantiene orden e ids únicos', () => {
     expect(new Set(PIECE_RANKS.map((rank) => rank.id)).size).toBe(PIECE_RANKS.length);
     expect(PIECE_RANKS.map((rank) => rank.minLevel)).toEqual([...PIECE_RANKS.map((rank) => rank.minLevel)].sort((a, b) => a - b));
   });
