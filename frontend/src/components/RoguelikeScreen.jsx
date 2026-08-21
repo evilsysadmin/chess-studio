@@ -7,6 +7,7 @@ import { applyModifierToFen, encounterForRun } from '../roguelikeModifiers.js';
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
+import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE, COMBAT_CHESS_TAGLINE } from '../combatChessBrand.js';
 import {
   loadRun,
   startNewRun,
@@ -124,7 +125,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       <div className="menu">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section roguelike-interrupted">
-          <span className="section-label">Combate · integridad del intento</span>
+          <span className="section-label">{COMBAT_CHESS_NAME} · integridad del intento</span>
           <h2>La pelea quedó interrumpida</h2>
           <p className="hero-scope-note">
             Este piso ya había empezado y la sesión desapareció antes de resolverlo. Reiniciarlo desde cero
@@ -174,14 +175,14 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     <div className="menu">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section">
-        <span className="section-label">Combate</span>
-        <h2>Roguelike · La Torre</h2>
+        <span className="section-label">{COMBAT_CHESS_GENRE}</span>
+        <h2>{COMBAT_CHESS_NAME} · La Torre</h2>
         <p className="hero-scope-note">
-          Objetivo: superar <b>10 pisos</b> y derrotar al Rey Viejo. Ya no es una escalera infinita sin destino:
+          {COMBAT_CHESS_TAGLINE} Objetivo: superar <b>10 pisos</b> y derrotar al Rey Viejo. Ya no es una escalera infinita sin destino:
           hay encuentros, élites, un miniboss, recompensas temporales entre pisos y un jefe final con HP.
         </p>
         <p className="hint-text" style={{ marginTop: '0.55rem' }}>
-          Usas tu <b>ejército real de Combate</b>. Su veteranía persiste fuera del intento; las ventajas que eliges
+          Usas tu <b>ejército persistente de Combat Chess</b>. Su veteranía persiste fuera del intento; las ventajas que eliges
           dentro de la Torre son temporales y desaparecen cuando el intento termina.
         </p>
 

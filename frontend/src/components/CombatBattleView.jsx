@@ -8,8 +8,8 @@ export default function CombatBattleView({
   onExit, onViewBattle, phase, localChess, status, statusLabel, statusClass, statusText,
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
   pieceLevels, pieceXp, humanColor, busy, backToSetup, armySummary, log, battleRecap,
-  pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece,
-  handleBuyStat, setInfoSquare, retireBattle, combatVariant, bossHp, bossPhase, bossConfig,
+  pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
+  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, retireBattle, combatVariant, bossHp, bossPhase, bossConfig,
 }) {
   return (
     <div>
@@ -125,6 +125,7 @@ export default function CombatBattleView({
           chance={pendingAttack.chance}
           onConfirm={confirmAttack}
           onCancel={cancelAttack}
+          techniqueLabel={pendingAttack.techniqueLabel}
         />
       )}
       {infoPiece && (
@@ -133,6 +134,9 @@ export default function CombatBattleView({
           canManage={infoPiece.color === humanColor && phase !== 'battle'}
           duringBattle={infoPiece.color === humanColor && phase === 'battle'}
           onBuy={handleBuyStat}
+          onUseTechnique={handleActivateTechnique}
+          techniqueTargetCount={infoTechniqueTargets?.length || 0}
+          unitRecord={infoUnitRecord}
           onClose={() => setInfoSquare(null)}
         />
       )}

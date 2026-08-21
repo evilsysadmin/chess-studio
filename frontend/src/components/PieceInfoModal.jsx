@@ -1,8 +1,11 @@
 import React from 'react';
 import { BASE_STATS, statsFor, costForNextPoint, derivedLevel, STRENGTH_POINT_VALUE, SPEED_POINT_VALUE } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { techniqueById } from '../combatTechniques.js';
+import { unitDecorations } from '../combatUnitService.js';
+import { pieceRankForLevel } from '../combatRanks.js';
 
-export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, onClose }) {
+export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, onUseTechnique, techniqueTargetCount = 0, unitRecord = null, onClose }) {
   useEscapeToClose(onClose);
   if (!piece) return null;
   const isKing = piece.type === 'k';
@@ -14,6 +17,9 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
   const speedCost = costForNextPoint(piece.speedPoints);
   const strengthPreview = (stats.strength + STRENGTH_POINT_VALUE).toFixed(1);
   const speedPreview = (stats.speed + SPEED_POINT_VALUE).toFixed(1);
+  const equippedTechnique = techniqueById(piece.equippedTechnique);
+  const militaryRank = !isKing ? pieceRankForLevel(derivedLevel(piece)) : null;
+  const individualDecorations = unitRecord ? unitDecorations(unitRecord) : [];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -32,6 +38,27 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
             <b>{stats.speed.toFixed(1)}</b>
           </div>
         </div>
+
+        {!isKing && unitRecord && (
+          <div className="piece-unit-service-card">
+            <div className="piece-unit-service-heading">
+              <strong>{militaryRank.short} · {militaryRank.label}</strong>
+              <span>{unitRecord.stats?.battles || 0} batallas</span>
+            </div>
+            <p>
+              {unitRecord.stats?.survivals || 0} supervivencias · {unitRecord.stats?.kills || 0} bajas
+              {(unitRecord.stats?.bestSurvivalStreak || 0) > 0 ? ` · mejor racha ${unitRecord.stats.bestSurvivalStreak}` : ''}
+              {(unitRecord.stats?.revives || 0) > 0 ? ` · revivida ${unitRecord.stats.revives} vez${unitRecord.stats.revives === 1 ? '' : 'es'}` : ''}
+            </p>
+            {individualDecorations.length > 0 && (
+              <div className="piece-unit-medals">
+                {individualDecorations.map((medal) => (
+                  <span key={medal.id} title={medal.description}>✦ {medal.short} · {medal.label}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {isKing ? (
           <p className="hint-text">
@@ -62,10 +89,26 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
             </div>
           </>
         ) : duringBattle ? (
-          <p className="hint-text">
-            Esta XP se gasta al terminar la batalla, no a mitad de combate — así no puedes reaccionar
-            en caliente subiendo justo la pieza que más te conviene en este instante.
-          </p>
+          <>
+            <p className="hint-text">
+              Esta XP se gasta al terminar la batalla, no a mitad de combate — así no puedes reaccionar
+              en caliente subiendo justo la pieza que más te conviene en este instante.
+            </p>
+            {equippedTechnique && (
+              <div className="piece-technique-card">
+                <strong>{equippedTechnique.label} · {piece.techniqueUsed ? 'USADA' : '1 USO'}</strong>
+                <span>{equippedTechnique.description}</span>
+                <button
+                  type="button"
+                  className="primary-btn"
+                  disabled={piece.techniqueUsed || techniqueTargetCount === 0}
+                  onClick={onUseTechnique}
+                >
+                  {piece.techniqueUsed ? 'Técnica agotada' : techniqueTargetCount > 0 ? `Usar técnica · ${techniqueTargetCount} objetivo${techniqueTargetCount === 1 ? '' : 's'}` : 'Sin objetivo válido ahora'}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <p className="hint-text">Es una pieza rival — no puedes gastar XP en ella.</p>
         )}

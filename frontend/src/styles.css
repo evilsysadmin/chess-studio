@@ -5087,3 +5087,272 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   box-shadow: inset 0 0 0 2px currentColor;
   font-weight: 700;
 }
+
+/* v16.6ax · técnicas tácticas de un solo uso en Combate */
+.army-technique-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid color-mix(in srgb, var(--brass) 24%, transparent);
+}
+.army-technique-title {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--brass);
+}
+.army-technique-description {
+  font-size: 0.69rem;
+  line-height: 1.35;
+  color: var(--parchment-dim);
+}
+.army-technique-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.army-technique-actions .secondary-btn,
+.army-technique-unlock {
+  padding: 0.34rem 0.48rem;
+  font-size: 0.68rem;
+}
+.army-technique-actions .active {
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.piece-technique-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+  padding: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent);
+  border-radius: 8px;
+  background: rgba(191, 152, 82, 0.07);
+}
+.piece-technique-card strong { color: var(--brass); }
+.piece-technique-card span { font-size: 0.72rem; line-height: 1.4; color: var(--parchment-dim); }
+.square.technique-target::before {
+  inset: 5%;
+  border-width: 4px;
+  border-style: double;
+  border-color: var(--brass);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brass) 55%, transparent);
+}
+@media (max-width: 520px) {
+  .army-technique-actions { display: grid; grid-template-columns: 1fr; }
+}
+
+/* v16.6ay · expediente individual y Memorial de Caídos */
+.army-unit-service {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  margin-top: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  line-height: 1.35;
+  color: var(--parchment-dim);
+}
+
+.army-unit-medals {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.army-unit-medals i {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.09rem 0.28rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 48%, transparent);
+  border-radius: 999px;
+  color: var(--brass);
+  font-size: 0.61rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.army-no-revive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.35rem 0.5rem;
+  border: 1px dashed color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--parchment-dim);
+  white-space: nowrap;
+}
+
+.army-memorial {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid color-mix(in srgb, var(--danger) 38%, transparent);
+}
+
+.army-memorial-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+.army-memorial-heading h4 {
+  margin: 0.08rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--parchment);
+}
+
+.army-memorial-heading > b {
+  min-width: 2rem;
+  text-align: center;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 48%, transparent);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  color: var(--danger);
+}
+
+.army-memorial-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--danger);
+}
+
+.army-memorial-list {
+  display: grid;
+  gap: 0.42rem;
+  margin-top: 0.6rem;
+}
+
+.army-memorial-entry {
+  display: grid;
+  gap: 0.24rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--ink-3);
+  border-left: 3px solid color-mix(in srgb, var(--danger) 55%, var(--ink-3));
+  border-radius: 7px;
+  background: var(--ink);
+}
+
+.army-memorial-entry > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.7rem;
+}
+
+.army-memorial-entry strong {
+  font-family: var(--font-display);
+  color: var(--parchment);
+}
+
+.army-memorial-entry > div > span,
+.army-memorial-record {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--parchment-dim);
+}
+
+@media (max-width: 560px) {
+  .army-card {
+    width: min(96vw, 480px);
+    padding: 1rem;
+  }
+
+  .army-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .army-row-buy {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .army-row-buy > .secondary-btn,
+  .army-row-buy > .army-no-revive,
+  .army-row-buy > .army-metamorphosis-actions {
+    width: 100%;
+  }
+
+  .army-row-dead .army-row-buy {
+    grid-template-columns: 1fr;
+  }
+
+  .army-unit-service {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.piece-unit-service-card {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--ink-3));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brass) 6%, var(--ink));
+}
+
+.piece-unit-service-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+}
+
+.piece-unit-service-heading strong { color: var(--brass); }
+.piece-unit-service-heading span { color: var(--parchment-dim); font-size: 0.68rem; }
+.piece-unit-service-card p {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--parchment-dim);
+}
+
+.piece-unit-medals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin-top: 0.45rem;
+}
+
+.piece-unit-medals span {
+  padding: 0.12rem 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 42%, transparent);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.61rem;
+  color: var(--brass);
+}
+
+/* v16.6az · metamorfosis ganada + compensación por potencia del ejército */
+.combat-threat-note {
+  margin: 0 0 0.7rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 45%, transparent);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--parchment-dim);
+  background: color-mix(in srgb, var(--brass) 7%, transparent);
+}
+.army-metamorphosis-status.locked {
+  color: var(--parchment-dim);
+  opacity: 0.88;
+}

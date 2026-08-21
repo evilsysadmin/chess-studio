@@ -3,12 +3,11 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 // combatRoster.js — Progreso de TU ejército del Modo Combate ENTRE
 // partidas (localStorage, todavía sin base de datos para esto).
 //
-// Guarda dos cosas separadas:
-//  - `pieces`: el progreso de cada una de tus 16 piezas (fuerza, velocidad,
-//    XP sin gastar, y si sigue viva o murió en la última partida).
-//  - `combatXp`: una moneda APARTE del XP de cada pieza — se gana al
-//    terminar cualquier batalla (más si ganas) y solo sirve para revivir
-//    piezas caídas.
+// Guarda en una sola estructura el estado activo y su historia:
+//  - `pieces`: progreso/loadout de cada slot militar;
+//  - `identities` + `unitRecords`: nombre e historial de la identidad actual;
+//  - `memorial`: identidades que murieron de forma definitiva;
+//  - `combatXp`: moneda separada que sólo sirve para revivir bajas recuperables.
 //
 // OJO con el color: si eliges "aleatorio" puedes jugar blancas una partida y
 // negras la siguiente. Por eso la clave de cada pieza NO incluye el color
@@ -20,6 +19,8 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 
 import { rosterKeyFor, CANONICAL_ROSTER_SLOTS, rosterSlotKey, reviveCost } from './combat.js';
 import { ensureCombatIdentities, combatIdentityFor } from './combatIdentity.js';
+import { normalizeTechniqueState } from './combatTechniques.js';
+import { ensureUnitServiceState, recordUnitRevive, archivePermanentCasualty } from './combatUnitService.js';
 
 const ROSTER_KEY = 'chess-study-combat-roster';
 
@@ -27,7 +28,9 @@ const ROSTER_KEY = 'chess-study-combat-roster';
 const COMBAT_XP_REWARD = { win: 12, draw: 5, loss: 2 };
 
 function emptyState() {
-  return ensureCombatIdentities({ pieces: {}, identities: {}, combatXp: 0, revivesUsed: 0 });
+  return ensureUnitServiceState(ensureCombatIdentities({
+    pieces: {}, identities: {}, unitRecords: {}, memorial: [], unitServiceProcessedBattleIds: [], combatXp: 0, revivesUsed: 0,
+  }));
 }
 
 
@@ -47,37 +50,23 @@ export function loadRoster() {
       // la ignorará y la pieza saldrá en su clase original.
       if (next.metamorphosis && !next.deploymentType) next.deploymentType = next.metamorphosis;
       delete next.metamorphosis;
-      return [key, next];
+      return [key, normalizeTechniqueState(next)];
     }));
-    const state = ensureCombatIdentities({ pieces: migratedPieces, identities: parsed.identities || {}, combatXp: parsed.combatXp || 0, revivesUsed: parsed.revivesUsed || 0 });
-    saveRoster(state); // persiste migración/aliases recién asignados
-    return pruneUnrevivablePieces(state);
+    const state = ensureUnitServiceState(ensureCombatIdentities({
+      ...parsed,
+      pieces: migratedPieces,
+      identities: parsed.identities || {},
+      unitRecords: parsed.unitRecords || {},
+      memorial: Array.isArray(parsed.memorial) ? parsed.memorial : [],
+      unitServiceProcessedBattleIds: Array.isArray(parsed.unitServiceProcessedBattleIds) ? parsed.unitServiceProcessedBattleIds : [],
+      combatXp: parsed.combatXp || 0,
+      revivesUsed: parsed.revivesUsed || 0,
+    }));
+    saveRoster(state); // persiste migraciones, aliases y expedientes recién creados
+    return state;
   } catch {
     return emptyState();
   }
-}
-
-// Limpieza retroactiva: una pieza guardada como "caída" pero sin haber
-// invertido nunca un punto (nivel 1 al morir) no tiene nada que revivir —
-// la mitad de 0 es 0. `saveSurvivorsToRoster` ya filtra esto al GUARDAR,
-// pero un roster guardado ANTES de ese fix puede seguir teniendo restos
-// viejos — acá se sanean cada vez que se carga, sin depender de haber
-// jugado una partida nueva para que se limpien solos.
-function pruneUnrevivablePieces(state) {
-  let changed = false;
-  const pieces = { ...state.pieces };
-  const identities = { ...(state.identities || {}) };
-  for (const [key, piece] of Object.entries(pieces)) {
-    if (piece.alive === false && (piece.strengthPoints || 0) + (piece.speedPoints || 0) === 0) {
-      delete pieces[key];
-      delete identities[key];
-      changed = true;
-    }
-  }
-  if (!changed) return state;
-  const next = ensureCombatIdentities({ ...state, pieces, identities });
-  saveRoster(next); // persistimos la limpieza, para no repetirla en cada carga
-  return next;
 }
 
 export function saveRoster(state) {
@@ -120,6 +109,9 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
       speedPoints: saved.speedPoints || 0,
       bankedXp: saved.bankedXp || 0,
       deploymentType: saved.deploymentType || null,
+      unlockedTechniques: Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques] : [],
+      equippedTechnique: saved.equippedTechnique || null,
+      techniqueUsed: false,
       ...identity,
     };
   }
@@ -149,6 +141,8 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
       bankedXp: piece.bankedXp || 0,
       alive: true,
       deploymentType: piece.deploymentType || null,
+      unlockedTechniques: Array.isArray(piece.unlockedTechniques) ? [...piece.unlockedTechniques] : [],
+      equippedTechnique: piece.equippedTechnique || null,
     };
   }
 
@@ -160,24 +154,24 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
     if (!prev || prev.alive !== false) {
       const strength = prev?.strengthPoints || 0;
       const speed = prev?.speedPoints || 0;
-      if (strength + speed === 0) {
-        // Murió sin haber invertido nunca un punto — revivirla devolvería
-        // la mitad de 0, es decir nada. No tiene sentido cobrar XP de
-        // combate por eso, así que ni se registra como "caída": desaparece
-        // del roster, igual que si nunca hubiera jugado.
-        delete pieces[key];
-        delete identities[key]; // reemplazo nivel 1 = nueva identidad, no resurrección nominal
-        continue;
-      }
-      // Recién capturada esta partida, con progreso real invertido: guarda
-      // su último nivel conocido (para el costo/beneficio de revivirla) y
-      // queda marcada muerta.
-      pieces[key] = { strengthPoints: strength, speedPoints: speed, bankedXp: prev?.bankedXp || 0, alive: false, deploymentType: prev?.deploymentType || null };
+      // Toda identidad que cae queda registrada hasta la siguiente batalla,
+      // incluso si era un recluta nivel 1. Los reclutas sin inversión no son
+      // revivibles, pero así su nombre puede pasar al Memorial antes de que el
+      // slot reciba un reemplazo distinto.
+      pieces[key] = {
+        strengthPoints: strength,
+        speedPoints: speed,
+        bankedXp: prev?.bankedXp || 0,
+        alive: false,
+        deploymentType: prev?.deploymentType || null,
+        unlockedTechniques: Array.isArray(prev?.unlockedTechniques) ? [...prev.unlockedTechniques] : [],
+        equippedTechnique: prev?.equippedTechnique || null,
+      };
     }
   }
 
   const combatXp = (rosterState.combatXp || 0) + (COMBAT_XP_REWARD[outcome] || 0);
-  return ensureCombatIdentities({ ...rosterState, pieces, combatXp, identities, revivesUsed: rosterState.revivesUsed || 0 });
+  return ensureUnitServiceState(ensureCombatIdentities({ ...rosterState, pieces, combatXp, identities, revivesUsed: rosterState.revivesUsed || 0 }));
 }
 
 // Revive una pieza caída gastando XP de combate: le devuelve la MITAD de
@@ -196,31 +190,41 @@ export function revivePiece(rosterState, key, type) {
     bankedXp: 0,
     alive: true,
     deploymentType: dead.deploymentType || null,
+    unlockedTechniques: Array.isArray(dead.unlockedTechniques) ? [...dead.unlockedTechniques] : [],
+    equippedTechnique: dead.equippedTechnique || null,
   };
 
-  return {
+  return recordUnitRevive({
+    ...rosterState,
     pieces: { ...rosterState.pieces, [key]: revived },
     combatXp: rosterState.combatXp - cost,
     revivesUsed: (rosterState.revivesUsed || 0) + 1,
-  };
+  }, key);
 }
 
 // La ventana para revivir a una pieza caída se cierra apenas arranca la
 // SIGUIENTE batalla: si no se recuperó a tiempo, se pierde para siempre SU PROGRESO — el slot
 // vuelve como una pieza nueva de nivel 1 y el veterano ya no queda guardado.
 // Se llama justo antes de armar el tablero inicial de una partida nueva.
-export function expireDeadPieces(rosterState) {
-  const pieces = { ...rosterState.pieces };
-  const identities = { ...(rosterState.identities || {}) };
+export function expireDeadPieces(rosterState, at = new Date().toISOString()) {
+  let state = ensureUnitServiceState(rosterState);
+  let pieces = { ...state.pieces };
+  let identities = { ...(state.identities || {}) };
   let changed = false;
   for (const key of Object.keys(pieces)) {
     if (pieces[key].alive === false) {
+      // Primero archivamos la identidad y su expediente; sólo después se
+      // elimina el slot activo. El reemplazo generado por ensureCombatIdentities
+      // nace con otro alias/id y empieza de cero.
+      state = archivePermanentCasualty({ ...state, pieces, identities }, key, at);
+      pieces = { ...state.pieces };
+      identities = { ...(state.identities || {}) };
       delete pieces[key];
-      // La baja definitiva se lleva también su identidad. El reemplazo de
-      // nivel 1 que nazca en la siguiente batalla recibirá otro alias/id.
       delete identities[key];
       changed = true;
     }
   }
-  return changed ? ensureCombatIdentities({ ...rosterState, pieces, identities }) : rosterState;
+  return changed
+    ? ensureUnitServiceState(ensureCombatIdentities({ ...state, pieces, identities }))
+    : state;
 }

@@ -12,6 +12,7 @@ import RatingChart from './RatingChart.jsx';
 import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
 import CareerScreen from './CareerScreen.jsx';
+import { combatRecordModeLabel } from '../combatChessBrand.js';
 
 const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combate' };
 
@@ -225,7 +226,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                 to: searchResult.moveReport.suggestedTo,
               })}
               {' · '}{new Date(searchResult.record.date).toLocaleDateString('es-ES')}
-              {' · '}{MODE_LABEL[searchResult.kind === 'combat' ? 'combat' : (searchResult.record.mode || 'tournament')]}
+              {' · '}{searchResult.kind === 'combat' ? combatRecordModeLabel(searchResult.record) : MODE_LABEL[searchResult.record.mode || 'tournament']}
             </span>
             <div className="worst-move-spotlight-actions">
               {onJumpToMove && (

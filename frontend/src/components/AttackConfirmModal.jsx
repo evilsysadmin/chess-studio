@@ -1,17 +1,18 @@
 import React from 'react';
-import { BASE_STATS } from '../combat.js';
+import { BASE_STATS, derivedLevel } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
-export default function AttackConfirmModal({ attacker, defender, chance, onConfirm, onCancel }) {
+export default function AttackConfirmModal({ attacker, defender, chance, techniqueLabel, onConfirm, onCancel }) {
   useEscapeToClose(onCancel);
   const pct = Math.round(chance * 100);
   const tone = pct >= 60 ? 'good' : pct >= 40 ? 'neutral' : 'bad';
-  const attackerLabel = attacker ? `${BASE_STATS[attacker.type].name} (nv.${attacker.level})` : 'Tu pieza';
-  const defenderLabel = defender ? `${BASE_STATS[defender.type].name} (nv.${defender.level})` : 'la pieza rival';
+  const attackerLabel = attacker ? `${attacker.alias ? `${attacker.alias}, ` : ''}${BASE_STATS[attacker.type].name} (nv.${derivedLevel(attacker)})` : 'Tu pieza';
+  const defenderLabel = defender ? `${defender.alias ? `${defender.alias}, ` : ''}${BASE_STATS[defender.type].name} (nv.${derivedLevel(defender)})` : 'la pieza rival';
 
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="attack-confirm-card" onClick={(e) => e.stopPropagation()}>
+        {techniqueLabel && <span className="eyebrow">TÉCNICA · {techniqueLabel}</span>}
         <p className="attack-confirm-title">{attackerLabel} ataca a {defenderLabel}</p>
         <div className="attack-confirm-chance">
           <span className={`attack-confirm-pct ${tone}`}>{pct}%</span>

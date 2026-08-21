@@ -11,6 +11,7 @@ export default function CombatScreen(props) {
       <CombatSetupView
         onExit={props.onExit}
         difficulty={controller.difficulty}
+        difficultyBalance={controller.difficultyBalance}
         ratingInfo={controller.ratingInfo}
         difficultyOverride={props.difficultyOverride}
         difficultyLabel={props.difficultyLabel}
@@ -38,6 +39,8 @@ export default function CombatScreen(props) {
         handleBuyRosterStat={controller.handleBuyRosterStat}
         handleReviveRosterPiece={controller.handleReviveRosterPiece}
         handleMetamorphoseRosterPiece={controller.handleMetamorphoseRosterPiece}
+        handleUnlockRosterTechnique={controller.handleUnlockRosterTechnique}
+        handleEquipRosterTechnique={controller.handleEquipRosterTechnique}
         handleResetRoster={controller.handleResetRoster}
         onHistory={props.onHistory}
         serviceSummary={controller.serviceSummary}

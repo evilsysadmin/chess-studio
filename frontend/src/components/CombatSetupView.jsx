@@ -4,11 +4,12 @@ import ColorSelector from './ColorSelector.jsx';
 import { BASE_STATS } from '../combat.js';
 import CombatServicePanel from './CombatServicePanel.jsx';
 
+import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE } from '../combatChessBrand.js';
 export default function CombatSetupView({
-  onExit, difficulty, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
+  onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
   showExpireWarning, setShowExpireWarning, handleStartBattleClick, startBattle,
-  showArmy, setShowArmy, handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece,
+  showArmy, setShowArmy, handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique,
   handleResetRoster, onHistory, serviceSummary,
 }) {
 
@@ -16,8 +17,8 @@ export default function CombatSetupView({
       <div className="menu combat-setup">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section">
-          <span className="eyebrow">{combatVariant === 'roguelike' ? 'Combate Roguelike' : 'Modo combate'}</span>
-          <h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? 'Piso con reglas de combate' : 'Ajedrez con niveles y esquive'}</h2>
+          <span className="eyebrow">{combatVariant === 'roguelike' ? COMBAT_CHESS_NAME : 'Modo combate'}</span>
+          <h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? `${COMBAT_CHESS_GENRE} · piso de campaña` : 'Ajedrez con niveles y esquive'}</h2>
           {encounterLabel && (
             <div className="combat-encounter-card">
               <span>ENCUENTRO</span>
@@ -39,9 +40,10 @@ export default function CombatSetupView({
             empieces la siguiente: si no las recuperas a tiempo, se pierde para siempre su veteranía y ese hueco vuelve la próxima batalla con una pieza de nivel 1. El
             rey nunca esquiva y siempre acierta cuando ataca, y tampoco gana ni gasta XP: el jaque mate sigue
             siendo 100% seguro, como en el ajedrez de siempre. Cada pieza de tu ejército tiene alias propio desde nivel 1.
-            La metamorfosis empieza mucho más tarde: un peón <b>Comandante</b> desbloquea Caballo, un <b>Coronel</b> añade
-            Alfil y un <b>General</b> añade Torre. No es permanente: eliges el despliegue antes de cada batalla y queda
-            bloqueado durante el combate. Sí, rompe el ajedrez normal. Aquí estamos en Combate.
+            La metamorfosis empieza mucho más tarde y no basta con farmear nivel: el Caballo exige <b>Comandante + 3 supervivencias</b>;
+            el Alfil, <b>Coronel + Cinco bajas + Hierro viejo</b>; y la Torre, <b>General + Veterano de campaña + Cicatriz del Rey Viejo</b>.
+            No es permanente: eliges el despliegue antes de cada batalla y queda bloqueado durante el combate. Sí, rompe el ajedrez normal.
+            Por eso la CPU recibe una compensación automática de dificultad según la potencia permanente real de tu ejército. En Combat Chess, romper las reglas paga impuesto de amenaza.
           </p>
         </div>
 
@@ -63,9 +65,16 @@ export default function CombatSetupView({
           <h2>Dificultad de la CPU</h2>
           <p className="hint-text" style={{ marginBottom: '0.6rem' }}>
             {difficultyOverride != null
-              ? 'Fijada por este encuentro: el piso manda, no tu rating.'
+              ? 'La base la fija este encuentro: el piso manda; un ejército veterano puede añadir compensación de amenaza.'
               : 'Automática, según cómo te ve la CPU — no se elige a mano en Combate.'}
           </p>
+          {difficultyBalance?.threat?.bonus > 0 && (
+            <p className="combat-threat-note">
+              Compensación de amenaza <b>{difficultyBalance.threat.tier}</b>: <b>+{difficultyBalance.appliedBonus}</b> · base {difficultyBalance.base} → CPU {difficultyBalance.adjusted}.{difficultyBalance.threat.bonus > difficultyBalance.appliedBonus ? ` Potencial +${difficultyBalance.threat.bonus}, recortado por el tope 100.` : ''}
+              {' '}Veteranos {difficultyBalance.threat.activeVeterans} · metamorfosis activas {difficultyBalance.threat.activeMetamorphoses} · técnicas equipadas {difficultyBalance.threat.equippedTechniques}.
+              {' '}Escala sólo con potencia permanente; nunca supera dificultad 100.
+            </p>
+          )}
           <div className="difficulty-slider-row">
             <div className="difficulty-slider" style={{ background: 'transparent', pointerEvents: 'none', flex: 1 }}>
               <div
@@ -146,7 +155,12 @@ export default function CombatSetupView({
             <p className="hint-text" style={{ marginTop: '0.4rem' }}>
               {deadCount} pieza{deadCount === 1 ? '' : 's'} caída{deadCount === 1 ? '' : 's'} — revívelas ahora
               gastando XP de combate (tienes {roster.combatXp}) desde "Ver tu ejército", o se pierden para
-              siempre en cuanto arranques la próxima batalla.
+              siempre en cuanto arranques la próxima batalla y pasan al Memorial de Caídos.
+            </p>
+          )}
+          {(roster.memorial?.length || 0) > 0 && (
+            <p className="hint-text" style={{ marginTop: '0.35rem' }}>
+              Memorial: <b>{roster.memorial.length}</b> identidad{roster.memorial.length === 1 ? '' : 'es'} perdida{roster.memorial.length === 1 ? '' : 's'} definitivamente.
             </p>
           )}
           <button
@@ -189,8 +203,8 @@ export default function CombatSetupView({
               <p className="attack-confirm-title">
                 Tienes {deadRosterEntries.length} pieza{deadRosterEntries.length === 1 ? '' : 's'} caída
                 {deadRosterEntries.length === 1 ? '' : 's'} sin revivir
-                {' '}({deadRosterEntries.map(([key]) => BASE_STATS[key.split('-')[0]].name).join(', ')}).
-                Si empiezas ahora, se pierde para siempre su veteranía; esos huecos volverán como piezas de nivel 1.
+                {' '}({deadRosterEntries.map(([key]) => `${roster.identities?.[key]?.alias || 'Sin alias'} · ${BASE_STATS[key.split('-')[0]].name}`).join(', ')}).
+                Si empiezas ahora, esas identidades pasan al Memorial de Caídos; los huecos volverán con reclutas de nivel 1 y nombres nuevos.
               </p>
               <div className="attack-confirm-buttons">
                 <button
@@ -211,7 +225,7 @@ export default function CombatSetupView({
         )}
 
         {showArmy && (
-          <ArmyScreen roster={roster} onBuy={handleBuyRosterStat} onRevive={handleReviveRosterPiece} onMetamorphose={handleMetamorphoseRosterPiece} onClose={() => setShowArmy(false)} />
+          <ArmyScreen roster={roster} onBuy={handleBuyRosterStat} onRevive={handleReviveRosterPiece} onMetamorphose={handleMetamorphoseRosterPiece} onUnlockTechnique={handleUnlockRosterTechnique} onEquipTechnique={handleEquipRosterTechnique} onClose={() => setShowArmy(false)} />
         )}
       </div>
     );

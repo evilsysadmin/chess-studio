@@ -20,11 +20,15 @@ import {
 import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
 import { loadCombatService, recordCombatServiceEvent, summarizeCombatService } from '../combatService.js';
+import { recordUnitBattle, unitRecordForKey } from '../combatUnitService.js';
 import { applyRosterMetamorphosesToPosition, setRosterDeploymentType, persistMetamorphosedRoster } from '../combatMetamorphosis.js';
+import { techniqueTargetsFor, techniqueAttackChance, resolveTechniqueAttack, techniqueById, unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
+import { proceduralNarrative } from '../narrativeProvider.js';
 import { checkAchievements } from '../achievements.js';
 import { loadRating, ratingProgress, difficultyForRating } from '../playerRating.js';
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
 import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
+import { balancedCombatDifficulty } from '../combatBalance.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -44,6 +48,15 @@ function resolveHumanColor(choice) {
   return Math.random() < 0.5 ? 'w' : 'b';
 }
 
+function emptyUnitBattleStats() {
+  return { killsByIdentity: {}, bossDamageByIdentity: {}, bossFinisherIdentityId: null };
+}
+
+function incrementIdentityCounter(bucket, identityId, amount = 1) {
+  if (!identityId || !Number.isFinite(Number(amount)) || Number(amount) <= 0) return bucket;
+  return { ...bucket, [identityId]: (bucket[identityId] || 0) + Number(amount) };
+}
+
 function buildLogEntry(result, humanColor) {
   if (!result.isCapture) return null;
   const { attacker, defender, hit, chance, survivalXp } = result;
@@ -52,6 +65,17 @@ function buildLogEntry(result, humanColor) {
   const attackerName = `${attacker.alias ? `${attacker.alias}, ` : ''}${BASE_STATS[attacker.type].name}`;
   const defenderName = `${defender.alias ? `${defender.alias}, ` : ''}${BASE_STATS[defender.type].name}`;
   const pct = Math.round(chance * 100);
+
+  if (result.techniqueId) {
+    const text = proceduralNarrative({
+      type: hit ? 'technique_hit' : 'technique_miss',
+      alias: attacker.alias || BASE_STATS[attacker.type].name,
+      piece: BASE_STATS[attacker.type].name,
+      technique: result.techniqueLabel || result.techniqueId,
+      target: defenderName,
+    });
+    return { text: `${text} · ${pct}% de acierto`, tone: hit ? (attackerIsHuman ? 'good' : 'bad') : 'neutral' };
+  }
 
   if (hit) {
     const subject = attackerIsHuman ? 'Tu' : 'La CPU: su';
@@ -82,7 +106,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // fuerza mientras estás peleando).
   const rating = useMemo(() => loadRating(), []);
   const ratingInfo = useMemo(() => ratingProgress(rating.rating), [rating]);
-  const difficulty = useMemo(
+  const baseDifficulty = useMemo(
     () => (difficultyOverride != null ? difficultyOverride : difficultyForRating(rating.rating)),
     [rating, difficultyOverride]
   );
@@ -93,6 +117,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const [fen, setFen] = useState(new Chess().fen());
   const [registry, setRegistry] = useState(() => createInitialRegistry(new Chess()));
   const [selected, setSelected] = useState(null);
+  const [activeTechnique, setActiveTechnique] = useState(null); // { from, techniqueId } durante selección de objetivo
   const [pendingPromotion, setPendingPromotion] = useState(null);
   const [pendingAttack, setPendingAttack] = useState(null); // { from, to, promotion, attacker, defender, chance }
   const [infoSquare, setInfoSquare] = useState(null); // casilla inspeccionada (para poder refrescar tras comprar)
@@ -100,6 +125,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const [pendingAnim, setPendingAnim] = useState(null);
   const [log, setLog] = useState([]);
   const [roster, setRoster] = useState(() => loadRoster());
+  const difficultyBalance = useMemo(() => balancedCombatDifficulty(baseDifficulty, roster), [baseDifficulty, roster]);
+  const difficulty = difficultyBalance.adjusted;
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [showArmy, setShowArmy] = useState(false);
   const [showExpireWarning, setShowExpireWarning] = useState(false);
@@ -131,6 +158,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const [bossHp, setBossHp] = useState(bossConfig?.maxHp || null);
   const [bossPhase, setBossPhase] = useState(1);
   const battleStartRosterRef = useRef(null);
+  const battleParticipantsRef = useRef([]);
+  const unitBattleStatsRef = useRef(emptyUnitBattleStats());
 
   const localChess = useMemo(() => {
     const c = new Chess();
@@ -138,7 +167,12 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     return c;
   }, [fen]);
 
-  const legalTargets = selected
+  const techniqueTargets = activeTechnique
+    ? techniqueTargetsFor(fen, registry, activeTechnique.from)
+    : [];
+  const legalTargets = activeTechnique
+    ? techniqueTargets.map((to) => ({ to, san: `†x${to}`, technique: true }))
+    : selected
     ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
     : [];
 
@@ -176,6 +210,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }, [registry, humanColor]);
 
   const infoPiece = infoSquare ? registry[infoSquare] : null;
+  const infoUnitRecord = infoPiece && infoPiece.color === humanColor && infoPiece.type !== 'k'
+    ? unitRecordForKey(roster, rosterKeyFor(infoPiece))
+    : null;
+  const infoTechniqueTargets = infoSquare ? techniqueTargetsFor(fen, registry, infoSquare) : [];
   const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
 
   const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
@@ -210,6 +248,15 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     const rosterRegistry = applyRosterToRegistry(metamorphosedRegistry, activeRoster, resolved);
     const initialRegistry = applyRunPerksToRegistry(rosterRegistry, runPerks, resolved);
     battleStartRosterRef.current = activeRoster;
+    battleParticipantsRef.current = Object.values(initialRegistry)
+      .filter((piece) => piece.color === resolved && piece.type !== 'k' && piece.identityId)
+      .map((piece) => ({
+        identityId: piece.identityId,
+        alias: piece.alias || 'Sin alias',
+        createdAt: piece.createdAt || null,
+        slotKey: rosterKeyFor(piece),
+      }));
+    unitBattleStatsRef.current = emptyUnitBattleStats();
     if (bossConfig) {
       bossHpRef.current = bossConfig.maxHp;
       setBossHp(bossConfig.maxHp);
@@ -222,6 +269,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setFen(startFen);
     setRegistry(initialRegistry);
     setSelected(null);
+    setActiveTechnique(null);
     setPendingPromotion(null);
     setInfoSquare(null);
     setPendingAnim(null);
@@ -287,17 +335,37 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       );
     }
 
+    const battleId = `combat-${Date.now()}`;
+    const battleDate = new Date().toISOString();
+
     // Los bonus del intento (`runStrengthBonus/runSpeedBonus`) no se guardan:
     // saveSurvivorsToRoster sólo persiste puntos comprados + XP bancado.
-    const nextRoster = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome);
+    const rosterAfterSurvival = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome);
+    const survivorIdentityIds = Object.values(finalRegistry)
+      .filter((piece) => piece.color === currentHumanColor && piece.type !== 'k' && piece.identityId)
+      .map((piece) => piece.identityId);
+    const unitStats = unitBattleStatsRef.current || emptyUnitBattleStats();
+    const nextRoster = recordUnitBattle(rosterAfterSurvival, {
+      battleId,
+      date: battleDate,
+      outcome,
+      participants: battleParticipantsRef.current,
+      survivorIdentityIds,
+      killsByIdentity: unitStats.killsByIdentity,
+      bossDamageByIdentity: unitStats.bossDamageByIdentity,
+      bossFinisherIdentityId: unitStats.bossFinisherIdentityId,
+      bossDefeated: isWin && !!bossConfig,
+    });
     saveRoster(nextRoster);
     setRoster(nextRoster);
 
     const survivorCount = Object.values(finalRegistry).filter((p) => p.color === currentHumanColor).length;
     const battleRecord = {
-      id: `combat-${Date.now()}`,
-      date: new Date().toISOString(),
+      id: battleId,
+      date: battleDate,
       difficulty,
+      baseDifficulty: difficultyBalance.base,
+      armyThreatBonus: difficultyBalance.appliedBonus,
       humanColor: currentHumanColor,
       outcome,
       log: updatedLog,
@@ -378,6 +446,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         runStrengthBonus: survivor.runStrengthBonus || piece.runStrengthBonus || 0,
         runSpeedBonus: survivor.runSpeedBonus || piece.runSpeedBonus || 0,
         deploymentType: survivor.deploymentType || piece.deploymentType || null,
+        unlockedTechniques: Array.isArray(survivor.unlockedTechniques) ? [...survivor.unlockedTechniques] : (piece.unlockedTechniques || []),
+        equippedTechnique: survivor.equippedTechnique || piece.equippedTechnique || null,
+        techniqueUsed: !!survivor.techniqueUsed,
       };
     }
 
@@ -406,7 +477,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // cuando se programó — leer combatLog del estado de React ahí adentro
   // daría un valor viejo, sin la jugada que se acaba de agregar, y cada
   // jugada de la CPU terminaría PISANDO el registro en vez de sumarle.
-  function performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, from, to, promotion) {
+  function performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, from, to, promotion, techniqueId = null) {
     const attackerBefore = currentRegistry[from];
     let defenderBefore = currentRegistry[to];
     if (!defenderBefore) {
@@ -420,10 +491,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       ? currentFocusStreak(attackerBefore.color, defenderBefore.id)
       : 0;
 
-    const result = resolveCombatMove({ fen: currentFen, registry: currentRegistry, from, to, promotion, focusStreak: streak });
+    const result = techniqueId
+      ? resolveTechniqueAttack({ fen: currentFen, registry: currentRegistry, from, to, focusStreak: streak })
+      : resolveCombatMove({ fen: currentFen, registry: currentRegistry, from, to, promotion, focusStreak: streak });
     if (!result) return;
 
     setSelected(null);
+    setActiveTechnique(null);
     setFen(result.fen);
 
     // Solo se registra si el ataque conectó (o no era una captura, que
@@ -442,6 +516,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
             piece: result.applied.piece,
             captured: result.isCapture,
             by: attackerBefore.color === currentHumanColor ? 'human' : 'cpu',
+            techniqueId: result.techniqueId || null,
+            techniqueLabel: result.techniqueLabel || null,
           },
         ];
     setCombatLog(updatedLog);
@@ -453,6 +529,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     // batalla, donde se aplica autoLevelUp de una sola vez si corresponde.
     const finalRegistry = result.registry;
     setRegistry(finalRegistry);
+
+    if (result.hit === true && result.isCapture && attackerBefore?.color === currentHumanColor && attackerBefore.type !== 'k' && attackerBefore.identityId) {
+      unitBattleStatsRef.current = {
+        ...unitBattleStatsRef.current,
+        killsByIdentity: incrementIdentityCounter(unitBattleStatsRef.current.killsByIdentity, attackerBefore.identityId, 1),
+      };
+    }
 
     updateFocusAfterAction(result);
 
@@ -490,6 +573,12 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     if (bossConfig && attackerBefore?.color === currentHumanColor) {
       const damage = bossDamageAfterHumanMove(chessAfter, currentHumanColor);
       if (damage > 0) {
+        if (attackerBefore?.identityId && attackerBefore.type !== 'k') {
+          unitBattleStatsRef.current = {
+            ...unitBattleStatsRef.current,
+            bossDamageByIdentity: incrementIdentityCounter(unitBattleStatsRef.current.bossDamageByIdentity, attackerBefore.identityId, damage),
+          };
+        }
         const nextHp = Math.max(0, (bossHpRef.current ?? bossConfig.maxHp) - damage);
         bossHpRef.current = nextHp;
         setBossHp(nextHp);
@@ -502,6 +591,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         });
 
         if (nextHp <= 0) {
+          if (attackerBefore?.identityId && attackerBefore.type !== 'k') {
+            unitBattleStatsRef.current = { ...unitBattleStatsRef.current, bossFinisherIdentityId: attackerBefore.identityId };
+          }
           finalizeBattle('win', finalRegistry, updatedLog, currentHumanColor);
           return;
         }
@@ -554,8 +646,47 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setRegistry((prev) => ({ ...prev, [infoSquare]: updated }));
   }
 
+  function handleActivateTechnique() {
+    if (!infoSquare || phase !== 'battle' || busy || localChess.turn() !== humanColor) return;
+    const piece = registry[infoSquare];
+    if (!piece || piece.color !== humanColor || !piece.equippedTechnique || piece.techniqueUsed) return;
+    const targets = techniqueTargetsFor(fen, registry, infoSquare);
+    if (targets.length === 0) return;
+    setActiveTechnique({ from: infoSquare, techniqueId: piece.equippedTechnique });
+    setSelected(infoSquare);
+    setInfoSquare(null);
+  }
+
   function handleSquareClick(square) {
     if (phase !== 'battle' || busy || localChess.turn() !== humanColor) return;
+
+    if (activeTechnique) {
+      if (square === activeTechnique.from) {
+        setActiveTechnique(null);
+        setSelected(null);
+        return;
+      }
+      const targets = techniqueTargetsFor(fen, registry, activeTechnique.from);
+      if (targets.includes(square)) {
+        const attacker = registry[activeTechnique.from];
+        const defender = registry[square];
+        const streak = attacker && defender ? currentFocusStreak(attacker.color, defender.id) : 0;
+        const chance = techniqueAttackChance({ registry, from: activeTechnique.from, to: square, focusStreak: streak });
+        setPendingAttack({
+          from: activeTechnique.from,
+          to: square,
+          promotion: undefined,
+          attacker,
+          defender,
+          chance,
+          techniqueId: activeTechnique.techniqueId,
+          techniqueLabel: techniqueById(activeTechnique.techniqueId)?.label || activeTechnique.techniqueId,
+        });
+      }
+      setActiveTechnique(null);
+      setSelected(null);
+      return;
+    }
 
     if (!selected) {
       const piece = localChess.get(square);
@@ -619,13 +750,14 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
   function confirmAttack() {
     if (!pendingAttack) return;
-    const { from, to, promotion } = pendingAttack;
+    const { from, to, promotion, techniqueId } = pendingAttack;
     setPendingAttack(null);
-    performMove(fen, registry, humanColor, combatLog, from, to, promotion);
+    performMove(fen, registry, humanColor, combatLog, from, to, promotion, techniqueId || null);
   }
 
   function cancelAttack() {
     setPendingAttack(null);
+    setActiveTechnique(null);
   }
 
   // Doble clic: siempre muestra la info de la pieza (sea tuya o rival, te
@@ -649,13 +781,32 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     // En Roguelike, "Salir del combate" no puede ser un reset gratuito del
     // piso. Conservamos el progreso/bajas que existen en ESTE estado, pero no
     // damos XP de combate por retirarse (COMBAT_XP_REWARD no tiene 'retired').
-    const nextRoster = saveSurvivorsToRoster(registry, roster, humanColor, 'retired');
+    const battleId = `combat-${Date.now()}`;
+    const battleDate = new Date().toISOString();
+    const rosterAfterSurvival = saveSurvivorsToRoster(registry, roster, humanColor, 'retired');
+    const survivorIdentityIds = Object.values(registry)
+      .filter((piece) => piece.color === humanColor && piece.type !== 'k' && piece.identityId)
+      .map((piece) => piece.identityId);
+    const unitStats = unitBattleStatsRef.current || emptyUnitBattleStats();
+    const nextRoster = recordUnitBattle(rosterAfterSurvival, {
+      battleId,
+      date: battleDate,
+      outcome: 'retired',
+      participants: battleParticipantsRef.current,
+      survivorIdentityIds,
+      killsByIdentity: unitStats.killsByIdentity,
+      bossDamageByIdentity: unitStats.bossDamageByIdentity,
+      bossFinisherIdentityId: unitStats.bossFinisherIdentityId,
+      bossDefeated: false,
+    });
     saveRoster(nextRoster);
     setRoster(nextRoster);
     const battleRecord = {
-      id: `combat-${Date.now()}`,
-      date: new Date().toISOString(),
+      id: battleId,
+      date: battleDate,
       difficulty,
+      baseDifficulty: difficultyBalance.base,
+      armyThreatBonus: difficultyBalance.appliedBonus,
       humanColor,
       outcome: 'retired',
       log: combatLog,
@@ -723,6 +874,24 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     });
   }
 
+  function handleUnlockRosterTechnique(key, techniqueId) {
+    setRoster((prev) => {
+      const next = unlockRosterTechnique(prev, key, techniqueId);
+      if (next === prev) return prev;
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleEquipRosterTechnique(key, techniqueId) {
+    setRoster((prev) => {
+      const next = setRosterEquippedTechnique(prev, key, techniqueId);
+      if (next === prev) return prev;
+      saveRoster(next);
+      return next;
+    });
+  }
+
   function handleReviveRosterPiece(key, type) {
     setRoster((prev) => {
       const next = revivePiece(prev, key, type);
@@ -755,19 +924,21 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     : status === 'check'
     ? 'success'
     : '';
-  const statusText = busy
+  const statusText = activeTechnique
+    ? `TÉCNICA · ${techniqueById(activeTechnique.techniqueId)?.label || activeTechnique.techniqueId}: elige un objetivo marcado`
+    : busy
     ? 'La CPU está pensando…'
     : statusLabel || (localChess.turn() === humanColor ? 'Tu turno' : 'Turno de la CPU');
 
   return {
-    phase, combatLog, battleRecap, ratingInfo, difficulty, colorChoice, setColorChoice,
+    phase, combatLog, battleRecap, ratingInfo, difficulty, difficultyBalance, colorChoice, setColorChoice,
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
-    pendingPromotion, pendingAttack, infoSquare, busy, pendingAnim, log, roster,
+    pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
     showArmy, setShowArmy, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
-    pieceLevels, pieceXp, armySummary, infoPiece, deadRosterEntries, serviceSummary, handleStartBattleClick,
+    pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
-    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleBuyStat,
-    handleSquareClick, handleSquareDoubleClick, setInfoSquare,
+    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
+    handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };
 }

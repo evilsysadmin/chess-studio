@@ -1,5 +1,6 @@
 import React from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { combatRecordModeLabel } from '../combatChessBrand.js';
 
 const OUTCOME_LABEL = { win: 'Victoria', draw: 'Tablas', loss: 'Derrota' };
 const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combate', lab: 'Laboratorio', rescue: 'Salvar cadáver', boss: 'Boss Run', streak: 'Racha' };
@@ -42,7 +43,7 @@ export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExi
               <div key={r.id} className="history-row-wrap">
                 <button className="history-row" onClick={() => onOpen(r)}>
                   <span className={`history-outcome ${r.outcome}`}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span>
-                  <span className="history-mode-tag">{MODE_LABEL[r.mode] || 'Torneo'}</span>
+                  <span className="history-mode-tag">{combatRecordModeLabel(r) || MODE_LABEL[r.mode] || (r.log ? 'Combate' : 'Torneo')}</span>
                   <span className="history-meta">CPU nivel {r.difficulty} · {moveCount} jugadas{r.timeControl?.label ? ` · ${r.timeControl.label}` : ''}</span>
                   <span className="history-date">{formatDate(r.date)}</span>
                 </button>

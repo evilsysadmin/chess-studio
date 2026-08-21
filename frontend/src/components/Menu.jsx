@@ -10,6 +10,7 @@ import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import AccountModal from './AccountModal.jsx';
 
+import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE, COMBAT_CHESS_TAGLINE } from '../combatChessBrand.js';
 export default function Menu({
   onNewGame,
   onContinue,
@@ -103,9 +104,9 @@ export default function Menu({
 
           <button type="button" className="menu-card accent-danger" onClick={onCombatRoguelike}>
             <IconSword className="menu-card-icon" />
-            <h3>Combate Roguelike</h3>
-            <p>Diez pisos, encuentros, recompensas temporales y un Rey Boss con 5 HP. Si sobrevives, se abre el infinito.</p>
-            <span className="menu-card-cta">Empezar intento →</span>
+            <h3>{COMBAT_CHESS_NAME}</h3>
+            <p><b>{COMBAT_CHESS_GENRE}.</b> {COMBAT_CHESS_TAGLINE} Diez pisos y un Rey Boss con 5 HP.</p>
+            <span className="menu-card-cta">Entrar en La Torre →</span>
           </button>
 
           <button type="button" className="menu-card accent-hint" onClick={() => setShowQuickMatch(true)}>

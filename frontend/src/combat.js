@@ -354,7 +354,7 @@ export function passTurnFen(fen) {
 // los dos lados. `focusStreak` es cuántos ataques consecutivos ya se
 // dirigieron contra este mismo objetivo (lo calcula quien llama, según su
 // propio seguimiento de "a quién le vengo pegando").
-export function resolveCombatMove({ fen, registry, from, to, promotion, focusStreak = 0, randomFn = Math.random }) {
+export function resolveCombatMove({ fen, registry, from, to, promotion, focusStreak = 0, randomFn = Math.random, forceMatingCaptures = true, protectMissTurnLegality = true }) {
   const chess = new Chess();
   chess.load(fen);
   const attacker = registry[from];
@@ -386,7 +386,7 @@ export function resolveCombatMove({ fen, registry, from, to, promotion, focusStr
   // del modo prometen que el jaque mate sigue siendo 100% seguro; antes sólo
   // se forzaban capturas para SALIR de jaque, por lo que un mate capturando
   // podía fallar y convertir una victoria forzada en una lotería.
-  const deliversMate = chess.isCheckmate();
+  const deliversMate = forceMatingCaptures && chess.isCheckmate();
   const forcedHit = mustSucceed || deliversMate;
   const chance = forcedHit ? 1 : hitChance(attacker, defender, focusStreak);
   const roll = typeof randomFn === 'function' ? Number(randomFn()) : Math.random();
@@ -419,7 +419,7 @@ export function resolveCombatMove({ fen, registry, from, to, promotion, focusStr
   // contador de 50 jugadas a 100, la partida termina en tablas como promete
   // passTurnFen. Antes `isGameOver()` mezclaba ambos casos y "resucitaba"
   // capturas para esquivar una tabla legítima.
-  if (afterMiss.moves().length === 0) {
+  if (protectMissTurnLegality && afterMiss.moves().length === 0) {
     const { registry: nextRegistry } = applyMoveToRegistry(registry, applied);
     return {
       fen: chess.fen(), registry: nextRegistry, isCapture: true, hit: true,

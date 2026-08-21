@@ -19,7 +19,7 @@ export function createCombatIdentity(existingAliases = [], rng = Math.random, no
   const available = ALIASES.filter((alias) => !used.has(alias));
   const pool = available.length ? available : ALIASES;
   const alias = pool[Math.floor(rng() * pool.length) % pool.length];
-  return { alias, identityId: `unit-${now.toString(36)}-${randomToken(rng)}` };
+  return { alias, identityId: `unit-${now.toString(36)}-${randomToken(rng)}`, createdAt: new Date(now).toISOString() };
 }
 
 export function ensureCombatIdentities(rosterState, rng = Math.random, now = Date.now()) {

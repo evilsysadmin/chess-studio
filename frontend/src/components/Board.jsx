@@ -306,6 +306,7 @@ export default function Board({
             const classes = ['square', isLight ? 'light' : 'dark'];
             if (isSelected) classes.push('selected');
             if (target) classes.push(target.san?.includes('x') ? 'legal-capture' : 'legal-move');
+            if (target?.technique) classes.push('technique-target');
             if (isLastMove) classes.push('last-move');
             if (isHint) classes.push('hint-move');
             if (isMistakeSquare) classes.push('mistake-move');

@@ -13,13 +13,13 @@ import { Chess } from 'chess.js';
 beforeEach(() => localStorage.clear());
 
 describe('loadRoster', () => {
-  it('sanea retroactivamente piezas muertas sin progreso real, guardadas antes del fix a saveSurvivorsToRoster', () => {
+  it('migra bajas antiguas sin progreso sin borrar su identidad antes del Memorial', () => {
     localStorage.setItem(
       'chess-study-combat-roster',
       JSON.stringify({
         pieces: {
-          'r-h': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false }, // sin progreso -> debe desaparecer
-          'q-d': { strengthPoints: 3, speedPoints: 2, bankedXp: 0, alive: false }, // con progreso -> debe quedarse
+          'r-h': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false },
+          'q-d': { strengthPoints: 3, speedPoints: 2, bankedXp: 0, alive: false },
         },
         combatXp: 50,
         revivesUsed: 0,
@@ -27,12 +27,13 @@ describe('loadRoster', () => {
     );
 
     const loaded = loadRoster();
-    expect(loaded.pieces['r-h']).toBeUndefined();
+    expect(loaded.pieces['r-h']).toMatchObject({ alive: false, strengthPoints: 0, speedPoints: 0 });
     expect(loaded.pieces['q-d']).toBeDefined();
+    expect(loaded.identities['r-h']?.identityId).toBeTruthy();
+    expect(loaded.unitRecords[loaded.identities['r-h'].identityId]).toBeDefined();
 
-    // La limpieza queda persistida, no hace falta repetirla en cada carga.
     const rawAfter = JSON.parse(localStorage.getItem('chess-study-combat-roster'));
-    expect(rawAfter.pieces['r-h']).toBeUndefined();
+    expect(rawAfter.pieces['r-h'].alive).toBe(false);
   });
 });
 
@@ -47,11 +48,10 @@ describe('saveSurvivorsToRoster', () => {
     expect(next.pieces['n-b'].alive).toBe(false);
   });
 
-  it('una pieza capturada SIN haber subido nunca de nivel desaparece, no queda como "caída"', () => {
-    // Revivir una pieza en nivel 1 devolvería la mitad de 0 puntos — nada.
-    // No tiene sentido cobrar XP de combate por eso, así que ni se registra.
+  it('una pieza capturada en nivel 1 queda como baja no revivible hasta entrar al Memorial', () => {
     const next = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'loss');
-    expect(next.pieces['n-b']).toBeUndefined();
+    expect(next.pieces['n-b']).toMatchObject({ alive: false, strengthPoints: 0, speedPoints: 0 });
+    expect(next.identities['n-b']?.identityId).toBeTruthy();
   });
 
   it('solo guarda piezas del color del humano, nunca las del rival', () => {
@@ -139,6 +139,20 @@ describe('revivePiece', () => {
     expect(revived.pieces['q-d'].alive).toBe(true);
   });
 
+  it('al revivir conserva identidad y técnicas desbloqueadas', () => {
+    const roster = {
+      pieces: { 'p-a': { strengthPoints: 6, speedPoints: 4, bankedXp: 0, alive: false, unlockedTechniques: ['line_fire'], equippedTechnique: 'line_fire' } },
+      identities: { 'p-a': { alias: 'Starky', identityId: 'unit-starky' } },
+      combatXp: 100,
+      revivesUsed: 0,
+    };
+    const revived = revivePiece(roster, 'p-a', 'p');
+    expect(revived.identities['p-a']).toEqual(roster.identities['p-a']);
+    expect(revived.pieces['p-a'].unlockedTechniques).toEqual(['line_fire']);
+    expect(revived.pieces['p-a'].equippedTechnique).toBe('line_fire');
+    expect(revived.unitRecords['unit-starky'].stats.revives).toBe(1);
+  });
+
   it('no revive si no alcanza el XP de combate', () => {
     const roster = { pieces: { 'q-d': { strengthPoints: 6, speedPoints: 6, bankedXp: 0, alive: false } }, combatXp: 1 };
     const result = revivePiece(roster, 'q-d', 'q'); // la dama cuesta 30
@@ -186,10 +200,14 @@ describe('expireDeadPieces — la ventana de revivir se cierra', () => {
       identities: { 'p-a': { alias: 'Starky', identityId: 'old-starky' } },
       combatXp: 0,
     };
-    const expired = expireDeadPieces(roster);
+    const expired = expireDeadPieces(roster, '2026-08-21T20:00:00.000Z');
     expect(expired.pieces['p-a']).toBeUndefined();
     expect(expired.identities['p-a']).toBeDefined();
     expect(expired.identities['p-a'].identityId).not.toBe('old-starky');
+    expect(expired.memorial).toHaveLength(1);
+    expect(expired.memorial[0]).toMatchObject({ identityId: 'old-starky', alias: 'Starky', finalLevel: 6, finalRankLabel: 'Capitán' });
+    expect(expired.unitRecords['old-starky']).toBeUndefined();
+    expect(expired.unitRecords[expired.identities['p-a'].identityId]).toBeDefined();
   });
 });
 
