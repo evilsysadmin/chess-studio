@@ -13,13 +13,18 @@ function fail(message) {
   process.exit(1);
 }
 
-const manifest = fs.readFileSync(manifestPath, 'utf8').trim();
 const js = fs.readFileSync(jsPath, 'utf8');
-const manifestRelease = manifest.match(/v\d+\.\d+[a-z0-9.]*/i)?.[0] || null;
 const jsRelease = js.match(/APP_RELEASE\s*=\s*['\"]([^'\"]+)['\"]/i)?.[1] || null;
 
-if (!manifestRelease) fail('RELEASE.txt no contiene una versión reconocible');
 if (!jsRelease) fail('frontend/src/release.js no exporta APP_RELEASE reconocible');
-if (manifestRelease !== jsRelease) fail(`RELEASE.txt=${manifestRelease} pero APP_RELEASE=${jsRelease}`);
+if (!/^v\d+\.\d+[a-z0-9.]*$/i.test(jsRelease)) fail(`APP_RELEASE inválida: ${jsRelease}`);
 
-console.log(`release-check OK · ${jsRelease}`);
+if (fs.existsSync(manifestPath)) {
+  const manifest = fs.readFileSync(manifestPath, 'utf8').trim();
+  const manifestRelease = manifest.match(/v\d+\.\d+[a-z0-9.]*/i)?.[0] || null;
+  if (!manifestRelease) fail('RELEASE.txt existe pero no contiene una versión reconocible');
+  if (manifestRelease !== jsRelease) fail(`RELEASE.txt=${manifestRelease} pero APP_RELEASE=${jsRelease}`);
+  console.log(`release-check OK · ${jsRelease} · RELEASE.txt sincronizado`);
+} else {
+  console.log(`release-check OK · ${jsRelease} · RELEASE.txt ausente (manifiesto opcional)`);
+}

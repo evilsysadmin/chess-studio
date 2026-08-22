@@ -341,3 +341,16 @@ help:
 	@echo "  make security-images - construye y escanea frontend/backend Docker reales"
 	@echo "  make security-full   - security + security-images"
 	@echo "  make deps-status     - muestra PyJWT del requirements/venv y versión de Trivy"
+
+
+# BEGIN chess-studio-ai-contract
+.PHONY: ai-contract ai-security
+
+ai-security:
+	python3 scripts/ai_security_gate.py
+
+ai-contract: ai-security
+	cd backend-python && python -m pytest -q test_narrative_cloudflare.py test_narrative_api.py test_narrative_main_contract.py
+	cd frontend && npx vitest run src/narrativeRemote.test.js src/narrativeWiring.test.js src/aiMetrics.test.js src/narrativeProvider.test.js src/releaseContinuity.test.js
+	node --check infra/cloudflare/worker/index.js
+# END chess-studio-ai-contract

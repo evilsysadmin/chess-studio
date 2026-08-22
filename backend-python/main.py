@@ -39,6 +39,7 @@ from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 from chess_core import apply_handicap, board_sans, load_board, resolve_move, serialize_game
 from email_service import send_password_reset_email
 from request_limits import RequestBodyLimitMiddleware
+from narrative_api import build_narrative_router
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -475,6 +476,9 @@ async def require_admin(username: str = Depends(get_current_user)) -> str:
     if not is_admin(username):
         raise HTTPException(403, "No tienes permisos de administrador.")
     return username
+
+# LLM narrative transport: facts stay authoritative in Chess Studio.
+app.include_router(build_narrative_router(auth_dependency=get_current_user, admin_dependency=require_admin))
 
 
 async def get_user_or_m2m(request: Request) -> str:

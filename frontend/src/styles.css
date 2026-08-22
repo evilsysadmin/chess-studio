@@ -2934,24 +2934,34 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .admin-users-table th:nth-child(4), .admin-users-table td:nth-child(4) { width: 82px; }
 .admin-users-table th:nth-child(5), .admin-users-table td:nth-child(5) { width: 92px; }
 .admin-users-table th:nth-child(6), .admin-users-table td:nth-child(6) { width: 120px; }
-.admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width: 190px; }
+.admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width: 110px; }
 .admin-user-cell { overflow: hidden; text-overflow: ellipsis; }
+.admin-user-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  padding: 0.2rem 0.28rem;
+  margin: -0.2rem -0.28rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--brass);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-user-link > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.admin-user-link:hover { color: var(--parchment); background: rgba(255, 255, 255, 0.045); }
+.admin-user-link:focus-visible { outline: 2px solid var(--brass-dim); outline-offset: 2px; }
+.admin-user-link.is-open { color: var(--parchment); }
+.admin-user-link-chevron { flex: 0 0 auto; color: var(--brass-dim); font-size: 0.9em; }
 .admin-worst-cell { overflow: hidden; text-overflow: ellipsis; }
 .admin-worst-malus { color: #e2a4a4; font-variant-numeric: tabular-nums; }
 .admin-actions-cell { position: sticky; right: 0; z-index: 2; background: var(--ink); box-shadow: -5px 0 10px rgba(22, 27, 38, 0.48); }
 .admin-users-table tr:hover .admin-actions-cell { background: var(--ink-2); }
 .admin-muted { color: var(--parchment-dim); }
-.admin-peek-button {
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  padding: 0.32rem 0.55rem;
-  border: 1px solid var(--ink-3);
-  border-radius: 6px;
-  background: var(--ink-2);
-  color: var(--brass);
-  cursor: pointer;
-}
-.admin-peek-button:hover { border-color: var(--brass-dim); }
 .admin-user-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: nowrap; justify-content: flex-end; }
 .admin-delete-button {
   border: 1px solid rgba(194, 71, 71, 0.52);
@@ -2965,6 +2975,38 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 .admin-delete-button:hover:not(:disabled) { border-color: rgba(225, 93, 93, 0.9); background: rgba(136, 32, 32, 0.28); }
 .admin-delete-button:disabled { opacity: 0.55; cursor: wait; }
+.admin-ai-metrics {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(320px, 1.6fr);
+  gap: 0.7rem 1rem;
+  align-items: center;
+  margin: 0.8rem 0 1rem;
+  padding: 0.78rem 0.9rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.admin-ai-metrics > div:first-child { display: grid; gap: 0.18rem; }
+.admin-ai-metrics > div:first-child strong { color: var(--parchment); }
+.admin-ai-metrics > div:first-child span,
+.admin-ai-metrics > small { color: var(--parchment-dim); font-size: 0.72rem; }
+.admin-ai-metrics dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+}
+.admin-ai-metrics dl > div {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.42rem 0.5rem;
+  border-radius: 6px;
+  background: var(--ink-2);
+}
+.admin-ai-metrics dt { color: var(--brass-dim); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.admin-ai-metrics dd { margin: 0; color: var(--parchment); font-family: var(--font-mono); font-size: 0.78rem; }
+.admin-ai-metrics > small { grid-column: 1 / -1; }
+
 .admin-detail-row td { background: rgba(0, 0, 0, 0.14); white-space: normal; }
 .admin-detail-grid {
   display: grid;
@@ -4820,12 +4862,11 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
   .admin-user-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     width: 100%;
     gap: 0.55rem;
   }
 
-  .admin-peek-button,
   .admin-delete-button {
     min-height: 42px;
     width: 100%;
@@ -4884,6 +4925,9 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .admin-coaching-grid {
     grid-template-columns: 1fr;
   }
+
+  .admin-ai-metrics { grid-template-columns: 1fr; }
+  .admin-ai-metrics dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 390px) {

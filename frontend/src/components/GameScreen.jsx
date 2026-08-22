@@ -27,6 +27,8 @@ import { loadZenMode, saveZenMode, zenModeSummary } from '../zenMode.js';
 import { identifyOpening } from '../openings.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { noteworthyPresentation } from '../spectatorReactions.js';
+import { getToken } from '../auth.js';
+import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -127,6 +129,10 @@ export default function GameScreen({
   const [audienceReaction, setAudienceReaction] = useState(null);
   const [gameChat, setGameChat] = useState(() => loadActiveGameChat(game.id));
   const cpuCommentTimeout = useRef(null);
+  const remoteNarrativeGateRef = useRef(null);
+  if (!remoteNarrativeGateRef.current) {
+    remoteNarrativeGateRef.current = createNarrativeCooldownGate({ minPlyGap: 2, minIntervalMs: 2500 });
+  }
   const audienceReactionTimeout = useRef(null);
   const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
@@ -343,14 +349,37 @@ export default function GameScreen({
     audienceReactionTimeout.current = setTimeout(() => setAudienceReaction(null), 4200);
   }
 
-  function showNoteworthy(comment, actor) {
+  function showNoteworthy(comment, actor, { allowRemote = true } = {}) {
     if (!comment) return;
     const ply = game.history?.length ?? 0;
     const presentation = noteworthyPresentation(comment.event, actor, ply);
     const recurrenceCount = recordRivalryIncident(comment.event, actor);
     if (!zenModeRef.current && (presentation.cpu || presentation.audience)) playNoteworthySound(comment.event, actor);
     if (presentation.cpu) {
-      showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` }, { actor, event: comment.event?.type, ply });
+      const suffix = recurrenceSuffix(comment.event, actor, recurrenceCount);
+      const meta = { actor, event: comment.event?.type, ply };
+      const showLocal = () => showCpuComment({ ...comment, text: `${comment.text}${suffix}` }, meta);
+      if (!allowRemote) {
+        showLocal();
+      } else {
+        requestRemoteNarrativeDetached(
+          {
+            eventType: comment.event?.type || 'noteworthy_move',
+            ply,
+            facts: {
+              ...comment.event,
+              actor,
+              ply,
+            },
+          },
+          {
+            token: getToken(),
+            cooldownGate: remoteNarrativeGateRef.current,
+            onText: (text) => showCpuComment({ ...comment, text: `${text}${suffix}` }, meta),
+            onUnavailable: showLocal,
+          },
+        );
+      }
     }
     if (presentation.audience) showAudienceReaction(presentation.text);
     const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
@@ -430,7 +459,6 @@ export default function GameScreen({
 
     const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
     let cpuNoteworthy = null;
-    showNoteworthy(humanComment, 'human');
 
     const humanClock = humanColor === 'w' ? whiteTime : blackTime;
     if (hasClock && Number(humanClock) <= 40) {
@@ -444,6 +472,7 @@ export default function GameScreen({
       if (nextLives <= 0) {
         const forcedGame = { ...game, history: [...(game.history || []), humanMove], fen: optimistic.fen(), isGameOver: true, status: 'sudden-death' };
         setGame(forcedGame); setForcedOutcome('loss'); setBusy(false);
+        showNoteworthy(humanComment, 'human', { allowRemote: false });
         if (!reportedResultRef.current) {
           reportedResultRef.current = true;
           onGameEnd?.('loss', forcedGame, { hintsUsed: hintsUsedThisGame, endReason: 'sudden-death', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: true, gameChat: loadActiveGameChat(game.id) });
@@ -493,6 +522,9 @@ export default function GameScreen({
     try {
       const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion), minThink]);
       setGame(updated);
+      // La narrativa remota sólo recibe hechos de una jugada que el backend ya confirmó.
+      // Sigue siendo fire-and-forget: no retrasa tablero, reloj ni persistencia.
+      showNoteworthy(humanComment, 'human');
 
       if (updated.lastMove && updated.lastMove.by === 'cpu') {
         cpuNoteworthy = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu');

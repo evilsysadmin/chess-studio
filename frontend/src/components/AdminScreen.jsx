@@ -4,11 +4,13 @@ import { deleteAdminUser, fetchAdminUsers, fetchAdminUserInsights } from '../adm
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { computeInsights, generateRoast, generateCoaching } from '../insights.js';
 import { ACHIEVEMENTS } from '../achievements.js';
-import { getUsername } from '../auth.js';
+import { getToken, getUsername } from '../auth.js';
 import { formatLongMove } from '../notation.js';
 import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';
+import { formatAdminDate, formatAdminTimestamp } from '../adminFormatting.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -32,14 +34,14 @@ function Presence({ user, compact = false }) {
       : status === 'offline'
         ? (formatPresenceAge(user.presenceAgeSeconds) || 'Offline')
         : 'Sin actividad';
-  const exact = user?.lastActivity ? new Date(user.lastActivity).toLocaleString() : 'Sin actividad registrada';
+  const exact = user?.lastActivity ? formatAdminTimestamp(user.lastActivity) : 'Sin actividad registrada';
   return (
     <span className={`admin-presence admin-presence-${status}`} title={exact}>
       <span className="admin-presence-dot" aria-hidden="true" />
       <span className="admin-presence-copy">
         <span>{label}</span>
         {status === 'online' && user?.currentActivity && <small>{user.currentActivity}</small>}
-        {!compact && user?.lastActivity && <small>{new Date(user.lastActivity).toLocaleString()}</small>}
+        {!compact && user?.lastActivity && <small>{formatAdminTimestamp(user.lastActivity)}</small>}
       </span>
     </span>
   );
@@ -69,7 +71,7 @@ function WorstMoveAutopsy({ move, data }) {
       <div className="admin-autopsy-summary">
         <span className="admin-autopsy-verdict">{autopsy.incident}</span>
         <strong>−{move.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></strong>
-        <small>Jugada {move.moveNumber || Math.floor(autopsy.index / 2) + 1} · {autopsy.mode}{autopsy.record?.date ? ` · ${new Date(autopsy.record.date).toLocaleDateString()}` : ''}</small>
+        <small>Jugada {move.moveNumber || Math.floor(autopsy.index / 2) + 1} · {autopsy.mode}{autopsy.record?.date ? ` · ${formatAdminDate(autopsy.record.date)}` : ''}</small>
       </div>
       <div className="admin-autopsy-moves">
         <span><b>Jugó:</b> {autopsy.playedPiece} {autopsy.playedFrom || '?'} → {autopsy.playedTo || '?'} · {playedLong}</span>
@@ -201,8 +203,9 @@ export default function AdminScreen({ onExit }) {
       <div className="menu-section">
         <span className="section-label">Admin</span>
         <h2>Usuarios registrados</h2>
-        <p className="hint-text">Resumen general arriba; “Ver detalles” abre el expediente ajedrecístico.</p>
+        <p className="hint-text">Pulsa el nombre de un usuario para abrir o cerrar su expediente ajedrecístico.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
+        <AiNarrativeMetrics token={getToken()} />
 
         {error && <p className="error-text">{error}</p>}
         {deleteError && <p className="error-text">{deleteError}</p>}
@@ -229,10 +232,23 @@ export default function AdminScreen({ onExit }) {
                 {users.map((u) => {
                   const isOpen = expanded === u.username;
                   const isSelf = getUsername() === u.username;
+                  const detailId = `admin-user-details-${String(u.username).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
                   return (
                     <React.Fragment key={u.username}>
                       <tr>
-                        <td className="admin-user-cell" data-label="Usuario">{u.username}</td>
+                        <td className="admin-user-cell" data-label="Usuario">
+                          <button
+                            type="button"
+                            className={`admin-user-link${isOpen ? ' is-open' : ''}`}
+                            onClick={() => setExpanded(isOpen ? null : u.username)}
+                            aria-expanded={isOpen}
+                            aria-controls={detailId}
+                            title={`${isOpen ? 'Cerrar' : 'Abrir'} expediente de ${u.username}`}
+                          >
+                            <span>{u.username}</span>
+                            <span className="admin-user-link-chevron" aria-hidden="true">{isOpen ? '▾' : '›'}</span>
+                          </button>
+                        </td>
                         <td data-label="Actividad"><Presence user={u} compact /></td>
                         <td data-label="Rating">{u.rating ?? '—'}</td>
                         <td data-label="Partidas">{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
@@ -240,9 +256,6 @@ export default function AdminScreen({ onExit }) {
                         <td className="admin-worst-cell" data-label="Peor"><WorstMove move={u.worstMove} compact /></td>
                         <td className="admin-actions-cell" data-label="Acciones">
                           <div className="admin-user-actions">
-                            <button className="admin-peek-button" onClick={() => setExpanded(isOpen ? null : u.username)}>
-                              {isOpen ? 'Cerrar' : 'Ver detalles'}
-                            </button>
                             <button
                               className="admin-delete-button"
                               disabled={isSelf || deletingUser === u.username}
@@ -255,13 +268,13 @@ export default function AdminScreen({ onExit }) {
                         </td>
                       </tr>
                       {isOpen && (
-                        <tr className="admin-detail-row">
+                        <tr className="admin-detail-row" id={detailId}>
                           <td colSpan="7">
                             <div className="admin-detail-grid">
-                              <div><span>Registrado</span><strong>{u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'}</strong></div>
+                              <div><span>Registrado</span><strong>{formatAdminTimestamp(u.createdAt)}</strong></div>
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
                               <div><span>Última pantalla conocida</span><strong>{u.currentActivity || '—'}</strong></div>
-                              <div><span>Última actividad exacta</span><strong>{u.lastActivity ? new Date(u.lastActivity).toLocaleString() : '—'}</strong></div>
+                              <div><span>Última actividad exacta</span><strong>{formatAdminTimestamp(u.lastActivity)}</strong></div>
                               <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>
                               <div><span>Rating / partidas <GlossaryTerm term="ELO">ELO</GlossaryTerm></span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>
                               <div><span>Pico de rating</span><strong>{u.ratingPeak ?? '—'}</strong></div>
@@ -298,7 +311,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>
                               <div><span>Forma reciente</span><strong>{(u.recentForm || []).map((r) => OUTCOME_LABEL[r]).join(' · ') || '—'}</strong></div>
                               <div className="admin-detail-wide admin-worst-detail"><span>Peor jugada registrada</span><WorstMoveAutopsy move={u.worstMove} data={insightsByUser[u.username]} /></div>
-                              <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}><i className={`admin-activity-type activity-${String(a.type || 'other').replace(/[^a-z0-9_-]/gi, '-')}`}>{a.modeLabel || a.type || 'Actividad'}</i><span>{a.date ? new Date(a.date).toLocaleString() : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</span></em>) : '—'}</strong></div>
+                              <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}><i className={`admin-activity-type activity-${String(a.type || 'other').replace(/[^a-z0-9_-]/gi, '-')}`}>{a.modeLabel || a.type || 'Actividad'}</i><span>{a.date ? formatAdminTimestamp(a.date, '') : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</span></em>) : '—'}</strong></div>
                             </div>
 
                             <section className="admin-insights-panel">
