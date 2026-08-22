@@ -18,8 +18,8 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
       <div className="campaign-briefing-heading">
         <div>
           <span className="section-label">BRIEFING TÁCTICO · SECTOR {node.stage}</span>
-          <h3>{node.label}</h3>
-          <p>{node.description}</p>
+          <h3 title={node.description}>{node.label}</h3>
+          <p className="campaign-briefing-command">Evalúa intel y despliega.</p>
         </div>
         <button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)} aria-label="Tutorial de inteligencia">?</button>
       </div>
@@ -32,10 +32,9 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
             <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : 'No evaluada'}</dd></div>
             <div><dt>Dificultad exacta</dt><dd>{intel.exactDifficulty ?? 'Oculta'}</dd></div>
             <div><dt>Modificador</dt><dd>{intel.modifierLabel || 'Oculto'}</dd></div>
-            <div><dt>Composición</dt><dd>{intel.modifierDescription || 'Sin reconocimiento suficiente'}</dd></div>
+            <div><dt>Composición</dt><dd title={intel.modifierDescription || 'Sin reconocimiento suficiente'}>{intel.modifierDescription || 'Oculta'}</dd></div>
             {intel.bossHp != null && <div><dt>Boss</dt><dd>Rey con {intel.bossHp} HP</dd></div>}
           </dl>
-          <small>{intel.note}</small>
         </div>
 
         <div className="campaign-intel-buy">
@@ -43,13 +42,13 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
           <strong>{campaign.operationalCredits}</strong>
           {nextTier ? (
             <>
-              <p>Subir a <b>{nextTier.label}</b> cuesta <b>{nextTier.cost}</b>.</p>
+              <p title={`Subir la inteligencia a ${nextTier.label}`}>{nextTier.label} · <b>{nextTier.cost}</b> cr.</p>
               <button type="button" className="secondary-btn" disabled={!canBuy} onClick={onBuyIntel}>
                 {canBuy ? `Comprar intel · −${nextTier.cost}` : `Faltan ${nextTier.cost - campaign.operationalCredits} créditos`}
               </button>
             </>
           ) : (
-            <p>Dossier completo. No puedes comprar más información de este nodo.</p>
+            <p title="No hay más niveles de inteligencia disponibles.">Intel máxima.</p>
           )}
         </div>
       </div>

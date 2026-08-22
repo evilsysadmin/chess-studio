@@ -21,6 +21,7 @@ import {
   startAmbientMusic,
   stopAmbientMusic,
 } from '../sound.js';
+import { claimMediaSessionHandlers, requestPlaybackAudioSession, syncMediaSessionState } from '../mediaControls.js';
 
 function formatTime(ms) {
   const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
@@ -62,9 +63,9 @@ export default function MusicPlayer() {
   }, []);
 
   useEffect(() => {
-    // Teclas multimedia del sistema: Media Session es la vía fiable cuando
-    // el navegador/desktop se queda las teclas dedicadas. El keydown es un
-    // fallback útil para teclados/navegadores que sí las exponen al DOM.
+    // No existe una prioridad absoluta entre pestañas: el navegador arbitra.
+    // Reclamamos la sesión al montar y cada vez que Chess Studio recupera
+    // foco/visibilidad; además declaramos AudioSession=playback si existe.
     const handleMediaKey = (event) => {
       if (event.key === 'MediaTrackPrevious') {
         event.preventDefault();
@@ -72,26 +73,40 @@ export default function MusicPlayer() {
       } else if (event.key === 'MediaTrackNext') {
         event.preventDefault();
         next();
+      } else if (event.key === 'MediaPlayPause') {
+        event.preventDefault();
+        playPause();
       }
     };
+    const claim = () => {
+      const live = snapshot();
+      if (live.status === 'playing' || live.status === 'gap' || live.status === 'paused') requestPlaybackAudioSession();
+      return claimMediaSessionHandlers({
+        previous,
+        next,
+        play: () => { startAmbientMusic(); setState(snapshot()); requestPlaybackAudioSession(); },
+        pause: () => { pauseAmbientMusic(); setState(snapshot()); },
+        stop: () => { stopAmbientMusic(); setState(snapshot()); },
+      });
+    };
     window.addEventListener('keydown', handleMediaKey);
-
-    const mediaSession = typeof navigator !== 'undefined' ? navigator.mediaSession : null;
-    if (mediaSession?.setActionHandler) {
-      try { mediaSession.setActionHandler('previoustrack', previous); } catch {}
-      try { mediaSession.setActionHandler('nexttrack', next); } catch {}
-      try { mediaSession.setActionHandler('play', () => { startAmbientMusic(); setState(snapshot()); }); } catch {}
-      try { mediaSession.setActionHandler('pause', () => { pauseAmbientMusic(); setState(snapshot()); }); } catch {}
-    }
+    let release = claim();
+    const reclaim = () => {
+      if (document.visibilityState === 'hidden') return;
+      release();
+      release = claim();
+      setState(snapshot());
+    };
+    window.addEventListener('focus', reclaim);
+    document.addEventListener('visibilitychange', reclaim);
+    window.addEventListener('pointerdown', reclaim, { passive: true });
 
     return () => {
       window.removeEventListener('keydown', handleMediaKey);
-      if (mediaSession?.setActionHandler) {
-        try { mediaSession.setActionHandler('previoustrack', null); } catch {}
-        try { mediaSession.setActionHandler('nexttrack', null); } catch {}
-        try { mediaSession.setActionHandler('play', null); } catch {}
-        try { mediaSession.setActionHandler('pause', null); } catch {}
-      }
+      window.removeEventListener('focus', reclaim);
+      document.removeEventListener('visibilitychange', reclaim);
+      window.removeEventListener('pointerdown', reclaim);
+      release();
     };
   }, []);
 
@@ -107,16 +122,15 @@ export default function MusicPlayer() {
     setExcluded(isAmbientExcluded(themeId));
   }, [themeId, state.status]);
 
+  const mediaPositionSecond = Math.floor((state.cyclePositionMs || 0) / 1000);
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.mediaSession || typeof MediaMetadata === 'undefined') return;
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: current?.label || 'Música ambiental',
-        artist: 'Chess Studio',
-        album: 'Radio nocturna',
-      });
-    } catch {}
-  }, [current]);
+    syncMediaSessionState({
+      status: state.status,
+      title: current?.label || 'Música ambiental',
+      durationMs: state.durationMs || 0,
+      positionMs: mediaPositionSecond * 1000,
+    });
+  }, [current, state.status, state.durationMs, mediaPositionSecond]);
 
   const cycleMs = Math.max(1, state.visualCycleMs || 1);
   const displayedPositionMs = seekPreviewMs == null ? (state.cyclePositionMs || 0) : seekPreviewMs;

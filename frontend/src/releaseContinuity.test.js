@@ -22,7 +22,7 @@ const admin = read('src/components/AdminScreen.jsx');
 // preparar una release desde un baseline viejo.
 describe('continuidad acumulativa de release', () => {
   it('identifica inequívocamente la release desplegada', () => {
-    expect(APP_RELEASE).toBe('v16.6by');
+    expect(APP_RELEASE).toBe('v16.6bz');
     expect(admin).toContain("import { APP_RELEASE } from '../release.js';");
     expect(admin).toContain('Release: <code>{APP_RELEASE}</code>');
   });

@@ -6671,3 +6671,39 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .campaign-route-edge.available,
   .campaign-map-point-pulse { animation: none; }
 }
+
+
+/* ---------- v16.6bz · Combat Chess operativo / workspace ancho ---------- */
+.menu.combat-workspace {
+  max-width: min(1420px, calc(100vw - 3rem));
+  padding: clamp(1rem, 1.8vw, 1.55rem);
+  gap: 1rem;
+}
+.combat-workspace .combat-campaign-shell { width: 100%; min-width: 0; }
+.combat-operational-hint {
+  margin: -.2rem 0 .55rem;
+  color: var(--parchment-dim);
+  font: .66rem/1.35 var(--font-mono);
+  letter-spacing: .015em;
+}
+.combat-operational-hint[title] { cursor: help; text-decoration: underline dotted rgba(207,196,167,.28); text-underline-offset: 3px; }
+.combat-workspace .campaign-status-strip { grid-template-columns: repeat(6, minmax(100px, 1fr)); }
+.combat-workspace .combat-campaign-map { min-height: 520px; }
+.campaign-relic-chip small { display: none; }
+.campaign-relic-chip { min-height: 46px; }
+.campaign-briefing-command { margin: .15rem 0 0; color: var(--parchment-dim); font: .64rem var(--font-mono); }
+.campaign-intel-panel dd { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) {
+  .menu.combat-workspace { max-width: 100%; padding: 1rem; }
+  .combat-workspace .campaign-status-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .combat-workspace .campaign-status-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.admin-activity-list em { display: grid; grid-template-columns: max-content minmax(0,1fr); align-items: baseline; gap: .45rem; }
+.admin-activity-list em > span { min-width: 0; }
+.admin-activity-type { font-style: normal; padding: .08rem .3rem; border: 1px solid rgba(201,162,39,.25); border-radius: 999px; color: var(--brass); font: .52rem var(--font-mono); white-space: nowrap; }
+.admin-activity-type.activity-combat { color: #b9c99f; border-color: rgba(159,191,107,.32); }
+.admin-activity-type.activity-tournament { color: #d4b16a; }
+@media (max-width: 700px) { .admin-activity-list em { grid-template-columns: 1fr; gap: .15rem; } .admin-activity-type { justify-self: start; } }

@@ -252,7 +252,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
         {isKing ? (
           <div className="army-command-note">
             <strong>Mando del ejército</strong>
-            <span>El Rey tiene alias e identidad persistente, pero no gana XP, rango, medallas ni metamorfosis. Sigue las reglas normales de ajedrez.</span>
+            <span title="El Rey conserva identidad, pero no gana XP, rango, medallas ni metamorfosis.">Mando · sin progresión individual.</span>
           </div>
         ) : (
           <>
@@ -420,9 +420,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
         </div>
         <span className="army-roster-count">{deploy.totalRoster} unidades · {deploy.reserveCount} reservas</span>
       </div>
-      <p className="hint-text army-roster-intro">
-        Los 16 puestos canónicos siguen siendo la línea de despliegue, pero el barracón puede crecer con refuerzos de campaña. Las reservas conservan identidad, rango y expediente; se asignan a los puestos compatibles desde Preparar despliegue.
-      </p>
+      <p className="combat-operational-hint army-roster-intro" title="El barracón puede superar 16 unidades. Solo 16 slots canónicos entran en batalla; las reservas mantienen identidad, rango e historial.">16 desplegados · reservas persistentes.</p>
       <p className="hint-text army-combat-xp">
         XP de combate disponible: <b>{roster.combatXp}</b> · reservado para revivir bajas recuperables.
       </p>
@@ -454,7 +452,6 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
         </section>
       )}
 
-      <p className="hint-text army-roster-footnote">Vista táctica en tres filas para que alias y rango se lean completos. El orden conserva primero piezas mayores y mando, después la infantería; el color del tablero puede cambiar, pero cada identidad sigue siendo la misma.</p>
       {showMemorial && <Memorial roster={roster} />}
 
       {selectedKey && (

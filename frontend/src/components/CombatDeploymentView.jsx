@@ -240,7 +240,7 @@ export default function CombatDeploymentView({
           <div>
             <span className="army-memorial-kicker">COMBAT CHESS · MESA DE GUERRA</span>
             <div className="deployment-title-row"><h2>Preparar despliegue</h2><button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)}>?</button></div>
-            <p className="hint-text">Arrastra una unidad al tablero o selecciónala y toca una casilla válida. Cada puesto admite un único tipo de origen: un peón metamorfoseado sigue ocupando puesto de peón.</p>
+            <p className="combat-operational-hint" title="Cada slot valida el tipo de origen. Un peón metamorfoseado sigue ocupando un slot de peón.">Arrastra, coloca y confirma.</p>
           </div>
           <div className={`deployment-readiness ${summary.ready ? 'ready' : 'incomplete'}`}>
             <strong>{summary.assignedCount}/{summary.totalSlots}</strong>
@@ -302,7 +302,7 @@ export default function CombatDeploymentView({
           <main className="deployment-board-zone">
             <div className="deployment-board-caption">
               <span>FORMACIÓN PROPIA</span>
-              <small>La fila superior representa tus piezas mayores; debajo, los ocho puestos de peón.</small>
+              <small title="Fila superior: piezas mayores. Fila inferior: ocho slots de peón.">16 slots</small>
             </div>
             <Board
               fen={fen}
@@ -361,7 +361,7 @@ export default function CombatDeploymentView({
 
                 {selectedForms.length > 1 && (
                   <div className="deployment-form-selector">
-                    <span>Forma para esta batalla</span>
+                    <span title="La forma cambia cómo combate esta batalla; la identidad y el slot de origen no cambian.">Forma de combate</span>
                     <div>
                       {selectedForms.map((type) => (
                         <button
@@ -374,7 +374,6 @@ export default function CombatDeploymentView({
                         </button>
                       ))}
                     </div>
-                    <small>La identidad no cambia: un peón que combate como caballo sigue siendo peón, ocupa un puesto de peón y conserva su expediente.</small>
                   </div>
                 )}
 

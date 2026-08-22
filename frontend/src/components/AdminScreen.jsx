@@ -298,7 +298,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>
                               <div><span>Forma reciente</span><strong>{(u.recentForm || []).map((r) => OUTCOME_LABEL[r]).join(' · ') || '—'}</strong></div>
                               <div className="admin-detail-wide admin-worst-detail"><span>Peor jugada registrada</span><WorstMoveAutopsy move={u.worstMove} data={insightsByUser[u.username]} /></div>
-                              <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}>{a.date ? new Date(a.date).toLocaleString() : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</em>) : '—'}</strong></div>
+                              <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}><i className={`admin-activity-type activity-${String(a.type || 'other').replace(/[^a-z0-9_-]/gi, '-')}`}>{a.modeLabel || a.type || 'Actividad'}</i><span>{a.date ? new Date(a.date).toLocaleString() : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</span></em>) : '—'}</strong></div>
                             </div>
 
                             <section className="admin-insights-panel">

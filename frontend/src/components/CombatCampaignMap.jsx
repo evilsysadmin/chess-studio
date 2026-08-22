@@ -64,7 +64,7 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
   const nodes = [map.start, ...map.stages.flat()];
 
   return (
-    <section className="combat-campaign-map-wrap" aria-label="Mapa completo de campaña Combat Chess">
+    <section className="combat-campaign-map-wrap" aria-label="Mapa completo de campaña Combat Chess" title="La topología es visible; dificultad, modificadores y boss requieren inteligencia.">
       <div className="campaign-map-toolbar">
         <div>
           <span className="section-label">MAPA DE OPERACIONES</span>
@@ -105,7 +105,6 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
         <span>→</span>
         <span>♚ Rey Viejo</span>
       </div>
-      <p className="hint-text campaign-map-hint">El mapa enseña toda la topología de la operación, pero no revela dificultad exacta, modificadores ni datos del boss sin inteligencia.</p>
     </section>
   );
 }

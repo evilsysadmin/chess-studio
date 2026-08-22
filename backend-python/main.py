@@ -629,7 +629,7 @@ async def activity_heartbeat(payload: Optional[ActivityHeartbeatRequest] = None,
     # Telemetría deliberadamente gruesa: sólo etiquetas de pantalla/acción,
     # nunca jugadas, FEN, mensajes, rivales ni contenido privado.
     allowed = {
-        "Menú principal", "Partida", "Torneo", "Combat Chess", "Replay",
+        "Menú principal", "Partida", "Partida rápida", "Torneo", "Combat Chess", "Replay",
         "Así juegas", "Historial", "Puzzle", "Aprendizaje", "Aperturas",
         "Laboratorio", "Espectador", "Panel admin", "Experimento 3D", "Navegando",
     }
@@ -857,13 +857,47 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
     if current_rating is not None:
         rating_values.append(current_rating)
 
+    def recent_mode_label(row: dict) -> tuple[str, str]:
+        # Historial estándar y Combat comparten el feed, pero no la estructura.
+        # Etiquetamos solo con metadatos ya persistidos; nunca inferimos contenido privado.
+        if row.get("variant") in {"combat", "roguelike"} or row.get("roguelikeMode") is not None:
+            if row.get("roguelikeMode") == "campaign":
+                return "Combat Chess · Campaña", "combat"
+            if row.get("roguelikeMode") in {"tower", "endless"}:
+                return "Combat Chess · Torre", "combat"
+            return "Combat Chess", "combat"
+        mode = str(row.get("mode") or "casual")
+        labels = {
+            "tournament": "Torneo",
+            "practice": "Práctica",
+            "ghost": "Rival Ghost",
+            "nemesis-training": "Némesis",
+            "sudden": "Muerte súbita",
+            "casual": "Rápida",
+        }
+        return labels.get(mode, "Rápida"), mode
+
     recent = sorted(all_records, key=lambda r: str(r.get("date") or ""), reverse=True)[:5]
     recent_game_activity = []
     for row in recent:
         outcome = row.get("outcome")
         result_label = {"win": "victoria", "loss": "derrota", "draw": "tablas"}.get(outcome, outcome or "partida")
-        detail = f"CPU {row.get('difficulty')}" if row.get("difficulty") is not None else None
-        recent_game_activity.append({"date": row.get("date"), "text": f"Partida: {result_label}", "detail": detail, "type": "game"})
+        mode_label, activity_type = recent_mode_label(row)
+        details = []
+        if row.get("difficulty") is not None:
+            details.append(f"CPU {row.get('difficulty')}")
+        tc = row.get("timeControl") if isinstance(row.get("timeControl"), dict) else {}
+        if tc.get("label"):
+            details.append(str(tc.get("label")))
+        elif tc.get("id") and tc.get("id") != "none":
+            details.append(str(tc.get("id")))
+        recent_game_activity.append({
+            "date": row.get("date"),
+            "text": result_label.capitalize(),
+            "detail": " · ".join(details) or None,
+            "type": activity_type,
+            "modeLabel": mode_label,
+        })
 
     rivalry_games = 0
     rivalry_record = rivalry.get("record")

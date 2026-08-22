@@ -51,6 +51,7 @@ if (implicitClockTests.length) fail(`Tests dependientes del reloj real: ${implic
 const staticContractAllowlist = new Set([
   'adminMobileLayout.test.js',
   'armyRosterView.test.js',
+  'combatOperationalUx.test.js',
   'chessGlossary.test.js',
   'mechanicTutorials.test.js',
   'releaseContinuity.test.js',

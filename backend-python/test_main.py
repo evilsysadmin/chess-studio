@@ -1039,6 +1039,31 @@ def test_resolve_move_core_rules_cover_castling_en_passant_and_promotion():
     assert resolve_move(promotion, "a7", "a8", "n") == chess.Move.from_uci("a7a8n")
 
 
+def test_admin_recent_activity_labels_game_mode_and_combat_type():
+    import json
+    from main import _extract_summary_stats
+
+    profile = {
+        "data": {
+            "chess-study-game-history": json.dumps([
+                {"id": "q1", "date": "2026-08-22T10:00:00+00:00", "outcome": "win", "difficulty": 40, "mode": "casual", "timeControl": {"id": "5+0", "label": "5+0"}},
+                {"id": "t1", "date": "2026-08-22T11:00:00+00:00", "outcome": "loss", "difficulty": 70, "mode": "tournament"},
+            ]),
+            "chess-study-combat-history": json.dumps([
+                {"id": "c1", "date": "2026-08-22T12:00:00+00:00", "outcome": "win", "difficulty": 66, "variant": "roguelike", "roguelikeMode": "campaign"},
+            ]),
+        }
+    }
+    rows = _extract_summary_stats(profile)["recentActivity"]
+    assert rows[0]["text"] == "Victoria"
+    assert rows[0]["modeLabel"] == "Combat Chess · Campaña"
+    assert rows[0]["type"] == "combat"
+    assert any(row["text"] == "Derrota" and row["modeLabel"] == "Torneo" for row in rows)
+    quick = next(row for row in rows if row["text"] == "Victoria" and row["modeLabel"] == "Rápida")
+    assert quick["modeLabel"] == "Rápida"
+    assert "5+0" in quick["detail"]
+
+
 def test_activity_heartbeat_is_protected_and_lightweight():
     assert raw_client.post("/api/auth/activity").status_code == 401
     assert client.post("/api/auth/activity").status_code == 204

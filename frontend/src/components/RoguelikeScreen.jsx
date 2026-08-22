@@ -443,14 +443,12 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     const eventOptions = campaignEventOptions(campaign);
     const map = campaignMapState;
     return (
-      <div className="menu">
+      <div className="menu combat-workspace">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section combat-campaign-shell">
           <span className="section-label">{COMBAT_CHESS_NAME} · Campaña procedural</span>
           <div className="combat-heading-row"><h2>Operación La Torre</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
-          <p className="hero-scope-note">
-            Elige ruta. Los nodos seguros conservan fuerzas; las élites pagan mejor; los eventos pueden darte inteligencia o meterte en problemas. Tu ejército y sus bajas son persistentes.
-          </p>
+          <p className="combat-operational-hint" title="Los detalles de campaña están en el tutorial. El mapa muestra rutas y tipos de nodo, pero no revela inteligencia enemiga no comprada.">Selecciona una ruta conectada.</p>
 
           <div className="campaign-status-strip">
             <span>Ruta <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
@@ -468,7 +466,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
               {campaignRelics.map((relic) => (
                 <div className="campaign-relic-chip" key={relic.id} title={relic.description}>
                   <span aria-hidden="true">{relic.icon}</span>
-                  <div><strong>{relic.label}</strong><small>{relic.description}</small></div>
+                  <div><strong>{relic.label}</strong></div>
                 </div>
               ))}
             </div>
@@ -477,7 +475,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           {campaign.phase === 'map' && map && (
             <>
               <CombatCampaignMap map={map} campaign={campaign} availableNodes={campaignAvailable} onSelect={handleCampaignNodeSelect} />
-              <p className="hint-text campaign-map-hint">Los nodos apagados no están conectados con tu posición actual. En móvil, el mapa baja por sectores para que no necesites una lupa soviética.</p>
               <div className="game-controls">
                 <button type="button" className="secondary-btn" onClick={() => finishCampaign('retired')}>Retirar la operación</button>
               </div>
@@ -498,9 +495,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <div className="tournament-result roguelike-reward-screen campaign-node-resolution">
               <span className="section-label">{selected.type === 'elite' ? 'BOTÍN ÉLITE' : 'SECTOR ASEGURADO'}</span>
               <h3>{selected.label}</h3>
-              <p className="hint-text">
-                Elige una ventaja temporal. {selected.type === 'elite' ? <><b>Élite:</b> la carta elegida entra con dos cargas y además llega un refuerzo permanente al barracón.</> : 'Se pierde al terminar la campaña.'}
-              </p>
+              <p className="combat-operational-hint" title={selected.type === 'elite' ? 'La ventaja elegida entra con dos cargas y recibes un refuerzo permanente.' : 'La ventaja dura hasta terminar la campaña.'}>Elige recompensa.</p>
               <div className="roguelike-reward-grid">
                 {rewardOptions.map((perk) => (
                   <button type="button" key={perk.id} className="roguelike-reward-card" onClick={() => handleCampaignReward(perk.id)}>
@@ -516,7 +511,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <div className="tournament-result campaign-node-resolution campaign-camp">
               <span className="section-label">CAMPAMENTO · NODO SEGURO</span>
               <h3>{selected.label}</h3>
-              <p className="hero-scope-note">Aquí no hay batalla ni bajas. Reorganiza el pelotón, incorpora un recluta de reserva permanente y elige una ventaja para el resto de la operación.</p>
+              <p className="combat-operational-hint" title="Nodo seguro: sin batalla ni bajas. Añade un recluta de reserva y una ventaja de campaña.">Reorganiza y elige ventaja.</p>
               <div className="roguelike-reward-grid">
                 {rewardOptions.map((perk) => (
                   <button type="button" key={perk.id} className="roguelike-reward-card" onClick={() => handleCampaignReward(perk.id)}>
@@ -531,7 +526,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <div className="tournament-result campaign-node-resolution campaign-event">
               <span className="section-label">EVENTO DE CAMPAÑA</span>
               <h3>{selected.label}</h3>
-              <p className="hero-scope-note">Cada incidente tiene tres respuestas. Algunas compran seguridad, otras créditos o botín, y otras pueden dejar una reliquia operativa para el resto de la campaña.</p>
+              <p className="combat-operational-hint" title="Cada respuesta tiene un coste o beneficio estratégico. Revisa el texto de cada opción antes de decidir.">Elige respuesta.</p>
               <div className="campaign-event-options">
                 {eventOptions.map((option) => (
                   <button type="button" key={option.id} className="roguelike-reward-card" onClick={() => handleCampaignEvent(option.id)}>
@@ -546,7 +541,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <div className="tournament-result roguelike-boss-victory campaign-node-resolution">
               <span className="section-label">OPERACIÓN CUMPLIDA</span>
               <h3>El Rey Viejo ha caído.</h3>
-              <p className="hero-scope-note">La ruta queda en el expediente. Las ventajas de campaña desaparecen; los veteranos, medallas y cadáveres no.</p>
+              <p className="combat-operational-hint" title="La operación se archiva. Las ventajas temporales desaparecen; roster, medallas y bajas persistentes se conservan.">Operación archivada.</p>
               <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={() => finishCampaign('completed')}>Cerrar campaña victoriosa</button>
             </div>
           )}
