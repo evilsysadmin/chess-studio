@@ -16,6 +16,10 @@ import {
   purchaseCampaignIntel,
   loadCampaign,
   resetCombatCampaign,
+  nextCampaignIntelTier,
+  campaignRelicDetails,
+  loadCampaignArchive,
+  endCampaign,
 } from './combatCampaign.js';
 
 beforeEach(() => localStorage.clear());
@@ -66,9 +70,12 @@ describe('Combat Chess campaign map', () => {
     const event = availableCampaignNodes(run).find((node) => node.type === 'event');
     expect(event).toBeTruthy();
     run = selectCampaignNode(run, event.id);
-    expect(campaignEventOptions(run).map((o) => o.id)).toEqual(['recon', 'salvage']);
-    run = resolveCampaignEvent(run, 'recon');
-    expect(run.nextDifficultyDelta).toBe(-6);
+    const options = campaignEventOptions(run);
+    expect(options).toHaveLength(3);
+    const quiet = options.find((option) => Number(option.difficultyDelta) < 0);
+    expect(quiet).toBeTruthy();
+    run = resolveCampaignEvent(run, quiet.id);
+    expect(run.nextDifficultyDelta).toBeLessThan(0);
     const nextBattle = availableCampaignNodes(run).find((node) => ['battle', 'elite'].includes(node.type));
     if (nextBattle) expect(campaignDifficulty(run, nextBattle)).toBe(nextBattle.baseDifficulty - 6);
   });
@@ -100,6 +107,44 @@ describe('Combat Chess campaign map', () => {
     expect(run.operationalCredits).toBe(before + 4);
     const twice = markCampaignBattleWon(run);
     expect(twice).toEqual(run);
+  });
+
+
+  it('las reliquias operativas cambian economía e intel sin tocar el tablero', () => {
+    let run = startCampaign('relics');
+    run = { ...run, relicIds: ['fieldCipher', 'quartermasterSeal'] };
+    localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(run));
+    run = loadCampaign();
+    expect(campaignRelicDetails(run).map((row) => row.id)).toEqual(expect.arrayContaining(['fieldCipher', 'quartermasterSeal']));
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    expect(nextCampaignIntelTier(run).cost).toBe(1);
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    const before = run.operationalCredits;
+    run = markCampaignBattleWon(run);
+    expect(run.operationalCredits).toBe(before + 6);
+  });
+
+  it('migra campañas v2 sin inventar reliquias', () => {
+    const v2 = { ...startCampaign('legacy-v2'), version: 2 };
+    delete v2.relicIds;
+    localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(v2));
+    const migrated = loadCampaign();
+    expect(migrated.version).toBe(3);
+    expect(migrated.relicIds).toEqual([]);
+  });
+
+  it('archiva una operación terminada con ruta, reliquias y saldo real', () => {
+    let run = startCampaign('archive');
+    run = { ...run, relicIds:['fieldCipher'], operationalCredits:9 };
+    localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(run));
+    run = loadCampaign();
+    const result = endCampaign(run, 'retired');
+    expect(result.archiveEntry).toBeTruthy();
+    const archive = loadCampaignArchive();
+    expect(archive).toHaveLength(1);
+    expect(archive[0]).toMatchObject({ reason:'retired', credits:9, relicIds:['fieldCipher'] });
   });
 
   it('reset elimina el intento de campaña', () => {

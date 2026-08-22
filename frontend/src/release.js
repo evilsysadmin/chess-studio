@@ -1,2 +1,2 @@
-export const APP_RELEASE = 'v16.6bu';
-export const RELEASE_PURPOSE = 'Audio UX 2.0 + Combat debrief + barracks + deployment presets';
+export const APP_RELEASE = 'v16.6by';
+export const RELEASE_PURPOSE = 'Test suite audit + centralized critical gates + deterministic regression hardening';

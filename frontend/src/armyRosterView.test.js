@@ -1,3 +1,4 @@
+// STATIC CONTRACT: inspecciona wiring/markup/CSS deliberadamente; no sustituye tests de comportamiento.
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,10 +9,12 @@ const campaignSource = fs.readFileSync(path.resolve(process.cwd(), 'src/componen
 const serviceSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/CombatServicePanel.jsx'), 'utf8');
 
 describe('roster visual completo de Combat Chess', () => {
-  it('muestra los 16 slots, incluido el rey, sin filtrar reclutas sin progreso', () => {
+  it('muestra los 16 slots canónicos, incluido el rey, y un barracón de tamaño dinámico', () => {
     expect(source).toContain('CANONICAL_ROSTER_SLOTS.map');
     expect(source).not.toContain("CANONICAL_ROSTER_SLOTS.filter((slot) => slot.type !== 'k')");
-    expect(source).toContain('16 unidades');
+    expect(source).toContain('deploymentSummary(roster)');
+    expect(source).toContain('deploy.totalRoster');
+    expect(source).toContain('deploy.reserveCount');
     expect(source).toContain("isKing ? 'MANDO'");
   });
 

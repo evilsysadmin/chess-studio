@@ -39,6 +39,8 @@ import {
   purchaseCampaignIntel,
   endCampaign,
   loadCampaignBestStage,
+  campaignRelicDetails,
+  loadCampaignArchive,
 } from '../combatCampaign.js';
 import {
   loadRun,
@@ -64,6 +66,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [campaign, setCampaign] = useState(() => loadCampaign());
   const [campaignBestStage, setCampaignBestStage] = useState(() => loadCampaignBestStage());
   const [campaignEndResult, setCampaignEndResult] = useState(null);
+  const [campaignArchive, setCampaignArchive] = useState(() => loadCampaignArchive());
   const [bestFloor, setBestFloor] = useState(() => loadBestFloor());
   const [towerCompleted, setTowerCompleted] = useState(() => loadTowerCompleted());
   const [endResult, setEndResult] = useState(null); // { type, reached, newBest }
@@ -121,6 +124,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     () => (campaign.perks || []).map(perkById).filter(Boolean),
     [campaign.perks],
   );
+  const campaignRelics = useMemo(() => campaignRelicDetails(campaign), [campaign]);
 
   const initialFen = useMemo(() => {
     if (!encounter) return null;
@@ -162,6 +166,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setCombatSessionActive(false);
     setCampaign(loadCampaign());
     setCampaignEndResult(result);
+    setCampaignArchive(loadCampaignArchive());
   }
 
   function handleCampaignBattleResult(outcome, debrief = null) {
@@ -452,10 +457,22 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <span>Ventajas <b>{campaign.perks.length}</b></span>
             <span>Barracón <b>{deploymentSummary(roster).totalRoster}</b></span>
             <span>Créditos <b>{campaign.operationalCredits}</b></span>
+            <span>Reliquias <b>{campaignRelics.length}</b></span>
             <span>Modif. siguiente <b>{campaign.nextDifficultyDelta === 0 ? 'ninguno' : `${campaign.nextDifficultyDelta > 0 ? '+' : ''}${campaign.nextDifficultyDelta} CPU`}</b></span>
           </div>
 
           {battleDebrief && <CombatDebrief debrief={battleDebrief} compact onViewBattle={onViewBattle} />}
+
+          {campaignRelics.length > 0 && (
+            <div className="campaign-relic-rack" aria-label="Reliquias operativas de campaña">
+              {campaignRelics.map((relic) => (
+                <div className="campaign-relic-chip" key={relic.id} title={relic.description}>
+                  <span aria-hidden="true">{relic.icon}</span>
+                  <div><strong>{relic.label}</strong><small>{relic.description}</small></div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {campaign.phase === 'map' && map && (
             <>
@@ -514,7 +531,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <div className="tournament-result campaign-node-resolution campaign-event">
               <span className="section-label">EVENTO DE CAMPAÑA</span>
               <h3>{selected.label}</h3>
-              <p className="hero-scope-note">No hay una respuesta gratis: el reconocimiento silencioso reduce la dificultad del siguiente combate; saquear suministros da botín pero genera ruido.</p>
+              <p className="hero-scope-note">Cada incidente tiene tres respuestas. Algunas compran seguridad, otras créditos o botín, y otras pueden dejar una reliquia operativa para el resto de la campaña.</p>
               <div className="campaign-event-options">
                 {eventOptions.map((option) => (
                   <button type="button" key={option.id} className="roguelike-reward-card" onClick={() => handleCampaignEvent(option.id)}>
@@ -588,6 +605,24 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         {campaignBestStage > 0 && <p className="hint-text">Mejor sector de campaña alcanzado: <b>{campaignBestStage}/7</b></p>}
         {bestFloor > 0 && <p className="hint-text">Marca histórica de La Torre clásica: <b>piso {bestFloor}</b></p>}
         {towerCompleted && <p className="hint-text roguelike-completed-mark">✓ Torre completada al menos una vez · infinito desbloqueado</p>}
+
+        {campaignArchive.length > 0 && (
+          <details className="campaign-operation-archive">
+            <summary>Archivo de operaciones · {campaignArchive.length}</summary>
+            <div className="campaign-operation-list">
+              {campaignArchive.slice(0, 6).map((operation) => (
+                <div className="campaign-operation-row" key={operation.id}>
+                  <span className={`campaign-operation-result ${operation.reason}`}>{operation.reason === 'completed' ? '✓' : operation.reason === 'retired' ? '↩' : '×'}</span>
+                  <div>
+                    <strong>{operation.reason === 'completed' ? 'Operación completada' : operation.reason === 'retired' ? 'Retirada' : operation.reason === 'interrupted' ? 'Interrumpida' : 'Operación perdida'}</strong>
+                    <small>Sector {operation.stage}/7 · {operation.cleared} nodos · {operation.relicIds?.length || 0} reliquias · {operation.credits} créditos</small>
+                    <span>{(operation.routeLabels || []).slice(1).join(' → ') || 'Sin salir de la base'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
 
         {!run.inRun && !endResult && !campaignEndResult && (
           <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={handleStartCampaign}>

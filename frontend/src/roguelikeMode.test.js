@@ -63,8 +63,9 @@ describe('encuentros Roguelike', () => {
   });
 
   it('misma seed+piso = mismo encuentro', () => {
-    expect(modifierForRun('garrafa-claude', 7)).toEqual(modifierForRun('garrafa-claude', 7));
-    expect(seededUnit('garrafa-claude', 7)).toBe(seededUnit('garrafa-claude', 7));
+    expect(modifierForRun('garrafa-claude', 7).id).toBe('extra_queen');
+    expect(seededUnit('garrafa-claude', 7)).toBeCloseTo(0.8593932103831321, 12);
+    expect(seededUnit('garrafa-claude', 8)).not.toBe(seededUnit('garrafa-claude', 7));
   });
 
   it('los pisos señalados tienen identidad fija', () => {

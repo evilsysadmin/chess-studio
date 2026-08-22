@@ -44,9 +44,11 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     title: 'Campaña táctica',
     summary: 'Ruta, eventos, campamentos, élites, reservas y boss.',
     steps: [
-      { title: 'Elige la ruta', text: 'Cada sector ofrece nodos conectados: combates, élites, eventos o campamentos. La elección afecta riesgo, botín e inteligencia.' },
+      { title: 'Lee el mapa completo', text: 'La operación muestra los siete sectores, sus tres carriles y todas las bifurcaciones. La línea dorada marca tu ruta recorrida y las conexiones activas enseñan únicamente los destinos accesibles.' },
+      { title: 'Elige la ruta', text: 'Combates, élites, eventos y campamentos se ven de antemano, pero la dificultad exacta, los modificadores y los datos del boss siguen ocultos hasta comprar inteligencia.' },
       { title: 'El barracón persiste', text: 'Los veteranos, reservas, rangos y bajas sobreviven a la campaña. Las ventajas de campaña son temporales.' },
       { title: 'Las élites pagan mejor', text: 'Una victoria élite entrega más créditos operativos, mejores recompensas y puede ampliar el barracón con un refuerzo.' },
+      { title: 'Reliquias operativas', text: 'Algunos eventos y élites dejan equipo estratégico que abarata intel, mejora créditos o reduce ruido. Dura sólo durante esa operación y no cambia cómo se mueve ninguna pieza.' },
       { title: 'El Rey Viejo rompe el final estándar', text: 'El boss usa HP. Los detalles exactos aparecen en su dossier cuando compras suficiente inteligencia.' },
     ],
   },

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Chess } from 'chess.js';
 import {
   hitChance,
@@ -306,15 +306,14 @@ describe('resolveCombatMove — reglas de integridad del ajedrez', () => {
     expect(candidate).toBeTruthy();
     expect(chess.isCheckmate()).toBe(true);
 
-    const originalRandom = Math.random;
-    Math.random = () => 0.999999; // incluso el peor roll no puede desmontar el mate
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.999999); // incluso el peor roll no puede desmontar el mate
     try {
       const result = resolveCombatMove({ fen, registry, from: 'h3', to: 'h7', focusStreak: 0 });
       expect(result.hit).toBe(true);
       expect(result.chance).toBe(1);
       expect(new Chess(result.fen).isCheckmate()).toBe(true);
     } finally {
-      Math.random = originalRandom;
+      randomSpy.mockRestore();
     }
   });
 
@@ -329,13 +328,14 @@ describe('resolveCombatMove — reglas de integridad del ajedrez', () => {
       e4: { id: 'w-p-e2', type: 'p', color: 'w', square: 'e4', strengthPoints: 0, speedPoints: 0, bankedXp: 0 },
       d5: { id: 'b-p-d7', type: 'p', color: 'b', square: 'd5', strengthPoints: 0, speedPoints: 0, bankedXp: 0 },
     };
-    const originalRandom = Math.random;
-    Math.random = () => 0; // fuerza acierto
-    const result = resolveCombatMove({ fen, registry, from: 'e4', to: 'd5', promotion: 'q', focusStreak: 0 });
-    Math.random = originalRandom;
-
-    expect(result.hit).toBe(true);
-    expect(result.registry.d5.bankedXp).toBe(1); // valor de un peón
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0); // fuerza acierto
+    try {
+      const result = resolveCombatMove({ fen, registry, from: 'e4', to: 'd5', promotion: 'q', focusStreak: 0 });
+      expect(result.hit).toBe(true);
+      expect(result.registry.d5.bankedXp).toBe(1); // valor de un peón
+    } finally {
+      randomSpy.mockRestore();
+    }
   });
 
   it('un esquive banca XP de supervivencia en el defensor y no mueve nada', () => {
@@ -346,15 +346,16 @@ describe('resolveCombatMove — reglas de integridad del ajedrez', () => {
       e4: { id: 'w-p-e2', type: 'p', color: 'w', square: 'e4', strengthPoints: 0, speedPoints: 0, bankedXp: 0 },
       d5: { id: 'b-p-d7', type: 'p', color: 'b', square: 'd5', strengthPoints: 0, speedPoints: 0, bankedXp: 0 },
     };
-    const originalRandom = Math.random;
-    Math.random = () => 0.999; // fuerza fallo
-    const result = resolveCombatMove({ fen, registry, from: 'e4', to: 'd5', promotion: 'q', focusStreak: 0 });
-    Math.random = originalRandom;
-
-    expect(result.hit).toBe(false);
-    expect(result.registry.d5.bankedXp).toBeGreaterThan(0);
-    const afterChess = new Chess(result.fen);
-    expect(afterChess.get('e4')).toBeTruthy(); // el movimiento NO se aplicó
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.999); // fuerza fallo
+    try {
+      const result = resolveCombatMove({ fen, registry, from: 'e4', to: 'd5', promotion: 'q', focusStreak: 0 });
+      expect(result.hit).toBe(false);
+      expect(result.registry.d5.bankedXp).toBeGreaterThan(0);
+      const afterChess = new Chess(result.fen);
+      expect(afterChess.get('e4')).toBeTruthy(); // el movimiento NO se aplicó
+    } finally {
+      randomSpy.mockRestore();
+    }
   });
 });
 

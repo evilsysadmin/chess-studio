@@ -1,3 +1,4 @@
+// STATIC CONTRACT: inspecciona wiring/markup/CSS deliberadamente; no sustituye tests de comportamiento.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 

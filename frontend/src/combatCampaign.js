@@ -3,7 +3,7 @@ import { perkById, rewardOptionsForFloor } from './roguelikePerks.js';
 import { ROGUELIKE_MODIFIERS, seededUnit } from './roguelikeModifiers.js';
 import { ROGUELIKE_BOSS } from './roguelikeBoss.js';
 
-// Combat Chess · campaña procedural v2 (briefing + economía de inteligencia).
+// Combat Chess · campaña procedural v3 (mapa estratégico + intel + reliquias operativas).
 //
 // La campaña vive separada del antiguo intento lineal de La Torre para poder
 // migrar sin romper partidas guardadas. El mapa NO se persiste entero: seed +
@@ -11,10 +11,11 @@ import { ROGUELIKE_BOSS } from './roguelikeBoss.js';
 
 const KEY = 'chess-study-combat-campaign-v1';
 const BEST_STAGE_KEY = 'chess-study-combat-campaign-best-stage';
+const OPERATION_ARCHIVE_KEY = 'chess-study-combat-operation-archive-v1';
 const TOWER_COMPLETED_KEY = 'chess-study-roguelike-tower-completed';
 const BEST_FLOOR_KEY = 'chess-study-roguelike-best-floor';
 
-export const CAMPAIGN_VERSION = 2;
+export const CAMPAIGN_VERSION = 3;
 export const CAMPAIGN_BOSS_STAGE = 7;
 
 export const CAMPAIGN_INTEL_TIERS = Object.freeze([
@@ -26,6 +27,23 @@ export const CAMPAIGN_INTEL_TIERS = Object.freeze([
 
 const CAMPAIGN_STARTING_CREDITS = 6;
 const BATTLE_CREDIT_REWARD = Object.freeze({ battle: 4, elite: 7, boss: 12 });
+
+export const CAMPAIGN_RELICS = Object.freeze([
+  { id: 'fieldCipher', icon: '⌁', label: 'Cifrador de campaña', description: 'La inteligencia cuesta 2 créditos menos (mínimo 1).' },
+  { id: 'forwardObserver', icon: '⌖', label: 'Óptica del observador', description: 'Al seleccionar un combate obtienes Contacto automáticamente.' },
+  { id: 'quartermasterSeal', icon: '▣', label: 'Sello de intendencia', description: 'Cada victoria de campaña entrega +2 créditos operativos.' },
+  { id: 'silentBoots', icon: '⌁', label: 'Equipo de infiltración', description: 'El ruido positivo generado por eventos se reduce en 2.' },
+  { id: 'kingDossier', icon: '♚', label: 'Dossier del Rey Viejo', description: 'El boss final tiene −4 de dificultad estratégica.' },
+  { id: 'campLedger', icon: '✚', label: 'Libro de retaguardia', description: 'Cada campamento completado recupera +3 créditos.' },
+]);
+const CAMPAIGN_RELIC_BY_ID = Object.fromEntries(CAMPAIGN_RELICS.map((relic) => [relic.id, relic]));
+
+export function campaignRelicDetails(state) {
+  return (state?.relicIds || []).map((id) => CAMPAIGN_RELIC_BY_ID[id]).filter(Boolean);
+}
+
+function hasRelic(state, relicId) { return (state?.relicIds || []).includes(relicId); }
+function intelTierCost(state, baseCost) { return Math.max(1, baseCost - (hasRelic(state, 'fieldCipher') ? 2 : 0)); }
 const MODIFIER_META = Object.fromEntries(ROGUELIKE_MODIFIERS.map((modifier) => [modifier.id, modifier]));
 
 function clampIntelLevel(level) {
@@ -38,7 +56,8 @@ export function campaignIntelLevel(state, nodeId = state?.selectedNodeId) {
 
 export function nextCampaignIntelTier(state, nodeId = state?.selectedNodeId) {
   const current = campaignIntelLevel(state, nodeId);
-  return CAMPAIGN_INTEL_TIERS.find((tier) => tier.level === current + 1) || null;
+  const tier = CAMPAIGN_INTEL_TIERS.find((row) => row.level === current + 1) || null;
+  return tier ? { ...tier, baseCost: tier.cost, cost: intelTierCost(state, tier.cost) } : null;
 }
 
 export function purchaseCampaignIntel(state, nodeId = state?.selectedNodeId) {
@@ -247,13 +266,14 @@ function emptyCampaign() {
     nextDifficultyDelta: 0,
     operationalCredits: CAMPAIGN_STARTING_CREDITS,
     intelligenceByNode: {},
+    relicIds: [],
     eventLog: [],
   };
 }
 
 function normalizeCampaign(raw) {
   const base = emptyCampaign();
-  if (!raw || typeof raw !== 'object' || ![1, CAMPAIGN_VERSION].includes(raw.version)) return base;
+  if (!raw || typeof raw !== 'object' || ![1, 2, CAMPAIGN_VERSION].includes(raw.version)) return base;
   const seed = raw.active ? String(raw.seed || 'legacy-campaign') : null;
   const map = seed ? campaignMap(seed) : null;
   const validIds = new Set(map?.nodes.map((node) => node.id) || ['start']);
@@ -276,7 +296,8 @@ function normalizeCampaign(raw) {
     intelligenceByNode: raw.intelligenceByNode && typeof raw.intelligenceByNode === 'object'
       ? Object.fromEntries(Object.entries(raw.intelligenceByNode).filter(([id]) => validIds.has(id)).map(([id, level]) => [id, clampIntelLevel(level)]))
       : {},
-    eventLog: Array.isArray(raw.eventLog) ? raw.eventLog.slice(-20) : [],
+    relicIds: Array.isArray(raw.relicIds) ? [...new Set(raw.relicIds.filter((id) => CAMPAIGN_RELIC_BY_ID[id]))].slice(0, CAMPAIGN_RELICS.length) : [],
+    eventLog: Array.isArray(raw.eventLog) ? raw.eventLog.slice(-30) : [],
   };
 }
 
@@ -319,7 +340,11 @@ export function selectCampaignNode(state, nodeId) {
   const node = available.find((candidate) => candidate.id === nodeId);
   if (!node) return state;
   const phase = node.type === 'event' ? 'event' : node.type === 'camp' ? 'camp' : 'briefing';
-  return saveCampaign({ ...state, phase, selectedNodeId: node.id, rewardChosenForNode: null });
+  const intelligenceByNode = { ...(state.intelligenceByNode || {}) };
+  if (hasRelic(state, 'forwardObserver') && ['battle', 'elite', 'boss'].includes(node.type)) {
+    intelligenceByNode[node.id] = Math.max(1, clampIntelLevel(intelligenceByNode[node.id]));
+  }
+  return saveCampaign({ ...state, phase, selectedNodeId: node.id, rewardChosenForNode: null, intelligenceByNode });
 }
 
 export function markCampaignBattleStarted(state) {
@@ -347,13 +372,17 @@ function markNodeCleared(state, extras = {}) {
 export function markCampaignBattleWon(state) {
   const node = campaignNode(state);
   if (!state?.active || state.phase !== 'fighting' || !node) return state;
-  const earned = BATTLE_CREDIT_REWARD[node.type] || 0;
+  const earned = (BATTLE_CREDIT_REWARD[node.type] || 0) + (hasRelic(state, 'quartermasterSeal') ? 2 : 0);
+  const dossierEarned = node.type === 'elite' && node.stage >= 5 && !hasRelic(state, 'kingDossier');
   const credited = {
     ...state,
+    relicIds: dossierEarned ? [...new Set([...(state.relicIds || []), 'kingDossier'])] : [...(state.relicIds || [])],
     operationalCredits: Math.max(0, (Number(state.operationalCredits) || 0) + earned),
-    eventLog: earned > 0
-      ? [...(state.eventLog || []), `Objetivo cumplido: +${earned} créditos operativos`].slice(-20)
-      : [...(state.eventLog || [])],
+    eventLog: [
+      ...(state.eventLog || []),
+      ...(earned > 0 ? [`Objetivo cumplido: +${earned} créditos operativos`] : []),
+      ...(dossierEarned ? ['Intel élite recuperada: Dossier del Rey Viejo'] : []),
+    ].slice(-30),
   };
   if (node.type === 'boss') {
     localStorage.setItem(TOWER_COMPLETED_KEY, '1');
@@ -380,28 +409,57 @@ export function chooseCampaignReward(state, perkId) {
   const stacks = state.phase === 'reward' && node.type === 'elite' ? 2 : 1;
   const perks = [...(state.perks || []), ...Array.from({ length: stacks }, () => perkId)];
   const label = node.type === 'elite' ? `Botín élite: ${perkById(perkId).label} ×2` : `${node.type === 'camp' ? 'Campamento' : 'Botín'}: ${perkById(perkId).label}`;
-  return markNodeCleared({ ...state, perks, rewardChosenForNode: node.id }, {
+  const campCredits = state.phase === 'camp' && hasRelic(state, 'campLedger') ? 3 : 0;
+  return markNodeCleared({
+    ...state,
+    perks,
+    rewardChosenForNode: node.id,
+    operationalCredits: (Number(state.operationalCredits) || 0) + campCredits,
+  }, {
     phase: 'map',
-    eventLog: [...(state.eventLog || []), label].slice(-20),
+    eventLog: [...(state.eventLog || []), `${label}${campCredits ? ` · +${campCredits} créditos de retaguardia` : ''}`].slice(-30),
   });
+}
+
+export function campaignEventArchetype(node) {
+  const label = String(node?.label || '').toLowerCase();
+  if (label.includes('radio')) return 'radio';
+  if (label.includes('depósito')) return 'depot';
+  if (label.includes('exploradores')) return 'scouts';
+  return 'convoy';
+}
+
+function relicChoice(state, relicId, fallbackCredits = 3) {
+  const relic = CAMPAIGN_RELIC_BY_ID[relicId];
+  if (!relic) return {};
+  if (hasRelic(state, relicId)) return { credits: fallbackCredits, duplicateRelic: relicId };
+  return { relicId };
 }
 
 export function campaignEventOptions(state) {
   const node = campaignNode(state);
   if (!node || state.phase !== 'event') return [];
+  const archetype = campaignEventArchetype(node);
   const supplyPerk = rewardOptionsForFloor(state.seed, node.floor + 37)[0];
+  if (archetype === 'radio') return [
+    { id:'decrypt', label:'Descifrar el tráfico', description:'Obtienes el Cifrador de campaña. Si ya lo tienes, recuperas 4 créditos.', ...relicChoice(state, 'fieldCipher', 4) },
+    { id:'jam', label:'Interferir la red', description:'Silencias coordinación enemiga: −5 de dificultad en el próximo combate.', difficultyDelta:-5 },
+    { id:'trace', label:'Rastrear al operador', description:'Obtienes Óptica del observador, pero la búsqueda genera ruido: +2 al próximo combate.', difficultyDelta:2, ...relicChoice(state, 'forwardObserver', 4) },
+  ];
+  if (archetype === 'depot') return [
+    { id:'inventory', label:'Inventariar y marcharse', description:'Trabajo aburrido, resultado excelente: +6 créditos sin alterar la amenaza.', credits:6 },
+    { id:'salvage', label:`Vaciar el depósito · ${supplyPerk.label}`, description:'Obtienes una ventaja temporal, pero haces ruido: +4 al próximo combate.', difficultyDelta:4, perkId:supplyPerk.id },
+    { id:'ledger', label:'Recuperar libro logístico', description:'Obtienes Libro de retaguardia. Si ya lo tienes, +4 créditos.', ...relicChoice(state, 'campLedger', 4) },
+  ];
+  if (archetype === 'scouts') return [
+    { id:'shadow', label:'Seguirlos sin contacto', description:'Aprendes la ruta enemiga: −6 de dificultad en el próximo combate.', difficultyDelta:-6 },
+    { id:'seizeMaps', label:'Confiscar sus mapas', description:'Obtienes Equipo de infiltración, pero el forcejeo deja +3 de ruido.', difficultyDelta:3, ...relicChoice(state, 'silentBoots', 4) },
+    { id:'trade', label:'Intercambiar información', description:'Sin bajas ni heroicidades: +4 créditos operativos.', credits:4 },
+  ];
   return [
-    {
-      id: 'recon',
-      label: 'Reconocimiento silencioso',
-      description: 'El próximo combate empieza con −6 de dificultad base. Sin botín.',
-    },
-    {
-      id: 'salvage',
-      label: `Saquear suministros · ${supplyPerk.label}`,
-      description: 'Ganas esa ventaja ahora, pero haces ruido: +4 de dificultad base en el próximo combate.',
-      perkId: supplyPerk.id,
-    },
+    { id:'recon', label:'Reconocimiento silencioso', description:'Rodeas el convoy sin tocarlo: −6 de dificultad en el próximo combate.', difficultyDelta:-6 },
+    { id:'salvage', label:`Saquear suministros · ${supplyPerk.label}`, description:'Ganas una ventaja temporal, pero haces ruido: +4 al próximo combate.', difficultyDelta:4, perkId:supplyPerk.id },
+    { id:'manifest', label:'Recuperar el manifiesto', description:'Obtienes Sello de intendencia. Si ya lo tienes, +4 créditos.', ...relicChoice(state, 'quartermasterSeal', 4) },
   ];
 }
 
@@ -411,24 +469,70 @@ export function resolveCampaignEvent(state, choiceId) {
   const option = campaignEventOptions(state).find((item) => item.id === choiceId);
   if (!option) return state;
   const perks = option.perkId ? [...(state.perks || []), option.perkId] : [...(state.perks || [])];
-  const delta = choiceId === 'recon' ? -6 : 4;
-  return markNodeCleared({ ...state, perks }, {
+  const relicIds = option.relicId ? [...new Set([...(state.relicIds || []), option.relicId])] : [...(state.relicIds || [])];
+  const rawDelta = Number(option.difficultyDelta) || 0;
+  const delta = rawDelta > 0 && hasRelic(state, 'silentBoots') ? Math.max(0, rawDelta - 2) : rawDelta;
+  const credits = Math.max(0, Number(option.credits) || 0);
+  const rewardBits = [option.label];
+  if (option.relicId) rewardBits.push(`reliquia: ${CAMPAIGN_RELIC_BY_ID[option.relicId]?.label}`);
+  if (option.duplicateRelic) rewardBits.push(`duplicada → +${credits} créditos`);
+  else if (credits) rewardBits.push(`+${credits} créditos`);
+  if (delta) rewardBits.push(`${delta > 0 ? '+' : ''}${delta} amenaza siguiente`);
+  if (option.perkId) rewardBits.push(perkById(option.perkId)?.label || 'botín');
+  return markNodeCleared({
+    ...state,
+    perks,
+    relicIds,
+    operationalCredits: (Number(state.operationalCredits) || 0) + credits,
+  }, {
     phase: 'map',
     nextDifficultyDelta: Math.max(-12, Math.min(12, (state.nextDifficultyDelta || 0) + delta)),
-    eventLog: [...(state.eventLog || []), choiceId === 'recon' ? 'Reconocimiento: −6 al próximo combate' : `Suministros: ${perkById(option.perkId)?.label || 'botín'} · +4 al próximo combate`].slice(-20),
+    eventLog: [...(state.eventLog || []), rewardBits.join(' · ')].slice(-30),
   });
 }
 
 export function campaignDifficulty(state, node = campaignNode(state)) {
   if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return 0;
-  return Math.max(5, Math.min(95, node.baseDifficulty + (Number(state?.nextDifficultyDelta) || 0)));
+  const bossDelta = node.type === 'boss' && hasRelic(state, 'kingDossier') ? -4 : 0;
+  return Math.max(5, Math.min(95, node.baseDifficulty + (Number(state?.nextDifficultyDelta) || 0) + bossDelta));
+}
+
+
+export function loadCampaignArchive() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(OPERATION_ARCHIVE_KEY) || '[]');
+    return Array.isArray(raw) ? raw.slice(0, 12) : [];
+  } catch { return []; }
+}
+
+function archiveCampaignOperation(state, reason, stage) {
+  if (!state?.seed || !state?.active) return null;
+  const map = campaignMap(state.seed);
+  const byId = new Map(map.nodes.map((node) => [node.id, node]));
+  const route = [...(state.route || ['start'])];
+  const entry = {
+    id: `${state.seed}:${Date.now()}`,
+    seed: state.seed,
+    endedAt: Date.now(),
+    reason,
+    stage,
+    route,
+    routeLabels: route.map((id) => byId.get(id)?.label || id),
+    relicIds: [...(state.relicIds || [])],
+    credits: Math.max(0, Number(state.operationalCredits) || 0),
+    cleared: (state.clearedNodeIds || []).length,
+  };
+  const next = [entry, ...loadCampaignArchive()].slice(0, 12);
+  setProfileStorageItem(OPERATION_ARCHIVE_KEY, JSON.stringify(next));
+  return entry;
 }
 
 export function endCampaign(state, reason = 'retired') {
   const node = campaignNode(state, state?.selectedNodeId || state?.currentNodeId);
   const stage = Math.max(0, Number(node?.stage) || 0);
   if (stage > loadCampaignBestStage()) setProfileStorageItem(BEST_STAGE_KEY, String(stage));
-  const result = { reason, stage, route: [...(state?.route || ['start'])] };
+  const archiveEntry = archiveCampaignOperation(state, reason, stage);
+  const result = { reason, stage, route: [...(state?.route || ['start'])], archiveEntry };
   saveCampaign(emptyCampaign());
   return result;
 }
@@ -441,4 +545,5 @@ export function loadCampaignBestStage() {
 export function resetCombatCampaign() {
   removeProfileStorageItem(KEY);
   removeProfileStorageItem(BEST_STAGE_KEY);
+  removeProfileStorageItem(OPERATION_ARCHIVE_KEY);
 }

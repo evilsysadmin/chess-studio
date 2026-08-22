@@ -23,9 +23,16 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        headers = {bytes(k).lower(): bytes(v) for k, v in scope.get("headers", [])}
-        raw_content_length = headers.get(b"content-length")
-        if raw_content_length is not None:
+        header_pairs = [(bytes(k).lower(), bytes(v)) for k, v in scope.get("headers", [])]
+        content_lengths = [value for key, value in header_pairs if key == b"content-length"]
+        if content_lengths:
+            # Cabeceras Content-Length contradictorias son un patrón clásico de
+            # request smuggling: distintos proxies pueden elegir valores distintos.
+            # Aceptamos duplicados idénticos, pero cualquier discrepancia falla cerrado.
+            if len(set(content_lengths)) > 1:
+                await self._reject(scope, receive, send, 400, "Content-Length contradictorio.")
+                return
+            raw_content_length = content_lengths[0]
             try:
                 declared = int(raw_content_length.decode("ascii"))
             except (UnicodeDecodeError, ValueError):

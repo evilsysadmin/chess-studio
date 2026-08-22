@@ -1,3 +1,4 @@
+// STATIC CONTRACT: inspecciona wiring/markup/CSS deliberadamente; no sustituye tests de comportamiento.
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +22,7 @@ const admin = read('src/components/AdminScreen.jsx');
 // preparar una release desde un baseline viejo.
 describe('continuidad acumulativa de release', () => {
   it('identifica inequívocamente la release desplegada', () => {
-    expect(APP_RELEASE).toBe('v16.6bu');
+    expect(APP_RELEASE).toBe('v16.6by');
     expect(admin).toContain("import { APP_RELEASE } from '../release.js';");
     expect(admin).toContain('Release: <code>{APP_RELEASE}</code>');
   });
@@ -30,8 +31,7 @@ describe('continuidad acumulativa de release', () => {
     expect(army).toContain('CANONICAL_ROSTER_SLOTS.map');
     expect(army).toContain('deploy.totalRoster');
     expect(army).toContain('deploy.reserveCount');
-    expect(army).toContain('title={alias}');
-    expect(army).toContain('Vista táctica en tres filas');
+    expect(army).toContain('aria-label={`Abrir expediente de ${alias}`}');
     expect(army).not.toContain('Expediente →');
     expect(styles).toContain('grid-template-columns: repeat(6, minmax(0, 1fr));');
     expect(styles).toContain('.army-roster-grid > :nth-child(13) { grid-column: 2; }');
@@ -45,10 +45,10 @@ describe('continuidad acumulativa de release', () => {
     const deploymentView = read('src/components/CombatDeploymentView.jsx');
     const balance = read('src/combatBalance.js');
     expect(deploymentView).toContain('<Board');
-    expect(deploymentView).toContain('COMBAT CHESS · MESA DE GUERRA');
+    expect(deploymentView).toContain('deploymentSummary(roster)');
     expect(deployment).toContain('return originType === slot.type');
     expect(deployment).toContain('grantReserveRecruit');
-    expect(balance).toContain('reservas no pagan impuesto de amenaza');
+    expect(balance).toContain('export function combatArmyThreat');
   });
 
   it('conserva la separación entre carrera global y unidades individuales', () => {
@@ -61,6 +61,7 @@ describe('continuidad acumulativa de release', () => {
   it('conserva campaña persistente y glosario contextual', () => {
     expect(profileKeys).toContain("'chess-study-combat-campaign-v1'");
     expect(profileKeys).toContain("'chess-study-combat-campaign-best-stage'");
+    expect(profileKeys).toContain("'chess-study-combat-operation-archive-v1'");
     expect(profileKeys).toContain("'chess-study-zen-mode'");
     expect(glossary).toContain('glossary-term');
   });
@@ -86,8 +87,9 @@ describe('continuidad acumulativa de release', () => {
     const roster = read('src/combatRoster.js');
     const army = read('src/components/ArmyScreen.jsx');
     const app = read('src/App.jsx');
-    expect(menu).toContain('<h3>Historial de partidas</h3>');
-    expect(menu).toContain('<h3>Panel de admin</h3>');
+    expect(menu).toContain('onClick={onHistory}');
+    expect(menu).toContain('{isAdminUser && (');
+    expect(menu).toContain('onClick={onAdmin}');
     expect(roster).toContain('export function renameRosterIdentity');
     expect(army).toContain('Renombrar unidad');
     expect(app).toContain('ESC o clic derecho · volver / cerrar');
@@ -103,8 +105,8 @@ describe('continuidad acumulativa de release', () => {
     expect(campaignCore).toContain('operationalCredits');
     expect(campaignCore).toContain('purchaseCampaignIntel');
     expect(campaignCore).toContain("phase: 'battle'");
-    expect(deploymentView).toContain('Auto · veteranos');
-    expect(deploymentView).toContain('Buscar alias');
+    expect(deploymentView).toContain('onAutoFill?.(true)');
+    expect(deploymentView).toContain('aria-label="Buscar unidad"');
     expect(tutorials).toContain("id: 'combat-intelligence'");
     expect(army).toContain('tutorialId="combat-metamorphosis"');
     expect(learning).toContain('Modos especiales');
@@ -129,10 +131,10 @@ describe('continuidad acumulativa de release', () => {
     expect(careerVisuals).toContain('buildCareerHeatmaps');
     expect(careerVisuals).toContain('deriveRpgProfile');
     expect(daily).toContain('activeStreakFromDates');
-    expect(replay).toContain("PELÍCULA DE LA PARTIDA · DIRECTOR'S CUT");
+    expect(replay).toContain('const [movieSpeed, setMovieSpeed]');
     expect(replay).toContain('criticalMoments');
     expect(spectator).toContain("mode = 'silence'");
-    expect(game).toContain('Grada anónima');
+    expect(game).toContain("import { noteworthyPresentation } from '../spectatorReactions.js';");
   });
 
 });

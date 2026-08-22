@@ -101,3 +101,36 @@ def test_rejects_malformed_or_negative_content_length():
         sent = run_asgi(middleware, headers=[(b"content-length", value)])
         assert response_status(sent) == 400
         assert response_json(sent)["detail"] == "Content-Length inválido."
+
+
+def test_rejects_conflicting_duplicate_content_length_headers():
+    async def app(scope, receive, send):
+        raise AssertionError("downstream no debe ejecutarse con longitudes contradictorias")
+
+    middleware = RequestBodyLimitMiddleware(app, max_bytes=8)
+    sent = run_asgi(
+        middleware,
+        headers=[(b"content-length", b"4"), (b"content-length", b"9")],
+        messages=[{"type": "http.request", "body": b"1234", "more_body": False}],
+    )
+    assert response_status(sent) == 400
+    assert response_json(sent)["detail"] == "Content-Length contradictorio."
+
+
+def test_accepts_identical_duplicate_content_length_headers():
+    observed = bytearray()
+
+    async def app(scope, receive, send):
+        message = await receive()
+        observed.extend(message.get("body", b""))
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    middleware = RequestBodyLimitMiddleware(app, max_bytes=8)
+    sent = run_asgi(
+        middleware,
+        headers=[(b"content-length", b"4"), (b"content-length", b"4")],
+        messages=[{"type": "http.request", "body": b"1234", "more_body": False}],
+    )
+    assert response_status(sent) == 204
+    assert bytes(observed) == b"1234"

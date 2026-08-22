@@ -1,3 +1,4 @@
+// STATIC CONTRACT: inspecciona wiring/markup/CSS deliberadamente; no sustituye tests de comportamiento.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { loadZenMode, saveZenMode, zenModeSummary } from './zenMode.js';

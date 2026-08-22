@@ -8,7 +8,14 @@ describe('spectator reactions', () => {
 
   it('es determinista para el mismo evento y ply', () => {
     const event={ type:'MATE_FOUND', priority:100 };
-    expect(noteworthyPresentation(event,'human',20)).toEqual(noteworthyPresentation(event,'human',20));
+    const presentation = noteworthyPresentation(event,'human',20);
+    expect(presentation).toEqual({
+      mode: 'audience',
+      cpu: false,
+      audience: true,
+      text: 'Un par de palmas. Nadie discute el mate.',
+    });
+    expect(noteworthyPresentation(event,'human',20)).toEqual(presentation);
   });
 
   it('si activa público entrega una reacción contextual y nunca fuerza a la CPU', () => {

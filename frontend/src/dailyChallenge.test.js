@@ -6,8 +6,10 @@ describe('daily challenge', () => {
 
   it('elige siempre el mismo puzzle para la misma fecha', () => {
     const pool = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
-    const date = new Date(2026, 7, 20, 12, 0, 0);
-    expect(dailyPuzzle(pool, date).id).toBe(dailyPuzzle(pool, date).id);
+    const aug20 = new Date(2026, 7, 20, 12, 0, 0);
+    const aug21 = new Date(2026, 7, 21, 12, 0, 0);
+    expect(dailyPuzzle(pool, aug20)).toMatchObject({ id: 'c', dailyKey: '2026-08-20' });
+    expect(dailyPuzzle(pool, aug21)).toMatchObject({ id: 'a', dailyKey: '2026-08-21' });
   });
 
   it('no cuenta dos veces el mismo día', () => {

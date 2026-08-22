@@ -6,7 +6,7 @@ import { saveGameRecord } from './gameHistory.js';
 beforeEach(() => localStorage.clear());
 
 function record(id, humanColor, moves, mode = 'casual') {
-  return { id, humanColor, moves, mode, outcome: 'draw', date: new Date().toISOString() };
+  return { id, humanColor, moves, mode, outcome: 'draw', date: '2026-08-22T12:00:00.000Z' };
 }
 
 describe('mirrorDifficulty', () => {
