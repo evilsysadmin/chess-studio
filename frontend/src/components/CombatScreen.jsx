@@ -31,16 +31,14 @@ export default function CombatScreen(props) {
         rosterCount={Object.values(controller.roster.pieces).filter((p) => p.alive !== false).length}
         deadCount={Object.values(controller.roster.pieces).filter((p) => p.alive === false).length}
         deadRosterEntries={controller.deadRosterEntries}
-        showExpireWarning={controller.showExpireWarning}
-        setShowExpireWarning={controller.setShowExpireWarning}
         handleStartBattleClick={controller.handleStartBattleClick}
-        startBattle={controller.startBattle}
         showArmy={controller.showArmy}
         setShowArmy={controller.setShowArmy}
         showDeployment={controller.showDeployment}
         setShowDeployment={controller.setShowDeployment}
         handleBuyRosterStat={controller.handleBuyRosterStat}
         handleReviveRosterPiece={controller.handleReviveRosterPiece}
+        handleReplaceRosterPiece={controller.handleReplaceRosterPiece}
         handleRenameRosterPiece={controller.handleRenameRosterPiece}
         handleMetamorphoseRosterPiece={controller.handleMetamorphoseRosterPiece}
         handleDeployRosterUnit={controller.handleDeployRosterUnit}

@@ -1921,6 +1921,95 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
+
+
+// V16.6ci — catálogo más melódico: ocho escenas nuevas de jazz mediterráneo.
+// Priorizan líneas cantables y contramelodía sobre textura/ruido. Las pistas
+// experimentales retiradas más abajo se conservan internamente para no romper
+// sesiones antiguas, pero dejan de entrar en selector y radio aleatoria.
+Object.assign(AMBIENT_THEMES, {
+  beirutHarbor2340: {
+    id:'beirutHarbor2340', genre:'Jazz / Mediterráneo', engine:'structured', label:'Beirut · puerto 23:40',
+    description:'Buzuq y clarinete se contestan sobre Rhodes y contrabajo; nocturna, melódica y con pulso contenido.',
+    stepMs:152, stepsPerSection:64, longFormMs:425000, leadInstrument:'buzuq', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:64,5:68,10:71,17:69,24:66,31:64,39:68,46:73,54:71,61:66},counter:{8:55,20:59,34:57,49:62,60:59},chords:{0:[52,57,60,64],16:[50,55,59,62],32:[48,53,57,60],48:[55,59,62,67]},bass:{0:40,8:47,16:38,24:45,32:36,40:43,48:43,56:50},drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'K',42:'H',48:'S',54:'H',60:'B'}},
+      {lead:{2:68,8:71,14:73,21:76,28:73,35:69,42:68,50:71,58:66},counter:{11:57,25:60,38:59,53:55},chords:{0:[55,59,62,67],16:[52,57,60,64],32:[57,60,64,69],48:[50,55,59,62]},bass:{0:43,8:50,16:40,24:47,32:45,40:52,48:38,56:45},drums:{0:'K',8:'B',16:'S',24:'H',32:'K',40:'B',48:'S',56:'H'}},
+      {lead:{4:66,12:69,20:71,28:68,36:64,44:62,52:66,60:69},counter:{6:54,22:57,40:55,56:52},chords:{0:[50,55,59,62],16:[48,53,57,60],32:[45,52,57,60],48:[52,57,60,64]},bass:{0:38,8:45,16:36,24:43,32:33,40:40,48:40,56:47},drums:{0:'K',10:'H',16:'S',26:'B',32:'K',42:'H',48:'S',58:'B'}}
+    ],
+  },
+  cairoBlueNote0211: {
+    id:'cairoBlueNote0211', genre:'Jazz / Mediterráneo', engine:'structured', label:'Cairo · Blue Note 02:11',
+    description:'Trompeta apagada, Rhodes ancho y bajo acústico; club casi vacío y melodía sin prisas.',
+    stepMs:176, stepsPerSection:64, longFormMs:440000, leadInstrument:'mutedHorn', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{4:62,14:65,24:69,34:67,44:64,54:60},counter:{8:50,18:53,30:55,42:53,58:50},chords:{0:[50,53,57,60],16:[48,52,55,59],32:[45,50,53,57],48:[47,50,54,57]},bass:{0:38,8:45,16:36,24:43,32:33,40:40,48:35,56:42},drums:{0:'B',16:'S',32:'B',48:'S'}},
+      {lead:{6:65,16:69,26:72,38:69,50:64,60:62},counter:{12:53,28:57,44:55,56:52},chords:{0:[53,57,60,64],16:[50,53,57,60],32:[48,52,55,59],48:[45,50,53,57]},bass:{0:41,8:48,16:38,24:45,32:36,40:43,48:33,56:40},drums:{0:'B',12:'H',16:'S',32:'B',44:'H',48:'S'}},
+      {lead:{2:60,18:64,30:67,46:65,58:62},counter:{10:48,26:52,42:50,54:47},chords:{0:[48,52,55,59],16:[45,50,53,57],32:[50,53,57,60],48:[43,48,52,55]},bass:{0:36,16:33,32:38,48:31},drums:{0:'B',16:'S',32:'B',48:'S'}}
+    ],
+  },
+  alexandriaHarborCafe: {
+    id:'alexandriaHarborCafe', genre:'Jazz / Mediterráneo', engine:'structured', label:'Alejandría · café del puerto',
+    description:'Piano de fieltro, clarinete suave y contrabajo; íntima, luminosa y pensada para partidas largas.',
+    stepMs:188, stepsPerSection:56, longFormMs:420000, leadInstrument:'clarinet', counterInstrument:'felt', chordInstrument:'felt', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{5:67,13:71,21:69,31:64,41:67,51:62},counter:{0:55,16:57,28:60,44:57},chords:{0:[48,55,60],14:[50,57,62],28:[45,52,57],42:[47,53,59]},bass:{0:36,7:43,14:38,21:45,28:33,35:40,42:35,49:42},drums:{0:'B',14:'H',28:'B',42:'H'}},
+      {lead:{3:69,11:72,19:74,29:71,39:67,49:64},counter:{7:57,23:60,35:59,51:55},chords:{0:[50,57,62],14:[52,59,64],28:[47,53,59],42:[48,55,60]},bass:{0:38,7:45,14:40,21:47,28:35,35:42,42:36,49:43},drums:{0:'B',14:'H',28:'B',42:'H'}},
+      {lead:{6:64,16:67,26:69,36:65,46:62},counter:{10:52,24:55,38:53,52:50},chords:{0:[45,52,57],14:[48,55,60],28:[43,50,55],42:[47,53,59]},bass:{0:33,14:36,28:31,42:35},drums:{0:'B',28:'B'}}
+    ],
+  },
+  cordobaRooftop0026: {
+    id:'cordobaRooftop0026', genre:'Jazz / Mediterráneo', engine:'structured', label:'Córdoba · azotea 00:26',
+    description:'Guitarra limpia, cello y Rhodes cálido; aire andalusí con melodía principal bien al frente.',
+    stepMs:148, stepsPerSection:64, longFormMs:405000, leadInstrument:'guitar2', counterInstrument:'cello', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:64,6:67,12:69,18:72,24:69,30:67,36:65,42:64,48:67,54:69,60:64},counter:{9:48,21:52,33:50,45:47,57:48},chords:{0:[52,57,60,64],16:[50,55,59,62],32:[57,60,64,69],48:[48,52,55,60]},bass:{0:40,8:47,16:38,24:45,32:45,40:52,48:36,56:43},drums:{0:'B',8:'H',16:'B',24:'H',32:'B',40:'H',48:'B',56:'H'}},
+      {lead:{3:67,9:69,15:72,21:74,27:72,33:69,39:67,45:65,51:64,57:67,63:62},counter:{12:50,28:53,44:52,60:48},chords:{0:[55,59,62,67],16:[52,57,60,64],32:[50,55,59,62],48:[57,60,64,69]},bass:{0:43,8:50,16:40,24:47,32:38,40:45,48:45,56:52},drums:{0:'B',12:'H',24:'B',36:'H',48:'B',60:'H'}},
+      {lead:{4:62,12:65,20:67,28:69,36:67,44:64,52:62,60:60},counter:{8:47,24:50,40:48,56:45},chords:{0:[48,52,55,60],16:[45,52,57,60],32:[50,53,57,62],48:[43,50,55,59]},bass:{0:36,16:33,32:38,48:31},drums:{0:'B',16:'H',32:'B',48:'H'}}
+    ],
+  },
+  damascusCourtyard0144: {
+    id:'damascusCourtyard0144', genre:'Jazz / Mediterráneo', engine:'structured', label:'Damasco · patio 01:44',
+    description:'Ney, cello y piano oscuro; contemplativa pero con frases largas que avanzan en vez de flotar sin rumbo.',
+    stepMs:214, stepsPerSection:48, longFormMs:430000, leadInstrument:'ney', counterInstrument:'cello', chordInstrument:'felt', bassInstrument:'cello',
+    sections:[
+      {lead:{4:69,12:72,20:71,30:67,40:64},counter:{8:45,24:48,36:47},chords:{0:[45,52,57],16:[48,55,60],32:[43,50,55]},bass:{0:33,16:36,32:31}},
+      {lead:{6:71,14:74,22:72,32:69,42:66},counter:{10:47,26:50,38:48},chords:{0:[47,53,59],16:[50,57,62],32:[45,52,57]},bass:{0:35,16:38,32:33}},
+      {lead:{2:67,12:69,24:71,34:68,44:64},counter:{6:43,20:47,36:45},chords:{0:[43,50,55],16:[45,52,57],32:[40,47,52]},bass:{0:31,16:33,32:28}}
+    ],
+  },
+  tangierNightTrain0058: {
+    id:'tangierNightTrain0058', genre:'Jazz / Mediterráneo', engine:'structured', label:'Tánger · tren nocturno 00:58',
+    description:'Trompeta seca, guitarra y walking bass; más viaje que experimento, con groove discreto y fraseo claro.',
+    stepMs:142, stepsPerSection:64, longFormMs:410000, leadInstrument:'mutedHorn', counterInstrument:'guitar2', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{2:62,10:65,18:67,26:70,34:67,42:65,50:62,58:60},counter:{6:50,22:53,38:55,54:53},chords:{0:[50,53,57,62],16:[48,52,55,60],32:[53,57,60,65],48:[55,59,62,67]},bass:{0:38,4:45,8:50,12:45,16:36,20:43,24:48,28:43,32:41,36:48,40:53,44:48,48:43,52:50,56:55,60:50},drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'K',42:'H',48:'S',54:'H',60:'B'}},
+      {lead:{4:65,12:69,20:72,28:70,36:67,44:65,52:62,60:65},counter:{8:53,24:57,40:55,56:50},chords:{0:[53,57,60,65],16:[50,53,57,62],32:[57,60,64,69],48:[48,52,55,60]},bass:{0:41,8:48,16:38,24:45,32:45,40:52,48:36,56:43},drums:{0:'K',8:'H',16:'S',24:'B',32:'K',40:'H',48:'S',56:'B'}},
+      {lead:{0:60,16:64,24:67,40:65,56:62},counter:{12:48,28:52,44:50,60:47},chords:{0:[48,52,55,60],16:[45,50,53,57],32:[50,53,57,62],48:[43,48,52,55]},bass:{0:36,8:43,16:33,24:40,32:38,40:45,48:31,56:38},drums:{0:'K',16:'S',32:'K',48:'S'}}
+    ],
+  },
+  granadaCopperRain0232: {
+    id:'granadaCopperRain0232', genre:'Jazz / Mediterráneo', engine:'structured', label:'Granada · lluvia de cobre 02:32',
+    description:'Guitarra, clarinete y cello con lluvia imaginaria pero sin efectos de feria; melancólica y muy melódica.',
+    stepMs:168, stepsPerSection:56, longFormMs:435000, leadInstrument:'guitar2', counterInstrument:'clarinet', chordInstrument:'felt', bassInstrument:'cello',
+    sections:[
+      {lead:{0:64,7:67,14:71,21:69,28:67,35:64,42:62,49:64},counter:{10:55,24:59,38:57,52:55},chords:{0:[48,55,60],14:[50,57,62],28:[45,52,57],42:[47,53,59]},bass:{0:36,14:38,28:33,42:35},drums:{0:'B',14:'H',28:'B',42:'H'}},
+      {lead:{4:67,11:71,18:74,25:72,32:69,39:67,46:64,53:62},counter:{8:57,22:60,36:59,50:55},chords:{0:[50,57,62],14:[52,59,64],28:[47,53,59],42:[48,55,60]},bass:{0:38,14:40,28:35,42:36},drums:{0:'B',14:'H',28:'B',42:'H'}},
+      {lead:{2:62,12:65,22:67,32:64,42:60,52:62},counter:{6:53,20:55,34:52,48:50},chords:{0:[45,52,57],14:[48,55,60],28:[43,50,55],42:[45,52,57]},bass:{0:33,14:36,28:31,42:33},drums:{0:'B',28:'B'}}
+    ],
+  },
+  ammanLateTable0303: {
+    id:'ammanLateTable0303', genre:'Jazz / Mediterráneo', engine:'structured', label:'Amán · última mesa 03:03',
+    description:'Rhodes, clarinete y contrabajo en conversación lenta; cálida, profunda y sin textura rara por obligación.',
+    stepMs:184, stepsPerSection:64, longFormMs:445000, leadInstrument:'clarinet', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{6:64,18:67,30:71,42:69,54:65},counter:{2:52,14:55,26:57,38:55,50:52,62:50},chords:{0:[52,55,59,64],16:[50,53,57,62],32:[48,52,55,60],48:[45,50,53,57]},bass:{0:40,8:47,16:38,24:45,32:36,40:43,48:33,56:40},drums:{0:'B',16:'S',32:'B',48:'S'}},
+      {lead:{4:67,16:71,28:72,40:69,52:64},counter:{10:55,22:59,34:57,46:53,58:55},chords:{0:[55,59,62,67],16:[52,55,59,64],32:[50,53,57,62],48:[48,52,55,60]},bass:{0:43,8:50,16:40,24:47,32:38,40:45,48:36,56:43},drums:{0:'B',12:'H',16:'S',32:'B',44:'H',48:'S'}},
+      {lead:{8:62,20:65,32:67,44:64,56:60},counter:{4:50,16:53,28:55,40:52,52:48},chords:{0:[50,53,57,62],16:[48,52,55,60],32:[45,50,53,57],48:[43,48,52,55]},bass:{0:38,16:36,32:33,48:31},drums:{0:'B',16:'S',32:'B',48:'S'}}
+    ],
+  },
+});
+
 const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Rock', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Synthwave', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
   'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',
@@ -1928,6 +2017,7 @@ const MEDITERRANEAN_IDS = new Set([
   'beirutNightTaxi','tangierRedTable','istanbulBackgammon','andalusianCoast','granadaPatio','cadizLanterns','terraceFireflies','cafeFirelight','malagaLastTram','bishopBlues',
 ]);
 const ELECTRONIC_IDS = new Set(['clockwork','electricDesert','storm','orbitalMonastery','metro317','glassAsh','analogBunker','nightFreight','machineRoom']);
+const CURATED_HIDDEN_THEME_IDS = new Set(['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault']);
 const CLASSICAL_IDS = new Set(['gambit','cathedral','duel','lateEndgame','rigaRain','kingTango','zugzwangWaltz','winterLibrary','queenRequiem','endgameAdagio','knightFugue','nocturnalQuartet']);
 function ambientGenre(theme) {
   if (theme.genre) return theme.genre;
@@ -1937,9 +2027,11 @@ function ambientGenre(theme) {
   return 'Ambient / Otros';
 }
 
-export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description, ...theme }) => ({
-  id, label, description, genre: ambientGenre({ id, ...theme }),
-}));
+export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES)
+  .filter(({ id }) => !CURATED_HIDDEN_THEME_IDS.has(id))
+  .map(({ id, label, description, ...theme }) => ({
+    id, label, description, genre: ambientGenre({ id, ...theme }),
+  }));
 export const AMBIENT_THEME_GROUPS = AMBIENT_GENRE_ORDER.map((genre) => ({
   genre,
   themes: AMBIENT_THEME_OPTIONS.filter((theme) => theme.genre === genre),
@@ -2497,6 +2589,9 @@ const STRUCTURED_FEEL_BY_THEME = Object.freeze({
   istanbul0326: 'istanbulBroken', bosphorusRain: 'levantBlue', istanbulBackgammon: 'istanbulBroken',
   tangierSmoke: 'tangierWalking', tangierRedTable: 'tangierWalking', casablancaLastCall: 'maghrebVelvet', medinaBlueSmoke: 'maghrebVelvet',
   andalusianCoast: 'andalusWarm', granadaPatio: 'granadaChamber', cadizLanterns: 'andalusWarm',
+  beirutHarbor2340: 'beirutRooftop', cairoBlueNote0211: 'cairoAfterHours', alexandriaHarborCafe: 'alexandriaLounge',
+  cordobaRooftop0026: 'andalusWarm', damascusCourtyard0144: 'levantBlue', tangierNightTrain0058: 'tangierWalking',
+  granadaCopperRain0232: 'granadaChamber', ammanLateTable0303: 'levantBlue',
 });
 
 const EXTRA_STRUCTURED_FEEL_BY_THEME = Object.freeze({
@@ -2613,7 +2708,7 @@ export function clearAmbientThemeSession() {
 export function getAmbientThemeId() {
   if (typeof sessionStorage === 'undefined') return DEFAULT_AMBIENT_THEME;
   const saved = sessionStorage.getItem(AMBIENT_THEME_SESSION_KEY);
-  if (AMBIENT_THEMES[saved]) return saved;
+  if (AMBIENT_THEMES[saved] && !CURATED_HIDDEN_THEME_IDS.has(saved)) return saved;
   return resetAmbientThemeForSession();
 }
 
@@ -2671,7 +2766,7 @@ export function getAmbientPlaybackState() {
 }
 
 export function setAmbientTheme(themeId) {
-  const nextId = AMBIENT_THEMES[themeId] ? themeId : DEFAULT_AMBIENT_THEME;
+  const nextId = AMBIENT_THEMES[themeId] && !CURATED_HIDDEN_THEME_IDS.has(themeId) ? themeId : DEFAULT_AMBIENT_THEME;
   const previousStatus = ambientTransport.status;
   stopAmbientMusic();
   if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);

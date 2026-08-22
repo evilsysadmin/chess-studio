@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Chess } from 'chess.js';
 import { createInitialRegistry, rosterKeyFor } from './combat.js';
-import { loadRoster, saveSurvivorsToRoster } from './combatRoster.js';
+import { expireDeadPieces, loadRoster, saveSurvivorsToRoster } from './combatRoster.js';
 import { setRosterDeploymentType } from './combatMetamorphosis.js';
 import {
   annotateRegistryWithDeployment,
@@ -12,6 +12,7 @@ import {
   ensureDeploymentState,
   grantReserveRecruit,
   isUnitCompatibleWithSlot,
+  removeDeploymentUnit,
   setDeploymentUnit,
 } from './combatDeployment.js';
 
@@ -48,6 +49,45 @@ describe('Combat Chess deployment board', () => {
     expect(summary.ready).toBe(true);
     expect(summary.assignedCount).toBe(16);
     expect(summary.reserveCount).toBe(0);
+  });
+
+
+  it('enviar a reserva conserva el hueco y no recoloca mágicamente la unidad', () => {
+    let roster = loadRoster();
+    roster = removeDeploymentUnit(roster, 'r-a');
+    expect(roster.deployment['r-a']).toBeUndefined();
+    expect(deploymentSummary(roster).reserveKeys).toContain('r-a');
+    expect(deploymentSummary(roster).assignedCount).toBe(15);
+
+    // Volver a normalizar no debe deshacer la decisión explícita del jugador.
+    roster = ensureDeploymentState(roster);
+    expect(roster.deployment['r-a']).toBeUndefined();
+    expect(deploymentSummary(roster).assignedCount).toBe(15);
+  });
+
+  it('las bajas pendientes se muestran como caídas y sus reemplazos vuelven al barracón', () => {
+    let roster = loadRoster();
+    roster = {
+      ...roster,
+      pieces: {
+        ...roster.pieces,
+        'p-a': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false },
+        'p-f': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false },
+      },
+    };
+    roster = ensureDeploymentState(roster);
+    let summary = deploymentSummary(roster);
+    expect(summary.totalRoster).toBe(14);
+    expect(summary.fallenCount).toBe(2);
+    expect(summary.totalIdentities).toBe(16);
+    expect(summary.assignedCount).toBe(14);
+
+    roster = expireDeadPieces(roster, '2026-08-22T22:00:00.000Z');
+    summary = deploymentSummary(roster);
+    expect(summary.totalRoster).toBe(16);
+    expect(summary.fallenCount).toBe(0);
+    expect(summary.reserveCount).toBe(2);
+    expect(summary.assignedCount).toBe(14);
   });
 
   it('un refuerzo aumenta el barracón por encima de 16 pero nace en reserva', () => {

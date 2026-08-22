@@ -65,7 +65,7 @@ export function isUnitCompatibleWithSlot(rosterState, unitKey, slotKey) {
   return originType === slot.type;
 }
 
-function normalizedDeployment(rosterState, source = rosterState?.deployment) {
+function normalizedDeployment(rosterState, source = rosterState?.deployment, { backfillCanonical = false } = {}) {
   const next = {};
   const used = new Set();
   const incoming = source && typeof source === 'object' ? source : {};
@@ -80,15 +80,18 @@ function normalizedDeployment(rosterState, source = rosterState?.deployment) {
     used.add(unitKey);
   }
 
-  // Migration/default: a canonical unit occupies its historical slot when
-  // compatible and not already deployed elsewhere. La metamorfosis no cambia
-  // la clase logística: un peón mutante sigue encajando en un slot de peón.
-  for (const slot of CANONICAL_ROSTER_SLOTS) {
-    const slotKey = rosterSlotKey(slot);
-    if (next[slotKey] || used.has(slotKey)) continue;
-    if (!isUnitCompatibleWithSlot(rosterState, slotKey, slotKey)) continue;
-    next[slotKey] = slotKey;
-    used.add(slotKey);
+  // Migration/default only: a canonical unit occupies its historical slot when
+  // compatible and not already deployed elsewhere. Once Deployment v1 exists,
+  // explicit holes are intentional (e.g. "Enviar a reserva") and MUST survive
+  // subsequent normalization.
+  if (backfillCanonical) {
+    for (const slot of CANONICAL_ROSTER_SLOTS) {
+      const slotKey = rosterSlotKey(slot);
+      if (next[slotKey] || used.has(slotKey)) continue;
+      if (!isUnitCompatibleWithSlot(rosterState, slotKey, slotKey)) continue;
+      next[slotKey] = slotKey;
+      used.add(slotKey);
+    }
   }
 
   return next;
@@ -96,8 +99,9 @@ function normalizedDeployment(rosterState, source = rosterState?.deployment) {
 
 export function ensureDeploymentState(rosterState) {
   const state = rosterState && typeof rosterState === 'object' ? rosterState : {};
-  const deployment = normalizedDeployment(state);
   const current = state.deployment && typeof state.deployment === 'object' ? state.deployment : {};
+  const needsInitialBackfill = state.deploymentVersion !== DEPLOYMENT_VERSION;
+  const deployment = normalizedDeployment(state, current, { backfillCanonical: needsInitialBackfill });
   const same = JSON.stringify(current) === JSON.stringify(deployment) && state.deploymentVersion === DEPLOYMENT_VERSION;
   return same ? state : { ...state, deploymentVersion: DEPLOYMENT_VERSION, deployment };
 }
@@ -170,7 +174,7 @@ export function autofillDeployment(rosterState, { preferVeterans = true } = {}) 
 
 export function resetDeployment(rosterState) {
   const state = { ...rosterState, deployment: {} };
-  return { ...state, deploymentVersion: DEPLOYMENT_VERSION, deployment: normalizedDeployment(state, {}) };
+  return { ...state, deploymentVersion: DEPLOYMENT_VERSION, deployment: normalizedDeployment(state, {}, { backfillCanonical: true }) };
 }
 
 export function deploymentSummary(rosterState) {
@@ -179,7 +183,9 @@ export function deploymentSummary(rosterState) {
   const missing = specs.filter((slot) => !state.deployment?.[slot.key]);
   const deployedKeys = Object.values(state.deployment || {});
   const deployed = new Set(deployedKeys);
-  const reserves = rosterUnitKeys(state).filter((key) => originTypeForRosterKey(key) !== 'k' && !deployed.has(key));
+  const activeKeys = rosterUnitKeys(state);
+  const fallenKeys = rosterUnitKeys(state, { includeDead: true }).filter((key) => state?.pieces?.[key]?.alive === false);
+  const reserves = activeKeys.filter((key) => originTypeForRosterKey(key) !== 'k' && !deployed.has(key));
   return {
     ready: missing.length === 0,
     assignedCount: specs.length - missing.length,
@@ -188,7 +194,10 @@ export function deploymentSummary(rosterState) {
     deployedKeys,
     reserveKeys: reserves,
     reserveCount: reserves.length,
-    totalRoster: rosterUnitKeys(state).length,
+    fallenKeys,
+    fallenCount: fallenKeys.length,
+    totalRoster: activeKeys.length,
+    totalIdentities: activeKeys.length + fallenKeys.length,
   };
 }
 

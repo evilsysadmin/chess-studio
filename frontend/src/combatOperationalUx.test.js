@@ -21,4 +21,16 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     expect(source).toContain('Un peón metamorfoseado sigue ocupando un slot de peón.');
     expect(source).not.toContain('La identidad no cambia: un peón que combate como caballo');
   });
+
+  it('deployment arrastra sólo una pieza, marca el destino y no oculta bajas pendientes', () => {
+    const source = read('CombatDeploymentView.jsx');
+    expect(source).toContain('deployment-drag-ghost');
+    expect(source).toContain('deployment-square-drop-hover');
+    expect(source).toContain('summary.fallenCount');
+    expect(source).toContain('BAJAS PENDIENTES');
+    expect(source).toContain('Nuevo recluta');
+    expect(source).toContain('onRevive?.(unitKey, origin)');
+    expect(source).toContain('onSquareDragLeave={handleSquareDragLeave}');
+  });
+
 });

@@ -29,8 +29,8 @@ import {
 describe('ambient music catalog', () => {
   beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
-  it('expone sesenta y ocho temas seleccionables', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(68);
+  it('expone setenta temas seleccionables tras curar los experimentales', () => {
+    expect(AMBIENT_THEME_OPTIONS).toHaveLength(70);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Gambito del rey');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Vals del zugzwang');
@@ -41,11 +41,17 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Mercancías 04:12');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Final de madrugada');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tango del rey');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Monasterio orbital');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Sala de máquinas');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Alejandría 02:41');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cairo 00:47');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Beirut 01:13');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Beirut · puerto 23:40');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cairo · Blue Note 02:11');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Alejandría · café del puerto');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Córdoba · azotea 00:26');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Damasco · patio 01:44');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tánger · tren nocturno 00:58');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Granada · lluvia de cobre 02:32');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Amán · última mesa 03:03');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Damasco · hora azul');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Estambul 03:26');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tánger · humo');
@@ -81,12 +87,19 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Synthwave · arcade 02:17');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · lluvia sobre hormigón');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · estática de terciopelo');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Dark ambient · archivo abisal');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Dark ambient · cámara roja');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Bossa · dama en la terraza');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Havana · 02:05');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Minimal · cuatro casillas');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Piano · lluvia vertical');
+  });
+
+  it('expulsa de una sesión antigua los temas retirados de la curación', () => {
+    sessionStorage.setItem('chess-study-ambient-theme-session', 'abyssalArchive');
+    const chosen = getAmbientThemeId();
+    expect(chosen).not.toBe('abyssalArchive');
+    expect(AMBIENT_THEME_OPTIONS.some((theme) => theme.id === chosen)).toBe(true);
+
+    expect(setAmbientTheme('redVault')).not.toBe('redVault');
   });
 
   it('agrupa el catálogo por estilo sin perder pistas', () => {
@@ -96,7 +109,8 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Lo-Fi / Chill')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Synthwave')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Trip-Hop / Downtempo')?.themes).toHaveLength(2);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Dark Ambient')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Dark Ambient')).toBeUndefined();
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.id)).not.toEqual(expect.arrayContaining(['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault']));
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Bossa / Latin Lounge')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Piano / Minimal')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Clásica')?.themes.map((x) => x.id)).toEqual(
@@ -235,7 +249,7 @@ describe('ambient music catalog', () => {
 
   it('los temas estructurados tardan al menos dos minutos en repetir su forma larga', () => {
     const structured = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus');
-    expect(structured.length).toBe(67);
+    expect(structured.length).toBe(AMBIENT_THEME_OPTIONS.length - 1);
     for (const theme of structured) {
       expect(getAmbientThemeVariationDurationMs(theme.id)).toBeGreaterThanOrEqual(120000);
     }

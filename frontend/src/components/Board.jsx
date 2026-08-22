@@ -163,8 +163,10 @@ export default function Board({
   squareBadge, // (square) => ReactNode opcional dentro de la casilla
   onSquareDrop, // (square, event) => void; opt-in para deployment
   onSquareDragOver, // (square, event) => void
+  onSquareDragLeave, // (square, event) => void
   pieceDraggable = false,
   onPieceDragStart, // (square, event) => void
+  onPieceDragEnd, // (square, event) => void
   pieceLabels, // { square: string } etiqueta corta de identidad para deployment
   // encuadre rojo (distinto del dorado genérico de lastMove) + pieza fantasma semitransparente
   // en la casilla de origen, para que quede claro qué jugada se está señalando como error.
@@ -330,6 +332,7 @@ export default function Board({
                 onKeyDown={(e) => handleSquareKeyDown(e, square)}
                 onFocus={() => setFocusedSquare(square)}
                 onDragOver={(e) => onSquareDragOver?.(square, e)}
+                onDragLeave={(e) => onSquareDragLeave?.(square, e)}
                 onDrop={(e) => onSquareDrop?.(square, e)}
                 role="button"
                 aria-label={`Casilla ${square}${piece ? `, ${PIECE_NAMES[piece]}` : ', vacía'}${isSelected ? ', seleccionada' : ''}${piece && onSquareDoubleClick ? '. Tecla i para ver detalles' : ''}`}
@@ -345,6 +348,7 @@ export default function Board({
                     alt={PIECE_NAMES[piece]}
                     draggable={pieceDraggable}
                     onDragStart={(e) => onPieceDragStart?.(square, e)}
+                    onDragEnd={(e) => onPieceDragEnd?.(square, e)}
                   />
                 )}
                 {isMistakeOrigin && mistakeMove.piece && (

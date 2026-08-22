@@ -223,36 +223,36 @@ export function revivePiece(rosterState, key, type) {
   }, key);
 }
 
+// Acepta un reemplazo para UNA baja concreta. La identidad caída pasa al
+// Memorial y la plaza recibe una identidad nueva de nivel 1. Se usa desde la
+// propia mesa de despliegue para poder resolver bajas sin abandonar la pantalla.
+export function replaceDeadPiece(rosterState, key, at = new Date().toISOString()) {
+  let state = ensureUnitServiceState(rosterState);
+  if (state?.pieces?.[key]?.alive !== false) return ensureDeploymentState(state);
+
+  state = archivePermanentCasualty(state, key, at);
+  const pieces = { ...(state.pieces || {}) };
+  const identities = { ...(state.identities || {}) };
+  delete pieces[key];
+  delete identities[key];
+
+  // Las reservas adicionales también representan una plaza real. Conservamos
+  // la key de esa plaza, pero la identidad que la ocupa nace completamente nueva.
+  if (String(key).includes('-reserve-')) {
+    const aliases = Object.values(identities).map((entry) => entry?.alias).filter(Boolean);
+    identities[key] = createCombatIdentity(aliases);
+  }
+
+  return ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...state, pieces, identities })));
+}
+
 // La ventana para revivir a una pieza caída se cierra apenas arranca la
 // SIGUIENTE batalla: si no se recuperó a tiempo, se pierde para siempre SU PROGRESO — el slot
 // vuelve como una pieza nueva de nivel 1 y el veterano ya no queda guardado.
 // Se llama justo antes de armar el tablero inicial de una partida nueva.
 export function expireDeadPieces(rosterState, at = new Date().toISOString()) {
-  let state = ensureUnitServiceState(rosterState);
-  let pieces = { ...state.pieces };
-  let identities = { ...(state.identities || {}) };
-  let changed = false;
-  for (const key of Object.keys(pieces)) {
-    if (pieces[key].alive === false) {
-      // Primero archivamos la identidad y su expediente; sólo después se
-      // elimina el slot activo. El reemplazo generado por ensureCombatIdentities
-      // nace con otro alias/id y empieza de cero.
-      state = archivePermanentCasualty({ ...state, pieces, identities }, key, at);
-      pieces = { ...state.pieces };
-      identities = { ...(state.identities || {}) };
-      delete pieces[key];
-      delete identities[key];
-      // Los huecos de reserva también son plazas reales del barracón. Si una
-      // identidad de reserva se pierde definitivamente, la plaza no desaparece:
-      // entra un recluta nivel 1 con otro alias/identityId y expediente limpio.
-      if (String(key).includes('-reserve-')) {
-        const aliases = Object.values(identities).map((entry) => entry?.alias).filter(Boolean);
-        identities[key] = createCombatIdentity(aliases);
-      }
-      changed = true;
-    }
-  }
-  return changed
-    ? ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...state, pieces, identities })))
-    : ensureDeploymentState(state);
+  let state = ensureDeploymentState(ensureUnitServiceState(rosterState));
+  const deadKeys = Object.keys(state.pieces || {}).filter((key) => state.pieces?.[key]?.alive === false);
+  for (const key of deadKeys) state = replaceDeadPiece(state, key, at);
+  return state;
 }

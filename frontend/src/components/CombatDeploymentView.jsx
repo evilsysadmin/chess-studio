@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import Board from './Board.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
+import { reviveCost } from '../combat.js';
 import { unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { unitRecordForKey } from '../combatUnitService.js';
 import {
@@ -55,7 +56,7 @@ function sortedUnitKeys(roster, sortBy = 'rank') {
   });
 }
 
-function UnitCard({ roster, unitKey, deployedSlotKey, selected, onSelect, onDragStart }) {
+function UnitCard({ roster, unitKey, deployedSlotKey, selected, onSelect, onDragStart, onDragEnd }) {
   const originType = originTypeForRosterKey(unitKey);
   const activeType = effectiveDeploymentType(roster, unitKey);
   const saved = roster.pieces?.[unitKey];
@@ -71,6 +72,7 @@ function UnitCard({ roster, unitKey, deployedSlotKey, selected, onSelect, onDrag
       onClick={() => onSelect(unitKey)}
       draggable={unitKey !== 'k-e'}
       onDragStart={(e) => onDragStart(unitKey, e)}
+      onDragEnd={onDragEnd}
       title={deployedSlotKey ? `Desplegada en ${slotLabel(deployedSlotKey)}` : 'En reserva'}
     >
       <span className="deployment-unit-symbol" aria-hidden="true">{TYPE_SYMBOL[activeType] || '♙'}</span>
@@ -93,11 +95,15 @@ export default function CombatDeploymentView({
   onApplyPreset,
   onMetamorphose,
   onRename,
+  onRevive,
+  onReplaceFallen,
   onClose,
 }) {
   useEscapeToClose(onClose);
   const summary = useMemo(() => deploymentSummary(roster), [roster]);
   const [query, setQuery] = useState('');
+  const draggingUnitRef = useRef(null);
+  const [dragHoverSquare, setDragHoverSquare] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('rank');
@@ -168,10 +174,29 @@ export default function CombatDeploymentView({
   }
 
   function handleDragStart(unitKey, event) {
+    draggingUnitRef.current = unitKey;
+    setDragHoverSquare(null);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData(DRAG_MIME, unitKey);
     event.dataTransfer.setData('text/plain', unitKey);
+
+    // HTML5 arrastra por defecto el botón entero del barracón. Para deployment
+    // sólo queremos una silueta pequeña de la pieza: así la casilla de destino
+    // sigue visible debajo del cursor.
+    const sourceSymbol = event.currentTarget?.querySelector?.('.deployment-unit-symbol');
+    if (sourceSymbol && event.dataTransfer?.setDragImage) {
+      const ghost = sourceSymbol.cloneNode(true);
+      ghost.className = 'deployment-drag-ghost';
+      document.body.appendChild(ghost);
+      event.dataTransfer.setDragImage(ghost, 22, 22);
+      requestAnimationFrame(() => ghost.remove());
+    }
     setSelectedUnitKey(unitKey);
+  }
+
+  function handleDragEnd() {
+    draggingUnitRef.current = null;
+    setDragHoverSquare(null);
   }
 
   function handleBoardPieceDragStart(square, event) {
@@ -185,17 +210,26 @@ export default function CombatDeploymentView({
   }
 
   function handleSquareDragOver(square, event) {
-    const unitKey = selectedUnitKey;
+    const unitKey = draggingUnitRef.current || selectedUnitKey;
     const slot = deploymentSlotForSquare(square, 'w');
     if (unitKey && slot && isUnitCompatibleWithSlot(roster, unitKey, slot.key)) {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
+      if (dragHoverSquare !== square) setDragHoverSquare(square);
+    } else if (dragHoverSquare) {
+      setDragHoverSquare(null);
     }
+  }
+
+  function handleSquareDragLeave(square) {
+    setDragHoverSquare((current) => current === square ? null : current);
   }
 
   function handleSquareDrop(square, event) {
     event.preventDefault();
-    const unitKey = event.dataTransfer.getData(DRAG_MIME) || event.dataTransfer.getData('text/plain') || selectedUnitKey;
+    const unitKey = event.dataTransfer.getData(DRAG_MIME) || event.dataTransfer.getData('text/plain') || draggingUnitRef.current || selectedUnitKey;
+    draggingUnitRef.current = null;
+    setDragHoverSquare(null);
     deployToSquare(square, unitKey);
   }
 
@@ -208,6 +242,7 @@ export default function CombatDeploymentView({
       'deployment-square',
       occupant ? 'deployment-square-occupied' : 'deployment-square-empty',
       canTakeSelected ? 'deployment-square-valid' : '',
+      dragHoverSquare === square ? 'deployment-square-drop-hover' : '',
     ].filter(Boolean).join(' ');
   }
 
@@ -251,9 +286,57 @@ export default function CombatDeploymentView({
         <div className="combat-deployment-layout">
           <aside className="deployment-barracks">
             <div className="deployment-panel-heading">
-              <div><span>BARRACÓN</span><strong>{summary.totalRoster} unidades</strong></div>
-              <small>{summary.reserveCount} en reserva</small>
+              <div><span>BARRACÓN</span><strong>{summary.totalRoster} activas</strong></div>
+              <small>{summary.fallenCount > 0 ? `${summary.fallenCount} caídas · ${summary.reserveCount} en reserva` : `${summary.reserveCount} en reserva`}</small>
             </div>
+            {summary.fallenCount > 0 && (
+              <section className="deployment-casualties" aria-label="Bajas pendientes">
+                <div className="deployment-casualties-heading">
+                  <span>BAJAS PENDIENTES</span>
+                  <b>{summary.fallenCount}</b>
+                </div>
+                <p>Resuélvelas aquí antes de completar la formación.</p>
+                <div className="deployment-casualty-list">
+                  {summary.fallenKeys.map((unitKey) => {
+                    const origin = originTypeForRosterKey(unitKey);
+                    const saved = roster.pieces?.[unitKey] || {};
+                    const alias = roster.identities?.[unitKey]?.alias || 'Sin alias';
+                    const level = levelForSaved(saved);
+                    const progress = Math.max(0, Number(saved.strengthPoints) || 0) + Math.max(0, Number(saved.speedPoints) || 0);
+                    const cost = reviveCost(origin);
+                    const canRevive = progress > 0 && Number(roster.combatXp || 0) >= cost;
+                    const reviveTitle = progress <= 0
+                      ? 'Recluta de nivel 1: no tiene progreso que recuperar.'
+                      : canRevive
+                        ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} XP.`
+                        : `Necesitas ${cost} XP de combate para revivir esta unidad.`;
+                    return (
+                      <div className="deployment-casualty-card" key={unitKey}>
+                        <span className="deployment-casualty-symbol" aria-hidden="true">{TYPE_SYMBOL[origin] || '♙'}</span>
+                        <div className="deployment-casualty-copy">
+                          <strong>{alias}</strong>
+                          <small>{TYPE_NAME[origin]} · {pieceRankForLevel(level).label} · nv.{level}</small>
+                        </div>
+                        <div className="deployment-casualty-actions">
+                          <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); }}>
+                            Revivir · {cost} XP
+                          </button>
+                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial y entra un recluta nuevo de nivel 1." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); }}>
+                            Nuevo recluta
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {summary.fallenCount > 1 && (
+                  <button type="button" className="secondary-btn deployment-replace-all" onClick={() => summary.fallenKeys.forEach((unitKey) => onReplaceFallen?.(unitKey))}>
+                    Aceptar {summary.fallenCount} reclutas nuevos
+                  </button>
+                )}
+              </section>
+            )}
+
             <div className="deployment-presets" aria-label="Presets de escuadra">
               <span className="deployment-presets-label">ESCUADRAS</span>
               {[0, 1, 2].map((index) => {
@@ -294,6 +377,7 @@ export default function CombatDeploymentView({
                   selected={selectedUnitKey === unitKey}
                   onSelect={setSelectedUnitKey}
                   onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
             </div>
@@ -315,13 +399,16 @@ export default function CombatDeploymentView({
               squareBadge={squareBadge}
               pieceDraggable
               onPieceDragStart={handleBoardPieceDragStart}
+              onPieceDragEnd={handleDragEnd}
               onSquareDragOver={handleSquareDragOver}
+              onSquareDragLeave={handleSquareDragLeave}
               onSquareDrop={handleSquareDrop}
               pieceLabels={pieceLabels}
             />
             {!summary.ready && (
               <div className="deployment-missing-strip">
                 <b>Faltan:</b> {summary.missingSlots.map((slot) => slotLabel(slot.key)).join(' · ')}
+                {summary.fallenCount > 0 && <span> · {summary.fallenCount} baja{summary.fallenCount === 1 ? '' : 's'} pendiente{summary.fallenCount === 1 ? '' : 's'}: revive o reemplaza antes de completar la formación.</span>}
               </div>
             )}
           </main>

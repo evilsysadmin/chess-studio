@@ -33,7 +33,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-assert(AMBIENT_THEME_OPTIONS.length === 68, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
+assert(AMBIENT_THEME_OPTIONS.length === 70, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
 const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
 assert(new Set(ids).size === ids.length, 'hay IDs musicales duplicados');
 
@@ -47,7 +47,6 @@ const expectedGenres = new Map([
   ['Lo-Fi / Chill', 2],
   ['Synthwave', 2],
   ['Trip-Hop / Downtempo', 2],
-  ['Dark Ambient', 2],
   ['Bossa / Latin Lounge', 2],
   ['Piano / Minimal', 2],
 ]);
@@ -56,8 +55,13 @@ for (const [genre, expected] of expectedGenres) {
   assert(group?.themes.length === expected, `${genre}: esperaba ${expected}, hay ${group?.themes.length ?? 0}`);
 }
 assert((AMBIENT_THEME_GROUPS.find((row) => row.genre === 'Clásica')?.themes.length || 0) >= 3, 'faltan temas clásicos');
+const curatedHidden = ['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault'];
+assert(curatedHidden.every((id) => !ids.includes(id)), 'han reaparecido temas experimentales retirados');
+assert(!AMBIENT_THEME_GROUPS.some((group) => group.genre === 'Dark Ambient'), 'Dark Ambient debería quedar fuera del catálogo curado');
 
 const added = ['mistSpa','moonOnsen','postRockMidnight','rookGarage','desertDriveRock','endgameAdagio','knightFugue','nocturnalQuartet','lofiRainTape','lofiWindowLight','neonKnight','midnightArcade'];
+const mediterraneanExpansion = ['beirutHarbor2340','cairoBlueNote0211','alexandriaHarborCafe','cordobaRooftop0026','damascusCourtyard0144','tangierNightTrain0058','granadaCopperRain0232','ammanLateTable0303'];
+assert(mediterraneanExpansion.every((id) => ids.includes(id)), 'faltan pistas nuevas de jazz mediterráneo');
 
 const profiled = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus').map((theme) => [theme.id, getAmbientThemeSoundProfile(theme.id)]);
 for (const [id, profile] of profiled) assert(profile, `${id}: sigue sin perfil sonoro dedicado`);

@@ -17,7 +17,7 @@ import {
   repetitionKey,
   rosterKeyFor,
 } from '../combat.js';
-import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces, renameRosterIdentity } from '../combatRoster.js';
+import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, replaceDeadPiece, expireDeadPieces, renameRosterIdentity } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
 import { loadCombatService, recordCombatServiceEvent, summarizeCombatService } from '../combatService.js';
 import { recordUnitBattle, unitRecordForKey } from '../combatUnitService.js';
@@ -146,19 +146,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [showArmy, setShowArmy] = useState(false);
   const [showDeployment, setShowDeployment] = useState(false);
-  const [showExpireWarning, setShowExpireWarning] = useState(false);
-  // El único modal inline de esta pantalla (los demás — PieceInfoModal,
-  // AttackConfirmModal, ArmyScreen — ya traen su propio ESC incorporado).
-  // Un solo listener de ESC para toda la pantalla, con prioridad: si hay un
-  // modal abierto encima (la advertencia de piezas caídas), lo cierra a él
-  // primero. Si no, vuelve al menú principal — salvo en medio de una
-  // batalla ('battle'), donde un ESC sin querer no debería sacarte de una
-  // pelea activa sin avisar.
+  // Un solo listener de ESC para la pantalla base. Deployment y Army traen
+  // su propio cierre y consumen el gesto mientras están abiertos.
   useEscapeToClose(() => {
-    if (showExpireWarning) {
-      setShowExpireWarning(false);
-      return;
-    }
     if (showDeployment || showArmy) return;
     if (phase === 'setup' || phase === 'over') {
       onExit();
@@ -275,12 +265,12 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
   const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
 
-  // El botón "Empezar combate" pasa por acá primero: si hay piezas caídas
-  // sin recuperar, avisamos antes de que pierdan su veteranía en vez de
-  // borrarlas en silencio.
+  // Las bajas se resuelven dentro de la propia mesa de despliegue. Si queda
+  // alguna pendiente, "Empezar" abre esa mesa en vez de mandar al jugador
+  // a otro modal o de cerrar la ventana de revive a escondidas.
   function handleStartBattleClick() {
     if (deadRosterEntries.length > 0) {
-      setShowExpireWarning(true);
+      setShowDeployment(true);
       return;
     }
     startBattle();
@@ -1088,6 +1078,15 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     });
   }
 
+  function handleReplaceRosterPiece(key) {
+    setRoster((prev) => {
+      const next = replaceDeadPiece(prev, key);
+      if (next === prev) return prev;
+      saveRoster(next);
+      return next;
+    });
+  }
+
   const rosterCount = Object.values(roster.pieces).filter((p) => p.alive !== false).length;
   const deadCount = Object.values(roster.pieces).filter((p) => p.alive === false).length;
 
@@ -1121,10 +1120,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     phase, combatLog, battleRecap, ratingInfo, difficulty, difficultyBalance, colorChoice, setColorChoice,
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
     pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
-    showArmy, setShowArmy, showDeployment, setShowDeployment, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
+    showArmy, setShowArmy, showDeployment, setShowDeployment, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
-    handleBuyRosterStat, handleReviveRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
+    handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };

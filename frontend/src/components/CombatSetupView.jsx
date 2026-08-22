@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import ArmyScreen from './ArmyScreen.jsx';
 import ColorSelector from './ColorSelector.jsx';
-import { BASE_STATS } from '../combat.js';
 import CombatServicePanel from './CombatServicePanel.jsx';
 import CombatDeploymentView from './CombatDeploymentView.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
@@ -12,8 +11,8 @@ import { COMBAT_CHESS_NAME, COMBAT_CHESS_FREE_DESCRIPTION, COMBAT_CHESS_CAMPAIGN
 export default function CombatSetupView({
   onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, encounterIntel, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
-  showExpireWarning, setShowExpireWarning, handleStartBattleClick, startBattle,
-  showArmy, setShowArmy, showDeployment, setShowDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique,
+  handleStartBattleClick,
+  showArmy, setShowArmy, showDeployment, setShowDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique,
   handleResetRoster, onHistory, serviceSummary,
 }) {
   const deploy = deploymentSummary(roster);
@@ -196,33 +195,6 @@ export default function CombatSetupView({
           {deploy.ready ? 'Empezar combate' : `Preparar despliegue · ${deploy.assignedCount}/16`}
         </button>
 
-        {showExpireWarning && (
-          <div className="modal-backdrop" onClick={() => setShowExpireWarning(false)}>
-            <div className="attack-confirm-card" onClick={(e) => e.stopPropagation()}>
-              <p className="attack-confirm-title">
-                Tienes {deadRosterEntries.length} pieza{deadRosterEntries.length === 1 ? '' : 's'} caída
-                {deadRosterEntries.length === 1 ? '' : 's'} sin revivir
-                {' '}({deadRosterEntries.map(([key]) => `${roster.identities?.[key]?.alias || 'Sin alias'} · ${BASE_STATS[key.split('-')[0]].name}`).join(', ')}).
-                Si empiezas ahora, esas identidades pasan al Memorial de Caídos; los huecos volverán con reclutas de nivel 1 y nombres nuevos.
-              </p>
-              <div className="attack-confirm-buttons">
-                <button
-                  className="secondary-btn"
-                  onClick={() => { setShowExpireWarning(false); startBattle(); }}
-                >
-                  Empezar igual
-                </button>
-                <button
-                  className="primary-btn"
-                  onClick={() => { setShowExpireWarning(false); setShowArmy(true); }}
-                >
-                  Ir a revivir
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
 
         {showDeployment && (
           <CombatDeploymentView
@@ -234,6 +206,8 @@ export default function CombatSetupView({
             onApplyPreset={handleApplyDeploymentPreset}
             onMetamorphose={handleMetamorphoseRosterPiece}
             onRename={handleRenameRosterPiece}
+            onRevive={handleReviveRosterPiece}
+            onReplaceFallen={handleReplaceRosterPiece}
             onClose={() => setShowDeployment(false)}
           />
         )}

@@ -4,6 +4,7 @@ import {
   applyRosterToRegistry,
   saveSurvivorsToRoster,
   revivePiece,
+  replaceDeadPiece,
   expireDeadPieces,
   resetRoster,
   renameRosterIdentity,
@@ -170,6 +171,28 @@ describe('revivePiece', () => {
     const roster = { pieces: { 'q-d': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false } }, combatXp: 100 };
     const result = revivePiece(roster, 'q-d', 'q');
     expect(result).toBe(roster); // sin cambios, aunque sobre XP de combate
+  });
+});
+
+describe('replaceDeadPiece — reemplazo individual desde despliegue', () => {
+  it('archiva sólo la baja elegida y deja las demás pendientes', () => {
+    const roster = {
+      pieces: {
+        'p-a': { strengthPoints: 3, speedPoints: 2, bankedXp: 0, alive: false },
+        'p-b': { strengthPoints: 2, speedPoints: 1, bankedXp: 0, alive: false },
+      },
+      identities: {
+        'p-a': { alias: 'Starky', identityId: 'unit-starky', createdAt: '2026-08-20T00:00:00.000Z' },
+        'p-b': { alias: 'Dusty', identityId: 'unit-dusty', createdAt: '2026-08-20T00:00:00.000Z' },
+      },
+      combatXp: 0,
+    };
+    const replaced = replaceDeadPiece(roster, 'p-a', '2026-08-22T21:00:00.000Z');
+    expect(replaced.pieces['p-a']).toBeUndefined();
+    expect(replaced.identities['p-a'].identityId).not.toBe('unit-starky');
+    expect(replaced.pieces['p-b'].alive).toBe(false);
+    expect(replaced.identities['p-b'].identityId).toBe('unit-dusty');
+    expect(replaced.memorial.some((entry) => entry.identityId === 'unit-starky')).toBe(true);
   });
 });
 
