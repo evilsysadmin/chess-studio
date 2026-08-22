@@ -1914,7 +1914,91 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 
 .combat-setup {
-  max-width: 480px;
+  max-width: var(--surface-max-standard);
+  gap: 1rem;
+}
+
+.combat-setup .menu-section { margin: 0; }
+.combat-setup-hero { padding-bottom: .15rem; }
+.combat-setup-one-liner {
+  margin: .2rem 0 0;
+  color: var(--parchment-dim);
+  font-size: .86rem;
+}
+
+.combat-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.combat-setup-card {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: .65rem;
+  padding: .8rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 10px;
+  background: rgba(0,0,0,.10);
+}
+
+.combat-setup-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .7rem;
+}
+.combat-setup-card-heading > span {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.06rem;
+  font-weight: 650;
+}
+.combat-setup-card-heading > b {
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: .82rem;
+}
+.combat-setup-card .color-row { margin-top: 0; }
+.combat-setup-card .color-btn { padding: .5rem .35rem; }
+
+.combat-setup-state,
+.combat-threat-chip,
+.combat-deploy-status {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .24rem .42rem;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 999px;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  line-height: 1;
+}
+.combat-threat-chip { border-color: rgba(201,162,39,.38); color: var(--brass); }
+.combat-deploy-status.ready { border-color: rgba(76,140,107,.52); color: var(--success); }
+.combat-deploy-status.incomplete { border-color: rgba(180,72,58,.52); color: var(--danger); }
+
+.difficulty-slider-row.compact { gap: .55rem; }
+.combat-difficulty-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--success), var(--brass) 50%, var(--danger));
+}
+.combat-difficulty-track > i {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--parchment);
+  border: 2px solid var(--ink);
 }
 
 .auto-level-toggle {
@@ -1931,6 +2015,96 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   height: 18px;
   accent-color: var(--brass);
   cursor: pointer;
+}
+
+.auto-level-toggle.compact {
+  width: fit-content;
+  padding: .4rem .5rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  background: rgba(0,0,0,.12);
+}
+
+.combat-army-ops { display: grid; gap: .7rem; }
+.combat-army-ops .combat-heading-row h2 { margin: 0; }
+.combat-army-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .45rem;
+}
+.combat-army-stats > span {
+  min-width: 0;
+  display: grid;
+  gap: .1rem;
+  padding: .55rem .6rem;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 8px;
+  background: rgba(0,0,0,.1);
+}
+.combat-army-stats b { font-size: 1.05rem; }
+.combat-army-stats small {
+  overflow: hidden;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: .58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.combat-operational-warning {
+  width: fit-content;
+  padding: .38rem .55rem;
+  border: 1px solid rgba(180,72,58,.4);
+  border-radius: 7px;
+  color: #e2a4a4;
+  background: rgba(180,72,58,.07);
+  font-size: .74rem;
+}
+.combat-army-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+}
+.combat-army-actions > button { width: 100%; margin: 0; }
+.combat-reset-link { opacity: .72; }
+.combat-reset-link:hover { opacity: 1; }
+
+.combat-encounter-card.compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .65rem;
+}
+.combat-encounter-main { min-width: 0; display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap; }
+.combat-encounter-main > span {
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: .59rem;
+  letter-spacing: .12em;
+}
+.combat-encounter-main > strong { color: var(--parchment); }
+.combat-encounter-tags { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .35rem; }
+.combat-encounter-tags > span {
+  padding: .25rem .4rem;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 999px;
+  color: var(--parchment-dim);
+  font-family: var(--font-mono);
+  font-size: .61rem;
+}
+
+.combat-service-card.compact .combat-service-scope-note { display: none; }
+.combat-perks-compact { display: grid; gap: .45rem; }
+.combat-perks-compact h2 { margin: 0; font-size: 1.05rem; }
+
+@media (max-width: 860px) {
+  .combat-setup-grid { grid-template-columns: 1fr; }
+  .combat-army-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .combat-encounter-card.compact { grid-template-columns: 1fr; }
+  .combat-encounter-tags { justify-content: flex-start; }
+}
+
+@media (max-width: 560px) {
+  .combat-army-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .combat-army-actions { grid-template-columns: 1fr; }
 }
 
 /* ---------- Modal "Tu ejército" ---------- */

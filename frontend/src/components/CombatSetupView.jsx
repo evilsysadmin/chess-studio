@@ -22,197 +22,172 @@ export default function CombatSetupView({
     return (
       <div className="menu combat-setup">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
-        <div className="menu-section">
+        <div className="menu-section combat-setup-hero">
           <span className="eyebrow">{COMBAT_CHESS_NAME}</span>
-          <div className="combat-heading-row"><h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? 'Campaña roguelike' : 'Batalla libre'}</h2><button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)}>?</button></div>
-          <p className="hint-text combat-mode-summary">{combatVariant === 'roguelike' ? COMBAT_CHESS_CAMPAIGN_DESCRIPTION : COMBAT_CHESS_FREE_DESCRIPTION}</p>
+          <div className="combat-heading-row">
+            <h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? 'Campaña roguelike' : 'Batalla libre'}</h2>
+            <button
+              type="button"
+              className="context-help-btn"
+              title="Cómo funciona Combat Chess"
+              aria-label="Abrir tutorial de Combat Chess"
+              onClick={() => setShowTutorial(true)}
+            >?</button>
+          </div>
+          <p
+            className="combat-setup-one-liner"
+            title={combatVariant === 'roguelike' ? COMBAT_CHESS_CAMPAIGN_DESCRIPTION : COMBAT_CHESS_FREE_DESCRIPTION}
+          >
+            {combatVariant === 'roguelike' ? 'Elige ruta, prepara el ejército y combate.' : 'Prepara el ejército y entra en combate.'}
+          </p>
+
           {encounterLabel && (
-            <div className="combat-encounter-card">
-              <span>ENCUENTRO</span>
-              <strong>{encounterLabel}</strong>
-              {encounterTier && <em className="combat-encounter-tier">{encounterTier}</em>}
-              {encounterDescription && <p>{encounterDescription}</p>}
-              {encounterIntel && <p className="combat-encounter-intel"><b>Intel:</b> {encounterIntel.level === 0 ? 'sin reconocimiento; amenaza exacta clasificada.' : encounterIntel.level === 1 ? `${encounterIntel.levelLabel} · CPU estimada ${encounterIntel.threatRange}.` : `${encounterIntel.levelLabel} · CPU ${encounterIntel.exactDifficulty} · ${encounterIntel.modifierLabel}${encounterIntel.modifierDescription ? ` · ${encounterIntel.modifierDescription}` : ''}`}</p>}
-              {bossConfig && <p><b>Regla del jefe:</b> su rey tiene {bossConfig.maxHp} HP. Cada jaque hace 1 daño; el mate hace 2 y abre una nueva fase si todavía sigue vivo.</p>}
+            <div className="combat-encounter-card compact" title={encounterDescription || undefined}>
+              <div className="combat-encounter-main">
+                <span>ENCUENTRO</span>
+                <strong>{encounterLabel}</strong>
+                {encounterTier && <em className="combat-encounter-tier">{encounterTier}</em>}
+              </div>
+              <div className="combat-encounter-tags">
+                {encounterIntel && (
+                  <span title="Inteligencia disponible para este encuentro">
+                    {encounterIntel.level === 0
+                      ? 'Intel · clasificada'
+                      : encounterIntel.level === 1
+                        ? `Intel · ${encounterIntel.threatRange}`
+                        : `Intel · CPU ${encounterIntel.exactDifficulty}`}
+                  </span>
+                )}
+                {bossConfig && <span title="Cada jaque causa 1 daño; mate causa 2.">Rey jefe · {bossConfig.maxHp} HP</span>}
+              </div>
             </div>
           )}
-          <p className="hint-text">
-            Es ajedrez normal, con una vuelta: cuando intentas capturar una pieza, primero ves el % de acierto
-            y confirmas si te compensa el riesgo. Si falla, la pieza atacada esquiva: el tablero no cambia, pero
-            el atacante pierde el turno (y la pieza que esquivó banca algo de XP por sobrevivir). Capturar también banca XP, que se puede
-            gastar en fuerza o velocidad — automático o a mano, según la opción de abajo. Atacar sin haberte
-            movido de tu casilla de partida da un bono ("en reserva"), y fallar varias veces seguidas contra el
-            mismo objetivo afina la puntería; mover tranquilo, cambiar de blanco o acertar rompe esa racha. Las piezas que lleguen vivas al final de la partida guardan su
-            progreso para la próxima batalla — las que caigan, tienen una única ventana para revivirlas
-            (gastando "XP de combate", una moneda aparte que se gana al terminar cada partida) antes de que
-            empieces la siguiente: si no las recuperas a tiempo, se pierde para siempre su veteranía y ese hueco vuelve la próxima batalla con una pieza de nivel 1. El
-            rey nunca esquiva y siempre acierta cuando ataca, y tampoco gana ni gasta XP: el jaque mate sigue
-            siendo 100% seguro, como en el ajedrez de siempre. Cada pieza de tu ejército tiene alias propio desde nivel 1.
-            La metamorfosis empieza mucho más tarde y no basta con farmear nivel: el Caballo exige <b>Comandante + 3 supervivencias</b>;
-            el Alfil, <b>Coronel + Cinco bajas + Hierro viejo</b>; y la Torre, <b>General + Veterano de campaña + Cicatriz del Rey Viejo</b>.
-            No es permanente: eliges el despliegue antes de cada batalla y queda bloqueado durante el combate. Sí, rompe el ajedrez normal.
-            Por eso la CPU recibe una compensación automática de dificultad según la potencia permanente real de tu ejército. En Combat Chess, romper las reglas paga impuesto de amenaza.
-          </p>
         </div>
 
-        <CombatServicePanel summary={serviceSummary} />
+        <CombatServicePanel summary={serviceSummary} compact />
 
         {combatVariant === 'roguelike' && Array.isArray(runPerks) && runPerks.length > 0 && (
-          <div className="menu-section">
-            <h2>Ventajas de este intento</h2>
+          <div className="menu-section combat-perks-compact" title="Ventajas temporales: desaparecen al terminar el intento.">
+            <h2>Ventajas activas</h2>
             <div className="roguelike-active-perks">
               {runPerks.map((perk, index) => (
                 <span key={`${perk.id}-${index}`} className="roguelike-perk-chip" title={perk.description}>{perk.label}</span>
               ))}
             </div>
-            <p className="hint-text" style={{ marginTop: '0.45rem' }}>Son temporales: desaparecen cuando termina el intento.</p>
           </div>
         )}
 
-        <div className="menu-section">
-          <h2>Dificultad de la CPU</h2>
-          <p className="hint-text" style={{ marginBottom: '0.6rem' }}>
-            {difficultyOverride != null
-              ? encounterIntel && encounterIntel.level < 2
-                ? 'La dificultad exacta existe, pero no se revela sin inteligencia de nivel Evaluación. El despliegue se decide con la información que hayas comprado.'
-                : 'La base la fija este encuentro: el piso manda; un ejército veterano puede añadir compensación de amenaza.'
-              : 'Automática, según cómo te ve la CPU — no se elige a mano en Combat Chess.'}
-          </p>
-          {difficultyBalance?.threat?.bonus > 0 && !(encounterIntel && encounterIntel.level < 2) && (
-            <p className="combat-threat-note">
-              Compensación de amenaza <b>{difficultyBalance.threat.tier}</b>: <b>+{difficultyBalance.appliedBonus}</b> · base {difficultyBalance.base} → CPU {difficultyBalance.adjusted}.{difficultyBalance.threat.bonus > difficultyBalance.appliedBonus ? ` Potencial +${difficultyBalance.threat.bonus}, recortado por el tope 100.` : ''}
-              {' '}Veteranos {difficultyBalance.threat.activeVeterans} · metamorfosis activas {difficultyBalance.threat.activeMetamorphoses} · técnicas equipadas {difficultyBalance.threat.equippedTechniques}.
-              {' '}Escala sólo con potencia permanente; nunca supera dificultad 100.
-            </p>
-          )}
-          <div className="difficulty-slider-row">
-            <div className="difficulty-slider" style={{ background: 'transparent', pointerEvents: 'none', flex: 1 }}>
-              <div
-                style={{
-                  height: '4px',
-                  borderRadius: '2px',
-                  background: 'linear-gradient(90deg, var(--success), var(--brass) 50%, var(--danger))',
-                  width: '100%',
-                  position: 'relative',
-                }}
-              >
-                {!(encounterIntel && encounterIntel.level < 2) && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: `${difficulty}%`,
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      background: 'var(--parchment)',
-                      border: '2px solid var(--ink)',
-                    }}
-                  />
-                )}
+        <div className="combat-setup-grid">
+          <section className="combat-setup-card" aria-label="Dificultad de la CPU">
+            <div className="combat-setup-card-heading">
+              <span>CPU</span>
+              <b>{encounterIntel && encounterIntel.level < 2 ? '?' : difficulty}</b>
+            </div>
+            <div className="difficulty-slider-row compact">
+              <div className="difficulty-slider" style={{ background: 'transparent', pointerEvents: 'none', flex: 1 }}>
+                <div className="combat-difficulty-track">
+                  {!(encounterIntel && encounterIntel.level < 2) && <i style={{ left: `${difficulty}%` }} />}
+                </div>
               </div>
+              <span
+                className="combat-setup-state"
+                title={difficultyOverride != null
+                  ? (encounterIntel && encounterIntel.level < 2
+                    ? 'La dificultad exacta se revela con inteligencia de nivel Evaluación.'
+                    : 'El encuentro fija la base y la potencia permanente del ejército puede añadir amenaza.')
+                  : 'Dificultad automática según el nivel que la CPU considera adecuado.'}
+              >
+                {encounterIntel && encounterIntel.level < 2
+                  ? (encounterIntel.level === 1 ? `Est. ${encounterIntel.threatRange}` : 'Clasificada')
+                  : (difficultyLabel || ratingInfo.tier.label)}
+              </span>
             </div>
-            <div className="difficulty-readout">
-              <span className="difficulty-number">{encounterIntel && encounterIntel.level < 2 ? '?' : difficulty}</span>
-              <span className="difficulty-word">{encounterIntel && encounterIntel.level < 2 ? (encounterIntel.level === 1 ? `estimada ${encounterIntel.threatRange}` : 'clasificada') : (difficultyLabel || ratingInfo.tier.label)}</span>
+            {difficultyBalance?.threat?.bonus > 0 && !(encounterIntel && encounterIntel.level < 2) && (
+              <span
+                className="combat-threat-chip"
+                title={`Base ${difficultyBalance.base} → CPU ${difficultyBalance.adjusted}. Veteranos ${difficultyBalance.threat.activeVeterans}; metamorfosis ${difficultyBalance.threat.activeMetamorphoses}; técnicas ${difficultyBalance.threat.equippedTechniques}. La dificultad nunca supera 100.`}
+              >
+                Amenaza {difficultyBalance.threat.tier} · +{difficultyBalance.appliedBonus}
+              </span>
+            )}
+          </section>
+
+          <section className="combat-setup-card" aria-label="Color">
+            <div className="combat-setup-card-heading">
+              <span>Color</span>
+              {forcedHumanColor && <b>{forcedHumanColor === 'w' ? 'Blancas' : 'Negras'}</b>}
             </div>
+            {forcedHumanColor ? (
+              <span className="combat-setup-state" title="El color está fijado por esta modalidad.">Fijo</span>
+            ) : (
+              <ColorSelector value={colorChoice} onChange={setColorChoice} />
+            )}
+          </section>
+
+          <section className="combat-setup-card" aria-label="Subida de nivel">
+            <div className="combat-setup-card-heading">
+              <span>Subida de nivel</span>
+              <b>{autoLevelUpEnabled ? 'Auto' : 'Manual'}</b>
+            </div>
+            <label
+              className="auto-level-toggle compact"
+              title={autoLevelUpEnabled
+                ? 'Al terminar, cada pieza gasta su XP automáticamente en fuerza y velocidad.'
+                : 'El XP queda bancado para gastarlo manualmente desde el ejército antes de otra batalla.'}
+            >
+              <input
+                type="checkbox"
+                checked={autoLevelUpEnabled}
+                onChange={(e) => setAutoLevelUpEnabled(e.target.checked)}
+              />
+              <span>Auto-subida</span>
+            </label>
+          </section>
+        </div>
+
+        <section className="menu-section combat-army-ops" aria-label="Estado del ejército">
+          <div className="combat-heading-row">
+            <h2>Ejército</h2>
+            <span className={`combat-deploy-status ${deploy.ready ? 'ready' : 'incomplete'}`}>
+              {deploy.assignedCount}/16 desplegadas
+            </span>
           </div>
-        </div>
 
-        <div className="menu-section">
-          <h2>Color</h2>
-          {forcedHumanColor ? (
-            <p className="hint-text">
-              Fijo en esta modalidad: juegas con <b>{forcedHumanColor === 'w' ? 'blancas' : 'negras'}</b>.
-            </p>
-          ) : (
-            <ColorSelector value={colorChoice} onChange={setColorChoice} />
-          )}
-        </div>
+          <div className="combat-army-stats">
+            <span title="Unidades con progreso persistente"><b>{rosterCount}</b><small>con progreso</small></span>
+            <span title="Unidades disponibles en reserva"><b>{deploy.reserveCount}</b><small>reservas</small></span>
+            <span className={deadCount ? 'danger-text' : ''} title="Unidades caídas pendientes de resolver"><b>{deadCount}</b><small>caídas</small></span>
+            <span title="XP de combate disponible"><b>{roster.combatXp || 0}</b><small>XP combate</small></span>
+            <span title="Identidades perdidas definitivamente"><b>{roster.memorial?.length || 0}</b><small>memorial</small></span>
+          </div>
 
-        <div className="menu-section">
-          <h2>Subida de nivel</h2>
-          <label className="auto-level-toggle">
-            <input
-              type="checkbox"
-              checked={autoLevelUpEnabled}
-              onChange={(e) => setAutoLevelUpEnabled(e.target.checked)}
-            />
-            <span>Auto-subida de nivel</span>
-          </label>
-          <p className="hint-text" style={{ marginTop: '0.4rem' }}>
-            {autoLevelUpEnabled
-              ? 'Activada: al terminar la batalla, cada pieza gasta su XP sola, comprando fuerza y velocidad en pareja. Simple, sin decisiones — pero ya no en caliente, jugada a jugada.'
-              : 'Desactivada: el XP queda bancado al terminar y lo gastas desde Tu ejército antes de la siguiente batalla. Más control, sin poder reaccionar a mitad de combate.'}
-          </p>
-        </div>
-
-        <div className="menu-section">
-          <h2>Tu ejército</h2>
-          {rosterCount > 0 ? (
-            <p className="hint-text">
-              Tienes {rosterCount} pieza{rosterCount === 1 ? '' : 's'} propia{rosterCount === 1 ? '' : 's'} con
-              progreso guardado de batallas anteriores — van a arrancar ya reforzadas sea cual sea el color que
-              te toque esta vez. Las que capturen o sobrevivan en esta partida siguen sumando XP; las que
-              pierdas, vuelven a empezar de cero (salvo que las revivas).
-            </p>
-          ) : (
-            <p className="hint-text">
-              Todavía no tienes progreso guardado. Las piezas que sobrevivan esta partida van a arrancar la
-              próxima ya con lo que hayas invertido en ellas.
-            </p>
-          )}
           {deadCount > 0 && (
-            <p className="hint-text" style={{ marginTop: '0.4rem' }}>
-              {deadCount} pieza{deadCount === 1 ? '' : 's'} caída{deadCount === 1 ? '' : 's'} — revívelas ahora
-              gastando XP de combate (tienes {roster.combatXp}) desde "Ver tu ejército", o se pierden para
-              siempre en cuanto arranques la próxima batalla y pasan al Memorial de Caídos.
-            </p>
+            <div className="combat-operational-warning" title="Revive las bajas recuperables antes de iniciar otra batalla o sus identidades pasarán al Memorial.">
+              ⚠ {deadCount} baja{deadCount === 1 ? '' : 's'} pendiente{deadCount === 1 ? '' : 's'}
+            </div>
           )}
-          {(roster.memorial?.length || 0) > 0 && (
-            <p className="hint-text" style={{ marginTop: '0.35rem' }}>
-              Memorial: <b>{roster.memorial.length}</b> identidad{roster.memorial.length === 1 ? '' : 'es'} perdida{roster.memorial.length === 1 ? '' : 's'} definitivamente.
-            </p>
-          )}
-          <button
-            type="button"
-            className={`secondary-btn combat-deployment-entry ${deploy.ready ? 'ready' : 'incomplete'}`}
-            style={{ width: '100%', marginTop: '0.6rem' }}
-            onClick={() => setShowDeployment(true)}
-          >
-            <span>Preparar despliegue · {deploy.assignedCount}/16</span>
-            <small>{deploy.reserveCount > 0 ? `${deploy.reserveCount} reserva${deploy.reserveCount === 1 ? '' : 's'}` : 'sin reservas'} · tablero táctico</small>
-          </button>
-          <button
-            type="button"
-            className="secondary-btn"
-            style={{ width: '100%', marginTop: '0.5rem' }}
-            onClick={() => setShowArmy(true)}
-          >
-            Expedientes del ejército {roster.combatXp > 0 ? `(${roster.combatXp} XP)` : ''}
-          </button>
-          {onHistory && (
+
+          <div className="combat-army-actions">
             <button
               type="button"
-              className="secondary-btn"
-              style={{ width: '100%', marginTop: '0.5rem' }}
-              onClick={onHistory}
+              className={`secondary-btn combat-deployment-entry ${deploy.ready ? 'ready' : 'incomplete'}`}
+              onClick={() => setShowDeployment(true)}
+              title="Coloca las 16 unidades y elige sus formas de despliegue."
             >
-              Ver mis batallas
+              <span>Preparar despliegue · {deploy.assignedCount}/16</span>
+              <small>{deploy.reserveCount > 0 ? `${deploy.reserveCount} reserva${deploy.reserveCount === 1 ? '' : 's'}` : 'sin reservas'}</small>
             </button>
-          )}
-          {rosterCount > 0 && (
-            <button
-              type="button"
-              className="secondary-btn"
-              style={{ width: '100%', marginTop: '0.5rem' }}
-              onClick={handleResetRoster}
-            >
-              Reiniciar progreso de piezas
+            <button type="button" className="secondary-btn" onClick={() => setShowArmy(true)} title="Alias, rango, XP, técnicas, metamorfosis y bajas.">
+              Expedientes {roster.combatXp > 0 ? `· ${roster.combatXp} XP` : ''}
             </button>
-          )}
-        </div>
+            {onHistory && <button type="button" className="secondary-btn" onClick={onHistory}>Batallas anteriores</button>}
+            {rosterCount > 0 && (
+              <button type="button" className="secondary-btn combat-reset-link" onClick={handleResetRoster} title="Borra el progreso persistente de las piezas.">
+                Reiniciar progreso
+              </button>
+            )}
+          </div>
+        </section>
 
         <button className="primary-btn" style={{ width: '100%' }} onClick={() => {
           if (deadCount === 0 && !deploy.ready) { setShowDeployment(true); return; }
