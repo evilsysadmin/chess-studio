@@ -112,7 +112,13 @@ describe('continuidad acumulativa de release', () => {
     expect(campaignCore).toContain('purchaseCampaignIntel');
     expect(campaignCore).toContain("phase: 'battle'");
     expect(deploymentView).toContain('onAutoFill?.(true)');
-    expect(deploymentView).toContain('aria-label="Buscar unidad"');
+    expect(deploymentView).toContain('aria-label="Buscar unidad en reserva"');
+    expect(deploymentView).toContain('aria-label="Unidades en reserva"');
+    expect(deploymentView).toContain('aria-label="Unidades desplegadas"');
+    expect(deploymentView).toContain('Banquillo · {summary.reserveCount}');
+    expect(deploymentView).toContain('{summary.assignedCount}/{summary.totalSlots}');
+    expect(styles).toContain('.deployment-filters option');
+    expect(styles).toContain('color-scheme: dark;');
     expect(tutorials).toContain("id: 'combat-intelligence'");
     expect(army).toContain('tutorialId="combat-metamorphosis"');
     expect(learning).toContain('Modos especiales');

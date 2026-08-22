@@ -81,7 +81,7 @@ function UnitCard({ roster, unitKey, deployedSlotKey, selected, onSelect, onDrag
         <small>{rank.label} · nv.{level}</small>
         <small>{transformed ? `${TYPE_NAME[originType]} → ${TYPE_NAME[activeType]}` : TYPE_NAME[originType]}</small>
       </span>
-      <span className={`deployment-unit-state ${deployedSlotKey ? 'active' : ''}`}>{deployedSlotKey ? 'TABLERO' : 'RESERVA'}</span>
+      <span className={`deployment-unit-state ${deployedSlotKey ? 'active' : ''}`}>{deployedSlotKey ? slotLabel(deployedSlotKey) : 'BANQUILLO'}</span>
     </button>
   );
 }
@@ -105,7 +105,6 @@ export default function CombatDeploymentView({
   const draggingUnitRef = useRef(null);
   const [dragHoverSquare, setDragHoverSquare] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('rank');
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-deployment']?.seen);
   const [selectedUnitKey, setSelectedUnitKey] = useState(() => summary.reserveKeys[0] || summary.deployedKeys[0] || null);
@@ -115,19 +114,21 @@ export default function CombatDeploymentView({
     () => Object.fromEntries(Object.entries(roster.deployment || {}).map(([slotKey, unitKey]) => [unitKey, slotKey])),
     [roster.deployment],
   );
-  const units = useMemo(() => {
+  const reserveUnits = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('es');
     return sortedUnitKeys(roster, sortBy).filter((unitKey) => {
+      if (reverseDeployment[unitKey]) return false;
       const origin = originTypeForRosterKey(unitKey);
       const alias = String(roster.identities?.[unitKey]?.alias || '').toLocaleLowerCase('es');
-      const deployed = Boolean(reverseDeployment[unitKey]);
       if (needle && !alias.includes(needle) && !unitKey.toLocaleLowerCase('es').includes(needle)) return false;
       if (typeFilter !== 'all' && origin !== typeFilter) return false;
-      if (statusFilter === 'deployed' && !deployed) return false;
-      if (statusFilter === 'reserve' && deployed) return false;
       return true;
     });
-  }, [roster, reverseDeployment, query, typeFilter, statusFilter, sortBy]);
+  }, [roster, reverseDeployment, query, typeFilter, sortBy]);
+  const deployedUnits = useMemo(
+    () => sortedUnitKeys(roster, 'type').filter((unitKey) => Boolean(reverseDeployment[unitKey])),
+    [roster, reverseDeployment],
+  );
   const armyThreat = useMemo(() => combatArmyThreat(roster), [roster]);
   const selectedSlotKey = selectedUnitKey ? reverseDeployment[selectedUnitKey] || null : null;
   const selectedSquare = selectedSlotKey ? deploymentSquareForSlot(selectedSlotKey, 'w') : null;
@@ -284,10 +285,10 @@ export default function CombatDeploymentView({
         </header>
 
         <div className="combat-deployment-layout">
-          <aside className="deployment-barracks">
+          <aside className="deployment-barracks deployment-reserve-panel">
             <div className="deployment-panel-heading">
-              <div><span>BARRACÓN</span><strong>{summary.totalRoster} activas</strong></div>
-              <small>{summary.fallenCount > 0 ? `${summary.fallenCount} caídas · ${summary.reserveCount} en reserva` : `${summary.reserveCount} en reserva`}</small>
+              <div><span>RESERVA</span><strong>Banquillo · {summary.reserveCount}</strong></div>
+              <small>{summary.fallenCount > 0 ? `${summary.fallenCount} caídas pendientes` : 'Fuera de la formación'}</small>
             </div>
             {summary.fallenCount > 0 && (
               <section className="deployment-casualties" aria-label="Bajas pendientes">
@@ -351,29 +352,35 @@ export default function CombatDeploymentView({
                 );
               })}
             </div>
+
+            <div className="deployment-list-heading">
+              <div><span>UNIDADES EN RESERVA</span><b>{summary.reserveCount}</b></div>
+              <small>Arrastra una unidad a un slot compatible.</small>
+            </div>
             <div className="deployment-filters">
-              <input aria-label="Buscar unidad" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar alias…" />
+              <input aria-label="Buscar unidad en reserva" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en reserva…" />
               <div className="deployment-filter-row">
-                <select aria-label="Filtrar por tipo" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <select aria-label="Filtrar reserva por tipo" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                   <option value="all">Todos los tipos</option>
                   <option value="p">Peones</option><option value="n">Caballos</option><option value="b">Alfiles</option><option value="r">Torres</option><option value="q">Damas</option><option value="k">Rey</option>
                 </select>
-                <select aria-label="Filtrar por estado" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="all">Todo el roster</option><option value="deployed">Desplegados</option><option value="reserve">Reservas</option>
+                <select aria-label="Ordenar reserva" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="rank">Rango ↓</option><option value="level">Nivel ↓</option><option value="type">Tipo</option><option value="name">Nombre A–Z</option>
                 </select>
               </div>
-              <select aria-label="Ordenar unidades" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="rank">Rango ↓</option><option value="level">Nivel ↓</option><option value="type">Tipo</option><option value="name">Nombre A–Z</option>
-              </select>
             </div>
-            <div className="deployment-unit-list">
-              {units.length === 0 && <p className="hint-text deployment-empty-filter">Ninguna unidad coincide con esos filtros.</p>}
-              {units.map((unitKey) => (
+            <div className="deployment-unit-list deployment-reserve-list" aria-label="Unidades en reserva">
+              {reserveUnits.length === 0 && (
+                <p className="hint-text deployment-empty-filter">
+                  {summary.reserveCount === 0 ? 'No hay unidades en el banquillo.' : 'Ninguna reserva coincide con esos filtros.'}
+                </p>
+              )}
+              {reserveUnits.map((unitKey) => (
                 <UnitCard
                   key={unitKey}
                   roster={roster}
                   unitKey={unitKey}
-                  deployedSlotKey={reverseDeployment[unitKey] || null}
+                  deployedSlotKey={null}
                   selected={selectedUnitKey === unitKey}
                   onSelect={setSelectedUnitKey}
                   onDragStart={handleDragStart}
@@ -413,64 +420,88 @@ export default function CombatDeploymentView({
             )}
           </main>
 
-          <aside className="deployment-inspector">
-            <div className="deployment-panel-heading"><div><span>UNIDAD</span><strong>Inspector</strong></div></div>
-            {selectedUnitKey ? (
-              <>
-                <div className="deployment-selected-unit">
-                  <span className="deployment-selected-symbol" aria-hidden="true">{TYPE_SYMBOL[selectedActiveType]}</span>
-                  <div>
-                    <h3>{roster.identities?.[selectedUnitKey]?.alias || 'Sin alias'}</h3>
-                    <p>{pieceRankForLevel(levelForSaved(selectedSaved)).label} · nv.{levelForSaved(selectedSaved)}</p>
-                  </div>
-                </div>
-                {onRename && (
-                  <button
-                    type="button"
-                    className="secondary-btn deployment-rename-btn"
-                    onClick={() => {
-                      const current = roster.identities?.[selectedUnitKey]?.alias || 'Sin alias';
-                      const next = window.prompt('Nuevo alias de la unidad (máx. 28 caracteres)', current);
-                      if (next != null) onRename(selectedUnitKey, next);
-                    }}
-                  >
-                    Renombrar unidad
-                  </button>
-                )}
+          <aside className="deployment-right-rail">
+            <section className="deployment-deployed-panel">
+              <div className="deployment-panel-heading">
+                <div><span>DESPLEGADOS</span><strong>{summary.assignedCount}/{summary.totalSlots}</strong></div>
+                <small>Formación actual</small>
+              </div>
+              <p className="deployment-rail-hint">Selecciona una unidad para localizarla en el tablero o arrástrala a otro slot compatible.</p>
+              <div className="deployment-unit-list deployment-deployed-list" aria-label="Unidades desplegadas">
+                {deployedUnits.map((unitKey) => (
+                  <UnitCard
+                    key={unitKey}
+                    roster={roster}
+                    unitKey={unitKey}
+                    deployedSlotKey={reverseDeployment[unitKey] || null}
+                    selected={selectedUnitKey === unitKey}
+                    onSelect={setSelectedUnitKey}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))}
+              </div>
+            </section>
 
-                <dl className="deployment-unit-facts">
-                  <div><dt>Identidad</dt><dd>{TYPE_NAME[selectedOrigin]}</dd></div>
-                  <div><dt>Forma</dt><dd>{TYPE_NAME[selectedActiveType]}</dd></div>
-                  <div><dt>Estado</dt><dd>{selectedSlotKey ? `Desplegada · ${slotLabel(selectedSlotKey)}` : 'Reserva'}</dd></div>
-                  <div><dt>Servicio</dt><dd>{selectedRecord?.stats?.battles || 0} batallas · {selectedRecord?.stats?.kills || 0} bajas</dd></div>
-                  <div><dt>Amenaza propia</dt><dd>{selectedThreat?.bonus ? `+${selectedThreat.bonus}` : '0'} CPU potencial</dd></div>
-                </dl>
-
-                {selectedForms.length > 1 && (
-                  <div className="deployment-form-selector">
-                    <span title="La forma cambia cómo combate esta batalla; la identidad y el slot de origen no cambian.">Forma de combate</span>
+            <section className="deployment-inspector">
+              <div className="deployment-panel-heading"><div><span>UNIDAD</span><strong>Inspector</strong></div></div>
+              {selectedUnitKey ? (
+                <>
+                  <div className="deployment-selected-unit">
+                    <span className="deployment-selected-symbol" aria-hidden="true">{TYPE_SYMBOL[selectedActiveType]}</span>
                     <div>
-                      {selectedForms.map((type) => (
-                        <button
-                          type="button"
-                          key={type}
-                          className={`secondary-btn ${selectedActiveType === type ? 'active' : ''}`}
-                          onClick={() => onMetamorphose(selectedUnitKey, type)}
-                        >
-                          {TYPE_SYMBOL[type]} {TYPE_NAME[type]}
-                        </button>
-                      ))}
+                      <h3>{roster.identities?.[selectedUnitKey]?.alias || 'Sin alias'}</h3>
+                      <p>{pieceRankForLevel(levelForSaved(selectedSaved)).label} · nv.{levelForSaved(selectedSaved)}</p>
                     </div>
                   </div>
-                )}
+                  {onRename && (
+                    <button
+                      type="button"
+                      className="secondary-btn deployment-rename-btn"
+                      onClick={() => {
+                        const current = roster.identities?.[selectedUnitKey]?.alias || 'Sin alias';
+                        const next = window.prompt('Nuevo alias de la unidad (máx. 28 caracteres)', current);
+                        if (next != null) onRename(selectedUnitKey, next);
+                      }}
+                    >
+                      Renombrar unidad
+                    </button>
+                  )}
 
-                {selectedSlotKey && selectedUnitKey !== 'k-e' && (
-                  <button type="button" className="secondary-btn deployment-reserve-btn" onClick={() => onRemoveUnit(selectedUnitKey)}>
-                    Enviar a reserva
-                  </button>
-                )}
-              </>
-            ) : <p className="hint-text">Selecciona una unidad del barracón o del tablero.</p>}
+                  <dl className="deployment-unit-facts">
+                    <div><dt>Identidad</dt><dd>{TYPE_NAME[selectedOrigin]}</dd></div>
+                    <div><dt>Forma</dt><dd>{TYPE_NAME[selectedActiveType]}</dd></div>
+                    <div><dt>Estado</dt><dd>{selectedSlotKey ? `Desplegada · ${slotLabel(selectedSlotKey)}` : 'Banquillo'}</dd></div>
+                    <div><dt>Servicio</dt><dd>{selectedRecord?.stats?.battles || 0} batallas · {selectedRecord?.stats?.kills || 0} bajas</dd></div>
+                    <div><dt>Amenaza propia</dt><dd>{selectedThreat?.bonus ? `+${selectedThreat.bonus}` : '0'} CPU potencial</dd></div>
+                  </dl>
+
+                  {selectedForms.length > 1 && (
+                    <div className="deployment-form-selector">
+                      <span title="La forma cambia cómo combate esta batalla; la identidad y el slot de origen no cambian.">Forma de combate</span>
+                      <div>
+                        {selectedForms.map((type) => (
+                          <button
+                            type="button"
+                            key={type}
+                            className={`secondary-btn ${selectedActiveType === type ? 'active' : ''}`}
+                            onClick={() => onMetamorphose(selectedUnitKey, type)}
+                          >
+                            {TYPE_SYMBOL[type]} {TYPE_NAME[type]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedSlotKey && selectedUnitKey !== 'k-e' && (
+                    <button type="button" className="secondary-btn deployment-reserve-btn" onClick={() => onRemoveUnit(selectedUnitKey)}>
+                      Enviar a reserva
+                    </button>
+                  )}
+                </>
+              ) : <p className="hint-text">Selecciona una unidad de la reserva, desplegados o del tablero.</p>}
+            </section>
           </aside>
         </div>
 

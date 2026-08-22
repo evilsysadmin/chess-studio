@@ -33,4 +33,15 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     expect(source).toContain('onSquareDragLeave={handleSquareDragLeave}');
   });
 
+  it('deployment muestra reserva y desplegados simultáneamente, sin tabs de estado', () => {
+    const source = read('CombatDeploymentView.jsx');
+    expect(source).toContain('aria-label="Unidades en reserva"');
+    expect(source).toContain('aria-label="Unidades desplegadas"');
+    expect(source).toContain('Banquillo · {summary.reserveCount}');
+    expect(source).toContain('{summary.assignedCount}/{summary.totalSlots}');
+    expect(source).toContain('deployment-right-rail');
+    expect(source).not.toContain('setStatusFilter');
+    expect(source).not.toContain('aria-label="Vista del roster"');
+  });
+
 });

@@ -6229,7 +6229,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 .combat-deployment-shell {
   position: relative;
-  width: min(1420px, 98vw);
+  width: min(1640px, 99vw);
   max-height: calc(100vh - 2rem);
   overflow: auto;
   margin: auto;
@@ -6265,11 +6265,12 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .combat-deployment-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(460px, 1fr) minmax(220px, 280px);
+  grid-template-columns: minmax(250px, 300px) minmax(520px, 1fr) minmax(270px, 330px);
   gap: .85rem;
   align-items: start;
 }
 .deployment-barracks,
+.deployment-deployed-panel,
 .deployment-inspector {
   min-width: 0;
   border: 1px solid rgba(255,255,255,.08);
@@ -6288,6 +6289,46 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .deployment-panel-heading span { font-size: .62rem; letter-spacing: .13em; opacity: .58; }
 .deployment-panel-heading strong { font-size: .94rem; }
 .deployment-panel-heading small { opacity: .58; font-size: .68rem; }
+.deployment-right-rail {
+  min-width: 0;
+  display: grid;
+  gap: .7rem;
+  align-content: start;
+}
+.deployment-deployed-panel { min-width: 0; }
+.deployment-list-heading {
+  display: grid;
+  gap: .14rem;
+  margin: .68rem 0 .42rem;
+  padding-top: .55rem;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.deployment-list-heading > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.deployment-list-heading span { font-size: .61rem; letter-spacing: .11em; opacity: .66; }
+.deployment-list-heading b {
+  min-width: 1.5rem;
+  padding: .12rem .3rem;
+  border-radius: 999px;
+  background: rgba(93,150,108,.12);
+  border: 1px solid rgba(93,150,108,.28);
+  font: 800 .62rem/1.2 var(--font-mono);
+  text-align: center;
+}
+.deployment-list-heading small,
+.deployment-rail-hint {
+  margin: 0;
+  color: var(--parchment-dim);
+  font-size: .6rem;
+  line-height: 1.35;
+}
+.deployment-reserve-list { max-height: min(46vh, 480px); }
+.deployment-deployed-list { max-height: min(37vh, 360px); }
+.deployment-deployed-list .deployment-unit-card { cursor: pointer; }
 .deployment-casualties {
   display: grid;
   gap: .42rem;
@@ -6507,9 +6548,10 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 .deployment-footer-copy { display: flex; justify-content: center; gap: .9rem; flex-wrap: wrap; font-size: .7rem; opacity: .66; }
 
-@media (max-width: 1100px) {
-  .combat-deployment-layout { grid-template-columns: minmax(210px, 260px) minmax(430px, 1fr); }
-  .deployment-inspector { grid-column: 1 / -1; }
+@media (max-width: 1180px) {
+  .combat-deployment-layout { grid-template-columns: minmax(230px, 280px) minmax(430px, 1fr); }
+  .deployment-right-rail { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .deployment-deployed-list { max-height: 320px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .deployment-unit-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -6521,8 +6563,9 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .combat-deployment-layout { display: flex; flex-direction: column; }
   .deployment-board-zone { order: 1; width: 100%; }
   .deployment-barracks { order: 2; width: 100%; box-sizing: border-box; }
-  .deployment-inspector { order: 3; width: 100%; box-sizing: border-box; }
+  .deployment-right-rail { order: 3; width: 100%; grid-template-columns: 1fr; box-sizing: border-box; }
   .deployment-unit-list { max-height: 300px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .deployment-deployed-list { max-height: 300px; }
   .deployment-unit-card { grid-template-columns: 30px minmax(0,1fr); }
   .deployment-unit-state { display: none; }
   .deployment-board-caption { display: grid; }
@@ -6584,9 +6627,22 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 7px;
   background: rgba(0,0,0,.2);
-  color: inherit;
+  color: var(--parchment);
   font: inherit;
   font-size: .7rem;
+}
+.deployment-filters select {
+  color-scheme: dark;
+  background-color: #171613;
+  color: #f1e4c5;
+}
+.deployment-filters option {
+  background: #171613;
+  color: #f1e4c5;
+}
+.deployment-filters option:checked {
+  background: #2b5fae;
+  color: #fff;
 }
 .deployment-filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
 .deployment-empty-filter { padding: .7rem .2rem; text-align: center; }
