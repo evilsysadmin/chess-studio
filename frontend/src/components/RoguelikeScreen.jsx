@@ -4,17 +4,22 @@ import CombatScreen from './CombatScreen.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatCampaignMap from './CombatCampaignMap.jsx';
+import CampaignBriefing from './CampaignBriefing.jsx';
+import MechanicTutorialModal from './MechanicTutorialModal.jsx';
+import CombatDebrief from './CombatDebrief.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { applyModifierToFen, encounterForRun } from '../roguelikeModifiers.js';
 import { buyStatPoint } from '../combat.js';
-import { loadRoster, saveRoster, revivePiece } from '../combatRoster.js';
+import { loadRoster, saveRoster, revivePiece, renameRosterIdentity } from '../combatRoster.js';
 import { setRosterDeploymentType } from '../combatMetamorphosis.js';
+import { deploymentSummary, grantReserveRecruit, reserveRecruitTypeForNode } from '../combatDeployment.js';
 import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE, COMBAT_CHESS_TAGLINE } from '../combatChessBrand.js';
 import { hasCombatSession } from '../combatSession.js';
+import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import {
   loadCampaign,
   startCampaign,
@@ -29,6 +34,9 @@ import {
   campaignEventOptions,
   resolveCampaignEvent,
   campaignDifficulty,
+  campaignIntelBriefing,
+  markCampaignBriefingAccepted,
+  purchaseCampaignIntel,
   endCampaign,
   loadCampaignBestStage,
 } from '../combatCampaign.js';
@@ -70,6 +78,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   });
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [roster, setRoster] = useState(() => loadRoster());
+  const [battleDebrief, setBattleDebrief] = useState(null);
+  const [showCampaignTutorial, setShowCampaignTutorial] = useState(() => campaign.active && !loadMechanicTutorialProgress()?.['combat-campaign']?.seen);
   const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
 
   useEscapeToClose(onExit, {
@@ -119,7 +129,9 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   function handleStartCampaign() {
     setCombatSessionActive(false);
+    setBattleDebrief(null);
     setCampaign(startCampaign());
+    if (!loadMechanicTutorialProgress()?.['combat-campaign']?.seen) setShowCampaignTutorial(true);
     setCampaignEndResult(null);
     setEndResult(null);
   }
@@ -129,7 +141,16 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setCampaign((current) => selectCampaignNode(current, nodeId));
   }
 
+  function handleCampaignBuyIntel() {
+    setCampaign((current) => purchaseCampaignIntel(current));
+  }
+
+  function handleCampaignBriefingContinue() {
+    setCampaign((current) => markCampaignBriefingAccepted(current));
+  }
+
   function handleCampaignBattleStarted() {
+    setBattleDebrief(null);
     setCombatSessionActive(true);
     setCampaign((current) => markCampaignBattleStarted(current));
   }
@@ -143,7 +164,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setCampaignEndResult(result);
   }
 
-  function handleCampaignBattleResult(outcome) {
+  function handleCampaignBattleResult(outcome, debrief = null) {
+    setBattleDebrief(debrief);
     setCombatSessionActive(false);
     setServiceRecord(loadCombatService());
     setRoster(loadRoster());
@@ -158,11 +180,32 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignReward(perkId) {
+    const node = selectedCampaignNode;
+    if (node && ['camp', 'elite'].includes(node.type)) {
+      const grantId = `campaign:${campaign.seed}:${node.id}:reserve-recruit`;
+      setRoster((current) => {
+        const next = grantReserveRecruit(current, {
+          grantId,
+          originType: reserveRecruitTypeForNode(node),
+        });
+        if (next !== current) saveRoster(next);
+        return next;
+      });
+    }
     setCampaign((current) => chooseCampaignReward(current, perkId));
   }
 
   function handleCampaignEvent(choiceId) {
     setCampaign((current) => resolveCampaignEvent(current, choiceId));
+  }
+
+  function handleRenameRosterPiece(key, alias) {
+    setRoster((current) => {
+      const next = renameRosterIdentity(current, key, alias);
+      if (next === current) return current;
+      saveRoster(next);
+      return next;
+    });
   }
 
   function handleBuyRosterStat(key, stat) {
@@ -225,6 +268,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   function handleStartRun() {
     setCombatSessionActive(false);
+    setBattleDebrief(null);
     setRun(startNewRun());
     setEndResult(null);
   }
@@ -241,11 +285,13 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleBattleStarted() {
+    setBattleDebrief(null);
     setCombatSessionActive(true);
     setRun((current) => markBattleStarted(current));
   }
 
-  function handleBattleResult(outcome) {
+  function handleBattleResult(outcome, debrief = null) {
+    setBattleDebrief(debrief);
     setCombatSessionActive(false);
     setServiceRecord(loadCombatService());
     setRoster(loadRoster());
@@ -305,6 +351,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     const campaignFen = node ? applyModifierToFen(new Chess().fen(), node.modifierId, CPU_COLOR) : new Chess().fen();
     const isBoss = node?.type === 'boss';
     const delta = campaign.nextDifficultyDelta || 0;
+    const encounterIntel = node ? campaignIntelBriefing(campaign, node) : null;
     return (
       <CombatScreen
         key={`campaign-${campaign.seed}-${node?.id || 'node'}`}
@@ -319,6 +366,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         encounterLabel={node?.label}
         encounterDescription={node?.description}
         encounterTier={node?.tier}
+        encounterIntel={encounterIntel}
         combatVariant="roguelike"
         runPerks={campaign.perks || []}
         runPerkDetails={campaignPerkDetails}
@@ -394,7 +442,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section combat-campaign-shell">
           <span className="section-label">{COMBAT_CHESS_NAME} · Campaña procedural</span>
-          <h2>Operación La Torre</h2>
+          <div className="combat-heading-row"><h2>Operación La Torre</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
           <p className="hero-scope-note">
             Elige ruta. Los nodos seguros conservan fuerzas; las élites pagan mejor; los eventos pueden darte inteligencia o meterte en problemas. Tu ejército y sus bajas son persistentes.
           </p>
@@ -402,8 +450,12 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <div className="campaign-status-strip">
             <span>Ruta <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
             <span>Ventajas <b>{campaign.perks.length}</b></span>
-            <span>Próximo combate <b>{campaign.nextDifficultyDelta === 0 ? 'sin intel' : `${campaign.nextDifficultyDelta > 0 ? '+' : ''}${campaign.nextDifficultyDelta} CPU`}</b></span>
+            <span>Barracón <b>{deploymentSummary(roster).totalRoster}</b></span>
+            <span>Créditos <b>{campaign.operationalCredits}</b></span>
+            <span>Modif. siguiente <b>{campaign.nextDifficultyDelta === 0 ? 'ninguno' : `${campaign.nextDifficultyDelta > 0 ? '+' : ''}${campaign.nextDifficultyDelta} CPU`}</b></span>
           </div>
+
+          {battleDebrief && <CombatDebrief debrief={battleDebrief} compact onViewBattle={onViewBattle} />}
 
           {campaign.phase === 'map' && map && (
             <>
@@ -415,12 +467,22 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             </>
           )}
 
+          {campaign.phase === 'briefing' && selected && (
+            <CampaignBriefing
+              campaign={campaign}
+              node={selected}
+              onBuyIntel={handleCampaignBuyIntel}
+              onContinue={handleCampaignBriefingContinue}
+              onRetire={() => finishCampaign('retired')}
+            />
+          )}
+
           {campaign.phase === 'reward' && selected && (
             <div className="tournament-result roguelike-reward-screen campaign-node-resolution">
               <span className="section-label">{selected.type === 'elite' ? 'BOTÍN ÉLITE' : 'SECTOR ASEGURADO'}</span>
               <h3>{selected.label}</h3>
               <p className="hint-text">
-                Elige una ventaja temporal. {selected.type === 'elite' ? <><b>Élite:</b> la carta elegida entra con dos cargas.</> : 'Se pierde al terminar la campaña.'}
+                Elige una ventaja temporal. {selected.type === 'elite' ? <><b>Élite:</b> la carta elegida entra con dos cargas y además llega un refuerzo permanente al barracón.</> : 'Se pierde al terminar la campaña.'}
               </p>
               <div className="roguelike-reward-grid">
                 {rewardOptions.map((perk) => (
@@ -437,7 +499,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <div className="tournament-result campaign-node-resolution campaign-camp">
               <span className="section-label">CAMPAMENTO · NODO SEGURO</span>
               <h3>{selected.label}</h3>
-              <p className="hero-scope-note">Aquí no hay batalla ni bajas. Reorganiza el pelotón y elige una ventaja para el resto de la operación.</p>
+              <p className="hero-scope-note">Aquí no hay batalla ni bajas. Reorganiza el pelotón, incorpora un recluta de reserva permanente y elige una ventaja para el resto de la operación.</p>
               <div className="roguelike-reward-grid">
                 {rewardOptions.map((perk) => (
                   <button type="button" key={perk.id} className="roguelike-reward-card" onClick={() => handleCampaignReward(perk.id)}>
@@ -452,7 +514,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <div className="tournament-result campaign-node-resolution campaign-event">
               <span className="section-label">EVENTO DE CAMPAÑA</span>
               <h3>{selected.label}</h3>
-              <p className="hero-scope-note">No hay una respuesta gratis: puedes comprar información o llenar las mochilas haciendo bastante ruido.</p>
+              <p className="hero-scope-note">No hay una respuesta gratis: el reconocimiento silencioso reduce la dificultad del siguiente combate; saquear suministros da botín pero genera ruido.</p>
               <div className="campaign-event-options">
                 {eventOptions.map((option) => (
                   <button type="button" key={option.id} className="roguelike-reward-card" onClick={() => handleCampaignEvent(option.id)}>
@@ -471,6 +533,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
               <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={() => finishCampaign('completed')}>Cerrar campaña victoriosa</button>
             </div>
           )}
+
+          {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
 
           <CombatServicePanel summary={serviceSummary} compact />
           {(campaign.eventLog || []).length > 0 && (
@@ -508,11 +572,14 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
         <CombatServicePanel summary={serviceSummary} compact />
 
+        {battleDebrief && <CombatDebrief debrief={battleDebrief} compact onViewBattle={onViewBattle} />}
+
         <ArmyRosterPanel
           roster={roster}
           embedded
           onBuy={handleBuyRosterStat}
           onRevive={handleReviveRosterPiece}
+          onRename={handleRenameRosterPiece}
           onMetamorphose={handleMetamorphoseRosterPiece}
           onUnlockTechnique={handleUnlockRosterTechnique}
           onEquipTechnique={handleEquipRosterTechnique}

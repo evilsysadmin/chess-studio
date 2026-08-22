@@ -232,7 +232,7 @@ async def count_online_users(*, window_seconds: int = 90) -> int:
     return count
 
 
-async def touch_last_activity(username: str, *, force: bool = False) -> str:
+async def touch_last_activity(username: str, *, force: bool = False, activity: str | None = None) -> str:
     """Actualiza la última actividad con coalescing para no martillear Mongo.
 
     Cada request autenticada puede pasar por aquí, pero una cuenta activa escribe
@@ -250,6 +250,8 @@ async def touch_last_activity(username: str, *, force: bool = False) -> str:
     if col is not None:
         try:
             fields = {"last_activity": value}
+            if activity:
+                fields["current_activity"] = activity
             # `force=True` se usa en login (y tras reset, que también entrega
             # sesión nueva). Guardamos un ancla de último acceso además del
             # heartbeat para que cuentas legacy nunca vuelvan a quedar como
@@ -266,6 +268,8 @@ async def touch_last_activity(username: str, *, force: bool = False) -> str:
         user = _memory_users.get(username)
         if user is not None:
             user["last_activity"] = value
+            if activity:
+                user["current_activity"] = activity
             if force:
                 user["last_login"] = value
 

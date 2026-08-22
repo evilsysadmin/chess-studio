@@ -9,10 +9,18 @@ import { conversionStats, hallOfFameAndShame, loadAnalysisArchive, materialDonat
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { buildNemesisDossier } from '../nemesis.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import { buildCareerHeatmaps, deriveRpgProfile } from '../careerVisuals.js';
 
 const TIME_LABEL = { none:'Sin reloj','1+0':'1+0 Bullet','3+2':'3+2 Blitz','5+0':'5+0','10+0':'10+0','15+10':'15+10' };
 function TreeRows({ node, depth=0 }) { const rows=Object.values(node?.children||{}).sort((a,b)=>b.count-a.count).slice(0,depth===0?6:3);return <>{rows.map(r=><div className="career-tree-row" key={`${depth}-${r.move}-${r.count}`} style={{paddingLeft:`${depth*16}px`}}><span>{depth?'↳ ':''}{r.move}</span><b>{r.count}×</b><small>{Math.round((r.wins||0)/Math.max(1,r.count)*100)}% V</small>{depth<2&&<TreeRows node={r} depth={depth+1}/>}</div>)}</>; }
 function pct(n){return n===null||n===undefined?'—':`${n}%`;}
+
+const HEAT_RANKS=['8','7','6','5','4','3','2','1'];
+const HEAT_FILES=['a','b','c','d','e','f','g','h'];
+function HeatmapBoard({counts,max,tone='activity',label}) {
+  const rgb=tone==='loss'?'178,70,70':tone==='capture'?'86,150,105':'198,164,93';
+  return <div className="career-heatmap-card"><b>{label}</b><div className="career-heat-board" aria-label={label}>{HEAT_RANKS.flatMap(rank=>HEAT_FILES.map(file=>{const sq=`${file}${rank}`;const n=Number(counts?.[sq]||0);const ratio=max?Math.min(1,n/max):0;return <div key={sq} className={`career-heat-cell ${(Number(rank)+HEAT_FILES.indexOf(file))%2?'dark':'light'}`} title={`${sq}: ${n}`} style={{boxShadow:n?`inset 0 0 0 999px rgba(${rgb},${(.08+ratio*.68).toFixed(2)})`:undefined}}><span>{n||''}</span></div>}))}</div><small>Más intensidad = más veces registrado. Datos de tus partidas guardadas.</small></div>;
+}
 
 function rescueFen(record) {
   const moves = record?.moves || [];
@@ -32,6 +40,8 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
   const nemesis=useMemo(()=>buildNemesisDossier(history,rivalry),[history,rivalry]);
   const topIncident=nemesis.tactic;
   const nemesisPersonalCount=useMemo(()=>nemesis.opening ? personal.filter((p)=>p.opening===nemesis.opening.opening).length : 0,[personal,nemesis.opening]);
+  const heatmaps=useMemo(()=>buildCareerHeatmaps(history),[history]);
+  const rpg=useMemo(()=>deriveRpgProfile(history,archive,career),[history,archive,career]);
 
   return <div className={embedded ? 'career-screen insights-embedded-page' : 'menu tournament-panel career-screen'}>
     {!embedded && (<>
@@ -81,6 +91,10 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
     </div>
 
     <div className="menu-section"><h2>⚙ Conversión y defensa</h2><div className="career-hero-grid"><article className="career-card"><span className="eyebrow">Ventajas ≥ +3</span><h3>{conversion.converted}/{conversion.winningChances}</h3><p>{conversion.conversionPct===null?'Faltan autopsias':`${conversion.conversionPct}% convertidas en victoria.`}</p></article><article className="career-card"><span className="eyebrow">Defensa desesperada ≤ −3</span><h3>{conversion.saved}/{conversion.desperatePositions}</h3><p>{conversion.defensePct===null?'Faltan autopsias':`${conversion.defensePct}% salvadas como tablas/victoria.`}</p></article><article className="career-card"><span className="eyebrow">Apuros de tiempo</span><h3>{pressure.incidents}/{pressure.moves}</h3><p>{pressure.rate===null?'Sin datos bajo 40 s':`${pressure.rate}% de movimientos bajo presión acabaron en incidente grave.`}</p></article><article className="career-card"><span className="eyebrow">Material donado</span><h3>{donations.points} pts</h3><p>{donations.pieces} piezas capturadas por la CPU · {donations.queens} damas. Filantropía táctica.</p></article></div></div>
+
+    <div className="menu-section"><div className="career-rpg-heading"><div><span className="section-label">Perfil RPG basado en datos</span><h2>🧬 {rpg.title}</h2></div><small>{rpg.games} partidas registradas · los índices son métricas derivadas, no ELO ni diagnóstico.</small></div><div className="career-rpg-grid">{rpg.attributes.map(a=><article className={`career-rpg-stat ${a.id===rpg.leaderId?'leader':''}`} key={a.id} title={a.explanation}><span>{a.label}</span><b>{a.value===null?'—':`${a.value}%`}</b><div><i style={{width:`${a.value||0}%`}}/></div><small>{a.sample?`${a.sample} muestras · ${a.explanation}`:'Sin muestras suficientes.'}</small></article>)}</div></div>
+
+    <div className="menu-section"><h2>🗺 Heatmaps de tu tablero</h2><p className="hint-text">Actividad, capturas y bajas calculadas únicamente desde las casillas de destino registradas. No evalúan si la jugada fue buena: enseñan dónde ocurre tu ajedrez.</p><div className="career-heatmap-grid"><HeatmapBoard counts={heatmaps.activity} max={heatmaps.maxima.activity} label={`Actividad · ${heatmaps.totals.humanMoves} movimientos`} /><HeatmapBoard counts={heatmaps.captures} max={heatmaps.maxima.captures} tone="capture" label={`Tus capturas · ${heatmaps.totals.humanCaptures}`} /><HeatmapBoard counts={heatmaps.losses} max={heatmaps.maxima.losses} tone="loss" label={`Tus bajas · ${heatmaps.totals.humanLosses}`} /></div></div>
 
     <div className="menu-section"><h2>🏅 Hall of Fame</h2><div className="museum-grid"><div className="museum-card"><span>👑</span><strong>{hall.hardestWin?`CPU ${hall.hardestWin.difficulty}`:'—'}</strong><small>victoria de mayor dificultad</small></div><div className="museum-card"><span>⚡</span><strong>{hall.fastestWin?`${Math.ceil((hall.fastestWin.moves?.length||0)/2)} mov.`:'—'}</strong><small>victoria más rápida</small></div><div className="museum-card"><span>💎</span><strong>{hall.bestAccuracy?`${hall.bestAccuracy.accuracy}%`:'—'}</strong><small>mejor accuracy archivada</small></div><div className="museum-card"><span>🛡</span><strong>{hall.desperateSave?`${(hall.desperateSave.troughPerspectiveEval/100).toFixed(1)}`:'—'}</strong><small>peor posición que lograste salvar</small></div></div></div>
     <div className="menu-section"><h2>☠ Hall of Shame</h2><div className="museum-grid"><div className="museum-card"><span>💥</span><strong>{hall.worst?<>{`−${hall.worst.worst.loss} `}<GlossaryTerm term="cp">cp</GlossaryTerm></>:'—'}</strong><small>peor <GlossaryTerm term="Blunder">blunder</GlossaryTerm> analizado</small></div><div className="museum-card"><span>📉</span><strong>{hall.missedConversion?`+${(hall.missedConversion.peakPerspectiveEval/100).toFixed(1)}`:'—'}</strong><small>mayor ventaja no convertida</small></div><div className="museum-card"><span>🏚</span><strong>{donations.queens}</strong><small>damas entregadas a la contabilidad rival</small></div><div className="museum-card"><span>🧾</span><strong>{recurrence.repeated}</strong><small>errores reincidentes</small></div></div></div>

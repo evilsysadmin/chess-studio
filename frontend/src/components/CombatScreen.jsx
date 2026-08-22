@@ -19,6 +19,7 @@ export default function CombatScreen(props) {
         encounterLabel={props.encounterLabel}
         encounterDescription={props.encounterDescription}
         encounterTier={props.encounterTier}
+        encounterIntel={props.encounterIntel}
         bossConfig={props.bossConfig}
         runPerks={props.runPerkDetails}
         combatVariant={props.combatVariant}
@@ -36,9 +37,17 @@ export default function CombatScreen(props) {
         startBattle={controller.startBattle}
         showArmy={controller.showArmy}
         setShowArmy={controller.setShowArmy}
+        showDeployment={controller.showDeployment}
+        setShowDeployment={controller.setShowDeployment}
         handleBuyRosterStat={controller.handleBuyRosterStat}
         handleReviveRosterPiece={controller.handleReviveRosterPiece}
+        handleRenameRosterPiece={controller.handleRenameRosterPiece}
         handleMetamorphoseRosterPiece={controller.handleMetamorphoseRosterPiece}
+        handleDeployRosterUnit={controller.handleDeployRosterUnit}
+        handleRemoveDeployedUnit={controller.handleRemoveDeployedUnit}
+        handleResetDeployment={controller.handleResetDeployment}
+        handleAutofillDeployment={controller.handleAutofillDeployment}
+        handleApplyDeploymentPreset={controller.handleApplyDeploymentPreset}
         handleUnlockRosterTechnique={controller.handleUnlockRosterTechnique}
         handleEquipRosterTechnique={controller.handleEquipRosterTechnique}
         handleResetRoster={controller.handleResetRoster}

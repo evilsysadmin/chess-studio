@@ -3,6 +3,7 @@ import Board from './Board.jsx';
 import PromotionModal from './PromotionModal.jsx';
 import PieceInfoModal from './PieceInfoModal.jsx';
 import AttackConfirmModal from './AttackConfirmModal.jsx';
+import CombatDebrief from './CombatDebrief.jsx';
 
 export default function CombatBattleView({
   onExit, onViewBattle, phase, localChess, status, statusLabel, statusClass, statusText,
@@ -84,27 +85,16 @@ export default function CombatBattleView({
               ? localChess.turn() === humanColor ? 'Ganó la CPU.' : '¡Ganaste el combate!'
               : 'Terminó en tablas.'}
           </p>
-          {battleRecap && (
-            <>
-              <p className="hint-text combat-recap-line">
-                {battleRecap.survivorCount}/{battleRecap.totalCount} piezas sobrevivieron
-                {battleRecap.xpGained > 0 ? ` · +${battleRecap.xpGained} XP de combate` : ''}
-                {battleRecap.serviceResult?.meritGained > 0 ? ` · +${battleRecap.serviceResult.meritGained} méritos` : ''}
-              </p>
-              {battleRecap.serviceResult?.promoted && (
-                <p className="combat-service-promotion">ASCENSO · {battleRecap.serviceResult.currentRank.insignia} {battleRecap.serviceResult.currentRank.label}</p>
-              )}
-              {battleRecap.serviceResult?.newDecorations?.length > 0 && (
-                <div className="combat-service-awards-earned">
-                  {battleRecap.serviceResult.newDecorations.map((medal) => (
-                    <span key={medal.id}>✦ {medal.label}</span>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {battleRecap?.debrief ? (
+            <CombatDebrief debrief={battleRecap.debrief} compact onViewBattle={onViewBattle} />
+          ) : battleRecap ? (
+            <p className="hint-text combat-recap-line">
+              {battleRecap.survivorCount}/{battleRecap.totalCount} piezas sobrevivieron
+              {battleRecap.xpGained > 0 ? ` · +${battleRecap.xpGained} XP de combate` : ''}
+            </p>
+          ) : null}
           <button className="primary-btn" onClick={backToSetup}>Volver a jugar</button>
-          {battleRecap && onViewBattle && (
+          {battleRecap && !battleRecap.debrief && onViewBattle && (
             <button
               type="button"
               className="secondary-btn"

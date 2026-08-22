@@ -63,6 +63,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
   const [analyzing, setAnalyzing] = useState(true);
   const [analyzeError, setAnalyzeError] = useState(null);
   const [moviePlaying, setMoviePlaying] = useState(false);
+  const [movieSpeed, setMovieSpeed] = useState(1);
 
   // Analiza la partida ENTERA una sola vez al entrar — no hace falta pedirlo
   // jugada por jugada, así se puede recorrer el cuaderno de jugadas y ver de
@@ -99,14 +100,27 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
     return map;
   }, [report, pinnedReport]);
 
+  const criticalMoments = useMemo(() => {
+    const rows = report?.moveReports || [];
+    return rows.filter((m) => ['mistake','blunder'].includes(m.severity)).map((m) => ({ ...m, step: Number(m.index) + 1 }));
+  }, [report]);
+
+  function jumpCritical(direction = 1) {
+    if (!criticalMoments.length) return;
+    const ordered = direction > 0 ? criticalMoments : [...criticalMoments].reverse();
+    const target = ordered.find((m) => direction > 0 ? m.step > step : m.step < step) || ordered[0];
+    if (target) { setMoviePlaying(false); goTo(target.step); }
+  }
+
   useEffect(() => {
     if (!moviePlaying) return undefined;
     if (step >= positions.length - 1) { setMoviePlaying(false); return undefined; }
     const currentReport = step > 0 ? reportByIndex.get(step - 1) : null;
     const dramatic = currentReport && ['mistake', 'blunder'].includes(currentReport.severity);
-    const timer = setTimeout(() => setStep((s) => Math.min(positions.length - 1, s + 1)), dramatic ? 1500 : 720);
+    const baseDelay = dramatic ? 1500 : 720;
+    const timer = setTimeout(() => setStep((s) => Math.min(positions.length - 1, s + 1)), Math.max(180, Math.round(baseDelay / movieSpeed)));
     return () => clearTimeout(timer);
-  }, [moviePlaying, step, positions.length, reportByIndex]);
+  }, [moviePlaying, movieSpeed, step, positions.length, reportByIndex]);
 
   function goTo(i) {
     setStep(Math.max(0, Math.min(positions.length - 1, i)));
@@ -150,9 +164,19 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
       <button className="back-link" onClick={onExit}>← Volver al historial</button>
 
       {movieMode && (
-        <div className="movie-banner">
-          <div><span className="eyebrow">PELÍCULA DE LA PARTIDA</span><b>{moviePlaying ? 'Reproduciendo el expediente…' : step >= positions.length - 1 ? 'Fin del metraje' : 'Pausa dramática'}</b></div>
-          <button className="primary-btn" onClick={() => { if (step >= positions.length - 1) setStep(0); setMoviePlaying((v) => !v); }}>{moviePlaying ? 'Pausar' : '▶ Reproducir'}</button>
+        <div className="movie-banner movie-banner-v2">
+          <div><span className="eyebrow">PELÍCULA DE LA PARTIDA · DIRECTOR'S CUT</span><b>{moviePlaying ? 'Reproduciendo el expediente…' : step >= positions.length - 1 ? 'Fin del metraje' : 'Pausa dramática'}</b><small>{criticalMoments.length} momentos críticos detectados por el análisis.</small></div>
+          <div className="movie-controls">
+            <button className="primary-btn" onClick={() => { if (step >= positions.length - 1) setStep(0); setMoviePlaying((v) => !v); }}>{moviePlaying ? 'Pausar' : '▶ Reproducir'}</button>
+            <div className="movie-speed" aria-label="Velocidad de reproducción">{[0.5,1,1.75].map((speed)=><button key={speed} className={movieSpeed===speed?'primary-btn':'secondary-btn'} onClick={()=>setMovieSpeed(speed)}>{speed}×</button>)}</div>
+            {criticalMoments.length>0&&<div className="movie-critical-nav"><button className="secondary-btn" onClick={()=>jumpCritical(-1)}>← crítico</button><button className="secondary-btn" onClick={()=>jumpCritical(1)}>crítico →</button></div>}
+          </div>
+        </div>
+      )}
+
+      {movieMode && criticalMoments.length>0 && (
+        <div className="movie-chapters" aria-label="Capítulos críticos">
+          {criticalMoments.slice(0,12).map((m)=><button key={`${m.index}-${m.severity}`} className={`movie-chapter sev-${m.severity} ${step===m.step?'active':''}`} onClick={()=>{setMoviePlaying(false);goTo(m.step);}}>J{m.moveNumber || Math.ceil((m.index+1)/2)} · {SEVERITY_LABEL[m.severity]}</button>)}
         </div>
       )}
 

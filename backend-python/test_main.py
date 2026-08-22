@@ -1044,6 +1044,19 @@ def test_activity_heartbeat_is_protected_and_lightweight():
     assert client.post("/api/auth/activity").status_code == 204
 
 
+def test_activity_heartbeat_records_only_coarse_allowed_activity(monkeypatch):
+    import main as main_module
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    assert client.post("/api/auth/activity", json={"activity": "Combat Chess"}).status_code == 204
+    users = client.get("/api/admin/users").json()["users"]
+    row = next(user for user in users if user["username"] == "testuser")
+    assert row["currentActivity"] == "Combat Chess"
+    assert client.post("/api/auth/activity", json={"activity": "FEN secreto 123"}).status_code == 204
+    users = client.get("/api/admin/users").json()["users"]
+    row = next(user for user in users if user["username"] == "testuser")
+    assert row["currentActivity"] == "Combat Chess"
+
+
 def test_claimable_threefold_is_consistently_a_finished_draw():
     from main import serialize_game
 

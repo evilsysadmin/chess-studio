@@ -15,6 +15,29 @@ function finitePoints(value) {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 }
 
+
+export function combatUnitThreat(rosterState, key) {
+  const saved = rosterState?.pieces?.[key];
+  if (!saved || saved.alive === false || String(key).startsWith('k-')) {
+    return { bonus: 0, statBonus: 0, metamorphosisThreat: 0, techniqueBonus: 0, points: 0 };
+  }
+  const points = finitePoints(saved.strengthPoints) + finitePoints(saved.speedPoints);
+  const statBonus = Math.min(MAX_STAT_BONUS, Math.floor(points / 12));
+  const targetType = saved.deploymentType;
+  const unitRecord = unitRecordForKey(rosterState, key);
+  const metamorphosisThreat = targetType && canChooseDeploymentType(key, saved, targetType, unitRecord)
+    ? (FORM_THREAT[targetType] || 0)
+    : 0;
+  const techniqueBonus = saved.equippedTechnique ? 1 : 0;
+  return {
+    bonus: statBonus + metamorphosisThreat + techniqueBonus,
+    statBonus,
+    metamorphosisThreat,
+    techniqueBonus,
+    points,
+  };
+}
+
 export function combatArmyThreat(rosterState) {
   const pieces = rosterState?.pieces && typeof rosterState.pieces === 'object' ? rosterState.pieces : {};
   let totalStatPoints = 0;
@@ -23,8 +46,13 @@ export function combatArmyThreat(rosterState) {
   let activeVeterans = 0;
   let activeMetamorphoses = 0;
 
+  const deployed = rosterState?.deployment && typeof rosterState.deployment === 'object'
+    ? new Set(Object.values(rosterState.deployment).filter(Boolean))
+    : null;
+
   for (const [key, saved] of Object.entries(pieces)) {
     if (!saved || saved.alive === false || key.startsWith('k-')) continue;
+    if (deployed && !deployed.has(key)) continue; // reservas no pagan impuesto de amenaza
     const points = finitePoints(saved.strengthPoints) + finitePoints(saved.speedPoints);
     totalStatPoints += points;
     if (points > 0) activeVeterans += 1;

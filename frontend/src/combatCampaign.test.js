@@ -4,6 +4,7 @@ import {
   startCampaign,
   availableCampaignNodes,
   selectCampaignNode,
+  markCampaignBriefingAccepted,
   markCampaignBattleStarted,
   markCampaignBattleWon,
   campaignRewardOptions,
@@ -11,6 +12,8 @@ import {
   campaignEventOptions,
   resolveCampaignEvent,
   campaignDifficulty,
+  campaignIntelBriefing,
+  purchaseCampaignIntel,
   loadCampaign,
   resetCombatCampaign,
 } from './combatCampaign.js';
@@ -40,6 +43,8 @@ describe('Combat Chess campaign map', () => {
     let run = startCampaign('elite');
     const first = availableCampaignNodes(run)[0];
     run = selectCampaignNode(run, first.id);
+    expect(run.phase).toBe('briefing');
+    run = markCampaignBriefingAccepted(run);
     expect(run.phase).toBe('battle');
     run = markCampaignBattleStarted(run);
     expect(run.phase).toBe('fighting');
@@ -66,6 +71,35 @@ describe('Combat Chess campaign map', () => {
     expect(run.nextDifficultyDelta).toBe(-6);
     const nextBattle = availableCampaignNodes(run).find((node) => ['battle', 'elite'].includes(node.type));
     if (nextBattle) expect(campaignDifficulty(run, nextBattle)).toBe(nextBattle.baseDifficulty - 6);
+  });
+
+  it('compra intel por niveles y nunca gasta más créditos de los disponibles', () => {
+    let run = startCampaign('intel');
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    expect(run.phase).toBe('briefing');
+    expect(run.operationalCredits).toBe(6);
+    expect(campaignIntelBriefing(run, node).level).toBe(0);
+    run = purchaseCampaignIntel(run, node.id);
+    const level1 = campaignIntelBriefing(run, node);
+    expect(level1.level).toBe(1);
+    expect(level1.threatRange).toBeTruthy();
+    expect(run.operationalCredits).toBe(3);
+    const unchanged = purchaseCampaignIntel(run, node.id);
+    expect(unchanged).toEqual(run); // nivel 2 cuesta 5; no hay saldo
+  });
+
+  it('una victoria concede créditos una sola vez porque sólo fighting puede resolver victoria', () => {
+    let run = startCampaign('credits');
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    const before = run.operationalCredits;
+    run = markCampaignBattleWon(run);
+    expect(run.operationalCredits).toBe(before + 4);
+    const twice = markCampaignBattleWon(run);
+    expect(twice).toEqual(run);
   });
 
   it('reset elimina el intento de campaña', () => {

@@ -26,6 +26,7 @@ import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailabilit
 import { loadZenMode, saveZenMode, zenModeSummary } from '../zenMode.js';
 import { identifyOpening } from '../openings.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import { noteworthyPresentation } from '../spectatorReactions.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -123,8 +124,10 @@ export default function GameScreen({
   const turnBannerTimeout = useRef(null);
   const [cpuComment, setCpuComment] = useState(null);
   const [cpuCommentSeq, setCpuCommentSeq] = useState(0);
+  const [audienceReaction, setAudienceReaction] = useState(null);
   const [gameChat, setGameChat] = useState(() => loadActiveGameChat(game.id));
   const cpuCommentTimeout = useRef(null);
+  const audienceReactionTimeout = useRef(null);
   const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
   const openingMemoryShownRef = useRef(false);
@@ -150,6 +153,7 @@ export default function GameScreen({
     setPendingAnim(null);
     setTurnBanner(null);
     setCpuComment(null);
+    setAudienceReaction(null);
     setGameChat(loadActiveGameChat(game.id));
     setHint(null);
     setHintsUsedThisGame(0);
@@ -332,11 +336,23 @@ export default function GameScreen({
   }
 
 
+  function showAudienceReaction(text) {
+    if (!text || zenModeRef.current) return;
+    setAudienceReaction(text);
+    if (audienceReactionTimeout.current) clearTimeout(audienceReactionTimeout.current);
+    audienceReactionTimeout.current = setTimeout(() => setAudienceReaction(null), 4200);
+  }
+
   function showNoteworthy(comment, actor) {
     if (!comment) return;
-    if (!zenModeRef.current) playNoteworthySound(comment.event, actor);
+    const ply = game.history?.length ?? 0;
+    const presentation = noteworthyPresentation(comment.event, actor, ply);
     const recurrenceCount = recordRivalryIncident(comment.event, actor);
-    showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` }, { actor, event: comment.event?.type });
+    if (!zenModeRef.current && (presentation.cpu || presentation.audience)) playNoteworthySound(comment.event, actor);
+    if (presentation.cpu) {
+      showCpuComment({ ...comment, text: `${comment.text}${recurrenceSuffix(comment.event, actor, recurrenceCount)}` }, { actor, event: comment.event?.type, ply });
+    }
+    if (presentation.audience) showAudienceReaction(presentation.text);
     const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
     if (!unlocked) return;
     setAchievementToast(unlocked);
@@ -356,6 +372,7 @@ export default function GameScreen({
     if (turnBannerTimeout.current) clearTimeout(turnBannerTimeout.current);
     if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
     if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
+    if (audienceReactionTimeout.current) clearTimeout(audienceReactionTimeout.current);
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
@@ -678,6 +695,7 @@ export default function GameScreen({
             {statusText}
           </div>
           {!zenMode && <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />}
+          {!zenMode && audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{audienceReaction}</b></div>}
           {!zenMode && prediction && <div className="prediction-strip">{prediction.text}</div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}

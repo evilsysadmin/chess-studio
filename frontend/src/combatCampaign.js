@@ -1,8 +1,9 @@
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { perkById, rewardOptionsForFloor } from './roguelikePerks.js';
-import { seededUnit } from './roguelikeModifiers.js';
+import { ROGUELIKE_MODIFIERS, seededUnit } from './roguelikeModifiers.js';
+import { ROGUELIKE_BOSS } from './roguelikeBoss.js';
 
-// Combat Chess · campaña procedural v1.
+// Combat Chess · campaña procedural v2 (briefing + economía de inteligencia).
 //
 // La campaña vive separada del antiguo intento lineal de La Torre para poder
 // migrar sin romper partidas guardadas. El mapa NO se persiste entero: seed +
@@ -13,8 +14,92 @@ const BEST_STAGE_KEY = 'chess-study-combat-campaign-best-stage';
 const TOWER_COMPLETED_KEY = 'chess-study-roguelike-tower-completed';
 const BEST_FLOOR_KEY = 'chess-study-roguelike-best-floor';
 
-export const CAMPAIGN_VERSION = 1;
+export const CAMPAIGN_VERSION = 2;
 export const CAMPAIGN_BOSS_STAGE = 7;
+
+export const CAMPAIGN_INTEL_TIERS = Object.freeze([
+  { level: 0, label: 'Sin reconocimiento', cost: 0 },
+  { level: 1, label: 'Contacto', cost: 3 },
+  { level: 2, label: 'Evaluación', cost: 5 },
+  { level: 3, label: 'Dossier', cost: 7 },
+]);
+
+const CAMPAIGN_STARTING_CREDITS = 6;
+const BATTLE_CREDIT_REWARD = Object.freeze({ battle: 4, elite: 7, boss: 12 });
+const MODIFIER_META = Object.fromEntries(ROGUELIKE_MODIFIERS.map((modifier) => [modifier.id, modifier]));
+
+function clampIntelLevel(level) {
+  return Math.max(0, Math.min(3, Math.floor(Number(level) || 0)));
+}
+
+export function campaignIntelLevel(state, nodeId = state?.selectedNodeId) {
+  return clampIntelLevel(state?.intelligenceByNode?.[nodeId]);
+}
+
+export function nextCampaignIntelTier(state, nodeId = state?.selectedNodeId) {
+  const current = campaignIntelLevel(state, nodeId);
+  return CAMPAIGN_INTEL_TIERS.find((tier) => tier.level === current + 1) || null;
+}
+
+export function purchaseCampaignIntel(state, nodeId = state?.selectedNodeId) {
+  // La inteligencia es una decisión PREVIA al despliegue. Aunque una llamada
+  // programática conozca el id de otro nodo, no permitimos comprar dossier a
+  // posteriori ni para rutas que el jugador todavía no ha seleccionado.
+  if (!state?.active || state.phase !== 'briefing' || !nodeId || nodeId !== state.selectedNodeId) return state;
+  const node = campaignNode(state, nodeId);
+  if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return state;
+  const nextTier = nextCampaignIntelTier(state, nodeId);
+  if (!nextTier || (Number(state.operationalCredits) || 0) < nextTier.cost) return state;
+  return saveCampaign({
+    ...state,
+    operationalCredits: Math.max(0, (Number(state.operationalCredits) || 0) - nextTier.cost),
+    intelligenceByNode: { ...(state.intelligenceByNode || {}), [nodeId]: nextTier.level },
+    eventLog: [...(state.eventLog || []), `Intel ${nextTier.label}: ${node.label} · −${nextTier.cost} créditos`].slice(-20),
+  });
+}
+
+function threatBand(baseDifficulty) {
+  const n = Math.max(0, Math.min(100, Number(baseDifficulty) || 0));
+  if (n >= 70) return 'Extrema';
+  if (n >= 55) return 'Muy alta';
+  if (n >= 40) return 'Alta';
+  if (n >= 28) return 'Media';
+  return 'Baja';
+}
+
+export function campaignIntelBriefing(state, node = campaignNode(state)) {
+  if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return null;
+  const level = campaignIntelLevel(state, node.id);
+  const modifier = MODIFIER_META[node.modifierId] || MODIFIER_META.none;
+  const difficulty = campaignDifficulty(state, node);
+  const result = {
+    level,
+    levelLabel: CAMPAIGN_INTEL_TIERS[level]?.label || 'Sin reconocimiento',
+    threatBand: threatBand(difficulty),
+    exactDifficulty: null,
+    modifierLabel: null,
+    modifierDescription: null,
+    bossHp: null,
+    note: 'La inteligencia nunca revela movimientos concretos del motor.',
+  };
+  if (level >= 1) result.threatRange = `${Math.max(5, difficulty - 5)}–${Math.min(100, difficulty + 5)}`;
+  if (level >= 2) {
+    result.exactDifficulty = difficulty;
+    result.modifierLabel = modifier?.label || 'Material estándar';
+  }
+  if (level >= 3) {
+    result.modifierDescription = modifier?.description || 'Sin modificador material adicional.';
+    if (node.type === 'boss') result.bossHp = ROGUELIKE_BOSS.maxHp;
+  }
+  return result;
+}
+
+export function markCampaignBriefingAccepted(state) {
+  const node = campaignNode(state);
+  if (!state?.active || state.phase !== 'briefing' || !node || !['battle', 'elite', 'boss'].includes(node.type)) return state;
+  return saveCampaign({ ...state, phase: 'battle' });
+}
+
 
 const STAGE_FLOORS = Object.freeze({ 1: 1, 2: 2, 3: 4, 4: 6, 5: 7, 6: 9, 7: 10 });
 
@@ -160,17 +245,19 @@ function emptyCampaign() {
     perks: [],
     rewardChosenForNode: null,
     nextDifficultyDelta: 0,
+    operationalCredits: CAMPAIGN_STARTING_CREDITS,
+    intelligenceByNode: {},
     eventLog: [],
   };
 }
 
 function normalizeCampaign(raw) {
   const base = emptyCampaign();
-  if (!raw || typeof raw !== 'object' || raw.version !== CAMPAIGN_VERSION) return base;
+  if (!raw || typeof raw !== 'object' || ![1, CAMPAIGN_VERSION].includes(raw.version)) return base;
   const seed = raw.active ? String(raw.seed || 'legacy-campaign') : null;
   const map = seed ? campaignMap(seed) : null;
   const validIds = new Set(map?.nodes.map((node) => node.id) || ['start']);
-  const phases = new Set(['map', 'battle', 'fighting', 'reward', 'event', 'camp', 'completed']);
+  const phases = new Set(['map', 'briefing', 'battle', 'fighting', 'reward', 'event', 'camp', 'completed']);
   const currentNodeId = validIds.has(raw.currentNodeId) ? raw.currentNodeId : 'start';
   const selectedNodeId = validIds.has(raw.selectedNodeId) ? raw.selectedNodeId : null;
   return {
@@ -185,6 +272,10 @@ function normalizeCampaign(raw) {
     perks: Array.isArray(raw.perks) ? raw.perks.filter((id) => perkById(id)) : [],
     rewardChosenForNode: typeof raw.rewardChosenForNode === 'string' ? raw.rewardChosenForNode : null,
     nextDifficultyDelta: Math.max(-12, Math.min(12, Number(raw.nextDifficultyDelta) || 0)),
+    operationalCredits: Math.max(0, Math.floor(Number(raw.operationalCredits ?? (raw.version === 1 ? CAMPAIGN_STARTING_CREDITS : 0)) || 0)),
+    intelligenceByNode: raw.intelligenceByNode && typeof raw.intelligenceByNode === 'object'
+      ? Object.fromEntries(Object.entries(raw.intelligenceByNode).filter(([id]) => validIds.has(id)).map(([id, level]) => [id, clampIntelLevel(level)]))
+      : {},
     eventLog: Array.isArray(raw.eventLog) ? raw.eventLog.slice(-20) : [],
   };
 }
@@ -227,7 +318,7 @@ export function selectCampaignNode(state, nodeId) {
   const available = availableCampaignNodes(state);
   const node = available.find((candidate) => candidate.id === nodeId);
   if (!node) return state;
-  const phase = node.type === 'event' ? 'event' : node.type === 'camp' ? 'camp' : 'battle';
+  const phase = node.type === 'event' ? 'event' : node.type === 'camp' ? 'camp' : 'briefing';
   return saveCampaign({ ...state, phase, selectedNodeId: node.id, rewardChosenForNode: null });
 }
 
@@ -256,16 +347,24 @@ function markNodeCleared(state, extras = {}) {
 export function markCampaignBattleWon(state) {
   const node = campaignNode(state);
   if (!state?.active || state.phase !== 'fighting' || !node) return state;
+  const earned = BATTLE_CREDIT_REWARD[node.type] || 0;
+  const credited = {
+    ...state,
+    operationalCredits: Math.max(0, (Number(state.operationalCredits) || 0) + earned),
+    eventLog: earned > 0
+      ? [...(state.eventLog || []), `Objetivo cumplido: +${earned} créditos operativos`].slice(-20)
+      : [...(state.eventLog || [])],
+  };
   if (node.type === 'boss') {
     localStorage.setItem(TOWER_COMPLETED_KEY, '1');
     const bestFloor = Math.max(10, Number.parseInt(localStorage.getItem(BEST_FLOOR_KEY) || '0', 10) || 0);
     setProfileStorageItem(BEST_FLOOR_KEY, String(bestFloor));
     setProfileStorageItem(BEST_STAGE_KEY, String(CAMPAIGN_BOSS_STAGE));
-    return markNodeCleared(state, { phase: 'completed', nextDifficultyDelta: 0 });
+    return markNodeCleared(credited, { phase: 'completed', nextDifficultyDelta: 0 });
   }
   const best = Math.max(loadCampaignBestStage(), node.stage);
   setProfileStorageItem(BEST_STAGE_KEY, String(best));
-  return saveCampaign({ ...state, phase: 'reward', nextDifficultyDelta: 0 });
+  return saveCampaign({ ...credited, phase: 'reward', nextDifficultyDelta: 0 });
 }
 
 export function campaignRewardOptions(state) {

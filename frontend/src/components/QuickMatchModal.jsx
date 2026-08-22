@@ -6,6 +6,7 @@ import { SERIES_OPTIONS } from '../series.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { handicapForGap } from '../handicap.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
 export default function QuickMatchModal({
   difficulty,
@@ -33,7 +34,7 @@ export default function QuickMatchModal({
       <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">Partida rápida</span>
-        <h3>Elige tu rival</h3>
+        <div className="combat-heading-row"><h3>Elige tu rival</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
         <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
           El ritmo elegido también se usa en "Partida de práctica". Las series son sólo para Partida rápida; Torneo y Combat Chess tienen su propia configuración.
         </p>

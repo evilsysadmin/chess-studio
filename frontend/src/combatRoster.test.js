@@ -6,6 +6,7 @@ import {
   revivePiece,
   expireDeadPieces,
   resetRoster,
+  renameRosterIdentity,
 } from './combatRoster.js';
 import { createInitialRegistry } from './combat.js';
 import { Chess } from 'chess.js';
@@ -228,5 +229,19 @@ describe('resetRoster', () => {
     expect(fresh.combatXp).toBe(0);
     expect(Object.keys(fresh.identities).length).toBeGreaterThan(0);
     expect(localStorage.getItem('chess-study-combat-roster')).toBeNull();
+  });
+});
+
+
+describe('renameRosterIdentity', () => {
+  it('cambia el alias sin cambiar la identidad ni perder su expediente', () => {
+    const roster = {
+      identities: { 'p-a': { alias: 'Rivas', identityId: 'unit-rivas' } },
+      unitRecords: { 'unit-rivas': { alias: 'Rivas', identityId: 'unit-rivas', stats: { battles: 7 } } },
+      pieces: {}, combatXp: 0,
+    };
+    const next = renameRosterIdentity(roster, 'p-a', '  Martillo   Uno  ');
+    expect(next.identities['p-a']).toMatchObject({ alias: 'Martillo Uno', identityId: 'unit-rivas' });
+    expect(next.unitRecords['unit-rivas']).toMatchObject({ alias: 'Martillo Uno', identityId: 'unit-rivas', stats: { battles: 7 } });
   });
 });

@@ -4,6 +4,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
 const BRUSHES=['','K','Q','R','B','N','P','k','q','r','b','n','p'];
@@ -58,7 +59,7 @@ export default function LabScreen({ onExit, onStart }){
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={onExit}>← Volver al menú</button>
-    <div className="menu-section"><span className="section-label">Laboratorio libre</span><h2>Construye una posición</h2><p className="hint-text">Coloca piezas, elige quién mueve y juégala contra la CPU. Es entrenamiento: no toca <GlossaryTerm term="ELO">ELO</GlossaryTerm>.</p></div>
+    <div className="menu-section"><div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div><h2>Construye una posición</h2><p className="hint-text">Coloca piezas, elige quién mueve y juégala contra la CPU. Es entrenamiento: no toca <GlossaryTerm term="ELO">ELO</GlossaryTerm>.</p></div>
     <div className="lab-toolbar">
       <div className="lab-brushes">{BRUSHES.map(p=><button key={p||'erase'} className={`lab-brush ${brush===p?'active':''}`} onClick={()=>setBrush(p)} title={p?'Colocar pieza':'Borrar'}>{p?GLYPH[p]:'⌫'}</button>)}</div>
       <button className="secondary-btn" onClick={resetInitial}>Posición inicial</button>

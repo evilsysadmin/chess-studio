@@ -38,6 +38,7 @@ function Presence({ user, compact = false }) {
       <span className="admin-presence-dot" aria-hidden="true" />
       <span className="admin-presence-copy">
         <span>{label}</span>
+        {status === 'online' && user?.currentActivity && <small>{user.currentActivity}</small>}
         {!compact && user?.lastActivity && <small>{new Date(user.lastActivity).toLocaleString()}</small>}
       </span>
     </span>
@@ -259,6 +260,7 @@ export default function AdminScreen({ onExit }) {
                             <div className="admin-detail-grid">
                               <div><span>Registrado</span><strong>{u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'}</strong></div>
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
+                              <div><span>Última pantalla conocida</span><strong>{u.currentActivity || '—'}</strong></div>
                               <div><span>Última actividad exacta</span><strong>{u.lastActivity ? new Date(u.lastActivity).toLocaleString() : '—'}</strong></div>
                               <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>
                               <div><span>Rating / partidas <GlossaryTerm term="ELO">ELO</GlossaryTerm></span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>

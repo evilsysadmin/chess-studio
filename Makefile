@@ -16,7 +16,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-install release-gate \
 	test-frontend test-backend backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical frontend-build puzzles-check \
+	gate-frontend-critical gate-critical combat-smoke frontend-build puzzles-check audio-check data-ux-check static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
@@ -159,7 +159,13 @@ gate-core: ensure-backend-deps
 ## Gate rápido de reglas críticas que viven en el cliente.
 ## Usa SIEMPRE el Vitest fijado por package-lock.json; nunca instala npx al vuelo.
 gate-frontend-critical: ensure-frontend-deps
-	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/combatUnitService.test.js src/combatService.test.js src/combatRanks.test.js src/combatMetamorphosis.test.js src/combatBalance.test.js src/combatChessBrand.test.js src/combatCampaign.test.js src/armyRosterView.test.js src/releaseContinuity.test.js src/combatSession.test.js src/chessGlossary.test.js src/combatIdentity.test.js src/combatTechniques.test.js src/narrativeProvider.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/clockPersistence.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/nemesis.test.js src/mirrorMode.test.js src/zenMode.test.js src/labPosition.test.js src/stateInvariants.test.js src/sound.test.js src/puzzles.test.js
+	cd frontend && $(FRONTEND_VITEST) run src/combat.test.js src/combatRoster.test.js src/combatUnitService.test.js src/combatService.test.js src/combatRanks.test.js src/combatMetamorphosis.test.js src/combatBalance.test.js src/combatChessBrand.test.js src/combatCampaign.test.js src/combatDeploymentPresets.test.js src/combatDebrief.test.js src/armyRosterView.test.js src/releaseContinuity.test.js src/combatSession.test.js src/chessGlossary.test.js src/combatIdentity.test.js src/combatTechniques.test.js src/narrativeProvider.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/clock.test.js src/clockPersistence.test.js src/cpuMemory.test.js src/series.test.js src/personalPuzzles.test.js src/nemesis.test.js src/mirrorMode.test.js src/zenMode.test.js src/labPosition.test.js src/stateInvariants.test.js src/sound.test.js src/puzzles.test.js src/careerVisuals.test.js src/dailyChallenge.test.js src/spectatorReactions.test.js src/achievements.test.js
+
+## Smoke gate enfocado a Combat Chess durante feature-freeze.
+## Cubre continuidad, campaña/intel, deployment/reservas, identidad,
+## metamorfosis, rangos/servicio, boss HP y tutoriales no estándar.
+combat-smoke: ensure-frontend-deps
+	cd frontend && $(FRONTEND_VITEST) run src/combatFreeze.test.js src/combatSession.test.js src/combatCampaign.test.js src/combatDeployment.test.js src/combatDeploymentPresets.test.js src/combatDebrief.test.js src/combatRoster.test.js src/combatIdentity.test.js src/combatMetamorphosis.test.js src/combatRanks.test.js src/combatUnitService.test.js src/combatService.test.js src/combatBalance.test.js src/roguelikeMode.test.js src/mechanicTutorials.test.js src/releaseContinuity.test.js
 
 ## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
 gate-critical: gate-core gate-frontend-critical
@@ -213,6 +219,19 @@ release-gate: tests security-images e2e
 ## mates prometidos y ganancia real en los puzzles de material.
 puzzles-check: ensure-frontend-deps
 	cd frontend && $(FRONTEND_VITEST) run src/puzzles.test.js
+
+## Smoke del catálogo Web Audio sin npm/Vite: útil incluso si el registry está caído.
+audio-check:
+	node scripts/audio_catalog_check.mjs
+
+data-ux-check:
+	node scripts/data_ux_check.mjs
+
+## Preflight barato y sin red: música + sintaxis JS + compilación Python.
+static-preflight: audio-check data-ux-check security-api
+	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+	@python3 scripts/python_syntax_check.py
+	@echo "==> Static preflight OK (sin npm, Docker ni red)."
 
 ## Trivy local fijado por versión. Se instala dentro del repo para que Nobara
 ## no necesite paquetes globales ni sudo. La caché de la DB se conserva.
@@ -284,6 +303,7 @@ help:
 	@echo "  make gate-core      - ejecuta el gate del motor/IA"
 	@echo "  make gate-frontend-critical - gate frontend crítico"
 	@echo "  make gate-critical  - ejecuta ambos gates críticos"
+	@echo "  make combat-smoke   - smoke rápido de Combat Chess durante feature-freeze"
 	@echo "  make tests          - quality gate local completo; instala deps si faltan"
 	@echo "  make tests-fe       - frontend: gate crítico + suite + build"
 	@echo "  make tests-be       - backend: gate core + suite + pip check"
@@ -294,6 +314,9 @@ help:
 	@echo "  make e2e            - smoke E2E con Playwright/Chromium (pesado)"
 	@echo "  make release-gate   - tests + security + imágenes Docker + E2E; gate pesado de release"
 	@echo "  make puzzles-check   - revalida íntegramente el banco de puzzles"
+	@echo "  make audio-check     - valida catálogo/estilos/duración de música sin npm"
+	@echo "  make data-ux-check   - valida heatmaps, Daily y grada sin npm"
+	@echo "  make static-preflight - sintaxis JS + Python + API auth + música, sin red"
 	@echo "  make security        - API auth gate + npm audit + pip-audit + Trivy; solo CVE CRITICAL bloquea"
 	@echo "  make security-fe     - auditoría de dependencias Node"
 	@echo "  make security-be     - auditoría de dependencias Python"

@@ -2,6 +2,7 @@ import React from 'react';
 import { computeMirrorProfile } from '../mirrorMode.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
 export default function MirrorModeModal({ onStart, onClose }) {
   useEscapeToClose(onClose);
@@ -11,7 +12,7 @@ export default function MirrorModeModal({ onStart, onClose }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <span className="eyebrow">Rival Fantasma</span>
+        <div className="combat-heading-row"><span className="eyebrow">Rival Fantasma</span><MechanicTutorialHelp tutorialId="rival-ghost" /></div>
         <h3>La CPU intenta parecerse a cómo juegas tú</h3>
 
         {!profile.ready ? (

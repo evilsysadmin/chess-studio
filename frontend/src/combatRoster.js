@@ -18,9 +18,10 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 // ejército que te toca enfrentar la próxima vez.
 
 import { rosterKeyFor, CANONICAL_ROSTER_SLOTS, rosterSlotKey, reviveCost } from './combat.js';
-import { ensureCombatIdentities, combatIdentityFor } from './combatIdentity.js';
+import { ensureCombatIdentities, combatIdentityFor, createCombatIdentity } from './combatIdentity.js';
 import { normalizeTechniqueState } from './combatTechniques.js';
 import { ensureUnitServiceState, recordUnitRevive, archivePermanentCasualty } from './combatUnitService.js';
+import { ensureDeploymentState } from './combatDeployment.js';
 
 const ROSTER_KEY = 'chess-study-combat-roster';
 
@@ -28,9 +29,9 @@ const ROSTER_KEY = 'chess-study-combat-roster';
 const COMBAT_XP_REWARD = { win: 12, draw: 5, loss: 2 };
 
 function emptyState() {
-  return ensureUnitServiceState(ensureCombatIdentities({
-    pieces: {}, identities: {}, unitRecords: {}, memorial: [], unitServiceProcessedBattleIds: [], combatXp: 0, revivesUsed: 0,
-  }));
+  return ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({
+    pieces: {}, identities: {}, unitRecords: {}, memorial: [], unitServiceProcessedBattleIds: [], reserveRecruitGrantIds: [], combatXp: 0, revivesUsed: 0,
+  })));
 }
 
 
@@ -52,16 +53,17 @@ export function loadRoster() {
       delete next.metamorphosis;
       return [key, normalizeTechniqueState(next)];
     }));
-    const state = ensureUnitServiceState(ensureCombatIdentities({
+    const state = ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({
       ...parsed,
       pieces: migratedPieces,
       identities: parsed.identities || {},
       unitRecords: parsed.unitRecords || {},
       memorial: Array.isArray(parsed.memorial) ? parsed.memorial : [],
       unitServiceProcessedBattleIds: Array.isArray(parsed.unitServiceProcessedBattleIds) ? parsed.unitServiceProcessedBattleIds : [],
+      reserveRecruitGrantIds: Array.isArray(parsed.reserveRecruitGrantIds) ? parsed.reserveRecruitGrantIds : [],
       combatXp: parsed.combatXp || 0,
       revivesUsed: parsed.revivesUsed || 0,
-    }));
+    })));
     saveRoster(state); // persiste migraciones, aliases y expedientes recién creados
     return state;
   } catch {
@@ -71,6 +73,24 @@ export function loadRoster() {
 
 export function saveRoster(state) {
   setProfileStorageItem(ROSTER_KEY, JSON.stringify(state));
+}
+
+
+export function renameRosterIdentity(rosterState, key, alias) {
+  const identity = rosterState?.identities?.[key];
+  if (!identity?.identityId) return rosterState;
+  const clean = String(alias || '').replace(/\s+/g, ' ').trim().slice(0, 28);
+  if (!clean || clean === identity.alias) return rosterState;
+
+  const identities = {
+    ...(rosterState.identities || {}),
+    [key]: { ...identity, alias: clean },
+  };
+  const currentRecord = rosterState?.unitRecords?.[identity.identityId];
+  const unitRecords = currentRecord
+    ? { ...(rosterState.unitRecords || {}), [identity.identityId]: { ...currentRecord, alias: clean } }
+    : { ...(rosterState.unitRecords || {}) };
+  return { ...rosterState, identities, unitRecords };
 }
 
 export function resetRoster({ persist = true } = {}) {
@@ -126,7 +146,7 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
 // adelante), pero SIN que ese progreso siga contando como activo. Esto es
 // lo que antes no pasaba: una pieza capturada se quedaba con el nivel de
 // antes de la partida en vez de "morir" de verdad.
-export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome) {
+export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome, deployedKeys = null) {
   const pieces = { ...rosterState.pieces };
   const identities = { ...(rosterState.identities || {}) };
   const survivingKeys = new Set();
@@ -146,18 +166,19 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
     };
   }
 
-  for (const slot of CANONICAL_ROSTER_SLOTS) {
-    if (slot.type === 'k') continue; // el rey nunca "muere" en este sentido
-    const key = rosterSlotKey(slot);
+  const participantKeys = Array.isArray(deployedKeys) && deployedKeys.length
+    ? [...new Set(deployedKeys.filter((key) => key && !String(key).startsWith('k-')))]
+    : CANONICAL_ROSTER_SLOTS.filter((slot) => slot.type !== 'k').map(rosterSlotKey);
+
+  // Sólo una unidad que realmente fue desplegada puede caer. Las reservas no
+  // reciben una muerte, no pierden veteranía y tampoco "participan" por estar
+  // guardadas en el barracón.
+  for (const key of participantKeys) {
     if (survivingKeys.has(key)) continue;
     const prev = pieces[key];
     if (!prev || prev.alive !== false) {
       const strength = prev?.strengthPoints || 0;
       const speed = prev?.speedPoints || 0;
-      // Toda identidad que cae queda registrada hasta la siguiente batalla,
-      // incluso si era un recluta nivel 1. Los reclutas sin inversión no son
-      // revivibles, pero así su nombre puede pasar al Memorial antes de que el
-      // slot reciba un reemplazo distinto.
       pieces[key] = {
         strengthPoints: strength,
         speedPoints: speed,
@@ -171,7 +192,7 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
   }
 
   const combatXp = (rosterState.combatXp || 0) + (COMBAT_XP_REWARD[outcome] || 0);
-  return ensureUnitServiceState(ensureCombatIdentities({ ...rosterState, pieces, combatXp, identities, revivesUsed: rosterState.revivesUsed || 0 }));
+  return ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...rosterState, pieces, combatXp, identities, revivesUsed: rosterState.revivesUsed || 0 })));
 }
 
 // Revive una pieza caída gastando XP de combate: le devuelve la MITAD de
@@ -221,10 +242,17 @@ export function expireDeadPieces(rosterState, at = new Date().toISOString()) {
       identities = { ...(state.identities || {}) };
       delete pieces[key];
       delete identities[key];
+      // Los huecos de reserva también son plazas reales del barracón. Si una
+      // identidad de reserva se pierde definitivamente, la plaza no desaparece:
+      // entra un recluta nivel 1 con otro alias/identityId y expediente limpio.
+      if (String(key).includes('-reserve-')) {
+        const aliases = Object.values(identities).map((entry) => entry?.alias).filter(Boolean);
+        identities[key] = createCombatIdentity(aliases);
+      }
       changed = true;
     }
   }
   return changed
-    ? ensureUnitServiceState(ensureCombatIdentities({ ...state, pieces, identities }))
-    : state;
+    ? ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...state, pieces, identities })))
+    : ensureDeploymentState(state);
 }

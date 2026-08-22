@@ -74,6 +74,14 @@ describe('checkAchievements', () => {
     expect(recordNoteworthyAchievement({ type: 'PAWN_TAKES_QUEEN' }, 'cpu')[0]?.id).toBe('crime_queen_to_pawn');
   });
 
+  it('desbloquea hitos de racha diaria medidos', () => {
+    localStorage.setItem('chess-study-daily-challenge', JSON.stringify({ solvedDates: [], bestStreak: 8 }));
+    const { unlocked } = checkAchievements();
+    expect(unlocked.has('daily_streak_3')).toBe(true);
+    expect(unlocked.has('daily_streak_7')).toBe(true);
+    expect(unlocked.has('daily_streak_30')).toBe(false);
+  });
+
   it('persiste entre llamadas (usa loadUnlocked)', () => {
     localStorage.setItem('chess-study-player-rating', JSON.stringify({ rating: 800, games: 1 }));
     checkAchievements();

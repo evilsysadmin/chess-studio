@@ -7,6 +7,7 @@ import { formatLongMove } from '../notation.js';
 import { identifyOpening } from '../openings.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
 const PACE_OPTIONS = [
   { id: 'slow', label: 'Lenta (4s)', ms: 4000 },
@@ -164,7 +165,7 @@ export default function SpectatorScreen({ onExit }) {
 
         <div className="menu-section">
           <span className="section-label">Modo espectador</span>
-          <h2>Dos CPU, un tablero</h2>
+          <div className="combat-heading-row"><h2>Dos CPU, un tablero</h2><MechanicTutorialHelp tutorialId="spectator" /></div>
           <p className="hero-scope-note">
             Elige el nivel de cada bando (o dejalo al azar) y mira cómo juega el motor contra sí mismo, con
             pausas entre jugada y jugada para poder saborearlas.

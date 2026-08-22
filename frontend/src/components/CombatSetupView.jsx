@@ -1,24 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ArmyScreen from './ArmyScreen.jsx';
 import ColorSelector from './ColorSelector.jsx';
 import { BASE_STATS } from '../combat.js';
 import CombatServicePanel from './CombatServicePanel.jsx';
+import CombatDeploymentView from './CombatDeploymentView.jsx';
+import MechanicTutorialModal from './MechanicTutorialModal.jsx';
+import { deploymentSummary } from '../combatDeployment.js';
+import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_FREE_DESCRIPTION, COMBAT_CHESS_CAMPAIGN_DESCRIPTION } from '../combatChessBrand.js';
 export default function CombatSetupView({
-  onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
+  onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, encounterIntel, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
   showExpireWarning, setShowExpireWarning, handleStartBattleClick, startBattle,
-  showArmy, setShowArmy, handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique,
+  showArmy, setShowArmy, showDeployment, setShowDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique,
   handleResetRoster, onHistory, serviceSummary,
 }) {
+  const deploy = deploymentSummary(roster);
+  const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-basics']?.seen);
 
     return (
       <div className="menu combat-setup">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section">
           <span className="eyebrow">{COMBAT_CHESS_NAME}</span>
-          <h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? 'Campaña roguelike' : 'Batalla libre'}</h2>
+          <div className="combat-heading-row"><h2 style={{ marginTop: '0.35rem' }}>{combatVariant === 'roguelike' ? 'Campaña roguelike' : 'Batalla libre'}</h2><button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)}>?</button></div>
           <p className="hint-text combat-mode-summary">{combatVariant === 'roguelike' ? COMBAT_CHESS_CAMPAIGN_DESCRIPTION : COMBAT_CHESS_FREE_DESCRIPTION}</p>
           {encounterLabel && (
             <div className="combat-encounter-card">
@@ -26,6 +32,7 @@ export default function CombatSetupView({
               <strong>{encounterLabel}</strong>
               {encounterTier && <em className="combat-encounter-tier">{encounterTier}</em>}
               {encounterDescription && <p>{encounterDescription}</p>}
+              {encounterIntel && <p className="combat-encounter-intel"><b>Intel:</b> {encounterIntel.level === 0 ? 'sin reconocimiento; amenaza exacta clasificada.' : encounterIntel.level === 1 ? `${encounterIntel.levelLabel} · CPU estimada ${encounterIntel.threatRange}.` : `${encounterIntel.levelLabel} · CPU ${encounterIntel.exactDifficulty} · ${encounterIntel.modifierLabel}${encounterIntel.modifierDescription ? ` · ${encounterIntel.modifierDescription}` : ''}`}</p>}
               {bossConfig && <p><b>Regla del jefe:</b> su rey tiene {bossConfig.maxHp} HP. Cada jaque hace 1 daño; el mate hace 2 y abre una nueva fase si todavía sigue vivo.</p>}
             </div>
           )}
@@ -66,10 +73,12 @@ export default function CombatSetupView({
           <h2>Dificultad de la CPU</h2>
           <p className="hint-text" style={{ marginBottom: '0.6rem' }}>
             {difficultyOverride != null
-              ? 'La base la fija este encuentro: el piso manda; un ejército veterano puede añadir compensación de amenaza.'
+              ? encounterIntel && encounterIntel.level < 2
+                ? 'La dificultad exacta existe, pero no se revela sin inteligencia de nivel Evaluación. El despliegue se decide con la información que hayas comprado.'
+                : 'La base la fija este encuentro: el piso manda; un ejército veterano puede añadir compensación de amenaza.'
               : 'Automática, según cómo te ve la CPU — no se elige a mano en Combat Chess.'}
           </p>
-          {difficultyBalance?.threat?.bonus > 0 && (
+          {difficultyBalance?.threat?.bonus > 0 && !(encounterIntel && encounterIntel.level < 2) && (
             <p className="combat-threat-note">
               Compensación de amenaza <b>{difficultyBalance.threat.tier}</b>: <b>+{difficultyBalance.appliedBonus}</b> · base {difficultyBalance.base} → CPU {difficultyBalance.adjusted}.{difficultyBalance.threat.bonus > difficultyBalance.appliedBonus ? ` Potencial +${difficultyBalance.threat.bonus}, recortado por el tope 100.` : ''}
               {' '}Veteranos {difficultyBalance.threat.activeVeterans} · metamorfosis activas {difficultyBalance.threat.activeMetamorphoses} · técnicas equipadas {difficultyBalance.threat.equippedTechniques}.
@@ -87,24 +96,26 @@ export default function CombatSetupView({
                   position: 'relative',
                 }}
               >
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${difficulty}%`,
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    background: 'var(--parchment)',
-                    border: '2px solid var(--ink)',
-                  }}
-                />
+                {!(encounterIntel && encounterIntel.level < 2) && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${difficulty}%`,
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: 'var(--parchment)',
+                      border: '2px solid var(--ink)',
+                    }}
+                  />
+                )}
               </div>
             </div>
             <div className="difficulty-readout">
-              <span className="difficulty-number">{difficulty}</span>
-              <span className="difficulty-word">{difficultyLabel || ratingInfo.tier.label}</span>
+              <span className="difficulty-number">{encounterIntel && encounterIntel.level < 2 ? '?' : difficulty}</span>
+              <span className="difficulty-word">{encounterIntel && encounterIntel.level < 2 ? (encounterIntel.level === 1 ? `estimada ${encounterIntel.threatRange}` : 'clasificada') : (difficultyLabel || ratingInfo.tier.label)}</span>
             </div>
           </div>
         </div>
@@ -166,11 +177,20 @@ export default function CombatSetupView({
           )}
           <button
             type="button"
-            className="secondary-btn"
+            className={`secondary-btn combat-deployment-entry ${deploy.ready ? 'ready' : 'incomplete'}`}
             style={{ width: '100%', marginTop: '0.6rem' }}
+            onClick={() => setShowDeployment(true)}
+          >
+            <span>Preparar despliegue · {deploy.assignedCount}/16</span>
+            <small>{deploy.reserveCount > 0 ? `${deploy.reserveCount} reserva${deploy.reserveCount === 1 ? '' : 's'}` : 'sin reservas'} · tablero táctico</small>
+          </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            style={{ width: '100%', marginTop: '0.5rem' }}
             onClick={() => setShowArmy(true)}
           >
-            Orden de batalla · 16 unidades {roster.combatXp > 0 ? `(${roster.combatXp} XP)` : ''}
+            Expedientes del ejército {roster.combatXp > 0 ? `(${roster.combatXp} XP)` : ''}
           </button>
           {onHistory && (
             <button
@@ -194,8 +214,11 @@ export default function CombatSetupView({
           )}
         </div>
 
-        <button className="primary-btn" style={{ width: '100%' }} onClick={handleStartBattleClick}>
-          Empezar combate
+        <button className="primary-btn" style={{ width: '100%' }} onClick={() => {
+          if (deadCount === 0 && !deploy.ready) { setShowDeployment(true); return; }
+          handleStartBattleClick();
+        }}>
+          {deploy.ready ? 'Empezar combate' : `Preparar despliegue · ${deploy.assignedCount}/16`}
         </button>
 
         {showExpireWarning && (
@@ -225,8 +248,25 @@ export default function CombatSetupView({
           </div>
         )}
 
+
+        {showDeployment && (
+          <CombatDeploymentView
+            roster={roster}
+            onDeployUnit={handleDeployRosterUnit}
+            onRemoveUnit={handleRemoveDeployedUnit}
+            onResetDeployment={handleResetDeployment}
+            onAutoFill={handleAutofillDeployment}
+            onApplyPreset={handleApplyDeploymentPreset}
+            onMetamorphose={handleMetamorphoseRosterPiece}
+            onRename={handleRenameRosterPiece}
+            onClose={() => setShowDeployment(false)}
+          />
+        )}
+
+        {showTutorial && <MechanicTutorialModal tutorialId="combat-basics" onClose={() => setShowTutorial(false)} />}
+
         {showArmy && (
-          <ArmyScreen roster={roster} onBuy={handleBuyRosterStat} onRevive={handleReviveRosterPiece} onMetamorphose={handleMetamorphoseRosterPiece} onUnlockTechnique={handleUnlockRosterTechnique} onEquipTechnique={handleEquipRosterTechnique} onClose={() => setShowArmy(false)} />
+          <ArmyScreen roster={roster} onBuy={handleBuyRosterStat} onRevive={handleReviveRosterPiece} onRename={handleRenameRosterPiece} onMetamorphose={handleMetamorphoseRosterPiece} onUnlockTechnique={handleUnlockRosterTechnique} onEquipTechnique={handleEquipRosterTechnique} onClose={() => setShowArmy(false)} />
         )}
       </div>
     );

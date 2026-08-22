@@ -53,7 +53,19 @@ export function markDailySolved(day = localDateKey()) {
   return { ...state, streak };
 }
 
-export function currentDailyStreak() {
+function activeStreakFromDates(dates, now = new Date()) {
+  const unique = [...new Set(dates)].sort().reverse();
+  if (!unique.length) return 0;
+  const today = localDateKey(now);
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setHours(12, 0, 0, 0);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = localDateKey(yesterdayDate);
+  if (unique[0] !== today && unique[0] !== yesterday) return 0;
+  return streakFromDates(unique);
+}
+
+export function currentDailyStreak(now = new Date()) {
   const state = loadDailyChallenge();
-  return { ...state, streak: streakFromDates(state.solvedDates) };
+  return { ...state, streak: activeStreakFromDates(state.solvedDates, now) };
 }

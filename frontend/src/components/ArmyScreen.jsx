@@ -16,6 +16,8 @@ import { pieceRankForLevel } from '../combatRanks.js';
 import { METAMORPHOSIS_LABELS, deploymentUnlockStatus, unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { techniquesEligibleToUnlock, unlockedTechniquesFor } from '../combatTechniques.js';
 import { unitRecordForKey, unitDecorations } from '../combatUnitService.js';
+import { deploymentSummary } from '../combatDeployment.js';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
 const PIECE_GLYPH = Object.freeze({ k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' });
 
@@ -104,7 +106,7 @@ function Memorial({ roster }) {
   );
 }
 
-function UnitRosterCard({ roster, slot, onOpen }) {
+function UnitRosterCard({ roster, slot, onOpen, deployedSlotKey = null }) {
   const key = rosterSlotKey(slot);
   const alias = unitAlias(roster, key);
   const saved = roster?.pieces?.[key];
@@ -144,36 +146,80 @@ function UnitRosterCard({ roster, slot, onOpen }) {
             ? `${service.battles} bat. · ${service.survivals || 0} surv. · ${service.kills || 0} bajas`
             : 'Sin bautismo de fuego'}
       </span>
+      <span className={`army-unit-deploy-badge ${deployedSlotKey ? 'deployed' : 'reserve'}`}>{isDead ? 'FUERA' : deployedSlotKey ? 'DESPLEGADO' : 'RESERVA'}</span>
       {medals.length > 0 && <span className="army-unit-medal-count">✦ {medals.length}</span>}
     </button>
   );
 }
 
-function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
-  if (!slot) return null;
-  const key = rosterSlotKey(slot);
+function ReserveRosterCard({ roster, unitKey, onOpen, deployedSlotKey = null }) {
+  const originType = String(unitKey || '').split('-')[0] || 'p';
+  const alias = unitAlias(roster, unitKey);
+  const saved = roster?.pieces?.[unitKey];
+  const isDead = saved?.alive === false;
+  const unitRecord = unitRecordForKey(roster, unitKey);
+  const level = 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
+  const rank = pieceRankForLevel(level);
+  const deploymentChoices = unlockedDeploymentTypes(unitKey, saved, unitRecord);
+  const requestedType = saved?.deploymentType || originType;
+  const activeType = deploymentChoices.includes(requestedType) ? requestedType : originType;
+  const service = unitRecord?.stats || {};
+  const medals = unitDecorations(unitRecord);
+
+  return (
+    <button
+      type="button"
+      className={`army-unit-tile army-reserve-unit ${isDead ? 'dead' : ''}`}
+      onClick={() => onOpen(unitKey)}
+      aria-label={`Abrir expediente de ${alias}`}
+      title={`Abrir expediente de ${alias}`}
+    >
+      <span className="army-unit-tile-top">
+        <span className="army-unit-glyph" aria-hidden="true">{PIECE_GLYPH[activeType] || '♟'}</span>
+        <span className={`army-unit-state ${isDead ? 'dead' : activeType !== originType ? 'mutant' : ''}`}>
+          {isDead ? 'CAÍDO' : activeType !== originType ? METAMORPHOSIS_LABELS[activeType] : 'RESERVA'}
+        </span>
+      </span>
+      <strong className="army-unit-alias" title={alias}>{alias}</strong>
+      <span className="army-unit-meta">{BASE_STATS[originType]?.name || 'Unidad'} · {rank.label} · nv.{level}</span>
+      <span className="army-unit-quickstats">
+        {(service.battles || 0) > 0
+          ? `${service.battles} bat. · ${service.survivals || 0} surv. · ${service.kills || 0} bajas`
+          : 'Sin bautismo de fuego'}
+      </span>
+      <span className={`army-unit-deploy-badge ${deployedSlotKey ? 'deployed' : 'reserve'}`}>{isDead ? 'FUERA' : deployedSlotKey ? 'DESPLEGADO' : 'RESERVA'}</span>
+      {medals.length > 0 && <span className="army-unit-medal-count">✦ {medals.length}</span>}
+    </button>
+  );
+}
+
+function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+  const key = unitKey || (slot ? rosterSlotKey(slot) : null);
+  if (!key) return null;
+  const originType = slot?.type || String(key).split('-')[0] || 'p';
+  const originFile = slot?.file || null;
   const saved = roster?.pieces?.[key];
-  const isKing = slot.type === 'k';
+  const isKing = originType === 'k';
   const isDead = !isKing && saved?.alive === false;
   const unitRecord = unitRecordForKey(roster, key);
   const medals = unitDecorations(unitRecord);
   const rawLevel = isKing ? 1 : 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
   const militaryRank = isKing ? null : pieceRankForLevel(rawLevel);
   const deploymentStatuses = isKing ? [] : deploymentUnlockStatus(key, saved, unitRecord);
-  const deploymentChoices = isKing ? [slot.type] : unlockedDeploymentTypes(key, saved, unitRecord);
-  const requestedType = saved?.deploymentType || slot.type;
-  const activeType = deploymentChoices.includes(requestedType) ? requestedType : slot.type;
-  const piece = basePieceFor(slot, saved, activeType);
+  const deploymentChoices = isKing ? [originType] : unlockedDeploymentTypes(key, saved, unitRecord);
+  const requestedType = saved?.deploymentType || originType;
+  const activeType = deploymentChoices.includes(requestedType) ? requestedType : originType;
+  const piece = basePieceFor({ type: originType }, saved, activeType);
   const stats = statsFor(piece);
   const tier = isKing ? 'command' : levelTier(rawLevel);
-  const nextLockedMetamorphosis = deploymentStatuses.find((status) => status.type !== slot.type && !status.unlocked);
+  const nextLockedMetamorphosis = deploymentStatuses.find((status) => status.type !== originType && !status.unlocked);
   const unlockableTechniques = isKing || isDead ? [] : techniquesEligibleToUnlock(key, saved);
   const unlockedTechniques = isKing ? [] : unlockedTechniquesFor(key, saved);
   const equippedTechnique = saved?.equippedTechnique || null;
   const strCost = isKing ? null : costForNextPoint(piece.strengthPoints);
   const spdCost = isKing ? null : costForNextPoint(piece.speedPoints);
   const canRevive = isDead && (saved?.strengthPoints || 0) + (saved?.speedPoints || 0) > 0;
-  const reviveType = saved?.deploymentType || slot.type;
+  const reviveType = saved?.deploymentType || originType;
   const revivePrice = isDead ? reviveCost(reviveType) : 0;
   const service = unitRecord?.stats || {};
 
@@ -186,7 +232,20 @@ function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTe
           <div>
             <span className="army-memorial-kicker">HOJA DE SERVICIO · {key.toUpperCase()}</span>
             <h3>{unitAlias(roster, key)}</h3>
-            <p>{BASE_STATS[slot.type].name} de origen · columna {slot.file}{activeType !== slot.type ? ` · despliegue como ${METAMORPHOSIS_LABELS[activeType]}` : ''}</p>
+            {onRename && (
+              <button
+                type="button"
+                className="army-rename-button"
+                onClick={() => {
+                  const current = unitAlias(roster, key);
+                  const next = window.prompt('Nuevo alias de la unidad (máx. 28 caracteres)', current);
+                  if (next != null) onRename(key, next);
+                }}
+              >
+                Renombrar unidad
+              </button>
+            )}
+            <p>{BASE_STATS[originType]?.name || 'Unidad'} de origen{originFile ? ` · columna ${originFile}` : ' · plaza de reserva'}{activeType !== originType ? ` · combate como ${METAMORPHOSIS_LABELS[activeType]}` : ''}</p>
           </div>
         </div>
 
@@ -257,7 +316,10 @@ function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTe
 
                 {(deploymentChoices.length > 1 || nextLockedMetamorphosis) && (
                   <div className="army-dossier-actions">
-                    <strong>Metamorfosis de despliegue</strong>
+                    <div className="combat-heading-row">
+                      <strong>Metamorfosis de despliegue</strong>
+                      <MechanicTutorialHelp tutorialId="combat-metamorphosis" label="Tutorial de metamorfosis" />
+                    </div>
                     {deploymentChoices.length > 1 && (
                       <div className="army-metamorphosis-actions">
                         {deploymentChoices.map((targetType) => (
@@ -325,10 +387,29 @@ function UnitDossier({ roster, slot, onBuy, onRevive, onMetamorphose, onUnlockTe
   );
 }
 
-export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, embedded = false, showMemorial = true }) {
+export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, embedded = false, showMemorial = true }) {
   const [selectedKey, setSelectedKey] = useState(null);
+  const deploy = deploymentSummary(roster);
   useEscapeToClose(() => setSelectedKey(null), { disabled: !selectedKey });
   const selectedSlot = selectedKey ? CANONICAL_ROSTER_SLOTS.find((slot) => rosterSlotKey(slot) === selectedKey) : null;
+  const canonicalKeys = new Set(CANONICAL_ROSTER_SLOTS.map(rosterSlotKey));
+  const reverseDeployment = Object.fromEntries(Object.entries(roster?.deployment || {}).map(([slotKey, unitKey]) => [unitKey, slotKey]));
+  const reserveKeys = Object.keys(roster?.identities || {})
+    .filter((key) => !canonicalKeys.has(key))
+    .sort((a, b) => {
+      const aSaved = roster?.pieces?.[a] || {};
+      const bSaved = roster?.pieces?.[b] || {};
+      const aAlive = aSaved.alive !== false;
+      const bAlive = bSaved.alive !== false;
+      if (aAlive !== bAlive) return aAlive ? -1 : 1;
+      const aLevel = 1 + (aSaved.strengthPoints || 0) + (aSaved.speedPoints || 0);
+      const bLevel = 1 + (bSaved.strengthPoints || 0) + (bSaved.speedPoints || 0);
+      const rankDiff = pieceRankForLevel(bLevel).minLevel - pieceRankForLevel(aLevel).minLevel;
+      if (rankDiff) return rankDiff;
+      return unitAlias(roster, a).localeCompare(unitAlias(roster, b));
+    });
+  const deployedCount = Object.values(roster?.deployment || {}).filter(Boolean).length;
+  const fallenCount = Object.values(roster?.pieces || {}).filter((piece) => piece?.alive === false).length;
 
   return (
     <section className={`army-roster-panel ${embedded ? 'embedded' : ''}`} aria-label="Orden de batalla de Combat Chess">
@@ -337,30 +418,53 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnl
           <span className="army-memorial-kicker">COMBAT CHESS · ORDEN DE BATALLA</span>
           <h3>Tu ejército</h3>
         </div>
-        <span className="army-roster-count">16 unidades</span>
+        <span className="army-roster-count">{deploy.totalRoster} unidades · {deploy.reserveCount} reservas</span>
       </div>
       <p className="hint-text army-roster-intro">
-        Todo el destacamento de un vistazo. Las 16 identidades tienen alias desde que nacen; 15 piezas desarrollan carrera militar y el Rey actúa como mando sin XP. Pulsa una unidad para abrir su expediente, mejorarla o preparar su despliegue.
+        Los 16 puestos canónicos siguen siendo la línea de despliegue, pero el barracón puede crecer con refuerzos de campaña. Las reservas conservan identidad, rango y expediente; se asignan a los puestos compatibles desde Preparar despliegue.
       </p>
       <p className="hint-text army-combat-xp">
         XP de combate disponible: <b>{roster.combatXp}</b> · reservado para revivir bajas recuperables.
       </p>
 
+      <div className="army-command-strip" aria-label="Estado del barracón">
+        <span><b>{deploy.totalRoster}</b><small>roster</small></span>
+        <span><b>{deployedCount}</b><small>desplegados</small></span>
+        <span><b>{deploy.reserveCount}</b><small>reservas</small></span>
+        <span className={fallenCount ? 'danger-text' : ''}><b>{fallenCount}</b><small>caídos</small></span>
+      </div>
+
       <div className="army-roster-grid" aria-label="Formación completa del ejército">
         {CANONICAL_ROSTER_SLOTS.map((slot) => (
-          <UnitRosterCard key={rosterSlotKey(slot)} roster={roster} slot={slot} onOpen={setSelectedKey} />
+          <UnitRosterCard key={rosterSlotKey(slot)} roster={roster} slot={slot} onOpen={setSelectedKey} deployedSlotKey={reverseDeployment[rosterSlotKey(slot)] || null} />
         ))}
       </div>
+
+      {reserveKeys.length > 0 && (
+        <section className="army-reserve-section" aria-label="Reservas del barracón">
+          <div className="army-reserve-heading">
+            <span className="army-memorial-kicker">BARRACÓN · REFUERZOS</span>
+            <b>{reserveKeys.length}</b>
+          </div>
+          <div className="army-reserve-grid">
+            {reserveKeys.map((unitKey) => (
+              <ReserveRosterCard key={unitKey} roster={roster} unitKey={unitKey} onOpen={setSelectedKey} deployedSlotKey={reverseDeployment[unitKey] || null} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <p className="hint-text army-roster-footnote">Vista táctica en tres filas para que alias y rango se lean completos. El orden conserva primero piezas mayores y mando, después la infantería; el color del tablero puede cambiar, pero cada identidad sigue siendo la misma.</p>
       {showMemorial && <Memorial roster={roster} />}
 
-      {selectedSlot && (
+      {selectedKey && (
         <UnitDossier
           roster={roster}
           slot={selectedSlot}
+          unitKey={selectedKey}
           onBuy={onBuy}
           onRevive={onRevive}
+          onRename={onRename}
           onMetamorphose={onMetamorphose}
           onUnlockTechnique={onUnlockTechnique}
           onEquipTechnique={onEquipTechnique}
@@ -371,7 +475,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onMetamorphose, onUnl
   );
 }
 
-export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+export default function ArmyScreen({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
   useEscapeToClose(onClose);
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -381,6 +485,7 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onMetamorphose, on
           roster={roster}
           onBuy={onBuy}
           onRevive={onRevive}
+          onRename={onRename}
           onMetamorphose={onMetamorphose}
           onUnlockTechnique={onUnlockTechnique}
           onEquipTechnique={onEquipTechnique}

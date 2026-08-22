@@ -40,7 +40,7 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
                   >
                     <span className="campaign-node-icon" aria-hidden="true">{node.icon}</span>
                     <strong>{node.label}</strong>
-                    <small>{node.typeLabel}{['battle', 'elite', 'boss'].includes(node.type) ? ` · CPU ${node.baseDifficulty}` : ''}</small>
+                    <small>{node.typeLabel}{['battle', 'elite', 'boss'].includes(node.type) ? ' · intel pendiente' : ''}</small>
                     {selectable && <span className="campaign-node-cta">Elegir ruta →</span>}
                     {status === 'cleared' && <span className="campaign-node-cta">✓ Superado</span>}
                   </button>

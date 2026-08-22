@@ -320,6 +320,10 @@ def resolve_human_color(color: str) -> str:
 # `from_square` en el código pero se sigue mandando/recibiendo como "from"
 # en el JSON (alias) — el frontend no ve ninguna diferencia.
 
+
+class ActivityHeartbeatRequest(BaseModel):
+    activity: Optional[str] = Field(default=None, max_length=40)
+
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     username: str
@@ -621,10 +625,16 @@ async def me(username: str = Depends(get_current_user)):
 
 
 @app.post("/api/auth/activity", status_code=204)
-async def activity_heartbeat(_username: str = Depends(get_current_user)):
-    # get_current_user ya actualiza last_activity con throttling. Este endpoint
-    # existe para que una pestaña abierta pero quieta siga figurando online sin
-    # forzar lecturas de perfil, partidas ni análisis del motor.
+async def activity_heartbeat(payload: Optional[ActivityHeartbeatRequest] = None, username: str = Depends(get_current_user)):
+    # Telemetría deliberadamente gruesa: sólo etiquetas de pantalla/acción,
+    # nunca jugadas, FEN, mensajes, rivales ni contenido privado.
+    allowed = {
+        "Menú principal", "Partida", "Torneo", "Combat Chess", "Replay",
+        "Así juegas", "Historial", "Puzzle", "Aprendizaje", "Aperturas",
+        "Laboratorio", "Espectador", "Panel admin", "Experimento 3D", "Navegando",
+    }
+    activity = payload.activity if payload and payload.activity in allowed else None
+    await ustore.touch_last_activity(username, force=True, activity=activity)
     return None
 
 
@@ -1051,6 +1061,7 @@ async def admin_list_users(username: str = Depends(require_admin)):
         result.append({
             "username": uname,
             "createdAt": user_doc.get("created_at"),
+            "currentActivity": user_doc.get("current_activity"),
             **_presence_summary(activity_anchor),
             **_extract_summary_stats(profile),
         })

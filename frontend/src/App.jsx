@@ -55,6 +55,32 @@ const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
   const [view, setViewRaw] = useState(() => loadSessionView({ isAdminUser }));
+
+  const coarseActivity = useMemo(() => ({
+    menu: 'Menú principal',
+    game: 'Partida',
+    tournament: 'Torneo',
+    tournamentGame: 'Torneo',
+    combat: 'Combat Chess',
+    roguelike: 'Combat Chess',
+    combatReplay: 'Replay',
+    replay: 'Replay',
+    insights: 'Así juegas',
+    history: 'Historial',
+    puzzle: 'Puzzle',
+    tutorial: 'Aprendizaje',
+    openings: 'Aperturas',
+    lab: 'Laboratorio',
+    spectator: 'Espectador',
+    admin: 'Panel admin',
+    board3d: 'Experimento 3D',
+  }[view] || 'Navegando'), [view]);
+
+  useEffect(() => {
+    touchActivity(coarseActivity);
+    const timer = window.setInterval(() => touchActivity(coarseActivity), 60000);
+    return () => window.clearInterval(timer);
+  }, [coarseActivity]);
   const currentViewRef = useRef(view);
   const viewHistoryRef = useRef(loadSessionViewHistory({ isAdminUser }));
   currentViewRef.current = view;
@@ -720,6 +746,9 @@ function AppInner({ isAdminUser }) {
             onTournamentClick={() => navigateTo('tournament')}
             onRatingClick={() => setShowRatingDetail(true)}
           />
+          {!isBoardGameView && view !== 'menu' && (
+            <div className="navigation-back-hint">ESC o clic derecho · volver / cerrar</div>
+          )}
         </div>
 
         {showRatingDetail && (
@@ -917,13 +946,6 @@ function App() {
     // compartido. Recargar desmonta inmediatamente cualquier estado React
     // perteneciente a la identidad anterior antes de que pueda sincronizarse.
     return watchSessionIdentity(() => window.location.reload());
-  }, [loggedIn]);
-
-  useEffect(() => {
-    if (!loggedIn) return undefined;
-    touchActivity();
-    const timer = window.setInterval(touchActivity, 60000);
-    return () => window.clearInterval(timer);
   }, [loggedIn]);
 
   useEffect(() => {

@@ -216,9 +216,15 @@ export function createInitialRegistry(chess) {
 // se mueva) — cada lado tiene exactamente una pieza de cada combinación
 // tipo+columna en la posición inicial, así que es un identificador único.
 export function rosterKeyFor(piece) {
-  const [, type, startSquare] = piece.id.split('-');
-  return `${type}-${startSquare[0]}`;
+  // Deployment can move a persistent identity into a different battlefield
+  // slot (including a metamorphosed pawn in a knight/bishop/rook slot). In
+  // that case the explicit rosterKey is authoritative; legacy pieces still
+  // fall back to their original id encoding.
+  if (piece?.rosterKey) return piece.rosterKey;
+  const [, type, startSquare] = String(piece?.id || '').split('-');
+  return type && startSquare ? `${type}-${startSquare[0]}` : '';
 }
+
 
 // Los 16 "slots" fijos de un bando (tipo + columna de partida), en el orden
 // natural del tablero: fila trasera, después los peones. Es la lista

@@ -3,6 +3,7 @@ import { levelForPoints, pointsIntoLevel, difficultyForLevel, POINTS_PER_LEVEL }
 import { difficultyLabel } from '../difficulty.js';
 import ColorSelector from './ColorSelector.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import {
   TITLES,
   PIECE_SKINS,
@@ -72,7 +73,7 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
 
       <div className="menu-section">
-        <span className="eyebrow">Modo torneo</span>
+        <div className="combat-heading-row"><span className="eyebrow">Modo torneo</span><MechanicTutorialHelp tutorialId="tournament" /></div>
         <span className="level-heading-wrap">
           <h2 className={`level-heading ${justLeveledUp ? 'level-up-heading' : ''}`} style={{ marginTop: '0.35rem' }}>
             Nivel {level}

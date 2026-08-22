@@ -81,3 +81,15 @@ describe('compensación de amenaza de Combate', () => {
     expect(balancedCombatDifficulty(95, state)).toMatchObject({ base: 95, adjusted: 100, appliedBonus: 5 });
   });
 });
+
+describe('amenaza y reservas', () => {
+  it('una unidad muy veterana en reserva no aumenta la dificultad', () => {
+    const state = roster();
+    addPiece(state, 'n-b', { strengthPoints: 6, speedPoints: 6 });
+    addPiece(state, 'n-reserve-test', { strengthPoints: 30, speedPoints: 30, equippedTechnique: 'line_fire' });
+    state.deployment = { 'n-b': 'n-b' };
+    const threat = combatArmyThreat(state);
+    expect(threat.totalStatPoints).toBe(12);
+    expect(threat.equippedTechniques).toBe(0);
+  });
+});

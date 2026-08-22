@@ -147,7 +147,7 @@ export default function Menu({
           <button type="button" className="menu-card accent-success" onClick={onTutorial}>
             <IconBook className="menu-card-icon" />
             <h3>Aprendizaje</h3>
-            <p>Diez lecciones interactivas y glosario: piezas, enroque, jaque mate, cp, CCT y terminología útil.</p>
+            <p>Lecciones de ajedrez, glosario y tutoriales de todos los modos y reglas que se salen del ajedrez estándar.</p>
             <span className="menu-card-cta">Ver tutorial →</span>
           </button>
 
@@ -185,15 +185,28 @@ export default function Menu({
             <p>Elige el nivel de cada bando (o al azar) y mira cómo juega la CPU contra sí misma.</p>
             <span className="menu-card-cta">Ver partida →</span>
           </button>
+
+          <button type="button" className="menu-card accent-brass" onClick={onHistory}>
+            <IconBookmark className="menu-card-icon" />
+            <h3>Historial de partidas</h3>
+            <p>Revisa partidas, batallas de Combat Chess, resultados y replays desde un único archivo.</p>
+            <span className="menu-card-cta">Abrir historial →</span>
+          </button>
+
+          {isAdminUser && (
+            <button type="button" className="menu-card accent-danger" onClick={onAdmin}>
+              <IconEye className="menu-card-icon" />
+              <h3>Panel de admin</h3>
+              <p>Usuarios, presencia, actividad, progreso y herramientas operativas reservadas a administración.</p>
+              <span className="menu-card-cta">Abrir administración →</span>
+            </button>
+          )}
         </div>
       </div>
 
       {error && <p className="error-text">{error}</p>}
 
       <div className="footer-links-row">
-        <button type="button" className="backup-link" onClick={onHistory}>
-          Historial de partidas
-        </button>
         <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>
           Ver logros
         </button>
@@ -206,11 +219,6 @@ export default function Menu({
         <button type="button" className="backup-link" onClick={onBoard3D}>
           Experimento 3D (jugable, experimental)
         </button>
-        {isAdminUser && (
-          <button type="button" className="backup-link" onClick={onAdmin}>
-            Panel de admin
-          </button>
-        )}
         <button type="button" className="backup-link" onClick={handleLogout} disabled={loggingOut}>
           {loggingOut ? 'Guardando…' : `Cerrar sesión${username ? ` (${username})` : ''}`}
         </button>

@@ -1,3 +1,4 @@
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import React, { useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
@@ -23,7 +24,7 @@ function InsightsHubHeader({ section, onSectionChange, onExit }) {
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section insights-hub-hero">
         <span className="section-label">Tu expediente de juego</span>
-        <h2>Así juegas</h2>
+        <div className="combat-heading-row"><h2>Así juegas</h2><MechanicTutorialHelp tutorialId="insights" /></div>
         <p className="hero-scope-note">
           Un solo sitio para diagnóstico, evolución, entrenamiento y todo el historial que el tablero pueda usar en tu contra.
         </p>

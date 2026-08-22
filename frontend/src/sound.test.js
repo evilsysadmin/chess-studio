@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   AMBIENT_INTER_TRACK_SILENCE_MS,
+  AMBIENT_THEME_GROUPS,
   AMBIENT_THEME_OPTIONS,
   getAmbientThemeId,
+  getAmbientRadioMode,
+  ambientRadioThemeIds,
+  isAmbientFavorite,
+  isAmbientExcluded,
   getAmbientThemeSoundProfile,
   getPercussionHumanizationPreview,
   getAmbientThemeVariationDurationMs,
@@ -13,14 +18,17 @@ import {
   seekAmbientMusic,
   getAmbientPlaybackState,
   setAmbientTheme,
+  setAmbientRadioMode,
+  toggleAmbientFavorite,
+  toggleAmbientExcluded,
   setAmbientVolume,
 } from './sound.js';
 
 describe('ambient music catalog', () => {
   beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
-  it('expone cuarenta y ocho temas seleccionables', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(48);
+  it('expone sesenta y ocho temas seleccionables', () => {
+    expect(AMBIENT_THEME_OPTIONS).toHaveLength(68);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Gambito del rey');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Vals del zugzwang');
@@ -57,6 +65,91 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Luciérnagas en la terraza');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Café · luces pequeñas');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Málaga · último tranvía');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('SPA · niebla de cedro');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Onsen · agua de luna');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Post-rock · medianoche');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Rock · garaje de la torre');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Rock · carretera del desierto');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Adagio del final');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Fuga del caballo');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cuarteto nocturno');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Lo-fi · lluvia en cassette');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Lo-fi · ventana encendida');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Synthwave · caballo de neón');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Synthwave · arcade 02:17');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · lluvia sobre hormigón');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · estática de terciopelo');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Dark ambient · archivo abisal');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Dark ambient · cámara roja');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Bossa · dama en la terraza');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Havana · 02:05');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Minimal · cuatro casillas');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Piano · lluvia vertical');
+  });
+
+  it('agrupa el catálogo por estilo sin perder pistas', () => {
+    expect(AMBIENT_THEME_GROUPS.flatMap((group) => group.themes)).toHaveLength(AMBIENT_THEME_OPTIONS.length);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'SPA / Zen')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Rock')?.themes).toHaveLength(3);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Lo-Fi / Chill')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Synthwave')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Trip-Hop / Downtempo')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Dark Ambient')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Bossa / Latin Lounge')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Piano / Minimal')?.themes).toHaveLength(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Clásica')?.themes.map((x) => x.id)).toEqual(
+      expect.arrayContaining(['endgameAdagio', 'knightFugue', 'nocturnalQuartet']),
+    );
+  });
+
+
+  it('da perfil sonoro dedicado a todo el catálogo estructurado y destierra el chiu-chiu', () => {
+    const profiled = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus').map((theme) => [theme.id, getAmbientThemeSoundProfile(theme.id)]);
+    expect(profiled.every(([, profile]) => !!profile)).toBe(true);
+    expect(profiled.some(([, profile]) => ['bell', 'musicbox'].includes(profile.signatureInstrument))).toBe(false);
+    expect(getAmbientThemeSoundProfile('winterLibrary').signatureInstrument).toBe('felt');
+  });
+
+  it('mantiene personalidad única y normaliza el salto de volumen entre arreglos', () => {
+    const structured = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus');
+    const profiles = structured.map((theme) => getAmbientThemeSoundProfile(theme.id));
+    expect(new Set(profiles.map((profile) => profile.personalityFingerprint)).size).toBe(structured.length);
+    expect(Math.min(...profiles.map((profile) => profile.masterTrim))).toBeGreaterThanOrEqual(0.76);
+    expect(Math.max(...profiles.map((profile) => profile.masterTrim))).toBeLessThanOrEqual(1.12);
+  });
+
+  it('no usa campanitas/musicbox como voz de ningún tema estructurado', () => {
+    const forbidden = new Set(['bell', 'musicbox']);
+    for (const theme of AMBIENT_THEME_OPTIONS.filter((item) => item.id !== 'andalus')) {
+      const profile = getAmbientThemeSoundProfile(theme.id);
+      expect([theme.leadInstrument, theme.counterInstrument, theme.chordInstrument, theme.bassInstrument, profile.signatureInstrument].some((instrument) => forbidden.has(instrument))).toBe(false);
+    }
+    expect(getAmbientThemeSoundProfile('clockwork').leadInstrument).toBe('harpsichord');
+    expect(getAmbientThemeSoundProfile('clockwork').chordInstrument).toBe('felt');
+  });
+
+  it('da carácter propio a trip-hop, dark ambient, bossa y minimal', () => {
+    const ids = ['concreteRain','velvetStatic','abyssalArchive','redVault','queenBossa','havana205','fourSquares','verticalRainPiano'];
+    const profiles = ids.map(getAmbientThemeSoundProfile);
+    expect(new Set(profiles.map((profile) => profile.family)).size).toBe(ids.length);
+    expect(getAmbientThemeSoundProfile('concreteRain').estimatedBpm).toBeLessThan(90);
+    expect(getAmbientThemeSoundProfile('abyssalArchive').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('redVault').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('fourSquares').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('queenBossa').swing).toBeGreaterThanOrEqual(0.18);
+  });
+
+  it('da una silueta sonora propia a SPA, rock y clásica', () => {
+    const ids = ['mistSpa','moonOnsen','postRockMidnight','rookGarage','desertDriveRock','endgameAdagio','knightFugue','nocturnalQuartet','lofiRainTape','lofiWindowLight','neonKnight','midnightArcade'];
+    const profiles = ids.map(getAmbientThemeSoundProfile);
+    expect(new Set(profiles.map((p) => p.family)).size).toBe(ids.length);
+    expect(getAmbientThemeSoundProfile('mistSpa').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('endgameAdagio').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('knightFugue').drumMode).toBe('none');
+    expect(getAmbientThemeSoundProfile('rookGarage').percussionPunch).toBeGreaterThan(1.2);
+    expect(getAmbientThemeSoundProfile('postRockMidnight').enabledLayers).toEqual(expect.arrayContaining(['lead','counter','chords','bass','drums']));
+    expect(getAmbientThemeSoundProfile('lofiRainTape').family).toBe('lofi-rain-cassette');
+    expect(getAmbientThemeSoundProfile('neonKnight').family).toBe('neon-synthwave-arp');
   });
 
 
@@ -140,7 +233,7 @@ describe('ambient music catalog', () => {
 
   it('los temas estructurados tardan al menos dos minutos en repetir su forma larga', () => {
     const structured = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus');
-    expect(structured.length).toBe(47);
+    expect(structured.length).toBe(67);
     for (const theme of structured) {
       expect(getAmbientThemeVariationDurationMs(theme.id)).toBeGreaterThanOrEqual(120000);
     }
@@ -168,9 +261,25 @@ describe('ambient music catalog', () => {
     }
   });
 
-  it('deja una pausa breve y deliberada entre pistas', () => {
-    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeGreaterThanOrEqual(1500);
-    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeLessThanOrEqual(5000);
+  it('encadena pistas con una transición corta en vez de un agujero largo', () => {
+    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeGreaterThanOrEqual(400);
+    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeLessThanOrEqual(900);
+  });
+
+  it('permite radio por estilo, favoritos, exclusiones y concentración', () => {
+    setAmbientRadioMode('focus');
+    expect(getAmbientRadioMode()).toBe('focus');
+    expect(ambientRadioThemeIds().length).toBeGreaterThan(0);
+    setAmbientRadioMode('genre:Rock');
+    expect(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Rock')).toBe(true);
+    toggleAmbientFavorite('rookGarage');
+    expect(isAmbientFavorite('rookGarage')).toBe(true);
+    setAmbientRadioMode('favorites');
+    expect(ambientRadioThemeIds()).toContain('rookGarage');
+    toggleAmbientExcluded('rookGarage');
+    expect(isAmbientExcluded('rookGarage')).toBe(true);
+    expect(isAmbientFavorite('rookGarage')).toBe(false);
+    expect(ambientRadioThemeIds()).not.toContain('rookGarage');
   });
 
   it('mantiene la selección durante la sesión y hace fallback seguro', () => {

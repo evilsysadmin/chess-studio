@@ -17,11 +17,21 @@ import {
   repetitionKey,
   rosterKeyFor,
 } from '../combat.js';
-import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces } from '../combatRoster.js';
+import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, expireDeadPieces, renameRosterIdentity } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
 import { loadCombatService, recordCombatServiceEvent, summarizeCombatService } from '../combatService.js';
 import { recordUnitBattle, unitRecordForKey } from '../combatUnitService.js';
-import { applyRosterMetamorphosesToPosition, setRosterDeploymentType, persistMetamorphosedRoster } from '../combatMetamorphosis.js';
+import { setRosterDeploymentType } from '../combatMetamorphosis.js';
+import {
+  annotateRegistryWithDeployment,
+  applyDeploymentToPosition,
+  autofillDeployment,
+  deploymentSummary,
+  ensureDeploymentState,
+  removeDeploymentUnit,
+  resetDeployment,
+  setDeploymentUnit,
+} from '../combatDeployment.js';
 import { techniqueTargetsFor, techniqueAttackChance, resolveTechniqueAttack, techniqueById, unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
 import { proceduralNarrative } from '../narrativeProvider.js';
 import { checkAchievements } from '../achievements.js';
@@ -30,6 +40,8 @@ import { applyRunPerksToRegistry } from '../roguelikePerks.js';
 import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
 import { clearCombatSession, loadCombatSession, saveCombatSession } from '../combatSession.js';
+import { applyDeploymentPreset } from '../combatDeploymentPresets.js';
+import { buildCombatDebrief } from '../combatDebrief.js';
 
 const STATUS_LABELS = {
   playing: '',
@@ -133,6 +145,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const difficulty = difficultyBalance.adjusted;
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [showArmy, setShowArmy] = useState(false);
+  const [showDeployment, setShowDeployment] = useState(false);
   const [showExpireWarning, setShowExpireWarning] = useState(false);
   // El único modal inline de esta pantalla (los demás — PieceInfoModal,
   // AttackConfirmModal, ArmyScreen — ya traen su propio ESC incorporado).
@@ -146,6 +159,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       setShowExpireWarning(false);
       return;
     }
+    if (showDeployment || showArmy) return;
     if (phase === 'setup' || phase === 'over') {
       onExit();
     }
@@ -277,18 +291,25 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     // Se cierra acá la ventana de revivir: cualquier pieza que sigue caída
     // sin que la hayas recuperado pierde su veteranía a partir de ahora; el slot volverá como nivel 1.
-    const activeRoster = expireDeadPieces(roster);
+    const activeRoster = ensureDeploymentState(expireDeadPieces(roster));
     if (activeRoster !== roster) {
       setRoster(activeRoster);
       saveRoster(activeRoster);
     }
 
+    const deployment = deploymentSummary(activeRoster);
+    if (!deployment.ready) {
+      setShowDeployment(true);
+      onError?.(`Completa el despliegue antes de combatir: faltan ${deployment.missingSlots.map((slot) => slot.type.toUpperCase() + slot.file).join(', ')}.`);
+      return;
+    }
+
     const chess = new Chess();
     if (initialFen) chess.load(initialFen);
-    const baseRegistry = createInitialRegistry(chess);
-    const metamorphosedRegistry = applyRosterMetamorphosesToPosition(chess, baseRegistry, activeRoster, resolved);
+    applyDeploymentToPosition(chess, activeRoster, resolved);
+    const baseRegistry = annotateRegistryWithDeployment(createInitialRegistry(chess), activeRoster, resolved);
     const startFen = chess.fen();
-    const rosterRegistry = applyRosterToRegistry(metamorphosedRegistry, activeRoster, resolved);
+    const rosterRegistry = applyRosterToRegistry(baseRegistry, activeRoster, resolved);
     const initialRegistry = applyRunPerksToRegistry(rosterRegistry, runPerks, resolved);
     battleStartRosterRef.current = activeRoster;
     battleParticipantsRef.current = Object.values(initialRegistry)
@@ -397,7 +418,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     // Los bonus del intento (`runStrengthBonus/runSpeedBonus`) no se guardan:
     // saveSurvivorsToRoster sólo persiste puntos comprados + XP bancado.
-    const rosterAfterSurvival = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome);
+    const deployedKeys = (battleParticipantsRef.current || []).map((participant) => participant.slotKey).filter(Boolean);
+    const rosterAfterSurvival = saveSurvivorsToRoster(leveledRegistry, roster, currentHumanColor, outcome, deployedKeys);
     const survivorIdentityIds = Object.values(finalRegistry)
       .filter((piece) => piece.color === currentHumanColor && piece.type !== 'k' && piece.identityId)
       .map((piece) => piece.identityId);
@@ -456,26 +478,40 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     clearCombatSession(combatSessionId);
 
+    const combatXpGained = Math.max(0, nextRoster.combatXp - roster.combatXp);
+    const debrief = buildCombatDebrief({
+      outcome,
+      beforeRoster: battleStartRosterRef.current || roster,
+      afterRoster: nextRoster,
+      participants: battleParticipantsRef.current,
+      survivorIdentityIds,
+      killsByIdentity: unitStats.killsByIdentity,
+      bossDamageByIdentity: unitStats.bossDamageByIdentity,
+      battleRecord,
+      serviceResult,
+      combatXpGained,
+    });
     setBattleRecap({
       survivorCount,
       totalCount: 16,
-      xpGained: Math.max(0, nextRoster.combatXp - roster.combatXp),
+      xpGained: combatXpGained,
       record: battleRecord,
       serviceResult,
+      debrief,
     });
 
-    onBattleResult?.(outcome);
+    onBattleResult?.(outcome, debrief);
     setPhase('over');
   }
 
   function resetBossPhase(currentHumanColor, survivorRegistry) {
     const chess = new Chess();
     if (initialFen) chess.load(initialFen);
-    const baseRoster = battleStartRosterRef.current || roster;
-    const phaseBaseRegistry = createInitialRegistry(chess);
-    const phaseMetamorphosedRegistry = applyRosterMetamorphosesToPosition(chess, phaseBaseRegistry, baseRoster, currentHumanColor);
+    const baseRoster = ensureDeploymentState(battleStartRosterRef.current || roster);
+    applyDeploymentToPosition(chess, baseRoster, currentHumanColor);
+    const phaseBaseRegistry = annotateRegistryWithDeployment(createInitialRegistry(chess), baseRoster, currentHumanColor);
     let fresh = applyRunPerksToRegistry(
-      applyRosterToRegistry(phaseMetamorphosedRegistry, baseRoster, currentHumanColor),
+      applyRosterToRegistry(phaseBaseRegistry, baseRoster, currentHumanColor),
       runPerks,
       currentHumanColor,
     );
@@ -865,7 +901,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     // damos XP de combate por retirarse (COMBAT_XP_REWARD no tiene 'retired').
     const battleId = `combat-${Date.now()}`;
     const battleDate = new Date().toISOString();
-    const rosterAfterSurvival = saveSurvivorsToRoster(registry, roster, humanColor, 'retired');
+    const deployedKeys = (battleParticipantsRef.current || []).map((participant) => participant.slotKey).filter(Boolean);
+    const rosterAfterSurvival = saveSurvivorsToRoster(registry, roster, humanColor, 'retired', deployedKeys);
     const survivorIdentityIds = Object.values(registry)
       .filter((piece) => piece.color === humanColor && piece.type !== 'k' && piece.identityId)
       .map((piece) => piece.identityId);
@@ -912,8 +949,21 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     });
     setServiceRecord(serviceResult.record);
     saveCombatBattle(battleRecord);
+    const debrief = buildCombatDebrief({
+      outcome: 'retired',
+      beforeRoster: battleStartRosterRef.current || roster,
+      afterRoster: nextRoster,
+      participants: battleParticipantsRef.current,
+      survivorIdentityIds,
+      killsByIdentity: unitStats.killsByIdentity,
+      bossDamageByIdentity: unitStats.bossDamageByIdentity,
+      battleRecord,
+      serviceResult,
+      combatXpGained: 0,
+    });
+    setBattleRecap({ survivorCount: battleRecord.survivorCount, totalCount: 16, xpGained: 0, record: battleRecord, serviceResult, debrief });
     clearCombatSession(combatSessionId);
-    onBattleResult?.('retired');
+    onBattleResult?.('retired', debrief);
     setPhase('over');
   }
 
@@ -949,11 +999,64 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
 
+  function handleRenameRosterPiece(key, alias) {
+    setRoster((prev) => {
+      const next = renameRosterIdentity(prev, key, alias);
+      if (next === prev) return prev;
+      saveRoster(next);
+      return next;
+    });
+  }
+
+
   function handleMetamorphoseRosterPiece(key, targetType) {
     setRoster((prev) => {
-      const next = setRosterDeploymentType(prev, key, targetType);
+      const changed = setRosterDeploymentType(prev, key, targetType);
+      if (changed === prev) return prev;
+      const next = ensureDeploymentState(changed);
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleDeployRosterUnit(slotKey, unitKey) {
+    setRoster((prev) => {
+      const next = setDeploymentUnit(prev, slotKey, unitKey);
       if (next === prev) return prev;
-      persistMetamorphosedRoster(next);
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleRemoveDeployedUnit(unitKey) {
+    setRoster((prev) => {
+      const next = removeDeploymentUnit(prev, unitKey);
+      if (next === prev) return prev;
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleResetDeployment() {
+    setRoster((prev) => {
+      const next = resetDeployment(prev);
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleAutofillDeployment(preferVeterans = true) {
+    setRoster((prev) => {
+      const next = autofillDeployment(prev, { preferVeterans });
+      saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleApplyDeploymentPreset(preset) {
+    setRoster((prev) => {
+      const next = applyDeploymentPreset(prev, preset);
+      saveRoster(next);
       return next;
     });
   }
@@ -1018,10 +1121,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     phase, combatLog, battleRecap, ratingInfo, difficulty, difficultyBalance, colorChoice, setColorChoice,
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
     pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
-    showArmy, setShowArmy, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
+    showArmy, setShowArmy, showDeployment, setShowDeployment, showExpireWarning, setShowExpireWarning, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
-    handleBuyRosterStat, handleReviveRosterPiece, handleMetamorphoseRosterPiece, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
+    handleBuyRosterStat, handleReviveRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };

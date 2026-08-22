@@ -21,14 +21,15 @@ const admin = read('src/components/AdminScreen.jsx');
 // preparar una release desde un baseline viejo.
 describe('continuidad acumulativa de release', () => {
   it('identifica inequívocamente la release desplegada', () => {
-    expect(APP_RELEASE).toBe('v16.6bk');
+    expect(APP_RELEASE).toBe('v16.6bu');
     expect(admin).toContain("import { APP_RELEASE } from '../release.js';");
     expect(admin).toContain('Release: <code>{APP_RELEASE}</code>');
   });
 
-  it('conserva el roster legible de 16 unidades en 6+6+4', () => {
+  it('conserva los 16 puestos canónicos legibles y permite barracón ampliado', () => {
     expect(army).toContain('CANONICAL_ROSTER_SLOTS.map');
-    expect(army).toContain('16 unidades');
+    expect(army).toContain('deploy.totalRoster');
+    expect(army).toContain('deploy.reserveCount');
     expect(army).toContain('title={alias}');
     expect(army).toContain('Vista táctica en tres filas');
     expect(army).not.toContain('Expediente →');
@@ -36,6 +37,18 @@ describe('continuidad acumulativa de release', () => {
     expect(styles).toContain('.army-roster-grid > :nth-child(13) { grid-column: 2; }');
     expect(styles).toContain('grid-template-columns: repeat(4, minmax(0, 1fr));');
     expect(styles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
+  });
+
+
+  it('conserva mesa de guerra, slots por origen y reservas fuera de amenaza', () => {
+    const deployment = read('src/combatDeployment.js');
+    const deploymentView = read('src/components/CombatDeploymentView.jsx');
+    const balance = read('src/combatBalance.js');
+    expect(deploymentView).toContain('<Board');
+    expect(deploymentView).toContain('COMBAT CHESS · MESA DE GUERRA');
+    expect(deployment).toContain('return originType === slot.type');
+    expect(deployment).toContain('grantReserveRecruit');
+    expect(balance).toContain('reservas no pagan impuesto de amenaza');
   });
 
   it('conserva la separación entre carrera global y unidades individuales', () => {
@@ -66,6 +79,60 @@ describe('continuidad acumulativa de release', () => {
     expect(controller).toContain('saveCombatSession(combatSessionId');
     expect(controller).toContain('clearCombatSession(combatSessionId)');
     expect(roguelike).toContain('hasCombatSession(`campaign:${campaign.seed}:${campaign.selectedNodeId}`)');
+  });
+
+  it('conserva cierre de backlog UX y actividad admin gruesa', () => {
+    const menu = read('src/components/Menu.jsx');
+    const roster = read('src/combatRoster.js');
+    const army = read('src/components/ArmyScreen.jsx');
+    const app = read('src/App.jsx');
+    expect(menu).toContain('<h3>Historial de partidas</h3>');
+    expect(menu).toContain('<h3>Panel de admin</h3>');
+    expect(roster).toContain('export function renameRosterIdentity');
+    expect(army).toContain('Renombrar unidad');
+    expect(app).toContain('ESC o clic derecho · volver / cerrar');
+    expect(app).toContain("combat: 'Combat Chess'");
+  });
+
+
+  it('conserva XCOM-lite, Deployment 2.0 y tutoriales no estándar', () => {
+    const campaignCore = read('src/combatCampaign.js');
+    const deploymentView = read('src/components/CombatDeploymentView.jsx');
+    const tutorials = read('src/mechanicTutorials.js');
+    const learning = read('src/components/Tutorial.jsx');
+    expect(campaignCore).toContain('operationalCredits');
+    expect(campaignCore).toContain('purchaseCampaignIntel');
+    expect(campaignCore).toContain("phase: 'battle'");
+    expect(deploymentView).toContain('Auto · veteranos');
+    expect(deploymentView).toContain('Buscar alias');
+    expect(tutorials).toContain("id: 'combat-intelligence'");
+    expect(army).toContain('tutorialId="combat-metamorphosis"');
+    expect(learning).toContain('Modos especiales');
+    expect(profileKeys).toContain("'chess-study-mechanic-tutorial-progress-v1'");
+  });
+
+  it('conserva el feature-freeze y el guard de compra de intel prebatalla', () => {
+    const campaignCore = read('src/combatCampaign.js');
+    const freeze = read('src/combatFreeze.test.js');
+    expect(campaignCore).toContain("state.phase !== 'briefing'");
+    expect(campaignCore).toContain('nodeId !== state.selectedNodeId');
+    expect(freeze).toContain('feature-freeze invariants');
+  });
+
+
+  it('conserva visualizaciones medidas, Daily vivo, replay crítico y grada escasa', () => {
+    const careerVisuals = read('src/careerVisuals.js');
+    const daily = read('src/dailyChallenge.js');
+    const replay = read('src/components/ReplayScreen.jsx');
+    const spectator = read('src/spectatorReactions.js');
+    const game = read('src/components/GameScreen.jsx');
+    expect(careerVisuals).toContain('buildCareerHeatmaps');
+    expect(careerVisuals).toContain('deriveRpgProfile');
+    expect(daily).toContain('activeStreakFromDates');
+    expect(replay).toContain("PELÍCULA DE LA PARTIDA · DIRECTOR'S CUT");
+    expect(replay).toContain('criticalMoments');
+    expect(spectator).toContain("mode = 'silence'");
+    expect(game).toContain('Grada anónima');
   });
 
 });

@@ -197,10 +197,13 @@ export async function fetchLiveStatus() {
   }
 }
 
-export function touchActivity() {
+export function touchActivity(activity = null) {
   if (!getToken()) return;
+  const headers = withRequestId({ ...authHeader() });
+  if (activity) headers['Content-Type'] = 'application/json';
   fetch(`${BASE_URL}/auth/activity`, {
     method: 'POST',
-    headers: withRequestId({ ...authHeader() }),
+    headers,
+    body: activity ? JSON.stringify({ activity }) : undefined,
   }).catch(() => {});
 }

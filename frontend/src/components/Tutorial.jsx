@@ -4,6 +4,7 @@ import Board from './Board.jsx';
 import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
 
 const LESSONS = [
   {
@@ -134,10 +135,15 @@ export default function Tutorial({ onExit }) {
   const [index, setIndex] = useState(0);
   const [practiceFen, setPracticeFen] = useState(LESSONS[0].fen);
   const [selected, setSelected] = useState(null);
+  const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
+  const [mechanicStep, setMechanicStep] = useState(0);
+  const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
 
-  useEscapeToClose(section === 'glossary' ? () => setSection('lessons') : onExit);
+  useEscapeToClose(section === 'lessons' ? onExit : () => setSection('lessons'));
 
   const lesson = LESSONS[index];
+  const mechanic = MECHANIC_TUTORIALS.find((item) => item.id === mechanicId) || MECHANIC_TUTORIALS[0];
+  const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
 
   function goTo(newIndex) {
     const clamped = Math.max(0, Math.min(LESSONS.length - 1, newIndex));
@@ -176,17 +182,53 @@ export default function Tutorial({ onExit }) {
 
   return (
     <div className="tutorial-shell">
-      <button className="back-link" onClick={section === 'glossary' ? () => setSection('lessons') : onExit}>
-        ← {section === 'glossary' ? 'Volver a las lecciones' : 'Volver al menú'}
+      <button className="back-link" onClick={section === 'lessons' ? onExit : () => setSection('lessons')}>
+        ← {section === 'lessons' ? 'Volver al menú' : 'Volver a las lecciones'}
       </button>
 
       <nav className="tutorial-section-tabs" aria-label="Aprendizaje">
         <button type="button" className={section === 'lessons' ? 'active' : ''} onClick={() => setSection('lessons')}>Lecciones</button>
         <button type="button" className={section === 'glossary' ? 'active' : ''} onClick={() => setSection('glossary')}>Glosario</button>
+        <button type="button" className={section === 'mechanics' ? 'active' : ''} onClick={() => setSection('mechanics')}>Modos especiales</button>
       </nav>
 
       {section === 'glossary' ? (
         <ChessGlossary />
+      ) : section === 'mechanics' ? (
+        <div className="mechanic-library">
+          <aside className="mechanic-library-list">
+            {MECHANIC_TUTORIALS.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={item.id === mechanic?.id ? 'active' : ''}
+                onClick={() => { setMechanicId(item.id); setMechanicStep(0); }}
+              >
+                <span>{item.group}</span><strong>{item.title}</strong><small>{mechanicProgress[item.id]?.seen ? '✓ visto' : 'nuevo'}</small>
+              </button>
+            ))}
+          </aside>
+          {mechanic && mechanicCurrentStep && (
+            <article className="mechanic-library-detail">
+              <span className="section-label">{mechanic.group} · TUTORIAL NO ESTÁNDAR</span>
+              <h2>{mechanic.title}</h2>
+              <p className="hero-scope-note">{mechanic.summary}</p>
+              <div className="mechanic-tutorial-step">
+                <span className="mechanic-tutorial-counter">{mechanicStep + 1}/{mechanic.steps.length}</span>
+                <h3>{mechanicCurrentStep.title}</h3>
+                <p>{mechanicCurrentStep.text}</p>
+              </div>
+              <div className="mechanic-tutorial-actions">
+                <button type="button" className="secondary-btn" disabled={mechanicStep === 0} onClick={() => setMechanicStep((i) => Math.max(0, i - 1))}>Anterior</button>
+                {mechanicStep < mechanic.steps.length - 1 ? (
+                  <button type="button" className="primary-btn" onClick={() => setMechanicStep((i) => Math.min(mechanic.steps.length - 1, i + 1))}>Siguiente</button>
+                ) : (
+                  <button type="button" className="primary-btn" onClick={() => setMechanicProgress(markMechanicTutorialSeen(mechanic.id))}>Marcar entendido</button>
+                )}
+              </div>
+            </article>
+          )}
+        </div>
       ) : (
         <div className="tutorial-main">
           <div className="board-column">

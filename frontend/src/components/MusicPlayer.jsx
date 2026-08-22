@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  AMBIENT_THEME_GROUPS,
   AMBIENT_THEME_OPTIONS,
   getAmbientPlaybackState,
+  getAmbientRadioMode,
+  isAmbientFavorite,
+  isAmbientExcluded,
   getAmbientVolume,
   getAmbientThemeId,
   isFxMuted,
@@ -9,6 +13,9 @@ import {
   selectRelativeAmbientTheme,
   seekAmbientMusic,
   setAmbientTheme,
+  setAmbientRadioMode,
+  toggleAmbientFavorite,
+  toggleAmbientExcluded,
   setAmbientVolume,
   setFxMuted,
   startAmbientMusic,
@@ -31,12 +38,19 @@ export default function MusicPlayer() {
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => Math.round(getAmbientVolume() * 100));
   const [seekPreviewMs, setSeekPreviewMs] = useState(null);
+  const [radioMode, setRadioModeState] = useState(() => getAmbientRadioMode());
+  const [favorite, setFavorite] = useState(false);
+  const [excluded, setExcluded] = useState(false);
 
   useEffect(() => {
     const refresh = () => {
       setState(snapshot());
       setFxMutedState(isFxMuted());
       setVolume(Math.round(getAmbientVolume() * 100));
+      setRadioModeState(getAmbientRadioMode());
+      const activeId = snapshot().themeId || getAmbientThemeId();
+      setFavorite(isAmbientFavorite(activeId));
+      setExcluded(isAmbientExcluded(activeId));
     };
     refresh();
     window.addEventListener('chess-ambient-transport', refresh);
@@ -86,6 +100,12 @@ export default function MusicPlayer() {
     () => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === themeId) || AMBIENT_THEME_OPTIONS[0],
     [themeId],
   );
+
+
+  useEffect(() => {
+    setFavorite(isAmbientFavorite(themeId));
+    setExcluded(isAmbientExcluded(themeId));
+  }, [themeId, state.status]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.mediaSession || typeof MediaMetadata === 'undefined') return;
@@ -138,6 +158,23 @@ export default function MusicPlayer() {
     const nextMuted = !fxMuted;
     setFxMuted(nextMuted);
     setFxMutedState(nextMuted);
+  }
+
+  function toggleFavorite() {
+    const next = toggleAmbientFavorite(themeId);
+    setFavorite(next.has(themeId));
+    setExcluded(false);
+  }
+
+  function toggleExcluded() {
+    const next = toggleAmbientExcluded(themeId);
+    setExcluded(next.has(themeId));
+    setFavorite(false);
+  }
+
+  function changeRadioMode(event) {
+    const next = setAmbientRadioMode(event.target.value);
+    setRadioModeState(next);
   }
 
   function changeVolume(event) {
@@ -207,11 +244,31 @@ export default function MusicPlayer() {
         <label className="music-deck-selector" title={current?.description || 'Tema musical'}>
           <span className="sr-only">Tema musical</span>
           <select value={themeId} onChange={chooseTheme} aria-label="Tema musical">
-            {AMBIENT_THEME_OPTIONS.map((theme) => (
-              <option key={theme.id} value={theme.id}>{theme.label}</option>
+            {AMBIENT_THEME_GROUPS.map((group) => (
+              <optgroup key={group.genre} label={group.genre}>
+                {group.themes.map((theme) => (
+                  <option key={theme.id} value={theme.id}>{theme.label}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
+
+        <div className="music-deck-radio-row">
+          <label className="music-deck-radio-mode" title="Qué pistas puede elegir la radio automática">
+            <span>RADIO</span>
+            <select value={radioMode} onChange={changeRadioMode} aria-label="Modo de radio musical">
+              <option value="all">Todo</option>
+              <option value="favorites">Favoritos</option>
+              <option value="focus">Concentración</option>
+              {AMBIENT_THEME_GROUPS.map((group) => <option key={group.genre} value={`genre:${group.genre}`}>{group.genre}</option>)}
+            </select>
+          </label>
+          <div className="music-deck-preferences" role="group" aria-label="Preferencias de la pista actual">
+            <button type="button" className={`music-deck-pref ${favorite ? 'active' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} title="Favorito">♥</button>
+            <button type="button" className={`music-deck-pref ${excluded ? 'active danger' : ''}`} onClick={toggleExcluded} aria-pressed={excluded} title="Excluir de la radio">🚫</button>
+          </div>
+        </div>
 
         <div className="music-deck-bottom-row">
           <label className="music-deck-volume" title={`Volumen de música: ${volume}%`}>

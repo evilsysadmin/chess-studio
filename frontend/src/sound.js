@@ -9,13 +9,16 @@ const LEGACY_MUTE_KEY = 'chess-study-muted';
 const MUSIC_MUTED_KEY = 'chess-study-music-muted';
 const FX_MUTED_KEY = 'chess-study-fx-muted';
 const MUSIC_VOLUME_KEY = 'chess-study-music-volume';
+const MUSIC_RADIO_MODE_KEY = 'chess-study-music-radio-mode';
+const MUSIC_FAVORITES_KEY = 'chess-study-music-favorites';
+const MUSIC_EXCLUDED_KEY = 'chess-study-music-excluded';
 const LEGACY_AMBIENT_THEME_KEY = 'chess-study-ambient-theme';
 const AMBIENT_THEME_SESSION_KEY = 'chess-study-ambient-theme-session';
 const DEFAULT_AMBIENT_THEME = 'andalus';
 // La radio de sesión deja un pequeño hueco real entre piezas. No encadenamos
 // los finales como si fueran jingles publicitarios: termina el tema, respira,
 // y entra otro distinto.
-export const AMBIENT_INTER_TRACK_SILENCE_MS = 2400;
+export const AMBIENT_INTER_TRACK_SILENCE_MS = 700;
 const ANDALUS_TRACK_DURATION_MS = 240000;
 
 let audioCtx = null;
@@ -705,8 +708,8 @@ Object.assign(AMBIENT_THEMES, {
   },
   clockwork: {
     id: 'clockwork', engine: 'structured', label: 'Relojería',
-    description: 'Caja de música, clicks mecánicos y un ostinato de reloj de torneo.',
-    stepMs: 112, stepsPerSection: 32, leadInstrument: 'musicbox', chordInstrument: 'bell', bassInstrument: 'pizz',
+    description: 'Clave seco, fieltro y clicks mecánicos: un reloj de torneo con engranajes, sin campanitas ni pájaros electrónicos.',
+    stepMs: 112, stepsPerSection: 32, leadInstrument: 'harpsichord', chordInstrument: 'felt', bassInstrument: 'pizz',
     sections: [
       {
         lead: { 0: 72, 2: 79, 4: 76, 6: 79, 8: 74, 10: 81, 12: 77, 14: 81, 16: 71, 18: 77, 20: 74, 22: 77, 24: 69, 26: 76, 28: 72, 30: 76 },
@@ -1711,11 +1714,320 @@ Object.assign(AMBIENT_THEMES, {
       { lead: {5:67,17:70,29:66,41:72}, chords: {0:[55,62,67],24:[53,60,65]}, bass: {0:43,6:43,12:46,18:41,24:41,30:41,36:48,42:45}, drums: {0:'K',6:'H',12:'W',18:'H',24:'K',30:'H',36:'M',42:'H'} },
     ],
   },
+ });
+
+// V16.6bp — expansión transversal del catálogo: SPA/zen, rock ambiental y
+// clásica/cámara. Son composiciones originales del motor Web Audio; no se
+// samplean ni reproducen obras externas.
+Object.assign(AMBIENT_THEMES, {
+  mistSpa: {
+    id: 'mistSpa', genre: 'SPA / Zen', engine: 'structured', label: 'SPA · niebla de cedro',
+    description: 'Flauta respirada, cuencos y colchones largos; casi sin pulso, pensada para calcular sin que el cerebro pida vacaciones.',
+    stepMs: 290, stepsPerSection: 32, longFormMs: 360000, leadInstrument: 'breathFlute', chordInstrument: 'singingBowl', bassInstrument: 'pad',
+    sections: [
+      { lead:{4:72,13:76,23:69}, chords:{0:[55,62,67],16:[53,60,65]}, bass:{0:43,16:41} },
+      { lead:{7:74,18:71,28:67}, chords:{0:[57,64,69],16:[50,57,62]}, bass:{0:45,16:38} },
+      { lead:{5:76,15:72,26:69}, chords:{0:[52,59,64],16:[55,62,67]}, bass:{0:40,16:43} },
+    ],
+  },
+  moonOnsen: {
+    id: 'moonOnsen', genre: 'SPA / Zen', engine: 'structured', label: 'Onsen · agua de luna',
+    description: 'Marimba de madera, cristal y aire; un spa nocturno que por alguna razón también tiene un tablero de ajedrez.',
+    stepMs: 245, stepsPerSection: 40, longFormMs: 350000, leadInstrument: 'marimba', counterInstrument: 'breathFlute', chordInstrument: 'glass', bassInstrument: 'cello',
+    sections: [
+      { lead:{2:67,10:71,18:74,28:69,36:67}, counter:{14:79,32:76}, chords:{0:[55,62,67],20:[52,59,64]}, bass:{0:43,20:40}, drums:{8:'B',28:'B'} },
+      { lead:{4:69,12:72,22:76,30:72,38:69}, counter:{17:81,35:77}, chords:{0:[57,64,69],20:[53,60,65]}, bass:{0:45,20:41}, drums:{10:'B',30:'B'} },
+      { lead:{6:72,16:69,26:67,36:64}, counter:{20:76}, chords:{0:[52,59,64],20:[50,57,62]}, bass:{0:40,20:38} },
+    ],
+  },
+  postRockMidnight: {
+    id: 'postRockMidnight', genre: 'Rock', engine: 'structured', label: 'Post-rock · medianoche',
+    description: 'Guitarra con tremolo, bajo amplio y batería contenida; crece despacio y nunca se convierte en un solo de quince minutos.',
+    stepMs: 132, stepsPerSection: 64, longFormMs: 380000, leadInstrument: 'tremolo', counterInstrument: 'guitar2', chordInstrument: 'pad', bassInstrument: 'bass',
+    sections: [
+      { lead:{0:64,8:67,16:71,24:69,32:64,40:72,48:71,56:67}, counter:{12:76,28:74,44:79,60:76}, chords:{0:[52,59,64],32:[50,57,62]}, bass:{0:40,8:47,16:43,24:47,32:38,40:45,48:43,56:45}, drums:{0:'K',8:'H',16:'S',24:'H',32:'K',40:'H',48:'S',56:'H'} },
+      { lead:{0:67,6:71,12:74,18:76,24:74,30:71,36:69,42:67,48:69,54:72,60:67}, counter:{9:79,21:76,33:74,45:72,57:71}, chords:{0:[55,62,67],32:[53,60,65]}, bass:{0:43,8:50,16:47,24:50,32:41,40:48,48:45,56:48}, drums:{0:'K',8:'H',16:'S',24:'K',32:'K',40:'H',48:'S',56:'K'} },
+      { leadInstrument:'overdriveGuitar', lead:{4:72,12:74,20:76,28:79,36:76,44:74,52:72,60:67}, counter:{8:64,24:67,40:69,56:67}, chords:{0:[57,64,69],32:[55,62,67]}, bass:{0:45,8:52,16:48,24:52,32:43,40:50,48:47,56:50}, drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'} },
+    ],
+  },
+  rookGarage: {
+    id: 'rookGarage', genre: 'Rock', engine: 'structured', label: 'Rock · garaje de la torre',
+    description: 'Riff grave, bajo directo y caja seca. Más rock que ambient, pero todavía deja espacio para pensar antes de estrellar la dama.',
+    stepMs: 108, stepsPerSection: 48, longFormMs: 330000, leadInstrument: 'overdriveGuitar', chordInstrument: 'guitar2', bassInstrument: 'bass',
+    sections: [
+      { lead:{0:52,6:55,12:59,18:57,24:52,30:60,36:59,42:55}, chords:{0:[40,47,52],24:[38,45,50]}, bass:{0:28,6:35,12:31,18:35,24:26,30:33,36:31,42:33}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'K',36:'S',42:'H'} },
+      { lead:{0:55,6:59,12:62,18:60,24:55,30:64,36:62,42:59}, chords:{0:[43,50,55],24:[41,48,53]}, bass:{0:31,6:38,12:34,18:38,24:29,30:36,36:34,42:36}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'H',36:'S',42:'K'} },
+    ],
+  },
+  desertDriveRock: {
+    id: 'desertDriveRock', genre: 'Rock', engine: 'structured', label: 'Rock · carretera del desierto',
+    description: 'Guitarra limpia, riff polvoriento y batería de carretera; medio western, medio post-rock, cero gasolinera abierta.',
+    stepMs: 122, stepsPerSection: 48, longFormMs: 340000, leadInstrument: 'guitar2', counterInstrument: 'mutedHorn', chordInstrument: 'tremolo', bassInstrument: 'uprightBass',
+    sections: [
+      { lead:{0:57,6:60,12:64,18:62,24:57,30:65,36:64,42:60}, counter:{9:69,21:67,33:72,45:69}, chords:{0:[45,52,57],24:[43,50,55]}, bass:{0:33,6:40,12:36,18:40,24:31,30:38,36:36,42:38}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'H',36:'S',42:'H'} },
+      { lead:{3:60,9:64,15:67,21:69,27:67,33:64,39:62,45:60}, counter:{12:72,30:69}, chords:{0:[48,55,60],24:[45,52,57]}, bass:{0:36,6:43,12:40,18:43,24:33,30:40,36:38,42:40}, drums:{0:'K',6:'H',12:'S',18:'K',24:'K',30:'H',36:'S',42:'H'} },
+    ],
+  },
+  endgameAdagio: {
+    id: 'endgameAdagio', genre: 'Clásica', engine: 'structured', label: 'Adagio del final',
+    description: 'Cuerdas largas, piano de fieltro y cello. Sin percusión; para finales donde cada casilla cuesta una vida.',
+    stepMs: 310, stepsPerSection: 32, longFormMs: 390000, leadInstrument: 'strings', counterInstrument: 'felt', chordInstrument: 'strings', bassInstrument: 'cello',
+    sections: [
+      { lead:{4:69,12:72,20:71,28:67}, counter:{8:76,24:74}, chords:{0:[57,60,64],16:[55,59,62]}, bass:{0:45,16:43} },
+      { lead:{4:72,12:76,20:74,28:69}, counter:{8:79,24:77}, chords:{0:[60,64,67],16:[57,62,65]}, bass:{0:48,16:45} },
+      { lead:{4:71,12:74,20:72,28:67}, counter:{10:76,26:72}, chords:{0:[55,59,64],16:[53,57,60]}, bass:{0:43,16:41} },
+    ],
+  },
+  knightFugue: {
+    id: 'knightFugue', genre: 'Clásica', engine: 'structured', label: 'Fuga del caballo',
+    description: 'Clave, pizzicato y contrapunto juguetón: entradas sucesivas que saltan por el tablero como un caballo con cafeína.',
+    stepMs: 108, stepsPerSection: 64, longFormMs: 360000, leadInstrument: 'harpsichord', counterInstrument: 'pizz', chordInstrument: 'harpsichord', bassInstrument: 'cello',
+    sections: [
+      { lead:{0:64,4:67,8:69,12:71,16:69,20:67,24:64,28:62,32:64,36:67,40:71,44:72,48:71,52:69,56:67,60:64}, counter:{8:52,12:55,16:57,20:59,24:57,28:55,32:52,36:50,40:52,44:55,48:59,52:60,56:59,60:57}, chords:{0:[52,55,59],32:[50,53,57]}, bass:{0:40,16:38,32:36,48:38} },
+      { lead:{0:67,4:71,8:72,12:74,16:72,20:71,24:67,28:65,32:67,36:71,40:74,44:76,48:74,52:72,56:71,60:67}, counter:{4:55,8:59,12:60,16:62,20:60,24:59,28:55,32:53,36:55,40:59,44:62,48:64,52:62,56:60,60:59}, chords:{0:[55,59,62],32:[53,57,60]}, bass:{0:43,16:41,32:40,48:41} },
+    ],
+  },
+  nocturnalQuartet: {
+    id: 'nocturnalQuartet', genre: 'Clásica', engine: 'structured', label: 'Cuarteto nocturno',
+    description: 'Dos líneas de cuerda, cello y silencios de cámara. Sobrio, melódico y ligeramente sospechoso a las tres de la mañana.',
+    stepMs: 235, stepsPerSection: 40, longFormMs: 370000, leadInstrument: 'strings', counterInstrument: 'cello', chordInstrument: 'strings', bassInstrument: 'cello',
+    sections: [
+      { lead:{0:67,8:71,16:74,24:72,32:67}, counter:{4:55,12:59,20:57,28:55,36:52}, chords:{0:[55,59,62],20:[53,57,60]}, bass:{0:43,20:41} },
+      { lead:{0:69,8:72,16:76,24:74,32:69}, counter:{4:57,12:60,20:59,28:57,36:53}, chords:{0:[57,60,64],20:[55,59,62]}, bass:{0:45,20:43} },
+      { lead:{0:71,8:74,16:72,24:69,32:67}, counter:{4:59,12:62,20:60,28:57,36:55}, chords:{0:[59,62,65],20:[55,59,64]}, bass:{0:47,20:43} },
+    ],
+  },
 });
 
-export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description }) => ({
-  id, label, description,
+// V16.6bq — dos familias nuevas para ampliar contraste real: lo-fi/chill
+// y synthwave. Siguen siendo composiciones originales del motor Web Audio.
+Object.assign(AMBIENT_THEMES, {
+  lofiRainTape: {
+    id:'lofiRainTape', genre:'Lo-Fi / Chill', engine:'structured', label:'Lo-fi · lluvia en cassette',
+    description:'Piano de fieltro, Rhodes gastado, contrabajo y brushes; cálido, ligeramente polvoriento y muy poco interesado en impresionar a nadie.',
+    stepMs:164, stepsPerSection:64, longFormMs:360000, leadInstrument:'felt', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{2:64,10:67,18:71,26:69,34:64,42:72,50:69,58:67},counter:{14:76,30:74,46:72,62:71},chords:{0:[52,55,59,64],16:[50,53,57,62],32:[55,59,62,67],48:[53,57,60,65]},bass:{0:40,8:47,16:38,24:45,32:43,40:50,48:41,56:48},drums:{0:'B',8:'H',16:'B',24:'H',32:'B',40:'H',48:'B',56:'H'}},
+      {lead:{4:67,12:71,20:74,28:72,36:69,44:67,52:64,60:67},counter:{8:79,24:76,40:74,56:72},chords:{0:[55,59,62,67],16:[52,55,59,64],32:[57,60,64,69],48:[50,53,57,62]},bass:{0:43,8:50,16:40,24:47,32:45,40:52,48:38,56:45},drums:{0:'B',8:'H',16:'B',24:'H',32:'B',40:'H',48:'B',56:'H'}}
+    ],
+  },
+  lofiWindowLight: {
+    id:'lofiWindowLight', genre:'Lo-Fi / Chill', engine:'structured', label:'Lo-fi · ventana encendida',
+    description:'Vibráfono, guitarra limpia y acordes blandos; beat pequeño de madrugada para partidas largas sin dramatismo innecesario.',
+    stepMs:156, stepsPerSection:64, longFormMs:350000, leadInstrument:'vibes', counterInstrument:'guitar2', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:67,8:71,16:74,24:71,32:69,40:72,48:74,56:67},counter:{4:55,20:59,36:57,52:55},chords:{0:[55,59,62,67],16:[52,57,60,64],32:[53,57,60,65],48:[50,55,59,62]},bass:{0:43,8:47,16:40,24:47,32:41,40:48,48:38,56:45},drums:{0:'B',12:'H',16:'B',28:'H',32:'B',44:'H',48:'B',60:'H'}},
+      {lead:{4:69,12:72,20:76,28:74,36:72,44:69,52:67,60:69},counter:{8:57,24:60,40:59,56:57},chords:{0:[57,60,64,69],16:[55,59,62,67],32:[52,57,60,64],48:[53,57,60,65]},bass:{0:45,8:52,16:43,24:50,32:40,40:47,48:41,56:48},drums:{0:'B',12:'H',16:'B',28:'H',32:'B',44:'H',48:'B',60:'H'}}
+    ],
+  },
+  neonKnight: {
+    id:'neonKnight', genre:'Synthwave', engine:'structured', label:'Synthwave · caballo de neón',
+    description:'Arpegios luminosos, pads ochenteros y bajo sintético; carretera nocturna, tablero delante y absolutamente ningún DeLorean necesario.',
+    stepMs:110, stepsPerSection:64, longFormMs:350000, leadInstrument:'synth', counterInstrument:'arp', chordInstrument:'pad', bassInstrument:'synthbass',
+    sections:[
+      {lead:{0:64,8:67,16:71,24:69,32:72,40:71,48:67,56:64},counter:{2:76,6:79,10:83,14:79,18:74,22:79,26:81,30:79,34:76,38:79,42:83,46:86,50:83,54:79,58:76,62:74},chords:{0:[52,59,64],16:[55,62,67],32:[50,57,62],48:[53,60,65]},bass:{0:28,4:35,8:40,12:35,16:31,20:38,24:43,28:38,32:26,36:33,40:38,44:33,48:29,52:36,56:41,60:36},drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'}},
+      {lead:{0:67,8:71,16:74,24:72,32:76,40:74,48:71,56:67},counter:{2:79,6:83,10:86,14:83,18:77,22:83,26:84,30:83,34:79,38:83,42:86,46:88,50:86,54:83,58:79,62:77},chords:{0:[55,62,67],16:[57,64,69],32:[53,60,65],48:[50,57,62]},bass:{0:31,4:38,8:43,12:38,16:33,20:40,24:45,28:40,32:29,36:36,40:41,44:36,48:26,52:33,56:38,60:33},drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'}}
+    ],
+  },
+  midnightArcade: {
+    id:'midnightArcade', genre:'Synthwave', engine:'structured', label:'Synthwave · arcade 02:17',
+    description:'Pulso seco, cristal digital y bajo oscuro; más arcade vacío que discoteca, con suficiente espacio para pensar una clavada.',
+    stepMs:96, stepsPerSection:64, longFormMs:340000, leadInstrument:'pulse', counterInstrument:'glass', chordInstrument:'synth', bassInstrument:'synthbass',
+    sections:[
+      {lead:{0:52,8:55,16:59,24:57,32:60,40:59,48:55,56:52},counter:{12:76,28:79,44:74,60:72},chords:{0:[40,47,52],16:[43,50,55],32:[38,45,50],48:[41,48,53]},bass:{0:28,4:28,8:35,12:31,16:31,20:31,24:38,28:35,32:26,36:26,40:33,44:29,48:29,52:29,56:36,60:33},drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'}},
+      {lead:{0:55,8:59,16:62,24:60,32:64,40:62,48:59,56:55},counter:{12:79,28:83,44:77,60:76},chords:{0:[43,50,55],16:[45,52,57],32:[41,48,53],48:[38,45,50]},bass:{0:31,4:31,8:38,12:34,16:33,20:33,24:40,28:36,32:29,36:29,40:36,44:33,48:26,52:26,56:33,60:29},drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'}}
+    ],
+  },
+});
+
+
+// V16.6bt — cuatro familias nuevas con contraste de arreglo, no sólo de preset.
+// Nada de campanillas/pajaritos: todos los leads viven en registros medios o graves.
+Object.assign(AMBIENT_THEMES, {
+  concreteRain: {
+    id:'concreteRain', genre:'Trip-Hop / Downtempo', engine:'structured', label:'Trip-hop · lluvia sobre hormigón',
+    description:'Rhodes oscuro, trompeta apagada y bajo profundo sobre un beat lento y seco; ciudad mojada, cero prisa.',
+    stepMs:174, stepsPerSection:64, longFormMs:370000, leadInstrument:'mutedHorn', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'synthbass',
+    sections:[
+      {lead:{6:62,18:65,30:67,42:65,54:60},counter:{2:50,14:53,26:55,38:53,50:48,62:50},chords:{0:[50,53,57,60],16:[48,52,55,59],32:[45,50,53,57],48:[47,50,54,57]},bass:{0:26,8:26,16:29,24:24,32:21,40:21,48:23,56:26},drums:{0:'K',8:'B',16:'S',24:'B',32:'K',40:'B',48:'S',56:'B'}},
+      {lead:{4:65,16:67,28:70,40:67,52:63},counter:{10:53,22:57,34:55,46:50,58:53},chords:{0:[53,57,60,64],16:[50,53,57,60],32:[48,52,55,59],48:[45,50,53,57]},bass:{0:29,8:29,16:26,24:26,32:24,40:24,48:21,56:23},drums:{0:'K',12:'B',16:'S',28:'B',32:'K',44:'B',48:'S',60:'B'}}
+    ],
+  },
+  velvetStatic: {
+    id:'velvetStatic', genre:'Trip-Hop / Downtempo', engine:'structured', label:'Trip-hop · estática de terciopelo',
+    description:'Vibrato de Rhodes, cello y un pulso roto casi dub; denso pero con espacio para calcular.',
+    stepMs:182, stepsPerSection:64, longFormMs:365000, leadInstrument:'rhodesWarm', counterInstrument:'cello', chordInstrument:'pad', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:57,12:60,24:64,36:62,48:57,60:55},counter:{8:45,24:48,40:47,56:43},chords:{0:[45,52,57],16:[48,55,60],32:[43,50,55],48:[41,48,53]},bass:{0:33,8:40,16:36,24:43,32:31,40:38,48:29,56:36},drums:{0:'K',10:'B',16:'S',30:'B',32:'K',42:'B',48:'S',62:'B'}},
+      {lead:{4:60,16:64,28:65,40:62,52:59},counter:{12:48,28:50,44:45,60:43},chords:{0:[48,55,60],16:[45,52,57],32:[50,57,62],48:[43,50,55]},bass:{0:36,8:43,16:33,24:40,32:38,40:45,48:31,56:38},drums:{0:'K',12:'B',16:'S',28:'B',32:'K',44:'B',48:'S',60:'B'}}
+    ],
+  },
+  abyssalArchive: {
+    id:'abyssalArchive', genre:'Dark Ambient', engine:'structured', label:'Dark ambient · archivo abisal',
+    description:'Órgano grave, coro lejano y cello suspendido; no ocurre mucho, pero todo parece importante.',
+    stepMs:330, stepsPerSection:40, longFormMs:410000, leadInstrument:'choir', counterInstrument:'cello', chordInstrument:'organ', bassInstrument:'organbass',
+    sections:[
+      {lead:{10:55,30:52},counter:{18:43,36:41},chords:{0:[36,43,48,52],20:[34,41,46,50]},bass:{0:24,20:22}},
+      {lead:{8:57,28:53},counter:{16:45,34:40},chords:{0:[38,45,50,53],20:[33,40,45,48]},bass:{0:26,20:21}},
+      {lead:{12:52,32:50},counter:{4:41,24:38},chords:{0:[31,38,43,47],20:[36,43,48,52]},bass:{0:19,20:24}}
+    ],
+  },
+  redVault: {
+    id:'redVault', genre:'Dark Ambient', engine:'structured', label:'Dark ambient · cámara roja',
+    description:'Cuerdas tensas, subgrave y respiraciones de órgano; claustrofóbico sin caer en ruido de susto barato.',
+    stepMs:286, stepsPerSection:48, longFormMs:395000, leadInstrument:'strings', counterInstrument:'organ', chordInstrument:'pad', bassInstrument:'cello',
+    sections:[
+      {lead:{6:52,18:55,30:53,42:50},counter:{12:40,36:38},chords:{0:[40,47,52],24:[38,45,50]},bass:{0:28,12:31,24:26,36:29}},
+      {lead:{4:55,16:57,28:53,40:52},counter:{10:43,34:40},chords:{0:[43,50,55],24:[41,48,53]},bass:{0:31,12:34,24:29,36:28}}
+    ],
+  },
+  queenBossa: {
+    id:'queenBossa', genre:'Bossa / Latin Lounge', engine:'structured', label:'Bossa · dama en la terraza',
+    description:'Guitarra limpia, Rhodes y contrabajo con una bossa discreta; soleada sin convertirse en música de ascensor.',
+    stepMs:142, stepsPerSection:64, longFormMs:350000, leadInstrument:'guitar2', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:64,6:67,12:69,18:71,24:69,30:67,36:64,42:62,48:64,54:67,60:69},counter:{9:55,21:57,33:60,45:57,57:55},chords:{0:[52,57,60,64],16:[55,59,62,67],32:[57,60,64,69],48:[50,55,59,62]},bass:{0:40,8:47,16:43,24:50,32:45,40:52,48:38,56:45},drums:{0:'B',6:'H',12:'B',18:'H',24:'B',30:'H',36:'B',42:'H',48:'B',54:'H',60:'B'}},
+      {lead:{3:67,9:71,15:72,21:74,27:72,33:69,39:67,45:64,51:67,57:69,63:64},counter:{12:59,28:60,44:57,60:55},chords:{0:[55,59,62,67],16:[52,57,60,64],32:[50,55,59,62],48:[57,60,64,69]},bass:{0:43,8:50,16:40,24:47,32:38,40:45,48:45,56:52},drums:{0:'B',8:'H',16:'B',24:'H',32:'B',40:'H',48:'B',56:'H'}}
+    ],
+  },
+  havana205: {
+    id:'havana205', genre:'Bossa / Latin Lounge', engine:'structured', label:'Havana · 02:05',
+    description:'Bandoneón seco, guitarra y bajo caminante; lounge latino nocturno con un punto de humo y malas decisiones.',
+    stepMs:136, stepsPerSection:64, longFormMs:355000, leadInstrument:'bandoneon', counterInstrument:'guitar2', chordInstrument:'rhodesWarm', bassInstrument:'bass',
+    sections:[
+      {lead:{2:62,8:65,14:67,20:69,26:67,32:65,38:62,44:60,50:62,56:65,62:60},counter:{5:50,17:53,29:55,41:53,53:50},chords:{0:[50,53,57,62],16:[53,57,60,65],32:[48,52,55,60],48:[55,59,62,67]},bass:{0:38,4:45,8:50,12:45,16:41,20:48,24:53,28:48,32:36,36:43,40:48,44:43,48:43,52:50,56:55,60:50},drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'B',42:'H',48:'K',54:'H',60:'S'}},
+      {lead:{0:65,7:69,14:72,21:70,28:67,35:65,42:62,49:65,56:69,63:62},counter:{10:53,26:57,42:55,58:53},chords:{0:[53,57,60,65],16:[50,53,57,62],32:[57,60,64,69],48:[48,52,55,60]},bass:{0:41,8:48,16:38,24:45,32:45,40:52,48:36,56:43},drums:{0:'K',8:'H',16:'S',24:'B',32:'K',40:'H',48:'S',56:'B'}}
+    ],
+  },
+  fourSquares: {
+    id:'fourSquares', genre:'Piano / Minimal', engine:'structured', label:'Minimal · cuatro casillas',
+    description:'Piano de fieltro repetitivo y cello casi inmóvil; cambia poco a poco, como una posición que se aprieta sin avisar.',
+    stepMs:224, stepsPerSection:48, longFormMs:390000, leadInstrument:'felt', counterInstrument:'cello', chordInstrument:'felt', bassInstrument:'cello',
+    sections:[
+      {lead:{0:60,8:64,16:62,24:67,32:64,40:62},counter:{12:48,36:47},chords:{0:[48,55,60],24:[47,53,59]},bass:{0:36,24:35}},
+      {lead:{0:62,8:65,16:64,24:69,32:65,40:64},counter:{12:50,36:48},chords:{0:[50,57,62],24:[48,55,60]},bass:{0:38,24:36}},
+      {lead:{0:59,8:62,16:60,24:64,32:62,40:59},counter:{12:47,36:45},chords:{0:[47,53,59],24:[45,52,57]},bass:{0:35,24:33}}
+    ],
+  },
+  verticalRainPiano: {
+    id:'verticalRainPiano', genre:'Piano / Minimal', engine:'structured', label:'Piano · lluvia vertical',
+    description:'Piano desnudo, silencios largos y cello grave; íntimo y melódico, sin una sola campanita criminal.',
+    stepMs:272, stepsPerSection:40, longFormMs:400000, leadInstrument:'felt', counterInstrument:'cello', chordInstrument:'felt', bassInstrument:'cello',
+    sections:[
+      {lead:{4:67,12:71,22:69,32:64},counter:{8:48,28:45},chords:{0:[48,55,60],20:[45,52,57]},bass:{0:36,20:33}},
+      {lead:{6:69,16:72,26:71,36:67},counter:{10:50,30:47},chords:{0:[50,57,62],20:[47,53,59]},bass:{0:38,20:35}},
+      {lead:{8:64,18:67,28:65,38:62},counter:{12:45,32:43},chords:{0:[45,52,57],20:[43,50,55]},bass:{0:33,20:31}}
+    ],
+  },
+});
+
+const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Rock', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Synthwave', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
+const MEDITERRANEAN_IDS = new Set([
+  'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',
+  'beirutRooftop0412','casablancaLastCall','cairoQuietHours','nileBalcony0152','aleppoAfterRain','ammanVelvetRoom','medinaBlueSmoke','cairoRedLantern',
+  'beirutNightTaxi','tangierRedTable','istanbulBackgammon','andalusianCoast','granadaPatio','cadizLanterns','terraceFireflies','cafeFirelight','malagaLastTram','bishopBlues',
+]);
+const ELECTRONIC_IDS = new Set(['clockwork','electricDesert','storm','orbitalMonastery','metro317','glassAsh','analogBunker','nightFreight','machineRoom']);
+const CLASSICAL_IDS = new Set(['gambit','cathedral','duel','lateEndgame','rigaRain','kingTango','zugzwangWaltz','winterLibrary','queenRequiem','endgameAdagio','knightFugue','nocturnalQuartet']);
+function ambientGenre(theme) {
+  if (theme.genre) return theme.genre;
+  if (CLASSICAL_IDS.has(theme.id)) return 'Clásica';
+  if (MEDITERRANEAN_IDS.has(theme.id)) return 'Jazz / Mediterráneo';
+  if (ELECTRONIC_IDS.has(theme.id)) return 'Electrónica / Experimental';
+  return 'Ambient / Otros';
+}
+
+export const AMBIENT_THEME_OPTIONS = Object.values(AMBIENT_THEMES).map(({ id, label, description, ...theme }) => ({
+  id, label, description, genre: ambientGenre({ id, ...theme }),
 }));
+export const AMBIENT_THEME_GROUPS = AMBIENT_GENRE_ORDER.map((genre) => ({
+  genre,
+  themes: AMBIENT_THEME_OPTIONS.filter((theme) => theme.genre === genre),
+})).filter((group) => group.themes.length);
+
+
+function readMusicIdSet(key) {
+  if (typeof localStorage === 'undefined') return new Set();
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed.filter((id) => AMBIENT_THEMES[id]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeMusicIdSet(key, values) {
+  const valid = [...values].filter((id) => AMBIENT_THEMES[id]);
+  setProfileStorageItem(key, JSON.stringify(valid));
+  notifyAmbientTransport();
+  return new Set(valid);
+}
+
+export function getAmbientFavorites() { return readMusicIdSet(MUSIC_FAVORITES_KEY); }
+export function getAmbientExcluded() { return readMusicIdSet(MUSIC_EXCLUDED_KEY); }
+export function isAmbientFavorite(themeId) { return getAmbientFavorites().has(themeId); }
+export function isAmbientExcluded(themeId) { return getAmbientExcluded().has(themeId); }
+
+export function toggleAmbientFavorite(themeId) {
+  if (!AMBIENT_THEMES[themeId]) return getAmbientFavorites();
+  const favorites = getAmbientFavorites();
+  const excluded = getAmbientExcluded();
+  if (favorites.has(themeId)) favorites.delete(themeId);
+  else { favorites.add(themeId); excluded.delete(themeId); }
+  writeMusicIdSet(MUSIC_EXCLUDED_KEY, excluded);
+  return writeMusicIdSet(MUSIC_FAVORITES_KEY, favorites);
+}
+
+export function toggleAmbientExcluded(themeId) {
+  if (!AMBIENT_THEMES[themeId]) return getAmbientExcluded();
+  const excluded = getAmbientExcluded();
+  const favorites = getAmbientFavorites();
+  if (excluded.has(themeId)) excluded.delete(themeId);
+  else { excluded.add(themeId); favorites.delete(themeId); }
+  writeMusicIdSet(MUSIC_FAVORITES_KEY, favorites);
+  return writeMusicIdSet(MUSIC_EXCLUDED_KEY, excluded);
+}
+
+export function getAmbientRadioMode() {
+  if (typeof localStorage === 'undefined') return 'all';
+  const value = localStorage.getItem(MUSIC_RADIO_MODE_KEY) || 'all';
+  if (['all', 'favorites', 'focus'].includes(value)) return value;
+  if (value.startsWith('genre:') && AMBIENT_GENRE_ORDER.includes(value.slice(6))) return value;
+  return 'all';
+}
+
+export function setAmbientRadioMode(mode) {
+  const raw = String(mode || 'all');
+  const next = ['all', 'favorites', 'focus'].includes(raw) || (raw.startsWith('genre:') && AMBIENT_GENRE_ORDER.includes(raw.slice(6))) ? raw : 'all';
+  setProfileStorageItem(MUSIC_RADIO_MODE_KEY, next);
+  notifyAmbientTransport();
+  return next;
+}
+
+function focusFriendlyTheme(theme) {
+  if (!theme) return false;
+  if (theme.id === 'andalus') return true;
+  const profile = getAmbientThemeSoundProfile(theme.id);
+  if (!profile) return true;
+  if (profile.drumMode === 'none') return true;
+  return profile.percussionPunch <= 0.82 && profile.estimatedBpm <= 108;
+}
+
+export function ambientRadioThemeIds(mode = getAmbientRadioMode()) {
+  const excluded = getAmbientExcluded();
+  const base = AMBIENT_THEME_OPTIONS.filter((theme) => !excluded.has(theme.id));
+  let filtered = base;
+  if (mode === 'favorites') {
+    const favorites = getAmbientFavorites();
+    filtered = base.filter((theme) => favorites.has(theme.id));
+  } else if (mode === 'focus') {
+    filtered = base.filter(focusFriendlyTheme);
+  } else if (mode.startsWith('genre:')) {
+    const genre = mode.slice(6);
+    filtered = base.filter((theme) => theme.genre === genre);
+  }
+  return (filtered.length ? filtered : base.length ? base : AMBIENT_THEME_OPTIONS).map((theme) => theme.id);
+}
 
 
 // V16.6m — identidad de mezcla/arreglo para el bloque de jazz mediterráneo.
@@ -1871,7 +2183,7 @@ const STRUCTURED_FEELS = Object.freeze({
     layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: true },
     mix: { lead: 0.42, counter: 0, bass: 0.42, chord: 0.38 },
     percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
-    signature: { instrument: 'bell', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 9, volume: 0.22, motif: {15:79,47:76} },
+    signature: { instrument: 'felt', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 8.5, volume: 0.2, motif: {15:76,47:72} },
   }),
   analogBunker: Object.freeze({
     family: 'cold-analog-sequencer', preserveSectionOrder: true,
@@ -1897,10 +2209,287 @@ const STRUCTURED_FEELS = Object.freeze({
     mix: { lead: 0.44, counter: 0, bass: 1.08, chord: 0.32 },
     percussion: { period: 24, kit: 'legacy', punch: 1.05, pattern: {0:'K',6:'H',12:'W',18:'H'} },
   }),
+  mistSpa: Object.freeze({
+    family: 'cedar-spa-breath', preserveSectionOrder: true, harmonyPath: [0,0,5,0,-2,0], swing: 0, warmth: 1.1, releaseScale: 1.75, space: 0.42, delayMs: 430,
+    chordInstrument: 'singingBowl', bassInstrument: 'pad', chordHoldSteps: 28, bassHoldSteps: 24, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: false }, mix: { lead: 0.42, counter: 0, bass: 0.30, chord: 0.38 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+  }),
+  moonOnsen: Object.freeze({
+    family: 'onsen-wood-glass', preserveSectionOrder: true, harmonyPath: [0,0,3,0,-2,0], swing: 0, warmth: 1.04, releaseScale: 1.5, space: 0.36, delayMs: 360,
+    chordInstrument: 'glass', bassInstrument: 'cello', chordHoldSteps: 20, bassHoldSteps: 18,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.40, counter: 0.28, bass: 0.32, chord: 0.30 },
+    percussion: { period: 40, kit: 'brush-jazz', punch: 0.28, pattern: {8:'B',28:'B'} },
+  }),
+  postRockMidnight: Object.freeze({
+    family: 'post-rock-crescendo', preserveSectionOrder: true, harmonyPath: [0,0,-2,5,0,3], swing: 0, warmth: 0.76, releaseScale: 1.28, space: 0.16, delayMs: 190,
+    chordInstrument: 'pad', bassInstrument: 'bass', chordHoldSteps: 24, bassHoldSteps: 5,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.68, counter: 0.42, bass: 0.88, chord: 0.38 },
+    percussion: { period: 16, kit: 'legacy', punch: 0.96, pattern: {0:'K',4:'H',8:'S',12:'H'} },
+  }),
+  rookGarage: Object.freeze({
+    family: 'garage-rock-riff', preserveSectionOrder: true, harmonyPath: [0,0,3,5,0], swing: 0.02, warmth: 0.66, releaseScale: 0.88, space: 0.045, delayMs: 85,
+    chordInstrument: 'guitar2', bassInstrument: 'bass', chordHoldSteps: 8, bassHoldSteps: 3,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.82, counter: 0, bass: 1.05, chord: 0.42 },
+    percussion: { period: 12, kit: 'legacy', punch: 1.26, pattern: {0:'K',3:'H',6:'S',9:'H'} },
+  }),
+  desertDriveRock: Object.freeze({
+    family: 'desert-road-rock', preserveSectionOrder: true, harmonyPath: [0,0,-2,5,0], swing: 0.08, warmth: 0.82, releaseScale: 1.05, space: 0.10, delayMs: 145,
+    chordInstrument: 'tremolo', bassInstrument: 'uprightBass', chordHoldSteps: 16, bassHoldSteps: 4,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.70, counter: 0.40, bass: 0.94, chord: 0.34 },
+    percussion: { period: 12, kit: 'legacy', punch: 1.08, pattern: {0:'K',3:'H',6:'S',9:'H'} },
+  }),
+  endgameAdagio: Object.freeze({
+    family: 'chamber-adagio', preserveSectionOrder: true, harmonyPath: [0,0,-2,0,5,0], swing: 0, warmth: 0.92, releaseScale: 1.72, space: 0.28, delayMs: 310,
+    chordInstrument: 'strings', bassInstrument: 'cello', chordHoldSteps: 24, bassHoldSteps: 20, drumMode: 'none',
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: false, signature: false }, mix: { lead: 0.52, counter: 0.28, bass: 0.42, chord: 0.46 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+  }),
+  knightFugue: Object.freeze({
+    family: 'baroque-fugue', preserveSectionOrder: true, harmonyPath: [0,5,0,7,0,5], swing: 0, warmth: 0.78, releaseScale: 0.84, space: 0.07, delayMs: 90,
+    chordInstrument: 'harpsichord', bassInstrument: 'cello', chordHoldSteps: 8, bassHoldSteps: 8, drumMode: 'none',
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: false, signature: false }, mix: { lead: 0.68, counter: 0.54, bass: 0.48, chord: 0.34 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+  }),
+  nocturnalQuartet: Object.freeze({
+    family: 'night-string-quartet', preserveSectionOrder: true, harmonyPath: [0,0,3,0,-2,0], swing: 0, warmth: 0.88, releaseScale: 1.58, space: 0.24, delayMs: 270,
+    chordInstrument: 'strings', bassInstrument: 'cello', chordHoldSteps: 20, bassHoldSteps: 18, drumMode: 'none',
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: false, signature: false }, mix: { lead: 0.50, counter: 0.42, bass: 0.46, chord: 0.38 },
+    percussion: { period: 40, kit: 'none', punch: 0, pattern: {} },
+  }),
+  lofiRainTape: Object.freeze({
+    family:'lofi-rain-cassette', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,3,0], swing:.18, warmth:1.08, releaseScale:1.28, space:.11, delayMs:145,
+    chordInstrument:'epiano', bassInstrument:'uprightBass', chordHoldSteps:14, bassHoldSteps:4.5,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.46,counter:.32,bass:.82,chord:.52},
+    percussion:{period:16,kit:'brush-jazz',punch:.62,pattern:{0:'B',8:'H'}},
+  }),
+  lofiWindowLight: Object.freeze({
+    family:'lofi-window-vibes', preserveSectionOrder:true, harmonyPath:[0,0,5,0,-2,0], swing:.13, warmth:1.02, releaseScale:1.36, space:.15, delayMs:175,
+    chordInstrument:'rhodesWarm', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:5,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.50,counter:.28,bass:.78,chord:.48},
+    percussion:{period:16,kit:'brush-jazz',punch:.56,pattern:{0:'B',12:'H'}},
+  }),
+  neonKnight: Object.freeze({
+    family:'neon-synthwave-arp', preserveSectionOrder:true, harmonyPath:[0,0,3,5,0,-2], swing:0, warmth:.64, releaseScale:1.02, space:.13, delayMs:155,
+    chordInstrument:'pad', bassInstrument:'synthbass', chordHoldSteps:16, bassHoldSteps:2.4,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.56,counter:.48,bass:1.12,chord:.42},
+    percussion:{period:16,kit:'legacy',punch:1.02,pattern:{0:'K',4:'H',8:'S',12:'H'}},
+  }),
+  midnightArcade: Object.freeze({
+    family:'midnight-arcade-pulse', preserveSectionOrder:true, harmonyPath:[0,0,-1,0,2,0], swing:0, warmth:.52, releaseScale:.76, space:.08, delayMs:95,
+    chordInstrument:'synth', bassInstrument:'synthbass', chordHoldSteps:12, bassHoldSteps:2,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.58,counter:.30,bass:1.18,chord:.34},
+    percussion:{period:16,kit:'legacy',punch:1.16,pattern:{0:'K',4:'H',8:'S',12:'H'}},
+  }),
 });
+
+const EXTRA_STRUCTURED_FEELS = Object.freeze({
+  nocturne: Object.freeze({
+    family: 'white-nocturne-felt', preserveSectionOrder: true, harmonyPath: [0,0,-2,0], swing: 0, warmth: 0.94, releaseScale: 1.44, space: 0.20, delayMs: 230,
+    chordInstrument: 'felt', bassInstrument: 'cello', chordHoldSteps: 18, bassHoldSteps: 12, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: true }, mix: { lead: 0.48, counter: 0, bass: 0.42, chord: 0.40 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'felt', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 7.2, volume: 0.22, motif: {12:72,44:69} },
+  }),
+  gambit: Object.freeze({
+    family: 'royal-gambit-baroque', preserveSectionOrder: true, harmonyPath: [0,5,0,7], swing: 0, warmth: 0.78, releaseScale: 0.86, space: 0.07, delayMs: 92,
+    chordInstrument: 'harpsichord', bassInstrument: 'pizz', chordHoldSteps: 8, bassHoldSteps: 4,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.70, counter: 0, bass: 0.52, chord: 0.42 },
+    percussion: { period: 16, kit: 'legacy', punch: 0.46, pattern: {0:'W',8:'W'} },
+    signature: { instrument: 'harpsichord', sections: [0], everyCycles: 1, repeatPeriod: 32, durationSteps: 4.2, volume: 0.34, motif: {1:76,9:81,17:77,25:83} },
+  }),
+  casablanca: Object.freeze({
+    family: 'midnight-club-vibes', preserveSectionOrder: true, harmonyPath: [0,-2,0,5], swing: 0.12, warmth: 0.78, releaseScale: 1.18, space: 0.19, delayMs: 210,
+    chordInstrument: 'epiano', bassInstrument: 'uprightBass', chordHoldSteps: 14, bassHoldSteps: 4,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.54, counter: 0, bass: 1.02, chord: 0.70 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.84, pattern: {0:'B',8:'H'} },
+    signature: { instrument: 'mutedHorn', sections: [0], everyCycles: 2, repeatPeriod: 32, durationSteps: 6, volume: 0.24, motif: {6:70,22:67} },
+  }),
+  march: Object.freeze({
+    family: 'siege-brass-march', preserveSectionOrder: true, harmonyPath: [0,0,-2,0], swing: 0, warmth: 0.72, releaseScale: 1.02, space: 0.08, delayMs: 110,
+    chordInstrument: 'brass', bassInstrument: 'bass', chordHoldSteps: 16, bassHoldSteps: 8,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.76, counter: 0, bass: 0.92, chord: 0.52 },
+    percussion: { period: 16, kit: 'legacy', punch: 1.18, pattern: {0:'K',4:'S',8:'K',12:'S'} },
+    signature: { instrument: 'brass', sections: [0], everyCycles: 1, repeatPeriod: 32, durationSteps: 5, volume: 0.30, motif: {4:55,20:62} },
+  }),
+  clockwork: Object.freeze({
+    family: 'mechanical-clockwork', preserveSectionOrder: true, harmonyPath: [0,0,2,0,-2,0], swing: 0, warmth: 0.72, releaseScale: 1.0, space: 0.06, delayMs: 72,
+    chordInstrument: 'felt', bassInstrument: 'pizz', chordHoldSteps: 8, bassHoldSteps: 6,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.50, counter: 0, bass: 0.46, chord: 0.30 },
+    percussion: { period: 16, kit: 'legacy', punch: 0.34, pattern: {0:'W',4:'W',8:'W',12:'W'} },
+    signature: { instrument: 'metallic', sections: [0], everyCycles: 2, repeatPeriod: 32, durationSteps: 3, volume: 0.18, motif: {3:76,11:74,19:71,27:69} },
+  }),
+  velvet: Object.freeze({
+    family: 'steel-velvet-noir', preserveSectionOrder: true, harmonyPath: [0,0,-2,0,5,0], swing: 0.08, warmth: 0.84, releaseScale: 1.32, space: 0.18, delayMs: 190,
+    chordInstrument: 'rhodesWarm', bassInstrument: 'cello', chordHoldSteps: 16, bassHoldSteps: 8,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.52, counter: 0, bass: 0.54, chord: 0.62 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.54, pattern: {6:'B',14:'B'} },
+    signature: { instrument: 'vibes', sections: [0], everyCycles: 2, repeatPeriod: 32, durationSteps: 5.5, volume: 0.24, motif: {10:79,26:74} },
+  }),
+  electricDesert: Object.freeze({
+    family: 'electric-desert-driver', preserveSectionOrder: true, harmonyPath: [0,0,3,0,-2,0], swing: 0, warmth: 0.66, releaseScale: 0.96, space: 0.09, delayMs: 96,
+    chordInstrument: 'pad', bassInstrument: 'synthbass', chordHoldSteps: 16, bassHoldSteps: 4,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.62, counter: 0, bass: 1.02, chord: 0.36 },
+    percussion: { period: 16, kit: 'legacy', punch: 1.0, pattern: {0:'K',4:'H',8:'S',12:'H'} },
+    signature: { instrument: 'synth', sections: [0], everyCycles: 1, repeatPeriod: 32, durationSteps: 4, volume: 0.24, motif: {6:71,22:72} },
+  }),
+  cathedral: Object.freeze({
+    family: 'empty-cathedral-organ', preserveSectionOrder: true, harmonyPath: [0,0,-2,0], swing: 0, warmth: 0.9, releaseScale: 1.86, space: 0.34, delayMs: 390,
+    chordInstrument: 'organ', bassInstrument: 'organbass', chordHoldSteps: 32, bassHoldSteps: 16, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: true }, mix: { lead: 0.34, counter: 0, bass: 0.40, chord: 0.54 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'choir', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 11, volume: 0.18, motif: {14:67,46:65} },
+  }),
+  duel: Object.freeze({
+    family: 'western-dawn-duel', preserveSectionOrder: true, harmonyPath: [0,0,-2,0], swing: 0.04, warmth: 0.82, releaseScale: 1.0, space: 0.1, delayMs: 124,
+    chordInstrument: 'guitar2', bassInstrument: 'bass', chordHoldSteps: 16, bassHoldSteps: 8,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.54, counter: 0, bass: 0.66, chord: 0.36 },
+    percussion: { period: 32, kit: 'legacy', punch: 0.34, pattern: {0:'W',16:'W',24:'W'} },
+    signature: { instrument: 'mutedHorn', sections: [0], everyCycles: 2, repeatPeriod: 32, durationSteps: 5.2, volume: 0.18, motif: {7:67,23:64} },
+  }),
+  storm: Object.freeze({
+    family: 'tactical-storm-arp', preserveSectionOrder: true, harmonyPath: [0,1,0,-1], swing: 0, warmth: 0.58, releaseScale: 0.82, space: 0.05, delayMs: 78,
+    chordInstrument: 'pad', bassInstrument: 'synthbass', chordHoldSteps: 16, bassHoldSteps: 2,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.68, counter: 0, bass: 1.0, chord: 0.26 },
+    percussion: { period: 8, kit: 'legacy', punch: 1.18, pattern: {0:'K',2:'H',4:'S',6:'H'} },
+    signature: { instrument: 'synth', sections: [0], everyCycles: 1, repeatPeriod: 32, durationSteps: 3, volume: 0.18, motif: {1:74,17:75} },
+  }),
+  lateEndgame: Object.freeze({
+    family: 'late-endgame-felt', preserveSectionOrder: true, harmonyPath: [0,0,-2,0], swing: 0, warmth: 0.82, releaseScale: 1.62, space: 0.26, delayMs: 315,
+    chordInstrument: 'felt', bassInstrument: 'cello', chordHoldSteps: 16, bassHoldSteps: 16, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: true }, mix: { lead: 0.50, counter: 0, bass: 0.42, chord: 0.40 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'felt', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 6.5, volume: 0.18, motif: {20:69,52:67} },
+  }),
+  rigaRain: Object.freeze({
+    family: 'riga-rain-marimba', preserveSectionOrder: true, harmonyPath: [0,0,-2,0,3,0], swing: 0.12, warmth: 0.96, releaseScale: 1.14, space: 0.14, delayMs: 145,
+    chordInstrument: 'felt', bassInstrument: 'pizz', chordHoldSteps: 16, bassHoldSteps: 8,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.54, counter: 0, bass: 0.44, chord: 0.26 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.42, pattern: {7:'B',15:'B'} },
+    signature: { instrument: 'marimba', sections: [0,1], everyCycles: 2, repeatPeriod: 32, durationSteps: 4.8, volume: 0.22, motif: {5:70,21:69} },
+  }),
+  kingTango: Object.freeze({
+    family: 'knife-king-tango', preserveSectionOrder: true, harmonyPath: [0,-2,0,-2], swing: 0, warmth: 0.76, releaseScale: 0.94, space: 0.07, delayMs: 98,
+    chordInstrument: 'bandoneon', bassInstrument: 'bass', chordHoldSteps: 8, bassHoldSteps: 3,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.72, counter: 0, bass: 1.0, chord: 0.44 },
+    percussion: { period: 8, kit: 'legacy', punch: 1.0, pattern: {0:'K',3:'W',4:'K',7:'S'} },
+    signature: { instrument: 'bandoneon', sections: [0], everyCycles: 2, repeatPeriod: 32, durationSteps: 4.8, volume: 0.26, motif: {11:76,27:65} },
+  }),
+  orbitalMonastery: Object.freeze({
+    family: 'orbital-monastery-choir', preserveSectionOrder: true, harmonyPath: [0,0,5,0], swing: 0, warmth: 0.9, releaseScale: 1.9, space: 0.38, delayMs: 420,
+    chordInstrument: 'pad', bassInstrument: 'organbass', chordHoldSteps: 32, bassHoldSteps: 16, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: true }, mix: { lead: 0.36, counter: 0, bass: 0.38, chord: 0.46 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'choir', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 12, volume: 0.2, motif: {12:72,44:69} },
+  }),
+  metro317: Object.freeze({
+    family: 'metro-fluorescent-pulse', preserveSectionOrder: true, harmonyPath: [0,0,-1,0], swing: 0.04, warmth: 0.56, releaseScale: 0.78, space: 0.04, delayMs: 78,
+    chordInstrument: 'synth', bassInstrument: 'synthbass', chordHoldSteps: 16, bassHoldSteps: 2,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.62, counter: 0, bass: 1.08, chord: 0.28 },
+    percussion: { period: 16, kit: 'legacy', punch: 1.06, pattern: {0:'K',2:'H',6:'S',10:'K',14:'S'} },
+    signature: { instrument: 'pulse', sections: [0], everyCycles: 1, repeatPeriod: 32, durationSteps: 2.5, volume: 0.18, motif: {3:67,19:67} },
+  }),
+  glassAsh: Object.freeze({
+    family: 'glass-ash-static', preserveSectionOrder: true, harmonyPath: [0,0,-2,-2], swing: 0, warmth: 0.8, releaseScale: 1.56, space: 0.28, delayMs: 330,
+    chordInstrument: 'pad', bassInstrument: 'cello', chordHoldSteps: 20, bassHoldSteps: 16, drumMode: 'none',
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: false, signature: true }, mix: { lead: 0.34, counter: 0, bass: 0.40, chord: 0.28 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+    signature: { instrument: 'felt', sections: [0,1], everyCycles: 2, repeatPeriod: 64, durationSteps: 7.5, volume: 0.14, motif: {9:72,41:69} },
+  }),
+  machineRoom: Object.freeze({
+    family: 'machine-room-industrial', preserveSectionOrder: true, harmonyPath: [0,0,1,0,-1,0], swing: 0, warmth: 0.54, releaseScale: 0.82, space: 0.03, delayMs: 70,
+    chordInstrument: 'pad', bassInstrument: 'synthbass', chordHoldSteps: 16, bassHoldSteps: 2,
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.52, counter: 0, bass: 1.12, chord: 0.22 },
+    percussion: { period: 16, kit: 'legacy', punch: 1.14, pattern: {0:'M',4:'K',8:'M',12:'S'} },
+    signature: { instrument: 'metallic', sections: [0], everyCycles: 1, repeatPeriod: 32, durationSteps: 2.4, volume: 0.16, motif: {6:59,22:55} },
+  }),
+  terraceFireflies: Object.freeze({
+    family: 'terrace-fireflies-jazz', preserveSectionOrder: true, harmonyPath: [0,0,5,0,-2,0], swing: 0.18, warmth: 0.92, releaseScale: 1.24, space: 0.15, delayMs: 165,
+    chordInstrument: 'epiano', bassInstrument: 'uprightBass', chordHoldSteps: 14, bassHoldSteps: 4,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.56, counter: 0.36, bass: 0.90, chord: 0.56 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.76, pattern: {0:'B',8:'H'} },
+    signature: { instrument: 'clarinet', sections: [0,1,2,3], everyCycles: 2, repeatPeriod: 32, durationSteps: 5.4, volume: 0.20, motif: {6:79,22:77} },
+  }),
+  cafeFirelight: Object.freeze({
+    family: 'cafe-firelight-jazz', preserveSectionOrder: true, harmonyPath: [0,-2,0,5,0], swing: 0.14, warmth: 0.86, releaseScale: 1.12, space: 0.14, delayMs: 155,
+    chordInstrument: 'epiano', bassInstrument: 'bass', chordHoldSteps: 14, bassHoldSteps: 4,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.52, counter: 0.28, bass: 0.92, chord: 0.58 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.78, pattern: {0:'B',8:'H'} },
+    signature: { instrument: 'mutedHorn', sections: [0,1,2,3], everyCycles: 2, repeatPeriod: 32, durationSteps: 5.8, volume: 0.22, motif: {4:68,20:65} },
+  }),
+  malagaLastTram: Object.freeze({
+    family: 'malaga-last-tram-jazz', preserveSectionOrder: true, harmonyPath: [0,0,5,0,-2,0], swing: 0.12, warmth: 0.9, releaseScale: 1.16, space: 0.15, delayMs: 150,
+    chordInstrument: 'epiano', bassInstrument: 'bass', chordHoldSteps: 14, bassHoldSteps: 4,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.56, counter: 0.32, bass: 0.92, chord: 0.52 },
+    percussion: { period: 16, kit: 'rooftop-jazz', punch: 0.86, pattern: {0:'B',8:'H'} },
+    signature: { instrument: 'guitar2', sections: [0,1,2,3], everyCycles: 2, repeatPeriod: 32, durationSteps: 4.8, volume: 0.18, motif: {5:67,21:64} },
+  }),
+});
+
+
+const V166BT_STRUCTURED_FEELS = Object.freeze({
+  concreteRain: Object.freeze({
+    family:'concrete-trip-hop-noir', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,-5,0], swing:.08, warmth:.68, releaseScale:1.28, space:.22, delayMs:240,
+    leadInstrument:'mutedHorn', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'synthbass', chordHoldSteps:16, bassHoldSteps:8,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.48,counter:.30,bass:1.08,chord:.56},
+    percussion:{period:16,kit:'brush-jazz',punch:.82,pattern:{0:'K',8:'S',12:'B'}},
+    signature:{instrument:'mutedHorn',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:7.2,volume:.18,motif:{14:65,46:62}},
+  }),
+  velvetStatic: Object.freeze({
+    family:'velvet-static-dub', preserveSectionOrder:true, harmonyPath:[0,0,3,0,-2,0], swing:.14, warmth:.86, releaseScale:1.42, space:.28, delayMs:310,
+    leadInstrument:'rhodesWarm', counterInstrument:'cello', chordInstrument:'pad', bassInstrument:'uprightBass', chordHoldSteps:20, bassHoldSteps:8,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.50,counter:.34,bass:.96,chord:.46},
+    percussion:{period:16,kit:'brush-jazz',punch:.68,pattern:{0:'K',10:'B',8:'S'}},
+  }),
+  abyssalArchive: Object.freeze({
+    family:'abyssal-organ-archive', preserveSectionOrder:true, harmonyPath:[0,0,-2,-2,0], swing:0, warmth:.78, releaseScale:1.95, space:.42, delayMs:470,
+    leadInstrument:'choir', counterInstrument:'cello', chordInstrument:'organ', bassInstrument:'organbass', chordHoldSteps:40, bassHoldSteps:20, drumMode:'none',
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:false,signature:true}, mix:{lead:.30,counter:.30,bass:.40,chord:.48},
+    percussion:{period:40,kit:'none',punch:0,pattern:{}},
+    signature:{instrument:'organ',sections:[0,1,2],everyCycles:2,repeatPeriod:80,durationSteps:14,volume:.14,motif:{18:43,58:40}},
+  }),
+  redVault: Object.freeze({
+    family:'red-vault-strings-drone', preserveSectionOrder:true, harmonyPath:[0,0,1,0,-1,0], swing:0, warmth:.72, releaseScale:1.72, space:.34, delayMs:380,
+    leadInstrument:'strings', counterInstrument:'organ', chordInstrument:'pad', bassInstrument:'cello', chordHoldSteps:24, bassHoldSteps:12, drumMode:'none',
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:false,signature:true}, mix:{lead:.40,counter:.22,bass:.48,chord:.34},
+    percussion:{period:48,kit:'none',punch:0,pattern:{}},
+    signature:{instrument:'cello',sections:[0,1],everyCycles:2,repeatPeriod:96,durationSteps:11,volume:.18,motif:{20:38,68:36}},
+  }),
+  queenBossa: Object.freeze({
+    family:'queen-terrace-bossa', preserveSectionOrder:true, harmonyPath:[0,5,0,-2,0,3], swing:.20, warmth:1.02, releaseScale:1.08, space:.11, delayMs:125,
+    leadInstrument:'guitar2', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:4,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.58,counter:.30,bass:.90,chord:.50},
+    percussion:{period:16,kit:'brush-jazz',punch:.64,pattern:{0:'B',6:'H',8:'B',14:'H'}},
+    signature:{instrument:'guitar2',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:4.2,volume:.18,motif:{10:67,42:64}},
+  }),
+  havana205: Object.freeze({
+    family:'havana-after-hours-lounge', preserveSectionOrder:true, harmonyPath:[0,-2,0,5,0], swing:.10, warmth:.84, releaseScale:1.0, space:.09, delayMs:110,
+    leadInstrument:'bandoneon', counterInstrument:'guitar2', chordInstrument:'rhodesWarm', bassInstrument:'bass', chordHoldSteps:16, bassHoldSteps:4,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.62,counter:.30,bass:.96,chord:.46},
+    percussion:{period:16,kit:'andalus-hand',punch:.76,pattern:{0:'K',6:'H',8:'S',14:'H'}},
+    signature:{instrument:'bandoneon',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:4.6,volume:.20,motif:{12:69,44:65}},
+  }),
+  fourSquares: Object.freeze({
+    family:'four-squares-minimal-piano', preserveSectionOrder:true, harmonyPath:[0,0,2,0,-2,0], swing:0, warmth:.96, releaseScale:1.60, space:.24, delayMs:290,
+    leadInstrument:'felt', counterInstrument:'cello', chordInstrument:'felt', bassInstrument:'cello', chordHoldSteps:24, bassHoldSteps:24, drumMode:'none',
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:false,signature:false}, mix:{lead:.48,counter:.26,bass:.34,chord:.36},
+    percussion:{period:48,kit:'none',punch:0,pattern:{}},
+  }),
+  verticalRainPiano: Object.freeze({
+    family:'vertical-rain-solo-piano', preserveSectionOrder:true, harmonyPath:[0,0,-2,0], swing:0, warmth:1.04, releaseScale:1.82, space:.30, delayMs:350,
+    leadInstrument:'felt', counterInstrument:'cello', chordInstrument:'felt', bassInstrument:'cello', chordHoldSteps:20, bassHoldSteps:20, drumMode:'none',
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:false,signature:true}, mix:{lead:.54,counter:.20,bass:.30,chord:.28},
+    percussion:{period:40,kit:'none',punch:0,pattern:{}},
+    signature:{instrument:'felt',sections:[0,1,2],everyCycles:2,repeatPeriod:80,durationSteps:8,volume:.14,motif:{16:64,56:62}},
+  }),
+});
+
 const STRUCTURED_FEEL_BY_THEME = Object.freeze({
   zugzwangWaltz: 'zugzwangWaltz', bishopBlues: 'bishopBlues', winterLibrary: 'winterLibrary',
   analogBunker: 'analogBunker', queenRequiem: 'queenRequiem', nightFreight: 'nightFreight',
+  mistSpa: 'mistSpa', moonOnsen: 'moonOnsen', postRockMidnight: 'postRockMidnight', rookGarage: 'rookGarage',
+  desertDriveRock: 'desertDriveRock', endgameAdagio: 'endgameAdagio', knightFugue: 'knightFugue', nocturnalQuartet: 'nocturnalQuartet',
+  lofiRainTape: 'lofiRainTape', lofiWindowLight: 'lofiWindowLight', neonKnight: 'neonKnight', midnightArcade: 'midnightArcade',
   alexandria241: 'alexandriaLounge',
   cairo0047: 'cairoAfterHours', cairoQuietHours: 'cairoAfterHours', cairoRedLantern: 'cairoAfterHours', nileBalcony0152: 'cairoAfterHours',
   beirut0113: 'beirutSixEight', beirutRooftop0412: 'beirutRooftop', beirutNightTaxi: 'beirutRooftop',
@@ -1910,9 +2499,23 @@ const STRUCTURED_FEEL_BY_THEME = Object.freeze({
   andalusianCoast: 'andalusWarm', granadaPatio: 'granadaChamber', cadizLanterns: 'andalusWarm',
 });
 
+const EXTRA_STRUCTURED_FEEL_BY_THEME = Object.freeze({
+  nocturne: 'nocturne', gambit: 'gambit', casablanca: 'casablanca', march: 'march', clockwork: 'clockwork',
+  velvet: 'velvet', electricDesert: 'electricDesert', cathedral: 'cathedral', duel: 'duel', storm: 'storm',
+  lateEndgame: 'lateEndgame', rigaRain: 'rigaRain', kingTango: 'kingTango', orbitalMonastery: 'orbitalMonastery',
+  metro317: 'metro317', glassAsh: 'glassAsh', machineRoom: 'machineRoom', terraceFireflies: 'terraceFireflies',
+  cafeFirelight: 'cafeFirelight', malagaLastTram: 'malagaLastTram',
+});
+
+
+const V166BT_STRUCTURED_FEEL_BY_THEME = Object.freeze({
+  concreteRain:'concreteRain', velvetStatic:'velvetStatic', abyssalArchive:'abyssalArchive', redVault:'redVault',
+  queenBossa:'queenBossa', havana205:'havana205', fourSquares:'fourSquares', verticalRainPiano:'verticalRainPiano',
+});
+
 function structuredFeel(theme) {
-  const key = STRUCTURED_FEEL_BY_THEME[theme?.id];
-  return (key && STRUCTURED_FEELS[key]) || null;
+  const key = STRUCTURED_FEEL_BY_THEME[theme?.id] || EXTRA_STRUCTURED_FEEL_BY_THEME[theme?.id] || V166BT_STRUCTURED_FEEL_BY_THEME[theme?.id];
+  return (key && (STRUCTURED_FEELS[key] || EXTRA_STRUCTURED_FEELS[key] || V166BT_STRUCTURED_FEELS[key])) || null;
 }
 
 // Diagnóstico estable para tests/UI de desarrollo. No expone las partituras,
@@ -1940,13 +2543,19 @@ export function getAmbientThemeSoundProfile(themeId) {
     signatureRepeatPeriod: feel.signature?.repeatPeriod || null,
     enabledLayers: Object.entries(feel.layers || {}).filter(([, enabled]) => enabled !== false).map(([name]) => name),
     space: feel.space || 0,
+    leadInstrument: feel.leadInstrument || theme.leadInstrument,
+    counterInstrument: feel.counterInstrument || theme.counterInstrument || null,
     chordInstrument: feel.chordInstrument || theme.chordInstrument,
     bassInstrument: feel.bassInstrument || theme.bassInstrument,
+    masterTrim: Math.round(structuredMasterTrim(feel) * 1000) / 1000,
+    personalityFingerprint: structuredPersonalityFingerprint(theme, feel),
   } : {
     family: 'legacy-structured', stepMs: theme.stepMs, estimatedBpm: Math.round((60000 / (theme.stepMs * 4)) * 10) / 10, preserveSectionOrder: false, swing: 0, warmth: 1,
     groovePeriod: null, percussionPeriod: null, percussionKit: 'legacy', percussionPunch: 1,
     percussionHumanized: true, percussionMicrotimingMs: 6,
+    leadInstrument: theme.leadInstrument, counterInstrument: theme.counterInstrument || null,
     chordInstrument: theme.chordInstrument, bassInstrument: theme.bassInstrument,
+    masterTrim: 1, personalityFingerprint: structuredPersonalityFingerprint(theme, null),
   };
 }
 
@@ -1971,7 +2580,7 @@ export function getAmbientTrackDurationMs(themeId) {
 }
 
 export function pickRandomAmbientThemeId(excludeId = null) {
-  const allIds = Object.keys(AMBIENT_THEMES);
+  const allIds = ambientRadioThemeIds();
   const ids = allIds.length > 1 && excludeId
     ? allIds.filter((id) => id !== excludeId)
     : allIds;
@@ -2082,9 +2691,10 @@ export function setAmbientTheme(themeId) {
 }
 
 export function selectRelativeAmbientTheme(delta) {
-  const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
+  const ids = ambientRadioThemeIds();
   const current = getAmbientThemeId();
-  const index = Math.max(0, ids.indexOf(current));
+  const found = ids.indexOf(current);
+  const index = found >= 0 ? found : 0;
   const next = ids[(index + delta + ids.length) % ids.length] || DEFAULT_AMBIENT_THEME;
   return setAmbientTheme(next);
 }
@@ -2216,8 +2826,8 @@ function finishAmbientTrackNaturally() {
   ambientTransport.positionMs = durationMs;
   ambientTransport.startedAtMs = 0;
 
-  // Apagado corto para cortar limpiamente cualquier cola de pad/acorde. El
-  // resto del intervalo sí es silencio completo antes de la siguiente pista.
+  // Transición corta de radio: fade-out y una respiración mínima antes del
+  // siguiente tema. No hay corte seco ni dos segundos de vacío entre piezas.
   if (ambientOutputNode) {
     const ctx = ambientOutputNode.context;
     const gain = ambientOutputNode.gain;
@@ -2225,7 +2835,7 @@ function finishAmbientTrackNaturally() {
     try {
       gain.cancelScheduledValues(now);
       gain.setValueAtTime(Math.max(0.0001, gain.value), now);
-      gain.linearRampToValueAtTime(0, now + 0.28);
+      gain.linearRampToValueAtTime(0, now + 0.42);
     } catch {
       gain.value = 0;
     }
@@ -2591,8 +3201,6 @@ function voicePreset(kind) {
     case 'bass': return { waves: [['triangle', 1, 1], ['sine', 0.5, 0.18]], gain: 0.029, attack: 0.008, release: 0.72, cutoff: 760 };
     case 'uprightBass': return { waves: [['triangle', 1, 0.88], ['sine', 0.5, 0.34], ['sine', 2, 0.06]], gain: 0.027, attack: 0.014, release: 1.08, cutoff: 680 };
     case 'brass': return { waves: [['sawtooth', 1, 1], ['square', 0.5, 0.1]], gain: 0.016, attack: 0.065, release: 1.2, cutoff: 1250 };
-    case 'musicbox': return { waves: [['sine', 1, 1], ['sine', 3, 0.25], ['sine', 5, 0.08]], gain: 0.019, attack: 0.002, release: 1.55, cutoff: 6500 };
-    case 'bell': return { waves: [['sine', 1, 1], ['sine', 2.01, 0.2], ['sine', 3.99, 0.08]], gain: 0.018, attack: 0.004, release: 2.3, cutoff: 7000 };
     case 'synth': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.08]], gain: 0.017, attack: 0.018, release: 0.52, cutoff: 1450 };
     case 'synthbass': return { waves: [['square', 1, 0.55], ['triangle', 1, 1]], gain: 0.026, attack: 0.006, release: 0.42, cutoff: 640 };
     case 'pad': return { waves: [['sine', 1, 1], ['triangle', 2, 0.08]], gain: 0.014, attack: 0.28, release: 2.9, cutoff: 1600 };
@@ -2601,11 +3209,11 @@ function voicePreset(kind) {
     case 'tremolo': return { waves: [['triangle', 1, 1], ['sawtooth', 1, 0.09]], gain: 0.019, attack: 0.02, release: 1.9, cutoff: 2100, tremolo: 7.0 };
     case 'guitar2': return { waves: [['triangle', 1, 1], ['sawtooth', 2, 0.07]], gain: 0.018, attack: 0.004, release: 0.82, cutoff: 2300 };
     case 'arp': return { waves: [['square', 1, 0.45], ['sawtooth', 1, 1]], gain: 0.014, attack: 0.004, release: 0.28, cutoff: 1800 };
-    case 'marimba': return { waves: [['sine', 1, 1], ['sine', 4, 0.2], ['triangle', 2, 0.08]], gain: 0.025, attack: 0.003, release: 0.72, cutoff: 4200 };
-    case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.2], ['sine', 5.4, 0.08]], gain: 0.017, attack: 0.018, release: 3.2, cutoff: 7600, tremolo: 3.1 };
+    case 'marimba': return { waves: [['sine', 1, 1], ['sine', 4, 0.14], ['triangle', 2, 0.05]], gain: 0.022, attack: 0.004, release: 0.78, cutoff: 3100 };
+    case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.12], ['sine', 5.4, 0.025]], gain: 0.013, attack: 0.024, release: 2.7, cutoff: 4700, tremolo: 2.6 };
     case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
     case 'choir': return { waves: [['sine', 1, 1], ['triangle', 1, 0.24], ['sine', 2, 0.12]], gain: 0.013, attack: 0.38, release: 4.4, cutoff: 1550, tremolo: 4.2 };
-    case 'pulse': return { waves: [['square', 1, 0.5], ['sine', 1, 0.5]], gain: 0.015, attack: 0.003, release: 0.22, cutoff: 2400 };
+    case 'pulse': return { waves: [['square', 1, 0.46], ['sine', 1, 0.54]], gain: 0.014, attack: 0.004, release: 0.24, cutoff: 1800 };
     // V15.3: timbres dedicados al jazz árabe nocturno. El ney prioriza aire y vibrato;
     // el oud estructurado es más seco y oscuro que la guitarra genérica.
     case 'ney': return { waves: [['sine', 1, 1], ['triangle', 2, 0.11], ['sine', 3, 0.035]], gain: 0.021, attack: 0.075, release: 1.45, cutoff: 1850, tremolo: 5.0 };
@@ -2614,7 +3222,11 @@ function voicePreset(kind) {
     case 'mutedHorn': return { waves: [['triangle', 1, 0.76], ['sawtooth', 1, 0.16], ['sine', 0.5, 0.12]], gain: 0.017, attack: 0.085, release: 1.75, cutoff: 1180, tremolo: 4.4 };
     case 'buzuq': return { waves: [['triangle', 1, 0.72], ['sawtooth', 2, 0.11], ['sine', 3, 0.06]], gain: 0.019, attack: 0.003, release: 0.74, cutoff: 2450 };
     case 'clarinet': return { waves: [['square', 1, 0.19], ['sine', 1, 0.76], ['sine', 3, 0.09]], gain: 0.016, attack: 0.07, release: 1.85, cutoff: 1480, tremolo: 4.0 };
-    case 'metallic': return { waves: [['square', 1, 0.42], ['sine', 2.41, 0.34], ['sine', 4.83, 0.12]], gain: 0.014, attack: 0.004, release: 0.48, cutoff: 3200 };
+    case 'metallic': return { waves: [['square', 1, 0.36], ['sine', 2.41, 0.24], ['sine', 4.83, 0.06]], gain: 0.012, attack: 0.005, release: 0.52, cutoff: 2400 };
+    case 'breathFlute': return { waves: [['sine', 1, 1], ['triangle', 2, 0.07], ['sine', 3, 0.025]], gain: 0.016, attack: 0.13, release: 2.65, cutoff: 1450, tremolo: 4.4 };
+    case 'singingBowl': return { waves: [['sine', 1, 1], ['sine', 2.39, 0.16], ['sine', 4.71, 0.04]], gain: 0.012, attack: 0.026, release: 4.9, cutoff: 4300, tremolo: 2.0 };
+    case 'overdriveGuitar': return { waves: [['sawtooth', 1, 0.68], ['square', 1, 0.18], ['triangle', 0.5, 0.22]], gain: 0.015, attack: 0.006, release: 0.9, cutoff: 1850 };
+    case 'strings': return { waves: [['sawtooth', 1, 0.42], ['triangle', 1, 0.62], ['sine', 2, 0.08]], gain: 0.014, attack: 0.18, release: 3.4, cutoff: 1350, tremolo: 5.1 };
     default: return { waves: [['sine', 1, 1]], gain: 0.02, attack: 0.01, release: 0.8, cutoff: 2500 };
   }
 }
@@ -2727,22 +3339,32 @@ function playNoiseHit(kind, volume = 0.03, options = {}) {
   source.start(start);
 }
 
-function playWoodblock() {
+function playWoodKnock() {
   if (isMusicMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   const start = ctx.currentTime;
-  const osc = ctx.createOscillator();
+  const duration = 0.055;
+  const size = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < size; i += 1) {
+    const envelope = Math.pow(1 - (i / size), 3.2);
+    data[i] = (Math.random() * 2 - 1) * envelope;
+  }
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
   const gain = ctx.createGain();
-  osc.type = 'triangle';
-  osc.frequency.setValueAtTime(780, start);
-  osc.frequency.exponentialRampToValueAtTime(520, start + 0.055);
-  gain.gain.setValueAtTime(0.028, start);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.08);
-  osc.connect(gain);
+  source.buffer = buffer;
+  filter.type = 'bandpass';
+  filter.frequency.value = 540;
+  filter.Q.value = 0.72;
+  gain.gain.setValueAtTime(0.018, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  source.connect(filter);
+  filter.connect(gain);
   gain.connect(getAmbientPercussionOutput(ctx));
-  osc.start(start);
-  osc.stop(start + 0.09);
+  source.start(start);
 }
 
 function playMetalHit() {
@@ -2778,7 +3400,7 @@ function percussionHumanization(feel, localStep, code) {
   const half = Math.floor(period / 2);
   const seed = stableThemeSeed(`${feel?.family || 'legacy'}:${localStep}:${code}`);
   const signed = (shift) => (((seed >>> shift) % 2001) / 1000) - 1;
-  let accent = pos === 0 ? 1.18 : pos === half ? 1.08 : 1;
+  let accent = (pos === 0 ? 1.18 : pos === half ? 1.08 : 1) * structuredMasterTrim(feel);
   if (code === 'H') accent *= 0.82;
   if (code === 'B') accent *= 0.9;
 
@@ -2954,7 +3576,7 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     else if (code === 'S') playMembraneHit('tak', 0.042 * velocity, human);
     else if (code === 'H') playMembraneHit('tak', 0.021 * velocity, human);
     else if (code === 'B') playNoiseHit('brush', 0.012 * velocity, human);
-    else if (code === 'W') playWoodblock();
+    else if (code === 'W') playWoodKnock();
     else if (code === 'M') playMetalHit();
     if (['K', 'S', 'H'].includes(code)) maybeGhost('membrane', 0.042 * velocity);
     return;
@@ -2965,7 +3587,7 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     else if (code === 'S') playNoiseHit('snare', 0.028 * velocity, human);
     else if (code === 'H') playNoiseHit('hat', 0.011 * velocity, human);
     else if (code === 'B') playNoiseHit('brush', 0.016 * velocity, human);
-    else if (code === 'W') playWoodblock();
+    else if (code === 'W') playWoodKnock();
     else if (code === 'M') playMetalHit();
     if (['S', 'H', 'B'].includes(code)) maybeGhost('brush', 0.016 * velocity);
     return;
@@ -2975,7 +3597,7 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
   else if (code === 'S') playNoiseHit('snare', 0.028 * velocity, human);
   else if (code === 'H') playNoiseHit('hat', 0.014 * velocity, human);
   else if (code === 'B') playNoiseHit('brush', 0.012 * velocity, human);
-  else if (code === 'W') playWoodblock();
+  else if (code === 'W') playWoodKnock();
   else if (code === 'M') playMetalHit();
 }
 
@@ -2995,6 +3617,57 @@ function stableThemeSeed(id = '') {
   return seed;
 }
 
+function structuredMasterTrim(feel) {
+  if (!feel) return 1;
+  const layers = feel.layers || {};
+  const mix = feel.mix || {};
+  const enabled = (name) => layers[name] !== false;
+  const lead = enabled('lead') ? (mix.lead ?? 1) : 0;
+  const counter = enabled('counter') ? (mix.counter ?? 0.4) * 0.72 : 0;
+  const chord = enabled('chords') ? (mix.chord ?? 1) * 0.92 : 0;
+  const bass = enabled('bass') ? (mix.bass ?? 1) * 0.88 : 0;
+  const drums = enabled('drums') && (feel.percussion?.kit || 'legacy') !== 'none'
+    ? Math.max(0.18, (feel.percussion?.punch || 1) * 0.58)
+    : 0;
+  const signature = enabled('signature') && feel.signature ? Math.min(0.34, (feel.signature.volume || 0.3) * 0.55) : 0;
+  const energy = Math.max(0.55, lead + counter + chord + bass + drums + signature);
+  // Compensación suave, no compresión: arreglos densos bajan algo y los
+  // camerísticos/SPA recuperan presencia. La horquilla evita matar la dinámica.
+  return Math.max(0.76, Math.min(1.12, Math.sqrt(2.05 / energy)));
+}
+
+function structuredPersonalityFingerprint(theme, feel) {
+  if (!theme || theme.engine !== 'structured') return null;
+  const sections = theme.sections || [];
+  let lead = 0; let counter = 0; let chords = 0; let bass = 0; let drums = 0;
+  let minNote = Infinity; let maxNote = -Infinity;
+  const includeNotes = (values) => {
+    Object.values(values || {}).forEach((value) => {
+      const notes = Array.isArray(value) ? value : [value];
+      notes.forEach((note) => {
+        if (!Number.isFinite(Number(note))) return;
+        minNote = Math.min(minNote, Number(note));
+        maxNote = Math.max(maxNote, Number(note));
+      });
+    });
+  };
+  sections.forEach((section) => {
+    lead += Object.keys(section.lead || {}).length;
+    counter += Object.keys(section.counter || {}).length;
+    chords += Object.keys(section.chords || {}).length;
+    bass += Object.keys(section.bass || {}).length;
+    drums += Object.keys(section.drums || {}).length;
+    includeNotes(section.lead); includeNotes(section.counter); includeNotes(section.chords); includeNotes(section.bass);
+  });
+  const range = Number.isFinite(minNote) && Number.isFinite(maxNote) ? Math.round((maxNote - minNote) * 10) / 10 : 0;
+  return [
+    feel?.family || 'legacy', theme.stepMs, theme.stepsPerSection || 32, sections.length,
+    feel?.leadInstrument || theme.leadInstrument || '-', feel?.counterInstrument || theme.counterInstrument || '-',
+    feel?.chordInstrument || theme.chordInstrument || '-', feel?.bassInstrument || theme.bassInstrument || '-',
+    feel?.percussion?.kit || 'legacy', lead, counter, chords, bass, drums, range,
+  ].join('|');
+}
+
 function structuredArrangement(theme, cycleIndex) {
   const sections = Math.max(1, theme.sections?.length || 1);
   const stepsPerSection = Math.max(1, theme.stepsPerSection || 32);
@@ -3012,16 +3685,19 @@ function structuredArrangement(theme, cycleIndex) {
   const transpose = harmonyPath[(harmonicIndex + pathOffset) % harmonyPath.length];
   const texture = (phase + (seed % 7)) % 9;
 
+  const masterTrim = structuredMasterTrim(feel);
+
   return {
     span,
     transpose,
     feel,
+    masterTrim,
     // Cambios de registro puntuales, no una octava arriba cada dos vueltas.
     leadOctave: texture === 3 ? 12 : texture === 7 ? -12 : 0,
-    leadVolume: (texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1) * (feel?.mix?.lead || 1),
-    bassVolume: (texture === 4 ? 0.68 : 0.9) * (feel?.mix?.bass || 1),
-    chordVolume: (texture === 5 ? 0.72 : 1) * (feel?.mix?.chord || 1),
-    counterVolume: (texture === 3 ? 0.34 : texture === 7 ? 0.46 : 0.4) * (feel?.mix?.counter || 1),
+    leadVolume: (texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1) * (feel?.mix?.lead || 1) * masterTrim,
+    bassVolume: (texture === 4 ? 0.68 : 0.9) * (feel?.mix?.bass || 1) * masterTrim,
+    chordVolume: (texture === 5 ? 0.72 : 1) * (feel?.mix?.chord || 1) * masterTrim,
+    counterVolume: (texture === 3 ? 0.34 : texture === 7 ? 0.46 : 0.4) * (feel?.mix?.counter || 1) * masterTrim,
     counterOctave: texture === 6 ? -12 : 0,
     // Unas vueltas dejan respirar la melodía o la batería. La forma base
     // sigue reconocible, pero no tenemos la misma pared de sonido cada 4 s.
@@ -3109,7 +3785,7 @@ function startStructuredMusic(theme, startPositionMs = 0) {
 
     if (signature && layerEnabled('signature')) {
       const signatureDuration = (theme.stepMs * (signature.durationSteps || 3)) / 1000;
-      playStructuredVoice(signature.instrument || theme.leadInstrument, signature.note + t, signature.volume || 0.55, signatureDuration, tone);
+      playStructuredVoice(signature.instrument || theme.leadInstrument, signature.note + t, (signature.volume || 0.55) * arrangement.masterTrim, signatureDuration, tone);
     }
 
     if (lead != null && layerEnabled('lead') && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {

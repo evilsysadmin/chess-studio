@@ -11,6 +11,7 @@ import { loadRating } from './playerRating.js';
 import { loadRoster } from './combatRoster.js';
 import { loadPuzzlesSolved } from './puzzleStats.js';
 import { derivedLevel } from './combat.js';
+import { loadDailyChallenge } from './dailyChallenge.js';
 
 const KEY = 'chess-study-achievements';
 
@@ -29,6 +30,9 @@ export const ACHIEVEMENTS = [
   { id: 'combat_flawless', name: 'Victoria perfecta', description: 'Ganaste una batalla de combate sin perder ninguna pieza.' },
   { id: 'puzzles_10', name: 'Resolvedor', description: 'Resolviste 10 puzzles.' },
   { id: 'puzzles_50', name: 'Especialista en puzzles', description: 'Resolviste 50 puzzles.' },
+  { id: 'daily_streak_3', name: 'Tres días sin excusas', description: 'Mantuviste una racha diaria de 3 días.' },
+  { id: 'daily_streak_7', name: 'Semana de guardia', description: 'Mantuviste una racha diaria de 7 días.' },
+  { id: 'daily_streak_30', name: 'Funcionario del tablero', description: 'Alcanzaste una racha diaria de 30 días.' },
   { id: 'crime_missed_mate', name: 'Mate, ¿qué mate?', description: 'Ignoraste un mate en una.', kind: 'shame' },
   { id: 'crime_allowed_mate', name: 'Entrega urgente', description: 'Dejaste mate en una a la CPU.', kind: 'shame' },
   { id: 'crime_queen_to_pawn', name: 'Revolución proletaria inversa', description: 'Un peón enemigo capturó tu dama.', kind: 'shame' },
@@ -72,6 +76,7 @@ export function checkAchievements(extra = {}) {
   const rating = loadRating();
   const roster = loadRoster();
   const puzzlesSolved = loadPuzzlesSolved();
+  const daily = loadDailyChallenge();
 
   if (rating.games >= 1) unlocked.add('first_game');
   if (rating.games >= 10) unlocked.add('ten_games');
@@ -85,6 +90,9 @@ export function checkAchievements(extra = {}) {
   if ((roster.revivesUsed || 0) >= 1) unlocked.add('combat_reviver');
   if (puzzlesSolved >= 10) unlocked.add('puzzles_10');
   if (puzzlesSolved >= 50) unlocked.add('puzzles_50');
+  if (Number(daily.bestStreak || 0) >= 3) unlocked.add('daily_streak_3');
+  if (Number(daily.bestStreak || 0) >= 7) unlocked.add('daily_streak_7');
+  if (Number(daily.bestStreak || 0) >= 30) unlocked.add('daily_streak_30');
 
   for (const piece of Object.values(roster.pieces)) {
     if (piece.alive !== false && derivedLevel(piece) >= 6) {

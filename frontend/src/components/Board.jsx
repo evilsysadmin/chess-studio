@@ -159,6 +159,13 @@ export default function Board({
   onSquareDoubleClick, // (casilla) => void — doble clic para ver info de la pieza
   mistakeMove, // { from, to, piece } — la jugada jugada, en las pantallas de revisión de errores:
   showCoordinates = true, // false en Modo Zen: no cambia reglas ni accesibilidad del tablero
+  squareClassName, // (square) => clase extra; usado por deployment sin acoplar reglas al Board
+  squareBadge, // (square) => ReactNode opcional dentro de la casilla
+  onSquareDrop, // (square, event) => void; opt-in para deployment
+  onSquareDragOver, // (square, event) => void
+  pieceDraggable = false,
+  onPieceDragStart, // (square, event) => void
+  pieceLabels, // { square: string } etiqueta corta de identidad para deployment
   // encuadre rojo (distinto del dorado genérico de lastMove) + pieza fantasma semitransparente
   // en la casilla de origen, para que quede claro qué jugada se está señalando como error.
 }) {
@@ -310,6 +317,8 @@ export default function Board({
             if (isLastMove) classes.push('last-move');
             if (isHint) classes.push('hint-move');
             if (isMistakeSquare) classes.push('mistake-move');
+            const extraSquareClass = squareClassName?.(square);
+            if (extraSquareClass) classes.push(extraSquareClass);
 
             return (
               <div
@@ -320,6 +329,8 @@ export default function Board({
                 onDoubleClick={() => onSquareDoubleClick?.(square)}
                 onKeyDown={(e) => handleSquareKeyDown(e, square)}
                 onFocus={() => setFocusedSquare(square)}
+                onDragOver={(e) => onSquareDragOver?.(square, e)}
+                onDrop={(e) => onSquareDrop?.(square, e)}
                 role="button"
                 aria-label={`Casilla ${square}${piece ? `, ${PIECE_NAMES[piece]}` : ', vacía'}${isSelected ? ', seleccionada' : ''}${piece && onSquareDoubleClick ? '. Tecla i para ver detalles' : ''}`}
                 tabIndex={focusedSquare === square ? 0 : -1}
@@ -332,7 +343,8 @@ export default function Board({
                     className={`piece ${piece === piece.toUpperCase() ? 'white' : 'black'}`}
                     src={pieceImages[piece]}
                     alt={PIECE_NAMES[piece]}
-                    draggable={false}
+                    draggable={pieceDraggable}
+                    onDragStart={(e) => onPieceDragStart?.(square, e)}
                   />
                 )}
                 {isMistakeOrigin && mistakeMove.piece && (
@@ -343,6 +355,10 @@ export default function Board({
                     draggable={false}
                   />
                 )}
+                {piece && pieceLabels?.[square] && (
+                  <span className="piece-identity-label" title={pieceLabels[square]}>{pieceLabels[square]}</span>
+                )}
+                {squareBadge?.(square)}
                 {piece && pieceLevels?.[square] > 1 && (
                   <span className="piece-level-badge">{pieceLevels[square]}</span>
                 )}

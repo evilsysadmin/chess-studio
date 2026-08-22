@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, randomPuzzle } from '../puzzles.js';
@@ -9,6 +10,8 @@ import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetP
 import { puzzleRetryCost } from '../tournament.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { recordPuzzleRush } from '../career.js';
+import { lastDailyCells } from '../careerVisuals.js';
+import { checkAchievements } from '../achievements.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
 
@@ -45,6 +48,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const humanColor = useMemo(() => new Chess(puzzle.fen).turn(), [puzzle]);
   const personalStats = useMemo(() => personalTrainingSummary(), [personalPuzzles]);
   const filteredPersonalCount = useMemo(() => initialFilter?.opening ? personalPuzzles.filter((p) => p.opening === initialFilter.opening).length : personalPuzzles.length, [personalPuzzles, initialFilter]);
+  const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
 
   useEffect(() => {
     setFen(puzzle.fen);
@@ -176,6 +180,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       incrementPuzzlesSolved();
       if (source === 'daily' && puzzle.dailyKey) {
         setDailyStats(markDailySolved(puzzle.dailyKey));
+        checkAchievements();
       }
       if (wrongThisPuzzle) {
         resetPuzzleStreak();
@@ -299,7 +304,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
         <div className="tutorial-text">
           <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'} · resueltos: {solvedCount}</span>
-          <h2>{puzzle.title}</h2>
+          <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
           {source === 'personal' && (
             <p className="hint-text personal-puzzle-note">
@@ -307,10 +312,16 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
             </p>
           )}
           {source === 'daily' && (
-            <p className="hint-text daily-challenge-note">
-              📅 Reto de hoy · racha diaria: <b>{dailyStats.streak || 0}</b> · mejor: <b>{dailyStats.bestStreak || 0}</b>
-              {dailyStats.solvedDates?.includes(puzzle.dailyKey) ? ' · ya resuelto hoy' : ''}
-            </p>
+            <div className="daily-challenge-panel">
+              <p className="hint-text daily-challenge-note">
+                📅 Reto de hoy · racha diaria: <b>{dailyStats.streak || 0}</b> · mejor: <b>{dailyStats.bestStreak || 0}</b>
+                {dailyStats.solvedDates?.includes(puzzle.dailyKey) ? ' · ya resuelto hoy' : ''}
+              </p>
+              <div className="daily-calendar" aria-label="Últimos 28 días de desafío diario">
+                {dailyCells.map((cell) => <span key={cell.key} className={`${cell.solved ? 'solved' : ''} ${cell.today ? 'today' : ''}`} title={`${cell.key}${cell.solved ? ' · resuelto' : ' · pendiente/no resuelto'}`}><small>{cell.weekday}</small><b>{cell.day}</b></span>)}
+              </div>
+              <small className="hint-text">Últimos 28 días. Solo se marca un día cuando el puzzle diario queda realmente resuelto.</small>
+            </div>
           )}
           <p className="hint-text" style={{ marginTop: '0.5rem' }}>
             Racha de puzzles: <b>{streak}</b> · mejor racha: <b>{bestStreak}</b>
