@@ -46,8 +46,11 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
 
   it('deployment permite inspeccionar bajas antes de decidir revivir o reemplazar', () => {
     const source = read('CombatDeploymentView.jsx');
-    expect(source).toContain('Ver expediente antes de decidir si revivir');
-    expect(source).toContain('onClick={() => inspectUnit(unitKey)}');
+    expect(source).toContain('className="deployment-casualty-name"');
+    expect(source).toContain('aria-controls={dossierId}');
+    expect(source).toContain('onClick={() => inspectCasualty(unitKey)}');
+    expect(source).toContain('deployment-casualty-dossier-inline');
+    expect(source).toContain('aria-expanded={expanded}');
     expect(source).toContain('Decisión de recuperación');
     expect(source).toContain('puntos invertidos');
     expect(source).toContain('selectedService.survivals');

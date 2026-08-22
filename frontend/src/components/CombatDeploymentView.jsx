@@ -110,6 +110,7 @@ export default function CombatDeploymentView({
   const [sortBy, setSortBy] = useState('rank');
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-deployment']?.seen);
   const [selectedUnitKey, setSelectedUnitKey] = useState(() => summary.reserveKeys[0] || summary.deployedKeys[0] || null);
+  const [expandedCasualtyKey, setExpandedCasualtyKey] = useState(null);
   const [presets, setPresets] = useState(() => loadDeploymentPresets());
   const fen = useMemo(() => deploymentFen(roster), [roster]);
   const reverseDeployment = useMemo(
@@ -180,6 +181,11 @@ export default function CombatDeploymentView({
   function inspectUnit(unitKey) {
     setSelectedUnitKey(unitKey);
     requestAnimationFrame(() => inspectorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }));
+  }
+
+  function inspectCasualty(unitKey) {
+    setSelectedUnitKey(unitKey);
+    setExpandedCasualtyKey((current) => current === unitKey ? null : unitKey);
   }
 
   function handleBoardClick(square) {
@@ -330,29 +336,73 @@ export default function CombatDeploymentView({
                       : canRevive
                         ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} XP.`
                         : `Necesitas ${cost} XP de combate para revivir esta unidad.`;
+                    const record = unitRecordForKey(roster, unitKey);
+                    const service = record?.stats || {};
+                    const medals = unitDecorations(record);
+                    const techniques = Array.isArray(saved?.unlockedTechniques)
+                      ? saved.unlockedTechniques.map(techniqueById).filter(Boolean)
+                      : [];
+                    const expanded = expandedCasualtyKey === unitKey;
+                    const dossierId = `casualty-dossier-${unitKey}`;
                     return (
-                      <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''}`} key={unitKey}>
+                      <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''} ${expanded ? 'expanded' : ''}`} key={unitKey}>
                         <span className="deployment-casualty-symbol" aria-hidden="true">{TYPE_SYMBOL[origin] || '♙'}</span>
                         <div className="deployment-casualty-copy">
                           <button
                             type="button"
                             className="deployment-casualty-name"
-                            onClick={() => inspectUnit(unitKey)}
-                            aria-label={`Ver expediente de ${alias}`}
-                            title="Ver expediente antes de decidir si revivir"
+                            onClick={() => inspectCasualty(unitKey)}
+                            aria-label={`${expanded ? 'Cerrar' : 'Ver'} expediente de ${alias}`}
+                            aria-expanded={expanded}
+                            aria-controls={dossierId}
+                            title="Ver expediente aquí antes de decidir si revivir"
                           >
-                            {alias}
+                            <span>{alias}</span><span className="deployment-casualty-name-cue" aria-hidden="true">›</span>
                           </button>
                           <small>{TYPE_NAME[origin]} · {pieceRankForLevel(level).label} · nv.{level}</small>
                         </div>
                         <div className="deployment-casualty-actions">
-                          <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); }}>
+                          <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); setExpandedCasualtyKey(null); }}>
                             Revivir · {cost} XP
                           </button>
-                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial y entra un recluta nuevo de nivel 1." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); }}>
+                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial y entra un recluta nuevo de nivel 1." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); setExpandedCasualtyKey(null); }}>
                             Nuevo recluta
                           </button>
                         </div>
+                        {expanded && (
+                          <section className="deployment-casualty-dossier-inline" id={dossierId} aria-label={`Expediente de ${alias}`}>
+                            <div className="deployment-casualty-dossier-title">
+                              <strong>Expediente de {alias}</strong>
+                              <span>{pieceRankForLevel(level).label} · nv.{level}</span>
+                            </div>
+                            <div className="deployment-casualty-dossier-grid">
+                              <span><b>{progress}</b><small>puntos invertidos</small></span>
+                              <span><b>{saved?.bankedXp || 0}</b><small>XP de pieza</small></span>
+                              <span><b>{service.battles || 0}</b><small>batallas</small></span>
+                              <span><b>{service.survivals || 0}</b><small>supervivencias</small></span>
+                              <span><b>{service.kills || 0}</b><small>bajas</small></span>
+                              <span><b>{service.bestSurvivalStreak || 0}</b><small>mejor racha</small></span>
+                              <span><b>{service.bossVictories || 0}</b><small>bosses</small></span>
+                              <span><b>{service.revives || 0}</b><small>revividas</small></span>
+                            </div>
+                            {medals.length > 0 && (
+                              <div className="deployment-casualty-dossier-tags">
+                                <span>Condecoraciones</span>
+                                <b>{medals.map((medal) => medal.label).join(' · ')}</b>
+                              </div>
+                            )}
+                            {techniques.length > 0 && (
+                              <div className="deployment-casualty-dossier-tags">
+                                <span>Técnicas</span>
+                                <b>{techniques.map((technique) => technique.label).join(' · ')}</b>
+                              </div>
+                            )}
+                            <div className="deployment-casualty-decision-inline">
+                              <span><b>Revivir · {cost} XP:</b> conserva identidad, historial, condecoraciones y técnicas.</span>
+                              <span><b>Nuevo recluta:</b> archiva esta identidad en el Memorial y empieza en nv.1.</span>
+                            </div>
+                          </section>
+                        )}
                       </div>
                     );
                   })}
