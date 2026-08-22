@@ -3,7 +3,8 @@ import Board from './Board.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
 import { reviveCost } from '../combat.js';
 import { unlockedDeploymentTypes } from '../combatMetamorphosis.js';
-import { unitRecordForKey } from '../combatUnitService.js';
+import { unitDecorations, unitRecordForKey } from '../combatUnitService.js';
+import { techniqueById, unlockedTechniquesFor } from '../combatTechniques.js';
 import {
   deploymentFen,
   deploymentSlotForSquare,
@@ -103,6 +104,7 @@ export default function CombatDeploymentView({
   const summary = useMemo(() => deploymentSummary(roster), [roster]);
   const [query, setQuery] = useState('');
   const draggingUnitRef = useRef(null);
+  const inspectorRef = useRef(null);
   const [dragHoverSquare, setDragHoverSquare] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('rank');
@@ -140,6 +142,18 @@ export default function CombatDeploymentView({
     : selectedOrigin ? [selectedOrigin] : [];
   const selectedActiveType = selectedUnitKey ? effectiveDeploymentType(roster, selectedUnitKey) : null;
   const selectedThreat = selectedUnitKey ? combatUnitThreat(roster, selectedUnitKey) : null;
+  const selectedIsFallen = selectedUnitKey ? summary.fallenKeys.includes(selectedUnitKey) : false;
+  const selectedService = selectedRecord?.stats || {};
+  const selectedMedals = selectedUnitKey ? unitDecorations(selectedRecord) : [];
+  const selectedTechniques = selectedUnitKey && selectedUnitKey !== 'k-e'
+    ? (selectedIsFallen
+      ? (Array.isArray(selectedSaved?.unlockedTechniques) ? selectedSaved.unlockedTechniques.map(techniqueById).filter(Boolean) : [])
+      : unlockedTechniquesFor(selectedUnitKey, selectedSaved))
+    : [];
+  const selectedInvestedPoints = selectedSaved
+    ? Math.max(0, Number(selectedSaved.strengthPoints) || 0) + Math.max(0, Number(selectedSaved.speedPoints) || 0)
+    : 0;
+  const selectedReviveCost = selectedIsFallen && selectedOrigin ? reviveCost(selectedOrigin) : 0;
 
   const validTargets = selectedUnitKey
     ? Object.keys(roster.deployment || {})
@@ -161,6 +175,11 @@ export default function CombatDeploymentView({
     if (!slot || !isUnitCompatibleWithSlot(roster, unitKey, slot.key)) return;
     onDeployUnit(slot.key, unitKey);
     setSelectedUnitKey(unitKey);
+  }
+
+  function inspectUnit(unitKey) {
+    setSelectedUnitKey(unitKey);
+    requestAnimationFrame(() => inspectorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }));
   }
 
   function handleBoardClick(square) {
@@ -312,10 +331,18 @@ export default function CombatDeploymentView({
                         ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} XP.`
                         : `Necesitas ${cost} XP de combate para revivir esta unidad.`;
                     return (
-                      <div className="deployment-casualty-card" key={unitKey}>
+                      <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''}`} key={unitKey}>
                         <span className="deployment-casualty-symbol" aria-hidden="true">{TYPE_SYMBOL[origin] || '♙'}</span>
                         <div className="deployment-casualty-copy">
-                          <strong>{alias}</strong>
+                          <button
+                            type="button"
+                            className="deployment-casualty-name"
+                            onClick={() => inspectUnit(unitKey)}
+                            aria-label={`Ver expediente de ${alias}`}
+                            title="Ver expediente antes de decidir si revivir"
+                          >
+                            {alias}
+                          </button>
                           <small>{TYPE_NAME[origin]} · {pieceRankForLevel(level).label} · nv.{level}</small>
                         </div>
                         <div className="deployment-casualty-actions">
@@ -443,7 +470,7 @@ export default function CombatDeploymentView({
               </div>
             </section>
 
-            <section className="deployment-inspector">
+            <section className="deployment-inspector" ref={inspectorRef}>
               <div className="deployment-panel-heading"><div><span>UNIDAD</span><strong>Inspector</strong></div></div>
               {selectedUnitKey ? (
                 <>
@@ -471,12 +498,46 @@ export default function CombatDeploymentView({
                   <dl className="deployment-unit-facts">
                     <div><dt>Identidad</dt><dd>{TYPE_NAME[selectedOrigin]}</dd></div>
                     <div><dt>Forma</dt><dd>{TYPE_NAME[selectedActiveType]}</dd></div>
-                    <div><dt>Estado</dt><dd>{selectedSlotKey ? `Desplegada · ${slotLabel(selectedSlotKey)}` : 'Banquillo'}</dd></div>
-                    <div><dt>Servicio</dt><dd>{selectedRecord?.stats?.battles || 0} batallas · {selectedRecord?.stats?.kills || 0} bajas</dd></div>
+                    <div><dt>Estado</dt><dd className={selectedIsFallen ? 'danger-text' : ''}>{selectedIsFallen ? 'Caída · decisión pendiente' : selectedSlotKey ? `Desplegada · ${slotLabel(selectedSlotKey)}` : 'Banquillo'}</dd></div>
+                    <div><dt>Servicio</dt><dd>{selectedService.battles || 0} batallas · {selectedService.kills || 0} bajas</dd></div>
                     <div><dt>Amenaza propia</dt><dd>{selectedThreat?.bonus ? `+${selectedThreat.bonus}` : '0'} CPU potencial</dd></div>
                   </dl>
 
-                  {selectedForms.length > 1 && (
+                  {selectedUnitKey !== 'k-e' && (
+                    <section className={`deployment-service-dossier ${selectedIsFallen ? 'fallen' : ''}`} aria-label="Expediente de servicio de la unidad">
+                      <div className="deployment-service-dossier-heading">
+                        <strong>{selectedIsFallen ? 'Decisión de recuperación' : 'Hoja de servicio'}</strong>
+                        {selectedMedals.length > 0 && <span>✦ {selectedMedals.length} condecoración{selectedMedals.length === 1 ? '' : 'es'}</span>}
+                      </div>
+                      <div className="deployment-service-grid">
+                        <span><b>{selectedInvestedPoints}</b><small>puntos invertidos</small></span>
+                        <span><b>{selectedSaved?.bankedXp || 0}</b><small>XP de pieza</small></span>
+                        <span><b>{selectedService.survivals || 0}</b><small>supervivencias</small></span>
+                        <span><b>{selectedService.bestSurvivalStreak || 0}</b><small>mejor racha</small></span>
+                        <span><b>{selectedService.bossVictories || 0}</b><small>bosses</small></span>
+                        <span><b>{selectedService.revives || 0}</b><small>revividas</small></span>
+                      </div>
+                      {selectedMedals.length > 0 && (
+                        <div className="deployment-service-medals">
+                          {selectedMedals.map((medal) => <span key={medal.id} title={medal.description}>✦ {medal.short} · {medal.label}</span>)}
+                        </div>
+                      )}
+                      {selectedTechniques.length > 0 && (
+                        <div className="deployment-service-techniques">
+                          <span>Técnicas</span>
+                          <b>{selectedTechniques.map((technique) => technique.label).join(' · ')}</b>
+                        </div>
+                      )}
+                      {selectedIsFallen && (
+                        <div className="deployment-revive-decision">
+                          <span>Revivir cuesta <b>{selectedReviveCost} XP de combate</b> y conserva identidad, historial, condecoraciones y técnicas.</span>
+                          <span>Nuevo recluta archiva esta identidad en el Memorial y crea una unidad nv.1 sin heredar progreso.</span>
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {selectedForms.length > 1 && !selectedIsFallen && (
                     <div className="deployment-form-selector">
                       <span title="La forma cambia cómo combate esta batalla; la identidad y el slot de origen no cambian.">Forma de combate</span>
                       <div>

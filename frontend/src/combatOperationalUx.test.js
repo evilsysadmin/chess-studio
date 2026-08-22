@@ -44,4 +44,17 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     expect(source).not.toContain('aria-label="Vista del roster"');
   });
 
+  it('deployment permite inspeccionar bajas antes de decidir revivir o reemplazar', () => {
+    const source = read('CombatDeploymentView.jsx');
+    expect(source).toContain('Ver expediente antes de decidir si revivir');
+    expect(source).toContain('onClick={() => inspectUnit(unitKey)}');
+    expect(source).toContain('Decisión de recuperación');
+    expect(source).toContain('puntos invertidos');
+    expect(source).toContain('selectedService.survivals');
+    expect(source).toContain('selectedMedals.map');
+    expect(source).toContain('selectedTechniques.map');
+    expect(source).toContain('Revivir cuesta');
+    expect(source).toContain('Nuevo recluta archiva esta identidad');
+  });
+
 });
