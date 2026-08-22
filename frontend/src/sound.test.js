@@ -22,6 +22,8 @@ import {
   toggleAmbientFavorite,
   toggleAmbientExcluded,
   setAmbientVolume,
+  startAmbientMusic,
+  stopAmbientMusic,
 } from './sound.js';
 
 describe('ambient music catalog', () => {
@@ -253,6 +255,18 @@ describe('ambient music catalog', () => {
     expect(getAmbientPlaybackState().cyclePositionMs).toBe(90_000);
     expect(seekAmbientMusic(duration + 50_000)).toBe(duration - 1);
     expect(getAmbientPlaybackState().cyclePositionMs).toBe(duration - 1);
+  });
+
+  it('mantiene reproducción y salta el transporte al hacer seek durante Play', () => {
+    setAmbientTheme('cairo0047');
+    startAmbientMusic();
+    expect(getAmbientPlaybackState().status).toBe('playing');
+    expect(seekAmbientMusic(120_000)).toBe(120_000);
+    const afterSeek = getAmbientPlaybackState();
+    expect(afterSeek.status).toBe('playing');
+    expect(afterSeek.cyclePositionMs).toBeGreaterThanOrEqual(120_000);
+    expect(afterSeek.cyclePositionMs).toBeLessThan(120_250);
+    stopAmbientMusic();
   });
 
   it('sortea la pista siguiente sin repetir la que acaba de sonar', () => {

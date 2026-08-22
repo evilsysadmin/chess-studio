@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AMBIENT_THEME_GROUPS,
   AMBIENT_THEME_OPTIONS,
@@ -42,6 +42,7 @@ export default function MusicPlayer() {
   const [radioMode, setRadioModeState] = useState(() => getAmbientRadioMode());
   const [favorite, setFavorite] = useState(false);
   const [excluded, setExcluded] = useState(false);
+  const seekCommitTimer = useRef(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -60,6 +61,10 @@ export default function MusicPlayer() {
       window.removeEventListener('chess-ambient-transport', refresh);
       window.clearInterval(timer);
     };
+  }, []);
+
+  useEffect(() => () => {
+    if (seekCommitTimer.current) window.clearTimeout(seekCommitTimer.current);
   }, []);
 
   useEffect(() => {
@@ -87,6 +92,17 @@ export default function MusicPlayer() {
         play: () => { startAmbientMusic(); setState(snapshot()); requestPlaybackAudioSession(); },
         pause: () => { pauseAmbientMusic(); setState(snapshot()); },
         stop: () => { stopAmbientMusic(); setState(snapshot()); },
+        seekTo: (seconds) => { seekAmbientMusic(Number(seconds || 0) * 1000); setState(snapshot()); requestPlaybackAudioSession(); },
+        seekBackward: (seconds = 10) => {
+          const live = snapshot();
+          seekAmbientMusic(Math.max(0, live.cyclePositionMs - Number(seconds || 10) * 1000));
+          setState(snapshot());
+        },
+        seekForward: (seconds = 10) => {
+          const live = snapshot();
+          seekAmbientMusic(Math.min(live.durationMs || Infinity, live.cyclePositionMs + Number(seconds || 10) * 1000));
+          setState(snapshot());
+        },
       });
     };
     window.addEventListener('keydown', handleMediaKey);
@@ -197,15 +213,32 @@ export default function MusicPlayer() {
     setAmbientVolume(next / 100);
   }
 
-  function previewSeek(event) {
-    setSeekPreviewMs(Number(event.target.value));
-  }
-
-  function commitSeek(event) {
-    const next = Number(event.currentTarget.value);
+  function applySeek(nextValue) {
+    const next = Number(nextValue);
     seekAmbientMusic(next);
     setSeekPreviewMs(null);
     setState(snapshot());
+    requestPlaybackAudioSession();
+  }
+
+  function previewSeek(event) {
+    const next = Number(event.target.value);
+    setSeekPreviewMs(next);
+    // Fallback deliberado: algunos navegadores/entornos pierden pointerup en
+    // inputs range. Si el usuario deja de mover el thumb, hacemos commit igual.
+    if (seekCommitTimer.current) window.clearTimeout(seekCommitTimer.current);
+    seekCommitTimer.current = window.setTimeout(() => {
+      seekCommitTimer.current = null;
+      applySeek(next);
+    }, 120);
+  }
+
+  function commitSeek(event) {
+    if (seekCommitTimer.current) {
+      window.clearTimeout(seekCommitTimer.current);
+      seekCommitTimer.current = null;
+    }
+    applySeek(event.currentTarget.value);
   }
 
   function seekKeyUp(event) {
@@ -231,6 +264,7 @@ export default function MusicPlayer() {
           value={Math.min(displayedPositionMs, Math.max(1, state.durationMs || cycleMs))}
           onChange={previewSeek}
           onPointerUp={commitSeek}
+          onPointerCancel={commitSeek}
           onKeyUp={seekKeyUp}
           onBlur={(event) => { if (seekPreviewMs != null) commitSeek(event); }}
           aria-label="Posición de la pista"

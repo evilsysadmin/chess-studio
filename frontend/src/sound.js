@@ -2711,6 +2711,7 @@ export function seekAmbientMusic(positionMs) {
   queuedAmbientThemeId = null;
   if (stepTimer) { clearTimeout(stepTimer); stepTimer = null; }
   ambientResumeFn = null;
+  rotateAmbientOutputForSeek();
 
   ambientTransport.themeId = themeId;
   ambientTransport.positionMs = target;
@@ -2732,6 +2733,27 @@ export function seekAmbientMusic(positionMs) {
 let ambientOutputNode = null;
 let ambientPercussionBus = null;
 let ambientDuckFactor = 1;
+
+function rotateAmbientOutputForSeek(fadeSeconds = 0.055) {
+  const oldOutput = ambientOutputNode;
+  // Las voces Web Audio ya disparadas no se pueden "rebobinar". En seek
+  // aislamos el bus viejo y creamos uno nuevo para la escena reconstruida.
+  ambientOutputNode = null;
+  ambientPercussionBus = null;
+  if (!oldOutput) return;
+  const ctx = oldOutput.context;
+  const now = ctx.currentTime;
+  try {
+    oldOutput.gain.cancelScheduledValues(now);
+    oldOutput.gain.setValueAtTime(Math.max(0.0001, oldOutput.gain.value), now);
+    oldOutput.gain.linearRampToValueAtTime(0, now + fadeSeconds);
+  } catch {
+    oldOutput.gain.value = 0;
+  }
+  setTimeout(() => {
+    try { oldOutput.disconnect(); } catch {}
+  }, Math.ceil((fadeSeconds + 0.05) * 1000));
+}
 
 function clearAmbientTrackEndTimer() {
   if (!ambientTrackEndTimer) return;

@@ -16,7 +16,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-install release-gate \
 	test-frontend test-backend backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical combat-smoke frontend-build puzzles-check audio-check data-ux-check campaign-map-check test-suite-audit test-suite-audit-ci static-preflight \
+	gate-frontend-critical gate-critical combat-smoke frontend-build puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
@@ -238,7 +238,10 @@ test-suite-audit-ci:
 	node scripts/test_suite_audit.mjs --ci-wiring
 
 ## Preflight barato y sin red: música + sintaxis JS + compilación Python.
-static-preflight: audio-check data-ux-check campaign-map-check test-suite-audit security-api
+release-check:
+	node scripts/release_consistency_check.mjs
+
+static-preflight: audio-check data-ux-check campaign-map-check release-check test-suite-audit security-api
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py
 	@echo "==> Static preflight OK (sin npm, Docker ni red)."
@@ -329,6 +332,7 @@ help:
 	@echo "  make campaign-map-check - valida geometría/rutas del mapa Combat sin npm"
 	@echo "  make test-suite-audit - audita estructura y aislamiento de la suite"
 	@echo "  make test-suite-audit-ci - añade validación semántica del wiring de CI"
+	@echo "  make release-check    - coherencia de versión RELEASE.txt ↔ frontend"
 	@echo "  make static-preflight - sintaxis JS + Python + API auth + música, sin red"
 	@echo "  make security        - API auth gate + npm audit + pip-audit + Trivy; solo CVE CRITICAL bloquea"
 	@echo "  make security-fe     - auditoría de dependencias Node"

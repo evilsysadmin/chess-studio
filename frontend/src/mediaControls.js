@@ -39,7 +39,7 @@ export function syncMediaSessionState({
   return true;
 }
 
-export function claimMediaSessionHandlers({ nav = globalThis.navigator, previous, next, play, pause, stop } = {}) {
+export function claimMediaSessionHandlers({ nav = globalThis.navigator, previous, next, play, pause, stop, seekTo, seekBackward, seekForward } = {}) {
   const session = nav?.mediaSession;
   if (!session?.setActionHandler) return () => {};
   const handlers = {
@@ -48,6 +48,9 @@ export function claimMediaSessionHandlers({ nav = globalThis.navigator, previous
     play,
     pause,
     stop,
+    seekto: typeof seekTo === 'function' ? (details = {}) => seekTo(Number(details.seekTime) || 0) : undefined,
+    seekbackward: typeof seekBackward === 'function' ? (details = {}) => seekBackward(Number(details.seekOffset) || 10) : undefined,
+    seekforward: typeof seekForward === 'function' ? (details = {}) => seekForward(Number(details.seekOffset) || 10) : undefined,
   };
   for (const [action, handler] of Object.entries(handlers)) {
     if (typeof handler !== 'function') continue;

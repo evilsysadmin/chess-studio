@@ -16,13 +16,16 @@ const profileKeys = read('src/profileKeys.js');
 const invariants = read('src/stateInvariants.test.js');
 const glossary = read('src/components/GlossaryTerm.jsx');
 const admin = read('src/components/AdminScreen.jsx');
+const releaseManifest = read('../RELEASE.txt').trim();
+const releaseFromManifest = releaseManifest.match(/v\d+\.\d+[a-z0-9.]*/i)?.[0] || null;
 
 // Gate de continuidad: no pretende duplicar todos los tests funcionales.
 // Protege explícitamente las piezas que ya sufrimos que podían desaparecer al
 // preparar una release desde un baseline viejo.
 describe('continuidad acumulativa de release', () => {
   it('identifica inequívocamente la release desplegada', () => {
-    expect(APP_RELEASE).toBe('v16.6bz');
+    expect(APP_RELEASE).toMatch(/^v\d+\.\d+[a-z0-9.]*$/i);
+    expect(releaseFromManifest).toBe(APP_RELEASE);
     expect(admin).toContain("import { APP_RELEASE } from '../release.js';");
     expect(admin).toContain('Release: <code>{APP_RELEASE}</code>');
   });

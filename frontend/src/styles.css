@@ -15,6 +15,11 @@
   --font-display: 'Fraunces', serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --shell-gutter: clamp(0.9rem, 2vw, 1.6rem);
+  --surface-max-readable: min(980px, calc(100vw - (var(--shell-gutter) * 2)));
+  --surface-max-standard: min(1180px, calc(100vw - (var(--shell-gutter) * 2)));
+  --surface-max-wide: min(1380px, calc(100vw - (var(--shell-gutter) * 2)));
+  --surface-max-ultra: min(1540px, calc(100vw - (var(--shell-gutter) * 2)));
 }
 
 * { box-sizing: border-box; }
@@ -47,13 +52,14 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2.5rem 1.25rem 4rem;
+  width: 100%;
+  padding: 2.5rem var(--shell-gutter) 4rem;
   position: relative;
 }
 
 .masthead {
   width: 100%;
-  max-width: 920px;
+  max-width: var(--surface-max-wide);
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
@@ -327,7 +333,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 /* ---------- Menu ---------- */
 .menu {
   width: 100%;
-  max-width: 760px;
+  max-width: var(--surface-max-wide);
   background-color: var(--ink-2);
   background-image:
     linear-gradient(45deg, var(--ink) 25%, transparent 25%),
@@ -1017,7 +1023,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
-  max-width: 920px;
+  max-width: var(--surface-max-standard);
 }
 
 .board-column {
@@ -2693,7 +2699,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 /* ---------- Presencia CPU / comentarios selectivos ---------- */
 .cpu-presence {
-  width: min(100%, 520px);
+  width: min(100%, 620px);
   display: flex;
   align-items: center;
   gap: 0.7rem;
@@ -2743,7 +2749,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .cpu-presence.pulse { animation: statusPulse 0.42s cubic-bezier(0.22, 1, 0.36, 1); }
 
 /* ---------- Admin: expediente/cotilleo ---------- */
-.admin-screen { max-width: 1240px; }
+.admin-screen { max-width: var(--surface-max-ultra); }
 .admin-table-wrap { width: 100%; overflow-x: auto; border-radius: 8px; }
 /* Tabla deliberadamente compacta: las columnas numéricas ocupan solo lo que
    necesitan y Acciones queda junto a Peor, sin un solar vacío en medio. */
@@ -2851,7 +2857,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 
 .achievement-toast {
-  width: min(100%, 520px);
+  width: min(100%, 620px);
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -3211,7 +3217,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .shared-result-page { min-height: 100vh; }
 .shared-masthead { text-align: center; }
-.shared-result-shell { max-width: 720px; margin: 1rem auto 3rem; }
+.shared-result-shell { max-width: var(--surface-max-readable); margin: 1rem auto 3rem; }
 
 .shared-moves {
   max-height: 360px;
@@ -3260,7 +3266,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 
 /* V13 — laboratorio/meta juego */
-.training-hub { max-width: 1100px; }
+.training-hub { max-width: var(--surface-max-standard); }
 .training-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
 .training-card { padding:1rem; border:1px solid var(--border, #4c4538); border-radius:14px; background:rgba(255,255,255,.025); display:flex; flex-direction:column; gap:.55rem; }
 .training-card.hot { box-shadow:0 0 0 1px rgba(210,170,80,.25) inset; }
@@ -3281,10 +3287,10 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 @media (max-width:640px){.evolution-row{grid-template-columns:60px 1fr 60px}.evolution-row small{grid-column:2/4}.opening-tree-row{grid-template-columns:1fr 40px 55px}}
 
 /* V13 — Centro de operaciones */
-.career-screen{max-width:1120px}.career-hero-grid,.career-action-grid,.career-rhythm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.85rem}.career-card,.career-action,.career-rhythm{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.025);border-radius:13px;padding:1rem;color:inherit}.career-card h3{font-size:1.45rem;margin:.25rem 0}.career-card p{margin:0;opacity:.8}.career-action{text-align:left;display:flex;flex-direction:column;gap:.35rem;cursor:pointer}.career-action b{font-size:1rem}.career-action span{opacity:.78}.career-action.danger{box-shadow:inset 0 0 0 1px rgba(190,70,70,.22)}.career-rhythm{display:flex;flex-direction:column;gap:.25rem}.career-evolution{display:flex;flex-direction:column;gap:.55rem}.career-evolution-row{display:grid;grid-template-columns:70px 1fr 55px 85px;gap:.6rem;align-items:center}.career-evolution-row>div{height:9px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}.career-evolution-row i{display:block;height:100%;background:currentColor;opacity:.75}.career-tree{display:flex;flex-direction:column;gap:.2rem}.career-tree-row{display:grid;grid-template-columns:minmax(120px,1fr) 42px 58px;gap:.5rem;padding:.3rem .4rem;border-left:1px solid rgba(255,255,255,.12)}.career-tree-row>.career-tree-row{grid-column:1/-1}.career-cemetery{display:flex;flex-direction:column;gap:.6rem}.career-cemetery article{border:1px solid rgba(255,255,255,.1);padding:.75rem;border-radius:11px;display:flex;justify-content:space-between;gap:.8rem;align-items:center;flex-wrap:wrap}.career-cemetery article>div:first-child{display:flex;flex-direction:column}.career-cemetery article>div:last-child{display:flex;gap:.45rem;flex-wrap:wrap}.career-timeline{display:flex;flex-direction:column;gap:.4rem}.career-timeline>div{display:grid;grid-template-columns:28px 1fr auto;gap:.55rem;border-left:2px solid rgba(255,255,255,.13);padding:.4rem .6rem}.career-timeline small{opacity:.6}@media(max-width:650px){.career-evolution-row{grid-template-columns:55px 1fr 50px}.career-evolution-row small{grid-column:2/4}.career-cemetery article{align-items:flex-start}}
+.career-screen{max-width:var(--surface-max-wide)}.career-hero-grid,.career-action-grid,.career-rhythm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.85rem}.career-card,.career-action,.career-rhythm{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.025);border-radius:13px;padding:1rem;color:inherit}.career-card h3{font-size:1.45rem;margin:.25rem 0}.career-card p{margin:0;opacity:.8}.career-action{text-align:left;display:flex;flex-direction:column;gap:.35rem;cursor:pointer}.career-action b{font-size:1rem}.career-action span{opacity:.78}.career-action.danger{box-shadow:inset 0 0 0 1px rgba(190,70,70,.22)}.career-rhythm{display:flex;flex-direction:column;gap:.25rem}.career-evolution{display:flex;flex-direction:column;gap:.55rem}.career-evolution-row{display:grid;grid-template-columns:70px 1fr 55px 85px;gap:.6rem;align-items:center}.career-evolution-row>div{height:9px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}.career-evolution-row i{display:block;height:100%;background:currentColor;opacity:.75}.career-tree{display:flex;flex-direction:column;gap:.2rem}.career-tree-row{display:grid;grid-template-columns:minmax(120px,1fr) 42px 58px;gap:.5rem;padding:.3rem .4rem;border-left:1px solid rgba(255,255,255,.12)}.career-tree-row>.career-tree-row{grid-column:1/-1}.career-cemetery{display:flex;flex-direction:column;gap:.6rem}.career-cemetery article{border:1px solid rgba(255,255,255,.1);padding:.75rem;border-radius:11px;display:flex;justify-content:space-between;gap:.8rem;align-items:center;flex-wrap:wrap}.career-cemetery article>div:first-child{display:flex;flex-direction:column}.career-cemetery article>div:last-child{display:flex;gap:.45rem;flex-wrap:wrap}.career-timeline{display:flex;flex-direction:column;gap:.4rem}.career-timeline>div{display:grid;grid-template-columns:28px 1fr auto;gap:.55rem;border-left:2px solid rgba(255,255,255,.13);padding:.4rem .6rem}.career-timeline small{opacity:.6}@media(max-width:650px){.career-evolution-row{grid-template-columns:55px 1fr 50px}.career-evolution-row small{grid-column:2/4}.career-cemetery article{align-items:flex-start}}
 
 /* ===== V13 — Carrera, laboratorio, película y metajuego ===== */
-.career-screen { max-width: 1120px; }
+.career-screen { max-width: var(--surface-max-wide); }
 .career-hero { border-left: 4px solid var(--gold, #c6a45d); }
 .career-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .career-card { margin: 0; }
@@ -3348,7 +3354,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 /* ===== V14 — carrera avanzada, laboratorio y modos de presión ===== */
 .prediction-strip,.sudden-strip,.control-check-strip{width:min(100%,620px);box-sizing:border-box;margin:.35rem auto .55rem;padding:.55rem .7rem;border-radius:9px;border:1px solid rgba(198,164,93,.35);background:rgba(198,164,93,.055);font-size:.86rem}.sudden-strip{border-color:rgba(190,65,65,.45);letter-spacing:.04em}.control-check-strip{display:grid;gap:.4rem;border-color:rgba(91,147,184,.45);background:rgba(50,100,135,.08)}.control-check-strip .secondary-btn{justify-self:start}.quick-match-advanced{display:grid;gap:.6rem;margin-top:.85rem;padding:.7rem;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(0,0,0,.1)}.quick-match-advanced label{font-size:.84rem;line-height:1.4}.autopsy-express,.autopsy-best-move{display:grid;gap:.35rem;margin:.7rem 0;padding:.7rem;border-radius:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09)}.autopsy-best-move{border-color:rgba(198,164,93,.4)}.autopsy-best-move p{margin:0}.autopsy-move-context{display:grid;gap:.22rem;margin:.42rem 0 .5rem;padding:.5rem .6rem;border-left:2px solid rgba(198,164,93,.45);background:rgba(0,0,0,.1);border-radius:0 7px 7px 0;font-size:.9rem;line-height:1.4}.autopsy-move-context span{display:block}.autopsy-incident small{opacity:.72;line-height:1.35}.autopsy-actions{display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.8rem}.career-mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem}.career-mini-grid>span{display:grid;gap:.2rem;padding:.7rem;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(0,0,0,.1)}.career-mini-grid>span>b{font-size:1.25rem}.career-mini-grid>span>small{opacity:.7}.board-theme-list .secondary-btn.active{box-shadow:inset 0 0 0 2px rgba(198,164,93,.65)}
-.lab-board-editor{width:min(100%,540px);margin:.9rem auto;display:flex;justify-content:center}.lab-board-editor .board-wrap{max-width:100%}.lab-board-editor .square{cursor:crosshair}.lab-screen{max-width:980px}.lab-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem}.lab-brushes{display:flex;gap:.25rem;flex-wrap:wrap}.lab-brush{width:38px;height:38px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:inherit;font-size:1.35rem;cursor:pointer}.lab-brush.active{outline:2px solid rgba(198,164,93,.8)}.lab-board{width:min(92vw,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);margin:.8rem auto;border:3px solid rgba(198,164,93,.35)}.lab-square{border:0;font-size:clamp(1.6rem,5vw,3.1rem);display:grid;place-items:center;cursor:pointer}.lab-square.light{background:#c9b995}.lab-square.dark{background:#6f5d46}.lab-config{display:grid;gap:.65rem;margin:.8rem 0}.lab-config label{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap}.lab-config input[type=range]{flex:1;min-width:180px}.lab-config code{overflow-wrap:anywhere;padding:.55rem;background:rgba(0,0,0,.18);border-radius:7px}.career-action.active{border-color:rgba(198,164,93,.75)}
+.lab-board-editor{width:min(100%,620px);margin:.9rem auto;display:flex;justify-content:center}.lab-board-editor .board-wrap{max-width:100%}.lab-board-editor .square{cursor:crosshair}.lab-screen{max-width:var(--surface-max-standard)}.lab-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem}.lab-brushes{display:flex;gap:.25rem;flex-wrap:wrap}.lab-brush{width:38px;height:38px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);color:inherit;font-size:1.35rem;cursor:pointer}.lab-brush.active{outline:2px solid rgba(198,164,93,.8)}.lab-board{width:min(92vw,620px);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);margin:.8rem auto;border:3px solid rgba(198,164,93,.35)}.lab-square{border:0;font-size:clamp(1.6rem,5vw,3.1rem);display:grid;place-items:center;cursor:pointer}.lab-square.light{background:#c9b995}.lab-square.dark{background:#6f5d46}.lab-config{display:grid;gap:.65rem;margin:.8rem 0}.lab-config label{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap}.lab-config input[type=range]{flex:1;min-width:180px}.lab-config code{overflow-wrap:anywhere;padding:.55rem;background:rgba(0,0,0,.18);border-radius:7px}.career-action.active{border-color:rgba(198,164,93,.75)}
 @media(max-width:640px){.lab-brush{width:34px;height:34px}.autopsy-actions{flex-direction:column}.autopsy-actions button{width:100%}}
 
 /* V15.2 — expediente "Así juega" dentro de Admin */
@@ -3797,7 +3803,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .board-live-row { flex-direction: column; align-items: center; }
   .game-side-column {
     width: min(100%, 520px);
-    max-width: 520px;
+    max-width: 620px;
     height: auto;
     max-height: none;
   }
@@ -3808,7 +3814,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 /* ---------- V16.2 · mesa de partida: radio / tablero / rival ---------- */
 .game-layout {
-  max-width: 1160px;
+  max-width: var(--surface-max-ultra);
 }
 
 .board-column {
@@ -3816,9 +3822,9 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 
 .board-live-row {
-  width: min(100%, 1080px);
+  width: min(100%, 1340px);
   display: grid;
-  grid-template-columns: 205px auto 250px;
+  grid-template-columns: 220px minmax(0, 1fr) 280px;
   grid-template-areas: "music board chat";
   align-items: start;
   justify-content: center;
@@ -3827,13 +3833,13 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .game-music-rail {
   grid-area: music;
-  width: 205px;
+  width: 220px;
   min-width: 0;
   padding-top: 0.05rem;
 }
 
 .game-music-rail .music-deck {
-  width: 205px;
+  width: 220px;
   box-sizing: border-box;
   margin: 0;
   border-color: #3b403b;
@@ -3873,21 +3879,21 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 
 .game-notation-row {
-  width: min(100%, 520px);
+  width: min(100%, 620px);
   display: flex;
   justify-content: center;
 }
 .game-notation-row .notation-panel {
   width: 100%;
-  max-width: 520px;
+  max-width: 620px;
   box-sizing: border-box;
 }
 
 .game-side-column {
   grid-area: chat;
-  width: 250px;
-  height: 520px;
-  max-height: 520px;
+  width: 280px;
+  height: 560px;
+  max-height: 560px;
   min-width: 0;
   display: flex;
 }
@@ -3908,16 +3914,16 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 /* Portátil: conservamos tablero + chat lado a lado cuando cabe y subimos
    únicamente el pequeño reproductor. */
-@media (max-width: 1100px) {
+@media (max-width: 1240px) {
   .board-live-row {
-    width: min(100%, 800px);
-    grid-template-columns: auto 250px;
+    width: min(100%, 980px);
+    grid-template-columns: minmax(0, 1fr) 280px;
     grid-template-areas:
       "music music"
       "board chat";
   }
   .game-music-rail {
-    width: min(100%, 520px);
+    width: min(100%, 620px);
     justify-self: center;
   }
   .game-music-rail .music-deck {
@@ -4136,7 +4142,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
     justify-items: center;
   }
   .game-music-rail {
-    width: min(100%, 520px);
+    width: min(100%, 620px);
     justify-self: center;
   }
   .game-music-rail .music-deck {
