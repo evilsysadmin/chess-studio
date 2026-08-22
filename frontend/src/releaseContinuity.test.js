@@ -2,10 +2,16 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { APP_RELEASE } from './release.js';
 
+const testFileDir = path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot = path.resolve(testFileDir, '..');
+
 function read(relative) {
-  return fs.readFileSync(path.resolve(process.cwd(), relative), 'utf8');
+  // Vitest puede arrancar desde frontend/ localmente o desde otra cwd en CI.
+  // Resolver desde este fichero hace el contrato independiente del runner.
+  return fs.readFileSync(path.resolve(frontendRoot, relative), 'utf8');
 }
 
 const army = read('src/components/ArmyScreen.jsx');
