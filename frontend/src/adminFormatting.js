@@ -80,3 +80,29 @@ export function sortAdminUsers(users = []) {
     return String(a?.username || '').localeCompare(String(b?.username || ''), 'es');
   });
 }
+
+
+function parseDmRelease(value) {
+  const match = /^v(\d+)\.(\d+)dm(\d+)([a-z]?)$/i.exec(String(value || '').trim());
+  if (!match) return null;
+  return { major: Number(match[1]), minor: Number(match[2]), dm: Number(match[3]), suffix: match[4].toLowerCase() };
+}
+
+function compareReleaseParts(a, b) {
+  for (const key of ['major', 'minor', 'dm']) {
+    if (a[key] !== b[key]) return a[key] - b[key];
+  }
+  return a.suffix.localeCompare(b.suffix);
+}
+
+export function adminClientReleaseState(clientRelease, currentRelease) {
+  if (!clientRelease) return { id: 'unknown', label: 'Sin dato' };
+  if (clientRelease === currentRelease) return { id: 'current', label: 'Actual' };
+  const client = parseDmRelease(clientRelease);
+  const current = parseDmRelease(currentRelease);
+  if (!client || !current) return { id: 'different', label: 'Distinta' };
+  const cmp = compareReleaseParts(client, current);
+  if (cmp < 0) return { id: 'outdated', label: 'Antigua' };
+  if (cmp > 0) return { id: 'newer', label: 'Más nueva' };
+  return { id: 'different', label: 'Distinta' };
+}

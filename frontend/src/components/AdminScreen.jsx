@@ -10,7 +10,7 @@ import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';
-import { ADMIN_USER_FILTERS, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
+import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
@@ -348,6 +348,7 @@ export default function AdminScreen({ onExit }) {
                   const isOpen = expanded === u.username;
                   const isSelf = getUsername() === u.username;
                   const detailId = `admin-user-details-${String(u.username).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+                  const releaseState = adminClientReleaseState(u.clientRelease, APP_RELEASE);
                   return (
                     <React.Fragment key={u.username}>
                       <tr>
@@ -369,7 +370,7 @@ export default function AdminScreen({ onExit }) {
                         <td data-label="Partidas">{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
                         <td data-label="V/T/D">{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
                         <td className="admin-worst-cell" data-label="Peor"><WorstMove move={u.worstMove} compact /></td>
-                        <td data-label="Versión"><span className={`admin-client-release${u.clientRelease === APP_RELEASE ? ' is-current' : u.clientRelease ? ' is-different' : ''}`} title={u.clientRelease ? `Última release reportada: ${u.clientRelease}` : 'Todavía no ha reportado versión'}>{u.clientRelease || '—'}</span></td>
+                        <td data-label="Versión"><span className={`admin-client-release is-${releaseState.id}`} title={u.clientRelease ? `Última release reportada: ${u.clientRelease}` : 'Todavía no ha reportado versión'}><b>{releaseState.label}</b>{u.clientRelease ? <small>{u.clientRelease}</small> : null}</span></td>
                         <td className="admin-actions-cell" data-label="Acciones">
                           <div className="admin-user-actions">
                             <button
@@ -390,7 +391,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Registrado</span><strong>{formatAdminTimestamp(u.createdAt)}</strong></div>
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
                               <div><span>Última pantalla conocida</span><strong>{u.currentActivity || '—'}</strong></div>
-                              <div><span>Última release reportada</span><strong>{u.clientRelease || '—'}</strong></div>
+                              <div><span>Versión del cliente</span><strong>{releaseState.label}{u.clientRelease ? ` · ${u.clientRelease}` : ''}</strong></div>
                               <div><span>Ventana</span><strong>{u.foreground === true ? 'Primer plano' : u.foreground === false ? 'Segundo plano / no visible' : 'Sin dato'}</strong></div>
                               <div><span>Última actividad exacta</span><strong>{formatAdminTimestamp(u.lastActivity)}</strong></div>
                               <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>

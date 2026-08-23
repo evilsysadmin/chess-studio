@@ -2,7 +2,7 @@ import { setProfileStorageItem } from './profileKeys.js';
 
 const KEY = 'chess-study-daily-challenge';
 
-function localDateKey(date = new Date()) {
+export function dailyChallengeDayKey(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
@@ -17,7 +17,7 @@ function hash(text) {
 
 export function dailyPuzzle(pool, date = new Date()) {
   if (!pool?.length) return null;
-  const day = localDateKey(date);
+  const day = dailyChallengeDayKey(date);
   return { ...pool[hash(day) % pool.length], dailyKey: day };
 }
 
@@ -37,13 +37,13 @@ function streakFromDates(dates) {
   let cursor = new Date(`${unique[0]}T12:00:00`);
   for (let i = 1; i < unique.length; i++) {
     cursor.setDate(cursor.getDate() - 1);
-    if (localDateKey(cursor) === unique[i]) streak += 1;
+    if (dailyChallengeDayKey(cursor) === unique[i]) streak += 1;
     else break;
   }
   return streak;
 }
 
-export function markDailySolved(day = localDateKey()) {
+export function markDailySolved(day = dailyChallengeDayKey()) {
   const state = loadDailyChallenge();
   if (!state.solvedDates.includes(day)) state.solvedDates.push(day);
   state.solvedDates = state.solvedDates.sort().slice(-120);
@@ -56,11 +56,11 @@ export function markDailySolved(day = localDateKey()) {
 function activeStreakFromDates(dates, now = new Date()) {
   const unique = [...new Set(dates)].sort().reverse();
   if (!unique.length) return 0;
-  const today = localDateKey(now);
+  const today = dailyChallengeDayKey(now);
   const yesterdayDate = new Date(now);
   yesterdayDate.setHours(12, 0, 0, 0);
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterday = localDateKey(yesterdayDate);
+  const yesterday = dailyChallengeDayKey(yesterdayDate);
   if (unique[0] !== today && unique[0] !== yesterday) return 0;
   return streakFromDates(unique);
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadPersonalPuzzles, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
+import { loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
 
 describe('personal puzzles', () => {
   beforeEach(() => localStorage.clear());
@@ -28,6 +28,27 @@ describe('personal puzzles', () => {
     expect(personalPuzzlesForFilter({ opening: 'Defensa Siciliana' })).toHaveLength(1);
     expect(personalPuzzlesForFilter({ opening: 'Apertura Italiana' })).toHaveLength(0);
     expect(randomPersonalPuzzle(null, { opening: 'Defensa Siciliana' })?.id).toBe(tagged.id);
+  });
+
+
+  it('etiqueta incidentes reales de la posición para poder entrenarlos desde Así juegas', () => {
+    const history = [
+      { san: 'e4', from: 'e2', to: 'e4' },
+      { san: 'e5', from: 'e7', to: 'e5' },
+      { san: 'Bc4', from: 'f1', to: 'c4' },
+      { san: 'Nc6', from: 'b8', to: 'c6' },
+      { san: 'Qh5', from: 'd1', to: 'h5' },
+      { san: 'Nf6', from: 'g8', to: 'f6' },
+      { san: 'Qh3', from: 'h5', to: 'h3' },
+    ];
+    const report = {
+      topMistakes: [{ index: 6, moveNumber: 4, played: 'Qh3', playedFrom: 'h5', playedTo: 'h3', suggested: 'Qxf7#', loss: 500 }],
+    };
+    savePersonalPuzzlesFromReport(history, 'w', report);
+    const puzzle = loadPersonalPuzzles()[0];
+    expect(puzzle.incidentKeys).toContain('human:MISSED_MATE');
+    expect(personalPuzzlesForFilter({ incidentKey: 'human:MISSED_MATE' })).toHaveLength(1);
+    expect(matchesPersonalPuzzleFilter(puzzle, { incidentKey: 'cpu:KNIGHT_FORK' })).toBe(false);
   });
 
   it('mide si el jugador corrige sus propios errores sin borrar el origen', () => {

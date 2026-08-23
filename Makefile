@@ -16,7 +16,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical combat-smoke frontend-build puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-preflight \
+	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
@@ -183,7 +183,7 @@ tests: ensure-hooks tests-fe tests-be security
 test: tests
 quality-gate: tests
 
-tests-fe: test-frontend frontend-build
+tests-fe: test-frontend bundle-report
 test-fe: tests-fe
 tests/fe: tests-fe
 
@@ -202,6 +202,10 @@ backend-check: ensure-backend-deps
 
 frontend-build: ensure-frontend-deps
 	cd frontend && npm run build
+
+## Presupuesto de bundle deliberadamente informativo: avisa de engordes sin bloquear.
+bundle-report: frontend-build
+	node scripts/bundle_size_report.mjs
 
 
 ## E2E real en navegador. No vive en el pre-push para no descargar Chromium
@@ -352,6 +356,7 @@ help:
 	@echo "  make tests/be       - alias de tests-be"
 	@echo "  make test           - alias histórico de make tests"
 	@echo "  make frontend-build - compila el frontend fuera de Docker"
+	@echo "  make bundle-report  - resume chunks/gzip y avisa de engordes (informativo)"
 	@echo "  make e2e            - smoke E2E con Playwright/Chromium (pesado)"
 	@echo "  make compose-smoke  - stack real Docker: frontend + FastAPI + Mongo + auth/perfil"
 	@echo "  make coverage       - coverage informativo frontend V8 + backend pytest-cov (no bloquea)"

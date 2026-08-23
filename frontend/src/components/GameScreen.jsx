@@ -3,7 +3,6 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import NotationPanel from './NotationPanel.jsx';
 import PromotionModal from './PromotionModal.jsx';
-import GameReportModal from './GameReportModal.jsx';
 import CpuPresence from './CpuPresence.jsx';
 import GameChat from './GameChat.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
@@ -29,6 +28,8 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import { noteworthyPresentation } from '../spectatorReactions.js';
 import { getToken } from '../auth.js';
 import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
+
+const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
 const STATUS_LABELS = {
   playing: '',
@@ -848,7 +849,7 @@ export default function GameScreen({
           {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
           {game.history.length > 0 && (
             <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => setShowReport(true)}>
-              Ver autopsia de la partida
+              Resumen de la partida
             </button>
           )}
         </div>
@@ -856,6 +857,7 @@ export default function GameScreen({
 
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
       {showReport && (
+        <React.Suspense fallback={<div className="modal-backdrop"><div className="army-card game-autopsy" role="status">Preparando resumen…</div></div>}>
         <GameReportModal
           history={game.history}
           humanColor={humanColor}
@@ -864,6 +866,7 @@ export default function GameScreen({
           onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
         />
+        </React.Suspense>
       )}
     </div>
   );

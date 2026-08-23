@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints } from '../tournament.js';
 import { logout, getUsername } from '../auth.js';
@@ -13,6 +13,9 @@ import ModeTutorialTip from './ModeTutorialTip.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
 import HomePlayNudge from './HomePlayNudge.jsx';
 import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL } from '../combatChessBrand.js';
+import { currentDailyStreak, dailyChallengeDayKey } from '../dailyChallenge.js';
+import { loadGameActivity } from '../gameActivity.js';
+import { buildHomeToday } from '../homeToday.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -30,6 +33,7 @@ export default function Menu({
   onTutorial,
   onOpenings,
   onPuzzle,
+  onDailyChallenge,
   onTrainPersonal,
   onCombat,
   onCombatRoguelike,
@@ -63,6 +67,11 @@ export default function Menu({
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const username = getUsername();
   const hasOpenOverlay = showBackup || showQuickMatch || showMirrorMode || showAchievements || showAccount || showFeedback;
+  const today = useMemo(() => buildHomeToday({
+    daily: currentDailyStreak(),
+    todayKey: dailyChallengeDayKey(),
+    activity: loadGameActivity(),
+  }), []);
 
   async function handleLogout() {
     setLogoutError(null);
@@ -97,6 +106,26 @@ export default function Menu({
           </button>
         </div>
       )}
+
+      <section className="home-today-card" aria-label="Hoy en Chess Studio">
+        <div className="home-today-main">
+          <div>
+            <span className="section-label">HOY</span>
+            <strong>{today.dailySolved ? 'Desafío diario resuelto' : 'Desafío diario pendiente'}</strong>
+            <small>Racha actual: {today.streak} día{today.streak === 1 ? '' : 's'}</small>
+          </div>
+          <button type="button" className={today.dailySolved ? 'secondary-btn' : 'primary-btn'} onClick={onDailyChallenge}>
+            {today.dailySolved ? 'Ver desafío' : 'Jugar desafío →'}
+          </button>
+        </div>
+        <details className="home-today-details">
+          <summary>Ver más</summary>
+          <div>
+            <span>Mejor racha <b>{today.bestStreak}</b></span>
+            <span>Última partida <b>{today.lastResult ? `${today.lastResult.label} · ${today.lastResult.modeLabel}` : 'Sin partidas terminadas'}</b></span>
+          </div>
+        </details>
+      </section>
 
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">

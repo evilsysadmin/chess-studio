@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
+const presenceHook = readFileSync(new URL('./usePresenceHeartbeat.js', import.meta.url), 'utf8');
 const admin = readFileSync(new URL('./components/AdminScreen.jsx', import.meta.url), 'utf8');
 const backend = readFileSync(new URL('../../backend-python/main.py', import.meta.url), 'utf8');
 const auth = readFileSync(new URL('./auth.js', import.meta.url), 'utf8');
@@ -10,10 +11,11 @@ const auth = readFileSync(new URL('./auth.js', import.meta.url), 'utf8');
 // Contract de bajo volumen: no convertimos presencia en telemetría de alta frecuencia.
 describe('foreground presence contract', () => {
   it('muestrea cada dos minutos y sólo reacciona además a visibilitychange', () => {
-    expect(app).toContain('}, 120000);');
-    expect(app).toContain("document.addEventListener('visibilitychange', handleVisibility)");
-    expect(app).toContain("document.visibilityState === 'visible'");
-    expect(app).not.toContain('pointermove');
+    expect(app).toContain('usePresenceHeartbeat(view)');
+    expect(presenceHook).toContain('PRESENCE_HEARTBEAT_MS = 120000');
+    expect(presenceHook).toContain("document.addEventListener('visibilitychange', handleVisibility)");
+    expect(presenceHook).toContain("document.visibilityState === 'visible'");
+    expect(presenceHook).not.toContain('pointermove');
   });
 
   it('admin refresca el agregado con la misma cadencia aproximada', () => {

@@ -41,7 +41,8 @@ describe('Combat Chess · flujo operacional de campaña', () => {
     expect(source).toContain('<CampaignOperationSteps active="briefing" />');
     expect(source).toContain('campaign-operation-primary-zone');
     expect(source).toContain('campaign-intel-optional');
-    expect(source).toContain('¿Quieres saber más del rival?');
+    expect(source).toContain('<summary>Ver informe completo</summary>');
+    expect(source).toContain('campaign-briefing-at-glance');
     expect(source).toContain('onClick={onContinue}');
   });
 

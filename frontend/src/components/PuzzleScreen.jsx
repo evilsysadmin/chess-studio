@@ -3,7 +3,7 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, randomPuzzle } from '../puzzles.js';
-import { loadPersonalPuzzles, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
+import { loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
 import { dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
@@ -47,7 +47,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
   const humanColor = useMemo(() => new Chess(puzzle.fen).turn(), [puzzle]);
   const personalStats = useMemo(() => personalTrainingSummary(), [personalPuzzles]);
-  const filteredPersonalCount = useMemo(() => initialFilter?.opening ? personalPuzzles.filter((p) => p.opening === initialFilter.opening).length : personalPuzzles.length, [personalPuzzles, initialFilter]);
+  const filteredPersonalCount = useMemo(() => personalPuzzles.filter((p) => matchesPersonalPuzzleFilter(p, initialFilter)).length, [personalPuzzles, initialFilter]);
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
 
   useEffect(() => {
@@ -253,7 +253,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
         <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalCount === 0} onClick={() => changeSource('personal')}>
-          {initialFilter?.opening ? `Crímenes · ${initialFilter.opening} (${filteredPersonalCount})` : `Tus crímenes (${personalPuzzles.length})`}
+          {initialFilter?.label ? `Crímenes · ${initialFilter.label} (${filteredPersonalCount})` : initialFilter?.opening ? `Crímenes · ${initialFilter.opening} (${filteredPersonalCount})` : `Tus crímenes (${personalPuzzles.length})`}
         </button>
         <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
       </div>}

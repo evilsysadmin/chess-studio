@@ -533,6 +533,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <CampaignBriefing
               campaign={campaign}
               node={selected}
+              armySummary={rosterDeployment}
               onBuyIntel={handleCampaignBuyIntel}
               onContinue={handleCampaignBriefingContinue}
               onRetire={() => finishCampaign('retired')}

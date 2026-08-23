@@ -2259,6 +2259,15 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 
 .coaching-action strong { color: var(--brass); }
+.coaching-training-cta {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  flex-wrap: wrap;
+  margin-top: .65rem;
+}
+.coaching-training-cta .primary-btn { padding: .48rem .7rem; font-size: .72rem; }
+.coaching-training-cta small { color: var(--parchment-dim); font-size: .68rem; }
 .coaching-footnote { margin: 0.75rem 0 0; }
 
 .insights-facts-grid {
@@ -3020,6 +3029,46 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   color: var(--parchment);
   font-size: 0.78rem;
 }
+
+.autopsy-key-moments {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.7rem 0 0.9rem;
+}
+
+.autopsy-key-moment {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.autopsy-key-moment > div { display: grid; gap: 0.12rem; min-width: 0; }
+.autopsy-key-moment b { color: var(--parchment); font-size: 0.8rem; }
+.autopsy-key-moment span:not(.autopsy-key-icon) { color: var(--parchment-dim); font-size: 0.78rem; }
+.autopsy-key-moment small { color: var(--parchment-dim); opacity: 0.78; }
+.autopsy-key-icon { font-size: 1.1rem; text-align: center; }
+
+.autopsy-full-details {
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--ink-3);
+  padding-top: 0.75rem;
+}
+
+.autopsy-full-details > summary {
+  cursor: pointer;
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.autopsy-full-details-body { margin-top: 0.75rem; }
 
 .autopsy-timeline {
   display: flex;
@@ -8650,4 +8699,92 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 @media (prefers-reduced-motion: reduce) {
   .mode-tutorial-tip-button.is-featured { animation: none; }
+}
+
+/* ---------- v16.6dm21 · UX visible, detalle a demanda ---------- */
+.home-today-card {
+  display: grid;
+  gap: .5rem;
+  margin: .25rem 0 .9rem;
+  padding: .78rem .9rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+}
+.home-today-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .8rem;
+}
+.home-today-main > div { display: grid; gap: .12rem; min-width: 0; }
+.home-today-main strong { font-size: .9rem; color: var(--parchment); }
+.home-today-main small { color: var(--parchment-dim); font-size: .68rem; }
+.home-today-details { border-top: 1px solid rgba(255,255,255,.06); padding-top: .35rem; }
+.home-today-details > summary { cursor: pointer; color: var(--parchment-dim); font: .62rem var(--font-mono); }
+.home-today-details > div { display: flex; flex-wrap: wrap; gap: .35rem 1rem; padding-top: .45rem; font-size: .68rem; color: var(--parchment-dim); }
+.home-today-details b { color: var(--parchment); font-weight: 650; }
+
+.campaign-briefing-at-glance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .42rem;
+}
+.campaign-briefing-at-glance > span {
+  display: grid;
+  gap: .08rem;
+  min-width: 0;
+  padding: .52rem .58rem;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 8px;
+  background: rgba(0,0,0,.12);
+}
+.campaign-briefing-at-glance small { color: var(--parchment-dim); font: .55rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.campaign-briefing-at-glance b { overflow: hidden; text-overflow: ellipsis; font-size: .76rem; white-space: nowrap; }
+
+.combat-veteran-highlight {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: .65rem;
+  padding: .62rem .7rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 42%, var(--ink-3));
+  border-left: 4px solid var(--brass);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--brass) 7%, rgba(0,0,0,.1));
+}
+.combat-veteran-highlight-piece { font-size: 1.8rem; text-align: center; }
+.combat-veteran-highlight > div { display: grid; gap: .06rem; min-width: 0; }
+.combat-veteran-highlight small { color: var(--brass); font: .54rem var(--font-mono); letter-spacing: .12em; }
+.combat-veteran-highlight strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combat-veteran-highlight span { color: var(--parchment-dim); font-size: .66rem; }
+.combat-debrief-more-units { margin-top: .52rem; }
+.combat-debrief-more-units > summary { cursor: pointer; color: var(--parchment-dim); font: .62rem var(--font-mono); }
+.combat-debrief-more-units .combat-debrief-unit-grid { margin-top: .45rem; }
+
+.admin-client-release { display: inline-grid; gap: .06rem; line-height: 1.1; }
+.admin-client-release b { font-size: .66rem; font-weight: 750; }
+.admin-client-release small { font-size: .56rem; opacity: .68; }
+.admin-client-release.is-current { color: var(--success); }
+.admin-client-release.is-outdated { color: #e2c18e; }
+.admin-client-release.is-newer { color: var(--brass); }
+.admin-client-release.is-different,
+.admin-client-release.is-unknown { color: var(--parchment-dim); }
+
+@media (max-width: 430px) {
+  .menu, .combat-workspace, .admin-screen { min-width: 0; max-width: 100%; overflow-x: clip; }
+  .home-today-main { grid-template-columns: 1fr; }
+  .home-today-main > button { width: 100%; min-height: 44px; }
+  .home-today-details > div { display: grid; gap: .3rem; }
+  .campaign-briefing-at-glance { grid-template-columns: 1fr; }
+  .campaign-briefing-at-glance b { white-space: normal; }
+  .campaign-briefing-heading { align-items: flex-start; }
+  .campaign-briefing-heading > div { min-width: 0; }
+  .campaign-briefing-primary-zone { grid-template-columns: 1fr !important; }
+  .campaign-briefing-primary-zone .campaign-main-cta { width: 100%; min-height: 44px; }
+  .combat-debrief-heading { align-items: flex-start; }
+  .combat-veteran-highlight { grid-template-columns: 34px minmax(0,1fr); }
+  .combat-veteran-highlight-piece { font-size: 1.45rem; }
+  .admin-users-table { min-width: 0; }
+  .admin-client-release small { overflow-wrap: anywhere; }
 }

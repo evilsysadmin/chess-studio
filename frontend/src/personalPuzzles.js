@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { detectNoteworthyMove } from './cpuCommentary.js';
 
 const KEY = 'chess-study-personal-puzzles';
 const MAX_PUZZLES = 40;
@@ -8,10 +9,60 @@ export function loadPersonalPuzzles() {
   try {
     const raw = localStorage.getItem(KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeStoredPuzzle) : [];
   } catch {
     return [];
   }
+}
+
+
+function normalizeStoredPuzzle(puzzle) {
+  if (!puzzle || typeof puzzle !== 'object' || Array.isArray(puzzle.incidentKeys)) return puzzle;
+  if (!puzzle.fen || !puzzle.played) return { ...puzzle, incidentKeys: [] };
+  try {
+    const board = new Chess(puzzle.fen);
+    const move = board.move(puzzle.played);
+    if (!move) return { ...puzzle, incidentKeys: [] };
+    const event = detectNoteworthyMove(puzzle.fen, { from: move.from, to: move.to, promotion: move.promotion });
+    return { ...puzzle, incidentKeys: event?.type ? [`human:${event.type}`] : [] };
+  } catch {
+    return { ...puzzle, incidentKeys: [] };
+  }
+}
+
+function detectIncidentKeys(fenBefore, moveReport) {
+  const keys = [];
+  const played = moveReport?.playedFrom && moveReport?.playedTo
+    ? { from: moveReport.playedFrom, to: moveReport.playedTo }
+    : (() => {
+        if (!fenBefore || !moveReport?.played) return null;
+        try {
+          const board = new Chess(fenBefore);
+          const move = board.move(moveReport.played);
+          return move ? { from: move.from, to: move.to, promotion: move.promotion } : null;
+        } catch { return null; }
+      })();
+
+  if (played) {
+    const event = detectNoteworthyMove(fenBefore, played);
+    if (event?.type) keys.push(`human:${event.type}`);
+  }
+
+  const reply = moveReport?.context?.reply;
+  const replyFen = moveReport?.context?.played?.fenAfter;
+  if (replyFen && reply?.from && reply?.to) {
+    const event = detectNoteworthyMove(replyFen, { from: reply.from, to: reply.to, promotion: reply.promotion });
+    if (event?.type) keys.push(`cpu:${event.type}`);
+  }
+
+  return [...new Set(keys)];
+}
+
+export function matchesPersonalPuzzleFilter(puzzle, filter = null) {
+  if (!filter) return true;
+  if (filter.opening && puzzle?.opening !== filter.opening) return false;
+  if (filter.incidentKey && !(puzzle?.incidentKeys || []).includes(filter.incidentKey)) return false;
+  return true;
 }
 
 function stableId(fen, suggested) {
@@ -60,6 +111,7 @@ export function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
     opening: meta.opening || null,
     sourceGameId: meta.gameId || null,
     humanColor,
+    incidentKeys: detectIncidentKeys(fen, moveReport),
   };
 }
 
@@ -74,22 +126,24 @@ export function savePersonalPuzzlesFromReport(history, humanColor, report, meta 
   const current = loadPersonalPuzzles();
   const byId = new Map(current.map((p) => [p.id, p]));
   let added = 0;
+  let changed = false;
   for (const puzzle of candidates) {
-    if (!byId.has(puzzle.id)) added += 1;
+    const previous = byId.get(puzzle.id);
+    if (!previous) added += 1;
+    if (!previous || JSON.stringify(previous) !== JSON.stringify(puzzle)) changed = true;
     byId.set(puzzle.id, puzzle);
   }
   const next = [...byId.values()]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, MAX_PUZZLES);
-  if (added) setProfileStorageItem(KEY, JSON.stringify(next));
+  if (changed) setProfileStorageItem(KEY, JSON.stringify(next));
   return { added, total: next.length };
 }
 
 export function personalPuzzlesForFilter(filter = null) {
-  const all = loadPersonalPuzzles();
-  if (!filter?.opening) return all;
-  return all.filter((p) => p.opening === filter.opening);
+  return loadPersonalPuzzles().filter((p) => matchesPersonalPuzzleFilter(p, filter));
 }
+
 
 export function randomPersonalPuzzle(excludeId, filter = null) {
   const eligible = personalPuzzlesForFilter(filter);

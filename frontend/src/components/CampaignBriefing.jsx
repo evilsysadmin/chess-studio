@@ -7,7 +7,7 @@ import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 
-export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinue, onRetire }) {
+export default function CampaignBriefing({ campaign, node, armySummary, onBuyIntel, onContinue, onRetire }) {
   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
   const nextTier = useMemo(() => nextCampaignIntelTier(campaign, node?.id), [campaign, node]);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
@@ -27,6 +27,13 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
         <button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)} aria-label="Tutorial de inteligencia">?</button>
       </div>
 
+
+      <div className="campaign-briefing-at-glance" aria-label="Resumen táctico">
+        <span><small>Amenaza</small><b>{intel.level >= 1 ? intel.threatBand : 'Sin estimar'}</b></span>
+        <span><small>Ejército</small><b>{armySummary ? `${armySummary.assignedCount}/${armySummary.totalSlots}` : '—'}</b></span>
+        <span><small>Intel</small><b>{intel.levelLabel}</b></span>
+      </div>
+
       <div className="campaign-rule-alert" aria-label="Regla visible del encuentro">
         <span>EN ESTA BATALLA</span>
         <strong>{intel.modifierLabel}</strong>
@@ -42,8 +49,8 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
       </div>
 
       <details className="campaign-optional-panel campaign-intel-optional">
-        <summary>¿Quieres saber más del rival?</summary>
-        <p className="hint-text">Es opcional. La regla que cambia el tablero ya está explicada arriba.</p>
+        <summary>Ver informe completo</summary>
+        <p className="hint-text">Opcional: precisión de amenaza, créditos, boss y compra de inteligencia.</p>
         <div className="campaign-briefing-grid simplified">
           <section className="campaign-intel-panel" aria-label="Inteligencia de la operación">
             <span className="campaign-intel-kicker">INTELIGENCIA · {intel.levelLabel}</span>

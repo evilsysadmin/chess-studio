@@ -367,36 +367,43 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
 const INCIDENT_COACHING = {
   'human:MISSED_MATE': {
     title: 'Deja de perdonar mates',
+    trainingLabel: 'Mates ignorados',
     diagnosis: (n) => `${n} mate${n === 1 ? '' : 's'} inmediato${n === 1 ? '' : 's'} ignorado${n === 1 ? '' : 's'}. El rival estaba listo para firmar la defunción y tú le diste prórroga.`,
     action: 'Antes de cada jugada candidata haz un barrido CCT: jaques, capturas y amenazas. Si hay jaque, comprueba primero si alguno es mate.',
   },
   'human:ALLOWED_MATE': {
     title: 'Mira qué amenaza el otro',
+    trainingLabel: 'Mates concedidos',
     diagnosis: (n) => `${n} mate${n === 1 ? '' : 's'} en una concedido${n === 1 ? '' : 's'}. La defensa no puede consistir en esperar que el rival sea educado.`,
     action: 'Antes de soltar una pieza, pregunta: “si paso turno, ¿qué jaques tiene?”. Hazlo especialmente cuando tu rey tenga pocas casillas.',
   },
   'human:QUEEN_EN_PRISE_TO_PAWN': {
     title: 'La dama no es material fungible',
+    trainingLabel: 'Dama expuesta a peón',
     diagnosis: (n) => `${n} ${n === 1 ? 'vez' : 'veces'} dejando la dama a tiro de peón. Nueve puntos aparcados en zona de carga y descarga.`,
     action: 'Tras mover la dama, revisa las dos diagonales de ataque de los peones enemigos. Son dos casillas; no hace falta convocar a la NASA.',
   },
   'cpu:PAWN_TAKES_QUEEN': {
     title: 'Vacuna antidiagnóstico de dama',
+    trainingLabel: 'Dama capturada por peón',
     diagnosis: (n) => `${n} dama${n === 1 ? '' : 's'} tuya${n === 1 ? '' : 's'} capturada${n === 1 ? '' : 's'} por un peón. Ya hay suficiente evidencia para llamarlo patrón.`,
     action: 'En posiciones tácticas, marca mentalmente las casillas atacadas por peones antes de calcular líneas largas. Lo barato también mata.',
   },
   'human:STALEMATE_BLUNDER': {
     title: 'Aprende a rematar sin resucitar al cadáver',
+    trainingLabel: 'Ahogados evitables',
     diagnosis: (n) => `${n} victoria${n === 1 ? '' : 's'} convertida${n === 1 ? '' : 's'} en ahogado. Generosidad reglamentaria no solicitada.`,
     action: 'En finales ganados, conserva al menos una casilla legal para el rey enemigo hasta que tengas el mate preparado. Practica mates básicos de dama y torre.',
   },
   'cpu:KNIGHT_FORK': {
     title: 'Los caballos no aparecen por magia',
+    trainingLabel: 'Horquillas de caballo',
     diagnosis: (n) => `${n} horquilla${n === 1 ? '' : 's'} seria${n === 1 ? '' : 's'} de caballo sufrida${n === 1 ? '' : 's'}. La L también cuenta como geometría.`,
     action: 'Antes de colocar rey, dama o torres cerca, visualiza los saltos de caballo hacia casillas centrales y de jaque. Prioriza las horquillas con jaque.',
   },
   'cpu:PAWN_FORK': {
     title: 'Respeta la infantería',
+    trainingLabel: 'Horquillas de peón',
     diagnosis: (n) => `${n} horquilla${n === 1 ? '' : 's'} de peón sufrida${n === 1 ? '' : 's'}. Presupuesto de un punto, daños de consejo de administración.`,
     action: 'Cuando dos piezas caras queden separadas por una casilla de avance de peón, comprueba si el rival puede empujar con tempo y atacar ambas.',
   },
@@ -423,7 +430,13 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
   for (const [key, rawCount] of tactical.slice(0, 2)) {
     const count = Number(rawCount);
     const rule = INCIDENT_COACHING[key];
-    items.push({ ...coachingPriority(count), title: rule.title, diagnosis: rule.diagnosis(count), action: rule.action });
+    items.push({
+      ...coachingPriority(count),
+      title: rule.title,
+      diagnosis: rule.diagnosis(count),
+      action: rule.action,
+      training: { filter: { incidentKey: key, label: rule.trainingLabel } },
+    });
   }
 
   const dossier = (insights.openingDossier || []).filter((row) => row.games >= 3);
@@ -435,6 +448,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       title: `Revisa ${worstOpening.name}`,
       diagnosis: `${worstOpening.games} partidas y ${worstOpening.winPct}% de victorias. Esa apertura te está cobrando alquiler y ni siquiera te deja las llaves.`,
       action: 'Repasa sus primeras 8–10 jugadas en “Aperturas famosas” y revisa dos derrotas tuyas en replay buscando el primer momento en que abandonaste el plan normal.',
+      training: { filter: { opening: worstOpening.name, label: worstOpening.name } },
     });
   }
 
@@ -476,6 +490,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       action: personalPuzzles > 0
         ? `Haz primero 3 de “Tus crímenes” antes de tu próxima partida. Tienes ${personalPuzzles} posiciones sacadas de errores reales tuyos.`
         : 'Haz 5 puzzles cortos antes de tu próxima partida y luego juega a la misma dificultad. El objetivo es reconocer patrones, no coleccionar partidas.',
+      ...(personalPuzzles > 0 ? { training: { filter: { label: 'Tus crímenes' } } } : {}),
     });
   }
 
@@ -506,6 +521,28 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
 
   const order = { high: 0, medium: 1, low: 2 };
   return items.sort((a, b) => order[a.priority] - order[b.priority]).slice(0, 5);
+}
+
+
+// Devuelve entrenamiento sólo cuando ya existen posiciones personales que
+// correspondan al diagnóstico. Así evitamos convertir un consejo genérico en
+// un CTA que finja tener material específico detrás.
+export function trainingTargetForCoaching(item, personalPuzzles = []) {
+  const filter = item?.training?.filter;
+  if (!filter || !Array.isArray(personalPuzzles) || personalPuzzles.length === 0) return null;
+  const matches = personalPuzzles.filter((puzzle) => {
+    if (filter.opening && puzzle?.opening !== filter.opening) return false;
+    if (filter.incidentKey && !(puzzle?.incidentKeys || []).includes(filter.incidentKey)) return false;
+    return true;
+  });
+  if (!matches.length) return null;
+  return {
+    source: 'personal',
+    rush: false,
+    filter,
+    count: matches.length,
+    label: 'Entrenar este error',
+  };
 }
 
 // Genérico a propósito a la hora de sugerir qué hacer — no analiza tus

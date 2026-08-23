@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Menu from './components/Menu.jsx';
 const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
@@ -28,10 +28,10 @@ import { handicapForGap } from './handicap.js';
 import { computeInsights } from './insights.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
-import { clearClockSnapshot, loadClockSnapshot } from './clockPersistence.js';
+import { clearClockSnapshot } from './clockPersistence.js';
 import { checkAchievements } from './achievements.js';
 import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
-import { isLoggedIn, fetchMe, logout, touchActivity, watchSessionIdentity } from './auth.js';
+import { isLoggedIn, fetchMe, logout, watchSessionIdentity } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
@@ -47,117 +47,30 @@ import { shareRecordFromHash } from './shareResult.js';
 const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { chooseContract, clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
-import { loadSessionView, loadSessionViewHistory, rememberSessionView, rememberSessionViewHistory } from './viewState.js';
-import { clearActiveGameSession, loadActiveGameSession, saveActiveGameSession } from './activeGameSession.js';
-import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
+import { clearActiveGameSession, loadActiveGameSession } from './activeGameSession.js';
+import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';
+import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
+import { useGameReconnect } from './useGameReconnect.js';
+import { useViewNavigation } from './useViewNavigation.js';
+import { LEARNING_STORAGE_KEY, useActiveSessionRestore } from './useActiveSessionRestore.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
-
-// Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
-// objeto de partida: ese objeto se reemplaza por completo con cada respuesta
-// del servidor (que no sabe nada de esta marca, es solo del cliente), así
-// que si viviera ahí se perdería en la primera jugada.
-const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
-  const [view, setViewRaw] = useState(() => loadActiveGameSession()?.route || loadSessionView({ isAdminUser }));
+  const {
+    view,
+    navigateTo,
+    goBack,
+    replaceView,
+    resetNavigation,
+  } = useViewNavigation({
+    isAdminUser,
+    initialView: () => loadActiveGameSession()?.route || null,
+  });
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
 
-  const coarseActivity = useMemo(() => ({
-    menu: 'Menú principal',
-    game: 'Partida',
-    tournament: 'Torneo',
-    tournamentGame: 'Torneo',
-    combat: 'Combat Chess',
-    roguelike: 'Combat Chess',
-    combatReplay: 'Replay',
-    replay: 'Replay',
-    insights: 'Así juegas',
-    history: 'Historial',
-    puzzle: 'Puzzle',
-    tutorial: 'Aprendizaje',
-    openings: 'Aperturas',
-    lab: 'Laboratorio',
-    spectator: 'Espectador',
-    admin: 'Panel admin',
-    board3d: 'Experimento 3D',
-  }[view] || 'Navegando'), [view]);
+  usePresenceHeartbeat(view);
 
-  useEffect(() => {
-    const reportPresence = () => {
-      const foreground = typeof document === 'undefined' ? null : document.visibilityState === 'visible';
-      touchActivity(coarseActivity, foreground);
-    };
-    const handleVisibility = () => reportPresence();
-
-    reportPresence();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') reportPresence();
-    }, 120000);
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [coarseActivity]);
-  const currentViewRef = useRef(view);
-  const viewHistoryRef = useRef(loadSessionViewHistory({ isAdminUser }));
-  currentViewRef.current = view;
-
-  function navigateTo(nextView) {
-    const current = currentViewRef.current;
-    if (!nextView || nextView === current) return;
-    viewHistoryRef.current = [...viewHistoryRef.current, current].slice(-40);
-    rememberSessionViewHistory(viewHistoryRef.current);
-    currentViewRef.current = nextView;
-    setViewRaw(nextView);
-  }
-
-  function goBack() {
-    const history = [...viewHistoryRef.current];
-    const current = currentViewRef.current;
-    let previous = history.pop();
-    while (previous === current && history.length) previous = history.pop();
-    previous = previous && previous !== current ? previous : 'menu';
-    viewHistoryRef.current = history;
-    rememberSessionViewHistory(history);
-    currentViewRef.current = previous;
-    setViewRaw(previous);
-  }
-
-  function resetNavigation() {
-    viewHistoryRef.current = [];
-    rememberSessionViewHistory([]);
-    currentViewRef.current = 'menu';
-    setViewRaw('menu');
-  }
-
-  async function recoverSessionFromBoundary() {
-    const saved = loadActiveGameSession();
-    if (saved?.gameId) return restoreActiveSession(saved);
-
-    // Última red: si el error ocurrió justo al entrar al tablero, el effect que
-    // persiste el snapshot puede no haber llegado a ejecutarse todavía. El id
-    // vivo en React basta para pedir de nuevo la partida al backend.
-    if (tournamentGame?.id) {
-      return restoreActiveSession({ route: 'tournamentGame', gameId: tournamentGame.id });
-    }
-    if (game?.id) {
-      return restoreActiveSession({
-        route: 'game',
-        gameId: game.id,
-        learningMode,
-        gameContext,
-        timeControlId: activeTimeControl?.id || null,
-      });
-    }
-
-    // Combat Chess ya conserva su batalla en combatSession/sessionStorage. Al
-    // cerrar el fallback React remonta CombatScreen/RoguelikeScreen y sus
-    // controladores rehidratan esa sesión sin degradarla a Setup.
-    if (currentViewRef.current === 'combat' || currentViewRef.current === 'roguelike') return true;
-    return false;
-  }
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -284,18 +197,6 @@ function AppInner({ isAdminUser }) {
   const [replayMovieMode, setReplayMovieMode] = useState(false);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
-  const gameRef = useRef(game);
-  const tournamentGameRef = useRef(tournamentGame);
-  const gameSaveStateRef = useRef(gameSaveState);
-  gameRef.current = game;
-  tournamentGameRef.current = tournamentGame;
-  gameSaveStateRef.current = gameSaveState;
-
-  // Conserva la última pantalla reconstruible durante esta pestaña/sesión.
-  // Las vistas efímeras (partida/replay) no pisan el padre seguro guardado.
-  useEffect(() => {
-    rememberSessionView(view);
-  }, [view]);
 
   // Cualquier helper de progreso emite este evento al cambiar la caché.
   // Persistimos con debounce para no hacer un PUT por cada punto de XP, y
@@ -335,117 +236,58 @@ function AppInner({ isAdminUser }) {
     setStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY, learningMode ? '1' : '0');
   }, [learningMode]);
 
-  // Snapshot local de la sesión activa. Mongo sigue siendo la fuente de verdad
-  // para el tablero, pero este sobre conserva la ruta y el contexto cliente
-  // (práctica/variantes/reloj) para que un refresh o un deploy pueda volver
-  // exactamente a la partida en curso. Torneo usa el mismo mecanismo.
-  useEffect(() => {
-    let persisted = null;
-    if (view === 'game' && game?.id) {
-      persisted = saveActiveGameSession({
-        route: 'game',
-        game,
-        learningMode,
-        gameContext,
-        timeControlId: activeTimeControl?.id || null,
-      });
-    } else if (view === 'tournamentGame' && tournamentGame?.id) {
-      persisted = saveActiveGameSession({ route: 'tournamentGame', game: tournamentGame });
-    }
+  // Snapshot local de la sesión activa. Mongo confirma el tablero y el hook
+  // conserva el contexto cliente necesario para sobrevivir a F5/deploy.
+  useActiveGameSessionPersistence({
+    view,
+    game,
+    tournamentGame,
+    learningMode,
+    gameContext,
+    timeControlId: activeTimeControl?.id || null,
+    onPersistenceState: setGameSaveState,
+  });
 
-    // "Guardado" significa dos cosas a la vez: el backend ya confirmó este
-    // objeto de partida y el sobre local necesario para sobrevivir a F5/deploy
-    // también quedó escrito. Si localStorage falla, no pintamos un verde falso.
-    if (persisted) setGameSaveState(SAVE_STATUS.SAVED);
-    else if ((view === 'game' && game?.id) || (view === 'tournamentGame' && tournamentGame?.id)) {
-      setGameSaveState(SAVE_STATUS.ERROR);
-    }
-  }, [view, game, tournamentGame, learningMode, gameContext, activeTimeControl?.id]);
+  // Reconciliación conservadora tras offline → online. El hook mantiene Mongo
+  // como autoridad y descarta respuestas tardías si el usuario cambia de partida.
+  useGameReconnect({
+    route: view,
+    game,
+    tournamentGame,
+    saveState: gameSaveState,
+    getGame: api.getGame,
+    onGame: setGame,
+    onTournamentGame: setTournamentGame,
+    onPersistenceState: setGameSaveState,
+    onError: setError,
+  });
 
-  // Si el navegador estuvo realmente offline, al volver la red reconciliamos
-  // la partida abierta con la copia autoritativa del backend. No intentamos
-  // fusionar tableros: las mutaciones normales ya revierten a la última
-  // posición confirmada cuando fallan, así que Mongo gana siempre.
-  const reconnectInFlight = useRef(false);
-  const reconnectNeeded = useRef(typeof navigator !== 'undefined' && navigator.onLine === false);
-  const reconnectOfflineGeneration = useRef(0);
-  useEffect(() => {
-    let disposed = false;
-    async function handleOnline() {
-      if (reconnectInFlight.current) return;
-      if (!reconnectNeeded.current && gameSaveStateRef.current !== SAVE_STATUS.ERROR) return;
 
-      const target = reconnectTarget({
-        route: currentViewRef.current,
-        game: gameRef.current,
-        tournamentGame: tournamentGameRef.current,
-        savedSession: loadActiveGameSession(),
-      });
-      if (!target) {
-        reconnectNeeded.current = false;
-        return;
-      }
+  // Restauración de F5/deploy, Continuar partida y recovery del ErrorBoundary.
+  // El hook concentra la rehidratación de contrato/run/serie/reloj sin hacer
+  // que App conozca otra vez todos los detalles de persistencia.
+  const { continueActiveSession, recoverSessionFromBoundary } = useActiveSessionRestore({
+    currentView: view,
+    game,
+    tournamentGame,
+    learningMode,
+    gameContext,
+    activeTimeControl,
+    replaceView,
+    setGame,
+    setTournamentGame,
+    setLearningMode,
+    setActiveContract,
+    setSpecialRun,
+    setGameContext,
+    setActiveSeries,
+    setActiveTimeControl,
+    setHasSavedGame,
+    setGameSaveState,
+    setLoading,
+    setError,
+  });
 
-      reconnectInFlight.current = true;
-      const offlineGenerationAtStart = reconnectOfflineGeneration.current;
-      setGameSaveState(SAVE_STATUS.SAVING);
-      const result = await fetchReconnectGame(target.gameId, api.getGame);
-      if (disposed) return;
-
-      // El usuario pudo abandonar/cambiar de pantalla mientras el GET estaba
-      // volando. En ese caso descartamos la respuesta tardía por completo.
-      const currentTarget = reconnectTarget({
-        route: currentViewRef.current,
-        game: gameRef.current,
-        tournamentGame: tournamentGameRef.current,
-        savedSession: loadActiveGameSession(),
-      });
-      if (!currentTarget || currentTarget.route !== target.route || currentTarget.gameId !== target.gameId) {
-        reconnectInFlight.current = false;
-        return;
-      }
-
-      if (result.ok) {
-        if (target.route === 'tournamentGame') setTournamentGame(result.game);
-        else setGame(result.game);
-        setError(null);
-        // Si volvió a caer la red mientras esta reconciliación estaba en vuelo,
-        // el siguiente evento online debe comprobar otra vez el backend.
-        reconnectNeeded.current = reconnectOfflineGeneration.current !== offlineGenerationAtStart
-          || (typeof navigator !== 'undefined' && navigator.onLine === false);
-        // El effect de activeGameSession será quien marque SAVED después de
-        // confirmar que el snapshot local de esta respuesta también se escribió.
-      } else {
-        setGameSaveState(SAVE_STATUS.ERROR);
-        setError('La conexión volvió, pero todavía no se pudo resincronizar la partida. La última posición confirmada sigue intacta.');
-      }
-      reconnectInFlight.current = false;
-    }
-
-    const handleOffline = () => {
-      reconnectOfflineGeneration.current += 1;
-      reconnectNeeded.current = true;
-    };
-
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('online', handleOnline);
-    return () => {
-      disposed = true;
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('online', handleOnline);
-    };
-  }, []);
-
-  // En un deploy el navegador puede recargar el documento para obtener los
-  // chunks nuevos. Si había una sesión activa, la rehidratamos de Mongo sin
-  // obligar al usuario a volver al Home y pulsar "Continuar".
-  const startupRestoreAttempted = useRef(false);
-  useEffect(() => {
-    const saved = loadActiveGameSession();
-    if (!saved || startupRestoreAttempted.current) return;
-    startupRestoreAttempted.current = true;
-    restoreActiveSession(saved);
-  }, []);
 
   useEffect(() => {
     setRating(loadRating());
@@ -502,94 +344,6 @@ function AppInner({ isAdminUser }) {
     }
   }
 
-  async function restoreActiveSession(saved = loadActiveGameSession()) {
-    if (!saved?.gameId) return false;
-    setLoading(true);
-    setError(null);
-    setGameSaveState(SAVE_STATUS.SAVING);
-    try {
-      const found = await api.getGame(saved.gameId);
-      if (saved.route === 'tournamentGame') {
-        setTournamentGame(found);
-        currentViewRef.current = 'tournamentGame';
-        setViewRaw('tournamentGame');
-        setHasSavedGame(true);
-        return true;
-      }
-
-      setGame(found);
-      const savedLearning = typeof saved.learningMode === 'boolean'
-        ? saved.learningMode
-        : getStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY) === '1';
-      setLearningMode(savedLearning);
-      setActiveContract(loadActiveContract());
-      const storedRun = loadSpecialRun();
-      setSpecialRun(storedRun);
-      const restoredContext = saved.gameContext && Object.keys(saved.gameContext).length
-        ? saved.gameContext
-        : (storedRun?.active && storedRun.currentGameId === found.id
-          ? { runMode: storedRun.mode }
-          : (found.ghostStyle ? { ghost: true, ghostStyle: found.ghostStyle } : {}));
-      setGameContext(restoredContext);
-
-      const storedSeries = loadActiveSeries();
-      if (storedSeries?.currentGameId === found.id && !storedSeries.winner) {
-        setActiveSeries(storedSeries);
-        setActiveTimeControl(timeControlById(storedSeries.timeControlId));
-      } else {
-        clearActiveSeries();
-        setActiveSeries(null);
-        const clockSnapshot = loadClockSnapshot(found.id);
-        const restoredTimeControlId = saved.timeControlId || clockSnapshot?.timeControlId || null;
-        setActiveTimeControl(restoredTimeControlId && restoredTimeControlId !== 'none'
-          ? timeControlById(restoredTimeControlId)
-          : null);
-      }
-      setStorageItem(STORAGE_LOCAL, STORAGE_KEY, found.id);
-      setHasSavedGame(true);
-      currentViewRef.current = 'game';
-      setViewRaw('game');
-      return true;
-    } catch (e) {
-      // 404/403 = el savegame ya no existe o no pertenece a esta cuenta. Un
-      // fallo de red transitorio conserva el snapshot para poder reintentar.
-      if (e?.status === 404 || e?.status === 403) {
-        clearActiveGameSession();
-        removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);
-        setHasSavedGame(false);
-        setError('La partida guardada ya no existe en el servidor.');
-      } else {
-        setHasSavedGame(true);
-        setGameSaveState(SAVE_STATUS.ERROR);
-        setError('No se pudo recuperar la partida en curso. Puedes reintentar cuando vuelva el servidor.');
-      }
-      currentViewRef.current = 'menu';
-      setViewRaw('menu');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleContinue() {
-    const savedSession = loadActiveGameSession();
-    if (savedSession?.gameId) {
-      await restoreActiveSession(savedSession);
-      return;
-    }
-
-    const savedId = getStorageItem(STORAGE_LOCAL, STORAGE_KEY);
-    if (!savedId) return;
-    // Compatibilidad con perfiles/sesiones anteriores a v16.6dm6: construye
-    // un descriptor mínimo y deja que el restaurador común haga el resto.
-    await restoreActiveSession({
-      route: 'game',
-      gameId: savedId,
-      learningMode: getStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY) === '1',
-      gameContext: {},
-      timeControlId: loadClockSnapshot(savedId)?.timeControlId || null,
-    });
-  }
 
   function handleExitGame() {
     if (game?.id) {
@@ -1009,11 +763,12 @@ function AppInner({ isAdminUser }) {
         {view === 'menu' && (
           <Menu
             onNewGame={handleNewGame}
-            onContinue={handleContinue}
+            onContinue={continueActiveSession}
             onTournament={() => navigateTo('tournament')}
             onTutorial={() => navigateTo('tutorial')}
             onOpenings={() => navigateTo('openings')}
             onPuzzle={() => openPuzzleMode('curated', false)}
+            onDailyChallenge={() => openPuzzleMode('daily', false)}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}

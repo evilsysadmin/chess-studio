@@ -1,0 +1,95 @@
+import { useEffect, useRef } from 'react';
+import { loadActiveGameSession } from './activeGameSession.js';
+import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
+import { SAVE_STATUS } from './saveStatus.js';
+
+export function useGameReconnect({
+  route,
+  game,
+  tournamentGame,
+  saveState,
+  getGame,
+  onGame,
+  onTournamentGame,
+  onPersistenceState,
+  onError,
+}) {
+  const routeRef = useRef(route);
+  const gameRef = useRef(game);
+  const tournamentGameRef = useRef(tournamentGame);
+  const saveStateRef = useRef(saveState);
+  const callbacksRef = useRef({ getGame, onGame, onTournamentGame, onPersistenceState, onError });
+  const reconnectInFlight = useRef(false);
+  const reconnectNeeded = useRef(typeof navigator !== 'undefined' && navigator.onLine === false);
+  const reconnectOfflineGeneration = useRef(0);
+
+  routeRef.current = route;
+  gameRef.current = game;
+  tournamentGameRef.current = tournamentGame;
+  saveStateRef.current = saveState;
+  callbacksRef.current = { getGame, onGame, onTournamentGame, onPersistenceState, onError };
+
+  useEffect(() => {
+    let disposed = false;
+
+    async function handleOnline() {
+      if (reconnectInFlight.current) return;
+      if (!reconnectNeeded.current && saveStateRef.current !== SAVE_STATUS.ERROR) return;
+
+      const target = reconnectTarget({
+        route: routeRef.current,
+        game: gameRef.current,
+        tournamentGame: tournamentGameRef.current,
+        savedSession: loadActiveGameSession(),
+      });
+      if (!target) {
+        reconnectNeeded.current = false;
+        return;
+      }
+
+      reconnectInFlight.current = true;
+      const offlineGenerationAtStart = reconnectOfflineGeneration.current;
+      callbacksRef.current.onPersistenceState?.(SAVE_STATUS.SAVING);
+      const result = await fetchReconnectGame(target.gameId, callbacksRef.current.getGame);
+      if (disposed) return;
+
+      // Una respuesta tardía nunca debe resucitar una partida que el usuario ya abandonó.
+      const currentTarget = reconnectTarget({
+        route: routeRef.current,
+        game: gameRef.current,
+        tournamentGame: tournamentGameRef.current,
+        savedSession: loadActiveGameSession(),
+      });
+      if (!currentTarget || currentTarget.route !== target.route || currentTarget.gameId !== target.gameId) {
+        reconnectInFlight.current = false;
+        return;
+      }
+
+      if (result.ok) {
+        if (target.route === 'tournamentGame') callbacksRef.current.onTournamentGame?.(result.game);
+        else callbacksRef.current.onGame?.(result.game);
+        callbacksRef.current.onError?.(null);
+        reconnectNeeded.current = reconnectOfflineGeneration.current !== offlineGenerationAtStart
+          || (typeof navigator !== 'undefined' && navigator.onLine === false);
+        // El snapshot de sesión activa marca SAVED cuando la respuesta reconciliada queda persistida.
+      } else {
+        callbacksRef.current.onPersistenceState?.(SAVE_STATUS.ERROR);
+        callbacksRef.current.onError?.('La conexión volvió, pero todavía no se pudo resincronizar la partida. La última posición confirmada sigue intacta.');
+      }
+      reconnectInFlight.current = false;
+    }
+
+    const handleOffline = () => {
+      reconnectOfflineGeneration.current += 1;
+      reconnectNeeded.current = true;
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      disposed = true;
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+}

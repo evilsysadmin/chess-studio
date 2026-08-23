@@ -110,6 +110,7 @@ if (checkCiWiring) {
   if (!workflowSource.includes('@vitest/coverage-v8@4.1.10') || !workflowSource.includes('npm run test:coverage')) fail('CI no ejecuta coverage V8 frontend fijado');
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
+  if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
   const informationalCoverageSteps = (workflowSource.match(/continue-on-error:\s*true/g) || []).length;
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');
 }

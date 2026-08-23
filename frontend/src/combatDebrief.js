@@ -15,6 +15,19 @@ function aliveIdentityIds(roster) {
   return out;
 }
 
+export function combatVeteranHighlight(debrief) {
+  const units = Array.isArray(debrief?.units) ? debrief.units : [];
+  const candidates = units.filter((unit) => {
+    const veteran = Number(unit?.beforeLevel) >= 3;
+    return Boolean(unit?.promoted || Number(unit?.bossDamage) > 0 || Number(unit?.kills) >= 2 || (veteran && Number(unit?.kills) >= 1));
+  });
+  if (!candidates.length) return null;
+  return [...candidates].sort((a, b) => {
+    const score = (unit) => (unit.promoted ? 50 : 0) + (Number(unit.bossDamage) || 0) * 8 + (Number(unit.kills) || 0) * 10 + (Number(unit.beforeLevel) || 1);
+    return score(b) - score(a);
+  })[0];
+}
+
 export function buildCombatDebrief({
   outcome,
   beforeRoster,

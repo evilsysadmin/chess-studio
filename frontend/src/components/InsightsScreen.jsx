@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
 import { findWorstMoveEver } from '../gameReport.js';
-import { generateRoast, generateCoaching } from '../insights.js';
+import { generateRoast, generateCoaching, trainingTargetForCoaching } from '../insights.js';
 import { formatLongMove } from '../notation.js';
 import { loadUnlocked, ACHIEVEMENTS } from '../achievements.js';
 import { loadPuzzlesSolved } from '../puzzleStats.js';
@@ -112,7 +112,8 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   // Se recalcula si cambian los insights o si aparece un resultado nuevo
   // de "Buscar mi peor jugada de siempre" — sin volver a llamar al
   // backend, todo esto ya está calculado.
-  const personalPuzzleCount = useMemo(() => loadPersonalPuzzles().length, [gameHistory.length]);
+  const personalPuzzles = useMemo(() => loadPersonalPuzzles(), [gameHistory.length]);
+  const personalPuzzleCount = personalPuzzles.length;
   const roastExtras = useMemo(() => ({
     achievementsUnlocked: loadUnlocked().size,
     achievementsTotal: ACHIEVEMENTS.length,
@@ -123,6 +124,10 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   }), [rivalry, personalPuzzleCount]);
   const roastLines = useMemo(() => generateRoast(insights, searchResult, roastExtras), [insights, searchResult, roastExtras]);
   const coaching = useMemo(() => generateCoaching(insights, rivalry, roastExtras), [insights, rivalry, roastExtras]);
+  const coachingWithTraining = useMemo(() => coaching.map((item) => ({
+    item,
+    target: trainingTargetForCoaching(item, personalPuzzles),
+  })), [coaching, personalPuzzles]);
 
   async function startSearch() {
     stopRef.current = false;
@@ -301,7 +306,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             <span className="coaching-count">{coaching.length} prioridades</span>
           </div>
           <div className="coaching-grid">
-            {coaching.map((item, i) => (
+            {coachingWithTraining.map(({ item, target }, i) => (
               <article className={`coaching-card priority-${item.priority}`} key={`${item.title}-${i}`}>
                 <div className="coaching-card-top">
                   <span className="coaching-priority">{item.priorityLabel}</span>
@@ -309,6 +314,14 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                 </div>
                 <p>{item.diagnosis}</p>
                 <div className="coaching-action"><strong>Haz esto:</strong> {item.action}</div>
+                {target && (
+                  <div className="coaching-training-cta">
+                    <button type="button" className="primary-btn" onClick={() => onOpenPuzzles(target.source, target.rush, target.filter)}>
+                      {target.label} →
+                    </button>
+                    <small>{target.count} {target.count === 1 ? 'posición real relacionada' : 'posiciones reales relacionadas'}</small>
+                  </div>
+                )}
               </article>
             ))}
           </div>

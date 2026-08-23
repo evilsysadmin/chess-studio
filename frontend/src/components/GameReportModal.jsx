@@ -4,6 +4,7 @@ import { analyzeGame } from '../gameReport.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
 import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, moveContextLines, pointOfNoReturn } from '../advancedCareer.js';
+import { keyGameMoments } from '../postGameHighlights.js';
 import { glossaryEntry } from '../chessGlossary.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 
@@ -63,16 +64,17 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const accuracy = report ? accuracyScore(report) : null;
   const best = report ? bestMoveOfReport(report) : null;
   const noReturn = report ? pointOfNoReturn(report) : null;
+  const keyMoments = report ? keyGameMoments(report) : [];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card game-autopsy" role="dialog" aria-modal="true" aria-label="Autopsia de la partida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+      <div className="army-card game-autopsy" role="dialog" aria-modal="true" aria-label="Resumen de la partida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
-        <p className="eyebrow">Medicina legal ajedrecística</p>
-        <h3>Autopsia de la partida</h3>
+        <p className="eyebrow">Post-partida</p>
+        <h3>Resumen de la partida</h3>
 
-        {status === 'loading' && <p className="hint-text">Comparando tus jugadas contra el motor y localizando el momento exacto en que la posición empezó a pedir un sacerdote…</p>}
-        {status === 'error' && <p className="hint-text import-error">No se pudo generar la autopsia. El forense probablemente no encuentra el backend.</p>}
+        {status === 'loading' && <p className="hint-text">Buscando los momentos que más explican la partida…</p>}
+        {status === 'error' && <p className="hint-text import-error">No se pudo generar el resumen. El backend no respondió al análisis.</p>}
 
         {status === 'done' && report && <>
           {report.analyzedCount === 0 ? <p className="hint-text">No hubo suficientes jugadas propias para analizar.</p> : <>
@@ -81,21 +83,33 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <div><span>Pérdida media</span><b>−{report.averageLoss} <GlossaryTerm term="cp">cp</GlossaryTerm></b></div>
               <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
             </div>
-            <p className="hint-text">La <GlossaryTerm term="Accuracy">accuracy</GlossaryTerm> es una escala propia de Chess Studio basada en pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+            <div className="autopsy-key-moments" aria-label="Momentos clave de la partida">
+              {keyMoments.map((item) => (
+                <article key={`${item.kind}-${item.move.index}`} className={`autopsy-key-moment sev-${item.move.severity || 'ok'}`}>
+                  <span className="autopsy-key-icon" aria-hidden="true">{item.icon}</span>
+                  <div><b>{item.label}</b><span>Jugada {item.move.moveNumber}: {item.move.played}</span><small>{item.detail}</small></div>
+                </article>
+              ))}
+            </div>
 
-            <details className="autopsy-glossary">
+            {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
+
+            <div className="autopsy-actions">
+              {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver el peor momento · jugada {report.worst.moveNumber}</button>}
+              {report.worst && onShareIncident && <button className="secondary-btn" onClick={() => onShareIncident(report.worst, report)}>📤 Compartir</button>}
+            </div>
+
+            <details className="autopsy-full-details">
+              <summary>Abrir autopsia completa</summary>
+              <div className="autopsy-full-details-body">
+                <p className="hint-text">La <GlossaryTerm term="Accuracy">accuracy</GlossaryTerm> es una escala propia de Chess Studio basada en pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+
+                <details className="autopsy-glossary">
               <summary>Glosario rápido · cp / CCT</summary>
               <p><b><GlossaryTerm term="cp">cp</GlossaryTerm>.</b> {CP_GLOSSARY?.definition}</p>
               <p><b><GlossaryTerm term="CCT">CCT</GlossaryTerm>.</b> {CCT_GLOSSARY?.definition}</p>
               <small>El glosario completo está en Aprendizaje → Glosario.</small>
             </details>
-
-            <div className="autopsy-express">
-              <b>Resumen de 30 segundos</b>
-              <span>{best ? <>💎 Jugada de la partida: {best.played} · pérdida {best.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>.</> : '💎 Sin jugada destacada disponible.'}</span>
-              <span>{noReturn ? <>☠ Punto de no retorno: jugada {noReturn.moveNumber}, {noReturn.played} (−{noReturn.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>).</> : '✓ No aparece un punto de no retorno claro en las jugadas analizadas.'}</span>
-              <span>{report.worst ? <>⚰ Mayor impacto: {report.worst.played}, −{report.worst.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>.</> : ''}</span>
-            </div>
 
             {best && <div className="autopsy-best-move"><b>💎 Jugada de la partida · {best.played}</b><MoveContext move={best} /><p>{explainMoveReport(best)}</p></div>}
 
@@ -105,13 +119,8 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             </div>)}</div> : <p className="hint-text">No encontramos heridas tácticas de consideración. Francamente decepcionante para el departamento forense.</p>}
 
             <div className="autopsy-verdict"><b>DICTAMEN DE LA CPU</b><p>{forensicVerdict(report)}</p></div>
-
-            {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
-
-            <div className="autopsy-actions">
-              {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver el crimen · jugada {report.worst.moveNumber}</button>}
-              {report.worst && onShareIncident && <button className="secondary-btn" onClick={() => onShareIncident(report.worst, report)}>📤 Compartir este desastre</button>}
-            </div>
+              </div>
+            </details>
           </>}
         </>}
       </div>

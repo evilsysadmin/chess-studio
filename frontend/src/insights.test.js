@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeInsights, generateCoaching, generateRoast, tierTrendComment } from './insights.js';
+import { computeInsights, generateCoaching, generateRoast, tierTrendComment, trainingTargetForCoaching } from './insights.js';
 
 const gameHistory = [
   {
@@ -223,5 +223,35 @@ describe('generateCoaching', () => {
   it('sugiere puzzles personales cuando hay poca táctica entrenada', () => {
     const tips = generateCoaching(base, { incidents: { 'cpu:KNIGHT_FORK': 2 } }, { puzzlesSolved: 1, personalPuzzles: 4 });
     expect(tips.some((t) => t.action.includes('Tus crímenes'))).toBe(true);
+  });
+});
+
+
+describe('trainingTargetForCoaching', () => {
+  it('ofrece entrenamiento sólo cuando hay posiciones personales del incidente medido', () => {
+    const item = { training: { filter: { incidentKey: 'human:MISSED_MATE', label: 'Mates ignorados' } } };
+    const puzzles = [
+      { id: 'p1', incidentKeys: ['human:MISSED_MATE'] },
+      { id: 'p2', incidentKeys: ['cpu:KNIGHT_FORK'] },
+    ];
+    expect(trainingTargetForCoaching(item, puzzles)).toMatchObject({
+      source: 'personal', count: 1, label: 'Entrenar este error',
+      filter: { incidentKey: 'human:MISSED_MATE' },
+    });
+  });
+
+  it('no inventa un CTA si el diagnóstico no tiene posiciones relacionadas', () => {
+    const item = { training: { filter: { incidentKey: 'human:MISSED_MATE' } } };
+    expect(trainingTargetForCoaching(item, [{ id: 'p1', incidentKeys: ['cpu:KNIGHT_FORK'] }])).toBeNull();
+    expect(trainingTargetForCoaching({ title: 'Consejo genérico' }, [{ id: 'p1' }])).toBeNull();
+  });
+
+  it('filtra por apertura usando la procedencia real de las autopsias', () => {
+    const item = { training: { filter: { opening: 'Defensa Siciliana', label: 'Defensa Siciliana' } } };
+    const puzzles = [
+      { id: 'p1', opening: 'Defensa Siciliana' },
+      { id: 'p2', opening: 'Apertura Italiana' },
+    ];
+    expect(trainingTargetForCoaching(item, puzzles)?.count).toBe(1);
   });
 });

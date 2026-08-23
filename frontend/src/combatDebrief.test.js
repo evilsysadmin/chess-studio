@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCombatDebrief } from './combatDebrief.js';
+import { buildCombatDebrief, combatVeteranHighlight } from './combatDebrief.js';
 
 function roster({ alive = true, level = 1, kills = 0 } = {}) {
   const identityId = 'id-p-a';
@@ -51,4 +51,12 @@ describe('Combat Chess debriefing', () => {
     expect(debrief.units).toHaveLength(1);
     expect(debrief.units[0].fallen).toBe(true);
   });
+  it('destaca un veterano sólo cuando hubo un hecho realmente notable', () => {
+    expect(combatVeteranHighlight({ units: [{ identityId: 'quiet', beforeLevel: 5, kills: 0, bossDamage: 0, promoted: false }] })).toBeNull();
+    expect(combatVeteranHighlight({ units: [
+      { identityId: 'v1', alias: 'Rivas', beforeLevel: 5, kills: 1, bossDamage: 0, promoted: false },
+      { identityId: 'rookie', alias: 'Nora', beforeLevel: 1, kills: 2, bossDamage: 0, promoted: false },
+    ] })?.identityId).toBe('rookie');
+  });
+
 });

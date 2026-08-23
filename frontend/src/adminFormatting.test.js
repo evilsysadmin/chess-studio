@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from './adminFormatting.js';
+import { adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from './adminFormatting.js';
 
 describe('formato temporal del panel admin', () => {
   it('usa español y reloj de 24 horas sin AM/PM', () => {
@@ -25,6 +25,13 @@ describe('formato temporal del panel admin', () => {
     expect(sortAdminUsers(users).map((user) => user.username)).toEqual([
       'foreground', 'online', 'idle', 'offline',
     ]);
+  });
+
+  it('clasifica releases reportadas sin asumir que toda diferencia es antigua', () => {
+    expect(adminClientReleaseState('v16.6dm21', 'v16.6dm21')).toMatchObject({ id: 'current', label: 'Actual' });
+    expect(adminClientReleaseState('v16.6dm19', 'v16.6dm21')).toMatchObject({ id: 'outdated', label: 'Antigua' });
+    expect(adminClientReleaseState('v16.6dm22', 'v16.6dm21')).toMatchObject({ id: 'newer', label: 'Más nueva' });
+    expect(adminClientReleaseState(null, 'v16.6dm21')).toMatchObject({ id: 'unknown', label: 'Sin dato' });
   });
 
   it('filtra rápidamente por presencia y por actividad gruesa', () => {

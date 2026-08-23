@@ -1,3 +1,5 @@
+import { combatVeteranHighlight } from '../combatDebrief.js';
+
 
 const PIECE = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
 
@@ -12,6 +14,8 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
   if (!debrief) return null;
   const fallen = debrief.units.filter((unit) => unit.fallen);
   const promoted = debrief.units.filter((unit) => unit.promoted);
+  const veteranHighlight = combatVeteranHighlight(debrief);
+  const secondaryHighlights = debrief.topUnits.filter((unit) => unit.identityId !== veteranHighlight?.identityId);
   return (
     <section className={`combat-debrief ${compact ? 'compact' : ''}`} aria-label="Informe postcombate">
       <div className="combat-debrief-heading">
@@ -29,18 +33,29 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
         <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
       </div>
 
-      {debrief.topUnits.length > 0 && (
-        <div className="combat-debrief-section">
-          <strong>Destacados</strong>
+      {veteranHighlight && (
+        <article className="combat-veteran-highlight" aria-label="Veterano destacado">
+          <span className="combat-veteran-highlight-piece" aria-hidden="true">{PIECE[veteranHighlight.originType] || '♟'}</span>
+          <div>
+            <small>VETERANO DESTACADO</small>
+            <strong>{veteranHighlight.alias}</strong>
+            <span>{veteranHighlight.kills} bajas{veteranHighlight.bossDamage ? ` · ${veteranHighlight.bossDamage} daño boss` : ''}{veteranHighlight.promoted ? ` · Ascenso a ${veteranHighlight.afterRank}` : ''}</span>
+          </div>
+        </article>
+      )}
+
+      {secondaryHighlights.length > 0 && (
+        <details className="combat-debrief-more-units">
+          <summary>Ver otros destacados</summary>
           <div className="combat-debrief-unit-grid">
-            {debrief.topUnits.map((unit) => (
+            {secondaryHighlights.map((unit) => (
               <article key={unit.identityId || unit.key} className="combat-debrief-unit">
                 <span className="combat-debrief-unit-piece" aria-hidden="true">{PIECE[unit.originType] || '♟'}</span>
                 <div><b>{unit.alias}</b><small>{unit.kills} bajas{unit.bossDamage ? ` · ${unit.bossDamage} daño boss` : ''}{unit.promoted ? ` · ASCENSO a ${unit.afterRank}` : ''}</small></div>
               </article>
             ))}
           </div>
-        </div>
+        </details>
       )}
 
       {fallen.length > 0 && (

@@ -20,23 +20,27 @@ describe('wiring de continuidad entre releases', () => {
     expect(rootBoundary).toContain('loadActiveGameSession()');
   });
 
-  it('App rehidrata partidas normales y de torneo desde la sesión activa', () => {
+  it('App delega la rehidratación normal/torneo a un restaurador de sesión dedicado', () => {
     const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
+    const restoreHook = fs.readFileSync(path.resolve(process.cwd(), 'src/useActiveSessionRestore.js'), 'utf8');
     expect(app).toContain('loadActiveGameSession()?.route');
-    expect(app).toContain("saved.route === 'tournamentGame'");
-    expect(app).toContain('restoreActiveSession(saved)');
+    expect(app).toContain('useActiveSessionRestore({');
     expect(app).toContain('Restaurando partida en curso…');
+    expect(restoreHook).toContain("saved.route === 'tournamentGame'");
+    expect(restoreHook).toContain('api.getGame(saved.gameId)');
+    expect(restoreHook).toContain('restoreActiveSession(saved)');
   });
 
 
   it('ErrorBoundary prioriza recuperar una partida activa antes de volver al menú', () => {
     const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
+    const restoreHook = fs.readFileSync(path.resolve(process.cwd(), 'src/useActiveSessionRestore.js'), 'utf8');
     const boundary = fs.readFileSync(path.resolve(process.cwd(), 'src/components/ErrorBoundary.jsx'), 'utf8');
     expect(app).toContain('onRecover={recoverSessionFromBoundary}');
-    expect(app).toContain("return restoreActiveSession(saved)");
-    expect(app).toContain("route: 'tournamentGame', gameId: tournamentGame.id");
-    expect(app).toContain("route: 'game'");
-    expect(app).toContain("currentViewRef.current === 'combat' || currentViewRef.current === 'roguelike'");
+    expect(restoreHook).toContain("route: 'tournamentGame', gameId: tournamentGame.id");
+    expect(restoreHook).toContain("route: 'game'");
+    expect(restoreHook).toContain("currentView === 'combat' || currentView === 'roguelike'");
+    expect(restoreHook).toContain("if (candidate.type === 'session') return restoreActiveSession(candidate.session)");
     expect(boundary).toContain('Recuperar partida');
     expect(boundary).toContain('Volver al menú');
     expect(boundary).toContain('La partida sigue guardada');
@@ -44,14 +48,16 @@ describe('wiring de continuidad entre releases', () => {
 
   it('auto-reconcilia con backend después de offline → online sin abandonar el tablero', () => {
     const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
-    expect(app).toContain("import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js'");
-    expect(app).toContain("window.addEventListener('offline', handleOffline)");
-    expect(app).toContain("window.addEventListener('online', handleOnline)");
-    expect(app).toContain('setGameSaveState(SAVE_STATUS.SAVING)');
-    expect(app).toContain('const result = await fetchReconnectGame(target.gameId, api.getGame)');
-    expect(app).toContain("if (target.route === 'tournamentGame') setTournamentGame(result.game)");
-    expect(app).toContain('else setGame(result.game)');
-    expect(app).toContain('La última posición confirmada sigue intacta');
+    const reconnectHook = fs.readFileSync(path.resolve(process.cwd(), 'src/useGameReconnect.js'), 'utf8');
+    expect(app).toContain('useGameReconnect({');
+    expect(app).toContain('getGame: api.getGame');
+    expect(reconnectHook).toContain("window.addEventListener('offline', handleOffline)");
+    expect(reconnectHook).toContain("window.addEventListener('online', handleOnline)");
+    expect(reconnectHook).toContain('SAVE_STATUS.SAVING');
+    expect(reconnectHook).toContain('fetchReconnectGame(target.gameId');
+    expect(reconnectHook).toContain("target.route === 'tournamentGame'");
+    expect(reconnectHook).toContain('onGame?.(result.game)');
+    expect(reconnectHook).toContain('La última posición confirmada sigue intacta');
   });
 
   it('la partida activa expone estado real de guardado y conexión', () => {
@@ -60,7 +66,9 @@ describe('wiring de continuidad entre releases', () => {
     const badge = fs.readFileSync(path.resolve(process.cwd(), 'src/components/SaveStatusBadge.jsx'), 'utf8');
     expect(app).toContain('<SaveStatusBadge state={gameSaveState} />');
     expect(app).toContain('onPersistenceState={setGameSaveState}');
-    expect(app).toContain('if (persisted) setGameSaveState(SAVE_STATUS.SAVED)');
+    const persistenceHook = fs.readFileSync(path.resolve(process.cwd(), 'src/useActiveGameSessionPersistence.js'), 'utf8');
+    expect(app).toContain('useActiveGameSessionPersistence({');
+    expect(persistenceHook).toContain('if (persisted) onPersistenceState?.(SAVE_STATUS.SAVED)');
     expect(gameScreen).toContain("onPersistenceState?.('saving')");
     expect(gameScreen).toContain("onPersistenceState?.('error')");
     expect(badge).toContain("window.addEventListener('offline', update)");
