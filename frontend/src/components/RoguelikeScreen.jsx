@@ -490,15 +490,20 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
                         : 'Continúa con la siguiente fase de la operación.';
             return (
               <>
-                <div className="campaign-status-strip campaign-command-status-strip" aria-label="Estado operativo de campaña">
-                  <span>Ruta <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
+                <div className="campaign-status-strip campaign-command-status-strip simplified" aria-label="Estado operativo de campaña">
+                  <span>Sector <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
                   <span>Créditos <b>{campaign.operationalCredits}</b></span>
-                  <span>XP combate <b>{roster.combatXp || 0}</b></span>
-                  <span>Efectivos <b>{rosterDeployment.totalRoster}</b></span>
-                  <span>Veteranos <b>{veteranCount}</b></span>
-                  <span>Reserva <b>{rosterDeployment.reserveCount}</b></span>
                   <span className={rosterDeployment.fallenCount ? 'danger-text' : ''}>Bajas <b>{rosterDeployment.fallenCount}</b></span>
                 </div>
+                <details className="campaign-compact-details">
+                  <summary>Estado del ejército</summary>
+                  <div>
+                    <span>XP combate <b>{roster.combatXp || 0}</b></span>
+                    <span>Efectivos <b>{rosterDeployment.totalRoster}</b></span>
+                    <span>Veteranos <b>{veteranCount}</b></span>
+                    <span>Reserva <b>{rosterDeployment.reserveCount}</b></span>
+                  </div>
+                </details>
                 <div className={`campaign-situation-banner ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
                   <span>SIGUIENTE PASO</span>
                   <strong>{nextStep}</strong>

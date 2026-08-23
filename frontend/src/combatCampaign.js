@@ -96,18 +96,18 @@ export function campaignIntelBriefing(state, node = campaignNode(state)) {
     levelLabel: CAMPAIGN_INTEL_TIERS[level]?.label || 'Sin reconocimiento',
     threatBand: threatBand(difficulty),
     exactDifficulty: null,
-    modifierLabel: null,
-    modifierDescription: null,
+    // Las reglas visibles del tablero nunca se ocultan detrás de intel.
+    // La intel compra precisión estratégica, no evita sorpresas injustas.
+    modifierLabel: modifier?.label || 'Material estándar',
+    modifierDescription: modifier?.description || 'Sin modificador material adicional.',
     bossHp: null,
     note: 'La inteligencia nunca revela movimientos concretos del motor.',
   };
   if (level >= 1) result.threatRange = `${Math.max(5, difficulty - 5)}–${Math.min(100, difficulty + 5)}`;
   if (level >= 2) {
     result.exactDifficulty = difficulty;
-    result.modifierLabel = modifier?.label || 'Material estándar';
   }
   if (level >= 3) {
-    result.modifierDescription = modifier?.description || 'Sin modificador material adicional.';
     if (node.type === 'boss') result.bossHp = ROGUELIKE_BOSS.maxHp;
   }
   return result;
@@ -182,11 +182,14 @@ function pick(seed, token, list) {
 
 function modifierForNode(seed, stage, lane, type) {
   if (type === 'boss') return 'none';
+  // Onboarding: el primer sector es ajedrez materialmente estándar. Las
+  // asimetrías aparecen después y siempre se anuncian antes de combatir.
+  if (type === 'battle' && stage === 1) return 'none';
   if (type === 'elite') {
     if (stage >= 6) return pick(seed, `elite-${stage}-${lane}`, ['extra_queen', 'double_pawns']);
     return pick(seed, `elite-${stage}-${lane}`, ['extra_rook', 'double_pawns', 'extra_queen']);
   }
-  if (stage <= 2) return pick(seed, `battle-${stage}-${lane}`, ['extra_knight', 'extra_bishop']);
+  if (stage <= 2) return pick(seed, `battle-${stage}-${lane}`, ['none', 'none', 'extra_knight', 'extra_bishop']);
   if (stage <= 4) return pick(seed, `battle-${stage}-${lane}`, ['extra_bishop', 'extra_rook', 'double_pawns']);
   return pick(seed, `battle-${stage}-${lane}`, ['extra_rook', 'double_pawns', 'extra_queen']);
 }

@@ -45,7 +45,7 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     summary: 'Ruta, eventos, campamentos, élites, reservas y boss.',
     steps: [
       { title: 'Lee el mapa completo', text: 'La operación muestra los siete sectores, sus tres carriles y todas las bifurcaciones. La línea dorada marca tu ruta recorrida y las conexiones activas enseñan únicamente los destinos accesibles.' },
-      { title: 'Elige la ruta', text: 'Combates, élites, eventos y campamentos se ven de antemano, pero la dificultad exacta, los modificadores y los datos del boss siguen ocultos hasta comprar inteligencia.' },
+      { title: 'Elige la ruta', text: 'Combates, élites, eventos y campamentos se ven de antemano. Cualquier regla que cambie el material inicial se anuncia siempre antes de combatir; la intel compra precisión, no evita sorpresas.' },
       { title: 'El barracón persiste', text: 'Los veteranos, reservas, rangos y bajas sobreviven a la campaña. Las ventajas de campaña son temporales.' },
       { title: 'Las élites pagan mejor', text: 'Una victoria élite entrega más créditos operativos, mejores recompensas y puede ampliar el barracón con un refuerzo.' },
       { title: 'Reliquias operativas', text: 'Algunos eventos y élites dejan equipo estratégico que abarata intel, mejora créditos o reduce ruido. Dura sólo durante esa operación y no cambia cómo se mueve ninguna pieza.' },
@@ -59,7 +59,7 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     summary: 'Gasta recursos para conocer amenazas antes de arriesgar veteranos.',
     steps: [
       { title: 'Los créditos se ganan combatiendo', text: 'Las victorias de campaña generan créditos operativos. Las élites y el boss pagan más; repetir un estado ya resuelto no duplica la recompensa.' },
-      { title: 'La intel tiene niveles', text: 'Contacto revela una banda de amenaza; Evaluación añade dificultad exacta y tipo de modificador; Dossier explica el modificador y datos especiales del boss.' },
+      { title: 'La intel tiene niveles', text: 'Contacto revela una banda de amenaza; Evaluación añade la dificultad exacta; Dossier descubre detalles especiales del enemigo y del boss. Las reglas visibles del tablero son públicas desde el briefing.' },
       { title: 'La información es real', text: 'El briefing se deriva del nodo y sus reglas. Nunca inventa debilidades ni revela la jugada concreta que hará el motor.' },
       { title: 'Intel o reservas', text: 'El objetivo es decidir qué veteranos arriesgar y qué fuerza desplegar, no comprar una victoria automática.' },
     ],

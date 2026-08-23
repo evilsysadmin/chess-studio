@@ -22,22 +22,26 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
         <div>
           <span className="section-label">OPERACIÓN · SECTOR {node.stage}</span>
           <h3 title={node.description}>{node.label}</h3>
-          <p className="campaign-briefing-command">Compra inteligencia si la necesitas. Después, prepara el despliegue.</p>
+          <p className="campaign-briefing-command">Primero mira qué cambia en este combate. La inteligencia sólo añade precisión.</p>
         </div>
         <button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)} aria-label="Tutorial de inteligencia">?</button>
       </div>
 
-      <div className="campaign-briefing-grid">
+      <div className="campaign-rule-alert" aria-label="Regla visible del encuentro">
+        <span>QUÉ CAMBIA EN ESTA BATALLA</span>
+        <strong>{intel.modifierLabel}</strong>
+        <p>{intel.modifierDescription}</p>
+      </div>
+
+      <div className="campaign-briefing-grid simplified">
         <section className="campaign-intel-panel" aria-label="Inteligencia de la operación">
-          <span className="campaign-intel-kicker">INTELIGENCIA · NIVEL {intel.level}/3</span>
-          <strong>{intel.levelLabel}</strong>
+          <span className="campaign-intel-kicker">INTELIGENCIA · {intel.levelLabel}</span>
           <dl>
-            <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : 'No evaluada'}</dd></div>
-            <div><dt>Dificultad exacta</dt><dd>{intel.exactDifficulty ?? 'Oculta'}</dd></div>
-            <div><dt>Modificador</dt><dd>{intel.modifierLabel || 'Oculto'}</dd></div>
-            <div><dt>Composición</dt><dd title={intel.modifierDescription || 'Sin reconocimiento suficiente'}>{intel.modifierDescription || 'Oculta'}</dd></div>
+            <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : 'Compra Contacto para estimarla'}</dd></div>
+            {intel.exactDifficulty != null && <div><dt>CPU exacta</dt><dd>{intel.exactDifficulty}</dd></div>}
             {intel.bossHp != null && <div><dt>Boss</dt><dd>Rey con {intel.bossHp} HP</dd></div>}
           </dl>
+          <small className="campaign-intel-note">La regla del tablero de arriba siempre es pública. La intel revela amenaza y detalles, no reglas ocultas.</small>
         </section>
 
         <section className="campaign-intel-buy" aria-label="Compra de inteligencia">
@@ -58,8 +62,8 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
 
       <div className="campaign-operation-primary-zone campaign-briefing-primary-zone">
         <div>
-          <span>FASE 2/4 · BRIEFING</span>
-          <small>Siguiente: revisar las 16 plazas y confirmar el despliegue.</small>
+          <span>SIGUIENTE</span>
+          <small>Prepara la fuerza que quieres arriesgar.</small>
         </div>
         <button type="button" className="primary-btn campaign-main-cta" onClick={onContinue}>PREPARAR DESPLIEGUE →</button>
       </div>

@@ -153,3 +153,23 @@ describe('Combat Chess campaign map', () => {
     expect(loadCampaign().active).toBe(false);
   });
 });
+
+describe('campaña · onboarding y reglas visibles', () => {
+  it('el primer sector no sorprende con material enemigo extra', () => {
+    const run = startCampaign('onboarding-standard-material');
+    const first = availableCampaignNodes(run).filter((node) => node.type === 'battle');
+    expect(first.length).toBeGreaterThan(0);
+    for (const node of first) expect(node.modifierId).toBe('none');
+  });
+
+  it('el briefing revela siempre la regla material aunque no se compre intel', () => {
+    let run = startCampaign('public-material-rule');
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    const briefing = campaignIntelBriefing(run, node);
+    expect(briefing.level).toBe(0);
+    expect(briefing.modifierLabel).toBeTruthy();
+    expect(briefing.modifierDescription).toBeTruthy();
+    expect(briefing.exactDifficulty).toBeNull();
+  });
+});

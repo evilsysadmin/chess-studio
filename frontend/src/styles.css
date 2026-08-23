@@ -7937,3 +7937,57 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 @media (max-width: 620px) {
   .combat-workspace .campaign-status-strip.campaign-command-status-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+
+
+/* ---------- v16.6di · Combat campaign progressive disclosure ---------- */
+.campaign-command-status-strip.simplified {
+  grid-template-columns: repeat(3, minmax(110px, 1fr)) !important;
+  max-width: 640px;
+}
+.campaign-compact-details {
+  max-width: 640px;
+  border: 1px solid rgba(255,255,255,.055);
+  border-radius: 7px;
+  background: rgba(0,0,0,.06);
+}
+.campaign-compact-details > summary {
+  cursor: pointer;
+  padding: .48rem .62rem;
+  color: var(--parchment-dim);
+  font: .61rem var(--font-mono);
+  letter-spacing: .05em;
+}
+.campaign-compact-details > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem .85rem;
+  padding: .05rem .62rem .58rem;
+  color: var(--parchment-dim);
+  font-size: .65rem;
+}
+.campaign-rule-alert {
+  display: grid;
+  gap: .22rem;
+  padding: .78rem .86rem;
+  border: 1px solid rgba(191,152,82,.28);
+  border-left: 4px solid var(--brass);
+  border-radius: 9px;
+  background: rgba(191,152,82,.075);
+}
+.campaign-rule-alert > span {
+  color: var(--brass);
+  font: .57rem var(--font-mono);
+  letter-spacing: .13em;
+}
+.campaign-rule-alert > strong { font-size: 1rem; }
+.campaign-rule-alert > p { margin: 0; color: var(--parchment-dim); font-size: .72rem; line-height: 1.4; }
+.campaign-briefing-grid.simplified { align-items: stretch; }
+.campaign-intel-note { display: block; margin-top: .45rem; color: var(--parchment-dim); opacity: .72; line-height: 1.4; }
+.campaign-command-strip.simplified {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 720px;
+}
+@media (max-width: 580px) {
+  .campaign-command-status-strip.simplified,
+  .campaign-command-strip.simplified { grid-template-columns: 1fr !important; max-width: none; }
+}

@@ -79,13 +79,10 @@ export default function CampaignCombatPreparation({
           <button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)} aria-label="Tutorial de despliegue">?</button>
         </header>
 
-        <div className="campaign-command-strip" aria-label="Resumen operacional">
-          <span><small>ENCUENTRO</small><b>{encounterTier || 'Campaña'}</b></span>
+        <div className="campaign-command-strip simplified" aria-label="Resumen operacional">
           <span><small>AMENAZA</small><b>{intelLabel}</b></span>
-          <span><small>DESPLEGADOS</small><b>{deploy.assignedCount}/{deploy.totalSlots}</b></span>
-          <span><small>BANQUILLO</small><b>{deploy.reserveCount}</b></span>
+          <span><small>FORMACIÓN</small><b>{deploy.assignedCount}/{deploy.totalSlots}</b></span>
           <span className={deadCount ? 'danger' : ''}><small>BAJAS</small><b>{deadCount}</b></span>
-          <span><small>XP COMBATE</small><b>{roster.combatXp || 0}</b></span>
         </div>
 
         <div className={`campaign-situation-banner ${deploymentConfirmed ? 'ready' : deadCount ? 'danger' : ''}`}>
@@ -104,11 +101,6 @@ export default function CampaignCombatPreparation({
                   ? 'Formación legal completa.'
                   : `Faltan ${missing} puesto${missing === 1 ? '' : 's'} por cubrir.`}
             </small>
-          </div>
-          <div className="campaign-force-facts">
-            <span><b>{rosterCount}</b><small>efectivos</small></span>
-            <span><b>{deploy.reserveCount}</b><small>reserva</small></span>
-            <span><b>{veteranCount}</b><small>veteranos</small></span>
           </div>
         </section>
 
@@ -149,6 +141,7 @@ export default function CampaignCombatPreparation({
               <span>Auto-subida al terminar</span>
             </label>
             <span>Dificultad efectiva: <b>{encounterIntel && encounterIntel.level < 2 ? intelLabel : (difficultyLabel || difficulty)}</b></span>
+            <span>Efectivos: <b>{rosterCount}</b> · Reserva: <b>{deploy.reserveCount}</b> · Veteranos: <b>{veteranCount}</b> · XP combate: <b>{roster.combatXp || 0}</b></span>
             <button type="button" className="secondary-btn combat-reset-link" onClick={handleResetRoster}>Reiniciar progreso persistente</button>
           </div>
           <CombatServicePanel summary={serviceSummary} compact />
