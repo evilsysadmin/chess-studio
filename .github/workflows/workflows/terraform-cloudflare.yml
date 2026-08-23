@@ -1,0 +1,312 @@
+name: Cloudflare Workers AI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "infra/cloudflare/**"
+      - ".github/workflows/terraform-cloudflare.yml"
+  pull_request:
+    paths:
+      - "infra/cloudflare/**"
+      - ".github/workflows/terraform-cloudflare.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-workers-ai
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/cloudflare
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_worker_name: chess-studio-narrative-ai
+      WORKER_NAME: chess-studio-narrative-ai
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      # GitHub runners are ephemeral. Probe Cloudflare first: on a fresh
+      # account a missing Worker is expected and must NOT make terraform import
+      # fail the deployment. Existing resources are imported into the temporary
+      # local state so subsequent applies stay idempotent without a remote state
+      # backend containing infrastructure metadata.
+      - name: Probe existing Cloudflare Worker state
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: cf_state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          probe() {
+            local url="$1"
+            local body_file="$2"
+            curl --silent --show-error \
+              --output "$body_file" \
+              --write-out '%{http_code}' \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Accept: application/json' \
+              "$url"
+          }
+
+          worker_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME"
+          worker_body="$RUNNER_TEMP/cf-worker-probe.json"
+          worker_status="$(probe "$worker_api" "$worker_body")"
+
+          case "$worker_status" in
+            200)
+              echo 'Worker existente: se importará al state temporal.'
+              echo 'worker_exists=true' >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); codes={item.get("code") for item in payload.get("errors", []) if isinstance(item, dict)}; 10007 in codes or sys.exit(f"Cloudflare devolvió 404 inesperado: {payload}")' "$worker_body"
+              echo 'Worker inexistente: primera instalación, Terraform lo creará.'
+              echo 'worker_exists=false' >> "$GITHUB_OUTPUT"
+              echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+            *)
+              echo "Cloudflare respondió HTTP $worker_status al consultar el Worker" >&2
+              cat "$worker_body" >&2 || true
+              exit 1
+              ;;
+          esac
+
+          subdomain_api="$worker_api/subdomain"
+          subdomain_body="$RUNNER_TEMP/cf-subdomain-probe.json"
+          subdomain_status="$(probe "$subdomain_api" "$subdomain_body")"
+          case "$subdomain_status" in
+            200)
+              echo 'workers.dev existente: se importará al state temporal.'
+              echo 'subdomain_exists=true' >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo 'workers.dev aún no configurado: Terraform lo creará.'
+              echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Cloudflare respondió HTTP $subdomain_status al consultar workers.dev" >&2
+              cat "$subdomain_body" >&2 || true
+              exit 1
+              ;;
+          esac
+
+      - name: Ensure account workers.dev namespace
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: account_subdomain
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
+          body="$RUNNER_TEMP/cf-account-subdomain.json"
+          status="$(curl --silent --show-error \
+            --output "$body" \
+            --write-out '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            "$api")"
+
+          case "$status" in
+            200)
+              echo 'workers.dev de cuenta ya configurado.'
+              ;;
+            404)
+              # Stable public name without exposing any part of the account id.
+              suffix="$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | sha256sum | cut -c1-16)"
+              desired_subdomain="chess-studio-$suffix"
+              echo "workers.dev de cuenta ausente; creando namespace $desired_subdomain.workers.dev"
+              payload="$(python3 -c 'import json,sys; print(json.dumps({"subdomain": sys.argv[1]}))' "$desired_subdomain")"
+              status="$(curl --silent --show-error \
+                --output "$body" \
+                --write-out '%{http_code}' \
+                -X PUT \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                --data "$payload" \
+                "$api")"
+              if [[ "$status" != 200 ]]; then
+                echo "Cloudflare respondió HTTP $status al crear workers.dev de cuenta" >&2
+                cat "$body" >&2 || true
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Cloudflare respondió HTTP $status al consultar workers.dev de cuenta" >&2
+              cat "$body" >&2 || true
+              exit 1
+              ;;
+          esac
+
+          subdomain="$(python3 -c 'import json,pathlib,sys; data=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); print((data.get("result") or {}).get("subdomain") or "")' "$body")"
+          test -n "$subdomain" || { echo 'Cloudflare no devolvió el subdominio workers.dev de cuenta' >&2; cat "$body" >&2 || true; exit 1; }
+          echo "subdomain=$subdomain" >> "$GITHUB_OUTPUT"
+
+      - name: Import existing Worker state
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.worker_exists == 'true'
+        run: terraform import cloudflare_workers_script.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
+
+      - name: Import existing workers.dev state
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.subdomain_exists == 'true'
+        run: terraform import cloudflare_workers_script_subdomain.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
+
+      - name: Terraform plan
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
+
+      # Terraform must NOT own this value: secret_text would store it in state.
+      # Wrangler's Secrets API keeps the value out of the repository/state.
+      - name: Install Worker shared secret
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CHESS_AI_SHARED_SECRET: ${{ secrets.CHESS_AI_SHARED_SECRET }}
+        run: |
+          test -n "$CHESS_AI_SHARED_SECRET"
+          printf '%s' "$CHESS_AI_SHARED_SECRET" \
+            | npx --yes wrangler@4 secret put CHESS_AI_SHARED_SECRET \
+                --name chess-studio-narrative-ai
+      - name: Resolve canonical workers.dev URL and verify health
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: worker_url
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          # Do not reconstruct workers.dev hostnames. Cloudflare's current
+          # Worker details API exposes the canonical public URL and deployment
+          # timestamp, so use those as the source of truth.
+          worker_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/workers/$WORKER_NAME"
+          worker_body="$RUNNER_TEMP/cf-worker-details.json"
+          worker_status="$(curl --silent --show-error \
+            --output "$worker_body" \
+            --write-out '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            "$worker_api")"
+
+          if [[ "$worker_status" != 200 ]]; then
+            echo "Cloudflare respondió HTTP $worker_status al consultar los detalles del Worker" >&2
+            cat "$worker_body" >&2 || true
+            exit 1
+          fi
+
+          readarray -t worker_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); result=payload.get("result") or {}; subdomain=result.get("subdomain") or {}; print(subdomain.get("url") or ""); print("true" if subdomain.get("enabled") is True else "false"); print(result.get("deployed_on") or ""); print(result.get("name") or "")' "$worker_body")
+
+          worker_url="${worker_meta[0]:-}"
+          worker_enabled="${worker_meta[1]:-false}"
+          deployed_on="${worker_meta[2]:-}"
+          reported_name="${worker_meta[3]:-}"
+
+          [[ "$reported_name" == "$WORKER_NAME" ]] || {
+            echo "Cloudflare devolvió un Worker inesperado: $reported_name" >&2
+            exit 1
+          }
+          [[ "$worker_enabled" == true ]] || {
+            echo 'Cloudflare conoce el Worker pero su workers.dev canónico no está enabled.' >&2
+            cat "$worker_body" >&2 || true
+            exit 1
+          }
+          [[ -n "$worker_url" ]] || {
+            echo 'Cloudflare no devolvió result.subdomain.url para el Worker.' >&2
+            cat "$worker_body" >&2 || true
+            exit 1
+          }
+          [[ -n "$deployed_on" ]] || {
+            echo 'El Worker existe pero Cloudflare informa deployed_on=null: no hay una versión desplegada.' >&2
+            echo 'Esto es un problema de deployment, no de DNS/workers.dev.' >&2
+            cat "$worker_body" >&2 || true
+            exit 1
+          }
+
+          echo "Cloudflare URL canónica: $worker_url"
+          echo "Último deployment: $deployed_on"
+          echo "url=$worker_url" >> "$GITHUB_OUTPUT"
+
+          # A new workers.dev route can need a short propagation window. Keep
+          # the probe read-only, but print status/body so a real 404/5xx is
+          # diagnosable instead of being hidden behind curl -f.
+          health_url="${worker_url%/}/health"
+          health_ok=false
+          for attempt in {1..12}; do
+            health_body="$RUNNER_TEMP/cf-health-$attempt.txt"
+            health_status="$(curl --silent --show-error \
+              --output "$health_body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'User-Agent: chess-studio-cf-ai-health/1' \
+              "$health_url" || true)"
+
+            if [[ "$health_status" == 200 ]] && python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); raise SystemExit(0 if payload.get("ok") is True and payload.get("service") == "chess-studio-narrative-ai" else 1)' "$health_body"; then
+              health_ok=true
+              break
+            fi
+
+            echo "Health HTTP ${health_status:-curl-error} en $health_url (intento $attempt/12)"
+            sed -n '1,20p' "$health_body" 2>/dev/null || true
+            sleep 5
+          done
+
+          [[ "$health_ok" == true ]] || {
+            echo "El Worker no respondió correctamente en $health_url" >&2
+            echo "URL devuelta directamente por Cloudflare: $worker_url" >&2
+            exit 1
+          }
+
+          # Reuse the existing parser too: validates service/model contract.
+          python3 ../../scripts/cloudflare_ai_preflight.py --worker-url "$worker_url"
+
+          {
+            echo '### Cloudflare Workers AI desplegado'
+            echo
+            echo "- Worker: \`$worker_url\`"
+            echo "- Deployed: \`$deployed_on\`"
+            echo '- Health: OK'
+            echo '- Render: configura `CF_AI_WORKER_URL` con esa URL.'
+            echo '- Render y GitHub deben compartir el mismo `CHESS_AI_SHARED_SECRET`.'
+          } >> "$GITHUB_STEP_SUMMARY"
