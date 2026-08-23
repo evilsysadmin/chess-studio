@@ -1,0 +1,118 @@
+name: Cloudflare Workers AI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "infra/cloudflare/**"
+      - ".github/workflows/terraform-cloudflare.yml"
+  pull_request:
+    paths:
+      - "infra/cloudflare/**"
+      - ".github/workflows/terraform-cloudflare.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-workers-ai
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/cloudflare
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      # GitHub runners are ephemeral. For these two fixed resources we import
+      # current Cloudflare state on every deploy instead of persisting a state
+      # file containing infrastructure metadata in an extra service.
+      - name: Import existing Worker state when present
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          terraform import cloudflare_workers_script.narrative_ai \
+            "$TF_VAR_cloudflare_account_id/chess-studio-narrative-ai" || true
+          terraform import cloudflare_workers_script_subdomain.narrative_ai \
+            "$TF_VAR_cloudflare_account_id/chess-studio-narrative-ai" || true
+
+      - name: Terraform plan
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
+
+      # Terraform must NOT own this value: secret_text would store it in state.
+      # Wrangler's Secrets API keeps the value out of the repository/state.
+      - name: Install Worker shared secret
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CHESS_AI_SHARED_SECRET: ${{ secrets.CHESS_AI_SHARED_SECRET }}
+        run: |
+          test -n "$CHESS_AI_SHARED_SECRET"
+          printf '%s' "$CHESS_AI_SHARED_SECRET" \
+            | npx --yes wrangler@4 secret put CHESS_AI_SHARED_SECRET \
+                --name chess-studio-narrative-ai
+      - name: Resolve workers.dev URL and verify health
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: worker_url
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
+          payload="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            "$api")"
+          subdomain="$(python3 -c 'import json,sys; data=json.load(sys.stdin); print((data.get("result") or {}).get("subdomain") or "")' <<<"$payload")"
+          test -n "$subdomain" || { echo "No se pudo resolver el subdominio workers.dev" >&2; exit 1; }
+          worker_url="https://chess-studio-narrative-ai.$subdomain.workers.dev"
+          echo "url=$worker_url" >> "$GITHUB_OUTPUT"
+          python3 ../../scripts/cloudflare_ai_preflight.py --worker-url "$worker_url"
+          {
+            echo '### Cloudflare Workers AI desplegado'
+            echo
+            echo "- Worker: \`$worker_url\`"
+            echo '- Health: OK'
+            echo '- Render: configura `CF_AI_WORKER_URL` con esa URL.'
+            echo '- Render y GitHub deben compartir el mismo `CHESS_AI_SHARED_SECRET`.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
