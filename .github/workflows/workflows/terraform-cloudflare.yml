@@ -32,7 +32,10 @@ jobs:
       TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       TF_VAR_worker_name: chess-studio-narrative-ai
+      TF_VAR_custom_domain_hostname: ai.shadowops.dpdns.org
+      TF_VAR_custom_domain_zone_name: shadowops.dpdns.org
       WORKER_NAME: chess-studio-narrative-ai
+      CUSTOM_DOMAIN: ai.shadowops.dpdns.org
 
     steps:
       - name: Checkout
@@ -57,11 +60,9 @@ jobs:
       - name: Terraform validate
         run: terraform validate
 
-      # GitHub runners are ephemeral. Probe Cloudflare first: on a fresh
-      # account a missing Worker is expected and must NOT make terraform import
-      # fail the deployment. Existing resources are imported into the temporary
-      # local state so subsequent applies stay idempotent without a remote state
-      # backend containing infrastructure metadata.
+      # GitHub runners are ephemeral and this small overlay deliberately has no
+      # remote Terraform state backend. Discover/import existing Cloudflare
+      # resources before plan so first install and later updates are both safe.
       - name: Probe existing Cloudflare Worker state
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         id: cf_state
@@ -97,7 +98,6 @@ jobs:
               echo 'Worker inexistente: primera instalación, Terraform lo creará.'
               echo 'worker_exists=false' >> "$GITHUB_OUTPUT"
               echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
-              exit 0
               ;;
             *)
               echo "Cloudflare respondió HTTP $worker_status al consultar el Worker" >&2
@@ -106,78 +106,65 @@ jobs:
               ;;
           esac
 
-          subdomain_api="$worker_api/subdomain"
-          subdomain_body="$RUNNER_TEMP/cf-subdomain-probe.json"
-          subdomain_status="$(probe "$subdomain_api" "$subdomain_body")"
-          case "$subdomain_status" in
-            200)
-              echo 'workers.dev existente: se importará al state temporal.'
-              echo 'subdomain_exists=true' >> "$GITHUB_OUTPUT"
-              ;;
-            404)
-              echo 'workers.dev aún no configurado: Terraform lo creará.'
-              echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "Cloudflare respondió HTTP $subdomain_status al consultar workers.dev" >&2
-              cat "$subdomain_body" >&2 || true
-              exit 1
-              ;;
-          esac
+          if [[ "$worker_status" == 200 ]]; then
+            subdomain_api="$worker_api/subdomain"
+            subdomain_body="$RUNNER_TEMP/cf-subdomain-probe.json"
+            subdomain_status="$(probe "$subdomain_api" "$subdomain_body")"
+            case "$subdomain_status" in
+              200)
+                echo 'Configuración workers.dev existente: se importará y quedará deshabilitada.'
+                echo 'subdomain_exists=true' >> "$GITHUB_OUTPUT"
+                ;;
+              404)
+                echo 'Configuración workers.dev ausente: Terraform la declarará con enabled=false.'
+                echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "Cloudflare respondió HTTP $subdomain_status al consultar workers.dev" >&2
+                cat "$subdomain_body" >&2 || true
+                exit 1
+                ;;
+            esac
+          fi
 
-      - name: Ensure account workers.dev namespace
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        id: account_subdomain
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
-          body="$RUNNER_TEMP/cf-account-subdomain.json"
-          status="$(curl --silent --show-error \
-            --output "$body" \
+          domains_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains"
+          domains_body="$RUNNER_TEMP/cf-custom-domain-probe.json"
+          domains_status="$(curl --silent --show-error \
+            --output "$domains_body" \
             --write-out '%{http_code}' \
+            --get \
+            --data-urlencode "hostname=$CUSTOM_DOMAIN" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H 'Accept: application/json' \
-            "$api")"
+            "$domains_api")"
 
-          case "$status" in
-            200)
-              echo 'workers.dev de cuenta ya configurado.'
-              ;;
-            404)
-              # Stable public name without exposing any part of the account id.
-              suffix="$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | sha256sum | cut -c1-16)"
-              desired_subdomain="chess-studio-$suffix"
-              echo "workers.dev de cuenta ausente; creando namespace $desired_subdomain.workers.dev"
-              payload="$(python3 -c 'import json,sys; print(json.dumps({"subdomain": sys.argv[1]}))' "$desired_subdomain")"
-              status="$(curl --silent --show-error \
-                --output "$body" \
-                --write-out '%{http_code}' \
-                -X PUT \
-                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-                -H 'Accept: application/json' \
-                -H 'Content-Type: application/json' \
-                --data "$payload" \
-                "$api")"
-              if [[ "$status" != 200 ]]; then
-                echo "Cloudflare respondió HTTP $status al crear workers.dev de cuenta" >&2
-                cat "$body" >&2 || true
-                exit 1
-              fi
-              ;;
-            *)
-              echo "Cloudflare respondió HTTP $status al consultar workers.dev de cuenta" >&2
-              cat "$body" >&2 || true
+          if [[ "$domains_status" != 200 ]]; then
+            echo "Cloudflare respondió HTTP $domains_status al consultar el Custom Domain" >&2
+            cat "$domains_body" >&2 || true
+            exit 1
+          fi
+
+          readarray -t domain_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); host=sys.argv[2]; items=[x for x in (payload.get("result") or []) if isinstance(x,dict) and x.get("hostname")==host]; len(items)<=1 or sys.exit(f"Más de un Custom Domain para {host}: {items}"); item=items[0] if items else {}; print(item.get("id") or ""); print(item.get("service") or ""); print(item.get("zone_name") or "")' "$domains_body" "$CUSTOM_DOMAIN")
+          domain_id="${domain_meta[0]:-}"
+          domain_service="${domain_meta[1]:-}"
+          domain_zone="${domain_meta[2]:-}"
+
+          if [[ -n "$domain_id" ]]; then
+            [[ "$domain_service" == "$WORKER_NAME" ]] || {
+              echo "$CUSTOM_DOMAIN ya está asociado a otro Worker: $domain_service" >&2
               exit 1
-              ;;
-          esac
-
-          subdomain="$(python3 -c 'import json,pathlib,sys; data=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); print((data.get("result") or {}).get("subdomain") or "")' "$body")"
-          test -n "$subdomain" || { echo 'Cloudflare no devolvió el subdominio workers.dev de cuenta' >&2; cat "$body" >&2 || true; exit 1; }
-          echo "subdomain=$subdomain" >> "$GITHUB_OUTPUT"
+            }
+            [[ -z "$domain_zone" || "$domain_zone" == "shadowops.dpdns.org" ]] || {
+              echo "$CUSTOM_DOMAIN pertenece a una zona inesperada: $domain_zone" >&2
+              exit 1
+            }
+            echo "Custom Domain existente: $CUSTOM_DOMAIN ($domain_id)."
+            echo 'custom_domain_exists=true' >> "$GITHUB_OUTPUT"
+            echo "custom_domain_id=$domain_id" >> "$GITHUB_OUTPUT"
+          else
+            echo "Custom Domain inexistente: Terraform creará $CUSTOM_DOMAIN y Cloudflare gestionará DNS/TLS."
+            echo 'custom_domain_exists=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Import existing Worker state
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.worker_exists == 'true'
@@ -186,6 +173,10 @@ jobs:
       - name: Import existing workers.dev state
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.subdomain_exists == 'true'
         run: terraform import cloudflare_workers_script_subdomain.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
+
+      - name: Import existing Custom Domain state
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.custom_domain_exists == 'true'
+        run: terraform import cloudflare_workers_custom_domain.narrative_ai "$TF_VAR_cloudflare_account_id/${{ steps.cf_state.outputs.custom_domain_id }}"
 
       - name: Terraform plan
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -207,8 +198,9 @@ jobs:
           test -n "$CHESS_AI_SHARED_SECRET"
           printf '%s' "$CHESS_AI_SHARED_SECRET" \
             | npx --yes wrangler@4 secret put CHESS_AI_SHARED_SECRET \
-                --name chess-studio-narrative-ai
-      - name: Resolve canonical workers.dev URL and verify health
+                --name "$WORKER_NAME"
+
+      - name: Verify Custom Domain and health
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         id: worker_url
         shell: bash
@@ -218,64 +210,52 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Do not reconstruct workers.dev hostnames. Cloudflare's current
-          # Worker details API exposes the canonical public URL and deployment
-          # timestamp, so use those as the source of truth.
-          worker_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/workers/$WORKER_NAME"
-          worker_body="$RUNNER_TEMP/cf-worker-details.json"
-          worker_status="$(curl --silent --show-error \
-            --output "$worker_body" \
-            --write-out '%{http_code}' \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H 'Accept: application/json' \
-            "$worker_api")"
-
-          if [[ "$worker_status" != 200 ]]; then
-            echo "Cloudflare respondió HTTP $worker_status al consultar los detalles del Worker" >&2
-            cat "$worker_body" >&2 || true
-            exit 1
-          fi
-
-          readarray -t worker_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); result=payload.get("result") or {}; subdomain=result.get("subdomain") or {}; print(subdomain.get("url") or ""); print("true" if subdomain.get("enabled") is True else "false"); print(result.get("deployed_on") or ""); print(result.get("name") or "")' "$worker_body")
-
-          worker_url="${worker_meta[0]:-}"
-          worker_enabled="${worker_meta[1]:-false}"
-          deployed_on="${worker_meta[2]:-}"
-          reported_name="${worker_meta[3]:-}"
-
-          [[ "$reported_name" == "$WORKER_NAME" ]] || {
-            echo "Cloudflare devolvió un Worker inesperado: $reported_name" >&2
-            exit 1
-          }
-          [[ "$worker_enabled" == true ]] || {
-            echo 'Cloudflare conoce el Worker pero su workers.dev canónico no está enabled.' >&2
-            cat "$worker_body" >&2 || true
-            exit 1
-          }
-          [[ -n "$worker_url" ]] || {
-            echo 'Cloudflare no devolvió result.subdomain.url para el Worker.' >&2
-            cat "$worker_body" >&2 || true
-            exit 1
-          }
-          [[ -n "$deployed_on" ]] || {
-            echo 'El Worker existe pero Cloudflare informa deployed_on=null: no hay una versión desplegada.' >&2
-            echo 'Esto es un problema de deployment, no de DNS/workers.dev.' >&2
-            cat "$worker_body" >&2 || true
-            exit 1
-          }
-
-          echo "Cloudflare URL canónica: $worker_url"
-          echo "Último deployment: $deployed_on"
+          worker_url="https://$CUSTOM_DOMAIN"
           echo "url=$worker_url" >> "$GITHUB_OUTPUT"
 
-          # A new workers.dev route can need a short propagation window. Keep
-          # the probe read-only, but print status/body so a real 404/5xx is
-          # diagnosable instead of being hidden behind curl -f.
-          health_url="${worker_url%/}/health"
+          domains_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains"
+          domain_body="$RUNNER_TEMP/cf-custom-domain-live.json"
+          domain_status="$(curl --silent --show-error \
+            --output "$domain_body" \
+            --write-out '%{http_code}' \
+            --get \
+            --data-urlencode "hostname=$CUSTOM_DOMAIN" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            "$domains_api")"
+
+          [[ "$domain_status" == 200 ]] || {
+            echo "Cloudflare respondió HTTP $domain_status al verificar $CUSTOM_DOMAIN" >&2
+            cat "$domain_body" >&2 || true
+            exit 1
+          }
+
+          readarray -t domain_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); host=sys.argv[2]; service=sys.argv[3]; items=[x for x in (payload.get("result") or []) if isinstance(x,dict) and x.get("hostname")==host]; len(items)==1 or sys.exit(f"Se esperaba un Custom Domain {host}, encontrados {len(items)}"); item=items[0]; item.get("service")==service or sys.exit(f"Custom Domain apunta a {item.get('"'"'service'"'"')!r}, no a {service!r}"); print(item.get("id") or ""); print(item.get("cert_id") or ""); print(item.get("zone_name") or "")' "$domain_body" "$CUSTOM_DOMAIN" "$WORKER_NAME")
+          domain_id="${domain_meta[0]:-}"
+          cert_id="${domain_meta[1]:-}"
+          zone_name="${domain_meta[2]:-}"
+
+          test -n "$domain_id" || { echo 'Cloudflare no devolvió id del Custom Domain' >&2; exit 1; }
+          [[ "$zone_name" == "shadowops.dpdns.org" ]] || { echo "Zona inesperada para $CUSTOM_DOMAIN: $zone_name" >&2; exit 1; }
+
+          echo "Custom Domain: $worker_url"
+          echo "Domain ID: $domain_id"
+          if [[ -n "$cert_id" ]]; then
+            echo "TLS cert ID: $cert_id"
+          else
+            echo 'TLS cert todavía sin id; se esperará durante el health probe.'
+          fi
+
+          # First certificate issuance can take longer than ordinary Worker
+          # propagation. Retry for up to five minutes and surface TLS/HTTP
+          # diagnostics instead of treating curl code 35 as an opaque failure.
+          health_url="$worker_url/health"
           health_ok=false
-          for attempt in {1..12}; do
+          for attempt in {1..60}; do
             health_body="$RUNNER_TEMP/cf-health-$attempt.txt"
             health_status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 10 \
               --output "$health_body" \
               --write-out '%{http_code}' \
               -H 'Accept: application/json' \
@@ -287,26 +267,26 @@ jobs:
               break
             fi
 
-            echo "Health HTTP ${health_status:-curl-error} en $health_url (intento $attempt/12)"
+            echo "Health HTTP ${health_status:-curl-error} en $health_url (intento $attempt/60)"
             sed -n '1,20p' "$health_body" 2>/dev/null || true
             sleep 5
           done
 
           [[ "$health_ok" == true ]] || {
-            echo "El Worker no respondió correctamente en $health_url" >&2
-            echo "URL devuelta directamente por Cloudflare: $worker_url" >&2
+            echo "El Custom Domain no respondió correctamente en $health_url tras 5 minutos." >&2
+            echo 'Revisa que la zona esté activa en esta cuenta y que no exista un DNS record conflictivo para ai.shadowops.dpdns.org.' >&2
             exit 1
           }
 
-          # Reuse the existing parser too: validates service/model contract.
           python3 ../../scripts/cloudflare_ai_preflight.py --worker-url "$worker_url"
 
           {
             echo '### Cloudflare Workers AI desplegado'
             echo
-            echo "- Worker: \`$worker_url\`"
-            echo "- Deployed: \`$deployed_on\`"
+            echo "- Worker: \`$WORKER_NAME\`"
+            echo "- Custom Domain: \`$worker_url\`"
+            echo '- workers.dev: deshabilitado para este Worker'
             echo '- Health: OK'
-            echo '- Render: configura `CF_AI_WORKER_URL` con esa URL.'
+            echo '- Render: configura `CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org`.'
             echo '- Render y GitHub deben compartir el mismo `CHESS_AI_SHARED_SECRET`.'
           } >> "$GITHUB_STEP_SUMMARY"
