@@ -3,7 +3,12 @@ output "worker_name" {
   value       = var.worker_name
 }
 
+output "custom_domain_url" {
+  description = "Stable public URL of the narrative Worker."
+  value       = "https://${cloudflare_workers_custom_domain.narrative_ai.hostname}"
+}
+
 output "workers_dev_enabled" {
-  description = "Whether workers.dev is enabled for the narrative Worker."
+  description = "workers.dev is deliberately disabled; production uses the Custom Domain."
   value       = cloudflare_workers_script_subdomain.narrative_ai.enabled
 }

@@ -16,6 +16,18 @@ variable "worker_name" {
   default     = "chess-studio-narrative-ai"
 }
 
+variable "custom_domain_hostname" {
+  description = "Public Custom Domain routed directly to the narrative Worker."
+  type        = string
+  default     = "ai.shadowops.dpdns.org"
+}
+
+variable "custom_domain_zone_name" {
+  description = "Cloudflare zone containing the Worker Custom Domain."
+  type        = string
+  default     = "shadowops.dpdns.org"
+}
+
 variable "compatibility_date" {
   description = "Cloudflare Worker compatibility date."
   type        = string

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Static/live preflight for the optional Cloudflare Workers AI narrator.
 
-No secrets are required for the default static check.  Pass --worker-url after a
+No secrets are required for the default static check. Pass --worker-url after a
 real deploy to verify the public /health endpoint without invoking the model.
 """
 from __future__ import annotations
@@ -63,27 +63,42 @@ def static_check() -> list[str]:
     for needle in ('CF_AI_WORKER_URL', 'CHESS_AI_SHARED_SECRET', 'sign_request(', 'validate_grounded_output('):
         require(backend, needle, "backend", errors)
 
-    # Secrets and workers.dev must stay server-side; browser talks only to FastAPI.
-    forbidden_frontend = ('CHESS_AI_SHARED_SECRET', 'CF_AI_WORKER_URL', 'workers.dev')
+    # Secrets and the direct Worker origin must stay server-side; browser talks only to FastAPI.
+    forbidden_frontend = ('CHESS_AI_SHARED_SECRET', 'CF_AI_WORKER_URL', 'ai.shadowops.dpdns.org', 'workers.dev')
     for needle in forbidden_frontend:
         if needle in frontend:
             errors.append(f"frontend: secreto/Worker directo expuesto: {needle}")
     require(frontend, '/narrative', "frontend FastAPI route", errors)
 
-    # First deploys have no Worker to import. The workflow must probe Cloudflare
-    # and import only resources that already exist; swallowing terraform import
-    # errors with `|| true` hides authentication/provider failures.
+    # First deploys have no Worker/Custom Domain to import. The workflow must
+    # discover existing resources and import only those that exist; swallowing
+    # terraform import errors would hide real authentication/provider failures.
     require(workflow, 'Probe existing Cloudflare Worker state', "workflow state probe", errors)
     require(workflow, "steps.cf_state.outputs.worker_exists == 'true'", "workflow conditional Worker import", errors)
-    require(workflow, "steps.cf_state.outputs.subdomain_exists == 'true'", "workflow conditional subdomain import", errors)
-    require(workflow, 'desired_subdomain="chess-studio-$suffix"', "workflow account workers.dev bootstrap", errors)
-    require(workflow, '- name: Ensure account workers.dev namespace', "workflow account workers.dev bootstrap step", errors)
-    require(workflow, '-X PUT', "workflow account workers.dev create", errors)
-    require(workflow, 'for attempt in {1..12}', "workflow health propagation retry", errors)
-    require(workflow, 'workers/workers/$WORKER_NAME', "workflow canonical Worker details API", errors)
-    require(workflow, 'subdomain.get("url")', "workflow canonical workers.dev URL", errors)
-    require(workflow, 'result.get("deployed_on")', "workflow deployment-state check", errors)
+    require(workflow, "steps.cf_state.outputs.subdomain_exists == 'true'", "workflow conditional workers.dev settings import", errors)
+    require(workflow, "steps.cf_state.outputs.custom_domain_exists == 'true'", "workflow conditional Custom Domain import", errors)
+    require(workflow, 'CUSTOM_DOMAIN: ai.shadowops.dpdns.org', "workflow Custom Domain", errors)
+    require(workflow, '/workers/domains', "workflow Workers Domains API", errors)
+    require(workflow, 'cloudflare_workers_custom_domain.narrative_ai', "workflow Custom Domain Terraform import", errors)
+    require(workflow, '- name: Verify Custom Domain and health', "workflow Custom Domain health step", errors)
+    require(workflow, 'for attempt in {1..60}', "workflow TLS/health propagation retry", errors)
     require(workflow, 'Health HTTP ${health_status:-curl-error}', "workflow diagnosable live health", errors)
+    require(workflow, 'CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org', "workflow Render handoff", errors)
+
+    require(tf_main, 'resource "cloudflare_workers_custom_domain" "narrative_ai"', "terraform Custom Domain", errors)
+    require(tf_main, 'hostname   = var.custom_domain_hostname', "terraform Custom Domain hostname", errors)
+    require(tf_main, 'zone_name  = var.custom_domain_zone_name', "terraform Custom Domain zone", errors)
+    require(tf_main, 'enabled          = false', "terraform workers.dev disabled", errors)
+
+    forbidden_workflow = (
+        '- name: Ensure account workers.dev namespace',
+        'desired_subdomain="chess-studio-$suffix"',
+        'subdomain.get("url")',
+    )
+    for needle in forbidden_workflow:
+        if needle in workflow:
+            errors.append(f"workflow: lógica workers.dev obsoleta presente: {needle}")
+
     if 'terraform import cloudflare_workers_script.narrative_ai' in workflow and 'narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME" || true' in workflow:
         errors.append("workflow: terraform import no debe ocultar errores con || true")
 
@@ -112,7 +127,7 @@ def live_health(worker_url: str) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--worker-url", help="URL workers.dev ya desplegada; activa check live de /health")
+    parser.add_argument("--worker-url", help="URL pública del Worker ya desplegado; activa check live de /health")
     args = parser.parse_args()
 
     errors = static_check()
