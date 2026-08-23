@@ -271,7 +271,7 @@ test-suite-audit-ci:
 release-check:
 	node scripts/release_consistency_check.mjs
 
-static-preflight: audio-check data-ux-check campaign-map-check release-check test-suite-audit security-api
+static-preflight: audio-check data-ux-check campaign-map-check release-check test-suite-audit security-api cf-ai-preflight
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py
 	@echo "==> Static preflight OK (sin npm, Docker ni red)."
@@ -382,12 +382,15 @@ help:
 
 
 # BEGIN chess-studio-ai-contract
-.PHONY: ai-contract ai-security
+.PHONY: ai-contract ai-security cf-ai-preflight
 
 ai-security:
 	python3 scripts/ai_security_gate.py
 
-ai-contract: ai-security
+cf-ai-preflight:
+	python3 scripts/cloudflare_ai_preflight.py
+
+ai-contract: ai-security cf-ai-preflight
 	cd backend-python && python -m pytest -q test_narrative_cloudflare.py test_narrative_api.py test_narrative_main_contract.py
 	cd frontend && npx vitest run src/narrativeRemote.test.js src/narrativeWiring.test.js src/aiMetrics.test.js src/narrativeProvider.test.js
 	node --check infra/cloudflare/worker/index.js
