@@ -19,6 +19,7 @@ WRANGLER = ROOT / "infra/cloudflare/wrangler.toml"
 TF_MAIN = ROOT / "infra/cloudflare/main.tf"
 BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
+WORKFLOW = ROOT / ".github/workflows/terraform-cloudflare.yml"
 
 EXPECTED_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 
@@ -35,6 +36,7 @@ def static_check() -> list[str]:
     tf_main = TF_MAIN.read_text(encoding="utf-8")
     backend = BACKEND.read_text(encoding="utf-8")
     frontend = FRONTEND_REMOTE.read_text(encoding="utf-8")
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     for needle in (
         'env.AI.run(',
@@ -67,6 +69,15 @@ def static_check() -> list[str]:
         if needle in frontend:
             errors.append(f"frontend: secreto/Worker directo expuesto: {needle}")
     require(frontend, '/narrative', "frontend FastAPI route", errors)
+
+    # First deploys have no Worker to import. The workflow must probe Cloudflare
+    # and import only resources that already exist; swallowing terraform import
+    # errors with `|| true` hides authentication/provider failures.
+    require(workflow, 'Probe existing Cloudflare Worker state', "workflow state probe", errors)
+    require(workflow, "steps.cf_state.outputs.worker_exists == 'true'", "workflow conditional Worker import", errors)
+    require(workflow, "steps.cf_state.outputs.subdomain_exists == 'true'", "workflow conditional subdomain import", errors)
+    if 'terraform import cloudflare_workers_script.narrative_ai' in workflow and 'narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME" || true' in workflow:
+        errors.append("workflow: terraform import no debe ocultar errores con || true")
 
     return errors
 
