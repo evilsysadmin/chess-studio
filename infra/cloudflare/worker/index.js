@@ -1,14 +1,14 @@
 const MODEL = "@cf/meta/llama-3.2-3b-instruct";
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
-const MAX_OUTPUT_CHARS = 420;
+const DEFAULT_MAX_OUTPUT_CHARS = 420;
+const PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900;
 const SENSITIVE_FACT_KEY_PARTS = Object.freeze([
   "password", "passwd", "secret", "token", "jwt", "authorization",
   "cookie", "session", "email", "api_key", "apikey", "bearer",
 ]);
 
 const GENERATION = Object.freeze({
-  max_tokens: 120,
   temperature: 1.25,
   top_p: 0.96,
   top_k: 45,
@@ -16,6 +16,20 @@ const GENERATION = Object.freeze({
   frequency_penalty: 0.35,
   presence_penalty: 0.25,
 });
+
+
+function generationFor(eventType) {
+  return {
+    ...GENERATION,
+    max_tokens: eventType === "player_portrait" ? 240 : 120,
+  };
+}
+
+function maxOutputCharsFor(eventType) {
+  return eventType === "player_portrait"
+    ? PLAYER_PORTRAIT_MAX_OUTPUT_CHARS
+    : DEFAULT_MAX_OUTPUT_CHARS;
+}
 
 const SYSTEM_PROMPT = `
 Eres la CPU rival de Chess Studio. Hablas en español de España y te diriges
@@ -187,16 +201,35 @@ async function authenticatedBody(request, env) {
   return { body };
 }
 
-function normalizeOutput(result) {
+function normalizeOutput(result, maxChars = DEFAULT_MAX_OUTPUT_CHARS) {
   const text =
     result?.response ??
     result?.result?.response ??
     result?.text ??
     "";
 
-  return sanitizeString(text, MAX_OUTPUT_CHARS)
+  const clean = String(text ?? "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (clean.length <= maxChars) return clean;
+
+  // Nunca enseñes una frase amputada como "mucho e". Si alguna respuesta
+  // sobrepasa el límite defensivo, conserva la última frase completa razonable.
+  const head = clean.slice(0, maxChars + 1);
+  const minSentenceBoundary = Math.floor(maxChars * 0.55);
+  let sentenceEnd = -1;
+  for (let index = minSentenceBoundary; index < Math.min(head.length, maxChars); index += 1) {
+    if (/[.!?…]/.test(head[index]) && (index + 1 >= head.length || /\s/.test(head[index + 1]))) {
+      sentenceEnd = index;
+    }
+  }
+  if (sentenceEnd >= minSentenceBoundary) return head.slice(0, sentenceEnd + 1).trim();
+
+  const wordEnd = head.slice(0, Math.max(1, maxChars - 1)).lastIndexOf(" ");
+  const safeEnd = wordEnd > 0 ? wordEnd : Math.max(1, maxChars - 1);
+  return `${head.slice(0, safeEnd).trimEnd()}…`;
 }
 
 async function handleNarrative(request, env) {
@@ -241,7 +274,7 @@ async function handleNarrative(request, env) {
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
       ],
-      ...GENERATION,
+      ...generationFor(eventType),
     });
   } catch (error) {
     console.error("workers_ai_failed", {
@@ -251,7 +284,7 @@ async function handleNarrative(request, env) {
     return json({ ok: false, error: "provider_failure" }, 502);
   }
 
-  const text = normalizeOutput(result);
+  const text = normalizeOutput(result, maxOutputCharsFor(eventType));
   if (!text) {
     return json({ ok: false, error: "empty_provider_response" }, 502);
   }

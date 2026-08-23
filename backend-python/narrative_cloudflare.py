@@ -19,6 +19,8 @@ from typing import Any
 import httpx
 
 DEFAULT_TIMEOUT_SECONDS = 12.0
+DEFAULT_MAX_OUTPUT_CHARS = 420
+PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
 MAX_FACT_DEPTH = 3
 MAX_FACT_STRING = 240
 MAX_FACT_ARRAY = 12
@@ -146,6 +148,29 @@ def _timeout_seconds() -> float:
         return max(1.0, min(float(raw), 20.0))
     except ValueError:
         return DEFAULT_TIMEOUT_SECONDS
+
+
+def _max_output_chars(event_type: str) -> int:
+    return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS if event_type == "player_portrait" else DEFAULT_MAX_OUTPUT_CHARS
+
+
+def _trim_complete_output(text: str, max_chars: int) -> str:
+    clean = " ".join(str(text or "").split()).strip()
+    if len(clean) <= max_chars:
+        return clean
+
+    head = clean[: max_chars + 1]
+    minimum = int(max_chars * 0.55)
+    sentence_end = -1
+    for index in range(minimum, min(len(head), max_chars)):
+        if head[index] in ".!?…" and (index + 1 >= len(head) or head[index + 1].isspace()):
+            sentence_end = index
+    if sentence_end >= minimum:
+        return head[: sentence_end + 1].strip()
+
+    word_end = head[: max(1, max_chars - 1)].rfind(" ")
+    safe_end = word_end if word_end > 0 else max(1, max_chars - 1)
+    return head[:safe_end].rstrip() + "…"
 
 
 def _fallback(event_type: str, facts: dict[str, Any]) -> str:
@@ -438,7 +463,7 @@ async def request_cloud_narrative(
         input_tokens = max(0, int(usage.get("inputTokens") or usage.get("prompt_tokens") or 0))
         output_tokens = max(0, int(usage.get("outputTokens") or usage.get("completion_tokens") or 0))
         model = str(data.get("model") or "")[:96] if isinstance(data, dict) else ""
-        text = " ".join(text.split()).strip()[:420]
+        text = _trim_complete_output(text, _max_output_chars(event_type))
         if not text:
             return _provider_failure("empty_response", elapsed)
         grounded, concept = validate_grounded_output(text, event_type, facts)

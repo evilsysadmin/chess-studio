@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   AI_PLAYER_PORTRAIT_CACHE_KEY,
+  PLAYER_PORTRAIT_MAX_CHARS,
   buildPlayerPortraitFacts,
   formatPlayerPortraitCooldown,
   loadCachedPlayerPortrait,
@@ -53,6 +54,16 @@ describe('AI player portrait', () => {
     expect(loadCachedPlayerPortrait('1:99')).toBeNull();
     expect(localStorage.getItem(AI_PLAYER_PORTRAIT_CACHE_KEY)).toContain('Te defiendes');
   });
+
+  it('conserva retratos largos completos en cache', () => {
+    const key = playerPortraitGenerationKey({ totalGames: 12 });
+    const text = `${'Retrato con contexto. '.repeat(24)}Cierre completo.`;
+    expect(text.length).toBeGreaterThan(420);
+    expect(text.length).toBeLessThan(PLAYER_PORTRAIT_MAX_CHARS);
+    expect(saveCachedPlayerPortrait(key, text)).toBe(true);
+    expect(loadCachedPlayerPortrait(key)).toBe(text);
+  });
+
   it('limita la regeneración manual a una cada seis horas y conserva el retrato', () => {
     const key = playerPortraitGenerationKey({ totalGames: 9 });
     expect(saveCachedPlayerPortrait(key, 'Primera lectura.')).toBe(true);

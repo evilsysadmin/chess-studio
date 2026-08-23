@@ -8879,6 +8879,14 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   flex-wrap: wrap;
 }
 .ai-player-portrait-actions small { color: var(--parchment-dim); }
+.ai-player-portrait-actions-visible {
+  margin-top: 1rem;
+  padding-top: .85rem;
+  border-top: 1px solid color-mix(in srgb, var(--gold) 20%, var(--line));
+}
+.ai-player-portrait-refresh-btn {
+  min-width: 190px;
+}
 
 @media (max-width: 520px) {
   .ai-player-portrait-heading { align-items: stretch; flex-direction: column; }

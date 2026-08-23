@@ -22,6 +22,14 @@ describe('remote narrative transport', () => {
     expect(init.headers.Authorization).toBe('Bearer jwt');
   });
 
+
+  it('no recorta el retrato AI al antiguo límite de 420 caracteres', async () => {
+    const portrait = `${'Frase completa con contexto. '.repeat(20)}Final.`;
+    expect(portrait.length).toBeGreaterThan(420);
+    const fetchImpl = vi.fn(async () => ({ ok:true, json:async()=>({ provider:'cloudflare', text:portrait }) }));
+    expect(await requestRemoteNarrative({ eventType:'player_portrait', facts:{} }, { token:'jwt', fetchImpl })).toBe(portrait);
+  });
+
   it('5xx cae limpio a null para que NarrativeProvider use fallback local', async () => {
     const fetchImpl = vi.fn(async () => ({ ok:false, status:502 }));
     expect(await requestRemoteNarrative({ eventType:'mate', facts:{} }, { token:'jwt', fetchImpl })).toBeNull();

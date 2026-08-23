@@ -1,6 +1,8 @@
 const DEFAULT_TIMEOUT_MS = 4500;
 const DEFAULT_MIN_PLY_GAP = 2;
 const DEFAULT_MIN_INTERVAL_MS = 2500;
+const DEFAULT_MAX_OUTPUT_CHARS = 420;
+const PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900;
 
 function apiBase() {
   const raw = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
@@ -34,6 +36,10 @@ export function createNarrativeCooldownGate({
       lastAcceptedAt = Number.NEGATIVE_INFINITY;
     },
   };
+}
+
+function maxOutputCharsFor(dossier) {
+  return dossier?.eventType === 'player_portrait' ? PLAYER_PORTRAIT_MAX_OUTPUT_CHARS : DEFAULT_MAX_OUTPUT_CHARS;
 }
 
 export async function requestRemoteNarrative(
@@ -70,7 +76,9 @@ export async function requestRemoteNarrative(
     // tratamos el remoto como no disponible para conservar ese relato local
     // en vez de sustituirlo por el fallback genérico del transporte backend.
     if (body?.provider !== 'cloudflare') return null;
-    return typeof body?.text === 'string' && body.text.trim() ? body.text.trim().slice(0, 420) : null;
+    return typeof body?.text === 'string' && body.text.trim()
+      ? body.text.trim().slice(0, maxOutputCharsFor(dossier))
+      : null;
   } catch {
     return null;
   } finally {

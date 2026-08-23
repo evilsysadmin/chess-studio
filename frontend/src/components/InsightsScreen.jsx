@@ -304,31 +304,31 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             </span>
           </div>
           <p className="ai-player-portrait-text">{portraitText || localPortrait}</p>
+          <div className="ai-player-portrait-actions ai-player-portrait-actions-visible">
+            {portraitRemoteEligible ? (
+              <>
+                <button
+                  type="button"
+                  className="primary-btn ai-player-portrait-refresh-btn"
+                  disabled={portraitStatus === 'loading' || !portraitManualState.allowed}
+                  onClick={requestFreshPortrait}
+                >
+                  {portraitStatus === 'loading' ? 'Pensando…' : portraitManualState.allowed ? '↻ Analizarme de nuevo' : 'Lectura reciente'}
+                </button>
+                <small>
+                  {portraitManualState.allowed
+                    ? 'Una lectura extra cada 6 h · automática cada 3 partidas.'
+                    : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
+                </small>
+              </>
+            ) : (
+              <small>Workers AI se activa cuando haya al menos 3 partidas reales que comentar.</small>
+            )}
+          </div>
           <details className="friendly-disclosure ai-player-portrait-details">
             <summary>Ver en qué se basa</summary>
             <div className="friendly-disclosure-body">
               <p className="hint-text">Usa sólo tus estadísticas e incidentes guardados: resultados, tendencia de rating, aperturas, rachas, rivalidad y errores realmente registrados. La IA pone la voz; los hechos los pone Chess Studio.</p>
-              <div className="ai-player-portrait-actions">
-                {portraitRemoteEligible ? (
-                  <>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      disabled={portraitStatus === 'loading' || !portraitManualState.allowed}
-                      onClick={requestFreshPortrait}
-                    >
-                      {portraitStatus === 'loading' ? 'Pensando…' : portraitManualState.allowed ? 'Pedir otra lectura' : 'Lectura reciente'}
-                    </button>
-                    <small>
-                      {portraitManualState.allowed
-                        ? 'Puedes pedir una lectura extra cada 6 h; además se renueva sola cada 3 partidas.'
-                        : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
-                    </small>
-                  </>
-                ) : (
-                  <small>Workers AI se activa cuando haya al menos 3 partidas reales que comentar.</small>
-                )}
-              </div>
             </div>
           </details>
         </div>

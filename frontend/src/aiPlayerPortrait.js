@@ -1,8 +1,9 @@
 import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
-const PORTRAIT_SCHEMA = 1;
+const PORTRAIT_SCHEMA = 2;
 const GAMES_PER_AUTOMATIC_REFRESH = 3;
+export const PLAYER_PORTRAIT_MAX_CHARS = 900;
 export const PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 function finiteNumber(value) {
@@ -122,11 +123,11 @@ export function loadCachedPlayerPortrait(generationKey) {
   const cached = readPortraitCache();
   if (!cached || cached.generationKey !== generationKey) return null;
   if (typeof cached.text !== 'string' || !cached.text.trim()) return null;
-  return cached.text.trim().slice(0, 420);
+  return cached.text.trim().slice(0, PLAYER_PORTRAIT_MAX_CHARS);
 }
 
 export function saveCachedPlayerPortrait(generationKey, text) {
-  const clean = typeof text === 'string' ? text.trim().slice(0, 420) : '';
+  const clean = typeof text === 'string' ? text.trim().slice(0, PLAYER_PORTRAIT_MAX_CHARS) : '';
   if (!clean) return false;
   const previous = readPortraitCache() || {};
   return writeJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, {

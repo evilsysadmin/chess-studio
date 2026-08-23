@@ -12,6 +12,8 @@ describe('AI portrait + shared narrative voice', () => {
     expect(insights).toContain('portraitText || localPortrait');
     expect(insights).toContain('loadCachedPlayerPortrait');
     expect(insights).toContain('cada 6 h');
+    expect(insights).toContain('↻ Analizarme de nuevo');
+    expect(insights.indexOf('↻ Analizarme de nuevo')).toBeLessThan(insights.indexOf('<details className="friendly-disclosure ai-player-portrait-details">'));
     expect(insights).toContain("requestKind,");
     expect(insights).toContain("'portrait_manual'");
   });
@@ -22,5 +24,7 @@ describe('AI portrait + shared narrative voice', () => {
     expect(worker).toContain('no insultes su');
     expect(worker).toContain('Para player_portrait');
     expect(worker).toContain('Para comentarios de partida');
+    expect(worker).toContain('PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900');
+    expect(worker).toContain('eventType === "player_portrait" ? 240 : 120');
   });
 });

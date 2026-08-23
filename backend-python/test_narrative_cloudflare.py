@@ -267,3 +267,17 @@ def test_failed_half_open_probe_reopens_immediately(monkeypatch):
     # It must re-open immediately rather than allowing another two failures.
     assert asyncio.run(provider.request_cloud_narrative("generic", {}, client=client)).reason == "circuit_open"
     assert client.calls == 3
+
+
+def test_player_portrait_transport_keeps_more_than_420_chars_and_trims_at_sentence(monkeypatch):
+    import narrative_cloudflare as nc
+
+    long_text = ("Primera frase con contexto. " * 20) + "Cierre completo."
+    assert len(long_text) > 420
+    assert nc._trim_complete_output(long_text, nc._max_output_chars("player_portrait")) == long_text
+
+    too_long = ("Una frase razonablemente completa. " * 40) + "cola sin terminar"
+    trimmed = nc._trim_complete_output(too_long, nc._max_output_chars("player_portrait"))
+    assert len(trimmed) <= nc.PLAYER_PORTRAIT_MAX_OUTPUT_CHARS
+    assert trimmed.endswith(".") or trimmed.endswith("…")
+    assert not trimmed.endswith(" e")
