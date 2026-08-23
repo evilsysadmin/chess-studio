@@ -115,3 +115,4 @@ jobs:
             echo '- Render: configura `CF_AI_WORKER_URL` con esa URL.'
             echo '- Render y GitHub deben compartir el mismo `CHESS_AI_SHARED_SECRET`.'
           } >> "$GITHUB_STEP_SUMMARY"
+
