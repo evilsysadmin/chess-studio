@@ -49,6 +49,7 @@ import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContrac
 import { loadActiveGameChat } from './gameChat.js';
 import { loadSessionView, loadSessionViewHistory, rememberSessionView, rememberSessionViewHistory } from './viewState.js';
 import { clearActiveGameSession, loadActiveGameSession, saveActiveGameSession } from './activeGameSession.js';
+import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
 // objeto de partida: ese objeto se reemplaza por completo con cada respuesta
@@ -82,9 +83,21 @@ function AppInner({ isAdminUser }) {
   }[view] || 'Navegando'), [view]);
 
   useEffect(() => {
-    touchActivity(coarseActivity);
-    const timer = window.setInterval(() => touchActivity(coarseActivity), 60000);
-    return () => window.clearInterval(timer);
+    const reportPresence = () => {
+      const foreground = typeof document === 'undefined' ? null : document.visibilityState === 'visible';
+      touchActivity(coarseActivity, foreground);
+    };
+    const handleVisibility = () => reportPresence();
+
+    reportPresence();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') reportPresence();
+    }, 120000);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [coarseActivity]);
   const currentViewRef = useRef(view);
   const viewHistoryRef = useRef(loadSessionViewHistory({ isAdminUser }));
@@ -270,6 +283,12 @@ function AppInner({ isAdminUser }) {
   const [replayMovieMode, setReplayMovieMode] = useState(false);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
+  const gameRef = useRef(game);
+  const tournamentGameRef = useRef(tournamentGame);
+  const gameSaveStateRef = useRef(gameSaveState);
+  gameRef.current = game;
+  tournamentGameRef.current = tournamentGame;
+  gameSaveStateRef.current = gameSaveState;
 
   // Conserva la última pantalla reconstruible durante esta pestaña/sesión.
   // Las vistas efímeras (partida/replay) no pisan el padre seguro guardado.
@@ -341,6 +360,80 @@ function AppInner({ isAdminUser }) {
       setGameSaveState(SAVE_STATUS.ERROR);
     }
   }, [view, game, tournamentGame, learningMode, gameContext, activeTimeControl?.id]);
+
+  // Si el navegador estuvo realmente offline, al volver la red reconciliamos
+  // la partida abierta con la copia autoritativa del backend. No intentamos
+  // fusionar tableros: las mutaciones normales ya revierten a la última
+  // posición confirmada cuando fallan, así que Mongo gana siempre.
+  const reconnectInFlight = useRef(false);
+  const reconnectNeeded = useRef(typeof navigator !== 'undefined' && navigator.onLine === false);
+  const reconnectOfflineGeneration = useRef(0);
+  useEffect(() => {
+    let disposed = false;
+    async function handleOnline() {
+      if (reconnectInFlight.current) return;
+      if (!reconnectNeeded.current && gameSaveStateRef.current !== SAVE_STATUS.ERROR) return;
+
+      const target = reconnectTarget({
+        route: currentViewRef.current,
+        game: gameRef.current,
+        tournamentGame: tournamentGameRef.current,
+        savedSession: loadActiveGameSession(),
+      });
+      if (!target) {
+        reconnectNeeded.current = false;
+        return;
+      }
+
+      reconnectInFlight.current = true;
+      const offlineGenerationAtStart = reconnectOfflineGeneration.current;
+      setGameSaveState(SAVE_STATUS.SAVING);
+      const result = await fetchReconnectGame(target.gameId, api.getGame);
+      if (disposed) return;
+
+      // El usuario pudo abandonar/cambiar de pantalla mientras el GET estaba
+      // volando. En ese caso descartamos la respuesta tardía por completo.
+      const currentTarget = reconnectTarget({
+        route: currentViewRef.current,
+        game: gameRef.current,
+        tournamentGame: tournamentGameRef.current,
+        savedSession: loadActiveGameSession(),
+      });
+      if (!currentTarget || currentTarget.route !== target.route || currentTarget.gameId !== target.gameId) {
+        reconnectInFlight.current = false;
+        return;
+      }
+
+      if (result.ok) {
+        if (target.route === 'tournamentGame') setTournamentGame(result.game);
+        else setGame(result.game);
+        setError(null);
+        // Si volvió a caer la red mientras esta reconciliación estaba en vuelo,
+        // el siguiente evento online debe comprobar otra vez el backend.
+        reconnectNeeded.current = reconnectOfflineGeneration.current !== offlineGenerationAtStart
+          || (typeof navigator !== 'undefined' && navigator.onLine === false);
+        // El effect de activeGameSession será quien marque SAVED después de
+        // confirmar que el snapshot local de esta respuesta también se escribió.
+      } else {
+        setGameSaveState(SAVE_STATUS.ERROR);
+        setError('La conexión volvió, pero todavía no se pudo resincronizar la partida. La última posición confirmada sigue intacta.');
+      }
+      reconnectInFlight.current = false;
+    }
+
+    const handleOffline = () => {
+      reconnectOfflineGeneration.current += 1;
+      reconnectNeeded.current = true;
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      disposed = true;
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
 
   // En un deploy el navegador puede recargar el documento para obtener los
   // chunks nuevos. Si había una sesión activa, la rehidratamos de Mongo sin

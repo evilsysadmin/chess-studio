@@ -200,10 +200,10 @@ async def list_usernames() -> list[str]:
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
     return list(_memory_users.keys())
 
-async def count_online_users(*, window_seconds: int = 90) -> int:
+async def count_online_users(*, window_seconds: int = 150) -> int:
     """Cuenta actividad reciente sin exponer identidades.
 
-    El frontend ya manda heartbeat cada 60 s; una ventana de 90 s tolera una
+    El frontend manda presencia cada 120 s; una ventana de 150 s tolera una
     pequeña deriva de red sin mantener usuarios fantasma durante minutos.
     En Mongo hacemos un único count_documents en vez de leer cada cuenta.
     """
@@ -232,7 +232,13 @@ async def count_online_users(*, window_seconds: int = 90) -> int:
     return count
 
 
-async def touch_last_activity(username: str, *, force: bool = False, activity: str | None = None) -> str:
+async def touch_last_activity(
+    username: str,
+    *,
+    force: bool = False,
+    activity: str | None = None,
+    foreground: bool | None = None,
+) -> str:
     """Actualiza la última actividad con coalescing para no martillear Mongo.
 
     Cada request autenticada puede pasar por aquí, pero una cuenta activa escribe
@@ -252,6 +258,9 @@ async def touch_last_activity(username: str, *, force: bool = False, activity: s
             fields = {"last_activity": value}
             if activity:
                 fields["current_activity"] = activity
+            if foreground is not None:
+                fields["is_foreground"] = bool(foreground)
+                fields["foreground_updated_at"] = value
             # `force=True` se usa en login (y tras reset, que también entrega
             # sesión nueva). Guardamos un ancla de último acceso además del
             # heartbeat para que cuentas legacy nunca vuelvan a quedar como
@@ -270,6 +279,9 @@ async def touch_last_activity(username: str, *, force: bool = False, activity: s
             user["last_activity"] = value
             if activity:
                 user["current_activity"] = activity
+            if foreground is not None:
+                user["is_foreground"] = bool(foreground)
+                user["foreground_updated_at"] = value
             if force:
                 user["last_login"] = value
 

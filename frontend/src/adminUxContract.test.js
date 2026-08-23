@@ -28,6 +28,12 @@ describe('admin UX contract', () => {
     expect(admin).toContain("import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';");
     expect(admin).toContain('<AiNarrativeMetrics token={getToken()} />');
   });
+  it('muestra presencia en primer plano sin confundirla con online', () => {
+    expect(admin).toContain('foregroundCount');
+    expect(admin).toContain('Primer plano');
+    expect(admin).toContain('Segundo plano');
+  });
+
   it('blinda Usuarios online → Panel admin sólo para admins', () => {
     expect(app).toContain("<GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')}");
     expect(liveStatus).toContain("const canOpenAdmin = isAdminUser && typeof onAdmin === 'function';");

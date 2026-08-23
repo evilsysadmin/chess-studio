@@ -14,6 +14,7 @@ const mirror = read('MirrorModeModal.jsx');
 const lab = read('LabScreen.jsx');
 const history = read('HistoryScreen.jsx');
 const status = read('PlayerStatusBar.jsx');
+const homeNudge = read('HomePlayNudge.jsx');
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
 
 describe('STATIC CONTRACT · UX friendly-by-default', () => {
@@ -35,6 +36,17 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
     expect(app).toContain("compact={view === 'menu'}");
     expect(status).toContain('player-status-bar-compact');
     expect(status).toContain('status-chip-compact');
+  });
+
+  it('home invita a jugar tras inactividad sin secuestrar la interfaz', () => {
+    expect(menu).toContain('<HomePlayNudge');
+    expect(menu).toContain('enabled={!hasOpenOverlay && !loggingOut}');
+    expect(homeNudge).toContain('HOME_PLAY_NUDGE_IDLE_MS');
+    expect(homeNudge).toContain('role="status"');
+    expect(homeNudge).not.toContain('aria-modal="true"');
+    expect(homeNudge).toContain('if (!enabled && visible) setVisible(false)');
+    expect(homeNudge).toContain('Jugar una rápida');
+    expect(homeNudge).toContain('Continuar partida');
   });
 
   it('partida rápida permite jugar con defaults y deja ajustes/reglas especiales detrás de details', () => {

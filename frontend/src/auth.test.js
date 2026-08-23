@@ -179,6 +179,16 @@ describe('fetchMe/authHeader/wakeBackend', () => {
       }),
     );
 
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+    touchActivity('Partida', true);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/activity'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ activity: 'Partida', foreground: true }),
+      }),
+    );
+
     global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
     expect(() => touchActivity()).not.toThrow();
   });

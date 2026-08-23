@@ -8575,3 +8575,111 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 @media (prefers-reduced-motion: reduce) {
   .save-status-badge.is-saving .save-status-dot { animation: none; }
 }
+
+/* v16.6dm10 — recordatorio amable de Home. No es modal ni bloquea nada:
+   aparece sólo tras inactividad real y se limita por sesión/cooldown. */
+.home-play-nudge {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 82;
+  width: min(calc(100vw - 2rem), 520px);
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 3rem 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--ink-3));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink-2) 94%, transparent);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(10px);
+  animation: home-play-nudge-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-play-nudge-copy { min-width: 0; display: grid; gap: 0.12rem; }
+.home-play-nudge-kicker {
+  color: var(--brass);
+  font: 700 0.63rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.home-play-nudge strong { color: var(--parchment); font-size: 0.9rem; }
+.home-play-nudge p { margin: 0; color: var(--parchment-dim); font-size: 0.74rem; line-height: 1.4; }
+.home-play-nudge-cta { min-height: 38px; white-space: nowrap; }
+.home-play-nudge-close {
+  position: absolute;
+  top: 0.42rem;
+  right: 0.5rem;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--parchment-dim);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.home-play-nudge-close:hover,
+.home-play-nudge-close:focus-visible { color: var(--parchment); background: rgba(255,255,255,0.06); }
+
+@keyframes home-play-nudge-in {
+  from { opacity: 0; transform: translate(-50%, 10px) scale(0.985); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@media (max-width: 620px) {
+  .home-play-nudge { grid-template-columns: 1fr; gap: 0.65rem; padding-right: 2.7rem; }
+  .home-play-nudge-cta { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-play-nudge { animation: none; }
+}
+
+
+/* v16.6dm11 — presencia de pestaña deliberadamente gruesa. El panel admin
+   resume usuarios visibles sin convertir Chess Studio en una sonda de telemetría. */
+.admin-presence-summary {
+  width: min(100%, 560px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0.2rem 0 0.7rem;
+}
+.admin-presence-summary > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.admin-presence-summary strong {
+  color: var(--brass);
+  font: 700 1.15rem/1 var(--font-mono);
+}
+.admin-presence-summary span {
+  color: var(--parchment-dim);
+  font-size: 0.75rem;
+}
+.admin-presence-summary > small {
+  grid-column: 1 / -1;
+  color: var(--parchment-dim);
+  font: 0.66rem/1.35 var(--font-mono);
+}
+.admin-foreground-state {
+  color: var(--parchment-dim);
+}
+.admin-foreground-state.is-foreground {
+  color: var(--brass);
+}
+@media (max-width: 520px) {
+  .admin-presence-summary { grid-template-columns: 1fr; }
+  .admin-presence-summary > small { grid-column: 1; }
+}

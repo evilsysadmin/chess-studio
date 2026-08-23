@@ -34,7 +34,7 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
   const canOpenAdmin = isAdminUser && typeof onAdmin === 'function';
 
   return (
-    <aside className={`live-service-status ${backendUp ? 'is-up' : checking ? 'is-checking' : 'is-down'}`} aria-live="polite" title="Usuarios activos en los últimos 90 segundos">
+    <aside className={`live-service-status ${backendUp ? 'is-up' : checking ? 'is-checking' : 'is-down'}`} aria-live="polite" title="Usuarios activos en los últimos ~2,5 minutos">
       <span className="live-service-dot" aria-hidden="true" />
       {canOpenAdmin ? (
         <button type="button" className="live-service-online-link" onClick={onAdmin} title="Abrir Panel de admin">

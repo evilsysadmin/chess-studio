@@ -1388,3 +1388,51 @@ def test_admin_can_mark_feedback_read_and_resolved(monkeypatch):
 
     invalid = client.post(f'/api/admin/feedback/{feedback_id}/status', json={'status': 'burned'})
     assert invalid.status_code == 400
+
+# ---------- v16.6dm11: primer plano aproximado ----------
+
+def test_foreground_summary_expires_stale_visible_tabs():
+    from datetime import datetime, timedelta, timezone
+    from main import _foreground_summary
+
+    now = datetime.now(timezone.utc)
+    fresh = {
+        "is_foreground": True,
+        "foreground_updated_at": now.isoformat(),
+    }
+    stale = {
+        "is_foreground": True,
+        "foreground_updated_at": (now - timedelta(minutes=3)).isoformat(),
+    }
+    hidden = {
+        "is_foreground": False,
+        "foreground_updated_at": now.isoformat(),
+    }
+
+    assert _foreground_summary(fresh)["foreground"] is True
+    assert _foreground_summary(stale)["foreground"] is False
+    assert _foreground_summary(hidden)["foreground"] is False
+    assert _foreground_summary({}) == {"foreground": None, "foregroundAgeSeconds": None}
+
+
+def test_activity_heartbeat_records_foreground_without_private_telemetry(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    assert client.post(
+        "/api/auth/activity",
+        json={"activity": "Partida", "foreground": True},
+    ).status_code == 204
+
+    row = next(user for user in client.get("/api/admin/users").json()["users"] if user["username"] == "testuser")
+    assert row["currentActivity"] == "Partida"
+    assert row["foreground"] is True
+    assert isinstance(row["foregroundAgeSeconds"], int)
+
+    assert client.post(
+        "/api/auth/activity",
+        json={"activity": "FEN super secreto", "foreground": False},
+    ).status_code == 204
+    row = next(user for user in client.get("/api/admin/users").json()["users"] if user["username"] == "testuser")
+    assert row["currentActivity"] == "Partida"
+    assert row["foreground"] is False

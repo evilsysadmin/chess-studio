@@ -23,6 +23,7 @@ export const FRONTEND_CONTRACT_TESTS = Object.freeze([
   'src/combatBattleLayout.test.js',
   'src/combatOperationalUx.test.js',
   'src/friendlyUxContract.test.js',
+  'src/foregroundPresenceContract.test.js',
   'src/mechanicTutorials.test.js',
   'src/narrativeWiring.test.js',
   'src/releaseContinuityContract.test.js',

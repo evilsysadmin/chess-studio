@@ -14,6 +14,7 @@ import { formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminF
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
+const ADMIN_REFRESH_MS = 120000;
 
 function formatPresenceAge(seconds) {
   if (!Number.isFinite(seconds)) return null;
@@ -42,6 +43,8 @@ function Presence({ user, compact = false }) {
       <span className="admin-presence-copy">
         <span>{label}</span>
         {status === 'online' && user?.currentActivity && <small>{user.currentActivity}</small>}
+        {user?.foreground === true && <small className="admin-foreground-state is-foreground">● Primer plano</small>}
+        {status === 'online' && user?.foreground === false && <small className="admin-foreground-state">○ Segundo plano</small>}
         {!compact && user?.lastActivity && <small>{formatAdminTimestamp(user.lastActivity)}</small>}
       </span>
     </span>
@@ -159,7 +162,7 @@ export default function AdminScreen({ onExit }) {
       }
     }
     refreshAdminData();
-    const timer = window.setInterval(() => refreshAdminData(true), 30000);
+    const timer = window.setInterval(() => refreshAdminData(true), ADMIN_REFRESH_MS);
     return () => {
       mounted = false;
       window.clearInterval(timer);
@@ -219,6 +222,11 @@ export default function AdminScreen({ onExit }) {
       });
   }, [expanded, insightsByUser, insightsLoading, insightsErrors]);
 
+  const currentAdmin = getUsername();
+  const otherUsers = (users || []).filter((user) => user.username !== currentAdmin);
+  const foregroundCount = otherUsers.filter((user) => user.foreground === true).length;
+  const onlineCount = otherUsers.filter((user) => user.presence === 'online').length;
+
   return (
     <div className="menu admin-screen">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
@@ -227,6 +235,19 @@ export default function AdminScreen({ onExit }) {
         <h2>Usuarios registrados</h2>
         <p className="hint-text">Pulsa el nombre de un usuario para abrir o cerrar su expediente ajedrecístico.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
+        {users && (
+          <section className="admin-presence-summary" aria-label="Presencia de usuarios">
+            <div>
+              <strong>{foregroundCount}</strong>
+              <span>en primer plano</span>
+            </div>
+            <div>
+              <strong>{onlineCount}</strong>
+              <span>en línea</span>
+            </div>
+            <small>Otros usuarios · muestreo aprox. cada 2 min</small>
+          </section>
+        )}
         <AiNarrativeMetrics token={getToken()} />
 
         <section className="admin-feedback-section" aria-label="Feedback de usuarios">
@@ -335,6 +356,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Registrado</span><strong>{formatAdminTimestamp(u.createdAt)}</strong></div>
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
                               <div><span>Última pantalla conocida</span><strong>{u.currentActivity || '—'}</strong></div>
+                              <div><span>Ventana</span><strong>{u.foreground === true ? 'Primer plano' : u.foreground === false ? 'Segundo plano / no visible' : 'Sin dato'}</strong></div>
                               <div><span>Última actividad exacta</span><strong>{formatAdminTimestamp(u.lastActivity)}</strong></div>
                               <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>
                               <div><span>Rating / partidas <GlossaryTerm term="ELO">ELO</GlossaryTerm></span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>

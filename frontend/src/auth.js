@@ -9,6 +9,7 @@ import { markAmbientThemeSessionFresh, clearAmbientThemeSessionStorage } from '.
 import { clearSessionView } from './viewState.js';
 import { clearAllClockSnapshots } from './clockPersistence.js';
 import { clearCombatSession } from './combatSession.js';
+import { clearHomePlayNudgeSession } from './homePlayNudge.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 export const USERNAME_KEY = 'chess-study-auth-username';
@@ -85,6 +86,7 @@ function saveSession(token, username) {
   // puede cambiar el tema después y se conservará hasta logout/nuevo login.
   markAmbientThemeSessionFresh();
   clearSessionView();
+  clearHomePlayNudgeSession();
 }
 
 export function logout() {
@@ -93,6 +95,7 @@ export function logout() {
   clearLocalUserState();
   clearAllClockSnapshots();
   clearCombatSession();
+  clearHomePlayNudgeSession();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USERNAME_KEY);
 }
@@ -197,13 +200,18 @@ export async function fetchLiveStatus() {
   }
 }
 
-export function touchActivity(activity = null) {
+export function touchActivity(activity = null, foreground = null) {
   if (!getToken()) return;
+  const hasForeground = typeof foreground === 'boolean';
+  const hasBody = !!activity || hasForeground;
   const headers = withRequestId({ ...authHeader() });
-  if (activity) headers['Content-Type'] = 'application/json';
+  if (hasBody) headers['Content-Type'] = 'application/json';
+  const payload = {};
+  if (activity) payload.activity = activity;
+  if (hasForeground) payload.foreground = foreground;
   fetch(`${BASE_URL}/auth/activity`, {
     method: 'POST',
     headers,
-    body: activity ? JSON.stringify({ activity }) : undefined,
+    body: hasBody ? JSON.stringify(payload) : undefined,
   }).catch(() => {});
 }

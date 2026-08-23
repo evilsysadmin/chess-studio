@@ -11,6 +11,7 @@ import MirrorModeModal from './MirrorModeModal.jsx';
 import AccountModal from './AccountModal.jsx';
 import ModeTutorialTip from './ModeTutorialTip.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
+import HomePlayNudge from './HomePlayNudge.jsx';
 import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL } from '../combatChessBrand.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
@@ -61,6 +62,7 @@ export default function Menu({
   const [loggingOut, setLoggingOut] = useState(false);
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const username = getUsername();
+  const hasOpenOverlay = showBackup || showQuickMatch || showMirrorMode || showAchievements || showAccount || showFeedback;
 
   async function handleLogout() {
     setLogoutError(null);
@@ -193,6 +195,13 @@ export default function Menu({
       <button type="button" className="home-feedback-button" onClick={() => setShowFeedback(true)} aria-label="Dar feedback del juego">
         <span aria-hidden="true">💬</span> Dar feedback
       </button>
+
+      <HomePlayNudge
+        enabled={!hasOpenOverlay && !loggingOut}
+        hasSavedGame={hasSavedGame}
+        onContinue={onContinue}
+        onPlay={() => setShowQuickMatch(true)}
+      />
 
       <div className="footer-links-row">
         <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>Ver logros</button>

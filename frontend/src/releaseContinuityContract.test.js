@@ -32,6 +32,18 @@ describe('wiring de continuidad entre releases', () => {
     expect(boundary).toContain('La partida sigue guardada');
   });
 
+  it('auto-reconcilia con backend después de offline → online sin abandonar el tablero', () => {
+    const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
+    expect(app).toContain("import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js'");
+    expect(app).toContain("window.addEventListener('offline', handleOffline)");
+    expect(app).toContain("window.addEventListener('online', handleOnline)");
+    expect(app).toContain('setGameSaveState(SAVE_STATUS.SAVING)');
+    expect(app).toContain('const result = await fetchReconnectGame(target.gameId, api.getGame)');
+    expect(app).toContain("if (target.route === 'tournamentGame') setTournamentGame(result.game)");
+    expect(app).toContain('else setGame(result.game)');
+    expect(app).toContain('La última posición confirmada sigue intacta');
+  });
+
   it('la partida activa expone estado real de guardado y conexión', () => {
     const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
     const gameScreen = fs.readFileSync(path.resolve(process.cwd(), 'src/components/GameScreen.jsx'), 'utf8');

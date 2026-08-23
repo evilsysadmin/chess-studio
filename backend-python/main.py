@@ -325,6 +325,7 @@ def resolve_human_color(color: str) -> str:
 
 class ActivityHeartbeatRequest(BaseModel):
     activity: Optional[str] = Field(default=None, max_length=40)
+    foreground: Optional[bool] = None
 
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -649,7 +650,8 @@ async def activity_heartbeat(payload: Optional[ActivityHeartbeatRequest] = None,
         "Laboratorio", "Espectador", "Panel admin", "Experimento 3D", "Navegando",
     }
     activity = payload.activity if payload and payload.activity in allowed else None
-    await ustore.touch_last_activity(username, force=True, activity=activity)
+    foreground = payload.foreground if payload else None
+    await ustore.touch_last_activity(username, force=True, activity=activity, foreground=foreground)
     return None
 
 
@@ -1108,6 +1110,28 @@ def _extract_admin_insights_payload(profile: Optional[dict]) -> dict:
     }
 
 
+def _foreground_summary(user_doc: dict, *, freshness_seconds: int = 150) -> dict:
+    """Estado aproximado de pestaña visible, sin fingir tiempo real.
+
+    El cliente reporta como máximo cada dos minutos y además en cambios de
+    visibilidad. Si la pestaña muere sin poder enviar el último evento, el
+    estado visible caduca solo tras un pequeño margen.
+    """
+    raw = user_doc.get("foreground_updated_at")
+    reported = user_doc.get("is_foreground")
+    if raw is None or not isinstance(reported, bool):
+        return {"foreground": None, "foregroundAgeSeconds": None}
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        age = max(0, int((datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()))
+    except (TypeError, ValueError):
+        return {"foreground": None, "foregroundAgeSeconds": None}
+    active = bool(reported) and age <= max(1, int(freshness_seconds))
+    return {"foreground": active, "foregroundAgeSeconds": age}
+
+
 def _presence_summary(last_activity) -> dict:
     if not last_activity:
         return {"lastActivity": None, "presence": "never", "presenceAgeSeconds": None}
@@ -1119,7 +1143,7 @@ def _presence_summary(last_activity) -> dict:
     except (TypeError, ValueError):
         return {"lastActivity": str(last_activity), "presence": "offline", "presenceAgeSeconds": None}
 
-    if age <= 90:
+    if age <= 150:
         presence = "online"
     elif age <= 15 * 60:
         presence = "recent"
@@ -1191,6 +1215,7 @@ async def admin_list_users(username: str = Depends(require_admin)):
             "createdAt": user_doc.get("created_at"),
             "currentActivity": user_doc.get("current_activity"),
             **_presence_summary(activity_anchor),
+            **_foreground_summary(user_doc),
             **_extract_summary_stats(profile),
         })
     return {"users": result}
@@ -1595,7 +1620,7 @@ async def public_status(_username: str = Depends(get_current_user)):
     de storage en un falso "backend DOWN".
     """
     try:
-        online_users = await ustore.count_online_users(window_seconds=90)
+        online_users = await ustore.count_online_users(window_seconds=150)
         # Privacidad: la presencia pública autenticada representa jugadores,
         # no al operador de la instancia. El request autenticado acaba de
         # refrescar su propia actividad, así que si quien consulta es admin lo
