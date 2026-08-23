@@ -1,0 +1,14 @@
+name = "chess-studio-narrative-ai"
+main = "worker/index.js"
+compatibility_date = "2026-08-22"
+
+[ai]
+binding = "AI"
+
+[[ratelimits]]
+name = "AI_RATE_LIMITER"
+namespace_id = "1606601"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
