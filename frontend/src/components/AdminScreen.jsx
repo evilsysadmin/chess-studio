@@ -9,7 +9,7 @@ import { formatLongMove } from '../notation.js';
 import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
-import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';
+import ObservabilityPanel from './ObservabilityPanel.jsx';
 import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 
@@ -257,7 +257,7 @@ export default function AdminScreen({ onExit }) {
             <small>Otros usuarios · muestreo aprox. cada 2 min · el estado caduca automáticamente</small>
           </section>
         )}
-        <AiNarrativeMetrics token={getToken()} />
+        <ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />
 
         <section className="admin-feedback-section" aria-label="Feedback de usuarios">
           <div className="admin-feedback-heading">

@@ -63,8 +63,13 @@ def test_missing_cloud_configuration_uses_local_fallback(monkeypatch):
 def test_cloud_success_is_used_signed_and_measured(monkeypatch):
     monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev/")
     monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "a"*64)
-    client = FakeClient(FakeResponse(200, {"ok":True,"text":"  Magnífico desastre.  "}))
-    result = asyncio.run(provider.generate_narrative("blunder", {"san":"Qd4"}, client=client))
+    client = FakeClient(FakeResponse(200, {
+        "ok": True,
+        "text": "  Magnífico desastre.  ",
+        "model": "@cf/meta/llama-3.2-3b-instruct",
+        "usage": {"inputTokens": 120, "outputTokens": 18},
+    }))
+    result = asyncio.run(provider.generate_narrative("blunder", {"san":"Qd4"}, request_kind="default", client=client))
     assert result["provider"] == "cloudflare"
     assert result["text"] == "Magnífico desastre."
     assert client.request["url"].endswith("/narrative")
@@ -72,6 +77,12 @@ def test_cloud_success_is_used_signed_and_measured(monkeypatch):
     metrics = provider.get_ai_metrics()
     assert metrics["cloudflare"] == 1
     assert metrics["cloudflare_percent"] == 100.0
+    assert metrics["cloudflare_p50_ms"] is not None
+    assert metrics["usage"]["input_tokens"] == 120
+    assert metrics["usage"]["output_tokens"] == 18
+    assert metrics["usage"]["estimated_neurons"] > 0
+    assert metrics["models"]["@cf/meta/llama-3.2-3b-instruct"] == 1
+    assert metrics["request_kinds"]["default"] == 1
 
 
 def test_cloud_failure_never_breaks_game(monkeypatch):

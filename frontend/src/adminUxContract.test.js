@@ -7,6 +7,7 @@ const formatting = readFileSync(new URL('./adminFormatting.js', import.meta.url)
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
 const liveStatus = readFileSync(new URL('./components/LiveServiceStatus.jsx', import.meta.url), 'utf8');
 const menu = readFileSync(new URL('./components/Menu.jsx', import.meta.url), 'utf8');
+const observability = readFileSync(new URL('./components/ObservabilityPanel.jsx', import.meta.url), 'utf8');
 
 describe('admin UX contract', () => {
   it('abre el expediente desde el propio nombre y elimina el botón redundante', () => {
@@ -24,9 +25,17 @@ describe('admin UX contract', () => {
     expect(admin).not.toContain('.toLocaleString()');
   });
 
-  it('muestra observabilidad del narrador AI sólo dentro de Admin', () => {
-    expect(admin).toContain("import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';");
-    expect(admin).toContain('<AiNarrativeMetrics token={getToken()} />');
+  it('muestra observabilidad global de Chess Studio sólo dentro de Admin', () => {
+    expect(admin).toContain("import ObservabilityPanel from './ObservabilityPanel.jsx';");
+    expect(admin).toContain('<ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />');
+  });
+
+  it('mantiene observabilidad simple por defecto y profundidad bajo clic', () => {
+    expect(observability).toContain('Estado de Chess Studio');
+    expect(observability).toContain('Ver métricas completas');
+    expect(observability).toContain('OBSERVABILITY_REFRESH_MS = 120000');
+    expect(observability).toContain('Sin jugadas, FEN, mensajes, clicks ni identidad sensible.');
+    expect(observability).toContain('Workers AI');
   });
   it('muestra presencia en primer plano sin confundirla con online', () => {
     expect(admin).toContain('foregroundCount');

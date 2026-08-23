@@ -6,8 +6,11 @@ import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import {
   buildPlayerPortraitFacts,
+  formatPlayerPortraitCooldown,
   loadCachedPlayerPortrait,
+  markPlayerPortraitManualRefresh,
   playerPortraitGenerationKey,
+  playerPortraitManualRefreshState,
   saveCachedPlayerPortrait,
 } from '../aiPlayerPortrait.js';
 import { findWorstMoveEver } from '../gameReport.js';
@@ -137,13 +140,23 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   );
   const portraitGenerationKey = useMemo(() => playerPortraitGenerationKey(insights), [insights]);
   const portraitFactsKey = useMemo(() => JSON.stringify(portraitFacts || {}), [portraitFacts]);
+  const portraitRemoteEligible = Number(insights.totalGames || 0) >= 3;
   const localPortrait = useMemo(() => roastLines.slice(0, 2).join(' '), [roastLines]);
   const [portraitText, setPortraitText] = useState(() => loadCachedPlayerPortrait(portraitGenerationKey));
   const [portraitStatus, setPortraitStatus] = useState(() => portraitText ? 'cloudflare' : 'local');
   const [portraitRefresh, setPortraitRefresh] = useState(0);
+  const portraitManualRequestRef = useRef(false);
+  const [portraitCooldownNow, setPortraitCooldownNow] = useState(() => Date.now());
+  const portraitManualState = playerPortraitManualRefreshState({ now: portraitCooldownNow });
 
   useEffect(() => {
-    if (!portraitFacts || Number(insights.totalGames || 0) < 3) {
+    if (portraitManualState.allowed) return undefined;
+    const timer = window.setInterval(() => setPortraitCooldownNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, [portraitManualState.allowed]);
+
+  useEffect(() => {
+    if (!portraitFacts || !portraitRemoteEligible) {
       setPortraitText(null);
       setPortraitStatus('local');
       return undefined;
@@ -164,10 +177,13 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     }
 
     let active = true;
+    const requestKind = portraitManualRequestRef.current ? 'portrait_manual' : 'portrait_auto';
+    portraitManualRequestRef.current = false;
     setPortraitStatus('loading');
     void requestRemoteNarrative(
       {
         eventType: 'player_portrait',
+        requestKind,
         tone: 'friendly_sarcastic',
         facts: portraitFacts,
       },
@@ -184,7 +200,19 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     });
 
     return () => { active = false; };
-  }, [portraitFactsKey, portraitGenerationKey, portraitRefresh]);
+  }, [portraitFactsKey, portraitGenerationKey, portraitRefresh, portraitRemoteEligible]);
+
+  function requestFreshPortrait() {
+    const state = playerPortraitManualRefreshState();
+    if (!portraitRemoteEligible || !state.allowed || portraitStatus === 'loading') {
+      setPortraitCooldownNow(Date.now());
+      return;
+    }
+    markPlayerPortraitManualRefresh();
+    portraitManualRequestRef.current = true;
+    setPortraitCooldownNow(Date.now());
+    setPortraitRefresh((value) => value + 1);
+  }
 
   const coaching = useMemo(() => generateCoaching(insights, rivalry, roastExtras), [insights, rivalry, roastExtras]);
   const coachingWithTraining = useMemo(() => coaching.map((item) => ({
@@ -281,10 +309,25 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             <div className="friendly-disclosure-body">
               <p className="hint-text">Usa sólo tus estadísticas e incidentes guardados: resultados, tendencia de rating, aperturas, rachas, rivalidad y errores realmente registrados. La IA pone la voz; los hechos los pone Chess Studio.</p>
               <div className="ai-player-portrait-actions">
-                <button type="button" className="secondary-btn" disabled={portraitStatus === 'loading'} onClick={() => setPortraitRefresh((value) => value + 1)}>
-                  {portraitStatus === 'loading' ? 'Pensando…' : 'Regenerar lectura'}
-                </button>
-                <small>Se actualiza solo cada 3 partidas para no gastar llamadas por deporte.</small>
+                {portraitRemoteEligible ? (
+                  <>
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      disabled={portraitStatus === 'loading' || !portraitManualState.allowed}
+                      onClick={requestFreshPortrait}
+                    >
+                      {portraitStatus === 'loading' ? 'Pensando…' : portraitManualState.allowed ? 'Pedir otra lectura' : 'Lectura reciente'}
+                    </button>
+                    <small>
+                      {portraitManualState.allowed
+                        ? 'Puedes pedir una lectura extra cada 6 h; además se renueva sola cada 3 partidas.'
+                        : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
+                    </small>
+                  </>
+                ) : (
+                  <small>Workers AI se activa cuando haya al menos 3 partidas reales que comentar.</small>
+                )}
               </div>
             </div>
           </details>

@@ -11,7 +11,9 @@ describe('AI portrait + shared narrative voice', () => {
     expect(insights).toContain("tone: 'friendly_sarcastic'");
     expect(insights).toContain('portraitText || localPortrait');
     expect(insights).toContain('loadCachedPlayerPortrait');
-    expect(insights).toContain('cada 3 partidas');
+    expect(insights).toContain('cada 6 h');
+    expect(insights).toContain("requestKind,");
+    expect(insights).toContain("'portrait_manual'");
   });
 
   it('el contrato del Worker exige tuteo y sarcasmo de buen rollo también durante partida', () => {

@@ -5,6 +5,7 @@ under the same JWT/admin policy as the rest of Chess Studio.
 """
 from __future__ import annotations
 
+import os
 import time
 from collections import OrderedDict, deque
 from typing import Any, Callable
@@ -17,6 +18,7 @@ from narrative_cloudflare import generate_narrative, get_ai_metrics
 
 class NarrativeRequest(BaseModel):
     eventType: str = Field(default="generic", max_length=48)
+    requestKind: str = Field(default="default", max_length=32)
     facts: dict[str, Any] = Field(default_factory=dict)
     tone: str = Field(default="friendly_sarcastic", max_length=32)
     locale: str = Field(default="es-ES", max_length=16)
@@ -48,6 +50,31 @@ class SlidingWindowLimiter:
             self._events.popitem(last=False)
 
 
+
+
+class CooldownLimiter:
+    def __init__(self, cooldown_seconds: int, max_identities: int = 5000):
+        self.cooldown_seconds = max(1, int(cooldown_seconds))
+        self.max_identities = max(100, int(max_identities))
+        self._last: OrderedDict[str, float] = OrderedDict()
+
+    def check(self, key: str) -> None:
+        now = time.monotonic()
+        previous = self._last.pop(key, None)
+        if previous is not None:
+            remaining = self.cooldown_seconds - (now - previous)
+            if remaining > 0:
+                self._last[key] = previous
+                raise HTTPException(
+                    status_code=429,
+                    detail="Player portrait manual refresh cooldown",
+                    headers={"Retry-After": str(max(1, int(remaining + 0.999)))},
+                )
+        self._last[key] = now
+        while len(self._last) > self.max_identities:
+            self._last.popitem(last=False)
+
+
 def _identity_key(identity: Any, request: Request) -> str:
     if isinstance(identity, str) and identity:
         return f"user:{identity.lower()}"
@@ -62,6 +89,14 @@ def _identity_key(identity: Any, request: Request) -> str:
     return f"ip:{request.client.host if request.client else 'unknown'}"
 
 
+def _portrait_manual_cooldown_seconds() -> int:
+    raw = (os.getenv("AI_PORTRAIT_MANUAL_COOLDOWN_SECONDS") or "").strip()
+    try:
+        return max(60, min(int(raw), 7 * 24 * 60 * 60)) if raw else 6 * 60 * 60
+    except ValueError:
+        return 6 * 60 * 60
+
+
 def build_narrative_router(
     *,
     auth_dependency: Callable[..., Any],
@@ -70,11 +105,24 @@ def build_narrative_router(
 ) -> APIRouter:
     router = APIRouter()
     limiter = SlidingWindowLimiter(rate_limit_per_minute, 60)
+    portrait_manual_limiter = CooldownLimiter(_portrait_manual_cooldown_seconds())
 
     @router.post("/api/narrative")
     async def narrative(request: Request, body: NarrativeRequest, identity: Any = Depends(auth_dependency)):
-        limiter.check(_identity_key(identity, request))
-        return await generate_narrative(body.eventType, body.facts, tone=body.tone, locale=body.locale)
+        identity_key = _identity_key(identity, request)
+        limiter.check(identity_key)
+        request_kind = (body.requestKind or "default").strip().lower()
+        if request_kind not in {"default", "portrait_auto", "portrait_manual"}:
+            request_kind = "default"
+        if body.eventType == "player_portrait" and request_kind == "portrait_manual":
+            portrait_manual_limiter.check(identity_key)
+        return await generate_narrative(
+            body.eventType,
+            body.facts,
+            tone=body.tone,
+            locale=body.locale,
+            request_kind=request_kind,
+        )
 
     if admin_dependency is not None:
         @router.get("/api/admin/ai-metrics")

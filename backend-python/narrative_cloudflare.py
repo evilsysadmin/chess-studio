@@ -217,6 +217,9 @@ class ProviderOutcome:
     text: str | None
     reason: str
     latency_ms: float
+    input_tokens: int = 0
+    output_tokens: int = 0
+    model: str | None = None
 
 
 _TELEMETRY_LOCK = threading.Lock()
@@ -299,15 +302,30 @@ def _provider_failure(reason: str, latency_ms: float) -> ProviderOutcome:
     return ProviderOutcome(None, reason, latency_ms)
 
 
-def _record(provider: str, event_type: str, latency_ms: float, reason: str, text: str) -> None:
+def _record(
+    provider: str,
+    event_type: str,
+    latency_ms: float,
+    reason: str,
+    text: str,
+    *,
+    request_kind: str = "default",
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    model: str | None = None,
+) -> None:
     with _TELEMETRY_LOCK:
         _TELEMETRY.append({
             "at": int(time.time()),
             "provider": provider,
             "event_type": str(event_type or "generic")[:48],
+            "request_kind": str(request_kind or "default")[:32],
             "latency_ms": max(0.0, round(float(latency_ms), 2)),
             "reason": str(reason or "unknown")[:64],
             "chars": len(text or ""),
+            "input_tokens": max(0, int(input_tokens or 0)),
+            "output_tokens": max(0, int(output_tokens or 0)),
+            "model": str(model or "")[:96] or None,
         })
 
 
@@ -316,19 +334,33 @@ def reset_ai_metrics() -> None:
         _TELEMETRY.clear()
 
 
+def _percentile(values: list[float], percentile: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    idx = max(0, math.ceil(percentile * len(ordered)) - 1)
+    return round(float(ordered[idx]), 2)
+
+
 def get_ai_metrics() -> dict[str, Any]:
     with _TELEMETRY_LOCK:
         events = list(_TELEMETRY)
     total = len(events)
     providers = Counter(e["provider"] for e in events)
     reasons = Counter(e["reason"] for e in events)
-    cloud_latencies = sorted(e["latency_ms"] for e in events if e["provider"] == "cloudflare")
-    p95 = None
-    if cloud_latencies:
-        idx = max(0, math.ceil(0.95 * len(cloud_latencies)) - 1)
-        p95 = round(cloud_latencies[idx], 2)
+    event_types = Counter(e["event_type"] for e in events)
+    request_kinds = Counter(e.get("request_kind") or "default" for e in events)
+    cloud_latencies = [e["latency_ms"] for e in events if e["provider"] == "cloudflare"]
     cloud = providers.get("cloudflare", 0)
     local = providers.get("local", 0)
+    input_tokens = sum(int(e.get("input_tokens") or 0) for e in events if e["provider"] == "cloudflare")
+    output_tokens = sum(int(e.get("output_tokens") or 0) for e in events if e["provider"] == "cloudflare")
+    # Pricing published by Cloudflare for @cf/meta/llama-3.2-3b-instruct
+    # (Aug 2026). These are estimates for the bounded in-process telemetry
+    # window, not a billing source of truth.
+    estimated_neurons = (input_tokens * 4625 + output_tokens * 30475) / 1_000_000
+    estimated_cost_usd = (input_tokens * 0.051 + output_tokens * 0.335) / 1_000_000
+    models = Counter(e.get("model") for e in events if e.get("model"))
     return {
         "window": MAX_TELEMETRY_EVENTS,
         "samples": total,
@@ -336,8 +368,21 @@ def get_ai_metrics() -> dict[str, Any]:
         "local_fallback": local,
         "cloudflare_percent": round(cloud * 100 / total, 1) if total else None,
         "fallback_percent": round(local * 100 / total, 1) if total else None,
-        "cloudflare_p95_ms": p95,
+        "cloudflare_p50_ms": _percentile(cloud_latencies, 0.50),
+        "cloudflare_p95_ms": _percentile(cloud_latencies, 0.95),
+        "cloudflare_p99_ms": _percentile(cloud_latencies, 0.99),
         "reasons": dict(reasons.most_common(8)),
+        "event_types": dict(event_types.most_common(12)),
+        "request_kinds": dict(request_kinds.most_common(8)),
+        "usage": {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+            "estimated_neurons": round(estimated_neurons, 3),
+            "estimated_cost_usd": round(estimated_cost_usd, 6),
+            "pricing_note": "Estimación de la ventana reciente; Cloudflare billing es la fuente de verdad.",
+        },
+        "models": dict(models.most_common(4)),
         "last_event_at": events[-1]["at"] if events else None,
         "enabled": ai_narrative_enabled(),
         "circuit": _circuit_snapshot(),
@@ -389,6 +434,10 @@ async def request_cloud_narrative(
         text = data.get("text") if isinstance(data, dict) else None
         if not isinstance(text, str):
             return _provider_failure("invalid_payload", elapsed)
+        usage = data.get("usage") if isinstance(data, dict) and isinstance(data.get("usage"), dict) else {}
+        input_tokens = max(0, int(usage.get("inputTokens") or usage.get("prompt_tokens") or 0))
+        output_tokens = max(0, int(usage.get("outputTokens") or usage.get("completion_tokens") or 0))
+        model = str(data.get("model") or "")[:96] if isinstance(data, dict) else ""
         text = " ".join(text.split()).strip()[:420]
         if not text:
             return _provider_failure("empty_response", elapsed)
@@ -396,7 +445,7 @@ async def request_cloud_narrative(
         if not grounded:
             return _provider_failure(f"ungrounded_{concept}", elapsed)
         _circuit_success()
-        return ProviderOutcome(text, "ok", elapsed)
+        return ProviderOutcome(text, "ok", elapsed, input_tokens, output_tokens, model or None)
     except httpx.TimeoutException:
         return _provider_failure("timeout", (time.perf_counter() - started) * 1000)
     except (httpx.HTTPError, ValueError, TypeError):
@@ -412,13 +461,18 @@ async def generate_narrative(
     *,
     tone: str = "friendly_sarcastic",
     locale: str = "es-ES",
+    request_kind: str = "default",
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
     outcome = await request_cloud_narrative(event_type, facts, tone=tone, locale=locale, client=client)
     if outcome.text:
-        _record("cloudflare", event_type, outcome.latency_ms, outcome.reason, outcome.text)
+        _record(
+            "cloudflare", event_type, outcome.latency_ms, outcome.reason, outcome.text,
+            request_kind=request_kind, input_tokens=outcome.input_tokens,
+            output_tokens=outcome.output_tokens, model=outcome.model,
+        )
         return {"text": outcome.text, "provider": "cloudflare", "latencyMs": round(outcome.latency_ms, 1)}
 
     text = _fallback(event_type, facts)
-    _record("local", event_type, outcome.latency_ms, outcome.reason, text)
+    _record("local", event_type, outcome.latency_ms, outcome.reason, text, request_kind=request_kind)
     return {"text": text, "provider": "local", "latencyMs": round(outcome.latency_ms, 1)}

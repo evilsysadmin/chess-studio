@@ -3,6 +3,7 @@ import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
 const PORTRAIT_SCHEMA = 1;
 const GAMES_PER_AUTOMATIC_REFRESH = 3;
+export const PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 function finiteNumber(value) {
   const number = Number(value);
@@ -112,9 +113,14 @@ export function playerPortraitGenerationKey(insights) {
   return `${PORTRAIT_SCHEMA}:${Math.floor(games / GAMES_PER_AUTOMATIC_REFRESH)}`;
 }
 
-export function loadCachedPlayerPortrait(generationKey) {
+function readPortraitCache() {
   const cached = readJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, { fallback: null, removeMalformed: true });
-  if (!cached || cached.schema !== PORTRAIT_SCHEMA || cached.generationKey !== generationKey) return null;
+  return cached && cached.schema === PORTRAIT_SCHEMA && typeof cached === 'object' ? cached : null;
+}
+
+export function loadCachedPlayerPortrait(generationKey) {
+  const cached = readPortraitCache();
+  if (!cached || cached.generationKey !== generationKey) return null;
   if (typeof cached.text !== 'string' || !cached.text.trim()) return null;
   return cached.text.trim().slice(0, 420);
 }
@@ -122,10 +128,44 @@ export function loadCachedPlayerPortrait(generationKey) {
 export function saveCachedPlayerPortrait(generationKey, text) {
   const clean = typeof text === 'string' ? text.trim().slice(0, 420) : '';
   if (!clean) return false;
+  const previous = readPortraitCache() || {};
   return writeJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, {
     schema: PORTRAIT_SCHEMA,
     generationKey,
     text: clean,
     generatedAt: new Date().toISOString(),
+    ...(Number.isFinite(Number(previous.manualRequestedAt)) ? { manualRequestedAt: Number(previous.manualRequestedAt) } : {}),
   });
+}
+
+export function playerPortraitManualRefreshState({ now = Date.now() } = {}) {
+  const cached = readPortraitCache();
+  const last = Number(cached?.manualRequestedAt);
+  if (!Number.isFinite(last) || last <= 0) {
+    return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
+  }
+  const remaining = Math.max(0, PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS - (Number(now) - last));
+  return {
+    allowed: remaining <= 0,
+    retryAfterMs: remaining,
+    nextAllowedAt: remaining > 0 ? last + PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS : null,
+  };
+}
+
+export function markPlayerPortraitManualRefresh({ now = Date.now() } = {}) {
+  const previous = readPortraitCache() || {};
+  return writeJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, {
+    ...previous,
+    schema: PORTRAIT_SCHEMA,
+    manualRequestedAt: Number(now),
+  });
+}
+
+export function formatPlayerPortraitCooldown(ms) {
+  const totalMinutes = Math.max(1, Math.ceil(Number(ms || 0) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes} min`;
+  if (!minutes) return `${hours} h`;
+  return `${hours} h ${minutes} min`;
 }

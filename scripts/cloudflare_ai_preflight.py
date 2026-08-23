@@ -46,6 +46,8 @@ def static_check() -> list[str]:
         'x-chess-ai-signature',
         'timingSafeHexEqual',
         'MAX_BODY_BYTES',
+        'normalizeUsage',
+        'usage: normalizeUsage(result)',
         '"/health"',
     ):
         require(worker, needle, "worker", errors)
@@ -63,7 +65,7 @@ def static_check() -> list[str]:
     require(tf_main, 'type         = "ratelimit"', "terraform rate limit binding", errors)
     require(tf_main, 'keep_bindings', "terraform secret preservation", errors)
 
-    for needle in ('CF_AI_WORKER_URL', 'CHESS_AI_SHARED_SECRET', 'sign_request(', 'validate_grounded_output('):
+    for needle in ('CF_AI_WORKER_URL', 'CHESS_AI_SHARED_SECRET', 'sign_request(', 'validate_grounded_output(', 'estimated_neurons', 'request_kinds'):
         require(backend, needle, "backend", errors)
 
     # Secrets and the direct Worker origin must stay server-side; browser talks only to FastAPI.

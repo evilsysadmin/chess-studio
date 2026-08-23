@@ -57,6 +57,7 @@ export async function requestRemoteNarrative(
       signal: controller.signal,
       body: JSON.stringify({
         eventType: String(dossier.eventType || 'generic').slice(0, 48),
+        requestKind: String(dossier.requestKind || 'default').slice(0, 32),
         facts: dossier.facts && typeof dossier.facts === 'object' ? dossier.facts : {},
         tone: String(dossier.tone || 'friendly_sarcastic').slice(0, 32),
         locale: 'es-ES',

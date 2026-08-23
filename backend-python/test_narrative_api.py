@@ -49,6 +49,20 @@ def test_rate_limit_is_real(monkeypatch):
     assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
     assert client.post("/api/narrative", headers=headers, json=payload).status_code == 429
 
+
+def test_player_portrait_manual_refresh_has_six_hour_server_cooldown(monkeypatch):
+    monkeypatch.setenv("AI_PORTRAIT_MANUAL_COOLDOWN_SECONDS", "21600")
+    monkeypatch.delenv("CF_AI_WORKER_URL", raising=False)
+    monkeypatch.delenv("CHESS_AI_SHARED_SECRET", raising=False)
+    client = build_client()
+    headers = {"Authorization": "Bearer ok"}
+    payload = {"eventType": "player_portrait", "requestKind": "portrait_manual", "facts": {"total_games": 8}}
+    first = client.post("/api/narrative", headers=headers, json=payload)
+    second = client.post("/api/narrative", headers=headers, json=payload)
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert int(second.headers["retry-after"]) > 0
+
 def test_rate_limiter_bounds_identity_memory():
     limiter = narrative_api.SlidingWindowLimiter(limit=10, window_seconds=60, max_identities=100)
     for i in range(250):

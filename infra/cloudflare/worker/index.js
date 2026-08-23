@@ -106,6 +106,17 @@ function sanitizeFacts(value, depth = 0) {
   return null;
 }
 
+
+function normalizeUsage(result) {
+  const usage = result?.usage ?? result?.result?.usage ?? {};
+  const inputTokens = Number(usage?.prompt_tokens ?? usage?.input_tokens ?? usage?.inputTokens ?? 0);
+  const outputTokens = Number(usage?.completion_tokens ?? usage?.output_tokens ?? usage?.outputTokens ?? 0);
+  return {
+    inputTokens: Number.isFinite(inputTokens) && inputTokens > 0 ? Math.round(inputTokens) : 0,
+    outputTokens: Number.isFinite(outputTokens) && outputTokens > 0 ? Math.round(outputTokens) : 0,
+  };
+}
+
 function timingSafeHexEqual(left, right) {
   if (typeof left !== "string" || typeof right !== "string") return false;
   if (left.length !== right.length) return false;
@@ -249,6 +260,7 @@ async function handleNarrative(request, env) {
     ok: true,
     text,
     model: MODEL,
+    usage: normalizeUsage(result),
   });
 }
 
