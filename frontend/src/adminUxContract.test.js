@@ -34,6 +34,14 @@ describe('admin UX contract', () => {
     expect(admin).toContain('Segundo plano');
   });
 
+  it('filtra actividad y muestra la última release reportada por usuario', () => {
+    expect(admin).toContain('ADMIN_USER_FILTERS');
+    expect(admin).toContain('admin-filter-chip');
+    expect(admin).toContain('<th>Versión</th>');
+    expect(admin).toContain('clientRelease');
+    expect(admin).toContain('Última release reportada');
+  });
+
   it('blinda Usuarios online → Panel admin sólo para admins', () => {
     expect(app).toContain("<GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')}");
     expect(liveStatus).toContain("const canOpenAdmin = isAdminUser && typeof onAdmin === 'function';");

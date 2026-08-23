@@ -982,13 +982,14 @@ def test_registration_requires_invite_code_when_configured(monkeypatch):
 
 # ---------- V16: presencia admin + core gate ----------
 
-def test_presence_summary_classifies_online_recent_and_offline():
+def test_presence_summary_classifies_online_idle_recent_offline_and_never():
     from datetime import datetime, timedelta, timezone
     from main import _presence_summary
 
     now = datetime.now(timezone.utc)
     assert _presence_summary(now.isoformat())["presence"] == "online"
-    assert _presence_summary((now - timedelta(minutes=5)).isoformat())["presence"] == "recent"
+    assert _presence_summary((now - timedelta(minutes=4)).isoformat())["presence"] == "idle"
+    assert _presence_summary((now - timedelta(minutes=10)).isoformat())["presence"] == "recent"
     assert _presence_summary((now - timedelta(hours=2)).isoformat())["presence"] == "offline"
     assert _presence_summary(None)["presence"] == "never"
 
@@ -1415,18 +1416,30 @@ def test_foreground_summary_expires_stale_visible_tabs():
     assert _foreground_summary({}) == {"foreground": None, "foregroundAgeSeconds": None}
 
 
+def test_presence_summary_ages_online_to_idle_recent_and_offline():
+    from datetime import datetime, timedelta, timezone
+    from main import _presence_summary
+
+    now = datetime.now(timezone.utc)
+    assert _presence_summary((now - timedelta(seconds=120)).isoformat())["presence"] == "online"
+    assert _presence_summary((now - timedelta(minutes=3)).isoformat())["presence"] == "idle"
+    assert _presence_summary((now - timedelta(minutes=10)).isoformat())["presence"] == "recent"
+    assert _presence_summary((now - timedelta(minutes=20)).isoformat())["presence"] == "offline"
+
+
 def test_activity_heartbeat_records_foreground_without_private_telemetry(monkeypatch):
     import main as main_module
 
     monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
     assert client.post(
         "/api/auth/activity",
-        json={"activity": "Partida", "foreground": True},
+        json={"activity": "Partida", "foreground": True, "release": "vtest123"},
     ).status_code == 204
 
     row = next(user for user in client.get("/api/admin/users").json()["users"] if user["username"] == "testuser")
     assert row["currentActivity"] == "Partida"
     assert row["foreground"] is True
+    assert row["clientRelease"] == "vtest123"
     assert isinstance(row["foregroundAgeSeconds"], int)
 
     assert client.post(
@@ -1436,3 +1449,10 @@ def test_activity_heartbeat_records_foreground_without_private_telemetry(monkeyp
     row = next(user for user in client.get("/api/admin/users").json()["users"] if user["username"] == "testuser")
     assert row["currentActivity"] == "Partida"
     assert row["foreground"] is False
+
+    assert client.post(
+        "/api/auth/activity",
+        json={"activity": "Partida", "release": "<script>"},
+    ).status_code == 204
+    row = next(user for user in client.get("/api/admin/users").json()["users"] if user["username"] == "testuser")
+    assert row["clientRelease"] == "vtest123"

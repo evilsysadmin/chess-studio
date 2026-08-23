@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
+import { APP_RELEASE } from './release.js';
 
 function mockFetchOnce(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -185,7 +186,7 @@ describe('fetchMe/authHeader/wakeBackend', () => {
       expect.stringContaining('/auth/activity'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ activity: 'Partida', foreground: true }),
+        body: JSON.stringify({ activity: 'Partida', foreground: true, release: APP_RELEASE }),
       }),
     );
 

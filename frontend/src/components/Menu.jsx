@@ -85,11 +85,17 @@ export default function Menu({
   return (
     <div className="menu home-friendly">
       {hasSavedGame && (
-        <button type="button" className="continue-banner" disabled={loading} onClick={onContinue}>
-          <IconBookmark className="continue-banner-icon" />
-          <span className="continue-banner-text"><b>Tienes una partida en curso</b><small>Retómala donde la dejaste</small></span>
-          <span className="continue-banner-cta">Continuar →</span>
-        </button>
+        <div className="menu-group home-continue-group">
+          <button type="button" className="home-continue-card" disabled={loading} onClick={onContinue}>
+            <span className="home-continue-icon" aria-hidden="true"><IconBookmark /></span>
+            <span className="home-continue-copy">
+              <span className="section-label">Partida en curso</span>
+              <strong>Continuar partida</strong>
+              <small>Vuelve al tablero exactamente donde lo dejaste.</small>
+            </span>
+            <span className="home-continue-cta">Volver al tablero →</span>
+          </button>
+        </div>
       )}
 
       <div className="menu-group home-primary-group">
@@ -197,7 +203,7 @@ export default function Menu({
       </button>
 
       <HomePlayNudge
-        enabled={!hasOpenOverlay && !loggingOut}
+        enabled={!hasOpenOverlay && !loggingOut && !hasSavedGame}
         hasSavedGame={hasSavedGame}
         onContinue={onContinue}
         onPlay={() => setShowQuickMatch(true)}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAdminDate, formatAdminTimestamp, sortAdminUsers } from './adminFormatting.js';
+import { filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from './adminFormatting.js';
 
 describe('formato temporal del panel admin', () => {
   it('usa español y reloj de 24 horas sin AM/PM', () => {
@@ -15,16 +15,32 @@ describe('formato temporal del panel admin', () => {
     expect(formatAdminTimestamp('esto-no-es-fecha')).toBe('—');
   });
 
-  it('ordena primero online y después por última conexión más reciente', () => {
+  it('ordena primer plano, online e inactivos antes que conexiones antiguas', () => {
     const users = [
-      { username: 'old-offline', presence: 'offline', lastActivity: '2026-08-20T10:00:00Z' },
-      { username: 'new-offline', presence: 'offline', lastActivity: '2026-08-23T10:00:00Z' },
-      { username: 'old-online', presence: 'online', lastActivity: '2026-08-22T10:00:00Z' },
-      { username: 'new-online', presence: 'online', lastActivity: '2026-08-23T11:00:00Z' },
+      { username: 'offline', presence: 'offline', lastActivity: '2026-08-23T12:00:00Z' },
+      { username: 'idle', presence: 'idle', lastActivity: '2026-08-23T11:58:00Z' },
+      { username: 'online', presence: 'online', foreground: false, lastActivity: '2026-08-23T11:57:00Z' },
+      { username: 'foreground', presence: 'online', foreground: true, lastActivity: '2026-08-23T11:56:00Z' },
     ];
     expect(sortAdminUsers(users).map((user) => user.username)).toEqual([
-      'new-online', 'old-online', 'new-offline', 'old-offline',
+      'foreground', 'online', 'idle', 'offline',
     ]);
+  });
+
+  it('filtra rápidamente por presencia y por actividad gruesa', () => {
+    const users = [
+      { username: 'ana', presence: 'online', foreground: true, currentActivity: 'Partida' },
+      { username: 'bea', presence: 'online', foreground: false, currentActivity: 'Combat Chess' },
+      { username: 'cora', presence: 'idle', foreground: false, currentActivity: 'Torneo' },
+      { username: 'dani', presence: 'recent', foreground: false, currentActivity: 'Así juegas' },
+      { username: 'eva', presence: 'offline', foreground: false, currentActivity: 'Combat Chess' },
+    ];
+    expect(filterAdminUsers(users, 'foreground').map((u) => u.username)).toEqual(['ana']);
+    expect(filterAdminUsers(users, 'online').map((u) => u.username)).toEqual(['ana', 'bea']);
+    expect(filterAdminUsers(users, 'idle').map((u) => u.username)).toEqual(['cora']);
+    expect(filterAdminUsers(users, 'combat').map((u) => u.username)).toEqual(['bea']);
+    expect(filterAdminUsers(users, 'tournament').map((u) => u.username)).toEqual(['cora']);
+    expect(filterAdminUsers(users, 'insights').map((u) => u.username)).toEqual(['dani']);
   });
 
 });

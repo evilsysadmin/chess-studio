@@ -10,6 +10,7 @@ import { clearSessionView } from './viewState.js';
 import { clearAllClockSnapshots } from './clockPersistence.js';
 import { clearCombatSession } from './combatSession.js';
 import { clearHomePlayNudgeSession } from './homePlayNudge.js';
+import { APP_RELEASE } from './release.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 export const USERNAME_KEY = 'chess-study-auth-username';
@@ -203,12 +204,13 @@ export async function fetchLiveStatus() {
 export function touchActivity(activity = null, foreground = null) {
   if (!getToken()) return;
   const hasForeground = typeof foreground === 'boolean';
-  const hasBody = !!activity || hasForeground;
+  const hasBody = !!activity || hasForeground || !!APP_RELEASE;
   const headers = withRequestId({ ...authHeader() });
   if (hasBody) headers['Content-Type'] = 'application/json';
   const payload = {};
   if (activity) payload.activity = activity;
   if (hasForeground) payload.foreground = foreground;
+  if (APP_RELEASE) payload.release = APP_RELEASE;
   fetch(`${BASE_URL}/auth/activity`, {
     method: 'POST',
     headers,

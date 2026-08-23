@@ -7,7 +7,7 @@ const cssSource = readFileSync(new URL('./styles.css', import.meta.url), 'utf8')
 
 describe('admin mobile layout contract', () => {
   it('expone etiquetas semánticas para convertir cada fila en ficha móvil', () => {
-    for (const label of ['Usuario', 'Actividad', 'Rating', 'Partidas', 'V/T/D', 'Peor', 'Acciones']) {
+    for (const label of ['Usuario', 'Actividad', 'Rating', 'Partidas', 'V/T/D', 'Peor', 'Versión', 'Acciones']) {
       expect(adminSource).toContain(`data-label="${label}"`);
     }
   });

@@ -10,7 +10,7 @@ import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';
-import { formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
+import { ADMIN_USER_FILTERS, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
@@ -33,6 +33,8 @@ function Presence({ user, compact = false }) {
     ? 'En línea'
     : status === 'recent'
       ? `Reciente · ${formatPresenceAge(user.presenceAgeSeconds) || ''}`.replace(/ · $/, '')
+      : status === 'idle'
+        ? `Inactivo · ${formatPresenceAge(user.presenceAgeSeconds) || ''}`.replace(/ · $/, '')
       : status === 'offline'
         ? (formatPresenceAge(user.presenceAgeSeconds) || 'Offline')
         : 'Sin actividad';
@@ -142,6 +144,7 @@ export default function AdminScreen({ onExit }) {
   const [feedback, setFeedback] = useState(null);
   const [feedbackError, setFeedbackError] = useState(null);
   const [feedbackUpdating, setFeedbackUpdating] = useState(null);
+  const [activityFilter, setActivityFilter] = useState('all');
 
   useEffect(() => {
     let mounted = true;
@@ -226,6 +229,8 @@ export default function AdminScreen({ onExit }) {
   const otherUsers = (users || []).filter((user) => user.username !== currentAdmin);
   const foregroundCount = otherUsers.filter((user) => user.foreground === true).length;
   const onlineCount = otherUsers.filter((user) => user.presence === 'online').length;
+  const idleCount = otherUsers.filter((user) => user.presence === 'idle').length;
+  const filteredUsers = filterAdminUsers(users || [], activityFilter);
 
   return (
     <div className="menu admin-screen">
@@ -245,7 +250,11 @@ export default function AdminScreen({ onExit }) {
               <strong>{onlineCount}</strong>
               <span>en línea</span>
             </div>
-            <small>Otros usuarios · muestreo aprox. cada 2 min</small>
+            <div>
+              <strong>{idleCount}</strong>
+              <span>inactivos</span>
+            </div>
+            <small>Otros usuarios · muestreo aprox. cada 2 min · el estado caduca automáticamente</small>
           </section>
         )}
         <AiNarrativeMetrics token={getToken()} />
@@ -289,6 +298,25 @@ export default function AdminScreen({ onExit }) {
           )}
         </section>
 
+        {users && users.length > 0 && (
+          <div className="admin-activity-filters" role="group" aria-label="Filtrar usuarios por actividad">
+            {ADMIN_USER_FILTERS.map((filter) => {
+              const count = filterAdminUsers(users, filter.id).length;
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  className={`admin-filter-chip${activityFilter === filter.id ? ' is-active' : ''}`}
+                  onClick={() => setActivityFilter(filter.id)}
+                  aria-pressed={activityFilter === filter.id}
+                >
+                  {filter.label}<span>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {error && <p className="error-text">{error}</p>}
         {deleteError && <p className="error-text">{deleteError}</p>}
         {!error && !users && <p className="hint-text">Cargando…</p>}
@@ -296,7 +324,11 @@ export default function AdminScreen({ onExit }) {
           <p className="hint-text">Todavía no hay ningún usuario registrado.</p>
         )}
 
-        {!error && users && users.length > 0 && (
+        {!error && users && users.length > 0 && filteredUsers.length === 0 && (
+          <p className="hint-text">No hay usuarios que coincidan con este filtro.</p>
+        )}
+
+        {!error && users && filteredUsers.length > 0 && (
           <div className="admin-table-wrap">
             <table className="admin-users-table">
               <thead>
@@ -307,11 +339,12 @@ export default function AdminScreen({ onExit }) {
                   <th>Partidas</th>
                   <th>V/T/D</th>
                   <th>Peor</th>
+                  <th>Versión</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {sortAdminUsers(users).map((u) => {
+                {sortAdminUsers(filteredUsers).map((u) => {
                   const isOpen = expanded === u.username;
                   const isSelf = getUsername() === u.username;
                   const detailId = `admin-user-details-${String(u.username).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
@@ -336,6 +369,7 @@ export default function AdminScreen({ onExit }) {
                         <td data-label="Partidas">{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
                         <td data-label="V/T/D">{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
                         <td className="admin-worst-cell" data-label="Peor"><WorstMove move={u.worstMove} compact /></td>
+                        <td data-label="Versión"><span className={`admin-client-release${u.clientRelease === APP_RELEASE ? ' is-current' : u.clientRelease ? ' is-different' : ''}`} title={u.clientRelease ? `Última release reportada: ${u.clientRelease}` : 'Todavía no ha reportado versión'}>{u.clientRelease || '—'}</span></td>
                         <td className="admin-actions-cell" data-label="Acciones">
                           <div className="admin-user-actions">
                             <button
@@ -351,11 +385,12 @@ export default function AdminScreen({ onExit }) {
                       </tr>
                       {isOpen && (
                         <tr className="admin-detail-row" id={detailId}>
-                          <td colSpan="7">
+                          <td colSpan="8">
                             <div className="admin-detail-grid">
                               <div><span>Registrado</span><strong>{formatAdminTimestamp(u.createdAt)}</strong></div>
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
                               <div><span>Última pantalla conocida</span><strong>{u.currentActivity || '—'}</strong></div>
+                              <div><span>Última release reportada</span><strong>{u.clientRelease || '—'}</strong></div>
                               <div><span>Ventana</span><strong>{u.foreground === true ? 'Primer plano' : u.foreground === false ? 'Segundo plano / no visible' : 'Sin dato'}</strong></div>
                               <div><span>Última actividad exacta</span><strong>{formatAdminTimestamp(u.lastActivity)}</strong></div>
                               <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>

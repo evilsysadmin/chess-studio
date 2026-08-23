@@ -32,6 +32,13 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
     expect(menu).toContain('Dar feedback');
   });
 
+  it('home convierte la partida guardada en una tarjeta de continuación visible', () => {
+    expect(menu).toContain('home-continue-card');
+    expect(menu).toContain('Partida en curso');
+    expect(menu).toContain('Continuar partida');
+    expect(menu).toContain('Volver al tablero');
+  });
+
   it('home compacta el estado global en vez de mostrar tres tarjetas de métricas completas', () => {
     expect(app).toContain("compact={view === 'menu'}");
     expect(status).toContain('player-status-bar-compact');
@@ -40,7 +47,7 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
 
   it('home invita a jugar tras inactividad sin secuestrar la interfaz', () => {
     expect(menu).toContain('<HomePlayNudge');
-    expect(menu).toContain('enabled={!hasOpenOverlay && !loggingOut}');
+    expect(menu).toContain('enabled={!hasOpenOverlay && !loggingOut && !hasSavedGame}');
     expect(homeNudge).toContain('HOME_PLAY_NUDGE_IDLE_MS');
     expect(homeNudge).toContain('role="status"');
     expect(homeNudge).not.toContain('aria-modal="true"');

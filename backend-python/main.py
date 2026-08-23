@@ -326,6 +326,7 @@ def resolve_human_color(color: str) -> str:
 class ActivityHeartbeatRequest(BaseModel):
     activity: Optional[str] = Field(default=None, max_length=40)
     foreground: Optional[bool] = None
+    release: Optional[str] = Field(default=None, max_length=32)
 
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -651,7 +652,9 @@ async def activity_heartbeat(payload: Optional[ActivityHeartbeatRequest] = None,
     }
     activity = payload.activity if payload and payload.activity in allowed else None
     foreground = payload.foreground if payload else None
-    await ustore.touch_last_activity(username, force=True, activity=activity, foreground=foreground)
+    raw_release = (payload.release or '').strip() if payload else ''
+    release = raw_release if re.fullmatch(r"v[0-9A-Za-z][0-9A-Za-z._-]{0,30}", raw_release) else None
+    await ustore.touch_last_activity(username, force=True, activity=activity, foreground=foreground, release=release)
     return None
 
 
@@ -1145,6 +1148,8 @@ def _presence_summary(last_activity) -> dict:
 
     if age <= 150:
         presence = "online"
+    elif age <= 5 * 60:
+        presence = "idle"
     elif age <= 15 * 60:
         presence = "recent"
     else:
@@ -1214,6 +1219,7 @@ async def admin_list_users(username: str = Depends(require_admin)):
             "username": uname,
             "createdAt": user_doc.get("created_at"),
             "currentActivity": user_doc.get("current_activity"),
+            "clientRelease": user_doc.get("client_release"),
             **_presence_summary(activity_anchor),
             **_foreground_summary(user_doc),
             **_extract_summary_stats(profile),

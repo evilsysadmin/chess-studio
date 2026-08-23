@@ -238,6 +238,7 @@ async def touch_last_activity(
     force: bool = False,
     activity: str | None = None,
     foreground: bool | None = None,
+    release: str | None = None,
 ) -> str:
     """Actualiza la última actividad con coalescing para no martillear Mongo.
 
@@ -261,6 +262,8 @@ async def touch_last_activity(
             if foreground is not None:
                 fields["is_foreground"] = bool(foreground)
                 fields["foreground_updated_at"] = value
+            if release:
+                fields["client_release"] = release
             # `force=True` se usa en login (y tras reset, que también entrega
             # sesión nueva). Guardamos un ancla de último acceso además del
             # heartbeat para que cuentas legacy nunca vuelvan a quedar como
@@ -282,6 +285,8 @@ async def touch_last_activity(
             if foreground is not None:
                 user["is_foreground"] = bool(foreground)
                 user["foreground_updated_at"] = value
+            if release:
+                user["client_release"] = release
             if force:
                 user["last_login"] = value
 

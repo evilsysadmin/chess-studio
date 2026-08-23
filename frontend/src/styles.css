@@ -428,58 +428,58 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   flex-direction: column;
 }
 
-/* ---------- Banner de "continuar partida" ---------- */
-.continue-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
+/* ---------- Tarjeta de partida en curso ---------- */
+.home-continue-group { margin-bottom: 0.2rem; }
+.home-continue-card {
   width: 100%;
-  background: linear-gradient(135deg, var(--walnut-dark), var(--walnut));
-  border: 1px solid var(--brass-dim);
-  border-radius: 10px;
-  padding: 0.9rem 1.1rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 58%, var(--ink-3));
+  border-left: 4px solid var(--brass);
+  border-radius: 11px;
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--brass) 10%, transparent), transparent 48%),
+    var(--ink-2);
+  color: inherit;
   text-align: left;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
 }
-
-.continue-banner:not(:disabled):hover {
+.home-continue-card:not(:disabled):hover {
   border-color: var(--brass);
   transform: translateY(-1px);
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--brass) 14%, transparent), transparent 52%),
+    var(--ink-2);
 }
-
-.continue-banner:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.continue-banner-icon {
-  width: 22px;
-  height: 22px;
+.home-continue-card:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
+.home-continue-card:disabled { opacity: 0.6; cursor: not-allowed; }
+.home-continue-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--brass-dim);
+  border-radius: 10px;
   color: var(--brass);
-  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.16);
 }
-
-.continue-banner-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  flex: 1;
-}
-
-.continue-banner-text b {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 0.95rem;
+.home-continue-icon svg { width: 22px; height: 22px; }
+.home-continue-copy { display: flex; min-width: 0; flex-direction: column; gap: 0.14rem; }
+.home-continue-copy .section-label { margin-bottom: 0.05rem; }
+.home-continue-copy strong {
   color: var(--parchment);
+  font: italic 700 1.02rem/1.2 var(--font-display);
 }
+.home-continue-copy small { color: var(--parchment-dim); font-size: 0.76rem; line-height: 1.35; }
+.home-continue-cta { color: var(--brass); font: 0.74rem/1.2 var(--font-mono); white-space: nowrap; }
 
-.continue-banner-text small {
-  font-size: 0.74rem;
-  color: var(--parchment-dim);
-}
-
-.continue-banner-cta {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--brass);
-  white-space: nowrap;
+@media (max-width: 620px) {
+  .home-continue-card { grid-template-columns: auto minmax(0, 1fr); }
+  .home-continue-cta { grid-column: 2; white-space: normal; }
 }
 
 /* ---------- Tarjetas de modo ---------- */
@@ -2941,7 +2941,8 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .admin-users-table th:nth-child(4), .admin-users-table td:nth-child(4) { width: 82px; }
 .admin-users-table th:nth-child(5), .admin-users-table td:nth-child(5) { width: 92px; }
 .admin-users-table th:nth-child(6), .admin-users-table td:nth-child(6) { width: 120px; }
-.admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width: 110px; }
+.admin-users-table th:nth-child(7), .admin-users-table td:nth-child(7) { width: 105px; }
+.admin-users-table th:nth-child(8), .admin-users-table td:nth-child(8) { width: 110px; }
 .admin-user-cell { overflow: hidden; text-overflow: ellipsis; }
 .admin-user-link {
   display: inline-flex;
@@ -4823,7 +4824,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
   .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(1),
   .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(2),
-  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(7) {
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(8) {
     grid-column: 1 / -1;
   }
 
@@ -4843,7 +4844,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
     border-right: 1px solid var(--ink-3);
   }
 
-  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(7) {
+  .admin-users-table tbody > tr:not(.admin-detail-row) > td:nth-child(8) {
     border-bottom: 0;
     padding: 0.7rem;
   }
@@ -8682,4 +8683,63 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 @media (max-width: 520px) {
   .admin-presence-summary { grid-template-columns: 1fr; }
   .admin-presence-summary > small { grid-column: 1; }
+}
+
+
+/* v16.6dm12 — filtros rápidos, presencia que envejece sola y release por usuario. */
+.admin-presence-idle { color: color-mix(in srgb, var(--parchment) 82%, var(--brass)); }
+.admin-presence-idle .admin-presence-dot {
+  background: var(--brass-dim);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brass) 10%, transparent);
+}
+.admin-presence-summary {
+  width: min(100%, 760px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.admin-activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  margin: 0.25rem 0 0.85rem;
+}
+.admin-filter-chip {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.38rem 0.58rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--parchment-dim);
+  font: 0.7rem/1 var(--font-mono);
+  cursor: pointer;
+}
+.admin-filter-chip span {
+  min-width: 1.25rem;
+  padding: 0.15rem 0.32rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--parchment);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.admin-filter-chip:hover { border-color: var(--brass-dim); color: var(--parchment); }
+.admin-filter-chip.is-active {
+  border-color: var(--brass);
+  background: color-mix(in srgb, var(--brass) 11%, var(--ink-2));
+  color: var(--brass);
+}
+.admin-filter-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.admin-client-release {
+  color: var(--parchment-dim);
+  font-size: 0.72rem;
+}
+.admin-client-release.is-current { color: var(--brass); }
+.admin-client-release.is-different { color: #e2c18e; }
+
+@media (max-width: 520px) {
+  .admin-presence-summary { grid-template-columns: 1fr; }
+  .admin-activity-filters { gap: 0.35rem; }
+  .admin-filter-chip { min-height: 40px; padding: 0.5rem 0.62rem; }
 }
