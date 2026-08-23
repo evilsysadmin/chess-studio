@@ -13,7 +13,7 @@ import pytest
 def no_real_mongo(monkeypatch, request):
     # Motor + reglas puras y el middleware de límites forman gates deliberadamente
     # independientes de FastAPI/Mongo/auth. Así `make gate-core` solo necesita pytest + python-chess.
-    if request.path.name in {"test_chess_ai.py", "test_core_game.py", "test_request_limits.py"}:
+    if request.path.name in {"test_chess_ai.py", "test_core_game.py", "test_request_limits.py", "test_narrative_cloudflare.py", "test_narrative_api.py"}:
         return
 
     # Los límites reales se prueban de forma dirigida; no queremos que una

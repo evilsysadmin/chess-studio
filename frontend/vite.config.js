@@ -31,5 +31,43 @@ export default defineConfig({
   test: {
     environment: 'node',
     setupFiles: ['./src/test-setup.js'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary', 'lcov'],
+      reportsDirectory: './coverage',
+      // Medimos primero la lógica crítica y estable. Los componentes React se
+      // validan en navegador real con Playwright; incluirlos aquí falsearía la
+      // señal porque esta suite Vitest corre deliberadamente en entorno node.
+      include: [
+        'src/api.js',
+        'src/auth.js',
+        'src/clock.js',
+        'src/clockPersistence.js',
+        'src/playerRating.js',
+        'src/profileBackup.js',
+        'src/puzzles.js',
+        'src/tournament.js',
+        'src/tournamentRewards.js',
+        'src/combat.js',
+        'src/combatBalance.js',
+        'src/combatCampaign.js',
+        'src/combatDebrief.js',
+        'src/combatDeployment.js',
+        'src/combatDeploymentPresets.js',
+        'src/combatIdentity.js',
+        'src/combatMetamorphosis.js',
+        'src/combatRanks.js',
+        'src/combatRoster.js',
+        'src/combatService.js',
+        'src/combatSession.js',
+        'src/combatTechniques.js',
+        'src/combatUnitService.js',
+        'src/narrativeProvider.js',
+        'src/narrativeRemote.js',
+      ],
+      exclude: ['src/**/*.test.js', 'src/test-setup.js'],
+      // Coverage es informativo: CI publica porcentajes/artifacts, pero no
+      // bloquea builds por un umbral. El ratchet se decidirá con baseline real.
+    },
   },
 });

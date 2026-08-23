@@ -1,0 +1,17 @@
+[run]
+branch = True
+source = .
+omit =
+    test_*.py
+    conftest.py
+    .venv/*
+
+[report]
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+
+[xml]
+output = coverage.xml

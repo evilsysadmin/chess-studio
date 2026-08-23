@@ -1,35 +1,40 @@
-// STATIC CONTRACT: valida intención operativa/markup de Combat Chess; no sustituye interacción E2E.
+// STATIC CONTRACT: valida wiring/markup estable de Combat Chess; no sustituye interacción E2E.
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const read = (name) => fs.readFileSync(path.join(dir, 'components', name), 'utf8');
+const read = (name) => {
+  const relative = name.startsWith('components/') || ['styles.css', 'combatRanks.js'].includes(name)
+    ? name
+    : `components/${name}`;
+  return fs.readFileSync(path.join(dir, relative), 'utf8');
+};
 
 describe('STATIC CONTRACT · Combat Chess operativo', () => {
-  it('campaña usa workspace ancho y deriva explicaciones al tutorial/tooltips', () => {
+  it('campaña conserva workspace ancho, pasos operativos y ayuda contextual', () => {
     const source = read('RoguelikeScreen.jsx');
     expect(source).toContain('menu combat-workspace');
-    expect(source).toContain('Selecciona una ruta conectada.');
-    expect(source).not.toContain('En móvil, el mapa baja por sectores');
+    expect(source).toContain('CampaignOperationSteps');
+    expect(source).toContain('context-help-btn');
   });
 
-  it('deployment mantiene instrucción corta y tooltip para la regla de origen', () => {
+  it('deployment conserva instrucción compacta con ayuda contextual sin depender del copy', () => {
     const source = read('CombatDeploymentView.jsx');
-    expect(source).toContain('Arrastra, coloca y confirma.');
-    expect(source).toContain('Un peón metamorfoseado sigue ocupando un slot de peón.');
-    expect(source).not.toContain('La identidad no cambia: un peón que combate como caballo');
+    expect(source).toContain('combat-operational-hint');
+    expect(source).toContain('context-help-btn');
+    expect(source).toContain('tutorialId="combat-deployment"');
   });
 
-  it('deployment arrastra sólo una pieza, marca el destino y no oculta bajas pendientes', () => {
+  it('deployment arrastra sólo una pieza, marca destino y mantiene visibles las bajas pendientes', () => {
     const source = read('CombatDeploymentView.jsx');
     expect(source).toContain('deployment-drag-ghost');
     expect(source).toContain('deployment-square-drop-hover');
+    expect(source).toContain('deployment-casualties');
     expect(source).toContain('summary.fallenCount');
-    expect(source).toContain('BAJAS PENDIENTES');
-    expect(source).toContain('Nuevo recluta');
     expect(source).toContain('onRevive?.(unitKey, origin)');
+    expect(source).toContain('onReplaceFallen?.(unitKey)');
     expect(source).toContain('onSquareDragLeave={handleSquareDragLeave}');
   });
 
@@ -37,27 +42,87 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     const source = read('CombatDeploymentView.jsx');
     expect(source).toContain('aria-label="Unidades en reserva"');
     expect(source).toContain('aria-label="Unidades desplegadas"');
-    expect(source).toContain('Banquillo · {summary.reserveCount}');
-    expect(source).toContain('{summary.assignedCount}/{summary.totalSlots}');
+    expect(source).toContain('deployment-reserve-list');
+    expect(source).toContain('deployment-deployed-list');
     expect(source).toContain('deployment-right-rail');
     expect(source).not.toContain('setStatusFilter');
     expect(source).not.toContain('aria-label="Vista del roster"');
   });
 
-  it('deployment permite inspeccionar bajas antes de decidir revivir o reemplazar', () => {
+  it('deployment usa ficha flotante en hover/focus y click la fija sin panel Inspector permanente', () => {
     const source = read('CombatDeploymentView.jsx');
-    expect(source).toContain('className="deployment-casualty-name"');
-    expect(source).toContain('aria-controls={dossierId}');
-    expect(source).toContain('onClick={() => inspectCasualty(unitKey)}');
-    expect(source).toContain('deployment-casualty-dossier-inline');
-    expect(source).toContain('aria-expanded={expanded}');
-    expect(source).toContain('Decisión de recuperación');
-    expect(source).toContain('puntos invertidos');
-    expect(source).toContain('selectedService.survivals');
-    expect(source).toContain('selectedMedals.map');
-    expect(source).toContain('selectedTechniques.map');
-    expect(source).toContain('Revivir cuesta');
-    expect(source).toContain('Nuevo recluta archiva esta identidad');
+    const boardSource = read('Board.jsx');
+    const styles = read('styles.css');
+
+    expect(source).toContain("import { createPortal } from 'react-dom';");
+    expect(source).toContain('function UnitDossierPopover(');
+    expect(source).toContain('deployment-unit-dossier-popover');
+    expect(source).toContain('role="dialog"');
+    expect(source).toContain('onMouseEnter={(event) => previewUnitDossier(unitKey, event)}');
+    expect(source).toContain('onFocus={(event) => previewUnitDossier(unitKey, event, true)}');
+    expect(source).toContain('onClick={(event) => pinUnitDossier(unitKey, event)}');
+    expect(source).toContain('onPieceMouseEnter={previewBoardUnitDossier}');
+    expect(source).toContain('onPieceMouseLeave={hideUnitDossierPreview}');
+    expect(source).toContain('onPieceClick={pinBoardUnitDossier}');
+    expect(source).toContain('onPieceDoubleClick={sendBoardUnitToReserve}');
+    expect(source).toContain("if (!unitKey || unitKey === 'k-e') return;");
+    expect(source).toContain('onDoubleClick={deployReserveUnitToFirstFreeSlot}');
+    expect(source).toContain('const compatibleEmpty = summary.missingSlots');
+    expect(source).toContain('const historical = compatibleEmpty.find((slot) => slot.key === unitKey)');
+
+    expect(boardSource).toContain('onPieceMouseEnter,');
+    expect(boardSource).toContain('onPieceMouseLeave,');
+    expect(boardSource).toContain('onPieceClick,');
+    expect(boardSource).toContain('onPieceDoubleClick,');
+    expect(boardSource).toContain('if (e.detail > 1) return;');
+    expect(boardSource).toContain('onPieceDoubleClick(square, e);');
+    expect(boardSource).toContain("'piece-event-target'");
+    expect(styles).toMatch(/\.square \.piece\.piece-event-target[\s\S]*?pointer-events:\s*auto;/);
+    expect(boardSource).toContain('e.stopPropagation();');
+
+    expect(source).toContain('deployment-service-dossier');
+    expect(source).toContain('service.survivals');
+    expect(source).toContain('medals.map');
+    expect(source).toContain('techniques.map');
+    expect(source).not.toContain('<strong>Inspector</strong>');
   });
 
+  it('muestra insignias de rango sobre las piezas Combat y en listas/ficha', () => {
+    const board = read('Board.jsx');
+    const deployment = read('CombatDeploymentView.jsx');
+    expect(board).toContain('piece-rank-insignia');
+    expect(board).toContain('RankInsignia');
+    expect(read('components/RankInsignia.jsx')).toContain('data-rank-tooltip');
+    expect(read('combatRanks.js')).toContain('pieceRankTooltip');
+    expect(board).toContain('rankOrLevel={pieceRankLevels?.[square] ?? pieceLevels?.[square]}');
+    expect(deployment).toContain('unit-rank-insignia');
+    expect(deployment).toContain('unit-rank-inline');
+    expect(deployment).toContain('pieceRankLevels={pieceRankLevels}');
+  });
+
+  it('permite gastar XP de pieza desde la Ficha fijada usando el handler persistente del roster', () => {
+    const deployment = read('CombatDeploymentView.jsx');
+    const campaign = read('CampaignCombatPreparation.jsx');
+    const setup = read('CombatSetupView.jsx');
+    expect(deployment).toContain('deployment-unit-upgrades');
+    expect(deployment).toContain("onClick={() => onBuy(unitKey, 'strength')}");
+    expect(deployment).toContain("onClick={() => onBuy(unitKey, 'speed')}");
+    expect(deployment).toContain('{pinned ? (');
+    expect(deployment).toContain('disabled={bankedXp < strengthCost}');
+    expect(deployment).toContain('disabled={bankedXp < speedCost}');
+    expect(campaign).toContain('onBuy={handleBuyRosterStat}');
+    expect(setup).toContain('onBuy={handleBuyRosterStat}');
+  });
+
+  it('la batalla Combat usa el rail derecho equivalente al chat para la bitácora', () => {
+    const battle = read('CombatBattleView.jsx');
+    const styles = read('styles.css');
+    expect(battle).toContain('game-side-column combat-game-side-column');
+    expect(battle).toContain('combat-tactical-panel');
+    expect(battle).toContain('combat-log-section');
+    expect(battle).toContain('combat-log-list');
+    expect(battle).toContain('combat-tactical-summary-grid');
+    expect(styles).toContain('.combat-log-section');
+    expect(styles).toContain('.combat-log-list');
+  });
 });

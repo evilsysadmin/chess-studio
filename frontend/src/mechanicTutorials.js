@@ -87,6 +87,26 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     ],
   },
   {
+    id: 'practice',
+    group: 'Entrenamiento',
+    title: 'Partida de práctica',
+    summary: 'Juega contra la CPU con ayudas del motor y sin presión competitiva.',
+    steps: [
+      { title: 'Practica sin castigo competitivo', text: 'La partida conserva las reglas normales de ajedrez, pero está pensada para probar ideas y usar ayudas sin convertir cada error en una cuestión de rating.' },
+      { title: 'Las pistas son una herramienta', text: 'Puedes consultar ayudas del motor para entender posiciones y alternativas. Úsalas para aprender qué cambia una posición, no sólo para copiar una jugada.' },
+    ],
+  },
+  {
+    id: 'openings',
+    group: 'Entrenamiento',
+    title: 'Aperturas famosas',
+    summary: 'Recorre líneas clásicas jugada a jugada y entiende la idea de cada movimiento.',
+    steps: [
+      { title: 'Aprende la secuencia y la idea', text: 'Cada apertura se practica paso a paso. El objetivo no es memorizar coordenadas sin contexto, sino reconocer el plan que justifica cada jugada.' },
+      { title: 'Repite sin penalización', text: 'Si fallas una jugada puedes reintentar la línea. Este modo es entrenamiento y no modifica tu ELO ni simula una partida competitiva completa.' },
+    ],
+  },
+  {
     id: 'puzzles',
     group: 'Entrenamiento',
     title: 'Puzzles y desafío diario',

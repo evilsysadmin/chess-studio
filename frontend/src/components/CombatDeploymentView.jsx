@@ -1,7 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Board from './Board.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
-import { reviveCost } from '../combat.js';
+import RankInsignia from './RankInsignia.jsx';
+import { costForNextPoint, reviveCost, SPEED_POINT_VALUE, STRENGTH_POINT_VALUE, statsFor } from '../combat.js';
 import { unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { unitDecorations, unitRecordForKey } from '../combatUnitService.js';
 import { techniqueById, unlockedTechniquesFor } from '../combatTechniques.js';
@@ -18,7 +20,6 @@ import {
   slotLabel,
 } from '../combatDeployment.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { combatArmyThreat, combatUnitThreat } from '../combatBalance.js';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import { captureDeploymentPreset, loadDeploymentPresets } from '../combatDeploymentPresets.js';
@@ -57,7 +58,19 @@ function sortedUnitKeys(roster, sortBy = 'rank') {
   });
 }
 
-function UnitCard({ roster, unitKey, deployedSlotKey, selected, onSelect, onDragStart, onDragEnd }) {
+function UnitCard({
+  roster,
+  unitKey,
+  deployedSlotKey,
+  selected,
+  dossierVisible,
+  onPreview,
+  onPreviewEnd,
+  onPin,
+  onDoubleClick,
+  onDragStart,
+  onDragEnd,
+}) {
   const originType = originTypeForRosterKey(unitKey);
   const activeType = effectiveDeploymentType(roster, unitKey);
   const saved = roster.pieces?.[unitKey];
@@ -70,20 +83,258 @@ function UnitCard({ roster, unitKey, deployedSlotKey, selected, onSelect, onDrag
     <button
       type="button"
       className={`deployment-unit-card ${selected ? 'selected' : ''} ${deployedSlotKey ? 'deployed' : 'reserve'}`}
-      onClick={() => onSelect(unitKey)}
+      onMouseEnter={(event) => onPreview(unitKey, event)}
+      onMouseLeave={onPreviewEnd}
+      onFocus={(event) => onPreview(unitKey, event, true)}
+      onBlur={onPreviewEnd}
+      onClick={(event) => {
+        if (event.detail > 1) return;
+        onPin(unitKey, event);
+      }}
+      onDoubleClick={(event) => {
+        if (!onDoubleClick) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onDoubleClick(unitKey, event);
+      }}
+      data-unit-dossier-trigger="true"
+      aria-haspopup="dialog"
+      aria-expanded={dossierVisible}
+      aria-controls={dossierVisible ? 'deployment-unit-dossier-popover' : undefined}
       draggable={unitKey !== 'k-e'}
       onDragStart={(e) => onDragStart(unitKey, e)}
       onDragEnd={onDragEnd}
-      title={deployedSlotKey ? `Desplegada en ${slotLabel(deployedSlotKey)}` : 'En reserva'}
+      title={deployedSlotKey
+        ? `Desplegada en ${slotLabel(deployedSlotKey)} · pasa el cursor para ver ficha, clic para fijarla`
+        : 'En reserva · pasa el cursor para ver ficha, clic para fijarla, doble clic para desplegar'}
     >
-      <span className="deployment-unit-symbol" aria-hidden="true">{TYPE_SYMBOL[activeType] || '♙'}</span>
+      <span className="deployment-unit-symbol-wrap" aria-hidden="true">
+        <span className="deployment-unit-symbol">{TYPE_SYMBOL[activeType] || '♙'}</span>
+        <RankInsignia rankOrLevel={rank} className="unit-rank-insignia" decorative />
+      </span>
       <span className="deployment-unit-copy">
         <strong>{alias}</strong>
-        <small>{rank.label} · nv.{level}</small>
+        <small className="deployment-unit-rank-line">
+          <RankInsignia rankOrLevel={rank} className="unit-rank-inline" decorative />
+          {rank.label} · nv.{level}
+        </small>
         <small>{transformed ? `${TYPE_NAME[originType]} → ${TYPE_NAME[activeType]}` : TYPE_NAME[originType]}</small>
       </span>
       <span className={`deployment-unit-state ${deployedSlotKey ? 'active' : ''}`}>{deployedSlotKey ? slotLabel(deployedSlotKey) : 'BANQUILLO'}</span>
     </button>
+  );
+}
+
+function dossierPosition(anchorRect) {
+  if (!anchorRect || typeof window === 'undefined') return { left: 16, top: 16, width: 360 };
+  if (window.innerWidth <= 780) {
+    return { left: 12, right: 12, bottom: 72, top: 'auto', width: 'auto' };
+  }
+  const width = Math.min(380, Math.max(300, window.innerWidth - 32));
+  const margin = 12;
+  let left = anchorRect.right + margin;
+  if (left + width > window.innerWidth - margin) left = anchorRect.left - width - margin;
+  left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+  const maxTop = Math.max(margin, window.innerHeight - Math.min(620, window.innerHeight * 0.76) - margin);
+  const top = Math.max(margin, Math.min(anchorRect.top, maxTop));
+  return { left, top, width };
+}
+
+function UnitDossierPopover({
+  roster,
+  unitKey,
+  slotKey,
+  isFallen,
+  anchorRect,
+  pinned,
+  onClose,
+  onKeepOpen,
+  onLeave,
+  onRename,
+  onMetamorphose,
+  onBuy,
+  onRemoveUnit,
+}) {
+  if (!unitKey || !anchorRect) return null;
+
+  const originType = originTypeForRosterKey(unitKey);
+  const activeType = effectiveDeploymentType(roster, unitKey);
+  const saved = roster.pieces?.[unitKey] || {};
+  const level = levelForSaved(saved);
+  const rank = pieceRankForLevel(level);
+  const alias = roster.identities?.[unitKey]?.alias || 'Sin alias';
+  const record = unitRecordForKey(roster, unitKey);
+  const service = record?.stats || {};
+  const medals = unitDecorations(record);
+  const techniques = unitKey !== 'k-e'
+    ? (isFallen
+      ? (Array.isArray(saved?.unlockedTechniques) ? saved.unlockedTechniques.map(techniqueById).filter(Boolean) : [])
+      : unlockedTechniquesFor(unitKey, saved))
+    : [];
+  const forms = unitKey !== 'k-e'
+    ? unlockedDeploymentTypes(unitKey, saved, record)
+    : [originType];
+  const investedPoints = Math.max(0, Number(saved.strengthPoints) || 0) + Math.max(0, Number(saved.speedPoints) || 0);
+  const cost = isFallen ? reviveCost(originType) : 0;
+  const bankedXp = Math.max(0, Number(saved?.bankedXp) || 0);
+  const upgradePiece = unitKey !== 'k-e'
+    ? {
+        type: activeType || originType,
+        color: 'w',
+        strengthPoints: Math.max(0, Number(saved?.strengthPoints) || 0),
+        speedPoints: Math.max(0, Number(saved?.speedPoints) || 0),
+        bankedXp,
+      }
+    : null;
+  const upgradeStats = upgradePiece ? statsFor(upgradePiece) : null;
+  const strengthCost = upgradePiece ? costForNextPoint(upgradePiece.strengthPoints) : null;
+  const speedCost = upgradePiece ? costForNextPoint(upgradePiece.speedPoints) : null;
+
+  return (
+    <section
+      id="deployment-unit-dossier-popover"
+      className={`deployment-unit-dossier-popover ${pinned ? 'pinned' : 'preview'}`}
+      style={dossierPosition(anchorRect)}
+      role="dialog"
+      aria-modal="false"
+      aria-label={`Ficha de unidad de ${alias}`}
+      onMouseEnter={onKeepOpen}
+      onMouseLeave={onLeave}
+    >
+      <div className="deployment-unit-dossier-topbar">
+        <div>
+          <span>FICHA DE UNIDAD</span>
+          <small>{pinned ? 'Fijada · clic en otra unidad para cambiar' : 'Vista rápida · clic para fijar'}</small>
+        </div>
+        <button type="button" className="deployment-unit-dossier-close" onClick={onClose} aria-label="Cerrar ficha de unidad">×</button>
+      </div>
+
+      <div className="deployment-selected-unit deployment-unit-dossier-identity">
+        <span className="deployment-selected-symbol" aria-hidden="true">{TYPE_SYMBOL[activeType] || TYPE_SYMBOL[originType] || '♙'}</span>
+        <div>
+          <h3>{alias}</h3>
+          <p className="deployment-dossier-rank">
+            <RankInsignia rankOrLevel={rank} className="unit-rank-inline" decorative />
+            {rank.label} · nv.{level} · {TYPE_NAME[originType]}
+          </p>
+        </div>
+      </div>
+
+      <dl className="deployment-unit-facts">
+        <div><dt>Forma</dt><dd>{TYPE_NAME[activeType]}</dd></div>
+        <div><dt>Estado</dt><dd className={isFallen ? 'danger-text' : ''}>{isFallen ? 'Caída · decisión pendiente' : slotKey ? `Desplegada · ${slotLabel(slotKey)}` : 'Banquillo'}</dd></div>
+        <div><dt>Servicio</dt><dd>{service.battles || 0} batallas · {service.kills || 0} bajas</dd></div>
+      </dl>
+
+      {unitKey !== 'k-e' && (
+        <section className={`deployment-service-dossier ${isFallen ? 'fallen' : ''}`} aria-label="Expediente de servicio de la unidad">
+          <div className="deployment-service-dossier-heading">
+            <strong>{isFallen ? 'Decisión de recuperación' : 'Hoja de servicio'}</strong>
+            {medals.length > 0 && <span>✦ {medals.length} condecoración{medals.length === 1 ? '' : 'es'}</span>}
+          </div>
+          <div className="deployment-service-grid">
+            <span><b>{investedPoints}</b><small>puntos invertidos</small></span>
+            <span><b>{saved?.bankedXp || 0}</b><small>XP de pieza</small></span>
+            <span><b>{service.survivals || 0}</b><small>supervivencias</small></span>
+            <span><b>{service.bestSurvivalStreak || 0}</b><small>mejor racha</small></span>
+            <span><b>{service.bossVictories || 0}</b><small>bosses</small></span>
+            <span><b>{service.revives || 0}</b><small>revividas</small></span>
+          </div>
+          {medals.length > 0 && (
+            <div className="deployment-service-medals">
+              {medals.map((medal) => <span key={medal.id} title={medal.description}>✦ {medal.short} · {medal.label}</span>)}
+            </div>
+          )}
+          {techniques.length > 0 && (
+            <div className="deployment-service-techniques">
+              <span>Técnicas</span>
+              <b>{techniques.map((technique) => technique.label).join(' · ')}</b>
+            </div>
+          )}
+          {isFallen && (
+            <div className="deployment-revive-decision">
+              <span>XP de combate disponible: <b>{Number(roster.combatXp || 0)}</b>.</span>
+              <span>Revivir cuesta <b>{cost} XP de combate</b> y conserva identidad, historial, condecoraciones y técnicas.</span>
+              <span>Nuevo recluta archiva esta identidad en el Memorial y crea una unidad nv.1 sin heredar progreso.</span>
+            </div>
+          )}
+        </section>
+      )}
+
+      {!isFallen && (
+        <div className="deployment-unit-dossier-actions">
+          {unitKey !== 'k-e' && onBuy && (
+            <section className={`deployment-unit-upgrades ${pinned ? 'enabled' : 'preview-only'}`} aria-label="Mejoras con XP de pieza">
+              <div className="deployment-unit-upgrades-heading">
+                <strong>Mejoras</strong>
+                <span>XP de pieza · <b>{bankedXp}</b></span>
+              </div>
+              {pinned ? (
+                <div className="deployment-unit-upgrade-grid">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    disabled={bankedXp < strengthCost}
+                    onClick={() => onBuy(unitKey, 'strength')}
+                    title={bankedXp < strengthCost ? `Necesitas ${strengthCost} XP de pieza` : 'Gastar XP en Fuerza'}
+                  >
+                    + Fuerza · {strengthCost} XP
+                    <small>→ {(upgradeStats.strength + STRENGTH_POINT_VALUE).toFixed(1)}</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    disabled={bankedXp < speedCost}
+                    onClick={() => onBuy(unitKey, 'speed')}
+                    title={bankedXp < speedCost ? `Necesitas ${speedCost} XP de pieza` : 'Gastar XP en Velocidad'}
+                  >
+                    + Velocidad · {speedCost} XP
+                    <small>→ {(upgradeStats.speed + SPEED_POINT_VALUE).toFixed(1)}</small>
+                  </button>
+                </div>
+              ) : (
+                <small className="deployment-unit-upgrades-hint">Clic en la unidad para fijar la ficha y gastar su XP.</small>
+              )}
+            </section>
+          )}
+          {onRename && (
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => {
+                const current = roster.identities?.[unitKey]?.alias || 'Sin alias';
+                const next = window.prompt('Nuevo alias de la unidad (máx. 28 caracteres)', current);
+                if (next != null) onRename(unitKey, next);
+              }}
+            >
+              Renombrar unidad
+            </button>
+          )}
+          {forms.length > 1 && (
+            <div className="deployment-form-selector">
+              <span title="La forma cambia cómo combate esta batalla; la identidad y el slot de origen no cambian.">Forma de combate</span>
+              <div>
+                {forms.map((type) => (
+                  <button
+                    type="button"
+                    key={type}
+                    className={`secondary-btn ${activeType === type ? 'active' : ''}`}
+                    onClick={() => onMetamorphose?.(unitKey, type)}
+                  >
+                    {TYPE_SYMBOL[type]} {TYPE_NAME[type]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {slotKey && unitKey !== 'k-e' && (
+            <button type="button" className="secondary-btn deployment-reserve-btn" onClick={() => onRemoveUnit?.(unitKey)}>
+              Enviar a reserva
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -96,22 +347,32 @@ export default function CombatDeploymentView({
   onApplyPreset,
   onMetamorphose,
   onRename,
+  onBuy,
   onRevive,
   onReplaceFallen,
   onClose,
+  onConfirm,
+  requireExplicitConfirmation = false,
 }) {
-  useEscapeToClose(onClose);
   const summary = useMemo(() => deploymentSummary(roster), [roster]);
+  const canConfirm = summary.ready && (!requireExplicitConfirmation || summary.fallenCount === 0);
   const [query, setQuery] = useState('');
   const draggingUnitRef = useRef(null);
-  const inspectorRef = useRef(null);
+  const previewTimerRef = useRef(null);
+  const previewHideTimerRef = useRef(null);
   const [dragHoverSquare, setDragHoverSquare] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('rank');
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-deployment']?.seen);
   const [selectedUnitKey, setSelectedUnitKey] = useState(() => summary.reserveKeys[0] || summary.deployedKeys[0] || null);
-  const [expandedCasualtyKey, setExpandedCasualtyKey] = useState(null);
+  const [hoveredDossierUnitKey, setHoveredDossierUnitKey] = useState(null);
+  const [pinnedDossierUnitKey, setPinnedDossierUnitKey] = useState(null);
+  const [dossierAnchorRect, setDossierAnchorRect] = useState(null);
   const [presets, setPresets] = useState(() => loadDeploymentPresets());
+  useEscapeToClose(() => {
+    if (pinnedDossierUnitKey || hoveredDossierUnitKey) closeUnitDossier();
+    else onClose();
+  });
   const fen = useMemo(() => deploymentFen(roster), [roster]);
   const reverseDeployment = useMemo(
     () => Object.fromEntries(Object.entries(roster.deployment || {}).map(([slotKey, unitKey]) => [unitKey, slotKey])),
@@ -132,29 +393,8 @@ export default function CombatDeploymentView({
     () => sortedUnitKeys(roster, 'type').filter((unitKey) => Boolean(reverseDeployment[unitKey])),
     [roster, reverseDeployment],
   );
-  const armyThreat = useMemo(() => combatArmyThreat(roster), [roster]);
   const selectedSlotKey = selectedUnitKey ? reverseDeployment[selectedUnitKey] || null : null;
   const selectedSquare = selectedSlotKey ? deploymentSquareForSlot(selectedSlotKey, 'w') : null;
-  const selectedSaved = selectedUnitKey ? roster.pieces?.[selectedUnitKey] : null;
-  const selectedOrigin = selectedUnitKey ? originTypeForRosterKey(selectedUnitKey) : null;
-  const selectedRecord = selectedUnitKey ? unitRecordForKey(roster, selectedUnitKey) : null;
-  const selectedForms = selectedUnitKey && selectedUnitKey !== 'k-e'
-    ? unlockedDeploymentTypes(selectedUnitKey, selectedSaved, selectedRecord)
-    : selectedOrigin ? [selectedOrigin] : [];
-  const selectedActiveType = selectedUnitKey ? effectiveDeploymentType(roster, selectedUnitKey) : null;
-  const selectedThreat = selectedUnitKey ? combatUnitThreat(roster, selectedUnitKey) : null;
-  const selectedIsFallen = selectedUnitKey ? summary.fallenKeys.includes(selectedUnitKey) : false;
-  const selectedService = selectedRecord?.stats || {};
-  const selectedMedals = selectedUnitKey ? unitDecorations(selectedRecord) : [];
-  const selectedTechniques = selectedUnitKey && selectedUnitKey !== 'k-e'
-    ? (selectedIsFallen
-      ? (Array.isArray(selectedSaved?.unlockedTechniques) ? selectedSaved.unlockedTechniques.map(techniqueById).filter(Boolean) : [])
-      : unlockedTechniquesFor(selectedUnitKey, selectedSaved))
-    : [];
-  const selectedInvestedPoints = selectedSaved
-    ? Math.max(0, Number(selectedSaved.strengthPoints) || 0) + Math.max(0, Number(selectedSaved.speedPoints) || 0)
-    : 0;
-  const selectedReviveCost = selectedIsFallen && selectedOrigin ? reviveCost(selectedOrigin) : 0;
 
   const validTargets = selectedUnitKey
     ? Object.keys(roster.deployment || {})
@@ -165,9 +405,24 @@ export default function CombatDeploymentView({
     : [];
 
   const pieceLabels = {};
+  const pieceRankLevels = {};
+  const pieceVeteranMarks = {};
   for (const [slotKey, unitKey] of Object.entries(roster.deployment || {})) {
     const square = deploymentSquareForSlot(slotKey, 'w');
-    if (square) pieceLabels[square] = roster.identities?.[unitKey]?.alias || 'Sin alias';
+    if (!square) continue;
+    pieceLabels[square] = roster.identities?.[unitKey]?.alias || 'Sin alias';
+    pieceRankLevels[square] = levelForSaved(roster.pieces?.[unitKey]);
+    const record = unitRecordForKey(roster, unitKey);
+    const medals = unitDecorations(record);
+    const saved = roster.pieces?.[unitKey] || {};
+    const marks = [];
+    if (medals.length > 0) marks.push({ id: 'decorated', glyph: '✦', label: `${medals.length} condecoración${medals.length === 1 ? '' : 'es'}` });
+    if (saved.equippedTechnique) {
+      const technique = techniqueById(saved.equippedTechnique);
+      marks.push({ id: 'technique', glyph: '◆', label: technique ? `Técnica: ${technique.label}` : 'Técnica equipada' });
+    }
+    if ((record?.stats?.revives || 0) > 0) marks.push({ id: 'revived', glyph: '↺', label: `Revivida ${record.stats.revives} vez${record.stats.revives === 1 ? '' : 'es'}` });
+    if (marks.length) pieceVeteranMarks[square] = marks;
   }
 
   function deployToSquare(square, unitKey = selectedUnitKey) {
@@ -178,14 +433,88 @@ export default function CombatDeploymentView({
     setSelectedUnitKey(unitKey);
   }
 
-  function inspectUnit(unitKey) {
+  function deployReserveUnitToFirstFreeSlot(unitKey, event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (!unitKey || reverseDeployment[unitKey]) return;
+
+    const compatibleEmpty = summary.missingSlots
+      .filter((slot) => isUnitCompatibleWithSlot(roster, unitKey, slot.key));
+
+    if (compatibleEmpty.length === 0) {
+      // No expulsamos a una unidad ya desplegada por un doble clic.
+      // Dejamos la reserva seleccionada para que el tablero resalte destinos
+      // compatibles y el usuario pueda decidir un swap explícito.
+      setSelectedUnitKey(unitKey);
+      return;
+    }
+
+    const historical = compatibleEmpty.find((slot) => slot.key === unitKey);
+    const unitFile = fileOrderForUnitKey(unitKey);
+    const target = historical || [...compatibleEmpty].sort((a, b) => {
+      const aFile = fileOrderForUnitKey(a.key);
+      const bFile = fileOrderForUnitKey(b.key);
+      const aDistance = unitFile < 99 ? Math.abs(aFile - unitFile) : aFile;
+      const bDistance = unitFile < 99 ? Math.abs(bFile - unitFile) : bFile;
+      return aDistance - bDistance || aFile - bFile || a.key.localeCompare(b.key);
+    })[0];
+
+    if (!target) return;
+    clearDossierTimers();
+    closeUnitDossier();
+    onDeployUnit(target.key, unitKey);
     setSelectedUnitKey(unitKey);
-    requestAnimationFrame(() => inspectorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }));
   }
 
-  function inspectCasualty(unitKey) {
+  useEffect(() => () => {
+    clearTimeout(previewTimerRef.current);
+    clearTimeout(previewHideTimerRef.current);
+  }, []);
+
+  const dossierUnitKey = pinnedDossierUnitKey || hoveredDossierUnitKey;
+
+  function clearDossierTimers() {
+    clearTimeout(previewTimerRef.current);
+    clearTimeout(previewHideTimerRef.current);
+  }
+
+  function previewUnitDossier(unitKey, event, immediate = false) {
+    if (pinnedDossierUnitKey) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    clearDossierTimers();
+    previewTimerRef.current = setTimeout(() => {
+      setHoveredDossierUnitKey(unitKey);
+      setDossierAnchorRect(rect);
+    }, immediate ? 0 : 180);
+  }
+
+  function hideUnitDossierPreview() {
+    clearTimeout(previewTimerRef.current);
+    if (pinnedDossierUnitKey) return;
+    clearTimeout(previewHideTimerRef.current);
+    previewHideTimerRef.current = setTimeout(() => setHoveredDossierUnitKey(null), 140);
+  }
+
+  function keepUnitDossierOpen() {
+    clearTimeout(previewHideTimerRef.current);
+  }
+
+  function pinUnitDossier(unitKey, event) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    clearDossierTimers();
     setSelectedUnitKey(unitKey);
-    setExpandedCasualtyKey((current) => current === unitKey ? null : unitKey);
+    setHoveredDossierUnitKey(null);
+    setDossierAnchorRect(rect);
+    // Click = fijar ficha. No hacemos toggle: el segundo click de un
+    // doble-click no debe cerrarla antes de ejecutar la acción contextual.
+    setPinnedDossierUnitKey(unitKey);
+  }
+
+  function closeUnitDossier() {
+    clearDossierTimers();
+    setHoveredDossierUnitKey(null);
+    setPinnedDossierUnitKey(null);
+    setDossierAnchorRect(null);
   }
 
   function handleBoardClick(square) {
@@ -201,6 +530,8 @@ export default function CombatDeploymentView({
 
   function handleDragStart(unitKey, event) {
     draggingUnitRef.current = unitKey;
+    clearDossierTimers();
+    if (!pinnedDossierUnitKey) setHoveredDossierUnitKey(null);
     setDragHoverSquare(null);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData(DRAG_MIME, unitKey);
@@ -233,6 +564,35 @@ export default function CombatDeploymentView({
       return;
     }
     handleDragStart(unitKey, event);
+  }
+
+  function deployedUnitForSquare(square) {
+    const slot = deploymentSlotForSquare(square, 'w');
+    return slot ? roster.deployment?.[slot.key] || null : null;
+  }
+
+  function previewBoardUnitDossier(square, event) {
+    const unitKey = deployedUnitForSquare(square);
+    if (!unitKey) return;
+    previewUnitDossier(unitKey, event);
+  }
+
+  function pinBoardUnitDossier(square, event) {
+    const unitKey = deployedUnitForSquare(square);
+    if (!unitKey) return;
+    pinUnitDossier(unitKey, event);
+  }
+
+  function sendBoardUnitToReserve(square, event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const unitKey = deployedUnitForSquare(square);
+    // El rey jefe/identidad de rey no se puede mandar al banquillo.
+    if (!unitKey || unitKey === 'k-e') return;
+    clearDossierTimers();
+    closeUnitDossier();
+    setSelectedUnitKey(null);
+    onRemoveUnit?.(unitKey);
   }
 
   function handleSquareDragOver(square, event) {
@@ -318,10 +678,12 @@ export default function CombatDeploymentView({
             {summary.fallenCount > 0 && (
               <section className="deployment-casualties" aria-label="Bajas pendientes">
                 <div className="deployment-casualties-heading">
-                  <span>BAJAS PENDIENTES</span>
-                  <b>{summary.fallenCount}</b>
+                  <div><span>BAJAS PENDIENTES</span><b>{summary.fallenCount}</b></div>
+                  <div className="deployment-casualties-xp" title="Moneda disponible para recuperar veteranos caídos">
+                    <small>XP COMBATE</small><strong>{Number(roster.combatXp || 0)}</strong>
+                  </div>
                 </div>
-                <p>Resuélvelas aquí antes de completar la formación.</p>
+                <p>Decide a quién recuperar. La XP disponible se comparte entre todas las bajas.</p>
                 <div className="deployment-casualty-list">
                   {summary.fallenKeys.map((unitKey) => {
                     const origin = originTypeForRosterKey(unitKey);
@@ -336,73 +698,44 @@ export default function CombatDeploymentView({
                       : canRevive
                         ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} XP.`
                         : `Necesitas ${cost} XP de combate para revivir esta unidad.`;
-                    const record = unitRecordForKey(roster, unitKey);
-                    const service = record?.stats || {};
-                    const medals = unitDecorations(record);
-                    const techniques = Array.isArray(saved?.unlockedTechniques)
-                      ? saved.unlockedTechniques.map(techniqueById).filter(Boolean)
-                      : [];
-                    const expanded = expandedCasualtyKey === unitKey;
-                    const dossierId = `casualty-dossier-${unitKey}`;
+                    const dossierVisible = dossierUnitKey === unitKey;
                     return (
-                      <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''} ${expanded ? 'expanded' : ''}`} key={unitKey}>
+                      <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''}`} key={unitKey}>
                         <span className="deployment-casualty-symbol" aria-hidden="true">{TYPE_SYMBOL[origin] || '♙'}</span>
                         <div className="deployment-casualty-copy">
                           <button
                             type="button"
                             className="deployment-casualty-name"
-                            onClick={() => inspectCasualty(unitKey)}
-                            aria-label={`${expanded ? 'Cerrar' : 'Ver'} expediente de ${alias}`}
-                            aria-expanded={expanded}
-                            aria-controls={dossierId}
-                            title="Ver expediente aquí antes de decidir si revivir"
+                            onMouseEnter={(event) => previewUnitDossier(unitKey, event)}
+                            onMouseLeave={hideUnitDossierPreview}
+                            onFocus={(event) => previewUnitDossier(unitKey, event, true)}
+                            onBlur={hideUnitDossierPreview}
+                            onClick={(event) => pinUnitDossier(unitKey, event)}
+                            data-unit-dossier-trigger="true"
+                            aria-label={`Ver ficha de unidad de ${alias}`}
+                            aria-haspopup="dialog"
+                            aria-expanded={dossierVisible}
+                            aria-controls={dossierVisible ? 'deployment-unit-dossier-popover' : undefined}
+                            title="Pasa el cursor para ver la ficha · clic para fijarla antes de decidir si revivir"
                           >
-                            <span>{alias}</span><span className="deployment-casualty-name-cue" aria-hidden="true">›</span>
+                            <span>{alias}</span><span className="deployment-casualty-name-cue" aria-hidden="true">ⓘ</span>
                           </button>
                           <small>{TYPE_NAME[origin]} · {pieceRankForLevel(level).label} · nv.{level}</small>
                         </div>
                         <div className="deployment-casualty-actions">
-                          <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); setExpandedCasualtyKey(null); }}>
+                          <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
                             Revivir · {cost} XP
                           </button>
-                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial y entra un recluta nuevo de nivel 1." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); setExpandedCasualtyKey(null); }}>
+                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial y entra un recluta nuevo de nivel 1." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
                             Nuevo recluta
                           </button>
+                          {!canRevive && progress > 0 && (
+                            <small className="deployment-revive-shortfall">Faltan {Math.max(0, cost - Number(roster.combatXp || 0))} XP de combate para recuperar esta unidad.</small>
+                          )}
+                          {progress <= 0 && (
+                            <small className="deployment-revive-shortfall neutral">Sin progreso invertido que recuperar: el reemplazo no pierde veteranía.</small>
+                          )}
                         </div>
-                        {expanded && (
-                          <section className="deployment-casualty-dossier-inline" id={dossierId} aria-label={`Expediente de ${alias}`}>
-                            <div className="deployment-casualty-dossier-title">
-                              <strong>Expediente de {alias}</strong>
-                              <span>{pieceRankForLevel(level).label} · nv.{level}</span>
-                            </div>
-                            <div className="deployment-casualty-dossier-grid">
-                              <span><b>{progress}</b><small>puntos invertidos</small></span>
-                              <span><b>{saved?.bankedXp || 0}</b><small>XP de pieza</small></span>
-                              <span><b>{service.battles || 0}</b><small>batallas</small></span>
-                              <span><b>{service.survivals || 0}</b><small>supervivencias</small></span>
-                              <span><b>{service.kills || 0}</b><small>bajas</small></span>
-                              <span><b>{service.bestSurvivalStreak || 0}</b><small>mejor racha</small></span>
-                              <span><b>{service.bossVictories || 0}</b><small>bosses</small></span>
-                              <span><b>{service.revives || 0}</b><small>revividas</small></span>
-                            </div>
-                            {medals.length > 0 && (
-                              <div className="deployment-casualty-dossier-tags">
-                                <span>Condecoraciones</span>
-                                <b>{medals.map((medal) => medal.label).join(' · ')}</b>
-                              </div>
-                            )}
-                            {techniques.length > 0 && (
-                              <div className="deployment-casualty-dossier-tags">
-                                <span>Técnicas</span>
-                                <b>{techniques.map((technique) => technique.label).join(' · ')}</b>
-                              </div>
-                            )}
-                            <div className="deployment-casualty-decision-inline">
-                              <span><b>Revivir · {cost} XP:</b> conserva identidad, historial, condecoraciones y técnicas.</span>
-                              <span><b>Nuevo recluta:</b> archiva esta identidad en el Memorial y empieza en nv.1.</span>
-                            </div>
-                          </section>
-                        )}
                       </div>
                     );
                   })}
@@ -459,7 +792,11 @@ export default function CombatDeploymentView({
                   unitKey={unitKey}
                   deployedSlotKey={null}
                   selected={selectedUnitKey === unitKey}
-                  onSelect={setSelectedUnitKey}
+                  dossierVisible={dossierUnitKey === unitKey}
+                  onPreview={previewUnitDossier}
+                  onPreviewEnd={hideUnitDossierPreview}
+                  onPin={pinUnitDossier}
+                  onDoubleClick={deployReserveUnitToFirstFreeSlot}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                 />
@@ -484,10 +821,16 @@ export default function CombatDeploymentView({
               pieceDraggable
               onPieceDragStart={handleBoardPieceDragStart}
               onPieceDragEnd={handleDragEnd}
+              onPieceMouseEnter={previewBoardUnitDossier}
+              onPieceMouseLeave={hideUnitDossierPreview}
+              onPieceClick={pinBoardUnitDossier}
+              onPieceDoubleClick={sendBoardUnitToReserve}
               onSquareDragOver={handleSquareDragOver}
               onSquareDragLeave={handleSquareDragLeave}
               onSquareDrop={handleSquareDrop}
               pieceLabels={pieceLabels}
+              pieceRankLevels={pieceRankLevels}
+              pieceVeteranMarks={pieceVeteranMarks}
             />
             {!summary.ready && (
               <div className="deployment-missing-strip">
@@ -512,7 +855,10 @@ export default function CombatDeploymentView({
                     unitKey={unitKey}
                     deployedSlotKey={reverseDeployment[unitKey] || null}
                     selected={selectedUnitKey === unitKey}
-                    onSelect={setSelectedUnitKey}
+                    dossierVisible={dossierUnitKey === unitKey}
+                    onPreview={previewUnitDossier}
+                    onPreviewEnd={hideUnitDossierPreview}
+                    onPin={pinUnitDossier}
                     onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                   />
@@ -520,101 +866,28 @@ export default function CombatDeploymentView({
               </div>
             </section>
 
-            <section className="deployment-inspector" ref={inspectorRef}>
-              <div className="deployment-panel-heading"><div><span>UNIDAD</span><strong>Inspector</strong></div></div>
-              {selectedUnitKey ? (
-                <>
-                  <div className="deployment-selected-unit">
-                    <span className="deployment-selected-symbol" aria-hidden="true">{TYPE_SYMBOL[selectedActiveType]}</span>
-                    <div>
-                      <h3>{roster.identities?.[selectedUnitKey]?.alias || 'Sin alias'}</h3>
-                      <p>{pieceRankForLevel(levelForSaved(selectedSaved)).label} · nv.{levelForSaved(selectedSaved)}</p>
-                    </div>
-                  </div>
-                  {onRename && (
-                    <button
-                      type="button"
-                      className="secondary-btn deployment-rename-btn"
-                      onClick={() => {
-                        const current = roster.identities?.[selectedUnitKey]?.alias || 'Sin alias';
-                        const next = window.prompt('Nuevo alias de la unidad (máx. 28 caracteres)', current);
-                        if (next != null) onRename(selectedUnitKey, next);
-                      }}
-                    >
-                      Renombrar unidad
-                    </button>
-                  )}
 
-                  <dl className="deployment-unit-facts">
-                    <div><dt>Identidad</dt><dd>{TYPE_NAME[selectedOrigin]}</dd></div>
-                    <div><dt>Forma</dt><dd>{TYPE_NAME[selectedActiveType]}</dd></div>
-                    <div><dt>Estado</dt><dd className={selectedIsFallen ? 'danger-text' : ''}>{selectedIsFallen ? 'Caída · decisión pendiente' : selectedSlotKey ? `Desplegada · ${slotLabel(selectedSlotKey)}` : 'Banquillo'}</dd></div>
-                    <div><dt>Servicio</dt><dd>{selectedService.battles || 0} batallas · {selectedService.kills || 0} bajas</dd></div>
-                    <div><dt>Amenaza propia</dt><dd>{selectedThreat?.bonus ? `+${selectedThreat.bonus}` : '0'} CPU potencial</dd></div>
-                  </dl>
-
-                  {selectedUnitKey !== 'k-e' && (
-                    <section className={`deployment-service-dossier ${selectedIsFallen ? 'fallen' : ''}`} aria-label="Expediente de servicio de la unidad">
-                      <div className="deployment-service-dossier-heading">
-                        <strong>{selectedIsFallen ? 'Decisión de recuperación' : 'Hoja de servicio'}</strong>
-                        {selectedMedals.length > 0 && <span>✦ {selectedMedals.length} condecoración{selectedMedals.length === 1 ? '' : 'es'}</span>}
-                      </div>
-                      <div className="deployment-service-grid">
-                        <span><b>{selectedInvestedPoints}</b><small>puntos invertidos</small></span>
-                        <span><b>{selectedSaved?.bankedXp || 0}</b><small>XP de pieza</small></span>
-                        <span><b>{selectedService.survivals || 0}</b><small>supervivencias</small></span>
-                        <span><b>{selectedService.bestSurvivalStreak || 0}</b><small>mejor racha</small></span>
-                        <span><b>{selectedService.bossVictories || 0}</b><small>bosses</small></span>
-                        <span><b>{selectedService.revives || 0}</b><small>revividas</small></span>
-                      </div>
-                      {selectedMedals.length > 0 && (
-                        <div className="deployment-service-medals">
-                          {selectedMedals.map((medal) => <span key={medal.id} title={medal.description}>✦ {medal.short} · {medal.label}</span>)}
-                        </div>
-                      )}
-                      {selectedTechniques.length > 0 && (
-                        <div className="deployment-service-techniques">
-                          <span>Técnicas</span>
-                          <b>{selectedTechniques.map((technique) => technique.label).join(' · ')}</b>
-                        </div>
-                      )}
-                      {selectedIsFallen && (
-                        <div className="deployment-revive-decision">
-                          <span>Revivir cuesta <b>{selectedReviveCost} XP de combate</b> y conserva identidad, historial, condecoraciones y técnicas.</span>
-                          <span>Nuevo recluta archiva esta identidad en el Memorial y crea una unidad nv.1 sin heredar progreso.</span>
-                        </div>
-                      )}
-                    </section>
-                  )}
-
-                  {selectedForms.length > 1 && !selectedIsFallen && (
-                    <div className="deployment-form-selector">
-                      <span title="La forma cambia cómo combate esta batalla; la identidad y el slot de origen no cambian.">Forma de combate</span>
-                      <div>
-                        {selectedForms.map((type) => (
-                          <button
-                            type="button"
-                            key={type}
-                            className={`secondary-btn ${selectedActiveType === type ? 'active' : ''}`}
-                            onClick={() => onMetamorphose(selectedUnitKey, type)}
-                          >
-                            {TYPE_SYMBOL[type]} {TYPE_NAME[type]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedSlotKey && selectedUnitKey !== 'k-e' && (
-                    <button type="button" className="secondary-btn deployment-reserve-btn" onClick={() => onRemoveUnit(selectedUnitKey)}>
-                      Enviar a reserva
-                    </button>
-                  )}
-                </>
-              ) : <p className="hint-text">Selecciona una unidad de la reserva, desplegados o del tablero.</p>}
-            </section>
           </aside>
         </div>
+
+        {dossierUnitKey && dossierAnchorRect && typeof document !== 'undefined' && createPortal(
+          <UnitDossierPopover
+            roster={roster}
+            unitKey={dossierUnitKey}
+            slotKey={reverseDeployment[dossierUnitKey] || null}
+            isFallen={summary.fallenKeys.includes(dossierUnitKey)}
+            anchorRect={dossierAnchorRect}
+            pinned={pinnedDossierUnitKey === dossierUnitKey}
+            onClose={closeUnitDossier}
+            onKeepOpen={keepUnitDossierOpen}
+            onLeave={hideUnitDossierPreview}
+            onRename={onRename}
+            onMetamorphose={onMetamorphose}
+            onBuy={onBuy}
+            onRemoveUnit={(unitKey) => { onRemoveUnit?.(unitKey); closeUnitDossier(); }}
+          />,
+          document.body,
+        )}
 
         <footer className="combat-deployment-footer">
           <div className="deployment-auto-actions">
@@ -624,10 +897,19 @@ export default function CombatDeploymentView({
           </div>
           <div className="deployment-footer-copy">
             <span>Reservas: <b>{summary.reserveCount}</b></span>
-            <span>Amenaza desplegada: <b>{armyThreat.tier}</b>{armyThreat.bonus > 0 ? ` · +${armyThreat.bonus} CPU` : ''}</span>
+            <span>XP de combate: <b>{Number(roster.combatXp || 0)}</b></span>
+            {summary.fallenCount > 0 && <span>Bajas pendientes: <b>{summary.fallenCount}</b></span>}
           </div>
-          <button type="button" className="primary-btn" disabled={!summary.ready} onClick={onClose}>
-            {summary.ready ? 'Confirmar despliegue' : 'Completa los 16 puestos'}
+          <button type="button" className="primary-btn" disabled={!canConfirm} onClick={() => {
+            if (!canConfirm) return;
+            if (onConfirm) onConfirm();
+            else onClose();
+          }}>
+            {requireExplicitConfirmation && summary.fallenCount > 0
+              ? `Resuelve ${summary.fallenCount} baja${summary.fallenCount === 1 ? '' : 's'}`
+              : summary.ready
+                ? (requireExplicitConfirmation ? 'CONFIRMAR DESPLIEGUE' : 'Confirmar despliegue')
+                : 'Completa los 16 puestos'}
           </button>
         </footer>
         {showTutorial && <MechanicTutorialModal tutorialId="combat-deployment" onClose={() => setShowTutorial(false)} />}

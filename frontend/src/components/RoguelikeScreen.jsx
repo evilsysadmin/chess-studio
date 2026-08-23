@@ -5,6 +5,7 @@ import CombatServicePanel from './CombatServicePanel.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatCampaignMap from './CombatCampaignMap.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
+import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -61,7 +62,7 @@ import {
 const HUMAN_COLOR = 'w';
 const CPU_COLOR = 'b';
 
-export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBattle }) {
+export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBattle, onBattleUiActive }) {
   const [run, setRun] = useState(() => loadRun());
   const [campaign, setCampaign] = useState(() => loadCampaign());
   const [campaignBestStage, setCampaignBestStage] = useState(() => loadCampaignBestStage());
@@ -70,7 +71,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [bestFloor, setBestFloor] = useState(() => loadBestFloor());
   const [towerCompleted, setTowerCompleted] = useState(() => loadTowerCompleted());
   const [endResult, setEndResult] = useState(null); // { type, reached, newBest }
-  const [combatSessionActive, setCombatSessionActive] = useState(() => {
+  const [, setCombatSessionActive] = useState(() => {
     if (campaign.active && campaign.phase === 'fighting' && campaign.selectedNodeId) {
       return hasCombatSession(`campaign:${campaign.seed}:${campaign.selectedNodeId}`);
     }
@@ -85,10 +86,25 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [showCampaignTutorial, setShowCampaignTutorial] = useState(() => campaign.active && !loadMechanicTutorialProgress()?.['combat-campaign']?.seen);
   const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
 
+  // `combatSessionActive` es útil para forzar un render al arrancar/terminar,
+  // pero NO es la fuente de verdad de una batalla `fighting`: puede quedar
+  // desfasado tras HMR/remounts. La sesión persistida decide si la batalla
+  // realmente puede reanudarse.
+  const campaignCombatSessionId = campaign.active && campaign.selectedNodeId
+    ? `campaign:${campaign.seed}:${campaign.selectedNodeId}`
+    : null;
+  const runCombatSessionId = run.inRun ? `run:${run.seed}:${run.floor}` : null;
+  const campaignBattleSessionPresent = campaign.phase === 'fighting' && campaignCombatSessionId
+    ? hasCombatSession(campaignCombatSessionId)
+    : false;
+  const runBattleSessionPresent = run.phase === 'fighting' && runCombatSessionId
+    ? hasCombatSession(runCombatSessionId)
+    : false;
+
   useEscapeToClose(onExit, {
     disabled:
-      (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && combatSessionActive))) ||
-      (campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && combatSessionActive))),
+      (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && runBattleSessionPresent))) ||
+      (campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && campaignBattleSessionPresent))),
   });
 
   const encounter = useMemo(
@@ -185,6 +201,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignReward(perkId) {
+    setBattleDebrief(null);
     const node = selectedCampaignNode;
     if (node && ['camp', 'elite'].includes(node.type)) {
       const grantId = `campaign:${campaign.seed}:${node.id}:reserve-recruit`;
@@ -333,7 +350,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     finishRun('retired');
   }
 
-  if (!run.inRun && campaign.active && campaign.phase === 'fighting' && !combatSessionActive) {
+  if (!run.inRun && campaign.active && campaign.phase === 'fighting' && !campaignBattleSessionPresent) {
     return (
       <div className="menu">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
@@ -351,7 +368,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     );
   }
 
-  if (!run.inRun && campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && combatSessionActive))) {
+  if (!run.inRun && campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && campaignBattleSessionPresent))) {
     const node = selectedCampaignNode;
     const campaignFen = node ? applyModifierToFen(new Chess().fen(), node.modifierId, CPU_COLOR) : new Chess().fen();
     const isBoss = node?.type === 'boss';
@@ -364,6 +381,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onError={onError}
         onHistory={onHistory}
         onViewBattle={onViewBattle}
+        onBattleUiActive={onBattleUiActive}
         initialFen={campaignFen}
         forcedHumanColor={HUMAN_COLOR}
         difficultyOverride={campaignDifficulty(campaign, node)}
@@ -373,6 +391,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         encounterTier={node?.tier}
         encounterIntel={encounterIntel}
         combatVariant="roguelike"
+        requireDeploymentConfirmation
         runPerks={campaign.perks || []}
         runPerkDetails={campaignPerkDetails}
         bossConfig={isBoss ? ROGUELIKE_BOSS : null}
@@ -380,12 +399,12 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onBattleResult={handleCampaignBattleResult}
         roguelikeFloor={node?.floor || node?.stage || 1}
         roguelikeMode="campaign"
-        combatSessionId={`campaign:${campaign.seed}:${node?.id || 'node'}`}
+        combatSessionId={campaignCombatSessionId || `campaign:${campaign.seed}:${node?.id || 'node'}`}
       />
     );
   }
 
-  if (run.inRun && run.phase === 'fighting' && !combatSessionActive) {
+  if (run.inRun && run.phase === 'fighting' && !runBattleSessionPresent) {
     return (
       <div className="menu">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
@@ -408,7 +427,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     );
   }
 
-  if (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && combatSessionActive))) {
+  if (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && runBattleSessionPresent))) {
     const isBoss = run.mode === 'tower' && run.floor === ROGUELIKE_BOSS_FLOOR;
     return (
       <CombatScreen
@@ -417,6 +436,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onError={onError}
         onHistory={onHistory}
         onViewBattle={onViewBattle}
+        onBattleUiActive={onBattleUiActive}
         initialFen={initialFen}
         forcedHumanColor={HUMAN_COLOR}
         difficultyOverride={difficultyForFloor(run.floor)}
@@ -432,7 +452,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onBattleResult={handleBattleResult}
         roguelikeFloor={run.floor}
         roguelikeMode={run.mode}
-        combatSessionId={`run:${run.seed}:${run.floor}`}
+        combatSessionId={runCombatSessionId || `run:${run.seed}:${run.floor}`}
       />
     );
   }
@@ -442,6 +462,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     const rewardOptions = campaignRewardOptions(campaign);
     const eventOptions = campaignEventOptions(campaign);
     const map = campaignMapState;
+    const rosterDeployment = deploymentSummary(roster);
     return (
       <div className="menu combat-workspace">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
@@ -450,16 +471,43 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <div className="combat-heading-row"><h2>Operación La Torre</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
           <p className="combat-operational-hint" title="Los detalles de campaña están en el tutorial. El mapa muestra rutas y tipos de nodo, pero no revela inteligencia enemiga no comprada.">Selecciona una ruta conectada.</p>
 
-          <div className="campaign-status-strip">
-            <span>Ruta <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
-            <span>Ventajas <b>{campaign.perks.length}</b></span>
-            <span>Barracón <b>{deploymentSummary(roster).totalRoster}</b></span>
-            <span>Créditos <b>{campaign.operationalCredits}</b></span>
-            <span>Reliquias <b>{campaignRelics.length}</b></span>
-            <span>Modif. siguiente <b>{campaign.nextDifficultyDelta === 0 ? 'ninguno' : `${campaign.nextDifficultyDelta > 0 ? '+' : ''}${campaign.nextDifficultyDelta} CPU`}</b></span>
-          </div>
+          {campaign.phase === 'map' && <CampaignOperationSteps active="target" />}
 
-          {battleDebrief && <CombatDebrief debrief={battleDebrief} compact onViewBattle={onViewBattle} />}
+          {(() => {
+            const veteranCount = Object.values(roster?.pieces || {}).filter((piece) => piece?.alive !== false && ((piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) > 0).length;
+            const nextStep = campaign.phase === 'map'
+              ? 'Selecciona un objetivo conectado. Después recibirás el briefing.'
+              : campaign.phase === 'briefing'
+                ? 'Compra inteligencia si la necesitas. Después, prepara el despliegue.'
+                : campaign.phase === 'reward'
+                  ? 'Elige una recompensa para cerrar el sector y volver al mapa.'
+                  : campaign.phase === 'camp'
+                    ? 'Reorganiza la fuerza y elige la ventaja del campamento.'
+                    : campaign.phase === 'event'
+                      ? 'Elige una respuesta al evento para continuar la operación.'
+                      : campaign.phase === 'completed'
+                        ? 'Operación cumplida. Revisa el resultado y archiva la campaña.'
+                        : 'Continúa con la siguiente fase de la operación.';
+            return (
+              <>
+                <div className="campaign-status-strip campaign-command-status-strip" aria-label="Estado operativo de campaña">
+                  <span>Ruta <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
+                  <span>Créditos <b>{campaign.operationalCredits}</b></span>
+                  <span>XP combate <b>{roster.combatXp || 0}</b></span>
+                  <span>Efectivos <b>{rosterDeployment.totalRoster}</b></span>
+                  <span>Veteranos <b>{veteranCount}</b></span>
+                  <span>Reserva <b>{rosterDeployment.reserveCount}</b></span>
+                  <span className={rosterDeployment.fallenCount ? 'danger-text' : ''}>Bajas <b>{rosterDeployment.fallenCount}</b></span>
+                </div>
+                <div className={`campaign-situation-banner ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
+                  <span>SIGUIENTE PASO</span>
+                  <strong>{nextStep}</strong>
+                </div>
+              </>
+            );
+          })()}
+
+          {battleDebrief && <CombatDebrief debrief={battleDebrief} onViewBattle={onViewBattle} nextAction={campaign.phase === 'reward' ? 'Elige una recompensa para cerrar el sector.' : null} />}
 
           {campaignRelics.length > 0 && (
             <div className="campaign-relic-rack" aria-label="Reliquias operativas de campaña">

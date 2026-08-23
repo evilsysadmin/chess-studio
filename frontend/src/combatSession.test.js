@@ -16,4 +16,17 @@ describe('Combat Chess active session snapshot', () => {
     clearCombatSession('free');
     expect(loadCombatSession('free')).toBeNull();
   });
+  it('recupera desde memoria si sessionStorage queda ilegible durante un remount', () => {
+    saveCombatSession('campaign:abc:n1', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } }, humanColor: 'w' });
+    sessionStorage.setItem('chess-study-active-combat-session-v1', '{corrupto');
+    expect(loadCombatSession('campaign:abc:n1')?.humanColor).toBe('w');
+  });
+
+  it('clear elimina también el respaldo en memoria', () => {
+    saveCombatSession('campaign:abc:n1', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } } });
+    sessionStorage.setItem('chess-study-active-combat-session-v1', '{corrupto');
+    clearCombatSession('campaign:abc:n1');
+    expect(loadCombatSession('campaign:abc:n1')).toBeNull();
+  });
+
 });

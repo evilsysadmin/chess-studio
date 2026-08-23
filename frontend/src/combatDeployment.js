@@ -201,6 +201,14 @@ export function deploymentSummary(rosterState) {
   };
 }
 
+export function isDeploymentReadyForBattle(rosterState) {
+  const summary = deploymentSummary(rosterState);
+  // Tener 16 casillas cubiertas no basta si aún hay identidades caídas cuya
+  // recuperación/reemplazo no se ha resuelto. Esta función es la fuente única
+  // de verdad para poder CONFIRMAR DESPLIEGUE.
+  return summary.ready && summary.fallenCount === 0;
+}
+
 function removeHumanDeploymentSquares(chess, humanColor) {
   for (const slot of CANONICAL_ROSTER_SLOTS) {
     const square = deploymentSquareForSlot(rosterSlotKey(slot), humanColor);

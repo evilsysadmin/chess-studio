@@ -3,6 +3,7 @@ import ArmyScreen from './ArmyScreen.jsx';
 import ColorSelector from './ColorSelector.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
 import CombatDeploymentView from './CombatDeploymentView.jsx';
+import CampaignCombatPreparation from './CampaignCombatPreparation.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { deploymentSummary } from '../combatDeployment.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
@@ -12,11 +13,55 @@ export default function CombatSetupView({
   onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, encounterIntel, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
   handleStartBattleClick,
-  showArmy, setShowArmy, showDeployment, setShowDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique,
+  showArmy, setShowArmy, showDeployment, setShowDeployment, requireDeploymentConfirmation, deploymentConfirmed, handleConfirmDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique,
   handleResetRoster, onHistory, serviceSummary,
 }) {
   const deploy = deploymentSummary(roster);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-basics']?.seen);
+
+  if (requireDeploymentConfirmation) {
+    return (
+      <CampaignCombatPreparation
+        onExit={onExit}
+        difficulty={difficulty}
+        difficultyBalance={difficultyBalance}
+        difficultyLabel={difficultyLabel}
+        encounterLabel={encounterLabel}
+        encounterDescription={encounterDescription}
+        encounterTier={encounterTier}
+        encounterIntel={encounterIntel}
+        bossConfig={bossConfig}
+        runPerks={runPerks}
+        autoLevelUpEnabled={autoLevelUpEnabled}
+        setAutoLevelUpEnabled={setAutoLevelUpEnabled}
+        roster={roster}
+        rosterCount={rosterCount}
+        deadCount={deadCount}
+        handleStartBattleClick={handleStartBattleClick}
+        showArmy={showArmy}
+        setShowArmy={setShowArmy}
+        showDeployment={showDeployment}
+        setShowDeployment={setShowDeployment}
+        deploymentConfirmed={deploymentConfirmed}
+        handleConfirmDeployment={handleConfirmDeployment}
+        handleBuyRosterStat={handleBuyRosterStat}
+        handleReviveRosterPiece={handleReviveRosterPiece}
+        handleReplaceRosterPiece={handleReplaceRosterPiece}
+        handleRenameRosterPiece={handleRenameRosterPiece}
+        handleMetamorphoseRosterPiece={handleMetamorphoseRosterPiece}
+        handleDeployRosterUnit={handleDeployRosterUnit}
+        handleRemoveDeployedUnit={handleRemoveDeployedUnit}
+        handleResetDeployment={handleResetDeployment}
+        handleAutofillDeployment={handleAutofillDeployment}
+        handleApplyDeploymentPreset={handleApplyDeploymentPreset}
+        handleUnlockRosterTechnique={handleUnlockRosterTechnique}
+        handleEquipRosterTechnique={handleEquipRosterTechnique}
+        handleResetRoster={handleResetRoster}
+        onHistory={onHistory}
+        serviceSummary={serviceSummary}
+      />
+    );
+  }
 
     return (
       <div className="menu combat-setup">
@@ -206,6 +251,7 @@ export default function CombatSetupView({
             onApplyPreset={handleApplyDeploymentPreset}
             onMetamorphose={handleMetamorphoseRosterPiece}
             onRename={handleRenameRosterPiece}
+            onBuy={handleBuyRosterStat}
             onRevive={handleReviveRosterPiece}
             onReplaceFallen={handleReplaceRosterPiece}
             onClose={() => setShowDeployment(false)}

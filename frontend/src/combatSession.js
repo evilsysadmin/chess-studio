@@ -6,13 +6,29 @@
 const KEY = 'chess-study-active-combat-session-v1';
 const VERSION = 1;
 
+// Segunda línea de defensa contra remounts de React/HMR dentro de la misma
+// carga de página. Si sessionStorage falla temporalmente o un render lee entre
+// escrituras, no devolvemos una batalla viva a Setup. Un reload completo sigue
+// dependiendo deliberadamente de sessionStorage.
+const memorySnapshots = new Map();
+
 export function combatSessionId(value = 'free') {
   const id = String(value || 'free').trim();
   return id || 'free';
 }
 
+function validSnapshot(parsed, id) {
+  return !!(
+    parsed &&
+    parsed.version === VERSION &&
+    parsed.sessionId === id &&
+    parsed.phase === 'battle' &&
+    typeof parsed.fen === 'string' &&
+    parsed.registry
+  );
+}
+
 export function saveCombatSession(sessionId, snapshot) {
-  if (typeof sessionStorage === 'undefined') return;
   const id = combatSessionId(sessionId);
   const payload = {
     version: VERSION,
@@ -20,36 +36,78 @@ export function saveCombatSession(sessionId, snapshot) {
     savedAt: new Date().toISOString(),
     ...snapshot,
   };
-  sessionStorage.setItem(KEY, JSON.stringify(payload));
+
+  // La copia en memoria se actualiza primero. Así incluso un setItem que falle
+  // por el entorno del navegador no puede convertir un remount React en Setup.
+  memorySnapshots.set(id, payload);
+
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(KEY, JSON.stringify(payload));
+  } catch (error) {
+    // Un fallo de persistencia no debe romper la partida en curso. El snapshot
+    // de memoria sigue siendo recuperable hasta recargar la pestaña.
+    // eslint-disable-next-line no-console
+    console.error('[CombatSession] No se pudo persistir el snapshot; se mantiene respaldo en memoria.', error);
+  }
 }
 
 export function loadCombatSession(sessionId) {
-  if (typeof sessionStorage === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || parsed.version !== VERSION) return null;
-    if (parsed.sessionId !== combatSessionId(sessionId)) return null;
-    if (parsed.phase !== 'battle' || typeof parsed.fen !== 'string' || !parsed.registry) return null;
-    return parsed;
-  } catch {
-    return null;
+  const id = combatSessionId(sessionId);
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      const raw = sessionStorage.getItem(KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (validSnapshot(parsed, id)) {
+          memorySnapshots.set(id, parsed);
+          return parsed;
+        }
+      }
+    } catch (error) {
+      // La copia en memoria es el fallback para remounts dentro de esta página.
+      // eslint-disable-next-line no-console
+      console.error('[CombatSession] Snapshot de sessionStorage ilegible; intentando respaldo en memoria.', error);
+    }
   }
+
+  const memory = memorySnapshots.get(id) || null;
+  return validSnapshot(memory, id) ? memory : null;
 }
 
 export function hasCombatSession(sessionId) {
   return !!loadCombatSession(sessionId);
 }
 
+export function canReturnCombatToSetup({ phase, combatVariant } = {}) {
+  // En campaña/roguelike, una batalla viva sólo puede terminar por una salida
+  // explícita (retirada/resultado). Un remount, callback o gesto de navegación
+  // nunca debe degradarla silenciosamente a Setup.
+  return !(phase === 'battle' && combatVariant === 'roguelike');
+}
+
+
 export function clearCombatSession(sessionId = null) {
-  if (typeof sessionStorage === 'undefined') return;
   if (sessionId == null) {
-    sessionStorage.removeItem(KEY);
+    memorySnapshots.clear();
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(KEY);
     return;
   }
-  const current = loadCombatSession(sessionId);
-  if (current) sessionStorage.removeItem(KEY);
+
+  const id = combatSessionId(sessionId);
+  memorySnapshots.delete(id);
+
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    const raw = sessionStorage.getItem(KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed?.sessionId === id) sessionStorage.removeItem(KEY);
+  } catch {
+    // Si el payload quedó corrupto, lo retiramos: no puede pertenecer a una
+    // sesión recuperable y no queremos bloquear futuras batallas.
+    sessionStorage.removeItem(KEY);
+  }
 }
 
 export const COMBAT_SESSION_STORAGE_KEY = KEY;

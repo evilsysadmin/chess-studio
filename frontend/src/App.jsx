@@ -55,6 +55,7 @@ const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
   const [view, setViewRaw] = useState(() => loadSessionView({ isAdminUser }));
+  const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
 
   const coarseActivity = useMemo(() => ({
     menu: 'Menú principal',
@@ -726,7 +727,7 @@ function AppInner({ isAdminUser }) {
     setLastResult(null);
   }
 
-  const isBoardGameView = view === 'game' || view === 'tournamentGame';
+  const isBoardGameView = view === 'game' || view === 'tournamentGame' || combatBattleUiActive;
 
   return (
     <>
@@ -830,6 +831,7 @@ function AppInner({ isAdminUser }) {
             onHistory={() => navigateTo('history')}
             onViewBattle={openHistoryRecord}
             combatSessionId="free"
+            onBattleUiActive={setCombatBattleUiActive}
           />
         )}
 
@@ -839,6 +841,7 @@ function AppInner({ isAdminUser }) {
             onError={setError}
             onHistory={() => navigateTo('history')}
             onViewBattle={openHistoryRecord}
+            onBattleUiActive={setCombatBattleUiActive}
           />
         )}
 

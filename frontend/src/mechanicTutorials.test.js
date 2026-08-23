@@ -44,4 +44,19 @@ describe('tutoriales de mecánicas no estándar', () => {
     }
   });
 
+
+  it('ofrece ayuda resumida y tutorial desde las tarjetas de los modos principales', () => {
+    const menu = fs.readFileSync(path.resolve(process.cwd(), 'src/components/Menu.jsx'), 'utf8');
+    const tip = fs.readFileSync(path.resolve(process.cwd(), 'src/components/ModeTutorialTip.jsx'), 'utf8');
+    for (const tutorialId of [
+      'tournament', 'combat-basics', 'combat-campaign', 'quick-match-rules',
+      'practice', 'openings', 'puzzles', 'lab', 'rival-ghost', 'spectator', 'insights',
+    ]) {
+      expect(menu, `${tutorialId} sin acceso rápido desde el menú`).toContain(`tutorialId="${tutorialId}"`);
+    }
+    expect(tip).toContain('tutorial.summary');
+    expect(tip).toContain('Clic para abrir el tutorial');
+    expect(tip).toContain('<MechanicTutorialModal');
+  });
+
 });

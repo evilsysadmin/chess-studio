@@ -15,7 +15,6 @@ def run(script):
     subprocess.run([sys.executable, str(root/"scripts"/script)], cwd=root, check=True)
 
 run("integrate_narrative_router.py")
-run("fix_known_stale_tests.py")
 
 gitignore = root/".gitignore"
 text = gitignore.read_text("utf-8") if gitignore.exists() else ""

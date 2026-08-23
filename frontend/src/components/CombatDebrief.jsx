@@ -9,7 +9,7 @@ function outcomeTitle(outcome) {
   return 'Operación perdida';
 }
 
-export default function CombatDebrief({ debrief, compact = false, onViewBattle = null }) {
+export default function CombatDebrief({ debrief, compact = false, onViewBattle = null, nextAction = null }) {
   if (!debrief) return null;
   const fallen = debrief.units.filter((unit) => unit.fallen);
   const promoted = debrief.units.filter((unit) => unit.promoted);
@@ -58,6 +58,7 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
       {debrief.newDecorations?.length > 0 && (
         <div className="combat-service-awards-earned">{debrief.newDecorations.map((medal) => <span key={medal.id}>✦ {medal.label}</span>)}</div>
       )}
+      {nextAction && <div className="combat-debrief-next"><span>SIGUIENTE</span><strong>{nextAction}</strong></div>}
       {onViewBattle && debrief.battleRecord && <button type="button" className="secondary-btn combat-debrief-analysis" onClick={() => onViewBattle(debrief.battleRecord)}>Ver análisis de la batalla →</button>}
     </section>
   );

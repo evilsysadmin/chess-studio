@@ -4,6 +4,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { techniqueById } from '../combatTechniques.js';
 import { unitDecorations } from '../combatUnitService.js';
 import { pieceRankForLevel } from '../combatRanks.js';
+import RankInsignia from './RankInsignia.jsx';
 
 export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, onUseTechnique, techniqueTargetCount = 0, unitRecord = null, onClose }) {
   useEscapeToClose(onClose);
@@ -42,7 +43,7 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
         {!isKing && unitRecord && (
           <div className="piece-unit-service-card">
             <div className="piece-unit-service-heading">
-              <strong>{militaryRank.short} · {militaryRank.label}</strong>
+              <strong className="piece-unit-rank-line"><RankInsignia rankOrLevel={militaryRank} /> {militaryRank.short} · {militaryRank.label}</strong>
               <span>{unitRecord.stats?.battles || 0} batallas</span>
             </div>
             <p>
@@ -50,6 +51,7 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
               {(unitRecord.stats?.bestSurvivalStreak || 0) > 0 ? ` · mejor racha ${unitRecord.stats.bestSurvivalStreak}` : ''}
               {(unitRecord.stats?.revives || 0) > 0 ? ` · revivida ${unitRecord.stats.revives} vez${unitRecord.stats.revives === 1 ? '' : 'es'}` : ''}
             </p>
+            {equippedTechnique && <p className="piece-unit-technique-line">Técnica equipada · <b>{equippedTechnique.label}</b></p>}
             {individualDecorations.length > 0 && (
               <div className="piece-unit-medals">
                 {individualDecorations.map((medal) => (

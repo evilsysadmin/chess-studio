@@ -14,7 +14,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
-	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-install release-gate \
+	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-backend backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status
@@ -204,6 +204,19 @@ frontend-build: ensure-frontend-deps
 
 ## E2E real en navegador. No vive en el pre-push para no descargar Chromium
 ## ni ralentizar cada push; CI sí lo trata como quality gate.
+## Coverage real. Frontend usa V8 sobre lógica crítica; React/DOM se cubre en Chromium con Playwright.
+coverage-fe: ensure-frontend-deps
+	@cd frontend && if [ ! -d node_modules/@vitest/coverage-v8 ]; then \
+		echo "==> Instalando provider V8 fijado para coverage..."; \
+		npm install --no-save --package-lock=false @vitest/coverage-v8@4.1.10 || true; \
+	fi
+	@cd frontend && npm run test:coverage || echo "WARN: coverage frontend no disponible; informativo, no bloquea."
+
+coverage-be: ensure-backend-deps
+	@cd backend-python && $(BACKEND_VENV_PY) -m pytest -q --cov=. --cov-branch --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml --cov-fail-under=0 || echo "WARN: coverage backend no disponible; informativo, no bloquea."
+
+coverage: coverage-fe coverage-be
+
 e2e-install: ensure-frontend-deps
 	cd e2e && npm install --no-package-lock --no-save @playwright/test@1.62.1
 	cd e2e && ./node_modules/.bin/playwright install chromium
@@ -211,9 +224,20 @@ e2e-install: ensure-frontend-deps
 e2e: e2e-install frontend-build
 	cd e2e && ./node_modules/.bin/playwright test
 
+e2e-combat-dom: e2e-install frontend-build
+	cd e2e && ./node_modules/.bin/playwright test combat-dom.spec.js
+
+## Smoke de integración REAL: nginx frontend + FastAPI + Mongo + auth/perfil.
+## Usa imágenes construidas por docker compose y sólo stdlib Python para el probe.
+compose-smoke:
+	docker compose up -d --build
+	@rc=0; python3 scripts/compose_smoke.py || rc=$$?; \
+	  if [ $$rc -ne 0 ]; then docker compose ps; docker compose logs --no-color --tail=200; fi; \
+	  docker compose down -v; exit $$rc
+
 ## Gate pesado de release: todo lo local + imágenes reales + navegador real.
 ## No va en pre-push porque Docker+Chromium sería demasiado caro para cada push.
-release-gate: tests test-suite-audit-ci security-images e2e
+release-gate: tests test-suite-audit-ci coverage security-images e2e compose-smoke
 	@echo "==> Release gate completo OK: unit/integration + security + Docker images + Playwright."
 
 ## Revalida exclusivamente el banco curado: FEN, reyes/piezas, secuencia,
@@ -325,7 +349,12 @@ help:
 	@echo "  make test           - alias histórico de make tests"
 	@echo "  make frontend-build - compila el frontend fuera de Docker"
 	@echo "  make e2e            - smoke E2E con Playwright/Chromium (pesado)"
-	@echo "  make release-gate   - tests + security + imágenes Docker + E2E; gate pesado de release"
+	@echo "  make compose-smoke  - stack real Docker: frontend + FastAPI + Mongo + auth/perfil"
+	@echo "  make coverage       - coverage informativo frontend V8 + backend pytest-cov (no bloquea)"
+	@echo "  make e2e-combat-dom - regresiones DOM de Mesa de Guerra en Chromium"
+	@echo "  make coverage-fe    - coverage V8 de lógica crítica frontend"
+	@echo "  make coverage-be    - coverage branch del backend"
+	@echo "  make release-gate   - tests + coverage + security + imágenes Docker + E2E; gate pesado de release"
 	@echo "  make puzzles-check   - revalida íntegramente el banco de puzzles"
 	@echo "  make audio-check     - valida catálogo/estilos/duración de música sin npm"
 	@echo "  make data-ux-check   - valida heatmaps, Daily y grada sin npm"

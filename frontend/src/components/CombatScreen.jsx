@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useCombatController } from './useCombatController.js';
 import CombatSetupView from './CombatSetupView.jsx';
 import CombatBattleView from './CombatBattleView.jsx';
 
 export default function CombatScreen(props) {
   const controller = useCombatController(props);
+
+  // No actualizamos al padre desde useLayoutEffect: en dev/StrictMode puede
+  // provocar renders reentrantes justo durante la transición Setup -> Battle.
+  // Este callback sólo cambia el mueble visual global, así que un efecto pasivo
+  // es suficiente y mantiene la máquina de estado del combate desacoplada.
+  useEffect(() => {
+    props.onBattleUiActive?.(controller.phase !== 'setup');
+  }, [controller.phase, props.onBattleUiActive]);
+
+  useEffect(() => () => props.onBattleUiActive?.(false), [props.onBattleUiActive]);
 
   if (controller.phase === 'setup') {
     return (
@@ -36,6 +46,9 @@ export default function CombatScreen(props) {
         setShowArmy={controller.setShowArmy}
         showDeployment={controller.showDeployment}
         setShowDeployment={controller.setShowDeployment}
+        requireDeploymentConfirmation={controller.requireDeploymentConfirmation}
+        deploymentConfirmed={controller.deploymentConfirmed}
+        handleConfirmDeployment={controller.handleConfirmDeployment}
         handleBuyRosterStat={controller.handleBuyRosterStat}
         handleReviveRosterPiece={controller.handleReviveRosterPiece}
         handleReplaceRosterPiece={controller.handleReplaceRosterPiece}

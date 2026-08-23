@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { levelTier } from '../combat.js';
+import RankInsignia from './RankInsignia.jsx';
+import VeteranMarks from './VeteranMarks.jsx';
 // Skin "Clásico" (crema/dorado + carbón/carmesí) — la de siempre, sin sufijo de carpeta.
 import bB from '../pieces-medieval/bB.png';
 import bK from '../pieces-medieval/bK.png';
@@ -154,8 +156,10 @@ export default function Board({
   orientation = 'white',
   animate, // { from, to, seq } — dispara la animación de deslizamiento
   hintMove, // { from, to } — sugerencia del motor a resaltar
-  pieceLevels, // { casilla: nivel } — insignias de nivel (solo Modo Combate)
+  pieceLevels, // { casilla: nivel } — glow/badge de nivel (solo Modo Combate)
+  pieceRankLevels, // { casilla: nivel } — rango visual sin obligar a mostrar glow/badge de nivel
   pieceXp, // { casilla: xpBancado } — insignia de "tiene XP sin gastar" (solo Modo Combate)
+  pieceVeteranMarks, // { casilla: [{id,glyph,label}] } — medalla/técnica/revive, máximo dos visibles
   onSquareDoubleClick, // (casilla) => void — doble clic para ver info de la pieza
   mistakeMove, // { from, to, piece } — la jugada jugada, en las pantallas de revisión de errores:
   showCoordinates = true, // false en Modo Zen: no cambia reglas ni accesibilidad del tablero
@@ -167,6 +171,10 @@ export default function Board({
   pieceDraggable = false,
   onPieceDragStart, // (square, event) => void
   onPieceDragEnd, // (square, event) => void
+  onPieceMouseEnter, // (square, event) => void; opt-in para fichas/contexto sin alterar clicks de casilla
+  onPieceMouseLeave, // (square, event) => void
+  onPieceClick, // (square, event) => void; si existe, el click de la pieza no burbujea a la casilla
+  onPieceDoubleClick, // (square, event) => void; acción explícita de doble clic sobre la pieza
   pieceLabels, // { square: string } etiqueta corta de identidad para deployment
   // encuadre rojo (distinto del dorado genérico de lastMove) + pieza fantasma semitransparente
   // en la casilla de origen, para que quede claro qué jugada se está señalando como error.
@@ -341,11 +349,52 @@ export default function Board({
                 {piece && pieceLevels?.[square] > 1 && (
                   <span className={`piece-level-glow tier-${levelTier(pieceLevels[square])}`} />
                 )}
+                {piece && (pieceRankLevels?.[square] ?? pieceLevels?.[square]) > 1 && (
+                  <RankInsignia
+                    rankOrLevel={pieceRankLevels?.[square] ?? pieceLevels?.[square]}
+                    className="piece-rank-insignia"
+                    onClick={(e) => {
+                      if (!onPieceClick) return;
+                      e.stopPropagation();
+                      if (e.detail > 1) return;
+                      onPieceClick(square, e);
+                    }}
+                    onDoubleClick={(e) => {
+                      if (!onPieceDoubleClick) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onPieceDoubleClick(square, e);
+                    }}
+                    draggable={pieceDraggable}
+                    onDragStart={(e) => onPieceDragStart?.(square, e)}
+                    onDragEnd={(e) => onPieceDragEnd?.(square, e)}
+                  />
+                )}
                 {piece && (
                   <img
-                    className={`piece ${piece === piece.toUpperCase() ? 'white' : 'black'}`}
+                    className={`piece ${piece === piece.toUpperCase() ? 'white' : 'black'} ${(onPieceClick || onPieceDoubleClick || onPieceMouseEnter || onPieceMouseLeave || onPieceDragStart || pieceDraggable) ? 'piece-event-target' : ''}`}
                     src={pieceImages[piece]}
                     alt={PIECE_NAMES[piece]}
+                    draggable={pieceDraggable}
+                    onDragStart={(e) => onPieceDragStart?.(square, e)}
+                    onDragEnd={(e) => onPieceDragEnd?.(square, e)}
+                    onMouseEnter={(e) => onPieceMouseEnter?.(square, e)}
+                    onMouseLeave={(e) => onPieceMouseLeave?.(square, e)}
+                    onClick={(e) => {
+                      if (!onPieceClick) return;
+                      e.stopPropagation();
+                      // En un dblclick el navegador emite dos click antes del
+                      // doubleClick. Procesamos sólo el primero para que el
+                      // segundo no cambie el estado de la ficha.
+                      if (e.detail > 1) return;
+                      onPieceClick(square, e);
+                    }}
+                    onDoubleClick={(e) => {
+                      if (!onPieceDoubleClick) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onPieceDoubleClick(square, e);
+                    }}
                     draggable={pieceDraggable}
                     onDragStart={(e) => onPieceDragStart?.(square, e)}
                     onDragEnd={(e) => onPieceDragEnd?.(square, e)}
@@ -361,6 +410,9 @@ export default function Board({
                 )}
                 {piece && pieceLabels?.[square] && (
                   <span className="piece-identity-label" title={pieceLabels[square]}>{pieceLabels[square]}</span>
+                )}
+                {piece && pieceVeteranMarks?.[square]?.length > 0 && (
+                  <VeteranMarks marks={pieceVeteranMarks[square]} />
                 )}
                 {squareBadge?.(square)}
                 {piece && pieceLevels?.[square] > 1 && (

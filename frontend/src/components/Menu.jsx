@@ -9,8 +9,18 @@ import AchievementsModal from './AchievementsModal.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import AccountModal from './AccountModal.jsx';
+import ModeTutorialTip from './ModeTutorialTip.jsx';
 
 import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL, COMBAT_CHESS_FREE_DESCRIPTION, COMBAT_CHESS_CAMPAIGN_DESCRIPTION } from '../combatChessBrand.js';
+
+function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
+  return (
+    <div className="menu-card-shell">
+      <button type="button" className={className} {...buttonProps}>{children}</button>
+      <ModeTutorialTip tutorialId={tutorialId} />
+    </div>
+  );
+}
 export default function Menu({
   onNewGame,
   onContinue,
@@ -88,40 +98,41 @@ export default function Menu({
       <div className="menu-group">
         <span className="section-label">Jugar</span>
         <div className="menu-grid menu-grid-4">
-          <button type="button" className="menu-card accent-brass" onClick={onTournament}>
+          <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass" onClick={onTournament}>
             <IconTrophy className="menu-card-icon" />
             <h3>Torneo</h3>
             <p>Sube de nivel por resultados; las capturas llenan tu cartera de pistas sin tocar tu ELO.</p>
             <span className="menu-card-cta">Nivel {tournamentLevel} · {tournament.points} pts de pista →</span>
-          </button>
+          </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-danger" onClick={onCombat}>
+          <TutorialModeCard tutorialId="combat-basics" className="menu-card accent-danger" onClick={onCombat}>
             <IconSword className="menu-card-icon" />
             <h3>{COMBAT_CHESS_FREE_LABEL}</h3>
             <p>{COMBAT_CHESS_FREE_DESCRIPTION}</p>
             <span className="menu-card-cta">Preparar batalla →</span>
-          </button>
+          </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-danger" onClick={onCombatRoguelike}>
+          <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger" onClick={onCombatRoguelike}>
             <IconSword className="menu-card-icon" />
             <h3>{COMBAT_CHESS_CAMPAIGN_LABEL}</h3>
             <p>{COMBAT_CHESS_CAMPAIGN_DESCRIPTION}</p>
             <span className="menu-card-cta">Abrir mapa de campaña →</span>
-          </button>
+          </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-hint" onClick={() => setShowQuickMatch(true)}>
+          <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint" onClick={() => setShowQuickMatch(true)}>
             <IconPawn className="menu-card-icon" />
             <h3>Partida rápida</h3>
             <p>Elige dificultad, color, y ritmo de reloj — o déjalo en automático y juega ya.</p>
             <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} →</span>
-          </button>
+          </TutorialModeCard>
         </div>
       </div>
 
       <div className="menu-group">
         <span className="section-label">Aprender y practicar</span>
 
-        <button type="button" className="insights-feature-card" onClick={onInsights}>
+        <div className="insights-feature-shell">
+          <button type="button" className="insights-feature-card" onClick={onInsights}>
           <span className="insights-feature-icon" aria-hidden="true"><IconEye /></span>
           <span className="insights-feature-copy">
             <span className="insights-feature-kicker">TU EXPEDIENTE DE JUEGO</span>
@@ -129,11 +140,13 @@ export default function Menu({
             <span>Diagnóstico, evolución, entrenamiento, aperturas, rivalidad y archivo completo: todo tu juego en un solo sitio.</span>
           </span>
           <span className="insights-feature-cta">Analizar mi juego →</span>
-        </button>
+          </button>
+          <ModeTutorialTip tutorialId="insights" />
+        </div>
 
         <div className="menu-grid menu-grid-4">
-          <button
-            type="button"
+          <TutorialModeCard tutorialId="practice"
+           
             className="menu-card accent-success"
             disabled={loading}
             onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}
@@ -142,7 +155,7 @@ export default function Menu({
             <h3>Partida de práctica</h3>
             <p>Partida normal contra la CPU, con pistas del motor gratis e ilimitadas.</p>
             <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} →</span>
-          </button>
+          </TutorialModeCard>
 
           <button type="button" className="menu-card accent-success" onClick={onTutorial}>
             <IconBook className="menu-card-icon" />
@@ -151,40 +164,40 @@ export default function Menu({
             <span className="menu-card-cta">Ver tutorial →</span>
           </button>
 
-          <button type="button" className="menu-card accent-success" onClick={onOpenings}>
+          <TutorialModeCard tutorialId="openings" className="menu-card accent-success" onClick={onOpenings}>
             <IconBookmark className="menu-card-icon" />
             <h3>Aperturas famosas</h3>
             <p>Dieciocho aperturas clásicas, reintentos jugada por jugada con explicación en cada una.</p>
             <span className="menu-card-cta">Ver aperturas →</span>
-          </button>
+          </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-hint" onClick={onPuzzle}>
+          <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint" onClick={onPuzzle}>
             <IconPuzzle className="menu-card-icon" />
             <h3>Puzzle</h3>
             <p>Puzzles clásicos, desafío diario y posiciones nacidas de tus propias autopsias.</p>
             <span className="menu-card-cta">Resolver →</span>
-          </button>
+          </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-success" onClick={onLab}>
+          <TutorialModeCard tutorialId="lab" className="menu-card accent-success" onClick={onLab}>
             <IconPuzzle className="menu-card-icon" />
             <h3>Laboratorio libre</h3>
             <p>Coloca piezas o pega un FEN y juega la posición contra la CPU sin tocar tu ELO.</p>
             <span className="menu-card-cta">Abrir laboratorio →</span>
-          </button>
+          </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
+          <TutorialModeCard tutorialId="rival-ghost" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
             <IconEye className="menu-card-icon" />
             <h3>Rival Fantasma</h3>
             <p>Una CPU calibrada a tus errores y a tendencias reales de tu estilo de juego.</p>
             <span className="menu-card-cta">Construir mi fantasma →</span>
-          </button>
+          </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-hint" onClick={onSpectator}>
+          <TutorialModeCard tutorialId="spectator" className="menu-card accent-hint" onClick={onSpectator}>
             <IconEye className="menu-card-icon" />
             <h3>Espectador</h3>
             <p>Elige el nivel de cada bando (o al azar) y mira cómo juega la CPU contra sí misma.</p>
             <span className="menu-card-cta">Ver partida →</span>
-          </button>
+          </TutorialModeCard>
 
           <button type="button" className="menu-card accent-brass" onClick={onHistory}>
             <IconBookmark className="menu-card-icon" />

@@ -20,7 +20,7 @@ import {
 import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, replaceDeadPiece, expireDeadPieces, renameRosterIdentity } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
 import { loadCombatService, recordCombatServiceEvent, summarizeCombatService } from '../combatService.js';
-import { recordUnitBattle, unitRecordForKey } from '../combatUnitService.js';
+import { recordUnitBattle, unitDecorations, unitRecordForKey } from '../combatUnitService.js';
 import { setRosterDeploymentType } from '../combatMetamorphosis.js';
 import {
   annotateRegistryWithDeployment,
@@ -28,6 +28,7 @@ import {
   autofillDeployment,
   deploymentSummary,
   ensureDeploymentState,
+  isDeploymentReadyForBattle,
   removeDeploymentUnit,
   resetDeployment,
   setDeploymentUnit,
@@ -39,7 +40,7 @@ import { loadRating, ratingProgress, difficultyForRating } from '../playerRating
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
 import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
-import { clearCombatSession, loadCombatSession, saveCombatSession } from '../combatSession.js';
+import { canReturnCombatToSetup, clearCombatSession, hasCombatSession, loadCombatSession, saveCombatSession } from '../combatSession.js';
 import { applyDeploymentPreset } from '../combatDeploymentPresets.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
 
@@ -87,22 +88,22 @@ function buildLogEntry(result, humanColor) {
       technique: result.techniqueLabel || result.techniqueId,
       target: defenderName,
     });
-    return { text: `${text} · ${pct}% de acierto`, tone: hit ? (attackerIsHuman ? 'good' : 'bad') : 'neutral' };
+    return { text: `${text} · ${pct}% de acierto`, tone: hit ? (attackerIsHuman ? 'good' : 'bad') : 'neutral', kind: hit ? 'technique' : 'miss' };
   }
 
   if (hit) {
     const subject = attackerIsHuman ? 'Tu' : 'La CPU: su';
     const text = `${subject} ${attackerName} (nv.${derivedLevel(attacker)}) elimina ${defenderName} (nv.${derivedLevel(defender)}) · ${pct}% de acierto`;
-    return { text, tone: attackerIsHuman ? 'good' : 'bad' };
+    return { text, tone: attackerIsHuman ? 'good' : 'bad', kind: attackerIsHuman ? 'capture' : 'casualty' };
   }
 
   const attackerLabel = attackerIsHuman ? 'tu' : 'la CPU';
   const text = `${defenderName} (nv.${derivedLevel(defender)}) esquiva el ataque de ${attackerLabel} ${attackerName} · +${survivalXp} XP por sobrevivir`;
-  return { text, tone: defender.color === humanColor ? 'good' : 'neutral' };
+  return { text, tone: defender.color === humanColor ? 'good' : 'neutral', kind: 'miss' };
 }
 
 
-export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free' }) {
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
   const restoredSessionRef = useRef(undefined);
   if (restoredSessionRef.current === undefined) restoredSessionRef.current = loadCombatSession(combatSessionId) || null;
   const restoredSession = restoredSessionRef.current;
@@ -145,7 +146,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const difficulty = difficultyBalance.adjusted;
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [showArmy, setShowArmy] = useState(false);
-  const [showDeployment, setShowDeployment] = useState(false);
+  const [showDeployment, setShowDeployment] = useState(() => Boolean(requireDeploymentConfirmation && !restoredSession));
+  const [deploymentConfirmed, setDeploymentConfirmed] = useState(() => !requireDeploymentConfirmation || Boolean(restoredSession));
   // Un solo listener de ESC para la pantalla base. Deployment y Army traen
   // su propio cierre y consumen el gesto mientras están abiertos.
   useEscapeToClose(() => {
@@ -197,6 +199,16 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       unitBattleStats: unitBattleStatsRef.current,
     });
   }
+
+  // Watchdog de sesión: una batalla viva siempre debe tener snapshot. Esto
+  // cubre renders/remounts de desarrollo y fallos puntuales de sessionStorage
+  // sin tocar el flujo del juego. No corre en Setup/Over.
+  useEffect(() => {
+    if (phase !== 'battle') return;
+    if (!hasCombatSession(combatSessionId)) {
+      persistBattleSession();
+    }
+  }, [phase, fen, registry, combatLog, bossPhase, humanColor, combatSessionId]);
 
   // Si la pestaña se recargó en mitad de una batalla, retomamos exactamente
   // el último snapshot. Si le tocaba mover a la CPU, reanudamos su turno una
@@ -256,6 +268,25 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     return { aliveCount, totalLevel, totalXp };
   }, [registry, humanColor]);
 
+  const pieceVeteranMarks = useMemo(() => {
+    const marks = {};
+    for (const [square, piece] of Object.entries(registry || {})) {
+      if (piece.color !== humanColor || piece.type === 'k') continue;
+      const key = rosterKeyFor(piece);
+      const record = unitRecordForKey(roster, key);
+      const medals = unitDecorations(record);
+      const unitMarks = [];
+      if (medals.length > 0) unitMarks.push({ id: 'decorated', glyph: '✦', label: `${medals.length} condecoración${medals.length === 1 ? '' : 'es'}` });
+      if (piece.equippedTechnique) {
+        const technique = techniqueById(piece.equippedTechnique);
+        unitMarks.push({ id: 'technique', glyph: '◆', label: technique ? `Técnica: ${technique.label}` : 'Técnica equipada' });
+      }
+      if ((record?.stats?.revives || 0) > 0) unitMarks.push({ id: 'revived', glyph: '↺', label: `Revivida ${record.stats.revives} vez${record.stats.revives === 1 ? '' : 'es'}` });
+      if (unitMarks.length) marks[square] = unitMarks;
+    }
+    return marks;
+  }, [registry, humanColor, roster]);
+
   const infoPiece = infoSquare ? registry[infoSquare] : null;
   const infoUnitRecord = infoPiece && infoPiece.color === humanColor && infoPiece.type !== 'k'
     ? unitRecordForKey(roster, rosterKeyFor(infoPiece))
@@ -269,14 +300,36 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // alguna pendiente, "Empezar" abre esa mesa en vez de mandar al jugador
   // a otro modal o de cerrar la ventana de revive a escondidas.
   function handleStartBattleClick() {
-    if (deadRosterEntries.length > 0) {
+    if (deadRosterEntries.length > 0 || (requireDeploymentConfirmation && !deploymentConfirmed)) {
       setShowDeployment(true);
       return;
     }
     startBattle();
   }
 
+  function handleConfirmDeployment() {
+    if (!isDeploymentReadyForBattle(roster)) return false;
+    setDeploymentConfirmed(true);
+    setShowDeployment(false);
+    return true;
+  }
+
   function startBattle() {
+    if (requireDeploymentConfirmation && !deploymentConfirmed) {
+      setShowDeployment(true);
+      onError?.('Confirma el despliegue antes de iniciar la operación.');
+      return;
+    }
+    // Defensa en profundidad: aunque algún callback dejase `deploymentConfirmed`
+    // desfasado, jamás archivamos bajas ni arrancamos una campaña con una
+    // formación que ya no sea válida. Se vuelve a Mesa de Guerra y se exige
+    // una confirmación nueva.
+    if (requireDeploymentConfirmation && !isDeploymentReadyForBattle(roster)) {
+      setDeploymentConfirmed(false);
+      setShowDeployment(true);
+      onError?.('El despliegue cambió o tiene bajas pendientes. Revísalo y confirma de nuevo.');
+      return;
+    }
     const resolved = forcedHumanColor || resolveHumanColor(colorChoice);
 
     // Se cierra acá la ventana de revivir: cualquier pieza que sigue caída
@@ -288,9 +341,12 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     }
 
     const deployment = deploymentSummary(activeRoster);
-    if (!deployment.ready) {
+    if (!isDeploymentReadyForBattle(activeRoster)) {
       setShowDeployment(true);
-      onError?.(`Completa el despliegue antes de combatir: faltan ${deployment.missingSlots.map((slot) => slot.type.toUpperCase() + slot.file).join(', ')}.`);
+      const detail = deployment.fallenCount > 0
+        ? `resuelve ${deployment.fallenCount} baja${deployment.fallenCount === 1 ? '' : 's'} pendiente${deployment.fallenCount === 1 ? '' : 's'}`
+        : `faltan ${deployment.missingSlots.map((slot) => slot.type.toUpperCase() + slot.file).join(', ')}`;
+      onError?.(`Completa el despliegue antes de combatir: ${detail}.`);
       return;
     }
 
@@ -688,6 +744,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
             ? `JAQUE MATE CRÍTICO · -2 HP al Rey Viejo · ${nextHp}/${bossConfig.maxHp} HP`
             : `Jaque al Rey Viejo · -1 HP · ${nextHp}/${bossConfig.maxHp} HP`,
           tone: 'good',
+          kind: 'boss',
         });
 
         if (nextHp <= 0) {
@@ -958,6 +1015,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function backToSetup() {
+    if (!canReturnCombatToSetup({ phase, combatVariant })) {
+      // eslint-disable-next-line no-console
+      console.error('[Combat] Transición battle -> setup bloqueada durante una operación activa.', { combatSessionId });
+      return;
+    }
     clearCombatSession(combatSessionId);
     setPhase('setup');
   }
@@ -970,6 +1032,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // fuera de una batalla — reconstruye una "pieza virtual" a partir del
   // slot (tipo + lo guardado), la actualiza, y persiste el resultado.
   function handleBuyRosterStat(key, stat) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const saved = prev.pieces[key] || { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: true };
       if (saved.alive === false) return prev; // no se puede invertir en una pieza caída, primero hay que revivirla
@@ -1000,6 +1063,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
 
   function handleMetamorphoseRosterPiece(key, targetType) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const changed = setRosterDeploymentType(prev, key, targetType);
       if (changed === prev) return prev;
@@ -1010,6 +1074,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleDeployRosterUnit(slotKey, unitKey) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = setDeploymentUnit(prev, slotKey, unitKey);
       if (next === prev) return prev;
@@ -1019,6 +1084,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleRemoveDeployedUnit(unitKey) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = removeDeploymentUnit(prev, unitKey);
       if (next === prev) return prev;
@@ -1028,6 +1094,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleResetDeployment() {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = resetDeployment(prev);
       saveRoster(next);
@@ -1036,6 +1103,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleAutofillDeployment(preferVeterans = true) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = autofillDeployment(prev, { preferVeterans });
       saveRoster(next);
@@ -1044,6 +1112,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleApplyDeploymentPreset(preset) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = applyDeploymentPreset(prev, preset);
       saveRoster(next);
@@ -1052,6 +1121,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleUnlockRosterTechnique(key, techniqueId) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = unlockRosterTechnique(prev, key, techniqueId);
       if (next === prev) return prev;
@@ -1061,6 +1131,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleEquipRosterTechnique(key, techniqueId) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = setRosterEquippedTechnique(prev, key, techniqueId);
       if (next === prev) return prev;
@@ -1070,6 +1141,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleReviveRosterPiece(key, type) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = revivePiece(prev, key, type);
       if (next === prev) return prev; // no alcanzaba el XP de combate
@@ -1079,6 +1151,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function handleReplaceRosterPiece(key) {
+    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
     setRoster((prev) => {
       const next = replaceDeadPiece(prev, key);
       if (next === prev) return prev;
@@ -1118,9 +1191,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
   return {
     phase, combatLog, battleRecap, ratingInfo, difficulty, difficultyBalance, colorChoice, setColorChoice,
+    pieceVeteranMarks,
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
     pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
-    showArmy, setShowArmy, showDeployment, setShowDeployment, localChess, legalTargets,
+    showArmy, setShowArmy, showDeployment, setShowDeployment, deploymentConfirmed, requireDeploymentConfirmation, handleConfirmDeployment, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
     handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
