@@ -53,7 +53,20 @@ def static_check() -> list[str]:
         require(worker, needle, "worker", errors)
 
     require(worker, EXPECTED_MODEL, "worker model", errors)
-    for voice_rule in ("Tutea siempre", "Sarcasmo juguetón", "Para player_portrait", "Para comentarios de partida"):
+    for voice_rule in (
+        "Tutea siempre",
+        "Sarcasmo juguetón",
+        "Para player_portrait",
+        "Para comentarios de partida",
+        "exactamente 3 frases compactas",
+        "usa una o dos cifras",
+        "recomendación práctica",
+        "una sola",
+        "copia literalmente su nombre",
+        "PLAYER_PORTRAIT_GENERATION",
+        "temperature: 0.60",
+        "max_tokens: 180",
+    ):
         require(worker, voice_rule, "worker shared voice", errors)
     require(worker, "friendly_sarcastic", "worker tone", errors)
     require(wrangler, '[ai]', "wrangler", errors)

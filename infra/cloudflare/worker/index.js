@@ -8,7 +8,7 @@ const SENSITIVE_FACT_KEY_PARTS = Object.freeze([
   "cookie", "session", "email", "api_key", "apikey", "bearer",
 ]);
 
-const GENERATION = Object.freeze({
+const COMMENT_GENERATION = Object.freeze({
   temperature: 1.25,
   top_p: 0.96,
   top_k: 45,
@@ -17,12 +17,22 @@ const GENERATION = Object.freeze({
   presence_penalty: 0.25,
 });
 
+// El retrato no es una ocurrencia de medio segundo: debe diagnosticar.
+// Mucha menos entropía que los comentarios de partida para priorizar
+// precisión, castellano limpio y una recomendación realmente utilizable.
+const PLAYER_PORTRAIT_GENERATION = Object.freeze({
+  temperature: 0.60,
+  top_p: 0.85,
+  top_k: 20,
+  repetition_penalty: 1.08,
+  frequency_penalty: 0.10,
+  presence_penalty: 0.05,
+  max_tokens: 180,
+});
 
 function generationFor(eventType) {
-  return {
-    ...GENERATION,
-    max_tokens: eventType === "player_portrait" ? 240 : 120,
-  };
+  if (eventType === "player_portrait") return PLAYER_PORTRAIT_GENERATION;
+  return { ...COMMENT_GENERATION, max_tokens: 120 };
 }
 
 function maxOutputCharsFor(eventType) {
@@ -55,9 +65,29 @@ REGLAS INVIOLABLES:
 - Puedes usar metáforas, hipérboles y sarcasmo siempre que no añadan un hecho
   ajedrecístico inexistente.
 - Si faltan datos, no los completes: comenta sólo lo que sí existe.
-- Para player_portrait escribe 2 a 4 frases compactas que formen un retrato
-  personal, mezclando al menos un punto fuerte o progreso si los HECHOS lo
-  permiten y uno o dos patrones mejorables reales.
+- Para player_portrait, tu prioridad es ser ÚTIL, concreto y fácil de entender.
+  Escribe exactamente 3 frases compactas: (1) el patrón positivo más relevante
+  que permitan los HECHOS, (2) el problema o patrón mejorable más importante,
+  y (3) una acción concreta para las próximas partidas basada en esos mismos
+  HECHOS. Si no hay evidencia suficiente para alguno, dilo claramente en vez
+  de rellenar huecos. Cuando haya cifras relevantes, usa una o dos cifras
+  concretas para anclar el diagnóstico; no recites todas las estadísticas.
+- La tercera frase de player_portrait debe ser una recomendación práctica y
+  específica para las próximas partidas, no un cierre social ni una obviedad.
+- En player_portrait mantén el sarcasmo, pero seco y breve: incluye una sola
+  pulla o ironía ligera apoyada en un dato real. La pulla acompaña al análisis;
+  nunca sustituye el consejo.
+- En player_portrait ve al grano: sin metáforas largas, florituras literarias,
+  personajes inventados, citas falsas, saludos, despedidas, muletillas ni
+  relleno como "parece que", "supongo", "en cierto sentido" o "por cierto";
+  tampoco anglicismos innecesarios ni paréntesis tipo "by the way". No uses palabras
+  inventadas ni deformes nombres propios.
+- Si mencionas una apertura en player_portrait, copia literalmente su nombre
+  tal como aparece en HECHOS. No la rebautices, no inventes variantes y no
+  añadas nombres de ajedrecistas que no estén escritos explícitamente allí.
+- No llames "fortaleza", "debilidad" o "tendencia" a algo basado en una sola
+  muestra si los HECHOS indican que hay pocos datos. Sé proporcional al tamaño
+  de la muestra.
 - Para comentarios de partida escribe una o dos frases cortas y no narres lo
   obvio como un comentarista de televisión.
 - Sin Markdown, listas, encabezados, comillas de apertura ni prefijos como
@@ -257,6 +287,10 @@ async function handleNarrative(request, env) {
   const tone = sanitizeString(body.tone || "friendly_sarcastic", 32);
   const facts = sanitizeFacts(body.facts || {});
 
+  const task = eventType === "player_portrait"
+    ? "Diagnostica el juego con datos: acierto principal, problema principal y siguiente acción. Mantén una sola pulla breve. Nada de adornos."
+    : "Escribe el comentario ahora usando exclusivamente esos hechos.";
+
   const userPrompt = [
     `TIPO_DE_EVENTO: ${eventType}`,
     `IDIOMA: ${locale}`,
@@ -264,7 +298,7 @@ async function handleNarrative(request, env) {
     "HECHOS:",
     JSON.stringify(facts),
     "",
-    "Escribe el comentario ahora usando exclusivamente esos hechos.",
+    task,
   ].join("\n");
 
   let result;
