@@ -1,7 +1,15 @@
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
+import { getToken } from '../auth.js';
+import { requestRemoteNarrative } from '../narrativeRemote.js';
+import {
+  buildPlayerPortraitFacts,
+  loadCachedPlayerPortrait,
+  playerPortraitGenerationKey,
+  saveCachedPlayerPortrait,
+} from '../aiPlayerPortrait.js';
 import { findWorstMoveEver } from '../gameReport.js';
 import { generateRoast, generateCoaching, trainingTargetForCoaching } from '../insights.js';
 import { formatLongMove } from '../notation.js';
@@ -123,6 +131,61 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     incidents: rivalry.incidents,
   }), [rivalry, personalPuzzleCount]);
   const roastLines = useMemo(() => generateRoast(insights, searchResult, roastExtras), [insights, searchResult, roastExtras]);
+  const portraitFacts = useMemo(
+    () => buildPlayerPortraitFacts(insights, rivalry, roastExtras, searchResult),
+    [insights, rivalry, roastExtras, searchResult],
+  );
+  const portraitGenerationKey = useMemo(() => playerPortraitGenerationKey(insights), [insights]);
+  const portraitFactsKey = useMemo(() => JSON.stringify(portraitFacts || {}), [portraitFacts]);
+  const localPortrait = useMemo(() => roastLines.slice(0, 2).join(' '), [roastLines]);
+  const [portraitText, setPortraitText] = useState(() => loadCachedPlayerPortrait(portraitGenerationKey));
+  const [portraitStatus, setPortraitStatus] = useState(() => portraitText ? 'cloudflare' : 'local');
+  const [portraitRefresh, setPortraitRefresh] = useState(0);
+
+  useEffect(() => {
+    if (!portraitFacts || Number(insights.totalGames || 0) < 3) {
+      setPortraitText(null);
+      setPortraitStatus('local');
+      return undefined;
+    }
+
+    const cached = loadCachedPlayerPortrait(portraitGenerationKey);
+    if (cached && portraitRefresh === 0) {
+      setPortraitText(cached);
+      setPortraitStatus('cloudflare');
+      return undefined;
+    }
+    if (!cached && portraitRefresh === 0) setPortraitText(null);
+
+    const token = getToken();
+    if (!token) {
+      setPortraitStatus('local');
+      return undefined;
+    }
+
+    let active = true;
+    setPortraitStatus('loading');
+    void requestRemoteNarrative(
+      {
+        eventType: 'player_portrait',
+        tone: 'friendly_sarcastic',
+        facts: portraitFacts,
+      },
+      { token, timeoutMs: 7000 },
+    ).then((text) => {
+      if (!active) return;
+      if (!text) {
+        setPortraitStatus(cached ? 'cloudflare' : 'local');
+        return;
+      }
+      saveCachedPlayerPortrait(portraitGenerationKey, text);
+      setPortraitText(text);
+      setPortraitStatus('cloudflare');
+    });
+
+    return () => { active = false; };
+  }, [portraitFactsKey, portraitGenerationKey, portraitRefresh]);
+
   const coaching = useMemo(() => generateCoaching(insights, rivalry, roastExtras), [insights, rivalry, roastExtras]);
   const coachingWithTraining = useMemo(() => coaching.map((item) => ({
     item,
@@ -200,6 +263,33 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   return (
     <div className="menu tournament-panel insights-hub">
       <InsightsHubHeader section={section} onSectionChange={setSection} onExit={onExit} />
+
+      {localPortrait && (
+        <div className="menu-section ai-player-portrait">
+          <div className="ai-player-portrait-heading">
+            <div>
+              <span className="section-label">Retrato dinámico</span>
+              <h2>Así te ve la CPU</h2>
+            </div>
+            <span className={`ai-player-portrait-source source-${portraitStatus}`}>
+              {portraitStatus === 'loading' ? 'Pensando…' : portraitStatus === 'cloudflare' ? 'Workers AI' : 'Lectura local'}
+            </span>
+          </div>
+          <p className="ai-player-portrait-text">{portraitText || localPortrait}</p>
+          <details className="friendly-disclosure ai-player-portrait-details">
+            <summary>Ver en qué se basa</summary>
+            <div className="friendly-disclosure-body">
+              <p className="hint-text">Usa sólo tus estadísticas e incidentes guardados: resultados, tendencia de rating, aperturas, rachas, rivalidad y errores realmente registrados. La IA pone la voz; los hechos los pone Chess Studio.</p>
+              <div className="ai-player-portrait-actions">
+                <button type="button" className="secondary-btn" disabled={portraitStatus === 'loading'} onClick={() => setPortraitRefresh((value) => value + 1)}>
+                  {portraitStatus === 'loading' ? 'Pensando…' : 'Regenerar lectura'}
+                </button>
+                <small>Se actualiza solo cada 3 partidas para no gastar llamadas por deporte.</small>
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
 
       <div className="menu-section worst-move-spotlight">
         <div className="worst-move-spotlight-heading">

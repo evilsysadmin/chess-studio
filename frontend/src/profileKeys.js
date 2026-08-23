@@ -65,6 +65,10 @@ export const PROFILE_STORAGE_KEYS = Object.freeze([
 // Estado local de sesión. No se sincroniza porque apunta a partidas activas
 // del backend y no es portable entre dispositivos, pero sí debe limpiarse al
 // cambiar de identidad para que Bob no vea la partida activa de Alice.
+export const DERIVED_LOCAL_CACHE_KEYS = Object.freeze([
+  'chess-study-ai-player-portrait-v1',
+]);
+
 export const SESSION_STATE_KEYS = [
   'chess-study-active-game',
   'chess-study-active-game-learning',
@@ -114,12 +118,14 @@ export function removeProfileStorageItem(key) {
 
 export function clearProfileProgress() {
   for (const key of PROFILE_PROGRESS_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  for (const key of DERIVED_LOCAL_CACHE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   markProfileDirtyForCurrentUser();
   emitProfileChanged();
 }
 
 export function clearProfileCache({ notify = false } = {}) {
   for (const key of PROFILE_STORAGE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  for (const key of DERIVED_LOCAL_CACHE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   removeStorageItem(STORAGE_LOCAL, 'chess-study-cpu-personality'); // legado de versiones con selector: ya no existe
   removeStorageItem(STORAGE_LOCAL, 'chess-study-ambient-theme'); // V15.4: la música pasa a ser de sesión, no de perfil
   if (notify) emitProfileChanged();

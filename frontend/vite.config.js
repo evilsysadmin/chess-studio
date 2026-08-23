@@ -64,6 +64,7 @@ export default defineConfig({
         'src/combatUnitService.js',
         'src/narrativeProvider.js',
         'src/narrativeRemote.js',
+        'src/aiPlayerPortrait.js',
         'src/activeGameSession.js',
         'src/gameReconnect.js',
         'src/saveStatus.js',

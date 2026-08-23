@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { resetAllProgress } from './resetProgress.js';
-import { PROFILE_PROGRESS_KEYS, PROFILE_PREFERENCE_KEYS } from './profileKeys.js';
+import { DERIVED_LOCAL_CACHE_KEYS, PROFILE_PROGRESS_KEYS, PROFILE_PREFERENCE_KEYS } from './profileKeys.js';
 
 const UNTOUCHED_SESSION_KEYS = [
   'chess-study-auth-token',
@@ -19,6 +19,12 @@ describe('resetAllProgress', () => {
     for (const key of PROFILE_PROGRESS_KEYS) {
       expect(localStorage.getItem(key), `${key} debería haberse borrado`).toBeNull();
     }
+  });
+
+  it('borra también caches derivados del progreso para que no reaparezcan retratos viejos', () => {
+    for (const key of DERIVED_LOCAL_CACHE_KEYS) localStorage.setItem(key, 'viejo');
+    resetAllProgress();
+    for (const key of DERIVED_LOCAL_CACHE_KEYS) expect(localStorage.getItem(key)).toBeNull();
   });
 
   it('NO toca preferencias ni sesión activa/login', () => {

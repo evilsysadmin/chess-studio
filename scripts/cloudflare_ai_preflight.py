@@ -51,6 +51,9 @@ def static_check() -> list[str]:
         require(worker, needle, "worker", errors)
 
     require(worker, EXPECTED_MODEL, "worker model", errors)
+    for voice_rule in ("Tutea siempre", "Sarcasmo juguetón", "Para player_portrait", "Para comentarios de partida"):
+        require(worker, voice_rule, "worker shared voice", errors)
+    require(worker, "friendly_sarcastic", "worker tone", errors)
     require(wrangler, '[ai]', "wrangler", errors)
     require(wrangler, 'binding = "AI"', "wrangler", errors)
     require(wrangler, '[[ratelimits]]', "wrangler", errors)

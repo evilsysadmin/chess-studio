@@ -18,7 +18,7 @@ describe('remote narrative transport', () => {
     expect(text).toBe('Qué desastre tan pulcro.');
     const [, init] = fetchImpl.mock.calls[0];
     const body = JSON.parse(init.body);
-    expect(body).toEqual({ eventType:'blunder', facts:{ san:'Qd4', lostPiece:'queen' }, tone:'sarcastic', locale:'es-ES' });
+    expect(body).toEqual({ eventType:'blunder', facts:{ san:'Qd4', lostPiece:'queen' }, tone:'friendly_sarcastic', locale:'es-ES' });
     expect(init.headers.Authorization).toBe('Bearer jwt');
   });
 

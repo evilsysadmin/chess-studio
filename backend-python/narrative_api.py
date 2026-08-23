@@ -18,7 +18,7 @@ from narrative_cloudflare import generate_narrative, get_ai_metrics
 class NarrativeRequest(BaseModel):
     eventType: str = Field(default="generic", max_length=48)
     facts: dict[str, Any] = Field(default_factory=dict)
-    tone: str = Field(default="sarcastic", max_length=32)
+    tone: str = Field(default="friendly_sarcastic", max_length=32)
     locale: str = Field(default="es-ES", max_length=16)
 
 

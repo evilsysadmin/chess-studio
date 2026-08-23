@@ -44,6 +44,11 @@ def test_payload_is_canonical_and_facts_are_bounded():
     assert decoded["facts"]["nan"] is None
 
 
+def test_default_tone_is_shared_friendly_sarcasm():
+    payload = provider.build_payload("blunder", {"san": "Qd4"})
+    assert payload["tone"] == "friendly_sarcastic"
+
+
 def test_missing_cloud_configuration_uses_local_fallback(monkeypatch):
     monkeypatch.delenv("CF_AI_WORKER_URL", raising=False)
     monkeypatch.delenv("CHESS_AI_SHARED_SECRET", raising=False)
@@ -130,6 +135,24 @@ def test_grounded_piece_claim_is_allowed(monkeypatch):
     assert result["provider"] == "cloudflare"
     assert "dama" in result["text"].lower()
 
+
+
+
+def test_player_portrait_accepts_only_grounded_profile_claims(monkeypatch):
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "p" * 64)
+
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": "Has ganado 6 partidas y tu rating ha subido. Te estás viniendo arriba, con motivos."}))
+    result = asyncio.run(
+        provider.generate_narrative(
+            "player_portrait",
+            {"record": {"wins": 6, "losses": 4}, "rating_trend": {"delta": 80}},
+            client=client,
+        )
+    )
+
+    assert result["provider"] == "cloudflare"
+    assert "rating" in result["text"].lower()
 
 
 def test_kill_switch_skips_cloud_entirely(monkeypatch):

@@ -119,7 +119,7 @@ def _sanitize(value: Any, depth: int = 0) -> Any:
     return None
 
 
-def build_payload(event_type: str, facts: dict[str, Any], *, tone: str = "sarcastic", locale: str = "es-ES") -> dict[str, Any]:
+def build_payload(event_type: str, facts: dict[str, Any], *, tone: str = "friendly_sarcastic", locale: str = "es-ES") -> dict[str, Any]:
     return {
         "event_type": str(event_type or "generic")[:48],
         "facts": _sanitize(facts or {}),
@@ -348,7 +348,7 @@ async def request_cloud_narrative(
     event_type: str,
     facts: dict[str, Any],
     *,
-    tone: str = "sarcastic",
+    tone: str = "friendly_sarcastic",
     locale: str = "es-ES",
     client: httpx.AsyncClient | None = None,
 ) -> ProviderOutcome:
@@ -410,7 +410,7 @@ async def generate_narrative(
     event_type: str,
     facts: dict[str, Any],
     *,
-    tone: str = "sarcastic",
+    tone: str = "friendly_sarcastic",
     locale: str = "es-ES",
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:

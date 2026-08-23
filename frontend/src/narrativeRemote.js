@@ -58,7 +58,7 @@ export async function requestRemoteNarrative(
       body: JSON.stringify({
         eventType: String(dossier.eventType || 'generic').slice(0, 48),
         facts: dossier.facts && typeof dossier.facts === 'object' ? dossier.facts : {},
-        tone: 'sarcastic',
+        tone: String(dossier.tone || 'friendly_sarcastic').slice(0, 32),
         locale: 'es-ES',
       }),
     });

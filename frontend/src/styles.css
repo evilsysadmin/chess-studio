@@ -8788,3 +8788,55 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .admin-users-table { min-width: 0; }
   .admin-client-release small { overflow-wrap: anywhere; }
 }
+
+/* v16.6dm22 · Retrato AI progresivo en Así juegas. */
+.ai-player-portrait {
+  border: 1px solid color-mix(in srgb, var(--gold) 34%, var(--line));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--panel) 94%, var(--gold) 6%), var(--panel));
+}
+
+.ai-player-portrait-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .9rem;
+}
+
+.ai-player-portrait-heading h2 { margin: .15rem 0 0; }
+
+.ai-player-portrait-source {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: .3rem .55rem;
+  color: var(--parchment-dim);
+  font-size: .72rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.ai-player-portrait-source.source-cloudflare {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
+  color: var(--gold);
+}
+
+.ai-player-portrait-text {
+  margin: .9rem 0 0;
+  max-width: 78ch;
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+
+.ai-player-portrait-details { margin-top: .75rem; }
+.ai-player-portrait-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.ai-player-portrait-actions small { color: var(--parchment-dim); }
+
+@media (max-width: 520px) {
+  .ai-player-portrait-heading { align-items: stretch; flex-direction: column; }
+  .ai-player-portrait-source { width: fit-content; }
+}
