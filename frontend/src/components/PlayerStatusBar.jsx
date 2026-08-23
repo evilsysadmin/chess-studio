@@ -1,4 +1,3 @@
-import React from 'react';
 import { levelForPoints, pointsIntoLevel, POINTS_PER_LEVEL } from '../tournament.js';
 import { ratingLabel } from '../playerRating.js';
 import { IconTrophy, IconSword, IconStar } from './Icons.jsx';

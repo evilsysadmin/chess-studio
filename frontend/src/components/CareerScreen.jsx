@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { currentDailyStreak } from '../dailyChallenge.js';

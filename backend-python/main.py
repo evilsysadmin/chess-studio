@@ -1358,28 +1358,6 @@ async def get_game(game_id: str, username: str = Depends(get_current_user)):
     return serialize_game(game_id, entry, load_board(entry))
 
 
-@app.get("/api/games/{game_id}/moves")
-async def legal_moves(game_id: str, square: str, username: str = Depends(get_current_user)):
-    entry = await get_owned_game(game_id, username)
-    board = load_board(entry)
-    try:
-        from_sq = chess.parse_square(square)
-    except ValueError:
-        raise HTTPException(400, "Casilla inválida.")
-
-    moves = [m for m in board.legal_moves if m.from_square == from_sq]
-    return {
-        "moves": [
-            {
-                "to": chess.square_name(m.to_square),
-                "san": board.san(m),
-                "promotion": m.promotion is not None,
-            }
-            for m in moves
-        ]
-    }
-
-
 @app.get("/api/games/{game_id}/hint")
 async def hint(game_id: str, username: str = Depends(get_current_user)):
     entry = await get_owned_game(game_id, username)
@@ -1537,14 +1515,16 @@ async def play_move(game_id: str, body: MoveRequest, username: str = Depends(get
     if turn != entry["humanColor"]:
         raise HTTPException(400, "No es el turno del jugador.")
 
-    try:
-        move = resolve_move(board, body.from_square, body.to, body.promotion)
-        if move is None:
-            raise ValueError("Movimiento ilegal.")
-        human_move = move_to_dict(board, move)
-        board.push(move)
-    except Exception:
+    move = resolve_move(board, body.from_square, body.to, body.promotion)
+    if move is None:
         raise HTTPException(400, "Movimiento ilegal.")
+
+    # A partir de aquí la jugada ya fue validada contra board.legal_moves.
+    # Si la serialización o python-chess fallan inesperadamente, dejamos que
+    # el error llegue al handler 500 con request-id en vez de disfrazarlo de
+    # un 400 "Movimiento ilegal", que ocultaría un bug real del servidor.
+    human_move = move_to_dict(board, move)
+    board.push(move)
 
     entry["lastMove"] = {
         "from": human_move["from"],

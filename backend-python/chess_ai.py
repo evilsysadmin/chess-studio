@@ -17,7 +17,6 @@ positivo = ventaja blanca, negativo = ventaja negra.
 
 from __future__ import annotations
 
-import math
 import random
 import time
 from dataclasses import dataclass

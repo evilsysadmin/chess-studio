@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   BASE_STATS,
   statsFor,
-  derivedLevel,
   levelTier,
   costForNextPoint,
   reviveCost,
@@ -35,28 +34,6 @@ function basePieceFor(slot, saved, activeType = slot.type) {
     unlockedTechniques: Array.isArray(saved?.unlockedTechniques) ? saved.unlockedTechniques : [],
     equippedTechnique: saved?.equippedTechnique || null,
   };
-}
-
-function UnitServiceLine({ record }) {
-  if (!record) return null;
-  const stats = record.stats || {};
-  const medals = unitDecorations(record);
-  return (
-    <div className="army-unit-service">
-      <span>
-        {(stats.battles || 0) === 0
-          ? 'Servicio · sin bautismo de fuego'
-          : `Servicio · ${stats.battles} batallas · ${stats.survivals || 0} supervivencias · ${stats.kills || 0} bajas${(stats.bestSurvivalStreak || 0) > 0 ? ` · mejor racha ${stats.bestSurvivalStreak}` : ''}${(stats.bossVictories || 0) > 0 ? ` · bosses ${stats.bossVictories}` : ''}`}
-      </span>
-      {medals.length > 0 && (
-        <span className="army-unit-medals" aria-label={`${medals.length} condecoraciones individuales`}>
-          {medals.map((medal) => (
-            <i key={medal.id} title={`${medal.label}: ${medal.description}`}>✦ {medal.short}</i>
-          ))}
-        </span>
-      )}
-    </div>
-  );
 }
 
 function formatMemorialDate(value) {

@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * Marcas mínimas de veteranía para Combat Chess.

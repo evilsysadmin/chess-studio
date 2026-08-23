@@ -1,4 +1,3 @@
-import React from 'react';
 import GlossaryTerm from './GlossaryTerm.jsx';
 
 const OUTCOME = { win: 'Victoria', loss: 'Derrota', draw: 'Tablas' };

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AMBIENT_THEME_GROUPS,
   AMBIENT_THEME_OPTIONS,

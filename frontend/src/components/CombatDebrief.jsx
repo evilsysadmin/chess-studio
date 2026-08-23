@@ -1,4 +1,3 @@
-import React from 'react';
 
 const PIECE = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
 

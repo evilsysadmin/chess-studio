@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';

@@ -1,4 +1,3 @@
-import React from 'react';
 
 const common = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' };
 
@@ -38,26 +37,6 @@ export function IconBook(props) {
     <svg {...common} {...props}>
       <path d="M12 6c-1.5-1-4-1.5-7-1v13c3-.5 5.5 0 7 1 1.5-1 4-1.5 7-1V5c-3-.5-5.5 0-7 1z" />
       <path d="M12 6v13" />
-    </svg>
-  );
-}
-
-export function IconVolume(props) {
-  return (
-    <svg {...common} {...props}>
-      <path d="M4 9v6h4l5 4V5L8 9H4z" />
-      <path d="M16.5 8.5a5 5 0 0 1 0 7" />
-      <path d="M19 6a8 8 0 0 1 0 12" />
-    </svg>
-  );
-}
-
-export function IconVolumeMuted(props) {
-  return (
-    <svg {...common} {...props}>
-      <path d="M4 9v6h4l5 4V5L8 9H4z" />
-      <path d="M16 9l5 6" />
-      <path d="M21 9l-5 6" />
     </svg>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { downloadProfile, exportProfile, importProfile, pushProfileToServer } from '../profileBackup.js';
 import { resetAllProgress } from '../resetProgress.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';

@@ -112,4 +112,3 @@ export function clearCombatSession(sessionId = null) {
   }
 }
 
-export const COMBAT_SESSION_STORAGE_KEY = KEY;

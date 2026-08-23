@@ -1,4 +1,4 @@
-import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { setProfileStorageItem } from './profileKeys.js';
 
 // puzzleStats.js — Cuántos puzzles resolviste en total, de por vida (no solo
 // en la sesión actual). PuzzleScreen ya lleva su propio contador en estado
@@ -53,12 +53,4 @@ export function resetPuzzleStreak() {
   return 0;
 }
 
-// A diferencia de resetPuzzleStreak (que deja la MEJOR marca intacta a
-// propósito, romper una racha no debería borrar tu récord), esto borra
-// todo — resueltos de por vida, racha actual, y mejor marca — para un
-// reset completo de progreso ("empezar de cero").
-export function resetAllPuzzleStats() {
-  removeProfileStorageItem(KEY);
-  removeProfileStorageItem(STREAK_KEY);
-  removeProfileStorageItem(BEST_STREAK_KEY);
-}
+

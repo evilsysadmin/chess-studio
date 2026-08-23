@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useCombatController } from './useCombatController.js';
 import CombatSetupView from './CombatSetupView.jsx';
 import CombatBattleView from './CombatBattleView.jsx';

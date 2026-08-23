@@ -1,45 +1,14 @@
-// resetProgress.js — Un solo "empezar de cero" que junta todos los resets
-// individuales que ya existían sueltos por distintos módulos. A propósito
-// NO toca: la sesión de login (`chess-study-auth-*`, cerraría tu cuenta,
-// no es "progreso"), las preferencias de audio/voz (son ajustes de UI, no
-// avance), ni la partida activa (`chess-study-active-game-learning`, es
-// efímera por diseño, ya no sincroniza a propósito).
+// resetProgress.js — Un solo "empezar de cero" respaldado por la misma
+// clasificación de claves que usa el perfil. Esto evita el bug clásico de
+// añadir una feature con progreso nuevo, olvidar su reset y aun así dejar los
+// tests verdes porque el test mantenía una segunda lista desactualizada.
+//
+// A propósito NO toca: sesión de login, partida activa ni preferencias de UI
+// puras (audio/voz, tutoriales ya vistos y modo zen). Sí reinicia presets de
+// despliegue y tema de tablero porque forman parte del progreso sincronizado.
 
-import { resetTournament } from './tournament.js';
-import { clearGameHistory } from './gameHistory.js';
-import { clearCombatHistory } from './combatHistory.js';
-import { resetRoster } from './combatRoster.js';
-import { resetCombatService } from './combatService.js';
-import { resetRating, resetRatingHistory } from './playerRating.js';
-import { resetAchievements } from './achievements.js';
-import { resetAllPuzzleStats } from './puzzleStats.js';
-import { clearWorstMoveCache } from './worstMoveCache.js';
-import { resetRewardsSelection } from './tournamentRewards.js';
-import { resetRoguelikeRun } from './roguelikeRun.js';
-import { resetCombatCampaign } from './combatCampaign.js';
-import { clearSeriesHistory } from './series.js';
-import { clearCareer } from './career.js';
-import { clearRivalry } from './rivalry.js';
-import { clearPersonalPuzzles } from './personalPuzzles.js';
-import { clearAdvancedCareer } from './advancedCareer.js';
+import { clearProfileProgress } from './profileKeys.js';
 
 export function resetAllProgress() {
-  resetTournament();
-  clearGameHistory();
-  clearCombatHistory();
-  resetRoster({ persist: false });
-  resetCombatService();
-  resetRating();
-  resetRatingHistory();
-  resetAchievements();
-  resetAllPuzzleStats();
-  clearWorstMoveCache();
-  resetRewardsSelection();
-  resetRoguelikeRun();
-  resetCombatCampaign();
-  clearSeriesHistory();
-  clearCareer();
-  clearRivalry();
-  clearPersonalPuzzles();
-  clearAdvancedCareer();
+  clearProfileProgress();
 }

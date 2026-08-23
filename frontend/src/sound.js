@@ -12,7 +12,7 @@ const MUSIC_VOLUME_KEY = 'chess-study-music-volume';
 const MUSIC_RADIO_MODE_KEY = 'chess-study-music-radio-mode';
 const MUSIC_FAVORITES_KEY = 'chess-study-music-favorites';
 const MUSIC_EXCLUDED_KEY = 'chess-study-music-excluded';
-import { AMBIENT_THEME_SESSION_KEY, LEGACY_AMBIENT_THEME_KEY, clearAmbientThemeSessionStorage } from './audioSession.js';
+import { AMBIENT_THEME_SESSION_KEY, LEGACY_AMBIENT_THEME_KEY } from './audioSession.js';
 const DEFAULT_AMBIENT_THEME = 'andalus';
 // La radio de sesión deja un pequeño hueco real entre piezas. No encadenamos
 // los finales como si fueran jingles publicitarios: termina el tema, respira,
@@ -74,17 +74,6 @@ export function setAmbientVolume(value) {
   applyAmbientMasterGain(0.08);
   notifyAmbientTransport();
   return normalized;
-}
-
-// API heredada: conservarla evita romper imports antiguos y permite que un
-// perfil viejo con mute global siga teniendo una transición limpia.
-export function isMuted() {
-  return isMusicMuted() && isFxMuted();
-}
-
-export function setMuted(muted) {
-  setMusicMuted(muted);
-  setFxMuted(muted);
 }
 
 function beep({ freq, duration, type = 'sine', gain = 0.06, delay = 0 }) {
@@ -214,7 +203,6 @@ const OUD_SCALE = [130.81, 138.59, 164.81, 174.61, 195.99, 207.65, 233.08]; // C
 // nueva capa, para sumar color y un ancla armónica grave que hasta acá no
 // existía (el pad sostiene acordes, esto camina por debajo marcando el
 // pulso, más "jazz" que "drone").
-const BASS_SCALE = OUD_SCALE.map((f) => f / 2); // C2 Db2 E2 F2 G2 Ab2 Bb2
 const BASS_PATTERN = [0, 4, 0, 6]; // tónica, quinta, tónica, séptima bemol — un compás completo (4 pasos de negra)
 const BASS_STEP_GAP = 4; // una nota cada 4 dieciseisavos = pulso de negra
 const BASS_DURATION_S = 0.9;
@@ -2700,10 +2688,6 @@ export function resetAmbientThemeForSession() {
   return nextId;
 }
 
-export function clearAmbientThemeSession() {
-  clearAmbientThemeSessionStorage();
-}
-
 export function getAmbientThemeId() {
   if (typeof sessionStorage === 'undefined') return DEFAULT_AMBIENT_THEME;
   const saved = sessionStorage.getItem(AMBIENT_THEME_SESSION_KEY);
@@ -2981,7 +2965,6 @@ export function duckAmbientMusic(ducked) {
 }
 
 let padIndex = 0;
-const KEY_CHANGE_STEPS = STEPS_PER_BAR * 6; // cada 6 compases (~13.4s)
 
 function playPadNote(freq) {
   if (isMusicMuted()) return;

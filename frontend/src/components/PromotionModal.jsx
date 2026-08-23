@@ -1,4 +1,3 @@
-import React from 'react';
 
 const OPTIONS = [
   { code: 'q', symbol: '♛', label: 'Dama' },

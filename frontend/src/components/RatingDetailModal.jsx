@@ -1,4 +1,3 @@
-import React from 'react';
 import { RATING_TIERS, ratingProgress, loadRatingHistory } from '../playerRating.js';
 import { ratingTrend, tierTrendComment } from '../insights.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';

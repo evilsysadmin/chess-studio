@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchLiveStatus } from '../auth.js';
 
 const POLL_MS = 30_000;

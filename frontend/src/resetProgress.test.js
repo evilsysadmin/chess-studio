@@ -1,58 +1,40 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { resetAllProgress } from './resetProgress.js';
+import { PROFILE_PROGRESS_KEYS, PROFILE_PREFERENCE_KEYS } from './profileKeys.js';
 
-const PROGRESS_KEYS = [
-  'chess-study-tournament',
-  'chess-study-game-history',
-  'chess-study-combat-history',
-  'chess-study-combat-roster',
-  'chess-study-player-rating',
-  'chess-study-rating-history',
-  'chess-study-achievements',
-  'chess-study-puzzles-solved',
-  'chess-study-puzzle-streak',
-  'chess-study-puzzle-best-streak',
-  'chess-study-worst-move-cache',
-  'chess-study-selected-title',
-  'chess-study-selected-skin',
-  'chess-study-roguelike-run',
-  'chess-study-roguelike-best-floor',
-  'chess-study-roguelike-tower-completed',
-  'chess-study-combat-campaign-v1',
-  'chess-study-combat-campaign-best-stage',
-  'chess-study-combat-operation-archive-v1',
-];
-
-// Estas NUNCA deberían tocarse con un reset de progreso — son sesión de
-// login, o preferencias de UI, no avance del juego.
-const UNTOUCHED_KEYS = [
+const UNTOUCHED_SESSION_KEYS = [
   'chess-study-auth-token',
   'chess-study-auth-username',
-  'chess-study-muted',
-  'chess-study-music-muted',
-  'chess-study-fx-muted',
-  'chess-study-cpu-personality',
-  'chess-study-ambient-theme',
-  'chess-study-voice-enabled',
+  'chess-study-active-game',
+  'chess-study-active-game-learning',
+  'chess-study-active-game-session-v1',
 ];
 
 beforeEach(() => localStorage.clear());
 
 describe('resetAllProgress', () => {
-  it('borra todas las claves de progreso conocidas', () => {
-    for (const key of PROGRESS_KEYS) localStorage.setItem(key, 'algo');
+  it('borra todas las claves clasificadas como progreso desde una única fuente de verdad', () => {
+    for (const key of PROFILE_PROGRESS_KEYS) localStorage.setItem(key, 'algo');
     resetAllProgress();
-    for (const key of PROGRESS_KEYS) {
+    for (const key of PROFILE_PROGRESS_KEYS) {
       expect(localStorage.getItem(key), `${key} debería haberse borrado`).toBeNull();
     }
   });
 
-  it('NO toca la sesión de login ni las preferencias de UI', () => {
-    for (const key of UNTOUCHED_KEYS) localStorage.setItem(key, 'algo');
+  it('NO toca preferencias ni sesión activa/login', () => {
+    const untouched = [...PROFILE_PREFERENCE_KEYS, ...UNTOUCHED_SESSION_KEYS];
+    for (const key of untouched) localStorage.setItem(key, 'algo');
     resetAllProgress();
-    for (const key of UNTOUCHED_KEYS) {
+    for (const key of untouched) {
       expect(localStorage.getItem(key), `${key} NO debería haberse tocado`).toBe('algo');
     }
+  });
+
+  it('incluye progreso moderno que antes escapaba al reset', () => {
+    expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-daily-challenge');
+    expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-game-activity');
+    expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-meta-progress');
+    expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-career-meta');
   });
 
   it('no revienta si se llama sin que haya nada guardado todavía', () => {

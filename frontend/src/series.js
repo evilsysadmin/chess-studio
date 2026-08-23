@@ -1,4 +1,4 @@
-import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { setProfileStorageItem } from './profileKeys.js';
 
 const ACTIVE_KEY = 'chess-study-active-series';
 const HISTORY_KEY = 'chess-study-series-history';
@@ -147,10 +147,6 @@ export function seriesStatusText(series) {
   return `Mejor de ${series.bestOf} · ${seriesScoreText(series)}`;
 }
 
-export function clearSeriesHistory() {
-  removeProfileStorageItem(HISTORY_KEY);
-  return [];
-}
 
 
 function completedSeriesRows(history) {

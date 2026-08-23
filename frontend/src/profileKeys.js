@@ -6,28 +6,20 @@ export const PROFILE_CHANGED_EVENT = 'chess-study-profile-changed';
 const PROFILE_DIRTY_USER_KEY = 'chess-study-profile-dirty-user';
 const AUTH_USERNAME_KEY = 'chess-study-auth-username';
 
-export const PROFILE_STORAGE_KEYS = [
+export const PROFILE_PROGRESS_KEYS = Object.freeze([
   'chess-study-tournament',
   'chess-study-game-history',
   'chess-study-game-activity',
   'chess-study-combat-history',
   'chess-study-combat-roster',
   'chess-study-combat-service',
+  'chess-study-combat-deployment-presets-v1',
   'chess-study-player-rating',
   'chess-study-rating-history',
   'chess-study-achievements',
   'chess-study-puzzles-solved',
   'chess-study-puzzle-streak',
   'chess-study-puzzle-best-streak',
-  'chess-study-muted', // legado: fallback para perfiles anteriores
-  'chess-study-music-muted',
-  'chess-study-music-volume',
-  'chess-study-music-radio-mode',
-  'chess-study-music-favorites',
-  'chess-study-music-excluded',
-  'chess-study-combat-deployment-presets-v1',
-  'chess-study-fx-muted',
-  'chess-study-voice-enabled',
   'chess-study-worst-move-cache',
   'chess-study-selected-title',
   'chess-study-selected-skin',
@@ -37,20 +29,36 @@ export const PROFILE_STORAGE_KEYS = [
   'chess-study-combat-campaign-v1',
   'chess-study-combat-campaign-best-stage',
   'chess-study-combat-operation-archive-v1',
-  'chess-study-mechanic-tutorial-progress-v1',
   'chess-study-personal-puzzles',
   'chess-study-cpu-rivalry',
   'chess-study-daily-challenge',
   'chess-study-series-history',
-  'chess-study-career-meta',
+  'chess-study-career-meta', // legado: perfiles antiguos pueden seguir trayéndolo desde Mongo
   'chess-study-special-run',
   'chess-study-active-contract',
-  'chess-study-board-theme',
-  'chess-study-meta-progress',
+  'chess-study-meta-progress', // legado anterior a career.js
   'chess-study-career',
+  'chess-study-board-theme',
   'chess-study-analysis-archive',
+]);
+
+export const PROFILE_PREFERENCE_KEYS = Object.freeze([
+  'chess-study-muted', // legado: fallback para perfiles anteriores
+  'chess-study-music-muted',
+  'chess-study-music-volume',
+  'chess-study-music-radio-mode',
+  'chess-study-music-favorites',
+  'chess-study-music-excluded',
+  'chess-study-fx-muted',
+  'chess-study-voice-enabled',
+  'chess-study-mechanic-tutorial-progress-v1',
   'chess-study-zen-mode',
-];
+]);
+
+export const PROFILE_STORAGE_KEYS = Object.freeze([
+  ...PROFILE_PROGRESS_KEYS,
+  ...PROFILE_PREFERENCE_KEYS,
+]);
 
 // Estado local de sesión. No se sincroniza porque apunta a partidas activas
 // del backend y no es portable entre dispositivos, pero sí debe limpiarse al
@@ -97,6 +105,13 @@ export function removeProfileStorageItem(key) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
   localStorage.removeItem(key);
+  markProfileDirtyForCurrentUser();
+  emitProfileChanged();
+}
+
+
+export function clearProfileProgress() {
+  for (const key of PROFILE_PROGRESS_KEYS) localStorage.removeItem(key);
   markProfileDirtyForCurrentUser();
   emitProfileChanged();
 }

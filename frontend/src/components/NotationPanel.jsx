@@ -1,4 +1,3 @@
-import React from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { formatLongMove } from '../notation.js';
 import { identifyOpening } from '../openings.js';

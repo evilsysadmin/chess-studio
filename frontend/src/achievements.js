@@ -1,4 +1,4 @@
-import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { setProfileStorageItem } from './profileKeys.js';
 
 // achievements.js — Logros: condiciones simples chequeadas contra el
 // progreso que ya vive en otros módulos (torneo, rating, ejército de
@@ -140,6 +140,3 @@ export function recordNoteworthyAchievement(event, actor = 'human') {
   return achievement ? [achievement] : [];
 }
 
-export function resetAchievements() {
-  removeProfileStorageItem(KEY);
-}

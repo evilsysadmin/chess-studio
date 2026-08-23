@@ -1,4 +1,3 @@
-import React from 'react';
 
 const OPTIONS = [
   { id: 'w', label: 'Blancas' },

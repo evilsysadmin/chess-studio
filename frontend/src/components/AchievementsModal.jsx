@@ -1,4 +1,3 @@
-import React from 'react';
 import { ACHIEVEMENTS, loadUnlocked } from '../achievements.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 

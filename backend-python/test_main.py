@@ -180,6 +180,57 @@ def test_get_game_not_found():
     assert r.status_code == 404
 
 
+def test_hint_returns_engine_suggestion_on_human_turn(monkeypatch):
+    import main as main_module
+
+    suggestion = {
+        "from": "e2",
+        "to": "e4",
+        "san": "e4",
+        "piece": "p",
+        "captured": False,
+    }
+    monkeypatch.setattr(main_module, "get_cpu_move", lambda _board, _level: suggestion)
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+
+    r = client.get(f"/api/games/{created['id']}/hint")
+
+    assert r.status_code == 200
+    assert r.json() == suggestion
+
+
+def test_hint_rejects_when_it_is_not_the_human_turn():
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    _seed(created["id"], ["e4"], human_color="w")
+
+    r = client.get(f"/api/games/{created['id']}/hint")
+
+    assert r.status_code == 400
+    assert r.json()["detail"] == "No es tu turno."
+
+
+def test_hint_rejects_finished_game():
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    _seed(created["id"], ["f3", "e5", "g4", "Qh4#"], human_color="w")
+
+    r = client.get(f"/api/games/{created['id']}/hint")
+
+    assert r.status_code == 400
+    assert r.json()["detail"] == "La partida ya terminó."
+
+
+def test_hint_handles_engine_without_available_suggestion(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "get_cpu_move", lambda _board, _level: None)
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+
+    r = client.get(f"/api/games/{created['id']}/hint")
+
+    assert r.status_code == 404
+    assert r.json()["detail"] == "No hay jugadas disponibles."
+
+
 def test_play_legal_move():
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
     r = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"})
@@ -195,6 +246,19 @@ def test_play_illegal_move_rejected():
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
     r = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e5"})
     assert r.status_code == 400
+
+
+def test_play_move_does_not_mask_internal_serialization_errors(monkeypatch):
+    import main as main_module
+
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    monkeypatch.setattr(main_module, "move_to_dict", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom interno")))
+
+    response = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"})
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Error interno del servidor."
+    assert response.json()["requestId"]
 
 
 def test_play_move_wrong_turn_rejected():
@@ -1415,16 +1479,6 @@ def test_foreground_summary_expires_stale_visible_tabs():
     assert _foreground_summary(hidden)["foreground"] is False
     assert _foreground_summary({}) == {"foreground": None, "foregroundAgeSeconds": None}
 
-
-def test_presence_summary_ages_online_to_idle_recent_and_offline():
-    from datetime import datetime, timedelta, timezone
-    from main import _presence_summary
-
-    now = datetime.now(timezone.utc)
-    assert _presence_summary((now - timedelta(seconds=120)).isoformat())["presence"] == "online"
-    assert _presence_summary((now - timedelta(minutes=3)).isoformat())["presence"] == "idle"
-    assert _presence_summary((now - timedelta(minutes=10)).isoformat())["presence"] == "recent"
-    assert _presence_summary((now - timedelta(minutes=20)).isoformat())["presence"] == "offline"
 
 
 def test_activity_heartbeat_records_foreground_without_private_telemetry(monkeypatch):

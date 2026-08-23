@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Board from './Board.jsx';
 import { api } from '../api.js';
 import { formatLongMove } from '../notation.js';

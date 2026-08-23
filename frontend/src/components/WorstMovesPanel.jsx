@@ -1,4 +1,3 @@
-import React from 'react';
 import { formatLongMove } from '../notation.js';
 
 export const SEVERITY_LABEL = {

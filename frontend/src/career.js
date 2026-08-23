@@ -234,4 +234,3 @@ export function saveBoardTheme(id) {
   return loadBoardTheme();
 }
 
-export function clearCareer(){removeProfileStorageItem(CAREER_KEY);removeProfileStorageItem(CONTRACT_KEY);removeProfileStorageItem(RUN_KEY);removeProfileStorageItem(BOARD_THEME_KEY);}

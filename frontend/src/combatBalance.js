@@ -16,28 +16,6 @@ function finitePoints(value) {
 }
 
 
-export function combatUnitThreat(rosterState, key) {
-  const saved = rosterState?.pieces?.[key];
-  if (!saved || saved.alive === false || String(key).startsWith('k-')) {
-    return { bonus: 0, statBonus: 0, metamorphosisThreat: 0, techniqueBonus: 0, points: 0 };
-  }
-  const points = finitePoints(saved.strengthPoints) + finitePoints(saved.speedPoints);
-  const statBonus = Math.min(MAX_STAT_BONUS, Math.floor(points / 12));
-  const targetType = saved.deploymentType;
-  const unitRecord = unitRecordForKey(rosterState, key);
-  const metamorphosisThreat = targetType && canChooseDeploymentType(key, saved, targetType, unitRecord)
-    ? (FORM_THREAT[targetType] || 0)
-    : 0;
-  const techniqueBonus = saved.equippedTechnique ? 1 : 0;
-  return {
-    bonus: statBonus + metamorphosisThreat + techniqueBonus,
-    statBonus,
-    metamorphosisThreat,
-    techniqueBonus,
-    points,
-  };
-}
-
 export function combatArmyThreat(rosterState) {
   const pieces = rosterState?.pieces && typeof rosterState.pieces === 'object' ? rosterState.pieces : {};
   let totalStatPoints = 0;

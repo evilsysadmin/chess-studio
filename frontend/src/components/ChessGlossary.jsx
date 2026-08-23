@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { glossarySearch } from '../chessGlossary.js';
 
 export default function ChessGlossary() {

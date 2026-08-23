@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   CAMPAIGN_MAP_MOBILE_VIEWBOX,
   CAMPAIGN_MAP_VIEWBOX,

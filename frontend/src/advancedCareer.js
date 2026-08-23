@@ -1,4 +1,4 @@
-import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { setProfileStorageItem } from './profileKeys.js';
 
 const ANALYSIS_KEY = 'chess-study-analysis-archive';
 const MAX_ANALYSES = 160;
@@ -259,11 +259,3 @@ export function conversionStats(archive = loadAnalysisArchive()) {
   };
 }
 
-export function pressureStats(archive = loadAnalysisArchive()) {
-  const rows = Object.values(archive);
-  const moves = rows.reduce((s,a)=>s+Number(a.pressureMoves||0),0);
-  const incidents = rows.reduce((s,a)=>s+Number(a.pressureIncidents||0),0);
-  return { moves, incidents, rate: moves ? Math.round(incidents / moves * 100) : null };
-}
-
-export function clearAdvancedCareer() { removeProfileStorageItem(ANALYSIS_KEY); }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { isVoiceEnabled, isVoiceSupported, previewCpuVoice, setVoiceEnabled } from '../voiceCommentary.js';
 
 // Opt-in deliberado: VOICE arranca OFF. Al activarlo desde un click real

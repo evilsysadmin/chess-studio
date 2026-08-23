@@ -1,4 +1,3 @@
-import React from 'react';
 import { RATING_TIERS } from '../playerRating.js';
 
 const WIDTH = 380;

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { gameModeLabel } from '../gameModes.js';
 

@@ -46,15 +46,6 @@ export function captureDeploymentPreset(roster, index, name = null) {
   return all;
 }
 
-export function renameDeploymentPreset(index, name) {
-  const slot = Math.max(0, Math.min(COMBAT_DEPLOYMENT_PRESET_SLOTS - 1, Number(index) || 0));
-  const all = loadDeploymentPresets();
-  if (!all[slot]) return all;
-  all[slot] = { ...all[slot], name: normalizedPresetName(name, slot) };
-  setProfileStorageItem(COMBAT_DEPLOYMENT_PRESETS_KEY, JSON.stringify(all));
-  return all;
-}
-
 export function applyDeploymentPreset(roster, preset) {
   if (!preset?.deployment || typeof preset.deployment !== 'object') return ensureDeploymentState(roster);
   let next = resetDeployment(ensureDeploymentState(roster));

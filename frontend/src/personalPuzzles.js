@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { setProfileStorageItem } from './profileKeys.js';
 
 const KEY = 'chess-study-personal-puzzles';
 const MAX_PUZZLES = 40;
@@ -126,6 +126,3 @@ export function personalTrainingSummary() {
   return { total: all.length, attempts, solves, cleanSolves, cleanRate: attempts ? Math.round((cleanSolves / attempts) * 100) : null };
 }
 
-export function clearPersonalPuzzles() {
-  removeProfileStorageItem(KEY);
-}

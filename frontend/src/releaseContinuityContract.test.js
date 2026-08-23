@@ -10,6 +10,16 @@ describe('wiring de continuidad entre releases', () => {
     expect(main).toContain('installReleaseContinuity();');
   });
 
+  it('main monta un fusible exterior por encima de App para errores de inicialización', () => {
+    const main = fs.readFileSync(path.resolve(process.cwd(), 'src/main.jsx'), 'utf8');
+    const rootBoundary = fs.readFileSync(path.resolve(process.cwd(), 'src/components/AppRootErrorBoundary.jsx'), 'utf8');
+    expect(main).toContain("import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx'");
+    expect(main).toContain('<AppRootErrorBoundary>');
+    expect(main).toContain('<App />');
+    expect(rootBoundary).toContain('Recargar y recuperar partida');
+    expect(rootBoundary).toContain('loadActiveGameSession()');
+  });
+
   it('App rehidrata partidas normales y de torneo desde la sesión activa', () => {
     const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
     expect(app).toContain('loadActiveGameSession()?.route');

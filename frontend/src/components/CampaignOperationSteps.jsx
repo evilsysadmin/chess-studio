@@ -1,4 +1,3 @@
-import React from 'react';
 
 const STEPS = Object.freeze([
   { id: 'target', label: 'Elegir objetivo' },

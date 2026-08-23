@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints } from '../tournament.js';
 import { logout, getUsername } from '../auth.js';

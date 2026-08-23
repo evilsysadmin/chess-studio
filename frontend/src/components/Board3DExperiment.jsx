@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import * as THREE from 'three';
 import { useEscapeToClose } from '../useEscapeToClose.js';

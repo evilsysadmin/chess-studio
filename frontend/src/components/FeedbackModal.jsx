@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { submitFeedback } from '../feedback.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 

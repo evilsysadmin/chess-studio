@@ -1,4 +1,3 @@
-import React from 'react';
 import { cpuConfidence } from '../advancedCareer.js';
 
 const CPU = {

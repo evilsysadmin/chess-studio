@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { levelForPoints, pointsIntoLevel, difficultyForLevel, POINTS_PER_LEVEL } from '../tournament.js';
 import { difficultyLabel } from '../difficulty.js';
 import ColorSelector from './ColorSelector.jsx';

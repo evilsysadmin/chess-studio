@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import ArmyScreen from './ArmyScreen.jsx';
 import CombatDeploymentView from './CombatDeploymentView.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';

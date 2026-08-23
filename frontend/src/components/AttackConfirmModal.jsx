@@ -1,4 +1,3 @@
-import React from 'react';
 import { BASE_STATS, derivedLevel } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 

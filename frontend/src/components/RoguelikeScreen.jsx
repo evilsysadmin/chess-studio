@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import CombatScreen from './CombatScreen.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
@@ -17,7 +17,7 @@ import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTech
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
-import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE, COMBAT_CHESS_TAGLINE } from '../combatChessBrand.js';
+import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE } from '../combatChessBrand.js';
 import { recordGameActivity } from '../gameActivity.js';
 import { hasCombatSession } from '../combatSession.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';

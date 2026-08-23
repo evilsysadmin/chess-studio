@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { glossaryEntry } from '../chessGlossary.js';
 
 // Ayuda contextual reutilizable. Hover en escritorio; focus/Enter/tap en

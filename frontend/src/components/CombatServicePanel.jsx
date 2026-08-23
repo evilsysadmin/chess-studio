@@ -1,4 +1,3 @@
-import React from 'react';
 import { COMBAT_DECORATIONS } from '../combatService.js';
 
 export default function CombatServicePanel({ summary, compact = false }) {

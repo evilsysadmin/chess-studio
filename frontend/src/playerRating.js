@@ -67,10 +67,6 @@ export function saveRating(state) {
   setProfileStorageItem(RATING_KEY, JSON.stringify(state));
 }
 
-export function resetRating() {
-  removeProfileStorageItem(RATING_KEY);
-  return emptyState();
-}
 
 // Historial de rating para el gráfico de evolución — una foto {date,
 // rating} cada vez que el rating cambia. A propósito NO se reconstruye

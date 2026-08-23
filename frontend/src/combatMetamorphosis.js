@@ -1,11 +1,9 @@
-import { setProfileStorageItem } from './profileKeys.js';
 import { pieceRankAtLeast } from './combatRanks.js';
 import { unitRecordForKey } from './combatUnitService.js';
 
 // Metamorfosis = LOADOUT de batalla, no evolución irreversible. La identidad
 // y la clase de origen nunca cambian. Se elige en la pantalla prebatalla y
 // queda congelada durante esa batalla.
-const ROSTER_KEY = 'chess-study-combat-roster';
 export const METAMORPHOSIS_LABELS = { p: 'Peón', n: 'Caballo', b: 'Alfil', r: 'Torre', q: 'Dama' };
 
 // El rango abre la puerta, pero el servicio real decide si el veterano se ha
@@ -99,11 +97,6 @@ export function setRosterDeploymentType(rosterState, key, targetType) {
     ...rosterState,
     pieces: { ...rosterState.pieces, [key]: { ...saved, deploymentType, metamorphosis: undefined } },
   };
-}
-
-export function persistMetamorphosedRoster(state) {
-  setProfileStorageItem(ROSTER_KEY, JSON.stringify(state));
-  return state;
 }
 
 export function applyRosterMetamorphosesToPosition(chess, registry, rosterState, humanColor) {

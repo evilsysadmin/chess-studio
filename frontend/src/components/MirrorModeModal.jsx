@@ -1,4 +1,3 @@
-import React from 'react';
 import { computeMirrorProfile } from '../mirrorMode.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import GlossaryTerm from './GlossaryTerm.jsx';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import ColorSelector from './ColorSelector.jsx';
 import { TIME_CONTROLS } from '../clock.js';

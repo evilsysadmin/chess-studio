@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   HOME_PLAY_NUDGE_IDLE_MS,
   canShowHomePlayNudge,

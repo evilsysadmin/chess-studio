@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { resolveSaveStatus } from '../saveStatus.js';
 
 function browserIsOnline() {

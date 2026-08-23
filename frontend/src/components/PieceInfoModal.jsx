@@ -1,4 +1,3 @@
-import React from 'react';
 import { BASE_STATS, statsFor, costForNextPoint, derivedLevel, STRENGTH_POINT_VALUE, SPEED_POINT_VALUE } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { techniqueById } from '../combatTechniques.js';

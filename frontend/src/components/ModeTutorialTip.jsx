@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import { useId, useState } from 'react';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { mechanicTutorialById } from '../mechanicTutorials.js';
 

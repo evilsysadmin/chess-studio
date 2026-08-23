@@ -1,4 +1,4 @@
-import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { setProfileStorageItem } from './profileKeys.js';
 import { isCompetitiveHistoryRecord } from './gameHistory.js';
 
 const KEY = 'chess-study-cpu-rivalry';
@@ -301,6 +301,3 @@ export function recurrenceSuffix(event, actor, count) {
   return ` Incidente nº ${count} de este tipo. El patrón empieza a ser estadísticamente incómodo.`;
 }
 
-export function clearRivalry() {
-  removeProfileStorageItem(KEY);
-}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { pieceRankInsignia, pieceRankTooltip } from '../combatRanks.js';
 
 function RankGlyph({ icon }) {

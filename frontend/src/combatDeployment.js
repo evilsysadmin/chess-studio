@@ -346,10 +346,6 @@ export function slotLabel(slotKey) {
   return `${names[type] || type} ${file.toUpperCase()}`.trim();
 }
 
-export function deploymentSlotKeysForType(type) {
-  return CANONICAL_ROSTER_SLOTS.filter((slot) => slot.type === type).map(rosterSlotKey);
-}
-
 export function fileOrderForUnitKey(key) {
   const parts = String(key || '').split('-');
   const file = parts.length === 2 ? parts[1] : '';

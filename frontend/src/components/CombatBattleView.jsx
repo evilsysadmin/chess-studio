@@ -1,4 +1,3 @@
-import React from 'react';
 import Board from './Board.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import PromotionModal from './PromotionModal.jsx';

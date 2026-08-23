@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchMe, updateRecoveryEmail } from '../auth.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 

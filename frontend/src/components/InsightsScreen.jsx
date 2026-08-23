@@ -1,5 +1,5 @@
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
 import { findWorstMoveEver } from '../gameReport.js';

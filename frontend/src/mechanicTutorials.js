@@ -179,8 +179,3 @@ export function markMechanicTutorialSeen(id) {
   setProfileStorageItem(MECHANIC_TUTORIAL_KEY, JSON.stringify(next));
   return next;
 }
-
-export function resetMechanicTutorialProgress() {
-  setProfileStorageItem(MECHANIC_TUTORIAL_KEY, JSON.stringify({}));
-  return {};
-}

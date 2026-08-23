@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 

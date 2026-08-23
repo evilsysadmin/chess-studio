@@ -57,4 +57,3 @@ export function createNarrativeProvider({ generate } = {}) {
   };
 }
 
-export const defaultNarrativeProvider = createNarrativeProvider();
