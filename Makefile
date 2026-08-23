@@ -15,7 +15,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
-	test-frontend test-backend backend-check quality-gate gate-core \
+	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status
 
@@ -152,48 +152,50 @@ ensure-backend-deps:
 		$(MAKE) backend-install; \
 	fi
 
-## Gate rápido y explícito del motor/IA.
-gate-core: ensure-backend-deps
+## Capas de tests disjuntas: cada test corre una sola vez en el quality gate.
+## Los aliases gate-* se conservan para no romper hábitos/scripts antiguos.
+test-backend-smoke: ensure-backend-deps
+	@echo "==> BACKEND SMOKE · motor + IA"
 	cd backend-python && $(BACKEND_VENV_PY) -m pytest -q test_chess_ai.py test_core_game.py -x
 
-## Gate rápido de reglas críticas que viven en el cliente.
-## Usa SIEMPRE el Vitest fijado por package-lock.json; nunca instala npx al vuelo.
-gate-frontend-critical: ensure-frontend-deps
-	node scripts/run_frontend_critical_tests.mjs
+test-backend-integration: ensure-backend-deps
+	@echo "==> BACKEND INTEGRATION/API · resto de pytest"
+	cd backend-python && $(BACKEND_VENV_PY) -m pytest -q --ignore=test_chess_ai.py --ignore=test_core_game.py
 
+test-frontend-smoke: ensure-frontend-deps
+	cd frontend && npm run test:smoke
 
-## Smoke gate enfocado a Combat Chess durante feature-freeze.
-## Cubre continuidad, campaña/intel, deployment/reservas, identidad,
-## metamorfosis, rangos/servicio, boss HP y tutoriales no estándar.
-combat-smoke: ensure-frontend-deps
-	cd frontend && $(FRONTEND_VITEST) run src/combatFreeze.test.js src/combatSession.test.js src/combatCampaign.test.js src/campaignMapVisual.test.js src/combatDeployment.test.js src/combatDeploymentPresets.test.js src/combatDebrief.test.js src/combatRoster.test.js src/combatIdentity.test.js src/combatMetamorphosis.test.js src/combatRanks.test.js src/combatUnitService.test.js src/combatService.test.js src/combatBalance.test.js src/roguelikeMode.test.js src/mechanicTutorials.test.js src/releaseContinuity.test.js
+test-frontend-unit: ensure-frontend-deps
+	cd frontend && npm run test:unit
 
-## Los dos gates que deberían pasar antes de llamar "jugable" a una build.
-gate-critical: gate-core gate-frontend-critical
+test-frontend-contract: ensure-frontend-deps
+	cd frontend && npm run test:contract
 
-## Quality gate local completo. Replica las comprobaciones funcionales de CI.
-## En un checkout limpio instala automáticamente lo que falte.
+gate-core: test-backend-smoke
+gate-frontend-critical: test-frontend-smoke
+combat-smoke: test-frontend-smoke
+gate-critical: test-backend-smoke test-frontend-smoke
+
+## Quality gate local completo. Frontend enseña smoke → unit → contract;
+## backend enseña smoke → integration. No hay una segunda suite duplicada.
 tests: ensure-hooks tests-fe tests-be security
 
-## Alias: singular histórico y nombre explícito de quality gate.
 test: tests
 quality-gate: tests
 
-## Frontend: gate crítico + suite completa + build de producción.
-tests-fe: gate-frontend-critical test-frontend frontend-build
+tests-fe: test-frontend frontend-build
 test-fe: tests-fe
 tests/fe: tests-fe
 
-## Backend: gate del core + suite completa + integridad de dependencias.
-tests-be: gate-core test-backend backend-check
+tests-be: test-backend-smoke test-backend-integration backend-check
 test-be: tests-be
 tests/be: tests-be
 
 test-frontend: ensure-frontend-deps
 	cd frontend && npm test
 
-test-backend: ensure-backend-deps
-	cd backend-python && $(BACKEND_VENV_PY) -m pytest -q --ignore=test_chess_ai.py --ignore=test_core_game.py
+## Alias histórico: el "resto backend" es la capa integration/API.
+test-backend: test-backend-integration
 
 backend-check: ensure-backend-deps
 	$(VENV_PY) -m pip check
@@ -337,13 +339,15 @@ help:
 	@echo "  make clean          - borra contenedores/imágenes/volúmenes locales"
 	@echo "  make install        - instala frontend + backend (.venv) y activa pre-push"
 	@echo "  make install-hooks  - activa/regenera .githooks/pre-push (alias: make hooks)"
-	@echo "  make gate-core      - ejecuta el gate del motor/IA"
-	@echo "  make gate-frontend-critical - gate frontend crítico"
-	@echo "  make gate-critical  - ejecuta ambos gates críticos"
-	@echo "  make combat-smoke   - smoke rápido de Combat Chess durante feature-freeze"
-	@echo "  make tests          - quality gate local completo; instala deps si faltan"
-	@echo "  make tests-fe       - frontend: gate crítico + suite + build"
-	@echo "  make tests-be       - backend: gate core + suite + pip check"
+	@echo "  make test-frontend-smoke    - smoke frontend fail-fast (10 ficheros)"
+	@echo "  make test-frontend-unit     - lógica/comportamiento frontend"
+	@echo "  make test-frontend-contract - wiring/JSX/source contracts"
+	@echo "  make test-backend-smoke     - motor + IA"
+	@echo "  make test-backend-integration - API/servicios backend"
+	@echo "  make gate-critical  - alias rápido: smoke backend + frontend"
+	@echo "  make tests          - quality gate completo, capas disjuntas + security"
+	@echo "  make tests-fe       - frontend: smoke + unit + contract + build"
+	@echo "  make tests-be       - backend: smoke + integration + pip check"
 	@echo "  make tests/fe       - alias de tests-fe"
 	@echo "  make tests/be       - alias de tests-be"
 	@echo "  make test           - alias histórico de make tests"
@@ -380,6 +384,6 @@ ai-security:
 
 ai-contract: ai-security
 	cd backend-python && python -m pytest -q test_narrative_cloudflare.py test_narrative_api.py test_narrative_main_contract.py
-	cd frontend && npx vitest run src/narrativeRemote.test.js src/narrativeWiring.test.js src/aiMetrics.test.js src/narrativeProvider.test.js src/releaseContinuity.test.js
+	cd frontend && npx vitest run src/narrativeRemote.test.js src/narrativeWiring.test.js src/aiMetrics.test.js src/narrativeProvider.test.js
 	node --check infra/cloudflare/worker/index.js
 # END chess-studio-ai-contract

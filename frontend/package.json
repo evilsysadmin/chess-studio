@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "npm run test:smoke && npm run test:unit && npm run test:contract",
+    "test:smoke": "node ../scripts/run_frontend_test_group.mjs smoke",
+    "test:unit": "node ../scripts/run_frontend_test_group.mjs unit",
+    "test:contract": "node ../scripts/run_frontend_test_group.mjs contract",
+    "test:all": "node ../scripts/run_frontend_test_group.mjs all",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },

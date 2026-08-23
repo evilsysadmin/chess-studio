@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CRITICAL_FRONTEND_TESTS } from './frontend_critical_manifest.mjs';
+import { FRONTEND_CONTRACT_TESTS, FRONTEND_SMOKE_TESTS } from './frontend_test_groups.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -56,38 +56,34 @@ const storageWithoutReset = frontendFiles.filter((name) => {
 });
 if (storageWithoutReset.length) fail(`Tests que usan Web Storage sin limpieza explícita: ${storageWithoutReset.join(', ')}`);
 
-const staticContractAllowlist = new Set([
-  'adminMobileLayout.test.js',
-  'adminUxContract.test.js',
-  'armyRosterView.test.js',
-  'combatOperationalUx.test.js',
-  'combatRegressionContract.test.js',
-  'combatBattleLayout.test.js',
-  'campaignOperationalFlow.test.js',
-  'chessGlossary.test.js',
-  'mechanicTutorials.test.js',
-  'narrativeWiring.test.js',
-  'releaseContinuity.test.js',
-  'zenMode.test.js',
-]);
+const contractBasenames = new Set(FRONTEND_CONTRACT_TESTS.map((relative) => path.basename(relative)));
+const smokeBasenames = new Set(FRONTEND_SMOKE_TESTS.map((relative) => path.basename(relative)));
+const overlap = [...smokeBasenames].filter((name) => contractBasenames.has(name));
+if (overlap.length) fail(`Smoke y contract se solapan: ${overlap.join(', ')}`);
+
+for (const relative of [...FRONTEND_SMOKE_TESTS, ...FRONTEND_CONTRACT_TESTS]) {
+  const full = path.join(root, 'frontend', relative);
+  if (!fs.existsSync(full)) fail(`Grupo frontend referencia un test inexistente: ${relative}`);
+}
+
 const sourceReaders = frontendFiles.filter((name) => /(?:readFileSync|fs\.readFileSync)/.test(read(path.join(frontendSrc, name))));
 for (const name of sourceReaders) {
-  if (!staticContractAllowlist.has(name)) fail(`${name} inspecciona source text pero no está declarado como contract-test estático`);
+  if (!contractBasenames.has(name)) fail(`${name} inspecciona source text pero no pertenece al grupo contract`);
   if (!read(path.join(frontendSrc, name)).startsWith('// STATIC CONTRACT:')) fail(`${name} carece del marcador STATIC CONTRACT`);
 }
-for (const name of staticContractAllowlist) {
-  if (!frontendFiles.includes(name)) fail(`Contract-test estático declarado pero ausente: ${name}`);
+for (const name of contractBasenames) {
+  if (!frontendFiles.includes(name)) fail(`Contract-test declarado pero ausente: ${name}`);
 }
 
-for (const relative of CRITICAL_FRONTEND_TESTS) {
-  const full = path.join(root, 'frontend', relative);
-  if (!fs.existsSync(full)) fail(`Gate crítico referencia un test inexistente: ${relative}`);
+const unitFiles = frontendFiles.filter((name) => !smokeBasenames.has(name) && !contractBasenames.has(name));
+const grouped = [...smokeBasenames, ...contractBasenames, ...unitFiles];
+if (new Set(grouped).size !== frontendFiles.length || grouped.length !== frontendFiles.length) {
+  fail('La partición smoke/unit/contract no cubre exactamente una vez todos los tests frontend');
 }
-if (new Set(CRITICAL_FRONTEND_TESTS).size !== CRITICAL_FRONTEND_TESTS.length) fail('El manifest crítico contiene tests duplicados');
 
 const makefile = read(path.join(root, 'Makefile'));
-if (!/node\s+(?:\.\/)?scripts\/run_frontend_critical_tests\.mjs/.test(makefile)) fail('Makefile no usa el runner crítico centralizado');
-if (!makefile.includes('--ignore=test_chess_ai.py --ignore=test_core_game.py')) fail('test-backend no autodetecta nuevos tests backend');
+if (!/npm\s+test/.test(makefile)) fail('Makefile no ejecuta la suite frontend agrupada con npm test');
+if (!makefile.includes('--ignore=test_chess_ai.py --ignore=test_core_game.py')) fail('backend integration no autodetecta nuevos tests backend');
 if (!/compose-smoke:[\s\S]*scripts\/compose_smoke\.py/.test(makefile)) fail('Makefile no expone el smoke de integración real');
 if (!/coverage-fe:[\s\S]*test:coverage/.test(makefile)) fail('Makefile no expone coverage frontend real');
 if (!/coverage-be:[\s\S]*--cov-branch/.test(makefile)) fail('Makefile no expone branch coverage backend');
@@ -104,9 +100,9 @@ if (checkCiWiring) {
     : [];
   if (!workflowFiles.length) fail('No hay workflows de GitHub Actions que auditar');
   const workflowSource = workflowFiles.map((name) => read(path.join(workflowsDir, name))).join('\n');
-  const frontendCentralized = /node\s+(?:\.\/)?scripts\/run_frontend_critical_tests\.mjs/.test(workflowSource)
-    || /make\s+(?:gate-frontend-critical|tests-fe|tests|quality-gate)\b/.test(workflowSource);
-  if (!frontendCentralized) fail('CI no ejecuta el gate frontend crítico centralizado');
+  const frontendCentralized = /npm\s+(?:run\s+)?test\b/.test(workflowSource)
+    || /make\s+(?:tests-fe|tests|quality-gate)\b/.test(workflowSource);
+  if (!frontendCentralized) fail('CI no ejecuta la suite frontend agrupada');
   const backendAutodiscovery = /--ignore=test_chess_ai\.py\s+--ignore=test_core_game\.py/.test(workflowSource)
     || /make\s+(?:test-backend|tests-be|tests|quality-gate)\b/.test(workflowSource);
   if (!backendAutodiscovery) fail('CI backend no autodetecta el resto de test_*.py');
@@ -139,14 +135,12 @@ const backendCoverageConfig = read(path.join(backendDir, '.coveragerc'));
 if (!backendCoverageConfig.includes('branch = True')) fail('Backend coverage debe medir branches');
 if (/fail_under\s*=\s*[1-9]/.test(backendCoverageConfig)) fail('Coverage backend debe ser informativo: fail_under no puede bloquear');
 
-const criticalDefinitions = CRITICAL_FRONTEND_TESTS.reduce((sum, relative) => {
-  const full = path.join(root, 'frontend', relative);
-  return sum + (read(full).match(/\b(?:it|test)\s*\(/g)?.length || 0);
-}, 0);
-const criticalPct = frontendTests ? Math.round((criticalDefinitions / frontendTests) * 1000) / 10 : 0;
+const groupDefinitions = (files) => files.reduce((sum, name) => sum + (read(path.join(frontendSrc, name)).match(/\b(?:it|test)\s*\(/g)?.length || 0), 0);
+const smokeDefinitions = groupDefinitions([...smokeBasenames]);
+const unitDefinitions = groupDefinitions(unitFiles);
+const contractDefinitions = groupDefinitions([...contractBasenames]);
 const staticAssertions = sourceReaders.reduce((sum, name) => sum + (read(path.join(frontendSrc, name)).match(/\bexpect\s*\(/g)?.length || 0), 0);
 
 console.log(`test-suite-audit OK · frontend ${frontendTests} definiciones/${frontendFiles.length} files · backend ${backendTests} definiciones/${backendFiles.length} · e2e ${e2eTests}/${e2eFiles.length}`);
-console.log(`parameterized frontend: ${frontendParameterized} definición(es) · contract-tests estáticos: ${sourceReaders.length} (${staticAssertions} assertions)`);
-console.log(`critical manifest: ${CRITICAL_FRONTEND_TESTS.length} ficheros / ${criticalDefinitions} definiciones (${criticalPct}% del frontend) · ci-wiring: ${checkCiWiring ? 'sí' : 'omitido'}`);
-if (criticalPct > 65) console.warn(`WARN: el gate frontend crítico repite ${criticalPct}% de las definiciones antes de la suite completa; ya no es especialmente rápido.`);
+console.log(`frontend groups (disjuntos): smoke ${smokeBasenames.size}/${smokeDefinitions} · unit ${unitFiles.length}/${unitDefinitions} · contract ${contractBasenames.size}/${contractDefinitions}`);
+console.log(`parameterized frontend: ${frontendParameterized} definición(es) · contract-tests estáticos: ${sourceReaders.length} (${staticAssertions} assertions) · ci-wiring: ${checkCiWiring ? 'sí' : 'omitido'}`);

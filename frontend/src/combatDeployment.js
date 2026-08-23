@@ -131,6 +131,16 @@ export function removeDeploymentUnit(rosterState, unitKey) {
   return changed ? { ...state, deployment: normalizedDeployment(state, deployment) } : state;
 }
 
+// Acción rápida de banquillo: devuelve el primer slot compatible realmente
+// libre siguiendo el orden canónico del tablero. No desplaza otra unidad.
+export function firstFreeDeploymentSlotForUnit(rosterState, unitKey) {
+  const state = ensureDeploymentState(rosterState);
+  if (!unitKey || Object.values(state.deployment || {}).includes(unitKey)) return null;
+  return deploymentSlotSpecs().find((slot) => (
+    !state.deployment?.[slot.key] && isUnitCompatibleWithSlot(state, unitKey, slot.key)
+  )) || null;
+}
+
 
 function unitDeploymentScore(rosterState, key) {
   const saved = rosterState?.pieces?.[key] || {};

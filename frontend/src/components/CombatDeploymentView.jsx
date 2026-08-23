@@ -14,6 +14,7 @@ import {
   deploymentSummary,
   effectiveDeploymentType,
   fileOrderForUnitKey,
+  firstFreeDeploymentSlotForUnit,
   isUnitCompatibleWithSlot,
   originTypeForRosterKey,
   rosterUnitKeys,
@@ -438,28 +439,14 @@ export default function CombatDeploymentView({
     event?.stopPropagation?.();
     if (!unitKey || reverseDeployment[unitKey]) return;
 
-    const compatibleEmpty = summary.missingSlots
-      .filter((slot) => isUnitCompatibleWithSlot(roster, unitKey, slot.key));
-
-    if (compatibleEmpty.length === 0) {
+    const target = firstFreeDeploymentSlotForUnit(roster, unitKey);
+    if (!target) {
       // No expulsamos a una unidad ya desplegada por un doble clic.
-      // Dejamos la reserva seleccionada para que el tablero resalte destinos
-      // compatibles y el usuario pueda decidir un swap explícito.
+      // La dejamos seleccionada para que el jugador haga un swap explícito.
       setSelectedUnitKey(unitKey);
       return;
     }
 
-    const historical = compatibleEmpty.find((slot) => slot.key === unitKey);
-    const unitFile = fileOrderForUnitKey(unitKey);
-    const target = historical || [...compatibleEmpty].sort((a, b) => {
-      const aFile = fileOrderForUnitKey(a.key);
-      const bFile = fileOrderForUnitKey(b.key);
-      const aDistance = unitFile < 99 ? Math.abs(aFile - unitFile) : aFile;
-      const bDistance = unitFile < 99 ? Math.abs(bFile - unitFile) : bFile;
-      return aDistance - bDistance || aFile - bFile || a.key.localeCompare(b.key);
-    })[0];
-
-    if (!target) return;
     clearDossierTimers();
     closeUnitDossier();
     onDeployUnit(target.key, unitKey);

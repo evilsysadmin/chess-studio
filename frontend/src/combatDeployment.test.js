@@ -10,6 +10,7 @@ import {
   deploymentSummary,
   effectiveDeploymentType,
   ensureDeploymentState,
+  firstFreeDeploymentSlotForUnit,
   grantReserveRecruit,
   isUnitCompatibleWithSlot,
   removeDeploymentUnit,
@@ -135,6 +136,26 @@ describe('Combat Chess deployment board', () => {
     expect(roster.deployment['p-a']).toBe(reserveKey);
     expect(summary.reserveKeys).toContain('p-a');
     expect(summary.ready).toBe(true);
+  });
+
+  it('doble clic de banquillo puede elegir de forma determinista el primer slot compatible libre', () => {
+    let roster = loadRoster();
+    roster = removeDeploymentUnit(roster, 'p-a');
+    roster = removeDeploymentUnit(roster, 'p-b');
+    roster = grantReserveRecruit(roster, { grantId: 'campaign:test:first-free', originType: 'p', rng: () => 0.42, now: 4200 });
+    const reserveKey = deploymentSummary(roster).reserveKeys.find((key) => key.startsWith('p-reserve-'));
+    expect(reserveKey).toBeTruthy();
+    expect(firstFreeDeploymentSlotForUnit(roster, reserveKey)?.key).toBe('p-a');
+
+    roster = setDeploymentUnit(roster, 'p-a', reserveKey);
+    expect(firstFreeDeploymentSlotForUnit(roster, 'p-b')?.key).toBe('p-b');
+  });
+
+  it('la acción rápida no expulsa una unidad si no queda un slot compatible libre', () => {
+    let roster = loadRoster();
+    roster = grantReserveRecruit(roster, { grantId: 'campaign:test:no-free', originType: 'p', rng: () => 0.43, now: 4300 });
+    const reserveKey = deploymentSummary(roster).reserveKeys.find((key) => key.startsWith('p-reserve-'));
+    expect(firstFreeDeploymentSlotForUnit(roster, reserveKey)).toBeNull();
   });
 
   it('auto-fill puede priorizar veteranos o reclutas del mismo tipo sin romper slots', () => {

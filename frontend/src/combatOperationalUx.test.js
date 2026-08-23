@@ -67,8 +67,8 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     expect(source).toContain('onPieceDoubleClick={sendBoardUnitToReserve}');
     expect(source).toContain("if (!unitKey || unitKey === 'k-e') return;");
     expect(source).toContain('onDoubleClick={deployReserveUnitToFirstFreeSlot}');
-    expect(source).toContain('const compatibleEmpty = summary.missingSlots');
-    expect(source).toContain('const historical = compatibleEmpty.find((slot) => slot.key === unitKey)');
+    expect(source).toContain('const target = firstFreeDeploymentSlotForUnit(roster, unitKey);');
+    expect(source).toContain('onDeployUnit(target.key, unitKey);');
 
     expect(boardSource).toContain('onPieceMouseEnter,');
     expect(boardSource).toContain('onPieceMouseLeave,');

@@ -365,9 +365,6 @@ export default function Board({
                       e.stopPropagation();
                       onPieceDoubleClick(square, e);
                     }}
-                    draggable={pieceDraggable}
-                    onDragStart={(e) => onPieceDragStart?.(square, e)}
-                    onDragEnd={(e) => onPieceDragEnd?.(square, e)}
                   />
                 )}
                 {piece && (
@@ -395,9 +392,6 @@ export default function Board({
                       e.stopPropagation();
                       onPieceDoubleClick(square, e);
                     }}
-                    draggable={pieceDraggable}
-                    onDragStart={(e) => onPieceDragStart?.(square, e)}
-                    onDragEnd={(e) => onPieceDragEnd?.(square, e)}
                   />
                 )}
                 {isMistakeOrigin && mistakeMove.piece && (

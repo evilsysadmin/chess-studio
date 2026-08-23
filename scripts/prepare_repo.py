@@ -45,7 +45,7 @@ ai-security:
 
 ai-contract: ai-security
 	cd backend-python && python -m pytest -q test_narrative_cloudflare.py test_narrative_api.py test_narrative_main_contract.py
-	cd frontend && npx vitest run src/narrativeRemote.test.js src/aiMetrics.test.js src/narrativeProvider.test.js src/releaseContinuity.test.js
+	cd frontend && npx vitest run src/narrativeRemote.test.js src/aiMetrics.test.js src/narrativeProvider.test.js
 	node --check infra/cloudflare/worker/index.js
 # END chess-studio-ai-contract
 """
