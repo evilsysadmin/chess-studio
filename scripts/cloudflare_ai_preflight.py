@@ -79,9 +79,11 @@ def static_check() -> list[str]:
     require(workflow, 'desired_subdomain="chess-studio-$suffix"', "workflow account workers.dev bootstrap", errors)
     require(workflow, '- name: Ensure account workers.dev namespace', "workflow account workers.dev bootstrap step", errors)
     require(workflow, '-X PUT', "workflow account workers.dev create", errors)
-    require(workflow, 'workers/scripts/$WORKER_NAME/subdomain', "workflow Worker workers.dev verification", errors)
-    require(workflow, 'steps.account_subdomain.outputs.subdomain', "workflow account workers.dev output wiring", errors)
     require(workflow, 'for attempt in {1..12}', "workflow health propagation retry", errors)
+    require(workflow, 'workers/workers/$WORKER_NAME', "workflow canonical Worker details API", errors)
+    require(workflow, 'subdomain.get("url")', "workflow canonical workers.dev URL", errors)
+    require(workflow, 'result.get("deployed_on")', "workflow deployment-state check", errors)
+    require(workflow, 'Health HTTP ${health_status:-curl-error}', "workflow diagnosable live health", errors)
     if 'terraform import cloudflare_workers_script.narrative_ai' in workflow and 'narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME" || true' in workflow:
         errors.append("workflow: terraform import no debe ocultar errores con || true")
 
