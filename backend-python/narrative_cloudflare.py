@@ -380,9 +380,9 @@ def get_ai_metrics() -> dict[str, Any]:
     local = providers.get("local", 0)
     input_tokens = sum(int(e.get("input_tokens") or 0) for e in events if e["provider"] == "cloudflare")
     output_tokens = sum(int(e.get("output_tokens") or 0) for e in events if e["provider"] == "cloudflare")
-    # Pricing published by Cloudflare for @cf/meta/llama-3.2-3b-instruct
-    # (Aug 2026). These are estimates for the bounded in-process telemetry
-    # window, not a billing source of truth.
+    # Cloudflare publica actualmente la misma tarifa/token y neuronas para
+    # @cf/meta/llama-3.2-3b-instruct y @cf/qwen/qwen3-30b-a3b-fp8 (Aug 2026).
+    # Son estimaciones de la ventana en memoria, no la fuente de billing.
     estimated_neurons = (input_tokens * 4625 + output_tokens * 30475) / 1_000_000
     estimated_cost_usd = (input_tokens * 0.051 + output_tokens * 0.335) / 1_000_000
     models = Counter(e.get("model") for e in events if e.get("model"))

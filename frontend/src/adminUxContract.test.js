@@ -36,6 +36,7 @@ describe('admin UX contract', () => {
     expect(observability).toContain('OBSERVABILITY_REFRESH_MS = 120000');
     expect(observability).toContain('Sin jugadas, FEN, mensajes, clicks ni identidad sensible.');
     expect(observability).toContain('Workers AI');
+    expect(observability.match(/Latencias p50 \/ p95 \/ p99/g)?.length).toBe(2);
   });
   it('muestra presencia en primer plano sin confundirla con online', () => {
     expect(admin).toContain('foregroundCount');

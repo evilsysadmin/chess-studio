@@ -7,6 +7,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const manifestPath = path.join(root, 'RELEASE.txt');
 const jsPath = path.join(root, 'frontend', 'src', 'release.js');
+const publicManifestPath = path.join(root, 'frontend', 'public', 'release.json');
 
 function fail(message) {
   console.error(`release-check FAIL · ${message}`);
@@ -24,7 +25,18 @@ if (fs.existsSync(manifestPath)) {
   const manifestRelease = manifest.match(/v\d+\.\d+[a-z0-9.]*/i)?.[0] || null;
   if (!manifestRelease) fail('RELEASE.txt existe pero no contiene una versión reconocible');
   if (manifestRelease !== jsRelease) fail(`RELEASE.txt=${manifestRelease} pero APP_RELEASE=${jsRelease}`);
-  console.log(`release-check OK · ${jsRelease} · RELEASE.txt sincronizado`);
 } else {
-  console.log(`release-check OK · ${jsRelease} · RELEASE.txt ausente (manifiesto opcional)`);
+  console.log(`release-check INFO · ${jsRelease} · RELEASE.txt ausente (manifiesto opcional)`);
 }
+
+if (!fs.existsSync(publicManifestPath)) fail('frontend/public/release.json no existe');
+let publicManifest;
+try {
+  publicManifest = JSON.parse(fs.readFileSync(publicManifestPath, 'utf8'));
+} catch (error) {
+  fail(`frontend/public/release.json no es JSON válido: ${error.message}`);
+}
+if (publicManifest?.release !== jsRelease) {
+  fail(`frontend/public/release.json=${publicManifest?.release || 'sin release'} pero APP_RELEASE=${jsRelease}`);
+}
+console.log(`release-check OK · ${jsRelease} · RELEASE.txt + release.json sincronizados`);

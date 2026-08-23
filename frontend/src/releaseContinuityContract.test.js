@@ -82,4 +82,19 @@ describe('wiring de continuidad entre releases', () => {
     const keys = fs.readFileSync(path.resolve(process.cwd(), 'src/profileKeys.js'), 'utf8');
     expect(keys).toContain("'chess-study-active-game-session-v1'");
   });
+
+  it('avisa de una release nueva sin forzar recarga durante una partida', () => {
+    const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
+    const notice = fs.readFileSync(path.resolve(process.cwd(), 'src/components/ReleaseUpdateNotice.jsx'), 'utf8');
+    const update = fs.readFileSync(path.resolve(process.cwd(), 'src/releaseUpdate.js'), 'utf8');
+    expect(app).toContain('<ReleaseUpdateNotice deferReload={isBoardGameView} />');
+    expect(notice).toContain('Nueva versión disponible');
+    expect(notice).toContain("deferReload ? 'Tu partida sigue intacta; actualiza al terminar.'");
+    expect(notice).toContain('setBoardSnoozed(true)');
+    expect(notice).toContain('Después');
+    expect(notice).toContain('Ahora no');
+    expect(update).toContain("cache: 'no-store'");
+    expect(update).toContain('RELEASE_CHECK_INTERVAL_MS = 5 * 60 * 1000');
+  });
+
 });

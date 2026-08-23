@@ -26,6 +26,8 @@ describe('AI portrait + shared narrative voice', () => {
     expect(worker).toContain('Para comentarios de partida');
     expect(worker).toContain('PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900');
     expect(worker).toContain('PLAYER_PORTRAIT_GENERATION');
+    expect(worker).toContain('PLAYER_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"');
+    expect(worker).toContain('modelFor(eventType)');
     expect(worker).toContain('temperature: 0.60');
     expect(worker).toContain('max_tokens: 180');
     expect(worker).toContain('exactamente 3 frases compactas');

@@ -122,7 +122,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
                 <div><dt>Uptime proceso</dt><dd>{formatDuration(runtime?.http?.uptime_seconds)}</dd></div>
                 <div><dt>Requests · 15 min</dt><dd>{metric(quarter.samples)}</dd></div>
                 <div><dt>Req/min · 15 min</dt><dd>{metric(quarter.requests_per_minute)}</dd></div>
-                <div><dt>p50 / p95 / p99</dt><dd>{metric(quarter.p50_ms)} / {metric(quarter.p95_ms)} / {metric(quarter.p99_ms)} ms</dd></div>
+                <div><dt>Latencias p50 / p95 / p99</dt><dd>{metric(quarter.p50_ms)} / {metric(quarter.p95_ms)} / {metric(quarter.p99_ms)} ms</dd></div>
                 <div><dt>4xx · 1 h</dt><dd>{metric(hour.status_4xx)}</dd></div>
                 <div><dt>5xx · 1 h</dt><dd>{metric(hour.status_5xx)}</dd></div>
               </dl>
@@ -157,7 +157,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
                 <div><dt>Estado</dt><dd>{aiStatus}</dd></div>
                 <div><dt>Muestras</dt><dd>{metric(ai?.samples)}</dd></div>
                 <div><dt>Cloudflare / fallback</dt><dd>{formatAiMetric(ai?.cloudflarePercent, '%')} / {formatAiMetric(ai?.fallbackPercent, '%')}</dd></div>
-                <div><dt>p50 / p95 / p99</dt><dd>{formatAiMetric(ai?.p50Ms)} / {formatAiMetric(ai?.p95Ms)} / {formatAiMetric(ai?.p99Ms)} ms</dd></div>
+                <div><dt>Latencias p50 / p95 / p99</dt><dd>{formatAiMetric(ai?.p50Ms)} / {formatAiMetric(ai?.p95Ms)} / {formatAiMetric(ai?.p99Ms)} ms</dd></div>
                 <div><dt>Tokens entrada / salida</dt><dd>{metric(ai?.usage?.inputTokens)} / {metric(ai?.usage?.outputTokens)}</dd></div>
                 <div><dt>Neuronas estimadas</dt><dd>{metric(ai?.usage?.estimatedNeurons)}</dd></div>
                 <div><dt>Coste estimado ventana</dt><dd>{ai?.usage ? `$${Number(ai.usage.estimatedCostUsd || 0).toFixed(6)}` : '—'}</dd></div>

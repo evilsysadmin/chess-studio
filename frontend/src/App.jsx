@@ -36,6 +36,7 @@ import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
+import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
@@ -724,6 +725,7 @@ function AppInner({ isAdminUser }) {
   return (
     <>
       {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
+      <ReleaseUpdateNotice deferReload={isBoardGameView} />
       <ErrorBoundary
         onReset={resetNavigation}
         onRecover={recoverSessionFromBoundary}

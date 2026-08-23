@@ -1,4 +1,5 @@
-const MODEL = "@cf/meta/llama-3.2-3b-instruct";
+const COMMENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
+const PLAYER_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
@@ -29,6 +30,10 @@ const PLAYER_PORTRAIT_GENERATION = Object.freeze({
   presence_penalty: 0.05,
   max_tokens: 180,
 });
+
+function modelFor(eventType) {
+  return eventType === "player_portrait" ? PLAYER_PORTRAIT_MODEL : COMMENT_MODEL;
+}
 
 function generationFor(eventType) {
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_GENERATION;
@@ -301,9 +306,10 @@ async function handleNarrative(request, env) {
     task,
   ].join("\n");
 
+  const model = modelFor(eventType);
   let result;
   try {
-    result = await env.AI.run(MODEL, {
+    result = await env.AI.run(model, {
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
@@ -326,7 +332,7 @@ async function handleNarrative(request, env) {
   return json({
     ok: true,
     text,
-    model: MODEL,
+    model,
     usage: normalizeUsage(result),
   });
 }
@@ -336,7 +342,12 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "chess-studio-narrative-ai", model: MODEL });
+      return json({
+        ok: true,
+        service: "chess-studio-narrative-ai",
+        model: COMMENT_MODEL,
+        models: { comments: COMMENT_MODEL, player_portrait: PLAYER_PORTRAIT_MODEL },
+      });
     }
 
     if (url.pathname !== "/" && url.pathname !== "/narrative") {

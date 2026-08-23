@@ -21,7 +21,8 @@ BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
 WORKFLOW = ROOT / ".github/workflows/terraform-cloudflare.yml"
 
-EXPECTED_MODEL = "@cf/meta/llama-3.2-3b-instruct"
+EXPECTED_COMMENT_MODEL = "@cf/meta/llama-3.2-3b-instruct"
+EXPECTED_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
 
 
 def require(text: str, needle: str, label: str, errors: list[str]) -> None:
@@ -52,7 +53,9 @@ def static_check() -> list[str]:
     ):
         require(worker, needle, "worker", errors)
 
-    require(worker, EXPECTED_MODEL, "worker model", errors)
+    require(worker, EXPECTED_COMMENT_MODEL, "worker comment model", errors)
+    require(worker, EXPECTED_PORTRAIT_MODEL, "worker portrait model", errors)
+    require(worker, "modelFor(eventType)", "worker model routing", errors)
     for voice_rule in (
         "Tutea siempre",
         "Sarcasmo juguetón",
@@ -136,8 +139,13 @@ def live_health(worker_url: str) -> list[str]:
                 errors.append("health: payload no indica ok=true")
             if payload.get("service") != "chess-studio-narrative-ai":
                 errors.append(f"health: servicio inesperado {payload.get('service')!r}")
-            if payload.get("model") != EXPECTED_MODEL:
-                errors.append(f"health: modelo inesperado {payload.get('model')!r}")
+            if payload.get("model") != EXPECTED_COMMENT_MODEL:
+                errors.append(f"health: modelo de comentarios inesperado {payload.get('model')!r}")
+            models = payload.get("models") if isinstance(payload.get("models"), dict) else {}
+            if models.get("comments") != EXPECTED_COMMENT_MODEL:
+                errors.append(f"health: routing comments inesperado {models.get('comments')!r}")
+            if models.get("player_portrait") != EXPECTED_PORTRAIT_MODEL:
+                errors.append(f"health: routing player_portrait inesperado {models.get('player_portrait')!r}")
     except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
         errors.append(f"health: no se pudo verificar {url}: {exc}")
     return errors
@@ -160,7 +168,8 @@ def main() -> int:
 
     mode = "static + live" if args.worker_url else "static"
     print(f"Cloudflare Workers AI preflight: OK ({mode})")
-    print(f"model={EXPECTED_MODEL}")
+    print(f"comments_model={EXPECTED_COMMENT_MODEL}")
+    print(f"portrait_model={EXPECTED_PORTRAIT_MODEL}")
     return 0
 
 

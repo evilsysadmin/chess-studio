@@ -55,6 +55,12 @@ describe('AI player portrait', () => {
     expect(localStorage.getItem(AI_PLAYER_PORTRAIT_CACHE_KEY)).toContain('Te defiendes');
   });
 
+  it('invalida retratos del schema anterior al cambiar de modelo', () => {
+    const key = playerPortraitGenerationKey({ totalGames: 7 });
+    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 3, generationKey: key, text: 'Viejo Llama.' }));
+    expect(loadCachedPlayerPortrait(key)).toBeNull();
+  });
+
   it('conserva retratos largos completos en cache', () => {
     const key = playerPortraitGenerationKey({ totalGames: 12 });
     const text = `${'Retrato con contexto. '.repeat(24)}Cierre completo.`;
