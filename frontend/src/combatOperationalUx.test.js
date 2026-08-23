@@ -13,10 +13,11 @@ const read = (name) => {
 };
 
 describe('STATIC CONTRACT · Combat Chess operativo', () => {
-  it('campaña conserva workspace ancho, pasos operativos y ayuda contextual', () => {
+  it('campaña conserva workspace ancho, una siguiente acción clara y ayuda contextual', () => {
     const source = read('RoguelikeScreen.jsx');
     expect(source).toContain('menu combat-workspace');
-    expect(source).toContain('CampaignOperationSteps');
+    expect(source).toContain('campaign-friendly-next');
+    expect(source).toContain('QUÉ HACER AHORA');
     expect(source).toContain('context-help-btn');
   });
 
@@ -69,6 +70,9 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     expect(source).toContain('onDoubleClick={deployReserveUnitToFirstFreeSlot}');
     expect(source).toContain('const target = firstFreeDeploymentSlotForUnit(roster, unitKey);');
     expect(source).toContain('onDeployUnit(target.key, unitKey);');
+    expect(source).toContain('deployment-upgrade-ready');
+    expect(source).toContain("const canUpgrade = unitKey !== 'k-e'");
+    expect(source).toContain('event.button !== 1');
 
     expect(boardSource).toContain('onPieceMouseEnter,');
     expect(boardSource).toContain('onPieceMouseLeave,');
@@ -125,4 +129,25 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     expect(styles).toContain('.combat-log-section');
     expect(styles).toContain('.combat-log-list');
   });
+  it('home de campaña empieza simple y esconde progreso/expedientes hasta pedirlos', () => {
+    const source = read('RoguelikeScreen.jsx');
+    expect(source).toContain('campaign-home-friendly');
+    expect(source).toContain('¿Listo para empezar?');
+    expect(source).toContain('Empezar campaña →');
+    expect(source).toContain('<summary>Ver progreso y opciones</summary>');
+    expect(source).toContain('<summary>Ejército y veteranos</summary>');
+    expect(source).toContain('Campañas anteriores · {campaignArchive.length}');
+    expect(source).not.toContain('campaign-home-facts');
+  });
+
+  it('briefing y preparación esconden opciones avanzadas y conservan un CTA principal', () => {
+    const briefing = read('CampaignBriefing.jsx');
+    const prep = read('CampaignCombatPreparation.jsx');
+    expect(briefing).toContain('campaign-intel-optional');
+    expect(briefing).toContain('PREPARAR EJÉRCITO →');
+    expect(prep).toContain('campaign-preparation-options');
+    expect(prep).toContain('Usar formación recomendada');
+    expect(prep).toContain('INICIAR COMBATE →');
+  });
+
 });

@@ -11,6 +11,7 @@ import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';
 import { formatAdminDate, formatAdminTimestamp } from '../adminFormatting.js';
+import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -135,27 +136,48 @@ export default function AdminScreen({ onExit }) {
   const [insightsErrors, setInsightsErrors] = useState({});
   const [deletingUser, setDeletingUser] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [feedbackError, setFeedbackError] = useState(null);
+  const [feedbackUpdating, setFeedbackUpdating] = useState(null);
 
   useEffect(() => {
     let mounted = true;
-    async function refreshUsers(silent = false) {
-      try {
-        const next = await fetchAdminUsers();
-        if (!mounted) return;
-        setUsers(next);
+    async function refreshAdminData(silent = false) {
+      const [usersResult, feedbackResult] = await Promise.allSettled([fetchAdminUsers(), fetchAdminFeedback()]);
+      if (!mounted) return;
+      if (usersResult.status === 'fulfilled') {
+        setUsers(usersResult.value);
         setError(null);
-      } catch (e) {
-        if (!mounted || silent) return;
-        setError(e.message);
+      } else if (!silent) {
+        setError(usersResult.reason?.message || 'No se pudieron cargar los usuarios.');
+      }
+      if (feedbackResult.status === 'fulfilled') {
+        setFeedback(feedbackResult.value.feedback || []);
+        setFeedbackError(null);
+      } else if (!silent) {
+        setFeedbackError(feedbackResult.reason?.message || 'No se pudo cargar el feedback.');
       }
     }
-    refreshUsers();
-    const timer = window.setInterval(() => refreshUsers(true), 30000);
+    refreshAdminData();
+    const timer = window.setInterval(() => refreshAdminData(true), 30000);
     return () => {
       mounted = false;
       window.clearInterval(timer);
     };
   }, []);
+
+  async function handleFeedbackStatus(feedbackId, status) {
+    setFeedbackUpdating(feedbackId);
+    setFeedbackError(null);
+    try {
+      const result = await updateAdminFeedbackStatus(feedbackId, status);
+      setFeedback((current) => (current || []).map((item) => item.id === feedbackId ? result.feedback : item));
+    } catch (e) {
+      setFeedbackError(e?.message || 'No se pudo actualizar el feedback.');
+    } finally {
+      setFeedbackUpdating(null);
+    }
+  }
 
   async function handleDeleteUser(targetUsername) {
     const confirmed = window.confirm(
@@ -206,6 +228,45 @@ export default function AdminScreen({ onExit }) {
         <p className="hint-text">Pulsa el nombre de un usuario para abrir o cerrar su expediente ajedrecístico.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
         <AiNarrativeMetrics token={getToken()} />
+
+        <section className="admin-feedback-section" aria-label="Feedback de usuarios">
+          <div className="admin-feedback-heading">
+            <div>
+              <span className="section-label">Feedback</span>
+              <h3>Lo que están diciendo los usuarios</h3>
+            </div>
+            <span className="admin-feedback-badge">{(feedback || []).filter((item) => item.status === 'new').length} nuevos</span>
+          </div>
+          {feedbackError && <p className="error-text">{feedbackError}</p>}
+          {!feedbackError && feedback === null && <p className="hint-text">Cargando feedback…</p>}
+          {!feedbackError && feedback && feedback.length === 0 && <p className="hint-text">No hay feedback todavía. Sospechoso silencio administrativo.</p>}
+          {!feedbackError && feedback && feedback.length > 0 && (
+            <div className="admin-feedback-list">
+              {feedback.map((item) => (
+                <article key={item.id} className={`admin-feedback-card status-${item.status || 'new'}`}>
+                  <div className="admin-feedback-meta">
+                    <strong>{item.username}</strong>
+                    <span>{item.category === 'bug' ? 'Bug' : item.category === 'idea' ? 'Idea' : item.category === 'ux' ? 'UX' : 'Otro'}</span>
+                    <span>{item.context || 'Home'}</span>
+                    <time>{formatAdminTimestamp(item.created_at)}</time>
+                  </div>
+                  <p>{item.message}</p>
+                  <div className="admin-feedback-actions">
+                    {item.status === 'new' && (
+                      <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Marcar leído</button>
+                    )}
+                    {item.status !== 'resolved' ? (
+                      <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'resolved')}>Resolver</button>
+                    ) : (
+                      <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Reabrir</button>
+                    )}
+                    <span className="admin-feedback-status">{item.status === 'resolved' ? 'Resuelto' : item.status === 'read' ? 'Leído' : 'Nuevo'}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
 
         {error && <p className="error-text">{error}</p>}
         {deleteError && <p className="error-text">{deleteError}</p>}

@@ -1,9 +1,8 @@
 import React from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { combatRecordModeLabel } from '../combatChessBrand.js';
+import { gameModeLabel } from '../gameModes.js';
 
 const OUTCOME_LABEL = { win: 'Victoria', draw: 'Tablas', loss: 'Derrota' };
-const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combat Chess · Batalla libre', lab: 'Laboratorio', rescue: 'Salvar cadáver', boss: 'Boss Run', streak: 'Racha' };
 
 function formatDate(iso) {
   try {
@@ -31,7 +30,7 @@ export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExi
             {emptyText || 'Todavía no jugaste ninguna partida. Torneo, Partida rápida y Práctica quedan todas acá, con "pista inversa" para revisar dónde te equivocaste.'}
           </p>
         ) : (
-          <p className="hint-text">Toca una partida para reproducirla jugada por jugada, con análisis incluido.</p>
+          <p className="hint-text friendly-lead">Toca una partida para abrirla. Resultado, modo y fecha quedan a simple vista.</p>
         )}
       </div>
 
@@ -43,7 +42,7 @@ export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExi
               <div key={r.id} className="history-row-wrap">
                 <button className="history-row" onClick={() => onOpen(r)}>
                   <span className={`history-outcome ${r.outcome}`}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span>
-                  <span className="history-mode-tag">{combatRecordModeLabel(r) || MODE_LABEL[r.mode] || (r.log ? 'Combat Chess' : 'Torneo')}</span>
+                  <span className="history-mode-tag">{gameModeLabel(r)}</span>
                   <span className="history-meta">CPU nivel {r.difficulty} · {moveCount} jugadas{r.timeControl?.label ? ` · ${r.timeControl.label}` : ''}</span>
                   <span className="history-date">{formatDate(r.date)}</span>
                 </button>
@@ -62,9 +61,12 @@ export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExi
       )}
 
       {records.length > 0 && (
-        <button className="secondary-btn" style={{ width: '100%', marginTop: '0.9rem' }} onClick={onClear}>
-          Borrar historial
-        </button>
+        <details className="friendly-disclosure history-options">
+          <summary>Opciones del historial</summary>
+          <div className="friendly-disclosure-body">
+            <button className="secondary-btn" style={{ width: '100%' }} onClick={onClear}>Borrar historial</button>
+          </div>
+        </details>
       )}
     </div>
   );

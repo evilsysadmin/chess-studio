@@ -1,47 +1,48 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Menu from './components/Menu.jsx';
-import GameScreen from './components/GameScreen.jsx';
-import Tutorial from './components/Tutorial.jsx';
-import OpeningsScreen from './components/OpeningsScreen.jsx';
-import TournamentScreen from './components/TournamentScreen.jsx';
-import HistoryScreen from './components/HistoryScreen.jsx';
-import ReplayScreen from './components/ReplayScreen.jsx';
-import CombatReplayScreen from './components/CombatReplayScreen.jsx';
-import SpectatorScreen from './components/SpectatorScreen.jsx';
+const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
+const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
+const OpeningsScreen = React.lazy(() => import('./components/OpeningsScreen.jsx'));
+const TournamentScreen = React.lazy(() => import('./components/TournamentScreen.jsx'));
+const HistoryScreen = React.lazy(() => import('./components/HistoryScreen.jsx'));
+const ReplayScreen = React.lazy(() => import('./components/ReplayScreen.jsx'));
+const CombatReplayScreen = React.lazy(() => import('./components/CombatReplayScreen.jsx'));
+const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.jsx'));
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
 import { loadCombatHistory, clearCombatHistory } from './combatHistory.js';
-import PuzzleScreen from './components/PuzzleScreen.jsx';
-import CombatScreen from './components/CombatScreen.jsx';
-import RoguelikeScreen from './components/RoguelikeScreen.jsx';
+const PuzzleScreen = React.lazy(() => import('./components/PuzzleScreen.jsx'));
+const CombatScreen = React.lazy(() => import('./components/CombatScreen.jsx'));
+const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.jsx'));
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
 import RatingDetailModal from './components/RatingDetailModal.jsx';
-import MusicPlayer from './components/MusicPlayer.jsx';
+const MusicPlayer = React.lazy(() => import('./components/MusicPlayer.jsx'));
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import { startAmbientMusic, stopAmbientMusic } from './sound.js';
 import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { loadGameHistory, saveGameRecord, clearGameHistory, updateGameRecordChat } from './gameHistory.js';
+import { recordGameActivity } from './gameActivity.js';
+import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadRating, saveRating, updateRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
 import { handicapForGap } from './handicap.js';
 import { computeInsights } from './insights.js';
-import InsightsScreen from './components/InsightsScreen.jsx';
+const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
 import { clearClockSnapshot, loadClockSnapshot } from './clockPersistence.js';
 import { checkAchievements } from './achievements.js';
 import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
 import { isLoggedIn, fetchMe, logout, touchActivity, watchSessionIdentity } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
-import AdminScreen from './components/AdminScreen.jsx';
+const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
 import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
-import ShareResultModal from './components/ShareResultModal.jsx';
+const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
 import SharedResultScreen from './components/SharedResultScreen.jsx';
 import { shareRecordFromHash } from './shareResult.js';
-import LabScreen from './components/LabScreen.jsx';
+const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
 import { loadSessionView, loadSessionViewHistory, rememberSessionView, rememberSessionViewHistory } from './viewState.js';
@@ -303,9 +304,11 @@ function AppInner({ isAdminUser }) {
       const handicap = handicapForGap(rating.rating, difficulty);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null);
       const isLearning = !!opts?.learning;
+      const nextContext = { rematch: !!opts?.rematch, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null };
       setLearningMode(isLearning);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
-      setGameContext({ rematch: !!opts?.rematch, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null });
+      setGameContext(nextContext);
+      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: isLearning, gameContext: nextContext }) });
       const shouldOfferContract = !isLearning && !opts?.runMode && !opts?.lab && !opts?.rescue && Number(opts?.seriesBestOf || 1) <= 1;
       const contract = shouldOfferContract ? chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents }) : null;
       if (contract) saveActiveContract(contract); else clearActiveContract();
@@ -372,6 +375,9 @@ function AppInner({ isAdminUser }) {
   }
 
   function handleExitGame() {
+    if (game?.id) {
+      recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
+    }
     if (gameContext.runMode && specialRun?.active) {
       const endedRun = recordSpecialRunResult(specialRun, 'loss');
       setSpecialRun(endedRun);
@@ -449,7 +455,7 @@ function AppInner({ isAdminUser }) {
       moves: finishedGame.history,
       finalFen: finishedGame.fen,
       initialFen: finishedGame.initialFen || null,
-      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual',
+      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.nemesis ? 'nemesis-training' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : gameContext.ghost ? 'ghost' : learningMode ? 'practice' : 'casual',
       opening,
       timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,
       rematch: !!gameContext.rematch,
@@ -468,6 +474,7 @@ function AppInner({ isAdminUser }) {
       } : null,
     };
     setHistoryList(saveGameRecord(record));
+    recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome });
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
@@ -486,6 +493,7 @@ function AppInner({ isAdminUser }) {
       if (game?.id) await api.deleteGame(game.id).catch(() => {});
       const handicap = handicapForGap(rating.rating, activeSeries.difficulty);
       const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null);
+      recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual' });
       const updatedSeries = { ...activeSeries, currentGameId: created.id };
       saveActiveSeries(updatedSeries);
       setActiveSeries(updatedSeries);
@@ -530,9 +538,13 @@ function AppInner({ isAdminUser }) {
     setLoading(true);
     setError(null);
     try {
-      if (game?.id) await api.deleteGame(game.id).catch(() => {});
+      if (game?.id) {
+        recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
+        await api.deleteGame(game.id).catch(() => {});
+      }
       const nextColor = humanColor === 'w' ? 'b' : 'w';
       const created = await api.createGame(difficulty, nextColor, null, null, ghostStyle);
+      recordGameActivity({ gameId: created.id, state: 'started', mode: ghostStyle ? 'ghost' : 'casual' });
       const contract = chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents });
       saveActiveContract(contract);
       setActiveContract(contract);
@@ -554,12 +566,14 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen);
+      const nextContext = { lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null };
+      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: true, gameContext: nextContext }) });
       clearActiveSeries();
       setActiveSeries(null);
       clearActiveContract();
       setActiveContract(null);
       setSpecialRun(loadSpecialRun());
-      setGameContext({ lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null });
+      setGameContext(nextContext);
       setLearningMode(true);
       setActiveTimeControl(null);
       setGame(created);
@@ -590,6 +604,7 @@ function AppInner({ isAdminUser }) {
     try {
       if (game?.id) await api.deleteGame(game.id).catch(() => {});
       const created = await api.createGame(run.difficulty, 'random', null);
+      recordGameActivity({ gameId: created.id, state: 'started', mode: run.mode || 'streak' });
       clearActiveSeries();
       setActiveSeries(null);
       clearActiveContract();
@@ -625,6 +640,7 @@ function AppInner({ isAdminUser }) {
       const level = levelForPoints(tournament.progressPoints || 0);
       const cpuDifficulty = difficultyForLevel(level);
       const created = await api.createGame(cpuDifficulty, color);
+      recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament' });
       setTournamentGame(created);
       navigateTo('tournamentGame');
     } catch (e) {
@@ -687,6 +703,7 @@ function AppInner({ isAdminUser }) {
         series: null,
         };
       setHistoryList(saveGameRecord(record));
+      recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome });
       recordCareerGame(record, {});
     }
   }
@@ -718,6 +735,7 @@ function AppInner({ isAdminUser }) {
   }
 
   function handleExitTournamentGame() {
+    if (tournamentGame?.id) recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament' });
     setTournamentGame(null);
     goBack();
   }
@@ -731,7 +749,7 @@ function AppInner({ isAdminUser }) {
 
   return (
     <>
-      {!isBoardGameView && <GlobalMusicDock />}
+      {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
       <ErrorBoundary onReset={resetNavigation}>
       <div className="app-shell">
         <div className="masthead">
@@ -744,6 +762,7 @@ function AppInner({ isAdminUser }) {
             tournament={tournament}
             combatXp={combatXp}
             rating={rating}
+            compact={view === 'menu'}
             onTournamentClick={() => navigateTo('tournament')}
             onRatingClick={() => setShowRatingDetail(true)}
           />
@@ -756,6 +775,7 @@ function AppInner({ isAdminUser }) {
           <RatingDetailModal rating={rating} onClose={() => setShowRatingDetail(false)} />
         )}
 
+        <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {view === 'menu' && (
           <Menu
             onNewGame={handleNewGame}
@@ -818,11 +838,7 @@ function AppInner({ isAdminUser }) {
           <LabScreen onExit={goBack} onStart={(fen, color, difficulty, meta) => handlePlayFromHere(fen, color, difficulty, meta)} />
         )}
 
-        {view === 'board3d' && (
-          <React.Suspense fallback={<p className="hint-text" style={{ textAlign: 'center' }}>Cargando el visor 3D…</p>}>
-            <Board3DExperiment onExit={goBack} />
-          </React.Suspense>
-        )}
+        {view === 'board3d' && <Board3DExperiment onExit={goBack} />}
 
         {view === 'combat' && (
           <CombatScreen
@@ -832,6 +848,18 @@ function AppInner({ isAdminUser }) {
             onViewBattle={openHistoryRecord}
             combatSessionId="free"
             onBattleUiActive={setCombatBattleUiActive}
+            onBattleStart={(meta = {}) => {
+              if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord });
+            }}
+            onBattleResult={(outcome, _debrief, meta = {}) => {
+              if (meta.gameId) recordGameActivity({
+                gameId: meta.gameId,
+                state: outcome === 'retired' ? 'cancelled' : 'finished',
+                mode: 'combat',
+                modeRecord: meta.battleRecord || { variant: 'combat' },
+                outcome: outcome === 'retired' ? null : outcome,
+              });
+            }}
           />
         )}
 
@@ -918,17 +946,20 @@ function AppInner({ isAdminUser }) {
         )}
 
         {shareRecord && <ShareResultModal record={shareRecord} onClose={() => setShareRecord(null)} />}
+        </React.Suspense>
       </div>
       </ErrorBoundary>
     </>
   );
 }
 
-function GlobalMusicDock() {
+function GlobalMusicDock({ isAdminUser, onAdmin }) {
   return (
     <div className="global-music-dock" aria-label="Reproductor global">
-      <MusicPlayer />
-      <LiveServiceStatus />
+      <React.Suspense fallback={null}>
+        <MusicPlayer />
+      </React.Suspense>
+      <LiveServiceStatus isAdminUser={isAdminUser} onAdmin={onAdmin} />
     </div>
   );
 }
@@ -984,15 +1015,23 @@ function App() {
   }, [loggedIn]);
 
   useEffect(() => {
-    // Nada de música para login, enlaces públicos ni bots que solo despiertan
-    // el frontend. La banda entra cuando existe un usuario autenticado y su
-    // perfil ya terminó de sincronizarse.
-    if (!loggedIn || !ready) {
-      stopAmbientMusic();
-      return undefined;
-    }
-    startAmbientMusic();
-    return () => stopAmbientMusic();
+    // El motor de audio es grande y no hace falta ni en login ni en enlaces
+    // públicos. Se carga sólo cuando existe una sesión real con perfil listo.
+    if (!loggedIn || !ready) return undefined;
+    let cancelled = false;
+    let audio = null;
+    import('./sound.js').then((module) => {
+      audio = module;
+      if (cancelled) {
+        module.stopAmbientMusic();
+        return;
+      }
+      module.startAmbientMusic();
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+      audio?.stopAmbientMusic?.();
+    };
   }, [loggedIn, ready]);
 
   if (sharedRecord) {

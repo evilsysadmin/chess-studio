@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 const admin = readFileSync(new URL('./components/AdminScreen.jsx', import.meta.url), 'utf8');
 const formatting = readFileSync(new URL('./adminFormatting.js', import.meta.url), 'utf8');
+const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
+const liveStatus = readFileSync(new URL('./components/LiveServiceStatus.jsx', import.meta.url), 'utf8');
+const menu = readFileSync(new URL('./components/Menu.jsx', import.meta.url), 'utf8');
 
 describe('admin UX contract', () => {
   it('abre el expediente desde el propio nombre y elimina el botón redundante', () => {
@@ -25,4 +28,19 @@ describe('admin UX contract', () => {
     expect(admin).toContain("import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';");
     expect(admin).toContain('<AiNarrativeMetrics token={getToken()} />');
   });
+  it('blinda Usuarios online → Panel admin sólo para admins', () => {
+    expect(app).toContain("<GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')}");
+    expect(liveStatus).toContain("const canOpenAdmin = isAdminUser && typeof onAdmin === 'function';");
+    expect(liveStatus).toContain('className="live-service-online-link"');
+    expect(liveStatus).toContain('onClick={onAdmin}');
+  });
+
+  it('ofrece feedback visible en Home y lo muestra en Admin', () => {
+    expect(menu).toContain('className="home-feedback-button"');
+    expect(menu).toContain('<FeedbackModal context="Home"');
+    expect(admin).toContain('aria-label="Feedback de usuarios"');
+    expect(admin).toContain('fetchAdminFeedback');
+    expect(admin).toContain("handleFeedbackStatus(item.id, 'resolved')");
+  });
+
 });

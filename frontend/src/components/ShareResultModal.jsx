@@ -35,7 +35,7 @@ export default function ShareResultModal({ record, onClose }) {
 
   return (
     <div className="modal-backdrop share-result-backdrop" onClick={onClose}>
-      <div className="army-card share-result-modal" onClick={(event) => event.stopPropagation()}>
+      <div className="army-card share-result-modal" role="dialog" aria-modal="true" aria-label="Compartir partida" onClick={(event) => event.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <header className="share-result-header">
           <span className="eyebrow">Pruebas documentales</span>

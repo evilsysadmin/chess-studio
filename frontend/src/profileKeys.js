@@ -9,6 +9,7 @@ const AUTH_USERNAME_KEY = 'chess-study-auth-username';
 export const PROFILE_STORAGE_KEYS = [
   'chess-study-tournament',
   'chess-study-game-history',
+  'chess-study-game-activity',
   'chess-study-combat-history',
   'chess-study-combat-roster',
   'chess-study-combat-service',

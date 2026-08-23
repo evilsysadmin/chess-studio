@@ -107,35 +107,35 @@ export default function LoginScreen({ onLoggedIn }) {
             {(mode === 'login' || mode === 'register') && (
               <>
                 <label className="field-label" htmlFor="login-username">Usuario</label>
-                <input id="login-username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="text-input" autoComplete="username" minLength={3} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="text-input" autoComplete="username" minLength={3} maxLength={64} required style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 
             {(mode === 'register' || mode === 'forgot') && (
               <>
                 <label className="field-label" htmlFor="login-email">Email</label>
-                <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="text-input" autoComplete="email" required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="text-input" autoComplete="email" maxLength={254} required style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 
             {(mode === 'login' || mode === 'register' || mode === 'reset') && (
               <>
                 <label className="field-label" htmlFor="login-password">{mode === 'reset' ? 'Nueva contraseña' : 'Contraseña'}</label>
-                <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="text-input" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="text-input" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 
             {mode === 'reset' && (
               <>
                 <label className="field-label" htmlFor="login-password-confirm">Repite la contraseña</label>
-                <input id="login-password-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="text-input" autoComplete="new-password" minLength={6} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-password-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="text-input" autoComplete="new-password" minLength={6} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 
             {mode === 'register' && (
               <>
                 <label className="field-label" htmlFor="login-invite-code">Código de invitación</label>
-                <input id="login-invite-code" type="password" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className="text-input" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="Sólo si el servidor lo exige" style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="login-invite-code" type="password" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} className="text-input" autoComplete="off" maxLength={128} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="Sólo si el servidor lo exige" style={{ width: '100%', marginBottom: '0.7rem' }} />
               </>
             )}
 

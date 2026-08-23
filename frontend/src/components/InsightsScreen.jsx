@@ -13,10 +13,9 @@ import RatingChart from './RatingChart.jsx';
 import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
 import CareerScreen from './CareerScreen.jsx';
-import { combatRecordModeLabel } from '../combatChessBrand.js';
+import { GAME_MODE_LABELS, gameModeLabel } from '../gameModes.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 
-const MODE_LABEL = { tournament: 'Torneo', practice: 'Práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combat Chess' };
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
   return (
@@ -25,9 +24,7 @@ function InsightsHubHeader({ section, onSectionChange, onExit }) {
       <div className="menu-section insights-hub-hero">
         <span className="section-label">Tu expediente de juego</span>
         <div className="combat-heading-row"><h2>Así juegas</h2><MechanicTutorialHelp tutorialId="insights" /></div>
-        <p className="hero-scope-note">
-          Un solo sitio para diagnóstico, evolución, entrenamiento y todo el historial que el tablero pueda usar en tu contra.
-        </p>
+        <p className="hero-scope-note">Tus patrones, tus errores y qué entrenar ahora.</p>
         <div className="insights-subnav" role="tablist" aria-label="Secciones de Así juegas">
           <button
             type="button"
@@ -37,7 +34,7 @@ function InsightsHubHeader({ section, onSectionChange, onExit }) {
             onClick={() => onSectionChange('diagnosis')}
           >
             Diagnóstico
-            <small>Patrones, coaching y rating</small>
+            <small>Qué mejorar ahora</small>
           </button>
           <button
             type="button"
@@ -47,7 +44,7 @@ function InsightsHubHeader({ section, onSectionChange, onExit }) {
             onClick={() => onSectionChange('career')}
           >
             Expediente
-            <small>Evolución, entrenamiento y archivo</small>
+            <small>Historial y progreso</small>
           </button>
         </div>
       </div>
@@ -228,7 +225,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                 to: searchResult.moveReport.suggestedTo,
               })}
               {' · '}{new Date(searchResult.record.date).toLocaleDateString('es-ES')}
-              {' · '}{searchResult.kind === 'combat' ? combatRecordModeLabel(searchResult.record) : MODE_LABEL[searchResult.record.mode || 'tournament']}
+              {' · '}{gameModeLabel(searchResult.record)}
             </span>
             <div className="worst-move-spotlight-actions">
               {onJumpToMove && (
@@ -282,25 +279,16 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         </div>
       </div>
 
-      <div className="menu-section">
-        <span className="section-label">Diagnóstico rápido</span>
-        <h2>Patrones medidos</h2>
-        <p className="hero-scope-note">
-          Todo lo de abajo se calcula al instante con lo que ya está guardado — no vuelve a analizar cada
-          partida contra el motor (eso tardaría segundos por partida). Para eso está el botón de "peor
-          jugada de siempre" más abajo: es la excepción cara, a demanda, no automática.
-        </p>
-      </div>
-
       {roastLines.length > 0 && (
-        <div className="menu-section roast-section">
-          <h2>Cómo te ve, sin filtro</h2>
-          <ul className="roast-list">
-            {roastLines.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
-        </div>
+        <details className="friendly-disclosure insights-roast-details">
+          <summary>Ver lectura sarcástica del expediente</summary>
+          <div className="friendly-disclosure-body menu-section roast-section">
+            <h2>Cómo te ve, sin filtro</h2>
+            <ul className="roast-list">
+              {roastLines.map((line, i) => <li key={i}>{line}</li>)}
+            </ul>
+          </div>
+        </details>
       )}
 
       {coaching.length > 0 && (
@@ -328,155 +316,160 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         </div>
       )}
 
+      <details className="friendly-disclosure insights-full-details">
+        <summary>Ver estadísticas y diagnóstico completo</summary>
+        <div className="friendly-disclosure-body friendly-stack">
       <div className="menu-section">
-        <h2>General</h2>
-        <p className="hint-text">
-          <b>{insights.totalGames}</b> partida{insights.totalGames === 1 ? '' : 's'} en total ·{' '}
-          <b>{insights.overall.winPct}%</b> de victorias
-        </p>
-        <WinBar stats={insights.overall} />
-      </div>
-
-      {Object.keys(insights.byMode).length > 1 && (
-        <div className="menu-section">
-          <h2>Por modo</h2>
-          <div className="insights-mode-list">
-            {Object.entries(insights.byMode).map(([mode, stats]) => (
-              <div className="insights-mode-row" key={mode}>
-                <span className="insights-mode-name">{MODE_LABEL[mode] || mode}</span>
-                <WinBar stats={stats} />
-              </div>
-            ))}
-          </div>
+          <h2>General</h2>
+          <p className="hint-text">
+            <b>{insights.totalGames}</b> partida{insights.totalGames === 1 ? '' : 's'} en total ·{' '}
+            <b>{insights.overall.winPct}%</b> de victorias
+          </p>
+          <WinBar stats={insights.overall} />
         </div>
-      )}
-
-      <div className="menu-section">
-        <h2>Datos sueltos</h2>
-        <div className="insights-facts-grid">
-          {insights.favoriteOpening && (
-            <div className="insights-fact">
-              <span className="insights-fact-value">{insights.favoriteOpening.name}</span>
-              <span className="insights-fact-label">Tu apertura más jugada ({insights.favoriteOpening.count}×)</span>
+  
+        {Object.keys(insights.byMode).length > 1 && (
+          <div className="menu-section">
+            <h2>Por modo</h2>
+            <div className="insights-mode-list">
+              {Object.entries(insights.byMode).map(([mode, stats]) => (
+                <div className="insights-mode-row" key={mode}>
+                  <span className="insights-mode-name">{GAME_MODE_LABELS[mode] || mode}</span>
+                  <WinBar stats={stats} />
+                </div>
+              ))}
             </div>
-          )}
-          <div className="insights-fact">
-            <span className="insights-fact-value">
-              {insights.colorPreference.white} / {insights.colorPreference.black}
-            </span>
-            <span className="insights-fact-label">Partidas con blancas / negras</span>
           </div>
-          <div className="insights-fact">
-            <span className="insights-fact-value">{insights.longestWinStreak}</span>
-            <span className="insights-fact-label">Racha de victorias más larga</span>
-          </div>
-          <div className="insights-fact">
-            <span className="insights-fact-value">{insights.humanCaptures}</span>
-            <span className="insights-fact-label">Piezas capturadas por ti (en todos los modos)</span>
-          </div>
-          {insights.ratingTrend && (
+        )}
+  
+        <div className="menu-section">
+          <h2>Datos sueltos</h2>
+          <div className="insights-facts-grid">
+            {insights.favoriteOpening && (
+              <div className="insights-fact">
+                <span className="insights-fact-value">{insights.favoriteOpening.name}</span>
+                <span className="insights-fact-label">Tu apertura más jugada ({insights.favoriteOpening.count}×)</span>
+              </div>
+            )}
             <div className="insights-fact">
               <span className="insights-fact-value">
-                {insights.ratingTrend.delta >= 0 ? '+' : ''}{insights.ratingTrend.delta}
+                {insights.colorPreference.white} / {insights.colorPreference.black}
               </span>
-              <span className="insights-fact-label">
-                Cambio de rating desde el primer registro ({insights.ratingTrend.min}–{insights.ratingTrend.max})
-              </span>
+              <span className="insights-fact-label">Partidas con blancas / negras</span>
             </div>
-          )}
-        </div>
-      </div>
-
-      {insights.openingDossier?.length > 0 && (
-        <div className="menu-section">
-          <h2>Expediente de aperturas</h2>
-          <p className="hint-text">Qué sueles jugar y qué tal sales vivo de ello.</p>
-          <div className="opening-dossier-grid">
-            {insights.openingDossier.map((row) => (
-              <div className="opening-dossier-card" key={row.name}>
-                <b>{row.name}</b>
-                <span>{row.games} partidas · {row.wins}V/{row.draws}T/{row.losses}D</span>
-                <span>{row.winPct}% victorias · {row.white} blancas / {row.black} negras</span>
+            <div className="insights-fact">
+              <span className="insights-fact-value">{insights.longestWinStreak}</span>
+              <span className="insights-fact-label">Racha de victorias más larga</span>
+            </div>
+            <div className="insights-fact">
+              <span className="insights-fact-value">{insights.humanCaptures}</span>
+              <span className="insights-fact-label">Piezas capturadas por ti (en todos los modos)</span>
+            </div>
+            {insights.ratingTrend && (
+              <div className="insights-fact">
+                <span className="insights-fact-value">
+                  {insights.ratingTrend.delta >= 0 ? '+' : ''}{insights.ratingTrend.delta}
+                </span>
+                <span className="insights-fact-label">
+                  Cambio de rating desde el primer registro ({insights.ratingTrend.min}–{insights.ratingTrend.max})
+                </span>
               </div>
-            ))}
+            )}
           </div>
         </div>
-      )}
-
-      {rivalry.record?.games > 0 && (
-        <div className="menu-section">
-          <h2>Rivalidad con la CPU</h2>
-          <p className="hint-text">Una sola rivalidad, una sola memoria y cero botón para pedir clemencia.</p>
-          <div className="rivalry-grid">
-            <div className="rivalry-card">
-              <strong>☠ CPU</strong>
-              <span>{rivalry.record.wins}V · {rivalry.record.draws}T · {rivalry.record.losses}D</span>
-              <small>Mejor racha tuya: {rivalry.record.bestHumanStreak || 0} · de la CPU: {rivalry.record.bestCpuStreak || 0}</small>
+  
+        {insights.openingDossier?.length > 0 && (
+          <div className="menu-section">
+            <h2>Expediente de aperturas</h2>
+            <p className="hint-text">Qué sueles jugar y qué tal sales vivo de ello.</p>
+            <div className="opening-dossier-grid">
+              {insights.openingDossier.map((row) => (
+                <div className="opening-dossier-card" key={row.name}>
+                  <b>{row.name}</b>
+                  <span>{row.games} partidas · {row.wins}V/{row.draws}T/{row.losses}D</span>
+                  <span>{row.winPct}% victorias · {row.white} blancas / {row.black} negras</span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {seriesStats.total > 0 && (
-        <div className="menu-section series-dossier">
-          <div className="series-dossier-heading">
-            <div>
-              <span className="section-label">Jurisprudencia</span>
-              <h2>Expediente de series</h2>
+        )}
+  
+        {rivalry.record?.games > 0 && (
+          <div className="menu-section">
+            <h2>Rivalidad con la CPU</h2>
+            <p className="hint-text">Una sola rivalidad, una sola memoria y cero botón para pedir clemencia.</p>
+            <div className="rivalry-grid">
+              <div className="rivalry-card">
+                <strong>☠ CPU</strong>
+                <span>{rivalry.record.wins}V · {rivalry.record.draws}T · {rivalry.record.losses}D</span>
+                <small>Mejor racha tuya: {rivalry.record.bestHumanStreak || 0} · de la CPU: {rivalry.record.bestCpuStreak || 0}</small>
+              </div>
             </div>
-            <strong>{seriesStats.won} ganadas · {seriesStats.lost} perdidas</strong>
           </div>
-          <p className="hint-text">Las partidas sueltas son discusión. Las series dejan antecedentes.</p>
-          <div className="series-dossier-stats">
-            <span><b>{seriesStats.currentStreak > 0 ? `Tú ×${seriesStats.currentStreak}` : seriesStats.currentStreak < 0 ? `CPU ×${Math.abs(seriesStats.currentStreak)}` : '—'}</b><small>racha actual de series</small></span>
-            <span><b>{seriesStats.bestHumanStreak}</b><small>mejor racha tuya</small></span>
-            <span><b>{seriesStats.bestCpuStreak}</b><small>mejor racha CPU</small></span>
-            <span><b>{seriesStats.humanSweeps} / {seriesStats.cpuSweeps}</b><small>barridas tú / CPU</small></span>
-            <span><b>{seriesStats.humanComebacks} / {seriesStats.cpuComebacks}</b><small>remontadas tú / CPU</small></span>
-            <span><b>{seriesStats.deciders}</b><small>series a la decisiva</small></span>
+        )}
+  
+        {seriesStats.total > 0 && (
+          <div className="menu-section series-dossier">
+            <div className="series-dossier-heading">
+              <div>
+                <span className="section-label">Jurisprudencia</span>
+                <h2>Expediente de series</h2>
+              </div>
+              <strong>{seriesStats.won} ganadas · {seriesStats.lost} perdidas</strong>
+            </div>
+            <p className="hint-text">Las partidas sueltas son discusión. Las series dejan antecedentes.</p>
+            <div className="series-dossier-stats">
+              <span><b>{seriesStats.currentStreak > 0 ? `Tú ×${seriesStats.currentStreak}` : seriesStats.currentStreak < 0 ? `CPU ×${Math.abs(seriesStats.currentStreak)}` : '—'}</b><small>racha actual de series</small></span>
+              <span><b>{seriesStats.bestHumanStreak}</b><small>mejor racha tuya</small></span>
+              <span><b>{seriesStats.bestCpuStreak}</b><small>mejor racha CPU</small></span>
+              <span><b>{seriesStats.humanSweeps} / {seriesStats.cpuSweeps}</b><small>barridas tú / CPU</small></span>
+              <span><b>{seriesStats.humanComebacks} / {seriesStats.cpuComebacks}</b><small>remontadas tú / CPU</small></span>
+              <span><b>{seriesStats.deciders}</b><small>series a la decisiva</small></span>
+            </div>
+            <div className="series-dossier-history">
+              {seriesHistory.slice(0, 5).map((series) => (
+                <article key={series.id || `${series.completedAt}-${series.bestOf}`}>
+                  <div>
+                    <b>{seriesHeadline(series)}</b>
+                    <small>Mejor de {series.bestOf}{series.draws ? ` · ${series.draws} tablas` : ''}</small>
+                  </div>
+                  <time dateTime={series.completedAt || undefined}>
+                    {series.completedAt ? new Date(series.completedAt).toLocaleDateString('es-ES') : 'sin fecha'}
+                  </time>
+                </article>
+              ))}
+            </div>
           </div>
-          <div className="series-dossier-history">
-            {seriesHistory.slice(0, 5).map((series) => (
-              <article key={series.id || `${series.completedAt}-${series.bestOf}`}>
-                <div>
-                  <b>{seriesHeadline(series)}</b>
-                  <small>Mejor de {series.bestOf}{series.draws ? ` · ${series.draws} tablas` : ''}</small>
-                </div>
-                <time dateTime={series.completedAt || undefined}>
-                  {series.completedAt ? new Date(series.completedAt).toLocaleDateString('es-ES') : 'sin fecha'}
-                </time>
-              </article>
-            ))}
+        )}
+  
+        {sinRows.length > 0 && (
+          <div className="menu-section">
+            <h2>Heatmap de pecados</h2>
+            <p className="hint-text">Incidentes tácticos registrados desde que activaste la rivalidad. Cuanto más larga la barra, más reincidencia.</p>
+            <div className="sin-heatmap">
+              {sinRows.map((row) => {
+                const max = Math.max(...sinRows.map((item) => item.count), 1);
+                return (
+                  <div className="sin-row" key={row.key}>
+                    <span>{row.label}</span>
+                    <div className="sin-track"><i style={{ width: `${Math.max(8, (row.count / max) * 100)}%` }} /></div>
+                    <b>{row.count}</b>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
-
-      {sinRows.length > 0 && (
-        <div className="menu-section">
-          <h2>Heatmap de pecados</h2>
-          <p className="hint-text">Incidentes tácticos registrados desde que activaste la rivalidad. Cuanto más larga la barra, más reincidencia.</p>
-          <div className="sin-heatmap">
-            {sinRows.map((row) => {
-              const max = Math.max(...sinRows.map((item) => item.count), 1);
-              return (
-                <div className="sin-row" key={row.key}>
-                  <span>{row.label}</span>
-                  <div className="sin-track"><i style={{ width: `${Math.max(8, (row.count / max) * 100)}%` }} /></div>
-                  <b>{row.count}</b>
-                </div>
-              );
-            })}
+        )}
+  
+  
+        {ratingHistory.length >= 2 && (
+          <div className="menu-section">
+            <h2>Evolución del rating</h2>
+            <RatingChart history={ratingHistory} />
           </div>
-        </div>
-      )}
-
-
-      {ratingHistory.length >= 2 && (
-        <div className="menu-section">
-          <h2>Evolución del rating</h2>
-          <RatingChart history={ratingHistory} />
-        </div>
-      )}
+        )}
+          </div>
+      </details>
     </div>
   );
 }

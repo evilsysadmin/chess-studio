@@ -45,7 +45,7 @@ export default function AccountModal({ onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+      <div className="army-card" role="dialog" aria-modal="true" aria-label="Mi cuenta" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">Cuenta</span>
         <h3>Mi cuenta</h3>
@@ -74,10 +74,10 @@ export default function AccountModal({ onClose }) {
             ) : (
               <form onSubmit={saveEmail} style={{ marginTop: '1rem' }}>
                 <label className="field-label" htmlFor="account-email">Nuevo email</label>
-                <input id="account-email" type="email" className="text-input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="account-email" type="email" className="text-input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" maxLength={254} required style={{ width: '100%', marginBottom: '0.7rem' }} />
 
                 <label className="field-label" htmlFor="account-password">Contraseña actual</label>
-                <input id="account-password" type="password" className="text-input" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" minLength={6} required style={{ width: '100%', marginBottom: '0.7rem' }} />
+                <input id="account-password" type="password" className="text-input" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" minLength={6} maxLength={128} required style={{ width: '100%', marginBottom: '0.7rem' }} />
 
                 <p className="hint-text" style={{ marginBottom: '0.8rem' }}>
                   Pedimos tu contraseña para que una sesión abierta en un equipo ajeno no pueda secuestrar el correo de recuperación.

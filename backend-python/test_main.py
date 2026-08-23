@@ -428,6 +428,14 @@ def test_register_rejects_short_password():
     r = client.post("/api/auth/register", json={"username": "usuarioval", "password": "123"})
     assert r.status_code == 400
 
+def test_auth_models_reject_absurdly_long_credentials():
+    too_long_user = "u" * 65
+    too_long_password = "p" * 129
+    assert client.post("/api/auth/register", json={"username": too_long_user, "password": "clave123456"}).status_code == 422
+    assert client.post("/api/auth/register", json={"username": "usuario_largo", "password": too_long_password}).status_code == 422
+    assert client.post("/api/auth/login", json={"username": too_long_user, "password": "x"}).status_code == 422
+    assert client.post("/api/auth/forgot-password", json={"email": "e" * 255}).status_code == 422
+
 
 def test_register_rejects_duplicate_username():
     client.post("/api/auth/register", json={"username": "repetido", "password": "clave123456"})
@@ -1064,6 +1072,30 @@ def test_admin_recent_activity_labels_game_mode_and_combat_type():
     assert "5+0" in quick["detail"]
 
 
+def test_admin_recent_activity_prefers_explicit_game_lifecycle():
+    import json
+    from main import _extract_summary_stats
+
+    profile = {
+        "data": {
+            "chess-study-game-history": json.dumps([
+                {"id": "old-final", "date": "2026-08-22T09:00:00+00:00", "outcome": "win", "mode": "casual"},
+            ]),
+            "chess-study-game-activity": json.dumps([
+                {"gameId": "g1", "state": "started", "date": "2026-08-23T10:00:00+00:00", "mode": "sudden", "modeLabel": "Muerte súbita"},
+                {"gameId": "g1", "state": "cancelled", "date": "2026-08-23T10:05:00+00:00", "mode": "sudden", "modeLabel": "Muerte súbita"},
+                {"gameId": "c1", "state": "finished", "date": "2026-08-23T10:10:00+00:00", "mode": "combat", "modeLabel": "Combat Chess · Torre", "outcome": "loss"},
+            ]),
+        }
+    }
+    rows = _extract_summary_stats(profile)["recentActivity"]
+    assert rows[0]["modeLabel"] == "Combat Chess · Torre"
+    assert rows[0]["text"] == "Partida finalizada · Derrota"
+    assert any(row["modeLabel"] == "Muerte súbita" and row["text"] == "Partida iniciada" for row in rows)
+    assert any(row["modeLabel"] == "Muerte súbita" and row["text"] == "Partida cancelada" for row in rows)
+    assert not any(row.get("text") == "Victoria" for row in rows)
+
+
 def test_activity_heartbeat_is_protected_and_lightweight():
     assert raw_client.post("/api/auth/activity").status_code == 401
     assert client.post("/api/auth/activity").status_code == 204
@@ -1303,3 +1335,56 @@ def test_password_reset_rejects_garbage_token(email_recovery_enabled):
         json={"token": "no-es-un-jwt", "newPassword": "clave-nueva-123"},
     )
     assert response.status_code == 400
+
+# ---------- V16.6dj: feedback operativo ----------
+
+def test_feedback_requires_auth():
+    response = raw_client.post('/api/feedback', json={'category': 'ux', 'message': 'Demasiada información junta.'})
+    assert response.status_code == 401
+
+
+def test_authenticated_user_can_submit_feedback_and_admin_can_read_it(monkeypatch):
+    import main as main_module
+
+    created = client.post('/api/feedback', json={
+        'category': 'ux',
+        'message': 'La home de campaña me satura un poco.',
+        'context': 'Home',
+    })
+    assert created.status_code == 201
+    feedback = created.json()['feedback']
+    assert feedback['username'] == 'testuser'
+    assert feedback['status'] == 'new'
+    assert feedback['category'] == 'ux'
+
+    monkeypatch.setattr(main_module, '_ADMIN_USERNAMES', {'testuser'})
+    listed = client.get('/api/admin/feedback')
+    assert listed.status_code == 200
+    body = listed.json()
+    assert body['newCount'] == 1
+    assert body['feedback'][0]['id'] == feedback['id']
+    assert body['feedback'][0]['message'] == 'La home de campaña me satura un poco.'
+
+
+def test_non_admin_cannot_read_feedback():
+    response = client.get('/api/admin/feedback')
+    assert response.status_code == 403
+
+
+def test_admin_can_mark_feedback_read_and_resolved(monkeypatch):
+    import main as main_module
+
+    created = client.post('/api/feedback', json={'category': 'idea', 'message': 'Un botón de feedback visible.'})
+    feedback_id = created.json()['feedback']['id']
+    monkeypatch.setattr(main_module, '_ADMIN_USERNAMES', {'testuser'})
+
+    read = client.post(f'/api/admin/feedback/{feedback_id}/status', json={'status': 'read'})
+    assert read.status_code == 200
+    assert read.json()['feedback']['status'] == 'read'
+
+    resolved = client.post(f'/api/admin/feedback/{feedback_id}/status', json={'status': 'resolved'})
+    assert resolved.status_code == 200
+    assert resolved.json()['feedback']['status'] == 'resolved'
+
+    invalid = client.post(f'/api/admin/feedback/{feedback_id}/status', json={'status': 'burned'})
+    assert invalid.status_code == 400

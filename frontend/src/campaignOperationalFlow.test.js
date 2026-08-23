@@ -11,7 +11,7 @@ describe('Combat Chess · flujo operacional de campaña', () => {
   it('la campaña activa confirmación obligatoria de despliegue antes de CombatScreen', () => {
     const roguelike = read('RoguelikeScreen.jsx');
     expect(roguelike).toContain('requireDeploymentConfirmation');
-    expect(roguelike).toContain('<CampaignOperationSteps active="target" />');
+    expect(roguelike).toContain('campaign-friendly-next');
   });
 
   it('el controller abre despliegue al entrar y bloquea startBattle sin confirmación', () => {
@@ -28,7 +28,8 @@ describe('Combat Chess · flujo operacional de campaña', () => {
     const source = read('CampaignCombatPreparation.jsx');
     expect(source).toContain('<CampaignOperationSteps active="deployment" />');
     expect(source).toContain('campaign-situation-banner');
-    expect(source).toContain('campaign-force-readiness');
+    expect(source).toContain('campaign-preparation-quick-status');
+    expect(source).toContain('Usar formación recomendada');
     expect(source).toContain('deploymentConfirmed ?');
     expect(source).toContain('handleStartBattleClick');
     expect(source).toContain('onConfirm={handleConfirmDeployment}');
@@ -39,6 +40,8 @@ describe('Combat Chess · flujo operacional de campaña', () => {
     const source = read('CampaignBriefing.jsx');
     expect(source).toContain('<CampaignOperationSteps active="briefing" />');
     expect(source).toContain('campaign-operation-primary-zone');
+    expect(source).toContain('campaign-intel-optional');
+    expect(source).toContain('¿Quieres saber más del rival?');
     expect(source).toContain('onClick={onContinue}');
   });
 

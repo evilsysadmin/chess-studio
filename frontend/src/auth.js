@@ -5,7 +5,7 @@
 
 import { clearLocalUserState } from './profileKeys.js';
 import { withRequestId, requestErrorMessage } from './requestId.js';
-import { resetAmbientThemeForSession, clearAmbientThemeSession } from './sound.js';
+import { markAmbientThemeSessionFresh, clearAmbientThemeSessionStorage } from './audioSession.js';
 import { clearSessionView } from './viewState.js';
 import { clearAllClockSnapshots } from './clockPersistence.js';
 import { clearCombatSession } from './combatSession.js';
@@ -83,12 +83,12 @@ function saveSession(token, username) {
   localStorage.setItem(USERNAME_KEY, username);
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
   // puede cambiar el tema después y se conservará hasta logout/nuevo login.
-  resetAmbientThemeForSession();
+  markAmbientThemeSessionFresh();
   clearSessionView();
 }
 
 export function logout() {
-  clearAmbientThemeSession();
+  clearAmbientThemeSessionStorage();
   clearSessionView();
   clearLocalUserState();
   clearAllClockSnapshots();

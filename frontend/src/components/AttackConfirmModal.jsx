@@ -11,7 +11,7 @@ export default function AttackConfirmModal({ attacker, defender, chance, techniq
 
   return (
     <div className="modal-backdrop" onClick={onCancel}>
-      <div className="attack-confirm-card" onClick={(e) => e.stopPropagation()}>
+      <div className="attack-confirm-card" role="dialog" aria-modal="true" aria-label="Confirmar ataque" onClick={(e) => e.stopPropagation()}>
         {techniqueLabel && <span className="eyebrow">TÉCNICA · {techniqueLabel}</span>}
         <p className="attack-confirm-title">{attackerLabel} ataca a {defenderLabel}</p>
         <div className="attack-confirm-chance">

@@ -13,7 +13,7 @@ export default function RatingDetailModal({ rating, onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+      <div className="army-card" role="dialog" aria-modal="true" aria-label="Detalle de rating" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">Cómo te ve la CPU</span>
         <h3>{progress.tier.label} · {rating.rating}</h3>

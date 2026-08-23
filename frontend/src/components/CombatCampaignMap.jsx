@@ -50,7 +50,7 @@ function MapNode({ node, status, selectable, onSelect }) {
       <span className="campaign-map-point-core" aria-hidden="true">{node.icon}</span>
       <span className="campaign-map-point-copy">
         <strong>{node.label}</strong>
-        <small>{node.typeLabel}{['battle', 'elite', 'boss'].includes(node.type) ? ' · intel pendiente' : ''}</small>
+        <small>{node.typeLabel}</small>
       </span>
       {status === 'cleared' && <span className="campaign-map-point-badge">✓</span>}
       {status === 'available' && <span className="campaign-map-point-pulse" aria-hidden="true" />}
@@ -65,18 +65,21 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
 
   return (
     <section className="combat-campaign-map-wrap" aria-label="Mapa completo de campaña Combat Chess" title="La topología es visible; dificultad, modificadores y boss requieren inteligencia.">
-      <div className="campaign-map-toolbar">
+      <div className="campaign-map-toolbar simplified">
         <div>
-          <span className="section-label">MAPA DE OPERACIONES</span>
-          <strong>Ruta completa · 7 sectores</strong>
+          <span className="section-label">MAPA</span>
+          <strong>Elige tu siguiente sector</strong>
         </div>
-        <div className="campaign-map-legend" aria-label="Leyenda del mapa">
-          <span><i className="legend-dot current" />posición</span>
-          <span><i className="legend-dot available" />accesible</span>
-          <span><i className="legend-dot cleared" />superado</span>
-          <span><i className="legend-dot elite" />élite</span>
-          <span><i className="legend-dot camp" />seguro</span>
-        </div>
+        <details className="campaign-map-legend-details">
+          <summary>Leyenda</summary>
+          <div className="campaign-map-legend" aria-label="Leyenda del mapa">
+            <span><i className="legend-dot current" />posición</span>
+            <span><i className="legend-dot available" />accesible</span>
+            <span><i className="legend-dot cleared" />superado</span>
+            <span><i className="legend-dot elite" />élite</span>
+            <span><i className="legend-dot camp" />seguro</span>
+          </div>
+        </details>
       </div>
 
       <div className="combat-campaign-map">

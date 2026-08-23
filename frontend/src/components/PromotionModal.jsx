@@ -10,7 +10,7 @@ const OPTIONS = [
 export default function PromotionModal({ onChoose }) {
   return (
     <div className="modal-backdrop">
-      <div className="promotion-card">
+      <div className="promotion-card" role="dialog" aria-modal="true" aria-label="Promoción de peón">
         <p>Tu peón llegó al final. ¿A qué pieza lo coronas?</p>
         <div className="promotion-options">
           {OPTIONS.map((o) => (

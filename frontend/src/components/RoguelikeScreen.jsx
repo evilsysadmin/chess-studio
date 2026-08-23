@@ -5,7 +5,6 @@ import CombatServicePanel from './CombatServicePanel.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatCampaignMap from './CombatCampaignMap.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
-import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -19,6 +18,7 @@ import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE, COMBAT_CHESS_TAGLINE } from '../combatChessBrand.js';
+import { recordGameActivity } from '../gameActivity.js';
 import { hasCombatSession } from '../combatSession.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import {
@@ -169,9 +169,10 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setCampaign((current) => markCampaignBriefingAccepted(current));
   }
 
-  function handleCampaignBattleStarted() {
+  function handleCampaignBattleStarted(meta = {}) {
     setBattleDebrief(null);
     setCombatSessionActive(true);
+    if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: 'campaign' } });
     setCampaign((current) => markCampaignBattleStarted(current));
   }
 
@@ -185,9 +186,16 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setCampaignArchive(loadCampaignArchive());
   }
 
-  function handleCampaignBattleResult(outcome, debrief = null) {
+  function handleCampaignBattleResult(outcome, debrief = null, meta = {}) {
     setBattleDebrief(debrief);
     setCombatSessionActive(false);
+    if (meta.gameId) recordGameActivity({
+      gameId: meta.gameId,
+      state: outcome === 'retired' ? 'cancelled' : 'finished',
+      mode: 'combat',
+      modeRecord: meta.battleRecord || { variant: 'roguelike', roguelikeMode: 'campaign' },
+      outcome: outcome === 'retired' ? null : outcome,
+    });
     setServiceRecord(loadCombatService());
     setRoster(loadRoster());
     if (outcome === 'win') {
@@ -306,15 +314,23 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setEndResult({ type, reached, newBest: reached > previousBest });
   }
 
-  function handleBattleStarted() {
+  function handleBattleStarted(meta = {}) {
     setBattleDebrief(null);
     setCombatSessionActive(true);
+    if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: run.mode } });
     setRun((current) => markBattleStarted(current));
   }
 
-  function handleBattleResult(outcome, debrief = null) {
+  function handleBattleResult(outcome, debrief = null, meta = {}) {
     setBattleDebrief(debrief);
     setCombatSessionActive(false);
+    if (meta.gameId) recordGameActivity({
+      gameId: meta.gameId,
+      state: outcome === 'retired' ? 'cancelled' : 'finished',
+      mode: 'combat',
+      modeRecord: meta.battleRecord || { variant: 'roguelike', roguelikeMode: run.mode },
+      outcome: outcome === 'retired' ? null : outcome,
+    });
     setServiceRecord(loadCombatService());
     setRoster(loadRoster());
     if (outcome === 'win') {
@@ -471,41 +487,29 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <div className="combat-heading-row"><h2>Operación La Torre</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
           <p className="combat-operational-hint" title="Los detalles de campaña están en el tutorial. El mapa muestra rutas y tipos de nodo, pero no revela inteligencia enemiga no comprada.">Selecciona una ruta conectada.</p>
 
-          {campaign.phase === 'map' && <CampaignOperationSteps active="target" />}
-
           {(() => {
-            const veteranCount = Object.values(roster?.pieces || {}).filter((piece) => piece?.alive !== false && ((piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) > 0).length;
             const nextStep = campaign.phase === 'map'
-              ? 'Selecciona un objetivo conectado. Después recibirás el briefing.'
+              ? 'Elige uno de los sectores iluminados en el mapa.'
               : campaign.phase === 'briefing'
-                ? 'Compra inteligencia si la necesitas. Después, prepara el despliegue.'
+                ? 'Revisa qué cambia y prepara tu ejército.'
                 : campaign.phase === 'reward'
-                  ? 'Elige una recompensa para cerrar el sector y volver al mapa.'
+                  ? 'Elige una recompensa para seguir avanzando.'
                   : campaign.phase === 'camp'
-                    ? 'Reorganiza la fuerza y elige la ventaja del campamento.'
+                    ? 'Elige una ventaja y continúa.'
                     : campaign.phase === 'event'
-                      ? 'Elige una respuesta al evento para continuar la operación.'
+                      ? 'Elige una respuesta al evento.'
                       : campaign.phase === 'completed'
-                        ? 'Operación cumplida. Revisa el resultado y archiva la campaña.'
-                        : 'Continúa con la siguiente fase de la operación.';
+                        ? 'Operación cumplida. Archiva la campaña.'
+                        : 'Continúa con la siguiente fase.';
             return (
               <>
-                <div className="campaign-status-strip campaign-command-status-strip simplified" aria-label="Estado operativo de campaña">
+                <div className="campaign-quick-status" aria-label="Resumen de campaña">
                   <span>Sector <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
-                  <span>Créditos <b>{campaign.operationalCredits}</b></span>
-                  <span className={rosterDeployment.fallenCount ? 'danger-text' : ''}>Bajas <b>{rosterDeployment.fallenCount}</b></span>
+                  <span><b>{campaign.operationalCredits}</b> créditos</span>
+                  {rosterDeployment.fallenCount > 0 && <span className="danger-text"><b>{rosterDeployment.fallenCount}</b> bajas</span>}
                 </div>
-                <details className="campaign-compact-details">
-                  <summary>Estado del ejército</summary>
-                  <div>
-                    <span>XP combate <b>{roster.combatXp || 0}</b></span>
-                    <span>Efectivos <b>{rosterDeployment.totalRoster}</b></span>
-                    <span>Veteranos <b>{veteranCount}</b></span>
-                    <span>Reserva <b>{rosterDeployment.reserveCount}</b></span>
-                  </div>
-                </details>
-                <div className={`campaign-situation-banner ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
-                  <span>SIGUIENTE PASO</span>
+                <div className={`campaign-situation-banner campaign-friendly-next ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
+                  <span>QUÉ HACER AHORA</span>
                   <strong>{nextStep}</strong>
                 </div>
               </>
@@ -513,17 +517,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           })()}
 
           {battleDebrief && <CombatDebrief debrief={battleDebrief} onViewBattle={onViewBattle} nextAction={campaign.phase === 'reward' ? 'Elige una recompensa para cerrar el sector.' : null} />}
-
-          {campaignRelics.length > 0 && (
-            <div className="campaign-relic-rack" aria-label="Reliquias operativas de campaña">
-              {campaignRelics.map((relic) => (
-                <div className="campaign-relic-chip" key={relic.id} title={relic.description}>
-                  <span aria-hidden="true">{relic.icon}</span>
-                  <div><strong>{relic.label}</strong></div>
-                </div>
-              ))}
-            </div>
-          )}
 
           {campaign.phase === 'map' && map && (
             <>
@@ -599,15 +592,33 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             </div>
           )}
 
-          {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
+          <details className="campaign-optional-panel campaign-session-details">
+            <summary>Progreso, ejército y diario</summary>
+            <div className="campaign-session-detail-grid">
+              <span>XP de combate <b>{roster.combatXp || 0}</b></span>
+              <span>Efectivos <b>{rosterDeployment.totalRoster}</b></span>
+              <span>Reserva <b>{rosterDeployment.reserveCount}</b></span>
+            </div>
+            {campaignRelics.length > 0 && (
+              <div className="campaign-relic-rack" aria-label="Reliquias operativas de campaña">
+                {campaignRelics.map((relic) => (
+                  <div className="campaign-relic-chip" key={relic.id} title={relic.description}>
+                    <span aria-hidden="true">{relic.icon}</span>
+                    <div><strong>{relic.label}</strong></div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <CombatServicePanel summary={serviceSummary} compact />
+            {(campaign.eventLog || []).length > 0 && (
+              <div className="campaign-log simplified-log">
+                <strong>Últimos movimientos</strong>
+                <ul>{campaign.eventLog.slice(-4).reverse().map((entry, index) => <li key={`${entry}-${index}`}>{entry}</li>)}</ul>
+              </div>
+            )}
+          </details>
 
-          <CombatServicePanel summary={serviceSummary} compact />
-          {(campaign.eventLog || []).length > 0 && (
-            <details className="campaign-log">
-              <summary>Diario de operación</summary>
-              <ul>{campaign.eventLog.slice(-6).reverse().map((entry, index) => <li key={`${entry}-${index}`}>{entry}</li>)}</ul>
-            </details>
-          )}
+          {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
         </div>
       </div>
     );
@@ -617,65 +628,89 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     <div className="menu">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section">
-        <span className="section-label">{COMBAT_CHESS_GENRE}</span>
-        <h2>{COMBAT_CHESS_NAME} · Campaña</h2>
-        <p className="hero-scope-note">
-          {COMBAT_CHESS_TAGLINE} La Torre ahora es una <b>campaña por rutas</b>: combate, élites, campamentos, eventos y un Rey Boss con 5 HP.
-        </p>
-        <p className="hint-text" style={{ marginTop: '0.55rem' }}>
-          Usas tu <b>ejército persistente de Combat Chess</b>. Su veteranía persiste fuera del intento; las ventajas que eliges
-          dentro de la campaña son temporales y desaparecen cuando la operación termina.
-        </p>
+        {!run.inRun ? (
+          <div className="campaign-home-simple campaign-home-friendly">
+            <span className="section-label">{COMBAT_CHESS_GENRE}</span>
+            <h2>{COMBAT_CHESS_NAME}</h2>
+            <p className="hero-scope-note campaign-home-lead">
+              Una campaña de ajedrez con un ejército que recuerda lo que le pasa. Las reglas nuevas aparecen poco a poco.
+            </p>
 
-        <div className="roguelike-objective-strip">
-          <span>⚔ Combate</span>
-          <span>☠ Élite</span>
-          <span>⛺ Campamento</span>
-          <span>? Evento</span>
-          <span>♚ REY BOSS ♥♥♥♥♥</span>
-        </div>
+            {!campaignEndResult && (
+              <div className="campaign-home-action friendly">
+                <strong>¿Listo para empezar?</strong>
+                <p className="hint-text">La primera batalla es sencilla. El juego te irá diciendo qué hacer después.</p>
+                <button type="button" className="primary-btn campaign-home-primary" onClick={handleStartCampaign}>
+                  Empezar campaña →
+                </button>
+              </div>
+            )}
 
-        <CombatServicePanel summary={serviceSummary} compact />
+            {battleDebrief && <CombatDebrief debrief={battleDebrief} compact onViewBattle={onViewBattle} />}
 
-        {battleDebrief && <CombatDebrief debrief={battleDebrief} compact onViewBattle={onViewBattle} />}
-
-        <ArmyRosterPanel
-          roster={roster}
-          embedded
-          onBuy={handleBuyRosterStat}
-          onRevive={handleReviveRosterPiece}
-          onRename={handleRenameRosterPiece}
-          onMetamorphose={handleMetamorphoseRosterPiece}
-          onUnlockTechnique={handleUnlockRosterTechnique}
-          onEquipTechnique={handleEquipRosterTechnique}
-        />
-
-        {campaignBestStage > 0 && <p className="hint-text">Mejor sector de campaña alcanzado: <b>{campaignBestStage}/7</b></p>}
-        {bestFloor > 0 && <p className="hint-text">Marca histórica de La Torre clásica: <b>piso {bestFloor}</b></p>}
-        {towerCompleted && <p className="hint-text roguelike-completed-mark">✓ Torre completada al menos una vez · infinito desbloqueado</p>}
-
-        {campaignArchive.length > 0 && (
-          <details className="campaign-operation-archive">
-            <summary>Archivo de operaciones · {campaignArchive.length}</summary>
-            <div className="campaign-operation-list">
-              {campaignArchive.slice(0, 6).map((operation) => (
-                <div className="campaign-operation-row" key={operation.id}>
-                  <span className={`campaign-operation-result ${operation.reason}`}>{operation.reason === 'completed' ? '✓' : operation.reason === 'retired' ? '↩' : '×'}</span>
-                  <div>
-                    <strong>{operation.reason === 'completed' ? 'Operación completada' : operation.reason === 'retired' ? 'Retirada' : operation.reason === 'interrupted' ? 'Interrumpida' : 'Operación perdida'}</strong>
-                    <small>Sector {operation.stage}/7 · {operation.cleared} nodos · {operation.relicIds?.length || 0} reliquias · {operation.credits} créditos</small>
-                    <span>{(operation.routeLabels || []).slice(1).join(' → ') || 'Sin salir de la base'}</span>
+            <details className="campaign-home-details campaign-home-more">
+              <summary>Ver progreso y opciones</summary>
+              <div className="campaign-home-details-stack">
+                <div className="campaign-home-about">
+                  <strong>¿Qué hay en la campaña?</strong>
+                  <p className="hint-text">Son 7 sectores. Encontrarás combates, descansos, eventos y un boss final. Si una batalla cambia alguna regla, se explica antes de jugar.</p>
+                  <div className="roguelike-objective-strip compact">
+                    <span>⚔ Combate</span>
+                    <span>⛺ Descanso</span>
+                    <span>? Evento</span>
+                    <span>♚ Boss</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </details>
-        )}
 
-        {!run.inRun && !endResult && !campaignEndResult && (
-          <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={handleStartCampaign}>
-            Iniciar Operación La Torre
-          </button>
+                <details className="campaign-home-subdetails">
+                  <summary>Ejército y veteranos</summary>
+                  <p className="hint-text">Tus piezas conservan veteranía, rangos, medallas y bajas entre campañas.</p>
+                  <CombatServicePanel summary={serviceSummary} compact />
+                  <ArmyRosterPanel
+                    roster={roster}
+                    embedded
+                    onBuy={handleBuyRosterStat}
+                    onRevive={handleReviveRosterPiece}
+                    onRename={handleRenameRosterPiece}
+                    onMetamorphose={handleMetamorphoseRosterPiece}
+                    onUnlockTechnique={handleUnlockRosterTechnique}
+                    onEquipTechnique={handleEquipRosterTechnique}
+                  />
+                </details>
+
+                {(campaignBestStage > 0 || bestFloor > 0 || towerCompleted) && (
+                  <div className="campaign-home-progress-summary">
+                    <strong>Tu progreso</strong>
+                    {campaignBestStage > 0 && <span>Mejor campaña: sector <b>{campaignBestStage}/7</b></span>}
+                    {bestFloor > 0 && <span>Torre clásica: piso <b>{bestFloor}</b></span>}
+                    {towerCompleted && <span>✓ Torre completada · infinito desbloqueado</span>}
+                  </div>
+                )}
+
+                {campaignArchive.length > 0 && (
+                  <details className="campaign-home-subdetails">
+                    <summary>Campañas anteriores · {campaignArchive.length}</summary>
+                    <div className="campaign-operation-list">
+                      {campaignArchive.slice(0, 6).map((operation) => (
+                        <div className="campaign-operation-row" key={operation.id}>
+                          <span className={`campaign-operation-result ${operation.reason}`}>{operation.reason === 'completed' ? '✓' : operation.reason === 'retired' ? '↩' : '×'}</span>
+                          <div>
+                            <strong>{operation.reason === 'completed' ? 'Completada' : operation.reason === 'retired' ? 'Retirada' : operation.reason === 'interrupted' ? 'Interrumpida' : 'Perdida'}</strong>
+                            <small>Sector {operation.stage}/7 · {operation.cleared} nodos</small>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            </details>
+          </div>
+        ) : (
+          <>
+            <span className="section-label">{COMBAT_CHESS_GENRE}</span>
+            <h2>{COMBAT_CHESS_NAME} · Torre clásica</h2>
+          </>
         )}
 
         {!run.inRun && campaignEndResult && (

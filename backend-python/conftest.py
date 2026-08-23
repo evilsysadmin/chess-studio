@@ -55,3 +55,6 @@ def no_real_mongo(monkeypatch, request):
     })
     monkeypatch.setattr("users_store._last_activity_write_monotonic", {})
     monkeypatch.setattr("users_store._user_existence_cache", {})
+
+    monkeypatch.setattr("feedback_store.get_db", fake_get_db)
+    monkeypatch.setattr("feedback_store._memory_feedback", {})

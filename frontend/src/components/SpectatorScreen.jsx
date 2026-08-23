@@ -159,82 +159,61 @@ export default function SpectatorScreen({ onExit }) {
   }[status];
 
   if (phase === 'setup') {
+    const pace = PACE_OPTIONS.find((p) => p.id === paceId) || PACE_OPTIONS[1];
+    const whiteSummary = whiteRandom ? 'aleatorio' : `${difficultyLabel(whiteChoice)} (${whiteChoice})`;
+    const blackSummary = blackRandom ? 'aleatorio' : `${difficultyLabel(blackChoice)} (${blackChoice})`;
     return (
-      <div className="menu">
+      <div className="menu spectator-friendly">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
 
-        <div className="menu-section">
+        <div className="menu-section friendly-primary-zone">
           <span className="section-label">Modo espectador</span>
           <div className="combat-heading-row"><h2>Dos CPU, un tablero</h2><MechanicTutorialHelp tutorialId="spectator" /></div>
-          <p className="hero-scope-note">
-            Elige el nivel de cada bando (o dejalo al azar) y mira cómo juega el motor contra sí mismo, con
-            pausas entre jugada y jugada para poder saborearlas.
-          </p>
+          <p className="hero-scope-note friendly-lead">Pulsa empezar y mira. Si quieres, antes puedes cambiar niveles o velocidad.</p>
 
           {error && <p className="error-text">{error}</p>}
 
-          <div className="spectator-side-setup">
-            <div className="spectator-side-block">
-              <h3>Blancas</h3>
-              <label className="spectator-random-toggle">
-                <input type="checkbox" checked={whiteRandom} onChange={(e) => setWhiteRandom(e.target.checked)} />
-                Nivel aleatorio
-              </label>
-              {!whiteRandom && (
-                <div className="difficulty-slider-row">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={whiteChoice}
-                    onChange={(e) => setWhiteChoice(Number(e.target.value))}
-                    className="difficulty-slider"
-                  />
-                  <div className="difficulty-readout">
-                    <span className="difficulty-number">{whiteChoice}</span>
-                    <span className="difficulty-word">{difficultyLabel(whiteChoice)}</span>
-                  </div>
+          <button type="button" className="primary-btn friendly-main-cta" onClick={startMatch}>Empezar partida</button>
+
+          <details className="friendly-disclosure spectator-settings">
+            <summary>Ajustes · blancas {whiteSummary} · negras {blackSummary} · {pace.label}</summary>
+            <div className="friendly-disclosure-body">
+              <div className="spectator-side-setup">
+                <div className="spectator-side-block">
+                  <h3>Blancas</h3>
+                  <label className="spectator-random-toggle">
+                    <input type="checkbox" checked={whiteRandom} onChange={(e) => setWhiteRandom(e.target.checked)} /> Nivel aleatorio
+                  </label>
+                  {!whiteRandom && (
+                    <div className="difficulty-slider-row">
+                      <input type="range" min="0" max="100" value={whiteChoice} onChange={(e) => setWhiteChoice(Number(e.target.value))} className="difficulty-slider" />
+                      <div className="difficulty-readout"><span className="difficulty-number">{whiteChoice}</span><span className="difficulty-word">{difficultyLabel(whiteChoice)}</span></div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="spectator-side-block">
-              <h3>Negras</h3>
-              <label className="spectator-random-toggle">
-                <input type="checkbox" checked={blackRandom} onChange={(e) => setBlackRandom(e.target.checked)} />
-                Nivel aleatorio
-              </label>
-              {!blackRandom && (
-                <div className="difficulty-slider-row">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={blackChoice}
-                    onChange={(e) => setBlackChoice(Number(e.target.value))}
-                    className="difficulty-slider"
-                  />
-                  <div className="difficulty-readout">
-                    <span className="difficulty-number">{blackChoice}</span>
-                    <span className="difficulty-word">{difficultyLabel(blackChoice)}</span>
-                  </div>
+                <div className="spectator-side-block">
+                  <h3>Negras</h3>
+                  <label className="spectator-random-toggle">
+                    <input type="checkbox" checked={blackRandom} onChange={(e) => setBlackRandom(e.target.checked)} /> Nivel aleatorio
+                  </label>
+                  {!blackRandom && (
+                    <div className="difficulty-slider-row">
+                      <input type="range" min="0" max="100" value={blackChoice} onChange={(e) => setBlackChoice(Number(e.target.value))} className="difficulty-slider" />
+                      <div className="difficulty-readout"><span className="difficulty-number">{blackChoice}</span><span className="difficulty-word">{difficultyLabel(blackChoice)}</span></div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+
+              <div className="time-control-row">
+                <label className="time-control-label">Ritmo</label>
+                <select value={paceId} onChange={(e) => setPaceId(e.target.value)} className="time-control-select">
+                  {PACE_OPTIONS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </div>
             </div>
-          </div>
-
-          <div className="time-control-row">
-            <label className="time-control-label">Ritmo</label>
-            <select value={paceId} onChange={(e) => setPaceId(e.target.value)} className="time-control-select">
-              {PACE_OPTIONS.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <button type="button" className="primary-btn" style={{ width: '100%', marginTop: '0.9rem' }} onClick={startMatch}>
-            Empezar
-          </button>
+          </details>
         </div>
       </div>
     );

@@ -12,8 +12,7 @@ const MUSIC_VOLUME_KEY = 'chess-study-music-volume';
 const MUSIC_RADIO_MODE_KEY = 'chess-study-music-radio-mode';
 const MUSIC_FAVORITES_KEY = 'chess-study-music-favorites';
 const MUSIC_EXCLUDED_KEY = 'chess-study-music-excluded';
-const LEGACY_AMBIENT_THEME_KEY = 'chess-study-ambient-theme';
-const AMBIENT_THEME_SESSION_KEY = 'chess-study-ambient-theme-session';
+import { AMBIENT_THEME_SESSION_KEY, LEGACY_AMBIENT_THEME_KEY, clearAmbientThemeSessionStorage } from './audioSession.js';
 const DEFAULT_AMBIENT_THEME = 'andalus';
 // La radio de sesión deja un pequeño hueco real entre piezas. No encadenamos
 // los finales como si fueran jingles publicitarios: termina el tema, respira,
@@ -2702,7 +2701,7 @@ export function resetAmbientThemeForSession() {
 }
 
 export function clearAmbientThemeSession() {
-  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(AMBIENT_THEME_SESSION_KEY);
+  clearAmbientThemeSessionStorage();
 }
 
 export function getAmbientThemeId() {

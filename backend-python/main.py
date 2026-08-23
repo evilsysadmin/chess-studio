@@ -29,6 +29,7 @@ from slowapi.util import get_remote_address
 import game_store as store
 import profile_store as pstore
 import users_store as ustore
+import feedback_store as fstore
 from db import PersistentStorageUnavailable
 from auth import (
     hash_password, verify_password, create_token, verify_token,
@@ -327,38 +328,48 @@ class ActivityHeartbeatRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    username: str
-    password: str
-    email: Optional[str] = None
-    invite_code: Optional[str] = Field(default=None, alias="inviteCode")
+    username: str = Field(max_length=64)
+    password: str = Field(max_length=128)
+    email: Optional[str] = Field(default=None, max_length=254)
+    invite_code: Optional[str] = Field(default=None, alias="inviteCode", max_length=128)
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(max_length=64)
+    password: str = Field(max_length=128)
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: str
+    email: str = Field(max_length=254)
 
 
 class ResetPasswordRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    token: str
-    new_password: str = Field(alias="newPassword")
+    token: str = Field(max_length=4096)
+    new_password: str = Field(alias="newPassword", max_length=128)
 
 
 class UpdateEmailRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=128)
 
 
 class AdminInsightsRequest(BaseModel):
-    username: str
+    username: str = Field(max_length=64)
+
+
+class FeedbackRequest(BaseModel):
+    category: str = Field(default="other", max_length=24)
+    message: str = Field(max_length=2000)
+    context: Optional[str] = Field(default="Home", max_length=80)
+
+
+class AdminFeedbackStatusRequest(BaseModel):
+    status: str = Field(max_length=16)
 
 
 class AdminDeleteUserRequest(BaseModel):
-    username: str
+    username: str = Field(max_length=64)
 
 
 class GhostStyle(BaseModel):
@@ -694,6 +705,10 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
     if not isinstance(game_history, list):
         game_history = []
 
+    game_activity = _profile_json(data, "chess-study-game-activity", [])
+    if not isinstance(game_activity, list):
+        game_activity = []
+
     combat_history = _profile_json(data, "chess-study-combat-history", [])
     if not isinstance(combat_history, list):
         combat_history = []
@@ -883,25 +898,56 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
 
     recent = sorted(all_records, key=lambda r: str(r.get("date") or ""), reverse=True)[:5]
     recent_game_activity = []
-    for row in recent:
+
+    # Builds nuevas guardan el ciclo de vida explícito de cada partida. Si
+    # existe ese journal, es la fuente preferida para Admin porque permite
+    # distinguir iniciada/cancelada/finalizada sin inventarlo a partir del
+    # historial final. Builds antiguas caen al historial tradicional de abajo.
+    lifecycle_rows = [row for row in game_activity if isinstance(row, dict)]
+    for row in sorted(lifecycle_rows, key=lambda r: str(r.get("date") or ""), reverse=True)[:12]:
+        state = str(row.get("state") or "").lower()
+        if state not in {"started", "cancelled", "finished"}:
+            continue
+        mode_label = row.get("modeLabel")
+        if not isinstance(mode_label, str) or not mode_label.strip():
+            mode_label, _ = recent_mode_label({"mode": row.get("mode")})
+        activity_type = "combat" if str(mode_label).startswith("Combat Chess") else str(row.get("mode") or "casual")
         outcome = row.get("outcome")
-        result_label = {"win": "victoria", "loss": "derrota", "draw": "tablas"}.get(outcome, outcome or "partida")
-        mode_label, activity_type = recent_mode_label(row)
-        details = []
-        if row.get("difficulty") is not None:
-            details.append(f"CPU {row.get('difficulty')}")
-        tc = row.get("timeControl") if isinstance(row.get("timeControl"), dict) else {}
-        if tc.get("label"):
-            details.append(str(tc.get("label")))
-        elif tc.get("id") and tc.get("id") != "none":
-            details.append(str(tc.get("id")))
+        if state == "started":
+            text = "Partida iniciada"
+        elif state == "cancelled":
+            text = "Partida cancelada"
+        else:
+            result = {"win": "Victoria", "loss": "Derrota", "draw": "Tablas"}.get(outcome)
+            text = f"Partida finalizada · {result}" if result else "Partida finalizada"
         recent_game_activity.append({
             "date": row.get("date"),
-            "text": result_label.capitalize(),
-            "detail": " · ".join(details) or None,
+            "text": text,
+            "detail": row.get("detail") if isinstance(row.get("detail"), str) else None,
             "type": activity_type,
             "modeLabel": mode_label,
         })
+
+    if not recent_game_activity:
+        for row in recent:
+            outcome = row.get("outcome")
+            result_label = {"win": "victoria", "loss": "derrota", "draw": "tablas"}.get(outcome, outcome or "partida")
+            mode_label, activity_type = recent_mode_label(row)
+            details = []
+            if row.get("difficulty") is not None:
+                details.append(f"CPU {row.get('difficulty')}")
+            tc = row.get("timeControl") if isinstance(row.get("timeControl"), dict) else {}
+            if tc.get("label"):
+                details.append(str(tc.get("label")))
+            elif tc.get("id") and tc.get("id") != "none":
+                details.append(str(tc.get("id")))
+            recent_game_activity.append({
+                "date": row.get("date"),
+                "text": result_label.capitalize(),
+                "detail": " · ".join(details) or None,
+                "type": activity_type,
+                "modeLabel": mode_label,
+            })
 
     rivalry_games = 0
     rivalry_record = rivalry.get("record")
@@ -1080,6 +1126,50 @@ def _presence_summary(last_activity) -> dict:
     else:
         presence = "offline"
     return {"lastActivity": parsed.astimezone(timezone.utc).isoformat(), "presence": presence, "presenceAgeSeconds": age}
+
+
+@app.post("/api/feedback", status_code=201)
+@limiter.limit("10/hour")
+async def submit_feedback(request: Request, body: FeedbackRequest, username: str = Depends(get_current_user)):
+    category = (body.category or "other").strip().lower()
+    allowed_categories = {"bug", "idea", "ux", "other"}
+    if category not in allowed_categories:
+        raise HTTPException(400, "Categoría de feedback inválida.")
+    message = (body.message or "").strip()
+    if len(message) < 3:
+        raise HTTPException(400, "Cuéntanos un poco más para poder usar el feedback.")
+    context = (body.context or "Home").strip() or "Home"
+    created = await fstore.create_feedback(
+        username=username,
+        category=category,
+        message=message,
+        context=context,
+    )
+    return {"feedback": created}
+
+
+@app.get("/api/admin/feedback")
+async def admin_list_feedback(username: str = Depends(require_admin)):
+    rows = await fstore.list_feedback(limit=100)
+    return {
+        "feedback": rows,
+        "newCount": sum(1 for row in rows if row.get("status") == "new"),
+    }
+
+
+@app.post("/api/admin/feedback/{feedback_id}/status")
+async def admin_update_feedback_status(
+    feedback_id: str,
+    body: AdminFeedbackStatusRequest,
+    username: str = Depends(require_admin),
+):
+    status = (body.status or "").strip().lower()
+    if status not in {"new", "read", "resolved"}:
+        raise HTTPException(400, "Estado de feedback inválido.")
+    updated = await fstore.update_feedback_status(feedback_id, status)
+    if not updated:
+        raise HTTPException(404, "Feedback no encontrado.")
+    return {"feedback": updated}
 
 
 @app.get("/api/admin/users")

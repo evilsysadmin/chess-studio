@@ -313,8 +313,8 @@ export default function MusicPlayer() {
             </select>
           </label>
           <div className="music-deck-preferences" role="group" aria-label="Preferencias de la pista actual">
-            <button type="button" className={`music-deck-pref ${favorite ? 'active' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} title="Favorito">♥</button>
-            <button type="button" className={`music-deck-pref ${excluded ? 'active danger' : ''}`} onClick={toggleExcluded} aria-pressed={excluded} title="Excluir de la radio">🚫</button>
+            <button type="button" className={`music-deck-pref ${favorite ? 'active' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label="Marcar pista como favorita" title="Favorito">♥</button>
+            <button type="button" className={`music-deck-pref ${excluded ? 'active danger' : ''}`} onClick={toggleExcluded} aria-pressed={excluded} aria-label="Excluir pista de la radio" title="Excluir de la radio">🚫</button>
           </div>
         </div>
 

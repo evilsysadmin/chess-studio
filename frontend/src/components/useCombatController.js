@@ -107,6 +107,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const restoredSessionRef = useRef(undefined);
   if (restoredSessionRef.current === undefined) restoredSessionRef.current = loadCombatSession(combatSessionId) || null;
   const restoredSession = restoredSessionRef.current;
+  const activityGameIdRef = useRef(restoredSession?.activityGameId || null);
   const [phase, setPhase] = useState(restoredSession ? 'battle' : 'setup'); // 'setup' | 'battle' | 'over'
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
@@ -197,6 +198,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       battleStartRoster: battleStartRosterRef.current,
       battleParticipants: battleParticipantsRef.current,
       unitBattleStats: unitBattleStatsRef.current,
+      activityGameId: activityGameIdRef.current,
     });
   }
 
@@ -387,6 +389,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     focusRef.current = { w: null, b: null };
     positionCountsRef.current = new Map([[repetitionKey(startFen), 1]]);
     setRepetitionDraw(false);
+    const activityGameId = `${combatSessionId}:${Date.now()}`;
+    activityGameIdRef.current = activityGameId;
     saveCombatSession(combatSessionId, {
       phase: 'battle',
       fen: startFen,
@@ -400,9 +404,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       battleStartRoster: battleStartRosterRef.current,
       battleParticipants: battleParticipantsRef.current,
       unitBattleStats: unitBattleStatsRef.current,
+      activityGameId,
     });
     setPhase('battle');
-    onBattleStart?.();
+    onBattleStart?.({
+      gameId: activityGameId,
+      modeRecord: { variant: combatVariant || 'combat', roguelikeMode: combatVariant === 'roguelike' ? (roguelikeMode || 'tower') : null },
+    });
 
     // Si te tocaron negras, las blancas (la CPU) mueven primero — sin esto
     // la partida se queda esperando para siempre a que "alguien" mueva.
@@ -546,7 +554,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       debrief,
     });
 
-    onBattleResult?.(outcome, debrief);
+    onBattleResult?.(outcome, debrief, {
+      gameId: activityGameIdRef.current || battleRecord.id,
+      battleRecord,
+    });
+    activityGameIdRef.current = null;
     setPhase('over');
   }
 
@@ -1010,7 +1022,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     });
     setBattleRecap({ survivorCount: battleRecord.survivorCount, totalCount: 16, xpGained: 0, record: battleRecord, serviceResult, debrief });
     clearCombatSession(combatSessionId);
-    onBattleResult?.('retired', debrief);
+    onBattleResult?.('retired', debrief, {
+      gameId: activityGameIdRef.current || battleRecord.id,
+      battleRecord,
+    });
+    activityGameIdRef.current = null;
     setPhase('over');
   }
 

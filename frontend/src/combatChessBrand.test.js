@@ -17,8 +17,11 @@ describe('identidad visible de Combat Chess', () => {
     expect(COMBAT_CHESS_CAMPAIGN_LABEL).toContain('Combat Chess');
   });
 
-  it('distingue batalla libre y campaña sin crear dos marcas distintas', () => {
-    expect(combatRecordModeLabel({ log: [], variant: 'roguelike' })).toBe('Combat Chess · Campaña');
+  it('distingue batalla libre, campaña y torres sin crear marcas distintas', () => {
+    expect(combatRecordModeLabel({ log: [], variant: 'roguelike', roguelikeMode: 'campaign' })).toBe('Combat Chess · Campaña');
+    expect(combatRecordModeLabel({ log: [], variant: 'roguelike', roguelikeMode: 'tower' })).toBe('Combat Chess · Torre');
+    expect(combatRecordModeLabel({ log: [], variant: 'roguelike', roguelikeMode: 'endless' })).toBe('Combat Chess · Torre infinita');
+    expect(combatRecordModeLabel({ log: [], variant: 'roguelike' })).toBe('Combat Chess · Torre');
     expect(combatRecordModeLabel({ log: [], variant: 'combat' })).toBe('Combat Chess · Batalla libre');
     expect(combatRecordModeLabel({ moves: [] })).toBeNull();
   });

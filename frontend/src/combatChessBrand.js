@@ -8,7 +8,15 @@ export const COMBAT_CHESS_CAMPAIGN_DESCRIPTION = 'Campaña roguelike por nodos c
 
 // El paraguas visible es siempre Combat Chess. Los IDs internos conservan
 // `combat` / `roguelike` para no romper partidas guardadas ni migraciones.
-export function combatRecordModeLabel(record) {
-  if (!record?.log) return null;
-  return record.variant === 'roguelike' ? COMBAT_CHESS_CAMPAIGN_LABEL : COMBAT_CHESS_FREE_LABEL;
+// Los registros roguelike antiguos no tenían `roguelikeMode`: eran la Torre,
+// así que mantenemos ese fallback por compatibilidad histórica.
+export function combatRecordModeLabel(record = {}) {
+  if (!(record?.log || record?.variant === 'combat' || record?.variant === 'roguelike' || record?.roguelikeMode)) return null;
+  if (record?.variant !== 'roguelike' && !record?.roguelikeMode) return COMBAT_CHESS_FREE_LABEL;
+  switch (record?.roguelikeMode) {
+    case 'campaign': return COMBAT_CHESS_CAMPAIGN_LABEL;
+    case 'endless': return 'Combat Chess · Torre infinita';
+    case 'tower': return 'Combat Chess · Torre';
+    default: return record?.variant === 'roguelike' ? 'Combat Chess · Torre' : COMBAT_CHESS_FREE_LABEL;
+  }
 }

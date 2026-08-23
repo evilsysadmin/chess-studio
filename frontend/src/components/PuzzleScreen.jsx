@@ -250,7 +250,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   return (
     <div className="tutorial-shell">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
-      {!rushMode && <div className="puzzle-source-picker" role="group" aria-label="Tipo de puzzle">
+      {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
         <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalCount === 0} onClick={() => changeSource('personal')}>
           {initialFilter?.opening ? `Crímenes · ${initialFilter.opening} (${filteredPersonalCount})` : `Tus crímenes (${personalPuzzles.length})`}
@@ -302,34 +302,37 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           </div>
         </div>
 
-        <div className="tutorial-text">
-          <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'} · resueltos: {solvedCount}</span>
+        <div className="tutorial-text puzzle-friendly-info">
+          <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
-          {source === 'personal' && (
-            <p className="hint-text personal-puzzle-note">
-              ☠ Nació de una de tus propias autopsias. La máquina guarda rencor documental.{initialFilter?.opening ? ` Filtro némesis: ${initialFilter.opening}.` : ''} {personalStats.attempts ? ` Entrenamiento: ${personalStats.cleanSolves}/${personalStats.attempts} limpias${personalStats.cleanRate !== null ? ` · ${personalStats.cleanRate}%` : ''}.` : ''}
-            </p>
-          )}
+          <p className="hint-text friendly-inline-note">Juegas con <b>{humanColor === 'w' ? 'blancas' : 'negras'}</b>. Elige pieza y destino; si fallas puedes volver a intentarlo.</p>
+
           {source === 'daily' && (
-            <div className="daily-challenge-panel">
-              <p className="hint-text daily-challenge-note">
-                📅 Reto de hoy · racha diaria: <b>{dailyStats.streak || 0}</b> · mejor: <b>{dailyStats.bestStreak || 0}</b>
-                {dailyStats.solvedDates?.includes(puzzle.dailyKey) ? ' · ya resuelto hoy' : ''}
-              </p>
-              <div className="daily-calendar" aria-label="Últimos 28 días de desafío diario">
-                {dailyCells.map((cell) => <span key={cell.key} className={`${cell.solved ? 'solved' : ''} ${cell.today ? 'today' : ''}`} title={`${cell.key}${cell.solved ? ' · resuelto' : ' · pendiente/no resuelto'}`}><small>{cell.weekday}</small><b>{cell.day}</b></span>)}
-              </div>
-              <small className="hint-text">Últimos 28 días. Solo se marca un día cuando el puzzle diario queda realmente resuelto.</small>
-            </div>
+            <p className="hint-text daily-challenge-note">📅 Reto de hoy · racha <b>{dailyStats.streak || 0}</b>{dailyStats.solvedDates?.includes(puzzle.dailyKey) ? ' · resuelto' : ''}</p>
           )}
-          <p className="hint-text" style={{ marginTop: '0.5rem' }}>
-            Racha de puzzles: <b>{streak}</b> · mejor racha: <b>{bestStreak}</b>
-          </p>
-          <p className="hint-text" style={{ marginTop: '0.75rem' }}>
-            Juegas con {humanColor === 'w' ? 'blancas' : 'negras'}. Elige la pieza y la casilla de destino como en una
-            partida normal — si no es la jugada correcta, el tablero no cambia y puedes volver a intentarlo.
-          </p>
+          {source === 'personal' && (
+            <p className="hint-text personal-puzzle-note">☠ Posición nacida de una de tus propias autopsias.{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
+          )}
+
+          <details className="friendly-disclosure puzzle-progress-details">
+            <summary>Progreso y detalles</summary>
+            <div className="friendly-disclosure-body">
+              <p className="hint-text">Resueltos en esta sesión: <b>{solvedCount}</b> · racha: <b>{streak}</b> · mejor: <b>{bestStreak}</b></p>
+              {source === 'personal' && personalStats.attempts > 0 && (
+                <p className="hint-text">Entrenamiento personal: <b>{personalStats.cleanSolves}/{personalStats.attempts}</b> limpias{personalStats.cleanRate !== null ? ` · ${personalStats.cleanRate}%` : ''}.</p>
+              )}
+              {source === 'daily' && (
+                <div className="daily-challenge-panel compact">
+                  <p className="hint-text">Racha diaria: <b>{dailyStats.streak || 0}</b> · mejor: <b>{dailyStats.bestStreak || 0}</b></p>
+                  <div className="daily-calendar" aria-label="Últimos 28 días de desafío diario">
+                    {dailyCells.map((cell) => <span key={cell.key} className={`${cell.solved ? 'solved' : ''} ${cell.today ? 'today' : ''}`} title={`${cell.key}${cell.solved ? ' · resuelto' : ' · pendiente/no resuelto'}`}><small>{cell.weekday}</small><b>{cell.day}</b></span>)}
+                  </div>
+                  <small className="hint-text">Últimos 28 días.</small>
+                </div>
+              )}
+            </div>
+          </details>
         </div>
       </div>
     </div>

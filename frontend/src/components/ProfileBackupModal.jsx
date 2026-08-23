@@ -74,7 +74,7 @@ export default function ProfileBackupModal({ onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+      <div className="army-card" role="dialog" aria-modal="true" aria-label="Copia de seguridad del perfil" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <h3>Exportar / importar progreso</h3>
         <p className="hint-text" style={{ marginBottom: '1rem' }}>

@@ -59,7 +59,7 @@ export default function LabScreen({ onExit, onStart }){
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={onExit}>← Volver al menú</button>
-    <div className="menu-section"><div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div><h2>Construye una posición</h2><p className="hint-text">Coloca piezas, elige quién mueve y juégala contra la CPU. Es entrenamiento: no toca <GlossaryTerm term="ELO">ELO</GlossaryTerm>.</p></div>
+    <div className="menu-section friendly-primary-zone"><div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div><h2>Prepara una posición y juega</h2><p className="hint-text friendly-lead">Mueve piezas en el tablero o pega un FEN. No afecta a tu <GlossaryTerm term="ELO">ELO</GlossaryTerm>.</p></div>
     <div className="lab-toolbar">
       <div className="lab-brushes">{BRUSHES.map(p=><button key={p||'erase'} className={`lab-brush ${brush===p?'active':''}`} onClick={()=>setBrush(p)} title={p?'Colocar pieza':'Borrar'}>{p?GLYPH[p]:'⌫'}</button>)}</div>
       <button className="secondary-btn" onClick={resetInitial}>Posición inicial</button>
@@ -69,16 +69,19 @@ export default function LabScreen({ onExit, onStart }){
     <div className="lab-board-editor">
       <Board fen={fen} orientation="white" onSquareClick={editSquare} />
     </div>
-    <div className="lab-config">
+    <div className="lab-config lab-config-friendly">
       <label>Turno <select value={turn} onChange={e=>{setTurn(e.target.value);setEp('-');}}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
       <label>Dificultad CPU <input type="range" min="0" max="100" value={difficulty} onChange={e=>setDifficulty(Number(e.target.value))}/><b>{difficulty}</b></label>
-      <div className="lab-fen-readout">
-        <span className="section-label"><GlossaryTerm term="FEN">FEN</GlossaryTerm> de la posición</span>
-        <code>{fen}</code>
-        <small>Notación portátil: piezas · turno · enroques · en passant · contador de 50 movimientos · número de jugada.</small>
-      </div>
     </div>
     {error&&<p className="error-text">{error}</p>}
-    <button className="primary-btn" onClick={launch}>Jugar esta posición</button>
+    <button className="primary-btn friendly-main-cta" onClick={launch}>Jugar esta posición</button>
+    <details className="friendly-disclosure lab-technical-details">
+      <summary>Detalles técnicos de la posición</summary>
+      <div className="friendly-disclosure-body lab-fen-readout">
+        <span className="section-label"><GlossaryTerm term="FEN">FEN</GlossaryTerm></span>
+        <code>{fen}</code>
+        <small>Piezas · turno · enroques · en passant · contador de 50 movimientos · número de jugada.</small>
+      </div>
+    </details>
   </div>;
 }

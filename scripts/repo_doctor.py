@@ -15,7 +15,9 @@ add((root/"frontend/package.json").exists(), "frontend package.json")
 add((root/"frontend/src/narrativeProvider.js").exists(), "NarrativeProvider V16.6ax")
 add((root/"backend-python/narrative_cloudflare.py").exists(), "Cloudflare provider overlay")
 add((root/"infra/cloudflare/worker/index.js").exists(), "Worker source")
-add((root/".github/workflows/ai-contract.yml").exists(), "AI contract workflow")
+ci = root/".github/workflows/ci.yml"
+ci_text = ci.read_text("utf-8", errors="ignore") if ci.exists() else ""
+add("scripts/ai_security_gate.py" in ci_text and "infra/cloudflare/worker/index.js" in ci_text, "AI gates integrated in main CI")
 
 main = root/"backend-python/main.py"
 if main.exists():

@@ -27,16 +27,16 @@ function LevelUpBurst() {
         const rad = (deg * Math.PI) / 180;
         const dx = Math.cos(rad) * 46;
         const dy = Math.sin(rad) * 46;
-        return (
-          <span
-            key={deg}
-            className="level-spark"
-            style={{ '--dx': `${dx}px`, '--dy': `${dy}px`, animationDelay: `${i * 0.02}s` }}
-          />
-        );
+        return <span key={deg} className="level-spark" style={{ '--dx': `${dx}px`, '--dy': `${dy}px`, animationDelay: `${i * 0.02}s` }} />;
       })}
     </>
   );
+}
+
+function colorLabel(color) {
+  if (color === 'w' || color === 'white') return 'Blancas';
+  if (color === 'b' || color === 'black') return 'Negras';
+  return 'Aleatorio';
 }
 
 export default function TournamentScreen({ tournament, onPlay, onExit, onReset, onHistory, loading, lastResult }) {
@@ -58,135 +58,101 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
   const nextTitle = nextTitleToUnlock(level);
   const nextSkin = nextSkinToUnlock(level);
 
-  function pickTitle(id) {
-    saveSelectedTitle(id);
-    setSelectedTitle(id);
-  }
-
-  function pickSkin(id) {
-    saveSelectedSkin(id);
-    setSelectedSkin(id);
-  }
+  function pickTitle(id) { saveSelectedTitle(id); setSelectedTitle(id); }
+  function pickSkin(id) { saveSelectedSkin(id); setSelectedSkin(id); }
 
   return (
-    <div className="menu tournament-panel">
+    <div className="menu tournament-panel tournament-friendly">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
 
-      <div className="menu-section">
-        <div className="combat-heading-row"><span className="eyebrow">Modo torneo</span><MechanicTutorialHelp tutorialId="tournament" /></div>
+      <div className="menu-section tournament-next-card friendly-primary-zone">
+        <div className="combat-heading-row"><span className="eyebrow">Torneo · Nivel {level}</span><MechanicTutorialHelp tutorialId="tournament" /></div>
         <span className="level-heading-wrap">
-          <h2 className={`level-heading ${justLeveledUp ? 'level-up-heading' : ''}`} style={{ marginTop: '0.35rem' }}>
-            Nivel {level}
-          </h2>
-          <p className="hint-text" style={{ margin: '0 0 0.3rem' }}>{currentTitle.label}</p>
+          <h2 className={`level-heading ${justLeveledUp ? 'level-up-heading' : ''}`} style={{ marginTop: '0.35rem' }}>Siguiente rival</h2>
           {justLeveledUp && <LevelUpBurst />}
         </span>
-        <p className="hint-text">
-          CPU en nivel {cpuLevel} · {difficultyLabel(cpuLevel)}
-          {maxedOut ? ' (nivel máximo)' : ''}
-        </p>
-        <div className="tournament-progress-track">
+        <p className="friendly-big-summary">CPU nivel <b>{cpuLevel}</b> · {difficultyLabel(cpuLevel)}{maxedOut ? ' · máximo' : ''}</p>
+        <div className="tournament-progress-track" aria-label={`Progreso del nivel ${level}`}>
           <div className="tournament-progress-fill" style={{ width: `${progressPct}%` }} />
           <span className="tournament-progress-label">{into} / {POINTS_PER_LEVEL} XP</span>
         </div>
-        <p className="tournament-xp-remaining">
-          Faltan <b>{POINTS_PER_LEVEL - into}</b> XP de resultados para el nivel {level + 1}
-        </p>
+        {!maxedOut && <p className="hint-text friendly-inline-note">{POINTS_PER_LEVEL - into} XP para subir al nivel {level + 1}.</p>}
+
+        <details className="friendly-disclosure tournament-color-choice">
+          <summary>Color · {colorLabel(color)}</summary>
+          <div className="friendly-disclosure-body"><ColorSelector value={color} onChange={setColor} /></div>
+        </details>
+
+        <button className="primary-btn friendly-main-cta" disabled={loading} onClick={() => onPlay(color)}>
+          {loading ? 'Creando partida…' : 'Jugar siguiente partida'}
+        </button>
       </div>
 
       {lastResult && (
         <div className={`tournament-result ${lastResult.leveledUp ? 'level-up' : ''}`}>
-          {lastResult.outcome === 'win' && <p>Ganaste la última partida · +{lastResult.gained} XP</p>}
-          {lastResult.outcome === 'draw' && <p>Tablas en la última partida · +{lastResult.gained} XP</p>}
-          {lastResult.outcome === 'loss' && <p>Perdiste la última partida · sin XP, pero puedes reintentar</p>}
-          {Number.isFinite(lastResult.eloDelta) && (
-            <p>
-              ELO {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta}
-              {' · '}{lastResult.eloBefore} → {lastResult.eloAfter}
-              {Number.isFinite(lastResult.cpuRating) ? ` · rival efectivo ${lastResult.cpuRating}` : ''}
-            </p>
-          )}
+          {lastResult.outcome === 'win' && <p>Última partida: victoria · +{lastResult.gained} XP</p>}
+          {lastResult.outcome === 'draw' && <p>Última partida: tablas · +{lastResult.gained} XP</p>}
+          {lastResult.outcome === 'loss' && <p>Última partida: derrota · puedes reintentar</p>}
+          {Number.isFinite(lastResult.eloDelta) && <p>ELO {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta} · {lastResult.eloBefore} → {lastResult.eloAfter}</p>}
           {lastResult.leveledUp && <p className="level-up-text">¡Subiste al nivel {lastResult.newLevel}!</p>}
         </div>
       )}
 
-      <div className="menu-section">
-        <h2>Estadísticas</h2>
-        <p className="hint-text">
-          {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · {tournament.points} puntos disponibles para pistas
-        </p>
-        {(tournament.winStreak > 0 || tournament.bestWinStreak > 0) && (
-          <p className="hint-text" style={{ marginTop: '0.3rem' }}>
-            Racha de victorias: <b>{tournament.winStreak || 0}</b> · mejor racha: <b>{tournament.bestWinStreak || 0}</b>
-          </p>
-        )}
-        <button className="secondary-btn" style={{ width: '100%', marginTop: '0.6rem' }} onClick={onHistory}>
-          Ver historial de partidas
-        </button>
-      </div>
+      <details className="friendly-disclosure tournament-more">
+        <summary>Ver progreso, recompensas y opciones</summary>
+        <div className="friendly-disclosure-body friendly-stack">
+          <section className="friendly-subsection">
+            <h3>Tu torneo</h3>
+            <p className="hint-text">
+              {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · {tournament.points} puntos para pistas
+            </p>
+            {(tournament.winStreak > 0 || tournament.bestWinStreak > 0) && (
+              <p className="hint-text">Racha actual: <b>{tournament.winStreak || 0}</b> · mejor: <b>{tournament.bestWinStreak || 0}</b></p>
+            )}
+            <button className="secondary-btn" style={{ width: '100%', marginTop: '0.5rem' }} onClick={onHistory}>Ver historial de partidas</button>
+          </section>
 
-      <div className="menu-section">
-        <h2>Recompensas</h2>
-        <p className="hint-text">Se desbloquean solas al subir de nivel — no cuestan puntos.</p>
+          <section className="friendly-subsection">
+            <h3>Recompensas</h3>
+            <p className="hint-text">Se desbloquean solas al subir de nivel. Título actual: <b>{currentTitle.label}</b>.</p>
+            <p className="hint-text" style={{ marginTop: '0.65rem', marginBottom: '0.25rem' }}>Título</p>
+            <div className="rewards-grid">
+              {TITLES.map((t) => {
+                const isUnlocked = unlockedTitleIds.has(t.id);
+                return (
+                  <button key={t.id} type="button" className={`reward-chip ${selectedTitle === t.id ? 'reward-chip-selected' : ''} ${!isUnlocked ? 'reward-chip-locked' : ''}`} disabled={!isUnlocked} onClick={() => pickTitle(t.id)} title={isUnlocked ? t.label : `Se desbloquea en el nivel ${t.level}`}>
+                    {isUnlocked ? t.label : `🔒 Nivel ${t.level}`}
+                  </button>
+                );
+              })}
+            </div>
 
-        <p className="hint-text" style={{ marginTop: '0.7rem', marginBottom: '0.3rem' }}>Título</p>
-        <div className="rewards-grid">
-          {TITLES.map((t) => {
-            const isUnlocked = unlockedTitleIds.has(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                className={`reward-chip ${selectedTitle === t.id ? 'reward-chip-selected' : ''} ${!isUnlocked ? 'reward-chip-locked' : ''}`}
-                disabled={!isUnlocked}
-                onClick={() => pickTitle(t.id)}
-                title={isUnlocked ? t.label : `Se desbloquea en el nivel ${t.level}`}
-              >
-                {isUnlocked ? t.label : `🔒 Nivel ${t.level}`}
-              </button>
-            );
-          })}
+            <p className="hint-text" style={{ marginTop: '0.8rem', marginBottom: '0.25rem' }}>Piezas</p>
+            <div className="rewards-grid">
+              {PIECE_SKINS.map((s) => {
+                const isUnlocked = unlockedSkinIds.has(s.id);
+                return (
+                  <button key={s.id} type="button" className={`reward-chip ${selectedSkin === s.id ? 'reward-chip-selected' : ''} ${!isUnlocked ? 'reward-chip-locked' : ''}`} disabled={!isUnlocked} onClick={() => pickSkin(s.id)} title={isUnlocked ? s.label : `Se desbloquea en el nivel ${s.level}`}>
+                    {isUnlocked ? s.label : `🔒 Nivel ${s.level}`}
+                  </button>
+                );
+              })}
+            </div>
+            {(nextTitle || nextSkin) && (
+              <p className="hint-text" style={{ marginTop: '0.65rem' }}>
+                {nextTitle && `Próximo título: nivel ${nextTitle.level}`}{nextTitle && nextSkin && ' · '}{nextSkin && `Próximas piezas: nivel ${nextSkin.level}`}
+              </p>
+            )}
+          </section>
+
+          <details className="friendly-subdisclosure danger-disclosure">
+            <summary>Opciones del torneo</summary>
+            <div className="friendly-disclosure-body">
+              <button className="secondary-btn" style={{ width: '100%' }} onClick={onReset}>Reiniciar progreso del torneo</button>
+            </div>
+          </details>
         </div>
-
-        <p className="hint-text" style={{ marginTop: '0.9rem', marginBottom: '0.3rem' }}>Piezas</p>
-        <div className="rewards-grid">
-          {PIECE_SKINS.map((s) => {
-            const isUnlocked = unlockedSkinIds.has(s.id);
-            return (
-              <button
-                key={s.id}
-                type="button"
-                className={`reward-chip ${selectedSkin === s.id ? 'reward-chip-selected' : ''} ${!isUnlocked ? 'reward-chip-locked' : ''}`}
-                disabled={!isUnlocked}
-                onClick={() => pickSkin(s.id)}
-                title={isUnlocked ? s.label : `Se desbloquea en el nivel ${s.level}`}
-              >
-                {isUnlocked ? s.label : `🔒 Nivel ${s.level}`}
-              </button>
-            );
-          })}
-        </div>
-
-        {(nextTitle || nextSkin) && (
-          <p className="hint-text" style={{ marginTop: '0.7rem' }}>
-            {nextTitle && `Próximo título en nivel ${nextTitle.level} — "${nextTitle.label}"`}
-            {nextTitle && nextSkin && ' · '}
-            {nextSkin && `Próxima skin en nivel ${nextSkin.level} — "${nextSkin.label}"`}
-          </p>
-        )}
-      </div>
-
-      <div className="menu-section">
-        <h2>Color</h2>
-        <ColorSelector value={color} onChange={setColor} />
-      </div>
-
-      <button className="primary-btn" style={{ width: '100%' }} disabled={loading} onClick={() => onPlay(color)}>
-        {loading ? 'Creando partida…' : `Jugar partida (nivel ${cpuLevel})`}
-      </button>
-      <button className="secondary-btn" style={{ width: '100%', marginTop: '0.6rem' }} onClick={onReset}>
-        Reiniciar progreso del torneo
-      </button>
+      </details>
     </div>
   );
 }

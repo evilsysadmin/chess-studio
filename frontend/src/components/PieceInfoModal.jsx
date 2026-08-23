@@ -23,8 +23,8 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
   const individualDecorations = unitRecord ? unitDecorations(unitRecord) : [];
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="piece-info-card" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop" onClick={onClose} onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); onClose(); } }}>
+      <div className="piece-info-card" role="dialog" aria-modal="true" aria-label="Detalles de unidad" onClick={(e) => e.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">{colorLabel}</span>
         <h3>{piece.alias ? `${piece.alias} · ` : ''}{base.name}{isKing ? '' : ` · nivel ${derivedLevel(piece)}`}</h3>

@@ -1,25 +1,26 @@
 import React from 'react';
 
 const STEPS = Object.freeze([
-  { id: 'target', label: 'Objetivo', short: '1' },
-  { id: 'briefing', label: 'Briefing', short: '2' },
-  { id: 'deployment', label: 'Despliegue', short: '3' },
-  { id: 'combat', label: 'Combate', short: '4' },
+  { id: 'target', label: 'Elegir objetivo' },
+  { id: 'briefing', label: 'Ver briefing' },
+  { id: 'deployment', label: 'Preparar ejército' },
+  { id: 'combat', label: 'Combatir' },
 ]);
 
 export default function CampaignOperationSteps({ active = 'target' }) {
   const activeIndex = Math.max(0, STEPS.findIndex((step) => step.id === active));
+  const current = STEPS[activeIndex] || STEPS[0];
   return (
-    <nav className="campaign-operation-steps" aria-label="Fases de la operación">
-      {STEPS.map((step, index) => {
-        const state = index < activeIndex ? 'done' : index === activeIndex ? 'current' : 'pending';
-        return (
-          <div className={`campaign-operation-step ${state}`} key={step.id} aria-current={state === 'current' ? 'step' : undefined}>
-            <span className="campaign-operation-step-index">{state === 'done' ? '✓' : step.short}</span>
-            <span>{step.label}</span>
-          </div>
-        );
-      })}
-    </nav>
+    <div className="campaign-operation-progress" aria-label={`Paso ${activeIndex + 1} de ${STEPS.length}: ${current.label}`}>
+      <div className="campaign-operation-progress-copy">
+        <span>Paso {activeIndex + 1} de {STEPS.length}</span>
+        <strong>{current.label}</strong>
+      </div>
+      <div className="campaign-operation-progress-dots" aria-hidden="true">
+        {STEPS.map((step, index) => (
+          <i key={step.id} className={index < activeIndex ? 'done' : index === activeIndex ? 'current' : ''} />
+        ))}
+      </div>
+    </div>
   );
 }

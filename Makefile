@@ -220,7 +220,7 @@ coverage-be: ensure-backend-deps
 coverage: coverage-fe coverage-be
 
 e2e-install: ensure-frontend-deps
-	cd e2e && npm install --no-package-lock --no-save @playwright/test@1.62.1
+	cd e2e && npm ci
 	cd e2e && ./node_modules/.bin/playwright install chromium
 
 e2e: e2e-install frontend-build

@@ -15,58 +15,61 @@ export default function CampaignBriefing({ campaign, node, onBuyIntel, onContinu
   const canBuy = nextTier && campaign.operationalCredits >= nextTier.cost;
 
   return (
-    <div className="campaign-briefing-card campaign-operation-stage">
+    <div className="campaign-briefing-card campaign-operation-stage simplified-stage">
       <CampaignOperationSteps active="briefing" />
 
-      <div className="campaign-briefing-heading campaign-operation-heading">
+      <div className="campaign-briefing-heading campaign-operation-heading simplified-heading">
         <div>
-          <span className="section-label">OPERACIÓN · SECTOR {node.stage}</span>
+          <span className="section-label">SECTOR {node.stage}</span>
           <h3 title={node.description}>{node.label}</h3>
-          <p className="campaign-briefing-command">Primero mira qué cambia en este combate. La inteligencia sólo añade precisión.</p>
+          <p className="campaign-briefing-command">Esto es lo único que necesitas saber antes de preparar tus piezas.</p>
         </div>
         <button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)} aria-label="Tutorial de inteligencia">?</button>
       </div>
 
       <div className="campaign-rule-alert" aria-label="Regla visible del encuentro">
-        <span>QUÉ CAMBIA EN ESTA BATALLA</span>
+        <span>EN ESTA BATALLA</span>
         <strong>{intel.modifierLabel}</strong>
         <p>{intel.modifierDescription}</p>
       </div>
 
-      <div className="campaign-briefing-grid simplified">
-        <section className="campaign-intel-panel" aria-label="Inteligencia de la operación">
-          <span className="campaign-intel-kicker">INTELIGENCIA · {intel.levelLabel}</span>
-          <dl>
-            <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : 'Compra Contacto para estimarla'}</dd></div>
-            {intel.exactDifficulty != null && <div><dt>CPU exacta</dt><dd>{intel.exactDifficulty}</dd></div>}
-            {intel.bossHp != null && <div><dt>Boss</dt><dd>Rey con {intel.bossHp} HP</dd></div>}
-          </dl>
-          <small className="campaign-intel-note">La regla del tablero de arriba siempre es pública. La intel revela amenaza y detalles, no reglas ocultas.</small>
-        </section>
-
-        <section className="campaign-intel-buy" aria-label="Compra de inteligencia">
-          <span>CRÉDITOS OPERATIVOS</span>
-          <strong>{campaign.operationalCredits}</strong>
-          {nextTier ? (
-            <>
-              <p title={`Subir la inteligencia a ${nextTier.label}`}>Siguiente nivel: {nextTier.label} · <b>{nextTier.cost}</b> cr.</p>
-              <button type="button" className="secondary-btn" disabled={!canBuy} onClick={onBuyIntel}>
-                {canBuy ? `Comprar inteligencia · −${nextTier.cost}` : `Faltan ${nextTier.cost - campaign.operationalCredits} créditos`}
-              </button>
-            </>
-          ) : (
-            <p title="No hay más niveles de inteligencia disponibles.">Inteligencia máxima.</p>
-          )}
-        </section>
-      </div>
-
-      <div className="campaign-operation-primary-zone campaign-briefing-primary-zone">
+      <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
         <div>
           <span>SIGUIENTE</span>
-          <small>Prepara la fuerza que quieres arriesgar.</small>
+          <small>Elige qué unidades quieres llevar.</small>
         </div>
-        <button type="button" className="primary-btn campaign-main-cta" onClick={onContinue}>PREPARAR DESPLIEGUE →</button>
+        <button type="button" className="primary-btn campaign-main-cta" onClick={onContinue}>PREPARAR EJÉRCITO →</button>
       </div>
+
+      <details className="campaign-optional-panel campaign-intel-optional">
+        <summary>¿Quieres saber más del rival?</summary>
+        <p className="hint-text">Es opcional. La regla que cambia el tablero ya está explicada arriba.</p>
+        <div className="campaign-briefing-grid simplified">
+          <section className="campaign-intel-panel" aria-label="Inteligencia de la operación">
+            <span className="campaign-intel-kicker">INTELIGENCIA · {intel.levelLabel}</span>
+            <dl>
+              <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : 'Aún sin estimar'}</dd></div>
+              {intel.exactDifficulty != null && <div><dt>CPU exacta</dt><dd>{intel.exactDifficulty}</dd></div>}
+              {intel.bossHp != null && <div><dt>Boss</dt><dd>Rey con {intel.bossHp} HP</dd></div>}
+            </dl>
+          </section>
+
+          <section className="campaign-intel-buy" aria-label="Compra de inteligencia">
+            <span>CRÉDITOS</span>
+            <strong>{campaign.operationalCredits}</strong>
+            {nextTier ? (
+              <>
+                <p>Siguiente nivel: {nextTier.label} · <b>{nextTier.cost}</b> cr.</p>
+                <button type="button" className="secondary-btn" disabled={!canBuy} onClick={onBuyIntel}>
+                  {canBuy ? `Comprar inteligencia · −${nextTier.cost}` : `Faltan ${nextTier.cost - campaign.operationalCredits} créditos`}
+                </button>
+              </>
+            ) : (
+              <p>Inteligencia máxima.</p>
+            )}
+          </section>
+        </div>
+      </details>
 
       <div className="campaign-briefing-actions campaign-secondary-actions">
         <button type="button" className="campaign-retire-link" onClick={onRetire}>Retirar operación</button>

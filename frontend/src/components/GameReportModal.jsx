@@ -66,7 +66,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card game-autopsy" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+      <div className="army-card game-autopsy" role="dialog" aria-modal="true" aria-label="Autopsia de la partida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <p className="eyebrow">Medicina legal ajedrecística</p>
         <h3>Autopsia de la partida</h3>

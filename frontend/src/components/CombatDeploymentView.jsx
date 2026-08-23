@@ -79,6 +79,11 @@ function UnitCard({
   const rank = pieceRankForLevel(level);
   const alias = roster.identities?.[unitKey]?.alias || 'Sin alias';
   const transformed = activeType && activeType !== originType;
+  const bankedXp = Math.max(0, Number(saved?.bankedXp) || 0);
+  const canUpgrade = unitKey !== 'k-e' && (
+    bankedXp >= costForNextPoint(Math.max(0, Number(saved?.strengthPoints) || 0)) ||
+    bankedXp >= costForNextPoint(Math.max(0, Number(saved?.speedPoints) || 0))
+  );
 
   return (
     <button
@@ -112,6 +117,7 @@ function UnitCard({
       <span className="deployment-unit-symbol-wrap" aria-hidden="true">
         <span className="deployment-unit-symbol">{TYPE_SYMBOL[activeType] || '♙'}</span>
         <RankInsignia rankOrLevel={rank} className="unit-rank-insignia" decorative />
+        {canUpgrade && <span className="deployment-upgrade-ready" title={`${bankedXp} XP · mejora disponible`}>+</span>}
       </span>
       <span className="deployment-unit-copy">
         <strong>{alias}</strong>
@@ -201,6 +207,11 @@ function UnitDossierPopover({
       aria-label={`Ficha de unidad de ${alias}`}
       onMouseEnter={onKeepOpen}
       onMouseLeave={onLeave}
+      onAuxClick={(event) => {
+        if (event.button !== 1) return;
+        event.preventDefault();
+        onClose();
+      }}
     >
       <div className="deployment-unit-dossier-topbar">
         <div>

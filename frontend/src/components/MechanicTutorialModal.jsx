@@ -24,7 +24,7 @@ export default function MechanicTutorialModal({ tutorialId, onClose, startAt = 0
 
   return (
     <div className="modal-backdrop mechanic-tutorial-backdrop" onClick={onClose}>
-      <section className="mechanic-tutorial-card" onClick={(e) => e.stopPropagation()} aria-label={`Tutorial: ${tutorial.title}`}>
+      <section className="mechanic-tutorial-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} aria-label={`Tutorial: ${tutorial.title}`}>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label="Cerrar tutorial">×</button>
         <span className="section-label">TUTORIAL IN-GAME · {tutorial.group}</span>
         <h2>{tutorial.title}</h2>

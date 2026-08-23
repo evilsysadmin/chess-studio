@@ -9,7 +9,7 @@ export default function AchievementsModal({ onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+      <div className="army-card" role="dialog" aria-modal="true" aria-label="Logros y expediente" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <h3>Logros y expediente</h3>
         <p className="hint-text" style={{ marginBottom: '1rem' }}>
