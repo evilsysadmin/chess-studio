@@ -1,3 +1,5 @@
+import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+
 // profileKeys.js — Única lista de claves que forman el perfil del usuario.
 // MongoDB es la fuente persistente de verdad; localStorage es la caché de
 // trabajo síncrona que consumen las pantallas existentes.
@@ -78,24 +80,24 @@ function emitProfileChanged() {
 }
 
 export function markProfileDirtyForCurrentUser() {
-  const username = localStorage.getItem(AUTH_USERNAME_KEY);
-  if (username) localStorage.setItem(PROFILE_DIRTY_USER_KEY, username);
+  const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
+  if (username) setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY, username);
 }
 
 export function hasDirtyProfileForCurrentUser() {
-  const username = localStorage.getItem(AUTH_USERNAME_KEY);
-  return !!username && localStorage.getItem(PROFILE_DIRTY_USER_KEY) === username;
+  const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
+  return !!username && getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY) === username;
 }
 
 export function clearProfileDirty() {
-  localStorage.removeItem(PROFILE_DIRTY_USER_KEY);
+  removeStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY);
 }
 
 export function setProfileStorageItem(key, value) {
   if (!PROFILE_STORAGE_KEYS.includes(key)) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
-  localStorage.setItem(key, value);
+  setStorageItem(STORAGE_LOCAL, key, value);
   markProfileDirtyForCurrentUser();
   emitProfileChanged();
 }
@@ -104,27 +106,27 @@ export function removeProfileStorageItem(key) {
   if (!PROFILE_STORAGE_KEYS.includes(key)) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
-  localStorage.removeItem(key);
+  removeStorageItem(STORAGE_LOCAL, key);
   markProfileDirtyForCurrentUser();
   emitProfileChanged();
 }
 
 
 export function clearProfileProgress() {
-  for (const key of PROFILE_PROGRESS_KEYS) localStorage.removeItem(key);
+  for (const key of PROFILE_PROGRESS_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   markProfileDirtyForCurrentUser();
   emitProfileChanged();
 }
 
 export function clearProfileCache({ notify = false } = {}) {
-  for (const key of PROFILE_STORAGE_KEYS) localStorage.removeItem(key);
-  localStorage.removeItem('chess-study-cpu-personality'); // legado de versiones con selector: ya no existe
-  localStorage.removeItem('chess-study-ambient-theme'); // V15.4: la música pasa a ser de sesión, no de perfil
+  for (const key of PROFILE_STORAGE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  removeStorageItem(STORAGE_LOCAL, 'chess-study-cpu-personality'); // legado de versiones con selector: ya no existe
+  removeStorageItem(STORAGE_LOCAL, 'chess-study-ambient-theme'); // V15.4: la música pasa a ser de sesión, no de perfil
   if (notify) emitProfileChanged();
 }
 
 export function clearLocalUserState() {
   clearProfileCache();
-  for (const key of SESSION_STATE_KEYS) localStorage.removeItem(key);
+  for (const key of SESSION_STATE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   clearProfileDirty();
 }

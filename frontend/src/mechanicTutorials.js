@@ -18,8 +18,8 @@ export const MECHANIC_TUTORIALS = Object.freeze([
   {
     id: 'combat-deployment',
     group: 'Combat Chess',
-    title: 'Deployment y reservas',
-    summary: 'Monta la fuerza en el tablero antes de combatir.',
+    title: 'Prepara tu formación',
+    summary: 'Coloca las 16 unidades que lucharán. Las que dejes fuera se quedan seguras en la reserva.',
     steps: [
       { title: 'El tablero es la mesa de guerra', text: 'Arrastra una unidad o selecciónala y toca una casilla válida. Los 16 puestos representan los slots reales que entrarán al combate.' },
       { title: 'El tipo de origen manda', text: 'Cada puesto acepta un único tipo de origen. Un peón metamorfoseado sigue siendo peón y ocupa un slot de peón.' },
@@ -41,8 +41,8 @@ export const MECHANIC_TUTORIALS = Object.freeze([
   {
     id: 'combat-campaign',
     group: 'Combat Chess',
-    title: 'Campaña táctica',
-    summary: 'Ruta, eventos, campamentos, élites, reservas y boss.',
+    title: 'Tu campaña de Combat Chess',
+    summary: 'Elige una ruta, prepara tu ejército y sobrevive sector a sector hasta el boss. Tus veteranos y reservas continúan entre batallas.',
     steps: [
       { title: 'Lee el mapa completo', text: 'La operación muestra los siete sectores, sus tres carriles y todas las bifurcaciones. La línea dorada marca tu ruta recorrida y las conexiones activas enseñan únicamente los destinos accesibles.' },
       { title: 'Elige la ruta', text: 'Combates, élites, eventos y campamentos se ven de antemano. Cualquier regla que cambie el material inicial se anuncia siempre antes de combatir; la intel compra precisión, no evita sorpresas.' },

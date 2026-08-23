@@ -1,3 +1,5 @@
+import { STORAGE_LOCAL, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
+
 export const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const VERSION = 1;
 const VALID_ROUTES = new Set(['game', 'tournamentGame']);
@@ -8,7 +10,7 @@ function safeContext(value) {
 }
 
 export function saveActiveGameSession({ route, game, learningMode = false, gameContext = {}, timeControlId = null }) {
-  if (typeof localStorage === 'undefined' || !VALID_ROUTES.has(route) || !game?.id) return null;
+  if (!VALID_ROUTES.has(route) || !game?.id) return null;
   const snapshot = {
     version: VERSION,
     route,
@@ -19,18 +21,12 @@ export function saveActiveGameSession({ route, game, learningMode = false, gameC
     timeControlId: timeControlId || null,
     savedAt: Date.now(),
   };
-  try {
-    localStorage.setItem(ACTIVE_GAME_SESSION_KEY, JSON.stringify(snapshot));
-    return snapshot;
-  } catch {
-    return null;
-  }
+  return writeJsonStorage(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY, snapshot) ? snapshot : null;
 }
 
 export function loadActiveGameSession() {
-  if (typeof localStorage === 'undefined') return null;
+  const snapshot = readJsonStorage(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY, { fallback: null, removeMalformed: true });
   try {
-    const snapshot = JSON.parse(localStorage.getItem(ACTIVE_GAME_SESSION_KEY) || 'null');
     if (!snapshot || snapshot.version !== VERSION) return null;
     if (!VALID_ROUTES.has(snapshot.route) || typeof snapshot.gameId !== 'string' || !snapshot.gameId) return null;
     return {
@@ -45,5 +41,5 @@ export function loadActiveGameSession() {
 }
 
 export function clearActiveGameSession() {
-  if (typeof localStorage !== 'undefined') localStorage.removeItem(ACTIVE_GAME_SESSION_KEY);
+  removeStorageItem(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY);
 }

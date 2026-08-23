@@ -13,7 +13,7 @@ export default function ModeTutorialTip({ tutorialId }) {
       <span className="mode-tutorial-tip">
         <button
           type="button"
-          className="mode-tutorial-tip-button"
+          className={`mode-tutorial-tip-button ${tutorialId === 'combat-campaign' ? 'is-featured' : ''}`}
           aria-label={`Ayuda de ${tutorial.title}`}
           aria-describedby={tooltipId}
           onClick={(event) => {
@@ -25,7 +25,7 @@ export default function ModeTutorialTip({ tutorialId }) {
         <span id={tooltipId} role="tooltip" className="mode-tutorial-tooltip">
           <strong>{tutorial.title}</strong>
           <span>{tutorial.summary}</span>
-          <small>Clic para abrir el tutorial</small>
+          <small>ABRIR GUÍA →</small>
         </span>
       </span>
       {open && <MechanicTutorialModal tutorialId={tutorialId} onClose={() => setOpen(false)} />}

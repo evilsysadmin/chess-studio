@@ -7483,24 +7483,38 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   z-index: 8;
 }
 .mode-tutorial-tip-button {
-  width: 27px;
-  height: 27px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--brass) 42%, var(--ink-3));
+  border: 1px solid color-mix(in srgb, var(--brass) 72%, var(--ink-3));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--ink-1) 88%, transparent);
-  color: var(--brass);
-  font: 800 .72rem var(--font-mono);
+  background: color-mix(in srgb, var(--brass) 14%, var(--ink-1));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brass) 8%, transparent);
+  color: #f3e6c6;
+  font: 900 .78rem var(--font-mono);
   cursor: help;
-  opacity: .78;
-  transition: opacity .15s ease, border-color .15s ease, background .15s ease;
+  opacity: .96;
+  transition: opacity .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease;
 }
+.mode-tutorial-tip-button.is-featured {
+  border-color: var(--brass);
+  background: color-mix(in srgb, var(--brass) 22%, var(--ink-1));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brass) 12%, transparent), 0 0 18px rgba(224,180,74,.18);
+  animation: tutorial-tip-pulse 2.8s ease-in-out infinite;
+}
+@keyframes tutorial-tip-pulse {
+  0%, 72%, 100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brass) 10%, transparent), 0 0 14px rgba(224,180,74,.12); }
+  84% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--brass) 16%, transparent), 0 0 22px rgba(224,180,74,.24); }
+}
+
 .mode-tutorial-tip-button:hover,
 .mode-tutorial-tip-button:focus-visible {
   opacity: 1;
   border-color: var(--brass);
-  background: color-mix(in srgb, var(--brass) 12%, var(--ink-1));
+  background: color-mix(in srgb, var(--brass) 22%, var(--ink-1));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brass) 14%, transparent);
+  transform: translateY(-1px);
   outline: none;
 }
 .mode-tutorial-tooltip {
@@ -7508,11 +7522,11 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   position: absolute;
   top: calc(100% + .42rem);
   right: 0;
-  width: min(250px, calc(100vw - 2rem));
+  width: min(310px, calc(100vw - 2rem));
   display: grid;
-  gap: .28rem;
-  padding: .62rem .68rem;
-  border: 1px solid color-mix(in srgb, var(--brass) 36%, var(--ink-3));
+  gap: .36rem;
+  padding: .74rem .8rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 62%, var(--ink-3));
   border-radius: 8px;
   background: rgba(19, 18, 16, .98);
   box-shadow: 0 14px 34px rgba(0,0,0,.42);
@@ -7523,9 +7537,9 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   transition: opacity .12s ease, transform .12s ease, visibility .12s ease;
   text-align: left;
 }
-.mode-tutorial-tooltip strong { font-size: .72rem; color: #f3e6c6; }
-.mode-tutorial-tooltip > span { font-size: .65rem; line-height: 1.4; color: var(--parchment-dim); }
-.mode-tutorial-tooltip small { font: .55rem var(--font-mono); letter-spacing: .04em; color: var(--brass); }
+.mode-tutorial-tooltip strong { font-size: .78rem; color: #f3e6c6; }
+.mode-tutorial-tooltip > span { font-size: .69rem; line-height: 1.5; color: var(--parchment); }
+.mode-tutorial-tooltip small { margin-top: .08rem; font: 800 .56rem var(--font-mono); letter-spacing: .07em; color: var(--brass); }
 .mode-tutorial-tip:hover .mode-tutorial-tooltip,
 .mode-tutorial-tip:focus-within .mode-tutorial-tooltip {
   opacity: 1;
@@ -8632,4 +8646,8 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .admin-presence-summary { grid-template-columns: 1fr; }
   .admin-activity-filters { gap: 0.35rem; }
   .admin-filter-chip { min-height: 40px; padding: 0.5rem 0.62rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-tutorial-tip-button.is-featured { animation: none; }
 }

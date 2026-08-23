@@ -56,7 +56,7 @@ describe('tutoriales de mecánicas no estándar', () => {
       expect(menu, `${tutorialId} sin acceso rápido desde el menú`).toContain(`tutorialId="${tutorialId}"`);
     }
     expect(tip).toContain('tutorial.summary');
-    expect(tip).toContain('Clic para abrir el tutorial');
+    expect(tip).toContain('setOpen(true)');
     expect(tip).toContain('<MechanicTutorialModal');
   });
 

@@ -6,7 +6,7 @@ export const GAME_MODE_LABELS = Object.freeze({
   casual: 'Partida rápida',
   ghost: 'Rival Fantasma',
   lab: 'Laboratorio',
-  rescue: 'Salvar cadáver',
+  rescue: 'Rescate legacy', // compatibilidad con partidas creadas antes de retirar la resurrección del Cementerio
   sudden: 'Muerte súbita',
   cup: 'Copa de 8',
   boss: 'Boss Run',

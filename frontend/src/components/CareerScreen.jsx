@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Chess } from 'chess.js';
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { currentDailyStreak } from '../dailyChallenge.js';
 import { loadRivalry } from '../rivalry.js';
@@ -22,13 +21,6 @@ function HeatmapBoard({counts,max,tone='activity',label}) {
   return <div className="career-heatmap-card"><b>{label}</b><div className="career-heat-board" aria-label={label}>{HEAT_RANKS.flatMap(rank=>HEAT_FILES.map(file=>{const sq=`${file}${rank}`;const n=Number(counts?.[sq]||0);const ratio=max?Math.min(1,n/max):0;return <div key={sq} className={`career-heat-cell ${(Number(rank)+HEAT_FILES.indexOf(file))%2?'dark':'light'}`} title={`${sq}: ${n}`} style={{boxShadow:n?`inset 0 0 0 999px rgba(${rgb},${(.08+ratio*.68).toFixed(2)})`:undefined}}><span>{n||''}</span></div>}))}</div><small>Más intensidad = más veces registrado. Datos de tus partidas guardadas.</small></div>;
 }
 
-function rescueFen(record) {
-  const moves = record?.moves || [];
-  if (moves.length < 6) return null;
-  const target = Math.max(2, Math.min(moves.length - 1, Math.floor(moves.length * 0.62)));
-  const c = new Chess(record.initialFen || undefined);
-  try { for (let i=0;i<target;i++) c.move(moves[i].san || {from:moves[i].from,to:moves[i].to,promotion:'q'}); return c.fen(); } catch { return null; }
-}
 
 export default function CareerScreen({ history, ratingHistory, onExit, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, embedded = false }) {
   useEscapeToClose(onExit, { disabled: embedded });
@@ -111,7 +103,7 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
 
     <div className="menu-section"><h2>🎨 Tableros desbloqueables</h2><p className="hint-text">Cosmética pura. El <GlossaryTerm term="ELO">ELO</GlossaryTerm> no mejora por pintar las casillas, aunque algunas derrotas quedan más elegantes.</p><div className="board-theme-list">{BOARD_THEMES.map(t=>{const unlocked=themes.some(x=>x.id===t.id);return <button key={t.id} disabled={!unlocked} className={`secondary-btn ${theme===t.id?'active':''}`} onClick={()=>{const next=saveBoardTheme(t.id);setTheme(next);}}>{unlocked?t.label:`🔒 ${t.label}`}</button>})}</div></div>
 
-    <div className="menu-section"><h2>⚰ Cementerio de partidas</h2><p className="hint-text">Se mantiene la nigromancia que ya existía, sin ampliarla: revisar, película y el rescate de posición intermedia que ya tenías. Sigue siendo entrenamiento y no toca <GlossaryTerm term="ELO">ELO</GlossaryTerm>.</p>{cemetery.length===0?<p className="hint-text">Vacío. Sospechosamente saludable.</p>:<div className="career-cemetery">{cemetery.map(r=>{const fen=rescueFen(r);return <article key={r.id}><div><b>{new Date(r.date).toLocaleDateString()} · CPU {r.difficulty}</b><span>{r.opening||'Apertura sin identificar'} · {Math.ceil((r.moves?.length||0)/2)} mov.</span></div><div><button className="secondary-btn" onClick={()=>onOpenRecord(r)}>Revisar</button><button className="secondary-btn" onClick={()=>onMovie(r)}>Película</button>{fen&&onPlayFromHere&&<button className="primary-btn" onClick={()=>onPlayFromHere(fen,r.humanColor,r.difficulty,{sourceRecord:r,rescue:true})}>¿Salvar este cadáver?</button>}</div></article>})}</div>}</div>
+    <div className="menu-section"><h2>⚰ Cementerio de partidas</h2><p className="hint-text">Archivo selectivo de derrotas especialmente memorables. Aquí se revisan y se autopsian; para entrenar una posición concreta, usa «Jugar desde aquí» dentro del Replay.</p>{cemetery.length===0?<p className="hint-text">Vacío. Sospechosamente saludable.</p>:<div className="career-cemetery">{cemetery.map(r=><article key={r.id}><div><b>{new Date(r.date).toLocaleDateString()} · CPU {r.difficulty}</b><span>{r.opening||'Apertura sin identificar'} · {Math.ceil((r.moves?.length||0)/2)} mov.</span></div><div><button className="secondary-btn" onClick={()=>onOpenRecord(r)}>Revisar</button><button className="secondary-btn" onClick={()=>onMovie(r)}>Película</button></div></article>)}</div>}</div>
 
     {career.milestones?.length>0&&<div className="menu-section"><h2>🏛 Museo del horror y la gloria</h2><div className="career-timeline">{career.milestones.slice(0,18).map(m=><div key={m.id}><b>{m.type==='contract-loss'?'☠':m.type==='contract-win'?'✓':'◆'}</b><span>{m.text}</span><small>{new Date(m.date).toLocaleDateString()}</small></div>)}</div></div>}
     {memories.length>0&&<div className="menu-section"><h2>📜 Crónica de la rivalidad</h2><p className="hint-text">Hitos y antecedentes reales que la CPU puede utilizar más tarde contra ti.</p><div className="career-timeline">{memories.slice(0,18).map((m,i)=><div key={`${m.date}-${i}`}><b>♟</b><span>{m.text}</span><small>{new Date(m.date).toLocaleDateString()}</small></div>)}</div></div>}

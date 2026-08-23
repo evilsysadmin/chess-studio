@@ -1,12 +1,14 @@
+import { STORAGE_LOCAL, listStorageKeys, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
+
 const PREFIX = 'chess-study-clock:';
 const VERSION = 1;
 
 function key(gameId) { return `${PREFIX}${gameId}`; }
 
 export function loadClockSnapshot(gameId) {
-  if (!gameId || typeof localStorage === 'undefined') return null;
+  if (!gameId) return null;
   try {
-    const value = JSON.parse(localStorage.getItem(key(gameId)) || 'null');
+    const value = readJsonStorage(STORAGE_LOCAL, key(gameId), { fallback: null, removeMalformed: true });
     if (!value || value.version !== VERSION || value.gameId !== gameId) return null;
     if (!Number.isFinite(value.whiteTime) || !Number.isFinite(value.blackTime)) return null;
     if (!['w', 'b'].includes(value.activeColor)) return null;
@@ -16,15 +18,14 @@ export function loadClockSnapshot(gameId) {
 }
 
 export function saveClockSnapshot({ gameId, timeControlId, whiteTime, blackTime, activeColor, now = Date.now() }) {
-  if (!gameId || typeof localStorage === 'undefined') return null;
+  if (!gameId) return null;
   if (!Number.isFinite(whiteTime) || !Number.isFinite(blackTime) || !['w', 'b'].includes(activeColor)) return null;
   const value = { version: VERSION, gameId, timeControlId: timeControlId || 'none', whiteTime, blackTime, activeColor, savedAt: now };
-  localStorage.setItem(key(gameId), JSON.stringify(value));
-  return value;
+  return writeJsonStorage(STORAGE_LOCAL, key(gameId), value) ? value : null;
 }
 
 export function clearClockSnapshot(gameId) {
-  if (gameId && typeof localStorage !== 'undefined') localStorage.removeItem(key(gameId));
+  if (gameId) removeStorageItem(STORAGE_LOCAL, key(gameId));
 }
 
 export function restoreClockState(gameId, timeControl, currentTurn, now = Date.now()) {
@@ -49,12 +50,7 @@ export function restoreClockState(gameId, timeControl, currentTurn, now = Date.n
 
 
 export function clearAllClockSnapshots() {
-  if (typeof localStorage === 'undefined') return 0;
-  const keys = [];
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const candidate = localStorage.key(i);
-    if (candidate?.startsWith(PREFIX)) keys.push(candidate);
-  }
-  for (const candidate of keys) localStorage.removeItem(candidate);
+  const keys = listStorageKeys(STORAGE_LOCAL, { prefix: PREFIX });
+  for (const candidate of keys) removeStorageItem(STORAGE_LOCAL, candidate);
   return keys.length;
 }

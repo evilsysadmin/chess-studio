@@ -11,6 +11,7 @@ import { clearAllClockSnapshots } from './clockPersistence.js';
 import { clearCombatSession } from './combatSession.js';
 import { clearHomePlayNudgeSession } from './homePlayNudge.js';
 import { APP_RELEASE } from './release.js';
+import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 export const USERNAME_KEY = 'chess-study-auth-username';
@@ -35,11 +36,11 @@ async function handle(response) {
 }
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  return getStorageItem(STORAGE_LOCAL, TOKEN_KEY);
 }
 
 export function getUsername() {
-  return localStorage.getItem(USERNAME_KEY);
+  return getStorageItem(STORAGE_LOCAL, USERNAME_KEY);
 }
 
 export function isLoggedIn() {
@@ -81,8 +82,8 @@ function saveSession(token, username) {
   clearLocalUserState();
   clearAllClockSnapshots();
   clearCombatSession();
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USERNAME_KEY, username);
+  setStorageItem(STORAGE_LOCAL, TOKEN_KEY, token);
+  setStorageItem(STORAGE_LOCAL, USERNAME_KEY, username);
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
   // puede cambiar el tema después y se conservará hasta logout/nuevo login.
   markAmbientThemeSessionFresh();
@@ -97,8 +98,8 @@ export function logout() {
   clearAllClockSnapshots();
   clearCombatSession();
   clearHomePlayNudgeSession();
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USERNAME_KEY);
+  removeStorageItem(STORAGE_LOCAL, TOKEN_KEY);
+  removeStorageItem(STORAGE_LOCAL, USERNAME_KEY);
 }
 
 export async function register(username, password, email, inviteCode = '') {

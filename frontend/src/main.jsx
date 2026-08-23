@@ -4,7 +4,9 @@ import App from './App.jsx';
 import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './styles.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
+import { migratePersistentStorage } from './storageMigrations.js';
 
+migratePersistentStorage();
 installReleaseContinuity();
 
 ReactDOM.createRoot(document.getElementById('root')).render(

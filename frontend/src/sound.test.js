@@ -13,6 +13,7 @@ import {
   getAmbientThemeVariationDurationMs,
   getAmbientTrackDurationMs,
   getAmbientVolume,
+  duckAmbientMusic,
   pickRandomAmbientThemeId,
   resetAmbientThemeForSession,
   seekAmbientMusic,
@@ -326,6 +327,11 @@ describe('ambient music catalog', () => {
     expect(getAmbientVolume()).toBe(1);
     setAmbientVolume(-3);
     expect(getAmbientVolume()).toBe(0);
+  });
+
+  it('el ducking es seguro aunque Web Audio no esté disponible', () => {
+    expect(() => duckAmbientMusic(true)).not.toThrow();
+    expect(() => duckAmbientMusic(false)).not.toThrow();
   });
 
   it('puede sortear un tema nuevo para una sesión nueva', () => {

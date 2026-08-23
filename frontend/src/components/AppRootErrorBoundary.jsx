@@ -1,14 +1,11 @@
 import React from 'react';
 import { loadActiveGameSession } from '../activeGameSession.js';
 import { STORAGE_KEY } from '../api.js';
+import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
 
 function hasRecoverableGame() {
   if (loadActiveGameSession()) return true;
-  try {
-    return Boolean(localStorage.getItem(STORAGE_KEY));
-  } catch {
-    return false;
-  }
+  return Boolean(getStorageItem(STORAGE_LOCAL, STORAGE_KEY));
 }
 
 // Último fusible, montado por encima de <App /> en main.jsx. El boundary

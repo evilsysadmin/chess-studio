@@ -6,6 +6,7 @@
 // cambios sin permitir que dos PUT concurrentes terminen fuera de orden.
 
 import { api } from './api.js';
+import { STORAGE_LOCAL, getStorageItem, setStorageItem } from './safeStorage.js';
 import { getToken, getUsername } from './auth.js';
 import {
   PROFILE_STORAGE_KEYS,
@@ -27,7 +28,7 @@ let scheduledTimer = null;
 export function exportProfile() {
   const data = {};
   for (const key of EXPORTABLE_KEYS) {
-    const value = localStorage.getItem(key);
+    const value = getStorageItem(STORAGE_LOCAL, key);
     if (value !== null) data[key] = value;
   }
   return {
@@ -81,7 +82,7 @@ export function importProfile(rawTextOrObject, { replace = false, markDirty = fa
   let restored = 0;
   for (const key of EXPORTABLE_KEYS) {
     if (typeof parsed.data[key] === 'string') {
-      localStorage.setItem(key, parsed.data[key]);
+      setStorageItem(STORAGE_LOCAL, key, parsed.data[key]);
       restored += 1;
     }
   }

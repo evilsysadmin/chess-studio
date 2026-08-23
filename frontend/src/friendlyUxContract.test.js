@@ -13,6 +13,8 @@ const spectator = read('SpectatorScreen.jsx');
 const mirror = read('MirrorModeModal.jsx');
 const lab = read('LabScreen.jsx');
 const history = read('HistoryScreen.jsx');
+const career = read('CareerScreen.jsx');
+const replay = read('ReplayScreen.jsx');
 const status = read('PlayerStatusBar.jsx');
 const homeNudge = read('HomePlayNudge.jsx');
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
@@ -94,6 +96,13 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
   it('historial es lectura primero y deja borrar detrás de opciones', () => {
     expect(history).toContain('Resultado, modo y fecha quedan a simple vista');
     expect(history).toContain('<summary>Opciones del historial</summary>');
+  });
+
+  it('cementerio queda como archivo/autopsia y el entrenamiento desde FEN vive en Replay', () => {
+    expect(career).toContain('Archivo selectivo de derrotas especialmente memorables');
+    expect(career).not.toContain('¿Salvar este cadáver?');
+    expect(career).not.toContain('rescueFen(');
+    expect(replay).toContain('Jugar desde aquí contra la CPU');
   });
   it('los modales comunes exponen semántica de diálogo accesible', () => {
     const modalFiles = [

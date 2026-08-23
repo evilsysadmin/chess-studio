@@ -1,3 +1,5 @@
+import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, setStorageItem, writeJsonStorage } from './safeStorage.js';
+
 // viewState.js — navegación de sesión resistente a refresh y con historial.
 // Solo persistimos pantallas que pueden reconstruirse únicamente desde el
 // perfil/caché ya cargados. Las vistas efímeras (partida/replay) sí pueden
@@ -29,22 +31,17 @@ function allowedView(view, { isAdminUser = false } = {}) {
 }
 
 export function loadSessionView({ isAdminUser = false } = {}) {
-  if (typeof sessionStorage === 'undefined') return 'menu';
-  const saved = sessionStorage.getItem(VIEW_STORAGE_KEY);
+  const saved = getStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY);
   return allowedView(saved, { isAdminUser }) ? saved : 'menu';
 }
 
 export function rememberSessionView(view) {
-  if (typeof sessionStorage === 'undefined') return;
-  if (RESTORABLE_VIEWS.includes(view)) {
-    sessionStorage.setItem(VIEW_STORAGE_KEY, view);
-  }
+  if (RESTORABLE_VIEWS.includes(view)) setStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY, view);
 }
 
 export function loadSessionViewHistory({ isAdminUser = false } = {}) {
-  if (typeof sessionStorage === 'undefined') return [];
   try {
-    const parsed = JSON.parse(sessionStorage.getItem(VIEW_HISTORY_STORAGE_KEY) || '[]');
+    const parsed = readJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, { fallback: [], removeMalformed: true });
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-40);
   } catch {
@@ -53,15 +50,13 @@ export function loadSessionViewHistory({ isAdminUser = false } = {}) {
 }
 
 export function rememberSessionViewHistory(history) {
-  if (typeof sessionStorage === 'undefined') return;
   const safe = (Array.isArray(history) ? history : [])
     .filter((view) => RESTORABLE_VIEWS.includes(view))
     .slice(-40);
-  sessionStorage.setItem(VIEW_HISTORY_STORAGE_KEY, JSON.stringify(safe));
+  writeJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, safe);
 }
 
 export function clearSessionView() {
-  if (typeof sessionStorage === 'undefined') return;
-  sessionStorage.removeItem(VIEW_STORAGE_KEY);
-  sessionStorage.removeItem(VIEW_HISTORY_STORAGE_KEY);
+  removeStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY);
+  removeStorageItem(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY);
 }
