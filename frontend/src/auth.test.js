@@ -54,6 +54,7 @@ describe('register/login', () => {
     localStorage.setItem('chess-study-tournament', '{"points":999}');
     localStorage.setItem('chess-study-combat-roster', '{"combatXp":8000}');
     localStorage.setItem('chess-study-active-game', 'alice-game');
+    localStorage.setItem('chess-study-active-game-session-v1', '{"version":1,"route":"game","gameId":"alice-game"}');
     localStorage.setItem('chess-study-clock:alice-game', '{"version":1}');
 
     mockFetchOnce(201, { token: 'bob-token', username: 'bob' });
@@ -75,6 +76,7 @@ describe('register/login', () => {
 
     expect(localStorage.getItem('chess-study-tournament')).toBeNull();
     expect(localStorage.getItem('chess-study-active-game')).toBeNull();
+    expect(localStorage.getItem('chess-study-active-game-session-v1')).toBeNull();
     expect(getUsername()).toBe('bob');
   });
 
@@ -95,6 +97,7 @@ describe('logout', () => {
     localStorage.setItem('chess-study-tournament', '{"points":42}');
     localStorage.setItem('chess-study-muted', '1');
     localStorage.setItem('chess-study-active-game', 'game');
+    localStorage.setItem('chess-study-active-game-session-v1', '{"version":1,"route":"game","gameId":"game"}');
     localStorage.setItem('chess-study-clock:game', '{"version":1}');
 
     logout();
@@ -105,6 +108,7 @@ describe('logout', () => {
     expect(localStorage.getItem('chess-study-tournament')).toBeNull();
     expect(localStorage.getItem('chess-study-muted')).toBeNull();
     expect(localStorage.getItem('chess-study-active-game')).toBeNull();
+    expect(localStorage.getItem('chess-study-active-game-session-v1')).toBeNull();
     expect(localStorage.getItem('chess-study-clock:game')).toBeNull();
   });
 });

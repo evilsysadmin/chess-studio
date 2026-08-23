@@ -25,5 +25,6 @@ export const FRONTEND_CONTRACT_TESTS = Object.freeze([
   'src/friendlyUxContract.test.js',
   'src/mechanicTutorials.test.js',
   'src/narrativeWiring.test.js',
+  'src/releaseContinuityContract.test.js',
   'src/zenMode.test.js',
 ]);

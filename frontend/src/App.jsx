@@ -46,6 +46,7 @@ const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { chooseContract, clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
 import { loadSessionView, loadSessionViewHistory, rememberSessionView, rememberSessionViewHistory } from './viewState.js';
+import { clearActiveGameSession, loadActiveGameSession, saveActiveGameSession } from './activeGameSession.js';
 
 // Guarda si la partida activa es "Partida de práctica" (pistas gratis) por separado del propio
 // objeto de partida: ese objeto se reemplaza por completo con cada respuesta
@@ -55,7 +56,7 @@ const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
-  const [view, setViewRaw] = useState(() => loadSessionView({ isAdminUser }));
+  const [view, setViewRaw] = useState(() => loadActiveGameSession()?.route || loadSessionView({ isAdminUser }));
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
 
   const coarseActivity = useMemo(() => ({
@@ -117,7 +118,7 @@ function AppInner({ isAdminUser }) {
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [hasSavedGame, setHasSavedGame] = useState(!!localStorage.getItem(STORAGE_KEY));
+  const [hasSavedGame, setHasSavedGame] = useState(() => !!localStorage.getItem(STORAGE_KEY) || !!loadActiveGameSession());
   const [learningMode, setLearningMode] = useState(() => localStorage.getItem(LEARNING_STORAGE_KEY) === '1');
 
   const [tournament, setTournament] = useState(() => loadTournament());
@@ -284,6 +285,35 @@ function AppInner({ isAdminUser }) {
     localStorage.setItem(LEARNING_STORAGE_KEY, learningMode ? '1' : '0');
   }, [learningMode]);
 
+  // Snapshot local de la sesión activa. Mongo sigue siendo la fuente de verdad
+  // para el tablero, pero este sobre conserva la ruta y el contexto cliente
+  // (práctica/variantes/reloj) para que un refresh o un deploy pueda volver
+  // exactamente a la partida en curso. Torneo usa el mismo mecanismo.
+  useEffect(() => {
+    if (view === 'game' && game?.id) {
+      saveActiveGameSession({
+        route: 'game',
+        game,
+        learningMode,
+        gameContext,
+        timeControlId: activeTimeControl?.id || null,
+      });
+    } else if (view === 'tournamentGame' && tournamentGame?.id) {
+      saveActiveGameSession({ route: 'tournamentGame', game: tournamentGame });
+    }
+  }, [view, game, tournamentGame, learningMode, gameContext, activeTimeControl?.id]);
+
+  // En un deploy el navegador puede recargar el documento para obtener los
+  // chunks nuevos. Si había una sesión activa, la rehidratamos de Mongo sin
+  // obligar al usuario a volver al Home y pulsar "Continuar".
+  const startupRestoreAttempted = useRef(false);
+  useEffect(() => {
+    const saved = loadActiveGameSession();
+    if (!saved || startupRestoreAttempted.current) return;
+    startupRestoreAttempted.current = true;
+    restoreActiveSession(saved);
+  }, []);
+
   useEffect(() => {
     setRating(loadRating());
     setCombatXp(loadCombatRoster().combatXp);
@@ -339,19 +369,35 @@ function AppInner({ isAdminUser }) {
     }
   }
 
-  async function handleContinue() {
-    const savedId = localStorage.getItem(STORAGE_KEY);
-    if (!savedId) return;
+  async function restoreActiveSession(saved = loadActiveGameSession()) {
+    if (!saved?.gameId) return false;
     setLoading(true);
     setError(null);
     try {
-      const found = await api.getGame(savedId);
+      const found = await api.getGame(saved.gameId);
+      if (saved.route === 'tournamentGame') {
+        setTournamentGame(found);
+        currentViewRef.current = 'tournamentGame';
+        setViewRaw('tournamentGame');
+        setHasSavedGame(true);
+        return true;
+      }
+
       setGame(found);
-      setLearningMode(localStorage.getItem(LEARNING_STORAGE_KEY) === '1');
+      const savedLearning = typeof saved.learningMode === 'boolean'
+        ? saved.learningMode
+        : localStorage.getItem(LEARNING_STORAGE_KEY) === '1';
+      setLearningMode(savedLearning);
       setActiveContract(loadActiveContract());
       const storedRun = loadSpecialRun();
       setSpecialRun(storedRun);
-      setGameContext(storedRun?.active && storedRun.currentGameId === found.id ? { runMode: storedRun.mode } : (found.ghostStyle ? { ghost: true, ghostStyle: found.ghostStyle } : {}));
+      const restoredContext = saved.gameContext && Object.keys(saved.gameContext).length
+        ? saved.gameContext
+        : (storedRun?.active && storedRun.currentGameId === found.id
+          ? { runMode: storedRun.mode }
+          : (found.ghostStyle ? { ghost: true, ghostStyle: found.ghostStyle } : {}));
+      setGameContext(restoredContext);
+
       const storedSeries = loadActiveSeries();
       if (storedSeries?.currentGameId === found.id && !storedSeries.winner) {
         setActiveSeries(storedSeries);
@@ -360,18 +406,54 @@ function AppInner({ isAdminUser }) {
         clearActiveSeries();
         setActiveSeries(null);
         const clockSnapshot = loadClockSnapshot(found.id);
-        setActiveTimeControl(clockSnapshot?.timeControlId && clockSnapshot.timeControlId !== 'none'
-          ? timeControlById(clockSnapshot.timeControlId)
+        const restoredTimeControlId = saved.timeControlId || clockSnapshot?.timeControlId || null;
+        setActiveTimeControl(restoredTimeControlId && restoredTimeControlId !== 'none'
+          ? timeControlById(restoredTimeControlId)
           : null);
       }
-      navigateTo('game');
+      localStorage.setItem(STORAGE_KEY, found.id);
+      setHasSavedGame(true);
+      currentViewRef.current = 'game';
+      setViewRaw('game');
+      return true;
     } catch (e) {
-      setError('No se encontró esa partida en el servidor (puede haberse reiniciado).');
-      localStorage.removeItem(STORAGE_KEY);
-      setHasSavedGame(false);
+      // 404/403 = el savegame ya no existe o no pertenece a esta cuenta. Un
+      // fallo de red transitorio conserva el snapshot para poder reintentar.
+      if (e?.status === 404 || e?.status === 403) {
+        clearActiveGameSession();
+        localStorage.removeItem(STORAGE_KEY);
+        setHasSavedGame(false);
+        setError('La partida guardada ya no existe en el servidor.');
+      } else {
+        setHasSavedGame(true);
+        setError('No se pudo recuperar la partida en curso. Puedes reintentar cuando vuelva el servidor.');
+      }
+      currentViewRef.current = 'menu';
+      setViewRaw('menu');
+      return false;
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleContinue() {
+    const savedSession = loadActiveGameSession();
+    if (savedSession?.gameId) {
+      await restoreActiveSession(savedSession);
+      return;
+    }
+
+    const savedId = localStorage.getItem(STORAGE_KEY);
+    if (!savedId) return;
+    // Compatibilidad con perfiles/sesiones anteriores a v16.6dm6: construye
+    // un descriptor mínimo y deja que el restaurador común haga el resto.
+    await restoreActiveSession({
+      route: 'game',
+      gameId: savedId,
+      learningMode: localStorage.getItem(LEARNING_STORAGE_KEY) === '1',
+      gameContext: {},
+      timeControlId: loadClockSnapshot(savedId)?.timeControlId || null,
+    });
   }
 
   function handleExitGame() {
@@ -383,6 +465,7 @@ function AppInner({ isAdminUser }) {
       setSpecialRun(endedRun);
     }
     if (game?.id) clearClockSnapshot(game.id);
+    clearActiveGameSession();
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEARNING_STORAGE_KEY);
     setHasSavedGame(false);
@@ -736,6 +819,8 @@ function AppInner({ isAdminUser }) {
 
   function handleExitTournamentGame() {
     if (tournamentGame?.id) recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament' });
+    clearActiveGameSession();
+    setHasSavedGame(!!localStorage.getItem(STORAGE_KEY));
     setTournamentGame(null);
     goBack();
   }
@@ -776,6 +861,9 @@ function AppInner({ isAdminUser }) {
         )}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
+        {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
+          <div className="route-loading" role="status">Restaurando partida en curso…</div>
+        )}
         {view === 'menu' && (
           <Menu
             onNewGame={handleNewGame}

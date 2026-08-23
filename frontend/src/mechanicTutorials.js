@@ -78,12 +78,12 @@ export const MECHANIC_TUTORIALS = Object.freeze([
   {
     id: 'quick-match-rules',
     group: 'Partida rápida',
-    title: 'Reglas opcionales de partida',
-    summary: 'Reloj, series y variantes que no pertenecen al ajedrez estándar.',
+    title: 'Partida rápida, sin menús de cabina',
+    summary: 'Elige nivel y juega; color, reloj, series y reglas especiales quedan recogidos en Ajustes.',
     steps: [
-      { title: 'Controles de tiempo', text: 'El reloj limita el tiempo disponible. Si eliges sin reloj, la partida funciona como una partida normal sin presión temporal.' },
-      { title: 'Series', text: 'Best-of-3 y Best-of-5 agrupan varias partidas y deciden el resultado por la serie completa.' },
-      { title: 'Variantes', text: 'Muerte súbita, comprobaciones de amenaza u otras reglas especiales se explican en el selector antes de activarlas.' },
+      { title: 'Lo único obligatorio es el nivel', text: 'El control grande de dificultad es la decisión principal. Si no quieres tocar nada más, pulsa Empezar partida y listo.' },
+      { title: 'Ajustes es opcional', text: 'Abre Ajustes sólo si quieres elegir color, reloj o una serie Best-of-3/Best-of-5. El resumen de la propia fila te dice qué está seleccionado.' },
+      { title: 'Las rarezas están un nivel más abajo', text: 'Sudden Death y Control táctico viven dentro de Reglas especiales. Permanecen cerradas por defecto para que una partida normal no parezca el panel de un reactor.' },
     ],
   },
   {

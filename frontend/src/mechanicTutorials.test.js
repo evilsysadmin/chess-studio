@@ -6,6 +6,7 @@ import {
   MECHANIC_TUTORIALS,
   loadMechanicTutorialProgress,
   markMechanicTutorialSeen,
+  mechanicTutorialById,
 } from './mechanicTutorials.js';
 
 beforeEach(() => localStorage.clear());
@@ -59,4 +60,16 @@ describe('tutoriales de mecánicas no estándar', () => {
     expect(tip).toContain('<MechanicTutorialModal');
   });
 
+});
+
+// v16.6dm6: la ayuda de Partida rápida debe describir la UI simplificada,
+// donde sólo la dificultad es prominente y el resto vive bajo Ajustes.
+describe('tutorial de partida rápida simplificada', () => {
+  it('explica el flujo actual sin presentar los ajustes como pasos obligatorios', () => {
+    const tutorial = mechanicTutorialById('quick-match-rules');
+    expect(tutorial.title).toContain('Partida rápida');
+    expect(tutorial.summary).toContain('Ajustes');
+    expect(tutorial.steps.map((step) => `${step.title} ${step.text}`).join(' ')).toContain('Empezar partida');
+    expect(tutorial.steps.map((step) => `${step.title} ${step.text}`).join(' ')).toContain('Reglas especiales');
+  });
 });
