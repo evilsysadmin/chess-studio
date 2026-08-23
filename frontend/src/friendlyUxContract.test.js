@@ -23,6 +23,11 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
     expect(menu).toContain('<summary>Más aprendizaje y herramientas</summary>');
     expect(menu).toContain('Partida rápida');
     expect(menu).toContain('Así juegas');
+    expect(menu).toContain('Practicar tus errores');
+    expect(menu.indexOf('Así juegas')).toBeLessThan(menu.indexOf('Practicar tus errores'));
+    expect(menu.indexOf('Practicar tus errores')).toBeLessThan(menu.indexOf('<h3>Práctica</h3>'));
+    expect(menu).toContain('Admin Panel');
+    expect(menu).toContain('home-admin-card');
     expect(menu).toContain('Dar feedback');
   });
 
@@ -88,6 +93,9 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
     const music = read('MusicPlayer.jsx');
     expect(music).toContain('aria-label="Marcar pista como favorita"');
     expect(music).toContain('aria-label="Excluir pista de la radio"');
+    expect(music).toContain('music-deck-collapsed');
+    expect(music).toContain('aria-label="Abrir reproductor de música"');
+    expect(music).toContain('aria-label="Plegar reproductor de música"');
   });
 
   it('las pantallas pesadas y el audio se cargan bajo demanda', () => {

@@ -31,3 +31,20 @@ export function formatAdminDate(value, fallback = '—') {
   const date = validDate(value);
   return date ? ADMIN_DATE_FORMATTER.format(date) : fallback;
 }
+
+
+export function sortAdminUsers(users = []) {
+  const ts = (value) => {
+    if (!value) return 0;
+    const date = value instanceof Date ? value : new Date(value);
+    const time = date.getTime();
+    return Number.isNaN(time) ? 0 : time;
+  };
+  return [...users].sort((a, b) => {
+    const onlineDiff = Number(b?.presence === 'online') - Number(a?.presence === 'online');
+    if (onlineDiff) return onlineDiff;
+    const activityDiff = ts(b?.lastActivity) - ts(a?.lastActivity);
+    if (activityDiff) return activityDiff;
+    return String(a?.username || '').localeCompare(String(b?.username || ''), 'es');
+  });
+}

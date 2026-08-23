@@ -8374,3 +8374,128 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .status-chip-compact > span { display: flex; align-items: baseline; gap: .32rem; white-space: nowrap; }
 .status-chip-compact small { color: var(--parchment-dim); font: .55rem var(--font-mono); text-transform: uppercase; }
 .status-chip-compact b { color: var(--brass); font: 700 .68rem var(--font-mono); }
+
+/* ---------- v16.6dm5d · polish UX: modales, rangos y reproductor plegable ---------- */
+.modal-backdrop {
+  z-index: 140; /* siempre por encima del dock global (70) */
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.feedback-modal,
+.rating-detail-modal {
+  width: min(460px, calc(100vw - 2rem));
+  max-height: min(74vh, 660px);
+  padding: 1.05rem 1.15rem;
+  box-sizing: border-box;
+}
+.feedback-modal form,
+.feedback-sent { gap: .68rem; }
+.feedback-field textarea { min-height: 92px; max-height: 220px; }
+.rating-detail-modal .menu-section { margin: .75rem 0; }
+.rating-detail-modal .menu-section h2 { margin-bottom: .35rem; font-size: .95rem; }
+.rating-detail-modal .rating-chart { max-width: 390px; margin-inline: auto; }
+.rating-detail-more { margin-top: .65rem; }
+.rating-detail-explanation { margin: .7rem 0 0; line-height: 1.45; }
+
+.home-admin-group { display: flex; justify-content: flex-end; }
+.home-admin-card { width: min(100%, 420px); min-height: 0; text-align: left; }
+
+.combat-rank-tag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 18px;
+  padding: .12rem .4rem;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  color: var(--parchment-dim);
+  font: 800 .54rem/1.15 var(--font-mono);
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.combat-rank-tag.rank-recruit { opacity: .68; }
+.combat-rank-tag.rank-soldier { border-color: rgba(183,174,145,.30); color: #c8bea2; }
+.combat-rank-tag.rank-corporal,
+.combat-rank-tag.rank-sergeant { border-color: rgba(216,195,155,.42); color: #d8c39b; background: rgba(216,195,155,.055); }
+.combat-rank-tag.rank-lieutenant,
+.combat-rank-tag.rank-captain { border-color: rgba(215,220,228,.48); color: #d7dce4; background: rgba(215,220,228,.065); }
+.combat-rank-tag.rank-commander,
+.combat-rank-tag.rank-colonel { border-color: rgba(230,198,108,.56); color: #e6c66c; background: rgba(230,198,108,.07); }
+.combat-rank-tag.rank-general { border-color: rgba(230,198,108,.82); color: #f2d778; background: rgba(230,198,108,.12); box-shadow: 0 0 8px rgba(230,198,108,.10); }
+.combat-rank-level { opacity: .62; white-space: nowrap; }
+.deployment-unit-rank-line,
+.deployment-dossier-rank { gap: .28rem; flex-wrap: wrap; }
+.army-unit-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+.army-unit-meta > span:not(.combat-rank-tag) { color: var(--parchment-dim); font-weight: 600; }
+
+.music-deck { position: relative; }
+.music-deck-collapse {
+  position: absolute;
+  top: .22rem;
+  right: .22rem;
+  z-index: 3;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #41433e;
+  border-radius: 3px;
+  background: rgba(16,18,17,.88);
+  color: var(--parchment-dim);
+  font: 700 .8rem/1 var(--font-mono);
+  cursor: pointer;
+}
+.music-deck-collapse:hover,
+.music-deck-collapse:focus-visible { color: var(--brass); border-color: var(--brass-dim); outline: none; }
+.music-deck-expanded .music-deck-title-row { padding-right: 1.35rem; }
+.music-deck-collapsed {
+  width: min(100%, 360px);
+  min-height: 38px;
+  padding: .28rem;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: .28rem;
+}
+.music-deck-expand {
+  min-width: 0;
+  height: 30px;
+  display: grid;
+  grid-template-columns: auto auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: .38rem;
+  padding: 0 .52rem;
+  border: 0;
+  background: transparent;
+  color: var(--parchment-dim);
+  font: .62rem var(--font-mono);
+  cursor: pointer;
+  text-align: left;
+}
+.music-deck-expand:hover,
+.music-deck-expand:focus-visible { color: var(--parchment); outline: 1px solid var(--brass-dim); outline-offset: -1px; border-radius: 3px; }
+.music-deck-collapsed-track { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.music-deck-collapsed-hint { color: var(--brass); font-size: .52rem; text-transform: uppercase; letter-spacing: .08em; }
+.music-deck-collapsed-play { width: 30px; height: 28px; }
+.global-music-dock:has(.music-deck-collapsed) { width: min(calc(100% - 2rem), 360px); }
+.game-music-rail .music-deck-collapsed { width: 54px; }
+.game-music-rail .music-deck-collapsed .music-deck-expand {
+  grid-template-columns: 1fr;
+  width: 18px;
+  padding: 0;
+  justify-items: center;
+}
+.game-music-rail .music-deck-collapsed .music-deck-status-light,
+.game-music-rail .music-deck-collapsed .music-deck-collapsed-track,
+.game-music-rail .music-deck-collapsed .music-deck-collapsed-hint { display: none; }
+.board-live-row:has(.game-music-rail .music-deck-collapsed) {
+  grid-template-columns: 54px minmax(0, 1fr) 270px;
+}
+.game-music-rail:has(.music-deck-collapsed) { width: 54px; }
+
+@media (max-width: 620px) {
+  .feedback-modal,
+  .rating-detail-modal { width: calc(100vw - 1rem); max-height: calc(100vh - 1rem); padding: .9rem; }
+  .home-admin-card { width: 100%; }
+}

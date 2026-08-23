@@ -784,6 +784,7 @@ function AppInner({ isAdminUser }) {
             onTutorial={() => navigateTo('tutorial')}
             onOpenings={() => navigateTo('openings')}
             onPuzzle={() => openPuzzleMode('curated', false)}
+            onTrainPersonal={() => openPuzzleMode('personal', false)}
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}
             onCombatRoguelike={() => navigateTo('roguelike')}

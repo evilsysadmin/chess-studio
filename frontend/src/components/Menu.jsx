@@ -29,6 +29,7 @@ export default function Menu({
   onTutorial,
   onOpenings,
   onPuzzle,
+  onTrainPersonal,
   onCombat,
   onCombatRoguelike,
   isAdminUser,
@@ -142,14 +143,6 @@ export default function Menu({
           <p>Tres accesos principales. El resto queda a un toque.</p>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
-          <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
-            <IconBulb className="menu-card-icon" /><h3>Práctica</h3><p>Partida normal con pistas gratis.</p><span className="menu-card-cta">Jugar práctica →</span>
-          </TutorialModeCard>
-
-          <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint home-primary-card" onClick={onPuzzle}>
-            <IconPuzzle className="menu-card-icon" /><h3>Puzzles</h3><p>Clásicos, diario y errores de tus partidas.</p><span className="menu-card-cta">Resolver →</span>
-          </TutorialModeCard>
-
           <div className="insights-feature-shell home-insights-shell">
             <button type="button" className="insights-feature-card home-primary-insights" onClick={onInsights}>
               <span className="insights-feature-icon" aria-hidden="true"><IconEye /></span>
@@ -158,11 +151,22 @@ export default function Menu({
             </button>
             <ModeTutorialTip tutorialId="insights" />
           </div>
+
+          <TutorialModeCard tutorialId="puzzles" className="menu-card accent-danger home-primary-card" onClick={onTrainPersonal}>
+            <IconPuzzle className="menu-card-icon" /><h3>Practicar tus errores</h3><p>Puzzles nacidos de tus propias cagadas.</p><span className="menu-card-cta">Entrenar →</span>
+          </TutorialModeCard>
+
+          <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
+            <IconBulb className="menu-card-icon" /><h3>Práctica</h3><p>Partida normal con pistas gratis.</p><span className="menu-card-cta">Jugar práctica →</span>
+          </TutorialModeCard>
         </div>
 
         <details className="friendly-disclosure home-learning-more">
           <summary>Más aprendizaje y herramientas</summary>
           <div className="friendly-disclosure-body menu-grid menu-grid-3 compact-mode-grid">
+            <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint" onClick={onPuzzle}>
+              <IconPuzzle className="menu-card-icon" /><h3>Puzzles</h3><p>Clásicos y reto diario.</p><span className="menu-card-cta">Resolver →</span>
+            </TutorialModeCard>
             <button type="button" className="menu-card accent-success" onClick={onTutorial}>
               <IconBook className="menu-card-icon" /><h3>Aprendizaje</h3><p>Lecciones, glosario y tutoriales.</p><span className="menu-card-cta">Abrir →</span>
             </button>
@@ -172,14 +176,17 @@ export default function Menu({
             <button type="button" className="menu-card accent-brass" onClick={onHistory}>
               <IconBookmark className="menu-card-icon" /><h3>Historial</h3><p>Tus partidas, resultados y replays.</p><span className="menu-card-cta">Abrir →</span>
             </button>
-            {isAdminUser && (
-              <button type="button" className="menu-card accent-danger" onClick={onAdmin}>
-                <IconEye className="menu-card-icon" /><h3>Admin</h3><p>Usuarios, feedback y operación.</p><span className="menu-card-cta">Abrir →</span>
-              </button>
-            )}
           </div>
         </details>
       </div>
+
+      {isAdminUser && (
+        <div className="menu-group home-admin-group">
+          <button type="button" className="menu-card accent-danger home-admin-card" onClick={onAdmin}>
+            <IconEye className="menu-card-icon" /><h3>Admin Panel</h3><p>Usuarios, feedback y operación.</p><span className="menu-card-cta">Abrir →</span>
+          </button>
+        </div>
+      )}
 
       {error && <p className="error-text">{error}</p>}
 

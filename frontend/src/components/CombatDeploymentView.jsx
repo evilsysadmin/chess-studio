@@ -123,7 +123,8 @@ function UnitCard({
         <strong>{alias}</strong>
         <small className="deployment-unit-rank-line">
           <RankInsignia rankOrLevel={rank} className="unit-rank-inline" decorative />
-          {rank.label} · nv.{level}
+          <span className={`combat-rank-tag rank-${rank.id}`}>{rank.short} · {rank.label}</span>
+          <span className="combat-rank-level">nv.{level}</span>
         </small>
         <small>{transformed ? `${TYPE_NAME[originType]} → ${TYPE_NAME[activeType]}` : TYPE_NAME[originType]}</small>
       </span>
@@ -227,7 +228,8 @@ function UnitDossierPopover({
           <h3>{alias}</h3>
           <p className="deployment-dossier-rank">
             <RankInsignia rankOrLevel={rank} className="unit-rank-inline" decorative />
-            {rank.label} · nv.{level} · {TYPE_NAME[originType]}
+            <span className={`combat-rank-tag rank-${rank.id}`}>{rank.short} · {rank.label}</span>
+            <span className="combat-rank-level">nv.{level} · {TYPE_NAME[originType]}</span>
           </p>
         </div>
       </div>

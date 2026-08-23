@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearCombatSession, hasCombatSession, loadCombatSession, saveCombatSession } from './combatSession.js';
 
 describe('Combat Chess active session snapshot', () => {
@@ -17,9 +17,16 @@ describe('Combat Chess active session snapshot', () => {
     expect(loadCombatSession('free')).toBeNull();
   });
   it('recupera desde memoria si sessionStorage queda ilegible durante un remount', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     saveCombatSession('campaign:abc:n1', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } }, humanColor: 'w' });
     sessionStorage.setItem('chess-study-active-combat-session-v1', '{corrupto');
+
     expect(loadCombatSession('campaign:abc:n1')?.humanColor).toBe('w');
+    expect(consoleError).toHaveBeenCalledWith(
+      '[CombatSession] Snapshot de sessionStorage ilegible; intentando respaldo en memoria.',
+      expect.any(SyntaxError),
+    );
+    consoleError.mockRestore();
   });
 
   it('clear elimina también el respaldo en memoria', () => {

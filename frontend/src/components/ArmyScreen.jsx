@@ -137,7 +137,11 @@ function UnitRosterCard({ roster, slot, onOpen, deployedSlotKey = null }) {
       </span>
       <strong className="army-unit-alias" title={alias}>{alias}</strong>
       <span className="army-unit-meta">
-        {isKing ? 'Rey · Mando' : `${BASE_STATS[slot.type].name} · ${rank.label} · nv.${level}`}
+        {isKing ? 'Rey · Mando' : <>
+          <span>{BASE_STATS[slot.type].name}</span>
+          <span className={`combat-rank-tag rank-${rank.id}`}>{rank.short} · {rank.label}</span>
+          <span>nv.{level}</span>
+        </>}
       </span>
       <span className="army-unit-quickstats">
         {isKing
@@ -181,7 +185,7 @@ function ReserveRosterCard({ roster, unitKey, onOpen, deployedSlotKey = null }) 
         </span>
       </span>
       <strong className="army-unit-alias" title={alias}>{alias}</strong>
-      <span className="army-unit-meta">{BASE_STATS[originType]?.name || 'Unidad'} · {rank.label} · nv.{level}</span>
+      <span className="army-unit-meta"><span>{BASE_STATS[originType]?.name || 'Unidad'}</span><span className={`combat-rank-tag rank-${rank.id}`}>{rank.short} · {rank.label}</span><span>nv.{level}</span></span>
       <span className="army-unit-quickstats">
         {(service.battles || 0) > 0
           ? `${service.battles} bat. · ${service.survivals || 0} surv. · ${service.kills || 0} bajas`

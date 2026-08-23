@@ -43,7 +43,7 @@ export default function PieceInfoModal({ piece, canManage, duringBattle, onBuy, 
         {!isKing && unitRecord && (
           <div className="piece-unit-service-card">
             <div className="piece-unit-service-heading">
-              <strong className="piece-unit-rank-line"><RankInsignia rankOrLevel={militaryRank} /> {militaryRank.short} · {militaryRank.label}</strong>
+              <strong className="piece-unit-rank-line"><RankInsignia rankOrLevel={militaryRank} /><span className={`combat-rank-tag rank-${militaryRank.id}`}>{militaryRank.short} · {militaryRank.label}</span></strong>
               <span>{unitRecord.stats?.battles || 0} batallas</span>
             </div>
             <p>

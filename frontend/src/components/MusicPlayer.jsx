@@ -34,8 +34,19 @@ function snapshot() {
   return getAmbientPlaybackState();
 }
 
+const MUSIC_DECK_EXPANDED_KEY = 'chess-music-deck-expanded';
+
+function loadDeckExpanded() {
+  try { return window.sessionStorage.getItem(MUSIC_DECK_EXPANDED_KEY) === '1'; } catch { return false; }
+}
+
+function saveDeckExpanded(value) {
+  try { window.sessionStorage.setItem(MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
+}
+
 export default function MusicPlayer() {
   const [state, setState] = useState(() => snapshot());
+  const [expanded, setExpanded] = useState(() => loadDeckExpanded());
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => Math.round(getAmbientVolume() * 100));
   const [seekPreviewMs, setSeekPreviewMs] = useState(null);
@@ -245,8 +256,36 @@ export default function MusicPlayer() {
     if (['ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) commitSeek(event);
   }
 
+  function setDeckExpanded(next) {
+    setExpanded(next);
+    saveDeckExpanded(next);
+  }
+
+  if (!expanded) {
+    return (
+      <div className="music-deck music-deck-collapsed" role="group" aria-label="Reproductor de audio plegado">
+        <button type="button" className="music-deck-expand" onClick={() => setDeckExpanded(true)} aria-label="Abrir reproductor de música" title="Abrir reproductor">
+          <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />
+          <span aria-hidden="true">♫</span>
+          <span className="music-deck-collapsed-track">{current?.label || 'Música'}</span>
+          <span className="music-deck-collapsed-hint">abrir</span>
+        </button>
+        <button
+          type="button"
+          className="music-deck-button music-deck-collapsed-play"
+          onClick={playPause}
+          aria-label={playing ? 'Pausar música' : 'Reproducir música'}
+          title={playing ? 'Pausa' : 'Play'}
+        >
+          {playing ? '⏸' : '▶'}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="music-deck" role="group" aria-label="Reproductor y controles de audio">
+    <div className="music-deck music-deck-expanded" role="group" aria-label="Reproductor y controles de audio">
+      <button type="button" className="music-deck-collapse" onClick={() => setDeckExpanded(false)} aria-label="Plegar reproductor de música" title="Plegar reproductor">−</button>
       <div className="music-deck-display" title={current?.description || 'Música ambiental'}>
         <div className="music-deck-title-row">
           <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />

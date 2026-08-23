@@ -10,7 +10,7 @@ import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import AiNarrativeMetrics from './AiNarrativeMetrics.jsx';
-import { formatAdminDate, formatAdminTimestamp } from '../adminFormatting.js';
+import { formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
@@ -290,7 +290,7 @@ export default function AdminScreen({ onExit }) {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => {
+                {sortAdminUsers(users).map((u) => {
                   const isOpen = expanded === u.username;
                   const isSelf = getUsername() === u.username;
                   const detailId = `admin-user-details-${String(u.username).replace(/[^a-zA-Z0-9_-]/g, '-')}`;

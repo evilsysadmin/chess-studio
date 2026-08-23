@@ -61,7 +61,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 maxLength={2000}
-                rows={6}
+                rows={4}
                 autoFocus
                 placeholder="Ej.: En Combat Chess no entendí por qué el rival tenía una pieza extra…"
               />

@@ -101,6 +101,8 @@ describe('STATIC CONTRACT · Combat Chess operativo', () => {
     expect(board).toContain('rankOrLevel={pieceRankLevels?.[square] ?? pieceLevels?.[square]}');
     expect(deployment).toContain('unit-rank-insignia');
     expect(deployment).toContain('unit-rank-inline');
+    expect(deployment).toContain('combat-rank-tag');
+    expect(deployment).toContain('rank-${rank.id}');
     expect(deployment).toContain('pieceRankLevels={pieceRankLevels}');
   });
 
