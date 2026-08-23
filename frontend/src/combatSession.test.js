@@ -5,10 +5,21 @@ describe('Combat Chess active session snapshot', () => {
   beforeEach(() => sessionStorage.clear());
 
   it('restaura sólo la batalla cuyo id coincide', () => {
-    saveCombatSession('campaign:abc:n1', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } }, humanColor: 'w' });
+    expect(saveCombatSession('campaign:abc:n1', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } }, humanColor: 'w' })).toBe(true);
     expect(hasCombatSession('campaign:abc:n1')).toBe(true);
     expect(loadCombatSession('campaign:abc:n1')?.humanColor).toBe('w');
     expect(loadCombatSession('campaign:abc:n2')).toBeNull();
+  });
+
+  it('informa si sessionStorage no pudo hacer durable el snapshot', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const setItem = vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+
+    expect(saveCombatSession('free', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } } })).toBe(false);
+    expect(loadCombatSession('free')?.fen).toBe('fen-demo');
+
+    setItem.mockRestore();
+    consoleError.mockRestore();
   });
 
   it('se elimina al cerrar la batalla', () => {

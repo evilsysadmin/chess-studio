@@ -35,6 +35,8 @@ import { isLoggedIn, fetchMe, logout, touchActivity, watchSessionIdentity } from
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
+import SaveStatusBadge from './components/SaveStatusBadge.jsx';
+import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
@@ -114,6 +116,33 @@ function AppInner({ isAdminUser }) {
     rememberSessionViewHistory([]);
     currentViewRef.current = 'menu';
     setViewRaw('menu');
+  }
+
+  async function recoverSessionFromBoundary() {
+    const saved = loadActiveGameSession();
+    if (saved?.gameId) return restoreActiveSession(saved);
+
+    // Última red: si el error ocurrió justo al entrar al tablero, el effect que
+    // persiste el snapshot puede no haber llegado a ejecutarse todavía. El id
+    // vivo en React basta para pedir de nuevo la partida al backend.
+    if (tournamentGame?.id) {
+      return restoreActiveSession({ route: 'tournamentGame', gameId: tournamentGame.id });
+    }
+    if (game?.id) {
+      return restoreActiveSession({
+        route: 'game',
+        gameId: game.id,
+        learningMode,
+        gameContext,
+        timeControlId: activeTimeControl?.id || null,
+      });
+    }
+
+    // Combat Chess ya conserva su batalla en combatSession/sessionStorage. Al
+    // cerrar el fallback React remonta CombatScreen/RoguelikeScreen y sus
+    // controladores rehidratan esa sesión sin degradarla a Setup.
+    if (currentViewRef.current === 'combat' || currentViewRef.current === 'roguelike') return true;
+    return false;
   }
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -240,6 +269,7 @@ function AppInner({ isAdminUser }) {
   const [gameContext, setGameContext] = useState({});
   const [replayMovieMode, setReplayMovieMode] = useState(false);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
+  const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
 
   // Conserva la última pantalla reconstruible durante esta pestaña/sesión.
   // Las vistas efímeras (partida/replay) no pisan el padre seguro guardado.
@@ -290,8 +320,9 @@ function AppInner({ isAdminUser }) {
   // (práctica/variantes/reloj) para que un refresh o un deploy pueda volver
   // exactamente a la partida en curso. Torneo usa el mismo mecanismo.
   useEffect(() => {
+    let persisted = null;
     if (view === 'game' && game?.id) {
-      saveActiveGameSession({
+      persisted = saveActiveGameSession({
         route: 'game',
         game,
         learningMode,
@@ -299,7 +330,15 @@ function AppInner({ isAdminUser }) {
         timeControlId: activeTimeControl?.id || null,
       });
     } else if (view === 'tournamentGame' && tournamentGame?.id) {
-      saveActiveGameSession({ route: 'tournamentGame', game: tournamentGame });
+      persisted = saveActiveGameSession({ route: 'tournamentGame', game: tournamentGame });
+    }
+
+    // "Guardado" significa dos cosas a la vez: el backend ya confirmó este
+    // objeto de partida y el sobre local necesario para sobrevivir a F5/deploy
+    // también quedó escrito. Si localStorage falla, no pintamos un verde falso.
+    if (persisted) setGameSaveState(SAVE_STATUS.SAVED);
+    else if ((view === 'game' && game?.id) || (view === 'tournamentGame' && tournamentGame?.id)) {
+      setGameSaveState(SAVE_STATUS.ERROR);
     }
   }, [view, game, tournamentGame, learningMode, gameContext, activeTimeControl?.id]);
 
@@ -373,6 +412,7 @@ function AppInner({ isAdminUser }) {
     if (!saved?.gameId) return false;
     setLoading(true);
     setError(null);
+    setGameSaveState(SAVE_STATUS.SAVING);
     try {
       const found = await api.getGame(saved.gameId);
       if (saved.route === 'tournamentGame') {
@@ -426,6 +466,7 @@ function AppInner({ isAdminUser }) {
         setError('La partida guardada ya no existe en el servidor.');
       } else {
         setHasSavedGame(true);
+        setGameSaveState(SAVE_STATUS.ERROR);
         setError('No se pudo recuperar la partida en curso. Puedes reintentar cuando vuelva el servidor.');
       }
       currentViewRef.current = 'menu';
@@ -835,13 +876,20 @@ function AppInner({ isAdminUser }) {
   return (
     <>
       {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
-      <ErrorBoundary onReset={resetNavigation}>
+      <ErrorBoundary
+        onReset={resetNavigation}
+        onRecover={recoverSessionFromBoundary}
+        canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
+      >
       <div className="app-shell">
         <div className="masthead">
           <div className="masthead-top-row">
             <div className="masthead-text">
               <h1>Escuela de Ajedrez</h1>
             </div>
+            {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
+              <SaveStatusBadge state={gameSaveState} />
+            )}
           </div>
           <PlayerStatusBar
             tournament={tournament}
@@ -896,6 +944,7 @@ function AppInner({ isAdminUser }) {
             setGame={setGame}
             onExit={handleExitGame}
             onError={setError}
+            onPersistenceState={setGameSaveState}
             onGameEnd={handleCasualGameEnd}
             onChatUpdate={handleGameChatUpdate}
             hintMode={learningMode ? 'free' : 'off'}
@@ -937,6 +986,7 @@ function AppInner({ isAdminUser }) {
             onViewBattle={openHistoryRecord}
             combatSessionId="free"
             onBattleUiActive={setCombatBattleUiActive}
+            onPersistenceState={setGameSaveState}
             onBattleStart={(meta = {}) => {
               if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord });
             }}
@@ -959,6 +1009,7 @@ function AppInner({ isAdminUser }) {
             onHistory={() => navigateTo('history')}
             onViewBattle={openHistoryRecord}
             onBattleUiActive={setCombatBattleUiActive}
+            onPersistenceState={setGameSaveState}
           />
         )}
 
@@ -1021,6 +1072,7 @@ function AppInner({ isAdminUser }) {
             setGame={setTournamentGame}
             onExit={handleExitTournamentGame}
             onError={setError}
+            onPersistenceState={setGameSaveState}
             onGameEnd={handleTournamentGameEnd}
             onChatUpdate={handleGameChatUpdate}
             hintMode="paid"

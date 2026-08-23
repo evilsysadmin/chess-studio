@@ -41,14 +41,16 @@ export function saveCombatSession(sessionId, snapshot) {
   // por el entorno del navegador no puede convertir un remount React en Setup.
   memorySnapshots.set(id, payload);
 
-  if (typeof sessionStorage === 'undefined') return;
+  if (typeof sessionStorage === 'undefined') return false;
   try {
     sessionStorage.setItem(KEY, JSON.stringify(payload));
+    return true;
   } catch (error) {
     // Un fallo de persistencia no debe romper la partida en curso. El snapshot
     // de memoria sigue siendo recuperable hasta recargar la pestaña.
     // eslint-disable-next-line no-console
     console.error('[CombatSession] No se pudo persistir el snapshot; se mantiene respaldo en memoria.', error);
+    return false;
   }
 }
 

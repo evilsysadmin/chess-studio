@@ -103,7 +103,7 @@ function buildLogEntry(result, humanColor) {
 }
 
 
-export function useCombatController({ onExit, onError, onHistory, onViewBattle, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
   const restoredSessionRef = useRef(undefined);
   if (restoredSessionRef.current === undefined) restoredSessionRef.current = loadCombatSession(combatSessionId) || null;
   const restoredSession = restoredSessionRef.current;
@@ -178,6 +178,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     return c;
   }, [fen]);
 
+  function saveBattleSnapshot(snapshot) {
+    onPersistenceState?.('saving');
+    const persisted = saveCombatSession(combatSessionId, snapshot);
+    onPersistenceState?.(persisted ? 'saved' : 'error');
+    return persisted;
+  }
+
   function persistBattleSession({
     nextFen = fen,
     nextRegistry = registry,
@@ -185,7 +192,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     nextBossHp = bossHpRef.current,
     nextBossPhase = bossPhase,
   } = {}) {
-    saveCombatSession(combatSessionId, {
+    saveBattleSnapshot({
       phase: 'battle',
       fen: nextFen,
       registry: nextRegistry,
@@ -391,7 +398,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setRepetitionDraw(false);
     const activityGameId = `${combatSessionId}:${Date.now()}`;
     activityGameIdRef.current = activityGameId;
-    saveCombatSession(combatSessionId, {
+    saveBattleSnapshot({
       phase: 'battle',
       fen: startFen,
       registry: initialRegistry,
@@ -616,7 +623,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setRepetitionDraw(false);
     const restoredBossPhase = bossPhaseForHp(bossHpRef.current, bossConfig?.maxHp);
     setBossPhase(restoredBossPhase);
-    saveCombatSession(combatSessionId, {
+    saveBattleSnapshot({
       phase: 'battle',
       fen: nextFen,
       registry: fresh,

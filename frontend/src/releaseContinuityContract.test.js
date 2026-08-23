@@ -18,6 +18,36 @@ describe('wiring de continuidad entre releases', () => {
     expect(app).toContain('Restaurando partida en curso…');
   });
 
+
+  it('ErrorBoundary prioriza recuperar una partida activa antes de volver al menú', () => {
+    const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
+    const boundary = fs.readFileSync(path.resolve(process.cwd(), 'src/components/ErrorBoundary.jsx'), 'utf8');
+    expect(app).toContain('onRecover={recoverSessionFromBoundary}');
+    expect(app).toContain("return restoreActiveSession(saved)");
+    expect(app).toContain("route: 'tournamentGame', gameId: tournamentGame.id");
+    expect(app).toContain("route: 'game'");
+    expect(app).toContain("currentViewRef.current === 'combat' || currentViewRef.current === 'roguelike'");
+    expect(boundary).toContain('Recuperar partida');
+    expect(boundary).toContain('Volver al menú');
+    expect(boundary).toContain('La partida sigue guardada');
+  });
+
+  it('la partida activa expone estado real de guardado y conexión', () => {
+    const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.jsx'), 'utf8');
+    const gameScreen = fs.readFileSync(path.resolve(process.cwd(), 'src/components/GameScreen.jsx'), 'utf8');
+    const badge = fs.readFileSync(path.resolve(process.cwd(), 'src/components/SaveStatusBadge.jsx'), 'utf8');
+    expect(app).toContain('<SaveStatusBadge state={gameSaveState} />');
+    expect(app).toContain('onPersistenceState={setGameSaveState}');
+    expect(app).toContain('if (persisted) setGameSaveState(SAVE_STATUS.SAVED)');
+    expect(gameScreen).toContain("onPersistenceState?.('saving')");
+    expect(gameScreen).toContain("onPersistenceState?.('error')");
+    expect(badge).toContain("window.addEventListener('offline', update)");
+    expect(badge).toContain('aria-live="polite"');
+    expect(app).toContain('combatBattleUiActive');
+    expect(app).toContain('onPersistenceState={setGameSaveState}');
+    expect(gameScreen).toContain("onPersistenceState?.('saving')");
+  });
+
   it('el snapshot activo se borra al limpiar el estado de identidad', () => {
     const keys = fs.readFileSync(path.resolve(process.cwd(), 'src/profileKeys.js'), 'utf8');
     expect(keys).toContain("'chess-study-active-game-session-v1'");

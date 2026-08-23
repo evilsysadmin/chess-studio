@@ -62,7 +62,7 @@ import {
 const HUMAN_COLOR = 'w';
 const CPU_COLOR = 'b';
 
-export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBattle, onBattleUiActive }) {
+export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBattle, onBattleUiActive, onPersistenceState }) {
   const [run, setRun] = useState(() => loadRun());
   const [campaign, setCampaign] = useState(() => loadCampaign());
   const [campaignBestStage, setCampaignBestStage] = useState(() => loadCampaignBestStage());
@@ -398,6 +398,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onHistory={onHistory}
         onViewBattle={onViewBattle}
         onBattleUiActive={onBattleUiActive}
+        onPersistenceState={onPersistenceState}
         initialFen={campaignFen}
         forcedHumanColor={HUMAN_COLOR}
         difficultyOverride={campaignDifficulty(campaign, node)}
@@ -453,6 +454,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         onHistory={onHistory}
         onViewBattle={onViewBattle}
         onBattleUiActive={onBattleUiActive}
+        onPersistenceState={onPersistenceState}
         initialFen={initialFen}
         forcedHumanColor={HUMAN_COLOR}
         difficultyOverride={difficultyForFloor(run.floor)}

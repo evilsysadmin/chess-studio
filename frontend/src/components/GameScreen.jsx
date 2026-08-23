@@ -82,6 +82,7 @@ export default function GameScreen({
   memoryContext = {},
   onTrainPersonal,
   onChatUpdate,
+  onPersistenceState,
 }) {
   const humanColor = game.humanColor || 'w';
   const [selected, setSelected] = useState(null);
@@ -456,6 +457,7 @@ export default function GameScreen({
     setSelected(null);
     setTurnBanner(null);
     setBusy(true);
+    onPersistenceState?.('saving');
 
     const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
     let cpuNoteworthy = null;
@@ -522,6 +524,8 @@ export default function GameScreen({
     try {
       const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion), minThink]);
       setGame(updated);
+      // App marcará 'saved' cuando el snapshot local de esta respuesta también
+      // quede escrito; aquí sólo sabemos que el backend ya confirmó la jugada.
       // La narrativa remota sólo recibe hechos de una jugada que el backend ya confirmó.
       // Sigue siendo fire-and-forget: no retrasa tablero, reloj ni persistencia.
       showNoteworthy(humanComment, 'human');
@@ -557,6 +561,7 @@ export default function GameScreen({
         }
       }
     } catch (e) {
+      onPersistenceState?.('error');
       onError?.(e.message);
       // Revertimos al último estado confirmado por el servidor.
       setBoardFen(game.fen);
@@ -639,6 +644,7 @@ export default function GameScreen({
   async function handleUndo() {
     if (busy || flagFallen || game.history.length === 0) return;
     setBusy(true);
+    onPersistenceState?.('saving');
     setHint(null);
     setTurnBanner(null);
     setCpuComment(null);
@@ -650,6 +656,7 @@ export default function GameScreen({
       setSelected(null);
       setPendingAnim(null); // el deshacer salta directo, no se anima
     } catch (e) {
+      onPersistenceState?.('error');
       onError?.(e.message);
     } finally {
       setBusy(false);
