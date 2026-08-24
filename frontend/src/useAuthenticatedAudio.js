@@ -8,14 +8,14 @@ export function useAuthenticatedAudio(loggedIn, ready) {
     import('./sound.js').then((module) => {
       audio = module;
       if (cancelled) {
-        module.stopAmbientMusic();
+        module.disposeAmbientMusic();
         return;
       }
-      module.startAmbientMusic();
+      module.restoreAmbientMusicSession();
     }).catch(() => {});
     return () => {
       cancelled = true;
-      audio?.stopAmbientMusic?.();
+      audio?.disposeAmbientMusic?.();
     };
   }, [loggedIn, ready]);
 }

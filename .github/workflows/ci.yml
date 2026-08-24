@@ -1,18 +1,23 @@
-name: CI
-
-# Corre toda la suite de tests (frontend y backend) en cada push y cada pull
-# request — vaya o no a desplegarse. Es la diferencia entre "tengo 119
-# tests" y "tengo 119 tests que realmente protegen algo": sin esto, nadie
-# se entera de que algo se rompió hasta que lo corre a mano.
+name: Chess Studio Pipeline
 
 on:
   push:
     branches: ['**']
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  frontend-tests:
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -24,49 +29,35 @@ jobs:
             frontend/package-lock.json
             e2e/package-lock.json
 
-      - name: Instalar dependencias
-        working-directory: frontend
-        run: npm ci
-
-      - name: Auditar arquitectura de tests y wiring de CI
-        run: node scripts/test_suite_audit.mjs --ci-wiring
-
-      - name: CSS modular · orden y byte contract
-        run: node scripts/css_architecture_check.mjs
-
-      - name: Dependency cycles · frontend/backend
-        run: python3 scripts/dependency_cycle_check.py
-
-      - name: Verificar identidad de release
-        run: node scripts/release_consistency_check.mjs
-
-      - name: Tests frontend · smoke → unit → contract (sin solapamiento)
-        working-directory: frontend
-        run: npm test
-
-      - name: Verificar que compila
-        working-directory: frontend
-        run: npm run build
-
-      - name: Tamaño del bundle (informativo)
-        run: node scripts/bundle_size_report.mjs
-
-  backend-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: backend-python/requirements-dev.txt
 
-      - name: Instalar dependencias
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install backend dependencies
         working-directory: backend-python
         run: pip install -r requirements-dev.txt
 
-      - name: Backend smoke · motor + IA
+      - name: Static preflight + architecture contracts
+        run: make static-preflight
+
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Bundle size report
+        run: node scripts/bundle_size_report.mjs
+
+      - name: Backend smoke · engine + AI
         working-directory: backend-python
         run: pytest -q test_chess_ai.py test_core_game.py -x
 
@@ -74,45 +65,12 @@ jobs:
         working-directory: backend-python
         run: pytest -q --ignore=test_chess_ai.py --ignore=test_core_game.py
 
-      - name: Comprobar dependencias Python
+      - name: Python dependency consistency
         working-directory: backend-python
         run: pip check
 
-  security-gate:
-    name: Security gate (CRITICAL blocks)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          cache: pip
-          cache-dependency-path: backend-python/requirements-dev.txt
-
-      - name: Preparar informes
+      - name: Prepare security reports
         run: mkdir -p .security
-
-      - name: API surface auth gate
-        run: python scripts/api_surface_gate.py
-
-      - name: Worker AI syntax
-        run: node --check infra/cloudflare/worker/index.js
-
-      - name: Worker AI runtime unit tests
-        run: node --test infra/cloudflare/worker/index.test.mjs
-
-      - name: AI browser-secret / direct-worker gate
-        run: python scripts/ai_security_gate.py
-
-      - name: Cloudflare Workers AI static preflight
-        run: python scripts/cloudflare_ai_preflight.py
 
       - name: Node dependency audit
         working-directory: frontend
@@ -125,7 +83,7 @@ jobs:
           test -s ../.security/npm-audit.json || { echo "npm audit no produjo informe (rc=$rc)"; exit 2; }
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
 
-      - name: Instalar pip-audit
+      - name: Install pip-audit
         run: python -m pip install pip-audit==2.10.1
 
       - name: Python dependency audit
@@ -146,78 +104,26 @@ jobs:
           restore-keys: |
             trivy-db-${{ runner.os }}-
 
-      - name: Trivy FS — mismo gate que local (incluye dev deps)
+      - name: Trivy filesystem
         run: make security-trivy
 
-  container-security:
-    name: Docker image security (CRITICAL blocks)
-    needs: [frontend-tests, backend-tests, security-gate]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache Trivy DB
-        uses: actions/cache@v4
-        with:
-          path: .trivy-cache
-          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: |
-            trivy-db-${{ runner.os }}-
-
-      - name: Build + scan frontend/backend images
+      - name: Docker image security
         run: make security-images
 
-  compose-integration-smoke:
-    name: Real stack smoke (Docker Compose)
-    needs: [frontend-tests, backend-tests, security-gate]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build and start real stack
-        run: docker compose up -d --build
-
-      - name: Smoke frontend + FastAPI + Mongo + auth/profile/game persistence
-        run: python3 scripts/compose_smoke.py
-
-      - name: Docker diagnostics on failure
-        if: failure()
+      - name: Real stack smoke · Docker Compose
+        shell: bash
         run: |
-          docker compose ps
-          docker compose logs --no-color --tail=300
-
-      - name: Stop stack
-        if: always()
-        run: docker compose down -v
-
-  browser-e2e:
-    name: Browser smoke (Playwright · informativo)
-    needs: [frontend-tests, backend-tests, security-gate]
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
+          set -euo pipefail
+          cleanup() { docker compose down -v || true; }
+          trap cleanup EXIT
+          docker compose up -d --build
+          python3 scripts/compose_smoke.py
 
       - name: Cache Playwright Chromium
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-
-      - name: Install + build frontend
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
 
       - name: Install Playwright runner
         working-directory: e2e
@@ -227,7 +133,7 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright install --with-deps chromium
 
-      - name: Browser smoke crítico (informativo, no bloquea CI)
+      - name: Critical browser smoke
         working-directory: e2e
         run: >-
           ./node_modules/.bin/playwright test smoke.spec.js
@@ -243,3 +149,344 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  terraform:
+    name: Cloudflare Worker · Terraform
+    needs: tests
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/cloudflare
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_worker_name: chess-studio-narrative-ai
+      TF_VAR_custom_domain_hostname: ai.shadowops.dpdns.org
+      TF_VAR_custom_domain_zone_name: shadowops.dpdns.org
+      WORKER_NAME: chess-studio-narrative-ai
+      CUSTOM_DOMAIN: ai.shadowops.dpdns.org
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Refuse stale production commit
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          tested_sha="${{ github.sha }}"
+          if [[ "$tested_sha" != "$current_main" ]]; then
+            echo "::error::CI aprobó $tested_sha, pero main ya apunta a $current_main. No despliego un commit obsoleto."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      # GitHub runners are ephemeral and this small overlay deliberately has no
+      # remote Terraform state backend. Discover/import existing Cloudflare
+      # resources before plan so first install and later updates are both safe.
+      - name: Probe existing Cloudflare Worker state
+        id: cf_state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          probe() {
+            local url="$1"
+            local body_file="$2"
+            curl --silent --show-error \
+              --output "$body_file" \
+              --write-out '%{http_code}' \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Accept: application/json' \
+              "$url"
+          }
+
+          worker_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME"
+          worker_body="$RUNNER_TEMP/cf-worker-probe.json"
+          worker_status="$(probe "$worker_api" "$worker_body")"
+
+          case "$worker_status" in
+            200)
+              echo 'Worker existente: se importará al state temporal.'
+              echo 'worker_exists=true' >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); codes={item.get("code") for item in payload.get("errors", []) if isinstance(item, dict)}; 10007 in codes or sys.exit(f"Cloudflare devolvió 404 inesperado: {payload}")' "$worker_body"
+              echo 'Worker inexistente: primera instalación, Terraform lo creará.'
+              echo 'worker_exists=false' >> "$GITHUB_OUTPUT"
+              echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Cloudflare respondió HTTP $worker_status al consultar el Worker" >&2
+              cat "$worker_body" >&2 || true
+              exit 1
+              ;;
+          esac
+
+          if [[ "$worker_status" == 200 ]]; then
+            subdomain_api="$worker_api/subdomain"
+            subdomain_body="$RUNNER_TEMP/cf-subdomain-probe.json"
+            subdomain_status="$(probe "$subdomain_api" "$subdomain_body")"
+            case "$subdomain_status" in
+              200)
+                echo 'Configuración workers.dev existente: se importará y quedará deshabilitada.'
+                echo 'subdomain_exists=true' >> "$GITHUB_OUTPUT"
+                ;;
+              404)
+                echo 'Configuración workers.dev ausente: Terraform la declarará con enabled=false.'
+                echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "Cloudflare respondió HTTP $subdomain_status al consultar workers.dev" >&2
+                cat "$subdomain_body" >&2 || true
+                exit 1
+                ;;
+            esac
+          fi
+
+          domains_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains"
+          domains_body="$RUNNER_TEMP/cf-custom-domain-probe.json"
+          domains_status="$(curl --silent --show-error \
+            --output "$domains_body" \
+            --write-out '%{http_code}' \
+            --get \
+            --data-urlencode "hostname=$CUSTOM_DOMAIN" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            "$domains_api")"
+
+          if [[ "$domains_status" != 200 ]]; then
+            echo "Cloudflare respondió HTTP $domains_status al consultar el Custom Domain" >&2
+            cat "$domains_body" >&2 || true
+            exit 1
+          fi
+
+          readarray -t domain_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); host=sys.argv[2]; items=[x for x in (payload.get("result") or []) if isinstance(x,dict) and x.get("hostname")==host]; len(items)<=1 or sys.exit(f"Más de un Custom Domain para {host}: {items}"); item=items[0] if items else {}; print(item.get("id") or ""); print(item.get("service") or ""); print(item.get("zone_name") or "")' "$domains_body" "$CUSTOM_DOMAIN")
+          domain_id="${domain_meta[0]:-}"
+          domain_service="${domain_meta[1]:-}"
+          domain_zone="${domain_meta[2]:-}"
+
+          if [[ -n "$domain_id" ]]; then
+            [[ "$domain_service" == "$WORKER_NAME" ]] || {
+              echo "$CUSTOM_DOMAIN ya está asociado a otro Worker: $domain_service" >&2
+              exit 1
+            }
+            [[ -z "$domain_zone" || "$domain_zone" == "shadowops.dpdns.org" ]] || {
+              echo "$CUSTOM_DOMAIN pertenece a una zona inesperada: $domain_zone" >&2
+              exit 1
+            }
+            echo "Custom Domain existente: $CUSTOM_DOMAIN ($domain_id)."
+            echo 'custom_domain_exists=true' >> "$GITHUB_OUTPUT"
+            echo "custom_domain_id=$domain_id" >> "$GITHUB_OUTPUT"
+          else
+            echo "Custom Domain inexistente: Terraform creará $CUSTOM_DOMAIN y Cloudflare gestionará DNS/TLS."
+            echo 'custom_domain_exists=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Import existing Worker state
+        if: steps.cf_state.outputs.worker_exists == 'true'
+        run: terraform import cloudflare_workers_script.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
+
+      - name: Import existing workers.dev state
+        if: steps.cf_state.outputs.subdomain_exists == 'true'
+        run: terraform import cloudflare_workers_script_subdomain.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
+
+      - name: Import existing Custom Domain state
+        if: steps.cf_state.outputs.custom_domain_exists == 'true'
+        run: terraform import cloudflare_workers_custom_domain.narrative_ai "$TF_VAR_cloudflare_account_id/${{ steps.cf_state.outputs.custom_domain_id }}"
+
+      - name: Terraform plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan
+
+      # Terraform must NOT own this value: secret_text would store it in state.
+      # Wrangler's Secrets API keeps the value out of the repository/state.
+      - name: Install Worker shared secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CHESS_AI_SHARED_SECRET: ${{ secrets.CHESS_AI_SHARED_SECRET }}
+        run: |
+          test -n "$CHESS_AI_SHARED_SECRET"
+          printf '%s' "$CHESS_AI_SHARED_SECRET" \
+            | npx --yes wrangler@4 secret put CHESS_AI_SHARED_SECRET \
+                --name "$WORKER_NAME"
+
+      - name: Verify Custom Domain and health
+        id: worker_url
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          worker_url="https://$CUSTOM_DOMAIN"
+          echo "url=$worker_url" >> "$GITHUB_OUTPUT"
+
+          domains_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains"
+          domain_body="$RUNNER_TEMP/cf-custom-domain-live.json"
+          domain_status="$(curl --silent --show-error \
+            --output "$domain_body" \
+            --write-out '%{http_code}' \
+            --get \
+            --data-urlencode "hostname=$CUSTOM_DOMAIN" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            "$domains_api")"
+
+          [[ "$domain_status" == 200 ]] || {
+            echo "Cloudflare respondió HTTP $domain_status al verificar $CUSTOM_DOMAIN" >&2
+            cat "$domain_body" >&2 || true
+            exit 1
+          }
+
+          readarray -t domain_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); host=sys.argv[2]; service=sys.argv[3]; items=[x for x in (payload.get("result") or []) if isinstance(x,dict) and x.get("hostname")==host]; len(items)==1 or sys.exit(f"Se esperaba un Custom Domain {host}, encontrados {len(items)}"); item=items[0]; item.get("service")==service or sys.exit(f"Custom Domain apunta a {item.get('"'"'service'"'"')!r}, no a {service!r}"); print(item.get("id") or ""); print(item.get("cert_id") or ""); print(item.get("zone_name") or "")' "$domain_body" "$CUSTOM_DOMAIN" "$WORKER_NAME")
+          domain_id="${domain_meta[0]:-}"
+          cert_id="${domain_meta[1]:-}"
+          zone_name="${domain_meta[2]:-}"
+
+          test -n "$domain_id" || { echo 'Cloudflare no devolvió id del Custom Domain' >&2; exit 1; }
+          [[ "$zone_name" == "shadowops.dpdns.org" ]] || { echo "Zona inesperada para $CUSTOM_DOMAIN: $zone_name" >&2; exit 1; }
+
+          echo "Custom Domain: $worker_url"
+          echo "Domain ID: $domain_id"
+          if [[ -n "$cert_id" ]]; then
+            echo "TLS cert ID: $cert_id"
+          else
+            echo 'TLS cert todavía sin id; se esperará durante el health probe.'
+          fi
+
+          # First certificate issuance can take longer than ordinary Worker
+          # propagation. Retry for up to five minutes and surface TLS/HTTP
+          # diagnostics instead of treating curl code 35 as an opaque failure.
+          health_url="$worker_url/health"
+          health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"
+          [[ -f "$health_contract" ]] || { echo "Falta el validador de health: $health_contract" >&2; exit 1; }
+          health_ok=false
+          for attempt in {1..60}; do
+            health_body="$RUNNER_TEMP/cf-health-$attempt.txt"
+            health_status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 10 \
+              --output "$health_body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'User-Agent: chess-studio-cf-ai-health/1' \
+              "$health_url" || true)"
+
+            if [[ "$health_status" == 200 ]] && python3 "$health_contract" "$health_body"; then
+              health_ok=true
+              break
+            fi
+
+            echo "Health HTTP ${health_status:-curl-error} en $health_url (intento $attempt/60)"
+            sed -n '1,20p' "$health_body" 2>/dev/null || true
+            sleep 5
+          done
+
+          [[ "$health_ok" == true ]] || {
+            echo "El Custom Domain no respondió correctamente en $health_url tras 5 minutos." >&2
+            echo 'Revisa que la zona esté activa en esta cuenta y que no exista un DNS record conflictivo para ai.shadowops.dpdns.org.' >&2
+            exit 1
+          }
+
+          python3 ../../scripts/cloudflare_ai_preflight.py --worker-url "$worker_url"
+
+          {
+            echo '### Cloudflare Workers AI desplegado'
+            echo
+            echo "- Worker: \`$WORKER_NAME\`"
+            echo "- Custom Domain: \`$worker_url\`"
+            echo '- workers.dev: deshabilitado para este Worker'
+            echo '- Health: OK'
+            echo '- Render: configura `CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org`.'
+            echo '- Render y GitHub deben compartir el mismo `CHESS_AI_SHARED_SECRET`.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+
+  pages:
+    name: GitHub Pages
+    needs: terraform
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout CI-approved commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_BUILD_SHA: ${{ github.sha }}
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

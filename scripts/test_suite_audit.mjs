@@ -134,6 +134,22 @@ if (checkCiWiring) {
   if (!fs.existsSync(coverageWorkflowPath)) fail('Coverage informativo debe vivir fuera del CI de cada push');
   const mainCiSource = read(mainCiPath);
   const coverageWorkflowSource = read(coverageWorkflowPath);
+  for (const obsolete of ['terraform-cloudflare.yml', 'static.yml']) {
+    if (fs.existsSync(path.join(workflowsDir, obsolete))) fail(`Pipeline de producción duplicado: ${obsolete}`);
+  }
+  if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; Tests → Terraform → Pages viven en el mismo workflow');
+  for (const required of [
+    '  tests:\n',
+    '  terraform:\n',
+    'name: Cloudflare Worker · Terraform',
+    'needs: tests',
+    '  pages:\n',
+    'name: GitHub Pages',
+    'needs: terraform',
+    'VITE_BUILD_SHA: ${{ github.sha }}',
+  ]) {
+    if (!mainCiSource.includes(required)) fail(`Pipeline único incompleto: falta ${JSON.stringify(required)}`);
+  }
   if (/Coverage (?:frontend|backend) \(informativo\)/.test(mainCiSource)) fail('CI principal no debe repetir suites completas sólo para coverage informativo');
   if (!coverageWorkflowSource.includes('workflow_dispatch:') || !coverageWorkflowSource.includes('schedule:')) fail('Coverage debe quedar disponible manualmente y por calendario');
   const frontendCentralized = /npm\s+(?:run\s+)?test\b/.test(workflowSource)
@@ -143,15 +159,15 @@ if (checkCiWiring) {
     || /make\s+(?:test-backend|tests-be|tests|quality-gate)\b/.test(workflowSource);
   if (!backendAutodiscovery) fail('CI backend no autodetecta el resto de test_*.py');
   if (!workflowSource.includes('scripts/compose_smoke.py')) fail('CI no ejecuta el smoke de stack real Docker Compose');
-  if (!workflowSource.includes('node --test infra/cloudflare/worker/index.test.mjs')) fail('CI no ejecuta los tests runtime del Worker AI');
+  if (!workflowSource.includes('node --test infra/cloudflare/worker/index.test.mjs') && !mainCiSource.includes('make static-preflight') && !mainCiSource.includes('make worker-test')) fail('CI no ejecuta los tests runtime del Worker AI');
   if (!workflowSource.includes('npm run test:coverage')) fail('CI no conserva el paso de coverage frontend');
-  if (!workflowSource.includes('continue-on-error: true')) fail('Coverage frontend debe seguir siendo informativo');
+  if (!coverageWorkflowSource.includes('continue-on-error: true')) fail('Coverage frontend/backend debe seguir siendo informativo');
   if (workflowSource.includes('npm install --no-save') && workflowSource.includes('@vitest/coverage-v8')) fail('CI no debe mutar node_modules con un segundo npm install para coverage');
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
   if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
   if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña obliga"')) fail('Browser smoke crítico debe atravesar confirmación de despliegue Combat');
-  const informationalCoverageSteps = (workflowSource.match(/continue-on-error:\s*true/g) || []).length;
+  const informationalCoverageSteps = (coverageWorkflowSource.match(/continue-on-error:\s*true/g) || []).length;
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');
 }
 

@@ -30,7 +30,12 @@ export {
 // no suman peso ni dependen de una CDN. El estado de silencio se guarda en
 // localStorage para que se recuerde entre sesiones.
 
-import { AMBIENT_THEME_SESSION_KEY, LEGACY_AMBIENT_THEME_KEY } from './audioSession.js';
+import {
+  AMBIENT_THEME_SESSION_KEY,
+  LEGACY_AMBIENT_THEME_KEY,
+  readAmbientPlaybackSession,
+  writeAmbientPlaybackSession,
+} from './audioSession.js';
 import {
   AMBIENT_GENRE_ORDER,
   AMBIENT_THEMES,
@@ -331,7 +336,18 @@ function transportElapsedMs() {
   return Math.max(0, ambientTransport.positionMs + live);
 }
 
+function persistAmbientTransport() {
+  const themeId = ambientTransport.themeId || getAmbientThemeId();
+  const status = ambientTransport.status === 'gap' ? 'playing' : ambientTransport.status;
+  writeAmbientPlaybackSession({
+    status,
+    themeId,
+    positionMs: status === 'stopped' ? 0 : transportElapsedMs(),
+  });
+}
+
 function notifyAmbientTransport() {
+  persistAmbientTransport();
   if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
   window.dispatchEvent(new CustomEvent('chess-ambient-transport'));
 }
@@ -1540,6 +1556,56 @@ function startStructuredMusic(theme, startPositionMs = 0) {
 
   ambientResumeFn = tick;
   tick();
+}
+
+export function restoreAmbientMusicSession() {
+  const saved = readAmbientPlaybackSession();
+  if (!saved) {
+    startAmbientMusic();
+    return;
+  }
+
+  const themeId = AMBIENT_THEMES[saved.themeId] && !CURATED_HIDDEN_THEME_IDS.has(saved.themeId)
+    ? saved.themeId
+    : getAmbientThemeId();
+  setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, themeId);
+  const durationMs = getAmbientTrackDurationMs(themeId);
+  const restoredPosition = durationMs
+    ? Math.min(saved.positionMs, Math.max(0, durationMs - 1))
+    : saved.positionMs;
+
+  clearAmbientTrackEndTimer();
+  clearAmbientTransitionTimer();
+  queuedAmbientThemeId = null;
+  if (stepTimer) {
+    clearTimeout(stepTimer);
+    stepTimer = null;
+  }
+  ambientResumeFn = null;
+  ambientTransport.themeId = themeId;
+  ambientTransport.positionMs = saved.status === 'stopped' ? 0 : restoredPosition;
+  ambientTransport.startedAtMs = 0;
+  ambientTransport.status = saved.shouldPlay ? 'paused' : saved.status;
+
+  if (saved.shouldPlay) startAmbientMusic();
+  else notifyAmbientTransport();
+}
+
+export function disposeAmbientMusic() {
+  // Desmontar React / recargar la página no equivale a pulsar Stop. Cortamos
+  // timers y audio de esta instancia sin tocar sessionStorage, donde ya vive
+  // la intención del usuario (playing/paused/stopped + pista + posición).
+  clearAmbientTrackEndTimer();
+  clearAmbientTransitionTimer();
+  queuedAmbientThemeId = null;
+  if (stepTimer) {
+    clearTimeout(stepTimer);
+    stepTimer = null;
+  }
+  ambientResumeFn = null;
+  if (ambientOutputNode) {
+    try { ambientOutputNode.gain.value = 0; } catch { /* best effort */ }
+  }
 }
 
 export function startAmbientMusic() {

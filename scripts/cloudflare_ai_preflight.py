@@ -22,8 +22,7 @@ WRANGLER = ROOT / "infra/cloudflare/wrangler.toml"
 TF_MAIN = ROOT / "infra/cloudflare/main.tf"
 BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
-WORKFLOW = ROOT / ".github/workflows/terraform-cloudflare.yml"
-PAGES_WORKFLOW = ROOT / ".github/workflows/static.yml"
+WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
 EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]
@@ -40,21 +39,6 @@ def require_pattern(text: str, pattern: str, label: str, errors: list[str]) -> N
         errors.append(f"{label}: no cumple el patrón esperado {pattern!r}")
 
 
-def workflow_run_targets(text: str) -> list[str]:
-    """Return workflow names listed under on.workflow_run.workflows.
-
-    This intentionally parses only the tiny GitHub Actions shape we own instead
-    of depending on YAML formatting or PyYAML being installed in CI.
-    """
-    match = re.search(r"(?ms)^\s*workflow_run:\s*\n(?P<body>(?:^[ \t]+.*\n?)*)", text)
-    if not match:
-        return []
-    body = match.group("body")
-    workflows = re.search(r"(?m)^\s*workflows:\s*\[(?P<items>[^]]*)\]\s*$", body)
-    if not workflows:
-        return []
-    return [item.strip().strip('\"\'') for item in workflows.group("items").split(',') if item.strip()]
-
 
 def static_check() -> list[str]:
     errors: list[str] = []
@@ -64,7 +48,6 @@ def static_check() -> list[str]:
     backend = BACKEND.read_text(encoding="utf-8")
     frontend = FRONTEND_REMOTE.read_text(encoding="utf-8")
     workflow = WORKFLOW.read_text(encoding="utf-8")
-    pages_workflow = PAGES_WORKFLOW.read_text(encoding="utf-8")
 
     for needle in (
         'env.AI.run(',
@@ -148,35 +131,29 @@ def static_check() -> list[str]:
     require(workflow, 'python3 "$health_contract" "$health_body"', "workflow shared health contract invocation", errors)
     require(workflow, '[[ -f "$health_contract" ]]', "workflow health contract existence check", errors)
 
-    # Release chain: CI green -> Workers AI green -> Pages. Keep the Worker and
-    # Pages deploy in the SAME workflow_run so both jobs share the exact CI
-    # payload/head_sha. A second workflow_run hop is avoidable and makes SHA
-    # provenance harder to reason about when several main pushes overlap.
-    worker_sources = workflow_run_targets(workflow)
-    if worker_sources != ["CI"]:
-        errors.append(f"workflow requires CI: workflow_run.workflows={worker_sources!r}")
-    require(workflow, "github.event.workflow_run.conclusion == 'success'", "workflow requires green CI", errors)
-    require(workflow, "github.event.workflow_run.event == 'push'", "workflow production deploy requires CI originated from push", errors)
-    require(workflow, "branches: [main]", "workflow_run from CI is filtered to main at trigger level", errors)
-    require(workflow, "ref: ${{ github.event.workflow_run.head_sha || github.sha }}", "Worker checks out the CI-approved SHA", errors)
-    require(workflow, "Refuse stale production commit", "workflow blocks stale CI deploys", errors)
-    require(workflow, "git ls-remote --exit-code origin refs/heads/main", "workflow compares tested SHA with current main", errors)
-    require(workflow, 'tested_sha="${{ github.event.workflow_run.head_sha }}"', "workflow pins stale guard to CI SHA", errors)
-    require(workflow, "  pages:\n", "workflow contains serial Pages job", errors)
-    require(workflow, "needs: terraform", "Pages waits for Worker/Terraform job", errors)
-    require(workflow, "name: Deploy Frontend to GitHub Pages", "Pages deploy job is explicit", errors)
-    require(workflow, "ref: ${{ github.event.workflow_run.head_sha }}", "Pages checks out the CI-approved SHA", errors)
-    require(workflow, "VITE_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}", "Pages exposes the CI-approved SHA", errors)
+    # Production is deliberately one workflow and three serial jobs:
+    # Tests -> Cloudflare/Terraform -> GitHub Pages. No workflow_run hand-off,
+    # so all three stages naturally share github.sha.
+    require(workflow, "  tests:\n", "pipeline contains Tests job", errors)
+    require(workflow, "  terraform:\n", "pipeline contains Terraform job", errors)
+    require(workflow, "name: Cloudflare Worker · Terraform", "Terraform stage is explicit", errors)
+    require(workflow, "needs: tests", "Terraform waits for Tests", errors)
+    require(workflow, "  pages:\n", "pipeline contains Pages job", errors)
+    require(workflow, "name: GitHub Pages", "Pages stage is explicit", errors)
+    require(workflow, "needs: terraform", "Pages waits for Terraform", errors)
+    require(workflow, "github.event_name == 'push' && github.ref == 'refs/heads/main'", "production stages only auto-run on main push", errors)
+    if "workflow_run:" in workflow:
+        errors.append("pipeline: workflow_run no debe existir; producción vive en un único workflow")
+    require(workflow, "ref: ${{ github.sha }}", "deploy stages pin the tested SHA", errors)
+    require(workflow, "Refuse stale production commit", "pipeline blocks stale production commits", errors)
+    require(workflow, "git ls-remote --exit-code origin refs/heads/main", "pipeline compares tested SHA with current main", errors)
+    require(workflow, 'tested_sha="${{ github.sha }}"', "pipeline stale guard uses tested SHA", errors)
+    require(workflow, "VITE_BUILD_SHA: ${{ github.sha }}", "Pages exposes tested SHA", errors)
     require(workflow, "uses: actions/deploy-pages@v4", "Pages deploy action wired", errors)
-    require(workflow, "group: pages", "automatic Pages deployment shares concurrency lock", errors)
 
-    # static.yml remains only as an explicit emergency/manual publisher. It
-    # must not subscribe to workflow_run or it could race/duplicate production.
-    require(pages_workflow, "workflow_dispatch:", "manual Pages fallback exists", errors)
-    if "workflow_run:" in pages_workflow:
-        errors.append("Pages manual workflow: no debe suscribirse a workflow_run; el deploy automático vive junto a Cloudflare")
-    require(pages_workflow, "VITE_BUILD_SHA: ${{ steps.commit.outputs.sha }}", "manual Pages reports resolved SHA", errors)
-    require(pages_workflow, 'group: "pages"', "manual Pages shares automatic concurrency lock", errors)
+    for obsolete in (ROOT / ".github/workflows/terraform-cloudflare.yml", ROOT / ".github/workflows/static.yml"):
+        if obsolete.exists():
+            errors.append(f"pipeline: workflow de producción obsoleto todavía existe: {obsolete.name}")
 
     # Self-check the shared contract so a future edit cannot silently stop
     # requiring one of the routed models.

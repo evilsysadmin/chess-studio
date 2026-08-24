@@ -2,12 +2,15 @@
 
 - Endurece los smoke Playwright tras la aparición de botones de ayuda: `Así juegas`, `Partida rápida` y `Combat Chess · Campaña` se localizan por texto visible dentro de su botón, evitando colisiones con `aria-label="Ayuda de …"`; el auditor impide reintroducir esos selectores regex ambiguos.
 - El mock E2E de perfil implementa el contrato real `GET/PUT/PATCH`, revisiones por clave y `409` por conflicto, para que la sincronización optimista no quede fuera de los browser tests.
-- Restaura y blinda la cadena de producción `CI → Cloudflare Workers AI → GitHub Pages`; Cloudflare filtra el `workflow_run` de CI a `main`; Pages arranca tras un Worker verde encadenado y publica el mismo `head_sha`, sin revalidar de forma frágil `head_branch` en el segundo salto.
+- Restaura y blinda la cadena de producción `CI → Cloudflare Workers AI → GitHub Pages`: un único workflow disparado por CI en `main` despliega/verifica primero el Worker y sólo después ejecuta el job de Pages con `needs: terraform`, usando en ambos el mismo `head_sha` aprobado por CI. `static.yml` queda únicamente como fallback manual.
 - `make tests`/pre-push ejecuta también `static-preflight`, adelantando gates de release, API/auth, CSS, ciclos, Cloudflare y Worker antes de intentar el push.
 - Corrige una carrera del primer `PATCH /api/profile`: la creación inicial usa `insert_one`; un `DuplicateKeyError` fuerza reread y resolución por revisión en vez de poder sobrescribir al escritor ganador. Se añade regresión específica.
+- Corrige además la recuperación de una caché dirty: tras fusionar el PATCH se importa la foto completa devuelta por Mongo, evitando que una clave remota independiente vuelva a ser pisada por una caché local antigua en el siguiente flush.
+- Combat Chess vuelve a invalidar `deploymentConfirmed` si la formación cambia después de confirmarla; arreglar la mesa obliga de nuevo a confirmar, como en el controlador pre-refactor.
+- El deploy automático rechaza un CI aprobado para un SHA que ya no sea la punta de `main`, evitando rollbacks accidentales si dos pushes terminan sus CI fuera de orden.
 - El smoke real Docker+Mongo cubre ahora `PUT → PATCH válido → PATCH stale=409 → relogin`, no sólo persistencia básica.
 - Coverage V8 sigue siendo informativo: mientras `@vitest/coverage-v8` no esté sincronizado en `package.json` + lockfile, el workflow lo omite con warning en vez de producir un rojo engañoso.
-- Inventario esperado tras la auditoría: 701 tests frontend / 117 archivos, 220 backend / 10, 15 E2E / 2 y 7 Worker / 1. Sin cambios intencionados de gameplay.
+- Inventario esperado tras la auditoría: 702 tests frontend / 117 archivos, 220 backend / 10, 15 E2E / 2 y 7 Worker / 1. Sin cambios intencionados de reglas de ajedrez.
 
 ### v16.6dm43b · Hotfix · readiness parcheable + contrato root actualizado
 
@@ -1076,10 +1079,12 @@ una `X-API-Key` presente en `M2M_API_KEYS`. No existe análisis anónimo.
 | DELETE | `/api/games/:id` | **JWT + ownership.** Abandona/borra la partida |
 | POST | `/api/analyze` | **JWT o API key M2M.** Mejor jugada para una posición suelta. Body: `{ fen, level? }` |
 | POST | `/api/analyze-move` | **JWT o API key M2M.** Compara una jugada jugada contra la mejor posible en esa posición. Body: `{ fen, from?, to?, level? }` |
-| GET | `/api/profile` | Perfil del usuario autenticado (requiere token) |
-| PUT | `/api/profile` | Sobreescribe el perfil del usuario autenticado — passthrough puro, la forma la define el frontend |
+| GET | `/api/profile` | Perfil del usuario autenticado + revisiones por clave (requiere token) |
+| PUT | `/api/profile` | Reemplazo completo compatible para importaciones/clientes antiguos; avanza revisiones de claves modificadas |
+| PATCH | `/api/profile` | Sincronización optimista por clave con revisiones; devuelve `409` + snapshot remoto si una clave cambió en otra pestaña |
 | GET | `/api/admin/users` | Lista de usuarios registrados con sus estadísticas — requiere `ADMIN_USERNAMES` |
-| GET | `/api/health` | Salud del servicio |
+| GET | `/api/health` | Liveness barata del servicio; no toca Mongo |
+| GET | `/api/ready` | Readiness: exige Mongo si la persistencia está configurada; en desarrollo puede indicar `storage: memory` |
 
 ### Rate limiting
 
@@ -1164,16 +1169,14 @@ La guía paso a paso y el diagnóstico de 404 están en
 `https://chess-studio.shadowops.dpdns.org/api` como `VITE_API_URL` de GitHub
 Pages y vuelve a desplegar el frontend. La API incluye ahora una ruta `/`
 de diagnóstico para que abrir el dominio del backend no termine en el 404
-genérico de FastAPI; `/api/health` sigue siendo el health check real.
+genérico de FastAPI; `/api/health` es liveness y `/api/ready` es el readiness que comprueba el almacenamiento persistente.
 
 ### 2. Frontend en GitHub Pages
 
 1. En el repo de GitHub: **Settings → Pages → Source: GitHub Actions**.
 2. **Settings → Secrets and variables → Actions → Variables**, agrega
    una variable `VITE_API_URL` con `https://tu-backend.onrender.com/api`.
-3. Haz push a `main`. El workflow `.github/workflows/deploy-pages.yml`
-   compila el frontend con la URL del backend ya metida adentro y
-   publica solo.
+3. Haz push a `main`. Tras quedar verde `CI`, `.github/workflows/terraform-cloudflare.yml` despliega y verifica primero Workers AI y después, en el job `Deploy Frontend to GitHub Pages`, compila/publica exactamente ese mismo SHA. `.github/workflows/static.yml` queda como despliegue manual de emergencia.
 4. En un par de minutos, el sitio queda en
    `https://tu-usuario.github.io/nombre-del-repo/`.
 
