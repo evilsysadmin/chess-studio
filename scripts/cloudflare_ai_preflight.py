@@ -14,6 +14,8 @@ import sys
 import urllib.error
 import urllib.request
 
+from cloudflare_health_contract import EXPECTED_MODELS, EXPECTED_SERVICE, validate_health_payload
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 WORKER = ROOT / "infra/cloudflare/worker/index.js"
 WRANGLER = ROOT / "infra/cloudflare/wrangler.toml"
@@ -22,9 +24,9 @@ BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
 WORKFLOW = ROOT / ".github/workflows/terraform-cloudflare.yml"
 
-EXPECTED_COMMENT_MODEL = "@cf/meta/llama-3.2-3b-instruct"
-EXPECTED_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
-EXPECTED_ANALYSIS_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
+EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
+EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]
+EXPECTED_ANALYSIS_MODEL = EXPECTED_MODELS["analysis"]
 
 
 def require(text: str, needle: str, label: str, errors: list[str]) -> None:
@@ -120,15 +122,24 @@ def static_check() -> list[str]:
     require(workflow, '- name: Verify Custom Domain and health', "workflow Custom Domain health step", errors)
     require(workflow, 'for attempt in {1..60}', "workflow TLS/health propagation retry", errors)
     require(workflow, 'Health HTTP ${health_status:-curl-error}', "workflow diagnosable live health", errors)
-    # The workflow may format the inline Python dict with or without spaces.
-    # Validate the semantic routing token instead of a brittle byte-for-byte YAML substring.
-    require_pattern(
-        workflow,
-        r'["\']analysis["\']\s*:\s*["\']@cf/qwen/qwen3-30b-a3b-fp8["\']',
-        "workflow analysis routing health",
-        errors,
-    )
-    require(workflow, 'all(models.get(k)==v for k,v in expected.items())', "workflow validates all routed models", errors)
+    # Deployment health uses the same executable contract as this preflight.
+    # Do not inspect inline Python/YAML implementation details: that was brittle
+    # and produced false CI failures for semantically equivalent workflows.
+    require(workflow, 'python3 scripts/cloudflare_health_contract.py "$health_body"', "workflow shared health contract", errors)
+
+    # Self-check the shared contract so a future edit cannot silently stop
+    # requiring one of the routed models.
+    expected_payload = {
+        "ok": True,
+        "service": EXPECTED_SERVICE,
+        "model": EXPECTED_COMMENT_MODEL,
+        "models": dict(EXPECTED_MODELS),
+    }
+    if validate_health_payload(expected_payload):
+        errors.append("shared health contract: rechaza un payload válido")
+    missing_analysis = {**expected_payload, "models": {k: v for k, v in EXPECTED_MODELS.items() if k != "analysis"}}
+    if not validate_health_payload(missing_analysis):
+        errors.append("shared health contract: no detecta routing analysis ausente")
     require(workflow, 'CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org', "workflow Render handoff", errors)
 
     require(tf_main, 'resource "cloudflare_workers_custom_domain" "narrative_ai"', "terraform Custom Domain", errors)
@@ -160,19 +171,7 @@ def live_health(worker_url: str) -> list[str]:
             payload = json.loads(response.read().decode("utf-8"))
             if response.status != 200:
                 errors.append(f"health: HTTP {response.status}")
-            if payload.get("ok") is not True:
-                errors.append("health: payload no indica ok=true")
-            if payload.get("service") != "chess-studio-narrative-ai":
-                errors.append(f"health: servicio inesperado {payload.get('service')!r}")
-            if payload.get("model") != EXPECTED_COMMENT_MODEL:
-                errors.append(f"health: modelo de comentarios inesperado {payload.get('model')!r}")
-            models = payload.get("models") if isinstance(payload.get("models"), dict) else {}
-            if models.get("comments") != EXPECTED_COMMENT_MODEL:
-                errors.append(f"health: routing comments inesperado {models.get('comments')!r}")
-            if models.get("player_portrait") != EXPECTED_PORTRAIT_MODEL:
-                errors.append(f"health: routing player_portrait inesperado {models.get('player_portrait')!r}")
-            if models.get("analysis") != EXPECTED_ANALYSIS_MODEL:
-                errors.append(f"health: routing analysis inesperado {models.get('analysis')!r}")
+            errors.extend(f"health: {item}" for item in validate_health_payload(payload))
     except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
         errors.append(f"health: no se pudo verificar {url}: {exc}")
     return errors

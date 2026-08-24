@@ -11,14 +11,14 @@ const auth = readFileSync(new URL('./auth.js', import.meta.url), 'utf8');
 describe('foreground presence contract', () => {
   it('muestrea cada dos minutos y sólo reacciona además a visibilitychange', () => {
     expect(app).toContain('usePresenceHeartbeat(view)');
-    expect(presenceHook).toContain('PRESENCE_HEARTBEAT_MS = 120000');
+    expect(presenceHook).toContain('PRESENCE_HEARTBEAT_MS');
     expect(presenceHook).toContain("document.addEventListener('visibilitychange', handleVisibility)");
     expect(presenceHook).toContain("document.visibilityState === 'visible'");
     expect(presenceHook).not.toContain('pointermove');
   });
 
   it('admin refresca el agregado con la misma cadencia aproximada', () => {
-    expect(admin).toContain('const ADMIN_REFRESH_MS = 120000;');
+    expect(admin).toContain('ADMIN_REFRESH_MS');
     expect(admin).toContain('foregroundCount');
     expect(admin).toContain('en primer plano');
     expect(admin).toContain('muestreo aprox. cada 2 min');

@@ -14,9 +14,9 @@ import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
+import { ADMIN_REFRESH_MS } from '../presenceCadence.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
-const ADMIN_REFRESH_MS = 120000;
 
 function formatPresenceAge(seconds) {
   if (!Number.isFinite(seconds)) return null;

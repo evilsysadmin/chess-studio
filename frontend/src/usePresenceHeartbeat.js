@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { touchActivity } from './auth.js';
+import { PRESENCE_HEARTBEAT_MS } from './presenceCadence.js';
 
 const ACTIVITY_BY_VIEW = Object.freeze({
   menu: 'Menú principal',
@@ -21,7 +22,6 @@ const ACTIVITY_BY_VIEW = Object.freeze({
   board3d: 'Experimento 3D',
 });
 
-export const PRESENCE_HEARTBEAT_MS = 120000;
 
 export function activityForView(view) {
   return ACTIVITY_BY_VIEW[view] || 'Navegando';
