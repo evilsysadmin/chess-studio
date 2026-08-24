@@ -292,7 +292,7 @@ worker-test:
 release-check:
 	node scripts/release_consistency_check.mjs
 
-static-preflight: audio-check data-ux-check campaign-map-check release-check test-suite-audit static-contract-risk-audit css-check dependency-cycle-check security-api cf-ai-preflight worker-test
+static-preflight: audio-check data-ux-check campaign-map-check release-check test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check security-api cf-ai-preflight worker-test
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py
 	@echo "==> Static preflight OK (sin npm, Docker ni red)."

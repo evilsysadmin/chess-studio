@@ -137,18 +137,40 @@ if (checkCiWiring) {
   for (const obsolete of ['terraform-cloudflare.yml', 'static.yml']) {
     if (fs.existsSync(path.join(workflowsDir, obsolete))) fail(`Pipeline de producción duplicado: ${obsolete}`);
   }
-  if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; Tests → Terraform → Pages viven en el mismo workflow');
+  if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; quality gate paralelo → Terraform → Pages vive en el mismo workflow');
   for (const required of [
-    '  tests:\n',
+    '  preflight:\n',
+    'name: Preflight · contracts',
+    '  frontend:\n',
+    'name: Tests · Frontend',
+    '  backend:\n',
+    'name: Tests · Backend',
+    '  security:\n',
+    'name: Security · Trivy + Docker',
+    '  e2e:\n',
+    'name: Tests · Playwright',
+    'needs: preflight',
     '  terraform:\n',
     'name: Cloudflare Worker · Terraform',
-    'needs: tests',
+    'needs: [frontend, backend, security, e2e]',
     '  pages:\n',
     'name: GitHub Pages',
     'needs: terraform',
     'VITE_BUILD_SHA: ${{ github.sha }}',
   ]) {
     if (!mainCiSource.includes(required)) fail(`Pipeline único incompleto: falta ${JSON.stringify(required)}`);
+  }
+  for (const qualityJob of ['frontend', 'backend', 'security', 'e2e']) {
+    const start = mainCiSource.indexOf(`\n  ${qualityJob}:\n`);
+    if (start < 0) fail(`Falta job paralelo ${qualityJob}`);
+    const tail = mainCiSource.slice(start + 1);
+    const nextJobOffset = tail.slice(tail.indexOf('\n') + 1).search(/^  [A-Za-z0-9_-]+:\n/m);
+    const block = nextJobOffset >= 0
+      ? tail.slice(0, tail.indexOf('\n') + 1 + nextJobOffset)
+      : tail;
+    if (!block.includes('\n    needs: preflight\n')) {
+      fail(`${qualityJob} debe depender sólo del preflight y poder correr en paralelo`);
+    }
   }
   if (/Coverage (?:frontend|backend) \(informativo\)/.test(mainCiSource)) fail('CI principal no debe repetir suites completas sólo para coverage informativo');
   if (!coverageWorkflowSource.includes('workflow_dispatch:') || !coverageWorkflowSource.includes('schedule:')) fail('Coverage debe quedar disponible manualmente y por calendario');

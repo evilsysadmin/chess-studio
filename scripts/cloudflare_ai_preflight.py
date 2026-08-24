@@ -131,13 +131,15 @@ def static_check() -> list[str]:
     require(workflow, 'python3 "$health_contract" "$health_body"', "workflow shared health contract invocation", errors)
     require(workflow, '[[ -f "$health_contract" ]]', "workflow health contract existence check", errors)
 
-    # Production is deliberately one workflow and three serial jobs:
-    # Tests -> Cloudflare/Terraform -> GitHub Pages. No workflow_run hand-off,
-    # so all three stages naturally share github.sha.
-    require(workflow, "  tests:\n", "pipeline contains Tests job", errors)
+    # Production is deliberately one workflow. A cheap preflight fans out to
+    # frontend/backend/security/E2E runners in parallel; Terraform waits for
+    # all four quality branches and Pages remains the final serial stage.
+    require(workflow, "  preflight:\n", "pipeline contains Preflight job", errors)
+    for job in ("frontend", "backend", "security", "e2e"):
+        require(workflow, f"  {job}:\n", f"pipeline contains parallel {job} job", errors)
     require(workflow, "  terraform:\n", "pipeline contains Terraform job", errors)
     require(workflow, "name: Cloudflare Worker · Terraform", "Terraform stage is explicit", errors)
-    require(workflow, "needs: tests", "Terraform waits for Tests", errors)
+    require(workflow, "needs: [frontend, backend, security, e2e]", "Terraform waits for every parallel quality branch", errors)
     require(workflow, "  pages:\n", "pipeline contains Pages job", errors)
     require(workflow, "name: GitHub Pages", "Pages stage is explicit", errors)
     require(workflow, "needs: terraform", "Pages waits for Terraform", errors)
