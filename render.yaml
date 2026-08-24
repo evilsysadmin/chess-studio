@@ -13,7 +13,7 @@ services:
     dockerfilePath: ./backend-python/Dockerfile
     dockerContext: ./backend-python
     plan: free
-    healthCheckPath: /api/health
+    healthCheckPath: /api/ready
     # Dominio público del backend. Si este Blueprint gestiona tu servicio,
     # Render intentará asociarlo al desplegar/sincronizar. Si el servicio se
     # creó manualmente, añádelo también en Settings -> Custom Domains.

@@ -8,12 +8,11 @@ import GameChat from './GameChat.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
-import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playTimePressureSound, playIllegalMoveSound } from '../sound.js';
+import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playIllegalMoveSound } from '../sound.js';
 import { speakCpuComment, stopCpuSpeech } from '../voiceCommentary.js';
 import { formatLongMove } from '../notation.js';
 import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
 import { flagOutcome, flagPgnResult, formatClock } from '../clock.js';
-import { clearClockSnapshot, restoreClockState, saveClockSnapshot } from '../clockPersistence.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
@@ -28,6 +27,7 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import { noteworthyPresentation } from '../spectatorReactions.js';
 import { getToken } from '../auth.js';
 import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
+import { useGameClock } from '../useGameClock.js';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -93,26 +93,22 @@ export default function GameScreen({
   const zenModeRef = useRef(zenMode);
   zenModeRef.current = zenMode;
 
-  // Reloj: enteramente del lado del cliente (no vive en el backend — esta
-  // app no necesita anti-trampas). null en cualquiera de los dos significa
-  // "sin reloj para esta partida". `flagFallen` guarda el color a quien se
-  // le acabó el tiempo, si pasó.
-  const hasClock = !!timeControl?.initial;
-  const initialClock = restoreClockState(game.id, timeControl, game.turn);
-  const [whiteTime, setWhiteTime] = useState(initialClock.whiteTime);
-  const [blackTime, setBlackTime] = useState(initialClock.blackTime);
-  const [flagFallen, setFlagFallen] = useState(initialClock.flagFallen); // 'w' | 'b' | null
-  const lastClockPersistRef = useRef(0);
-  const tickRef = useRef(null);
+  const [forcedOutcome, setForcedOutcome] = useState(null);
+  const { hasClock, whiteTime, blackTime, flagFallen, addIncrement, tickingColor } = useGameClock({
+    game,
+    timeControl,
+    busy,
+    humanColor,
+    forcedOutcome,
+    onPressure: () => setTurnBanner('30 segundos. Ahora cada clic viene con auditoría.'),
+  });
   const [showReport, setShowReport] = useState(false);
   const [achievementToast, setAchievementToast] = useState(null);
   const [suddenLives, setSuddenLives] = useState(3);
-  const [forcedOutcome, setForcedOutcome] = useState(null);
   const [controlPrompt, setControlPrompt] = useState(null);
   const controlResolveRef = useRef(null);
   const pressureMovesRef = useRef(0);
   const pressureIncidentsRef = useRef(0);
-  const pressureAlertRef = useRef(false);
   const illegalKingSafetyCommentShownRef = useRef(false);
 
   // Estado visual del tablero: se actualiza en dos pasos (jugada propia,
@@ -171,16 +167,11 @@ export default function GameScreen({
     openingMemoryShownRef.current = false;
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
-    const restoredClock = restoreClockState(game.id, timeControl, game.turn);
-    setWhiteTime(restoredClock.whiteTime);
-    setBlackTime(restoredClock.blackTime);
-    setFlagFallen(restoredClock.flagFallen);
     setSuddenLives(3);
     setForcedOutcome(null);
     setControlPrompt(null);
     pressureMovesRef.current = 0;
     pressureIncidentsRef.current = 0;
-    pressureAlertRef.current = false;
     illegalKingSafetyCommentShownRef.current = false;
   }, [game.id]);
 
@@ -206,64 +197,6 @@ export default function GameScreen({
       if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
     };
   }, [game.id]);
-
-  // Reloj — tick: cada 200ms, le resta el tiempo transcurrido de verdad
-  // (no un valor fijo, para no perder precisión por el propio intervalo) al
-  // lado que le toca mover ahora mismo. Mientras `busy` es true (esperando
-  // la respuesta de la CPU tras la jugada propia), el turno visual todavía
-  // no cambió en `game.turn` — por eso se calcula "a quién le toca de
-  // verdad" en vez de confiar directo en ese campo.
-  useEffect(() => {
-    if (!hasClock || game.isGameOver || flagFallen || forcedOutcome) return;
-    tickRef.current = performance.now();
-    const interval = setInterval(() => {
-      const now = performance.now();
-      const elapsed = (now - tickRef.current) / 1000;
-      tickRef.current = now;
-      const tickingColor = busy ? (humanColor === 'w' ? 'b' : 'w') : game.turn;
-      if (tickingColor === 'w') setWhiteTime((t) => Math.max(0, (t ?? 0) - elapsed));
-      else setBlackTime((t) => Math.max(0, (t ?? 0) - elapsed));
-    }, 200);
-    return () => clearInterval(interval);
-  }, [hasClock, game.id, game.isGameOver, flagFallen, forcedOutcome, busy, game.turn, humanColor]);
-
-  // Snapshot del reloj: sobrevive a F5 y cobra el tiempo real que pasó
-  // mientras la pestaña se reconstruía. Limitamos escrituras a ~1/s.
-  useEffect(() => {
-    if (!hasClock || whiteTime === null || blackTime === null || game.isGameOver || flagFallen || forcedOutcome) return;
-    const now = Date.now();
-    if (now - lastClockPersistRef.current < 900) return;
-    lastClockPersistRef.current = now;
-    const activeColor = busy ? (humanColor === 'w' ? 'b' : 'w') : game.turn;
-    saveClockSnapshot({ gameId: game.id, timeControlId: timeControl.id, whiteTime, blackTime, activeColor, now });
-  }, [whiteTime, blackTime, busy, game.turn, game.id, game.isGameOver, flagFallen, forcedOutcome, hasClock, humanColor, timeControl?.id]);
-
-  useEffect(() => {
-    if (game.isGameOver) clearClockSnapshot(game.id);
-  }, [game.id, game.isGameOver]);
-
-  // Reloj — bandera: en cuanto un lado llega a 0, se declara perdedor por
-  // tiempo. La adjudicación posterior sí contempla material insuficiente.
-  useEffect(() => {
-    if (!hasClock || flagFallen || game.isGameOver) return;
-    if (whiteTime !== null && whiteTime <= 0) {
-      saveClockSnapshot({ gameId: game.id, timeControlId: timeControl.id, whiteTime: 0, blackTime: blackTime ?? 0, activeColor: 'w' });
-      setFlagFallen('w');
-    } else if (blackTime !== null && blackTime <= 0) {
-      saveClockSnapshot({ gameId: game.id, timeControlId: timeControl.id, whiteTime: whiteTime ?? 0, blackTime: 0, activeColor: 'b' });
-      setFlagFallen('b');
-    }
-  }, [whiteTime, blackTime, hasClock, flagFallen, game.isGameOver]);
-
-  useEffect(() => {
-    if (!hasClock || pressureAlertRef.current || game.isGameOver || flagFallen || forcedOutcome) return;
-    const mine = humanColor === 'w' ? whiteTime : blackTime;
-    if (mine !== null && mine <= 30) {
-      pressureAlertRef.current = true;
-      playTimePressureSound();
-      setTurnBanner('30 segundos. Ahora cada clic viene con auditoría.');
-    }
-  }, [whiteTime, blackTime, hasClock, humanColor, game.isGameOver, flagFallen, forcedOutcome]);
 
   // Avisa el resultado por bandera caída, igual que el efecto de jaque mate
   // de más abajo — comparten `reportedResultRef` para no informar dos veces.
@@ -496,10 +429,7 @@ export default function GameScreen({
 
     // Incremento tipo Fischer: se suma al terminar la jugada, antes de que
     // arranque a correr el reloj del rival.
-    if (hasClock && timeControl.increment) {
-      if (humanColor === 'w') setWhiteTime((t) => (t ?? 0) + timeControl.increment);
-      else setBlackTime((t) => (t ?? 0) + timeControl.increment);
-    }
+    addIncrement(humanColor);
 
     // Si capturamos algo y estamos en el torneo, sumamos puntos ya mismo
     // (no hace falta esperar al servidor: el valor sale del propio
@@ -538,11 +468,7 @@ export default function GameScreen({
         setBoardFen(updated.fen);
         setLastMoveSquares({ from: updated.lastMove.from, to: updated.lastMove.to });
         triggerAnim(updated.lastMove.from, updated.lastMove.to, !!updated.lastMove.captured);
-        if (hasClock && timeControl.increment) {
-          const cpuColor = humanColor === 'w' ? 'b' : 'w';
-          if (cpuColor === 'w') setWhiteTime((t) => (t ?? 0) + timeControl.increment);
-          else setBlackTime((t) => (t ?? 0) + timeControl.increment);
-        }
+        addIncrement(humanColor === 'w' ? 'b' : 'w');
         if (onCapturePoints && updated.lastMove.captured) {
           // La CPU nos comió algo: se corta la racha.
           captureStreakRef.current = 0;
@@ -711,7 +637,6 @@ export default function GameScreen({
   const bottomColor = humanColor;
   const topTime = topColor === 'w' ? whiteTime : blackTime;
   const bottomTime = bottomColor === 'w' ? whiteTime : blackTime;
-  const tickingColor = flagFallen || game.isGameOver || forcedOutcome ? null : busy ? (humanColor === 'w' ? 'b' : 'w') : game.turn;
 
   // Función normal, NO un componente: si fuera un componente definido acá
   // adentro (con mayúscula), React lo trataría como un tipo nuevo en cada

@@ -31,6 +31,12 @@ jobs:
       - name: Auditar arquitectura de tests y wiring de CI
         run: node scripts/test_suite_audit.mjs --ci-wiring
 
+      - name: CSS modular · orden y byte contract
+        run: node scripts/css_architecture_check.mjs
+
+      - name: Dependency cycles · frontend/backend
+        run: python3 scripts/dependency_cycle_check.py
+
       - name: Verificar identidad de release
         run: node scripts/release_consistency_check.mjs
 

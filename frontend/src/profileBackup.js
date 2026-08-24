@@ -2,8 +2,9 @@
 //
 // MongoDB es la fuente persistente de verdad. localStorage sigue siendo una
 // caché de trabajo síncrona porque muchas pantallas ya leen/escriben desde
-// ahí; esta capa se ocupa de bajar Mongo ANTES de montar la app y de subir
-// cambios sin permitir que dos PUT concurrentes terminen fuera de orden.
+// ahí. Desde v16.6dm41 los guardados normales usan PATCH optimista por clave:
+// dos pestañas que tocan cosas distintas se fusionan y un 409 sólo obliga a
+// releer/reintentar las claves que este snapshot realmente cambió.
 
 import { api } from './api.js';
 import { STORAGE_LOCAL, getStorageItem, setStorageItem } from './safeStorage.js';
@@ -12,18 +13,43 @@ import {
   PROFILE_STORAGE_KEYS,
   clearProfileCache,
   clearProfileDirty,
+  dirtyProfileKeysForCurrentUser,
   hasDirtyProfileForCurrentUser,
   markProfileDirtyForCurrentUser,
 } from './profileKeys.js';
 
 const EXPORTABLE_KEYS = PROFILE_STORAGE_KEYS;
-
-// Serializa todos los PUT. Como /api/profile reemplaza el documento entero,
-// dos requests concurrentes que terminen en orden inverso podrían restaurar
-// una foto vieja del perfil. Esta cola garantiza el mismo orden en que el
-// cliente pidió guardar.
 let saveQueue = Promise.resolve();
 let scheduledTimer = null;
+let syncedUsername = null;
+let syncedData = null;
+let syncedRevisions = {};
+
+function cloneData(data) {
+  return Object.fromEntries(Object.entries(data || {}));
+}
+
+function rememberRemote(remote, username = getUsername()) {
+  syncedUsername = username || null;
+  syncedData = cloneData(remote?.data || {});
+  syncedRevisions = { ...(remote?.revisions || {}) };
+}
+
+function changedKeys(before, after) {
+  const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
+  return [...keys].filter((key) => before?.[key] !== after?.[key] || (key in (before || {})) !== (key in (after || {})));
+}
+
+function patchForSnapshot(snapshot, baseline, explicitDirtyKeys = null) {
+  const local = snapshot?.data || {};
+  const remote = baseline || {};
+  const keys = explicitDirtyKeys === '*'
+    ? [...new Set([...Object.keys(remote), ...Object.keys(local)])]
+    : Array.isArray(explicitDirtyKeys) && explicitDirtyKeys.length
+      ? explicitDirtyKeys
+      : changedKeys(remote, local);
+  return Object.fromEntries(keys.map((key) => [key, Object.prototype.hasOwnProperty.call(local, key) ? local[key] : null]));
+}
 
 export function exportProfile() {
   const data = {};
@@ -72,9 +98,6 @@ function parseProfile(rawTextOrObject) {
   return parsed;
 }
 
-// Restaura únicamente claves conocidas. Con replace=true, las claves que no
-// estén en el backup desaparecen: "importar" significa reemplazar el perfil,
-// no mezclarlo con restos del perfil anterior.
 export function importProfile(rawTextOrObject, { replace = false, markDirty = false } = {}) {
   const parsed = parseProfile(rawTextOrObject);
   if (replace) clearProfileCache();
@@ -86,44 +109,70 @@ export function importProfile(rawTextOrObject, { replace = false, markDirty = fa
       restored += 1;
     }
   }
-  // Las restauraciones traídas desde Mongo usan markDirty=false: son la
-  // copia autoritativa. Una importación/rollback iniciado por el usuario sí
-  // debe quedar marcado como pendiente hasta que el servidor lo confirme.
   if (markDirty) markProfileDirtyForCurrentUser();
   return restored;
 }
 
-// Baja el perfil del usuario autenticado. Nunca usamos como fallback una
-// caché arbitraria si la API/Mongo falla: eso fue exactamente lo que permitía
-// que un usuario nuevo heredara datos del anterior.
-//
-// loaded       -> perfil remoto cargado
-// empty        -> cuenta válida todavía sin perfil
-// offline      -> API/Mongo no disponible
-// unauthorized -> token inválido/expirado
-export async function pullProfileFromServer() {
-  cancelScheduledProfileSync();
+async function loadRemoteForSync({ token, username }) {
+  const remote = await api.getProfile({ token });
+  rememberRemote(remote, username);
+  return remote;
+}
 
-  // Si una sesión anterior dejó cambios sin confirmar (por ejemplo se cayó
-  // la red justo después de ganar XP), esa caché local es deliberadamente
-  // más nueva que Mongo. La salvamos primero para no perderla al hacer pull.
-  if (hasDirtyProfileForCurrentUser()) {
-    try {
-      await pushProfileToServer({ throwOnError: true });
-      return { status: 'recovered-local', restored: 0 };
-    } catch (error) {
-      if (error?.status === 401) return { status: 'unauthorized', restored: 0, error };
-      return { status: 'offline', restored: 0, error };
-    }
+async function patchSnapshot(snapshot, { token, username, keepalive = false, dirtyKeys = null } = {}) {
+  if (syncedUsername !== username || syncedData === null) {
+    await loadRemoteForSync({ token, username });
   }
 
-  try {
-    const remote = await api.getProfile();
-    const data = remote?.data;
+  // Dos reintentos son suficientes: 409 -> foto remota -> merge -> PATCH. Si
+  // otra pestaña gana también esa segunda carrera, preferimos dejar dirty y
+  // reintentar en el próximo flush en vez de entrar en un bucle agresivo.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const patch = patchForSnapshot(snapshot, syncedData || {}, dirtyKeys);
+    if (Object.keys(patch).length === 0) {
+      return { ...snapshot, revisions: { ...syncedRevisions } };
+    }
+    const expected = Object.fromEntries(Object.keys(patch).map((key) => [key, Number(syncedRevisions[key] || 0)]));
+    try {
+      const result = await api.patchProfile(patch, expected, { keepalive, token });
+      rememberRemote(result, username);
+      return result;
+    } catch (error) {
+      if (error?.status !== 409 || attempt > 0) throw error;
+      const detail = error?.body?.detail || {};
+      if (detail.profile && typeof detail.profile === 'object') {
+        rememberRemote({ ...detail.profile, revisions: detail.revisions || detail.profile.revisions || {} }, username);
+      } else {
+        await loadRemoteForSync({ token, username });
+      }
+    }
+  }
+  return null;
+}
 
+export async function pullProfileFromServer() {
+  cancelScheduledProfileSync();
+  const username = getUsername();
+  const token = getToken();
+
+  try {
+    const wasDirty = hasDirtyProfileForCurrentUser();
+    const dirtyKeys = wasDirty ? dirtyProfileKeysForCurrentUser() : [];
+    const localSnapshot = wasDirty ? exportProfile() : null;
+    const remote = await loadRemoteForSync({ token, username });
+
+    if (wasDirty) {
+      // El snapshot local nació antes que este GET. PATCH usa las revisiones
+      // recién leídas y, si otra pestaña cambia algo entre medias, resolverá el
+      // 409 sin pisar claves ajenas.
+      const saved = await patchSnapshot(localSnapshot, { token, username, dirtyKeys });
+      rememberRemote(saved || remote, username);
+      clearProfileDirty();
+      return { status: 'recovered-local', restored: 0 };
+    }
+
+    const data = remote?.data;
     if (!data || Object.keys(data).length === 0) {
-      // Solo limpiamos el perfil persistente. Una partida activa pertenece a
-      // esta sesión y puede seguir siendo válida tras un simple refresh.
       clearProfileCache();
       clearProfileDirty();
       return { status: 'empty', restored: 0 };
@@ -138,37 +187,34 @@ export async function pullProfileFromServer() {
   }
 }
 
-// Guarda una foto concreta del perfil, en cola. Capturar el snapshot ANTES
-// de entrar a la cola es intencionado: si se piden A y luego B, se envían A
-// y B en ese mismo orden; B siempre gana al final.
 export function pushProfileToServer({ throwOnError = false, keepalive = false } = {}) {
-  // Un guardado explícito sustituye cualquier debounce pendiente.
   cancelScheduledProfileSync();
   const snapshot = exportProfile();
   const token = getToken();
   const username = getUsername();
-  const runSave = () => api.saveProfile(snapshot, { keepalive, token });
-  // Un solo .then con manejador de éxito y error mantiene la cola viva sin
-  // añadir un salto de microtarea innecesario. Además hace que el primer PUT
-  // empiece en cuanto la cola anterior queda resuelta.
+  const dirtyKeys = dirtyProfileKeysForCurrentUser();
+  const runSave = () => patchSnapshot(snapshot, { token, username, keepalive, dirtyKeys });
   const operation = saveQueue.then(runSave, runSave);
 
   const confirmed = operation.then((result) => {
-    // No limpies el dirty flag si mientras este PUT estaba en vuelo hubo un
-    // cambio posterior. Ese cambio necesita su propio guardado.
     if (getUsername() === username && JSON.stringify(exportProfile().data) === JSON.stringify(snapshot.data)) {
       clearProfileDirty();
     }
     return result;
   });
 
-  saveQueue = confirmed;
+  saveQueue = confirmed.catch(() => null);
   return throwOnError ? confirmed : confirmed.catch(() => null);
 }
 
-// Cambios pequeños (XP, puzzle, rating, etc.) pueden ocurrir varias veces en
-// pocos milisegundos. Agrupamos el ruido, pero no esperamos a que el usuario
-// cambie de pantalla para persistirlo.
+export function resetProfileSyncStateForTests() {
+  saveQueue = Promise.resolve();
+  scheduledTimer = null;
+  syncedUsername = null;
+  syncedData = null;
+  syncedRevisions = {};
+}
+
 export function scheduleProfileSync(delayMs = 300) {
   cancelScheduledProfileSync();
   scheduledTimer = setTimeout(() => {

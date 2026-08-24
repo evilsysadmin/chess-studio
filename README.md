@@ -1,3 +1,28 @@
+### v16.6dm43 · Deuda estructural · App/Game/Combat/CSS por capas + ciclos a cero
+
+- Reduce la orquestación monolítica de `App.jsx` extrayendo autenticación/bootstrap, audio autenticado, refresco del retrato AI, sincronización de perfil y biblioteca de replay/historial a hooks dedicados.
+- Extrae el reloj de partida de `GameScreen.jsx` a `useGameClock`, conservando persistencia, incremento, bandera caída y avisos de presión temporal.
+- Extrae el gate de despliegue de Combat Chess a `useCombatDeploymentGate`; la ruta libre/no-campaña y las reglas de despliegue siguen intactas.
+- Mueve liveness/readiness/status a `backend-python/system_api.py` para adelgazar `main.py` sin cambiar la superficie autenticada.
+- Divide el antiguo `styles.css` de 9.220 líneas en ocho módulos importados en orden, con un contrato byte-a-byte que garantiza que la cascada resultante no cambia.
+- La detección de tests Vitest pasa a ser recursiva y el preflight/CI incorpora un gate de ciclos de dependencias para frontend y backend.
+- Inventario esperado: 701 tests frontend / 117 archivos, 217 backend / 10, 15 E2E / 2 y 7 Worker / 1. Sin cambios intencionados de gameplay.
+
+### v16.6dm42 · Combat Chess · persistencia de sesión fuera del controlador
+
+- Extrae bootstrap, snapshot, watchdog, limpieza y reanudación de turno CPU a `useCombatSessionPersistence`.
+- Reduce el acoplamiento de `useCombatController` sin cambiar reglas, progresión, roster, campañas ni recuperación de batalla.
+- Añade cobertura directa del contrato de persistencia y reanudación de Combat Chess.
+- Inventario esperado: 695 tests frontend / 114 archivos. Sin cambios intencionados de gameplay.
+
+### v16.6dm41 · Perfil concurrente + readiness real + deploy desacoplado
+
+- `PATCH /api/profile` sincroniza sólo claves modificadas mediante revisiones optimistas por clave; un `409` devuelve el snapshot/revisiones remotas para poder fusionar y reintentar sin pisar cambios independientes. `PUT` se mantiene por compatibilidad.
+- El frontend conserva una cola de sincronización, registra claves sucias por usuario y resuelve conflictos de una sola clave sin sobrescribir preferencias/progreso remoto ajeno.
+- `/api/health` queda como liveness barata y `/api/ready` comprueba disponibilidad real del almacenamiento persistente; Docker, Compose, Render y smoke usan readiness.
+- GitHub Pages queda condicionado directamente a un CI verde; el despliegue del Worker deja de ser una dependencia serial del frontend.
+- Inventario esperado: 691 tests frontend / 113 archivos, 217 backend / 10, 15 E2E / 2 y 7 Worker / 1.
+
 ### v16.6dm40f · Testing pass III · menos wiring textual, menos doble ejecución
 
 - Elimina dos contract-tests de tutoriales que inspeccionaban JSX (`tutorialId`, `setOpen`) y conserva los tests reales de catálogo, contenido y persistencia.

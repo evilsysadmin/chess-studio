@@ -148,20 +148,22 @@ def static_check() -> list[str]:
     require(workflow, 'python3 "$health_contract" "$health_body"', "workflow shared health contract invocation", errors)
     require(workflow, '[[ -f "$health_contract" ]]', "workflow health contract existence check", errors)
 
-    # Release chain: CI green -> Workers AI green -> Pages. Pages must never
-    # publish a frontend that expects a newer AI routing contract than the
-    # Worker that is actually serving production.
+    # Release chain (dm41+): both deploys are independently gated by the same
+    # green CI commit. Pages must not wait on Workers AI: a Worker deployment
+    # failure should not serialize/block a frontend release that already passed
+    # the common CI gate.
     worker_sources = workflow_run_targets(workflow)
     pages_sources = workflow_run_targets(pages_workflow)
     if worker_sources != ["CI"]:
         errors.append(f"workflow requires CI: workflow_run.workflows={worker_sources!r}")
     require(workflow, "github.event.workflow_run.conclusion == 'success'", "workflow requires green CI", errors)
-    if pages_sources != ["Cloudflare Workers AI"]:
-        errors.append(f"Pages requires Workers AI workflow: workflow_run.workflows={pages_sources!r}")
-    require(pages_workflow, "github.event.workflow_run.conclusion == 'success'", "Pages requires green Workers AI", errors)
-    require(pages_workflow, "github.event.workflow_run.event == 'workflow_run'", "Pages requires Workers workflow chained from CI", errors)
-    if "CI" in pages_sources:
-        errors.append('Pages workflow: no debe saltarse Workers AI dependiendo directamente de CI')
+    if pages_sources != ["CI"]:
+        errors.append(f"Pages requires CI: workflow_run.workflows={pages_sources!r}")
+    require(pages_workflow, "github.event.workflow_run.conclusion == 'success'", "Pages requires green CI", errors)
+    require(pages_workflow, "github.event.workflow_run.event == 'workflow_run'", "Pages requires workflow_run event from CI", errors)
+    require(pages_workflow, "github.event.workflow_run.head_branch == 'main'", "Pages requires main branch", errors)
+    if "Cloudflare Workers AI" in pages_sources:
+        errors.append('Pages workflow: no debe depender de Workers AI; ambos despliegues cuelgan directamente de CI')
 
     # Self-check the shared contract so a future edit cannot silently stop
     # requiring one of the routed models.

@@ -33,18 +33,17 @@ import { loadRating, ratingProgress, difficultyForRating } from '../playerRating
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
 import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
-import { canReturnCombatToSetup, clearCombatSession, hasCombatSession, loadCombatSession, saveCombatSession } from '../combatSession.js';
+import { canReturnCombatToSetup } from '../combatSession.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
-import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry, buildCombatSessionSnapshot } from '../combatControllerSupport.js';
+import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry } from '../combatControllerSupport.js';
 import { createCombatRosterActions } from '../combatRosterActions.js';
+import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
+import { useCombatDeploymentGate } from '../useCombatDeploymentGate.js';
 
 
 
 export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
-  const restoredSessionRef = useRef(undefined);
-  if (restoredSessionRef.current === undefined) restoredSessionRef.current = loadCombatSession(combatSessionId) || null;
-  const restoredSession = restoredSessionRef.current;
-  const activityGameIdRef = useRef(restoredSession?.activityGameId || null);
+  const { restoredSession, activityGameIdRef } = useCombatSessionBootstrap(combatSessionId);
   const [phase, setPhase] = useState(restoredSession ? 'battle' : 'setup'); // 'setup' | 'battle' | 'over'
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
@@ -84,8 +83,18 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const difficulty = difficultyBalance.adjusted;
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [showArmy, setShowArmy] = useState(false);
-  const [showDeployment, setShowDeployment] = useState(() => Boolean(requireDeploymentConfirmation && !restoredSession));
-  const [deploymentConfirmed, setDeploymentConfirmed] = useState(() => !requireDeploymentConfirmation || Boolean(restoredSession));
+  const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
+  const {
+    showDeployment, setShowDeployment, deploymentConfirmed, setDeploymentConfirmed,
+    handleStartBattleClick: runDeploymentStartGate,
+    handleConfirmDeployment, guardBattleStart,
+  } = useCombatDeploymentGate({
+    requireDeploymentConfirmation,
+    restoredSession,
+    roster,
+    deadCount: deadRosterEntries.length,
+    onError,
+  });
   // Un solo listener de ESC para la pantalla base. Deployment y Army traen
   // su propio cierre y consumen el gesto mientras están abiertos.
   useEscapeToClose(() => {
@@ -115,61 +124,27 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     return c;
   }, [fen]);
 
-  function saveBattleSnapshot(snapshot) {
-    onPersistenceState?.('saving');
-    const persisted = saveCombatSession(combatSessionId, snapshot);
-    onPersistenceState?.(persisted ? 'saved' : 'error');
-    return persisted;
-  }
-
-  function persistBattleSession({
-    nextFen = fen,
-    nextRegistry = registry,
-    nextCombatLog = combatLog,
-    nextBossHp = bossHpRef.current,
-    nextBossPhase = bossPhase,
-  } = {}) {
-    saveBattleSnapshot(buildCombatSessionSnapshot({
-      fen: nextFen,
-      registry: nextRegistry,
-      humanColor,
-      combatLog: nextCombatLog,
-      focus: focusRef.current,
-      positionCounts: positionCountsRef.current.entries(),
-      bossHp: nextBossHp,
-      bossPhase: nextBossPhase,
-      battleStartRoster: battleStartRosterRef.current,
-      battleParticipants: battleParticipantsRef.current,
-      unitBattleStats: unitBattleStatsRef.current,
-      activityGameId: activityGameIdRef.current,
-    }));
-  }
-
-  // Watchdog de sesión: una batalla viva siempre debe tener snapshot. Esto
-  // cubre renders/remounts de desarrollo y fallos puntuales de sessionStorage
-  // sin tocar el flujo del juego. No corre en Setup/Over.
-  useEffect(() => {
-    if (phase !== 'battle') return;
-    if (!hasCombatSession(combatSessionId)) {
-      persistBattleSession();
-    }
-  }, [phase, fen, registry, combatLog, bossPhase, humanColor, combatSessionId]);
-
-  // Si la pestaña se recargó en mitad de una batalla, retomamos exactamente
-  // el último snapshot. Si le tocaba mover a la CPU, reanudamos su turno una
-  // sola vez; no devolvemos al usuario a Setup por un remount accidental.
-  useEffect(() => {
-    if (!restoredSession || phase !== 'battle') return undefined;
-    if (localChess.turn() === humanColor) return undefined;
-    setBusy(true);
-    const timer = window.setTimeout(
-      () => runCpuTurn(fen, registry, humanColor, combatLog),
-      Math.min(350, CPU_DELAY_MS),
-    );
-    return () => window.clearTimeout(timer);
-    // El snapshot sólo se consume al montar este controlador.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { saveBattleSnapshot, persistBattleSession, clearBattleSession } = useCombatSessionPersistence({
+    combatSessionId,
+    onPersistenceState,
+    restoredSession,
+    activityGameIdRef,
+    phase,
+    fen,
+    registry,
+    humanColor,
+    combatLog,
+    bossPhase,
+    localChess,
+    focusRef,
+    positionCountsRef,
+    bossHpRef,
+    battleStartRosterRef,
+    battleParticipantsRef,
+    unitBattleStatsRef,
+    setBusy,
+    runCpuTurn,
+  });
 
   const techniqueTargets = activeTechnique
     ? techniqueTargetsFor(fen, registry, activeTechnique.from)
@@ -239,42 +214,12 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const infoTechniqueTargets = infoSquare ? techniqueTargetsFor(fen, registry, infoSquare) : [];
   const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
 
-  const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
-
-  // Las bajas se resuelven dentro de la propia mesa de despliegue. Si queda
-  // alguna pendiente, "Empezar" abre esa mesa en vez de mandar al jugador
-  // a otro modal o de cerrar la ventana de revive a escondidas.
   function handleStartBattleClick() {
-    if (deadRosterEntries.length > 0 || (requireDeploymentConfirmation && !deploymentConfirmed)) {
-      setShowDeployment(true);
-      return;
-    }
-    startBattle();
-  }
-
-  function handleConfirmDeployment() {
-    if (!isDeploymentReadyForBattle(roster)) return false;
-    setDeploymentConfirmed(true);
-    setShowDeployment(false);
-    return true;
+    runDeploymentStartGate(startBattle);
   }
 
   function startBattle() {
-    if (requireDeploymentConfirmation && !deploymentConfirmed) {
-      setShowDeployment(true);
-      onError?.('Confirma el despliegue antes de iniciar la operación.');
-      return;
-    }
-    // Defensa en profundidad: aunque algún callback dejase `deploymentConfirmed`
-    // desfasado, jamás archivamos bajas ni arrancamos una campaña con una
-    // formación que ya no sea válida. Se vuelve a Mesa de Guerra y se exige
-    // una confirmación nueva.
-    if (requireDeploymentConfirmation && !isDeploymentReadyForBattle(roster)) {
-      setDeploymentConfirmed(false);
-      setShowDeployment(true);
-      onError?.('El despliegue cambió o tiene bajas pendientes. Revísalo y confirma de nuevo.');
-      return;
-    }
+    if (!guardBattleStart()) return;
     const resolved = forcedHumanColor || resolveHumanColor(colorChoice);
 
     // Se cierra acá la ventana de revivir: cualquier pieza que sigue caída
@@ -473,7 +418,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     checkAchievements({ combatFlawlessWin: isWin && survivorCount === 16 });
 
-    clearCombatSession(combatSessionId);
+    clearBattleSession();
 
     const combatXpGained = Math.max(0, nextRoster.combatXp - roster.combatXp);
     const debrief = buildCombatDebrief({
@@ -964,7 +909,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       combatXpGained: 0,
     });
     setBattleRecap({ survivorCount: battleRecord.survivorCount, totalCount: 16, xpGained: 0, record: battleRecord, serviceResult, debrief });
-    clearCombatSession(combatSessionId);
+    clearBattleSession();
     onBattleResult?.('retired', debrief, {
       gameId: activityGameIdRef.current || battleRecord.id,
       battleRecord,
@@ -979,7 +924,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       console.error('[Combat] Transición battle -> setup bloqueada durante una operación activa.', { combatSessionId });
       return;
     }
-    clearCombatSession(combatSessionId);
+    clearBattleSession();
     setPhase('setup');
   }
 

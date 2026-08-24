@@ -14,10 +14,18 @@ const group = process.argv[2] || 'all';
 const listOnly = process.argv.includes('--list');
 
 function discoverTests() {
-  return fs.readdirSync(src)
-    .filter((name) => /\.test\.(?:js|jsx|mjs)$/.test(name))
-    .sort()
-    .map((name) => `src/${name}`);
+  const found = [];
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.test\.(?:js|jsx|mjs)$/.test(entry.name)) {
+        found.push(`src/${path.relative(src, full).split(path.sep).join('/')}`);
+      }
+    }
+  }
+  walk(src);
+  return found.sort();
 }
 
 const all = discoverTests();

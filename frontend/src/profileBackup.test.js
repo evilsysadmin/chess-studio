@@ -4,18 +4,23 @@ import {
   importProfile,
   pullProfileFromServer,
   pushProfileToServer,
+  resetProfileSyncStateForTests,
 } from './profileBackup.js';
 import { hasDirtyProfileForCurrentUser, setProfileStorageItem } from './profileKeys.js';
 
-function response(status, body) {
+function response(status, body, requestId = null) {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: { get: () => requestId },
     json: async () => body,
   };
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  resetProfileSyncStateForTests();
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe('export/import', () => {
@@ -74,22 +79,27 @@ describe('export/import', () => {
 });
 
 describe('pullProfileFromServer', () => {
-
-  it('si quedó una caché sucia del mismo usuario, la salva antes de hacer pull para no perder progreso', async () => {
+  it('si quedó una caché sucia del mismo usuario, hace GET + PATCH para no perder progreso ni pisar claves ajenas', async () => {
     localStorage.setItem('chess-study-auth-token', 'alice-token');
     localStorage.setItem('chess-study-auth-username', 'alice');
     setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 321 }));
     expect(hasDirtyProfileForCurrentUser()).toBe(true);
 
-    const fetchMock = vi.fn().mockResolvedValue(response(200, {}));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(200, { data: {}, revisions: {} }))
+      .mockResolvedValueOnce(response(200, {
+        data: { 'chess-study-tournament': JSON.stringify({ points: 321 }) },
+        revisions: { 'chess-study-tournament': 1 },
+      }));
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await pullProfileFromServer();
 
     expect(result.status).toBe('recovered-local');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][1].method).toBe('PUT');
-    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer alice-token');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][1].method).toBeUndefined();
+    expect(fetchMock.mock.calls[1][1].method).toBe('PATCH');
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer alice-token');
     expect(hasDirtyProfileForCurrentUser()).toBe(false);
   });
 
@@ -98,6 +108,7 @@ describe('pullProfileFromServer', () => {
     localStorage.setItem('chess-study-achievements', JSON.stringify(['old']));
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, {
       data: { 'chess-study-tournament': JSON.stringify({ points: 777 }) },
+      revisions: { 'chess-study-tournament': 4 },
     })));
 
     const result = await pullProfileFromServer();
@@ -110,7 +121,7 @@ describe('pullProfileFromServer', () => {
   it('perfil remoto vacío limpia progreso pero conserva la partida activa de la misma sesión', async () => {
     localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 999 }));
     localStorage.setItem('chess-study-active-game', 'mi-partida');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, {})));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { data: {}, revisions: {} })));
 
     const result = await pullProfileFromServer();
 
@@ -136,36 +147,58 @@ describe('pullProfileFromServer', () => {
 });
 
 describe('pushProfileToServer', () => {
-  it('manda la foto actual con PUT y Authorization se añade desde api/auth', async () => {
-    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 300 }));
-    const fetchMock = vi.fn().mockResolvedValue(response(200, {}));
+  async function primeRemote(fetchMock, data = {}, revisions = {}) {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    fetchMock.mockResolvedValueOnce(response(200, { data, revisions }));
+    await pullProfileFromServer();
+    fetchMock.mockClear();
+  }
+
+  it('manda sólo el delta con PATCH y revisión esperada', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    await primeRemote(fetchMock, { 'chess-study-tournament': JSON.stringify({ points: 200 }) }, { 'chess-study-tournament': 3 });
+    setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 300 }));
+    fetchMock.mockResolvedValueOnce(response(200, {
+      data: { 'chess-study-tournament': JSON.stringify({ points: 300 }) },
+      revisions: { 'chess-study-tournament': 4 },
+    }));
 
     await pushProfileToServer({ throwOnError: true });
 
     const [url, options] = fetchMock.mock.calls[0];
+    const body = JSON.parse(options.body);
     expect(url).toContain('/profile');
-    expect(options.method).toBe('PUT');
-    expect(JSON.parse(options.body).data['chess-study-tournament']).toBe(JSON.stringify({ points: 300 }));
+    expect(options.method).toBe('PATCH');
+    expect(JSON.parse(body.data['chess-study-tournament']).points).toBe(300);
+    expect(body.revisions['chess-study-tournament']).toBe(3);
   });
 
-  it('serializa dos PUT para que una foto vieja nunca termine después de la nueva', async () => {
+  it('serializa dos PATCH para que una foto vieja nunca termine después de la nueva', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    await primeRemote(fetchMock);
+
     let releaseFirst;
     const bodies = [];
-    const fetchMock = vi.fn().mockImplementation((url, options) => {
-      bodies.push(JSON.parse(options.body));
+    fetchMock.mockImplementation((url, options) => {
+      const body = JSON.parse(options.body);
+      bodies.push(body);
+      const value = body.data['chess-study-tournament'];
+      const result = {
+        data: value == null ? {} : { 'chess-study-tournament': value },
+        revisions: { 'chess-study-tournament': bodies.length },
+      };
       if (bodies.length === 1) {
-        return new Promise((resolve) => {
-          releaseFirst = () => resolve(response(200, {}));
-        });
+        return new Promise((resolve) => { releaseFirst = () => resolve(response(200, result)); });
       }
-      return Promise.resolve(response(200, {}));
+      return Promise.resolve(response(200, result));
     });
-    vi.stubGlobal('fetch', fetchMock);
 
-    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 1 }));
+    setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 1 }));
     const first = pushProfileToServer({ throwOnError: true });
-    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 2 }));
+    setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 2 }));
     const second = pushProfileToServer({ throwOnError: true });
 
     await Promise.resolve();
@@ -179,25 +212,24 @@ describe('pushProfileToServer', () => {
     expect(JSON.parse(bodies[1].data['chess-study-tournament']).points).toBe(2);
   });
 
-
-  it('cada PUT conserva el token de la identidad que creó ese snapshot aunque la sesión cambie mientras espera en cola', async () => {
-    let releaseFirst;
-    const fetchMock = vi.fn().mockImplementation((url, options) => {
-      if (fetchMock.mock.calls.length === 1) {
-        return new Promise((resolve) => {
-          releaseFirst = () => resolve(response(200, {}));
-        });
-      }
-      return Promise.resolve(response(200, {}));
-    });
+  it('cada PATCH conserva el token de la identidad que creó ese snapshot aunque la sesión cambie mientras espera en cola', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    await primeRemote(fetchMock);
 
-    localStorage.setItem('chess-study-auth-token', 'alice-token');
-    localStorage.setItem('chess-study-auth-username', 'alice');
-    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 1 }));
+    let releaseFirst;
+    let patchCount = 0;
+    fetchMock.mockImplementation((url, options) => {
+      patchCount += 1;
+      const body = JSON.parse(options.body);
+      const result = { data: { ...body.data }, revisions: { 'chess-study-tournament': patchCount } };
+      if (patchCount === 1) return new Promise((resolve) => { releaseFirst = () => resolve(response(200, result)); });
+      return Promise.resolve(response(200, result));
+    });
+
+    setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 1 }));
     const first = pushProfileToServer({ throwOnError: true });
-
-    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 2 }));
+    setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 2 }));
     const second = pushProfileToServer({ throwOnError: true });
 
     await Promise.resolve();
@@ -212,8 +244,41 @@ describe('pushProfileToServer', () => {
   });
 
   it('en background no propaga un fallo de red, pero el modo explícito sí', async () => {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('sin conexión')));
     await expect(pushProfileToServer()).resolves.toBeNull();
+    resetProfileSyncStateForTests();
     await expect(pushProfileToServer({ throwOnError: true })).rejects.toThrow('sin conexión');
+  });
+
+  it('409 relee la foto remota y reintenta el delta local con la revisión fresca', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const oldValue = JSON.stringify({ points: 10 });
+    const localValue = JSON.stringify({ points: 11 });
+    await primeRemote(fetchMock, { 'chess-study-tournament': oldValue, 'chess-study-board-theme': 'classic' }, {
+      'chess-study-tournament': 2,
+      'chess-study-board-theme': 7,
+    });
+    setProfileStorageItem('chess-study-tournament', localValue);
+
+    fetchMock
+      .mockResolvedValueOnce(response(409, { detail: {
+        message: 'conflicto',
+        profile: { data: { 'chess-study-tournament': JSON.stringify({ points: 10.5 }), 'chess-study-board-theme': 'night' } },
+        revisions: { 'chess-study-tournament': 3, 'chess-study-board-theme': 8 },
+      }}))
+      .mockResolvedValueOnce(response(200, {
+        data: { 'chess-study-tournament': localValue, 'chess-study-board-theme': 'night' },
+        revisions: { 'chess-study-tournament': 4, 'chess-study-board-theme': 8 },
+      }));
+
+    await pushProfileToServer({ throwOnError: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retry = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(retry.data).toEqual({ 'chess-study-tournament': localValue });
+    expect(retry.revisions['chess-study-tournament']).toBe(3);
   });
 });

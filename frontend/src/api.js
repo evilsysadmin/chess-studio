@@ -45,8 +45,9 @@ export const api = {
   deleteGame(id) {
     return request(`${BASE_URL}/games/${id}`, { method: 'DELETE', headers: { ...authHeader() } });
   },
-  getProfile() {
-    return requestJson(`${BASE_URL}/profile`, { headers: { ...authHeader() } });
+  getProfile({ token = undefined } = {}) {
+    const auth = token === undefined ? authHeader() : (token ? { Authorization: `Bearer ${token}` } : {});
+    return requestJson(`${BASE_URL}/profile`, { headers: { ...auth } });
   },
   saveProfile(data, { keepalive = false, token = undefined } = {}) {
     const auth = token === undefined ? authHeader() : (token ? { Authorization: `Bearer ${token}` } : {});
@@ -54,6 +55,15 @@ export const api = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify(data),
+      keepalive,
+    });
+  },
+  patchProfile(data, revisions, { keepalive = false, token = undefined } = {}) {
+    const auth = token === undefined ? authHeader() : (token ? { Authorization: `Bearer ${token}` } : {});
+    return requestJson(`${BASE_URL}/profile`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...auth },
+      body: JSON.stringify({ data, revisions }),
       keepalive,
     });
   },

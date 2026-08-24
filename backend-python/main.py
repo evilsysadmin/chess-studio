@@ -36,6 +36,7 @@ from api_models import (
 from narrative_api import build_narrative_router
 from game_api import build_game_router
 from admin_api import build_admin_router
+from system_api import build_system_router
 from observability import record_http_request
 from observability_history import schedule_history_flush
 
@@ -374,6 +375,7 @@ async def require_admin(username: str = Depends(get_current_user)) -> str:
 # LLM narrative transport: facts stay authoritative in Chess Studio.
 app.include_router(build_narrative_router(auth_dependency=get_current_user, admin_dependency=require_admin, is_admin_check=is_admin))
 app.include_router(build_admin_router(auth_dependency=get_current_user, admin_dependency=require_admin, limiter=limiter))
+app.include_router(build_system_router(auth_dependency=get_current_user, is_admin_check=is_admin, limiter=limiter))
 
 
 async def get_user_or_m2m(request: Request) -> str:
@@ -553,43 +555,21 @@ async def save_profile(body: dict, username: str = Depends(get_current_user)):
     return saved
 
 
-@app.get("/")
-@limiter.exempt
-async def root(_username: str = Depends(get_current_user)):
-    # Útil especialmente detrás de un dominio propio: abrir el hostname en el
-    # navegador confirma que el tráfico ha llegado a ESTA app en vez de mostrar
-    # el 404 genérico que FastAPI devolvía antes al no existir la ruta raíz.
-    return {
-        "ok": True,
-        "service": "Chess Studio API",
-        "health": "/api/health",
-    }
-
-
-@app.get("/api/health")
-@limiter.exempt
-async def health():
-    return {"ok": True}
-
-
-@app.get("/api/status")
-async def public_status(_username: str = Depends(get_current_user)):
-    """Estado ligero para la cabecera autenticada.
-
-    Solo está disponible tras login y expone un agregado (nunca usernames).
-    Si Mongo está temporalmente indisponible el proceso sigue estando UP; en
-    ese caso la presencia queda como desconocida en vez de convertir un fallo
-    de storage en un falso "backend DOWN".
-    """
-    try:
-        online_users = await ustore.count_online_users(window_seconds=150)
-        # Privacidad: la presencia pública autenticada representa jugadores,
-        # no al operador de la instancia. El request autenticado acaba de
-        # refrescar su propia actividad, así que si quien consulta es admin lo
-        # retiramos del agregado. Resultado: admin solo -> 0 usuarios online;
-        # admin + N jugadores -> N. Nunca exponemos identidades.
-        if is_admin(_username):
-            online_users = max(0, online_users - 1)
-        return {"ok": True, "onlineUsers": online_users, "presenceAvailable": True}
-    except PersistentStorageUnavailable:
-        return {"ok": True, "onlineUsers": None, "presenceAvailable": False}
+@app.patch("/api/profile")
+async def patch_profile(body: dict, username: str = Depends(get_current_user)):
+    changes = body.get("data") if isinstance(body, dict) else None
+    revisions = body.get("revisions") if isinstance(body, dict) else None
+    if not isinstance(changes, dict) or not isinstance(revisions, dict):
+        raise HTTPException(400, "PATCH de perfil inválido.")
+    result = await pstore.patch_profile(username, changes, revisions)
+    if isinstance(result, pstore.ProfilePatchConflict):
+        raise HTTPException(
+            409,
+            detail={
+                "message": "El perfil cambió en otra pestaña; relee y fusiona las claves en conflicto.",
+                "conflicts": result.conflicts,
+                "profile": result.profile,
+                "revisions": result.revisions,
+            },
+        )
+    return result

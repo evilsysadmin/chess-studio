@@ -1,0 +1,445 @@
+/* ---------- v16.6dm21 · UX visible, detalle a demanda ---------- */
+.home-today-card {
+  display: grid;
+  gap: .5rem;
+  margin: .25rem 0 .9rem;
+  padding: .78rem .9rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+}
+.home-today-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .8rem;
+}
+.home-today-main > div { display: grid; gap: .12rem; min-width: 0; }
+.home-today-main strong { font-size: .9rem; color: var(--parchment); }
+.home-today-main small { color: var(--parchment-dim); font-size: .68rem; }
+.home-today-details { border-top: 1px solid rgba(255,255,255,.06); padding-top: .35rem; }
+.home-today-details > summary { cursor: pointer; color: var(--parchment-dim); font: .62rem var(--font-mono); }
+.home-today-details > div { display: flex; flex-wrap: wrap; gap: .35rem 1rem; padding-top: .45rem; font-size: .68rem; color: var(--parchment-dim); }
+.home-today-details b { color: var(--parchment); font-weight: 650; }
+
+.campaign-briefing-at-glance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .42rem;
+}
+.campaign-briefing-at-glance > span {
+  display: grid;
+  gap: .08rem;
+  min-width: 0;
+  padding: .52rem .58rem;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 8px;
+  background: rgba(0,0,0,.12);
+}
+.campaign-briefing-at-glance small { color: var(--parchment-dim); font: .55rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.campaign-briefing-at-glance b { overflow: hidden; text-overflow: ellipsis; font-size: .76rem; white-space: nowrap; }
+
+.combat-veteran-highlight {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: .65rem;
+  padding: .62rem .7rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 42%, var(--ink-3));
+  border-left: 4px solid var(--brass);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--brass) 7%, rgba(0,0,0,.1));
+}
+.combat-veteran-highlight-piece { font-size: 1.8rem; text-align: center; }
+.combat-veteran-highlight > div { display: grid; gap: .06rem; min-width: 0; }
+.combat-veteran-highlight small { color: var(--brass); font: .54rem var(--font-mono); letter-spacing: .12em; }
+.combat-veteran-highlight strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combat-veteran-highlight span { color: var(--parchment-dim); font-size: .66rem; }
+.combat-debrief-more-units { margin-top: .52rem; }
+.combat-debrief-more-units > summary { cursor: pointer; color: var(--parchment-dim); font: .62rem var(--font-mono); }
+.combat-debrief-more-units .combat-debrief-unit-grid { margin-top: .45rem; }
+
+.admin-client-release { display: inline-grid; gap: .06rem; line-height: 1.1; }
+.admin-client-release b { font-size: .66rem; font-weight: 750; }
+.admin-client-release small { font-size: .56rem; opacity: .68; }
+.admin-client-release.is-current { color: var(--success); }
+.admin-client-release.is-outdated { color: #e2c18e; }
+.admin-client-release.is-newer { color: var(--brass); }
+.admin-client-release.is-different,
+.admin-client-release.is-unknown { color: var(--parchment-dim); }
+
+@media (max-width: 430px) {
+  .menu, .combat-workspace, .admin-screen { min-width: 0; max-width: 100%; overflow-x: clip; }
+  .home-today-main { grid-template-columns: 1fr; }
+  .home-today-main > button { width: 100%; min-height: 44px; }
+  .home-today-details > div { display: grid; gap: .3rem; }
+  .campaign-briefing-at-glance { grid-template-columns: 1fr; }
+  .campaign-briefing-at-glance b { white-space: normal; }
+  .campaign-briefing-heading { align-items: flex-start; }
+  .campaign-briefing-heading > div { min-width: 0; }
+  .campaign-briefing-primary-zone { grid-template-columns: 1fr !important; }
+  .campaign-briefing-primary-zone .campaign-main-cta { width: 100%; min-height: 44px; }
+  .combat-debrief-heading { align-items: flex-start; }
+  .combat-veteran-highlight { grid-template-columns: 34px minmax(0,1fr); }
+  .combat-veteran-highlight-piece { font-size: 1.45rem; }
+  .admin-users-table { min-width: 0; }
+  .admin-client-release small { overflow-wrap: anywhere; }
+}
+
+/* v16.6dm22 · Retrato AI progresivo en Así juegas. */
+.ai-player-portrait {
+  border: 1px solid color-mix(in srgb, var(--gold) 34%, var(--line));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--panel) 94%, var(--gold) 6%), var(--panel));
+}
+
+.ai-player-portrait-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .9rem;
+}
+
+.ai-player-portrait-heading h2 { margin: .15rem 0 0; }
+
+.ai-player-portrait-source {
+  flex: 0 0 auto;
+  border: 1px solid var(--ink-3);
+  border-radius: 999px;
+  padding: .3rem .55rem;
+  color: var(--parchment-dim);
+  font-size: .72rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.ai-player-portrait-source.source-cloudflare {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line));
+  color: var(--gold);
+}
+
+.ai-player-portrait-text {
+  margin: .9rem 0 0;
+  max-width: 78ch;
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+
+.ai-player-portrait-details { margin-top: .75rem; }
+.ai-player-portrait-actions {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.ai-player-portrait-actions small { color: var(--parchment-dim); }
+.ai-player-portrait-actions-visible {
+  margin-top: 1rem;
+  padding-top: .85rem;
+  border-top: 1px solid color-mix(in srgb, var(--gold) 20%, var(--line));
+}
+.ai-player-portrait-refresh-btn {
+  min-width: 190px;
+}
+
+@media (max-width: 520px) {
+  .ai-player-portrait-heading { align-items: stretch; flex-direction: column; }
+  .ai-player-portrait-source { width: fit-content; }
+}
+
+/* Release discovery: avisa sin convertir un deploy en una patada al tablero. */
+.release-update-notice {
+  position: fixed;
+  z-index: 2400;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(680px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, rgba(255,255,255,.16));
+  border-radius: 12px;
+  background: var(--panel, #1d2636);
+  box-shadow: 0 10px 30px rgba(0,0,0,.28);
+}
+.release-update-copy { display: grid; gap: 2px; min-width: 0; }
+.release-update-copy strong { font-size: .9rem; }
+.release-update-copy span { color: var(--parchment-dim, #c9c3b5); font-size: .78rem; }
+.release-update-actions { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+.release-update-primary,
+.release-update-dismiss {
+  border-radius: 8px;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: .76rem;
+  cursor: pointer;
+}
+.release-update-primary { border: 1px solid var(--gold, #c9a34a); background: transparent; color: inherit; }
+.release-update-dismiss { border: 0; background: transparent; color: var(--parchment-dim, #c9c3b5); }
+@media (max-width: 560px) {
+  .release-update-notice { align-items: flex-start; }
+  .release-update-copy span { max-width: 42ch; }
+  .release-update-actions { flex-direction: column; align-items: stretch; }
+}
+
+/* ---------- v16.6dm29 · narrativa AI útil en autopsia / Combat / observabilidad ---------- */
+.ai-task-card {
+  display: grid;
+  gap: .34rem;
+  margin: .7rem 0;
+  padding: .7rem .76rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 28%, var(--ink-3));
+  border-left: 3px solid var(--brass);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ink-2) 90%, var(--brass) 10%);
+}
+.ai-task-card small {
+  color: var(--brass);
+  font: .56rem var(--font-mono);
+  letter-spacing: .11em;
+}
+.ai-task-card p {
+  margin: 0;
+  color: var(--parchment);
+  font-size: .76rem;
+  line-height: 1.52;
+}
+.ai-task-card.is-loading { opacity: .72; }
+.admin-observability-toolbar-actions { display: flex; gap: .45rem; flex-wrap: wrap; }
+.admin-observability-ai-summary { margin: 0; }
+.combat-ai-briefing { margin: .05rem 0 .7rem; }
+.combat-ai-debrief { margin: .2rem 0 .68rem; }
+@media (max-width: 580px) {
+  .admin-observability-toolbar-actions { width: 100%; }
+  .admin-observability-toolbar-actions .secondary-btn { flex: 1 1 10rem; }
+}
+
+/* ---------- v16.6dm29e · feedback resuelto por disclosure ---------- */
+.admin-feedback-resolved {
+  margin-top: .75rem;
+  border-top: 1px solid var(--ink-3);
+  padding-top: .65rem;
+}
+.admin-feedback-resolved > summary {
+  width: fit-content;
+  cursor: pointer;
+  font: 700 .72rem var(--font-mono);
+  letter-spacing: .04em;
+  opacity: .78;
+}
+.admin-feedback-resolved[open] > summary { margin-bottom: .65rem; }
+.admin-feedback-list-resolved { max-height: 300px; }
+
+/* ---------- v16.6dm30 · dashboards de observabilidad ---------- */
+.admin-observability-range-primary { margin: .75rem 0; }
+.admin-observability-dashboard { margin-top: .8rem; display: grid; gap: .65rem; }
+.admin-observability-dashboard-tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+.admin-observability-dashboard-tabs button {
+  border: 1px solid rgba(181, 146, 80, .28);
+  background: rgba(255,255,255,.025);
+  color: var(--parchment-dim);
+  border-radius: .55rem;
+  padding: .42rem .65rem;
+  font: inherit;
+  font-size: .72rem;
+  cursor: pointer;
+}
+.admin-observability-dashboard-tabs button.active {
+  color: var(--parchment);
+  border-color: rgba(181, 146, 80, .62);
+  background: rgba(181, 146, 80, .10);
+}
+.admin-observability-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+.admin-observability-chart,
+.admin-observability-dashboard-kpis {
+  min-width: 0;
+  border: 1px solid rgba(181, 146, 80, .18);
+  border-radius: .65rem;
+  background: rgba(0,0,0,.13);
+  padding: .7rem;
+}
+.admin-observability-chart-heading { display: flex; justify-content: space-between; gap: .7rem; align-items: baseline; }
+.admin-observability-chart-heading h4 { margin: 0; color: var(--parchment); font-size: .78rem; }
+.admin-observability-chart-heading strong { color: var(--brass); font-family: var(--font-mono); font-size: .72rem; }
+.admin-observability-chart svg { width: 100%; height: 8.3rem; display: block; margin-top: .35rem; overflow: visible; }
+.admin-observability-chart .chart-grid-line { stroke: rgba(255,255,255,.08); stroke-width: 1; }
+.admin-observability-chart .chart-line { stroke: var(--brass); stroke-width: 2; }
+.admin-observability-chart .chart-point { fill: var(--parchment); stroke: rgba(0,0,0,.55); stroke-width: 1; }
+.admin-observability-chart-axis { display: flex; justify-content: space-between; gap: .75rem; margin-top: -.15rem; color: var(--parchment-dim); font-family: var(--font-mono); font-size: .58rem; }
+.admin-observability-bar-track { height: 7.7rem; display: flex; align-items: end; gap: 2px; margin-top: .55rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.admin-observability-bar-track > span { flex: 1 1 0; min-width: 2px; border-radius: 2px 2px 0 0; background: var(--brass); opacity: .72; }
+.admin-observability-dashboard-kpis { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; align-content: start; }
+.admin-observability-dashboard-kpis > div { padding: .45rem; border-radius: .45rem; background: rgba(255,255,255,.025); display: grid; gap: .2rem; }
+.admin-observability-dashboard-kpis span { color: var(--parchment-dim); text-transform: uppercase; letter-spacing: .035em; font-size: .61rem; }
+.admin-observability-dashboard-kpis strong { color: var(--parchment); font-family: var(--font-mono); font-size: .78rem; }
+.admin-observability-chart.is-empty { min-height: 10.2rem; }
+
+@media (max-width: 760px) {
+  .admin-observability-dashboard-grid { grid-template-columns: 1fr; }
+  .admin-observability-range-primary small { margin-left: 0; width: 100%; }
+  .admin-observability-dashboard-tabs button { flex: 1 1 8rem; }
+}
+
+/* dm31 · observabilidad operable */
+.admin-observability-refresh-controls,
+.admin-observability-dashboard-toolbar,
+.admin-observability-percentile-picker,
+.admin-observability-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  flex-wrap: wrap;
+}
+.admin-observability-refresh-controls { margin-left: auto; }
+.admin-observability-refresh-controls .secondary-btn.active { border-color: var(--brass); color: var(--parchment); }
+.admin-observability-dashboard-toolbar { justify-content: space-between; margin-bottom: .65rem; }
+.admin-observability-percentile-picker button {
+  border: 1px solid rgba(216,192,139,.28);
+  background: rgba(255,255,255,.025);
+  color: var(--parchment-dim);
+  border-radius: 999px;
+  padding: .34rem .62rem;
+  font: inherit;
+  font-size: .66rem;
+  cursor: pointer;
+}
+.admin-observability-percentile-picker button.active { border-color: var(--brass); color: var(--parchment); background: rgba(184,146,38,.09); }
+.admin-observability-chart .chart-y-label { fill: var(--parchment-dim); font-family: var(--font-mono); font-size: 10px; }
+.admin-observability-chart-legend { color: var(--parchment-dim); font-family: var(--font-mono); font-size: .58rem; margin-top: .25rem; }
+.admin-observability-chart .chart-line.chart-series-0 { stroke: var(--brass); }
+.admin-observability-chart .chart-line.chart-series-1 { stroke: #b9c6d8; }
+.admin-observability-chart .chart-line.chart-series-2 { stroke: #d7a889; }
+.admin-observability-chart .chart-point.chart-series-0 { fill: var(--parchment); }
+.admin-observability-chart .chart-point.chart-series-1 { fill: #b9c6d8; }
+.admin-observability-chart .chart-point.chart-series-2 { fill: #d7a889; }
+.admin-observability-chart-legend .chart-series-0 { color: var(--brass); }
+.admin-observability-chart-legend .chart-series-1 { color: #b9c6d8; }
+.admin-observability-chart-legend .chart-series-2 { color: #d7a889; }
+@media (max-width: 760px) {
+  .admin-observability-refresh-controls { margin-left: 0; width: 100%; }
+  .admin-observability-dashboard-toolbar { align-items: stretch; }
+  .admin-observability-percentile-picker { width: 100%; }
+  .admin-observability-percentile-picker button { flex: 1; }
+}
+
+/* ---------- v16.6dm32 · Admin compacto + Observabilidad como subvista ---------- */
+.admin-observability-launcher {
+  margin: .8rem 0 1rem;
+  padding: .8rem;
+  border: 1px solid rgba(184,146,38,.24);
+  border-radius: .65rem;
+  background: rgba(255,255,255,.018);
+  display: grid;
+  gap: .65rem;
+}
+.admin-observability-launcher-heading,
+.admin-observability-launcher-actions,
+.admin-subview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.admin-observability-launcher-heading h3,
+.admin-subview-heading h2 { margin: .1rem 0 0; }
+.admin-observability-launcher-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .45rem;
+}
+.admin-observability-launcher-kpis > div {
+  padding: .5rem;
+  border-radius: .45rem;
+  background: rgba(255,255,255,.025);
+  display: grid;
+  gap: .2rem;
+  min-width: 0;
+}
+.admin-observability-launcher-kpis span {
+  color: var(--parchment-dim);
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  font-size: .59rem;
+}
+.admin-observability-launcher-kpis strong {
+  color: var(--parchment);
+  font-family: var(--font-mono);
+  font-size: .76rem;
+  overflow-wrap: anywhere;
+}
+.admin-observability-launcher-actions { justify-content: center; }
+.admin-observability-launcher-actions .hint-text { margin: 0; flex: 1 1 100%; text-align: center; }
+.admin-observability-launcher-actions .secondary-btn { margin-inline: auto; }
+.admin-observability-view .admin-observability { margin-top: .9rem; }
+@media (max-width: 900px) {
+  .admin-observability-launcher-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .admin-observability-launcher-kpis { grid-template-columns: 1fr; }
+  .admin-observability-launcher-actions .secondary-btn { width: 100%; }
+}
+
+/* dm33 · referencias de salud y calidad de muestra */
+.admin-observability-chart .chart-reference-line { stroke: rgba(216,192,139,.34); stroke-width: 1; stroke-dasharray: 5 4; }
+.admin-observability-chart .chart-reference-label { fill: var(--parchment-dim); font-family: var(--font-mono); font-size: 9px; }
+.admin-observability-sample-warning {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: .45rem .6rem;
+  border: 1px solid rgba(216,192,139,.18);
+  border-radius: .45rem;
+  color: var(--parchment-dim);
+  background: rgba(255,255,255,.02);
+  font-size: .68rem;
+}
+
+/* ---------- v16.6dm34 · Ajustes globales ---------- */
+.masthead-actions{display:flex;align-items:center;gap:.55rem;margin-left:auto}
+.settings-gear-button{width:2.35rem;height:2.35rem;display:grid;place-items:center;border:1px solid var(--border-color,#4b4b4b);border-radius:999px;background:rgba(18,18,18,.72);color:inherit;font-size:1.15rem;cursor:pointer;line-height:1}
+.settings-gear-button:hover{transform:rotate(8deg);border-color:currentColor}
+.settings-backdrop{z-index:1200;display:flex;justify-content:flex-end;align-items:stretch;padding:0}
+.settings-panel{width:min(430px,92vw);height:100%;overflow:auto;background:var(--panel-bg,#161616);border-left:1px solid var(--border-color,#444);padding:1.2rem 1.25rem;box-shadow:-18px 0 45px rgba(0,0,0,.28)}
+.settings-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.settings-panel-heading h2{margin:.15rem 0 0}
+.settings-sections{display:grid;gap:1rem}
+.settings-sections>section{border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:1rem;background:rgba(255,255,255,.025)}
+.settings-sections h3{margin:0 0 .8rem}
+.settings-field{display:grid;gap:.4rem;margin:.65rem 0}.settings-field select,.settings-field input[type="range"]{width:100%}
+.settings-toggle{display:flex;align-items:center;gap:.65rem;margin:.7rem 0}
+@media(max-width:600px){.settings-panel{width:100vw}.settings-gear-button{width:2.2rem;height:2.2rem}}
+.admin-insights-ai-actions{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin:.4rem 0 .85rem}
+.admin-insights-ai-actions small{opacity:.7}
+.admin-player-ai-portrait{margin:.6rem 0 1rem}
+
+/* dm35 · Torneo compacto: la pantalla tiene poca información primaria y no debe
+   ocupar el mismo lienzo que Home/Admin. Mantiene el disclosure para el detalle. */
+.menu.tournament-panel {
+  max-width: 780px;
+  padding: 1.2rem 1.5rem;
+  gap: .9rem;
+}
+.tournament-panel .tournament-next-card { max-width: 690px; width: 100%; }
+.tournament-panel .friendly-big-summary { margin: .3rem 0 .5rem; }
+.tournament-panel .friendly-main-cta { margin-top: .6rem; }
+.tournament-panel .tournament-more { margin-top: .25rem; }
+.tournament-panel .friendly-disclosure-body { padding-top: .55rem; }
+@media (max-width: 680px) {
+  .menu.tournament-panel { max-width: 100%; padding: 1rem; gap: .75rem; }
+}
+
+/* v16.6dm39 · Workers AI sólo ordena prioridades de entrenamiento ya medidas. */
+.coaching-ai-plan { margin: 0.85rem 0 1rem; }
+.coaching-ai-status { margin: 0.7rem 0 0.9rem; }
+.admin-users-heading {
+  margin-top: 1.35rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border, rgba(255,255,255,.12));
+}
+.admin-users-heading h2 { margin-bottom: 0.25rem; }

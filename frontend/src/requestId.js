@@ -9,6 +9,7 @@ export function withRequestId(headers = {}) {
 
 export function requestErrorMessage(response, body = {}) {
   const requestId = response.headers?.get?.('x-request-id') || body.requestId || null;
-  const base = body.detail || body.error || `Error ${response.status}`;
+  const detail = body.detail;
+  const base = (detail && typeof detail === 'object' ? detail.message : detail) || body.error || `Error ${response.status}`;
   return { message: requestId ? `${base} · Ref: ${requestId}` : base, requestId };
 }

@@ -12,10 +12,22 @@ const e2eDir = path.join(root, 'e2e');
 const workerRuntimeTest = path.join(root, 'infra', 'cloudflare', 'worker', 'index.test.mjs');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const list = (dir, predicate) => fs.readdirSync(dir).filter(predicate).sort();
+const listRecursive = (dir, predicate) => {
+  const found = [];
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (predicate(entry.name)) found.push(path.relative(dir, full).split(path.sep).join('/'));
+    }
+  };
+  walk(dir);
+  return found.sort();
+};
 const fail = (message) => { throw new Error(message); };
 const checkCiWiring = process.argv.includes('--ci-wiring');
 
-const frontendFiles = list(frontendSrc, (name) => /\.test\.(?:js|jsx|mjs)$/.test(name));
+const frontendFiles = listRecursive(frontendSrc, (name) => /\.test\.(?:js|jsx|mjs)$/.test(name));
 const backendFiles = list(backendDir, (name) => /^test_.*\.py$/.test(name));
 const e2eFiles = list(e2eDir, (name) => name.endsWith('.spec.js'));
 
@@ -62,8 +74,8 @@ const storageWithoutReset = frontendFiles.filter((name) => {
 });
 if (storageWithoutReset.length) fail(`Tests que usan Web Storage sin limpieza explícita: ${storageWithoutReset.join(', ')}`);
 
-const contractBasenames = new Set(FRONTEND_CONTRACT_TESTS.map((relative) => path.basename(relative)));
-const smokeBasenames = new Set(FRONTEND_SMOKE_TESTS.map((relative) => path.basename(relative)));
+const contractBasenames = new Set(FRONTEND_CONTRACT_TESTS.map((relative) => relative.replace(/^src\//, '')));
+const smokeBasenames = new Set(FRONTEND_SMOKE_TESTS.map((relative) => relative.replace(/^src\//, '')));
 const overlap = [...smokeBasenames].filter((name) => contractBasenames.has(name));
 if (overlap.length) fail(`Smoke y contract se solapan: ${overlap.join(', ')}`);
 

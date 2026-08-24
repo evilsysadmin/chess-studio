@@ -2,7 +2,7 @@ name: Deploy Frontend to GitHub Pages
 
 on:
   workflow_run:
-    workflows: ["Cloudflare Workers AI"]
+    workflows: ["CI"]
     types: [completed]
 
 permissions:

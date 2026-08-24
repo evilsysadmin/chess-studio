@@ -1,0 +1,15 @@
+{
+  "orderedModules": [
+    "01-foundation.css",
+    "02-game-board.css",
+    "03-combat-core.css",
+    "04-operations-career.css",
+    "05-combat-roster.css",
+    "06-combat-campaign.css",
+    "07-progressive-ux.css",
+    "08-recent-polish.css"
+  ],
+  "combinedSha256": "c918e845e6e393c0e16773e8c1eb947406e1c7114e492844ea3d8d909ede61ca",
+  "combinedBytes": 282630,
+  "combinedLines": 9220
+}

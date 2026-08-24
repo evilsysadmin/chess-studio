@@ -38,7 +38,7 @@ def wait_ready():
     last = None
     while time.monotonic() < deadline:
         try:
-            api_status, health = request("GET", f"{API}/health", timeout=3)
+            api_status, health = request("GET", f"{API}/ready", timeout=3)
             web_status, html = request("GET", FRONTEND, timeout=3)
             if api_status == 200 and web_status == 200 and "<html" in str(html).lower():
                 return health
@@ -49,7 +49,7 @@ def wait_ready():
 
 
 def main() -> int:
-    health = wait_ready()
+    readiness = wait_ready()
     stamp = f"{int(time.time())}-{os.getpid()}"
     username = f"smoke_{stamp}"[:28]
     password = "smoke-clave-123456"
@@ -110,7 +110,7 @@ def main() -> int:
     else:
         raise AssertionError("/api/profile aceptó request anónimo")
 
-    print(f"compose-smoke OK · frontend+backend+mongo · user={username} · health={health}")
+    print(f"compose-smoke OK · frontend+backend+mongo · user={username} · readiness={readiness}")
     return 0
 
 

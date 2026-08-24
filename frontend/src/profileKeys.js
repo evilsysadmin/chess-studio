@@ -6,6 +6,7 @@ import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from
 
 export const PROFILE_CHANGED_EVENT = 'chess-study-profile-changed';
 const PROFILE_DIRTY_USER_KEY = 'chess-study-profile-dirty-user';
+const PROFILE_DIRTY_KEYS_KEY = 'chess-study-profile-dirty-keys';
 const AUTH_USERNAME_KEY = 'chess-study-auth-username';
 
 export const PROFILE_PROGRESS_KEYS = Object.freeze([
@@ -86,9 +87,33 @@ function emitProfileChanged() {
   }
 }
 
-export function markProfileDirtyForCurrentUser() {
+export function markProfileDirtyForCurrentUser(key = null) {
   const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
-  if (username) setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY, username);
+  if (!username) return;
+  setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY, username);
+  const existing = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
+  if (existing === '*') return;
+  if (!key) {
+    setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY, '*');
+    return;
+  }
+  let keys = [];
+  try { keys = JSON.parse(existing || '[]'); } catch { keys = []; }
+  if (!Array.isArray(keys)) keys = [];
+  if (!keys.includes(key)) keys.push(key);
+  setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY, JSON.stringify(keys));
+}
+
+export function dirtyProfileKeysForCurrentUser() {
+  if (!hasDirtyProfileForCurrentUser()) return [];
+  const raw = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
+  if (raw === '*') return '*';
+  try {
+    const parsed = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed.filter((key) => PROFILE_STORAGE_KEYS.includes(key)) : '*';
+  } catch {
+    return '*';
+  }
 }
 
 export function hasDirtyProfileForCurrentUser() {
@@ -98,6 +123,7 @@ export function hasDirtyProfileForCurrentUser() {
 
 export function clearProfileDirty() {
   removeStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY);
+  removeStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
 }
 
 export function setProfileStorageItem(key, value) {
@@ -105,7 +131,7 @@ export function setProfileStorageItem(key, value) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
   setStorageItem(STORAGE_LOCAL, key, value);
-  markProfileDirtyForCurrentUser();
+  markProfileDirtyForCurrentUser(key);
   emitProfileChanged();
 }
 
@@ -114,7 +140,7 @@ export function removeProfileStorageItem(key) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
   removeStorageItem(STORAGE_LOCAL, key);
-  markProfileDirtyForCurrentUser();
+  markProfileDirtyForCurrentUser(key);
   emitProfileChanged();
 }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Menu from './components/Menu.jsx';
 const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
@@ -9,7 +9,7 @@ const ReplayScreen = React.lazy(() => import('./components/ReplayScreen.jsx'));
 const CombatReplayScreen = React.lazy(() => import('./components/CombatReplayScreen.jsx'));
 const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.jsx'));
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
-import { loadCombatHistory, clearCombatHistory } from './combatHistory.js';
+import { loadCombatHistory } from './combatHistory.js';
 const PuzzleScreen = React.lazy(() => import('./components/PuzzleScreen.jsx'));
 const CombatScreen = React.lazy(() => import('./components/CombatScreen.jsx'));
 const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.jsx'));
@@ -19,21 +19,17 @@ const MusicPlayer = React.lazy(() => import('./components/MusicPlayer.jsx'));
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
-import { loadGameHistory, saveGameRecord, clearGameHistory, updateGameRecordChat } from './gameHistory.js';
+import { saveGameRecord, updateGameRecordChat } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
 import { isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadRating, saveRating, updateRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
 import { handicapForGap } from './handicap.js';
-import { computeInsights } from './insights.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
 import { clearClockSnapshot } from './clockPersistence.js';
 import { checkAchievements } from './achievements.js';
-import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
-import { isLoggedIn, fetchMe, logout, watchSessionIdentity, getToken, getUsername } from './auth.js';
-import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
@@ -42,8 +38,6 @@ import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
-import { buildPlayerPortraitFacts, loadCachedPlayerPortrait, playerPortraitGenerationKey, saveCachedPlayerPortrait } from './aiPlayerPortrait.js';
-import { requestRemoteNarrative } from './narrativeRemote.js';
 import { identifyOpening } from './openings.js';
 import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
@@ -59,6 +53,11 @@ import { useGameReconnect } from './useGameReconnect.js';
 import { useViewNavigation } from './useViewNavigation.js';
 import { LEARNING_STORAGE_KEY, useActiveSessionRestore } from './useActiveSessionRestore.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { useAuthenticatedApp } from './useAuthenticatedApp.js';
+import { useAuthenticatedAudio } from './useAuthenticatedAudio.js';
+import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
+import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
+import { useReplayLibrary } from './useReplayLibrary.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -85,96 +84,19 @@ function AppInner({ isAdminUser }) {
   const [tournament, setTournament] = useState(() => loadTournament());
   const [tournamentGame, setTournamentGame] = useState(null);
   const [lastResult, setLastResult] = useState(null);
-  const [historyList, setHistoryList] = useState(() => loadGameHistory());
-  const [combatHistoryList, setCombatHistoryList] = useState(() => loadCombatHistory());
-  const [replayRecord, setReplayRecord] = useState(null);
-  const [combatReplayRecord, setCombatReplayRecord] = useState(null);
-  const [replayInitialStep, setReplayInitialStep] = useState(undefined);
-  const [pinnedReport, setPinnedReport] = useState(null);
-  const [replayCrimeMode, setReplayCrimeMode] = useState(false);
-
-  // Desde "Así juegas" → "Ver esta jugada": abre el replay que corresponda
-  // (normal o de combate, según de dónde vino) parado justo en esa jugada,
-  // no en el final de la partida como el resto de los accesos al historial.
-  function jumpToMove(record, kind, moveReport) {
-    setReplayCrimeMode(false);
-    setReplayInitialStep(moveReport.index + 1);
-    setPinnedReport(moveReport);
-    if (kind === 'combat') {
-      setCombatReplayRecord(record);
-      navigateTo('combatReplay');
-    } else {
-      setReplayRecord(record);
-      navigateTo('replay');
-    }
-  }
-
-
-  // Historial unificado: partidas normales/torneo/práctica (moves) y
-  // batallas de combate (log) mezcladas y ordenadas por fecha — una sola
-  // sección de "todas mis partidas", en vez de dos listas separadas.
-  const allHistory = useMemo(
-    () => [...historyList, ...combatHistoryList].sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [historyList, combatHistoryList]
-  );
-
-  // "Así juegas": estadísticas agregadas, calculadas al instante con lo que
-  // ya está guardado (sin volver a llamar al backend) — solo se recalcula
-  // si cambia alguno de los historiales de origen.
-  const insights = useMemo(
-    () => computeInsights(historyList, combatHistoryList, loadRatingHistory()),
-    [historyList, combatHistoryList]
-  );
-
-  // v16.6dm30: el retrato AI se refresca tras cada nueva partida terminada.
-  // La clave cambia por totalGames; si ya existe una lectura para esa partida
-  // no repetimos la llamada al recargar o reconciliar el perfil.
-  useEffect(() => {
-    if (Number(insights?.totalGames || 0) < 3) return undefined;
-    const identityScope = getUsername();
-    const token = getToken();
-    if (!identityScope || !token) return undefined;
-    const generationKey = playerPortraitGenerationKey(insights);
-    if (loadCachedPlayerPortrait(generationKey, identityScope)) return undefined;
-    const facts = buildPlayerPortraitFacts(insights, loadRivalry());
-    if (!facts) return undefined;
-
-    let active = true;
-    void requestRemoteNarrative({
-      eventType: 'player_portrait',
-      requestKind: 'portrait_auto',
-      tone: 'friendly_sarcastic',
-      facts,
-    }, { token, timeoutMs: 7000 }).then((text) => {
-      if (!active || !text) return;
-      saveCachedPlayerPortrait(generationKey, text, identityScope);
-    });
-    return () => { active = false; };
-  }, [insights]);
-
-  // Cada registro sabe reproducirse solo en la pantalla correcta según su
-  // propia forma: `log` = batalla de combate (FENs guardados directo),
-  // `moves` = partida normal/torneo/práctica (SAN reproducible). El
-  // historial no necesita saber esta distinción, solo abrir lo que le toque.
-  function openHistoryRecord(record) {
-    setReplayMovieMode(false);
-    setReplayCrimeMode(false);
-    setReplayInitialStep(undefined);
-    setPinnedReport(null);
-    if (record.log) {
-      setCombatReplayRecord(record);
-      navigateTo('combatReplay');
-    } else {
-      setReplayRecord(record);
-      navigateTo('replay');
-    }
-  }
-
-  function clearAllHistory() {
-    setHistoryList(clearGameHistory());
-    setCombatHistoryList(clearCombatHistory());
-  }
-
+  const {
+    historyList, setHistoryList,
+    combatHistoryList, setCombatHistoryList,
+    replayRecord, setReplayRecord,
+    combatReplayRecord,
+    replayInitialStep, setReplayInitialStep,
+    pinnedReport, setPinnedReport,
+    replayCrimeMode, setReplayCrimeMode,
+    replayMovieMode,
+    allHistory, insights,
+    jumpToMove, openHistoryRecord, clearAllHistory, openMovie,
+  } = useReplayLibrary({ navigateTo });
+  usePlayerPortraitRefresh(insights);
 
   function openGameCrimeScene(finishedGame, moveReport, mode, outcomeOverride) {
     if (!finishedGame || !moveReport) return;
@@ -225,30 +147,11 @@ function AppInner({ isAdminUser }) {
   const [activeContract, setActiveContract] = useState(() => loadActiveContract());
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
-  const [replayMovieMode, setReplayMovieMode] = useState(false);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
 
-  // Cualquier helper de progreso emite este evento al cambiar la caché.
-  // Persistimos con debounce para no hacer un PUT por cada punto de XP, y
-  // hacemos un flush adicional al ocultar la pestaña para reducir la ventana
-  // de pérdida si el usuario cierra el navegador justo después de jugar.
-  useEffect(() => {
-    const handleProfileChanged = () => scheduleProfileSync();
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        pushProfileToServer({ keepalive: true });
-      }
-    };
-    window.addEventListener(PROFILE_CHANGED_EVENT, handleProfileChanged);
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      window.removeEventListener(PROFILE_CHANGED_EVENT, handleProfileChanged);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      cancelScheduledProfileSync();
-    };
-  }, []);
+  useProfileSyncLifecycle(view);
 
 
   // V15.1: usuarios veteranos pueden tener decenas de partidas anteriores a
@@ -326,12 +229,6 @@ function AppInner({ isAdminUser }) {
     setCombatXp(loadCombatRoster().combatXp);
     setCombatHistoryList(loadCombatHistory());
     checkAchievements();
-    // Subimos el perfil actual al backend en cada cambio de pantalla — de
-    // fondo, sin bloquear ni avisar nada. Es la forma de que el progreso
-    // sobreviva aunque limpies el navegador o pises la carpeta del proyecto
-    // con una versión nueva: la copia de Mongo queda siempre razonablemente
-    // al día.
-    pushProfileToServer();
   }, [view]);
 
   async function handleNewGame(difficulty, color, opts) {
@@ -588,15 +485,6 @@ function AppInner({ isAdminUser }) {
     } catch (e) {
       setError(e?.requestId ? e.message : 'No se pudo arrancar la posición del laboratorio.');
     } finally { setLoading(false); }
-  }
-
-  function openMovie(record) {
-    setReplayCrimeMode(false);
-    setReplayInitialStep(0);
-    setPinnedReport(null);
-    setReplayRecord(record);
-    setReplayMovieMode(true);
-    navigateTo('replay');
   }
 
   function openPuzzleMode(source = 'curated', rush = false, filter = null) {
@@ -1006,69 +894,8 @@ function GlobalMusicDock({ isAdminUser, onAdmin }) {
 // una caché potencialmente perteneciente a otra identidad.
 function App() {
   const sharedRecord = shareRecordFromHash();
-  const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
-  const [ready, setReady] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-  const [syncError, setSyncError] = useState(null);
-
-  useEffect(() => {
-    // Una sesión puede cambiar desde otra pestaña porque localStorage es
-    // compartido. Recargar desmonta inmediatamente cualquier estado React
-    // perteneciente a la identidad anterior antes de que pueda sincronizarse.
-    return watchSessionIdentity(() => window.location.reload());
-  }, [loggedIn]);
-
-  useEffect(() => {
-    if (!loggedIn) return;
-    let cancelled = false;
-    setReady(false);
-    setSyncError(null);
-    setIsAdminUser(false);
-
-    Promise.all([pullProfileFromServer(), fetchMe()]).then(([profile, me]) => {
-      if (cancelled) return;
-
-      if (profile.status === 'unauthorized') {
-        // Token caducado/corrupto: evitar un bucle infinito de recargas.
-        logout();
-        setLoggedIn(false);
-        return;
-      }
-
-      if (profile.status === 'offline') {
-        setSyncError('No se pudo leer tu perfil desde MongoDB. No se ha abierto la caché local para evitar mezclar o sobrescribir cuentas.');
-        return;
-      }
-
-      setIsAdminUser(!!me?.isAdmin);
-      // La pantalla de login y la sincronización permanecen en silencio.
-      // El tema ya fue sorteado al autenticarse y arrancará cuando el perfil
-      // esté listo, en el efecto [loggedIn, ready] de abajo.
-      setReady(true);
-    });
-
-    return () => { cancelled = true; };
-  }, [loggedIn]);
-
-  useEffect(() => {
-    // El motor de audio es grande y no hace falta ni en login ni en enlaces
-    // públicos. Se carga sólo cuando existe una sesión real con perfil listo.
-    if (!loggedIn || !ready) return undefined;
-    let cancelled = false;
-    let audio = null;
-    import('./sound.js').then((module) => {
-      audio = module;
-      if (cancelled) {
-        module.stopAmbientMusic();
-        return;
-      }
-      module.startAmbientMusic();
-    }).catch(() => {});
-    return () => {
-      cancelled = true;
-      audio?.stopAmbientMusic?.();
-    };
-  }, [loggedIn, ready]);
+  const { loggedIn, setLoggedIn, ready, isAdminUser, syncError } = useAuthenticatedApp();
+  useAuthenticatedAudio(loggedIn, ready);
 
   if (sharedRecord) {
     return (

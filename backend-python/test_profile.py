@@ -40,11 +40,12 @@ def test_save_and_retrieve_profile():
     payload = {"data": {"chess-study-tournament": '{"points": 250}'}}
     r = client.put("/api/profile", json=payload, headers=headers)
     assert r.status_code == 200
-    assert r.json() == payload
+    assert r.json()["data"] == payload["data"]
+    assert r.json()["revisions"]["chess-study-tournament"] >= 1
 
     r2 = client.get("/api/profile", headers=headers)
     assert r2.status_code == 200
-    assert r2.json() == payload
+    assert r2.json()["data"] == payload["data"]
 
 
 def test_save_overwrites_previous_profile():
@@ -52,7 +53,7 @@ def test_save_overwrites_previous_profile():
     client.put("/api/profile", json={"data": {"a": "1"}}, headers=headers)
     client.put("/api/profile", json={"data": {"b": "2"}}, headers=headers)
     r = client.get("/api/profile", headers=headers)
-    assert r.json() == {"data": {"b": "2"}}
+    assert r.json()["data"] == {"b": "2"}
 
 
 def test_two_users_have_completely_separate_profiles():
@@ -66,8 +67,8 @@ def test_two_users_have_completely_separate_profiles():
     r_alice = client.get("/api/profile", headers=headers_alice)
     r_bob = client.get("/api/profile", headers=headers_bob)
 
-    assert r_alice.json() == {"data": {"nivel": "alice-nivel-50"}}
-    assert r_bob.json() == {"data": {"nivel": "bob-nivel-3"}}
+    assert r_alice.json()["data"] == {"nivel": "alice-nivel-50"}
+    assert r_bob.json()["data"] == {"nivel": "bob-nivel-3"}
 
 
 def test_profile_returns_503_instead_of_empty_when_configured_mongo_is_down(monkeypatch):
@@ -99,11 +100,19 @@ def test_profile_store_forces_authenticated_username_as_mongo_id(monkeypatch):
 
     captured = {}
 
+    class FakeResult:
+        matched_count = 1
+        upserted_id = None
+
     class FakeCollection:
+        async def find_one(self, query):
+            return None
+
         async def replace_one(self, query, doc, upsert=False):
             captured["query"] = query
             captured["doc"] = doc
             captured["upsert"] = upsert
+            return FakeResult()
 
     async def fake_collection():
         return FakeCollection()
@@ -114,6 +123,7 @@ def test_profile_store_forces_authenticated_username_as_mongo_id(monkeypatch):
     assert captured["query"] == {"_id": "alice"}
     assert captured["doc"]["_id"] == "alice"
     assert captured["doc"]["data"] == {"x": "1"}
+    assert "__profile_meta__" in captured["doc"]
 
 
 def test_register_duplicate_race_stays_409(monkeypatch):
@@ -134,3 +144,94 @@ def test_register_duplicate_race_stays_409(monkeypatch):
 
     assert r.status_code == 409
     assert 'ya existe' in r.json()['detail'].lower()
+
+
+
+def test_profile_patch_merges_independent_keys():
+    headers = _auth_headers()
+    first = client.put("/api/profile", json={"data": {"rating": "1200", "theme": "dark"}}, headers=headers).json()
+    revisions = first["revisions"]
+
+    r = client.patch(
+        "/api/profile",
+        json={"data": {"rating": "1210"}, "revisions": {"rating": revisions["rating"]}},
+        headers=headers,
+    )
+
+    assert r.status_code == 200
+    assert r.json()["data"] == {"rating": "1210", "theme": "dark"}
+    assert r.json()["revisions"]["rating"] == revisions["rating"] + 1
+    assert r.json()["revisions"]["theme"] == revisions["theme"]
+
+
+def test_profile_patch_stale_same_key_returns_409_with_remote_snapshot():
+    headers = _auth_headers()
+    first = client.put("/api/profile", json={"data": {"rating": "1200"}}, headers=headers).json()
+    rev = first["revisions"]["rating"]
+    client.patch("/api/profile", json={"data": {"rating": "1210"}, "revisions": {"rating": rev}}, headers=headers)
+
+    stale = client.patch("/api/profile", json={"data": {"rating": "999"}, "revisions": {"rating": rev}}, headers=headers)
+
+    assert stale.status_code == 409
+    detail = stale.json()["detail"]
+    assert detail["conflicts"]["rating"]["actual"] == rev + 1
+    assert detail["profile"]["data"]["rating"] == "1210"
+
+
+def test_profile_patch_retry_with_fresh_revision_succeeds():
+    headers = _auth_headers()
+    first = client.put("/api/profile", json={"data": {"rating": "1200"}}, headers=headers).json()
+    rev = first["revisions"]["rating"]
+    current = client.patch("/api/profile", json={"data": {"rating": "1210"}, "revisions": {"rating": rev}}, headers=headers).json()
+
+    retry = client.patch(
+        "/api/profile",
+        json={"data": {"rating": "1220"}, "revisions": {"rating": current["revisions"]["rating"]}},
+        headers=headers,
+    )
+
+    assert retry.status_code == 200
+    assert retry.json()["data"]["rating"] == "1220"
+
+
+def test_profile_patch_none_deletes_only_target_key():
+    headers = _auth_headers()
+    first = client.put("/api/profile", json={"data": {"a": "1", "b": "2"}}, headers=headers).json()
+
+    deleted = client.patch(
+        "/api/profile",
+        json={"data": {"a": None}, "revisions": {"a": first["revisions"]["a"]}},
+        headers=headers,
+    )
+
+    assert deleted.status_code == 200
+    assert deleted.json()["data"] == {"b": "2"}
+
+
+def test_profile_put_remains_supported_and_advances_changed_key_revision():
+    headers = _auth_headers()
+    first = client.put("/api/profile", json={"data": {"a": "1"}}, headers=headers).json()
+    second = client.put("/api/profile", json={"data": {"a": "2"}}, headers=headers).json()
+
+    assert second["data"] == {"a": "2"}
+    assert second["revisions"]["a"] == first["revisions"]["a"] + 1
+
+
+def test_health_is_liveness_and_does_not_touch_mongo(monkeypatch):
+    async def exploding_get_db():
+        raise AssertionError("/health no debe tocar Mongo")
+
+    monkeypatch.setattr("db.get_db", exploding_get_db)
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True}
+
+
+def test_ready_returns_503_when_configured_mongo_is_down(monkeypatch):
+    async def unavailable_db():
+        return None
+
+    monkeypatch.setattr("db.persistent_storage_required", lambda: True)
+    monkeypatch.setattr("db.get_db", unavailable_db)
+    r = client.get("/api/ready")
+    assert r.status_code == 503
