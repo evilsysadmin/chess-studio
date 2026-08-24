@@ -9,7 +9,7 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npx vite build --base=/
 
 # --- Etapa 2: nginx sin privilegios ---
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine3.23
 
 # El master de nginx también corre como usuario no-root. Para ello movemos
 # PID/temp a /tmp y escuchamos en 8080 (puerto no privilegiado).
