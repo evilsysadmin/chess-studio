@@ -5,6 +5,7 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+    branches: [main]
   pull_request:
     paths:
       - "infra/cloudflare/**"
@@ -26,8 +27,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.head_branch == 'main')
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,6 +49,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Refuse stale production commit
+        if: github.event_name == 'workflow_run'
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          tested_sha="${{ github.event.workflow_run.head_sha }}"
+          if [[ "$tested_sha" != "$current_main" ]]; then
+            echo "::error::CI aprobó $tested_sha, pero main ya apunta a $current_main. No despliego un commit obsoleto."
+            exit 1
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -301,3 +313,59 @@ jobs:
             echo '- Render: configura `CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org`.'
             echo '- Render y GitHub deben compartir el mismo `CHESS_AI_SHARED_SECRET`.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+
+  pages:
+    name: Deploy Frontend to GitHub Pages
+    needs: terraform
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout CI-approved commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

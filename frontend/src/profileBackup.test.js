@@ -103,6 +103,42 @@ describe('pullProfileFromServer', () => {
     expect(hasDirtyProfileForCurrentUser()).toBe(false);
   });
 
+  it('recuperar una clave dirty importa también cambios remotos independientes y no los revierte en el siguiente flush', async () => {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    localStorage.setItem('chess-study-board-theme', 'classic');
+    setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 321 }));
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(200, {
+        data: {
+          'chess-study-tournament': JSON.stringify({ points: 300 }),
+          'chess-study-board-theme': 'night',
+        },
+        revisions: { 'chess-study-tournament': 4, 'chess-study-board-theme': 8 },
+      }))
+      .mockResolvedValueOnce(response(200, {
+        data: {
+          'chess-study-tournament': JSON.stringify({ points: 321 }),
+          'chess-study-board-theme': 'night',
+        },
+        revisions: { 'chess-study-tournament': 5, 'chess-study-board-theme': 8 },
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await pullProfileFromServer();
+
+    expect(result.status).toBe('recovered-local');
+    expect(localStorage.getItem('chess-study-tournament')).toBe(JSON.stringify({ points: 321 }));
+    expect(localStorage.getItem('chess-study-board-theme')).toBe('night');
+    expect(hasDirtyProfileForCurrentUser()).toBe(false);
+
+    // La caché ya coincide con la foto fusionada: el flush de cambio de vista
+    // no debe volver a escribir el tema antiguo ni emitir otro PATCH.
+    await pushProfileToServer({ throwOnError: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('Mongo pisa la caché persistente antes de montar la app', async () => {
     localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 999 }));
     localStorage.setItem('chess-study-achievements', JSON.stringify(['old']));

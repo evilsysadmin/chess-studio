@@ -26,6 +26,13 @@ export function useCombatDeploymentGate({
       ready: isDeploymentReadyForBattle(roster),
     });
     if (action !== 'start') {
+      if (action === 'invalid') {
+        // Una confirmación antigua deja de ser válida en cuanto cambia la
+        // formación. Igual que hacía el controlador monolítico original,
+        // obligamos a confirmar de nuevo después de corregir el despliegue.
+        setDeploymentConfirmed(false);
+        onError?.('El despliegue cambió o tiene bajas pendientes. Revísalo y confirma de nuevo.');
+      }
       setShowDeployment(true);
       return false;
     }

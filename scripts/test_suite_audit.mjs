@@ -103,10 +103,16 @@ if (new Set(grouped).size !== frontendFiles.length || grouped.length !== fronten
 
 const makefile = read(path.join(root, 'Makefile'));
 if (!/npm\s+test/.test(makefile)) fail('Makefile no ejecuta la suite frontend agrupada con npm test');
+if (!/^tests:.*\bstatic-preflight\b/m.test(makefile)) fail('make tests debe incluir static-preflight para adelantar gates estructurales antes del push');
+const prePushHook = read(path.join(root, '.githooks', 'pre-push'));
+if (!/\bmake\s+tests\b/.test(prePushHook)) fail('pre-push debe ejecutar make tests');
 if (!makefile.includes('--ignore=test_chess_ai.py --ignore=test_core_game.py')) fail('backend integration no autodetecta nuevos tests backend');
 if (!/compose-smoke:[\s\S]*scripts\/compose_smoke\.py/.test(makefile)) fail('Makefile no expone el smoke de integración real');
 const composeSmoke = read(path.join(root, 'scripts', 'compose_smoke.py'));
 if (!composeSmoke.includes('/games') || !composeSmoke.includes('restored_game')) fail('compose smoke real no cubre persistencia/recuperación de partida');
+if (!composeSmoke.includes('"PATCH"') || !composeSmoke.includes('"revisions"') || !composeSmoke.includes('exc.code == 409')) {
+  fail('compose smoke real no cubre PATCH optimista de perfil + conflicto 409 contra Mongo');
+}
 if (!/coverage-fe:[\s\S]*test:coverage/.test(makefile)) fail('Makefile no expone coverage frontend real');
 if (!/coverage-be:[\s\S]*--cov-branch/.test(makefile)) fail('Makefile no expone branch coverage backend');
 
@@ -168,6 +174,20 @@ for (const name of resilienceBehaviorTests) {
 }
 
 const e2eSource = e2eFiles.map((name) => read(path.join(e2eDir, name))).join('\n');
+
+// Home cards now carry contextual help buttons whose aria-label deliberately
+// repeats the feature name ("Ayuda de Partida rápida", etc.). A broad regex
+// role selector therefore becomes ambiguous in Playwright strict mode. Keep
+// this as a suite-level contract so a future refactor cannot reintroduce the
+// exact class of CI failure fixed in dm43c.
+for (const label of ['Así juegas', 'Partida rápida', 'Combat Chess · Campaña']) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const broadRoleSelector = new RegExp(`getByRole\\(['\"]button['\"],\\s*\\{\\s*name:\\s*\\/[^\\n/]*${escaped}`, 'i');
+  if (broadRoleSelector.test(e2eSource)) {
+    fail(`E2E usa selector de botón ambiguo para ${label}; usa buttonWithVisibleText(..., ${JSON.stringify(label)}) o exact:true`);
+  }
+}
+
 for (const required of [
   'obliga a confirmar despliegue antes de iniciar combate',
   'hover abre ficha y doble clic mueve Tablero ↔ Banquillo',
@@ -184,7 +204,11 @@ for (const required of [
 const frontendPackage = JSON.parse(read(path.join(root, 'frontend', 'package.json')));
 const hasV8CoverageProvider = Boolean(frontendPackage.devDependencies?.['@vitest/coverage-v8']);
 if (!hasV8CoverageProvider) {
-  console.warn('WARN: frontend coverage V8 está configurado pero @vitest/coverage-v8 no está declarado; coverage puede omitirse/fallar de forma informativa.');
+  console.warn('WARN: frontend coverage V8 está configurado pero @vitest/coverage-v8 no está declarado; coverage se omite de forma informativa.');
+  const coverageWorkflowSource = read(path.join(root, '.github', 'workflows', 'coverage.yml'));
+  if (!coverageWorkflowSource.includes('[ ! -d node_modules/@vitest/coverage-v8 ]')) {
+    fail('Coverage workflow debe omitir limpiamente V8 mientras @vitest/coverage-v8 no esté declarado');
+  }
 }
 const viteConfig = read(path.join(root, 'frontend', 'vite.config.js'));
 if (/thresholds\s*:/.test(viteConfig)) fail('Coverage frontend debe ser informativo: no declares thresholds bloqueantes en Vitest');

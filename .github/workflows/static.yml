@@ -1,9 +1,12 @@
-name: Deploy Frontend to GitHub Pages
+name: Deploy Frontend to GitHub Pages (manual)
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit, tag o rama a publicar manualmente"
+        required: false
+        default: "main"
 
 permissions:
   contents: read
@@ -16,21 +19,21 @@ concurrency:
 
 jobs:
   deploy:
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'workflow_run' &&
-      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout tested commit
+      - name: Checkout requested ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve deployed SHA
+        id: commit
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -47,7 +50,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
-          VITE_BUILD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          VITE_BUILD_SHA: ${{ steps.commit.outputs.sha }}
         run: npm run build
 
       - name: Setup Pages

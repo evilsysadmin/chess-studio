@@ -1,3 +1,20 @@
+### v16.6dm43c · Build audit · E2E estable + deploy serial + PATCH concurrente blindado
+
+- Endurece los smoke Playwright tras la aparición de botones de ayuda: `Así juegas`, `Partida rápida` y `Combat Chess · Campaña` se localizan por texto visible dentro de su botón, evitando colisiones con `aria-label="Ayuda de …"`; el auditor impide reintroducir esos selectores regex ambiguos.
+- El mock E2E de perfil implementa el contrato real `GET/PUT/PATCH`, revisiones por clave y `409` por conflicto, para que la sincronización optimista no quede fuera de los browser tests.
+- Restaura y blinda la cadena de producción `CI → Cloudflare Workers AI → GitHub Pages`; Cloudflare filtra el `workflow_run` de CI a `main`; Pages arranca tras un Worker verde encadenado y publica el mismo `head_sha`, sin revalidar de forma frágil `head_branch` en el segundo salto.
+- `make tests`/pre-push ejecuta también `static-preflight`, adelantando gates de release, API/auth, CSS, ciclos, Cloudflare y Worker antes de intentar el push.
+- Corrige una carrera del primer `PATCH /api/profile`: la creación inicial usa `insert_one`; un `DuplicateKeyError` fuerza reread y resolución por revisión en vez de poder sobrescribir al escritor ganador. Se añade regresión específica.
+- El smoke real Docker+Mongo cubre ahora `PUT → PATCH válido → PATCH stale=409 → relogin`, no sólo persistencia básica.
+- Coverage V8 sigue siendo informativo: mientras `@vitest/coverage-v8` no esté sincronizado en `package.json` + lockfile, el workflow lo omite con warning en vez de producir un rojo engañoso.
+- Inventario esperado tras la auditoría: 701 tests frontend / 117 archivos, 220 backend / 10, 15 E2E / 2 y 7 Worker / 1. Sin cambios intencionados de gameplay.
+
+### v16.6dm43b · Hotfix · readiness parcheable + contrato root actualizado
+
+- `/api/ready` consulta `db.persistent_storage_required()` y `db.get_db()` en tiempo de llamada, evitando referencias importadas que impedían aislar/monkeypatchear Mongo en tests.
+- El contrato de `/` incluye `ready: /api/ready`, coherente con el endpoint añadido en dm41.
+- Sin cambios intencionados de gameplay, reglas de ajedrez ni frontend.
+
 ### v16.6dm43a · Hotfix · contrato de lazy audio tras extracción
 
 - Corrige `frontendArchitectureContract.test.js` para validar la carga dinámica de `sound.js` en `useAuthenticatedAudio.js`, que es el dueño real de esa responsabilidad desde dm43.
@@ -21,12 +38,12 @@
 - Añade cobertura directa del contrato de persistencia y reanudación de Combat Chess.
 - Inventario esperado: 695 tests frontend / 114 archivos. Sin cambios intencionados de gameplay.
 
-### v16.6dm41 · Perfil concurrente + readiness real + deploy desacoplado
+### v16.6dm41 · Perfil concurrente + readiness real + deploy encadenado
 
 - `PATCH /api/profile` sincroniza sólo claves modificadas mediante revisiones optimistas por clave; un `409` devuelve el snapshot/revisiones remotas para poder fusionar y reintentar sin pisar cambios independientes. `PUT` se mantiene por compatibilidad.
 - El frontend conserva una cola de sincronización, registra claves sucias por usuario y resuelve conflictos de una sola clave sin sobrescribir preferencias/progreso remoto ajeno.
 - `/api/health` queda como liveness barata y `/api/ready` comprueba disponibilidad real del almacenamiento persistente; Docker, Compose, Render y smoke usan readiness.
-- GitHub Pages queda condicionado directamente a un CI verde; el despliegue del Worker deja de ser una dependencia serial del frontend.
+- GitHub Pages conserva la cadena serial de producción `CI → Cloudflare Workers AI → Pages`: primero deben quedar verdes los tests y el deploy/verificación del Worker, y sólo entonces se publica el mismo commit del frontend.
 - Inventario esperado: 691 tests frontend / 113 archivos, 217 backend / 10, 15 E2E / 2 y 7 Worker / 1.
 
 ### v16.6dm40f · Testing pass III · menos wiring textual, menos doble ejecución
@@ -716,7 +733,7 @@ Detalles en `docs/v16.6al-request-hardening-puzzle-center.md`.
 - **Una sola sección “Así juegas”**: desaparece la entrada independiente “Centro de operaciones”; dentro del expediente hay subpáginas `Diagnóstico` y `Expediente` con toda la analítica, coaching, evolución y entrenamiento ya existentes.
 - **Frontend CI**: Vitest dispone de `sessionStorage` realista en el setup de Node; se corrige el FEN del test de pieza bloqueada y la legalidad de puzzles entra en el gate crítico.
 - **Backend CI**: se corrigen tres tests desfasados (cliente anónimo, score de mate con distancia y firma `email=` del mock) sin relajar seguridad ni modificar el motor para satisfacer asserts antiguos.
-- **Deploy condicionado**: Pages sólo despliega `main` después de que el workflow `CI` termine verde, y construye exactamente el SHA aprobado.
+- **Deploy condicionado**: Pages sólo despliega `main` después de `CI → Cloudflare Workers AI` en verde, y construye exactamente el SHA aprobado por esa cadena.
 
 Detalles en `docs/v16.6f-ci-insights-hub.md`.
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissTutorialIfVisible, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
+import { buttonWithVisibleText, dismissTutorialIfVisible, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
@@ -7,7 +7,7 @@ test('login → menú → Así juegas → refresh → ESC conserva navegación',
 
   await expect(page.getByText('2 usuarios online', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '2 usuarios online', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: /Así juegas/ }).click();
+  await buttonWithVisibleText(page, 'Así juegas').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 
   await page.reload();
@@ -21,7 +21,7 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await mockApi(page);
   await login(page);
 
-  await page.getByRole('button', { name: /Partida rápida/ }).click();
+  await buttonWithVisibleText(page, 'Partida rápida').click();
   await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
@@ -29,7 +29,7 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await page.reload();
   await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
   await expect(page.getByText('Restaurando partida en curso…', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Partida rápida/ })).toHaveCount(0);
+  await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
 });
 
 

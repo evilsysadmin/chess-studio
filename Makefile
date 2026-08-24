@@ -185,7 +185,7 @@ gate-critical: test-backend-smoke test-frontend-smoke
 
 ## Quality gate local completo. Frontend enseña smoke → unit → contract;
 ## backend enseña smoke → integration. No hay una segunda suite duplicada.
-tests: ensure-hooks tests-fe tests-be security
+tests: ensure-hooks static-preflight tests-fe tests-be security
 
 test: tests
 quality-gate: tests

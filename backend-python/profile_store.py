@@ -194,9 +194,14 @@ async def patch_profile(
 
         try:
             if current_doc is None:
-                result = await col.replace_one({"_id": username}, next_doc, upsert=True)
-                if result.upserted_id is not None or result.matched_count:
-                    return {**next_payload, "revisions": next_revisions}
+                # No uses replace_one(..., upsert=True) here. Two writers can
+                # both observe "no document"; if one inserts before the
+                # other's replace reaches Mongo, that replace would MATCH the
+                # freshly-created document and overwrite it without rechecking
+                # per-key revisions. insert_one turns that race into the
+                # DuplicateKeyError below, forcing a reread + conflict/merge.
+                await col.insert_one(next_doc)
+                return {**next_payload, "revisions": next_revisions}
             else:
                 current_meta = current_doc.get(_META_KEY)
                 query = {"_id": username}

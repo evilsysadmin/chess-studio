@@ -71,6 +71,44 @@ def main() -> int:
     }
     status, saved = request("PUT", f"{API}/profile", profile, token=token)
     assert status == 200, saved
+    rating_key = "chess-study-player-rating"
+    revisions = saved.get("revisions") or {}
+    assert revisions.get(rating_key, 0) >= 1, saved
+
+    # dm41+: el camino normal de guardado es PATCH optimista por clave. El
+    # smoke de stack real debe atravesarlo contra Mongo, no limitarse al PUT
+    # legado, para detectar wiring roto, CAS defectuoso o respuestas sin
+    # revisiones antes de desplegar.
+    status, patched = request(
+        "PATCH",
+        f"{API}/profile",
+        {
+            "data": {rating_key: json.dumps({"rating": 778})},
+            "revisions": {rating_key: revisions[rating_key]},
+        },
+        token=token,
+    )
+    assert status == 200, patched
+    assert patched.get("revisions", {}).get(rating_key) == revisions[rating_key] + 1, patched
+
+    # La misma revisión ya quedó obsoleta: el servidor debe responder 409 y
+    # preservar la escritura ganadora, no reemplazarla silenciosamente.
+    try:
+        request(
+            "PATCH",
+            f"{API}/profile",
+            {
+                "data": {rating_key: json.dumps({"rating": 1})},
+                "revisions": {rating_key: revisions[rating_key]},
+            },
+            token=token,
+        )
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 409, exc.code
+        conflict = json.loads(exc.read().decode("utf-8"))
+        assert conflict.get("detail", {}).get("conflicts", {}).get(rating_key), conflict
+    else:
+        raise AssertionError("PATCH obsoleto de perfil no devolvió 409")
 
     # Partida real persistida en Mongo. La recuperamos después con un token de
     # login nuevo para cubrir el hueco entre tests HTTP en memoria y el E2E
@@ -94,7 +132,7 @@ def main() -> int:
     assert status == 200, loaded
     data = loaded.get("data", loaded)
     assert marker in str(data.get("chess-study-compose-smoke", "")), loaded
-    assert "777" in str(data.get("chess-study-player-rating", "")), loaded
+    assert "778" in str(data.get(rating_key, "")), loaded
 
     status, restored_game = request("GET", f"{API}/games/{game_id}", token=token2)
     assert status == 200, restored_game

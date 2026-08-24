@@ -1,4 +1,4 @@
-"""test_profile.py — Tests de los endpoints de perfil (GET/PUT /api/profile).
+"""test_profile.py — Tests de los endpoints de perfil (GET/PUT/PATCH /api/profile).
 Ahora requieren autenticación (perfil por usuario, no un documento único
 compartido) — cada test se registra un usuario propio y usa su token.
 """
@@ -26,6 +26,7 @@ def _auth_headers():
 def test_profile_requires_auth():
     r = client.get("/api/profile")
     assert r.status_code == 401
+    assert client.patch("/api/profile", json={"data": {}, "revisions": {}}).status_code == 401
 
 
 def test_profile_starts_empty():
@@ -217,6 +218,52 @@ def test_profile_put_remains_supported_and_advances_changed_key_revision():
     assert second["revisions"]["a"] == first["revisions"]["a"] + 1
 
 
+def test_profile_patch_initial_insert_race_rereads_instead_of_overwriting_winner(monkeypatch):
+    """Dos primeros PATCH concurrentes no pueden perder la escritura ganadora.
+
+    El caso peligroso es: ambos leen ausencia; A inserta; B llega después. B
+    debe recibir DuplicateKey, releer y detectar el conflicto de la misma
+    clave, nunca convertir su upsert tardío en un replace ciego.
+    """
+    import asyncio
+    import profile_store
+    from pymongo.errors import DuplicateKeyError
+
+    winner = profile_store._build_internal(
+        "alice",
+        {"data": {"rating": "1210"}},
+        {"rating": 1},
+        1,
+    )
+
+    class FakeCollection:
+        def __init__(self):
+            self.finds = 0
+
+        async def find_one(self, query):
+            self.finds += 1
+            return None if self.finds == 1 else winner
+
+        async def insert_one(self, doc):
+            raise DuplicateKeyError("otro PATCH creó el perfil primero")
+
+        async def replace_one(self, *args, **kwargs):
+            raise AssertionError("la misma clave debe entrar en conflicto antes de reemplazar")
+
+    fake = FakeCollection()
+
+    async def fake_collection():
+        return fake
+
+    monkeypatch.setattr(profile_store, "_get_collection", fake_collection)
+    result = asyncio.run(profile_store.patch_profile("alice", {"rating": "999"}, {"rating": 0}))
+
+    assert isinstance(result, profile_store.ProfilePatchConflict)
+    assert result.conflicts == {"rating": {"expected": 0, "actual": 1}}
+    assert result.profile["data"]["rating"] == "1210"
+    assert fake.finds == 2
+
+
 def test_health_is_liveness_and_does_not_touch_mongo(monkeypatch):
     async def exploding_get_db():
         raise AssertionError("/health no debe tocar Mongo")
@@ -225,6 +272,28 @@ def test_health_is_liveness_and_does_not_touch_mongo(monkeypatch):
     r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json() == {"ok": True}
+
+
+def test_ready_memory_mode_does_not_touch_mongo(monkeypatch):
+    async def exploding_get_db():
+        raise AssertionError("/ready no debe tocar Mongo si la persistencia no está configurada")
+
+    monkeypatch.setattr("db.persistent_storage_required", lambda: False)
+    monkeypatch.setattr("db.get_db", exploding_get_db)
+    r = client.get("/api/ready")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "storage": "memory"}
+
+
+def test_ready_returns_200_when_configured_mongo_is_available(monkeypatch):
+    async def available_db():
+        return object()
+
+    monkeypatch.setattr("db.persistent_storage_required", lambda: True)
+    monkeypatch.setattr("db.get_db", available_db)
+    r = client.get("/api/ready")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "storage": "mongo"}
 
 
 def test_ready_returns_503_when_configured_mongo_is_down(monkeypatch):

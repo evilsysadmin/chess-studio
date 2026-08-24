@@ -11,6 +11,7 @@ export async function mockApi(page, { isAdmin = false } = {}) {
       'combat-deployment': { seen: true },
     }),
   };
+  let profileRevisions = {};
   let nextGameId = 1;
   const games = new Map();
   await page.route('http://localhost:4000/api/**', async (route) => {
@@ -21,11 +22,49 @@ export async function mockApi(page, { isAdmin = false } = {}) {
 
     if (path.endsWith('/auth/login') && method === 'POST') return json({ token: 'e2e-token', username: 'e2e' });
     if (path.endsWith('/auth/me')) return json({ username: 'e2e', isAdmin });
-    if (path.endsWith('/profile') && method === 'GET') return json({ app: 'estudio-de-ajedrez', version: 2, data: profileData });
+    if (path.endsWith('/profile') && method === 'GET') {
+      return json({ app: 'estudio-de-ajedrez', version: 2, data: profileData, revisions: profileRevisions });
+    }
     if (path.endsWith('/profile') && method === 'PUT') {
       const payload = route.request().postDataJSON?.() ?? {};
-      profileData = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
-      return json({ ok: true });
+      const nextData = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+      const keys = new Set([...Object.keys(profileData), ...Object.keys(nextData)]);
+      for (const key of keys) {
+        if (profileData[key] !== nextData[key] || (key in profileData) !== (key in nextData)) {
+          profileRevisions[key] = Number(profileRevisions[key] || 0) + 1;
+        }
+      }
+      profileData = { ...nextData };
+      return json({ ...payload, data: profileData, revisions: profileRevisions });
+    }
+    if (path.endsWith('/profile') && method === 'PATCH') {
+      const payload = route.request().postDataJSON?.() ?? {};
+      const changes = payload?.data && typeof payload.data === 'object' ? payload.data : {};
+      const expected = payload?.revisions && typeof payload.revisions === 'object' ? payload.revisions : {};
+      const conflicts = {};
+      for (const key of Object.keys(changes)) {
+        const actual = Number(profileRevisions[key] || 0);
+        const wanted = Number(expected[key] || 0);
+        if (actual !== wanted) conflicts[key] = { expected: wanted, actual };
+      }
+      if (Object.keys(conflicts).length) {
+        return json({
+          detail: {
+            message: 'Conflicto E2E de perfil',
+            conflicts,
+            profile: { app: 'estudio-de-ajedrez', version: 2, data: profileData, revisions: profileRevisions },
+            revisions: profileRevisions,
+          },
+        }, 409);
+      }
+      const nextData = { ...profileData };
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null) delete nextData[key];
+        else nextData[key] = value;
+        profileRevisions[key] = Number(profileRevisions[key] || 0) + 1;
+      }
+      profileData = nextData;
+      return json({ app: 'estudio-de-ajedrez', version: 2, data: profileData, revisions: profileRevisions });
     }
     if (path.endsWith('/admin/users')) return json({ users: [] });
     if (path.endsWith('/admin/feedback')) return json({ feedback: [] });
@@ -74,6 +113,16 @@ export async function login(page) {
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
 }
 
+
+export function buttonWithVisibleText(scope, text) {
+  // Prefer the visible copy rendered inside the action button, not a broad
+  // accessible-name regex. Tutorial help buttons intentionally include the
+  // mode name in aria-label (e.g. "Ayuda de Partida rápida"), so regex
+  // role selectors can become ambiguous as the UI gains contextual help.
+  const visibleLabel = scope.getByText(text, { exact: true });
+  return scope.getByRole('button').filter({ has: visibleLabel });
+}
+
 export async function dismissTutorialIfVisible(page) {
   // Defensive fallback: close every visible mechanic tutorial. A strict
   // getByRole('button', { name: 'Saltar' }) can throw when two overlays are
@@ -92,7 +141,7 @@ export async function dismissTutorialIfVisible(page) {
 }
 
 export async function openCampaignMap(page) {
-  await page.getByRole('button', { name: /Combat Chess · Campaña/ }).click();
+  await buttonWithVisibleText(page, 'Combat Chess · Campaña').click();
 
   // The campaign landing is deliberately simple: start first, then the
   // strategic map appears. Keep this flow centralized so UI copy changes do

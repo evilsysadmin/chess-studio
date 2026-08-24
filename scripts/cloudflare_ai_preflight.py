@@ -148,22 +148,35 @@ def static_check() -> list[str]:
     require(workflow, 'python3 "$health_contract" "$health_body"', "workflow shared health contract invocation", errors)
     require(workflow, '[[ -f "$health_contract" ]]', "workflow health contract existence check", errors)
 
-    # Release chain (dm41+): both deploys are independently gated by the same
-    # green CI commit. Pages must not wait on Workers AI: a Worker deployment
-    # failure should not serialize/block a frontend release that already passed
-    # the common CI gate.
+    # Release chain: CI green -> Workers AI green -> Pages. Keep the Worker and
+    # Pages deploy in the SAME workflow_run so both jobs share the exact CI
+    # payload/head_sha. A second workflow_run hop is avoidable and makes SHA
+    # provenance harder to reason about when several main pushes overlap.
     worker_sources = workflow_run_targets(workflow)
-    pages_sources = workflow_run_targets(pages_workflow)
     if worker_sources != ["CI"]:
         errors.append(f"workflow requires CI: workflow_run.workflows={worker_sources!r}")
     require(workflow, "github.event.workflow_run.conclusion == 'success'", "workflow requires green CI", errors)
-    if pages_sources != ["CI"]:
-        errors.append(f"Pages requires CI: workflow_run.workflows={pages_sources!r}")
-    require(pages_workflow, "github.event.workflow_run.conclusion == 'success'", "Pages requires green CI", errors)
-    require(pages_workflow, "github.event.workflow_run.event == 'workflow_run'", "Pages requires workflow_run event from CI", errors)
-    require(pages_workflow, "github.event.workflow_run.head_branch == 'main'", "Pages requires main branch", errors)
-    if "Cloudflare Workers AI" in pages_sources:
-        errors.append('Pages workflow: no debe depender de Workers AI; ambos despliegues cuelgan directamente de CI')
+    require(workflow, "github.event.workflow_run.event == 'push'", "workflow production deploy requires CI originated from push", errors)
+    require(workflow, "branches: [main]", "workflow_run from CI is filtered to main at trigger level", errors)
+    require(workflow, "ref: ${{ github.event.workflow_run.head_sha || github.sha }}", "Worker checks out the CI-approved SHA", errors)
+    require(workflow, "Refuse stale production commit", "workflow blocks stale CI deploys", errors)
+    require(workflow, "git ls-remote --exit-code origin refs/heads/main", "workflow compares tested SHA with current main", errors)
+    require(workflow, 'tested_sha="${{ github.event.workflow_run.head_sha }}"', "workflow pins stale guard to CI SHA", errors)
+    require(workflow, "  pages:\n", "workflow contains serial Pages job", errors)
+    require(workflow, "needs: terraform", "Pages waits for Worker/Terraform job", errors)
+    require(workflow, "name: Deploy Frontend to GitHub Pages", "Pages deploy job is explicit", errors)
+    require(workflow, "ref: ${{ github.event.workflow_run.head_sha }}", "Pages checks out the CI-approved SHA", errors)
+    require(workflow, "VITE_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}", "Pages exposes the CI-approved SHA", errors)
+    require(workflow, "uses: actions/deploy-pages@v4", "Pages deploy action wired", errors)
+    require(workflow, "group: pages", "automatic Pages deployment shares concurrency lock", errors)
+
+    # static.yml remains only as an explicit emergency/manual publisher. It
+    # must not subscribe to workflow_run or it could race/duplicate production.
+    require(pages_workflow, "workflow_dispatch:", "manual Pages fallback exists", errors)
+    if "workflow_run:" in pages_workflow:
+        errors.append("Pages manual workflow: no debe suscribirse a workflow_run; el deploy automático vive junto a Cloudflare")
+    require(pages_workflow, "VITE_BUILD_SHA: ${{ steps.commit.outputs.sha }}", "manual Pages reports resolved SHA", errors)
+    require(pages_workflow, 'group: "pages"', "manual Pages shares automatic concurrency lock", errors)
 
     # Self-check the shared contract so a future edit cannot silently stop
     # requiring one of the routed models.

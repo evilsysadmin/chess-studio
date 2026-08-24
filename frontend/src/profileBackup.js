@@ -166,9 +166,17 @@ export async function pullProfileFromServer() {
       // recién leídas y, si otra pestaña cambia algo entre medias, resolverá el
       // 409 sin pisar claves ajenas.
       const saved = await patchSnapshot(localSnapshot, { token, username, dirtyKeys });
-      rememberRemote(saved || remote, username);
+      const merged = saved || remote;
+      rememberRemote(merged, username);
+
+      // El PATCH sólo envía las claves dirty, pero su respuesta contiene la
+      // foto completa ya fusionada. Hay que traer esa foto de vuelta a la
+      // caché local: si otra pestaña cambió una clave independiente mientras
+      // ésta estaba dirty, dejar el valor local antiguo permitiría que un
+      // flush posterior lo volviera a subir y deshiciera la fusión.
+      const restored = importProfile(merged, { replace: true });
       clearProfileDirty();
-      return { status: 'recovered-local', restored: 0 };
+      return { status: 'recovered-local', restored };
     }
 
     const data = remote?.data;
