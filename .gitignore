@@ -29,3 +29,6 @@ backend-python/coverage.xml
 backend-python/htmlcov/
 e2e/test-results/
 e2e/playwright-report/
+
+docs/
+
