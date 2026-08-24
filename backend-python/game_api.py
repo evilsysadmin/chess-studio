@@ -49,7 +49,7 @@ async def get_owned_game(game_id: str, username: str) -> dict:
     return entry
 
 
-def build_game_router(*, auth_dependency, compute_auth_dependency, limiter) -> APIRouter:
+def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_valid_api_key, api_key_bucket) -> APIRouter:
     router = APIRouter()
     @router.post("/api/games", status_code=201)
     async def create_game(body: NewGameRequest, username: str = Depends(auth_dependency)):

@@ -388,7 +388,15 @@ async def get_user_or_m2m(request: Request) -> str:
     return await get_current_user(request)
 
 
-app.include_router(build_game_router(auth_dependency=get_current_user, compute_auth_dependency=get_user_or_m2m, limiter=limiter))
+app.include_router(
+    build_game_router(
+        auth_dependency=get_current_user,
+        compute_auth_dependency=get_user_or_m2m,
+        limiter=limiter,
+        has_valid_api_key=has_valid_api_key,
+        api_key_bucket=api_key_bucket,
+    )
+)
 
 
 @app.post("/api/auth/register", status_code=201)
