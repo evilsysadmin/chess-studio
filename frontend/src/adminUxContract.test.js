@@ -37,7 +37,8 @@ describe('admin UX contract', () => {
   it('mantiene observabilidad simple por defecto y profundidad bajo clic', () => {
     expect(observability).toContain('Estado de Chess Studio');
     expect(observability).toContain('Ver métricas completas');
-    expect(observability).toContain('OBSERVABILITY_REFRESH_MS = 120000');
+    expect(observability).toContain('Auto-refresh OFF');
+    expect(observability).toContain('Actualizar ahora');
     expect(observability).toContain('Sin jugadas, FEN, mensajes, clicks ni identidad sensible.');
     expect(observability).toContain('Workers AI');
     expect(observability).toContain('Rango del dashboard');

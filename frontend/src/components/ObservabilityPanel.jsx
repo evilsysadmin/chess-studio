@@ -8,6 +8,10 @@ import {
 } from '../observability.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildObservabilitySummaryDossier } from '../aiNarrativeTasks.js';
+import {
+  DEFAULT_OBSERVABILITY_AUTO_REFRESH_MS,
+  OBSERVABILITY_AUTO_REFRESH_OPTIONS,
+} from '../observabilityRefresh.js';
 
 const EVENT_LABELS = {
   player_portrait: 'Así te ve la CPU',
@@ -24,14 +28,6 @@ const EVENT_LABELS = {
   observability_summary: 'Diagnóstico SRE',
   generic: 'Otros',
 };
-
-const AUTO_REFRESH_OPTIONS = [
-  { value: 30000, label: '30 s' },
-  { value: 60000, label: '1 min' },
-  { value: 120000, label: '2 min' },
-  { value: 300000, label: '5 min' },
-  { value: 900000, label: '15 min' },
-];
 
 const LATENCY_VIEWS = ['p50', 'p95', 'p99', 'all'];
 
@@ -282,7 +278,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
   const [dashboardTab, setDashboardTab] = useState('health');
   const [latencyView, setLatencyView] = useState('all');
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
-  const [autoRefreshMs, setAutoRefreshMs] = useState(60000);
+  const [autoRefreshMs, setAutoRefreshMs] = useState(DEFAULT_OBSERVABILITY_AUTO_REFRESH_MS);
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSummaryStatus, setAiSummaryStatus] = useState('idle');
   const userSummary = useMemo(() => summarizeAdminUsers(users, currentAdmin), [users, currentAdmin]);
@@ -379,7 +375,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
         ) : null}
         <div className="admin-observability-refresh-controls">
           <button type="button" className={autoRefreshEnabled ? 'secondary-btn active' : 'secondary-btn'} onClick={() => setAutoRefreshEnabled((value) => !value)}>{autoRefreshEnabled ? 'Auto-refresh ON' : 'Auto-refresh OFF'}</button>
-          <label><span>Cada</span><select value={autoRefreshMs} disabled={!autoRefreshEnabled} onChange={(event) => setAutoRefreshMs(Number(event.target.value))}>{AUTO_REFRESH_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+          <label><span>Cada</span><select value={autoRefreshMs} disabled={!autoRefreshEnabled} onChange={(event) => setAutoRefreshMs(Number(event.target.value))}>{OBSERVABILITY_AUTO_REFRESH_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
           <button type="button" className="secondary-btn" disabled={loading} onClick={() => void refresh()}>{loading ? 'Actualizando…' : 'Actualizar ahora'}</button>
         </div>
         <small>{historyRange.persistent ? 'Histórico agregado en Mongo' : 'Histórico disponible sólo desde este proceso'} · resolución {historyRange.resolution === 'day' ? 'diaria' : 'horaria'}.</small>
