@@ -125,7 +125,9 @@ def static_check() -> list[str]:
     # Deployment health uses the same executable contract as this preflight.
     # Do not inspect inline Python/YAML implementation details: that was brittle
     # and produced false CI failures for semantically equivalent workflows.
-    require(workflow, 'python3 scripts/cloudflare_health_contract.py "$health_body"', "workflow shared health contract", errors)
+    require(workflow, 'health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"', "workflow absolute health contract path", errors)
+    require(workflow, 'python3 "$health_contract" "$health_body"', "workflow shared health contract invocation", errors)
+    require(workflow, '[[ -f "$health_contract" ]]', "workflow health contract existence check", errors)
 
     # Self-check the shared contract so a future edit cannot silently stop
     # requiring one of the routed models.
