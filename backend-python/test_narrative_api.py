@@ -6,9 +6,11 @@ import narrative_api
 
 
 def auth(authorization: str | None = Header(default=None)):
-    if authorization != "Bearer ok":
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return "test-user"
+    if authorization == "Bearer ok":
+        return "test-user"
+    if authorization == "Bearer admin":
+        return "admin"
+    raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def admin(authorization: str | None = Header(default=None)):
@@ -19,7 +21,7 @@ def admin(authorization: str | None = Header(default=None)):
 
 def build_client():
     app = FastAPI()
-    app.include_router(narrative_api.build_narrative_router(auth_dependency=auth, admin_dependency=admin, rate_limit_per_minute=2))
+    app.include_router(narrative_api.build_narrative_router(auth_dependency=auth, admin_dependency=admin, is_admin_check=lambda username: username == "admin", rate_limit_per_minute=2))
     return TestClient(app)
 
 
@@ -67,6 +69,21 @@ def test_player_portrait_manual_refresh_only_consumes_cooldown_after_cloud_succe
     assert second.status_code == 429
     assert int(second.headers["retry-after"]) > 0
 
+
+
+
+def test_admin_player_portrait_manual_refresh_has_no_cooldown(monkeypatch):
+    monkeypatch.setenv("AI_PORTRAIT_MANUAL_COOLDOWN_SECONDS", "21600")
+
+    async def cloud_success(*args, **kwargs):
+        return {"text": "Lectura remota", "provider": "cloudflare", "latencyMs": 12.0}
+
+    monkeypatch.setattr(narrative_api, "generate_narrative", cloud_success)
+    client = build_client()
+    headers = {"Authorization": "Bearer admin"}
+    payload = {"eventType": "player_portrait", "requestKind": "portrait_manual", "facts": {"total_games": 8}}
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
 
 def test_player_portrait_fallback_does_not_burn_six_hour_manual_cooldown(monkeypatch):
     monkeypatch.setenv("AI_PORTRAIT_MANUAL_COOLDOWN_SECONDS", "21600")

@@ -79,7 +79,7 @@ function WinBar({ stats }) {
   );
 }
 
-export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun }) {
+export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, isAdminUser = false }) {
   useEscapeToClose(onExit);
   const [section, setSection] = useState('diagnosis');
 
@@ -149,7 +149,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   const [portraitRefresh, setPortraitRefresh] = useState(0);
   const portraitManualRequestRef = useRef(false);
   const [portraitCooldownNow, setPortraitCooldownNow] = useState(() => Date.now());
-  const portraitManualState = playerPortraitManualRefreshState({ now: portraitCooldownNow, identityScope: portraitIdentityScope });
+  const portraitManualState = playerPortraitManualRefreshState({ now: portraitCooldownNow, identityScope: portraitIdentityScope, bypassCooldown: isAdminUser });
 
   useEffect(() => {
     if (portraitManualState.allowed) return undefined;
@@ -197,7 +197,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         return;
       }
       saveCachedPlayerPortrait(portraitGenerationKey, text, portraitIdentityScope);
-      if (shouldCommitManualPortraitRefresh(requestKind, text)) {
+      if (!isAdminUser && shouldCommitManualPortraitRefresh(requestKind, text)) {
         // El cooldown manual se consume sólo cuando hubo una lectura real de
         // Workers AI. Un timeout/fallback no castiga al usuario durante 6 h.
         markPlayerPortraitManualRefresh({ identityScope: portraitIdentityScope });
@@ -208,10 +208,10 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     });
 
     return () => { active = false; };
-  }, [portraitFactsKey, portraitGenerationKey, portraitRefresh, portraitRemoteEligible]);
+  }, [portraitFactsKey, portraitGenerationKey, portraitRefresh, portraitRemoteEligible, isAdminUser]);
 
   function requestFreshPortrait() {
-    const state = playerPortraitManualRefreshState({ identityScope: portraitIdentityScope });
+    const state = playerPortraitManualRefreshState({ identityScope: portraitIdentityScope, bypassCooldown: isAdminUser });
     if (!portraitRemoteEligible || !state.allowed || portraitStatus === 'loading') {
       setPortraitCooldownNow(Date.now());
       return;
@@ -323,9 +323,11 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                   {portraitStatus === 'loading' ? 'Pensando…' : portraitManualState.allowed ? '↻ Analizarme de nuevo' : 'Lectura reciente'}
                 </button>
                 <small>
-                  {portraitManualState.allowed
-                    ? 'Una lectura extra cada 6 h · automática tras cada partida.'
-                    : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
+                  {isAdminUser
+                    ? 'Admin · sin cooldown · automática tras cada partida.'
+                    : portraitManualState.allowed
+                      ? 'Una lectura extra cada 6 h · automática tras cada partida.'
+                      : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
                 </small>
               </>
             ) : (

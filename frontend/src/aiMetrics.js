@@ -24,6 +24,7 @@ export async function fetchAiNarrativeMetrics({ token, fetchImpl = fetch } = {})
       requestKinds: body.request_kinds && typeof body.request_kinds === 'object' ? body.request_kinds : {},
       models: body.models && typeof body.models === 'object' ? body.models : {},
       workerErrors: body.worker_errors && typeof body.worker_errors === 'object' ? body.worker_errors : {},
+      channels: body.channels && typeof body.channels === 'object' ? body.channels : {},
       usage: body.usage && typeof body.usage === 'object' ? {
         inputTokens: Number(body.usage.input_tokens || 0),
         outputTokens: Number(body.usage.output_tokens || 0),

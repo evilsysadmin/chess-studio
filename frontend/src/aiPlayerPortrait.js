@@ -152,7 +152,8 @@ export function saveCachedPlayerPortrait(generationKey, text, identityScope) {
   });
 }
 
-export function playerPortraitManualRefreshState({ now = Date.now(), identityScope = null } = {}) {
+export function playerPortraitManualRefreshState({ now = Date.now(), identityScope = null, bypassCooldown = false } = {}) {
+  if (bypassCooldown) return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
   const cached = readPortraitCache(identityScope);
   const last = Number(cached?.manualRequestedAt);
   if (!Number.isFinite(last) || last <= 0) {

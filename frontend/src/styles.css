@@ -9192,3 +9192,19 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .admin-insights-ai-actions{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin:.4rem 0 .85rem}
 .admin-insights-ai-actions small{opacity:.7}
 .admin-player-ai-portrait{margin:.6rem 0 1rem}
+
+/* dm35 · Torneo compacto: la pantalla tiene poca información primaria y no debe
+   ocupar el mismo lienzo que Home/Admin. Mantiene el disclosure para el detalle. */
+.menu.tournament-panel {
+  max-width: 620px;
+  padding: 1.25rem 1.35rem;
+  gap: .9rem;
+}
+.tournament-panel .tournament-next-card { max-width: 540px; width: 100%; }
+.tournament-panel .friendly-big-summary { margin: .3rem 0 .5rem; }
+.tournament-panel .friendly-main-cta { margin-top: .6rem; }
+.tournament-panel .tournament-more { margin-top: .25rem; }
+.tournament-panel .friendly-disclosure-body { padding-top: .55rem; }
+@media (max-width: 680px) {
+  .menu.tournament-panel { max-width: 100%; padding: 1rem; gap: .75rem; }
+}

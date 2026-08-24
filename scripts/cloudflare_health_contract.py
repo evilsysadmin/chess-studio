@@ -11,7 +11,7 @@ import pathlib
 import sys
 
 EXPECTED_MODELS = {
-    "comments": "@cf/meta/llama-3.2-3b-instruct",
+    "comments": "@cf/qwen/qwen3-30b-a3b-fp8",
     "player_portrait": "@cf/qwen/qwen3-30b-a3b-fp8",
     "analysis": "@cf/qwen/qwen3-30b-a3b-fp8",
 }

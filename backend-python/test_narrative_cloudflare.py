@@ -455,3 +455,18 @@ def test_player_portrait_action_detector_accepts_natural_spanish_variants():
     ]
     for text in variants:
         assert provider.validate_player_portrait_contract(text, facts) == (True, None)
+
+
+def test_rich_channels_default_to_bounded_five_second_budget(monkeypatch):
+    monkeypatch.delenv("CF_AI_TIMEOUT_SECONDS", raising=False)
+    assert provider._timeout_seconds("player_portrait") == 5.0
+    assert provider._timeout_seconds("analysis") == 5.0
+
+
+def test_comment_channel_has_hard_two_second_budget_and_fast_circuit(monkeypatch):
+    monkeypatch.delenv("CF_AI_COMMENT_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("AI_NARRATIVE_COMMENT_CIRCUIT_FAILURES", raising=False)
+    monkeypatch.delenv("AI_NARRATIVE_COMMENT_CIRCUIT_RESET_SECONDS", raising=False)
+    assert provider._timeout_seconds("comments") == 2.0
+    assert provider._circuit_failure_threshold_for("comments") == 3
+    assert provider._circuit_reset_seconds_for("comments") == 60.0

@@ -84,6 +84,14 @@ describe('AI player portrait', () => {
     expect(playerPortraitManualRefreshState({ now: 1_000_000 + 6 * 60 * 60 * 1000, identityScope: 'alice' }).allowed).toBe(true);
   });
 
+  it('permite a un admin saltarse el cooldown manual sin tocar la cache', () => {
+    expect(markPlayerPortraitManualRefresh({ now: 1_000_000, identityScope: 'alice' })).toBe(true);
+    const blocked = playerPortraitManualRefreshState({ now: 1_000_001, identityScope: 'alice' });
+    expect(blocked.allowed).toBe(false);
+    const admin = playerPortraitManualRefreshState({ now: 1_000_001, identityScope: 'alice', bypassCooldown: true });
+    expect(admin).toEqual({ allowed: true, retryAfterMs: 0, nextAllowedAt: null });
+  });
+
   it('nunca reutiliza el retrato cacheado de otra identidad', () => {
     const key = playerPortraitGenerationKey({ totalGames: 9 });
     expect(saveCachedPlayerPortrait(key, 'Lectura de Alice.', 'Alice')).toBe(true);

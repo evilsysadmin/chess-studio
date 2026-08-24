@@ -372,7 +372,7 @@ async def require_admin(username: str = Depends(get_current_user)) -> str:
     return username
 
 # LLM narrative transport: facts stay authoritative in Chess Studio.
-app.include_router(build_narrative_router(auth_dependency=get_current_user, admin_dependency=require_admin))
+app.include_router(build_narrative_router(auth_dependency=get_current_user, admin_dependency=require_admin, is_admin_check=is_admin))
 app.include_router(build_admin_router(auth_dependency=get_current_user, admin_dependency=require_admin, limiter=limiter))
 
 

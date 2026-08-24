@@ -34,11 +34,13 @@ describe('AI task wiring', () => {
 
   it('las tareas analíticas usan Qwen y un contrato factual específico', () => {
     expect(worker).toContain('RICH_ANALYSIS_EVENTS');
-    expect(worker).toContain('ANALYSIS_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"');
+    expect(worker).toContain('const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"');
+    expect(worker).toContain('const COMMENT_MODEL = QWEN_MODEL;');
+    expect(worker).toContain('const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;');
+    expect(worker).toContain('const ANALYSIS_MODEL = QWEN_MODEL;');
     expect(worker).toContain('Para post_game_autopsy');
     expect(worker).toContain('Para combat_briefing');
     expect(worker).toContain('Para combat_debrief');
     expect(worker).toContain('Para observability_summary');
-    expect(worker).toContain('No afirmes tendencias, causalidad ni root cause');
   });
 });

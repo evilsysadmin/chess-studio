@@ -85,6 +85,7 @@ def _fresh_bucket() -> dict[str, Any]:
             "request_kinds": {},
             "models": {},
             "worker_errors": {},
+            "channels": {},
         },
     }
 
@@ -149,6 +150,22 @@ def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) ->
         worker_error = str(event.get("worker_error") or "")[:80]
         if worker_error:
             _inc(ai["worker_errors"], _safe_key(worker_error))
+
+        channel = str(event.get("channel") or "comments")[:32]
+        channel_key = _safe_key(channel)
+        channel_row = ai["channels"].setdefault(channel_key, {
+            "samples": 0,
+            "cloudflare": 0,
+            "local": 0,
+            "latency_hist": {},
+            "latency_max_ms": 0.0,
+            "reasons": {},
+        })
+        channel_row["samples"] += 1
+        channel_row["cloudflare" if provider == "cloudflare" else "local"] += 1
+        _inc(channel_row["latency_hist"], _hist_key(latency))
+        channel_row["latency_max_ms"] = max(float(channel_row.get("latency_max_ms") or 0.0), latency)
+        _inc(channel_row["reasons"], _safe_key(str(event.get("reason") or "unknown")[:64]))
 
 
 def _subtract_delta(target: dict[str, Any], sent: dict[str, Any]) -> None:
@@ -361,6 +378,21 @@ def _summarize_http(http: dict[str, Any], range_seconds: int) -> dict[str, Any]:
     }
 
 
+def _summarize_ai_channel(row: dict[str, Any]) -> dict[str, Any]:
+    total = max(0, int(row.get("samples") or 0))
+    cloud = max(0, int(row.get("cloudflare") or 0))
+    local = max(0, int(row.get("local") or 0))
+    return {
+        "samples": total,
+        "cloudflare_percent": round(cloud * 100 / total, 1) if total else None,
+        "fallback_percent": round(local * 100 / total, 1) if total else None,
+        "p50_ms": _hist_percentile(row.get("latency_hist") or {}, 0.50, float(row.get("latency_max_ms") or 0.0)),
+        "p95_ms": _hist_percentile(row.get("latency_hist") or {}, 0.95, float(row.get("latency_max_ms") or 0.0)),
+        "p99_ms": _hist_percentile(row.get("latency_hist") or {}, 0.99, float(row.get("latency_max_ms") or 0.0)),
+        "reasons": _decoded_counter(row.get("reasons") or {}, 6),
+    }
+
+
 def _summarize_ai(ai: dict[str, Any]) -> dict[str, Any]:
     total = max(0, int(ai.get("samples") or 0))
     cloud = max(0, int(ai.get("cloudflare") or 0))
@@ -368,7 +400,7 @@ def _summarize_ai(ai: dict[str, Any]) -> dict[str, Any]:
     input_tokens = max(0, int(ai.get("input_tokens") or 0))
     output_tokens = max(0, int(ai.get("output_tokens") or 0))
     estimated_neurons = (input_tokens * 4625 + output_tokens * 30475) / 1_000_000
-    estimated_cost_usd = (input_tokens * 0.051 + output_tokens * 0.335) / 1_000_000
+    estimated_cost_usd = (input_tokens * 0.051 + output_tokens * 0.34) / 1_000_000
     return {
         "samples": total,
         "cloudflare": cloud,
@@ -383,6 +415,11 @@ def _summarize_ai(ai: dict[str, Any]) -> dict[str, Any]:
         "request_kinds": _decoded_counter(ai.get("request_kinds") or {}, 8),
         "models": _decoded_counter(ai.get("models") or {}, 6),
         "worker_errors": _decoded_counter(ai.get("worker_errors") or {}, 8),
+        "channels": {
+            _unsafe_key(str(encoded)): _summarize_ai_channel(row)
+            for encoded, row in (ai.get("channels") or {}).items()
+            if isinstance(row, dict)
+        },
         "usage": {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,

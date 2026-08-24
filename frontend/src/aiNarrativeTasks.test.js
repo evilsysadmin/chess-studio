@@ -43,7 +43,7 @@ describe('AI narrative task dossiers', () => {
   it('observability summary is aggregated and does not include users or request bodies', () => {
     const dossier = buildObservabilitySummaryDossier({
       runtime: {
-        history: { http: { samples: 900, p95_ms: 220, status_5xx: 2, top_routes: [{ route: 'GET /api/profile', requests: 200, p95_ms: 80 }] }, ai: { samples: 12, cloudflare_percent: 91.7, fallback_percent: 8.3, reasons: { ok: 11, timeout: 1 } } },
+        history: { http: { samples: 900, p95_ms: 220, status_5xx: 2, top_routes: [{ route: 'GET /api/profile', requests: 200, errors_5xx: 0, p95_ms: 80 }, { route: 'POST /api/narrative', requests: 70, errors_5xx: 0, p95_ms: 2500 }] }, ai: { samples: 12, cloudflare_percent: 91.7, fallback_percent: 8.3, reasons: { ok: 11, timeout: 1 } } },
         database: { status: 'ok', latency_ms: 18 },
         users: [{ username: 'NOPE' }],
       },
@@ -55,6 +55,10 @@ describe('AI narrative task dossiers', () => {
     expect(dossier.facts.api_sample_quality).toBe('enough');
     expect(dossier.facts.ai_sample_quality).toBe('enough');
     expect(dossier.facts.top_ai_fallbacks).toEqual([{ reason: 'timeout', count: 1 }]);
+    expect(dossier.facts.narrative_route).toMatchObject({ route: 'POST /api/narrative', errors_5xx: 0, p95_ms: 2500, latency_class: 'external_ai', interactive_comment_timeout_ms: 2000, rich_analysis_timeout_ms: 5000 });
+    expect(dossier.facts.top_routes[0]).toHaveProperty('errors_5xx');
+    expect(dossier.facts.error_routes).toEqual([]);
+    expect(dossier.facts.slow_standard_routes[0]).toMatchObject({ route: 'GET /api/profile', p95_ms: 80 });
     expect(JSON.stringify(dossier)).not.toContain('NOPE');
   });
   it('does not overstate tiny observability samples', () => {

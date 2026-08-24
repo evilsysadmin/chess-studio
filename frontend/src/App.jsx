@@ -935,6 +935,7 @@ function AppInner({ isAdminUser }) {
             onOpenPuzzles={openPuzzleMode}
             onStartRun={handleStartRun}
             onContinueRun={handleContinueRun}
+            isAdminUser={isAdminUser}
           />
         )}
 

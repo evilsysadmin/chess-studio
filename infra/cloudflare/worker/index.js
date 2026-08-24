@@ -1,6 +1,7 @@
-const COMMENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
-const PLAYER_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
-const ANALYSIS_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+const COMMENT_MODEL = QWEN_MODEL;
+const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;
+const ANALYSIS_MODEL = QWEN_MODEL;
 const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary"]));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
@@ -13,12 +14,14 @@ const SENSITIVE_FACT_KEY_PARTS = Object.freeze([
 ]);
 
 const COMMENT_GENERATION = Object.freeze({
-  temperature: 1.25,
-  top_p: 0.96,
-  top_k: 45,
-  repetition_penalty: 1.12,
-  frequency_penalty: 0.35,
-  presence_penalty: 0.25,
+  // Qwen non-thinking: algo más creativo que el diagnóstico, pero sin dejarle
+  // convertir una pulla de tablero en literatura experimental.
+  temperature: 0.90,
+  top_p: 0.90,
+  top_k: 30,
+  repetition_penalty: 1.08,
+  frequency_penalty: 0.20,
+  presence_penalty: 0.15,
 });
 
 // El retrato no es una ocurrencia de medio segundo: debe diagnosticar.
@@ -129,9 +132,19 @@ REGLAS INVIOLABLES:
   HECHOS) y, si procede, una observación práctica. No inventes heroicidades.
 - Para observability_summary escribe exactamente 3 frases: estado general, señal
   técnica más relevante y qué conviene vigilar o revisar. Usa cifras concretas
-  de HECHOS. No afirmes tendencias, causalidad ni root cause si no hay comparación
-  o evidencia explícita. Puedes meter una sola ironía seca; esto sigue siendo un
-  diagnóstico operativo, no stand-up.
+  de HECHOS. Distingue SIEMPRE volumen, latencia y errores: muchas requests o un
+  p95 alto no son "fallos" si errors_5xx es 0. Usa error_routes sólo para hablar
+  de fallos HTTP y slow_standard_routes sólo para hablar de latencia de API normal.
+  POST /api/narrative pertenece a latency_class=external_ai: incluye una llamada
+  externa a Workers AI y por diseño puede ser mucho más lenta que una ruta API
+  normal. No la presentes como degradada por un p95 de ~2–2.5 s; para comentarios
+  compárala con interactive_comment_timeout_ms y para análisis ricos con
+  rich_analysis_timeout_ms. En esa ruta prioriza timeout/fallback/circuit breaker y
+  errors_5xx. Si top_ai_fallbacks existe, cita el motivo dominante y su recuento en
+  vez de decir genéricamente "revisa los fallbacks". Si no hay errores 5xx, no uses
+  "fallos" para describir una ruta sólo por volumen o latencia. No afirmes tendencias,
+  causalidad ni root cause si no hay comparación o evidencia explícita. Puedes meter
+  una sola ironía seca; esto sigue siendo un diagnóstico operativo, no stand-up.
 - No llames "fortaleza", "debilidad" o "tendencia" a algo basado en una sola
   muestra si los HECHOS indican que hay pocos datos. Sé proporcional al tamaño
   de la muestra.
@@ -361,12 +374,12 @@ async function handleNarrative(request, env) {
     post_game_autopsy: "Haz la autopsia compacta de esta partida usando sólo los hechos analizados. Explica, no adornes.",
     combat_briefing: "Redacta un briefing táctico corto usando sólo la inteligencia realmente disponible y termina con una preparación concreta.",
     combat_debrief: "Redacta un debriefing corto usando sólo el resultado y hechos de servicio registrados.",
-    observability_summary: "Resume la salud técnica del rango con cifras dadas, señala lo más importante y qué revisar; no inventes tendencias ni causas.",
+    observability_summary: "Resume la salud técnica separando errores, latencia y volumen. Trata /api/narrative como ruta de IA externa con presupuesto propio y cita motivos concretos de fallback cuando existan.",
   };
   const task = tasks[eventType] || "Escribe el comentario ahora usando exclusivamente esos hechos.";
 
   const model = modelFor(eventType);
-  const qwenNoThink = model === PLAYER_PORTRAIT_MODEL || model === ANALYSIS_MODEL;
+  const qwenNoThink = model === QWEN_MODEL;
   const userPrompt = [
     qwenNoThink ? "/no_think" : "",
     `TIPO_DE_EVENTO: ${eventType}`,

@@ -109,6 +109,7 @@ def build_narrative_router(
     *,
     auth_dependency: Callable[..., Any],
     admin_dependency: Callable[..., Any] | None = None,
+    is_admin_check: Callable[[str], bool] | None = None,
     rate_limit_per_minute: int = 30,
 ) -> APIRouter:
     router = APIRouter()
@@ -122,6 +123,8 @@ def build_narrative_router(
     @router.post("/api/narrative")
     async def narrative(request: Request, body: NarrativeRequest, identity: Any = Depends(auth_dependency)):
         identity_key = _identity_key(identity, request)
+        identity_name = str(identity or "")
+        admin_bypass = bool(is_admin_check and identity_name and is_admin_check(identity_name))
         request_kind = (body.requestKind or "default").strip().lower()
         allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "observability_summary"}
         if request_kind not in allowed_request_kinds:
@@ -132,7 +135,7 @@ def build_narrative_router(
         request_id = (getattr(request.state, "request_id", None) or request.headers.get("x-request-id") or "").strip()[:80] or None
         try:
             (portrait_limiter if is_portrait else analysis_limiter if is_analysis else comment_limiter).check(identity_key)
-            if is_portrait and request_kind == "portrait_manual":
+            if is_portrait and request_kind == "portrait_manual" and not admin_bypass:
                 portrait_manual_limiter.check(identity_key)
         except HTTPException as exc:
             if exc.status_code == 429:
@@ -157,7 +160,7 @@ def build_narrative_router(
         # Sólo una lectura AI real consume la ventana manual de seis horas. Si
         # Cloudflare falla y usamos fallback, el usuario puede reintentar cuando
         # vuelva el proveedor sin quedar castigado por un fallo ajeno.
-        if is_portrait and request_kind == "portrait_manual" and result.get("provider") == "cloudflare":
+        if is_portrait and request_kind == "portrait_manual" and result.get("provider") == "cloudflare" and not admin_bypass:
             portrait_manual_limiter.commit(identity_key)
         return result
 

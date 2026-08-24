@@ -497,6 +497,17 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
             <article><h4>Origen de peticiones AI · {rangeLabel}</h4><KeyValueList values={historyAi.request_kinds} labels={REQUEST_KIND_LABELS} /></article>
             <article><h4>Fallback / errores AI · {rangeLabel}</h4><KeyValueList values={Object.fromEntries(Object.entries(historyAi.reasons || {}).filter(([reason]) => String(reason).toLowerCase() !== 'ok'))} /></article>
             <article><h4>Detalle devuelto por Worker · {rangeLabel}</h4><KeyValueList values={historyAi.worker_errors} /></article>
+            <article>
+              <h4>SLI por canal AI · {rangeLabel}</h4>
+              <ul className="admin-observability-list">
+                {Object.entries(historyAi.channels || {}).map(([channel, row]) => (
+                  <li key={channel}>
+                    <span>{channel === 'comments' ? 'Comentarios · objetivo interactivo ≤2 s' : channel === 'player_portrait' ? 'Así te ve · presupuesto 5 s' : 'Análisis ricos · presupuesto 5 s'}</span>
+                    <strong>{formatAiMetric(row.cloudflare_percent, '%')} CF · p95 {formatAiMetric(row.p95_ms, ' ms')} · fallback {formatAiMetric(row.fallback_percent, '%')}</strong>
+                  </li>
+                ))}
+              </ul>
+            </article>
             <article><h4>Releases en uso · ahora</h4><KeyValueList values={userSummary.releases} /></article>
             <article><h4>Modelos AI · {rangeLabel}</h4><KeyValueList values={historyAi.models} /></article>
           </div>

@@ -102,11 +102,25 @@ export function buildObservabilitySummaryDossier({ runtime, ai, rangeLabel = 'ra
   const http = runtime?.history?.http || {};
   const historicalAi = runtime?.history?.ai || {};
   const database = runtime?.database || {};
-  const topRoutes = (http.top_routes || []).slice(0, 4).map((row) => ({
-    route: cleanText(row.route, 120),
-    requests: finiteNumber(row.requests, 0),
-    p95_ms: finiteNumber(row.p95_ms),
-  }));
+  const topRoutes = (http.top_routes || []).slice(0, 6).map((row) => {
+    const route = cleanText(row.route, 120);
+    return {
+      route,
+      requests: finiteNumber(row.requests, 0),
+      errors_5xx: finiteNumber(row.errors_5xx, 0),
+      p95_ms: finiteNumber(row.p95_ms),
+      latency_class: route === 'POST /api/narrative' ? 'external_ai' : 'standard_api',
+    };
+  });
+  const narrativeRoute = topRoutes.find((row) => row.route === 'POST /api/narrative') || null;
+  const errorRoutes = topRoutes
+    .filter((row) => row.errors_5xx > 0)
+    .sort((a, b) => b.errors_5xx - a.errors_5xx)
+    .slice(0, 4);
+  const slowStandardRoutes = topRoutes
+    .filter((row) => row.latency_class === 'standard_api' && row.p95_ms != null)
+    .sort((a, b) => Number(b.p95_ms || 0) - Number(a.p95_ms || 0))
+    .slice(0, 4);
   const topFallbacks = Object.entries(historicalAi.reasons || {})
     .filter(([reason]) => String(reason).toLowerCase() !== 'ok')
     .sort((a, b) => Number(b[1]) - Number(a[1]))
@@ -138,6 +152,14 @@ export function buildObservabilitySummaryDossier({ runtime, ai, rangeLabel = 'ra
       ai_circuit_open: Boolean(ai?.circuit?.open),
       ai_consecutive_failures: finiteNumber(ai?.circuit?.consecutiveFailures, 0),
       top_routes: topRoutes,
+      narrative_route: narrativeRoute ? {
+        ...narrativeRoute,
+        expected_latency_note: 'Incluye llamada externa a Workers AI; evalúa su latencia por separado de la API estándar.',
+        interactive_comment_timeout_ms: 2000,
+        rich_analysis_timeout_ms: 5000,
+      } : null,
+      error_routes: errorRoutes,
+      slow_standard_routes: slowStandardRoutes,
       top_ai_fallbacks: topFallbacks,
     },
   };

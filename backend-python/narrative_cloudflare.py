@@ -5,6 +5,7 @@ non-fatal and falls back to a local line that uses only supplied facts.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -22,7 +23,8 @@ import httpx
 
 ai_logger = logging.getLogger("uvicorn.error")
 
-DEFAULT_TIMEOUT_SECONDS = 12.0
+DEFAULT_TIMEOUT_SECONDS = 5.0
+DEFAULT_COMMENT_TIMEOUT_SECONDS = 2.0
 DEFAULT_MAX_OUTPUT_CHARS = 420
 PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
 RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900
@@ -33,7 +35,9 @@ MAX_FACT_ARRAY = 12
 MAX_FACT_KEYS = 30
 MAX_TELEMETRY_EVENTS = 500
 DEFAULT_CIRCUIT_FAILURE_THRESHOLD = 5
+DEFAULT_COMMENT_CIRCUIT_FAILURE_THRESHOLD = 3
 DEFAULT_CIRCUIT_RESET_SECONDS = 90.0
+DEFAULT_COMMENT_CIRCUIT_RESET_SECONDS = 60.0
 
 # Narrative facts are intentionally data-only. These keys can never be useful to
 # write a chess quip and must never leave Render even if a buggy/malicious client
@@ -156,7 +160,14 @@ def sign_request(secret: str, timestamp: str, body: bytes) -> str:
     return f"sha256={digest}"
 
 
-def _timeout_seconds() -> float:
+def _timeout_seconds(channel: str | None = None) -> float:
+    if channel == "comments":
+        raw = _env("CF_AI_COMMENT_TIMEOUT_SECONDS")
+        default = DEFAULT_COMMENT_TIMEOUT_SECONDS
+        try:
+            return max(0.5, min(float(raw), 5.0)) if raw else default
+        except ValueError:
+            return default
     raw = _env("CF_AI_TIMEOUT_SECONDS")
     if not raw:
         return DEFAULT_TIMEOUT_SECONDS
@@ -164,6 +175,32 @@ def _timeout_seconds() -> float:
         return max(1.0, min(float(raw), 20.0))
     except ValueError:
         return DEFAULT_TIMEOUT_SECONDS
+
+
+def _circuit_failure_threshold_for(channel: str) -> int:
+    if channel == "comments":
+        raw = _env("AI_NARRATIVE_COMMENT_CIRCUIT_FAILURES")
+        inherited = _env("AI_NARRATIVE_CIRCUIT_FAILURES")
+        default = DEFAULT_COMMENT_CIRCUIT_FAILURE_THRESHOLD
+        try:
+            value = raw or inherited
+            return max(1, min(int(value), 20)) if value else default
+        except ValueError:
+            return default
+    return _circuit_failure_threshold()
+
+
+def _circuit_reset_seconds_for(channel: str) -> float:
+    if channel == "comments":
+        raw = _env("AI_NARRATIVE_COMMENT_CIRCUIT_RESET_SECONDS")
+        inherited = _env("AI_NARRATIVE_CIRCUIT_RESET_SECONDS")
+        default = DEFAULT_COMMENT_CIRCUIT_RESET_SECONDS
+        try:
+            value = raw or inherited
+            return max(5.0, min(float(value), 600.0)) if value else default
+        except ValueError:
+            return default
+    return _circuit_reset_seconds()
 
 
 def _max_output_chars(event_type: str) -> int:
@@ -438,6 +475,8 @@ def _circuit_snapshot() -> dict[str, Any]:
                 "consecutive_failures": int(state["consecutive_failures"]),
                 "open_count": int(state["open_count"]),
                 "half_open": bool(state["half_open"]),
+                "failure_threshold": _circuit_failure_threshold_for(channel),
+                "reset_seconds": _circuit_reset_seconds_for(channel),
             }
         return {
             "open": any(row["open"] for row in channels.values()),
@@ -480,15 +519,15 @@ def _circuit_failure(channel: str) -> None:
         if bool(state["half_open"]):
             # A failed recovery probe re-opens immediately; do not hammer the
             # provider with another full threshold of requests.
-            state["consecutive_failures"] = _circuit_failure_threshold()
-            state["opened_until"] = time.monotonic() + _circuit_reset_seconds()
+            state["consecutive_failures"] = _circuit_failure_threshold_for(channel)
+            state["opened_until"] = time.monotonic() + _circuit_reset_seconds_for(channel)
             state["open_count"] = int(state["open_count"]) + 1
             state["half_open"] = False
             return
 
         state["consecutive_failures"] = int(state["consecutive_failures"]) + 1
-        if int(state["consecutive_failures"]) >= _circuit_failure_threshold():
-            state["opened_until"] = time.monotonic() + _circuit_reset_seconds()
+        if int(state["consecutive_failures"]) >= _circuit_failure_threshold_for(channel):
+            state["opened_until"] = time.monotonic() + _circuit_reset_seconds_for(channel)
             state["open_count"] = int(state["open_count"]) + 1
 
 
@@ -521,6 +560,7 @@ def _record(
         "provider": provider,
         "event_type": str(event_type or "generic")[:48],
         "request_kind": str(request_kind or "default")[:32],
+        "channel": _circuit_channel(event_type),
         "latency_ms": max(0.0, round(float(latency_ms), 2)),
         "reason": str(reason or "unknown")[:64],
         "chars": len(text or ""),
@@ -570,12 +610,26 @@ def get_ai_metrics() -> dict[str, Any]:
     local = providers.get("local", 0)
     input_tokens = sum(int(e.get("input_tokens") or 0) for e in events if e["provider"] == "cloudflare")
     output_tokens = sum(int(e.get("output_tokens") or 0) for e in events if e["provider"] == "cloudflare")
-    # Cloudflare publica actualmente la misma tarifa/token y neuronas para
-    # @cf/meta/llama-3.2-3b-instruct y @cf/qwen/qwen3-30b-a3b-fp8 (Aug 2026).
+    # Qwen3 30B-A3B es el primary de todos los canales (Aug 2026).
     # Son estimaciones de la ventana en memoria, no la fuente de billing.
     estimated_neurons = (input_tokens * 4625 + output_tokens * 30475) / 1_000_000
-    estimated_cost_usd = (input_tokens * 0.051 + output_tokens * 0.335) / 1_000_000
+    estimated_cost_usd = (input_tokens * 0.051 + output_tokens * 0.34) / 1_000_000
     models = Counter(e.get("model") for e in events if e.get("model"))
+    channels: dict[str, dict[str, Any]] = {}
+    for channel in _CIRCUIT_CHANNELS:
+        rows = [e for e in events if (e.get("channel") or _circuit_channel(e.get("event_type") or "generic")) == channel]
+        row_total = len(rows)
+        row_cloud = sum(1 for e in rows if e.get("provider") == "cloudflare")
+        row_local = sum(1 for e in rows if e.get("provider") == "local")
+        row_latencies = [float(e.get("latency_ms") or 0.0) for e in rows if e.get("provider") == "cloudflare"]
+        channels[channel] = {
+            "samples": row_total,
+            "cloudflare_percent": round(row_cloud * 100 / row_total, 1) if row_total else None,
+            "fallback_percent": round(row_local * 100 / row_total, 1) if row_total else None,
+            "p50_ms": _percentile(row_latencies, 0.50),
+            "p95_ms": _percentile(row_latencies, 0.95),
+            "p99_ms": _percentile(row_latencies, 0.99),
+        }
     return {
         "window": MAX_TELEMETRY_EVENTS,
         "samples": total,
@@ -599,6 +653,7 @@ def get_ai_metrics() -> dict[str, Any]:
             "pricing_note": "Estimación de la ventana reciente; Cloudflare billing es la fuente de verdad.",
         },
         "models": dict(models.most_common(4)),
+        "channels": channels,
         "last_event_at": events[-1]["at"] if events else None,
         "enabled": ai_narrative_enabled(),
         "circuit": _circuit_snapshot(),
@@ -637,14 +692,17 @@ async def request_cloud_narrative(
         "x-chess-ai-signature": sign_request(secret, timestamp, body),
     }
 
+    timeout_s = _timeout_seconds(channel)
     owns_client = client is None
     if client is None:
-        timeout_s = _timeout_seconds()
-        client = httpx.AsyncClient(timeout=httpx.Timeout(timeout_s, connect=min(3.0, timeout_s)))
+        client = httpx.AsyncClient(timeout=httpx.Timeout(timeout_s, connect=min(2.0, timeout_s)))
 
     started = time.perf_counter()
     try:
-        response = await client.post(f"{worker_url}/narrative", content=body, headers=headers)
+        response = await asyncio.wait_for(
+            client.post(f"{worker_url}/narrative", content=body, headers=headers),
+            timeout=timeout_s,
+        )
         elapsed = (time.perf_counter() - started) * 1000
         if response.status_code != 200:
             worker_error = None
@@ -691,7 +749,7 @@ async def request_cloud_narrative(
             return _provider_failure(f"ungrounded_{concept}", elapsed, channel=channel)
         _circuit_success(channel)
         return ProviderOutcome(text, "ok", elapsed, input_tokens, output_tokens, model or None)
-    except httpx.TimeoutException:
+    except (httpx.TimeoutException, asyncio.TimeoutError):
         return _provider_failure("timeout", (time.perf_counter() - started) * 1000, channel=channel)
     except (httpx.HTTPError, ValueError, TypeError) as exc:
         return _provider_failure(
