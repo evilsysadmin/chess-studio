@@ -54,6 +54,8 @@ export function buildCombatBriefingDossier({ campaign, node, intel, armySummary 
       sector: finiteNumber(node.stage),
       sector_label: cleanText(node.label, 80),
       threat_band: cleanText(intel.threatBand, 48),
+      opponent_level_range: cleanText(intel.opponentLevelRange, 24),
+      opponent_level_confidence: cleanText(intel.opponentLevelConfidence, 24),
       threat_range: cleanText(intel.threatRange, 48),
       intel_level: cleanText(intel.levelLabel, 48),
       exact_cpu: finiteNumber(intel.exactDifficulty),

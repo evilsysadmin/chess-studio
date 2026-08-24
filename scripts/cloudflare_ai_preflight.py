@@ -40,6 +40,22 @@ def require_pattern(text: str, pattern: str, label: str, errors: list[str]) -> N
         errors.append(f"{label}: no cumple el patrón esperado {pattern!r}")
 
 
+def workflow_run_targets(text: str) -> list[str]:
+    """Return workflow names listed under on.workflow_run.workflows.
+
+    This intentionally parses only the tiny GitHub Actions shape we own instead
+    of depending on YAML formatting or PyYAML being installed in CI.
+    """
+    match = re.search(r"(?ms)^\s*workflow_run:\s*\n(?P<body>(?:^[ \t]+.*\n?)*)", text)
+    if not match:
+        return []
+    body = match.group("body")
+    workflows = re.search(r"(?m)^\s*workflows:\s*\[(?P<items>[^]]*)\]\s*$", body)
+    if not workflows:
+        return []
+    return [item.strip().strip('\"\'') for item in workflows.group("items").split(',') if item.strip()]
+
+
 def static_check() -> list[str]:
     errors: list[str] = []
     worker = WORKER.read_text(encoding="utf-8")
@@ -134,12 +150,15 @@ def static_check() -> list[str]:
     # Release chain: CI green -> Workers AI green -> Pages. Pages must never
     # publish a frontend that expects a newer AI routing contract than the
     # Worker that is actually serving production.
-    require(workflow, 'workflow_run:', "workflow chained after CI", errors)
-    require(workflow, 'workflows: ["CI"]', "workflow requires CI", errors)
+    worker_sources = workflow_run_targets(workflow)
+    pages_sources = workflow_run_targets(pages_workflow)
+    if worker_sources != ["CI"]:
+        errors.append(f"workflow requires CI: workflow_run.workflows={worker_sources!r}")
     require(workflow, "github.event.workflow_run.conclusion == 'success'", "workflow requires green CI", errors)
-    require(pages_workflow, 'workflows: ["Cloudflare Workers AI"]', "Pages requires Workers AI workflow", errors)
+    if pages_sources != ["Cloudflare Workers AI"]:
+        errors.append(f"Pages requires Workers AI workflow: workflow_run.workflows={pages_sources!r}")
     require(pages_workflow, "github.event.workflow_run.conclusion == 'success'", "Pages requires green Workers AI", errors)
-    if 'workflows: ["CI"]' in pages_workflow:
+    if "CI" in pages_sources:
         errors.append('Pages workflow: no debe saltarse Workers AI dependiendo directamente de CI')
 
     # Self-check the shared contract so a future edit cannot silently stop

@@ -20,23 +20,48 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
 
       - name: Instalar dependencias
         working-directory: frontend
         run: npm ci
 
-      - name: Gate de reglas críticas del cliente
+      - name: Instalar provider de coverage V8 fijado
         working-directory: frontend
-        run: npx vitest run src/combat.test.js src/combatRoster.test.js src/roguelikeMode.test.js src/moveAvailability.test.js src/voiceCommentary.test.js src/playerRating.test.js src/auth.test.js src/admin.test.js src/adminWorstMove.test.js src/sound.test.js src/puzzles.test.js
+        run: npm install --no-save --package-lock=false @vitest/coverage-v8@4.1.10
 
-      - name: Correr suite completa
+      - name: Auditar arquitectura de tests y wiring de CI
+        run: node scripts/test_suite_audit.mjs --ci-wiring
+
+      - name: Verificar identidad de release
+        run: node scripts/release_consistency_check.mjs
+
+      - name: Tests frontend · smoke → unit → contract (sin solapamiento)
         working-directory: frontend
         run: npm test
+
+      - name: Coverage frontend (informativo)
+        continue-on-error: true
+        working-directory: frontend
+        run: npm run test:coverage
+
+      - name: Publicar coverage frontend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Verificar que compila
         working-directory: frontend
         run: npm run build
+
+      - name: Tamaño del bundle (informativo)
+        run: node scripts/bundle_size_report.mjs
 
   backend-tests:
     runs-on: ubuntu-latest
@@ -53,13 +78,27 @@ jobs:
         working-directory: backend-python
         run: pip install -r requirements-dev.txt
 
-      - name: Gate del core ajedrecístico
+      - name: Backend smoke · motor + IA
         working-directory: backend-python
         run: pytest -q test_chess_ai.py test_core_game.py -x
 
-      - name: Correr API + persistencia (core ya validado arriba)
+      - name: Backend integration/API
         working-directory: backend-python
-        run: pytest -q test_main.py test_profile.py
+        run: pytest -q --ignore=test_chess_ai.py --ignore=test_core_game.py
+
+      - name: Coverage backend (informativo)
+        continue-on-error: true
+        working-directory: backend-python
+        run: pytest -q --cov=. --cov-branch --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml --cov-fail-under=0
+
+      - name: Publicar coverage backend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend-python/coverage.xml
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Comprobar dependencias Python
         working-directory: backend-python
@@ -86,6 +125,18 @@ jobs:
       - name: Preparar informes
         run: mkdir -p .security
 
+      - name: API surface auth gate
+        run: python scripts/api_surface_gate.py
+
+      - name: Worker AI syntax
+        run: node --check infra/cloudflare/worker/index.js
+
+      - name: AI browser-secret / direct-worker gate
+        run: python scripts/ai_security_gate.py
+
+      - name: Cloudflare Workers AI static preflight
+        run: python scripts/cloudflare_ai_preflight.py
+
       - name: Node dependency audit
         working-directory: frontend
         shell: bash
@@ -110,17 +161,95 @@ jobs:
           test -s .security/pip-audit.json || { echo "pip-audit no produjo informe (rc=$rc)"; exit 2; }
           python scripts/pip_audit_report.py .security/pip-audit.json
 
-      - name: Trivy — vulns, secrets y misconfiguración
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Cache Trivy DB
+        uses: actions/cache@v4
         with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,secret,misconfig
-          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
-          format: json
-          output: .security/trivy.json
-          exit-code: '0'
-          skip-dirs: node_modules,.venv,.git,.tools,.trivy-cache,.security
+          path: .trivy-cache
+          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
 
-      - name: Política de severidad
-        run: python scripts/security_report.py .security/trivy.json
+      - name: Trivy FS — mismo gate que local (incluye dev deps)
+        run: make security-trivy
+
+  container-security:
+    name: Docker image security (CRITICAL blocks)
+    needs: [frontend-tests, backend-tests, security-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Trivy DB
+        uses: actions/cache@v4
+        with:
+          path: .trivy-cache
+          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
+
+      - name: Build + scan frontend/backend images
+        run: make security-images
+
+  compose-integration-smoke:
+    name: Real stack smoke (Docker Compose)
+    needs: [frontend-tests, backend-tests, security-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start real stack
+        run: docker compose up -d --build
+
+      - name: Smoke frontend + FastAPI + Mongo + auth/profile
+        run: python3 scripts/compose_smoke.py
+
+      - name: Docker diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --tail=300
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v
+
+  browser-e2e:
+    name: Browser E2E (Playwright)
+    needs: [frontend-tests, backend-tests, security-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install + build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Playwright runner
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Browser smoke/navigation gate
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+

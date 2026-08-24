@@ -80,6 +80,31 @@ describe('Combat Chess campaign map', () => {
     if (nextBattle) expect(campaignDifficulty(run, nextBattle)).toBe(nextBattle.baseDifficulty - 6);
   });
 
+  it('da una estimación rival gratis y la inteligencia reduce la incertidumbre sin mentir', () => {
+    let run = startCampaign('intel-estimate');
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    const basic = campaignIntelBriefing(run, node);
+    expect(basic.level).toBe(0);
+    expect(basic.threatBand).toBeTruthy();
+    expect(basic.opponentLevelRange).toMatch(/^\d+(?:–\d+)?$/);
+    expect(basic.opponentLevelConfidence).toBe('Baja');
+    expect(basic.exactOpponentLevel).toBeNull();
+
+    const exactLevel = Math.max(1, Math.min(10, Math.ceil(campaignDifficulty(run, node) / 10)));
+    const [basicMin, basicMax = basicMin] = basic.opponentLevelRange.split('–').map(Number);
+    expect(exactLevel).toBeGreaterThanOrEqual(basicMin);
+    expect(exactLevel).toBeLessThanOrEqual(basicMax);
+
+    run = purchaseCampaignIntel(run, node.id);
+    const contact = campaignIntelBriefing(run, node);
+    const [contactMin, contactMax = contactMin] = contact.opponentLevelRange.split('–').map(Number);
+    expect(contact.opponentLevelConfidence).toBe('Media');
+    expect(contactMax - contactMin).toBeLessThanOrEqual(basicMax - basicMin);
+    expect(exactLevel).toBeGreaterThanOrEqual(contactMin);
+    expect(exactLevel).toBeLessThanOrEqual(contactMax);
+  });
+
   it('compra intel por niveles y nunca gasta más créditos de los disponibles', () => {
     let run = startCampaign('intel');
     const node = availableCampaignNodes(run)[0];
@@ -162,6 +187,20 @@ describe('campaña · onboarding y reglas visibles', () => {
     for (const node of first) expect(node.modifierId).toBe('none');
   });
 
+
+  it('empieza claramente accesible y escala de forma progresiva hasta el boss', () => {
+    const map = campaignMap('progressive-war');
+    const battleByStage = map.stages.map((nodes) => nodes.find((node) => node.type === 'battle')).filter(Boolean);
+    const first = battleByStage.find((node) => node.stage === 1);
+    expect(first.baseDifficulty).toBeLessThanOrEqual(15);
+    const bases = battleByStage.map((node) => node.baseDifficulty);
+    for (let index = 1; index < bases.length; index += 1) expect(bases[index]).toBeGreaterThan(bases[index - 1]);
+    const earlyElite = map.stages[2].find((node) => node.type === 'elite');
+    const boss = map.stages.at(-1)[0];
+    expect(earlyElite.baseDifficulty).toBeLessThan(45);
+    expect(boss.baseDifficulty).toBeGreaterThanOrEqual(65);
+  });
+
   it('el briefing revela siempre la regla material aunque no se compre intel', () => {
     let run = startCampaign('public-material-rule');
     const node = availableCampaignNodes(run)[0];
@@ -170,6 +209,9 @@ describe('campaña · onboarding y reglas visibles', () => {
     expect(briefing.level).toBe(0);
     expect(briefing.modifierLabel).toBeTruthy();
     expect(briefing.modifierDescription).toBeTruthy();
+    expect(briefing.threatBand).toBeTruthy();
+    expect(briefing.opponentLevelRange).toBeTruthy();
+    expect(briefing.opponentLevelConfidence).toBe('Baja');
     expect(briefing.exactDifficulty).toBeNull();
   });
 });

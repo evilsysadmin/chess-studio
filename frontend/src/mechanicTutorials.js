@@ -60,7 +60,7 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     summary: 'Gasta recursos para conocer amenazas antes de arriesgar veteranos.',
     steps: [
       { title: 'Los créditos se ganan combatiendo', text: 'Las victorias de campaña generan créditos operativos. Las élites y el boss pagan más; repetir un estado ya resuelto no duplica la recompensa.' },
-      { title: 'La intel tiene niveles', text: 'Contacto revela una banda de amenaza; Evaluación añade la dificultad exacta; Dossier descubre detalles especiales del enemigo y del boss. Las reglas visibles del tablero son públicas desde el briefing.' },
+      { title: 'La intel tiene niveles', text: 'Siempre recibes una estimación básica del nivel rival. Contacto estrecha el rango; Evaluación revela la dificultad y nivel exactos; Dossier descubre detalles especiales del enemigo y del boss. Las reglas visibles del tablero son públicas desde el briefing.' },
       { title: 'La información es real', text: 'El briefing se deriva del nodo y sus reglas. Nunca inventa debilidades ni revela la jugada concreta que hará el motor.' },
       { title: 'Intel o reservas', text: 'El objetivo es decidir qué veteranos arriesgar y qué fuerza desplegar, no comprar una victoria automática.' },
     ],

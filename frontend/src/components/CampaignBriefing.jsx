@@ -53,7 +53,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
 
 
       <div className="campaign-briefing-at-glance" aria-label="Resumen táctico">
-        <span><small>Amenaza</small><b>{intel.level >= 1 ? intel.threatBand : 'Sin estimar'}</b></span>
+        <span><small>Amenaza</small><b>{intel.threatBand} · Nv. {intel.opponentLevelRange}</b></span>
         <span><small>Ejército</small><b>{armySummary ? `${armySummary.assignedCount}/${armySummary.totalSlots}` : '—'}</b></span>
         <span><small>Intel</small><b>{intel.levelLabel}</b></span>
       </div>
@@ -86,8 +86,9 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
           <section className="campaign-intel-panel" aria-label="Inteligencia de la operación">
             <span className="campaign-intel-kicker">INTELIGENCIA · {intel.levelLabel}</span>
             <dl>
-              <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : 'Aún sin estimar'}</dd></div>
-              {intel.exactDifficulty != null && <div><dt>CPU exacta</dt><dd>{intel.exactDifficulty}</dd></div>}
+              <div><dt>Nivel rival</dt><dd>Nv. {intel.opponentLevelRange} · confianza {intel.opponentLevelConfidence.toLowerCase()}</dd></div>
+              <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : `${intel.threatBand} · estimación básica`}</dd></div>
+              {intel.exactDifficulty != null && <div><dt>CPU exacta</dt><dd>{intel.exactDifficulty} · nivel {intel.exactOpponentLevel}</dd></div>}
               {intel.bossHp != null && <div><dt>Boss</dt><dd>Rey con {intel.bossHp} HP</dd></div>}
             </dl>
           </section>

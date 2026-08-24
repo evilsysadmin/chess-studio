@@ -87,15 +87,37 @@ function threatBand(baseDifficulty) {
   return 'Baja';
 }
 
+function opponentLevelFromDifficulty(difficulty) {
+  return Math.max(1, Math.min(10, Math.ceil((Number(difficulty) || 0) / 10)));
+}
+
+function estimatedOpponentLevel(difficulty, intelLevel) {
+  const exact = opponentLevelFromDifficulty(difficulty);
+  const spread = intelLevel <= 0 ? 2 : intelLevel === 1 ? 1 : 0;
+  const min = Math.max(1, exact - spread);
+  const max = Math.min(10, exact + spread);
+  return {
+    exact,
+    min,
+    max,
+    range: min === max ? String(exact) : `${min}–${max}`,
+    confidence: intelLevel <= 0 ? 'Baja' : intelLevel === 1 ? 'Media' : 'Alta',
+  };
+}
+
 export function campaignIntelBriefing(state, node = campaignNode(state)) {
   if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return null;
   const level = campaignIntelLevel(state, node.id);
   const modifier = MODIFIER_META[node.modifierId] || MODIFIER_META.none;
   const difficulty = campaignDifficulty(state, node);
+  const opponentLevel = estimatedOpponentLevel(difficulty, level);
   const result = {
     level,
     levelLabel: CAMPAIGN_INTEL_TIERS[level]?.label || 'Sin reconocimiento',
     threatBand: threatBand(difficulty),
+    opponentLevelRange: opponentLevel.range,
+    opponentLevelConfidence: opponentLevel.confidence,
+    exactOpponentLevel: level >= 2 ? opponentLevel.exact : null,
     exactDifficulty: null,
     // Las reglas visibles del tablero nunca se ocultan detrás de intel.
     // La intel compra precisión estratégica, no evita sorpresas injustas.
@@ -203,10 +225,24 @@ function nodeName(seed, stage, lane, type) {
   return pick(seed, `name-camp-${stage}-${lane}`, CAMP_NAMES);
 }
 
+const CAMPAIGN_STAGE_DIFFICULTY = Object.freeze({
+  // La campaña debe enseñar sus sistemas antes de pedir ajedrez fino. El
+  // primer contacto está deliberadamente por debajo de una partida normal;
+  // después la curva acelera hasta que el final sí exige veteranos e intel.
+  1: 14,
+  2: 20,
+  3: 29,
+  4: 38,
+  5: 48,
+  6: 59,
+  7: 70,
+});
+
 function baseDifficultyFor(stage, type) {
-  const stageBase = [0, 27, 31, 36, 42, 48, 55, 60][Math.max(0, Math.min(7, stage))] || 27;
-  if (type === 'elite') return Math.min(95, stageBase + 9);
-  if (type === 'boss') return 62;
+  const safeStage = Math.max(1, Math.min(7, Math.floor(Number(stage) || 1)));
+  const stageBase = CAMPAIGN_STAGE_DIFFICULTY[safeStage] ?? CAMPAIGN_STAGE_DIFFICULTY[1];
+  if (type === 'elite') return Math.min(95, stageBase + 8);
+  if (type === 'boss') return CAMPAIGN_STAGE_DIFFICULTY[7];
   return stageBase;
 }
 
