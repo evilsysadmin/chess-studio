@@ -112,7 +112,9 @@ if (checkCiWiring) {
     || /make\s+(?:test-backend|tests-be|tests|quality-gate)\b/.test(workflowSource);
   if (!backendAutodiscovery) fail('CI backend no autodetecta el resto de test_*.py');
   if (!workflowSource.includes('scripts/compose_smoke.py')) fail('CI no ejecuta el smoke de stack real Docker Compose');
-  if (!workflowSource.includes('@vitest/coverage-v8@4.1.10') || !workflowSource.includes('npm run test:coverage')) fail('CI no ejecuta coverage V8 frontend fijado');
+  if (!workflowSource.includes('npm run test:coverage')) fail('CI no conserva el paso de coverage frontend');
+  if (!workflowSource.includes('continue-on-error: true')) fail('Coverage frontend debe seguir siendo informativo');
+  if (workflowSource.includes('npm install --no-save') && workflowSource.includes('@vitest/coverage-v8')) fail('CI no debe mutar node_modules con un segundo npm install para coverage');
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
   if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');

@@ -28,10 +28,6 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Instalar provider de coverage V8 fijado
-        working-directory: frontend
-        run: npm install --no-save --package-lock=false @vitest/coverage-v8@4.1.10
-
       - name: Auditar arquitectura de tests y wiring de CI
         run: node scripts/test_suite_audit.mjs --ci-wiring
 

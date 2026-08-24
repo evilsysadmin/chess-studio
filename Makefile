@@ -220,10 +220,10 @@ bundle-report: frontend-build
 ## Coverage real. Frontend usa V8 sobre lógica crítica; React/DOM se cubre en Chromium con Playwright.
 coverage-fe: ensure-frontend-deps
 	@cd frontend && if [ ! -d node_modules/@vitest/coverage-v8 ]; then \
-		echo "==> Instalando provider V8 fijado para coverage..."; \
-		npm install --no-save --package-lock=false @vitest/coverage-v8@4.1.10 || true; \
+		echo "WARN: @vitest/coverage-v8 no está en el árbol instalado; coverage frontend se omite (informativo)."; \
+	else \
+		npm run test:coverage || echo "WARN: coverage frontend falló; informativo, no bloquea."; \
 	fi
-	@cd frontend && npm run test:coverage || echo "WARN: coverage frontend no disponible; informativo, no bloquea."
 
 coverage-be: ensure-backend-deps
 	@cd backend-python && $(BACKEND_VENV_PY) -m pytest -q --cov=. --cov-branch --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml --cov-fail-under=0 || echo "WARN: coverage backend no disponible; informativo, no bloquea."
