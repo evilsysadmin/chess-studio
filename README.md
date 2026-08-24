@@ -1,13 +1,10 @@
-### v16.6dm43f · Perfil autorreparable + deploy backend coherente
+### v16.6dm43g · Hotfix simple de perfil/CORS
 
-- Corrige la causa del bloqueo que sólo aparecía en navegadores con caché local pendiente: `PATCH /api/profile` existía desde dm41, pero `CORSMiddleware` no permitía `PATCH`, así que el preflight del navegador devolvía 400 antes de llegar a FastAPI. CORS permite ya todos los métodos expuestos y hay una regresión específica para el preflight de GitHub Pages.
-- El `api_surface_gate.py` valida también estáticamente que `CORSMiddleware.allow_methods` cubra todos los métodos HTTP realmente publicados por la API. Esta clase de error browser-only pasa a morir en `make static-preflight`/pre-push.
-- El journal local dirty se autorrepara si está corrupto o incompleto: sólo después de un GET remoto correcto se toma Mongo como autoridad, se rehidrata la caché y se limpian exclusivamente los metadatos dirty rotos. Si Mongo falla, no se descarta ni la caché ni el journal.
-- Una marca dirty perteneciente a otra identidad no puede heredarse al empezar a escribir con el usuario actual; el journal de claves se reinicia antes de marcar el nuevo cambio.
-- El bootstrap autenticado reintenta fallos transitorios con backoff manteniendo la caché cerrada; distingue Mongo 503 de un backend temporalmente no disponible y evita mostrar inmediatamente un diagnóstico falso.
-- `/api/ready` publica `RENDER_GIT_COMMIT` cuando corre en Render. Antes de desplegar Worker/Pages, el pipeline espera a que el backend esté `ready` y sirviendo exactamente `github.sha`, evitando publicar un frontend nuevo contra una API todavía vieja.
-- Se conserva el quality gate paralelo de dm43e: `Preflight → [Frontend || Backend || Security/Docker || Playwright] → Terraform/Worker → Pages`.
-- Inventario esperado: 712 tests frontend / 118 archivos, 222 backend / 10, 15 E2E / 2 y 7 Worker / 1. Sin cambios intencionados de gameplay.
+- Mantiene el pipeline simple de dm43e: `Preflight → [Frontend || Backend || Security/Docker || Playwright] → Terraform/Worker → Pages`. GitHub Actions no espera a Render ni compara SHAs del backend; Render conserva su despliegue independiente como antes.
+- Corrige el fallo real de navegadores con cambios locales pendientes: `PATCH /api/profile` está permitido por CORS y el gate estático exige que CORS cubra los métodos HTTP publicados.
+- Conserva la autorreparación segura del journal `dirty`: sólo descarta metadatos locales inválidos después de leer correctamente el perfil remoto; una caída real de Mongo sigue siendo fail-closed.
+- Conserva el bootstrap con reintentos transitorios, el Retro Player persistente al refrescar y el quality gate paralelo.
+- Sin espera a Render, sin `RENDER_GIT_COMMIT`, sin scripts de sincronización de deploy y sin cambios intencionados de gameplay.
 
 ### v16.6dm43e · Quality gate paralelo
 
