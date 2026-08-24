@@ -14,8 +14,8 @@ import {
   clearProfileCache,
   clearProfileDirty,
   dirtyProfileKeysForCurrentUser,
-  hasDirtyProfileForCurrentUser,
   markProfileDirtyForCurrentUser,
+  profileDirtyStateForCurrentUser,
 } from './profileKeys.js';
 
 const EXPORTABLE_KEYS = PROFILE_STORAGE_KEYS;
@@ -156,10 +156,29 @@ export async function pullProfileFromServer() {
   const token = getToken();
 
   try {
-    const wasDirty = hasDirtyProfileForCurrentUser();
-    const dirtyKeys = wasDirty ? dirtyProfileKeysForCurrentUser() : [];
-    const localSnapshot = wasDirty ? exportProfile() : null;
+    const dirtyState = profileDirtyStateForCurrentUser();
+    const wasDirty = dirtyState.dirty;
+    const dirtyKeys = wasDirty && dirtyState.valid ? dirtyState.keys : [];
+    const localSnapshot = wasDirty && dirtyState.valid ? exportProfile() : null;
     const remote = await loadRemoteForSync({ token, username });
+
+    if (wasDirty && !dirtyState.valid) {
+      // Una marca dirty corrupta/incompleta no contiene información fiable
+      // sobre qué claves locales cambiaron. Nunca ampliamos eso a "todas las
+      // claves" porque podría sobrescribir Mongo. Como el GET remoto ya fue
+      // correcto, Mongo es la única fuente segura: rehidrata la caché y limpia
+      // exclusivamente el journal dirty roto. Si el GET falla, este bloque no
+      // se ejecuta y no se descarta nada local.
+      const data = remote?.data;
+      if (!data || Object.keys(data).length === 0) {
+        clearProfileCache();
+        clearProfileDirty();
+        return { status: 'repaired-dirty-empty', restored: 0 };
+      }
+      const restored = importProfile(remote, { replace: true });
+      clearProfileDirty();
+      return { status: 'repaired-dirty', restored };
+    }
 
     if (wasDirty) {
       // El snapshot local nació antes que este GET. PATCH usa las revisiones
@@ -191,7 +210,13 @@ export async function pullProfileFromServer() {
     return { status: 'loaded', restored };
   } catch (error) {
     if (error?.status === 401) return { status: 'unauthorized', restored: 0, error };
-    return { status: 'offline', restored: 0, error };
+    return {
+      status: 'offline',
+      restored: 0,
+      error,
+      httpStatus: Number(error?.status || 0) || null,
+      detail: String(error?.body?.detail || error?.message || ''),
+    };
   }
 }
 

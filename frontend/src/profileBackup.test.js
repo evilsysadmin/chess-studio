@@ -6,7 +6,11 @@ import {
   pushProfileToServer,
   resetProfileSyncStateForTests,
 } from './profileBackup.js';
-import { hasDirtyProfileForCurrentUser, setProfileStorageItem } from './profileKeys.js';
+import {
+  hasDirtyProfileForCurrentUser,
+  profileDirtyStateForCurrentUser,
+  setProfileStorageItem,
+} from './profileKeys.js';
 
 function response(status, body, requestId = null) {
   return {
@@ -76,9 +80,99 @@ describe('export/import', () => {
 
     expect(hasDirtyProfileForCurrentUser()).toBe(true);
   });
+
+  it('una nueva escritura no hereda claves dirty de otra identidad', () => {
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    localStorage.setItem('chess-study-profile-dirty-user', 'bob');
+    localStorage.setItem('chess-study-profile-dirty-keys', JSON.stringify(['chess-study-board-theme']));
+
+    setProfileStorageItem('chess-study-tournament', JSON.stringify({ points: 7 }));
+
+    expect(profileDirtyStateForCurrentUser()).toEqual({
+      dirty: true,
+      valid: true,
+      keys: ['chess-study-tournament'],
+    });
+  });
 });
 
 describe('pullProfileFromServer', () => {
+  it('autorrepara un journal dirty corrupto usando Mongo sin intentar PATCH', async () => {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 999 }));
+    localStorage.setItem('chess-study-profile-dirty-user', 'alice');
+    localStorage.setItem('chess-study-profile-dirty-keys', '{esto-no-es-json');
+
+    const fetchMock = vi.fn().mockResolvedValue(response(200, {
+      data: { 'chess-study-tournament': JSON.stringify({ points: 777 }) },
+      revisions: { 'chess-study-tournament': 4 },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await pullProfileFromServer();
+
+    expect(result.status).toBe('repaired-dirty');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1].method).toBeUndefined();
+    expect(localStorage.getItem('chess-study-tournament')).toBe(JSON.stringify({ points: 777 }));
+    expect(hasDirtyProfileForCurrentUser()).toBe(false);
+  });
+
+  it('autorrepara una marca dirty incompleta sólo después de leer Mongo correctamente', async () => {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 999 }));
+    localStorage.setItem('chess-study-profile-dirty-user', 'alice');
+
+    const fetchMock = vi.fn().mockResolvedValue(response(200, { data: {}, revisions: {} }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await pullProfileFromServer();
+
+    expect(result.status).toBe('repaired-dirty-empty');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('chess-study-tournament')).toBeNull();
+    expect(hasDirtyProfileForCurrentUser()).toBe(false);
+  });
+
+  it('si Mongo falla no borra un journal dirty corrupto ni la caché local', async () => {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 999 }));
+    localStorage.setItem('chess-study-profile-dirty-user', 'alice');
+    localStorage.setItem('chess-study-profile-dirty-keys', 'roto');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(503, { detail: 'Mongo no disponible' })));
+
+    const result = await pullProfileFromServer();
+
+    expect(result.status).toBe('offline');
+    expect(localStorage.getItem('chess-study-tournament')).toBe(JSON.stringify({ points: 999 }));
+    expect(localStorage.getItem('chess-study-profile-dirty-user')).toBe('alice');
+    expect(localStorage.getItem('chess-study-profile-dirty-keys')).toBe('roto');
+  });
+
+  it('una marca dirty de otra identidad no se fusiona con la cuenta actual', async () => {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    localStorage.setItem('chess-study-tournament', JSON.stringify({ points: 999 }));
+    localStorage.setItem('chess-study-profile-dirty-user', 'bob');
+    localStorage.setItem('chess-study-profile-dirty-keys', JSON.stringify(['chess-study-tournament']));
+    const fetchMock = vi.fn().mockResolvedValue(response(200, {
+      data: { 'chess-study-tournament': JSON.stringify({ points: 111 }) },
+      revisions: { 'chess-study-tournament': 2 },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await pullProfileFromServer();
+
+    expect(result.status).toBe('loaded');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('chess-study-tournament')).toBe(JSON.stringify({ points: 111 }));
+    expect(localStorage.getItem('chess-study-profile-dirty-user')).toBeNull();
+    expect(localStorage.getItem('chess-study-profile-dirty-keys')).toBeNull();
+  });
+
   it('si quedó una caché sucia del mismo usuario, hace GET + PATCH para no perder progreso ni pisar claves ajenas', async () => {
     localStorage.setItem('chess-study-auth-token', 'alice-token');
     localStorage.setItem('chess-study-auth-username', 'alice');

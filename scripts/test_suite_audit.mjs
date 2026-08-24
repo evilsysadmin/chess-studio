@@ -153,6 +153,8 @@ if (checkCiWiring) {
     '  terraform:\n',
     'name: Cloudflare Worker · Terraform',
     'needs: [frontend, backend, security, e2e]',
+    'Wait for Render backend at tested commit',
+    'scripts/render_ready_contract.py',
     '  pages:\n',
     'name: GitHub Pages',
     'needs: terraform',

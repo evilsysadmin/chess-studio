@@ -109,6 +109,36 @@ def game_router_wiring_ok(main_tree):
     return False
 
 
+def cors_allowed_methods(main_tree):
+    """Return the explicit CORSMiddleware allow_methods set from main.py.
+
+    Keeping this in the static gate catches a nasty class of browser-only
+    failures: FastAPI can expose a perfectly valid PATCH/DELETE route while
+    the browser never reaches it because the CORS preflight rejects the method.
+    """
+    if main_tree is None:
+        return None
+    for node in ast.walk(main_tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr != "add_middleware" or not node.args:
+            continue
+        if name_of(node.args[0]) != "CORSMiddleware":
+            continue
+        for kw in node.keywords:
+            if kw.arg != "allow_methods":
+                continue
+            if not isinstance(kw.value, (ast.List, ast.Tuple, ast.Set)):
+                return None
+            methods = set()
+            for item in kw.value.elts:
+                if not isinstance(item, ast.Constant) or not isinstance(item.value, str):
+                    return None
+                methods.add(item.value.upper())
+            return methods
+    return None
+
+
 failures = []
 seen = set()
 route_count = 0
@@ -159,6 +189,18 @@ if any(path.startswith("/api/games") or path in {"/api/analyze", "/api/analyze-m
     if main_tree is None or not game_router_wiring_ok(main_tree):
         failures.append("build_game_router debe inyectar get_current_user + get_user_or_m2m + limiter en main.py")
 
+cors_methods = cors_allowed_methods(main_tree)
+required_cors_methods = {method for method, _path in seen} | {"OPTIONS"}
+if cors_methods is None:
+    failures.append("CORSMiddleware debe declarar allow_methods explícitamente en main.py")
+else:
+    missing_cors_methods = required_cors_methods - cors_methods
+    if missing_cors_methods:
+        failures.append(
+            "CORSMiddleware no permite métodos expuestos por la API: "
+            + ", ".join(sorted(missing_cors_methods))
+        )
+
 print("== Chess Studio · API surface gate ==")
 print("Rutas públicas deliberadas:")
 for method, path in sorted(PUBLIC):
@@ -170,4 +212,4 @@ if failures:
     for item in failures:
         print(f"  - {item}")
     sys.exit(1)
-print("\nOK: rutas privadas con auth, admin con dependencia admin, routers incluidos y auth pública con rate-limit.")
+print("\nOK: rutas privadas con auth, admin con dependencia admin, routers incluidos, CORS cubre métodos públicos y auth pública con rate-limit.")

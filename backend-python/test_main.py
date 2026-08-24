@@ -1017,6 +1017,27 @@ def test_github_pages_login_preflight_is_allowed():
     assert r.headers.get("access-control-allow-origin") == "https://evilsysadmin.github.io"
 
 
+def test_github_pages_profile_patch_preflight_is_allowed():
+    """El recovery de perfil dirty necesita PATCH desde GitHub Pages.
+
+    Regresión del fallo que sólo aparecía en navegadores con estado local
+    pendiente: GET /profile funcionaba, pero el preflight de PATCH devolvía
+    400 y la app quedaba bloqueada mientras incógnito entraba correctamente.
+    """
+    r = raw_client.options(
+        "/api/profile",
+        headers={
+            "Origin": "https://evilsysadmin.github.io",
+            "Access-Control-Request-Method": "PATCH",
+            "Access-Control-Request-Headers": "authorization,content-type,x-request-id",
+        },
+    )
+    assert r.status_code == 200
+    assert r.headers.get("access-control-allow-origin") == "https://evilsysadmin.github.io"
+    allowed = {method.strip() for method in r.headers.get("access-control-allow-methods", "").split(",")}
+    assert "PATCH" in allowed
+
+
 def test_cors_config_with_github_pages_path_is_normalized():
     import main as main_module
     assert main_module._normalize_cors_origin("https://evilsysadmin.github.io/chess-studio/") == "https://evilsysadmin.github.io"

@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { resolveAuthenticatedBootstrap } from './useAuthenticatedApp.js';
+import { PROFILE_BOOTSTRAP_RETRY_DELAYS_MS, resolveAuthenticatedBootstrap } from './useAuthenticatedApp.js';
 import { sortUnifiedHistory } from './useReplayLibrary.js';
 
 describe('App lifecycle extraction', () => {
   it('no monta la app con caché local cuando el perfil remoto está offline', () => {
     expect(resolveAuthenticatedBootstrap({ status: 'offline' }, { isAdmin: true })).toMatchObject({ action: 'wait', ready: false, isAdminUser: false });
     expect(resolveAuthenticatedBootstrap({ status: 'loaded' }, { isAdmin: true })).toMatchObject({ action: 'ready', ready: true, isAdminUser: true });
+  });
+
+  it('distingue Mongo 503 de un backend transitorio sin culpar a Mongo por cualquier error', () => {
+    const mongo = resolveAuthenticatedBootstrap({ status: 'offline', httpStatus: 503, detail: 'MongoDB no está lista.' }, null);
+    const deploy = resolveAuthenticatedBootstrap({ status: 'offline', httpStatus: 502, detail: 'Bad gateway' }, null);
+    expect(mongo.syncError).toMatch(/MongoDB/);
+    expect(deploy.syncError).toMatch(/desplegándose|temporalmente/);
+    expect(deploy.syncError).not.toMatch(/MongoDB no está disponible/);
+  });
+
+  it('reintenta bootstrap transitorio durante aproximadamente un minuto antes de rendirse', () => {
+    expect(PROFILE_BOOTSTRAP_RETRY_DELAYS_MS).toEqual([1000, 2000, 4000, 8000, 15000, 30000]);
+    expect(PROFILE_BOOTSTRAP_RETRY_DELAYS_MS.reduce((sum, value) => sum + value, 0)).toBe(60000);
   });
 
   it('historial unificado conserva orden descendente sin distinguir normal/Combat', () => {

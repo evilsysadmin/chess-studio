@@ -278,7 +278,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    # PATCH forma parte del contrato público de /api/profile desde dm41.
+    # Si se omite aquí, los navegadores que tienen progreso local pendiente
+    # hacen correctamente el preflight pero Starlette lo rechaza con 400 antes
+    # de que el PATCH llegue a FastAPI. Incógnito suele ocultar el problema
+    # porque no trae la marca local dirty y sólo necesita el GET inicial.
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-ID"],
     expose_headers=["X-Request-ID"],
     max_age=600,

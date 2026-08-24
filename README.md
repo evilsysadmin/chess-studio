@@ -1,3 +1,10 @@
+### v16.6dm43f · Backend deploy coherence
+
+- GitHub Actions mantiene un único pipeline de producción, pero el quality gate deja de ser serial: tras un `Preflight · contracts` corto, `Tests · Frontend`, `Tests · Backend`, `Security · Trivy + Docker` y `Tests · Playwright` corren en runners independientes y en paralelo.
+- `Cloudflare Worker · Terraform` depende de las cuatro ramas y sólo arranca cuando todas quedan verdes; `GitHub Pages` sigue dependiendo exclusivamente de Terraform. Se conserva así el orden lógico `quality gate → Worker → Pages` reduciendo el tiempo de pared al bloque de validación más lento en vez de sumar todos.
+- `make static-preflight` ejecuta ahora el auditor con `--ci-wiring`, de modo que el pre-push local también detecta si alguien serializa de nuevo frontend/backend/E2E/security o rompe las dependencias del pipeline.
+- No cambia gameplay ni runtime de la aplicación.
+
 ### v16.6dm43d · Pipeline único + Retro Player persistente en refresh
 
 - GitHub Actions concentra la ruta de producción en `.github/workflows/ci.yml` con tres jobs seriales y visibles: `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Desaparecen `workflow_run`, `terraform-cloudflare.yml` y `static.yml`; Pages sólo puede arrancar después de Terraform y ambos despliegan `github.sha`, el mismo commit que acaba de pasar Tests.

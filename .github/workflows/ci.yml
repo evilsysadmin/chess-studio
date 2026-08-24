@@ -220,6 +220,7 @@ jobs:
       TF_VAR_custom_domain_zone_name: shadowops.dpdns.org
       WORKER_NAME: chess-studio-narrative-ai
       CUSTOM_DOMAIN: ai.shadowops.dpdns.org
+      BACKEND_API_URL: ${{ vars.VITE_API_URL }}
 
     steps:
       - name: Checkout tested commit
@@ -238,6 +239,39 @@ jobs:
             echo "::error::CI aprobó $tested_sha, pero main ya apunta a $current_main. No despliego un commit obsoleto."
             exit 1
           fi
+
+      - name: Wait for Render backend at tested commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${BACKEND_API_URL%/}"
+          expected="${{ github.sha }}"
+          [[ -n "$base" ]] || { echo '::error::Falta la variable VITE_API_URL/BACKEND_API_URL.'; exit 1; }
+
+          ready=false
+          for attempt in {1..120}; do
+            body="$RUNNER_TEMP/backend-ready-$attempt.json"
+            status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 10 \
+              --output "$body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              "$base/ready" || true)"
+
+            if [[ "$status" == 200 ]] && python3 "$GITHUB_WORKSPACE/scripts/render_ready_contract.py" "$body" "$expected"; then
+              ready=true
+              break
+            fi
+
+            echo "Backend HTTP ${status:-curl-error}; esperando Render ($attempt/120)..."
+            sleep 5
+          done
+
+          [[ "$ready" == true ]] || {
+            echo "::error::Render no llegó al commit $expected en 10 minutos. No despliego Worker ni Pages."
+            exit 1
+          }
 
       - name: Setup Node
         uses: actions/setup-node@v4

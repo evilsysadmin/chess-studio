@@ -90,6 +90,13 @@ function emitProfileChanged() {
 export function markProfileDirtyForCurrentUser(key = null) {
   const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
   if (!username) return;
+  const previousOwner = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY);
+  // Una marca incompleta de otra sesión/identidad nunca puede heredarse. Si
+  // el navegador cambió de cuenta sin pasar por un logout limpio, empezamos
+  // el journal dirty de la identidad actual desde cero.
+  if (previousOwner && previousOwner !== username) {
+    removeStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
+  }
   setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY, username);
   const existing = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
   if (existing === '*') return;
@@ -104,16 +111,33 @@ export function markProfileDirtyForCurrentUser(key = null) {
   setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY, JSON.stringify(keys));
 }
 
-export function dirtyProfileKeysForCurrentUser() {
-  if (!hasDirtyProfileForCurrentUser()) return [];
-  const raw = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
-  if (raw === '*') return '*';
-  try {
-    const parsed = JSON.parse(raw || '[]');
-    return Array.isArray(parsed) ? parsed.filter((key) => PROFILE_STORAGE_KEYS.includes(key)) : '*';
-  } catch {
-    return '*';
+export function profileDirtyStateForCurrentUser() {
+  const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
+  const owner = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY);
+  if (!username || owner !== username) {
+    return { dirty: false, valid: true, keys: [] };
   }
+
+  const raw = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
+  if (raw === '*') return { dirty: true, valid: true, keys: '*' };
+  if (raw === null) return { dirty: true, valid: false, keys: [] };
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return { dirty: true, valid: false, keys: [] };
+    }
+    const valid = parsed.every((key) => typeof key === 'string' && PROFILE_STORAGE_KEYS.includes(key));
+    if (!valid) return { dirty: true, valid: false, keys: [] };
+    return { dirty: true, valid: true, keys: [...new Set(parsed)] };
+  } catch {
+    return { dirty: true, valid: false, keys: [] };
+  }
+}
+
+export function dirtyProfileKeysForCurrentUser() {
+  const state = profileDirtyStateForCurrentUser();
+  return state.dirty && state.valid ? state.keys : [];
 }
 
 export function hasDirtyProfileForCurrentUser() {
