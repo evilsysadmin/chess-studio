@@ -171,3 +171,49 @@ def test_rich_analysis_has_its_own_rate_limit_bucket(monkeypatch):
     assert client.post("/api/narrative", headers=headers, json=comment).status_code == 200
     assert client.post("/api/narrative", headers=headers, json=comment).status_code == 200
     assert client.post("/api/narrative", headers=headers, json=comment).status_code == 429
+
+
+def test_training_plan_manual_refresh_only_consumes_cooldown_after_cloud_success(monkeypatch):
+    monkeypatch.setenv("AI_TRAINING_PLAN_MANUAL_COOLDOWN_SECONDS", "21600")
+
+    async def cloud_success(*args, **kwargs):
+        return {"text": "Plan remoto", "provider": "cloudflare", "latencyMs": 12.0}
+
+    monkeypatch.setattr(narrative_api, "generate_narrative", cloud_success)
+    client = build_client()
+    headers = {"Authorization": "Bearer ok"}
+    payload = {"eventType": "training_plan", "requestKind": "training_plan_manual", "facts": {"priorities": [{"title": "Táctica"}]}}
+    first = client.post("/api/narrative", headers=headers, json=payload)
+    second = client.post("/api/narrative", headers=headers, json=payload)
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert "Training plan manual refresh cooldown" in second.json()["detail"]
+    assert int(second.headers["retry-after"]) > 0
+
+
+def test_training_plan_manual_fallback_does_not_burn_cooldown(monkeypatch):
+    monkeypatch.setenv("AI_TRAINING_PLAN_MANUAL_COOLDOWN_SECONDS", "21600")
+
+    async def local_fallback(*args, **kwargs):
+        return {"text": "Fallback", "provider": "local", "latencyMs": 0.0}
+
+    monkeypatch.setattr(narrative_api, "generate_narrative", local_fallback)
+    client = build_client()
+    headers = {"Authorization": "Bearer ok"}
+    payload = {"eventType": "training_plan", "requestKind": "training_plan_manual", "facts": {"priorities": [{"title": "Táctica"}]}}
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
+
+
+def test_admin_training_plan_manual_refresh_has_no_cooldown(monkeypatch):
+    monkeypatch.setenv("AI_TRAINING_PLAN_MANUAL_COOLDOWN_SECONDS", "21600")
+
+    async def cloud_success(*args, **kwargs):
+        return {"text": "Plan remoto", "provider": "cloudflare", "latencyMs": 12.0}
+
+    monkeypatch.setattr(narrative_api, "generate_narrative", cloud_success)
+    client = build_client()
+    headers = {"Authorization": "Bearer admin"}
+    payload = {"eventType": "training_plan", "requestKind": "training_plan_manual", "facts": {"priorities": [{"title": "Táctica"}]}}
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200

@@ -56,9 +56,10 @@ class SlidingWindowLimiter:
 
 
 class CooldownLimiter:
-    def __init__(self, cooldown_seconds: int, max_identities: int = 5000):
+    def __init__(self, cooldown_seconds: int, max_identities: int = 5000, detail: str = "Manual AI refresh cooldown"):
         self.cooldown_seconds = max(1, int(cooldown_seconds))
         self.max_identities = max(100, int(max_identities))
+        self.detail = str(detail or "Manual AI refresh cooldown")[:120]
         self._last: OrderedDict[str, float] = OrderedDict()
 
     def check(self, key: str) -> None:
@@ -70,7 +71,7 @@ class CooldownLimiter:
                 self._last[key] = previous
                 raise HTTPException(
                     status_code=429,
-                    detail="Player portrait manual refresh cooldown",
+                    detail=self.detail,
                     headers={"Retry-After": str(max(1, int(remaining + 0.999)))},
                 )
         if previous is not None:
@@ -109,12 +110,20 @@ def _identity_key(identity: Any, request: Request) -> str:
     return f"ip:{request.client.host if request.client else 'unknown'}"
 
 
-def _portrait_manual_cooldown_seconds() -> int:
-    raw = (os.getenv("AI_PORTRAIT_MANUAL_COOLDOWN_SECONDS") or "").strip()
+def _manual_cooldown_seconds(env_name: str) -> int:
+    raw = (os.getenv(env_name) or "").strip()
     try:
         return max(60, min(int(raw), 7 * 24 * 60 * 60)) if raw else 6 * 60 * 60
     except ValueError:
         return 6 * 60 * 60
+
+
+def _portrait_manual_cooldown_seconds() -> int:
+    return _manual_cooldown_seconds("AI_PORTRAIT_MANUAL_COOLDOWN_SECONDS")
+
+
+def _training_plan_manual_cooldown_seconds() -> int:
+    return _manual_cooldown_seconds("AI_TRAINING_PLAN_MANUAL_COOLDOWN_SECONDS")
 
 
 def build_narrative_router(
@@ -130,7 +139,12 @@ def build_narrative_router(
     comment_limiter = SlidingWindowLimiter(rate_limit_per_minute, 60)
     portrait_limiter = SlidingWindowLimiter(max(5, rate_limit_per_minute), 60)
     analysis_limiter = SlidingWindowLimiter(max(10, rate_limit_per_minute), 60)
-    portrait_manual_limiter = CooldownLimiter(_portrait_manual_cooldown_seconds())
+    portrait_manual_limiter = CooldownLimiter(
+        _portrait_manual_cooldown_seconds(), detail="Player portrait manual refresh cooldown"
+    )
+    training_plan_manual_limiter = CooldownLimiter(
+        _training_plan_manual_cooldown_seconds(), detail="Training plan manual refresh cooldown"
+    )
 
     @router.post("/api/narrative")
     async def narrative(request: Request, body: NarrativeRequest, identity: Any = Depends(auth_dependency)):
@@ -138,7 +152,7 @@ def build_narrative_router(
         identity_name = _identity_name(identity)
         admin_bypass = bool(is_admin_check and identity_name and is_admin_check(identity_name))
         request_kind = (body.requestKind or "default").strip().lower()
-        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "observability_summary", "training_plan"}
+        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "training_plan_manual"}
         if request_kind not in allowed_request_kinds:
             request_kind = "default"
         is_portrait = body.eventType == "player_portrait"
@@ -149,6 +163,8 @@ def build_narrative_router(
             (portrait_limiter if is_portrait else analysis_limiter if is_analysis else comment_limiter).check(identity_key)
             if is_portrait and request_kind == "portrait_manual" and not admin_bypass:
                 portrait_manual_limiter.check(identity_key)
+            if body.eventType == "training_plan" and request_kind == "training_plan_manual" and not admin_bypass:
+                training_plan_manual_limiter.check(identity_key)
         except HTTPException as exc:
             if exc.status_code == 429:
                 narrative_logger.warning(
@@ -174,6 +190,8 @@ def build_narrative_router(
         # vuelva el proveedor sin quedar castigado por un fallo ajeno.
         if is_portrait and request_kind == "portrait_manual" and result.get("provider") == "cloudflare" and not admin_bypass:
             portrait_manual_limiter.commit(identity_key)
+        if body.eventType == "training_plan" and request_kind == "training_plan_manual" and result.get("provider") == "cloudflare" and not admin_bypass:
+            training_plan_manual_limiter.commit(identity_key)
         return result
 
     if admin_dependency is not None:

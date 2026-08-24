@@ -28,6 +28,7 @@ const EVENT_LABELS = {
   combat_briefing: 'Briefings Combat',
   combat_debrief: 'Debriefings Combat',
   observability_summary: 'Diagnóstico SRE',
+  training_plan: 'Planes de entrenamiento',
   generic: 'Otros',
 };
 
@@ -39,6 +40,8 @@ const REQUEST_KIND_LABELS = {
   combat_briefing: 'Briefings Combat',
   combat_debrief: 'Debriefings Combat',
   observability_summary: 'Diagnósticos SRE',
+  training_plan: 'Plan automático',
+  training_plan_manual: 'Plan manual',
   default: 'Comentarios de partida',
 };
 

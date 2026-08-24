@@ -1,3 +1,18 @@
+### v16.6dm40 · Workers AI · plan de entrenamiento bajo demanda
+
+- Incluye el hotfix E2E dm39b: los tests de gameplay no atraviesan overlays de tutorial y el helper defensivo cierra cualquier tutorial visible sin dejar clics bloqueados 30 s.
+- “Qué entrenaría ahora” permite pedir otra lectura de Workers AI sobre las mismas prioridades factuales ya calculadas por Chess Studio.
+- Cooldown manual de 6 h por usuario, aplicado tanto en frontend como en FastAPI; sólo una respuesta real de Cloudflare consume la ventana.
+- Admin omite el cooldown, igual que en “Así te ve la CPU”.
+- Observabilidad distingue `training_plan` automático de `training_plan_manual` y mantiene el evento dentro del canal de análisis rico.
+- Sin cambios del motor de ajedrez ni de reglas de Combat Chess.
+
+### v16.6dm39b · Hotfix Playwright · tutoriales deterministas en E2E
+
+- Los E2E de gameplay arrancan con los tutoriales de Combat ya vistos para impedir que overlays de onboarding intercepten clics ajenos al objetivo del test.
+- `dismissTutorialIfVisible()` ahora cierra todos los tutoriales visibles de forma defensiva y falla rápido (2 s) si un overlay no desaparece, en lugar de dejar que el siguiente `.click()` consuma los 30 s globales de Playwright.
+- Sin cambios de gameplay ni de comportamiento para usuarios reales.
+
 ### v16.6dm39a · Hotfix Playwright · flujo Combat actual
 
 - Playwright deja de buscar el botón retirado `Iniciar Operación La Torre`: el arranque real usa `Empezar campaña →`.

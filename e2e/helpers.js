@@ -1,7 +1,16 @@
 import { expect } from '@playwright/test';
 
 export async function mockApi(page, { isAdmin = false } = {}) {
-  let profileData = {};
+  // These E2E specs exercise navigation/gameplay, not tutorial onboarding.
+  // Seed Combat tutorials as already seen so modal overlays cannot intercept
+  // unrelated clicks and burn Playwright's 30 s action timeout.
+  let profileData = {
+    'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+      'combat-campaign': { seen: true },
+      'combat-intelligence': { seen: true },
+      'combat-deployment': { seen: true },
+    }),
+  };
   let nextGameId = 1;
   const games = new Map();
   await page.route('http://localhost:4000/api/**', async (route) => {
@@ -66,8 +75,20 @@ export async function login(page) {
 }
 
 export async function dismissTutorialIfVisible(page) {
-  const skip = page.getByRole('button', { name: 'Saltar', exact: true });
-  if (await skip.isVisible().catch(() => false)) await skip.click();
+  // Defensive fallback: close every visible mechanic tutorial. A strict
+  // getByRole('button', { name: 'Saltar' }) can throw when two overlays are
+  // briefly mounted at once; swallowing that error left the backdrop in place
+  // and the *next* click waited the full 30 s action timeout.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const dialog = page.locator('.mechanic-tutorial-card:visible').last();
+    if (await dialog.count() === 0) return;
+    const skip = dialog.getByRole('button', { name: 'Saltar', exact: true });
+    await expect(skip).toBeVisible({ timeout: 2_000 });
+    await skip.click({ timeout: 2_000 });
+    await expect(dialog).toBeHidden({ timeout: 2_000 });
+  }
+
+  await expect(page.locator('.mechanic-tutorial-card:visible')).toHaveCount(0, { timeout: 2_000 });
 }
 
 export async function openCampaignMap(page) {

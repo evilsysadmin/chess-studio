@@ -6,7 +6,15 @@ import { api } from '../api.js';
 import { getToken, getUsername } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildTrainingPlanDossier } from '../aiNarrativeTasks.js';
-import { loadCachedTrainingPlan, saveCachedTrainingPlan, trainingPlanGenerationKey } from '../aiTrainingPlan.js';
+import {
+  formatTrainingPlanCooldown,
+  loadCachedTrainingPlan,
+  markTrainingPlanManualRefresh,
+  saveCachedTrainingPlan,
+  shouldCommitManualTrainingPlanRefresh,
+  trainingPlanGenerationKey,
+  trainingPlanManualRefreshState,
+} from '../aiTrainingPlan.js';
 import {
   buildPlayerPortraitFacts,
   formatPlayerPortraitCooldown,
@@ -245,6 +253,20 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   const trainingIdentityScope = getUsername();
   const [trainingAiText, setTrainingAiText] = useState(() => loadCachedTrainingPlan(trainingGenerationKey, trainingIdentityScope));
   const [trainingAiStatus, setTrainingAiStatus] = useState(() => trainingAiText ? 'cloudflare' : 'local');
+  const [trainingRefresh, setTrainingRefresh] = useState(0);
+  const trainingManualRequestRef = useRef(false);
+  const [trainingCooldownNow, setTrainingCooldownNow] = useState(() => Date.now());
+  const trainingManualState = trainingPlanManualRefreshState({
+    now: trainingCooldownNow,
+    identityScope: trainingIdentityScope,
+    bypassCooldown: isAdminUser,
+  });
+
+  useEffect(() => {
+    if (trainingManualState.allowed) return undefined;
+    const timer = window.setInterval(() => setTrainingCooldownNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, [trainingManualState.allowed]);
 
   useEffect(() => {
     if (!trainingDossier || Number(insights.totalGames || 0) < 3) {
@@ -253,35 +275,51 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       return undefined;
     }
     const cached = loadCachedTrainingPlan(trainingGenerationKey, trainingIdentityScope);
-    if (cached) {
+    if (cached && trainingRefresh === 0) {
       setTrainingAiText(cached);
       setTrainingAiStatus('cloudflare');
       return undefined;
     }
+    if (!cached && trainingRefresh === 0) setTrainingAiText(null);
     const token = getToken();
     if (!token) {
-      setTrainingAiText(null);
-      setTrainingAiStatus('local');
+      setTrainingAiStatus(cached ? 'cloudflare' : 'local');
       return undefined;
     }
 
     let active = true;
-    setTrainingAiText(null);
+    const requestKind = trainingManualRequestRef.current ? 'training_plan_manual' : 'training_plan';
+    trainingManualRequestRef.current = false;
     setTrainingAiStatus('loading');
-    void requestRemoteNarrative(trainingDossier, { token, timeoutMs: 8000 }).then((text) => {
+    void requestRemoteNarrative({ ...trainingDossier, requestKind }, { token, timeoutMs: 8000 }).then((text) => {
       if (!active) return;
       if (!text) {
-        setTrainingAiStatus('local');
+        setTrainingAiStatus(cached ? 'cloudflare' : 'local');
         return;
       }
       saveCachedTrainingPlan(trainingGenerationKey, text, trainingIdentityScope);
+      if (!isAdminUser && shouldCommitManualTrainingPlanRefresh(requestKind, text)) {
+        markTrainingPlanManualRefresh({ identityScope: trainingIdentityScope });
+        setTrainingCooldownNow(Date.now());
+      }
       setTrainingAiText(text);
       setTrainingAiStatus('cloudflare');
     }).catch(() => {
-      if (active) setTrainingAiStatus('local');
+      if (active) setTrainingAiStatus(cached ? 'cloudflare' : 'local');
     });
     return () => { active = false; };
-  }, [trainingDossier, trainingGenerationKey, trainingIdentityScope, insights.totalGames]);
+  }, [trainingDossier, trainingGenerationKey, trainingIdentityScope, insights.totalGames, trainingRefresh, isAdminUser]);
+
+  function requestFreshTrainingPlan() {
+    const state = trainingPlanManualRefreshState({ identityScope: trainingIdentityScope, bypassCooldown: isAdminUser });
+    if (!trainingDossier || Number(insights.totalGames || 0) < 3 || !state.allowed || trainingAiStatus === 'loading') {
+      setTrainingCooldownNow(Date.now());
+      return;
+    }
+    trainingManualRequestRef.current = true;
+    setTrainingCooldownNow(Date.now());
+    setTrainingRefresh((value) => value + 1);
+  }
 
   async function startSearch() {
     stopRef.current = false;
@@ -508,6 +546,23 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             <div className="ai-task-card coaching-ai-plan">
               <small>CPU // PLAN DE ENTRENAMIENTO · WORKERS AI</small>
               <p>{trainingAiText}</p>
+              <div className="ai-player-portrait-actions ai-player-portrait-actions-visible">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  disabled={trainingAiStatus === 'loading' || !trainingManualState.allowed}
+                  onClick={requestFreshTrainingPlan}
+                >
+                  {trainingAiStatus === 'loading' ? 'Pensando…' : trainingManualState.allowed ? '↻ Pedir otro plan' : 'Plan reciente'}
+                </button>
+                <small>
+                  {isAdminUser
+                    ? 'Admin · sin cooldown.'
+                    : trainingManualState.allowed
+                      ? 'Una lectura extra cada 6 h.'
+                      : `Otro plan disponible en ${formatTrainingPlanCooldown(trainingManualState.retryAfterMs)}.`}
+                </small>
+              </div>
             </div>
           )}
           <div className="coaching-grid">
