@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints } from '../tournament.js';
 import { logout, getUsername } from '../auth.js';
@@ -16,6 +16,8 @@ import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL } from '../combatC
 import { currentDailyStreak, dailyChallengeDayKey } from '../dailyChallenge.js';
 import { loadGameActivity } from '../gameActivity.js';
 import { buildHomeToday } from '../homeToday.js';
+import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { shouldEnableHomePlayNudge } from '../homePlayNudgePolicy.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -49,10 +51,11 @@ export default function Menu({
   error,
   tournament,
   rating,
+  suppressHomeNudge = false,
 }) {
   const [difficulty, setDifficulty] = useState(50);
   const [color, setColor] = useState('random');
-  const [timeControlId, setTimeControlId] = useState('none');
+  const [timeControlId, setTimeControlId] = useState(() => getDefaultTimeControlId());
   const [seriesBestOf, setSeriesBestOf] = useState(1);
   const [suddenDeath, setSuddenDeath] = useState(false);
   const [threatCheck, setThreatCheck] = useState(false);
@@ -67,11 +70,18 @@ export default function Menu({
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const username = getUsername();
   const hasOpenOverlay = showBackup || showQuickMatch || showMirrorMode || showAchievements || showAccount || showFeedback;
+  const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut, hasSavedGame });
   const today = useMemo(() => buildHomeToday({
     daily: currentDailyStreak(),
     todayKey: dailyChallengeDayKey(),
     activity: loadGameActivity(),
   }), []);
+
+  useEffect(() => {
+    const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
+    return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
+  }, []);
 
   async function handleLogout() {
     setLogoutError(null);
@@ -232,7 +242,7 @@ export default function Menu({
       </button>
 
       <HomePlayNudge
-        enabled={!hasOpenOverlay && !loggingOut && !hasSavedGame}
+        enabled={homePlayNudgeEnabled}
         hasSavedGame={hasSavedGame}
         onContinue={onContinue}
         onPlay={() => setShowQuickMatch(true)}

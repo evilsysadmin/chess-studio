@@ -445,3 +445,13 @@ def test_rich_analysis_transport_keeps_long_compact_output(monkeypatch):
     assert outcome.reason == "ok"
     assert len(outcome.text) > 420
     assert len(outcome.text) <= provider.RICH_ANALYSIS_MAX_OUTPUT_CHARS
+
+def test_player_portrait_action_detector_accepts_natural_spanish_variants():
+    facts = {"total_games": 12, "record": {"wins": 7, "losses": 5}}
+    variants = [
+        "Has ganado 7 de 12 partidas y eso es una base real. El problema principal sigue siendo medible, no una tragedia griega. En las próximas partidas, mejora la revisión antes de mover.",
+        "Has ganado 7 de 12 partidas y eso es una base real. El problema principal sigue siendo medible, no una tragedia griega. En las próximas partidas, repasa tus errores repetidos antes de cambiar de plan.",
+        "Has ganado 7 de 12 partidas y eso es una base real. El problema principal sigue siendo medible, no una tragedia griega. En las próximas partidas, fíjate en el patrón repetido antes de acelerar.",
+    ]
+    for text in variants:
+        assert provider.validate_player_portrait_contract(text, facts) == (True, None)

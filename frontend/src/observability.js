@@ -35,6 +35,10 @@ export function observabilityRangeForPreset(preset = '24h', customFrom = '', cus
   }
 
   const durations = {
+    '15m': 15 * 60 * 1000,
+    '1h': 60 * 60 * 1000,
+    '2h': 2 * 60 * 60 * 1000,
+    '6h': 6 * 60 * 60 * 1000,
     '24h': 24 * 60 * 60 * 1000,
     '7d': 7 * 24 * 60 * 60 * 1000,
     '30d': 30 * 24 * 60 * 60 * 1000,

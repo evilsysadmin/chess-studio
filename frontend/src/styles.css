@@ -9174,3 +9174,21 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   background: rgba(255,255,255,.02);
   font-size: .68rem;
 }
+
+/* ---------- v16.6dm34 · Ajustes globales ---------- */
+.masthead-actions{display:flex;align-items:center;gap:.55rem;margin-left:auto}
+.settings-gear-button{width:2.35rem;height:2.35rem;display:grid;place-items:center;border:1px solid var(--border-color,#4b4b4b);border-radius:999px;background:rgba(18,18,18,.72);color:inherit;font-size:1.15rem;cursor:pointer;line-height:1}
+.settings-gear-button:hover{transform:rotate(8deg);border-color:currentColor}
+.settings-backdrop{z-index:1200;display:flex;justify-content:flex-end;align-items:stretch;padding:0}
+.settings-panel{width:min(430px,92vw);height:100%;overflow:auto;background:var(--panel-bg,#161616);border-left:1px solid var(--border-color,#444);padding:1.2rem 1.25rem;box-shadow:-18px 0 45px rgba(0,0,0,.28)}
+.settings-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.settings-panel-heading h2{margin:.15rem 0 0}
+.settings-sections{display:grid;gap:1rem}
+.settings-sections>section{border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:1rem;background:rgba(255,255,255,.025)}
+.settings-sections h3{margin:0 0 .8rem}
+.settings-field{display:grid;gap:.4rem;margin:.65rem 0}.settings-field select,.settings-field input[type="range"]{width:100%}
+.settings-toggle{display:flex;align-items:center;gap:.65rem;margin:.7rem 0}
+@media(max-width:600px){.settings-panel{width:100vw}.settings-gear-button{width:2.2rem;height:2.2rem}}
+.admin-insights-ai-actions{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin:.4rem 0 .85rem}
+.admin-insights-ai-actions small{opacity:.7}
+.admin-player-ai-portrait{margin:.6rem 0 1rem}

@@ -17,6 +17,10 @@ describe('admin observability helpers', () => {
 
   it('resuelve presets y fechas personalizadas a un rango real', () => {
     const now = new Date('2026-08-24T00:30:00+02:00');
+    const short = observabilityRangeForPreset('15m', '', '', now);
+    expect(new Date(short.to).getTime() - new Date(short.from).getTime()).toBe(15 * 60 * 1000);
+    const twoHours = observabilityRangeForPreset('2h', '', '', now);
+    expect(new Date(twoHours.to).getTime() - new Date(twoHours.from).getTime()).toBe(2 * 60 * 60 * 1000);
     const day = observabilityRangeForPreset('24h', '', '', now);
     expect(new Date(day.to).getTime() - new Date(day.from).getTime()).toBe(24 * 60 * 60 * 1000);
 

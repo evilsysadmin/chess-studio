@@ -23,10 +23,12 @@ from api_models import (
     AdminDeleteUserRequest,
     AdminFeedbackStatusRequest,
     AdminInsightsRequest,
+    AdminPlayerPortraitRequest,
     FeedbackRequest,
 )
 from observability import get_database_metrics, get_http_metrics
 from observability_history import get_history as get_observability_history
+from narrative_cloudflare import generate_narrative
 
 
 def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRouter:
@@ -159,6 +161,25 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
     @router.post("/api/admin/user-insights")
     async def admin_user_insights_post(body: AdminInsightsRequest, username: str = Depends(admin_dependency)):
         return await _admin_insights_response(body.username)
+
+
+    @router.post("/api/admin/player-portrait")
+    async def admin_player_portrait(body: AdminPlayerPortraitRequest, username: str = Depends(admin_dependency)):
+        # Revalida que el target exista, pero nunca envía su username al LLM.
+        target = await _resolve_admin_target_username(body.username)
+        result = await generate_narrative(
+            "player_portrait",
+            body.facts,
+            tone="friendly_sarcastic",
+            locale="es-ES",
+            request_kind="portrait_admin",
+        )
+        return {
+            "username": target,
+            "text": result.get("text"),
+            "provider": result.get("provider"),
+            "latencyMs": result.get("latencyMs"),
+        }
 
 
     @router.post("/api/admin/delete-user")

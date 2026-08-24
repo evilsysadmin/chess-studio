@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
+import { gameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
 
 describe('completed game outcomes', () => {
   it('solo considera completadas victoria, tablas y derrota', () => {
@@ -16,6 +16,12 @@ describe('completed game outcomes', () => {
     expect(shouldApplyCompetitiveProgress('win')).toBe(true);
     expect(shouldApplyCompetitiveProgress('win', { learningMode: true })).toBe(false);
     expect(shouldApplyCompetitiveProgress('win', { trainingPosition: true })).toBe(false);
+  });
+
+  it('abandono explícito penaliza, pero una sesión recuperable no se convierte en rendición', () => {
+    expect(gameExitDisposition({ moveCount: 7, explicitAction: true })).toBe('forfeit');
+    expect(gameExitDisposition({ moveCount: 7, explicitAction: false, recoverableSession: true })).toBe('resume');
+    expect(gameExitDisposition({ moveCount: 0, explicitAction: true })).toBe('cancel');
   });
 
   it('abandonar una partida competitiva ya iniciada cuenta como forfeit', () => {

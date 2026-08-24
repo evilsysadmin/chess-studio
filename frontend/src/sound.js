@@ -59,7 +59,7 @@ const DEFAULT_AMBIENT_THEME = 'andalus';
 export const AMBIENT_INTER_TRACK_SILENCE_MS = 700;
 const ANDALUS_TRACK_DURATION_MS = 240000;
 
-function setMusicMuted(muted) {
+export function setMusicMuted(muted) {
   writeMusicMuted(muted);
   // Mute y transporte son cosas distintas: silenciar no reinicia ni pausa el
   // tema. Los secuenciadores siguen avanzando en silencio y al desmutear se

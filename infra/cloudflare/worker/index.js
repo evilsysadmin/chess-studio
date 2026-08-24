@@ -103,6 +103,8 @@ REGLAS INVIOLABLES:
   concretas para anclar el diagnóstico; no recites todas las estadísticas.
 - La tercera frase de player_portrait debe ser una recomendación práctica y
   específica para las próximas partidas, no un cierre social ni una obviedad.
+  Empieza esa tercera frase con "En las próximas partidas," y usa un verbo de
+  acción claro (entrena, revisa, practica, prioriza, evita, comprueba o vigila).
 - En player_portrait mantén el sarcasmo, pero seco y breve: incluye una sola
   pulla o ironía ligera apoyada en un dato real. La pulla acompaña al análisis;
   nunca sustituye el consejo.

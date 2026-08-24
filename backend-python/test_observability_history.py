@@ -114,3 +114,13 @@ def test_history_series_exposes_dashboard_metrics():
     assert point["ai_cloudflare_percent"] == 100.0
     assert point["ai_fallback_percent"] == 0.0
     assert point["ai_p95_ms"] > 0
+
+def test_short_ranges_use_fine_grained_series_resolution():
+    at = 1_800_000_000.0
+    history.record_http_event("GET", "/api/a", 200, 20.0, timestamp=at)
+    history.record_http_event("GET", "/api/a", 200, 30.0, timestamp=at + 6 * 60)
+    with history._PENDING_LOCK:
+        rows = sorted(history._PENDING.items())
+    series = history._group_series(rows, int(at), int(at + 15 * 60))
+    assert history.BUCKET_SECONDS == 5 * 60
+    assert len(series) == 2

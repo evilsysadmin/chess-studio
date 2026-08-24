@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { APP_RELEASE } from '../release.js';
-import { deleteAdminUser, fetchAdminUsers, fetchAdminUserInsights } from '../admin.js';
+import { deleteAdminUser, fetchAdminUsers, fetchAdminUserInsights, reanalyzeAdminUser } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { computeInsights, generateRoast, generateCoaching } from '../insights.js';
 import { ACHIEVEMENTS } from '../achievements.js';
@@ -13,6 +13,7 @@ import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
+import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 const ADMIN_REFRESH_MS = 120000;
@@ -127,6 +128,7 @@ function buildAdminInsights(payload) {
     roast: generateRoast(insights, worst, extras),
     coaching: generateCoaching(insights, rivalry, extras),
     autopsy: buildWorstMoveAutopsy(payload, rawExtras.worstMove),
+    portraitFacts: buildPlayerPortraitFacts(insights, rivalry, extras, worst),
   };
 }
 
@@ -147,6 +149,9 @@ export default function AdminScreen({ onExit }) {
   const [feedbackUpdating, setFeedbackUpdating] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
   const [adminView, setAdminView] = useState('overview');
+  const [aiPortraitByUser, setAiPortraitByUser] = useState({});
+  const [aiPortraitLoading, setAiPortraitLoading] = useState({});
+  const [aiPortraitError, setAiPortraitError] = useState({});
 
   useEffect(() => {
     let mounted = true;
@@ -226,6 +231,27 @@ export default function AdminScreen({ onExit }) {
         setInsightsLoading((prev) => ({ ...prev, [expanded]: false }));
       });
   }, [expanded, insightsByUser, insightsLoading, insightsErrors]);
+
+  async function handleReanalyzePlayer(username) {
+    const dossier = insightsByUser[username];
+    const facts = dossier?.portraitFacts;
+    if (!facts) {
+      setAiPortraitError((prev) => ({ ...prev, [username]: 'No hay datos suficientes para reanalizar todavía.' }));
+      return;
+    }
+    setAiPortraitLoading((prev) => ({ ...prev, [username]: true }));
+    setAiPortraitError((prev) => ({ ...prev, [username]: null }));
+    try {
+      const result = await reanalyzeAdminUser(username, facts);
+      const text = typeof result?.text === 'string' ? result.text.trim() : '';
+      if (!text) throw new Error('Workers AI no devolvió una lectura utilizable.');
+      setAiPortraitByUser((prev) => ({ ...prev, [username]: { text, provider: result?.provider || 'local' } }));
+    } catch (error) {
+      setAiPortraitError((prev) => ({ ...prev, [username]: error?.message || 'No se pudo reanalizar al jugador.' }));
+    } finally {
+      setAiPortraitLoading((prev) => ({ ...prev, [username]: false }));
+    }
+  }
 
   const currentAdmin = getUsername();
   const otherUsers = (users || []).filter((user) => user.username !== currentAdmin);
@@ -504,6 +530,13 @@ export default function AdminScreen({ onExit }) {
 
                               {insightsByUser[u.username]?.insights.totalGames > 0 && (
                                 <>
+                                  <div className="admin-insights-ai-actions">
+                                    <button type="button" className="secondary-btn" disabled={aiPortraitLoading[u.username]} onClick={() => void handleReanalyzePlayer(u.username)}>{aiPortraitLoading[u.username] ? 'Reanalizando…' : '↻ Reanalizar jugador'}</button>
+                                    <small>Fuerza una lectura nueva con Workers AI; no consume el cooldown del jugador.</small>
+                                  </div>
+                                  {aiPortraitError[u.username] && <p className="error-text">{aiPortraitError[u.username]}</p>}
+                                  {aiPortraitByUser[u.username] && <div className="ai-task-card admin-player-ai-portrait"><small>CPU // {aiPortraitByUser[u.username].provider === 'cloudflare' ? 'WORKERS AI' : 'FALLBACK LOCAL'}</small><p>{aiPortraitByUser[u.username].text}</p></div>}
+
                                   <div className="admin-insights-facts">
                                     <div><span>Partidas</span><strong>{insightsByUser[u.username].insights.totalGames}</strong></div>
                                     <div><span>Victorias</span><strong>{insightsByUser[u.username].insights.overall?.winPct ?? 0}%</strong></div>

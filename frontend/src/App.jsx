@@ -21,7 +21,7 @@ import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { loadGameHistory, saveGameRecord, clearGameHistory, updateGameRecordChat } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
-import { isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
+import { isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadRating, saveRating, updateRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
@@ -38,6 +38,7 @@ const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
+import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
@@ -226,6 +227,7 @@ function AppInner({ isAdminUser }) {
   const [gameContext, setGameContext] = useState({});
   const [replayMovieMode, setReplayMovieMode] = useState(false);
   const [showRatingDetail, setShowRatingDetail] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
 
   // Cualquier helper de progreso emite este evento al cambiar la caché.
@@ -378,8 +380,8 @@ function AppInner({ isAdminUser }) {
   function handleExitGame() {
     if (game?.id) {
       const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-      const forfeit = shouldTreatExitAsForfeit({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition });
-      if (forfeit) handleCasualGameEnd('loss', game, { endReason: 'resignation' });
+      const exitDisposition = gameExitDisposition({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
+      if (exitDisposition === 'forfeit') handleCasualGameEnd('loss', game, { endReason: 'resignation' });
       else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
     }
     if (game?.id) clearClockSnapshot(game.id);
@@ -541,8 +543,8 @@ function AppInner({ isAdminUser }) {
     try {
       if (game?.id) {
         const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-        const forfeit = shouldTreatExitAsForfeit({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition });
-        if (forfeit) handleCasualGameEnd('loss', game, { endReason: 'resignation' });
+        const exitDisposition = gameExitDisposition({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
+        if (exitDisposition === 'forfeit') handleCasualGameEnd('loss', game, { endReason: 'resignation' });
         else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
         await api.deleteGame(game.id).catch(() => {});
       }
@@ -741,8 +743,8 @@ function AppInner({ isAdminUser }) {
 
   function handleExitTournamentGame() {
     if (tournamentGame?.id) {
-      const forfeit = Number(tournamentGame.history?.length || 0) > 0 && !tournamentGame.isGameOver;
-      if (forfeit) handleTournamentGameEnd('loss', tournamentGame, { endReason: 'resignation' });
+      const exitDisposition = gameExitDisposition({ moveCount: tournamentGame.history?.length || 0, isGameOver: !!tournamentGame.isGameOver, explicitAction: true });
+      if (exitDisposition === 'forfeit') handleTournamentGameEnd('loss', tournamentGame, { endReason: 'resignation' });
       else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament' });
     }
     clearActiveGameSession();
@@ -773,9 +775,12 @@ function AppInner({ isAdminUser }) {
             <div className="masthead-text">
               <h1>Escuela de Ajedrez</h1>
             </div>
-            {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
-              <SaveStatusBadge state={gameSaveState} />
-            )}
+            <div className="masthead-actions">
+              {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
+                <SaveStatusBadge state={gameSaveState} />
+              )}
+              <button type="button" className="settings-gear-button" onClick={() => setShowSettings(true)} aria-label="Abrir ajustes" title="Ajustes">⚙</button>
+            </div>
           </div>
           <PlayerStatusBar
             tournament={tournament}
@@ -793,6 +798,7 @@ function AppInner({ isAdminUser }) {
         {showRatingDetail && (
           <RatingDetailModal rating={rating} onClose={() => setShowRatingDetail(false)} />
         )}
+        {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
@@ -822,6 +828,7 @@ function AppInner({ isAdminUser }) {
             error={error}
             tournament={tournament}
             rating={rating}
+            suppressHomeNudge={showSettings}
           />
         )}
 

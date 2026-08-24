@@ -5,7 +5,7 @@ accumulate transport schemas alongside middleware and route wiring.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -60,6 +60,11 @@ class AdminFeedbackStatusRequest(BaseModel):
 
 class AdminDeleteUserRequest(BaseModel):
     username: str = Field(max_length=64)
+
+
+class AdminPlayerPortraitRequest(BaseModel):
+    username: str = Field(max_length=64)
+    facts: dict[str, Any] = Field(default_factory=dict)
 
 
 class GhostStyle(BaseModel):

@@ -34,6 +34,7 @@ const EVENT_LABELS = {
 const REQUEST_KIND_LABELS = {
   portrait_manual: 'Lecturas manuales',
   portrait_auto: 'Lecturas automáticas',
+  portrait_admin: 'Lecturas forzadas por Admin',
   post_game: 'Autopsias post-partida',
   combat_briefing: 'Briefings Combat',
   combat_debrief: 'Debriefings Combat',
@@ -42,6 +43,10 @@ const REQUEST_KIND_LABELS = {
 };
 
 const RANGE_LABELS = {
+  '15m': '15 min',
+  '1h': '1 h',
+  '2h': '2 h',
+  '6h': '6 h',
   '24h': '24 h',
   '7d': '7 días',
   '30d': '30 días',
@@ -375,6 +380,10 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
         <label>
           <span>Rango del dashboard</span>
           <select value={rangePreset} onChange={(event) => setRangePreset(event.target.value)}>
+            <option value="15m">Últimos 15 minutos</option>
+            <option value="1h">Última hora</option>
+            <option value="2h">Últimas 2 horas</option>
+            <option value="6h">Últimas 6 horas</option>
             <option value="24h">Últimas 24 horas</option>
             <option value="7d">Últimos 7 días</option>
             <option value="30d">Últimos 30 días</option>
@@ -392,7 +401,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
           <label><span>Cada</span><select value={autoRefreshMs} disabled={!autoRefreshEnabled} onChange={(event) => setAutoRefreshMs(Number(event.target.value))}>{OBSERVABILITY_AUTO_REFRESH_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
           <button type="button" className="secondary-btn" disabled={loading} onClick={() => void refresh()}>{loading ? 'Actualizando…' : 'Actualizar ahora'}</button>
         </div>
-        <small>{historyRange.persistent ? 'Histórico agregado en Mongo' : 'Histórico disponible sólo desde este proceso'} · resolución {historyRange.resolution === 'day' ? 'diaria' : 'horaria'}.</small>
+        <small>{historyRange.persistent ? 'Histórico agregado en Mongo' : 'Histórico disponible sólo desde este proceso'} · resolución {historyRange.resolution === 'day' ? 'diaria' : historyRange.resolution === 'hour' ? 'horaria' : historyRange.resolution === '15min' ? '15 min' : '5 min'}.</small>
       </div>
 
       <div className="admin-observability-summary">

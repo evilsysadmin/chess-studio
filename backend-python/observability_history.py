@@ -1,6 +1,6 @@
 """Histórico agregado de observabilidad para Chess Studio.
 
-Guarda buckets horarios de baja cardinalidad. Nunca persiste usernames, IPs,
+Guarda buckets de 5 minutos de baja cardinalidad. Nunca persiste usernames, IPs,
 FEN, bodies, prompts, texto AI ni cabeceras. Las escrituras se acumulan en
 memoria y se vacían a Mongo fuera del camino crítico de la request.
 """
@@ -16,12 +16,13 @@ from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
-BUCKET_SECONDS = 60 * 60
+BUCKET_SECONDS = 5 * 60
 DEFAULT_RANGE_SECONDS = 24 * 60 * 60
 MAX_RANGE_SECONDS = 90 * 24 * 60 * 60
 RETENTION_SECONDS = 100 * 24 * 60 * 60
 FLUSH_INTERVAL_SECONDS = 30.0
-COLLECTION_NAME = "observability_hourly_v1"
+COLLECTION_NAME = "observability_5min_v2"
+LEGACY_COLLECTION_NAME = "observability_hourly_v1"
 _LATENCY_BOUNDS_MS = (25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 20000)
 
 _PENDING_LOCK = threading.Lock()
@@ -216,7 +217,7 @@ async def _ensure_retention_index(collection: Any) -> None:
         await collection.create_index(
             "bucket_start",
             expireAfterSeconds=RETENTION_SECONDS,
-            name="observability_bucket_ttl_v1",
+            name="observability_bucket_ttl_v2",
         )
     except Exception:
         return
@@ -423,7 +424,14 @@ def normalize_range(from_value: str | None, to_value: str | None, *, now: float 
 
 def _group_series(rows: list[tuple[int, dict[str, Any]]], start: int, end: int) -> list[dict[str, Any]]:
     span = max(1, end - start)
-    group_seconds = BUCKET_SECONDS if span <= 48 * 60 * 60 else 24 * 60 * 60
+    if span <= 2 * 60 * 60:
+        group_seconds = 5 * 60
+    elif span <= 12 * 60 * 60:
+        group_seconds = 15 * 60
+    elif span <= 48 * 60 * 60:
+        group_seconds = 60 * 60
+    else:
+        group_seconds = 24 * 60 * 60
     groups: dict[int, dict[str, Any]] = {}
     for bucket_key, payload in rows:
         group_key = bucket_key - (bucket_key % group_seconds)
@@ -457,6 +465,7 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
     await flush_pending()
 
     rows_by_bucket: dict[int, dict[str, Any]] = {}
+    bucket_spans: dict[int, int] = {}
     persistent = False
     try:
         from db import get_db
@@ -464,15 +473,21 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
         database = await get_db()
         if database is not None:
             persistent = True
-            cursor = database[COLLECTION_NAME].find({
-                "_id": {"$gte": _bucket_start(start), "$lte": _bucket_start(end)},
-            })
-            async for document in cursor:
-                bucket_key = int(document.get("_id") or 0)
-                rows_by_bucket[bucket_key] = {
-                    "http": document.get("http") or {},
-                    "ai": document.get("ai") or {},
-                }
+            # Conserva histórico dm28-dm33 (buckets horarios) y añade los
+            # buckets de 5 minutos de dm34. La colección legacy queda sólo
+            # en lectura; toda escritura nueva va a observability_5min_v2.
+            for collection_name, bucket_size in ((LEGACY_COLLECTION_NAME, 60 * 60), (COLLECTION_NAME, BUCKET_SECONDS)):
+                lower = start - (start % bucket_size)
+                upper = end - (end % bucket_size)
+                cursor = database[collection_name].find({"_id": {"$gte": lower, "$lte": upper}})
+                async for document in cursor:
+                    bucket_key = int(document.get("_id") or 0)
+                    target = rows_by_bucket.setdefault(bucket_key, _fresh_bucket())
+                    bucket_spans[bucket_key] = max(bucket_spans.get(bucket_key, 0), bucket_size)
+                    _merge_numeric(target, {
+                        "http": document.get("http") or {},
+                        "ai": document.get("ai") or {},
+                    })
     except Exception:
         persistent = False
 
@@ -484,9 +499,14 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
         if bucket_key < _bucket_start(start) or bucket_key > _bucket_start(end):
             continue
         target = rows_by_bucket.setdefault(bucket_key, _fresh_bucket())
+        bucket_spans[bucket_key] = max(bucket_spans.get(bucket_key, 0), BUCKET_SECONDS)
         _merge_numeric(target, payload)
 
-    selected = [(key, value) for key, value in sorted(rows_by_bucket.items()) if key <= end and key + BUCKET_SECONDS >= start]
+    selected = [
+        (key, value)
+        for key, value in sorted(rows_by_bucket.items())
+        if key <= end and key + bucket_spans.get(key, BUCKET_SECONDS) >= start
+    ]
     total = _fresh_bucket()
     for _, payload in selected:
         _merge_numeric(total, payload)
@@ -498,7 +518,12 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
             "to": datetime.fromtimestamp(end, tz=timezone.utc).isoformat(),
             "seconds": range_seconds,
             "persistent": persistent,
-            "resolution": "hour" if range_seconds <= 48 * 60 * 60 else "day",
+            "resolution": (
+                "5min" if range_seconds <= 2 * 60 * 60
+                else "15min" if range_seconds <= 12 * 60 * 60
+                else "hour" if range_seconds <= 48 * 60 * 60
+                else "day"
+            ),
         },
         "http": _summarize_http(total.get("http") or {}, range_seconds),
         "ai": _summarize_ai(total.get("ai") or {}),

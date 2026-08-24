@@ -4,7 +4,6 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
 import { playMoveSound, playCaptureSound, playMissSound, playSuccessSound } from '../sound.js';
 import {
-  BASE_STATS,
   createInitialRegistry,
   resolveCombatMove,
   hitChance,
@@ -17,90 +16,28 @@ import {
   repetitionKey,
   rosterKeyFor,
 } from '../combat.js';
-import { loadRoster, saveRoster, resetRoster, applyRosterToRegistry, saveSurvivorsToRoster, revivePiece, replaceDeadPiece, expireDeadPieces, renameRosterIdentity } from '../combatRoster.js';
+import { loadRoster, saveRoster, applyRosterToRegistry, saveSurvivorsToRoster, expireDeadPieces } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
 import { loadCombatService, recordCombatServiceEvent, summarizeCombatService } from '../combatService.js';
 import { recordUnitBattle, unitDecorations, unitRecordForKey } from '../combatUnitService.js';
-import { setRosterDeploymentType } from '../combatMetamorphosis.js';
 import {
   annotateRegistryWithDeployment,
   applyDeploymentToPosition,
-  autofillDeployment,
   deploymentSummary,
   ensureDeploymentState,
   isDeploymentReadyForBattle,
-  removeDeploymentUnit,
-  resetDeployment,
-  setDeploymentUnit,
 } from '../combatDeployment.js';
-import { techniqueTargetsFor, techniqueAttackChance, resolveTechniqueAttack, techniqueById, unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
-import { proceduralNarrative } from '../narrativeProvider.js';
+import { techniqueTargetsFor, techniqueAttackChance, resolveTechniqueAttack, techniqueById } from '../combatTechniques.js';
 import { checkAchievements } from '../achievements.js';
 import { loadRating, ratingProgress, difficultyForRating } from '../playerRating.js';
 import { applyRunPerksToRegistry } from '../roguelikePerks.js';
 import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
 import { canReturnCombatToSetup, clearCombatSession, hasCombatSession, loadCombatSession, saveCombatSession } from '../combatSession.js';
-import { applyDeploymentPreset } from '../combatDeploymentPresets.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
+import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry, buildCombatSessionSnapshot } from '../combatControllerSupport.js';
+import { createCombatRosterActions } from '../combatRosterActions.js';
 
-const STATUS_LABELS = {
-  playing: '',
-  check: 'Jaque',
-  checkmate: 'Jaque mate',
-  stalemate: 'Tablas por ahogado',
-  draw: 'Tablas',
-  repetition: 'Tablas por repetición',
-};
-
-// Tiempo (ms) antes de que la CPU juegue, tanto en su primera jugada como
-// en las siguientes — para que se note que "está pensando".
-const CPU_DELAY_MS = 500;
-
-function resolveHumanColor(choice) {
-  if (choice === 'w' || choice === 'b') return choice;
-  return Math.random() < 0.5 ? 'w' : 'b';
-}
-
-function emptyUnitBattleStats() {
-  return { killsByIdentity: {}, bossDamageByIdentity: {}, bossFinisherIdentityId: null };
-}
-
-function incrementIdentityCounter(bucket, identityId, amount = 1) {
-  if (!identityId || !Number.isFinite(Number(amount)) || Number(amount) <= 0) return bucket;
-  return { ...bucket, [identityId]: (bucket[identityId] || 0) + Number(amount) };
-}
-
-function buildLogEntry(result, humanColor) {
-  if (!result.isCapture) return null;
-  const { attacker, defender, hit, chance, survivalXp } = result;
-  if (!attacker || !defender) return null; // red de seguridad: sin datos suficientes, no arriesgamos un crash
-  const attackerIsHuman = attacker.color === humanColor;
-  const attackerName = `${attacker.alias ? `${attacker.alias}, ` : ''}${BASE_STATS[attacker.type].name}`;
-  const defenderName = `${defender.alias ? `${defender.alias}, ` : ''}${BASE_STATS[defender.type].name}`;
-  const pct = Math.round(chance * 100);
-
-  if (result.techniqueId) {
-    const text = proceduralNarrative({
-      type: hit ? 'technique_hit' : 'technique_miss',
-      alias: attacker.alias || BASE_STATS[attacker.type].name,
-      piece: BASE_STATS[attacker.type].name,
-      technique: result.techniqueLabel || result.techniqueId,
-      target: defenderName,
-    });
-    return { text: `${text} · ${pct}% de acierto`, tone: hit ? (attackerIsHuman ? 'good' : 'bad') : 'neutral', kind: hit ? 'technique' : 'miss' };
-  }
-
-  if (hit) {
-    const subject = attackerIsHuman ? 'Tu' : 'La CPU: su';
-    const text = `${subject} ${attackerName} (nv.${derivedLevel(attacker)}) elimina ${defenderName} (nv.${derivedLevel(defender)}) · ${pct}% de acierto`;
-    return { text, tone: attackerIsHuman ? 'good' : 'bad', kind: attackerIsHuman ? 'capture' : 'casualty' };
-  }
-
-  const attackerLabel = attackerIsHuman ? 'tu' : 'la CPU';
-  const text = `${defenderName} (nv.${derivedLevel(defender)}) esquiva el ataque de ${attackerLabel} ${attackerName} · +${survivalXp} XP por sobrevivir`;
-  return { text, tone: defender.color === humanColor ? 'good' : 'neutral', kind: 'miss' };
-}
 
 
 export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
@@ -192,21 +129,20 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     nextBossHp = bossHpRef.current,
     nextBossPhase = bossPhase,
   } = {}) {
-    saveBattleSnapshot({
-      phase: 'battle',
+    saveBattleSnapshot(buildCombatSessionSnapshot({
       fen: nextFen,
       registry: nextRegistry,
       humanColor,
       combatLog: nextCombatLog,
       focus: focusRef.current,
-      positionCounts: [...positionCountsRef.current.entries()],
+      positionCounts: positionCountsRef.current.entries(),
       bossHp: nextBossHp,
       bossPhase: nextBossPhase,
       battleStartRoster: battleStartRosterRef.current,
       battleParticipants: battleParticipantsRef.current,
       unitBattleStats: unitBattleStatsRef.current,
       activityGameId: activityGameIdRef.current,
-    });
+    }));
   }
 
   // Watchdog de sesión: una batalla viva siempre debe tener snapshot. Esto
@@ -727,7 +663,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     else if (result.isCapture) playCaptureSound();
     else playMoveSound();
 
-    pushLog(buildLogEntry(result, currentHumanColor));
+    pushLog(buildCombatLogEntry(result, currentHumanColor));
 
     const chessAfter = new Chess();
     chessAfter.load(result.fen);
@@ -1047,141 +983,20 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setPhase('setup');
   }
 
-  function handleResetRoster() {
-    setRoster(resetRoster());
-  }
-
-  // Compra un punto de fuerza/velocidad directo sobre el roster guardado,
-  // fuera de una batalla — reconstruye una "pieza virtual" a partir del
-  // slot (tipo + lo guardado), la actualiza, y persiste el resultado.
-  function handleBuyRosterStat(key, stat) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const saved = prev.pieces[key] || { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: true };
-      if (saved.alive === false) return prev; // no se puede invertir en una pieza caída, primero hay que revivirla
-      const virtualPiece = { type: saved.deploymentType || key.split('-')[0], ...saved };
-      const updated = buyStatPoint(virtualPiece, stat);
-      if (!updated) return prev;
-      const next = {
-        ...prev,
-        pieces: {
-          ...prev.pieces,
-          [key]: { ...saved, strengthPoints: updated.strengthPoints, speedPoints: updated.speedPoints, bankedXp: updated.bankedXp, alive: true, deploymentType: saved.deploymentType || null },
-        },
-      };
-      saveRoster(next);
-      return next;
-    });
-  }
-
-
-  function handleRenameRosterPiece(key, alias) {
-    setRoster((prev) => {
-      const next = renameRosterIdentity(prev, key, alias);
-      if (next === prev) return prev;
-      saveRoster(next);
-      return next;
-    });
-  }
-
-
-  function handleMetamorphoseRosterPiece(key, targetType) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const changed = setRosterDeploymentType(prev, key, targetType);
-      if (changed === prev) return prev;
-      const next = ensureDeploymentState(changed);
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleDeployRosterUnit(slotKey, unitKey) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = setDeploymentUnit(prev, slotKey, unitKey);
-      if (next === prev) return prev;
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleRemoveDeployedUnit(unitKey) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = removeDeploymentUnit(prev, unitKey);
-      if (next === prev) return prev;
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleResetDeployment() {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = resetDeployment(prev);
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleAutofillDeployment(preferVeterans = true) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = autofillDeployment(prev, { preferVeterans });
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleApplyDeploymentPreset(preset) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = applyDeploymentPreset(prev, preset);
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleUnlockRosterTechnique(key, techniqueId) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = unlockRosterTechnique(prev, key, techniqueId);
-      if (next === prev) return prev;
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleEquipRosterTechnique(key, techniqueId) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = setRosterEquippedTechnique(prev, key, techniqueId);
-      if (next === prev) return prev;
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleReviveRosterPiece(key, type) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = revivePiece(prev, key, type);
-      if (next === prev) return prev; // no alcanzaba el XP de combate
-      saveRoster(next);
-      return next;
-    });
-  }
-
-  function handleReplaceRosterPiece(key) {
-    if (requireDeploymentConfirmation) setDeploymentConfirmed(false);
-    setRoster((prev) => {
-      const next = replaceDeadPiece(prev, key);
-      if (next === prev) return prev;
-      saveRoster(next);
-      return next;
-    });
-  }
+  const rosterActions = createCombatRosterActions({ setRoster, requireDeploymentConfirmation, setDeploymentConfirmed });
+  const handleResetRoster = rosterActions.resetRoster;
+  const handleBuyRosterStat = rosterActions.buyStat;
+  const handleRenameRosterPiece = rosterActions.rename;
+  const handleMetamorphoseRosterPiece = rosterActions.metamorphose;
+  const handleDeployRosterUnit = rosterActions.deploy;
+  const handleRemoveDeployedUnit = rosterActions.removeDeployed;
+  const handleResetDeployment = rosterActions.resetDeployment;
+  const handleAutofillDeployment = rosterActions.autofill;
+  const handleApplyDeploymentPreset = rosterActions.applyPreset;
+  const handleUnlockRosterTechnique = rosterActions.unlockTechnique;
+  const handleEquipRosterTechnique = rosterActions.equipTechnique;
+  const handleReviveRosterPiece = rosterActions.revive;
+  const handleReplaceRosterPiece = rosterActions.replace;
 
   const rosterCount = Object.values(roster.pieces).filter((p) => p.alive !== false).length;
   const deadCount = Object.values(roster.pieces).filter((p) => p.alive === false).length;

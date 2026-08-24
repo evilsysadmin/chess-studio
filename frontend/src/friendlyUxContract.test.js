@@ -49,7 +49,7 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
 
   it('home invita a jugar tras inactividad sin secuestrar la interfaz', () => {
     expect(menu).toContain('<HomePlayNudge');
-    expect(menu).toContain('enabled={!hasOpenOverlay && !loggingOut && !hasSavedGame}');
+    expect(menu).toContain('enabled={homePlayNudgeEnabled}');
     expect(homeNudge).toContain('HOME_PLAY_NUDGE_IDLE_MS');
     expect(homeNudge).toContain('role="status"');
     expect(homeNudge).not.toContain('aria-modal="true"');

@@ -273,10 +273,15 @@ _PORTRAIT_FORBIDDEN_PATTERNS = (
 )
 
 _PORTRAIT_ACTION_TERMS = (
-    "entrena", "practica", "revisa", "trabaja", "céntrate", "centrate",
-    "prioriza", "evita", "comprueba", "vigila", "busca", "intenta",
+    "entrena", "entrenar", "practica", "practicar", "revisa", "revisar",
+    "trabaja", "trabajar", "céntrate", "centrate", "centrarte",
+    "prioriza", "priorizar", "evita", "evitar", "comprueba", "comprobar",
+    "vigila", "vigilar", "busca", "buscar", "intenta", "intentar",
+    "mejora", "mejorar", "corrige", "corregir", "refuerza", "reforzar",
+    "dedica", "dedicar", "repasa", "repasar", "fíjate", "fijate",
+    "deberías", "deberias", "te conviene", "procura", "mantén", "manten", "haz",
     "en las próximas", "en las proximas", "próximas partidas",
-    "proximas partidas", "antes de",
+    "proximas partidas", "la próxima partida", "la proxima partida", "antes de",
 )
 
 

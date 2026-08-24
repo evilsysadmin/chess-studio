@@ -1510,3 +1510,34 @@ def test_activity_heartbeat_records_foreground_without_private_telemetry(monkeyp
     ).status_code == 204
     row = next(user for user in client.get("/api/admin/users").json()["users"] if user["username"] == "testuser")
     assert row["clientRelease"] == "vtest123"
+
+def test_admin_can_force_player_portrait_without_exposing_target_name_to_ai(monkeypatch):
+    import admin_api
+
+    monkeypatch.setattr("main._ADMIN_USERNAMES", {"admin_portrait"})
+    admin_response = client.post("/api/auth/register", json={"username": "admin_portrait", "password": "clave123456"})
+    target_response = client.post("/api/auth/register", json={"username": "target_portrait", "password": "clave123456"})
+    assert admin_response.status_code in {200, 201}
+    assert target_response.status_code in {200, 201}
+    admin_token = admin_response.json()["token"]
+    seen = {}
+
+    async def fake_generate(event_type, facts, **kwargs):
+        seen.update({"event_type": event_type, "facts": facts, **kwargs})
+        return {"text": "Lectura administrada.", "provider": "cloudflare", "latencyMs": 8.0}
+
+    monkeypatch.setattr(admin_api, "generate_narrative", fake_generate)
+    response = client.post(
+        "/api/admin/player-portrait",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"username": "target_portrait", "facts": {"total_games": 12, "record": {"wins": 7, "losses": 5}}},
+    )
+    assert response.status_code == 200
+    assert response.json()["provider"] == "cloudflare"
+    assert seen["event_type"] == "player_portrait"
+    assert seen["request_kind"] == "portrait_admin"
+    assert "target_portrait" not in str(seen["facts"])
+
+
+def test_admin_player_portrait_rejects_anonymous():
+    assert raw_client.post("/api/admin/player-portrait", json={"username": "x", "facts": {}}).status_code == 401

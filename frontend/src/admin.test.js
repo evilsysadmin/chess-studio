@@ -39,3 +39,16 @@ describe('admin account deletion', () => {
     await expect(deleteAdminUser('admin')).rejects.toThrow('No puedes borrar tu propia cuenta.');
   });
 });
+
+describe('admin player reanalysis', () => {
+  it('usa endpoint admin y no el narrative público para saltarse cooldowns', async () => {
+    const { reanalyzeAdminUser } = await import('./admin.js');
+    global.fetch.mockResolvedValue(response(200, { username: 'bob', text: 'lectura', provider: 'cloudflare' }));
+    const result = await reanalyzeAdminUser('bob', { total_games: 12 });
+    expect(result.text).toBe('lectura');
+    const [url, options] = global.fetch.mock.calls.at(-1);
+    expect(url).toContain('/admin/player-portrait');
+    expect(JSON.parse(options.body)).toEqual({ username: 'bob', facts: { total_games: 12 } });
+    expect(options.headers.Authorization).toBe('Bearer admin-token');
+  });
+});

@@ -24,3 +24,11 @@ export function deleteAdminUser(username) {
     body: JSON.stringify({ username }),
   });
 }
+
+export function reanalyzeAdminUser(username, facts) {
+  return requestJson(`${BASE_URL}/admin/player-portrait`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ username, facts }),
+  });
+}

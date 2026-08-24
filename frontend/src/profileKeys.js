@@ -55,6 +55,8 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-voice-enabled',
   'chess-study-mechanic-tutorial-progress-v1',
   'chess-study-zen-mode',
+  'chess-study-default-time-control',
+  'chess-study-ui-language',
 ]);
 
 export const PROFILE_STORAGE_KEYS = Object.freeze([
