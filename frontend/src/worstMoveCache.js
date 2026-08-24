@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 // worstMoveCache.js — Cachea el resultado de analizar cada partida/batalla
@@ -14,7 +15,7 @@ const KEY = 'chess-study-worst-move-cache';
 
 export function loadWorstMoveCache() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};

@@ -1,4 +1,8 @@
+import { useEffect, useMemo, useState } from 'react';
 import { combatVeteranHighlight } from '../combatDebrief.js';
+import { getToken } from '../auth.js';
+import { requestRemoteNarrative } from '../narrativeRemote.js';
+import { buildCombatDebriefDossier } from '../aiNarrativeTasks.js';
 
 
 const PIECE = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
@@ -11,6 +15,27 @@ function outcomeTitle(outcome) {
 }
 
 export default function CombatDebrief({ debrief, compact = false, onViewBattle = null, nextAction = null }) {
+  const [aiDebrief, setAiDebrief] = useState(null);
+  const [aiDebriefLoading, setAiDebriefLoading] = useState(false);
+  const aiDossier = useMemo(() => buildCombatDebriefDossier(debrief), [debrief]);
+  const aiFactsKey = JSON.stringify(aiDossier?.facts || {});
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token || !aiDossier) {
+      setAiDebrief(null);
+      return undefined;
+    }
+    let active = true;
+    setAiDebriefLoading(true);
+    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 }).then((text) => {
+      if (!active) return;
+      setAiDebrief(text || null);
+      setAiDebriefLoading(false);
+    });
+    return () => { active = false; };
+  }, [aiFactsKey]);
+
   if (!debrief) return null;
   const fallen = debrief.units.filter((unit) => unit.fallen);
   const promoted = debrief.units.filter((unit) => unit.promoted);
@@ -32,6 +57,13 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
         <span><b>{debrief.combatXpGained > 0 ? `+${debrief.combatXpGained}` : '0'}</b><small>XP combate</small></span>
         <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
       </div>
+
+      {(aiDebriefLoading || aiDebrief) && (
+        <div className={`ai-task-card combat-ai-debrief ${aiDebriefLoading ? 'is-loading' : ''}`} aria-live="polite">
+          <small>CPU // DEBRIEFING AI{aiDebrief ? ' · WORKERS AI' : ''}</small>
+          <p>{aiDebrief || 'Recontando bajas. Hasta aquí las matemáticas siguen colaborando…'}</p>
+        </div>
+      )}
 
       {veteranHighlight && (
         <article className="combat-veteran-highlight" aria-label="Veterano destacado">

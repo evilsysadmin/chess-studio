@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // combatHistory.js — Historial de batallas del Modo Combate, para poder
@@ -17,7 +18,7 @@ const MAX_RECORDS = 25;
 
 export function loadCombatHistory() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];

@@ -3,7 +3,7 @@
 
 const FILES = ['a','b','c','d','e','f','g','h'];
 const RANKS = ['1','2','3','4','5','6','7','8'];
-export const BOARD_SQUARES = RANKS.flatMap((rank) => FILES.map((file) => `${file}${rank}`));
+const BOARD_SQUARES = RANKS.flatMap((rank) => FILES.map((file) => `${file}${rank}`));
 
 function humanMover(record, index) {
   const mover = index % 2 === 0 ? 'w' : 'b';

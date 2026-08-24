@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   campaignIntelBriefing,
   nextCampaignIntelTier,
@@ -6,11 +6,35 @@ import {
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
+import { getToken } from '../auth.js';
+import { requestRemoteNarrative } from '../narrativeRemote.js';
+import { buildCombatBriefingDossier } from '../aiNarrativeTasks.js';
 
 export default function CampaignBriefing({ campaign, node, armySummary, onBuyIntel, onContinue, onRetire }) {
   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
   const nextTier = useMemo(() => nextCampaignIntelTier(campaign, node?.id), [campaign, node]);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
+  const [aiBriefing, setAiBriefing] = useState(null);
+  const [aiBriefingLoading, setAiBriefingLoading] = useState(false);
+  const aiDossier = useMemo(() => buildCombatBriefingDossier({ campaign, node, intel, armySummary }), [campaign?.operationalCredits, node, intel, armySummary?.assignedCount, armySummary?.totalSlots]);
+  const aiFactsKey = JSON.stringify(aiDossier?.facts || {});
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token || !aiDossier) {
+      setAiBriefing(null);
+      return undefined;
+    }
+    let active = true;
+    setAiBriefingLoading(true);
+    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 }).then((text) => {
+      if (!active) return;
+      setAiBriefing(text || null);
+      setAiBriefingLoading(false);
+    });
+    return () => { active = false; };
+  }, [aiFactsKey]);
+
   if (!node || !intel) return null;
   const canBuy = nextTier && campaign.operationalCredits >= nextTier.cost;
 
@@ -39,6 +63,13 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
         <strong>{intel.modifierLabel}</strong>
         <p>{intel.modifierDescription}</p>
       </div>
+
+      {(aiBriefingLoading || aiBriefing) && (
+        <div className={`ai-task-card combat-ai-briefing ${aiBriefingLoading ? 'is-loading' : ''}`} aria-live="polite">
+          <small>CPU // BRIEFING AI{aiBriefing ? ' · WORKERS AI' : ''}</small>
+          <p>{aiBriefing || 'Procesando la inteligencia sin añadir tanques imaginarios…'}</p>
+        </div>
+      )}
 
       <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
         <div>

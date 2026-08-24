@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // Hoja de servicio de Combate.
@@ -14,7 +15,7 @@ const TOWER_COMPLETED_KEY = 'chess-study-roguelike-tower-completed';
 const ROSTER_KEY = 'chess-study-combat-roster';
 const MAX_PROCESSED_IDS = 160;
 
-export const COMBAT_RANKS = [
+const COMBAT_RANKS = [
   { id: 'recruit', label: 'Recluta', insignia: '·', minMerit: 0, eligible: () => true },
   { id: 'soldier', label: 'Soldado', insignia: 'Ⅰ', minMerit: 8, eligible: (s) => s.wins >= 1 },
   { id: 'corporal', label: 'Cabo', insignia: 'Ⅱ', minMerit: 20, eligible: (s) => s.wins >= 3 },
@@ -119,7 +120,7 @@ function normalizeRecord(raw) {
 
 function safeJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getStorageItem(STORAGE_LOCAL, key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
@@ -195,8 +196,8 @@ function migrateLegacyRecord() {
   stats.maxVeteranPieces = rosterPieces.filter((piece) => piece?.alive !== false && ((piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) >= 1).length;
   stats.maxElitePieces = rosterPieces.filter((piece) => piece?.alive !== false && (1 + (piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) >= 6).length;
 
-  const legacyBestFloor = Math.max(0, Number.parseInt(localStorage.getItem(BEST_FLOOR_KEY) || '0', 10) || 0);
-  const towerCompleted = localStorage.getItem(TOWER_COMPLETED_KEY) === '1';
+  const legacyBestFloor = Math.max(0, Number.parseInt(getStorageItem(STORAGE_LOCAL, BEST_FLOOR_KEY) || '0', 10) || 0);
+  const towerCompleted = getStorageItem(STORAGE_LOCAL, TOWER_COMPLETED_KEY) === '1';
   // `bestFloor` histórico significa "piso alcanzado", no necesariamente ganado.
   // Para no regalar méritos, sólo damos por superado `bestFloor - 1`, salvo que
   // exista la marca explícita de Torre completada.
@@ -290,7 +291,7 @@ export function summarizeCombatService(record) {
 
 export function loadCombatService() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     if (raw) return normalizeRecord(JSON.parse(raw));
   } catch {
     // Cae a migración conservadora.

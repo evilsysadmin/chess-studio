@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { perkById } from './roguelikePerks.js';
 
@@ -52,7 +53,7 @@ function normalizeRun(parsed) {
 
 export function loadRun() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     if (!raw) return defaultRun();
     return normalizeRun(JSON.parse(raw));
   } catch {
@@ -112,7 +113,7 @@ export function continueIntoEndless(run) {
 }
 
 export function loadTowerCompleted() {
-  return localStorage.getItem(COMPLETED_KEY) === '1';
+  return getStorageItem(STORAGE_LOCAL, COMPLETED_KEY) === '1';
 }
 
 export function endRun(run) {
@@ -123,7 +124,7 @@ export function endRun(run) {
 }
 
 export function loadBestFloor() {
-  const raw = localStorage.getItem(BEST_FLOOR_KEY);
+  const raw = getStorageItem(STORAGE_LOCAL, BEST_FLOOR_KEY);
   const n = raw ? Number.parseInt(raw, 10) : 0;
   return Number.isFinite(n) ? n : 0;
 }

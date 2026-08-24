@@ -37,14 +37,6 @@ function levelFromSaved(piece) {
   return 1 + Math.max(0, Number(piece?.strengthPoints) || 0) + Math.max(0, Number(piece?.speedPoints) || 0);
 }
 
-function originRosterKey(piece) {
-  const parts = String(piece?.id || '').split('-');
-  const type = parts[1];
-  const startSquare = parts[2];
-  if (!type || !startSquare) return null;
-  return `${type}-${startSquare[0]}`;
-}
-
 export function deploymentUnlockStatus(key, saved, unitRecord = null) {
   const original = String(key || '').split('-')[0];
   const level = levelFromSaved(saved);
@@ -97,27 +89,4 @@ export function setRosterDeploymentType(rosterState, key, targetType) {
     ...rosterState,
     pieces: { ...rosterState.pieces, [key]: { ...saved, deploymentType, metamorphosis: undefined } },
   };
-}
-
-export function applyRosterMetamorphosesToPosition(chess, registry, rosterState, humanColor) {
-  const next = { ...registry };
-  for (const [square, piece] of Object.entries(registry || {})) {
-    if (!piece || piece.color !== humanColor) continue;
-    const key = originRosterKey(piece);
-    const saved = key ? rosterState?.pieces?.[key] : null;
-    const targetType = saved?.deploymentType;
-    const unitRecord = key ? unitRecordForKey(rosterState, key) : null;
-    if (!targetType || !canChooseDeploymentType(key, saved, targetType, unitRecord)) continue;
-
-    const boardPiece = chess.get(square);
-    if (!boardPiece || boardPiece.color !== humanColor) continue;
-    chess.remove(square);
-    const placed = chess.put({ type: targetType, color: humanColor }, square);
-    if (!placed) {
-      chess.put(boardPiece, square);
-      continue;
-    }
-    next[square] = { ...piece, type: targetType, deploymentType: targetType };
-  }
-  return next;
 }

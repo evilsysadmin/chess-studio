@@ -42,6 +42,7 @@ from email_service import send_password_reset_email
 from request_limits import RequestBodyLimitMiddleware
 from narrative_api import build_narrative_router
 from observability import get_database_metrics, get_http_metrics, record_http_request
+from observability_history import get_history as get_observability_history, schedule_history_flush
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -134,6 +135,7 @@ async def log_request_with_user(request: Request, call_next):
         route_obj = request.scope.get("route")
         route_pattern = getattr(route_obj, "path", None) or "unmatched"
         record_http_request(request.method, route_pattern, status_code, elapsed_ms)
+        schedule_history_flush()
         if not raised:
             username = _request_username(request)
             if username == "-":
@@ -444,13 +446,6 @@ def _password_reset_link(token: str) -> str:
 # `INVITE_CODE` puede gatear las altas y `ALLOW_REGISTRATION` cerrarlas por
 # completo. Login/registro y el flujo de reset son las rutas de identidad que
 # necesariamente son públicas.
-
-def get_current_user_optional(authorization: Optional[str] = None) -> Optional[str]:
-    """No se usa como Depends() de FastAPI directo -- ver get_current_user
-    más abajo, que sí lo es. Esta versión queda para tests/uso directo."""
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    return verify_token(authorization[len("Bearer "):])
 
 
 async def _touch_activity_best_effort(username: str, *, force: bool = False) -> None:
@@ -1182,10 +1177,19 @@ async def submit_feedback(request: Request, body: FeedbackRequest, username: str
 
 
 @app.get("/api/admin/observability")
-async def admin_observability(username: str = Depends(require_admin)):
+async def admin_observability(
+    from_time: Optional[str] = None,
+    to_time: Optional[str] = None,
+    username: str = Depends(require_admin),
+):
+    try:
+        history = await get_observability_history(from_time, to_time)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return {
         "http": get_http_metrics(),
         "database": await get_database_metrics(),
+        "history": history,
     }
 
 

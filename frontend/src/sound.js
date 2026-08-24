@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, setStorageItem, removeStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
@@ -58,7 +59,7 @@ const DEFAULT_AMBIENT_THEME = 'andalus';
 export const AMBIENT_INTER_TRACK_SILENCE_MS = 700;
 const ANDALUS_TRACK_DURATION_MS = 240000;
 
-export function setMusicMuted(muted) {
+function setMusicMuted(muted) {
   writeMusicMuted(muted);
   // Mute y transporte son cosas distintas: silenciar no reinicia ni pausa el
   // tema. Los secuenciadores siguen avanzando en silencio y al desmutear se
@@ -120,9 +121,8 @@ function currentOffset(theme) {
 
 
 function readMusicIdSet(key) {
-  if (typeof localStorage === 'undefined') return new Set();
   try {
-    const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, key) || '[]');
     return new Set(Array.isArray(parsed) ? parsed.filter((id) => AMBIENT_THEMES[id]) : []);
   } catch {
     return new Set();
@@ -136,8 +136,8 @@ function writeMusicIdSet(key, values) {
   return new Set(valid);
 }
 
-export function getAmbientFavorites() { return readMusicIdSet(MUSIC_FAVORITES_KEY); }
-export function getAmbientExcluded() { return readMusicIdSet(MUSIC_EXCLUDED_KEY); }
+function getAmbientFavorites() { return readMusicIdSet(MUSIC_FAVORITES_KEY); }
+function getAmbientExcluded() { return readMusicIdSet(MUSIC_EXCLUDED_KEY); }
 export function isAmbientFavorite(themeId) { return getAmbientFavorites().has(themeId); }
 export function isAmbientExcluded(themeId) { return getAmbientExcluded().has(themeId); }
 
@@ -162,8 +162,7 @@ export function toggleAmbientExcluded(themeId) {
 }
 
 export function getAmbientRadioMode() {
-  if (typeof localStorage === 'undefined') return 'all';
-  const value = localStorage.getItem(MUSIC_RADIO_MODE_KEY) || 'all';
+  const value = getStorageItem(STORAGE_LOCAL, MUSIC_RADIO_MODE_KEY) || 'all';
   if (['all', 'favorites', 'focus'].includes(value)) return value;
   if (value.startsWith('genre:') && AMBIENT_GENRE_ORDER.includes(value.slice(6))) return value;
   return 'all';
@@ -290,17 +289,16 @@ export function pickRandomAmbientThemeId(excludeId = null) {
 
 export function resetAmbientThemeForSession() {
   const nextId = pickRandomAmbientThemeId();
-  if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+  setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, nextId);
   // V15.4: el tema ya NO forma parte del perfil persistente. Borramos la
   // preferencia histórica local para que un login nuevo no herede la pista
   // que eligió el usuario en una sesión anterior.
-  if (typeof localStorage !== 'undefined') localStorage.removeItem(LEGACY_AMBIENT_THEME_KEY);
+  removeStorageItem(STORAGE_LOCAL, LEGACY_AMBIENT_THEME_KEY);
   return nextId;
 }
 
 export function getAmbientThemeId() {
-  if (typeof sessionStorage === 'undefined') return DEFAULT_AMBIENT_THEME;
-  const saved = sessionStorage.getItem(AMBIENT_THEME_SESSION_KEY);
+  const saved = getStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY);
   if (AMBIENT_THEMES[saved] && !CURATED_HIDDEN_THEME_IDS.has(saved)) return saved;
   return resetAmbientThemeForSession();
 }
@@ -362,7 +360,7 @@ export function setAmbientTheme(themeId) {
   const nextId = AMBIENT_THEMES[themeId] && !CURATED_HIDDEN_THEME_IDS.has(themeId) ? themeId : DEFAULT_AMBIENT_THEME;
   const previousStatus = ambientTransport.status;
   stopAmbientMusic();
-  if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+  setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, nextId);
   ambientTransport.themeId = nextId;
 
   if (previousStatus === 'playing' || previousStatus === 'gap') {
@@ -562,7 +560,7 @@ function finishAmbientTrackNaturally() {
     if (ambientTransport.status !== 'gap') return;
     const nextId = queuedAmbientThemeId || pickRandomAmbientThemeId(finishedThemeId);
     queuedAmbientThemeId = null;
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+    setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, nextId);
     ambientTransport.status = 'stopped';
     ambientTransport.themeId = nextId;
     ambientTransport.positionMs = 0;
@@ -1558,7 +1556,7 @@ export function startAmbientMusic() {
     const previousThemeId = ambientTransport.themeId || getAmbientThemeId();
     const nextId = queuedAmbientThemeId || pickRandomAmbientThemeId(previousThemeId);
     queuedAmbientThemeId = null;
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+    setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, nextId);
     ambientTransport.status = 'stopped';
     ambientTransport.themeId = nextId;
     ambientTransport.positionMs = 0;
@@ -1676,7 +1674,7 @@ export function pauseAmbientMusic() {
     const previousThemeId = ambientTransport.themeId || getAmbientThemeId();
     const nextId = queuedAmbientThemeId || pickRandomAmbientThemeId(previousThemeId);
     queuedAmbientThemeId = null;
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, nextId);
+    setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, nextId);
     ambientTransport.status = 'paused';
     ambientTransport.themeId = nextId;
     ambientTransport.positionMs = 0;
@@ -1710,10 +1708,10 @@ export function stopAmbientMusic() {
   ambientTransport.status = 'stopped';
   ambientTransport.positionMs = 0;
   ambientTransport.startedAtMs = 0;
-  if (wasGap && queuedTheme && typeof sessionStorage !== 'undefined') {
+  if (wasGap && queuedTheme) {
     // Si se pulsa Stop justo durante el silencio, dejamos preparada la pista
     // que ya estaba sorteada. El siguiente Play no repite la recién terminada.
-    sessionStorage.setItem(AMBIENT_THEME_SESSION_KEY, queuedTheme);
+    setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, queuedTheme);
   }
   ambientTransport.themeId = getAmbientThemeId();
   keyCenterIndex = 0; // vuelve a empezar en la tónica la próxima vez, no donde quedó

@@ -23,6 +23,7 @@ WORKFLOW = ROOT / ".github/workflows/terraform-cloudflare.yml"
 
 EXPECTED_COMMENT_MODEL = "@cf/meta/llama-3.2-3b-instruct"
 EXPECTED_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
+EXPECTED_ANALYSIS_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
 
 
 def require(text: str, needle: str, label: str, errors: list[str]) -> None:
@@ -48,6 +49,8 @@ def static_check() -> list[str]:
         'timingSafeHexEqual',
         'MAX_BODY_BYTES',
         'normalizeUsage',
+        'firstChoice?.message?.content',
+        'error_name: errorName',
         'usage: normalizeUsage(result)',
         '"/health"',
     ):
@@ -55,6 +58,7 @@ def static_check() -> list[str]:
 
     require(worker, EXPECTED_COMMENT_MODEL, "worker comment model", errors)
     require(worker, EXPECTED_PORTRAIT_MODEL, "worker portrait model", errors)
+    require(worker, EXPECTED_ANALYSIS_MODEL, "worker analysis model", errors)
     require(worker, "modelFor(eventType)", "worker model routing", errors)
     for voice_rule in (
         "Tutea siempre",
@@ -69,6 +73,11 @@ def static_check() -> list[str]:
         "PLAYER_PORTRAIT_GENERATION",
         "temperature: 0.60",
         "max_tokens: 180",
+        "post_game_autopsy",
+        "combat_briefing",
+        "combat_debrief",
+        "observability_summary",
+        "ANALYSIS_GENERATION",
     ):
         require(worker, voice_rule, "worker shared voice", errors)
     require(worker, "friendly_sarcastic", "worker tone", errors)
@@ -146,6 +155,8 @@ def live_health(worker_url: str) -> list[str]:
                 errors.append(f"health: routing comments inesperado {models.get('comments')!r}")
             if models.get("player_portrait") != EXPECTED_PORTRAIT_MODEL:
                 errors.append(f"health: routing player_portrait inesperado {models.get('player_portrait')!r}")
+            if models.get("analysis") != EXPECTED_ANALYSIS_MODEL:
+                errors.append(f"health: routing analysis inesperado {models.get('analysis')!r}")
     except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
         errors.append(f"health: no se pudo verificar {url}: {exc}")
     return errors
@@ -170,6 +181,7 @@ def main() -> int:
     print(f"Cloudflare Workers AI preflight: OK ({mode})")
     print(f"comments_model={EXPECTED_COMMENT_MODEL}")
     print(f"portrait_model={EXPECTED_PORTRAIT_MODEL}")
+    print(f"analysis_model={EXPECTED_ANALYSIS_MODEL}")
     return 0
 
 

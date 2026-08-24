@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { perkById, rewardOptionsForFloor } from './roguelikePerks.js';
 import { ROGUELIKE_MODIFIERS, seededUnit } from './roguelikeModifiers.js';
@@ -15,10 +16,10 @@ const OPERATION_ARCHIVE_KEY = 'chess-study-combat-operation-archive-v1';
 const TOWER_COMPLETED_KEY = 'chess-study-roguelike-tower-completed';
 const BEST_FLOOR_KEY = 'chess-study-roguelike-best-floor';
 
-export const CAMPAIGN_VERSION = 3;
-export const CAMPAIGN_BOSS_STAGE = 7;
+const CAMPAIGN_VERSION = 3;
+const CAMPAIGN_BOSS_STAGE = 7;
 
-export const CAMPAIGN_INTEL_TIERS = Object.freeze([
+const CAMPAIGN_INTEL_TIERS = Object.freeze([
   { level: 0, label: 'Sin reconocimiento', cost: 0 },
   { level: 1, label: 'Contacto', cost: 3 },
   { level: 2, label: 'Evaluación', cost: 5 },
@@ -28,7 +29,7 @@ export const CAMPAIGN_INTEL_TIERS = Object.freeze([
 const CAMPAIGN_STARTING_CREDITS = 6;
 const BATTLE_CREDIT_REWARD = Object.freeze({ battle: 4, elite: 7, boss: 12 });
 
-export const CAMPAIGN_RELICS = Object.freeze([
+const CAMPAIGN_RELICS = Object.freeze([
   { id: 'fieldCipher', icon: '⌁', label: 'Cifrador de campaña', description: 'La inteligencia cuesta 2 créditos menos (mínimo 1).' },
   { id: 'forwardObserver', icon: '⌖', label: 'Óptica del observador', description: 'Al seleccionar un combate obtienes Contacto automáticamente.' },
   { id: 'quartermasterSeal', icon: '▣', label: 'Sello de intendencia', description: 'Cada victoria de campaña entrega +2 créditos operativos.' },
@@ -50,7 +51,7 @@ function clampIntelLevel(level) {
   return Math.max(0, Math.min(3, Math.floor(Number(level) || 0)));
 }
 
-export function campaignIntelLevel(state, nodeId = state?.selectedNodeId) {
+function campaignIntelLevel(state, nodeId = state?.selectedNodeId) {
   return clampIntelLevel(state?.intelligenceByNode?.[nodeId]);
 }
 
@@ -312,7 +313,7 @@ function saveCampaign(state) {
 
 export function loadCampaign() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     return raw ? normalizeCampaign(JSON.parse(raw)) : emptyCampaign();
   } catch {
     return emptyCampaign();
@@ -388,8 +389,8 @@ export function markCampaignBattleWon(state) {
     ].slice(-30),
   };
   if (node.type === 'boss') {
-    localStorage.setItem(TOWER_COMPLETED_KEY, '1');
-    const bestFloor = Math.max(10, Number.parseInt(localStorage.getItem(BEST_FLOOR_KEY) || '0', 10) || 0);
+    setProfileStorageItem(TOWER_COMPLETED_KEY, '1');
+    const bestFloor = Math.max(10, Number.parseInt(getStorageItem(STORAGE_LOCAL, BEST_FLOOR_KEY) || '0', 10) || 0);
     setProfileStorageItem(BEST_FLOOR_KEY, String(bestFloor));
     setProfileStorageItem(BEST_STAGE_KEY, String(CAMPAIGN_BOSS_STAGE));
     return markNodeCleared(credited, { phase: 'completed', nextDifficultyDelta: 0 });
@@ -424,7 +425,7 @@ export function chooseCampaignReward(state, perkId) {
   });
 }
 
-export function campaignEventArchetype(node) {
+function campaignEventArchetype(node) {
   const label = String(node?.label || '').toLowerCase();
   if (label.includes('radio')) return 'radio';
   if (label.includes('depósito')) return 'depot';
@@ -503,7 +504,7 @@ export function campaignDifficulty(state, node = campaignNode(state)) {
 
 export function loadCampaignArchive() {
   try {
-    const raw = JSON.parse(localStorage.getItem(OPERATION_ARCHIVE_KEY) || '[]');
+    const raw = JSON.parse(getStorageItem(STORAGE_LOCAL, OPERATION_ARCHIVE_KEY) || '[]');
     return Array.isArray(raw) ? raw.slice(0, 12) : [];
   } catch { return []; }
 }
@@ -541,7 +542,7 @@ export function endCampaign(state, reason = 'retired') {
 }
 
 export function loadCampaignBestStage() {
-  const n = Number.parseInt(localStorage.getItem(BEST_STAGE_KEY) || '0', 10) || 0;
+  const n = Number.parseInt(getStorageItem(STORAGE_LOCAL, BEST_STAGE_KEY) || '0', 10) || 0;
   return Math.max(0, Math.min(CAMPAIGN_BOSS_STAGE, n));
 }
 

@@ -753,7 +753,7 @@ export default function GameScreen({
           {renderClock(topColor, topTime)}
           <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
             <aside className="game-music-rail" aria-label="Música de la partida">
-              <MusicPlayer />
+              <MusicPlayer forceExpanded />
             </aside>
             <div className="game-board-stack">
               <Board

@@ -195,6 +195,12 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         return;
       }
       saveCachedPlayerPortrait(portraitGenerationKey, text);
+      if (requestKind === 'portrait_manual') {
+        // El cooldown manual se consume sólo cuando hubo una lectura real de
+        // Workers AI. Un timeout/fallback no castiga al usuario durante 6 h.
+        markPlayerPortraitManualRefresh();
+        setPortraitCooldownNow(Date.now());
+      }
       setPortraitText(text);
       setPortraitStatus('cloudflare');
     });
@@ -208,7 +214,6 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       setPortraitCooldownNow(Date.now());
       return;
     }
-    markPlayerPortraitManualRefresh();
     portraitManualRequestRef.current = true;
     setPortraitCooldownNow(Date.now());
     setPortraitRefresh((value) => value + 1);

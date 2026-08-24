@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // combatRoster.js — Progreso de TU ejército del Modo Combate ENTRE
@@ -37,7 +38,7 @@ function emptyState() {
 
 export function loadRoster() {
   try {
-    const raw = localStorage.getItem(ROSTER_KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, ROSTER_KEY);
     if (!raw) {
       const fresh = emptyState();
       saveRoster(fresh);

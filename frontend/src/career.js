@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 const CAREER_KEY = 'chess-study-career';
@@ -32,7 +33,7 @@ function blank() {
 }
 export function loadCareer() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(CAREER_KEY) || '{}');
+    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, CAREER_KEY) || '{}');
     return {
       ...blank(), ...parsed,
       records: { ...blank().records, ...(parsed?.records || {}) },
@@ -44,7 +45,7 @@ export function loadCareer() {
     };
   } catch { return blank(); }
 }
-export function saveCareer(state) { setProfileStorageItem(CAREER_KEY, JSON.stringify(state)); return state; }
+function saveCareer(state) { setProfileStorageItem(CAREER_KEY, JSON.stringify(state)); return state; }
 function milestone(state, text, type='record', meta={}) {
   return { ...state, milestones: [{ id:`${Date.now()}-${Math.random().toString(36).slice(2,6)}`, date:new Date().toISOString(), type, text, ...meta }, ...(state.milestones||[])].slice(0,120) };
 }
@@ -77,7 +78,7 @@ export function chooseContract({ gameCount = 0, incidents = {} } = {}) {
   return { ...pool[gameCount % pool.length], offeredAt: new Date().toISOString() };
 }
 export function saveActiveContract(c) { if (c) setProfileStorageItem(CONTRACT_KEY, JSON.stringify(c)); }
-export function loadActiveContract() { try { return JSON.parse(localStorage.getItem(CONTRACT_KEY) || 'null'); } catch { return null; } }
+export function loadActiveContract() { try { return JSON.parse(getStorageItem(STORAGE_LOCAL, CONTRACT_KEY) || 'null'); } catch { return null; } }
 export function clearActiveContract() { removeProfileStorageItem(CONTRACT_KEY); }
 
 function contractResult(contract, record, meta={}) {
@@ -188,9 +189,9 @@ export function startSpecialRun(mode='streak') {
       : {...baseRun,difficulty:30};
   return saveSpecialRun(run);
 }
-export function loadSpecialRun(){try{return JSON.parse(localStorage.getItem(RUN_KEY)||'null');}catch{return null;}}
+export function loadSpecialRun(){try{return JSON.parse(getStorageItem(STORAGE_LOCAL, RUN_KEY)||'null');}catch{return null;}}
 export function saveSpecialRun(run){ if(run) setProfileStorageItem(RUN_KEY,JSON.stringify(run)); return run; }
-export function clearSpecialRun(){ removeProfileStorageItem(RUN_KEY); return null; }
+function clearSpecialRun(){ removeProfileStorageItem(RUN_KEY); return null; }
 function persistRun(run){ if(run?.active)saveSpecialRun(run); else clearSpecialRun(); return run; }
 export function recordSpecialRunResult(run,outcome){
   if(!run?.active)return run;
@@ -224,7 +225,7 @@ export function recordPuzzleRush(score){let s=loadCareer();const prev=s.records?
 
 export function unlockedBoardThemes(career=loadCareer()) { return BOARD_THEMES.filter((t)=>t.unlock(career)); }
 export function loadBoardTheme() {
-  const id=localStorage.getItem(BOARD_THEME_KEY)||'classic';
+  const id=getStorageItem(STORAGE_LOCAL, BOARD_THEME_KEY)||'classic';
   const allowed=new Set(unlockedBoardThemes().map((t)=>t.id));
   return allowed.has(id)?id:'classic';
 }

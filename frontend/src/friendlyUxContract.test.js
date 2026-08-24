@@ -124,6 +124,10 @@ describe('STATIC CONTRACT · UX friendly-by-default', () => {
     expect(music).toContain('music-deck-collapsed');
     expect(music).toContain('aria-label="Abrir reproductor de música"');
     expect(music).toContain('aria-label="Plegar reproductor de música"');
+    expect(music).toContain('forceExpanded = false');
+    expect(music).toContain('if (forceExpanded) setExpanded(true)');
+    expect(read('GameScreen.jsx')).toContain('<MusicPlayer forceExpanded />');
+    expect(read('CombatBattleView.jsx')).toContain('<MusicPlayer forceExpanded />');
   });
 
   it('las pantallas pesadas y el audio se cargan bajo demanda', () => {

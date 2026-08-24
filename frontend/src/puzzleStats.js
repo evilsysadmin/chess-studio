@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 // puzzleStats.js — Cuántos puzzles resolviste en total, de por vida (no solo
@@ -9,7 +10,7 @@ import { setProfileStorageItem } from './profileKeys.js';
 const KEY = 'chess-study-puzzles-solved';
 
 export function loadPuzzlesSolved() {
-  const raw = localStorage.getItem(KEY);
+  const raw = getStorageItem(STORAGE_LOCAL, KEY);
   const n = raw ? parseInt(raw, 10) : 0;
   return Number.isFinite(n) ? n : 0;
 }
@@ -28,13 +29,13 @@ const STREAK_KEY = 'chess-study-puzzle-streak';
 const BEST_STREAK_KEY = 'chess-study-puzzle-best-streak';
 
 export function loadPuzzleStreak() {
-  const raw = localStorage.getItem(STREAK_KEY);
+  const raw = getStorageItem(STORAGE_LOCAL, STREAK_KEY);
   const n = raw ? parseInt(raw, 10) : 0;
   return Number.isFinite(n) ? n : 0;
 }
 
 export function loadBestPuzzleStreak() {
-  const raw = localStorage.getItem(BEST_STREAK_KEY);
+  const raw = getStorageItem(STORAGE_LOCAL, BEST_STREAK_KEY);
   const n = raw ? parseInt(raw, 10) : 0;
   return Number.isFinite(n) ? n : 0;
 }

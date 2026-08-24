@@ -16,6 +16,12 @@ describe('AI portrait + shared narrative voice', () => {
     expect(insights.indexOf('↻ Analizarme de nuevo')).toBeLessThan(insights.indexOf('<details className="friendly-disclosure ai-player-portrait-details">'));
     expect(insights).toContain("requestKind,");
     expect(insights).toContain("'portrait_manual'");
+    const manualSuccess = insights.indexOf("if (requestKind === 'portrait_manual')");
+    const cooldownCommit = insights.indexOf('markPlayerPortraitManualRefresh()', manualSuccess);
+    const freshHandler = insights.indexOf('function requestFreshPortrait()');
+    expect(manualSuccess).toBeGreaterThan(-1);
+    expect(cooldownCommit).toBeGreaterThan(manualSuccess);
+    expect(insights.slice(freshHandler, insights.indexOf('const coaching', freshHandler))).not.toContain('markPlayerPortraitManualRefresh()');
   });
 
   it('el contrato del Worker exige tuteo y sarcasmo de buen rollo también durante partida', () => {
@@ -28,6 +34,8 @@ describe('AI portrait + shared narrative voice', () => {
     expect(worker).toContain('PLAYER_PORTRAIT_GENERATION');
     expect(worker).toContain('PLAYER_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"');
     expect(worker).toContain('modelFor(eventType)');
+    expect(worker).toContain('firstChoice?.message?.content');
+    expect(worker).toContain('error_name: errorName');
     expect(worker).toContain('temperature: 0.60');
     expect(worker).toContain('max_tokens: 180');
     expect(worker).toContain('exactamente 3 frases compactas');

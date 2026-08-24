@@ -7,6 +7,9 @@ import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, mo
 import { keyGameMoments } from '../postGameHighlights.js';
 import { glossaryEntry } from '../chessGlossary.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import { getToken } from '../auth.js';
+import { requestRemoteNarrative } from '../narrativeRemote.js';
+import { buildPostGameAutopsyDossier } from '../aiNarrativeTasks.js';
 
 const CP_GLOSSARY = glossaryEntry('cp');
 const CCT_GLOSSARY = glossaryEntry('CCT');
@@ -39,6 +42,8 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const [status, setStatus] = useState('loading');
   const [report, setReport] = useState(null);
   const [personalPuzzleInfo, setPersonalPuzzleInfo] = useState(null);
+  const [aiAutopsy, setAiAutopsy] = useState(null);
+  const [aiAutopsyStatus, setAiAutopsyStatus] = useState('idle');
   const archivedRef = useRef(false);
 
   useEffect(() => {
@@ -59,6 +64,28 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     setPersonalPuzzleInfo(info);
     if (meta.gameId) archiveAnalysis(meta.gameId, report, meta);
   }, [status, report, history, humanColor, meta]);
+
+  useEffect(() => {
+    if (status !== 'done' || !report) return undefined;
+    const token = getToken();
+    const dossier = buildPostGameAutopsyDossier(report, { ...meta, accuracy: accuracyScore(report) });
+    if (!token || !dossier) {
+      setAiAutopsyStatus('unavailable');
+      return undefined;
+    }
+    let active = true;
+    setAiAutopsyStatus('loading');
+    void requestRemoteNarrative(dossier, { token, timeoutMs: 8000 }).then((text) => {
+      if (!active) return;
+      if (text) {
+        setAiAutopsy(text);
+        setAiAutopsyStatus('done');
+      } else {
+        setAiAutopsyStatus('unavailable');
+      }
+    });
+    return () => { active = false; };
+  }, [status, report, meta.gameId]);
 
   const incidents = report?.topMistakes?.filter((m) => m.loss > 15) || [];
   const accuracy = report ? accuracyScore(report) : null;
@@ -91,6 +118,9 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
                 </article>
               ))}
             </div>
+
+            {aiAutopsyStatus === 'loading' && <div className="ai-task-card is-loading"><small>CPU // AUTOPSIA AI</small><p>Revisando las pruebas sin inventarme cadáveres adicionales…</p></div>}
+            {aiAutopsy && <div className="ai-task-card"><small>CPU // AUTOPSIA AI · WORKERS AI</small><p>{aiAutopsy}</p></div>}
 
             {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
 

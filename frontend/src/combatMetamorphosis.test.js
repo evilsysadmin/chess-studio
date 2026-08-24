@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyRosterMetamorphosesToPosition,
   deploymentUnlockStatus,
   setRosterDeploymentType,
   unlockedDeploymentTypes,
@@ -69,32 +68,5 @@ describe('metamorfosis táctica de Combate', () => {
     expect(setRosterDeploymentType(base, 'p-a', 'r')).toBe(base);
   });
 
-  it('cambia la clase del tablero pero conserva id e identidad de origen', () => {
-    const board = new Map([['a2', { type: 'p', color: 'w' }]]);
-    const chess = {
-      get: (sq) => board.get(sq) || null,
-      remove: (sq) => { const old = board.get(sq); board.delete(sq); return old; },
-      put: (piece, sq) => { board.set(sq, piece); return true; },
-    };
-    const registry = { a2: { id: 'w-p-a2', type: 'p', color: 'w', square: 'a2', alias: 'Rivas' } };
-    const service = record({ survivals: 8, kills: 5, bestSurvivalStreak: 5 });
-    const base = roster({ ...colonelPawn, deploymentType: 'b' }, service);
-    const next = applyRosterMetamorphosesToPosition(chess, registry, base, 'w');
-    expect(board.get('a2')).toEqual({ type: 'b', color: 'w' });
-    expect(next.a2).toMatchObject({ id: 'w-p-a2', type: 'b', deploymentType: 'b', alias: 'Rivas' });
-  });
 
-  it('ignora loadouts antiguos que ya no cumplen los nuevos requisitos de servicio', () => {
-    const board = new Map([['a2', { type: 'p', color: 'w' }]]);
-    const chess = {
-      get: (sq) => board.get(sq) || null,
-      remove: (sq) => { const old = board.get(sq); board.delete(sq); return old; },
-      put: (piece, sq) => { board.set(sq, piece); return true; },
-    };
-    const registry = { a2: { id: 'w-p-a2', type: 'p', color: 'w', square: 'a2' } };
-    const base = roster({ ...generalPawn, deploymentType: 'r' }, record({ battles: 20, survivals: 10, bossVictories: 0 }));
-    const next = applyRosterMetamorphosesToPosition(chess, registry, base, 'w');
-    expect(board.get('a2')).toEqual({ type: 'p', color: 'w' });
-    expect(next.a2.type).toBe('p');
-  });
 });

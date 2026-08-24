@@ -65,6 +65,7 @@ export default defineConfig({
         'src/narrativeProvider.js',
         'src/narrativeRemote.js',
         'src/aiPlayerPortrait.js',
+        'src/aiNarrativeTasks.js',
         'src/activeGameSession.js',
         'src/gameReconnect.js',
         'src/saveStatus.js',

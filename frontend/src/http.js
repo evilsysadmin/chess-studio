@@ -5,7 +5,7 @@ export async function request(url, options = {}) {
   return fetch(url, { ...rest, headers: withRequestId(headers) });
 }
 
-export async function parseJsonResponse(response) {
+async function parseJsonResponse(response) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const { message, requestId } = requestErrorMessage(response, body);

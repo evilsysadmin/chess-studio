@@ -23,6 +23,7 @@ export async function fetchAiNarrativeMetrics({ token, fetchImpl = fetch } = {})
       eventTypes: body.event_types && typeof body.event_types === 'object' ? body.event_types : {},
       requestKinds: body.request_kinds && typeof body.request_kinds === 'object' ? body.request_kinds : {},
       models: body.models && typeof body.models === 'object' ? body.models : {},
+      workerErrors: body.worker_errors && typeof body.worker_errors === 'object' ? body.worker_errors : {},
       usage: body.usage && typeof body.usage === 'object' ? {
         inputTokens: Number(body.usage.input_tokens || 0),
         outputTokens: Number(body.usage.output_tokens || 0),
@@ -40,6 +41,7 @@ export async function fetchAiNarrativeMetrics({ token, fetchImpl = fetch } = {})
         openCount: Number(circuit.open_count || 0),
         halfOpen: circuit.half_open === true,
         failureThreshold: Number(circuit.failure_threshold || 0),
+        channels: circuit.channels && typeof circuit.channels === 'object' ? circuit.channels : {},
       },
     };
   } catch {

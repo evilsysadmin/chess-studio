@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 const KEY = 'chess-study-daily-challenge';
@@ -23,7 +24,7 @@ export function dailyPuzzle(pool, date = new Date()) {
 
 export function loadDailyChallenge() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(KEY) || '{}');
+    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, KEY) || '{}');
     return { solvedDates: [], bestStreak: 0, ...parsed };
   } catch {
     return { solvedDates: [], bestStreak: 0 };

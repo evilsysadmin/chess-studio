@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 // achievements.js — Logros: condiciones simples chequeadas contra el
@@ -51,7 +52,7 @@ function emptySet() {
 
 export function loadUnlocked() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     return raw ? new Set(JSON.parse(raw)) : emptySet();
   } catch {
     return emptySet();

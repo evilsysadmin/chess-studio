@@ -2,7 +2,7 @@
 // El resto de piezas conserva 1 captura = fuera. No hay HP generalizado.
 
 export const ROGUELIKE_BOSS_FLOOR = 10;
-export const ROGUELIKE_BOSS_MAX_HP = 5;
+const ROGUELIKE_BOSS_MAX_HP = 5;
 
 export const ROGUELIKE_BOSS = {
   id: 'old_king',

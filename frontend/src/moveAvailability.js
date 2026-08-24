@@ -4,7 +4,7 @@ import { Chess } from 'chess.js';
 // puede seleccionar aunque no tenga ningún destino legal. Esto es normal en
 // ajedrez (pieza clavada, peón bloqueado, etc.), pero la UI debe decir por qué
 // en vez de quedarse muda.
-export function absolutePinReason(chess, square, color) {
+function absolutePinReason(chess, square, color) {
   if (!chess || !square) return null;
   const piece = chess.get(square);
   if (!piece || piece.color !== color || piece.type === 'k' || chess.turn() !== color) return null;

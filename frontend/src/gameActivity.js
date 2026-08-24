@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { gameModeLabel } from './gameModes.js';
 
@@ -7,7 +8,7 @@ const STATES = new Set(['started', 'cancelled', 'finished']);
 
 export function loadGameActivity() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(KEY) || '[]');
+    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, KEY) || '[]');
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];

@@ -16,7 +16,7 @@ resource "cloudflare_workers_script" "narrative_ai" {
       name         = "AI_RATE_LIMITER"
       namespace_id = var.rate_limit_namespace_id
       simple = {
-        limit  = 60
+        limit  = 300
         period = 60
       }
     }

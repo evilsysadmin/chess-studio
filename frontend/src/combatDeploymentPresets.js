@@ -1,9 +1,10 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { ensureDeploymentState, resetDeployment, setDeploymentUnit } from './combatDeployment.js';
 import { setRosterDeploymentType } from './combatMetamorphosis.js';
 
-export const COMBAT_DEPLOYMENT_PRESETS_KEY = 'chess-study-combat-deployment-presets-v1';
-export const COMBAT_DEPLOYMENT_PRESET_SLOTS = 3;
+const COMBAT_DEPLOYMENT_PRESETS_KEY = 'chess-study-combat-deployment-presets-v1';
+const COMBAT_DEPLOYMENT_PRESET_SLOTS = 3;
 
 function safeParse(raw) {
   try {
@@ -15,8 +16,7 @@ function safeParse(raw) {
 }
 
 export function loadDeploymentPresets() {
-  if (typeof localStorage === 'undefined') return [];
-  return safeParse(localStorage.getItem(COMBAT_DEPLOYMENT_PRESETS_KEY)).slice(0, COMBAT_DEPLOYMENT_PRESET_SLOTS);
+  return safeParse(getStorageItem(STORAGE_LOCAL, COMBAT_DEPLOYMENT_PRESETS_KEY)).slice(0, COMBAT_DEPLOYMENT_PRESET_SLOTS);
 }
 
 function normalizedPresetName(value, index) {

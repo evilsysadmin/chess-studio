@@ -2,10 +2,14 @@ function apiBase() {
   return String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 }
 
-export async function fetchAdminObservability({ token, fetchImpl = fetch } = {}) {
+export async function fetchAdminObservability({ token, from = null, to = null, fetchImpl = fetch } = {}) {
   if (!token) return null;
   try {
-    const response = await fetchImpl(`${apiBase()}/admin/observability`, {
+    const params = new URLSearchParams();
+    if (from) params.set('from_time', String(from));
+    if (to) params.set('to_time', String(to));
+    const suffix = params.size ? `?${params.toString()}` : '';
+    const response = await fetchImpl(`${apiBase()}/admin/observability${suffix}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) return null;
@@ -14,6 +18,32 @@ export async function fetchAdminObservability({ token, fetchImpl = fetch } = {})
   } catch {
     return null;
   }
+}
+
+export function observabilityRangeForPreset(preset = '24h', customFrom = '', customTo = '', now = new Date()) {
+  const end = new Date(now);
+  if (Number.isNaN(end.getTime())) return { from: null, to: null };
+
+  if (preset === 'custom') {
+    if (!customFrom || !customTo) return { from: null, to: null };
+    const start = new Date(`${customFrom}T00:00:00`);
+    const inclusiveEnd = new Date(`${customTo}T23:59:59.999`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(inclusiveEnd.getTime()) || inclusiveEnd <= start) {
+      return { from: null, to: null };
+    }
+    return { from: start.toISOString(), to: inclusiveEnd.toISOString() };
+  }
+
+  const durations = {
+    '24h': 24 * 60 * 60 * 1000,
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000,
+  };
+  const duration = durations[preset] || durations['24h'];
+  return {
+    from: new Date(end.getTime() - duration).toISOString(),
+    to: end.toISOString(),
+  };
 }
 
 export function summarizeAdminUsers(users = [], currentAdmin = null) {

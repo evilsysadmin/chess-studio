@@ -1,9 +1,12 @@
 const COMMENT_MODEL = "@cf/meta/llama-3.2-3b-instruct";
 const PLAYER_PORTRAIT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+const ANALYSIS_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary"]));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
 const PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900;
+const RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900;
 const SENSITIVE_FACT_KEY_PARTS = Object.freeze([
   "password", "passwd", "secret", "token", "jwt", "authorization",
   "cookie", "session", "email", "api_key", "apikey", "bearer",
@@ -31,19 +34,32 @@ const PLAYER_PORTRAIT_GENERATION = Object.freeze({
   max_tokens: 180,
 });
 
+const ANALYSIS_GENERATION = Object.freeze({
+  temperature: 0.62,
+  top_p: 0.86,
+  top_k: 20,
+  repetition_penalty: 1.08,
+  frequency_penalty: 0.10,
+  presence_penalty: 0.05,
+  max_tokens: 190,
+});
+
 function modelFor(eventType) {
-  return eventType === "player_portrait" ? PLAYER_PORTRAIT_MODEL : COMMENT_MODEL;
+  if (eventType === "player_portrait") return PLAYER_PORTRAIT_MODEL;
+  if (RICH_ANALYSIS_EVENTS.has(eventType)) return ANALYSIS_MODEL;
+  return COMMENT_MODEL;
 }
 
 function generationFor(eventType) {
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_GENERATION;
+  if (RICH_ANALYSIS_EVENTS.has(eventType)) return ANALYSIS_GENERATION;
   return { ...COMMENT_GENERATION, max_tokens: 120 };
 }
 
 function maxOutputCharsFor(eventType) {
-  return eventType === "player_portrait"
-    ? PLAYER_PORTRAIT_MAX_OUTPUT_CHARS
-    : DEFAULT_MAX_OUTPUT_CHARS;
+  if (eventType === "player_portrait") return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS;
+  if (RICH_ANALYSIS_EVENTS.has(eventType)) return RICH_ANALYSIS_MAX_OUTPUT_CHARS;
+  return DEFAULT_MAX_OUTPUT_CHARS;
 }
 
 const SYSTEM_PROMPT = `
@@ -90,6 +106,22 @@ REGLAS INVIOLABLES:
 - Si mencionas una apertura en player_portrait, copia literalmente su nombre
   tal como aparece en HECHOS. No la rebautices, no inventes variantes y no
   añadas nombres de ajedrecistas que no estén escritos explícitamente allí.
+- Para post_game_autopsy escribe exactamente 3 frases cortas: balance factual
+  de la partida, error o patrón decisivo apoyado en HECHOS y una acción concreta
+  para la siguiente partida. Incluye como máximo una pulla breve. No conviertas
+  una sola jugada en un hábito histórico ni inventes causas que HECHOS no prueben.
+- Para combat_briefing escribe exactamente 2 frases: qué amenaza real revela la
+  inteligencia y cómo debería preparar el despliegue con esos datos. Una pulla
+  seca como máximo. No inventes composición enemiga, piezas, movimientos ni
+  información que el nivel de inteligencia no haya revelado.
+- Para combat_debrief escribe 2 o 3 frases: resultado real, hecho destacado más
+  importante (bajas, veterano, ascenso, boss o supervivencia sólo si aparecen en
+  HECHOS) y, si procede, una observación práctica. No inventes heroicidades.
+- Para observability_summary escribe exactamente 3 frases: estado general, señal
+  técnica más relevante y qué conviene vigilar o revisar. Usa cifras concretas
+  de HECHOS. No afirmes tendencias, causalidad ni root cause si no hay comparación
+  o evidencia explícita. Puedes meter una sola ironía seca; esto sigue siendo un
+  diagnóstico operativo, no stand-up.
 - No llames "fortaleza", "debilidad" o "tendencia" a algo basado en una sola
   muestra si los HECHOS indican que hay pocos datos. Sé proporcional al tamaño
   de la muestra.
@@ -237,9 +269,16 @@ async function authenticatedBody(request, env) {
 }
 
 function normalizeOutput(result, maxChars = DEFAULT_MAX_OUTPUT_CHARS) {
+  // Workers AI no garantiza la misma envoltura para todos los modelos. Los
+  // Llama clásicos suelen devolver { response }, mientras Qwen3 usa la forma
+  // chat-completions { choices:[{ message:{ content } }] }. Aceptamos ambas
+  // para que cambiar de modelo no convierta una respuesta válida en fallback.
+  const firstChoice = result?.choices?.[0] ?? result?.result?.choices?.[0];
   const text =
     result?.response ??
     result?.result?.response ??
+    firstChoice?.message?.content ??
+    firstChoice?.text ??
     result?.text ??
     "";
 
@@ -281,20 +320,33 @@ async function handleNarrative(request, env) {
   if (auth.error) return auth.error;
 
   const body = auth.body || {};
+  const eventType = sanitizeString(body.event_type || body.eventType || "generic", 48);
 
-  const rate = await env.AI_RATE_LIMITER.limit({ key: "render-narrative" });
+  // Render ya aplica límite por usuario. Este segundo cinturón protege el
+  // binding AI, pero separa retratos y comentarios para que un lote de una
+  // tarea no silencie la otra.
+  const rateKey = eventType === "player_portrait"
+    ? "render-player-portrait"
+    : RICH_ANALYSIS_EVENTS.has(eventType)
+      ? "render-analysis"
+      : "render-comments";
+  const rate = await env.AI_RATE_LIMITER.limit({ key: rateKey });
   if (!rate.success) {
     return json({ ok: false, error: "rate_limited" }, 429);
   }
 
-  const eventType = sanitizeString(body.event_type || body.eventType || "generic", 48);
   const locale = sanitizeString(body.locale || "es-ES", 16);
   const tone = sanitizeString(body.tone || "friendly_sarcastic", 32);
   const facts = sanitizeFacts(body.facts || {});
 
-  const task = eventType === "player_portrait"
-    ? "Diagnostica el juego con datos: acierto principal, problema principal y siguiente acción. Mantén una sola pulla breve. Nada de adornos."
-    : "Escribe el comentario ahora usando exclusivamente esos hechos.";
+  const tasks = {
+    player_portrait: "Diagnostica el juego con datos: acierto principal, problema principal y siguiente acción. Mantén una sola pulla breve. Nada de adornos.",
+    post_game_autopsy: "Haz la autopsia compacta de esta partida usando sólo los hechos analizados. Explica, no adornes.",
+    combat_briefing: "Redacta un briefing táctico corto usando sólo la inteligencia realmente disponible y termina con una preparación concreta.",
+    combat_debrief: "Redacta un debriefing corto usando sólo el resultado y hechos de servicio registrados.",
+    observability_summary: "Resume la salud técnica del rango con cifras dadas, señala lo más importante y qué revisar; no inventes tendencias ni causas.",
+  };
+  const task = tasks[eventType] || "Escribe el comentario ahora usando exclusivamente esos hechos.";
 
   const userPrompt = [
     `TIPO_DE_EVENTO: ${eventType}`,
@@ -317,15 +369,37 @@ async function handleNarrative(request, env) {
       ...generationFor(eventType),
     });
   } catch (error) {
+    const errorName = sanitizeString(error?.name || "Error", 48);
+    const errorCode = sanitizeString(error?.code || "", 48);
     console.error("workers_ai_failed", {
-      name: error?.name || "Error",
+      eventType,
+      model,
+      name: errorName,
+      code: errorCode || undefined,
       message: sanitizeString(error?.message || "unknown", 180),
     });
-    return json({ ok: false, error: "provider_failure" }, 502);
+    // FastAPI necesita saber qué clase de fallo hubo para diagnosticar el
+    // fallback desde Render, pero no devolvemos el message: podría contener
+    // detalles internos del proveedor.
+    return json({
+      ok: false,
+      error: "provider_failure",
+      error_name: errorName,
+      error_code: errorCode || undefined,
+    }, 502);
   }
 
   const text = normalizeOutput(result, maxOutputCharsFor(eventType));
   if (!text) {
+    console.error("workers_ai_empty_response", {
+      eventType,
+      model,
+      shape: Array.isArray(result?.choices) || Array.isArray(result?.result?.choices)
+        ? "choices"
+        : result?.response != null || result?.result?.response != null
+          ? "response"
+          : typeof result,
+    });
     return json({ ok: false, error: "empty_provider_response" }, 502);
   }
 
@@ -346,7 +420,7 @@ export default {
         ok: true,
         service: "chess-studio-narrative-ai",
         model: COMMENT_MODEL,
-        models: { comments: COMMENT_MODEL, player_portrait: PLAYER_PORTRAIT_MODEL },
+        models: { comments: COMMENT_MODEL, player_portrait: PLAYER_PORTRAIT_MODEL, analysis: ANALYSIS_MODEL },
       });
     }
 

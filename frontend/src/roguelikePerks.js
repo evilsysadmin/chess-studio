@@ -71,7 +71,7 @@ export function perkById(id) {
   return BY_ID[id] || null;
 }
 
-export function perkStacks(perks = []) {
+function perkStacks(perks = []) {
   const stacks = {};
   for (const id of perks) stacks[id] = (stacks[id] || 0) + 1;
   return stacks;

@@ -31,7 +31,7 @@ export default function CombatBattleView({
 
           <div className="board-live-row combat-board-live-row">
             <aside className="game-music-rail" aria-label="Música de la batalla">
-              <MusicPlayer />
+              <MusicPlayer forceExpanded />
             </aside>
 
             <div className="game-board-stack">

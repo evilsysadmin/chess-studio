@@ -8,7 +8,7 @@ import { pieceRankForLevel } from './combatRanks.js';
 const MAX_PROCESSED_BATTLES = 120;
 const MAX_MEMORIAL_ENTRIES = 96;
 
-export const UNIT_DECORATIONS = Object.freeze([
+const UNIT_DECORATIONS = Object.freeze([
   {
     id: 'baptism', short: 'BF', label: 'Bautismo de fuego',
     description: 'Sobrevivió a su primera batalla.',

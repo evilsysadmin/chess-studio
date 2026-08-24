@@ -5,6 +5,7 @@ under the same JWT/admin policy as the rest of Chess Studio.
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 from collections import OrderedDict, deque
@@ -13,7 +14,9 @@ from typing import Any, Callable
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from narrative_cloudflare import generate_narrative, get_ai_metrics
+from narrative_cloudflare import RICH_ANALYSIS_EVENT_TYPES, generate_narrative, get_ai_metrics
+
+narrative_logger = logging.getLogger("uvicorn.error")
 
 
 class NarrativeRequest(BaseModel):
@@ -70,7 +73,12 @@ class CooldownLimiter:
                     detail="Player portrait manual refresh cooldown",
                     headers={"Retry-After": str(max(1, int(remaining + 0.999)))},
                 )
-        self._last[key] = now
+        if previous is not None:
+            self._last[key] = previous
+
+    def commit(self, key: str) -> None:
+        self._last.pop(key, None)
+        self._last[key] = time.monotonic()
         while len(self._last) > self.max_identities:
             self._last.popitem(last=False)
 
@@ -104,25 +112,51 @@ def build_narrative_router(
     rate_limit_per_minute: int = 30,
 ) -> APIRouter:
     router = APIRouter()
-    limiter = SlidingWindowLimiter(rate_limit_per_minute, 60)
+    # Un retrato fallido no debe bloquear los comentarios de partida ni al
+    # revés. Son cargas y ritmos distintos, así que no comparten bucket.
+    comment_limiter = SlidingWindowLimiter(rate_limit_per_minute, 60)
+    portrait_limiter = SlidingWindowLimiter(max(5, rate_limit_per_minute), 60)
+    analysis_limiter = SlidingWindowLimiter(max(10, rate_limit_per_minute), 60)
     portrait_manual_limiter = CooldownLimiter(_portrait_manual_cooldown_seconds())
 
     @router.post("/api/narrative")
     async def narrative(request: Request, body: NarrativeRequest, identity: Any = Depends(auth_dependency)):
         identity_key = _identity_key(identity, request)
-        limiter.check(identity_key)
         request_kind = (body.requestKind or "default").strip().lower()
-        if request_kind not in {"default", "portrait_auto", "portrait_manual"}:
+        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "observability_summary"}
+        if request_kind not in allowed_request_kinds:
             request_kind = "default"
-        if body.eventType == "player_portrait" and request_kind == "portrait_manual":
-            portrait_manual_limiter.check(identity_key)
-        return await generate_narrative(
+        is_portrait = body.eventType == "player_portrait"
+        is_analysis = body.eventType in RICH_ANALYSIS_EVENT_TYPES
+        bucket = "player_portrait" if is_portrait else "analysis" if is_analysis else "comments"
+        try:
+            (portrait_limiter if is_portrait else analysis_limiter if is_analysis else comment_limiter).check(identity_key)
+            if is_portrait and request_kind == "portrait_manual":
+                portrait_manual_limiter.check(identity_key)
+        except HTTPException as exc:
+            if exc.status_code == 429:
+                narrative_logger.warning(
+                    "narrative_429 event_type=%s request_kind=%s bucket=%s reason=%s retry_after=%s",
+                    str(body.eventType or "generic")[:48],
+                    request_kind,
+                    bucket,
+                    str(exc.detail or "rate_limited")[:80],
+                    (exc.headers or {}).get("Retry-After", "-"),
+                )
+            raise
+        result = await generate_narrative(
             body.eventType,
             body.facts,
             tone=body.tone,
             locale=body.locale,
             request_kind=request_kind,
         )
+        # Sólo una lectura AI real consume la ventana manual de seis horas. Si
+        # Cloudflare falla y usamos fallback, el usuario puede reintentar cuando
+        # vuelva el proveedor sin quedar castigado por un fallo ajeno.
+        if is_portrait and request_kind == "portrait_manual" and result.get("provider") == "cloudflare":
+            portrait_manual_limiter.commit(identity_key)
+        return result
 
     if admin_dependency is not None:
         @router.get("/api/admin/ai-metrics")

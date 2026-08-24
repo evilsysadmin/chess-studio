@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { isCompetitiveHistoryRecord } from './gameHistory.js';
 
@@ -65,7 +66,7 @@ function migrateV2(parsed) {
 
 export function loadRivalry() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     if (!raw) return blank();
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return blank();

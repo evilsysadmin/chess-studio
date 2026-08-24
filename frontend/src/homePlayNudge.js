@@ -1,63 +1,65 @@
+import {
+  STORAGE_LOCAL,
+  STORAGE_SESSION,
+  getStorageItem,
+  removeStorageItem,
+  setStorageItem,
+} from './safeStorage.js';
+
 export const HOME_PLAY_NUDGE_IDLE_MS = 5 * 60 * 1000;
 export const HOME_PLAY_NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 export const HOME_PLAY_NUDGE_SESSION_KEY = 'chess-study-home-play-nudge-shown-v1';
 export const HOME_PLAY_NUDGE_LAST_AT_KEY = 'chess-study-home-play-nudge-last-at-v1';
 
-function read(storage, key) {
-  try {
-    return storage?.getItem?.(key) ?? null;
-  } catch {
-    return null;
-  }
+// `storage` sólo existe para tests/consumidores que inyecten un Storage.
+// En producción, null pasa siempre por safeStorage: acceder a la propiedad
+// global localStorage/sessionStorage también puede lanzar SecurityError.
+function read(storage, area, key) {
+  if (!storage) return getStorageItem(area, key);
+  try { return storage.getItem?.(key) ?? null; } catch { return null; }
 }
 
-function write(storage, key, value) {
+function write(storage, area, key, value) {
+  if (!storage) return setStorageItem(area, key, value);
   try {
-    storage?.setItem?.(key, value);
+    storage.setItem?.(key, value);
     return true;
   } catch {
     return false;
   }
 }
 
-function remove(storage, key) {
+function remove(storage, area, key) {
+  if (!storage) {
+    removeStorageItem(area, key);
+    return;
+  }
   try {
-    storage?.removeItem?.(key);
+    storage.removeItem?.(key);
   } catch {
     // El nudge es decorativo; un storage bloqueado no debe romper login/logout.
   }
 }
 
-export function homePlayNudgeWasShown(session = globalThis.sessionStorage) {
-  return read(session, HOME_PLAY_NUDGE_SESSION_KEY) === '1';
+function homePlayNudgeWasShown(session = null) {
+  return read(session, STORAGE_SESSION, HOME_PLAY_NUDGE_SESSION_KEY) === '1';
 }
 
-export function homePlayNudgeIsCoolingDown(
-  now = Date.now(),
-  persistent = globalThis.localStorage,
-) {
-  const lastAt = Number(read(persistent, HOME_PLAY_NUDGE_LAST_AT_KEY));
+export function homePlayNudgeIsCoolingDown(now = Date.now(), persistent = null) {
+  const lastAt = Number(read(persistent, STORAGE_LOCAL, HOME_PLAY_NUDGE_LAST_AT_KEY));
   if (!Number.isFinite(lastAt) || lastAt <= 0) return false;
   return now < lastAt + HOME_PLAY_NUDGE_COOLDOWN_MS;
 }
 
-export function canShowHomePlayNudge({
-  now = Date.now(),
-  session = globalThis.sessionStorage,
-  persistent = globalThis.localStorage,
-} = {}) {
+export function canShowHomePlayNudge({ now = Date.now(), session = null, persistent = null } = {}) {
   return !homePlayNudgeWasShown(session) && !homePlayNudgeIsCoolingDown(now, persistent);
 }
 
-export function markHomePlayNudgeShown({
-  now = Date.now(),
-  session = globalThis.sessionStorage,
-  persistent = globalThis.localStorage,
-} = {}) {
-  write(session, HOME_PLAY_NUDGE_SESSION_KEY, '1');
-  write(persistent, HOME_PLAY_NUDGE_LAST_AT_KEY, String(now));
+export function markHomePlayNudgeShown({ now = Date.now(), session = null, persistent = null } = {}) {
+  write(session, STORAGE_SESSION, HOME_PLAY_NUDGE_SESSION_KEY, '1');
+  write(persistent, STORAGE_LOCAL, HOME_PLAY_NUDGE_LAST_AT_KEY, String(now));
 }
 
-export function clearHomePlayNudgeSession(session = globalThis.sessionStorage) {
-  remove(session, HOME_PLAY_NUDGE_SESSION_KEY);
+export function clearHomePlayNudgeSession(session = null) {
+  remove(session, STORAGE_SESSION, HOME_PLAY_NUDGE_SESSION_KEY);
 }

@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 const ANALYSIS_KEY = 'chess-study-analysis-archive';
@@ -9,11 +10,11 @@ function safeParse(raw, fallback) {
 }
 
 export function loadAnalysisArchive() {
-  const parsed = safeParse(localStorage.getItem(ANALYSIS_KEY) || '{}', {});
+  const parsed = safeParse(getStorageItem(STORAGE_LOCAL, ANALYSIS_KEY) || '{}', {});
   return parsed && typeof parsed === 'object' ? parsed : {};
 }
 
-export function saveAnalysisArchive(archive) {
+function saveAnalysisArchive(archive) {
   const rows = Object.entries(archive || {})
     .sort((a, b) => new Date(b[1]?.analyzedAt || 0) - new Date(a[1]?.analyzedAt || 0))
     .slice(0, MAX_ANALYSES);

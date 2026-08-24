@@ -30,6 +30,13 @@ describe('remote narrative transport', () => {
     expect(await requestRemoteNarrative({ eventType:'player_portrait', facts:{} }, { token:'jwt', fetchImpl })).toBe(portrait);
   });
 
+  it('las tareas analíticas usan también el presupuesto largo', async () => {
+    const analysis = `${'Diagnóstico técnico útil. '.repeat(22)}Final.`;
+    expect(analysis.length).toBeGreaterThan(420);
+    const fetchImpl = vi.fn(async () => ({ ok:true, json:async()=>({ provider:'cloudflare', text:analysis }) }));
+    expect(await requestRemoteNarrative({ eventType:'observability_summary', requestKind:'observability_summary', facts:{} }, { token:'jwt', fetchImpl })).toBe(analysis);
+  });
+
   it('5xx cae limpio a null para que NarrativeProvider use fallback local', async () => {
     const fetchImpl = vi.fn(async () => ({ ok:false, status:502 }));
     expect(await requestRemoteNarrative({ eventType:'mate', facts:{} }, { token:'jwt', fetchImpl })).toBeNull();

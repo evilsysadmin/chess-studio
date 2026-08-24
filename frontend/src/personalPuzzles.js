@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { Chess } from 'chess.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { detectNoteworthyMove } from './cpuCommentary.js';
@@ -7,7 +8,7 @@ const MAX_PUZZLES = 40;
 
 export function loadPersonalPuzzles() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.map(normalizeStoredPuzzle) : [];
   } catch {
@@ -75,7 +76,7 @@ function stableId(fen, suggested) {
   return `personal-${(hash >>> 0).toString(36)}`;
 }
 
-export function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
+function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
   if (!moveReport || !Array.isArray(history) || !moveReport.suggested || moveReport.loss < 80) return null;
   if (moveReport.played && moveReport.suggested === moveReport.played) return null;
   const chess = new Chess();

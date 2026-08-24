@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import math
 import os
 import threading
@@ -18,9 +19,13 @@ from typing import Any
 
 import httpx
 
+ai_logger = logging.getLogger("uvicorn.error")
+
 DEFAULT_TIMEOUT_SECONDS = 12.0
 DEFAULT_MAX_OUTPUT_CHARS = 420
 PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
+RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900
+RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary"})
 MAX_FACT_DEPTH = 3
 MAX_FACT_STRING = 240
 MAX_FACT_ARRAY = 12
@@ -151,7 +156,11 @@ def _timeout_seconds() -> float:
 
 
 def _max_output_chars(event_type: str) -> int:
-    return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS if event_type == "player_portrait" else DEFAULT_MAX_OUTPUT_CHARS
+    if event_type == "player_portrait":
+        return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS
+    if event_type in RICH_ANALYSIS_EVENT_TYPES:
+        return RICH_ANALYSIS_MAX_OUTPUT_CHARS
+    return DEFAULT_MAX_OUTPUT_CHARS
 
 
 def _trim_complete_output(text: str, max_chars: int) -> str:
@@ -245,86 +254,120 @@ class ProviderOutcome:
     input_tokens: int = 0
     output_tokens: int = 0
     model: str | None = None
+    worker_error: str | None = None
 
 
 _TELEMETRY_LOCK = threading.Lock()
 _TELEMETRY: deque[dict[str, Any]] = deque(maxlen=MAX_TELEMETRY_EVENTS)
 
 _CIRCUIT_LOCK = threading.Lock()
-_CIRCUIT_CONSECUTIVE_FAILURES = 0
-_CIRCUIT_OPENED_UNTIL = 0.0
-_CIRCUIT_OPEN_COUNT = 0
-_CIRCUIT_HALF_OPEN = False
+_CIRCUIT_CHANNELS = ("comments", "player_portrait", "analysis")
+_CIRCUIT_STATE: dict[str, dict[str, Any]] = {
+    channel: {
+        "consecutive_failures": 0,
+        "opened_until": 0.0,
+        "open_count": 0,
+        "half_open": False,
+    }
+    for channel in _CIRCUIT_CHANNELS
+}
+
+
+def _circuit_channel(event_type: str) -> str:
+    if event_type == "player_portrait":
+        return "player_portrait"
+    if event_type in RICH_ANALYSIS_EVENT_TYPES:
+        return "analysis"
+    return "comments"
 
 
 def reset_ai_circuit_breaker() -> None:
-    global _CIRCUIT_CONSECUTIVE_FAILURES, _CIRCUIT_OPENED_UNTIL, _CIRCUIT_OPEN_COUNT, _CIRCUIT_HALF_OPEN
     with _CIRCUIT_LOCK:
-        _CIRCUIT_CONSECUTIVE_FAILURES = 0
-        _CIRCUIT_OPENED_UNTIL = 0.0
-        _CIRCUIT_OPEN_COUNT = 0
-        _CIRCUIT_HALF_OPEN = False
+        for channel in _CIRCUIT_CHANNELS:
+            _CIRCUIT_STATE[channel] = {
+                "consecutive_failures": 0,
+                "opened_until": 0.0,
+                "open_count": 0,
+                "half_open": False,
+            }
 
 
 def _circuit_snapshot() -> dict[str, Any]:
     now = time.monotonic()
     with _CIRCUIT_LOCK:
-        remaining = max(0.0, _CIRCUIT_OPENED_UNTIL - now)
+        channels: dict[str, dict[str, Any]] = {}
+        for channel in _CIRCUIT_CHANNELS:
+            state = _CIRCUIT_STATE[channel]
+            remaining = max(0.0, float(state["opened_until"]) - now)
+            channels[channel] = {
+                "open": remaining > 0,
+                "seconds_remaining": round(remaining, 1),
+                "consecutive_failures": int(state["consecutive_failures"]),
+                "open_count": int(state["open_count"]),
+                "half_open": bool(state["half_open"]),
+            }
         return {
-            "open": remaining > 0,
-            "seconds_remaining": round(remaining, 1),
-            "consecutive_failures": _CIRCUIT_CONSECUTIVE_FAILURES,
-            "open_count": _CIRCUIT_OPEN_COUNT,
-            "half_open": _CIRCUIT_HALF_OPEN,
+            "open": any(row["open"] for row in channels.values()),
+            "seconds_remaining": max((row["seconds_remaining"] for row in channels.values()), default=0.0),
+            "consecutive_failures": max((row["consecutive_failures"] for row in channels.values()), default=0),
+            "open_count": sum(row["open_count"] for row in channels.values()),
+            "half_open": any(row["half_open"] for row in channels.values()),
             "failure_threshold": _circuit_failure_threshold(),
             "reset_seconds": _circuit_reset_seconds(),
+            "channels": channels,
         }
 
 
-def _circuit_before_request() -> tuple[bool, str | None]:
-    global _CIRCUIT_OPENED_UNTIL, _CIRCUIT_HALF_OPEN
+def _circuit_before_request(channel: str) -> tuple[bool, str | None]:
     now = time.monotonic()
     with _CIRCUIT_LOCK:
-        if _CIRCUIT_OPENED_UNTIL > now:
+        state = _CIRCUIT_STATE[channel]
+        if float(state["opened_until"]) > now:
             return False, "circuit_open"
-        if _CIRCUIT_HALF_OPEN:
+        if bool(state["half_open"]):
             return False, "circuit_half_open"
-        if _CIRCUIT_OPENED_UNTIL:
+        if float(state["opened_until"]):
             # Permit exactly one recovery probe after the reset window.
-            _CIRCUIT_OPENED_UNTIL = 0.0
-            _CIRCUIT_HALF_OPEN = True
+            state["opened_until"] = 0.0
+            state["half_open"] = True
     return True, None
 
 
-def _circuit_success() -> None:
-    global _CIRCUIT_CONSECUTIVE_FAILURES, _CIRCUIT_OPENED_UNTIL, _CIRCUIT_HALF_OPEN
+def _circuit_success(channel: str) -> None:
     with _CIRCUIT_LOCK:
-        _CIRCUIT_CONSECUTIVE_FAILURES = 0
-        _CIRCUIT_OPENED_UNTIL = 0.0
-        _CIRCUIT_HALF_OPEN = False
+        state = _CIRCUIT_STATE[channel]
+        state["consecutive_failures"] = 0
+        state["opened_until"] = 0.0
+        state["half_open"] = False
 
 
-def _circuit_failure() -> None:
-    global _CIRCUIT_CONSECUTIVE_FAILURES, _CIRCUIT_OPENED_UNTIL, _CIRCUIT_OPEN_COUNT, _CIRCUIT_HALF_OPEN
+def _circuit_failure(channel: str) -> None:
     with _CIRCUIT_LOCK:
-        if _CIRCUIT_HALF_OPEN:
+        state = _CIRCUIT_STATE[channel]
+        if bool(state["half_open"]):
             # A failed recovery probe re-opens immediately; do not hammer the
             # provider with another full threshold of requests.
-            _CIRCUIT_CONSECUTIVE_FAILURES = _circuit_failure_threshold()
-            _CIRCUIT_OPENED_UNTIL = time.monotonic() + _circuit_reset_seconds()
-            _CIRCUIT_OPEN_COUNT += 1
-            _CIRCUIT_HALF_OPEN = False
+            state["consecutive_failures"] = _circuit_failure_threshold()
+            state["opened_until"] = time.monotonic() + _circuit_reset_seconds()
+            state["open_count"] = int(state["open_count"]) + 1
+            state["half_open"] = False
             return
 
-        _CIRCUIT_CONSECUTIVE_FAILURES += 1
-        if _CIRCUIT_CONSECUTIVE_FAILURES >= _circuit_failure_threshold():
-            _CIRCUIT_OPENED_UNTIL = time.monotonic() + _circuit_reset_seconds()
-            _CIRCUIT_OPEN_COUNT += 1
+        state["consecutive_failures"] = int(state["consecutive_failures"]) + 1
+        if int(state["consecutive_failures"]) >= _circuit_failure_threshold():
+            state["opened_until"] = time.monotonic() + _circuit_reset_seconds()
+            state["open_count"] = int(state["open_count"]) + 1
 
 
-def _provider_failure(reason: str, latency_ms: float) -> ProviderOutcome:
-    _circuit_failure()
-    return ProviderOutcome(None, reason, latency_ms)
+def _provider_failure(
+    reason: str,
+    latency_ms: float,
+    *,
+    channel: str,
+    worker_error: str | None = None,
+) -> ProviderOutcome:
+    _circuit_failure(channel)
+    return ProviderOutcome(None, reason, latency_ms, worker_error=worker_error)
 
 
 def _record(
@@ -338,20 +381,33 @@ def _record(
     input_tokens: int = 0,
     output_tokens: int = 0,
     model: str | None = None,
+    worker_error: str | None = None,
 ) -> None:
+    event = {
+        "at": int(time.time()),
+        "provider": provider,
+        "event_type": str(event_type or "generic")[:48],
+        "request_kind": str(request_kind or "default")[:32],
+        "latency_ms": max(0.0, round(float(latency_ms), 2)),
+        "reason": str(reason or "unknown")[:64],
+        "chars": len(text or ""),
+        "input_tokens": max(0, int(input_tokens or 0)),
+        "output_tokens": max(0, int(output_tokens or 0)),
+        "model": str(model or "")[:96] or None,
+        "worker_error": str(worker_error or "")[:80] or None,
+    }
     with _TELEMETRY_LOCK:
-        _TELEMETRY.append({
-            "at": int(time.time()),
-            "provider": provider,
-            "event_type": str(event_type or "generic")[:48],
-            "request_kind": str(request_kind or "default")[:32],
-            "latency_ms": max(0.0, round(float(latency_ms), 2)),
-            "reason": str(reason or "unknown")[:64],
-            "chars": len(text or ""),
-            "input_tokens": max(0, int(input_tokens or 0)),
-            "output_tokens": max(0, int(output_tokens or 0)),
-            "model": str(model or "")[:96] or None,
-        })
+        _TELEMETRY.append(event)
+    # Import local para que la narrativa siga siendo utilizable y testeable de
+    # forma aislada. El histórico persiste sólo agregados técnicos, nunca texto
+    # ni dossier/HECHOS.
+    try:
+        from observability_history import record_ai_event
+
+        record_ai_event(event)
+    except Exception:
+        # Observabilidad jamás debe romper una partida ni una respuesta AI.
+        pass
 
 
 def reset_ai_metrics() -> None:
@@ -375,6 +431,7 @@ def get_ai_metrics() -> dict[str, Any]:
     reasons = Counter(e["reason"] for e in events)
     event_types = Counter(e["event_type"] for e in events)
     request_kinds = Counter(e.get("request_kind") or "default" for e in events)
+    worker_errors = Counter(e.get("worker_error") for e in events if e.get("worker_error"))
     cloud_latencies = [e["latency_ms"] for e in events if e["provider"] == "cloudflare"]
     cloud = providers.get("cloudflare", 0)
     local = providers.get("local", 0)
@@ -399,6 +456,7 @@ def get_ai_metrics() -> dict[str, Any]:
         "reasons": dict(reasons.most_common(8)),
         "event_types": dict(event_types.most_common(12)),
         "request_kinds": dict(request_kinds.most_common(8)),
+        "worker_errors": dict(worker_errors.most_common(8)),
         "usage": {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
@@ -422,10 +480,11 @@ async def request_cloud_narrative(
     locale: str = "es-ES",
     client: httpx.AsyncClient | None = None,
 ) -> ProviderOutcome:
+    channel = _circuit_channel(event_type)
     if not ai_narrative_enabled():
         return ProviderOutcome(None, "disabled", 0.0)
 
-    allowed, blocked_reason = _circuit_before_request()
+    allowed, blocked_reason = _circuit_before_request(channel)
     if not allowed:
         return ProviderOutcome(None, blocked_reason or "circuit_open", 0.0)
 
@@ -454,27 +513,51 @@ async def request_cloud_narrative(
         response = await client.post(f"{worker_url}/narrative", content=body, headers=headers)
         elapsed = (time.perf_counter() - started) * 1000
         if response.status_code != 200:
-            return _provider_failure(f"http_{response.status_code}", elapsed)
+            worker_error = None
+            try:
+                error_payload = response.json()
+                if isinstance(error_payload, dict) and error_payload.get("error"):
+                    parts = [str(error_payload.get("error"))[:48]]
+                    error_name = str(error_payload.get("error_name") or "")[:32]
+                    error_code = str(error_payload.get("error_code") or "")[:32]
+                    if error_name:
+                        parts.append(error_name)
+                    if error_code:
+                        parts.append(error_code)
+                    worker_error = ":".join(parts)[:80]
+            except (ValueError, TypeError):
+                worker_error = None
+            return _provider_failure(
+                f"http_{response.status_code}",
+                elapsed,
+                channel=channel,
+                worker_error=worker_error,
+            )
         data = response.json()
         text = data.get("text") if isinstance(data, dict) else None
         if not isinstance(text, str):
-            return _provider_failure("invalid_payload", elapsed)
+            return _provider_failure("invalid_payload", elapsed, channel=channel)
         usage = data.get("usage") if isinstance(data, dict) and isinstance(data.get("usage"), dict) else {}
         input_tokens = max(0, int(usage.get("inputTokens") or usage.get("prompt_tokens") or 0))
         output_tokens = max(0, int(usage.get("outputTokens") or usage.get("completion_tokens") or 0))
         model = str(data.get("model") or "")[:96] if isinstance(data, dict) else ""
         text = _trim_complete_output(text, _max_output_chars(event_type))
         if not text:
-            return _provider_failure("empty_response", elapsed)
+            return _provider_failure("empty_response", elapsed, channel=channel)
         grounded, concept = validate_grounded_output(text, event_type, facts)
         if not grounded:
-            return _provider_failure(f"ungrounded_{concept}", elapsed)
-        _circuit_success()
+            return _provider_failure(f"ungrounded_{concept}", elapsed, channel=channel)
+        _circuit_success(channel)
         return ProviderOutcome(text, "ok", elapsed, input_tokens, output_tokens, model or None)
     except httpx.TimeoutException:
-        return _provider_failure("timeout", (time.perf_counter() - started) * 1000)
-    except (httpx.HTTPError, ValueError, TypeError):
-        return _provider_failure("transport_error", (time.perf_counter() - started) * 1000)
+        return _provider_failure("timeout", (time.perf_counter() - started) * 1000, channel=channel)
+    except (httpx.HTTPError, ValueError, TypeError) as exc:
+        return _provider_failure(
+            "transport_error",
+            (time.perf_counter() - started) * 1000,
+            channel=channel,
+            worker_error=type(exc).__name__,
+        )
     finally:
         if owns_client:
             await client.aclose()
@@ -496,8 +579,43 @@ async def generate_narrative(
             request_kind=request_kind, input_tokens=outcome.input_tokens,
             output_tokens=outcome.output_tokens, model=outcome.model,
         )
-        return {"text": outcome.text, "provider": "cloudflare", "latencyMs": round(outcome.latency_ms, 1)}
+        ai_logger.info(
+            "workers_ai_ok event_type=%s request_kind=%s channel=%s model=%s latency_ms=%.1f input_tokens=%s output_tokens=%s",
+            str(event_type or "generic")[:48],
+            str(request_kind or "default")[:32],
+            _circuit_channel(event_type),
+            outcome.model or "-",
+            outcome.latency_ms,
+            outcome.input_tokens,
+            outcome.output_tokens,
+        )
+        return {
+            "text": outcome.text,
+            "provider": "cloudflare",
+            "latencyMs": round(outcome.latency_ms, 1),
+            "model": outcome.model,
+        }
 
     text = _fallback(event_type, facts)
-    _record("local", event_type, outcome.latency_ms, outcome.reason, text, request_kind=request_kind)
+    _record(
+        "local",
+        event_type,
+        outcome.latency_ms,
+        outcome.reason,
+        text,
+        request_kind=request_kind,
+        worker_error=outcome.worker_error,
+    )
+    circuit = _circuit_snapshot()
+    ai_logger.warning(
+        "workers_ai_fallback event_type=%s request_kind=%s channel=%s reason=%s worker_error=%s latency_ms=%.1f circuit_open=%s failures=%s",
+        str(event_type or "generic")[:48],
+        str(request_kind or "default")[:32],
+        _circuit_channel(event_type),
+        outcome.reason,
+        outcome.worker_error or "-",
+        outcome.latency_ms,
+        circuit.get("open", False),
+        circuit.get("channels", {}).get(_circuit_channel(event_type), {}).get("consecutive_failures", 0),
+    )
     return {"text": text, "provider": "local", "latencyMs": round(outcome.latency_ms, 1)}

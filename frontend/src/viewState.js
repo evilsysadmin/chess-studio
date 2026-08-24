@@ -9,7 +9,7 @@ import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, se
 export const VIEW_STORAGE_KEY = 'chess-study-current-view';
 export const VIEW_HISTORY_STORAGE_KEY = 'chess-study-view-history';
 
-export const RESTORABLE_VIEWS = Object.freeze([
+const RESTORABLE_VIEWS = Object.freeze([
   'menu',
   'tutorial',
   'openings',

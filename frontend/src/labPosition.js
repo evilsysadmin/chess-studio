@@ -26,7 +26,7 @@ export function mapFromPlacement(fenOrPlacement) {
   return out;
 }
 
-export function placementFromMap(map) {
+function placementFromMap(map) {
   return RANKS.map((rank) => {
     let out = '';
     let empty = 0;

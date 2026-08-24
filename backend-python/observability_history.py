@@ -1,0 +1,511 @@
+"""Histórico agregado de observabilidad para Chess Studio.
+
+Guarda buckets horarios de baja cardinalidad. Nunca persiste usernames, IPs,
+FEN, bodies, prompts, texto AI ni cabeceras. Las escrituras se acumulan en
+memoria y se vacían a Mongo fuera del camino crítico de la request.
+"""
+from __future__ import annotations
+
+import asyncio
+import base64
+import copy
+import math
+import threading
+import time
+from collections import Counter
+from datetime import datetime, timezone
+from typing import Any
+
+BUCKET_SECONDS = 60 * 60
+DEFAULT_RANGE_SECONDS = 24 * 60 * 60
+MAX_RANGE_SECONDS = 90 * 24 * 60 * 60
+RETENTION_SECONDS = 100 * 24 * 60 * 60
+FLUSH_INTERVAL_SECONDS = 30.0
+COLLECTION_NAME = "observability_hourly_v1"
+_LATENCY_BOUNDS_MS = (25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 20000)
+
+_PENDING_LOCK = threading.Lock()
+_PENDING: dict[int, dict[str, Any]] = {}
+_SCHEDULE_LOCK = threading.Lock()
+_FLUSH_SCHEDULED = False
+_LAST_FLUSH_SCHEDULED_AT = 0.0
+_FLUSH_ASYNC_LOCK: asyncio.Lock | None = None
+_FLUSH_ASYNC_LOCK_LOOP: asyncio.AbstractEventLoop | None = None
+_INDEX_READY = False
+
+
+def _bucket_start(timestamp: float) -> int:
+    value = max(0, int(timestamp))
+    return value - (value % BUCKET_SECONDS)
+
+
+def _safe_key(value: Any) -> str:
+    raw = str(value or "unknown")[:160].encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=") or "dW5rbm93bg"
+
+
+def _unsafe_key(value: str) -> str:
+    try:
+        padded = value + "=" * (-len(value) % 4)
+        return base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+    except Exception:
+        return "unknown"
+
+
+def _hist_key(latency_ms: float) -> str:
+    value = max(0.0, float(latency_ms or 0.0))
+    for boundary in _LATENCY_BOUNDS_MS:
+        if value <= boundary:
+            return f"le_{boundary}"
+    return "inf"
+
+
+def _fresh_bucket() -> dict[str, Any]:
+    return {
+        "http": {
+            "samples": 0,
+            "status_2xx": 0,
+            "status_4xx": 0,
+            "status_5xx": 0,
+            "latency_hist": {},
+            "latency_max_ms": 0.0,
+            "routes": {},
+        },
+        "ai": {
+            "samples": 0,
+            "cloudflare": 0,
+            "local": 0,
+            "latency_hist": {},
+            "latency_max_ms": 0.0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "reasons": {},
+            "event_types": {},
+            "request_kinds": {},
+            "models": {},
+            "worker_errors": {},
+        },
+    }
+
+
+def _inc(mapping: dict[str, Any], key: str, amount: int | float = 1) -> None:
+    mapping[key] = mapping.get(key, 0) + amount
+
+
+def record_http_event(method: str, route: str, status_code: int, latency_ms: float, *, timestamp: float | None = None) -> None:
+    at = time.time() if timestamp is None else float(timestamp)
+    bucket_key = _bucket_start(at)
+    route_label = f"{str(method or '?').upper()[:8]} {str(route or 'unknown')[:120]}"
+    encoded_route = _safe_key(route_label)
+    latency = max(0.0, float(latency_ms or 0.0))
+    status = int(status_code or 0)
+
+    with _PENDING_LOCK:
+        bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+        http = bucket["http"]
+        http["samples"] += 1
+        family = status // 100 if status > 0 else 0
+        if family in {2, 4, 5}:
+            http[f"status_{family}xx"] += 1
+        hist_key = _hist_key(latency)
+        _inc(http["latency_hist"], hist_key)
+        http["latency_max_ms"] = max(float(http.get("latency_max_ms") or 0.0), latency)
+
+        route_row = http["routes"].setdefault(encoded_route, {
+            "requests": 0,
+            "errors_5xx": 0,
+            "latency_hist": {},
+            "latency_max_ms": 0.0,
+        })
+        route_row["requests"] += 1
+        if family == 5:
+            route_row["errors_5xx"] += 1
+        _inc(route_row["latency_hist"], hist_key)
+        route_row["latency_max_ms"] = max(float(route_row.get("latency_max_ms") or 0.0), latency)
+
+
+def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) -> None:
+    at = float(event.get("at") or (time.time() if timestamp is None else timestamp))
+    bucket_key = _bucket_start(at)
+    latency = max(0.0, float(event.get("latency_ms") or 0.0))
+    provider = str(event.get("provider") or "local")[:32]
+
+    with _PENDING_LOCK:
+        bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+        ai = bucket["ai"]
+        ai["samples"] += 1
+        ai["cloudflare" if provider == "cloudflare" else "local"] += 1
+        _inc(ai["latency_hist"], _hist_key(latency))
+        ai["latency_max_ms"] = max(float(ai.get("latency_max_ms") or 0.0), latency)
+        ai["input_tokens"] += max(0, int(event.get("input_tokens") or 0))
+        ai["output_tokens"] += max(0, int(event.get("output_tokens") or 0))
+        _inc(ai["reasons"], _safe_key(str(event.get("reason") or "unknown")[:64]))
+        _inc(ai["event_types"], _safe_key(str(event.get("event_type") or "generic")[:48]))
+        _inc(ai["request_kinds"], _safe_key(str(event.get("request_kind") or "default")[:32]))
+        model = str(event.get("model") or "")[:96]
+        if model:
+            _inc(ai["models"], _safe_key(model))
+        worker_error = str(event.get("worker_error") or "")[:80]
+        if worker_error:
+            _inc(ai["worker_errors"], _safe_key(worker_error))
+
+
+def _subtract_delta(target: dict[str, Any], sent: dict[str, Any]) -> None:
+    for key, value in sent.items():
+        if key not in target:
+            continue
+        if isinstance(value, dict) and isinstance(target.get(key), dict):
+            _subtract_delta(target[key], value)
+            if not target[key]:
+                target.pop(key, None)
+            continue
+        if isinstance(value, (int, float)) and isinstance(target.get(key), (int, float)):
+            # Maxima are not additive. Leaving the current max in pending after a
+            # flush is harmless but would double-count only if treated as $inc;
+            # maxima are persisted separately with $max, so remove the sent max
+            # only when no newer/larger value replaced it.
+            if key.endswith("_max_ms"):
+                if float(target[key]) <= float(value):
+                    target[key] = 0.0
+            else:
+                target[key] = target[key] - value
+            if not target[key]:
+                target.pop(key, None)
+
+
+def _mongo_update(bucket: dict[str, Any]) -> tuple[dict[str, int | float], dict[str, float]]:
+    incs: dict[str, int | float] = {}
+    maxima: dict[str, float] = {}
+
+    def walk(prefix: str, value: Any) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                path = f"{prefix}.{key}" if prefix else str(key)
+                walk(path, item)
+            return
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return
+        if prefix.endswith("_max_ms"):
+            if float(value) > 0:
+                maxima[prefix] = float(value)
+        elif value:
+            incs[prefix] = value
+
+    walk("", bucket)
+    return incs, maxima
+
+
+def _get_flush_lock() -> asyncio.Lock:
+    # Tests may create more than one event loop in the same interpreter. Keep
+    # the production single-flight guarantee without binding a stale lock to a
+    # loop that has already been closed.
+    global _FLUSH_ASYNC_LOCK, _FLUSH_ASYNC_LOCK_LOOP
+    loop = asyncio.get_running_loop()
+    if _FLUSH_ASYNC_LOCK is None or _FLUSH_ASYNC_LOCK_LOOP is not loop:
+        _FLUSH_ASYNC_LOCK = asyncio.Lock()
+        _FLUSH_ASYNC_LOCK_LOOP = loop
+    return _FLUSH_ASYNC_LOCK
+
+
+async def _ensure_retention_index(collection: Any) -> None:
+    """Create one TTL index per process; failure never blocks observability writes."""
+    global _INDEX_READY
+    if _INDEX_READY:
+        return
+    try:
+        await collection.create_index(
+            "bucket_start",
+            expireAfterSeconds=RETENTION_SECONDS,
+            name="observability_bucket_ttl_v1",
+        )
+    except Exception:
+        return
+    _INDEX_READY = True
+
+
+async def flush_pending() -> bool:
+    """Persist pending aggregate deltas once, even if Admin and timer flush together."""
+    from db import get_db
+
+    async with _get_flush_lock():
+        with _PENDING_LOCK:
+            snapshots = {key: copy.deepcopy(value) for key, value in _PENDING.items() if value}
+        if not snapshots:
+            return True
+
+        database = await get_db()
+        if database is None:
+            return False
+        collection = database[COLLECTION_NAME]
+        await _ensure_retention_index(collection)
+
+        for bucket_key, snapshot in sorted(snapshots.items()):
+            incs, maxima = _mongo_update(snapshot)
+            update: dict[str, Any] = {
+                "$setOnInsert": {
+                    "bucket_start": datetime.fromtimestamp(bucket_key, tz=timezone.utc),
+                    "schema": 1,
+                },
+            }
+            if incs:
+                update["$inc"] = incs
+            if maxima:
+                update["$max"] = maxima
+            try:
+                await collection.update_one({"_id": bucket_key}, update, upsert=True)
+            except Exception:
+                return False
+            with _PENDING_LOCK:
+                current = _PENDING.get(bucket_key)
+                if current is not None:
+                    _subtract_delta(current, snapshot)
+                    if not current:
+                        _PENDING.pop(bucket_key, None)
+        return True
+
+
+async def _scheduled_flush() -> None:
+    global _FLUSH_SCHEDULED
+    try:
+        await flush_pending()
+    finally:
+        with _SCHEDULE_LOCK:
+            _FLUSH_SCHEDULED = False
+
+
+def schedule_history_flush() -> None:
+    """Schedule a flush at most every 30 s without delaying the request."""
+    global _FLUSH_SCHEDULED, _LAST_FLUSH_SCHEDULED_AT
+    now = time.monotonic()
+    with _SCHEDULE_LOCK:
+        if _FLUSH_SCHEDULED or now - _LAST_FLUSH_SCHEDULED_AT < FLUSH_INTERVAL_SECONDS:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        _FLUSH_SCHEDULED = True
+        _LAST_FLUSH_SCHEDULED_AT = now
+        loop.create_task(_scheduled_flush())
+
+
+def _hist_percentile(hist: dict[str, Any], percentile: float, max_value: float = 0.0) -> float | None:
+    counts: list[tuple[float, int]] = []
+    total = 0
+    for boundary in _LATENCY_BOUNDS_MS:
+        count = max(0, int(hist.get(f"le_{boundary}") or 0))
+        if count:
+            counts.append((float(boundary), count))
+            total += count
+    inf_count = max(0, int(hist.get("inf") or 0))
+    if inf_count:
+        counts.append((max(float(max_value or 0.0), float(_LATENCY_BOUNDS_MS[-1])), inf_count))
+        total += inf_count
+    if not total:
+        return None
+    target = max(1, math.ceil(total * percentile))
+    seen = 0
+    for boundary, count in counts:
+        seen += count
+        if seen >= target:
+            return round(boundary, 2)
+    return round(counts[-1][0], 2)
+
+
+def _merge_numeric(target: dict[str, Any], source: dict[str, Any]) -> None:
+    for key, value in source.items():
+        if isinstance(value, dict):
+            row = target.setdefault(key, {})
+            if isinstance(row, dict):
+                _merge_numeric(row, value)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            if key.endswith("_max_ms"):
+                target[key] = max(float(target.get(key) or 0.0), float(value))
+            else:
+                target[key] = target.get(key, 0) + value
+
+
+def _decoded_counter(mapping: dict[str, Any], limit: int = 12) -> dict[str, int]:
+    rows = Counter()
+    for key, value in (mapping or {}).items():
+        rows[_unsafe_key(str(key))] += max(0, int(value or 0))
+    return dict(rows.most_common(limit))
+
+
+def _summarize_http(http: dict[str, Any], range_seconds: int) -> dict[str, Any]:
+    total = max(0, int(http.get("samples") or 0))
+    status_5xx = max(0, int(http.get("status_5xx") or 0))
+    routes = []
+    for encoded, row in (http.get("routes") or {}).items():
+        if not isinstance(row, dict):
+            continue
+        routes.append({
+            "route": _unsafe_key(str(encoded)),
+            "requests": max(0, int(row.get("requests") or 0)),
+            "errors_5xx": max(0, int(row.get("errors_5xx") or 0)),
+            "p95_ms": _hist_percentile(row.get("latency_hist") or {}, 0.95, float(row.get("latency_max_ms") or 0.0)),
+        })
+    routes.sort(key=lambda row: row["requests"], reverse=True)
+    return {
+        "samples": total,
+        "requests_per_minute": round(total / max(1 / 60, range_seconds / 60), 2),
+        "status_2xx": max(0, int(http.get("status_2xx") or 0)),
+        "status_4xx": max(0, int(http.get("status_4xx") or 0)),
+        "status_5xx": status_5xx,
+        "error_5xx_percent": round(status_5xx * 100 / total, 2) if total else 0.0,
+        "p50_ms": _hist_percentile(http.get("latency_hist") or {}, 0.50, float(http.get("latency_max_ms") or 0.0)),
+        "p95_ms": _hist_percentile(http.get("latency_hist") or {}, 0.95, float(http.get("latency_max_ms") or 0.0)),
+        "p99_ms": _hist_percentile(http.get("latency_hist") or {}, 0.99, float(http.get("latency_max_ms") or 0.0)),
+        "top_routes": routes[:8],
+    }
+
+
+def _summarize_ai(ai: dict[str, Any]) -> dict[str, Any]:
+    total = max(0, int(ai.get("samples") or 0))
+    cloud = max(0, int(ai.get("cloudflare") or 0))
+    local = max(0, int(ai.get("local") or 0))
+    input_tokens = max(0, int(ai.get("input_tokens") or 0))
+    output_tokens = max(0, int(ai.get("output_tokens") or 0))
+    estimated_neurons = (input_tokens * 4625 + output_tokens * 30475) / 1_000_000
+    estimated_cost_usd = (input_tokens * 0.051 + output_tokens * 0.335) / 1_000_000
+    return {
+        "samples": total,
+        "cloudflare": cloud,
+        "local_fallback": local,
+        "cloudflare_percent": round(cloud * 100 / total, 1) if total else None,
+        "fallback_percent": round(local * 100 / total, 1) if total else None,
+        "p50_ms": _hist_percentile(ai.get("latency_hist") or {}, 0.50, float(ai.get("latency_max_ms") or 0.0)),
+        "p95_ms": _hist_percentile(ai.get("latency_hist") or {}, 0.95, float(ai.get("latency_max_ms") or 0.0)),
+        "p99_ms": _hist_percentile(ai.get("latency_hist") or {}, 0.99, float(ai.get("latency_max_ms") or 0.0)),
+        "reasons": _decoded_counter(ai.get("reasons") or {}, 10),
+        "event_types": _decoded_counter(ai.get("event_types") or {}, 12),
+        "request_kinds": _decoded_counter(ai.get("request_kinds") or {}, 8),
+        "models": _decoded_counter(ai.get("models") or {}, 6),
+        "worker_errors": _decoded_counter(ai.get("worker_errors") or {}, 8),
+        "usage": {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": input_tokens + output_tokens,
+            "estimated_neurons": round(estimated_neurons, 3),
+            "estimated_cost_usd": round(estimated_cost_usd, 6),
+        },
+    }
+
+
+def _parse_iso(value: str | None) -> float | None:
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    dt = datetime.fromisoformat(raw)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).timestamp()
+
+
+def normalize_range(from_value: str | None, to_value: str | None, *, now: float | None = None) -> tuple[int, int]:
+    current = float(time.time() if now is None else now)
+    end = _parse_iso(to_value) if to_value else current
+    start = _parse_iso(from_value) if from_value else end - DEFAULT_RANGE_SECONDS
+    if end <= start:
+        raise ValueError("El final del rango debe ser posterior al inicio.")
+    if end - start > MAX_RANGE_SECONDS:
+        raise ValueError("El rango máximo de observabilidad es de 90 días.")
+    # No tiene sentido consultar futuro lejano; permitimos un pequeño margen de reloj.
+    end = min(end, current + 300)
+    if end <= start:
+        raise ValueError("El rango solicitado está fuera del histórico disponible.")
+    return int(start), int(end)
+
+
+def _group_series(rows: list[tuple[int, dict[str, Any]]], start: int, end: int) -> list[dict[str, Any]]:
+    span = max(1, end - start)
+    group_seconds = BUCKET_SECONDS if span <= 48 * 60 * 60 else 24 * 60 * 60
+    groups: dict[int, dict[str, Any]] = {}
+    for bucket_key, payload in rows:
+        group_key = bucket_key - (bucket_key % group_seconds)
+        target = groups.setdefault(group_key, _fresh_bucket())
+        _merge_numeric(target, payload)
+    series = []
+    for group_key in sorted(groups):
+        payload = groups[group_key]
+        http = _summarize_http(payload.get("http") or {}, group_seconds)
+        ai = _summarize_ai(payload.get("ai") or {})
+        series.append({
+            "at": datetime.fromtimestamp(group_key, tz=timezone.utc).isoformat(),
+            "http_requests": http["samples"],
+            "http_5xx": http["status_5xx"],
+            "http_p95_ms": http["p95_ms"],
+            "ai_samples": ai["samples"],
+            "ai_cloudflare_percent": ai["cloudflare_percent"],
+        })
+    return series
+
+
+async def get_history(from_value: str | None = None, to_value: str | None = None) -> dict[str, Any]:
+    start, end = normalize_range(from_value, to_value)
+    await flush_pending()
+
+    rows_by_bucket: dict[int, dict[str, Any]] = {}
+    persistent = False
+    try:
+        from db import get_db
+
+        database = await get_db()
+        if database is not None:
+            persistent = True
+            cursor = database[COLLECTION_NAME].find({
+                "_id": {"$gte": _bucket_start(start), "$lte": _bucket_start(end)},
+            })
+            async for document in cursor:
+                bucket_key = int(document.get("_id") or 0)
+                rows_by_bucket[bucket_key] = {
+                    "http": document.get("http") or {},
+                    "ai": document.get("ai") or {},
+                }
+    except Exception:
+        persistent = False
+
+    # Include any deltas that could not be flushed (local dev / transient Mongo
+    # outage). They are process-local but still useful and remain aggregate-only.
+    with _PENDING_LOCK:
+        pending_rows = {key: copy.deepcopy(value) for key, value in _PENDING.items()}
+    for bucket_key, payload in pending_rows.items():
+        if bucket_key < _bucket_start(start) or bucket_key > _bucket_start(end):
+            continue
+        target = rows_by_bucket.setdefault(bucket_key, _fresh_bucket())
+        _merge_numeric(target, payload)
+
+    selected = [(key, value) for key, value in sorted(rows_by_bucket.items()) if key <= end and key + BUCKET_SECONDS >= start]
+    total = _fresh_bucket()
+    for _, payload in selected:
+        _merge_numeric(total, payload)
+
+    range_seconds = max(1, end - start)
+    return {
+        "range": {
+            "from": datetime.fromtimestamp(start, tz=timezone.utc).isoformat(),
+            "to": datetime.fromtimestamp(end, tz=timezone.utc).isoformat(),
+            "seconds": range_seconds,
+            "persistent": persistent,
+            "resolution": "hour" if range_seconds <= 48 * 60 * 60 else "day",
+        },
+        "http": _summarize_http(total.get("http") or {}, range_seconds),
+        "ai": _summarize_ai(total.get("ai") or {}),
+        "series": _group_series(selected, start, end),
+    }
+
+
+def reset_history_for_tests() -> None:
+    global _FLUSH_SCHEDULED, _LAST_FLUSH_SCHEDULED_AT, _FLUSH_ASYNC_LOCK, _FLUSH_ASYNC_LOCK_LOOP, _INDEX_READY
+    with _PENDING_LOCK:
+        _PENDING.clear()
+    with _SCHEDULE_LOCK:
+        _FLUSH_SCHEDULED = False
+        _LAST_FLUSH_SCHEDULED_AT = 0.0
+    _FLUSH_ASYNC_LOCK = None
+    _FLUSH_ASYNC_LOCK_LOOP = None
+    _INDEX_READY = False

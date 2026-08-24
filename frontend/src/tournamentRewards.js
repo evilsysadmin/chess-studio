@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 // tournamentRewards.js — Recompensas cosméticas por nivel de Torneo:
@@ -48,7 +49,7 @@ const TITLE_KEY = 'chess-study-selected-title';
 const SKIN_KEY = 'chess-study-selected-skin';
 
 export function loadSelectedTitle() {
-  return localStorage.getItem(TITLE_KEY) || 'novato';
+  return getStorageItem(STORAGE_LOCAL, TITLE_KEY) || 'novato';
 }
 
 export function saveSelectedTitle(id) {
@@ -56,7 +57,7 @@ export function saveSelectedTitle(id) {
 }
 
 export function loadSelectedSkin() {
-  return localStorage.getItem(SKIN_KEY) || 'default';
+  return getStorageItem(STORAGE_LOCAL, SKIN_KEY) || 'default';
 }
 
 export function saveSelectedSkin(id) {

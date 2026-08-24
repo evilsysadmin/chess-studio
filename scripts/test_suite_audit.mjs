@@ -51,7 +51,10 @@ if (implicitClockTests.length) fail(`Tests dependientes del reloj real: ${implic
 
 const storageWithoutReset = frontendFiles.filter((name) => {
   const source = read(path.join(frontendSrc, name));
-  if (!/(?:localStorage|sessionStorage)/.test(source)) return false;
+  // Sólo los tests que TOCAN Web Storage necesitan limpieza. Contract-tests
+  // que inspeccionan texto o regex sobre la palabra "localStorage" no deben
+  // quedar marcados como usuarios reales del storage.
+  if (!/(?:localStorage|sessionStorage)\.(?:getItem|setItem|removeItem|clear)\s*\(/.test(source)) return false;
   return !/(?:localStorage|sessionStorage)\.clear\(\)/.test(source);
 });
 if (storageWithoutReset.length) fail(`Tests que usan Web Storage sin limpieza explícita: ${storageWithoutReset.join(', ')}`);

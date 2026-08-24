@@ -30,7 +30,7 @@ export const BASE_STATS = {
 };
 
 // Cuánta experiencia banca capturar cada tipo de pieza.
-export const PIECE_XP_VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+const PIECE_XP_VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
 // Cuánto suma cada punto comprado a la estadística real de la pieza.
 export const STRENGTH_POINT_VALUE = 1.5;
@@ -314,7 +314,7 @@ export function applyMoveToRegistry(registry, applied) {
 
 // Banca XP en una pieza que ya está en el tablero (por ejemplo, por
 // sobrevivir a un ataque esquivándolo) sin moverla de casilla.
-export function applySurvivalXp(registry, square, gained) {
+function applySurvivalXp(registry, square, gained) {
   const piece = registry[square];
   if (!piece || gained <= 0 || piece.type === 'k') return { registry }; // el rey nunca banca XP, ni siquiera por sobrevivir
   const next = { ...registry, [square]: { ...piece, bankedXp: (piece.bankedXp || 0) + gained } };

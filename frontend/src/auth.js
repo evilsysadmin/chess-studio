@@ -14,9 +14,9 @@ import { APP_RELEASE } from './release.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
-export const USERNAME_KEY = 'chess-study-auth-username';
+const USERNAME_KEY = 'chess-study-auth-username';
 
-export const AUTH_STORAGE_KEYS = Object.freeze([TOKEN_KEY, USERNAME_KEY]);
+const AUTH_STORAGE_KEYS = Object.freeze([TOKEN_KEY, USERNAME_KEY]);
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -52,7 +52,7 @@ export function isLoggedIn() {
 // podría volver a escribirlo usando la nueva sesión compartida. Escuchamos
 // solo las claves de autenticación y obligamos a la pestaña obsoleta a
 // reinicializarse antes de que pueda persistir nada.
-export function sessionFingerprint() {
+function sessionFingerprint() {
   // Identidad, no valor exacto del JWT. Un re-login/rotación de token del
   // MISMO usuario en otra pestaña no debe desmontar una batalla activa.
   return `${getUsername() || ''}\n${getToken() ? 'authenticated' : 'anonymous'}`;

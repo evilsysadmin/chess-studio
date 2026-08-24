@@ -41,6 +41,13 @@ def record_http_request(method: str, route: str, status_code: int, latency_ms: f
             "status": int(status_code or 0),
             "latency_ms": max(0.0, round(float(latency_ms or 0.0), 2)),
         })
+    try:
+        from observability_history import record_http_event
+
+        record_http_event(clean_method, clean_route, status_code, latency_ms)
+    except Exception:
+        # El histórico es auxiliar; nunca debe romper una request productiva.
+        pass
 
 
 def reset_http_metrics() -> None:

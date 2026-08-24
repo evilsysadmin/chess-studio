@@ -44,7 +44,7 @@ export const ADMIN_USER_FILTERS = Object.freeze([
   { id: 'insights', label: 'Así juegas' },
 ]);
 
-export function matchesAdminUserFilter(user, filter = 'all') {
+function matchesAdminUserFilter(user, filter = 'all') {
   if (filter === 'all') return true;
   if (filter === 'foreground') return user?.foreground === true;
   if (filter === 'online') return user?.presence === 'online';

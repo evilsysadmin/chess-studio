@@ -2,9 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildCemetery,
   buildOpeningTree,
-  contractForToday,
   deriveChessProfile,
-  evaluateContract,
   evolutionBuckets,
 } from './metaProgress.js';
 
@@ -64,10 +62,4 @@ describe('meta progress derivado de historial real', () => {
     ]);
   });
 
-  it('contrato diario y evaluación son deterministas con fecha/contexto inyectados', () => {
-    const contract = contractForToday(new Date(2026, 7, 22, 12, 0, 0));
-    expect(contract).toBeTruthy();
-    expect(evaluateContract(contract, { outcome: 'win', hintsUsed: 0, plies: 60, humanColor: 'b' })).toMatchObject({ id: contract.id, label: contract.label });
-    expect(evaluateContract(null, {})).toBeNull();
-  });
 });

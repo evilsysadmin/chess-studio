@@ -1,3 +1,4 @@
+import { STORAGE_SESSION, getStorageItem, setStorageItem } from '../safeStorage.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AMBIENT_THEME_GROUPS,
@@ -37,16 +38,16 @@ function snapshot() {
 const MUSIC_DECK_EXPANDED_KEY = 'chess-music-deck-expanded';
 
 function loadDeckExpanded() {
-  try { return window.sessionStorage.getItem(MUSIC_DECK_EXPANDED_KEY) === '1'; } catch { return false; }
+  try { return getStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY) === '1'; } catch { return false; }
 }
 
 function saveDeckExpanded(value) {
-  try { window.sessionStorage.setItem(MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
+  try { setStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
 }
 
-export default function MusicPlayer() {
+export default function MusicPlayer({ forceExpanded = false } = {}) {
   const [state, setState] = useState(() => snapshot());
-  const [expanded, setExpanded] = useState(() => loadDeckExpanded());
+  const [expanded, setExpanded] = useState(() => forceExpanded || loadDeckExpanded());
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => Math.round(getAmbientVolume() * 100));
   const [seekPreviewMs, setSeekPreviewMs] = useState(null);
@@ -256,12 +257,17 @@ export default function MusicPlayer() {
     if (['ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) commitSeek(event);
   }
 
+  useEffect(() => {
+    if (forceExpanded) setExpanded(true);
+  }, [forceExpanded]);
+
   function setDeckExpanded(next) {
+    if (forceExpanded) return;
     setExpanded(next);
     saveDeckExpanded(next);
   }
 
-  if (!expanded) {
+  if (!expanded && !forceExpanded) {
     return (
       <div className="music-deck music-deck-collapsed" role="group" aria-label="Reproductor de audio plegado">
         <button type="button" className="music-deck-expand" onClick={() => setDeckExpanded(true)} aria-label="Abrir reproductor de música" title="Abrir reproductor">
@@ -285,7 +291,9 @@ export default function MusicPlayer() {
 
   return (
     <div className="music-deck music-deck-expanded" role="group" aria-label="Reproductor y controles de audio">
-      <button type="button" className="music-deck-collapse" onClick={() => setDeckExpanded(false)} aria-label="Plegar reproductor de música" title="Plegar reproductor">−</button>
+      {!forceExpanded && (
+        <button type="button" className="music-deck-collapse" onClick={() => setDeckExpanded(false)} aria-label="Plegar reproductor de música" title="Plegar reproductor">−</button>
+      )}
       <div className="music-deck-display" title={current?.description || 'Música ambiental'}>
         <div className="music-deck-title-row">
           <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />

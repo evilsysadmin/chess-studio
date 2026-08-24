@@ -1,9 +1,10 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 const KEY = 'chess-study-zen-mode';
 
 export function loadZenMode() {
-  return localStorage.getItem(KEY) === '1';
+  return getStorageItem(STORAGE_LOCAL, KEY) === '1';
 }
 
 export function saveZenMode(enabled) {

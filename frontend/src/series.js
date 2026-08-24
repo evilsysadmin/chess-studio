@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem, setStorageItem, removeStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 const ACTIVE_KEY = 'chess-study-active-series';
@@ -57,7 +58,7 @@ export function validateSeriesState(parsed) {
 
 export function loadActiveSeries() {
   try {
-    const raw = localStorage.getItem(ACTIVE_KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, ACTIVE_KEY);
     if (!raw) return null;
     return validateSeriesState(JSON.parse(raw));
   } catch {
@@ -67,23 +68,23 @@ export function loadActiveSeries() {
 
 export function saveActiveSeries(series) {
   if (!series) {
-    localStorage.removeItem(ACTIVE_KEY);
+    removeStorageItem(STORAGE_LOCAL, ACTIVE_KEY);
     return null;
   }
   // Es estado de sesión: no se sincroniza con Mongo porque incluye game_id
   // efímeros del backend. Se persiste localmente para sobrevivir a un refresh.
-  localStorage.setItem(ACTIVE_KEY, JSON.stringify(series));
+  setStorageItem(STORAGE_LOCAL, ACTIVE_KEY, JSON.stringify(series));
   return series;
 }
 
 export function clearActiveSeries() {
-  localStorage.removeItem(ACTIVE_KEY);
+  removeStorageItem(STORAGE_LOCAL, ACTIVE_KEY);
   return null;
 }
 
 export function loadSeriesHistory() {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, HISTORY_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -135,7 +136,7 @@ export function recordSeriesGame(series, outcome, meta = {}) {
   return saveActiveSeries(next);
 }
 
-export function seriesScoreText(series) {
+function seriesScoreText(series) {
   if (!series) return '';
   return `Tú ${series.humanWins} · CPU ${series.cpuWins}${series.draws ? ` · tablas ${series.draws}` : ''}`;
 }

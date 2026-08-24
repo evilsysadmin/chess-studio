@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem, setStorageItem, removeStorageItem } from './safeStorage.js';
 // gameChat.js — Transcript local de los comentarios en vivo de la CPU.
 //
 // Mientras una partida está activa vive en SESSION_STATE_KEYS: así sobrevive
@@ -18,14 +19,14 @@ function safeParse(raw) {
 }
 
 export function loadActiveGameChat(gameId) {
-  if (!gameId || typeof localStorage === 'undefined') return [];
-  const saved = safeParse(localStorage.getItem(ACTIVE_CHAT_KEY));
+  if (!gameId) return [];
+  const saved = safeParse(getStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY));
   if (!saved || saved.gameId !== gameId || !Array.isArray(saved.messages)) return [];
   return saved.messages;
 }
 
 export function appendActiveGameChat(gameId, comment, meta = {}) {
-  if (!gameId || !comment || typeof localStorage === 'undefined') return [];
+  if (!gameId || !comment) return [];
   const text = typeof comment === 'string' ? comment : comment.text;
   if (!text) return loadActiveGameChat(gameId);
 
@@ -41,16 +42,15 @@ export function appendActiveGameChat(gameId, comment, meta = {}) {
   };
 
   const messages = [...current, message].slice(-MAX_MESSAGES);
-  localStorage.setItem(ACTIVE_CHAT_KEY, JSON.stringify({ gameId, messages }));
+  setStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY, JSON.stringify({ gameId, messages }));
   return messages;
 }
 
 export function clearActiveGameChat(gameId = null) {
-  if (typeof localStorage === 'undefined') return;
   if (!gameId) {
-    localStorage.removeItem(ACTIVE_CHAT_KEY);
+    removeStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY);
     return;
   }
-  const saved = safeParse(localStorage.getItem(ACTIVE_CHAT_KEY));
-  if (!saved || saved.gameId === gameId) localStorage.removeItem(ACTIVE_CHAT_KEY);
+  const saved = safeParse(getStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY));
+  if (!saved || saved.gameId === gameId) removeStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY);
 }

@@ -2047,7 +2047,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .insights-subnav button {
   appearance: none;
   text-align: left;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-radius: 9px;
   background: var(--ink);
   color: var(--parchment);
@@ -2198,7 +2198,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   font-family: var(--font-mono);
   font-size: 0.65rem;
   color: var(--parchment-dim);
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-radius: 999px;
   padding: 0.24rem 0.5rem;
 }
@@ -2211,7 +2211,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .coaching-card {
   padding: 0.78rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-left-width: 3px;
   border-radius: 8px;
   background: var(--ink-2);
@@ -2930,6 +2930,28 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .admin-observability-body { display: grid; gap: 0.85rem; }
 .admin-observability-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; flex-wrap: wrap; }
 .admin-observability-toolbar p { margin: 0; }
+.admin-observability-range {
+  display: flex;
+  align-items: end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.admin-observability-range label { display: grid; gap: 0.25rem; }
+.admin-observability-range label > span { color: var(--parchment-dim); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.035em; }
+.admin-observability-range select,
+.admin-observability-range input {
+  min-height: 2rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 7px;
+  background: var(--ink-2);
+  color: var(--parchment);
+  padding: 0.35rem 0.5rem;
+}
+.admin-observability-range small { margin-left: auto; color: var(--parchment-dim); font-size: 0.65rem; }
 .admin-observability-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2956,6 +2978,12 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .admin-observability-list li span { min-width: 0; color: var(--parchment-dim); font-size: 0.68rem; overflow-wrap: anywhere; }
 .admin-observability-list li strong { flex: 0 0 auto; color: var(--parchment); font-family: var(--font-mono); font-size: 0.69rem; }
 .admin-observability-list code { white-space: normal; overflow-wrap: anywhere; }
+.admin-observability-series { display: grid; gap: 0.3rem; max-height: 19rem; overflow: auto; padding-right: 0.15rem; }
+.admin-observability-series-row { display: grid; grid-template-columns: minmax(5.2rem, auto) minmax(4rem, 1fr) auto; gap: 0.45rem; align-items: center; }
+.admin-observability-series-row time { color: var(--parchment-dim); font-family: var(--font-mono); font-size: 0.62rem; white-space: nowrap; }
+.admin-observability-series-row strong { color: var(--parchment); font-family: var(--font-mono); font-size: 0.66rem; }
+.admin-observability-series-bar { height: 0.42rem; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }
+.admin-observability-series-bar > span { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--brass); opacity: 0.7; }
 
 .admin-detail-row td { background: rgba(0, 0, 0, 0.14); white-space: normal; }
 .admin-detail-grid {
@@ -3258,7 +3286,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.7rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-radius: 8px;
   background: var(--ink-2);
 }
@@ -3567,7 +3595,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .admin-insights-panel {
   margin-top: 1rem;
   padding: 1rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-left: 3px solid var(--brass);
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.12);
@@ -3585,7 +3613,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   font-size: .72rem;
   text-transform: uppercase;
   letter-spacing: .07em;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-radius: 999px;
   padding: .3rem .55rem;
   white-space: nowrap;
@@ -3600,7 +3628,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   display: grid;
   gap: .2rem;
   padding: .65rem .75rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.018);
 }
@@ -4953,7 +4981,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   display: grid;
   gap: 0.18rem;
   padding: 0.65rem 0.7rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.12);
 }
@@ -8850,7 +8878,7 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 
 .ai-player-portrait-source {
   flex: 0 0 auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--ink-3);
   border-radius: 999px;
   padding: .3rem .55rem;
   color: var(--parchment-dim);
@@ -8929,4 +8957,36 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .release-update-notice { align-items: flex-start; }
   .release-update-copy span { max-width: 42ch; }
   .release-update-actions { flex-direction: column; align-items: stretch; }
+}
+
+/* ---------- v16.6dm29 · narrativa AI útil en autopsia / Combat / observabilidad ---------- */
+.ai-task-card {
+  display: grid;
+  gap: .34rem;
+  margin: .7rem 0;
+  padding: .7rem .76rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 28%, var(--ink-3));
+  border-left: 3px solid var(--brass);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ink-2) 90%, var(--brass) 10%);
+}
+.ai-task-card small {
+  color: var(--brass);
+  font: .56rem var(--font-mono);
+  letter-spacing: .11em;
+}
+.ai-task-card p {
+  margin: 0;
+  color: var(--parchment);
+  font-size: .76rem;
+  line-height: 1.52;
+}
+.ai-task-card.is-loading { opacity: .72; }
+.admin-observability-toolbar-actions { display: flex; gap: .45rem; flex-wrap: wrap; }
+.admin-observability-ai-summary { margin: 0; }
+.combat-ai-briefing { margin: .05rem 0 .7rem; }
+.combat-ai-debrief { margin: .2rem 0 .68rem; }
+@media (max-width: 580px) {
+  .admin-observability-toolbar-actions { width: 100%; }
+  .admin-observability-toolbar-actions .secondary-btn { flex: 1 1 10rem; }
 }

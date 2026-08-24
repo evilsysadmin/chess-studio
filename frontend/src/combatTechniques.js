@@ -5,7 +5,7 @@ import { pieceRankAtLeast } from './combatRanks.js';
 // Técnicas tácticas de Combate: desbloqueos persistentes por identidad,
 // equipados ANTES de la batalla y consumidos como máximo una vez por batalla.
 // No son reglas del ajedrez normal ni afectan Torneo/Puzzles/Partida rápida.
-export const COMBAT_TECHNIQUES = {
+const COMBAT_TECHNIQUES = {
   line_fire: {
     id: 'line_fire',
     label: 'Fuego de línea',

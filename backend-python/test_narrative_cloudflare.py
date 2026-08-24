@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 
 import pytest
 import narrative_cloudflare as provider
@@ -92,6 +93,38 @@ def test_cloud_failure_never_breaks_game(monkeypatch):
     assert result["provider"] == "local"
     assert result["text"]
     assert provider.get_ai_metrics()["reasons"]["http_502"] == 1
+
+
+def test_worker_error_code_is_preserved_for_diagnostics(monkeypatch):
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "b" * 64)
+    outcome = asyncio.run(
+        provider.request_cloud_narrative(
+            "player_portrait",
+            {"total_games": 8},
+            client=FakeClient(FakeResponse(502, {"ok": False, "error": "empty_provider_response"})),
+        )
+    )
+    assert outcome.reason == "http_502"
+    assert outcome.worker_error == "empty_provider_response"
+
+def test_worker_provider_error_name_and_code_are_preserved_for_render_logs(monkeypatch):
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "b" * 64)
+    outcome = asyncio.run(
+        provider.request_cloud_narrative(
+            "player_portrait",
+            {"total_games": 8},
+            client=FakeClient(FakeResponse(502, {
+                "ok": False,
+                "error": "provider_failure",
+                "error_name": "AiError",
+                "error_code": "7000",
+            })),
+        )
+    )
+    assert outcome.worker_error == "provider_failure:AiError:7000"
+
 
 def test_sensitive_fact_keys_are_removed_before_cloud_request(monkeypatch):
     monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
@@ -203,6 +236,27 @@ def test_circuit_breaker_opens_after_consecutive_failures(monkeypatch):
     assert circuit["open_count"] == 1
 
 
+def test_portrait_circuit_failure_does_not_disable_move_comments(monkeypatch):
+    monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
+    monkeypatch.setenv("AI_NARRATIVE_CIRCUIT_FAILURES", "2")
+    monkeypatch.setenv("AI_NARRATIVE_CIRCUIT_RESET_SECONDS", "60")
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "g" * 64)
+
+    portrait_fail = FakeClient(FakeResponse(502, {"ok": False, "error": "provider_failure"}))
+    assert asyncio.run(provider.request_cloud_narrative("player_portrait", {}, client=portrait_fail)).reason == "http_502"
+    assert asyncio.run(provider.request_cloud_narrative("player_portrait", {}, client=portrait_fail)).reason == "http_502"
+    assert asyncio.run(provider.request_cloud_narrative("player_portrait", {}, client=portrait_fail)).reason == "circuit_open"
+
+    comment_ok = FakeClient(FakeResponse(200, {"ok": True, "text": "Movimiento anotado."}))
+    comment = asyncio.run(provider.request_cloud_narrative("generic", {"san": "e4"}, client=comment_ok))
+    assert comment.reason == "ok"
+    assert comment.text == "Movimiento anotado."
+    circuit = provider.get_ai_metrics()["circuit"]
+    assert circuit["channels"]["player_portrait"]["open"] is True
+    assert circuit["channels"]["comments"]["open"] is False
+
+
 def test_success_resets_consecutive_circuit_failures(monkeypatch):
     monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
     monkeypatch.setenv("AI_NARRATIVE_CIRCUIT_FAILURES", "3")
@@ -281,3 +335,60 @@ def test_player_portrait_transport_keeps_more_than_420_chars_and_trims_at_senten
     assert len(trimmed) <= nc.PLAYER_PORTRAIT_MAX_OUTPUT_CHARS
     assert trimmed.endswith(".") or trimmed.endswith("…")
     assert not trimmed.endswith(" e")
+
+
+def test_ai_provider_emits_operational_logs_without_payload_data(monkeypatch, caplog):
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "z" * 64)
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+
+    success = FakeClient(FakeResponse(200, {
+        "ok": True,
+        "text": "Movimiento anotado.",
+        "model": "@cf/meta/llama-3.2-3b-instruct",
+        "usage": {"inputTokens": 10, "outputTokens": 4},
+    }))
+    asyncio.run(provider.generate_narrative("generic", {"san": "e4", "private_marker": "DO_NOT_LOG"}, client=success))
+
+    failure = FakeClient(FakeResponse(502, {"ok": False, "error": "empty_provider_response"}))
+    asyncio.run(provider.generate_narrative("player_portrait", {"total_games": 8, "private_marker": "DO_NOT_LOG"}, client=failure))
+
+    text = "\n".join(record.getMessage() for record in caplog.records)
+    assert "workers_ai_ok event_type=generic" in text
+    assert "model=@cf/meta/llama-3.2-3b-instruct" in text
+    assert "workers_ai_fallback event_type=player_portrait" in text
+    assert "worker_error=empty_provider_response" in text
+    assert "DO_NOT_LOG" not in text
+
+
+def test_rich_analysis_uses_separate_circuit_channel(monkeypatch):
+    monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
+    monkeypatch.setenv("AI_NARRATIVE_CIRCUIT_FAILURES", "2")
+    monkeypatch.setenv("AI_NARRATIVE_CIRCUIT_RESET_SECONDS", "60")
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "k" * 64)
+
+    analysis_fail = FakeClient(FakeResponse(502, {"ok": False, "error": "provider_failure"}))
+    assert asyncio.run(provider.request_cloud_narrative("post_game_autopsy", {}, client=analysis_fail)).reason == "http_502"
+    assert asyncio.run(provider.request_cloud_narrative("post_game_autopsy", {}, client=analysis_fail)).reason == "http_502"
+    assert asyncio.run(provider.request_cloud_narrative("post_game_autopsy", {}, client=analysis_fail)).reason == "circuit_open"
+
+    portrait_ok = FakeClient(FakeResponse(200, {"ok": True, "text": "Tres frases útiles. Otra frase. Consejo."}))
+    portrait = asyncio.run(provider.request_cloud_narrative("player_portrait", {"total_games": 8}, client=portrait_ok))
+    assert portrait.reason == "ok"
+    circuit = provider.get_ai_metrics()["circuit"]
+    assert circuit["channels"]["analysis"]["open"] is True
+    assert circuit["channels"]["player_portrait"]["open"] is False
+    assert circuit["channels"]["comments"]["open"] is False
+
+
+def test_rich_analysis_transport_keeps_long_compact_output(monkeypatch):
+    monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "l" * 64)
+    long_text = "Diagnóstico útil. " * 30
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": long_text}))
+    outcome = asyncio.run(provider.request_cloud_narrative("observability_summary", {"api_requests": 100}, client=client))
+    assert outcome.reason == "ok"
+    assert len(outcome.text) > 420
+    assert len(outcome.text) <= provider.RICH_ANALYSIS_MAX_OUTPUT_CHARS

@@ -6,7 +6,7 @@ import { ensureUnitServiceState, unitRecordForKey } from './combatUnitService.js
 // Combat Chess deployment deliberately separates a battlefield SLOT from a
 // persistent UNIT identity. A veteran pawn can therefore deploy as a knight
 // without ceasing to be a pawn in its dossier/service history.
-export const DEPLOYMENT_VERSION = 1;
+const DEPLOYMENT_VERSION = 1;
 const FILES = 'abcdefgh'.split('');
 const RESERVE_GRANT_LIMIT = 32;
 
@@ -14,7 +14,7 @@ export function originTypeForRosterKey(key) {
   return String(key || '').split('-')[0] || null;
 }
 
-export function deploymentSlotSpecs() {
+function deploymentSlotSpecs() {
   return CANONICAL_ROSTER_SLOTS.map((slot) => ({
     ...slot,
     key: rosterSlotKey(slot),

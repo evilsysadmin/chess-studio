@@ -1,6 +1,7 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
-export const MECHANIC_TUTORIAL_KEY = 'chess-study-mechanic-tutorial-progress-v1';
+const MECHANIC_TUTORIAL_KEY = 'chess-study-mechanic-tutorial-progress-v1';
 
 export const MECHANIC_TUTORIALS = Object.freeze([
   {
@@ -165,7 +166,7 @@ export function mechanicTutorialById(id) {
 
 export function loadMechanicTutorialProgress() {
   try {
-    const raw = JSON.parse(localStorage.getItem(MECHANIC_TUTORIAL_KEY) || '{}');
+    const raw = JSON.parse(getStorageItem(STORAGE_LOCAL, MECHANIC_TUTORIAL_KEY) || '{}');
     return raw && typeof raw === 'object' ? raw : {};
   } catch {
     return {};

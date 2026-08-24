@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // tournament.js — Progreso del modo torneo. Se guarda en la caché local síncrona y la capa de perfil la
@@ -11,7 +12,7 @@ const EMPTY_STATE = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0
 
 export function loadTournament() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, STORAGE_KEY);
     if (!raw) return { ...EMPTY_STATE };
     const parsed = JSON.parse(raw);
     // Migración V16.6: antes `points` era a la vez moneda de pistas y XP de

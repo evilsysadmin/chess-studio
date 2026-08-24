@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { duckAmbientMusic } from './sound.js';
 
@@ -22,8 +23,7 @@ const PROFESSOR_NAME_HINTS = [
 ];
 
 export function isVoiceEnabled() {
-  if (typeof localStorage === 'undefined') return false;
-  return localStorage.getItem(VOICE_KEY) === '1';
+  return getStorageItem(STORAGE_LOCAL, VOICE_KEY) === '1';
 }
 
 export function isVoiceSupported() {

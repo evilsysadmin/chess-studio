@@ -1,24 +1,6 @@
 // Métricas derivadas de historial real. El antiguo estado persistente de temporadas/runs
 // fue sustituido por career.js; la clave legacy se conserva sólo en profileKeys para limpieza.
 
-export const CONTRACTS = [
-  { id: 'win', label: 'Haz el trabajo', text: 'Gana la partida.', test: ({ outcome }) => outcome === 'win' },
-  { id: 'no-hints', label: 'Sin ruedines', text: 'Termina sin usar pistas.', test: ({ hintsUsed }) => Number(hintsUsed || 0) === 0 },
-  { id: 'survive-20', label: 'Mantén el pulso', text: 'Llega al movimiento 20.', test: ({ plies }) => Number(plies || 0) >= 39 },
-  { id: 'fast-win', label: 'Ejecución sumaria', text: 'Gana antes del movimiento 30.', test: ({ outcome, plies }) => outcome === 'win' && Number(plies || 0) <= 59 },
-  { id: 'black-win', label: 'Con negras, además', text: 'Gana jugando con negras.', test: ({ outcome, humanColor }) => outcome === 'win' && humanColor === 'b' },
-];
-
-export function contractForToday(date = new Date()) {
-  const seed = Number(`${date.getFullYear()}${date.getMonth() + 1}${date.getDate()}`);
-  return CONTRACTS[seed % CONTRACTS.length];
-}
-
-export function evaluateContract(contract, ctx) {
-  if (!contract) return null;
-  return { id: contract.id, label: contract.label, success: !!contract.test(ctx) };
-}
-
 export function buildCemetery(history = []) {
   return history.filter((r) => r.outcome === 'loss').map((r) => ({
     ...r,

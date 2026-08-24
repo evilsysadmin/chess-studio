@@ -1,3 +1,4 @@
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // playerRating.js — Estimación de nivel del jugador tipo ELO, calculada a
@@ -54,7 +55,7 @@ function emptyState() {
 
 export function loadRating() {
   try {
-    const raw = localStorage.getItem(RATING_KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, RATING_KEY);
     if (!raw) return emptyState();
     const parsed = JSON.parse(raw);
     return { rating: parsed.rating ?? DEFAULT_RATING, games: parsed.games || 0 };
@@ -75,7 +76,7 @@ export function saveRating(state) {
 // Se graba en los modos que sí puntúan: partida normal y Torneo.
 export function loadRatingHistory() {
   try {
-    const raw = localStorage.getItem(RATING_HISTORY_KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, RATING_HISTORY_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
