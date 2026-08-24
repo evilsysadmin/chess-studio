@@ -91,6 +91,7 @@ def test_root_identifies_backend_instead_of_returning_404():
         "ok": True,
         "service": "Chess Studio API",
         "health": "/api/health",
+        "ready": "/api/ready",
     }
 
 
