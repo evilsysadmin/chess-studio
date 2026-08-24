@@ -15,3 +15,17 @@ venv/
 .tools/
 .security/
 .trivy-cache/
+# Cloudflare/Terraform local transient state
+infra/cloudflare/.terraform/
+infra/cloudflare/.terraform.lock.hcl
+infra/cloudflare/*.tfstate
+infra/cloudflare/*.tfstate.*
+infra/cloudflare/tfplan
+
+# Test/coverage artifacts
+frontend/coverage/
+backend-python/.coverage
+backend-python/coverage.xml
+backend-python/htmlcov/
+e2e/test-results/
+e2e/playwright-report/

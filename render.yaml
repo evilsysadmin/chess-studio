@@ -1,3 +1,11 @@
+# render.yaml — Blueprint de Render para el backend.
+#
+# Al conectar este repo en Render (New -> Blueprint), detecta este archivo
+# solo y arma el servicio. MONGO_URL queda como "sync: false" a propósito:
+# es un secreto (usuario/contraseña de tu cluster de MongoDB Atlas), así
+# que Render te va a pedir cargarlo a mano desde su dashboard en vez de
+# dejarlo committeado acá.
+
 services:
   - type: web
     name: chess-study-backend
@@ -6,8 +14,42 @@ services:
     dockerContext: ./backend-python
     plan: free
     healthCheckPath: /api/health
+    # Dominio público del backend. Si este Blueprint gestiona tu servicio,
+    # Render intentará asociarlo al desplegar/sincronizar. Si el servicio se
+    # creó manualmente, añádelo también en Settings -> Custom Domains.
+    domains:
+      - chess-studio.shadowops.dpdns.org
     envVars:
       - key: MONGO_URL
         sync: false
       - key: MONGO_DB_NAME
         value: chess_study
+      - key: JWT_SECRET
+        sync: false
+      # Recuperación de contraseña. RESEND_API_KEY es el único secreto nuevo.
+      # Para producción real verifica un remitente/dominio en Resend; si quieres
+      # sobrescribir el remitente por defecto, añade PASSWORD_RESET_FROM en el
+      # dashboard sin committearlo.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: PASSWORD_RESET_URL
+        value: https://evilsysadmin.github.io/chess-studio/
+      - key: ENVIRONMENT
+        value: production
+      # Recuperación por email activa. Durante la prueba, onboarding@resend.dev
+      # puede usarse con las restricciones de Resend; tras verificar
+      # shadowops.dpdns.org configura PASSWORD_RESET_FROM en el dashboard.
+      - key: ENABLE_EMAIL_RECOVERY
+        value: "true"
+      - key: PASSWORD_RESET_FROM
+        value: Chess Studio <onboarding@resend.dev>
+      - key: EXPOSE_API_DOCS
+        value: "false"
+      # Ponlo en "false" cuando quieras congelar altas nuevas en producción.
+      - key: ALLOW_REGISTRATION
+        value: "true"
+      # Si lo configuras, el registro exige este código además de usuario/contraseña.
+      - key: INVITE_CODE
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://evilsysadmin.github.io
