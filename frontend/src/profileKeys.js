@@ -69,6 +69,7 @@ export const PROFILE_STORAGE_KEYS = Object.freeze([
 // cambiar de identidad para que Bob no vea la partida activa de Alice.
 export const DERIVED_LOCAL_CACHE_KEYS = Object.freeze([
   'chess-study-ai-player-portrait-v1',
+  'chess-study-ai-training-plan-v1',
 ]);
 
 export const SESSION_STATE_KEYS = [

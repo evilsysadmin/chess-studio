@@ -4,6 +4,7 @@ import {
   buildCombatDebriefDossier,
   buildObservabilitySummaryDossier,
   buildPostGameAutopsyDossier,
+  buildTrainingPlanDossier,
 } from './aiNarrativeTasks.js';
 
 describe('AI narrative task dossiers', () => {
@@ -38,6 +39,21 @@ describe('AI narrative task dossiers', () => {
     });
     expect(dossier.facts.notable_units[0].alias).toBe('Rivas');
     expect(dossier.facts.fallen_aliases).toHaveLength(6);
+  });
+
+  it('training plan contains only deterministic coaching priorities and matching-position counts', () => {
+    const dossier = buildTrainingPlanDossier({
+      insights: { totalGames: 12 },
+      coaching: [
+        { priority: 'high', priorityLabel: 'Prioridad alta', title: 'Revisa tus mates', diagnosis: 'Has dejado pasar mates medidos.', action: 'Haz 5 posiciones de mate.' },
+        { priority: 'medium', priorityLabel: 'Prioridad media', title: 'Menos damas al matadero', diagnosis: 'La dama quedó expuesta a peón.', action: 'Comprueba ataques de peón antes de moverla.' },
+      ],
+      trainingTargets: [{ count: 3, source: 'personal', filter: { incident: 'MISSED_MATE' } }, { count: 1 }],
+    });
+    expect(dossier).toMatchObject({ eventType: 'training_plan', requestKind: 'training_plan' });
+    expect(dossier.facts.sample_band).toBe('10-19');
+    expect(dossier.facts.priorities[0]).toMatchObject({ title: 'Revisa tus mates', matching_training_positions: 3 });
+    expect(JSON.stringify(dossier)).not.toMatch(/MISSED_MATE|source|filter|username|fen|token/i);
   });
 
   it('observability summary is aggregated and does not include users or request bodies', () => {

@@ -37,6 +37,12 @@ describe('remote narrative transport', () => {
     expect(await requestRemoteNarrative({ eventType:'observability_summary', requestKind:'observability_summary', facts:{} }, { token:'jwt', fetchImpl })).toBe(analysis);
   });
 
+  it('training plan conserva el límite largo de análisis rico', async () => {
+    const long = 'x'.repeat(700);
+    const fetchImpl = async () => ({ ok: true, json: async () => ({ provider: 'cloudflare', text: long }) });
+    expect(await requestRemoteNarrative({ eventType:'training_plan', requestKind:'training_plan', facts:{} }, { token:'jwt', fetchImpl })).toHaveLength(700);
+  });
+
   it('5xx cae limpio a null para que NarrativeProvider use fallback local', async () => {
     const fetchImpl = vi.fn(async () => ({ ok:false, status:502 }));
     expect(await requestRemoteNarrative({ eventType:'mate', facts:{} }, { token:'jwt', fetchImpl })).toBeNull();

@@ -2,7 +2,7 @@ export const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 export const COMMENT_MODEL = QWEN_MODEL;
 export const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;
 export const ANALYSIS_MODEL = QWEN_MODEL;
-export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary"]));
+export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan"]));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
@@ -119,6 +119,11 @@ REGLAS INVIOLABLES:
 - Si mencionas una apertura en player_portrait, copia literalmente su nombre
   tal como aparece en HECHOS. No la rebautices, no inventes variantes y no
   añadas nombres de ajedrecistas que no estén escritos explícitamente allí.
+- Para training_plan escribe exactamente 3 frases compactas basadas sólo en las
+  prioridades ya calculadas dentro de HECHOS: qué atacar primero, qué atacar después
+  si existe una segunda prioridad y una forma concreta de encadenar la práctica.
+  No diagnostiques nada nuevo: Chess Studio ya ha decidido las prioridades. Puedes
+  meter una sola pulla ligera, pero el plan debe ser accionable.
 - Para post_game_autopsy escribe exactamente 3 frases cortas: balance factual
   de la partida, error o patrón decisivo apoyado en HECHOS y una acción concreta
   para la siguiente partida. Incluye como máximo una pulla breve. No conviertas
@@ -371,6 +376,7 @@ async function handleNarrative(request, env) {
 
   const tasks = {
     player_portrait: "Diagnostica el juego con datos: acierto principal, problema principal y siguiente acción. Mantén una sola pulla breve. Nada de adornos.",
+    training_plan: "Convierte las prioridades ya calculadas por Chess Studio en un plan corto y accionable. No añadas diagnósticos nuevos.",
     post_game_autopsy: "Haz la autopsia compacta de esta partida usando sólo los hechos analizados. Explica, no adornes.",
     combat_briefing: "Redacta un briefing táctico corto usando sólo la inteligencia realmente disponible y termina con una preparación concreta.",
     combat_debrief: "Redacta un debriefing corto usando sólo el resultado y hechos de servicio registrados.",

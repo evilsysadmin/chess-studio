@@ -144,6 +144,20 @@ def test_narrative_429_is_operationally_logged_without_identity(monkeypatch, cap
     assert "test-user" not in text
 
 
+
+def test_training_plan_uses_analysis_bucket_and_request_kind(monkeypatch):
+    monkeypatch.delenv("CF_AI_WORKER_URL", raising=False)
+    monkeypatch.delenv("CHESS_AI_SHARED_SECRET", raising=False)
+    client = build_client()
+    headers = {"Authorization": "Bearer ok"}
+    payload = {
+        "eventType": "training_plan",
+        "requestKind": "training_plan",
+        "facts": {"sample_band": "10-19", "priorities": [{"title": "Táctica", "action": "Repite posiciones"}]},
+    }
+    for _ in range(3):
+        assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
+
 def test_rich_analysis_has_its_own_rate_limit_bucket(monkeypatch):
     monkeypatch.delenv("CF_AI_WORKER_URL", raising=False)
     monkeypatch.delenv("CHESS_AI_SHARED_SECRET", raising=False)

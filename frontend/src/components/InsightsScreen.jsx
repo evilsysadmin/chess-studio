@@ -5,6 +5,8 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
 import { getToken, getUsername } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
+import { buildTrainingPlanDossier } from '../aiNarrativeTasks.js';
+import { loadCachedTrainingPlan, saveCachedTrainingPlan, trainingPlanGenerationKey } from '../aiTrainingPlan.js';
 import {
   buildPlayerPortraitFacts,
   formatPlayerPortraitCooldown,
@@ -234,6 +236,52 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     item,
     target: trainingTargetForCoaching(item, personalPuzzles),
   })), [coaching, personalPuzzles]);
+  const trainingDossier = useMemo(() => buildTrainingPlanDossier({
+    insights,
+    coaching,
+    trainingTargets: coachingWithTraining.map(({ target }) => target),
+  }), [insights, coaching, coachingWithTraining]);
+  const trainingGenerationKey = useMemo(() => trainingPlanGenerationKey(trainingDossier), [trainingDossier]);
+  const trainingIdentityScope = getUsername();
+  const [trainingAiText, setTrainingAiText] = useState(() => loadCachedTrainingPlan(trainingGenerationKey, trainingIdentityScope));
+  const [trainingAiStatus, setTrainingAiStatus] = useState(() => trainingAiText ? 'cloudflare' : 'local');
+
+  useEffect(() => {
+    if (!trainingDossier || Number(insights.totalGames || 0) < 3) {
+      setTrainingAiText(null);
+      setTrainingAiStatus('local');
+      return undefined;
+    }
+    const cached = loadCachedTrainingPlan(trainingGenerationKey, trainingIdentityScope);
+    if (cached) {
+      setTrainingAiText(cached);
+      setTrainingAiStatus('cloudflare');
+      return undefined;
+    }
+    const token = getToken();
+    if (!token) {
+      setTrainingAiText(null);
+      setTrainingAiStatus('local');
+      return undefined;
+    }
+
+    let active = true;
+    setTrainingAiText(null);
+    setTrainingAiStatus('loading');
+    void requestRemoteNarrative(trainingDossier, { token, timeoutMs: 8000 }).then((text) => {
+      if (!active) return;
+      if (!text) {
+        setTrainingAiStatus('local');
+        return;
+      }
+      saveCachedTrainingPlan(trainingGenerationKey, text, trainingIdentityScope);
+      setTrainingAiText(text);
+      setTrainingAiStatus('cloudflare');
+    }).catch(() => {
+      if (active) setTrainingAiStatus('local');
+    });
+    return () => { active = false; };
+  }, [trainingDossier, trainingGenerationKey, trainingIdentityScope, insights.totalGames]);
 
   async function startSearch() {
     stopRef.current = false;
@@ -455,6 +503,13 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             </div>
             <span className="coaching-count">{coaching.length} prioridades</span>
           </div>
+          {trainingAiStatus === 'loading' && <p className="hint-text coaching-ai-status">Workers AI está ordenando las prioridades…</p>}
+          {trainingAiText && (
+            <div className="ai-task-card coaching-ai-plan">
+              <small>CPU // PLAN DE ENTRENAMIENTO · WORKERS AI</small>
+              <p>{trainingAiText}</p>
+            </div>
+          )}
           <div className="coaching-grid">
             {coachingWithTraining.map(({ item, target }, i) => (
               <article className={`coaching-card priority-${item.priority}`} key={`${item.title}-${i}`}>

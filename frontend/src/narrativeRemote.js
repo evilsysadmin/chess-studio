@@ -5,7 +5,7 @@ const DEFAULT_MIN_INTERVAL_MS = 2500;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
 const PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900;
 const RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900;
-const RICH_ANALYSIS_EVENTS = new Set(['post_game_autopsy', 'combat_briefing', 'combat_debrief', 'observability_summary']);
+const RICH_ANALYSIS_EVENTS = new Set(['post_game_autopsy', 'combat_briefing', 'combat_debrief', 'observability_summary', 'training_plan']);
 
 function apiBase() {
   const raw = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');

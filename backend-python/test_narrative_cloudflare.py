@@ -361,6 +361,12 @@ def test_ai_provider_emits_operational_logs_without_payload_data(monkeypatch, ca
     assert "DO_NOT_LOG" not in text
 
 
+
+def test_training_plan_is_a_rich_analysis_event():
+    assert "training_plan" in provider.RICH_ANALYSIS_EVENT_TYPES
+    assert provider._circuit_channel("training_plan") == "analysis"
+    assert provider._max_output_chars("training_plan") == provider.RICH_ANALYSIS_MAX_OUTPUT_CHARS
+
 def test_rich_analysis_uses_separate_circuit_channel(monkeypatch):
     monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
     monkeypatch.setenv("AI_NARRATIVE_CIRCUIT_FAILURES", "2")

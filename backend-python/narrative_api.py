@@ -138,7 +138,7 @@ def build_narrative_router(
         identity_name = _identity_name(identity)
         admin_bypass = bool(is_admin_check and identity_name and is_admin_check(identity_name))
         request_kind = (body.requestKind or "default").strip().lower()
-        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "observability_summary"}
+        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "observability_summary", "training_plan"}
         if request_kind not in allowed_request_kinds:
             request_kind = "default"
         is_portrait = body.eventType == "player_portrait"

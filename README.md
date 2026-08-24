@@ -1,3 +1,10 @@
+### v16.6dm39 · Coaching AI + Admin operativo + backend Alpine
+
+- “Qué entrenaría ahora” puede resumirse con Workers AI, pero la IA sólo recibe prioridades ya calculadas por estadísticas/incidentes reales; no diagnostica debilidades nuevas.
+- El plan AI se cachea por usuario y por cambio factual de prioridades para evitar llamadas repetidas al reabrir la pantalla.
+- Admin prioriza Estado operativo/Observabilidad antes de la tabla de usuarios.
+- Backend Docker migra de Debian slim a `python:3.13-alpine3.23` con build multistage, usuario no-root y runtime mínimo.
+
 ### v16.6dm38b · E2E robusto y diagnóstico CI
 
 - Playwright deja de esperar headings históricos de Combat Chess y sincroniza con acciones/regions reales del flujo (`Iniciar Operación La Torre`, Home lista).

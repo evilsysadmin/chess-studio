@@ -308,8 +308,8 @@ export default function AdminScreen({ onExit }) {
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section">
         <span className="section-label">Admin</span>
-        <h2>Usuarios registrados</h2>
-        <p className="hint-text">Pulsa el nombre de un usuario para abrir o cerrar su expediente ajedrecístico.</p>
+        <h2>Estado operativo</h2>
+        <p className="hint-text">Primero la salud de Chess Studio; después ya interrogamos a los humanos.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
         {users && (
           <section className="admin-presence-summary" aria-label="Presencia de usuarios">
@@ -335,37 +335,11 @@ export default function AdminScreen({ onExit }) {
           onOpen={() => setAdminView('observability')}
         />
 
-        <section className="admin-feedback-section" aria-label="Feedback de usuarios">
-          <div className="admin-feedback-heading">
-            <div>
-              <span className="section-label">Feedback</span>
-              <h3>Lo que están diciendo los usuarios</h3>
-            </div>
-            <span className="admin-feedback-badge">{(feedback || []).filter((item) => item.status === 'new').length} nuevos</span>
-          </div>
-          {feedbackError && <p className="error-text">{feedbackError}</p>}
-          {!feedbackError && feedback === null && <p className="hint-text">Cargando feedback…</p>}
-          {!feedbackError && feedback && feedback.length === 0 && <p className="hint-text">No hay feedback todavía. Sospechoso silencio administrativo.</p>}
-          {!feedbackError && feedback && feedback.length > 0 && (
-            <>
-              {activeFeedback.length > 0 ? (
-                <div className="admin-feedback-list" aria-label="Feedback pendiente">
-                  {activeFeedback.map(renderFeedbackItem)}
-                </div>
-              ) : (
-                <p className="hint-text">No queda feedback pendiente. Milagro administrativo.</p>
-              )}
-              {resolvedFeedback.length > 0 && (
-                <details className="admin-feedback-resolved">
-                  <summary>Resueltos ({resolvedFeedback.length})</summary>
-                  <div className="admin-feedback-list admin-feedback-list-resolved">
-                    {resolvedFeedback.map(renderFeedbackItem)}
-                  </div>
-                </details>
-              )}
-            </>
-          )}
-        </section>
+        <div className="admin-users-heading">
+          <span className="section-label">Usuarios</span>
+          <h2>Usuarios registrados</h2>
+          <p className="hint-text">Pulsa el nombre de un usuario para abrir o cerrar su expediente ajedrecístico.</p>
+        </div>
 
         {users && users.length > 0 && (
           <div className="admin-activity-filters" role="group" aria-label="Filtrar usuarios por actividad">
@@ -583,6 +557,38 @@ export default function AdminScreen({ onExit }) {
             </table>
           </div>
         )}
+
+        <section className="admin-feedback-section" aria-label="Feedback de usuarios">
+          <div className="admin-feedback-heading">
+            <div>
+              <span className="section-label">Feedback</span>
+              <h3>Lo que están diciendo los usuarios</h3>
+            </div>
+            <span className="admin-feedback-badge">{(feedback || []).filter((item) => item.status === 'new').length} nuevos</span>
+          </div>
+          {feedbackError && <p className="error-text">{feedbackError}</p>}
+          {!feedbackError && feedback === null && <p className="hint-text">Cargando feedback…</p>}
+          {!feedbackError && feedback && feedback.length === 0 && <p className="hint-text">No hay feedback todavía. Sospechoso silencio administrativo.</p>}
+          {!feedbackError && feedback && feedback.length > 0 && (
+            <>
+              {activeFeedback.length > 0 ? (
+                <div className="admin-feedback-list" aria-label="Feedback pendiente">
+                  {activeFeedback.map(renderFeedbackItem)}
+                </div>
+              ) : (
+                <p className="hint-text">No queda feedback pendiente. Milagro administrativo.</p>
+              )}
+              {resolvedFeedback.length > 0 && (
+                <details className="admin-feedback-resolved">
+                  <summary>Resueltos ({resolvedFeedback.length})</summary>
+                  <div className="admin-feedback-list admin-feedback-list-resolved">
+                    {resolvedFeedback.map(renderFeedbackItem)}
+                  </div>
+                </details>
+              )}
+            </>
+          )}
+        </section>
       </div>
     </div>
   );

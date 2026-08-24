@@ -4,6 +4,7 @@ import {
   buildCombatDebriefDossier,
   buildObservabilitySummaryDossier,
   buildPostGameAutopsyDossier,
+  buildTrainingPlanDossier,
 } from './aiNarrativeTasks.js';
 import {
   ANALYSIS_MODEL,
@@ -36,6 +37,16 @@ describe('AI task wiring', () => {
     const dossier = buildObservabilitySummaryDossier({ runtime: { history: { http: {}, ai: {} }, database: {} }, ai: {} });
     expect(dossier).toMatchObject({ eventType: 'observability_summary', requestKind: 'observability_summary' });
     expect(serialized(dossier)).not.toMatch(/username|email|token|fen/i);
+  });
+
+  it('Así juegas envía a Workers AI sólo prioridades ya calculadas', () => {
+    const dossier = buildTrainingPlanDossier({
+      insights: { totalGames: 8 },
+      coaching: [{ priorityLabel: 'Alta', title: 'Táctica', diagnosis: 'Error medido', action: 'Repite posiciones reales' }],
+      trainingTargets: [{ count: 2 }],
+    });
+    expect(dossier).toMatchObject({ eventType: 'training_plan', requestKind: 'training_plan' });
+    expect(serialized(dossier)).not.toMatch(/username|email|token|fen|history/i);
   });
 
   it('todos los canales remotos enrutan actualmente a Qwen desde una sola fuente de verdad', () => {

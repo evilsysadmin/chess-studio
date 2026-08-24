@@ -100,6 +100,33 @@ export function buildCombatDebriefDossier(debrief) {
   };
 }
 
+
+export function buildTrainingPlanDossier({ insights, coaching = [], trainingTargets = [] } = {}) {
+  const priorities = (coaching || []).slice(0, 3).map((item, index) => {
+    const target = trainingTargets[index] || null;
+    return {
+      priority: cleanText(item?.priorityLabel || item?.priority, 32),
+      title: cleanText(item?.title, 90),
+      diagnosis: cleanText(item?.diagnosis, 220),
+      action: cleanText(item?.action, 220),
+      matching_training_positions: finiteNumber(target?.count, 0),
+    };
+  }).filter((item) => item.title && item.action);
+  if (!priorities.length) return null;
+
+  const games = finiteNumber(insights?.totalGames, 0);
+  const sampleBand = games >= 20 ? '20+' : games >= 10 ? '10-19' : games >= 6 ? '6-9' : '3-5';
+  return {
+    eventType: 'training_plan',
+    requestKind: 'training_plan',
+    tone: 'friendly_sarcastic',
+    facts: {
+      sample_band: sampleBand,
+      priorities,
+    },
+  };
+}
+
 export function buildObservabilitySummaryDossier({ runtime, ai, rangeLabel = 'rango actual' } = {}) {
   const http = runtime?.history?.http || {};
   const historicalAi = runtime?.history?.ai || {};

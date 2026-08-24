@@ -104,6 +104,7 @@ def static_check() -> list[str]:
         "combat_briefing",
         "combat_debrief",
         "observability_summary",
+        "training_plan",
         "ANALYSIS_GENERATION",
     ):
         require(worker, voice_rule, "worker shared voice", errors)
