@@ -262,7 +262,7 @@ jobs:
               -H 'User-Agent: chess-studio-cf-ai-health/1' \
               "$health_url" || true)"
 
-            if [[ "$health_status" == 200 ]] && python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); raise SystemExit(0 if payload.get("ok") is True and payload.get("service") == "chess-studio-narrative-ai" else 1)' "$health_body"; then
+            if [[ "$health_status" == 200 ]] && python3 scripts/cloudflare_health_contract.py "$health_body"; then
               health_ok=true
               break
             fi
@@ -290,4 +290,3 @@ jobs:
             echo '- Render: configura `CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org`.'
             echo '- Render y GitHub deben compartir el mismo `CHESS_AI_SHARED_SECRET`.'
           } >> "$GITHUB_STEP_SUMMARY"
-
