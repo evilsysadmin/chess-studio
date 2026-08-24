@@ -12,6 +12,7 @@ import {
   DEFAULT_OBSERVABILITY_AUTO_REFRESH_MS,
   OBSERVABILITY_AUTO_REFRESH_OPTIONS,
 } from '../observabilityRefresh.js';
+import { OBSERVABILITY_LATENCY_VIEWS, observabilityLatencyTitle } from '../observabilityLatency.js';
 
 const EVENT_LABELS = {
   player_portrait: 'Así te ve la CPU',
@@ -28,8 +29,6 @@ const EVENT_LABELS = {
   observability_summary: 'Diagnóstico SRE',
   generic: 'Otros',
 };
-
-const LATENCY_VIEWS = ['p50', 'p95', 'p99', 'all'];
 
 const REQUEST_KIND_LABELS = {
   portrait_manual: 'Lecturas manuales',
@@ -205,7 +204,7 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
   if (tab === 'ai') {
     return (
       <div className="admin-observability-dashboard-grid">
-        <LineChart series={series} valueKeys={latencyDefinitions('ai', latencyView)} title={`Latencia Workers AI · ${latencyView === 'all' ? 'p50 / p95 / p99' : latencyView}`} suffix=" ms" resolution={resolution} />
+        <LineChart series={series} valueKeys={latencyDefinitions('ai', latencyView)} title={observabilityLatencyTitle('Latencia Workers AI', latencyView)} suffix=" ms" resolution={resolution} />
         <LineChart series={series} valueKey="ai_cloudflare_percent" title="Respuestas Cloudflare" suffix="%" resolution={resolution} ceiling={100} />
         <BarChart series={series} valueKey="ai_samples" title="Llamadas AI" resolution={resolution} />
         <div className="admin-observability-dashboard-kpis">
@@ -236,7 +235,7 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
 
   return (
     <div className="admin-observability-dashboard-grid">
-      <LineChart series={series} valueKeys={latencyDefinitions('http', latencyView)} title={`Latencia API · ${latencyView === 'all' ? 'p50 / p95 / p99' : latencyView}`} suffix=" ms" resolution={resolution} />
+      <LineChart series={series} valueKeys={latencyDefinitions('http', latencyView)} title={observabilityLatencyTitle('Latencia API', latencyView)} suffix=" ms" resolution={resolution} />
       <LineChart series={series} valueKey="http_p99_ms" title="Cola alta · p99" suffix=" ms" resolution={resolution} />
       <BarChart series={series} valueKey="http_requests" title="Carga HTTP" resolution={resolution} />
       <div className="admin-observability-dashboard-kpis">
@@ -395,7 +394,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
               <button key={tab.id} type="button" role="tab" aria-selected={dashboardTab === tab.id} className={dashboardTab === tab.id ? 'active' : ''} onClick={() => setDashboardTab(tab.id)}>{tab.label}</button>
             ))}
           </div>
-          {dashboardTab !== 'traffic' ? <div className="admin-observability-percentile-picker" aria-label="Percentil de latencia">{LATENCY_VIEWS.map((view) => <button key={view} type="button" className={latencyView === view ? 'active' : ''} onClick={() => setLatencyView(view)}>{view === 'all' ? 'Todas' : view}</button>)}</div> : null}
+          {dashboardTab !== 'traffic' ? <div className="admin-observability-percentile-picker" aria-label="Percentil de latencia">{OBSERVABILITY_LATENCY_VIEWS.map((view) => <button key={view} type="button" className={latencyView === view ? 'active' : ''} onClick={() => setLatencyView(view)}>{view === 'all' ? 'Todas' : view}</button>)}</div> : null}
         </div>
         <Dashboard tab={dashboardTab} history={history} historyHttp={historyHttp} historyAi={historyAi} historyRange={historyRange} latencyView={latencyView} />
       </div>

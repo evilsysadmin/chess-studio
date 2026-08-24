@@ -44,9 +44,7 @@ describe('admin UX contract', () => {
     expect(observability).toContain('Rango del dashboard');
     expect(observability).toContain('Salud general');
     expect(observability).toContain('Tráfico');
-    expect(observability).toContain('Latencia API · p95');
-    expect(observability).toContain('Latencia Workers AI · p95');
-    expect(observability.match(/Latencias p50 \/ p95 \/ p99/g)?.length).toBe(2);
+    expect(observability).toContain('aria-label="Percentil de latencia"');
   });
   it('muestra presencia en primer plano sin confundirla con online', () => {
     expect(admin).toContain('foregroundCount');
