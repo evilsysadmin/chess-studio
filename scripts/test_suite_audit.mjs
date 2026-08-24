@@ -9,6 +9,7 @@ const root = path.resolve(here, '..');
 const frontendSrc = path.join(root, 'frontend', 'src');
 const backendDir = path.join(root, 'backend-python');
 const e2eDir = path.join(root, 'e2e');
+const workerRuntimeTest = path.join(root, 'infra', 'cloudflare', 'worker', 'index.test.mjs');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const list = (dir, predicate) => fs.readdirSync(dir).filter(predicate).sort();
 const fail = (message) => { throw new Error(message); };
@@ -22,11 +23,13 @@ const frontendTests = frontendFiles.reduce((sum, name) => sum + (read(path.join(
 const frontendParameterized = frontendFiles.reduce((sum, name) => sum + (read(path.join(frontendSrc, name)).match(/\b(?:it|test)\.each\s*\(/g)?.length || 0), 0);
 const backendTests = backendFiles.reduce((sum, name) => sum + (read(path.join(backendDir, name)).match(/^(?:async\s+)?def test_[A-Za-z0-9_]+\s*\(/gm)?.length || 0), 0);
 const e2eTests = e2eFiles.reduce((sum, name) => sum + (read(path.join(e2eDir, name)).match(/\btest\s*\(/g)?.length || 0), 0);
+const workerTests = fs.existsSync(workerRuntimeTest) ? (read(workerRuntimeTest).match(/\btest\s*\(/g)?.length || 0) : 0;
 
 const allTestFiles = [
   ...frontendFiles.map((name) => path.join(frontendSrc, name)),
   ...backendFiles.map((name) => path.join(backendDir, name)),
   ...e2eFiles.map((name) => path.join(e2eDir, name)),
+  ...(fs.existsSync(workerRuntimeTest) ? [workerRuntimeTest] : []),
 ];
 for (const file of allTestFiles) {
   const source = read(file);
@@ -90,6 +93,8 @@ const makefile = read(path.join(root, 'Makefile'));
 if (!/npm\s+test/.test(makefile)) fail('Makefile no ejecuta la suite frontend agrupada con npm test');
 if (!makefile.includes('--ignore=test_chess_ai.py --ignore=test_core_game.py')) fail('backend integration no autodetecta nuevos tests backend');
 if (!/compose-smoke:[\s\S]*scripts\/compose_smoke\.py/.test(makefile)) fail('Makefile no expone el smoke de integración real');
+const composeSmoke = read(path.join(root, 'scripts', 'compose_smoke.py'));
+if (!composeSmoke.includes('/games') || !composeSmoke.includes('restored_game')) fail('compose smoke real no cubre persistencia/recuperación de partida');
 if (!/coverage-fe:[\s\S]*test:coverage/.test(makefile)) fail('Makefile no expone coverage frontend real');
 if (!/coverage-be:[\s\S]*--cov-branch/.test(makefile)) fail('Makefile no expone branch coverage backend');
 
@@ -112,6 +117,7 @@ if (checkCiWiring) {
     || /make\s+(?:test-backend|tests-be|tests|quality-gate)\b/.test(workflowSource);
   if (!backendAutodiscovery) fail('CI backend no autodetecta el resto de test_*.py');
   if (!workflowSource.includes('scripts/compose_smoke.py')) fail('CI no ejecuta el smoke de stack real Docker Compose');
+  if (!workflowSource.includes('node --test infra/cloudflare/worker/index.test.mjs')) fail('CI no ejecuta los tests runtime del Worker AI');
   if (!workflowSource.includes('npm run test:coverage')) fail('CI no conserva el paso de coverage frontend');
   if (!workflowSource.includes('continue-on-error: true')) fail('Coverage frontend debe seguir siendo informativo');
   if (workflowSource.includes('npm install --no-save') && workflowSource.includes('@vitest/coverage-v8')) fail('CI no debe mutar node_modules con un segundo npm install para coverage');
@@ -122,6 +128,11 @@ if (checkCiWiring) {
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');
 }
 
+if (!fs.existsSync(workerRuntimeTest) || workerTests < 6) fail(`Worker AI sin cobertura runtime suficiente: ${workerTests} test(s); mínimo 6`);
+const playwrightConfig = read(path.join(e2eDir, 'playwright.config.js'));
+if (!playwrightConfig.includes('fullyParallel: true')) fail('Playwright CI debe conservar aislamiento/parallelismo entre tests');
+if (/workers:\s*process\.env\.CI\s*\?\s*1\s*:/.test(playwrightConfig)) fail('Playwright CI no debe volver a 1 worker: serializa toda la suite');
+if (!playwrightConfig.includes('actionTimeout:')) fail('Playwright debe tener actionTimeout explícito para fallar cerca de la causa y no a los 30 s');
 if (e2eTests < 11) fail(`Cobertura E2E/DOM demasiado testimonial: ${e2eTests} caso(s); mínimo 11`);
 const e2eSource = e2eFiles.map((name) => read(path.join(e2eDir, name))).join('\n');
 for (const required of [
@@ -137,6 +148,11 @@ for (const required of [
   if (!e2eSource.includes(required)) fail(`Falta regresión E2E crítica de Combat: ${required}`);
 }
 
+const frontendPackage = JSON.parse(read(path.join(root, 'frontend', 'package.json')));
+const hasV8CoverageProvider = Boolean(frontendPackage.devDependencies?.['@vitest/coverage-v8']);
+if (!hasV8CoverageProvider) {
+  console.warn('WARN: frontend coverage V8 está configurado pero @vitest/coverage-v8 no está declarado; coverage puede omitirse/fallar de forma informativa.');
+}
 const viteConfig = read(path.join(root, 'frontend', 'vite.config.js'));
 if (/thresholds\s*:/.test(viteConfig)) fail('Coverage frontend debe ser informativo: no declares thresholds bloqueantes en Vitest');
 const backendCoverageConfig = read(path.join(backendDir, '.coveragerc'));
@@ -149,6 +165,6 @@ const unitDefinitions = groupDefinitions(unitFiles);
 const contractDefinitions = groupDefinitions([...contractBasenames]);
 const staticAssertions = sourceReaders.reduce((sum, name) => sum + (read(path.join(frontendSrc, name)).match(/\bexpect\s*\(/g)?.length || 0), 0);
 
-console.log(`test-suite-audit OK · frontend ${frontendTests} definiciones/${frontendFiles.length} files · backend ${backendTests} definiciones/${backendFiles.length} · e2e ${e2eTests}/${e2eFiles.length}`);
+console.log(`test-suite-audit OK · frontend ${frontendTests} definiciones/${frontendFiles.length} files · backend ${backendTests} definiciones/${backendFiles.length} · e2e ${e2eTests}/${e2eFiles.length} · worker ${workerTests}/1`);
 console.log(`frontend groups (disjuntos): smoke ${smokeBasenames.size}/${smokeDefinitions} · unit ${unitFiles.length}/${unitDefinitions} · contract ${contractBasenames.size}/${contractDefinitions}`);
 console.log(`parameterized frontend: ${frontendParameterized} definición(es) · contract-tests estáticos: ${sourceReaders.length} (${staticAssertions} assertions) · ci-wiring: ${checkCiWiring ? 'sí' : 'omitido'}`);

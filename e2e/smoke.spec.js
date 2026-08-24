@@ -156,20 +156,29 @@ test('Combat Chess · la batalla usa el rail derecho como Registro de batalla', 
 });
 
 
-for (const width of [360, 390, 430]) {
-  test(`móvil ${width}px · Home y briefing Combat no desbordan horizontalmente`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 844 });
-    await mockApi(page);
-    await login(page);
+test('móvil 360/390/430px · Home y briefing Combat no desbordan horizontalmente', async ({ page }) => {
+  const widths = [360, 390, 430];
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
 
-    await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  for (const width of widths) {
+    await test.step(`Home ${width}px`, async () => {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    });
+  }
 
-    await openCampaignBriefing(page);
-    await expect(page.getByLabel('Resumen táctico')).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
-  });
-}
+  await openCampaignBriefing(page);
+  await expect(page.getByLabel('Resumen táctico')).toBeVisible();
+  for (const width of widths) {
+    await test.step(`Briefing Combat ${width}px`, async () => {
+      await page.setViewportSize({ width, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    });
+  }
+});
 
 
 test('móvil 390px · Admin sigue legible y sin overflow global', async ({ page }) => {

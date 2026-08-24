@@ -159,6 +159,7 @@ def static_check() -> list[str]:
     if pages_sources != ["Cloudflare Workers AI"]:
         errors.append(f"Pages requires Workers AI workflow: workflow_run.workflows={pages_sources!r}")
     require(pages_workflow, "github.event.workflow_run.conclusion == 'success'", "Pages requires green Workers AI", errors)
+    require(pages_workflow, "github.event.workflow_run.event == 'workflow_run'", "Pages requires Workers workflow chained from CI", errors)
     if "CI" in pages_sources:
         errors.append('Pages workflow: no debe saltarse Workers AI dependiendo directamente de CI')
 

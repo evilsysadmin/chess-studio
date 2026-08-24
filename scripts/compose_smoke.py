@@ -72,6 +72,19 @@ def main() -> int:
     status, saved = request("PUT", f"{API}/profile", profile, token=token)
     assert status == 200, saved
 
+    # Partida real persistida en Mongo. La recuperamos después con un token de
+    # login nuevo para cubrir el hueco entre tests HTTP en memoria y el E2E
+    # de navegador, que deliberadamente simula la API.
+    status, created_game = request(
+        "POST",
+        f"{API}/games",
+        {"difficulty": 0, "color": "w"},
+        token=token,
+    )
+    assert status == 201 and created_game.get("id"), created_game
+    game_id = created_game["id"]
+    game_fen = created_game.get("fen")
+
     # Login nuevo: prueba bcrypt/JWT/Mongo de verdad, no sólo el token de alta.
     status, logged = request("POST", f"{API}/auth/login", {"username": username, "password": password})
     assert status == 200 and logged.get("token"), logged
@@ -82,6 +95,12 @@ def main() -> int:
     data = loaded.get("data", loaded)
     assert marker in str(data.get("chess-study-compose-smoke", "")), loaded
     assert "777" in str(data.get("chess-study-player-rating", "")), loaded
+
+    status, restored_game = request("GET", f"{API}/games/{game_id}", token=token2)
+    assert status == 200, restored_game
+    assert restored_game.get("id") == game_id, restored_game
+    assert restored_game.get("fen") == game_fen, (created_game, restored_game)
+    assert restored_game.get("status") == "playing", restored_game
 
     # Una ruta privada sin token debe seguir cerrada en el stack real.
     try:

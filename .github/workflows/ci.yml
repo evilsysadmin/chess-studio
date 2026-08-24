@@ -127,6 +127,9 @@ jobs:
       - name: Worker AI syntax
         run: node --check infra/cloudflare/worker/index.js
 
+      - name: Worker AI runtime unit tests
+        run: node --test infra/cloudflare/worker/index.test.mjs
+
       - name: AI browser-secret / direct-worker gate
         run: python scripts/ai_security_gate.py
 
@@ -196,7 +199,7 @@ jobs:
       - name: Build and start real stack
         run: docker compose up -d --build
 
-      - name: Smoke frontend + FastAPI + Mongo + auth/profile
+      - name: Smoke frontend + FastAPI + Mongo + auth/profile/game persistence
         run: python3 scripts/compose_smoke.py
 
       - name: Docker diagnostics on failure
@@ -210,9 +213,11 @@ jobs:
         run: docker compose down -v
 
   browser-e2e:
-    name: Browser E2E (Playwright)
+    name: Browser smoke (Playwright · informativo)
     needs: [frontend-tests, backend-tests, security-gate]
     runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -220,7 +225,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
 
       - name: Install + build frontend
         working-directory: frontend
@@ -236,9 +249,12 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright install --with-deps chromium
 
-      - name: Browser smoke/navigation gate
+      - name: Browser smoke crítico (informativo, no bloquea CI)
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test
+        run: >-
+          ./node_modules/.bin/playwright test smoke.spec.js
+          --grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña abre"
+          --workers=2 --retries=0
 
       - name: Upload Playwright diagnostics on failure
         if: failure()

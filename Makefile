@@ -17,7 +17,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
 doctor:
@@ -277,11 +277,16 @@ static-contract-risk-audit:
 test-suite-audit-ci:
 	node scripts/test_suite_audit.mjs --ci-wiring
 
+
+worker-test:
+	@echo "==> WORKER AI RUNTIME · fetch/HMAC/routing/sanitización"
+	node --test infra/cloudflare/worker/index.test.mjs
+
 ## Preflight barato y sin red: música + sintaxis JS + compilación Python.
 release-check:
 	node scripts/release_consistency_check.mjs
 
-static-preflight: audio-check data-ux-check campaign-map-check release-check test-suite-audit static-contract-risk-audit security-api cf-ai-preflight
+static-preflight: audio-check data-ux-check campaign-map-check release-check test-suite-audit static-contract-risk-audit security-api cf-ai-preflight worker-test
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py
 	@echo "==> Static preflight OK (sin npm, Docker ni red)."
@@ -382,7 +387,8 @@ help:
 	@echo "  make test-suite-audit-ci - añade validación semántica del wiring de CI"
 	@echo "  make static-contract-risk-audit - informa de tests acoplados a implementación"
 	@echo "  make release-check    - coherencia de versión RELEASE.txt ↔ frontend"
-	@echo "  make static-preflight - sintaxis JS + Python + API auth + música, sin red"
+	@echo "  make static-preflight - sintaxis JS + Python + API auth + música + Worker runtime, sin red"
+	@echo "  make worker-test      - ejecuta fetch/HMAC/routing del Worker AI sin Cloudflare ni npm"
 	@echo "  make security        - API auth gate + npm audit + pip-audit + Trivy; solo CVE CRITICAL bloquea"
 	@echo "  make security-fe     - auditoría de dependencias Node"
 	@echo "  make security-be     - auditoría de dependencias Python"
@@ -404,5 +410,6 @@ cf-ai-preflight:
 ai-contract: ai-security cf-ai-preflight
 	cd backend-python && python -m pytest -q test_narrative_cloudflare.py test_narrative_api.py test_narrative_main_contract.py
 	cd frontend && npx vitest run src/narrativeRemote.test.js src/narrativeWiring.test.js src/aiMetrics.test.js src/narrativeProvider.test.js
+	$(MAKE) --no-print-directory worker-test
 	node --check infra/cloudflare/worker/index.js
 # END chess-studio-ai-contract

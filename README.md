@@ -1,3 +1,21 @@
+### v16.6dm40b · Pipeline relief · Playwright informativo + Docker Alpine 3.23
+
+- Playwright deja de bloquear el CI principal: el push ejecuta sólo 3 smokes críticos, sin retry, con 2 workers y un límite de 5 minutos para el job.
+- La suite E2E completa se conserva fuera del camino crítico mediante workflow manual/nocturno.
+- Frontend Docker fija `node:22-alpine3.23` en build y `nginx:stable-alpine3.23` en runtime; backend mantiene `python:3.13-alpine3.23`.
+- Trivy y el smoke Docker siguen siendo gates bloqueantes: degradamos el navegador, no la seguridad ni la integración real.
+
+### v16.6dm40a · Testing hardening · Worker runtime + E2E más rápido + persistencia real
+
+- Workers AI gana 7 tests runtime con `node:test`: HMAC, routing por modelo/bucket, rate limit, sanitización, usage, errores acotados y `/health`, sin depender de npm ni de Cloudflare real.
+- Playwright corre `fullyParallel` con 2 workers en CI, `actionTimeout` de 7 s y `navigationTimeout` de 10 s; un clic bloqueado falla cerca de la causa en vez de consumir 30 s.
+- El smoke móvil conserva 360/390/430 px pero recorre Home/Combat una sola vez; las 15 definiciones E2E son ahora también 15 ejecuciones normales, no 17.
+- El smoke Docker Compose crea una partida real en Mongo y la recupera después de un login nuevo, cubriendo persistencia entre sesiones con el stack real.
+- CI cachea el navegador de Playwright y el preflight incorpora los tests runtime del Worker.
+- GitHub Pages sólo despliega si el workflow de Workers fue encadenado desde un CI verde en `main`; un dispatch manual de Workers ya no puede saltarse el gate.
+- El auditor avisa si V8 coverage está configurado sin `@vitest/coverage-v8`; sigue siendo deuda informativa hasta sincronizar `package.json` + lockfile con npm disponible.
+- Sin cambios de gameplay, motor de ajedrez ni reglas de Combat Chess.
+
 ### v16.6dm40 · Workers AI · plan de entrenamiento bajo demanda
 
 - Incluye el hotfix E2E dm39b: los tests de gameplay no atraviesan overlays de tutorial y el helper defensivo cierra cualquier tutorial visible sin dejar clics bloqueados 30 s.
