@@ -113,6 +113,7 @@ def static_check() -> list[str]:
     require(workflow, '- name: Verify Custom Domain and health', "workflow Custom Domain health step", errors)
     require(workflow, 'for attempt in {1..60}', "workflow TLS/health propagation retry", errors)
     require(workflow, 'Health HTTP ${health_status:-curl-error}', "workflow diagnosable live health", errors)
+    require(workflow, '"analysis":"@cf/qwen/qwen3-30b-a3b-fp8"', "workflow exact analysis routing health", errors)
     require(workflow, 'CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org', "workflow Render handoff", errors)
 
     require(tf_main, 'resource "cloudflare_workers_custom_domain" "narrative_ai"', "terraform Custom Domain", errors)
