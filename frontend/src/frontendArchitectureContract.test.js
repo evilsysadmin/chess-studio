@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const read = (name) => readFileSync(new URL(`./components/${name}`, import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
+const authenticatedAudio = readFileSync(new URL('./useAuthenticatedAudio.js', import.meta.url), 'utf8');
 
 describe('frontend architecture contract', () => {
   it('los modales comunes mantienen semántica de diálogo accesible', () => {
@@ -23,7 +24,8 @@ describe('frontend architecture contract', () => {
     for (const module of ['GameScreen', 'RoguelikeScreen', 'AdminScreen', 'InsightsScreen', 'MusicPlayer']) {
       expect(app).toContain(`const ${module} = React.lazy(`);
     }
-    expect(app).toContain("import('./sound.js').then((module) => {");
-    expect(app).not.toContain("import { startAmbientMusic, stopAmbientMusic } from './sound.js';");
+    expect(app).toContain("useAuthenticatedAudio(loggedIn, ready);");
+    expect(authenticatedAudio).toContain("import('./sound.js').then((module) => {");
+    expect(authenticatedAudio).not.toContain("import { startAmbientMusic, stopAmbientMusic } from './sound.js';");
   });
 });

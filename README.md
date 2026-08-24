@@ -1,3 +1,9 @@
+### v16.6dm43a · Hotfix · contrato de lazy audio tras extracción
+
+- Corrige `frontendArchitectureContract.test.js` para validar la carga dinámica de `sound.js` en `useAuthenticatedAudio.js`, que es el dueño real de esa responsabilidad desde dm43.
+- Mantiene `App.jsx` libre de imports estáticos de audio y conserva `useAuthenticatedAudio(loggedIn, ready)` como punto de orquestación.
+- Sin cambios de gameplay ni de comportamiento de audio; es un hotfix de contrato/test tras el refactor estructural.
+
 ### v16.6dm43 · Deuda estructural · App/Game/Combat/CSS por capas + ciclos a cero
 
 - Reduce la orquestación monolítica de `App.jsx` extrayendo autenticación/bootstrap, audio autenticado, refresco del retrato AI, sincronización de perfil y biblioteca de replay/historial a hooks dedicados.
