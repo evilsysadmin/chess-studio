@@ -73,7 +73,7 @@ for (const relative of [...FRONTEND_SMOKE_TESTS, ...FRONTEND_CONTRACT_TESTS]) {
 }
 
 const sourceReaders = frontendFiles.filter((name) => /(?:readFileSync|fs\.readFileSync)/.test(read(path.join(frontendSrc, name))));
-const MAX_SOURCE_READER_TESTS = 15; // dm31 baseline: bajar, nunca volver a inflar.
+const MAX_SOURCE_READER_TESTS = 6; // dm31 baseline: bajar, nunca volver a inflar.
 if (sourceReaders.length > MAX_SOURCE_READER_TESTS) fail(`Demasiados contract-tests que inspeccionan source text: ${sourceReaders.length} > ${MAX_SOURCE_READER_TESTS}. Prefiere tests de comportamiento.`);
 for (const name of sourceReaders) {
   if (!contractBasenames.has(name)) fail(`${name} inspecciona source text pero no pertenece al grupo contract`);
@@ -124,6 +124,7 @@ if (checkCiWiring) {
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
   if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
+  if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña obliga"')) fail('Browser smoke crítico debe atravesar confirmación de despliegue Combat');
   const informationalCoverageSteps = (workflowSource.match(/continue-on-error:\s*true/g) || []).length;
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');
 }
@@ -133,7 +134,19 @@ const playwrightConfig = read(path.join(e2eDir, 'playwright.config.js'));
 if (!playwrightConfig.includes('fullyParallel: true')) fail('Playwright CI debe conservar aislamiento/parallelismo entre tests');
 if (/workers:\s*process\.env\.CI\s*\?\s*1\s*:/.test(playwrightConfig)) fail('Playwright CI no debe volver a 1 worker: serializa toda la suite');
 if (!playwrightConfig.includes('actionTimeout:')) fail('Playwright debe tener actionTimeout explícito para fallar cerca de la causa y no a los 30 s');
+if (!/retries:\s*0/.test(playwrightConfig)) fail('Playwright informativo no debe reintentar: los retries alargan ruido y esconden fallos deterministas');
 if (e2eTests < 11) fail(`Cobertura E2E/DOM demasiado testimonial: ${e2eTests} caso(s); mínimo 11`);
+const resilienceBehaviorTests = [
+  'backNavigationStack.test.js',
+  'useActiveGameSessionPersistence.test.js',
+  'useActiveSessionRestore.test.js',
+  'useGameReconnect.test.js',
+];
+for (const name of resilienceBehaviorTests) {
+  if (!frontendFiles.includes(name)) fail(`Falta test de resiliencia de comportamiento: ${name}`);
+  if (sourceReaders.includes(name)) fail(`${name} debe probar comportamiento, no inspeccionar source text`);
+}
+
 const e2eSource = e2eFiles.map((name) => read(path.join(e2eDir, name))).join('\n');
 for (const required of [
   'obliga a confirmar despliegue antes de iniciar combate',

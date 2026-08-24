@@ -1,7 +1,4 @@
-// STATIC CONTRACT: inspecciona wiring/markup/CSS deliberadamente; no sustituye tests de comportamiento.
 import { describe, expect, it } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
 import { CHESS_GLOSSARY, glossaryEntry, glossarySearch } from './chessGlossary.js';
 
 describe('glosario ajedrecístico', () => {
@@ -27,26 +24,5 @@ describe('glosario ajedrecístico', () => {
     }
   });
 
-  it('está integrado en Tutorial y ofrece mini glosario en la autopsia', () => {
-    const tutorial = fs.readFileSync(path.resolve(process.cwd(), 'src/components/Tutorial.jsx'), 'utf8');
-    const report = fs.readFileSync(path.resolve(process.cwd(), 'src/components/GameReportModal.jsx'), 'utf8');
-    expect(tutorial).toContain('<ChessGlossary />');
-    expect(tutorial).toContain('Glosario');
-    expect(report).toContain('Glosario rápido · cp / CCT');
-  });
 
-  it('ofrece ayuda contextual reutilizable por hover, focus y tap en pantallas reales', () => {
-    const tooltip = fs.readFileSync(path.resolve(process.cwd(), 'src/components/GlossaryTerm.jsx'), 'utf8');
-    const report = fs.readFileSync(path.resolve(process.cwd(), 'src/components/GameReportModal.jsx'), 'utf8');
-    const lab = fs.readFileSync(path.resolve(process.cwd(), 'src/components/LabScreen.jsx'), 'utf8');
-    const quick = fs.readFileSync(path.resolve(process.cwd(), 'src/components/QuickMatchModal.jsx'), 'utf8');
-    expect(tooltip).toContain('role="tooltip"');
-    expect(tooltip).toContain('tabIndex={0}');
-    expect(tooltip).toContain('onClick');
-    expect(tooltip).toContain("event.key === 'Escape'");
-    expect(report).toContain('<GlossaryTerm term="cp">cp</GlossaryTerm>');
-    expect(report).toContain('<GlossaryTerm term="Accuracy">Accuracy</GlossaryTerm>');
-    expect(lab).toContain('<GlossaryTerm term="FEN">FEN</GlossaryTerm>');
-    expect(quick).toContain('<GlossaryTerm term="CCT">CCT</GlossaryTerm>');
-  });
 });

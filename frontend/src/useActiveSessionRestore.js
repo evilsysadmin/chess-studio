@@ -10,6 +10,10 @@ import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from
 
 export const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 
+export function classifyRestoreFailure(error) {
+  return error?.status === 404 || error?.status === 403 ? 'stale-session' : 'transient';
+}
+
 export function resolveRestoredGameContext(saved, found, storedRun) {
   if (saved?.gameContext && Object.keys(saved.gameContext).length) return saved.gameContext;
   if (storedRun?.active && storedRun.currentGameId === found?.id) return { runMode: storedRun.mode };
@@ -124,7 +128,7 @@ export function useActiveSessionRestore({
     } catch (error) {
       // 404/403 = el savegame ya no existe o no pertenece a esta cuenta. Un
       // fallo transitorio conserva la sesión para poder reintentar después.
-      if (error?.status === 404 || error?.status === 403) {
+      if (classifyRestoreFailure(error) === 'stale-session') {
         clearActiveGameSession();
         removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);
         setHasSavedGame(false);

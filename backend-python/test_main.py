@@ -1095,21 +1095,6 @@ def test_forced_activity_records_last_login_and_admin_legacy_fallback(monkeypatc
     assert row["presence"] in {"online", "recent", "offline"}
 
 
-def test_resolve_move_core_rules_cover_castling_en_passant_and_promotion():
-    from chess_core import resolve_move
-
-    castle = chess.Board("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
-    assert resolve_move(castle, "e1", "g1", None) == chess.Move.from_uci("e1g1")
-    assert resolve_move(castle, "e1", "c1", None) == chess.Move.from_uci("e1c1")
-
-    ep = chess.Board("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1")
-    ep_move = resolve_move(ep, "e5", "d6", None)
-    assert ep_move == chess.Move.from_uci("e5d6")
-    assert ep.is_en_passant(ep_move)
-
-    promotion = chess.Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
-    assert resolve_move(promotion, "a7", "a8", None) == chess.Move.from_uci("a7a8q")
-    assert resolve_move(promotion, "a7", "a8", "n") == chess.Move.from_uci("a7a8n")
 
 
 def test_admin_recent_activity_labels_game_mode_and_combat_type():
@@ -1228,26 +1213,6 @@ def test_undo_reconstructs_last_move_from_custom_starting_fen():
     assert undone.json()["lastMove"]["by"] == "cpu"
 
 
-def test_core_serialization_terminal_statuses_are_consistent():
-    from chess_core import serialize_game
-
-    cases = [
-        (chess.Board("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"), "stalemate"),
-        (chess.Board("8/8/8/8/8/2k5/4K3/5R2 w - - 100 51"), "draw"),
-        (chess.Board("8/8/8/8/8/k7/8/K6N w - - 0 1"), "draw"),
-    ]
-    for index, (board, expected_status) in enumerate(cases):
-        entry = {
-            "humanColor": "w",
-            "difficulty": 50,
-            "moves": [],
-            "lastMove": None,
-            "initialFen": board.fen(),
-            "handicap": None,
-        }
-        payload = serialize_game(f"terminal-{index}", entry, board)
-        assert payload["status"] == expected_status
-        assert payload["isGameOver"] is True
 
 
 def test_presence_write_failure_never_blocks_authenticated_core(monkeypatch):

@@ -15,19 +15,11 @@ export const FRONTEND_SMOKE_TESTS = Object.freeze([
 ]);
 
 export const FRONTEND_CONTRACT_TESTS = Object.freeze([
-  'src/adminMobileLayout.test.js',
   'src/aiNarrativeFeaturesWiring.test.js',
-  'src/adminUxContract.test.js',
-  'src/armyRosterView.test.js',
-  'src/campaignOperationalFlow.test.js',
-  'src/chessGlossary.test.js',
-  'src/combatBattleLayout.test.js',
-  'src/combatOperationalUx.test.js',
-  'src/friendlyUxContract.test.js',
+  'src/frontendArchitectureContract.test.js',
   'src/foregroundPresenceContract.test.js',
   'src/mechanicTutorials.test.js',
   'src/narrativeWiring.test.js',
   'src/releaseContinuityContract.test.js',
   'src/safeStorageUsageContract.test.js',
-  'src/zenMode.test.js',
 ]);

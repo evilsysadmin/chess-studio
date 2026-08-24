@@ -3,15 +3,15 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: '.',
   reporter: process.env.CI ? [['list']] : [['line']],
-  timeout: 30_000,
+  timeout: 20_000,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 1 : 0,
-  expect: { timeout: 5_000 },
+  retries: 0,
+  expect: { timeout: 4_000 },
   workers: process.env.CI ? 2 : undefined,
   use: {
     baseURL: 'http://127.0.0.1:4173/chess-studio/',
-    actionTimeout: 7_000,
+    actionTimeout: 5_000,
     navigationTimeout: 10_000,
     headless: true,
     trace: 'retain-on-failure',
@@ -22,6 +22,6 @@ export default defineConfig({
     command: 'npm --prefix ../frontend run preview -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173/chess-studio/',
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 20_000,
   },
 });

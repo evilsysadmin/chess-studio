@@ -120,11 +120,30 @@ export async function openCampaignBriefing(page) {
 }
 
 export async function openDeployment(page) {
+  const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
+
+  // Current campaign UX opens Mesa de Guerra automatically as soon as the
+  // briefing accepts "PREPARAR EJÉRCITO". Older UX stopped first on the
+  // preparation screen and required a second "PREPARAR DESPLIEGUE" click.
+  // Support both transitions, but never click a button hidden *behind* the
+  // deployment overlay: Playwright correctly waits for that occlusion and the
+  // whole test used to die on the global timeout.
+  if (await deployment.isVisible().catch(() => false)) return deployment;
+
   const enterPreparation = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
   if (await enterPreparation.isVisible().catch(() => false)) {
     await enterPreparation.click();
     await dismissTutorialIfVisible(page);
-    await expect(page.getByLabel('Resumen de preparación')).toBeVisible();
+
+    // React mounts CombatScreen and currently opens deployment immediately.
+    // Give that direct transition a short chance before falling back to the
+    // legacy/intermediate preparation-screen path.
+    try {
+      await deployment.waitFor({ state: 'visible', timeout: 1_500 });
+      return deployment;
+    } catch {
+      await expect(page.getByLabel('Resumen de preparación')).toBeVisible();
+    }
   }
 
   const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR/i });
@@ -132,7 +151,6 @@ export async function openDeployment(page) {
   await reviewDeployment.click();
   await dismissTutorialIfVisible(page);
 
-  const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
   await expect(deployment).toBeVisible();
   return deployment;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildLegacySessionDescriptor,
+  classifyRestoreFailure,
   resolveRestoredGameContext,
   selectBoundaryRecovery,
 } from './useActiveSessionRestore.js';
@@ -38,4 +39,13 @@ describe('active session restore helpers', () => {
     expect(selectBoundaryRecovery({ currentView: 'combat' })).toEqual({ type: 'combat' });
     expect(selectBoundaryRecovery({ currentView: 'menu' })).toEqual({ type: 'none' });
   });
+
+  it('sólo 403/404 invalidan definitivamente el save; red/5xx conservan reintento', () => {
+    expect(classifyRestoreFailure({ status: 404 })).toBe('stale-session');
+    expect(classifyRestoreFailure({ status: 403 })).toBe('stale-session');
+    expect(classifyRestoreFailure({ status: 401 })).toBe('transient');
+    expect(classifyRestoreFailure({ status: 503 })).toBe('transient');
+    expect(classifyRestoreFailure(new TypeError('Failed to fetch'))).toBe('transient');
+  });
+
 });

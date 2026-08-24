@@ -1,3 +1,32 @@
+### v16.6dm40e · Test pruning · menos cartón, misma trinchera
+
+- Poda 5 contract-tests puramente visuales/markup de frontend (`adminMobileLayout`, `armyRosterView`, `campaignOperationalFlow`, `combatBattleLayout`, `combatOperationalUx`) que fijaban CSS/copy/estructura interna y duplicaban comportamiento ya cubierto por lógica o Playwright.
+- Reduce los contratos estáticos supervivientes a invariantes con valor: accesibilidad/lazy loading, privacidad de presencia, tutoriales, narrativa fuera del camino crítico, wiring de continuidad y prohibición de Web Storage directo; el privilegio Admin pasa a navegador real.
+- `chessGlossary` y `zenMode` dejan de inspeccionar JSX y se quedan como tests de lógica/persistencia.
+- El frontend baja de 751 a 692 definiciones y de 14 a 6 lectores de source; las assertions estáticas bajan de 413 a 41 y las especialmente acopladas de 67 a 7.
+- El backend elimina dos duplicados exactos de reglas/serialización que ya viven en `test_core_game.py`, quedando 210 definiciones.
+- Los presupuestos de deuda se ratchetean al nuevo baseline (6 source-readers / 7 assertions acopladas) para impedir que vuelva a crecer la línea Maginot.
+- No se eliminan tests de resiliencia, seguridad, ownership, persistencia, motor, Worker runtime ni los 15 E2E/DOM críticos. Sin cambios de gameplay.
+
+### v16.6dm40d · Testing trenches · resiliencia de estado y navegación
+
+- Añade tests de comportamiento para las tres zonas de continuidad que estaban demasiado protegidas por contratos estáticos: reconexión de partida, persistencia de sesión activa y pila global ESC/clic derecho.
+- La reconexión prueba explícitamente doble intento, respuestas tardías de otra partida/modo y una nueva caída de red durante el request.
+- El estado `Guardado` queda protegido por una política pura: sólo aparece cuando existe descriptor activo y el snapshot local durable confirma escritura.
+- La restauración distingue por test sesión realmente obsoleta (403/404) de fallos transitorios/red/5xx, preservando la posibilidad de reintento.
+- La navegación modal extrae una pila pura testeable: un Escape sólo cierra el nivel superior; clic derecho editable no navega; retirar handlers no desordena la pila.
+- El browser smoke de cada push sigue siendo informativo y de sólo 3 recorridos, pero el centinela Combat ahora atraviesa briefing -> Mesa de Guerra -> confirmar despliegue en vez de quedarse en el mapa.
+- `test_suite_audit` exige que estos tests de resiliencia existan como comportamiento real y que no se degraden a lectores de source.
+- Sin cambios intencionados de gameplay, motor, backend ni reglas de Combat Chess.
+
+### v16.6dm40c · Playwright Combat DOM root fix
+
+- Corrige la causa raíz del timeout de `combat-dom`: tras `PREPARAR EJÉRCITO`, la UI actual abre Mesa de Guerra automáticamente; el helper E2E intentaba después clicar `PREPARAR DESPLIEGUE` detrás del modal ya abierto y Playwright esperaba hasta el timeout por oclusión.
+- `openDeployment()` acepta ahora tanto la transición automática actual como el flujo intermedio legado, sin clicar controles ocultos tras overlays.
+- Playwright informativo queda sin retries, con timeout global de 20 s, acciones de 5 s y `expect` de 4 s para que un fallo real aparezca cerca de su causa.
+- El auditor de tests impide reintroducir retries en la suite browser informativa.
+- Sin cambios de gameplay, reglas de Combat Chess, backend ni seguridad.
+
 ### v16.6dm40b · Pipeline relief · Playwright informativo + Docker Alpine 3.23
 
 - Playwright deja de bloquear el CI principal: el push ejecuta sólo 3 smokes críticos, sin retry, con 2 workers y un límite de 5 minutos para el job.

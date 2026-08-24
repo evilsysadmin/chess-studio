@@ -3,6 +3,22 @@ import { loadActiveGameSession } from './activeGameSession.js';
 import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
 import { SAVE_STATUS } from './saveStatus.js';
 
+export function shouldAttemptReconnect({ inFlight, reconnectNeeded, saveState }) {
+  if (inFlight) return false;
+  return reconnectNeeded || saveState === SAVE_STATUS.ERROR;
+}
+
+export function sameReconnectTarget(expected, current) {
+  return !!expected
+    && !!current
+    && expected.route === current.route
+    && expected.gameId === current.gameId;
+}
+
+export function reconnectStillNeeded({ generationAtStart, currentGeneration, online }) {
+  return currentGeneration !== generationAtStart || online === false;
+}
+
 export function useGameReconnect({
   route,
   game,
@@ -33,8 +49,11 @@ export function useGameReconnect({
     let disposed = false;
 
     async function handleOnline() {
-      if (reconnectInFlight.current) return;
-      if (!reconnectNeeded.current && saveStateRef.current !== SAVE_STATUS.ERROR) return;
+      if (!shouldAttemptReconnect({
+        inFlight: reconnectInFlight.current,
+        reconnectNeeded: reconnectNeeded.current,
+        saveState: saveStateRef.current,
+      })) return;
 
       const target = reconnectTarget({
         route: routeRef.current,
@@ -60,7 +79,7 @@ export function useGameReconnect({
         tournamentGame: tournamentGameRef.current,
         savedSession: loadActiveGameSession(),
       });
-      if (!currentTarget || currentTarget.route !== target.route || currentTarget.gameId !== target.gameId) {
+      if (!sameReconnectTarget(target, currentTarget)) {
         reconnectInFlight.current = false;
         return;
       }
@@ -69,8 +88,11 @@ export function useGameReconnect({
         if (target.route === 'tournamentGame') callbacksRef.current.onTournamentGame?.(result.game);
         else callbacksRef.current.onGame?.(result.game);
         callbacksRef.current.onError?.(null);
-        reconnectNeeded.current = reconnectOfflineGeneration.current !== offlineGenerationAtStart
-          || (typeof navigator !== 'undefined' && navigator.onLine === false);
+        reconnectNeeded.current = reconnectStillNeeded({
+          generationAtStart: offlineGenerationAtStart,
+          currentGeneration: reconnectOfflineGeneration.current,
+          online: typeof navigator === 'undefined' ? true : navigator.onLine,
+        });
         // El snapshot de sesión activa marca SAVED cuando la respuesta reconciliada queda persistida.
       } else {
         callbacksRef.current.onPersistenceState?.(SAVE_STATUS.ERROR);

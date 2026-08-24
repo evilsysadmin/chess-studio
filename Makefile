@@ -216,7 +216,7 @@ bundle-report: frontend-build
 
 
 ## E2E real en navegador. No vive en el pre-push para no descargar Chromium
-## ni ralentizar cada push; CI sí lo trata como quality gate.
+## ni ralentizar cada push; CI corre sólo un centinela informativo y la suite completa queda manual/nocturna.
 ## Coverage real. Frontend usa V8 sobre lógica crítica; React/DOM se cubre en Chromium con Playwright.
 coverage-fe: ensure-frontend-deps
 	@cd frontend && if [ ! -d node_modules/@vitest/coverage-v8 ]; then \

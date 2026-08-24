@@ -6,6 +6,7 @@ test('login → menú → Así juegas → refresh → ESC conserva navegación',
   await login(page);
 
   await expect(page.getByText('2 usuarios online', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '2 usuarios online', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: /Así juegas/ }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 
