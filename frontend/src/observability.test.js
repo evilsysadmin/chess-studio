@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchAdminObservability, formatDuration, observabilityRangeForPreset, summarizeAdminUsers } from './observability.js';
+import { fetchAdminObservability, formatDuration, observabilityRangeForPreset, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -48,4 +48,35 @@ describe('admin observability helpers', () => {
     expect(formatDuration(45)).toBe('45 s');
     expect(formatDuration(3900)).toBe('1 h 5 min');
   });
+  it('resume la salud del admin sin exponer identidad y degrada ante 5xx o Mongo caído', () => {
+    const healthy = summarizeObservabilityHealth({
+      history: {
+        http: { p95_ms: 125, error_5xx_percent: 0 },
+        ai: { cloudflare_percent: 98.5 },
+      },
+      database: { status: 'ok' },
+    }, [
+      { username: 'admin', presence: 'online' },
+      { username: 'ana', presence: 'online' },
+      { username: 'bob', presence: 'idle' },
+    ], 'admin');
+    expect(healthy).toEqual({
+      status: 'operational',
+      statusLabel: 'Operativo',
+      apiP95Ms: 125,
+      error5xxPercent: 0,
+      databaseLabel: 'Mongo OK',
+      aiCloudflarePercent: 98.5,
+      onlineUsers: 1,
+    });
+
+    const degraded = summarizeObservabilityHealth({
+      history: { http: { p95_ms: 900, error_5xx_percent: 1.2 }, ai: {} },
+      database: { status: 'down' },
+    }, [], null);
+    expect(degraded.status).toBe('degraded');
+    expect(degraded.statusLabel).toBe('Degradado');
+    expect(degraded.databaseLabel).toBe('Mongo DOWN');
+  });
+
 });

@@ -10,6 +10,7 @@ import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
+import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 
@@ -145,6 +146,7 @@ export default function AdminScreen({ onExit }) {
   const [feedbackError, setFeedbackError] = useState(null);
   const [feedbackUpdating, setFeedbackUpdating] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
+  const [adminView, setAdminView] = useState('overview');
 
   useEffect(() => {
     let mounted = true;
@@ -259,6 +261,22 @@ export default function AdminScreen({ onExit }) {
     );
   }
 
+  if (adminView === 'observability') {
+    return (
+      <div className="menu admin-screen admin-observability-view">
+        <button className="back-link" onClick={() => setAdminView('overview')}>← Volver al panel admin</button>
+        <div className="menu-section">
+          <div className="admin-subview-heading">
+            <div><span className="section-label">Admin</span><h2>Observabilidad</h2></div>
+            <button type="button" className="secondary-btn" onClick={onExit}>Salir al menú</button>
+          </div>
+          <p className="hint-text">Dashboards operativos, histórico temporal, Workers AI y diagnóstico SRE.</p>
+          <ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="menu admin-screen">
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
@@ -284,7 +302,12 @@ export default function AdminScreen({ onExit }) {
             <small>Otros usuarios · muestreo aprox. cada 2 min · el estado caduca automáticamente</small>
           </section>
         )}
-        <ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />
+        <AdminObservabilitySummary
+          token={getToken()}
+          users={users || []}
+          currentAdmin={currentAdmin}
+          onOpen={() => setAdminView('observability')}
+        />
 
         <section className="admin-feedback-section" aria-label="Feedback de usuarios">
           <div className="admin-feedback-heading">

@@ -8,6 +8,7 @@ const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
 const liveStatus = readFileSync(new URL('./components/LiveServiceStatus.jsx', import.meta.url), 'utf8');
 const menu = readFileSync(new URL('./components/Menu.jsx', import.meta.url), 'utf8');
 const observability = readFileSync(new URL('./components/ObservabilityPanel.jsx', import.meta.url), 'utf8');
+const observabilitySummary = readFileSync(new URL('./components/AdminObservabilitySummary.jsx', import.meta.url), 'utf8');
 
 describe('admin UX contract', () => {
   it('abre el expediente desde el propio nombre y elimina el botón redundante', () => {
@@ -25,9 +26,12 @@ describe('admin UX contract', () => {
     expect(admin).not.toContain('.toLocaleString()');
   });
 
-  it('muestra observabilidad global de Chess Studio sólo dentro de Admin', () => {
+  it('mantiene observabilidad dentro de Admin y la abre como subvista propia', () => {
     expect(admin).toContain("import ObservabilityPanel from './ObservabilityPanel.jsx';");
-    expect(admin).toContain('<ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />');
+    expect(admin).toContain("import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';");
+    expect(admin).toContain("adminView === 'observability'");
+    expect(admin).toContain("setAdminView('observability')");
+    expect(observabilitySummary).toContain('Abrir observabilidad →');
   });
 
   it('mantiene observabilidad simple por defecto y profundidad bajo clic', () => {

@@ -80,3 +80,25 @@ export function formatDuration(seconds) {
   const days = Math.floor(hours / 24);
   return `${days} d ${hours % 24} h`;
 }
+
+
+export function summarizeObservabilityHealth(runtime, users = [], currentAdmin = null) {
+  const historyHttp = runtime?.history?.http || {};
+  const historyAi = runtime?.history?.ai || {};
+  const database = runtime?.database || null;
+  const userSummary = summarizeAdminUsers(users, currentAdmin);
+  const error5xxPercent = Number(historyHttp.error_5xx_percent);
+  const apiP95Ms = Number(historyHttp.p95_ms);
+  const databaseDown = database?.status === 'down';
+  const degraded = databaseDown || (Number.isFinite(error5xxPercent) && error5xxPercent > 0);
+  const hasRuntime = Boolean(runtime);
+  return {
+    status: hasRuntime ? (degraded ? 'degraded' : 'operational') : 'unknown',
+    statusLabel: hasRuntime ? (degraded ? 'Degradado' : 'Operativo') : 'Sin datos',
+    apiP95Ms: Number.isFinite(apiP95Ms) ? apiP95Ms : null,
+    error5xxPercent: Number.isFinite(error5xxPercent) ? error5xxPercent : null,
+    databaseLabel: !database ? 'Sin datos' : database.status === 'ok' ? 'Mongo OK' : database.status === 'memory' ? 'Memoria local' : 'Mongo DOWN',
+    aiCloudflarePercent: Number.isFinite(Number(historyAi.cloudflare_percent)) ? Number(historyAi.cloudflare_percent) : null,
+    onlineUsers: userSummary.online,
+  };
+}

@@ -9102,3 +9102,59 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .admin-observability-percentile-picker { width: 100%; }
   .admin-observability-percentile-picker button { flex: 1; }
 }
+
+/* ---------- v16.6dm32 · Admin compacto + Observabilidad como subvista ---------- */
+.admin-observability-launcher {
+  margin: .8rem 0 1rem;
+  padding: .8rem;
+  border: 1px solid rgba(184,146,38,.24);
+  border-radius: .65rem;
+  background: rgba(255,255,255,.018);
+  display: grid;
+  gap: .65rem;
+}
+.admin-observability-launcher-heading,
+.admin-observability-launcher-actions,
+.admin-subview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.admin-observability-launcher-heading h3,
+.admin-subview-heading h2 { margin: .1rem 0 0; }
+.admin-observability-launcher-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .45rem;
+}
+.admin-observability-launcher-kpis > div {
+  padding: .5rem;
+  border-radius: .45rem;
+  background: rgba(255,255,255,.025);
+  display: grid;
+  gap: .2rem;
+  min-width: 0;
+}
+.admin-observability-launcher-kpis span {
+  color: var(--parchment-dim);
+  text-transform: uppercase;
+  letter-spacing: .035em;
+  font-size: .59rem;
+}
+.admin-observability-launcher-kpis strong {
+  color: var(--parchment);
+  font-family: var(--font-mono);
+  font-size: .76rem;
+  overflow-wrap: anywhere;
+}
+.admin-observability-launcher-actions .hint-text { margin: 0; flex: 1 1 22rem; }
+.admin-observability-view .admin-observability { margin-top: .9rem; }
+@media (max-width: 900px) {
+  .admin-observability-launcher-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .admin-observability-launcher-kpis { grid-template-columns: 1fr; }
+  .admin-observability-launcher-actions .secondary-btn { width: 100%; }
+}
