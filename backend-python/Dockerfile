@@ -1,6 +1,6 @@
 # Multistage backend image: dependencies are built once in /opt/venv and the
 # runtime image contains only what the app needs.
-ARG PYTHON_IMAGE=python:3.23.5-slim 
+ARG PYTHON_IMAGE=python:3.13-alpine3.23
 FROM ${PYTHON_IMAGE} AS builder
 
 WORKDIR /app
