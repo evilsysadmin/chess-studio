@@ -38,20 +38,6 @@ jobs:
         working-directory: frontend
         run: npm test
 
-      - name: Coverage frontend (informativo)
-        continue-on-error: true
-        working-directory: frontend
-        run: npm run test:coverage
-
-      - name: Publicar coverage frontend
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage
-          path: frontend/coverage/
-          if-no-files-found: ignore
-          retention-days: 7
-
       - name: Verificar que compila
         working-directory: frontend
         run: npm run build
@@ -81,20 +67,6 @@ jobs:
       - name: Backend integration/API
         working-directory: backend-python
         run: pytest -q --ignore=test_chess_ai.py --ignore=test_core_game.py
-
-      - name: Coverage backend (informativo)
-        continue-on-error: true
-        working-directory: backend-python
-        run: pytest -q --cov=. --cov-branch --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml --cov-fail-under=0
-
-      - name: Publicar coverage backend
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: backend-python/coverage.xml
-          if-no-files-found: ignore
-          retention-days: 7
 
       - name: Comprobar dependencias Python
         working-directory: backend-python
