@@ -186,7 +186,7 @@ def test_player_portrait_accepts_only_grounded_profile_claims(monkeypatch):
     monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
     monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "p" * 64)
 
-    client = FakeClient(FakeResponse(200, {"ok": True, "text": "Has ganado 6 partidas y tu rating ha subido. Te estás viniendo arriba, con motivos."}))
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": "Has ganado 6 partidas y tu rating ha subido, así que algo estás haciendo bien. El problema principal todavía necesita más muestra; por una vez no voy a inventarme el incendio. En las próximas partidas, revisa tus resultados antes de cambiar de plan."}))
     result = asyncio.run(
         provider.generate_narrative(
             "player_portrait",
@@ -354,9 +354,9 @@ def test_ai_provider_emits_operational_logs_without_payload_data(monkeypatch, ca
     asyncio.run(provider.generate_narrative("player_portrait", {"total_games": 8, "private_marker": "DO_NOT_LOG"}, client=failure))
 
     text = "\n".join(record.getMessage() for record in caplog.records)
-    assert "workers_ai_ok event_type=generic" in text
+    assert "workers_ai_ok request_id=- event_type=generic" in text
     assert "model=@cf/meta/llama-3.2-3b-instruct" in text
-    assert "workers_ai_fallback event_type=player_portrait" in text
+    assert "workers_ai_fallback request_id=- event_type=player_portrait" in text
     assert "worker_error=empty_provider_response" in text
     assert "DO_NOT_LOG" not in text
 
@@ -373,13 +373,66 @@ def test_rich_analysis_uses_separate_circuit_channel(monkeypatch):
     assert asyncio.run(provider.request_cloud_narrative("post_game_autopsy", {}, client=analysis_fail)).reason == "http_502"
     assert asyncio.run(provider.request_cloud_narrative("post_game_autopsy", {}, client=analysis_fail)).reason == "circuit_open"
 
-    portrait_ok = FakeClient(FakeResponse(200, {"ok": True, "text": "Tres frases útiles. Otra frase. Consejo."}))
+    portrait_ok = FakeClient(FakeResponse(200, {"ok": True, "text": "Has completado 8 partidas y ya hay una muestra aprovechable. Todavía hay poco detalle para señalar una catástrofe concreta, milagrosamente. En las próximas partidas, revisa tus errores repetidos antes de cambiar de plan."}))
     portrait = asyncio.run(provider.request_cloud_narrative("player_portrait", {"total_games": 8}, client=portrait_ok))
     assert portrait.reason == "ok"
     circuit = provider.get_ai_metrics()["circuit"]
     assert circuit["channels"]["analysis"]["open"] is True
     assert circuit["channels"]["player_portrait"]["open"] is False
     assert circuit["channels"]["comments"]["open"] is False
+
+
+def test_player_portrait_rejects_theatrical_letter_and_falls_back(monkeypatch):
+    monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "m" * 64)
+    bad = (
+        "Saludos, estimado y nunca bien ponderado evilsysadmin. "
+        "Verá usted, una horquilla de caballo me tiene profundamente intrigado. "
+        "Quedo a la espera de su infinita sabiduría para resolver semejante asunto."
+    )
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": bad}))
+
+    result = asyncio.run(provider.generate_narrative(
+        "player_portrait",
+        {"total_games": 12, "record": {"wins": 6, "losses": 6}},
+        request_kind="portrait_manual",
+        client=client,
+    ))
+
+    assert result["provider"] == "local"
+    metrics = provider.get_ai_metrics()
+    assert any(key.startswith("portrait_contract_rejected:") for key in metrics["reasons"])
+
+
+def test_player_portrait_requires_three_grounded_sentences_and_action(monkeypatch):
+    monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "n" * 64)
+    good = (
+        "Has ganado 7 de 12 partidas, así que el tablero no te tiene completamente fichado. "
+        "Tus datos aún no justifican inventar una debilidad distinta, cosa que te ahorra una humillación gratuita. "
+        "En las próximas partidas, revisa tus incidentes repetidos antes de cambiar de plan."
+    )
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": good}))
+    outcome = asyncio.run(provider.request_cloud_narrative(
+        "player_portrait", {"total_games": 12, "record": {"wins": 7, "losses": 5}}, client=client
+    ))
+    assert outcome.reason == "ok"
+    assert outcome.text == good
+
+
+def test_request_id_is_signed_through_to_worker_payload(monkeypatch):
+    monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "o" * 64)
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": "Movimiento anotado."}))
+    outcome = asyncio.run(provider.request_cloud_narrative(
+        "generic", {"san": "e4"}, request_id="web-test-abc123", client=client
+    ))
+    assert outcome.reason == "ok"
+    sent = json.loads(client.request["content"].decode("utf-8"))
+    assert sent["request_id"] == "web-test-abc123"
 
 
 def test_rich_analysis_transport_keeps_long_compact_output(monkeypatch):

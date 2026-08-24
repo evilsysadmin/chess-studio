@@ -11,6 +11,7 @@ describe('AI portrait + shared narrative voice', () => {
     expect(insights).toContain("tone: 'friendly_sarcastic'");
     expect(insights).toContain('portraitText || localPortrait');
     expect(insights).toContain('loadCachedPlayerPortrait');
+    expect(insights).toContain('portraitIdentityScope');
     expect(insights).toContain('cada 6 h');
     expect(insights).toContain('↻ Analizarme de nuevo');
     expect(insights.indexOf('↻ Analizarme de nuevo')).toBeLessThan(insights.indexOf('<details className="friendly-disclosure ai-player-portrait-details">'));
@@ -36,9 +37,12 @@ describe('AI portrait + shared narrative voice', () => {
     expect(worker).toContain('modelFor(eventType)');
     expect(worker).toContain('firstChoice?.message?.content');
     expect(worker).toContain('error_name: errorName');
-    expect(worker).toContain('temperature: 0.60');
-    expect(worker).toContain('max_tokens: 180');
+    expect(worker).toContain('temperature: 0.70');
+    expect(worker).toContain('max_tokens: 384');
+    expect(worker).toContain('/no_think');
     expect(worker).toContain('exactamente 3 frases compactas');
+    expect(worker).toContain('No conoces el nombre/username del jugador');
+    expect(worker).toContain('requestId: requestId || undefined');
     expect(worker).toContain('usa una o dos cifras');
     expect(worker).toContain('recomendación práctica');
     expect(worker).toContain('una sola');

@@ -51,7 +51,7 @@ def static_check() -> list[str]:
         'normalizeUsage',
         'firstChoice?.message?.content',
         'error_name: errorName',
-        'usage: normalizeUsage(result)',
+        'const usage = normalizeUsage(result);',
         '"/health"',
     ):
         require(worker, needle, "worker", errors)
@@ -71,8 +71,9 @@ def static_check() -> list[str]:
         "una sola",
         "copia literalmente su nombre",
         "PLAYER_PORTRAIT_GENERATION",
-        "temperature: 0.60",
-        "max_tokens: 180",
+        "temperature: 0.70",
+        "max_tokens: 384",
+        'qwenNoThink ? "/no_think" : ""',
         "post_game_autopsy",
         "combat_briefing",
         "combat_debrief",
@@ -90,7 +91,7 @@ def static_check() -> list[str]:
     require(tf_main, 'type         = "ratelimit"', "terraform rate limit binding", errors)
     require(tf_main, 'keep_bindings', "terraform secret preservation", errors)
 
-    for needle in ('CF_AI_WORKER_URL', 'CHESS_AI_SHARED_SECRET', 'sign_request(', 'validate_grounded_output(', 'estimated_neurons', 'request_kinds'):
+    for needle in ('CF_AI_WORKER_URL', 'CHESS_AI_SHARED_SECRET', 'sign_request(', 'validate_grounded_output(', 'validate_player_portrait_contract(', 'portrait_contract_rejected:', 'estimated_neurons', 'request_kinds'):
         require(backend, needle, "backend", errors)
 
     # Secrets and the direct Worker origin must stay server-side; browser talks only to FastAPI.

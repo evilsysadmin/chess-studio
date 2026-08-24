@@ -1,3 +1,4 @@
+import { withRequestId } from './requestId.js';
 const DEFAULT_TIMEOUT_MS = 4500;
 const DEFAULT_MIN_PLY_GAP = 2;
 const DEFAULT_MIN_INTERVAL_MS = 2500;
@@ -63,7 +64,7 @@ export async function requestRemoteNarrative(
   try {
     const response = await fetchImpl(`${apiBase()}/narrative`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: withRequestId({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }),
       signal: controller.signal,
       body: JSON.stringify({
         eventType: String(dossier.eventType || 'generic').slice(0, 48),

@@ -11,6 +11,7 @@ import json
 import logging
 import math
 import os
+import re
 import threading
 import time
 from collections import Counter, deque
@@ -126,13 +127,23 @@ def _sanitize(value: Any, depth: int = 0) -> Any:
     return None
 
 
-def build_payload(event_type: str, facts: dict[str, Any], *, tone: str = "friendly_sarcastic", locale: str = "es-ES") -> dict[str, Any]:
-    return {
+def build_payload(
+    event_type: str,
+    facts: dict[str, Any],
+    *,
+    tone: str = "friendly_sarcastic",
+    locale: str = "es-ES",
+    request_id: str | None = None,
+) -> dict[str, Any]:
+    payload = {
         "event_type": str(event_type or "generic")[:48],
         "facts": _sanitize(facts or {}),
         "tone": str(tone or "sarcastic")[:32],
         "locale": str(locale or "es-ES")[:16],
     }
+    if request_id:
+        payload["request_id"] = re.sub(r"[^A-Za-z0-9._:-]", "", str(request_id))[:80]
+    return payload
 
 
 def canonical_json(payload: dict[str, Any]) -> bytes:
@@ -243,6 +254,123 @@ def validate_grounded_output(text: str, event_type: str, facts: dict[str, Any]) 
         grounding_terms = _GROUNDED_CONCEPTS[concept]
         if not any(term in haystack for term in grounding_terms):
             return False, concept
+    return True, None
+
+
+_PORTRAIT_FORBIDDEN_PATTERNS = (
+    r"\bsaludos?\b",
+    r"\bestimad[oa]s?\b",
+    r"\batentamente\b",
+    r"\bcordialmente\b",
+    r"\bquedo a la espera\b",
+    r"\ba sus pies\b",
+    r"\ba tus pies\b",
+    r"\bverá usted\b",
+    r"\busted(?:es)?\b",
+    r"\bby the way\b",
+    r"\bcomo ia\b",
+    r"\bla ia dice\b",
+)
+
+_PORTRAIT_ACTION_TERMS = (
+    "entrena", "practica", "revisa", "trabaja", "céntrate", "centrate",
+    "prioriza", "evita", "comprueba", "vigila", "busca", "intenta",
+    "en las próximas", "en las proximas", "próximas partidas",
+    "proximas partidas", "antes de",
+)
+
+
+def _sentence_parts(text: str) -> list[str]:
+    clean = " ".join(str(text or "").split()).strip()
+    if not clean:
+        return []
+    # El contrato del retrato prohíbe listas/encabezados y exige tres frases.
+    # Separar por terminadores es suficiente porque además evitamos tratamientos
+    # formales/abreviaturas que suelen falsear este conteo.
+    return [part.strip() for part in re.split(r"(?<=[.!?…])\s+", clean) if part.strip()]
+
+
+def _numeric_facts(facts: dict[str, Any]) -> set[str]:
+    values: set[str] = set()
+
+    def walk(value: Any, depth: int = 0) -> None:
+        if depth > MAX_FACT_DEPTH:
+            return
+        if isinstance(value, bool) or value is None:
+            return
+        if isinstance(value, (int, float)) and math.isfinite(float(value)):
+            number = float(value)
+            values.add(str(int(number)) if number.is_integer() else str(number).rstrip("0").rstrip("."))
+            return
+        if isinstance(value, dict):
+            for item in value.values():
+                walk(item, depth + 1)
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                walk(item, depth + 1)
+
+    walk(_sanitize(facts or {}))
+    return values
+
+
+def _opening_names(facts: dict[str, Any]) -> list[str]:
+    clean = _sanitize(facts or {})
+    if not isinstance(clean, dict):
+        return []
+    names: list[str] = []
+    favorite = clean.get("favorite_opening")
+    if isinstance(favorite, dict) and isinstance(favorite.get("name"), str):
+        names.append(favorite["name"].strip())
+    openings = clean.get("openings")
+    if isinstance(openings, list):
+        for row in openings:
+            if isinstance(row, dict) and isinstance(row.get("name"), str):
+                names.append(row["name"].strip())
+    return [name for name in names if name]
+
+
+def validate_player_portrait_contract(text: str, facts: dict[str, Any]) -> tuple[bool, str | None]:
+    """Fail closed when a model drifts away from the compact grounded portrait.
+
+    Prompting is advisory; this validator is the enforcement boundary. A false
+    positive is safe because Chess Studio already has a deterministic local
+    portrait and manual cooldown is committed only after a cloud success.
+    """
+    clean = " ".join(str(text or "").split()).strip()
+    lowered = clean.lower()
+    if len(clean) < 70:
+        return False, "too_short"
+    if len(clean) > PLAYER_PORTRAIT_MAX_OUTPUT_CHARS:
+        return False, "too_long"
+    if clean.startswith(("-", "*", "#")) or "```" in clean or lowered.startswith(("cpu:", "narrador:")):
+        return False, "format"
+    for pattern in _PORTRAIT_FORBIDDEN_PATTERNS:
+        if re.search(pattern, lowered, flags=re.IGNORECASE):
+            return False, "formal_or_meta"
+
+    sentences = _sentence_parts(clean)
+    if len(sentences) != 3:
+        return False, "sentence_count"
+
+    # Al menos una ancla verificable debe sobrevivir al texto: una cifra real
+    # del dossier o el nombre literal de una apertura medida. Esto evita que una
+    # carta teatral genérica pase sólo por sonar ajedrecística.
+    numbers = _numeric_facts(facts)
+    number_tokens = set(re.findall(r"(?<![\w])\d+(?:[.,]\d+)?", clean))
+    normalized_output_numbers: set[str] = set()
+    for token in number_tokens:
+        try:
+            number = float(token.replace(",", "."))
+        except ValueError:
+            continue
+        normalized_output_numbers.add(str(int(number)) if number.is_integer() else str(number).rstrip("0").rstrip("."))
+    has_number_anchor = any(number in normalized_output_numbers for number in numbers)
+    has_opening_anchor = any(name.lower() in lowered for name in _opening_names(facts))
+    if not (has_number_anchor or has_opening_anchor):
+        return False, "missing_evidence_anchor"
+
+    if not any(term in sentences[-1].lower() for term in _PORTRAIT_ACTION_TERMS):
+        return False, "missing_action"
     return True, None
 
 
@@ -478,6 +606,7 @@ async def request_cloud_narrative(
     *,
     tone: str = "friendly_sarcastic",
     locale: str = "es-ES",
+    request_id: str | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> ProviderOutcome:
     channel = _circuit_channel(event_type)
@@ -493,7 +622,7 @@ async def request_cloud_narrative(
     if not worker_url or not secret:
         return ProviderOutcome(None, "not_configured", 0.0)
 
-    payload = build_payload(event_type, facts, tone=tone, locale=locale)
+    payload = build_payload(event_type, facts, tone=tone, locale=locale, request_id=request_id)
     body = canonical_json(payload)
     timestamp = str(int(time.time()))
     headers = {
@@ -544,6 +673,14 @@ async def request_cloud_narrative(
         text = _trim_complete_output(text, _max_output_chars(event_type))
         if not text:
             return _provider_failure("empty_response", elapsed, channel=channel)
+        if event_type == "player_portrait":
+            valid_portrait, portrait_reason = validate_player_portrait_contract(text, facts)
+            if not valid_portrait:
+                return _provider_failure(
+                    f"portrait_contract_rejected:{portrait_reason or 'unknown'}",
+                    elapsed,
+                    channel=channel,
+                )
         grounded, concept = validate_grounded_output(text, event_type, facts)
         if not grounded:
             return _provider_failure(f"ungrounded_{concept}", elapsed, channel=channel)
@@ -570,9 +707,12 @@ async def generate_narrative(
     tone: str = "friendly_sarcastic",
     locale: str = "es-ES",
     request_kind: str = "default",
+    request_id: str | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> dict[str, Any]:
-    outcome = await request_cloud_narrative(event_type, facts, tone=tone, locale=locale, client=client)
+    outcome = await request_cloud_narrative(
+        event_type, facts, tone=tone, locale=locale, request_id=request_id, client=client
+    )
     if outcome.text:
         _record(
             "cloudflare", event_type, outcome.latency_ms, outcome.reason, outcome.text,
@@ -580,7 +720,8 @@ async def generate_narrative(
             output_tokens=outcome.output_tokens, model=outcome.model,
         )
         ai_logger.info(
-            "workers_ai_ok event_type=%s request_kind=%s channel=%s model=%s latency_ms=%.1f input_tokens=%s output_tokens=%s",
+            "workers_ai_ok request_id=%s event_type=%s request_kind=%s channel=%s model=%s latency_ms=%.1f input_tokens=%s output_tokens=%s",
+            request_id or "-",
             str(event_type or "generic")[:48],
             str(request_kind or "default")[:32],
             _circuit_channel(event_type),
@@ -608,7 +749,8 @@ async def generate_narrative(
     )
     circuit = _circuit_snapshot()
     ai_logger.warning(
-        "workers_ai_fallback event_type=%s request_kind=%s channel=%s reason=%s worker_error=%s latency_ms=%.1f circuit_open=%s failures=%s",
+        "workers_ai_fallback request_id=%s event_type=%s request_kind=%s channel=%s reason=%s worker_error=%s latency_ms=%.1f circuit_open=%s failures=%s",
+        request_id or "-",
         str(event_type or "generic")[:48],
         str(request_kind or "default")[:32],
         _circuit_channel(event_type),

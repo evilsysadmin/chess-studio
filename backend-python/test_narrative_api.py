@@ -115,7 +115,7 @@ def test_narrative_429_is_operationally_logged_without_identity(monkeypatch, cap
     assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
     assert client.post("/api/narrative", headers=headers, json=payload).status_code == 429
     text = "\n".join(record.getMessage() for record in caplog.records)
-    assert "narrative_429 event_type=generic request_kind=default bucket=comments" in text
+    assert "narrative_429 request_id=- event_type=generic request_kind=default bucket=comments" in text
     assert "DO_NOT_LOG" not in text
     assert "test-user" not in text
 

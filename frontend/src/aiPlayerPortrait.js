@@ -1,7 +1,7 @@
 import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
-const PORTRAIT_SCHEMA = 5;
+const PORTRAIT_SCHEMA = 6;
 const GAMES_PER_AUTOMATIC_REFRESH = 3;
 export const PLAYER_PORTRAIT_MAX_CHARS = 900;
 const PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
@@ -114,24 +114,37 @@ export function playerPortraitGenerationKey(insights) {
   return `${PORTRAIT_SCHEMA}:${Math.floor(games / GAMES_PER_AUTOMATIC_REFRESH)}`;
 }
 
-function readPortraitCache() {
-  const cached = readJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, { fallback: null, removeMalformed: true });
-  return cached && cached.schema === PORTRAIT_SCHEMA && typeof cached === 'object' ? cached : null;
+function normalizeIdentityScope(identityScope) {
+  const clean = String(identityScope || '').trim().toLowerCase();
+  return clean ? clean.slice(0, 120) : null;
 }
 
-export function loadCachedPlayerPortrait(generationKey) {
-  const cached = readPortraitCache();
+function readPortraitCache(identityScope) {
+  const scope = normalizeIdentityScope(identityScope);
+  if (!scope) return null;
+  const cached = readJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, { fallback: null, removeMalformed: true });
+  if (!cached || cached.schema !== PORTRAIT_SCHEMA || typeof cached !== 'object') return null;
+  // Defensa adicional al clear de login/logout: un retrato local nunca se
+  // reutiliza si la identidad autenticada actual no coincide exactamente.
+  if (cached.identityScope !== scope) return null;
+  return cached;
+}
+
+export function loadCachedPlayerPortrait(generationKey, identityScope) {
+  const cached = readPortraitCache(identityScope);
   if (!cached || cached.generationKey !== generationKey) return null;
   if (typeof cached.text !== 'string' || !cached.text.trim()) return null;
   return cached.text.trim().slice(0, PLAYER_PORTRAIT_MAX_CHARS);
 }
 
-export function saveCachedPlayerPortrait(generationKey, text) {
+export function saveCachedPlayerPortrait(generationKey, text, identityScope) {
+  const scope = normalizeIdentityScope(identityScope);
   const clean = typeof text === 'string' ? text.trim().slice(0, PLAYER_PORTRAIT_MAX_CHARS) : '';
-  if (!clean) return false;
-  const previous = readPortraitCache() || {};
+  if (!scope || !clean) return false;
+  const previous = readPortraitCache(scope) || {};
   return writeJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, {
     schema: PORTRAIT_SCHEMA,
+    identityScope: scope,
     generationKey,
     text: clean,
     generatedAt: new Date().toISOString(),
@@ -139,8 +152,8 @@ export function saveCachedPlayerPortrait(generationKey, text) {
   });
 }
 
-export function playerPortraitManualRefreshState({ now = Date.now() } = {}) {
-  const cached = readPortraitCache();
+export function playerPortraitManualRefreshState({ now = Date.now(), identityScope = null } = {}) {
+  const cached = readPortraitCache(identityScope);
   const last = Number(cached?.manualRequestedAt);
   if (!Number.isFinite(last) || last <= 0) {
     return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
@@ -153,11 +166,14 @@ export function playerPortraitManualRefreshState({ now = Date.now() } = {}) {
   };
 }
 
-export function markPlayerPortraitManualRefresh({ now = Date.now() } = {}) {
-  const previous = readPortraitCache() || {};
+export function markPlayerPortraitManualRefresh({ now = Date.now(), identityScope = null } = {}) {
+  const scope = normalizeIdentityScope(identityScope);
+  if (!scope) return false;
+  const previous = readPortraitCache(scope) || {};
   return writeJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, {
     ...previous,
     schema: PORTRAIT_SCHEMA,
+    identityScope: scope,
     manualRequestedAt: Number(now),
   });
 }

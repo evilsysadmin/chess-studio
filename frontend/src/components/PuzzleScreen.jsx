@@ -12,6 +12,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { recordPuzzleRush } from '../career.js';
 import { lastDailyCells } from '../careerVisuals.js';
 import { checkAchievements } from '../achievements.js';
+import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
 
@@ -147,7 +148,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     if (!move) return;
 
     const expected = puzzle.solution[stepIndex];
-    if (move.san !== expected) {
+    if (!matchesExpectedPuzzleMove(fen, expected, move)) {
       setPersonalHadError(true);
       if (rushMode) {
         setFeedback('Incorrecta. Siguiente caso: el reloj no negocia.');

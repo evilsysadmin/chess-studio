@@ -2,7 +2,7 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
-import { getToken } from '../auth.js';
+import { getToken, getUsername } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import {
   buildPlayerPortraitFacts,
@@ -139,15 +139,16 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     [insights, rivalry, roastExtras, searchResult],
   );
   const portraitGenerationKey = useMemo(() => playerPortraitGenerationKey(insights), [insights]);
+  const portraitIdentityScope = getUsername();
   const portraitFactsKey = useMemo(() => JSON.stringify(portraitFacts || {}), [portraitFacts]);
   const portraitRemoteEligible = Number(insights.totalGames || 0) >= 3;
   const localPortrait = useMemo(() => roastLines.slice(0, 2).join(' '), [roastLines]);
-  const [portraitText, setPortraitText] = useState(() => loadCachedPlayerPortrait(portraitGenerationKey));
+  const [portraitText, setPortraitText] = useState(() => loadCachedPlayerPortrait(portraitGenerationKey, portraitIdentityScope));
   const [portraitStatus, setPortraitStatus] = useState(() => portraitText ? 'cloudflare' : 'local');
   const [portraitRefresh, setPortraitRefresh] = useState(0);
   const portraitManualRequestRef = useRef(false);
   const [portraitCooldownNow, setPortraitCooldownNow] = useState(() => Date.now());
-  const portraitManualState = playerPortraitManualRefreshState({ now: portraitCooldownNow });
+  const portraitManualState = playerPortraitManualRefreshState({ now: portraitCooldownNow, identityScope: portraitIdentityScope });
 
   useEffect(() => {
     if (portraitManualState.allowed) return undefined;
@@ -162,7 +163,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       return undefined;
     }
 
-    const cached = loadCachedPlayerPortrait(portraitGenerationKey);
+    const cached = loadCachedPlayerPortrait(portraitGenerationKey, portraitIdentityScope);
     if (cached && portraitRefresh === 0) {
       setPortraitText(cached);
       setPortraitStatus('cloudflare');
@@ -194,11 +195,11 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         setPortraitStatus(cached ? 'cloudflare' : 'local');
         return;
       }
-      saveCachedPlayerPortrait(portraitGenerationKey, text);
+      saveCachedPlayerPortrait(portraitGenerationKey, text, portraitIdentityScope);
       if (requestKind === 'portrait_manual') {
         // El cooldown manual se consume sólo cuando hubo una lectura real de
         // Workers AI. Un timeout/fallback no castiga al usuario durante 6 h.
-        markPlayerPortraitManualRefresh();
+        markPlayerPortraitManualRefresh({ identityScope: portraitIdentityScope });
         setPortraitCooldownNow(Date.now());
       }
       setPortraitText(text);
@@ -209,7 +210,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   }, [portraitFactsKey, portraitGenerationKey, portraitRefresh, portraitRemoteEligible]);
 
   function requestFreshPortrait() {
-    const state = playerPortraitManualRefreshState();
+    const state = playerPortraitManualRefreshState({ identityScope: portraitIdentityScope });
     if (!portraitRemoteEligible || !state.allowed || portraitStatus === 'loading') {
       setPortraitCooldownNow(Date.now());
       return;

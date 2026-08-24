@@ -129,6 +129,7 @@ def build_narrative_router(
         is_portrait = body.eventType == "player_portrait"
         is_analysis = body.eventType in RICH_ANALYSIS_EVENT_TYPES
         bucket = "player_portrait" if is_portrait else "analysis" if is_analysis else "comments"
+        request_id = (getattr(request.state, "request_id", None) or request.headers.get("x-request-id") or "").strip()[:80] or None
         try:
             (portrait_limiter if is_portrait else analysis_limiter if is_analysis else comment_limiter).check(identity_key)
             if is_portrait and request_kind == "portrait_manual":
@@ -136,7 +137,8 @@ def build_narrative_router(
         except HTTPException as exc:
             if exc.status_code == 429:
                 narrative_logger.warning(
-                    "narrative_429 event_type=%s request_kind=%s bucket=%s reason=%s retry_after=%s",
+                    "narrative_429 request_id=%s event_type=%s request_kind=%s bucket=%s reason=%s retry_after=%s",
+                    request_id or "-",
                     str(body.eventType or "generic")[:48],
                     request_kind,
                     bucket,
@@ -150,6 +152,7 @@ def build_narrative_router(
             tone=body.tone,
             locale=body.locale,
             request_kind=request_kind,
+            request_id=request_id,
         )
         # Sólo una lectura AI real consume la ventana manual de seis horas. Si
         # Cloudflare falla y usamos fallback, el usuario puede reintentar cuando

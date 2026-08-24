@@ -25,23 +25,27 @@ const COMMENT_GENERATION = Object.freeze({
 // Mucha menos entropía que los comentarios de partida para priorizar
 // precisión, castellano limpio y una recomendación realmente utilizable.
 const PLAYER_PORTRAIT_GENERATION = Object.freeze({
-  temperature: 0.60,
-  top_p: 0.85,
+  // Qwen3 piensa por defecto. Para estos diagnósticos breves lo forzamos a
+  // non-thinking desde el prompt y usamos los parámetros recomendados por
+  // Qwen para ese modo. El margen extra evita respuestas vacías si el
+  // proveedor consume algunos tokens internos antes del contenido final.
+  temperature: 0.70,
+  top_p: 0.80,
   top_k: 20,
   repetition_penalty: 1.08,
   frequency_penalty: 0.10,
   presence_penalty: 0.05,
-  max_tokens: 180,
+  max_tokens: 384,
 });
 
 const ANALYSIS_GENERATION = Object.freeze({
-  temperature: 0.62,
-  top_p: 0.86,
+  temperature: 0.70,
+  top_p: 0.80,
   top_k: 20,
   repetition_penalty: 1.08,
   frequency_penalty: 0.10,
   presence_penalty: 0.05,
-  max_tokens: 190,
+  max_tokens: 448,
 });
 
 function modelFor(eventType) {
@@ -87,6 +91,10 @@ REGLAS INVIOLABLES:
   ajedrecístico inexistente.
 - Si faltan datos, no los completes: comenta sólo lo que sí existe.
 - Para player_portrait, tu prioridad es ser ÚTIL, concreto y fácil de entender.
+  No conoces el nombre/username del jugador y jamás debes inventarlo, deducirlo
+  ni dirigirte a él por un nombre. No redactes cartas, diálogos ni respuestas a
+  supuestas preguntas del jugador: HECHOS son estadísticas, no una conversación.
+  Empieza directamente por el diagnóstico, sin saludo ni introducción.
   Escribe exactamente 3 frases compactas: (1) el patrón positivo más relevante
   que permitan los HECHOS, (2) el problema o patrón mejorable más importante,
   y (3) una acción concreta para las próximas partidas basada en esos mismos
@@ -268,19 +276,25 @@ async function authenticatedBody(request, env) {
   return { body };
 }
 
+function textFromContent(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((part) => typeof part === "string" ? part : (part?.text ?? part?.content ?? ""))
+    .filter((part) => typeof part === "string")
+    .join(" ");
+}
+
 function normalizeOutput(result, maxChars = DEFAULT_MAX_OUTPUT_CHARS) {
   // Workers AI no garantiza la misma envoltura para todos los modelos. Los
   // Llama clásicos suelen devolver { response }, mientras Qwen3 usa la forma
-  // chat-completions { choices:[{ message:{ content } }] }. Aceptamos ambas
-  // para que cambiar de modelo no convierta una respuesta válida en fallback.
+  // chat-completions { choices:[{ message:{ content } }] }. Algunos runtimes
+  // representan content como partes; aceptamos también esa forma. Nunca
+  // usamos reasoning/reasoning_content como respuesta visible.
   const firstChoice = result?.choices?.[0] ?? result?.result?.choices?.[0];
-  const text =
-    result?.response ??
-    result?.result?.response ??
-    firstChoice?.message?.content ??
-    firstChoice?.text ??
-    result?.text ??
-    "";
+  const responseText = result?.response ?? result?.result?.response;
+  const choiceText = textFromContent(firstChoice?.message?.content);
+  const text = responseText || choiceText || firstChoice?.text || result?.text || "";
 
   const clean = String(text ?? "")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
@@ -321,6 +335,7 @@ async function handleNarrative(request, env) {
 
   const body = auth.body || {};
   const eventType = sanitizeString(body.event_type || body.eventType || "generic", 48);
+  const requestId = sanitizeString(body.request_id || body.requestId || "", 80).replace(/[^A-Za-z0-9._:-]/g, "");
 
   // Render ya aplica límite por usuario. Este segundo cinturón protege el
   // binding AI, pero separa retratos y comentarios para que un lote de una
@@ -348,7 +363,10 @@ async function handleNarrative(request, env) {
   };
   const task = tasks[eventType] || "Escribe el comentario ahora usando exclusivamente esos hechos.";
 
+  const model = modelFor(eventType);
+  const qwenNoThink = model === PLAYER_PORTRAIT_MODEL || model === ANALYSIS_MODEL;
   const userPrompt = [
+    qwenNoThink ? "/no_think" : "",
     `TIPO_DE_EVENTO: ${eventType}`,
     `IDIOMA: ${locale}`,
     `TONO: ${tone}`,
@@ -358,7 +376,6 @@ async function handleNarrative(request, env) {
     task,
   ].join("\n");
 
-  const model = modelFor(eventType);
   let result;
   try {
     result = await env.AI.run(model, {
@@ -372,6 +389,7 @@ async function handleNarrative(request, env) {
     const errorName = sanitizeString(error?.name || "Error", 48);
     const errorCode = sanitizeString(error?.code || "", 48);
     console.error("workers_ai_failed", {
+      requestId: requestId || undefined,
       eventType,
       model,
       name: errorName,
@@ -392,6 +410,7 @@ async function handleNarrative(request, env) {
   const text = normalizeOutput(result, maxOutputCharsFor(eventType));
   if (!text) {
     console.error("workers_ai_empty_response", {
+      requestId: requestId || undefined,
       eventType,
       model,
       shape: Array.isArray(result?.choices) || Array.isArray(result?.result?.choices)
@@ -399,15 +418,33 @@ async function handleNarrative(request, env) {
         : result?.response != null || result?.result?.response != null
           ? "response"
           : typeof result,
+      finishReason: sanitizeString(
+        result?.choices?.[0]?.finish_reason ?? result?.result?.choices?.[0]?.finish_reason ?? "",
+        48,
+      ) || undefined,
+      hasReasoning: Boolean(
+        result?.choices?.[0]?.message?.reasoning_content
+        || result?.choices?.[0]?.message?.reasoning
+        || result?.result?.choices?.[0]?.message?.reasoning_content
+        || result?.result?.choices?.[0]?.message?.reasoning
+      ),
     });
     return json({ ok: false, error: "empty_provider_response" }, 502);
   }
 
+  const usage = normalizeUsage(result);
+  console.log("workers_ai_ok", {
+    requestId: requestId || undefined,
+    eventType,
+    model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+  });
   return json({
     ok: true,
     text,
     model,
-    usage: normalizeUsage(result),
+    usage,
   });
 }
 

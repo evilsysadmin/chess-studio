@@ -49,16 +49,16 @@ describe('AI player portrait', () => {
 
   it('cachea sólo el retrato de la generación actual', () => {
     const key = playerPortraitGenerationKey({ totalGames: 7 });
-    expect(saveCachedPlayerPortrait(key, 'Te defiendes. Milagrosamente.')).toBe(true);
-    expect(loadCachedPlayerPortrait(key)).toBe('Te defiendes. Milagrosamente.');
-    expect(loadCachedPlayerPortrait('1:99')).toBeNull();
+    expect(saveCachedPlayerPortrait(key, 'Te defiendes. Milagrosamente.', 'alice')).toBe(true);
+    expect(loadCachedPlayerPortrait(key, 'alice')).toBe('Te defiendes. Milagrosamente.');
+    expect(loadCachedPlayerPortrait('1:99', 'alice')).toBeNull();
     expect(localStorage.getItem(AI_PLAYER_PORTRAIT_CACHE_KEY)).toContain('Te defiendes');
   });
 
   it('invalida retratos del schema anterior al cambiar de modelo', () => {
     const key = playerPortraitGenerationKey({ totalGames: 7 });
-    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 3, generationKey: key, text: 'Viejo Llama.' }));
-    expect(loadCachedPlayerPortrait(key)).toBeNull();
+    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 5, generationKey: key, text: 'Viejo Llama.' }));
+    expect(loadCachedPlayerPortrait(key, 'alice')).toBeNull();
   });
 
   it('conserva retratos largos completos en cache', () => {
@@ -66,20 +66,28 @@ describe('AI player portrait', () => {
     const text = `${'Retrato con contexto. '.repeat(24)}Cierre completo.`;
     expect(text.length).toBeGreaterThan(420);
     expect(text.length).toBeLessThan(PLAYER_PORTRAIT_MAX_CHARS);
-    expect(saveCachedPlayerPortrait(key, text)).toBe(true);
-    expect(loadCachedPlayerPortrait(key)).toBe(text);
+    expect(saveCachedPlayerPortrait(key, text, 'alice')).toBe(true);
+    expect(loadCachedPlayerPortrait(key, 'alice')).toBe(text);
   });
 
   it('limita la regeneración manual a una cada seis horas y conserva el retrato', () => {
     const key = playerPortraitGenerationKey({ totalGames: 9 });
-    expect(saveCachedPlayerPortrait(key, 'Primera lectura.')).toBe(true);
-    expect(playerPortraitManualRefreshState({ now: 1_000_000 }).allowed).toBe(true);
-    expect(markPlayerPortraitManualRefresh({ now: 1_000_000 })).toBe(true);
-    const blocked = playerPortraitManualRefreshState({ now: 1_000_000 + 60 * 60 * 1000 });
+    expect(saveCachedPlayerPortrait(key, 'Primera lectura.', 'alice')).toBe(true);
+    expect(playerPortraitManualRefreshState({ now: 1_000_000, identityScope: 'alice' }).allowed).toBe(true);
+    expect(markPlayerPortraitManualRefresh({ now: 1_000_000, identityScope: 'alice' })).toBe(true);
+    const blocked = playerPortraitManualRefreshState({ now: 1_000_000 + 60 * 60 * 1000, identityScope: 'alice' });
     expect(blocked.allowed).toBe(false);
     expect(formatPlayerPortraitCooldown(blocked.retryAfterMs)).toBe('5 h');
-    expect(loadCachedPlayerPortrait(key)).toBe('Primera lectura.');
-    expect(playerPortraitManualRefreshState({ now: 1_000_000 + 6 * 60 * 60 * 1000 }).allowed).toBe(true);
+    expect(loadCachedPlayerPortrait(key, 'alice')).toBe('Primera lectura.');
+    expect(playerPortraitManualRefreshState({ now: 1_000_000 + 6 * 60 * 60 * 1000, identityScope: 'alice' }).allowed).toBe(true);
+  });
+
+  it('nunca reutiliza el retrato cacheado de otra identidad', () => {
+    const key = playerPortraitGenerationKey({ totalGames: 9 });
+    expect(saveCachedPlayerPortrait(key, 'Lectura de Alice.', 'Alice')).toBe(true);
+    expect(loadCachedPlayerPortrait(key, 'alice')).toBe('Lectura de Alice.');
+    expect(loadCachedPlayerPortrait(key, 'bob')).toBeNull();
+    expect(playerPortraitManualRefreshState({ now: 1_000_000, identityScope: 'bob' }).allowed).toBe(true);
   });
 
 });
