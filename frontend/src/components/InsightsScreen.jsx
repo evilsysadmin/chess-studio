@@ -12,6 +12,7 @@ import {
   playerPortraitGenerationKey,
   playerPortraitManualRefreshState,
   saveCachedPlayerPortrait,
+  shouldCommitManualPortraitRefresh,
 } from '../aiPlayerPortrait.js';
 import { findWorstMoveEver } from '../gameReport.js';
 import { generateRoast, generateCoaching, trainingTargetForCoaching } from '../insights.js';
@@ -196,7 +197,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         return;
       }
       saveCachedPlayerPortrait(portraitGenerationKey, text, portraitIdentityScope);
-      if (requestKind === 'portrait_manual') {
+      if (shouldCommitManualPortraitRefresh(requestKind, text)) {
         // El cooldown manual se consume sólo cuando hubo una lectura real de
         // Workers AI. Un timeout/fallback no castiga al usuario durante 6 h.
         markPlayerPortraitManualRefresh({ identityScope: portraitIdentityScope });
@@ -323,7 +324,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                 </button>
                 <small>
                   {portraitManualState.allowed
-                    ? 'Una lectura extra cada 6 h · automática cada 3 partidas.'
+                    ? 'Una lectura extra cada 6 h · automática tras cada partida.'
                     : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
                 </small>
               </>

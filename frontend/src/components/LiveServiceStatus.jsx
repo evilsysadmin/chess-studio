@@ -27,7 +27,7 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
   const backendUp = status.backend === 'up';
   const checking = status.backend === 'checking';
   const onlineLabel = Number.isInteger(status.onlineUsers)
-    ? `${status.onlineUsers} usuarios online`
+    ? `${status.onlineUsers} ${status.onlineUsers === 1 ? 'usuario online' : 'usuarios online'}`
     : '— usuarios online';
   const latency = backendUp && Number.isInteger(status.latencyMs) ? ` · ${status.latencyMs} ms` : '';
   const backendLabel = checking ? 'Backend …' : `Backend ${backendUp ? 'UP' : 'DOWN'}${latency}`;

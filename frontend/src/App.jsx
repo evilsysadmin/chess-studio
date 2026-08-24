@@ -21,6 +21,7 @@ import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { loadGameHistory, saveGameRecord, clearGameHistory, updateGameRecordChat } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
+import { isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadRating, saveRating, updateRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
@@ -376,11 +377,10 @@ function AppInner({ isAdminUser }) {
 
   function handleExitGame() {
     if (game?.id) {
-      recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
-    }
-    if (gameContext.runMode && specialRun?.active) {
-      const endedRun = recordSpecialRunResult(specialRun, 'loss');
-      setSpecialRun(endedRun);
+      const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
+      const forfeit = shouldTreatExitAsForfeit({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition });
+      if (forfeit) handleCasualGameEnd('loss', game, { endReason: 'resignation' });
+      else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
     }
     if (game?.id) clearClockSnapshot(game.id);
     clearActiveGameSession();
@@ -407,14 +407,14 @@ function AppInner({ isAdminUser }) {
   // la "pista inversa" del Historial funcione acá también, no solo en
   // Torneo — con una etiqueta de modo para distinguirlas al navegar la lista.
   function handleCasualGameEnd(outcome, finishedGame, endMeta = {}) {
-    if (!finishedGame) return;
+    if (!finishedGame || !isCompletedGameOutcome(outcome)) return;
     clearClockSnapshot(finishedGame.id);
     const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
     const opening = identifyOpening(moveSans);
     let seriesSnapshot = activeSeries;
     const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
 
-    if (!learningMode && !trainingPosition) {
+    if (shouldApplyCompetitiveProgress(outcome, { learningMode, trainingPosition })) {
       if (activeSeries && !activeSeries.winner) {
         seriesSnapshot = recordSeriesGame(activeSeries, outcome, {
           gameId: finishedGame.id,
@@ -540,7 +540,10 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       if (game?.id) {
-        recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
+        const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
+        const forfeit = shouldTreatExitAsForfeit({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition });
+        if (forfeit) handleCasualGameEnd('loss', game, { endReason: 'resignation' });
+        else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
         await api.deleteGame(game.id).catch(() => {});
       }
       const nextColor = humanColor === 'w' ? 'b' : 'w';
@@ -652,6 +655,7 @@ function AppInner({ isAdminUser }) {
   }
 
   function handleTournamentGameEnd(outcome, finishedGame, endMeta = {}) {
+    if (!isCompletedGameOutcome(outcome)) return;
     if (finishedGame) {
       const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
       recordRivalryResult(outcome, {
@@ -736,7 +740,11 @@ function AppInner({ isAdminUser }) {
   }
 
   function handleExitTournamentGame() {
-    if (tournamentGame?.id) recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament' });
+    if (tournamentGame?.id) {
+      const forfeit = Number(tournamentGame.history?.length || 0) > 0 && !tournamentGame.isGameOver;
+      if (forfeit) handleTournamentGameEnd('loss', tournamentGame, { endReason: 'resignation' });
+      else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament' });
+    }
     clearActiveGameSession();
     setHasSavedGame(!!getStorageItem(STORAGE_LOCAL, STORAGE_KEY));
     setTournamentGame(null);

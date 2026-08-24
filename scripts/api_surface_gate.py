@@ -21,7 +21,7 @@ PUBLIC = {
     ("POST", "/api/auth/reset-password"),
     ("GET", "/api/health"),
 }
-AUTH_DEPS = {"get_current_user", "get_user_or_m2m", "require_admin", "auth_dependency", "admin_dependency"}
+AUTH_DEPS = {"get_current_user", "get_user_or_m2m", "require_admin", "auth_dependency", "compute_auth_dependency", "admin_dependency"}
 ADMIN_DEPS = {"require_admin", "admin_dependency"}
 RATE_LIMITED_PUBLIC = PUBLIC - {("GET", "/api/health")}
 METHODS = {"get", "post", "put", "delete", "patch"}
@@ -90,6 +90,24 @@ def narrative_router_wiring_ok(main_tree):
     return False
 
 
+def game_router_wiring_ok(main_tree):
+    for node in ast.walk(main_tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr != "include_router" or not node.args:
+            continue
+        factory = node.args[0]
+        if not isinstance(factory, ast.Call) or name_of(factory.func) != "build_game_router":
+            continue
+        kwargs = {kw.arg: name_of(kw.value) for kw in factory.keywords if kw.arg}
+        return (
+            kwargs.get("auth_dependency") == "get_current_user"
+            and kwargs.get("compute_auth_dependency") == "get_user_or_m2m"
+            and kwargs.get("limiter") == "limiter"
+        )
+    return False
+
+
 failures = []
 seen = set()
 route_count = 0
@@ -135,6 +153,10 @@ if missing:
 if ("POST", "/api/narrative") in seen or ("GET", "/api/admin/ai-metrics") in seen:
     if main_tree is None or not narrative_router_wiring_ok(main_tree):
         failures.append("build_narrative_router debe inyectar get_current_user + require_admin en main.py")
+
+if any(path.startswith("/api/games") or path in {"/api/analyze", "/api/analyze-move"} for _method, path in seen):
+    if main_tree is None or not game_router_wiring_ok(main_tree):
+        failures.append("build_game_router debe inyectar get_current_user + get_user_or_m2m + limiter en main.py")
 
 print("== Chess Studio · API surface gate ==")
 print("Rutas públicas deliberadas:")

@@ -70,6 +70,8 @@ for (const relative of [...FRONTEND_SMOKE_TESTS, ...FRONTEND_CONTRACT_TESTS]) {
 }
 
 const sourceReaders = frontendFiles.filter((name) => /(?:readFileSync|fs\.readFileSync)/.test(read(path.join(frontendSrc, name))));
+const MAX_SOURCE_READER_TESTS = 15; // dm31 baseline: bajar, nunca volver a inflar.
+if (sourceReaders.length > MAX_SOURCE_READER_TESTS) fail(`Demasiados contract-tests que inspeccionan source text: ${sourceReaders.length} > ${MAX_SOURCE_READER_TESTS}. Prefiere tests de comportamiento.`);
 for (const name of sourceReaders) {
   if (!contractBasenames.has(name)) fail(`${name} inspecciona source text pero no pertenece al grupo contract`);
   if (!read(path.join(frontendSrc, name)).startsWith('// STATIC CONTRACT:')) fail(`${name} carece del marcador STATIC CONTRACT`);

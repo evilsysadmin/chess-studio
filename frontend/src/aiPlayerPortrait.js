@@ -166,6 +166,10 @@ export function playerPortraitManualRefreshState({ now = Date.now(), identitySco
   };
 }
 
+export function shouldCommitManualPortraitRefresh(requestKind, text) {
+  return requestKind === 'portrait_manual' && typeof text === 'string' && Boolean(text.trim());
+}
+
 export function markPlayerPortraitManualRefresh({ now = Date.now(), identityScope = null } = {}) {
   const scope = normalizeIdentityScope(identityScope);
   if (!scope) return false;

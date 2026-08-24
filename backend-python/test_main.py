@@ -1048,7 +1048,7 @@ def test_registration_requires_invite_code_when_configured(monkeypatch):
 
 def test_presence_summary_classifies_online_idle_recent_offline_and_never():
     from datetime import datetime, timedelta, timezone
-    from main import _presence_summary
+    from admin_insights import _presence_summary
 
     now = datetime.now(timezone.utc)
     assert _presence_summary(now.isoformat())["presence"] == "online"
@@ -1114,7 +1114,7 @@ def test_resolve_move_core_rules_cover_castling_en_passant_and_promotion():
 
 def test_admin_recent_activity_labels_game_mode_and_combat_type():
     import json
-    from main import _extract_summary_stats
+    from admin_insights import _extract_summary_stats
 
     profile = {
         "data": {
@@ -1139,7 +1139,7 @@ def test_admin_recent_activity_labels_game_mode_and_combat_type():
 
 def test_admin_recent_activity_prefers_explicit_game_lifecycle():
     import json
-    from main import _extract_summary_stats
+    from admin_insights import _extract_summary_stats
 
     profile = {
         "data": {
@@ -1458,7 +1458,7 @@ def test_admin_can_mark_feedback_read_and_resolved(monkeypatch):
 
 def test_foreground_summary_expires_stale_visible_tabs():
     from datetime import datetime, timedelta, timezone
-    from main import _foreground_summary
+    from admin_insights import _foreground_summary
 
     now = datetime.now(timezone.utc)
     fresh = {

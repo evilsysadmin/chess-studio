@@ -13,7 +13,7 @@ TRIVY_CACHE := .trivy-cache
 TRIVY_DB_TTL_MINUTES ?= 720
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
-	frontend-install backend-install ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
+	frontend-install backend-install python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-preflight \
@@ -120,10 +120,13 @@ hooks: install-hooks
 frontend-install:
 	cd frontend && npm ci
 
-backend-install:
+python-check:
+	@$(PYTHON) scripts/check_python.py
+
+backend-install: python-check
 	@set -eu; \
-	if [ ! -x "$(VENV_PY)" ] || ! "$(VENV_PY)" -m pip --version >/dev/null 2>&1; then \
-		echo "==> .venv ausente o dañada (python/pip); recreando..."; \
+	if [ ! -x "$(VENV_PY)" ] || ! "$(VENV_PY)" -m pip --version >/dev/null 2>&1 || ! "$(VENV_PY)" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3,10) else 1)' >/dev/null 2>&1; then \
+		echo "==> .venv ausente, dañada o con Python < 3.10; recreando..."; \
 		rm -rf "$(VENV)"; \
 		$(PYTHON) -m venv "$(VENV)"; \
 	fi; \

@@ -445,7 +445,9 @@ def _group_series(rows: list[tuple[int, dict[str, Any]]], start: int, end: int) 
             "ai_samples": ai["samples"],
             "ai_cloudflare_percent": ai["cloudflare_percent"],
             "ai_fallback_percent": ai["fallback_percent"],
+            "ai_p50_ms": ai["p50_ms"],
             "ai_p95_ms": ai["p95_ms"],
+            "ai_p99_ms": ai["p99_ms"],
         })
     return series
 

@@ -43,7 +43,7 @@ describe('AI narrative task dossiers', () => {
   it('observability summary is aggregated and does not include users or request bodies', () => {
     const dossier = buildObservabilitySummaryDossier({
       runtime: {
-        history: { http: { samples: 900, p95_ms: 220, status_5xx: 2, top_routes: [{ route: 'GET /api/profile', requests: 200, p95_ms: 80 }] }, ai: { samples: 12, cloudflare_percent: 91.7, fallback_percent: 8.3, reasons: { timeout: 1 } } },
+        history: { http: { samples: 900, p95_ms: 220, status_5xx: 2, top_routes: [{ route: 'GET /api/profile', requests: 200, p95_ms: 80 }] }, ai: { samples: 12, cloudflare_percent: 91.7, fallback_percent: 8.3, reasons: { ok: 11, timeout: 1 } } },
         database: { status: 'ok', latency_ms: 18 },
         users: [{ username: 'NOPE' }],
       },
@@ -52,6 +52,7 @@ describe('AI narrative task dossiers', () => {
     });
     expect(dossier.eventType).toBe('observability_summary');
     expect(dossier.facts.api_p95_ms).toBe(220);
+    expect(dossier.facts.top_ai_fallbacks).toEqual([{ reason: 'timeout', count: 1 }]);
     expect(JSON.stringify(dossier)).not.toContain('NOPE');
   });
 });

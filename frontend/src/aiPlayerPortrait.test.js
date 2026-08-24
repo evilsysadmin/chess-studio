@@ -9,6 +9,7 @@ import {
   playerPortraitGenerationKey,
   playerPortraitManualRefreshState,
   saveCachedPlayerPortrait,
+  shouldCommitManualPortraitRefresh,
 } from './aiPlayerPortrait.js';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 
@@ -89,6 +90,13 @@ describe('AI player portrait', () => {
     expect(loadCachedPlayerPortrait(key, 'alice')).toBe('Lectura de Alice.');
     expect(loadCachedPlayerPortrait(key, 'bob')).toBeNull();
     expect(playerPortraitManualRefreshState({ now: 1_000_000, identityScope: 'bob' }).allowed).toBe(true);
+  });
+
+  it('confirma el cooldown manual sólo después de una lectura remota válida', () => {
+    expect(shouldCommitManualPortraitRefresh('portrait_manual', 'Lectura remota válida')).toBe(true);
+    expect(shouldCommitManualPortraitRefresh('portrait_auto', 'Lectura remota válida')).toBe(false);
+    expect(shouldCommitManualPortraitRefresh('portrait_manual', '')).toBe(false);
+    expect(shouldCommitManualPortraitRefresh('portrait_manual', null)).toBe(false);
   });
 
 });

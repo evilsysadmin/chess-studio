@@ -107,6 +107,9 @@ def test_history_series_exposes_dashboard_metrics():
     assert point["http_5xx"] == 1
     assert point["http_p95_ms"] >= point["http_p50_ms"]
     assert point["http_p99_ms"] >= point["http_p95_ms"]
+    assert "ai_p50_ms" in point
+    assert "ai_p95_ms" in point
+    assert "ai_p99_ms" in point
     assert point["ai_samples"] == 1
     assert point["ai_cloudflare_percent"] == 100.0
     assert point["ai_fallback_percent"] == 0.0

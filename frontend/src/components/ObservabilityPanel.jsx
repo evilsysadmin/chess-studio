@@ -25,7 +25,15 @@ const EVENT_LABELS = {
   generic: 'Otros',
 };
 
-const OBSERVABILITY_REFRESH_MS = 120000;
+const AUTO_REFRESH_OPTIONS = [
+  { value: 30000, label: '30 s' },
+  { value: 60000, label: '1 min' },
+  { value: 120000, label: '2 min' },
+  { value: 300000, label: '5 min' },
+  { value: 900000, label: '15 min' },
+];
+
+const LATENCY_VIEWS = ['p50', 'p95', 'p99', 'all'];
 
 const REQUEST_KIND_LABELS = {
   portrait_manual: 'Lecturas manuales',
@@ -88,39 +96,78 @@ function seriesLabel(value, resolution) {
     : at.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function LineChart({ series = [], valueKey, title, suffix = '', resolution = 'hour', ceiling = null }) {
-  const points = series
-    .map((row) => ({ at: row.at, value: Number(row[valueKey]) }))
-    .filter((row) => Number.isFinite(row.value));
-  if (!points.length) return <div className="admin-observability-chart is-empty"><h4>{title}</h4><p className="hint-text">Aún no hay histórico.</p></div>;
+function compactAxisMetric(value, suffix = '') {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const abs = Math.abs(n);
+  const shown = abs >= 1000 ? `${Number((n / 1000).toFixed(abs >= 10000 ? 0 : 1))}k` : `${Math.round(n)}`;
+  return `${shown}${suffix}`;
+}
+
+function niceCeiling(value) {
+  const raw = Math.max(1, Number(value) || 1);
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const scaled = raw / magnitude;
+  const nice = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10;
+  return nice * magnitude;
+}
+
+function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = '', resolution = 'hour', ceiling = null }) {
+  const definitions = (valueKeys || [{ key: valueKey, label: null }]).filter((item) => item?.key);
+  const prepared = definitions.map((definition) => ({
+    ...definition,
+    points: series
+      .map((row) => ({ at: row.at, value: Number(row[definition.key]) }))
+      .filter((row) => Number.isFinite(row.value)),
+  })).filter((definition) => definition.points.length);
+  if (!prepared.length) return <div className="admin-observability-chart is-empty"><h4>{title}</h4><p className="hint-text">Aún no hay histórico.</p></div>;
 
   const width = 620;
-  const height = 170;
-  const padX = 18;
-  const padTop = 14;
+  const height = 180;
+  const padLeft = 54;
+  const padRight = 16;
+  const padTop = 12;
   const padBottom = 24;
-  const values = points.map((row) => row.value);
-  const rawMax = Math.max(...values, 1);
-  const maxValue = ceiling == null ? rawMax : Math.max(Number(ceiling), rawMax);
-  const minValue = ceiling == null ? Math.min(0, ...values) : 0;
+  const allValues = prepared.flatMap((definition) => definition.points.map((row) => row.value));
+  const rawMax = Math.max(...allValues, 1);
+  const maxValue = ceiling == null ? niceCeiling(rawMax) : Math.max(Number(ceiling), rawMax);
+  const minValue = 0;
   const range = Math.max(1, maxValue - minValue);
-  const coords = points.map((row, index) => {
-    const x = points.length === 1 ? width / 2 : padX + (index / (points.length - 1)) * (width - padX * 2);
-    const y = padTop + ((maxValue - row.value) / range) * (height - padTop - padBottom);
-    return { ...row, x, y };
-  });
-  const polyline = coords.map((row) => `${row.x.toFixed(1)},${row.y.toFixed(1)}`).join(' ');
-  const first = coords[0];
-  const last = coords.at(-1);
+  const tickCount = 4;
+  const ticks = Array.from({ length: tickCount + 1 }, (_, index) => maxValue - (index / tickCount) * range);
+  const preparedCoords = prepared.map((definition) => ({
+    ...definition,
+    coords: definition.points.map((row, index) => {
+      const x = definition.points.length === 1 ? (padLeft + width - padRight) / 2 : padLeft + (index / (definition.points.length - 1)) * (width - padLeft - padRight);
+      const y = padTop + ((maxValue - row.value) / range) * (height - padTop - padBottom);
+      return { ...row, x, y };
+    }),
+  }));
+  const first = preparedCoords[0]?.coords[0];
+  const last = preparedCoords[0]?.coords.at(-1);
 
   return (
     <div className="admin-observability-chart">
-      <div className="admin-observability-chart-heading"><h4>{title}</h4><strong>{metric(last?.value, suffix)}</strong></div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title}: ${metric(last?.value, suffix)}`} preserveAspectRatio="none">
-        <line x1={padX} x2={width - padX} y1={padTop} y2={padTop} className="chart-grid-line" />
-        <line x1={padX} x2={width - padX} y1={height - padBottom} y2={height - padBottom} className="chart-grid-line" />
-        <polyline points={polyline} fill="none" className="chart-line" vectorEffect="non-scaling-stroke" />
-        {coords.map((row) => <circle key={`${row.at}-${row.x}`} cx={row.x} cy={row.y} r="2.7" className="chart-point"><title>{seriesLabel(row.at, resolution)} · {metric(row.value, suffix)}</title></circle>)}
+      <div className="admin-observability-chart-heading">
+        <h4>{title}</h4>
+        {preparedCoords.length === 1 ? <strong>{metric(last?.value, suffix)}</strong> : null}
+      </div>
+      {preparedCoords.length > 1 ? (
+        <div className="admin-observability-chart-legend">
+          {preparedCoords.map((definition, index) => <span key={definition.key} className={`chart-series-${index}`}>{definition.label}: {metric(definition.coords.at(-1)?.value, suffix)}</span>)}
+        </div>
+      ) : null}
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+        {ticks.map((tick, index) => {
+          const y = padTop + (index / tickCount) * (height - padTop - padBottom);
+          return <g key={tick}><line x1={padLeft} x2={width - padRight} y1={y} y2={y} className="chart-grid-line" /><text x={padLeft - 7} y={y + 3} textAnchor="end" className="chart-y-label">{compactAxisMetric(tick, suffix)}</text></g>;
+        })}
+        {preparedCoords.map((definition, index) => (
+          <g key={definition.key}>
+            <polyline points={definition.coords.map((row) => `${row.x.toFixed(1)},${row.y.toFixed(1)}`).join(' ')} fill="none" className={`chart-line chart-series-${index}`} vectorEffect="non-scaling-stroke" />
+            {definition.coords.map((row) => <circle key={`${definition.key}-${row.at}-${row.x}`} cx={row.x} cy={row.y} r="3" className={`chart-point chart-series-${index}`}><title>{definition.label ? `${definition.label} · ` : ''}{seriesLabel(row.at, resolution)} · {metric(row.value, suffix)}</title></circle>)}
+          </g>
+        ))}
       </svg>
       <div className="admin-observability-chart-axis"><span>{seriesLabel(first?.at, resolution)}</span><span>{seriesLabel(last?.at, resolution)}</span></div>
     </div>
@@ -146,14 +193,23 @@ function BarChart({ series = [], valueKey, title, resolution = 'hour' }) {
   );
 }
 
-function Dashboard({ tab, history, historyHttp, historyAi, historyRange }) {
+function latencyDefinitions(prefix, view) {
+  const all = [
+    { key: `${prefix}_p50_ms`, label: 'p50' },
+    { key: `${prefix}_p95_ms`, label: 'p95' },
+    { key: `${prefix}_p99_ms`, label: 'p99' },
+  ];
+  return view === 'all' ? all : all.filter((item) => item.label === view);
+}
+
+function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latencyView }) {
   const series = history?.series || [];
   const resolution = historyRange?.resolution || 'hour';
 
   if (tab === 'ai') {
     return (
       <div className="admin-observability-dashboard-grid">
-        <LineChart series={series} valueKey="ai_p95_ms" title="Latencia Workers AI · p95" suffix=" ms" resolution={resolution} />
+        <LineChart series={series} valueKeys={latencyDefinitions('ai', latencyView)} title={`Latencia Workers AI · ${latencyView === 'all' ? 'p50 / p95 / p99' : latencyView}`} suffix=" ms" resolution={resolution} />
         <LineChart series={series} valueKey="ai_cloudflare_percent" title="Respuestas Cloudflare" suffix="%" resolution={resolution} ceiling={100} />
         <BarChart series={series} valueKey="ai_samples" title="Llamadas AI" resolution={resolution} />
         <div className="admin-observability-dashboard-kpis">
@@ -184,8 +240,8 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange }) {
 
   return (
     <div className="admin-observability-dashboard-grid">
-      <LineChart series={series} valueKey="http_p95_ms" title="Latencia API · p95" suffix=" ms" resolution={resolution} />
-      <LineChart series={series} valueKey="http_p99_ms" title="Latencia API · p99" suffix=" ms" resolution={resolution} />
+      <LineChart series={series} valueKeys={latencyDefinitions('http', latencyView)} title={`Latencia API · ${latencyView === 'all' ? 'p50 / p95 / p99' : latencyView}`} suffix=" ms" resolution={resolution} />
+      <LineChart series={series} valueKey="http_p99_ms" title="Cola alta · p99" suffix=" ms" resolution={resolution} />
       <BarChart series={series} valueKey="http_requests" title="Carga HTTP" resolution={resolution} />
       <div className="admin-observability-dashboard-kpis">
         <div><span>p50</span><strong>{metric(historyHttp.p50_ms, ' ms')}</strong></div>
@@ -224,6 +280,9 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
   const [customFrom, setCustomFrom] = useState(() => localDateInputValue(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
   const [customTo, setCustomTo] = useState(() => localDateInputValue(new Date()));
   const [dashboardTab, setDashboardTab] = useState('health');
+  const [latencyView, setLatencyView] = useState('all');
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const [autoRefreshMs, setAutoRefreshMs] = useState(60000);
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSummaryStatus, setAiSummaryStatus] = useState('idle');
   const userSummary = useMemo(() => summarizeAdminUsers(users, currentAdmin), [users, currentAdmin]);
@@ -265,12 +324,24 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
     let active = true;
     const activeCheck = () => active;
     void loadMetrics({ silent: false, activeCheck });
-    const timer = window.setInterval(() => void loadMetrics({ silent: true, activeCheck }), OBSERVABILITY_REFRESH_MS);
+    return () => { active = false; };
+  }, [token, rangePreset, customFrom, customTo]);
+
+  useEffect(() => {
+    if (!autoRefreshEnabled) return undefined;
+    let active = true;
+    const tick = () => {
+      if (!document.hidden) void loadMetrics({ silent: true, activeCheck: () => active });
+    };
+    const timer = window.setInterval(tick, autoRefreshMs);
+    const onVisibility = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       active = false;
       window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [token, rangePreset, customFrom, customTo]);
+  }, [autoRefreshEnabled, autoRefreshMs, token, rangePreset, customFrom, customTo]);
 
   const hour = runtime?.http?.last_1h || {};
   const database = runtime?.database || null;
@@ -306,6 +377,11 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
             <label><span>Hasta</span><input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} /></label>
           </>
         ) : null}
+        <div className="admin-observability-refresh-controls">
+          <button type="button" className={autoRefreshEnabled ? 'secondary-btn active' : 'secondary-btn'} onClick={() => setAutoRefreshEnabled((value) => !value)}>{autoRefreshEnabled ? 'Auto-refresh ON' : 'Auto-refresh OFF'}</button>
+          <label><span>Cada</span><select value={autoRefreshMs} disabled={!autoRefreshEnabled} onChange={(event) => setAutoRefreshMs(Number(event.target.value))}>{AUTO_REFRESH_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+          <button type="button" className="secondary-btn" disabled={loading} onClick={() => void refresh()}>{loading ? 'Actualizando…' : 'Actualizar ahora'}</button>
+        </div>
         <small>{historyRange.persistent ? 'Histórico agregado en Mongo' : 'Histórico disponible sólo desde este proceso'} · resolución {historyRange.resolution === 'day' ? 'diaria' : 'horaria'}.</small>
       </div>
 
@@ -317,12 +393,15 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
       </div>
 
       <div className="admin-observability-dashboard" aria-label="Dashboards de observabilidad">
-        <div className="admin-observability-dashboard-tabs" role="tablist" aria-label="Dashboard">
-          {DASHBOARD_TABS.map((tab) => (
-            <button key={tab.id} type="button" role="tab" aria-selected={dashboardTab === tab.id} className={dashboardTab === tab.id ? 'active' : ''} onClick={() => setDashboardTab(tab.id)}>{tab.label}</button>
-          ))}
+        <div className="admin-observability-dashboard-toolbar">
+          <div className="admin-observability-dashboard-tabs" role="tablist" aria-label="Dashboard">
+            {DASHBOARD_TABS.map((tab) => (
+              <button key={tab.id} type="button" role="tab" aria-selected={dashboardTab === tab.id} className={dashboardTab === tab.id ? 'active' : ''} onClick={() => setDashboardTab(tab.id)}>{tab.label}</button>
+            ))}
+          </div>
+          {dashboardTab !== 'traffic' ? <div className="admin-observability-percentile-picker" aria-label="Percentil de latencia">{LATENCY_VIEWS.map((view) => <button key={view} type="button" className={latencyView === view ? 'active' : ''} onClick={() => setLatencyView(view)}>{view === 'all' ? 'Todas' : view}</button>)}</div> : null}
         </div>
-        <Dashboard tab={dashboardTab} history={history} historyHttp={historyHttp} historyAi={historyAi} historyRange={historyRange} />
+        <Dashboard tab={dashboardTab} history={history} historyHttp={historyHttp} historyAi={historyAi} historyRange={historyRange} latencyView={latencyView} />
       </div>
 
       <details className="friendly-disclosure admin-observability-details">
@@ -397,7 +476,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
             <article><h4>Rutas más activas · {rangeLabel}</h4><ul className="admin-observability-list">{(historyHttp.top_routes || []).map((row) => (<li key={row.route}><span><code>{row.route}</code></span><strong>{row.requests} · p95 {metric(row.p95_ms, ' ms')}</strong></li>))}</ul></article>
             <article><h4>Eventos AI · {rangeLabel}</h4><KeyValueList values={historyAi.event_types} labels={EVENT_LABELS} /></article>
             <article><h4>Origen de peticiones AI · {rangeLabel}</h4><KeyValueList values={historyAi.request_kinds} labels={REQUEST_KIND_LABELS} /></article>
-            <article><h4>Fallback / errores AI · {rangeLabel}</h4><KeyValueList values={historyAi.reasons} /></article>
+            <article><h4>Fallback / errores AI · {rangeLabel}</h4><KeyValueList values={Object.fromEntries(Object.entries(historyAi.reasons || {}).filter(([reason]) => String(reason).toLowerCase() !== 'ok'))} /></article>
             <article><h4>Detalle devuelto por Worker · {rangeLabel}</h4><KeyValueList values={historyAi.worker_errors} /></article>
             <article><h4>Releases en uso · ahora</h4><KeyValueList values={userSummary.releases} /></article>
             <article><h4>Modelos AI · {rangeLabel}</h4><KeyValueList values={historyAi.models} /></article>

@@ -108,6 +108,7 @@ export function buildObservabilitySummaryDossier({ runtime, ai, rangeLabel = 'ra
     p95_ms: finiteNumber(row.p95_ms),
   }));
   const topFallbacks = Object.entries(historicalAi.reasons || {})
+    .filter(([reason]) => String(reason).toLowerCase() !== 'ok')
     .sort((a, b) => Number(b[1]) - Number(a[1]))
     .slice(0, 4)
     .map(([reason, count]) => ({ reason: cleanText(reason, 80), count: finiteNumber(count, 0) }));
