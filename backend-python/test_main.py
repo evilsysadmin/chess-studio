@@ -181,7 +181,7 @@ def test_get_game_not_found():
 
 
 def test_hint_returns_engine_suggestion_on_human_turn(monkeypatch):
-    import main as main_module
+    import game_api
 
     suggestion = {
         "from": "e2",
@@ -190,7 +190,7 @@ def test_hint_returns_engine_suggestion_on_human_turn(monkeypatch):
         "piece": "p",
         "captured": False,
     }
-    monkeypatch.setattr(main_module, "get_cpu_move", lambda _board, _level: suggestion)
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda _board, _level: suggestion)
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
 
     r = client.get(f"/api/games/{created['id']}/hint")
@@ -220,9 +220,9 @@ def test_hint_rejects_finished_game():
 
 
 def test_hint_handles_engine_without_available_suggestion(monkeypatch):
-    import main as main_module
+    import game_api
 
-    monkeypatch.setattr(main_module, "get_cpu_move", lambda _board, _level: None)
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda _board, _level: None)
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
 
     r = client.get(f"/api/games/{created['id']}/hint")
@@ -249,10 +249,10 @@ def test_play_illegal_move_rejected():
 
 
 def test_play_move_does_not_mask_internal_serialization_errors(monkeypatch):
-    import main as main_module
+    import game_api
 
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
-    monkeypatch.setattr(main_module, "move_to_dict", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom interno")))
+    monkeypatch.setattr(game_api, "move_to_dict", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom interno")))
 
     response = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"})
 
@@ -1096,7 +1096,7 @@ def test_forced_activity_records_last_login_and_admin_legacy_fallback(monkeypatc
 
 
 def test_resolve_move_core_rules_cover_castling_en_passant_and_promotion():
-    from main import resolve_move
+    from chess_core import resolve_move
 
     castle = chess.Board("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
     assert resolve_move(castle, "e1", "g1", None) == chess.Move.from_uci("e1g1")
@@ -1180,7 +1180,7 @@ def test_activity_heartbeat_records_only_coarse_allowed_activity(monkeypatch):
 
 
 def test_claimable_threefold_is_consistently_a_finished_draw():
-    from main import serialize_game
+    from chess_core import serialize_game
 
     board = chess.Board()
     for san in ["Nf3", "Nf6", "Ng1", "Ng8", "Nf3", "Nf6", "Ng1", "Ng8"]:
@@ -1229,7 +1229,7 @@ def test_undo_reconstructs_last_move_from_custom_starting_fen():
 
 
 def test_core_serialization_terminal_statuses_are_consistent():
-    from main import serialize_game
+    from chess_core import serialize_game
 
     cases = [
         (chess.Board("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"), "stalemate"),
