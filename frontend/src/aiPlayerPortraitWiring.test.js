@@ -17,12 +17,15 @@ describe('AI portrait + shared narrative voice', () => {
     expect(insights.indexOf('↻ Analizarme de nuevo')).toBeLessThan(insights.indexOf('<details className="friendly-disclosure ai-player-portrait-details">'));
     expect(insights).toContain("requestKind,");
     expect(insights).toContain("'portrait_manual'");
-    const manualSuccess = insights.indexOf("if (requestKind === 'portrait_manual')");
-    const cooldownCommit = insights.indexOf('markPlayerPortraitManualRefresh()', manualSuccess);
+    const emptyRemoteGuard = insights.indexOf('if (!text) {');
+    const manualSuccess = insights.indexOf("if (requestKind === 'portrait_manual')", emptyRemoteGuard);
+    const cooldownCommit = insights.indexOf('markPlayerPortraitManualRefresh(', manualSuccess);
     const freshHandler = insights.indexOf('function requestFreshPortrait()');
-    expect(manualSuccess).toBeGreaterThan(-1);
+    expect(emptyRemoteGuard).toBeGreaterThan(-1);
+    expect(manualSuccess).toBeGreaterThan(emptyRemoteGuard);
     expect(cooldownCommit).toBeGreaterThan(manualSuccess);
-    expect(insights.slice(freshHandler, insights.indexOf('const coaching', freshHandler))).not.toContain('markPlayerPortraitManualRefresh()');
+    expect(insights.slice(emptyRemoteGuard, manualSuccess)).not.toContain('markPlayerPortraitManualRefresh(');
+    expect(insights.slice(freshHandler, insights.indexOf('const coaching', freshHandler))).not.toContain('markPlayerPortraitManualRefresh(');
   });
 
   it('el contrato del Worker exige tuteo y sarcasmo de buen rollo también durante partida', () => {
