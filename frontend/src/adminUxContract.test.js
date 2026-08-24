@@ -65,6 +65,9 @@ describe('admin UX contract', () => {
     expect(admin).toContain('aria-label="Feedback de usuarios"');
     expect(admin).toContain('fetchAdminFeedback');
     expect(admin).toContain("handleFeedbackStatus(item.id, 'resolved')");
+    expect(admin).toContain("const resolvedFeedback = (feedback || []).filter((item) => item.status === 'resolved');");
+    expect(admin).toContain('<summary>Resueltos ({resolvedFeedback.length})</summary>');
+    expect(admin).toContain('activeFeedback.map(renderFeedbackItem)');
   });
 
 });

@@ -8990,3 +8990,19 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   .admin-observability-toolbar-actions { width: 100%; }
   .admin-observability-toolbar-actions .secondary-btn { flex: 1 1 10rem; }
 }
+
+/* ---------- v16.6dm29e · feedback resuelto por disclosure ---------- */
+.admin-feedback-resolved {
+  margin-top: .75rem;
+  border-top: 1px solid var(--ink-3);
+  padding-top: .65rem;
+}
+.admin-feedback-resolved > summary {
+  width: fit-content;
+  cursor: pointer;
+  font: 700 .72rem var(--font-mono);
+  letter-spacing: .04em;
+  opacity: .78;
+}
+.admin-feedback-resolved[open] > summary { margin-bottom: .65rem; }
+.admin-feedback-list-resolved { max-height: 300px; }

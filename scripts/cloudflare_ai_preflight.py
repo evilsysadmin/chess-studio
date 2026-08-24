@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -29,6 +30,11 @@ EXPECTED_ANALYSIS_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
 def require(text: str, needle: str, label: str, errors: list[str]) -> None:
     if needle not in text:
         errors.append(f"{label}: falta {needle!r}")
+
+
+def require_pattern(text: str, pattern: str, label: str, errors: list[str]) -> None:
+    if re.search(pattern, text) is None:
+        errors.append(f"{label}: no cumple el patrón esperado {pattern!r}")
 
 
 def static_check() -> list[str]:
@@ -114,7 +120,15 @@ def static_check() -> list[str]:
     require(workflow, '- name: Verify Custom Domain and health', "workflow Custom Domain health step", errors)
     require(workflow, 'for attempt in {1..60}', "workflow TLS/health propagation retry", errors)
     require(workflow, 'Health HTTP ${health_status:-curl-error}', "workflow diagnosable live health", errors)
-    require(workflow, '"analysis":"@cf/qwen/qwen3-30b-a3b-fp8"', "workflow exact analysis routing health", errors)
+    # The workflow may format the inline Python dict with or without spaces.
+    # Validate the semantic routing token instead of a brittle byte-for-byte YAML substring.
+    require_pattern(
+        workflow,
+        r'["\']analysis["\']\s*:\s*["\']@cf/qwen/qwen3-30b-a3b-fp8["\']',
+        "workflow analysis routing health",
+        errors,
+    )
+    require(workflow, 'all(models.get(k)==v for k,v in expected.items())', "workflow validates all routed models", errors)
     require(workflow, 'CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org', "workflow Render handoff", errors)
 
     require(tf_main, 'resource "cloudflare_workers_custom_domain" "narrative_ai"', "terraform Custom Domain", errors)

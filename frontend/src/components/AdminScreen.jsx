@@ -231,6 +231,33 @@ export default function AdminScreen({ onExit }) {
   const onlineCount = otherUsers.filter((user) => user.presence === 'online').length;
   const idleCount = otherUsers.filter((user) => user.presence === 'idle').length;
   const filteredUsers = filterAdminUsers(users || [], activityFilter);
+  const activeFeedback = (feedback || []).filter((item) => item.status !== 'resolved');
+  const resolvedFeedback = (feedback || []).filter((item) => item.status === 'resolved');
+
+  function renderFeedbackItem(item) {
+    return (
+      <article key={item.id} className={`admin-feedback-card status-${item.status || 'new'}`}>
+        <div className="admin-feedback-meta">
+          <strong>{item.username}</strong>
+          <span>{item.category === 'bug' ? 'Bug' : item.category === 'idea' ? 'Idea' : item.category === 'ux' ? 'UX' : 'Otro'}</span>
+          <span>{item.context || 'Home'}</span>
+          <time>{formatAdminTimestamp(item.created_at)}</time>
+        </div>
+        <p>{item.message}</p>
+        <div className="admin-feedback-actions">
+          {item.status === 'new' && (
+            <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Marcar leído</button>
+          )}
+          {item.status !== 'resolved' ? (
+            <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'resolved')}>Resolver</button>
+          ) : (
+            <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Reabrir</button>
+          )}
+          <span className="admin-feedback-status">{item.status === 'resolved' ? 'Resuelto' : item.status === 'read' ? 'Leído' : 'Nuevo'}</span>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <div className="menu admin-screen">
@@ -271,30 +298,23 @@ export default function AdminScreen({ onExit }) {
           {!feedbackError && feedback === null && <p className="hint-text">Cargando feedback…</p>}
           {!feedbackError && feedback && feedback.length === 0 && <p className="hint-text">No hay feedback todavía. Sospechoso silencio administrativo.</p>}
           {!feedbackError && feedback && feedback.length > 0 && (
-            <div className="admin-feedback-list">
-              {feedback.map((item) => (
-                <article key={item.id} className={`admin-feedback-card status-${item.status || 'new'}`}>
-                  <div className="admin-feedback-meta">
-                    <strong>{item.username}</strong>
-                    <span>{item.category === 'bug' ? 'Bug' : item.category === 'idea' ? 'Idea' : item.category === 'ux' ? 'UX' : 'Otro'}</span>
-                    <span>{item.context || 'Home'}</span>
-                    <time>{formatAdminTimestamp(item.created_at)}</time>
+            <>
+              {activeFeedback.length > 0 ? (
+                <div className="admin-feedback-list" aria-label="Feedback pendiente">
+                  {activeFeedback.map(renderFeedbackItem)}
+                </div>
+              ) : (
+                <p className="hint-text">No queda feedback pendiente. Milagro administrativo.</p>
+              )}
+              {resolvedFeedback.length > 0 && (
+                <details className="admin-feedback-resolved">
+                  <summary>Resueltos ({resolvedFeedback.length})</summary>
+                  <div className="admin-feedback-list admin-feedback-list-resolved">
+                    {resolvedFeedback.map(renderFeedbackItem)}
                   </div>
-                  <p>{item.message}</p>
-                  <div className="admin-feedback-actions">
-                    {item.status === 'new' && (
-                      <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Marcar leído</button>
-                    )}
-                    {item.status !== 'resolved' ? (
-                      <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'resolved')}>Resolver</button>
-                    ) : (
-                      <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Reabrir</button>
-                    )}
-                    <span className="admin-feedback-status">{item.status === 'resolved' ? 'Resuelto' : item.status === 'read' ? 'Leído' : 'Nuevo'}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
+                </details>
+              )}
+            </>
           )}
         </section>
 
