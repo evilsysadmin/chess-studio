@@ -138,6 +138,9 @@ if (checkCiWiring) {
     if (fs.existsSync(path.join(workflowsDir, obsolete))) fail(`Pipeline de producción duplicado: ${obsolete}`);
   }
   if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; quality gate paralelo → Terraform → Pages vive en el mismo workflow');
+  for (const forbidden of ['Wait for Render backend', 'render_ready_contract.py', 'RENDER_GIT_COMMIT']) {
+    if (mainCiSource.includes(forbidden)) fail(`CI principal no debe bloquear producción esperando Render: ${forbidden}`);
+  }
   for (const required of [
     '  preflight:\n',
     'name: Preflight · contracts',
@@ -153,8 +156,6 @@ if (checkCiWiring) {
     '  terraform:\n',
     'name: Cloudflare Worker · Terraform',
     'needs: [frontend, backend, security, e2e]',
-    'Wait for Render backend at tested commit',
-    'scripts/render_ready_contract.py',
     '  pages:\n',
     'name: GitHub Pages',
     'needs: terraform',

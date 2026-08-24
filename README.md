@@ -1,9 +1,20 @@
-### v16.6dm43f · Backend deploy coherence
+### v16.6dm43f · Perfil autorreparable + deploy backend coherente
 
-- GitHub Actions mantiene un único pipeline de producción, pero el quality gate deja de ser serial: tras un `Preflight · contracts` corto, `Tests · Frontend`, `Tests · Backend`, `Security · Trivy + Docker` y `Tests · Playwright` corren en runners independientes y en paralelo.
-- `Cloudflare Worker · Terraform` depende de las cuatro ramas y sólo arranca cuando todas quedan verdes; `GitHub Pages` sigue dependiendo exclusivamente de Terraform. Se conserva así el orden lógico `quality gate → Worker → Pages` reduciendo el tiempo de pared al bloque de validación más lento en vez de sumar todos.
-- `make static-preflight` ejecuta ahora el auditor con `--ci-wiring`, de modo que el pre-push local también detecta si alguien serializa de nuevo frontend/backend/E2E/security o rompe las dependencias del pipeline.
-- No cambia gameplay ni runtime de la aplicación.
+- Corrige la causa del bloqueo que sólo aparecía en navegadores con caché local pendiente: `PATCH /api/profile` existía desde dm41, pero `CORSMiddleware` no permitía `PATCH`, así que el preflight del navegador devolvía 400 antes de llegar a FastAPI. CORS permite ya todos los métodos expuestos y hay una regresión específica para el preflight de GitHub Pages.
+- El `api_surface_gate.py` valida también estáticamente que `CORSMiddleware.allow_methods` cubra todos los métodos HTTP realmente publicados por la API. Esta clase de error browser-only pasa a morir en `make static-preflight`/pre-push.
+- El journal local dirty se autorrepara si está corrupto o incompleto: sólo después de un GET remoto correcto se toma Mongo como autoridad, se rehidrata la caché y se limpian exclusivamente los metadatos dirty rotos. Si Mongo falla, no se descarta ni la caché ni el journal.
+- Una marca dirty perteneciente a otra identidad no puede heredarse al empezar a escribir con el usuario actual; el journal de claves se reinicia antes de marcar el nuevo cambio.
+- El bootstrap autenticado reintenta fallos transitorios con backoff manteniendo la caché cerrada; distingue Mongo 503 de un backend temporalmente no disponible y evita mostrar inmediatamente un diagnóstico falso.
+- `/api/ready` publica `RENDER_GIT_COMMIT` cuando corre en Render. Antes de desplegar Worker/Pages, el pipeline espera a que el backend esté `ready` y sirviendo exactamente `github.sha`, evitando publicar un frontend nuevo contra una API todavía vieja.
+- Se conserva el quality gate paralelo de dm43e: `Preflight → [Frontend || Backend || Security/Docker || Playwright] → Terraform/Worker → Pages`.
+- Inventario esperado: 712 tests frontend / 118 archivos, 222 backend / 10, 15 E2E / 2 y 7 Worker / 1. Sin cambios intencionados de gameplay.
+
+### v16.6dm43e · Quality gate paralelo
+
+- Mantiene un único workflow de producción, pero tras `Preflight · contracts` ejecuta `Tests · Frontend`, `Tests · Backend`, `Security · Trivy + Docker` y `Tests · Playwright` en runners independientes y en paralelo.
+- `Cloudflare Worker · Terraform` depende de las cuatro ramas; `GitHub Pages` depende de Terraform. El tiempo de pared del gate pasa a estar dominado por la rama más lenta en vez de sumar frontend + backend + seguridad + navegador.
+- `make static-preflight` ejecuta el auditor con `--ci-wiring`, por lo que el pre-push detecta si se rompe el DAG o se vuelve a serializar accidentalmente el quality gate.
+- Sin cambios intencionados de gameplay ni runtime de la aplicación.
 
 ### v16.6dm43d · Pipeline único + Retro Player persistente en refresh
 

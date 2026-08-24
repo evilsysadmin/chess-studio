@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-import os
 
 import db
 import users_store as ustore
@@ -37,13 +36,7 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter) -> APIRoute
         storage_required = db.persistent_storage_required()
         if storage_required and await db.get_db() is None:
             raise HTTPException(503, "MongoDB no está lista.")
-        payload = {"ok": True, "storage": "mongo" if storage_required else "memory"}
-        # Render expone el SHA del deploy en runtime. Publicarlo aquí permite
-        # que CI no despliegue un frontend nuevo contra un backend todavía viejo.
-        render_commit = os.getenv("RENDER_GIT_COMMIT", "").strip()
-        if render_commit:
-            payload["commit"] = render_commit
-        return payload
+        return {"ok": True, "storage": "mongo" if storage_required else "memory"}
 
     @router.get("/api/status")
     async def public_status(_username: str = Depends(auth_dependency)):

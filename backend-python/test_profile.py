@@ -297,13 +297,6 @@ def test_ready_returns_200_when_configured_mongo_is_available(monkeypatch):
 
 
 
-
-def test_ready_exposes_render_commit_when_available(monkeypatch):
-    monkeypatch.setenv("RENDER_GIT_COMMIT", "abc123rendercommit")
-    r = client.get("/api/ready")
-    assert r.status_code == 200
-    assert r.json()["commit"] == "abc123rendercommit"
-
 def test_ready_returns_503_when_configured_mongo_is_down(monkeypatch):
     async def unavailable_db():
         return None
