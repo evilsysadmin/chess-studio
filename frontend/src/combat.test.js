@@ -45,10 +45,18 @@ describe('hitChance', () => {
     expect(hitChance(whiteAttacker, blackDefender)).toBeCloseTo(hitChance(blackAttacker, whiteDefender), 8);
   });
 
-  it('nunca baja de 20% aunque el rival esté muy subido de nivel', () => {
-    const weak = mkPiece('p');
-    const strong = mkPiece('q', { strengthPoints: 20, speedPoints: 20 });
-    expect(hitChance(weak, strong)).toBeGreaterThanOrEqual(0.2);
+  it('el suelo del 50% no aplasta mejoras reales justo por encima del mínimo', () => {
+    const base = mkPiece('n', { id: 'w-n-b1', square: 'c3' });
+    const improved = mkPiece('n', { id: 'w-n-b1', square: 'c3', strengthPoints: 1 });
+    const defender = mkPiece('n', { id: 'b-n-b8', color: 'b', square: 'c6' });
+    expect(hitChance(base, defender)).toBeGreaterThanOrEqual(0.5);
+    expect(hitChance(improved, defender)).toBeGreaterThan(hitChance(base, defender));
+  });
+
+  it('nunca baja de 50% aunque el rival esté muy subido de nivel', () => {
+    const weak = mkPiece('p', { square: 'e5', id: 'w-p-e2' });
+    const strong = mkPiece('q', { color: 'b', square: 'd6', strengthPoints: 20, speedPoints: 50 });
+    expect(hitChance(weak, strong)).toBe(0.5);
   });
 
   it('nunca supera el 90%', () => {

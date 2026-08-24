@@ -120,6 +120,7 @@ export function buildObservabilitySummaryDossier({ runtime, ai, rangeLabel = 'ra
     facts: {
       range: cleanText(rangeLabel, 48),
       api_requests: finiteNumber(http.samples, 0),
+      api_sample_quality: finiteNumber(http.samples, 0) >= 20 ? 'enough' : 'low',
       api_requests_per_minute: finiteNumber(http.requests_per_minute, 0),
       api_p50_ms: finiteNumber(http.p50_ms),
       api_p95_ms: finiteNumber(http.p95_ms),
@@ -130,6 +131,7 @@ export function buildObservabilitySummaryDossier({ runtime, ai, rangeLabel = 'ra
       database_status: cleanText(database.status, 24),
       database_latency_ms: finiteNumber(database.latency_ms),
       ai_samples: finiteNumber(historicalAi.samples, 0),
+      ai_sample_quality: finiteNumber(historicalAi.samples, 0) >= 5 ? 'enough' : 'low',
       ai_cloudflare_percent: finiteNumber(historicalAi.cloudflare_percent, 0),
       ai_fallback_percent: finiteNumber(historicalAi.fallback_percent, 0),
       ai_p95_ms: finiteNumber(historicalAi.p95_ms),

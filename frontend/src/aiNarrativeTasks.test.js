@@ -52,7 +52,14 @@ describe('AI narrative task dossiers', () => {
     });
     expect(dossier.eventType).toBe('observability_summary');
     expect(dossier.facts.api_p95_ms).toBe(220);
+    expect(dossier.facts.api_sample_quality).toBe('enough');
+    expect(dossier.facts.ai_sample_quality).toBe('enough');
     expect(dossier.facts.top_ai_fallbacks).toEqual([{ reason: 'timeout', count: 1 }]);
     expect(JSON.stringify(dossier)).not.toContain('NOPE');
+  });
+  it('does not overstate tiny observability samples', () => {
+    const dossier = buildObservabilitySummaryDossier({ runtime: { history: { http: { samples: 3 }, ai: { samples: 1 } } } });
+    expect(dossier.facts.api_sample_quality).toBe('low');
+    expect(dossier.facts.ai_sample_quality).toBe('low');
   });
 });

@@ -139,16 +139,17 @@ function evasionPower(piece) {
 }
 
 // Probabilidad de que el ataque CONECTE (o sea, que la captura se concrete).
-// Partimos de 50% y desplazamos según ataque - evasión. Esto evita que una
-// estadística grande convierta el denominador en una trituradora de porcentajes
-// y mantiene diferencias legibles entre arquetipos. Encima van reserva/foco.
-// Acotada 20–90%: nada normal es certeza absoluta ni lotería del 2%.
+// Partimos de una base interna del 65% y desplazamos según ataque - evasión.
+// El 65% no es un suelo: sirve para conservar diferencias legibles entre
+// Fuerza/Velocidad antes del clamp. Encima van reserva/foco. El resultado final
+// se acota a 50–90%: una captura legal nunca es una lotería en contra del jugador,
+// pero los upgrades siguen importando en vez de quedar aplastados todos en 50%.
 export function hitChance(attacker, defender, focusStreak = 0) {
   if (!defender || defender.type === 'k') return 1; // el rey nunca esquiva (y nunca debería llegar a ser el defensor real)
   if (attacker.type === 'k') return 1; // el rey también acierta siempre cuando ataca
   const a = attackPower(attacker);
   const d = evasionPower(defender);
-  let chance = 0.5 + (a - d) * POWER_TO_CHANCE;
+  let chance = 0.65 + (a - d) * POWER_TO_CHANCE;
 
   const startSquare = attacker.id ? attacker.id.split('-')[2] : null;
   if (startSquare && attacker.square === startSquare) {
@@ -159,7 +160,7 @@ export function hitChance(attacker, defender, focusStreak = 0) {
     chance += Math.min(focusStreak, FOCUS_MAX_STACKS) * FOCUS_BONUS_PER_STACK;
   }
 
-  return Math.min(0.9, Math.max(0.2, chance));
+  return Math.min(0.9, Math.max(0.5, chance));
 }
 
 // Estado de fuego concentrado tras una acción. Sólo encadenan bono los

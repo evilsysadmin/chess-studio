@@ -81,6 +81,14 @@ export function formatDuration(seconds) {
   return `${days} d ${hours % 24} h`;
 }
 
+export function observabilitySampleQuality(samples, minimum = 20) {
+  const count = Number(samples);
+  const min = Math.max(1, Number(minimum) || 1);
+  if (!Number.isFinite(count) || count <= 0) return { level: 'none', label: 'Sin datos suficientes', samples: 0, minimum: min };
+  if (count < min) return { level: 'low', label: `Muestra baja · ${count}/${min}`, samples: count, minimum: min };
+  return { level: 'enough', label: `${count} muestras`, samples: count, minimum: min };
+}
+
 
 export function summarizeObservabilityHealth(runtime, users = [], currentAdmin = null) {
   const historyHttp = runtime?.history?.http || {};

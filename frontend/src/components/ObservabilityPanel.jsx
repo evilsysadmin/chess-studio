@@ -4,6 +4,7 @@ import {
   fetchAdminObservability,
   formatDuration,
   observabilityRangeForPreset,
+  observabilitySampleQuality,
   summarizeAdminUsers,
 } from '../observability.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
@@ -107,7 +108,7 @@ function niceCeiling(value) {
   return nice * magnitude;
 }
 
-function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = '', resolution = 'hour', ceiling = null }) {
+function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = '', resolution = 'hour', ceiling = null, referenceLines = [] }) {
   const definitions = (valueKeys || [{ key: valueKey, label: null }]).filter((item) => item?.key);
   const prepared = definitions.map((definition) => ({
     ...definition,
@@ -124,7 +125,8 @@ function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = ''
   const padTop = 12;
   const padBottom = 24;
   const allValues = prepared.flatMap((definition) => definition.points.map((row) => row.value));
-  const rawMax = Math.max(...allValues, 1);
+  const referenceValues = referenceLines.map((item) => Number(item?.value)).filter(Number.isFinite);
+  const rawMax = Math.max(...allValues, ...referenceValues, 1);
   const maxValue = ceiling == null ? niceCeiling(rawMax) : Math.max(Number(ceiling), rawMax);
   const minValue = 0;
   const range = Math.max(1, maxValue - minValue);
@@ -156,6 +158,12 @@ function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = ''
         {ticks.map((tick, index) => {
           const y = padTop + (index / tickCount) * (height - padTop - padBottom);
           return <g key={tick}><line x1={padLeft} x2={width - padRight} y1={y} y2={y} className="chart-grid-line" /><text x={padLeft - 7} y={y + 3} textAnchor="end" className="chart-y-label">{compactAxisMetric(tick, suffix)}</text></g>;
+        })}
+        {referenceLines.map((reference) => {
+          const value = Number(reference?.value);
+          if (!Number.isFinite(value) || value < minValue || value > maxValue) return null;
+          const y = padTop + ((maxValue - value) / range) * (height - padTop - padBottom);
+          return <g key={`reference-${reference.label}-${value}`}><line x1={padLeft} x2={width - padRight} y1={y} y2={y} className="chart-reference-line" /><text x={width - padRight - 3} y={y - 4} textAnchor="end" className="chart-reference-label">{reference.label}</text></g>;
         })}
         {preparedCoords.map((definition, index) => (
           <g key={definition.key}>
@@ -200,10 +208,15 @@ function latencyDefinitions(prefix, view) {
 function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latencyView }) {
   const series = history?.series || [];
   const resolution = historyRange?.resolution || 'hour';
+  const httpQuality = observabilitySampleQuality(historyHttp.samples, 20);
+  const aiQuality = observabilitySampleQuality(historyAi.samples, 5);
+  const quality = tab === 'ai' ? aiQuality : httpQuality;
+  const qualityNotice = quality.level === 'enough' ? null : <p className="admin-observability-sample-warning">{quality.label}. Interpreta percentiles y conclusiones con cautela.</p>;
 
   if (tab === 'ai') {
     return (
       <div className="admin-observability-dashboard-grid">
+        {qualityNotice}
         <LineChart series={series} valueKeys={latencyDefinitions('ai', latencyView)} title={observabilityLatencyTitle('Latencia Workers AI', latencyView)} suffix=" ms" resolution={resolution} />
         <LineChart series={series} valueKey="ai_cloudflare_percent" title="Respuestas Cloudflare" suffix="%" resolution={resolution} ceiling={100} />
         <BarChart series={series} valueKey="ai_samples" title="Llamadas AI" resolution={resolution} />
@@ -220,6 +233,7 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
   if (tab === 'traffic') {
     return (
       <div className="admin-observability-dashboard-grid">
+        {qualityNotice}
         <BarChart series={series} valueKey="http_requests" title="Requests" resolution={resolution} />
         <LineChart series={series} valueKey="http_5xx" title="Errores 5xx" resolution={resolution} />
         <LineChart series={series} valueKey="http_4xx" title="Errores 4xx" resolution={resolution} />
@@ -235,8 +249,9 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
 
   return (
     <div className="admin-observability-dashboard-grid">
-      <LineChart series={series} valueKeys={latencyDefinitions('http', latencyView)} title={observabilityLatencyTitle('Latencia API', latencyView)} suffix=" ms" resolution={resolution} />
-      <LineChart series={series} valueKey="http_p99_ms" title="Cola alta · p99" suffix=" ms" resolution={resolution} />
+      {qualityNotice}
+      <LineChart series={series} valueKeys={latencyDefinitions('http', latencyView)} title={observabilityLatencyTitle('Latencia API', latencyView)} suffix=" ms" resolution={resolution} referenceLines={[{ value: 300, label: 'sano · 300 ms' }, { value: 750, label: 'vigilar · 750 ms' }]} />
+      <LineChart series={series} valueKey="http_p99_ms" title="Cola alta · p99" suffix=" ms" resolution={resolution} referenceLines={[{ value: 300, label: 'sano · 300 ms' }, { value: 750, label: 'vigilar · 750 ms' }]} />
       <BarChart series={series} valueKey="http_requests" title="Carga HTTP" resolution={resolution} />
       <div className="admin-observability-dashboard-kpis">
         <div><span>p50</span><strong>{metric(historyHttp.p50_ms, ' ms')}</strong></div>

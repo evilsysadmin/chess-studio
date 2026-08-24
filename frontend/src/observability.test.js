@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchAdminObservability, formatDuration, observabilityRangeForPreset, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
+import { fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -79,4 +79,13 @@ describe('admin observability helpers', () => {
     expect(degraded.databaseLabel).toBe('Mongo DOWN');
   });
 
+});
+
+
+describe('observabilitySampleQuality', () => {
+  it('no deja que una muestra minúscula parezca evidencia sólida', () => {
+    expect(observabilitySampleQuality(0)).toMatchObject({ level: 'none', samples: 0 });
+    expect(observabilitySampleQuality(3, 5)).toMatchObject({ level: 'low', samples: 3, minimum: 5 });
+    expect(observabilitySampleQuality(20)).toMatchObject({ level: 'enough', samples: 20 });
+  });
 });
