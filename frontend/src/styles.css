@@ -9196,11 +9196,11 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 /* dm35 · Torneo compacto: la pantalla tiene poca información primaria y no debe
    ocupar el mismo lienzo que Home/Admin. Mantiene el disclosure para el detalle. */
 .menu.tournament-panel {
-  max-width: 620px;
-  padding: 1.25rem 1.35rem;
+  max-width: 780px;
+  padding: 1.2rem 1.5rem;
   gap: .9rem;
 }
-.tournament-panel .tournament-next-card { max-width: 540px; width: 100%; }
+.tournament-panel .tournament-next-card { max-width: 690px; width: 100%; }
 .tournament-panel .friendly-big-summary { margin: .3rem 0 .5rem; }
 .tournament-panel .friendly-main-cta { margin-top: .6rem; }
 .tournament-panel .tournament-more { margin-top: .25rem; }

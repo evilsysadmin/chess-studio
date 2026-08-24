@@ -1,4 +1,5 @@
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import { reanalyzeAdminUser } from '../admin.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
@@ -182,15 +183,19 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     const requestKind = portraitManualRequestRef.current ? 'portrait_manual' : 'portrait_auto';
     portraitManualRequestRef.current = false;
     setPortraitStatus('loading');
-    void requestRemoteNarrative(
-      {
-        eventType: 'player_portrait',
-        requestKind,
-        tone: 'friendly_sarcastic',
-        facts: portraitFacts,
-      },
-      { token, timeoutMs: 7000 },
-    ).then((text) => {
+    const remotePortrait = isAdminUser && requestKind === 'portrait_manual'
+      ? reanalyzeAdminUser(portraitIdentityScope, portraitFacts).then((result) => result?.text || null)
+      : requestRemoteNarrative(
+        {
+          eventType: 'player_portrait',
+          requestKind,
+          tone: 'friendly_sarcastic',
+          facts: portraitFacts,
+        },
+        { token, timeoutMs: 7000 },
+      );
+
+    void remotePortrait.then((text) => {
       if (!active) return;
       if (!text) {
         setPortraitStatus(cached ? 'cloudflare' : 'local');
@@ -205,6 +210,9 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       }
       setPortraitText(text);
       setPortraitStatus('cloudflare');
+    }).catch(() => {
+      if (!active) return;
+      setPortraitStatus(cached ? 'cloudflare' : 'local');
     });
 
     return () => { active = false; };

@@ -2,14 +2,14 @@ name: Cloudflare Workers AI
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "infra/cloudflare/**"
-      - ".github/workflows/terraform-cloudflare.yml"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
   pull_request:
     paths:
       - "infra/cloudflare/**"
+      - "scripts/cloudflare_ai_preflight.py"
+      - "scripts/cloudflare_health_contract.py"
       - ".github/workflows/terraform-cloudflare.yml"
 
 permissions:
@@ -21,6 +21,13 @@ concurrency:
 
 jobs:
   terraform:
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,8 +45,10 @@ jobs:
       CUSTOM_DOMAIN: ai.shadowops.dpdns.org
 
     steps:
-      - name: Checkout
+      - name: Checkout tested commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -64,7 +73,7 @@ jobs:
       # remote Terraform state backend. Discover/import existing Cloudflare
       # resources before plan so first install and later updates are both safe.
       - name: Probe existing Cloudflare Worker state
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         id: cf_state
         shell: bash
         env:
@@ -167,29 +176,29 @@ jobs:
           fi
 
       - name: Import existing Worker state
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.worker_exists == 'true'
+        if: github.event_name != 'pull_request' && steps.cf_state.outputs.worker_exists == 'true'
         run: terraform import cloudflare_workers_script.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
 
       - name: Import existing workers.dev state
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.subdomain_exists == 'true'
+        if: github.event_name != 'pull_request' && steps.cf_state.outputs.subdomain_exists == 'true'
         run: terraform import cloudflare_workers_script_subdomain.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
 
       - name: Import existing Custom Domain state
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && steps.cf_state.outputs.custom_domain_exists == 'true'
+        if: github.event_name != 'pull_request' && steps.cf_state.outputs.custom_domain_exists == 'true'
         run: terraform import cloudflare_workers_custom_domain.narrative_ai "$TF_VAR_cloudflare_account_id/${{ steps.cf_state.outputs.custom_domain_id }}"
 
       - name: Terraform plan
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         run: terraform plan -out=tfplan
 
       - name: Terraform apply
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         run: terraform apply -auto-approve tfplan
 
       # Terraform must NOT own this value: secret_text would store it in state.
       # Wrangler's Secrets API keeps the value out of the repository/state.
       - name: Install Worker shared secret
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -201,7 +210,7 @@ jobs:
                 --name "$WORKER_NAME"
 
       - name: Verify Custom Domain and health
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request'
         id: worker_url
         shell: bash
         env:

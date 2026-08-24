@@ -83,6 +83,18 @@ class CooldownLimiter:
             self._last.popitem(last=False)
 
 
+def _identity_name(identity: Any) -> str:
+    if isinstance(identity, str):
+        return identity.strip()
+    if isinstance(identity, dict):
+        for key in ("username", "sub", "user"):
+            value = identity.get(key)
+            if value:
+                return str(value).strip()
+    value = getattr(identity, "username", None)
+    return str(value).strip() if value else ""
+
+
 def _identity_key(identity: Any, request: Request) -> str:
     if isinstance(identity, str) and identity:
         return f"user:{identity.lower()}"
@@ -123,7 +135,7 @@ def build_narrative_router(
     @router.post("/api/narrative")
     async def narrative(request: Request, body: NarrativeRequest, identity: Any = Depends(auth_dependency)):
         identity_key = _identity_key(identity, request)
-        identity_name = str(identity or "")
+        identity_name = _identity_name(identity)
         admin_bypass = bool(is_admin_check and identity_name and is_admin_check(identity_name))
         request_kind = (body.requestKind or "default").strip().lower()
         allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "observability_summary"}

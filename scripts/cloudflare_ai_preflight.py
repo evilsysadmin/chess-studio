@@ -23,6 +23,7 @@ TF_MAIN = ROOT / "infra/cloudflare/main.tf"
 BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
 WORKFLOW = ROOT / ".github/workflows/terraform-cloudflare.yml"
+PAGES_WORKFLOW = ROOT / ".github/workflows/static.yml"
 
 EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
 EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]
@@ -47,6 +48,7 @@ def static_check() -> list[str]:
     backend = BACKEND.read_text(encoding="utf-8")
     frontend = FRONTEND_REMOTE.read_text(encoding="utf-8")
     workflow = WORKFLOW.read_text(encoding="utf-8")
+    pages_workflow = PAGES_WORKFLOW.read_text(encoding="utf-8")
 
     for needle in (
         'env.AI.run(',
@@ -128,6 +130,17 @@ def static_check() -> list[str]:
     require(workflow, 'health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"', "workflow absolute health contract path", errors)
     require(workflow, 'python3 "$health_contract" "$health_body"', "workflow shared health contract invocation", errors)
     require(workflow, '[[ -f "$health_contract" ]]', "workflow health contract existence check", errors)
+
+    # Release chain: CI green -> Workers AI green -> Pages. Pages must never
+    # publish a frontend that expects a newer AI routing contract than the
+    # Worker that is actually serving production.
+    require(workflow, 'workflow_run:', "workflow chained after CI", errors)
+    require(workflow, 'workflows: ["CI"]', "workflow requires CI", errors)
+    require(workflow, "github.event.workflow_run.conclusion == 'success'", "workflow requires green CI", errors)
+    require(pages_workflow, 'workflows: ["Cloudflare Workers AI"]', "Pages requires Workers AI workflow", errors)
+    require(pages_workflow, "github.event.workflow_run.conclusion == 'success'", "Pages requires green Workers AI", errors)
+    if 'workflows: ["CI"]' in pages_workflow:
+        errors.append('Pages workflow: no debe saltarse Workers AI dependiendo directamente de CI')
 
     # Self-check the shared contract so a future edit cannot silently stop
     # requiring one of the routed models.

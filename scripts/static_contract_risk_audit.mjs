@@ -20,6 +20,13 @@ for (const name of readers) {
 const byFile = new Map();
 for (const item of findings) byFile.set(item.name, (byFile.get(item.name) || 0) + 1);
 const hotspots = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+const SOURCE_READER_BUDGET = 14;
+const IMPLEMENTATION_ASSERT_BUDGET = 67;
 console.log(`static-contract-risk audit · ${readers.length} source-reader tests · ${findings.length} implementation-coupled assertion candidates`);
 if (hotspots.length) console.log(`hotspots: ${hotspots.map(([name, count]) => `${name}:${count}`).join(' · ')}`);
-console.log('informativo: estos tests pueden ser válidos como wiring/UX contracts, pero conviene migrar primero los hotspots cuando exista una API/helper observable equivalente.');
+console.log(`budget: source-readers <= ${SOURCE_READER_BUDGET} · implementation-coupled <= ${IMPLEMENTATION_ASSERT_BUDGET}`);
+if (readers.length > SOURCE_READER_BUDGET || findings.length > IMPLEMENTATION_ASSERT_BUDGET) {
+  console.error('FAIL: la deuda de tests acoplados a implementación ha crecido. Migra el nuevo contrato a comportamiento/helper o reduce otro caso antes de añadirlo.');
+  process.exit(1);
+}
+console.log('OK: la deuda está acotada; el objetivo es reducir estos presupuestos en releases posteriores.');

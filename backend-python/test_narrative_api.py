@@ -25,6 +25,13 @@ def build_client():
     return TestClient(app)
 
 
+
+
+def test_identity_name_normalizes_supported_auth_shapes():
+    assert narrative_api._identity_name("Admin") == "Admin"
+    assert narrative_api._identity_name({"username": "admin"}) == "admin"
+    assert narrative_api._identity_name({"sub": "admin-sub"}) == "admin-sub"
+
 def test_narrative_is_not_public():
     r = build_client().post("/api/narrative", json={"eventType":"blunder","facts":{"san":"Qd4"}})
     assert r.status_code == 401

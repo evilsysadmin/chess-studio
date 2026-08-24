@@ -1,46 +1,49 @@
-// STATIC CONTRACT: Workers AI interpreta hechos existentes; nunca sustituye al motor.
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import {
+  buildCombatBriefingDossier,
+  buildCombatDebriefDossier,
+  buildObservabilitySummaryDossier,
+  buildPostGameAutopsyDossier,
+} from './aiNarrativeTasks.js';
+import {
+  ANALYSIS_MODEL,
+  COMMENT_MODEL,
+  PLAYER_PORTRAIT_MODEL,
+  QWEN_MODEL,
+  RICH_ANALYSIS_EVENTS,
+  modelFor,
+} from '../../infra/cloudflare/worker/index.js';
 
-const autopsy = readFileSync(new URL('./components/GameReportModal.jsx', import.meta.url), 'utf8');
-const briefing = readFileSync(new URL('./components/CampaignBriefing.jsx', import.meta.url), 'utf8');
-const debrief = readFileSync(new URL('./components/CombatDebrief.jsx', import.meta.url), 'utf8');
-const observability = readFileSync(new URL('./components/ObservabilityPanel.jsx', import.meta.url), 'utf8');
-const tasks = readFileSync(new URL('./aiNarrativeTasks.js', import.meta.url), 'utf8');
-const worker = readFileSync(new URL('../../infra/cloudflare/worker/index.js', import.meta.url), 'utf8');
+function serialized(value) {
+  return JSON.stringify(value);
+}
 
 describe('AI task wiring', () => {
-  it('autopsia se construye después del análisis determinista y sin historial/FEN bruto', () => {
-    expect(autopsy).toContain('buildPostGameAutopsyDossier(report');
-    expect(tasks).toContain("eventType: 'post_game_autopsy'");
-    expect(autopsy.indexOf('await analyzeGame')).toBeLessThan(autopsy.indexOf('buildPostGameAutopsyDossier(report'));
-    expect(tasks).not.toContain('fen:');
-    expect(tasks).not.toContain('history:');
+  it('construye autopsias desde resultados deterministas sin FEN ni historial bruto', () => {
+    const dossier = buildPostGameAutopsyDossier({ analyzedCount: 4, averageLoss: 61, topMistakes: [] }, { outcome: 'loss', opening: 'Réti' });
+    expect(dossier).toMatchObject({ eventType: 'post_game_autopsy', requestKind: 'post_game' });
+    expect(serialized(dossier)).not.toMatch(/\bfen\b|\bhistory\b/i);
   });
 
-  it('Combat usa hechos de inteligencia y debrief ya calculados', () => {
-    expect(briefing).toContain('buildCombatBriefingDossier');
-    expect(debrief).toContain('buildCombatDebriefDossier');
-    expect(tasks).toContain("eventType: 'combat_briefing'");
-    expect(tasks).toContain("eventType: 'combat_debrief'");
+  it('Combat genera dossiers distintos para briefing y debrief', () => {
+    const briefing = buildCombatBriefingDossier({ node: { stage: 2, label: 'Sector 2' }, intel: { threatBand: 'alta', levelLabel: 'II' }, campaign: {}, armySummary: {} });
+    const debrief = buildCombatDebriefDossier({ outcome: 'win', topUnits: [], units: [] });
+    expect(briefing?.eventType).toBe('combat_briefing');
+    expect(debrief?.eventType).toBe('combat_debrief');
   });
 
-  it('observabilidad sólo envía agregados y la explicación es explícitamente a demanda', () => {
-    expect(observability).toContain('¿Qué está pasando?');
-    expect(observability).toContain('buildObservabilitySummaryDossier');
-    expect(tasks).toContain("eventType: 'observability_summary'");
-    expect(tasks).not.toContain('username');
+  it('observabilidad sólo construye un dossier agregado y excluye identidad', () => {
+    const dossier = buildObservabilitySummaryDossier({ runtime: { history: { http: {}, ai: {} }, database: {} }, ai: {} });
+    expect(dossier).toMatchObject({ eventType: 'observability_summary', requestKind: 'observability_summary' });
+    expect(serialized(dossier)).not.toMatch(/username|email|token|fen/i);
   });
 
-  it('las tareas analíticas usan Qwen y un contrato factual específico', () => {
-    expect(worker).toContain('RICH_ANALYSIS_EVENTS');
-    expect(worker).toContain('const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"');
-    expect(worker).toContain('const COMMENT_MODEL = QWEN_MODEL;');
-    expect(worker).toContain('const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;');
-    expect(worker).toContain('const ANALYSIS_MODEL = QWEN_MODEL;');
-    expect(worker).toContain('Para post_game_autopsy');
-    expect(worker).toContain('Para combat_briefing');
-    expect(worker).toContain('Para combat_debrief');
-    expect(worker).toContain('Para observability_summary');
+  it('todos los canales remotos enrutan actualmente a Qwen desde una sola fuente de verdad', () => {
+    expect(COMMENT_MODEL).toBe(QWEN_MODEL);
+    expect(PLAYER_PORTRAIT_MODEL).toBe(QWEN_MODEL);
+    expect(ANALYSIS_MODEL).toBe(QWEN_MODEL);
+    expect(modelFor('generic')).toBe(QWEN_MODEL);
+    expect(modelFor('player_portrait')).toBe(QWEN_MODEL);
+    for (const eventType of RICH_ANALYSIS_EVENTS) expect(modelFor(eventType)).toBe(QWEN_MODEL);
   });
 });

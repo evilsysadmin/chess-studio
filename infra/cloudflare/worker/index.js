@@ -1,8 +1,8 @@
-const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
-const COMMENT_MODEL = QWEN_MODEL;
-const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;
-const ANALYSIS_MODEL = QWEN_MODEL;
-const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary"]));
+export const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+export const COMMENT_MODEL = QWEN_MODEL;
+export const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;
+export const ANALYSIS_MODEL = QWEN_MODEL;
+export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary"]));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
@@ -51,13 +51,13 @@ const ANALYSIS_GENERATION = Object.freeze({
   max_tokens: 448,
 });
 
-function modelFor(eventType) {
+export function modelFor(eventType) {
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_MODEL;
   if (RICH_ANALYSIS_EVENTS.has(eventType)) return ANALYSIS_MODEL;
   return COMMENT_MODEL;
 }
 
-function generationFor(eventType) {
+export function generationFor(eventType) {
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_GENERATION;
   if (RICH_ANALYSIS_EVENTS.has(eventType)) return ANALYSIS_GENERATION;
   return { ...COMMENT_GENERATION, max_tokens: 120 };
