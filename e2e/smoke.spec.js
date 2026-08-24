@@ -5,7 +5,7 @@ test('login → menú → Así juegas → refresh → ESC conserva navegación',
   await mockApi(page);
   await login(page);
 
-  await expect(page.getByText('2 online')).toBeVisible();
+  await expect(page.getByText('2 usuarios online', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Así juegas/ }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 
@@ -48,8 +48,9 @@ test('Combat Chess · Campaña abre el mapa estratégico y mantiene la intel ocu
   await login(page);
 
   await page.getByRole('button', { name: /Combat Chess · Campaña/ }).click();
-  await expect(page.getByRole('heading', { name: 'Combat Chess · Campaña', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Iniciar Operación La Torre' }).click();
+  const startCampaign = page.getByRole('button', { name: 'Iniciar Operación La Torre', exact: true });
+  await expect(startCampaign).toBeVisible();
+  await startCampaign.click();
   await dismissTutorialIfVisible(page);
 
   const map = page.getByRole('region', { name: 'Mapa completo de campaña Combat Chess' });

@@ -1,3 +1,10 @@
+### v16.6dm38b · E2E robusto y diagnóstico CI
+
+- Playwright deja de esperar headings históricos de Combat Chess y sincroniza con acciones/regions reales del flujo (`Iniciar Operación La Torre`, Home lista).
+- El smoke de presencia usa el copy actual `2 usuarios online` y evita otro falso negativo de UI.
+- CI usa reporter `list`, timeout explícito de expectations y conserva trace/screenshot/video al fallar, para localizar el primer atasco sin acceso interactivo al runner.
+- Sin cambios de gameplay ni backend respecto a dm38a.
+
 # Chess Studio
 
 ### v16.6dm38 · Combat Chess progresivo + CI semántico

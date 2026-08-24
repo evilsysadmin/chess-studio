@@ -62,7 +62,7 @@ export async function login(page) {
   await page.getByLabel('Usuario').fill('e2e');
   await page.getByLabel('Contraseña').fill('clave123456');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Torneo', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
 }
 
 export async function dismissTutorialIfVisible(page) {
@@ -72,8 +72,9 @@ export async function dismissTutorialIfVisible(page) {
 
 export async function openCampaignBriefing(page) {
   await page.getByRole('button', { name: /Combat Chess · Campaña/ }).click();
-  await expect(page.getByRole('heading', { name: 'Combat Chess · Campaña', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Iniciar Operación La Torre' }).click();
+  const startCampaign = page.getByRole('button', { name: 'Iniciar Operación La Torre', exact: true });
+  await expect(startCampaign).toBeVisible();
+  await startCampaign.click();
   await dismissTutorialIfVisible(page);
 
   const map = page.getByRole('region', { name: 'Mapa completo de campaña Combat Chess' });
