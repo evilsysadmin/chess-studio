@@ -1,3 +1,10 @@
+### v16.6dm39a · Hotfix Playwright · flujo Combat actual
+
+- Playwright deja de buscar el botón retirado `Iniciar Operación La Torre`: el arranque real usa `Empezar campaña →`.
+- El acceso E2E a Combat se centraliza en `openCampaignMap()` para que smoke y pruebas DOM no dupliquen selectores del landing.
+- El helper recorre la UX simplificada completa: mapa → ruta → `Resumen táctico` → `PREPARAR EJÉRCITO` → preparar/revisar despliegue → confirmar.
+- Se retiran también las esperas fósiles de `BRIEFING TÁCTICO` y el supuesto salto directo desde briefing a despliegue. Sin cambios de gameplay.
+
 ### v16.6dm39 · Coaching AI + Admin operativo + backend Alpine
 
 - “Qué entrenaría ahora” puede resumirse con Workers AI, pero la IA sólo recibe prioridades ya calculadas por estadísticas/incidentes reales; no diagnostica debilidades nuevas.

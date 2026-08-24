@@ -70,24 +70,47 @@ export async function dismissTutorialIfVisible(page) {
   if (await skip.isVisible().catch(() => false)) await skip.click();
 }
 
-export async function openCampaignBriefing(page) {
+export async function openCampaignMap(page) {
   await page.getByRole('button', { name: /Combat Chess · Campaña/ }).click();
-  const startCampaign = page.getByRole('button', { name: 'Iniciar Operación La Torre', exact: true });
+
+  // The campaign landing is deliberately simple: start first, then the
+  // strategic map appears. Keep this flow centralized so UI copy changes do
+  // not leave half the E2E suite waiting for a retired button label.
+  const startCampaign = page.getByRole('button', { name: /Empezar campaña/i });
   await expect(startCampaign).toBeVisible();
   await startCampaign.click();
   await dismissTutorialIfVisible(page);
 
   const map = page.getByRole('region', { name: 'Mapa completo de campaña Combat Chess' });
   await expect(map).toBeVisible();
+  return map;
+}
+
+export async function openCampaignBriefing(page) {
+  const map = await openCampaignMap(page);
   const availableRoute = map.getByRole('button', { name: /Elegir esta ruta/ }).first();
   await expect(availableRoute).toBeVisible();
   await availableRoute.click();
-  await expect(page.getByText('BRIEFING TÁCTICO', { exact: false })).toBeVisible();
+  await dismissTutorialIfVisible(page);
+
+  const briefing = page.getByLabel('Resumen táctico');
+  await expect(briefing).toBeVisible();
+  return briefing;
 }
 
 export async function openDeployment(page) {
-  await page.getByRole('button', { name: /PREPARAR DESPLIEGUE/i }).click();
+  const enterPreparation = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
+  if (await enterPreparation.isVisible().catch(() => false)) {
+    await enterPreparation.click();
+    await dismissTutorialIfVisible(page);
+    await expect(page.getByLabel('Resumen de preparación')).toBeVisible();
+  }
+
+  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR/i });
+  await expect(reviewDeployment).toBeVisible();
+  await reviewDeployment.click();
   await dismissTutorialIfVisible(page);
+
   const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
   await expect(deployment).toBeVisible();
   return deployment;

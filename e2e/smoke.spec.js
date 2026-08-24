@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dismissTutorialIfVisible, login, mockApi, openCampaignBriefing, openDeployment } from './helpers.js';
+import { dismissTutorialIfVisible, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
@@ -47,23 +47,18 @@ test('Combat Chess · Campaña abre el mapa estratégico y mantiene la intel ocu
   await mockApi(page);
   await login(page);
 
-  await page.getByRole('button', { name: /Combat Chess · Campaña/ }).click();
-  const startCampaign = page.getByRole('button', { name: 'Iniciar Operación La Torre', exact: true });
-  await expect(startCampaign).toBeVisible();
-  await startCampaign.click();
-  await dismissTutorialIfVisible(page);
-
-  const map = page.getByRole('region', { name: 'Mapa completo de campaña Combat Chess' });
-  await expect(map).toBeVisible();
+  const map = await openCampaignMap(page);
   await expect(map.getByText(/CPU \d+/i)).toHaveCount(0);
   await expect(map.getByText('intel pendiente', { exact: false }).first()).toBeVisible();
 
   const availableRoute = map.getByRole('button', { name: /Elegir esta ruta/ }).first();
   await expect(availableRoute).toBeVisible();
   await availableRoute.click();
+  await dismissTutorialIfVisible(page);
 
-  await expect(page.getByText('BRIEFING TÁCTICO', { exact: false })).toBeVisible();
-  await expect(page.getByText('Oculta', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Resumen táctico')).toBeVisible();
+  await expect(page.getByText('Sin reconocimiento', { exact: true })).toBeVisible();
+  await expect(page.getByText('CPU exacta', { exact: true })).toHaveCount(0);
 });
 
 
