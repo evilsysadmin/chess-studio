@@ -42,9 +42,10 @@ describe('AI player portrait', () => {
     expect(facts.worst_recorded_move.centipawn_loss).toBe(210);
   });
 
-  it('regenera automáticamente sólo cada tres partidas', () => {
-    expect(playerPortraitGenerationKey({ totalGames: 3 })).toBe(playerPortraitGenerationKey({ totalGames: 5 }));
-    expect(playerPortraitGenerationKey({ totalGames: 6 })).not.toBe(playerPortraitGenerationKey({ totalGames: 5 }));
+  it('regenera automáticamente después de cada partida terminada', () => {
+    expect(playerPortraitGenerationKey({ totalGames: 3 })).not.toBe(playerPortraitGenerationKey({ totalGames: 4 }));
+    expect(playerPortraitGenerationKey({ totalGames: 4 })).not.toBe(playerPortraitGenerationKey({ totalGames: 5 }));
+    expect(playerPortraitGenerationKey({ totalGames: 5 })).toBe('6:5');
   });
 
   it('cachea sólo el retrato de la generación actual', () => {

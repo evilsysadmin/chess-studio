@@ -437,10 +437,15 @@ def _group_series(rows: list[tuple[int, dict[str, Any]]], start: int, end: int) 
         series.append({
             "at": datetime.fromtimestamp(group_key, tz=timezone.utc).isoformat(),
             "http_requests": http["samples"],
+            "http_4xx": http["status_4xx"],
             "http_5xx": http["status_5xx"],
+            "http_p50_ms": http["p50_ms"],
             "http_p95_ms": http["p95_ms"],
+            "http_p99_ms": http["p99_ms"],
             "ai_samples": ai["samples"],
             "ai_cloudflare_percent": ai["cloudflare_percent"],
+            "ai_fallback_percent": ai["fallback_percent"],
+            "ai_p95_ms": ai["p95_ms"],
         })
     return series
 

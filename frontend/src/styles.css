@@ -9006,3 +9006,57 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 }
 .admin-feedback-resolved[open] > summary { margin-bottom: .65rem; }
 .admin-feedback-list-resolved { max-height: 300px; }
+
+/* ---------- v16.6dm30 · dashboards de observabilidad ---------- */
+.admin-observability-range-primary { margin: .75rem 0; }
+.admin-observability-dashboard { margin-top: .8rem; display: grid; gap: .65rem; }
+.admin-observability-dashboard-tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
+.admin-observability-dashboard-tabs button {
+  border: 1px solid rgba(181, 146, 80, .28);
+  background: rgba(255,255,255,.025);
+  color: var(--parchment-dim);
+  border-radius: .55rem;
+  padding: .42rem .65rem;
+  font: inherit;
+  font-size: .72rem;
+  cursor: pointer;
+}
+.admin-observability-dashboard-tabs button.active {
+  color: var(--parchment);
+  border-color: rgba(181, 146, 80, .62);
+  background: rgba(181, 146, 80, .10);
+}
+.admin-observability-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+.admin-observability-chart,
+.admin-observability-dashboard-kpis {
+  min-width: 0;
+  border: 1px solid rgba(181, 146, 80, .18);
+  border-radius: .65rem;
+  background: rgba(0,0,0,.13);
+  padding: .7rem;
+}
+.admin-observability-chart-heading { display: flex; justify-content: space-between; gap: .7rem; align-items: baseline; }
+.admin-observability-chart-heading h4 { margin: 0; color: var(--parchment); font-size: .78rem; }
+.admin-observability-chart-heading strong { color: var(--brass); font-family: var(--font-mono); font-size: .72rem; }
+.admin-observability-chart svg { width: 100%; height: 8.3rem; display: block; margin-top: .35rem; overflow: visible; }
+.admin-observability-chart .chart-grid-line { stroke: rgba(255,255,255,.08); stroke-width: 1; }
+.admin-observability-chart .chart-line { stroke: var(--brass); stroke-width: 2; }
+.admin-observability-chart .chart-point { fill: var(--parchment); stroke: rgba(0,0,0,.55); stroke-width: 1; }
+.admin-observability-chart-axis { display: flex; justify-content: space-between; gap: .75rem; margin-top: -.15rem; color: var(--parchment-dim); font-family: var(--font-mono); font-size: .58rem; }
+.admin-observability-bar-track { height: 7.7rem; display: flex; align-items: end; gap: 2px; margin-top: .55rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.admin-observability-bar-track > span { flex: 1 1 0; min-width: 2px; border-radius: 2px 2px 0 0; background: var(--brass); opacity: .72; }
+.admin-observability-dashboard-kpis { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; align-content: start; }
+.admin-observability-dashboard-kpis > div { padding: .45rem; border-radius: .45rem; background: rgba(255,255,255,.025); display: grid; gap: .2rem; }
+.admin-observability-dashboard-kpis span { color: var(--parchment-dim); text-transform: uppercase; letter-spacing: .035em; font-size: .61rem; }
+.admin-observability-dashboard-kpis strong { color: var(--parchment); font-family: var(--font-mono); font-size: .78rem; }
+.admin-observability-chart.is-empty { min-height: 10.2rem; }
+
+@media (max-width: 760px) {
+  .admin-observability-dashboard-grid { grid-template-columns: 1fr; }
+  .admin-observability-range-primary small { margin-left: 0; width: 100%; }
+  .admin-observability-dashboard-tabs button { flex: 1 1 8rem; }
+}

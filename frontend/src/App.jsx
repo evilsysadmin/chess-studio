@@ -31,7 +31,7 @@ import { timeControlById } from './clock.js';
 import { clearClockSnapshot } from './clockPersistence.js';
 import { checkAchievements } from './achievements.js';
 import { pullProfileFromServer, pushProfileToServer, scheduleProfileSync, cancelScheduledProfileSync } from './profileBackup.js';
-import { isLoggedIn, fetchMe, logout, watchSessionIdentity } from './auth.js';
+import { isLoggedIn, fetchMe, logout, watchSessionIdentity, getToken, getUsername } from './auth.js';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
@@ -40,6 +40,8 @@ import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
+import { buildPlayerPortraitFacts, loadCachedPlayerPortrait, playerPortraitGenerationKey, saveCachedPlayerPortrait } from './aiPlayerPortrait.js';
+import { requestRemoteNarrative } from './narrativeRemote.js';
 import { identifyOpening } from './openings.js';
 import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
@@ -121,6 +123,32 @@ function AppInner({ isAdminUser }) {
     () => computeInsights(historyList, combatHistoryList, loadRatingHistory()),
     [historyList, combatHistoryList]
   );
+
+  // v16.6dm30: el retrato AI se refresca tras cada nueva partida terminada.
+  // La clave cambia por totalGames; si ya existe una lectura para esa partida
+  // no repetimos la llamada al recargar o reconciliar el perfil.
+  useEffect(() => {
+    if (Number(insights?.totalGames || 0) < 3) return undefined;
+    const identityScope = getUsername();
+    const token = getToken();
+    if (!identityScope || !token) return undefined;
+    const generationKey = playerPortraitGenerationKey(insights);
+    if (loadCachedPlayerPortrait(generationKey, identityScope)) return undefined;
+    const facts = buildPlayerPortraitFacts(insights, loadRivalry());
+    if (!facts) return undefined;
+
+    let active = true;
+    void requestRemoteNarrative({
+      eventType: 'player_portrait',
+      requestKind: 'portrait_auto',
+      tone: 'friendly_sarcastic',
+      facts,
+    }, { token, timeoutMs: 7000 }).then((text) => {
+      if (!active || !text) return;
+      saveCachedPlayerPortrait(generationKey, text, identityScope);
+    });
+    return () => { active = false; };
+  }, [insights]);
 
   // Cada registro sabe reproducirse solo en la pantalla correcta según su
   // propia forma: `log` = batalla de combate (FENs guardados directo),

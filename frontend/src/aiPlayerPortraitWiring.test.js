@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const insights = readFileSync(new URL('./components/InsightsScreen.jsx', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../../infra/cloudflare/worker/index.js', import.meta.url), 'utf8');
+const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
 
 describe('AI portrait + shared narrative voice', () => {
   it('usa el mismo provider remoto y mantiene fallback local instantáneo', () => {
@@ -26,6 +27,15 @@ describe('AI portrait + shared narrative voice', () => {
     expect(cooldownCommit).toBeGreaterThan(manualSuccess);
     expect(insights.slice(emptyRemoteGuard, manualSuccess)).not.toContain('markPlayerPortraitManualRefresh(');
     expect(insights.slice(freshHandler, insights.indexOf('const coaching', freshHandler))).not.toContain('markPlayerPortraitManualRefresh(');
+  });
+
+
+  it('refresca el retrato automáticamente tras cada partida terminada sin quemar el cooldown manual', () => {
+    expect(app).toContain("requestKind: 'portrait_auto'");
+    expect(app).toContain('playerPortraitGenerationKey(insights)');
+    expect(app).toContain('loadCachedPlayerPortrait(generationKey, identityScope)');
+    expect(app).toContain('saveCachedPlayerPortrait(generationKey, text, identityScope)');
+    expect(app).not.toContain("requestKind: 'portrait_auto'\n      markPlayerPortraitManualRefresh");
   });
 
   it('el contrato del Worker exige tuteo y sarcasmo de buen rollo también durante partida', () => {

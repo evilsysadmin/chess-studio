@@ -2,7 +2,7 @@ import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
 const PORTRAIT_SCHEMA = 6;
-const GAMES_PER_AUTOMATIC_REFRESH = 3;
+const GAMES_PER_AUTOMATIC_REFRESH = 1;
 export const PLAYER_PORTRAIT_MAX_CHARS = 900;
 const PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 

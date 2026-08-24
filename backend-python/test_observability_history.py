@@ -84,3 +84,30 @@ def test_dynamic_mongo_keys_survive_dots_and_slashes():
 def test_history_retention_exceeds_query_window_but_is_bounded():
     assert history.RETENTION_SECONDS > history.MAX_RANGE_SECONDS
     assert history.RETENTION_SECONDS <= 120 * 24 * 60 * 60
+
+
+def test_history_series_exposes_dashboard_metrics():
+    at = 1_800_000_000.0
+    history.record_http_event("GET", "/api/test", 200, 80.0, timestamp=at)
+    history.record_http_event("GET", "/api/test", 500, 900.0, timestamp=at + 2)
+    history.record_ai_event({
+        "at": at + 3,
+        "provider": "cloudflare",
+        "event_type": "player_portrait",
+        "request_kind": "portrait_auto",
+        "latency_ms": 420,
+        "reason": "ok",
+    })
+    with history._PENDING_LOCK:
+        rows = sorted(history._PENDING.items())
+    series = history._group_series(rows, int(at - 10), int(at + 3600))
+    assert len(series) == 1
+    point = series[0]
+    assert point["http_requests"] == 2
+    assert point["http_5xx"] == 1
+    assert point["http_p95_ms"] >= point["http_p50_ms"]
+    assert point["http_p99_ms"] >= point["http_p95_ms"]
+    assert point["ai_samples"] == 1
+    assert point["ai_cloudflare_percent"] == 100.0
+    assert point["ai_fallback_percent"] == 0.0
+    assert point["ai_p95_ms"] > 0
