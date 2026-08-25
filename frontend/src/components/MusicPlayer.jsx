@@ -12,9 +12,9 @@ import {
   isFxMuted,
   pauseAmbientMusic,
   selectRelativeAmbientTheme,
+  selectAmbientRadioModeTheme,
   seekAmbientMusic,
   setAmbientTheme,
-  setAmbientRadioMode,
   toggleAmbientFavorite,
   toggleAmbientExcluded,
   setAmbientVolume,
@@ -215,13 +215,17 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   }
 
   function changeRadioMode(event) {
-    const next = setAmbientRadioMode(event.target.value);
-    setRadioModeState(next);
+    const next = selectAmbientRadioModeTheme(event.target.value);
+    setRadioModeState(next.mode);
+    setState(snapshot());
+    if (snapshot().status === 'playing') requestPlaybackAudioSession();
   }
 
   function chooseExperience(mode) {
-    const next = setAmbientRadioMode(mode);
-    setRadioModeState(next);
+    const next = selectAmbientRadioModeTheme(mode);
+    setRadioModeState(next.mode);
+    setState(snapshot());
+    if (snapshot().status === 'playing') requestPlaybackAudioSession();
   }
 
   function changeVolume(event) {
@@ -343,7 +347,7 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
 
         <div className="music-experiences" role="group" aria-label="Ambiente musical">
           <button type="button" className={radioMode === 'focus' ? 'active' : ''} onClick={() => chooseExperience('focus')} aria-pressed={radioMode === 'focus'}>Concentración</button>
-          <button type="button" className={radioMode === 'genre:Clásica' ? 'active' : ''} onClick={() => chooseExperience('genre:Clásica')} aria-pressed={radioMode === 'genre:Clásica'}>Cinemática</button>
+          <button type="button" className={radioMode === 'genre:Clásica' ? 'active' : ''} onClick={() => chooseExperience('genre:Clásica')} aria-pressed={radioMode === 'genre:Clásica'}>Clásica</button>
           <button type="button" className={radioMode === 'genre:Rock' ? 'active' : ''} onClick={() => chooseExperience('genre:Rock')} aria-pressed={radioMode === 'genre:Rock'}>Energía</button>
         </div>
 

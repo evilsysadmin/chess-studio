@@ -226,13 +226,13 @@ const STRUCTURED_FEELS = Object.freeze({
     family:'lofi-rain-cassette', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,3,0], swing:.18, warmth:1.08, releaseScale:1.28, space:.11, delayMs:145,
     chordInstrument:'epiano', bassInstrument:'uprightBass', chordHoldSteps:14, bassHoldSteps:4.5,
     layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.46,counter:.32,bass:.82,chord:.52},
-    percussion:{period:16,kit:'brush-jazz',punch:.62,pattern:{0:'B',8:'H'}},
+    percussion:{period:16,kit:'lofi',punch:.62,pattern:{0:'B',8:'H'}},
   }),
   lofiWindowLight: Object.freeze({
     family:'lofi-window-vibes', preserveSectionOrder:true, harmonyPath:[0,0,5,0,-2,0], swing:.13, warmth:1.02, releaseScale:1.36, space:.15, delayMs:175,
     chordInstrument:'rhodesWarm', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:5,
     layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.50,counter:.28,bass:.78,chord:.48},
-    percussion:{period:16,kit:'brush-jazz',punch:.56,pattern:{0:'B',12:'H'}},
+    percussion:{period:16,kit:'lofi',punch:.56,pattern:{0:'B',12:'H'}},
   }),
   neonKnight: Object.freeze({
     family:'neon-synthwave-arp', preserveSectionOrder:true, harmonyPath:[0,0,3,5,0,-2], swing:0, warmth:.64, releaseScale:1.02, space:.13, delayMs:155,

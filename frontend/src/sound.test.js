@@ -22,6 +22,7 @@ import {
   getAmbientPlaybackState,
   setAmbientTheme,
   setAmbientRadioMode,
+  selectAmbientRadioModeTheme,
   toggleAmbientFavorite,
   toggleAmbientExcluded,
   setAmbientVolume,
@@ -326,6 +327,15 @@ describe('ambient music catalog', () => {
     expect(isAmbientExcluded('rookGarage')).toBe(true);
     expect(isAmbientFavorite('rookGarage')).toBe(false);
     expect(ambientRadioThemeIds()).not.toContain('rookGarage');
+  });
+
+  it('cambiar de estilo selecciona inmediatamente una pista de esa emisora', () => {
+    setAmbientTheme('andalus');
+    const selected = selectAmbientRadioModeTheme('genre:Rock');
+    expect(selected.mode).toBe('genre:Rock');
+    expect(selected.themeId).not.toBe('andalus');
+    expect(AMBIENT_THEME_OPTIONS.find((theme) => theme.id === selected.themeId)?.genre).toBe('Rock');
+    expect(getAmbientThemeId()).toBe(selected.themeId);
   });
 
   it('mantiene la selección durante la sesión y hace fallback seguro', () => {

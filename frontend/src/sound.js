@@ -206,6 +206,19 @@ export function ambientRadioThemeIds(mode = getAmbientRadioMode()) {
   return (filtered.length ? filtered : base.length ? base : AMBIENT_THEME_OPTIONS).map((theme) => theme.id);
 }
 
+// Cambiar de emisora es una acción de escucha, no sólo un filtro para «siguiente».
+// Elegimos una pista compatible distinta de la actual cuando existe; setAmbientTheme
+// conserva por sí mismo si el reproductor estaba sonando, pausado o detenido.
+export function selectAmbientRadioModeTheme(mode) {
+  const nextMode = setAmbientRadioMode(mode);
+  const candidates = ambientRadioThemeIds(nextMode);
+  const current = getAmbientThemeId();
+  const alternatives = candidates.filter((id) => id !== current);
+  const pool = alternatives.length ? alternatives : candidates;
+  const nextTheme = pool[Math.floor(Math.random() * pool.length)] || DEFAULT_AMBIENT_THEME;
+  return { mode: nextMode, themeId: setAmbientTheme(nextTheme) };
+}
+
 
 // Identidad de mezcla/arreglo para el bloque de jazz mediterráneo.
 // Antes todos estos temas pasaban por la misma "máquina de variación": misma
