@@ -7,9 +7,10 @@
     "05-combat-roster.css",
     "06-combat-campaign.css",
     "07-progressive-ux.css",
-    "08-recent-polish.css"
+    "08-recent-polish.css",
+    "09-professional-polish.css"
   ],
-  "combinedSha256": "b6f66a714154d101273dce2ab190282fbcbdcc89daf78c0aacd3a8d72e0d6432",
-  "combinedBytes": 290935,
-  "combinedLines": 9315
+  "combinedSha256": "9322586981409941b5f87d4949700ff1b12dd066cde4cebf5c883964c7ae98c4",
+  "combinedBytes": 296595,
+  "combinedLines": 9480
 }

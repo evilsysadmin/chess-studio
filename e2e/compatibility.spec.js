@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 test('storage bloqueado · login y navegación básica siguen utilizables', async ({ page }) => {
   await page.addInitScript(() => {
@@ -27,3 +27,16 @@ test('desafíos diarios · sección propia no desborda en móvil', async ({ page
   await expect(page.getByText('0/3', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
+
+for (const width of [360, 390, 430]) {
+  test(`Home · jerarquía principal usable y sin desbordar a ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await mockApi(page);
+    await login(page);
+
+    await expect(page.getByRole('heading', { name: '¿Qué te apetece?', exact: true })).toBeVisible();
+    await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
+    await expect(page.getByText('Más modos de juego', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  });
+}

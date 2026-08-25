@@ -448,7 +448,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Partidas analizadas</span><strong>{u.analyzedGames ?? 0}</strong></div>
                               <div><span>Puzzles resueltos</span><strong>{u.puzzlesSolved ?? 0}</strong></div>
                               <div><span>Mejor racha puzzles</span><strong>{u.puzzleBestStreak ?? 0}</strong></div>
-                              <div><span>Puzzles de sus cagadas</span><strong>{u.personalPuzzles ?? 0}</strong></div>
+                              <div><span>Puzzles de errores propios</span><strong>{u.personalPuzzles ?? 0}</strong></div>
                               <div><span>Racha diaria máx.</span><strong>{u.dailyBestStreak ?? 0}</strong></div>
                               <div><span>Partidas con rivalidad</span><strong>{u.rivalryGames ?? 0}</strong></div>
                               <div><span>Series CPU</span><strong>{u.seriesWon ?? 0} ganadas / {u.seriesLost ?? 0} perdidas</strong></div>

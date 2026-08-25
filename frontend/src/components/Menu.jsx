@@ -140,7 +140,7 @@ export default function Menu({
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">
           <div><span className="section-label">Jugar</span><h2>¿Qué te apetece?</h2></div>
-          <p>Elige una. Las variantes raras están guardadas en “Más modos”.</p>
+          <p>Empieza con una opción principal o explora más modos cuando quieras.</p>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
           <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card" onClick={() => setShowQuickMatch(true)}>
@@ -200,7 +200,7 @@ export default function Menu({
           </div>
 
           <TutorialModeCard tutorialId="puzzles" className="menu-card accent-danger home-primary-card" onClick={onTrainPersonal}>
-            <IconPuzzle className="menu-card-icon" /><h3>Practicar tus errores</h3><p>Puzzles nacidos de tus propias cagadas.</p><span className="menu-card-cta">Entrenar →</span>
+            <IconPuzzle className="menu-card-icon" /><h3>Practicar tus errores</h3><p>Puzzles creados a partir de tus propias partidas.</p><span className="menu-card-cta">Entrenar →</span>
           </TutorialModeCard>
 
           <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>

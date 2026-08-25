@@ -39,7 +39,7 @@ export default function ShareResultModal({ record, onClose }) {
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <header className="share-result-header">
           <span className="eyebrow">Pruebas documentales</span>
-          <h3>{data.incident ? 'Compartir el desastre' : 'Compartir partida'}</h3>
+          <h3>{data.incident ? 'Compartir momento clave' : 'Compartir partida'}</h3>
         </header>
 
         <div className={`share-result-card ${data.outcome}`}>

@@ -113,7 +113,7 @@ export default function QuickMatchModal({
               <summary>Reglas especiales</summary>
               <div className="quick-match-advanced friendly-advanced-options">
                 <label><input type="checkbox" checked={suddenDeath} onChange={(e)=>setSuddenDeath(e.target.checked)} /> <b>Sudden Death</b> · 3 incidentes tácticos graves y pierdes.</label>
-                <label><input type="checkbox" checked={threatCheck} onChange={(e)=>setThreatCheck(e.target.checked)} /> <b>Control táctico</b> · ante una cagada seria, la CPU te obliga a identificar la amenaza. Rutina <GlossaryTerm term="CCT">CCT</GlossaryTerm>.</label>
+                <label><input type="checkbox" checked={threatCheck} onChange={(e)=>setThreatCheck(e.target.checked)} /> <b>Control táctico</b> · ante un error grave, la CPU te pide identificar la amenaza. Rutina <GlossaryTerm term="CCT">CCT</GlossaryTerm>.</label>
               </div>
             </details>
           </div>

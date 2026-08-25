@@ -11,7 +11,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(here, 'css_architecture_ma
 const entrySource = fs.readFileSync(entry, 'utf8');
 const expectedImports = manifest.orderedModules.map((name) => `@import './styles/${name}';`).join('\n') + '\n';
 if (entrySource !== expectedImports) {
-  console.error('css-architecture-check FAIL · styles.css debe contener sólo los 8 imports ordenados del manifiesto.');
+  console.error(`css-architecture-check FAIL · styles.css debe contener sólo los ${manifest.orderedModules.length} imports ordenados del manifiesto.`);
   process.exit(1);
 }
 const chunks = manifest.orderedModules.map((name) => fs.readFileSync(path.join(root, 'frontend', 'src', 'styles', name)));

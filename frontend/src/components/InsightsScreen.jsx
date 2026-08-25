@@ -509,13 +509,13 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       <div className="menu-section personal-training-spotlight">
         <div>
           <span className="section-label">Entrenamiento autobiográfico</span>
-          <h2>🧠 Entrena tus cagadas</h2>
-          <p className="hint-text">Posiciones reales extraídas de errores que ya cometiste. Mucho más educativo que fingir que nunca pasó.</p>
+          <h2>Entrena tus errores</h2>
+          <p className="hint-text">Posiciones reales extraídas de tus partidas para practicar justo donde más lo necesitas.</p>
         </div>
         <div className="personal-training-spotlight-actions">
           <strong>{personalPuzzleCount} posiciones</strong>
           <button className="primary-btn" disabled={personalPuzzleCount === 0} onClick={() => onOpenPuzzles('personal', false)}>
-            {personalPuzzleCount ? 'Entrenar ahora' : 'Aún sin crímenes'}
+            {personalPuzzleCount ? 'Entrenar ahora' : 'Aún no hay posiciones'}
           </button>
           {personalPuzzleCount > 2 && <button className="secondary-btn" onClick={() => onOpenPuzzles('personal', true)}>Puzzle Rush personal</button>}
         </div>
@@ -537,7 +537,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         <div className="menu-section coaching-section">
           <div className="coaching-heading">
             <div>
-              <span className="section-label">Lo útil después del incendio</span>
+              <span className="section-label">Siguiente paso recomendado</span>
               <h2>Qué entrenaría ahora</h2>
             </div>
             <span className="coaching-count">{coaching.length} prioridades</span>
