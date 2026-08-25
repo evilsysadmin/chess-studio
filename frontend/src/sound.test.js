@@ -10,6 +10,7 @@ import {
   isAmbientExcluded,
   getAmbientThemeSoundProfile,
   getPercussionHumanizationPreview,
+  getPercussionVoiceKit,
   structuredPercussionPatternStep,
   getAmbientThemeVariationDurationMs,
   getAmbientTrackDurationMs,
@@ -236,6 +237,14 @@ describe('ambient music catalog', () => {
     expect(secondaryA.pan).toBeGreaterThanOrEqual(-0.13);
     expect(secondaryA.pan).toBeLessThanOrEqual(0.13);
     expect(secondaryA).not.toEqual(secondaryB);
+  });
+
+  it('asigna voces de percusión distintas según la familia musical', () => {
+    expect(getPercussionVoiceKit('rookGarage')).toBe('acoustic-rock');
+    expect(getPercussionVoiceKit('neonKnight')).toBe('electronic');
+    expect(getPercussionVoiceKit('lofiRainTape')).toBe('lofi');
+    expect(getPercussionVoiceKit('beirut0113')).toBe('darbuka');
+    expect(new Set(['rookGarage', 'neonKnight', 'lofiRainTape', 'beirut0113'].map(getPercussionVoiceKit)).size).toBe(4);
   });
 
   it('mantiene el patrón de percusión continuo al cruzar una sección', () => {

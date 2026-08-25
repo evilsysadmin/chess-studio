@@ -246,7 +246,7 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         mode = str(row.get("mode") or "casual")
         labels = {
             "tournament": "Torneo",
-            "practice": "Práctica",
+            "practice": "Partida de práctica",
             "ghost": "Rival Ghost",
             "nemesis-training": "Némesis",
             "sudden": "Muerte súbita",
@@ -508,4 +508,3 @@ def _presence_summary(last_activity) -> dict:
     else:
         presence = "offline"
     return {"lastActivity": parsed.astimezone(timezone.utc).isoformat(), "presence": presence, "presenceAgeSeconds": age}
-

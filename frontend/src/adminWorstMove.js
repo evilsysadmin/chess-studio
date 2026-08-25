@@ -94,6 +94,6 @@ export function buildWorstMoveAutopsy(payload, worstMove) {
     playedFrom: worstMove.playedFrom || entry?.from,
     playedTo: worstMove.playedTo || entry?.to,
     suggestedPiece: PIECE_LABELS[worstMove.suggestedPiece] || 'Pieza',
-    mode: isCombat ? 'Combate' : (record.mode === 'tournament' ? 'Torneo' : record.mode === 'practice' ? 'Práctica' : 'Partida rápida'),
+    mode: isCombat ? 'Combate' : (record.mode === 'tournament' ? 'Torneo' : record.mode === 'practice' ? 'Partida de práctica' : 'Partida rápida'),
   };
 }

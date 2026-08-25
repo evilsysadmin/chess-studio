@@ -64,9 +64,14 @@ function countryFlag(code) {
   return String.fromCodePoint(...[...normalized].map((char) => 127397 + char.charCodeAt(0)));
 }
 
-function countryName(code) {
+function countryName(code, status) {
   const normalized = String(code || '').toUpperCase();
-  if (!/^[A-Z]{2}$/.test(normalized)) return 'Sin geolocalizar';
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    if (status === 'private') return 'Red privada';
+    if (status === 'missing') return 'Sin IP registrada';
+    if (status === 'invalid') return 'IP no válida';
+    return 'País no disponible';
+  }
   try { return new Intl.DisplayNames(['es'], { type: 'region' }).of(normalized) || normalized; } catch { return normalized; }
 }
 
@@ -82,7 +87,7 @@ function NetworkIdentity({ user, compact = false }) {
   const [revealed, setRevealed] = useState(false);
   const ip = user?.lastClientIp || null;
   const country = user?.lastClientCountry || null;
-  const location = countryName(country);
+  const location = countryName(country, user?.networkLocationStatus);
   return (
     <span className="admin-network" title={`${location}${ip ? ' · última IP observada' : ''}`}>
       <span className="admin-network-flag" aria-hidden="true">{countryFlag(country)}</span>

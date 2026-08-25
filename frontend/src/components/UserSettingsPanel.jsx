@@ -67,7 +67,7 @@ export default function UserSettingsPanel({ onClose, onBoard3D }) {
           <section>
             <h3>Partidas</h3>
             <label className="settings-field"><span>Reloj por defecto</span><select value={timeControlId} onChange={(event) => updateTimeControl(event.target.value)}>{TIME_CONTROLS.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
-            <small>Se usa al abrir una nueva Partida rápida o Práctica. Puedes cambiarlo antes de empezar.</small>
+            <small>Se usa al abrir una nueva Partida rápida o Partida de práctica. Puedes cambiarlo antes de empezar.</small>
           </section>
 
           <section>

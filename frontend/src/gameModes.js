@@ -2,7 +2,7 @@ import { combatRecordModeLabel } from './combatChessBrand.js';
 
 export const GAME_MODE_LABELS = Object.freeze({
   tournament: 'Torneo',
-  practice: 'Práctica',
+  practice: 'Partida de práctica',
   casual: 'Partida rápida',
   ghost: 'Rival Fantasma',
   lab: 'Laboratorio',

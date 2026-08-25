@@ -205,7 +205,7 @@ export default function Menu({
           </TutorialModeCard>
 
           <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
-            <IconBulb className="menu-card-icon" /><h3>Práctica</h3><p>Partida normal con pistas gratis.</p><span className="menu-card-cta">Jugar práctica →</span>
+            <IconBulb className="menu-card-icon" /><h3>Partida de práctica</h3><p>Juega con pistas gratis y sin afectar al rating.</p><span className="menu-card-cta">Jugar →</span>
           </TutorialModeCard>
         </div>
 

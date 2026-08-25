@@ -200,6 +200,23 @@ async def list_usernames() -> list[str]:
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
     return list(_memory_users.keys())
 
+
+async def update_client_country(username: str, country: str) -> None:
+    """Completa sólo el país de la última IP, sin crear historial de red."""
+    normalized = str(country or "").strip().upper()
+    if len(normalized) != 2:
+        return
+    col = await _get_collection()
+    if col is not None:
+        try:
+            await col.update_one({"_id": username}, {"$set": {"last_client_country": normalized}})
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
+        return
+    user = _memory_users.get(username)
+    if user is not None:
+        user["last_client_country"] = normalized
+
 async def count_online_users(*, window_seconds: int = 150) -> int:
     """Cuenta actividad reciente sin exponer identidades.
 

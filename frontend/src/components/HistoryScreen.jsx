@@ -26,7 +26,7 @@ export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExi
         <h2>{title}</h2>
         {records.length === 0 ? (
           <p className="hint-text">
-            {emptyText || 'Todavía no jugaste ninguna partida. Torneo, Partida rápida y Práctica quedan todas acá, con "pista inversa" para revisar dónde te equivocaste.'}
+            {emptyText || 'Todavía no jugaste ninguna partida. Torneo, Partida rápida y Partida de práctica quedan todas acá, con "pista inversa" para revisar dónde te equivocaste.'}
           </p>
         ) : (
           <p className="hint-text friendly-lead">Toca una partida para abrirla. Resultado, modo y fecha quedan a simple vista.</p>

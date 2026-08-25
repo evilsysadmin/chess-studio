@@ -29,6 +29,7 @@ from api_models import (
 from observability import get_database_metrics, get_http_metrics
 from observability_history import get_history as get_observability_history
 from narrative_cloudflare import generate_narrative
+from ip_geolocation import network_location_status, resolve_country_code
 
 
 def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRouter:
@@ -103,6 +104,12 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             user = await ustore.get_user(uname)
             profile = await pstore.get_profile(uname)
             user_doc = user or {}
+            client_ip = user_doc.get("last_client_ip")
+            client_country = user_doc.get("last_client_country")
+            if not client_country and network_location_status(client_ip) == "public":
+                client_country = await resolve_country_code(client_ip)
+                if client_country:
+                    await ustore.update_client_country(uname, client_country)
             # Cuentas heredadas podían no tener `last_activity`. El
             # login fuerza también `last_login`; mientras migran, created_at es
             # mejor fallback que mostrar “Sin actividad” como si nunca hubieran
@@ -113,8 +120,9 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
                 "createdAt": user_doc.get("created_at"),
                 "currentActivity": user_doc.get("current_activity"),
                 "clientRelease": user_doc.get("client_release"),
-                "lastClientIp": user_doc.get("last_client_ip"),
-                "lastClientCountry": user_doc.get("last_client_country"),
+                "lastClientIp": client_ip,
+                "lastClientCountry": client_country,
+                "networkLocationStatus": "resolved" if client_country else network_location_status(client_ip),
                 **_presence_summary(activity_anchor),
                 **_foreground_summary(user_doc),
                 **_extract_summary_stats(profile),

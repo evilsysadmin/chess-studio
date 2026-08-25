@@ -1045,7 +1045,9 @@ function playNoiseHit(kind, volume = 0.03, options = {}) {
   const tone = Math.max(-1, Math.min(1, Number(options.tone) || 0));
   const decay = Math.max(0.72, Math.min(1.28, Number(options.decay) || 1));
   const pan = Math.max(-0.22, Math.min(0.22, Number(options.pan) || 0));
-  const duration = (kind === 'brush' ? 0.18 : 0.085) * decay;
+  const durationScale = Math.max(0.55, Math.min(1.7, Number(options.durationScale) || 1));
+  const brightness = Math.max(0.55, Math.min(1.45, Number(options.brightness) || 1));
+  const duration = (kind === 'brush' ? 0.18 : 0.085) * decay * durationScale;
   const size = Math.max(1, Math.floor(ctx.sampleRate * duration));
   const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -1054,7 +1056,7 @@ function playNoiseHit(kind, volume = 0.03, options = {}) {
   source.buffer = buffer;
   const filter = ctx.createBiquadFilter();
   filter.type = kind === 'brush' || kind === 'hat' ? 'highpass' : 'bandpass';
-  filter.frequency.value = (kind === 'brush' ? 1900 : kind === 'hat' ? 4800 : 1500) * (1 + tone * 0.16);
+  filter.frequency.value = (kind === 'brush' ? 1900 : kind === 'hat' ? 4800 : 1500) * (1 + tone * 0.16) * brightness;
   filter.Q.value = kind === 'snare' ? 1.0 : 0.5;
   const gain = ctx.createGain();
   const start = ctx.currentTime + delayS;
@@ -1266,8 +1268,24 @@ function playMembraneHit(kind, volume = 0.04, options = {}) {
   source.start(start);
 }
 
+function percussionVoiceKit(feel) {
+  const configured = feel?.percussion?.kit || 'legacy';
+  if (configured !== 'legacy') return configured;
+  const family = String(feel?.family || '').toLowerCase();
+  if (family.includes('rock') || family.includes('garage') || family.includes('freight')) return 'acoustic-rock';
+  if (family.includes('synth') || family.includes('arcade') || family.includes('mechanical')) return 'electronic';
+  if (family.includes('lofi') || family.includes('cassette')) return 'lofi';
+  if (family.includes('trip') || family.includes('velvet') || family.includes('concrete')) return 'trip-hop';
+  if (family.includes('bossa') || family.includes('havana') || family.includes('latin')) return 'latin-kit';
+  return configured;
+}
+
+export function getPercussionVoiceKit(themeId) {
+  return percussionVoiceKit(structuredFeel(AMBIENT_THEMES[themeId]));
+}
+
 function playStructuredDrum(code, feel = null, localStep = 0) {
-  const kit = feel?.percussion?.kit || 'legacy';
+  const kit = percussionVoiceKit(feel);
   const human = percussionHumanization(feel, localStep, code);
   const velocity = human.velocity;
   const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(kit);
@@ -1315,6 +1333,46 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     else if (code === 'W') playWoodKnock();
     else if (code === 'M') playMetalHit();
     if (['S', 'H', 'B'].includes(code)) maybeGhost('brush', 0.016 * velocity);
+    return;
+  }
+
+  if (kit === 'acoustic-rock') {
+    if (code === 'K') { playBassDrum(0.050 * velocity, { ...human, decay: 0.9 }); playSoftPercussion(0.018 * velocity, { ...human, decay: 0.82 }); }
+    else if (code === 'S') { playNoiseHit('snare', 0.046 * velocity, { ...human, brightness: 0.86, durationScale: 1.28 }); playMembraneHit('tak', 0.011 * velocity, { ...human, tone: -0.35 }); }
+    else if (code === 'H') playNoiseHit('hat', 0.010 * velocity, { ...human, brightness: 0.88, durationScale: 0.72 });
+    else if (code === 'B') playNoiseHit('brush', 0.014 * velocity, human);
+    else if (code === 'W') playWoodKnock();
+    return;
+  }
+
+  if (kit === 'electronic') {
+    if (code === 'K') playBassDrum(0.052 * velocity, { ...human, tone: -0.28, decay: 0.8 });
+    else if (code === 'S') playNoiseHit('snare', 0.038 * velocity, { ...human, brightness: 1.2, durationScale: 0.82 });
+    else if (code === 'H') playNoiseHit('hat', 0.009 * velocity, { ...human, brightness: 1.28, durationScale: 0.62 });
+    else if (code === 'B') playNoiseHit('brush', 0.010 * velocity, { ...human, brightness: 1.18, durationScale: 0.68 });
+    return;
+  }
+
+  if (kit === 'lofi') {
+    if (code === 'K') { playSoftPercussion(0.026 * velocity, { ...human, tone: -0.42, decay: 1.12 }); playBassDrum(0.020 * velocity, { ...human, decay: 0.92 }); }
+    else if (code === 'S') playNoiseHit('snare', 0.020 * velocity, { ...human, brightness: 0.62, durationScale: 1.35 });
+    else if (code === 'H' || code === 'B') playNoiseHit('brush', 0.009 * velocity, { ...human, brightness: 0.7, durationScale: 1.18 });
+    return;
+  }
+
+  if (kit === 'trip-hop') {
+    if (code === 'K') playBassDrum(0.058 * velocity, { ...human, tone: -0.52, decay: 1.18 });
+    else if (code === 'S') playNoiseHit('snare', 0.033 * velocity, { ...human, brightness: 0.72, durationScale: 1.48 });
+    else if (code === 'H') playNoiseHit('hat', 0.007 * velocity, { ...human, brightness: 0.78, durationScale: 0.9 });
+    else if (code === 'B') playNoiseHit('brush', 0.011 * velocity, { ...human, brightness: 0.64, durationScale: 1.35 });
+    return;
+  }
+
+  if (kit === 'latin-kit') {
+    if (code === 'K') { playMembraneHit('dum', 0.046 * velocity, { ...human, decay: 0.92 }); playBassDrum(0.018 * velocity, human); }
+    else if (code === 'S') playMembraneHit('tak', 0.035 * velocity, { ...human, tone: 0.18, decay: 0.82 });
+    else if (code === 'H') playNoiseHit('brush', 0.010 * velocity, { ...human, brightness: 0.86 });
+    else if (code === 'W' || code === 'B') playWoodKnock();
     return;
   }
 
