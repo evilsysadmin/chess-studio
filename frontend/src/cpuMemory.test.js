@@ -40,7 +40,8 @@ describe('memoria de serie y última partida', () => {
       difficulty: 64,
       series: { humanWins: 1, cpuWins: 1, draws: 0, winner: null, games: [{ outcome: 'loss' }] },
     });
-    expect(text).toContain('tú 1, yo 1');
+    expect(text).toContain('Decisiva');
+    expect(text).toContain('1-1');
     expect(text).toContain('anterior');
   });
   it('abre una serie nueva usando sólo el expediente histórico real', () => {
