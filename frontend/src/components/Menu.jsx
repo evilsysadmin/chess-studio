@@ -11,6 +11,7 @@ import MirrorModeModal from './MirrorModeModal.jsx';
 import AccountModal from './AccountModal.jsx';
 import ModeTutorialTip from './ModeTutorialTip.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
+import FeedbackAssistant from './FeedbackAssistant.jsx';
 import HomePlayNudge from './HomePlayNudge.jsx';
 import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL } from '../combatChessBrand.js';
 import { currentDailyStreak, dailyChallengeDayKey } from '../dailyChallenge.js';
@@ -267,9 +268,7 @@ export default function Menu({
 
       {error && <p className="error-text">{error}</p>}
 
-      <button type="button" className="home-feedback-button" onClick={() => setShowFeedback(true)} aria-label="Dar feedback del juego">
-        <span aria-hidden="true">💬</span> Dar feedback
-      </button>
+      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide || loggingOut} onFeedback={() => setShowFeedback(true)} />
 
       <HomePlayNudge
         enabled={homePlayNudgeEnabled}
@@ -278,15 +277,23 @@ export default function Menu({
         onPlay={() => setShowQuickMatch(true)}
       />
 
-      <div className="footer-links-row">
-        <button type="button" className="backup-link" onClick={() => setShowHomeGuide(true)}>Guía rápida</button>
-        <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>Distintivos</button>
-        <button type="button" className="backup-link" onClick={() => setShowAccount(true)}>Mi cuenta</button>
-        <button type="button" className="backup-link" onClick={() => setShowBackup(true)}>Exportar / importar mi progreso</button>
-        <button type="button" className="backup-link" onClick={onBoard3D}>Experimento 3D</button>
-        <button type="button" className="backup-link" onClick={handleLogout} disabled={loggingOut}>{loggingOut ? 'Guardando…' : `Cerrar sesión${username ? ` (${username})` : ''}`}</button>
-        {logoutError && <p className="error-text" style={{ marginTop: '0.5rem' }}>{logoutError}</p>}
-      </div>
+      <section className="home-account-panel" aria-label="Cuenta y utilidades">
+        <div className="home-account-identity">
+          <span className="section-label">TU CUENTA</span>
+          <strong>{username || 'Jugador'}</strong>
+        </div>
+        <nav className="home-utility-actions" aria-label="Utilidades de Chess Studio">
+          <button type="button" onClick={() => setShowAccount(true)}>Mi cuenta</button>
+          <button type="button" onClick={() => setShowAchievements(true)}>Distintivos</button>
+          <button type="button" onClick={() => setShowHomeGuide(true)}>Guía rápida</button>
+          <button type="button" onClick={() => setShowBackup(true)}>Gestionar progreso</button>
+          <button type="button" onClick={onBoard3D}>Experimento 3D</button>
+        </nav>
+        <button type="button" className="home-logout-button" onClick={handleLogout} disabled={loggingOut}>
+          {loggingOut ? 'Guardando progreso…' : 'Cerrar sesión'}
+        </button>
+        {logoutError && <p className="error-text home-account-error">{logoutError}</p>}
+      </section>
 
       {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
       {showFeedback && <FeedbackModal context="Home" onClose={() => setShowFeedback(false)} />}

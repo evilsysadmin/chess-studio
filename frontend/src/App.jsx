@@ -664,11 +664,11 @@ function AppInner({ isAdminUser }) {
         canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
       >
       <div className="app-shell">
-        <div className="masthead">
+        <div className={`masthead ${isBoardGameView ? 'masthead-game-compact' : ''}`}>
           <div className="masthead-top-row">
             <div className="masthead-text">
-              <span className="masthead-kicker">JUEGA · APRENDE · COMPITE</span>
-              <h1>Chess Studio</h1>
+              {!isBoardGameView && <span className="masthead-kicker">JUEGA · APRENDE · COMPITE</span>}
+              {isBoardGameView ? <span className="game-wordmark">Chess Studio</span> : <h1>Chess Studio</h1>}
             </div>
             <div className="masthead-actions">
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
@@ -677,14 +677,16 @@ function AppInner({ isAdminUser }) {
               <button type="button" className="settings-gear-button" onClick={() => setShowSettings(true)} aria-label="Abrir ajustes" title="Ajustes">⚙</button>
             </div>
           </div>
-          <PlayerStatusBar
-            tournament={tournament}
-            combatXp={combatXp}
-            rating={rating}
-            compact={view === 'menu'}
-            onTournamentClick={() => navigateTo('tournament')}
-            onRatingClick={() => setShowRatingDetail(true)}
-          />
+          {!isBoardGameView && (
+            <PlayerStatusBar
+              tournament={tournament}
+              combatXp={combatXp}
+              rating={rating}
+              compact={view === 'menu'}
+              onTournamentClick={() => navigateTo('tournament')}
+              onRatingClick={() => setShowRatingDetail(true)}
+            />
+          )}
           {!isBoardGameView && view !== 'menu' && (
             <div className="navigation-back-hint">ESC o clic derecho · volver / cerrar</div>
           )}

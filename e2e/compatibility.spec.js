@@ -57,6 +57,24 @@ test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse'
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
 });
 
+test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+
+  const accountPanel = page.getByRole('region', { name: 'Cuenta y utilidades' });
+  await expect(accountPanel.getByText('e2e', { exact: true })).toBeVisible();
+  await expect(accountPanel.getByRole('button', { name: 'Mi cuenta', exact: true })).toBeVisible();
+  await expect(accountPanel.getByRole('button', { name: 'Cerrar sesión', exact: true })).toBeVisible();
+  await page.getByRole('region', { name: 'Guía rápida de Chess Studio' }).getByRole('button', { name: 'Explorar Home', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir asistente de feedback' }).click();
+  const assistant = page.getByRole('complementary', { name: 'Asistente de feedback' });
+  await expect(assistant).toBeVisible();
+  await assistant.getByRole('button', { name: 'Dar feedback', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Dinos qué mejorar' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+});
+
 test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ page }) => {
   await mockApi(page);
   await login(page);
@@ -64,6 +82,8 @@ test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ pa
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
   await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Chess Studio', exact: true })).toHaveCount(0);
+  await expect(page.locator('.player-status-bar')).toHaveCount(0);
   await expect(page.locator('.square-coordinate')).toHaveCount(16);
   await expect(page.locator('.rank-labels, .file-labels')).toHaveCount(0);
   await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);

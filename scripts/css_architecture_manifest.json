@@ -9,9 +9,11 @@
     "07-progressive-ux.css",
     "08-recent-polish.css",
     "09-professional-polish.css",
-    "10-studio-art-direction.css"
+    "10-studio-art-direction.css",
+    "11-game-table.css",
+    "12-feedback-assistant.css"
   ],
-  "combinedSha256": "68ea36bd90041c6da2381311bae59f45e9c67e119e5b5327cd2f42071e6b1233",
-  "combinedBytes": 308404,
-  "combinedLines": 9787
+  "combinedSha256": "b1817e48c8ed4bcefaee6ebc30151485b93bd295c8d5efdfc83000661da32c9b",
+  "combinedBytes": 320335,
+  "combinedLines": 10105
 }

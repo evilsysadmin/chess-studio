@@ -25,7 +25,7 @@ import { loadZenMode, saveZenMode, zenModeSummary } from '../zenMode.js';
 import { identifyOpening } from '../openings.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { noteworthyPresentation } from '../spectatorReactions.js';
-import { getToken } from '../auth.js';
+import { getToken, getUsername } from '../auth.js';
 import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
 import { useGameClock } from '../useGameClock.js';
 
@@ -103,6 +103,7 @@ export default function GameScreen({
     onPressure: () => setTurnBanner('30 segundos. Ahora cada clic viene con auditoría.'),
   });
   const [showReport, setShowReport] = useState(false);
+  const [notationOpen, setNotationOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 820);
   const [achievementToast, setAchievementToast] = useState(null);
   const [suddenLives, setSuddenLives] = useState(3);
   const [controlPrompt, setControlPrompt] = useState(null);
@@ -657,13 +658,22 @@ export default function GameScreen({
   // Función normal, NO un componente: si fuera un componente definido acá
   // adentro (con mayúscula), React lo trataría como un tipo nuevo en cada
   // render y remontaría el DOM entero cada 200ms (cada tick del reloj).
-  function renderClock(color, seconds) {
-    if (!hasClock) return null;
+  function renderPlayerRail({ color, seconds, cpu = false }) {
     const isLow = seconds !== null && seconds <= 10;
     const isTicking = tickingColor === color;
+    const active = game.turn === color && !game.isGameOver && !flagFallen && !forcedOutcome;
     return (
-      <div className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`}>
-        {formatClock(seconds ?? 0)}
+      <div className={`game-player-rail ${cpu ? 'is-cpu' : 'is-human'} ${active ? 'is-active' : ''}`} aria-label={`${cpu ? 'CPU' : 'Jugador'} ${active ? 'en turno' : 'esperando'}`}>
+        <span className="game-player-avatar" aria-hidden="true">{cpu ? '♞' : '♙'}</span>
+        <span className="game-player-identity">
+          <strong>{cpu ? 'CPU' : (getUsername() || 'Tú')}</strong>
+          <small>{cpu ? `Nivel ${game.difficulty}` : `${color === 'w' ? 'Blancas' : 'Negras'}${active ? ' · Tu turno' : ''}`}</small>
+        </span>
+        {hasClock ? (
+          <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`}>{formatClock(seconds ?? 0)}</span>
+        ) : (
+          <span className="game-player-turn">{active ? 'EN TURNO' : 'ESPERANDO'}</span>
+        )}
       </div>
     );
   }
@@ -675,7 +685,6 @@ export default function GameScreen({
           <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`}>
             {statusText}
           </div>
-          {!zenMode && <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />}
           {!zenMode && audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{audienceReaction}</b></div>}
           {!zenMode && prediction && <div className="prediction-strip">{prediction.text}</div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
@@ -696,12 +705,12 @@ export default function GameScreen({
               <span>{achievementToast.name}</span>
             </div>
           )}
-          {renderClock(topColor, topTime)}
           <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
             <aside className="game-music-rail" aria-label="Música de la partida">
-              <MusicPlayer forceExpanded />
+              <MusicPlayer />
             </aside>
             <div className="game-board-stack">
+              {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
               <Board
                 fen={boardFen}
                 onSquareClick={handleSquareClick}
@@ -719,17 +728,21 @@ export default function GameScreen({
                   <span>{selectionNotice.text}</span>
                 </div>
               )}
+              {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
               {!zenMode && (
-                <div className="game-notation-row">
+                <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
+                  <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
+                  <div className="game-notation-row">
                   <NotationPanel history={game.history} difficulty={game.difficulty} />
-                </div>
+                  </div>
+                </details>
               )}
             </div>
             {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
+              <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />
               <GameChat messages={gameChat} />
             </aside>}
           </div>
-          {renderClock(bottomColor, bottomTime)}
           {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
           {!zenMode && captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
           {!zenMode && hintMode === 'paid' && (

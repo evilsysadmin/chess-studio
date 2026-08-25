@@ -72,30 +72,6 @@
   text-decoration-style: solid;
 }
 
-.home-feedback-button {
-  position: fixed;
-  right: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
-  z-index: 45;
-  display: inline-flex;
-  align-items: center;
-  gap: .45rem;
-  border: 1px solid color-mix(in srgb, var(--brass) 62%, var(--ink-3));
-  border-radius: 999px;
-  padding: .62rem .9rem;
-  background: color-mix(in srgb, var(--ink-1) 92%, transparent);
-  color: var(--parchment);
-  box-shadow: 0 8px 28px rgba(0,0,0,.28);
-  font: 700 .78rem var(--font-mono);
-  cursor: pointer;
-}
-.home-feedback-button:hover,
-.home-feedback-button:focus-visible {
-  border-color: var(--brass);
-  transform: translateY(-1px);
-  outline: none;
-}
-
 .feedback-modal { max-width: 560px; }
 .feedback-modal form,
 .feedback-sent { display: grid; gap: .9rem; }
@@ -182,7 +158,6 @@
 .campaign-home-details-stack { display: grid; gap: .75rem; margin-top: .75rem; }
 
 @media (max-width: 720px) {
-  .home-feedback-button { right: .7rem; bottom: .7rem; }
   .admin-feedback-heading { align-items: stretch; flex-direction: column; }
   .admin-feedback-badge { align-self: flex-start; }
   .admin-feedback-status { margin-left: 0; }
