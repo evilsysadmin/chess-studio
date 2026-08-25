@@ -155,6 +155,10 @@ REGLAS INVIOLABLES:
   de la muestra.
 - Para comentarios de partida escribe una o dos frases cortas y no narres lo
   obvio como un comentarista de televisión.
+- Si HECHOS incluye memory, es un expediente real y acotado de la rivalidad.
+  Puedes usar como máximo UNA referencia breve a esa memoria cuando aporte
+  gracia o contexto al evento actual. No estás obligado a mencionarla y nunca
+  debes convertir una muestra pequeña en un hábito.
 - Sin Markdown, listas, encabezados, comillas de apertura ni prefijos como
   "CPU:" o "Narrador:".
 `.trim();

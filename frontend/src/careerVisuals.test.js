@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCareerHeatmaps, deriveRpgProfile, lastDailyCells } from './careerVisuals.js';
+import { buildCareerHeatmaps, deriveRpgProfile, lastDailyCells, summarizeRpgProfile } from './careerVisuals.js';
 
 describe('career visual data', () => {
   it('counts human activity, captures and real loss squares by mover color', () => {
@@ -29,6 +29,22 @@ describe('career visual data', () => {
     expect(byId.resilience.value).toBe(50);
     expect(byId.discipline.value).toBe(80);
     expect(byId.kingSafety.value).toBe(100);
+  });
+
+
+  it('resume el RPG sin abrumar y sólo compara atributos medidos', () => {
+    const summary = summarizeRpgProfile({
+      title: 'Pulso de hielo', games: 12, leaderId: 'discipline',
+      attributes: [
+        { id:'precision', label:'Precisión', value:74, sample:6 },
+        { id:'discipline', label:'Pulso', value:91, sample:18 },
+        { id:'conversion', label:'Conversión', value:null, sample:0 },
+        { id:'resilience', label:'Resistencia', value:52, sample:4 },
+      ],
+    });
+    expect(summary).toMatchObject({ title:'Pulso de hielo', games:12, measuredCount:3 });
+    expect(summary.leader).toMatchObject({ id:'discipline', value:91 });
+    expect(summary.lowest).toMatchObject({ id:'resilience', value:52 });
   });
 
   it('builds a deterministic 28-day daily grid', () => {

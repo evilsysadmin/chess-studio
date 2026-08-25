@@ -15,6 +15,7 @@ import { pieceRankForLevel } from '../combatRanks.js';
 import { METAMORPHOSIS_LABELS, deploymentUnlockStatus, unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { techniquesEligibleToUnlock, unlockedTechniquesFor } from '../combatTechniques.js';
 import { unitRecordForKey, unitDecorations } from '../combatUnitService.js';
+import { veteranLegacy } from '../combatVeteranLegacy.js';
 import { deploymentSummary } from '../combatDeployment.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
@@ -203,6 +204,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
   const reviveType = saved?.deploymentType || originType;
   const revivePrice = isDead ? reviveCost(reviveType) : 0;
   const service = unitRecord?.stats || {};
+  const legacy = isKing ? null : veteranLegacy(unitRecord);
 
   return (
     <div className="army-unit-detail-backdrop" onClick={onClose}>
@@ -237,6 +239,15 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
           </div>
         ) : (
           <>
+            <div className="army-unit-legacy">
+              <span className="army-memorial-kicker">LEGADO</span>
+              <strong>{legacy.title}</strong>
+              <p>{legacy.reason}</p>
+              {legacy.latestDecoration && (
+                <small>Última condecoración · ✦ {legacy.latestDecoration.label}</small>
+              )}
+            </div>
+
             <div className="army-dossier-facts">
               <div><span>Rango</span><b>{militaryRank.short} · {militaryRank.label}</b></div>
               <div><span>Nivel</span><b>{rawLevel}</b></div>

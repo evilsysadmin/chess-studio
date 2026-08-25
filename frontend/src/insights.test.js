@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeInsights, generateCoaching, generateRoast, tierTrendComment, trainingTargetForCoaching } from './insights.js';
+import { computeInsights, generateCoaching, generateRoast, selectTrainingNow, tierTrendComment, trainingTargetForCoaching } from './insights.js';
 
 const gameHistory = [
   {
@@ -253,5 +253,27 @@ describe('trainingTargetForCoaching', () => {
       { id: 'p2', opening: 'Apertura Italiana' },
     ];
     expect(trainingTargetForCoaching(item, puzzles)?.count).toBe(1);
+  });
+});
+
+
+describe('selectTrainingNow', () => {
+  it('prioriza un error medido y entrenable frente a un consejo genérico de la misma prioridad', () => {
+    const coaching = [
+      { priority: 'high', priorityLabel: 'ALTA', title: 'Volumen', evidence: { kind: 'rating', count: 40 } },
+      { priority: 'high', priorityLabel: 'ALTA', title: 'Mates', evidence: { kind: 'incident', count: 3 }, training: { filter: { incidentKey: 'human:MISSED_MATE' } } },
+    ];
+    const puzzles = [{ id: 'm1', incidentKeys: ['human:MISSED_MATE'] }];
+    expect(selectTrainingNow(coaching, puzzles)).toMatchObject({ item: { title: 'Mates' }, target: { count: 1 } });
+  });
+
+  it('si no hay material personal mantiene la prioridad sin inventar un CTA', () => {
+    const coaching = [
+      { priority: 'high', priorityLabel: 'ALTA', title: 'Siciliana', evidence: { kind: 'opening', count: 7 }, training: { filter: { opening: 'Defensa Siciliana' } } },
+      { priority: 'medium', priorityLabel: 'MEDIA', title: 'Otro', evidence: { kind: 'rating', count: 20 } },
+    ];
+    const selected = selectTrainingNow(coaching, []);
+    expect(selected.item.title).toBe('Siciliana');
+    expect(selected.target).toBeNull();
   });
 });

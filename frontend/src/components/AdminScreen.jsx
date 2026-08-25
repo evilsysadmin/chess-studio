@@ -11,7 +11,7 @@ import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
-import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from '../adminFormatting.js';
+import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 import { ADMIN_REFRESH_MS } from '../presenceCadence.js';
@@ -259,6 +259,7 @@ export default function AdminScreen({ onExit }) {
   const onlineCount = otherUsers.filter((user) => user.presence === 'online').length;
   const idleCount = otherUsers.filter((user) => user.presence === 'idle').length;
   const filteredUsers = filterAdminUsers(users || [], activityFilter);
+  const releaseSummary = summarizeAdminClientReleases(users || [], currentAdmin, APP_RELEASE);
   const activeFeedback = (feedback || []).filter((item) => item.status !== 'resolved');
   const resolvedFeedback = (feedback || []).filter((item) => item.status === 'resolved');
 
@@ -311,29 +312,24 @@ export default function AdminScreen({ onExit }) {
         <h2>Estado operativo</h2>
         <p className="hint-text">Primero la salud de Chess Studio; después ya interrogamos a los humanos.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
-        {users && (
-          <section className="admin-presence-summary" aria-label="Presencia de usuarios">
-            <div>
-              <strong>{foregroundCount}</strong>
-              <span>en primer plano</span>
-            </div>
-            <div>
-              <strong>{onlineCount}</strong>
-              <span>en línea</span>
-            </div>
-            <div>
-              <strong>{idleCount}</strong>
-              <span>inactivos</span>
-            </div>
-            <small>Otros usuarios · muestreo aprox. cada 2 min · el estado caduca automáticamente</small>
-          </section>
-        )}
         <AdminObservabilitySummary
           token={getToken()}
           users={users || []}
           currentAdmin={currentAdmin}
           onOpen={() => setAdminView('observability')}
         />
+        {users && (
+          <section className="admin-presence-block" aria-label="Presencia de usuarios">
+            <div className="admin-presence-block-heading"><div><span className="section-label">Presencia</span><h3>Ahora mismo</h3></div><small>Sin telemetría nueva · heartbeat existente</small></div>
+            <div className="admin-presence-summary">
+              <div><strong>{foregroundCount}</strong><span>en primer plano</span></div>
+              <div><strong>{onlineCount}</strong><span>en línea</span></div>
+              <div><strong>{idleCount}</strong><span>inactivos</span></div>
+              <small>Otros usuarios · muestreo aprox. cada 2 min · el estado caduca automáticamente</small>
+            </div>
+            <details className="friendly-disclosure admin-release-summary"><summary>Estado de versiones de clientes</summary><div className="friendly-disclosure-body admin-release-summary-grid">{['current','outdated','newer','different','unknown'].map((id)=>{const label={current:'Actual',outdated:'Antigua',newer:'Más nueva',different:'Distinta',unknown:'Sin dato'}[id];return <span key={id}><b>{releaseSummary[id]||0}</b>{label}</span>;})}</div></details>
+          </section>
+        )}
 
         <div className="admin-users-heading">
           <span className="section-label">Usuarios</span>

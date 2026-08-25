@@ -12,7 +12,7 @@ import { COMBAT_CHESS_NAME, COMBAT_CHESS_FREE_DESCRIPTION, COMBAT_CHESS_CAMPAIGN
 export default function CombatSetupView({
   onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, encounterIntel, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
-  handleStartBattleClick,
+  handleStartBattleClick, handleQuickStartBattle,
   showArmy, setShowArmy, showDeployment, setShowDeployment, requireDeploymentConfirmation, deploymentConfirmed, handleConfirmDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique,
   handleResetRoster, onHistory, serviceSummary,
 }) {
@@ -38,6 +38,7 @@ export default function CombatSetupView({
         rosterCount={rosterCount}
         deadCount={deadCount}
         handleStartBattleClick={handleStartBattleClick}
+        handleQuickStartBattle={handleQuickStartBattle}
         showArmy={showArmy}
         setShowArmy={setShowArmy}
         showDeployment={showDeployment}

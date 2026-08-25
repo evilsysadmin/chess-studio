@@ -121,8 +121,8 @@ export default function Menu({
         <div className="home-today-main">
           <div>
             <span className="section-label">HOY</span>
-            <strong>{today.dailySolved ? 'Desafío diario resuelto' : 'Desafío diario pendiente'}</strong>
-            <small>Racha actual: {today.streak} día{today.streak === 1 ? '' : 's'}</small>
+            <strong>{today.dailyHeadline}</strong>
+            <small>{today.dailyDetail}</small>
           </div>
           <button type="button" className={today.dailySolved ? 'secondary-btn' : 'primary-btn'} onClick={onDailyChallenge}>
             {today.dailySolved ? 'Ver desafío' : 'Jugar desafío →'}
@@ -249,7 +249,7 @@ export default function Menu({
       />
 
       <div className="footer-links-row">
-        <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>Ver logros</button>
+        <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>Distintivos</button>
         <button type="button" className="backup-link" onClick={() => setShowAccount(true)}>Mi cuenta</button>
         <button type="button" className="backup-link" onClick={() => setShowBackup(true)}>Exportar / importar mi progreso</button>
         <button type="button" className="backup-link" onClick={onBoard3D}>Experimento 3D</button>

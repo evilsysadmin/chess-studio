@@ -20,8 +20,9 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     id: 'combat-deployment',
     group: 'Combat Chess',
     title: 'Prepara tu formación',
-    summary: 'Coloca las 16 unidades que lucharán. Las que dejes fuera se quedan seguras en la reserva.',
+    summary: 'Puedes jugar con una formación recomendada en un clic o abrir la Mesa de Guerra si quieres decidir cada unidad.',
     steps: [
+      { title: 'Jugar es el camino corto', text: 'Si no hay bajas pendientes, el botón principal usa tu formación actual o completa los huecos con defaults sensatos. Personalizar es opcional.' },
       { title: 'El tablero es la mesa de guerra', text: 'Arrastra una unidad o selecciónala y toca una casilla válida. Los 16 puestos representan los slots reales que entrarán al combate.' },
       { title: 'El tipo de origen manda', text: 'Cada puesto acepta un único tipo de origen. Un peón metamorfoseado sigue siendo peón y ocupa un slot de peón.' },
       { title: 'Reserva significa reserva', text: 'Quien no está en el tablero no participa, no aumenta amenaza y no puede morir ni ganar mérito en esa batalla.' },

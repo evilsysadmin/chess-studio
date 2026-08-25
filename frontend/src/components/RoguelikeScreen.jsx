@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import CombatScreen from './CombatScreen.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
+import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatCampaignMap from './CombatCampaignMap.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
@@ -668,6 +669,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
                 <details className="campaign-home-subdetails">
                   <summary>Ejército y veteranos</summary>
                   <p className="hint-text">Tus piezas conservan veteranía, rangos, medallas y bajas entre campañas.</p>
+                  <CampaignArmyGlance roster={roster} />
                   <CombatServicePanel summary={serviceSummary} compact />
                   <ArmyRosterPanel
                     roster={roster}

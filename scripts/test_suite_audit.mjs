@@ -191,7 +191,7 @@ if (checkCiWiring) {
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
   if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
-  if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña obliga"')) fail('Browser smoke crítico debe atravesar confirmación de despliegue Combat');
+  if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña permite jugar con defaults"')) fail('Browser smoke crítico debe cubrir el camino Combat con defaults');
   const informationalCoverageSteps = (coverageWorkflowSource.match(/continue-on-error:\s*true/g) || []).length;
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');
 }
@@ -230,7 +230,7 @@ for (const label of ['Así juegas', 'Partida rápida', 'Combat Chess · Campaña
 }
 
 for (const required of [
-  'obliga a confirmar despliegue antes de iniciar combate',
+  'permite jugar con defaults en un clic y deja el despliegue manual opcional',
   'hover abre ficha y doble clic mueve Tablero ↔ Banquillo',
   'una batalla activa sobrevive a reload y no vuelve a Setup',
   'clic simple fija la ficha sin mover la unidad',

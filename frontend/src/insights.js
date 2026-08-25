@@ -435,6 +435,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       title: rule.title,
       diagnosis: rule.diagnosis(count),
       action: rule.action,
+      evidence: { kind: 'incident', key, count },
       training: { filter: { incidentKey: key, label: rule.trainingLabel } },
     });
   }
@@ -448,6 +449,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       title: `Revisa ${worstOpening.name}`,
       diagnosis: `${worstOpening.games} partidas y ${worstOpening.winPct}% de victorias. Esa apertura te está cobrando alquiler y ni siquiera te deja las llaves.`,
       action: 'Repasa sus primeras 8–10 jugadas en “Aperturas famosas” y revisa dos derrotas tuyas en replay buscando el primer momento en que abandonaste el plan normal.',
+      evidence: { kind: 'opening', key: worstOpening.name, count: worstOpening.games, losses: worstOpening.losses, winPct: worstOpening.winPct },
       training: { filter: { opening: worstOpening.name, label: worstOpening.name } },
     });
   }
@@ -460,6 +462,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
         title: 'Tu repertorio cabe en una servilleta',
         diagnosis: `${insights.favoriteOpening.name} aparece en ${Math.round(repeatRate * 100)}% de tus partidas. Saberla bien está genial; depender de ella para respirar, menos.`,
         action: 'Añade una segunda apertura para blancas o una defensa alternativa para negras y juega al menos 5 partidas antes de juzgarla.',
+        evidence: { kind: 'repertoire', key: insights.favoriteOpening.name, count: insights.favoriteOpening.count },
       });
     }
   }
@@ -475,6 +478,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
         title: `Juega más con ${weakColor}`,
         diagnosis: `Tu historial está muy cargado hacia ${white > black ? 'blancas' : 'negras'}. Muy cómodo todo hasta que el color te lo elige otro.`,
         action: `Fuerza 5 partidas seguidas con ${weakColor}. No busques rating: busca posiciones que hoy te resultan menos familiares.`,
+        evidence: { kind: 'color', key: weakColor, count: colorTotal },
       });
     }
   }
@@ -490,6 +494,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       action: personalPuzzles > 0
         ? `Haz primero 3 de “Tus crímenes” antes de tu próxima partida. Tienes ${personalPuzzles} posiciones sacadas de errores reales tuyos.`
         : 'Haz 5 puzzles cortos antes de tu próxima partida y luego juega a la misma dificultad. El objetivo es reconocer patrones, no coleccionar partidas.',
+      evidence: { kind: 'puzzles', count: insights.totalGames, puzzlesSolved, personalPuzzles },
       ...(personalPuzzles > 0 ? { training: { filter: { label: 'Tus crímenes' } } } : {}),
     });
   }
@@ -500,6 +505,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       title: 'Deja de hacer volumen por hacer volumen',
       diagnosis: `El rating ha caído ${Math.abs(insights.ratingTrend.delta)} puntos desde el primer registro. Seguir encadenando partidas puede entrenar exactamente los errores que quieres quitar.`,
       action: 'Abre Autopsia tras cada derrota durante las próximas 3 partidas y revisa sólo el peor incidente. Una corrección concreta por partida, no veinte.',
+      evidence: { kind: 'rating', count: Math.abs(insights.ratingTrend.delta), delta: insights.ratingTrend.delta },
     });
   } else if (insights.ratingTrend?.delta >= 60 && insights.totalGames >= 10) {
     items.push({
@@ -507,6 +513,7 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       title: 'Te estás quedando cómodo',
       diagnosis: `Has ganado ${insights.ratingTrend.delta} puntos. Bien. Ahora deja de admirar la gráfica como si fuera una estatua ecuestre.`,
       action: 'Si encadenas 3 victorias más con margen, sube un nivel de dificultad y conserva el mismo repertorio unas partidas para comparar.',
+      evidence: { kind: 'rating', count: insights.ratingTrend.delta, delta: insights.ratingTrend.delta },
     });
   }
 
@@ -527,6 +534,31 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
 // Devuelve entrenamiento sólo cuando ya existen posiciones personales que
 // correspondan al diagnóstico. Así evitamos convertir un consejo genérico en
 // un CTA que finja tener material específico detrás.
+function trainingNowScore(item, target) {
+  const priorityWeight = { high: 300, medium: 200, low: 100 }[item?.priority] || 0;
+  const evidence = Math.max(0, Number(item?.evidence?.count || 0));
+  const specificEvidence = ['incident', 'opening'].includes(item?.evidence?.kind) ? 45 : 0;
+  const trainable = target ? 160 + Math.min(60, Number(target.count || 0) * 15) : 0;
+  // El score sólo ordena diagnósticos YA calculados a partir de datos reales.
+  // No crea debilidades nuevas ni usa Workers AI para decidir la prioridad.
+  return priorityWeight + specificEvidence + trainable + Math.min(80, evidence * 8);
+}
+
+// Una sola recomendación principal. Favorece un problema medido que además
+// tenga posiciones personales disponibles, pero si aún no hay material de
+// entrenamiento mantiene el diagnóstico más importante sin inventar un CTA.
+export function selectTrainingNow(coaching = [], personalPuzzles = []) {
+  const ranked = (Array.isArray(coaching) ? coaching : [])
+    .map((item, index) => {
+      const target = trainingTargetForCoaching(item, personalPuzzles);
+      return { item, target, index, score: trainingNowScore(item, target) };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  if (!ranked.length) return null;
+  const best = ranked[0];
+  return { item: best.item, target: best.target, score: best.score };
+}
+
 export function trainingTargetForCoaching(item, personalPuzzles = []) {
   const filter = item?.training?.filter;
   if (!filter || !Array.isArray(personalPuzzles) || personalPuzzles.length === 0) return null;

@@ -15,7 +15,7 @@ export function useCombatDeploymentGate({
   deadCount,
   onError,
 }) {
-  const [showDeployment, setShowDeployment] = useState(() => Boolean(requireDeploymentConfirmation && !restoredSession));
+  const [showDeployment, setShowDeployment] = useState(false);
   const [deploymentConfirmed, setDeploymentConfirmed] = useState(() => !requireDeploymentConfirmation || Boolean(restoredSession));
 
   function handleStartBattleClick(onStart) {

@@ -13,6 +13,7 @@ import { loadRoster } from './combatRoster.js';
 import { loadPuzzlesSolved } from './puzzleStats.js';
 import { derivedLevel } from './combat.js';
 import { loadDailyChallenge } from './dailyChallenge.js';
+import { loadRivalry } from './rivalry.js';
 
 const KEY = 'chess-study-achievements';
 
@@ -34,6 +35,9 @@ export const ACHIEVEMENTS = [
   { id: 'daily_streak_3', name: 'Tres días sin excusas', description: 'Mantuviste una racha diaria de 3 días.' },
   { id: 'daily_streak_7', name: 'Semana de guardia', description: 'Mantuviste una racha diaria de 7 días.' },
   { id: 'daily_streak_30', name: 'Funcionario del tablero', description: 'Alcanzaste una racha diaria de 30 días.' },
+  { id: 'rivalry_25', name: 'Veinticinco asaltos', description: 'Completaste 25 partidas competitivas contra la misma CPU.' },
+  { id: 'rivalry_streak_3', name: 'Tres al hilo', description: 'Encadenaste 3 victorias competitivas contra la CPU.' },
+  { id: 'rivalry_hard_75', name: 'Tumbagigantes', description: 'Derrotaste a la CPU en dificultad 75 o superior.' },
   { id: 'crime_missed_mate', name: 'Mate, ¿qué mate?', description: 'Ignoraste un mate en una.', kind: 'shame' },
   { id: 'crime_allowed_mate', name: 'Entrega urgente', description: 'Dejaste mate en una a la CPU.', kind: 'shame' },
   { id: 'crime_queen_to_pawn', name: 'Revolución proletaria inversa', description: 'Un peón enemigo capturó tu dama.', kind: 'shame' },
@@ -78,6 +82,7 @@ export function checkAchievements(extra = {}) {
   const roster = loadRoster();
   const puzzlesSolved = loadPuzzlesSolved();
   const daily = loadDailyChallenge();
+  const rivalry = loadRivalry();
 
   if (rating.games >= 1) unlocked.add('first_game');
   if (rating.games >= 10) unlocked.add('ten_games');
@@ -94,6 +99,9 @@ export function checkAchievements(extra = {}) {
   if (Number(daily.bestStreak || 0) >= 3) unlocked.add('daily_streak_3');
   if (Number(daily.bestStreak || 0) >= 7) unlocked.add('daily_streak_7');
   if (Number(daily.bestStreak || 0) >= 30) unlocked.add('daily_streak_30');
+  if (Number(rivalry.record?.games || 0) >= 25) unlocked.add('rivalry_25');
+  if (Number(rivalry.record?.bestHumanStreak || 0) >= 3) unlocked.add('rivalry_streak_3');
+  if (Number(rivalry.record?.milestones?.highestDifficultyWin || 0) >= 75) unlocked.add('rivalry_hard_75');
 
   for (const piece of Object.values(roster.pieces)) {
     if (piece.alive !== false && derivedLevel(piece) >= 6) {
@@ -109,6 +117,20 @@ export function checkAchievements(extra = {}) {
 }
 
 
+const FEATURED_PRIORITY = Object.freeze([
+  'rivalry_hard_75', 'rivalry_streak_3', 'feat_mate', 'feat_pawn_queen',
+  'combat_flawless', 'combat_gold_piece', 'daily_streak_7', 'rating_advanced',
+  'crime_queen_to_pawn', 'crime_missed_mate', 'rivalry_25', 'ten_games',
+]);
+
+export function featuredAchievements(unlocked, limit = 6) {
+  const set = unlocked instanceof Set ? unlocked : new Set(unlocked || []);
+  const rank = new Map(FEATURED_PRIORITY.map((id, index) => [id, index]));
+  return ACHIEVEMENTS
+    .filter((achievement) => set.has(achievement.id))
+    .sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999) || a.name.localeCompare(b.name))
+    .slice(0, Math.max(0, Number(limit) || 0));
+}
 
 const EVENT_ACHIEVEMENTS = {
   human: {

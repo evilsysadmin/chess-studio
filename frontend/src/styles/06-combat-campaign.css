@@ -1079,3 +1079,8 @@
 }
 
 
+
+
+/* dm43p · Perfil RPG: resumen primero, detalle a un clic */
+.career-rpg-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin-bottom:.7rem}.career-rpg-summary-grid>article{display:grid;gap:.25rem;padding:.75rem;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(0,0,0,.1)}.career-rpg-summary-grid span{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;opacity:.68}.career-rpg-summary-grid b{font-size:.9rem}.career-rpg-summary-grid small{opacity:.68;line-height:1.35}.career-rpg-details{margin-top:.35rem}
+@media(max-width:760px){.career-rpg-summary-grid{grid-template-columns:1fr}}

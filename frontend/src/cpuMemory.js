@@ -1,5 +1,5 @@
 import { identifyOpening } from './openings.js';
-import { seriesFacts } from './series.js';
+import { seriesFacts, seriesLiveMoment } from './series.js';
 
 function recordOf(rivalry) {
   return rivalry?.record || {};
@@ -40,11 +40,13 @@ export function startMemoryComment(rivalry, context = {}) {
     if (lastSeries?.winner === 'human') return `Nueva serie. La anterior fue tuya ${lastSeries.humanWins}-${lastSeries.cpuWins}. Consta en acta; no significa que vaya a repetirse.`;
   }
   if (context.series && !context.series.winner && Array.isArray(context.series.games) && context.series.games.length) {
-    const previous = context.series.games[context.series.games.length - 1];
-    const score = `tú ${context.series.humanWins}, yo ${context.series.cpuWins}${context.series.draws ? `, tablas ${context.series.draws}` : ''}`;
-    if (previous?.outcome === 'loss') return `Seguimos la serie: ${score}. La anterior también quedó archivada a mi favor. No hace falta fingir que empezamos de cero.`;
-    if (previous?.outcome === 'win') return `Marcador de la serie: ${score}. Has ganado la anterior; he conservado el acta por motivos disciplinarios.`;
-    return `Marcador de la serie: ${score}. Las tablas anteriores sólo aplazaron el papeleo.`;
+    const moment = seriesLiveMoment(context.series);
+    if (moment?.kind === 'decider') return `Decisiva. ${moment.detail} He archivado las partidas anteriores para evitar amnesias convenientes.`;
+    if (moment?.kind === 'human-match-point') return `Punto de serie para ti. ${moment.detail} Intentaré que el expediente no termine de esa forma tan ofensiva.`;
+    if (moment?.kind === 'cpu-match-point') return `Punto de serie para mí. ${moment.detail} Por fin una situación administrativamente razonable.`;
+    // El propio marcador ya cuenta el resto de la historia: no hacemos hablar
+    // a la CPU al inicio de cada partida sólo porque exista una serie activa.
+    return null;
   }
 
   if (context.rematch && recent[0]) {
@@ -108,19 +110,169 @@ export function openingMemoryComment(history, rivalry) {
   const opening = identifyOpening(played);
   if (!opening) return null;
 
-  const recent = Array.isArray(recordOf(rivalry).recentGames) ? recordOf(rivalry).recentGames : [];
+  const record = recordOf(rivalry);
+  const allTime = record?.byOpening?.[opening];
+  if (allTime && Number(allTime.games || 0) >= 4) {
+    const games = Number(allTime.games || 0);
+    const wins = Number(allTime.wins || 0);
+    const losses = Number(allTime.losses || 0);
+    if (losses >= wins + 2) return `${opening}. El expediente completo aquí va ${wins}-${losses} en ${games} partidas. Insistir también es una forma de investigación.`;
+    if (wins >= losses + 2) return `${opening}. El histórico aquí va ${wins}-${losses} en ${games}. Empiezo a considerar esta apertura una provocación personal.`;
+    return `${opening} otra vez. Ya hay ${games} precedentes registrados y el balance sigue sin concedernos una coartada.`;
+  }
+
+  const recent = Array.isArray(record.recentGames) ? record.recentGames : [];
   const same = recent.filter((g) => g.opening === opening);
   if (same.length < 2) return null;
-
   const wins = same.filter((g) => g.outcome === 'win').length;
   const losses = same.filter((g) => g.outcome === 'loss').length;
-  if (losses >= 2 && losses > wins) {
-    return `${opening}. Otra vez. La has jugado ${same.length} veces recientemente y el balance ya ha solicitado asistencia psicológica.`;
-  }
-  if (wins >= 2 && wins > losses) {
-    return `${opening}. Sí, la recuerdo: últimamente te funciona demasiado bien. Qué desagradable costumbre.`;
-  }
+  if (losses >= 2 && losses > wins) return `${opening}. Otra vez. La has jugado ${same.length} veces recientemente y el balance ya ha solicitado asistencia psicológica.`;
+  if (wins >= 2 && wins > losses) return `${opening}. Sí, la recuerdo: últimamente te funciona demasiado bien. Qué desagradable costumbre.`;
   return `${opening} de nuevo. ${same.length} precedentes recientes y todavía no hemos aprendido a evitarnos.`;
+}
+
+
+const HUMAN_TROUBLE_EVENTS = new Set(['MISSED_MATE', 'STALEMATE_BLUNDER', 'ALLOWED_MATE', 'QUEEN_EN_PRISE_TO_PAWN']);
+const HUMAN_SUCCESS_EVENTS = new Set(['MATE_FOUND', 'PAWN_TAKES_QUEEN', 'QUEEN_CAPTURE']);
+
+function compactOutcomeRow(row = {}) {
+  return {
+    games: Number(row.games || 0),
+    wins: Number(row.wins || 0),
+    draws: Number(row.draws || 0),
+    losses: Number(row.losses || 0),
+  };
+}
+
+function difficultySummary(record, difficulty) {
+  if (difficulty == null) return null;
+  const recent = Array.isArray(record?.recentGames) ? record.recentGames : [];
+  const same = recent.filter((game) => Number(game?.difficulty) === Number(difficulty));
+  if (same.length < 4) return null;
+  return {
+    level: Number(difficulty),
+    games: same.length,
+    wins: same.filter((game) => game.outcome === 'win').length,
+    draws: same.filter((game) => game.outcome === 'draw').length,
+    losses: same.filter((game) => game.outcome === 'loss').length,
+  };
+}
+
+/**
+ * Expediente mínimo para un comentario de jugada. No aumenta la frecuencia de
+ * comentarios: sólo enriquece un evento que ya había sido considerado
+ * noteworthy. Todos los datos salen del estado persistido de rivalidad.
+ */
+export function noteworthyMemoryFacts(rivalry, event, actor = 'human', context = {}) {
+  if (!event?.type) return null;
+  const record = recordOf(rivalry);
+  const key = `${actor}:${event.type}`;
+  const occurrenceNumber = Math.max(1, Number(context.occurrenceNumber || 0) || Number(record?.incidents?.[key] || 0) + 1);
+  const memory = {
+    incident: {
+      key,
+      occurrenceNumber,
+      previousOccurrences: Math.max(0, occurrenceNumber - 1),
+    },
+  };
+
+  const games = Number(record.games || 0);
+  if (games >= 3) {
+    memory.rivalry = {
+      games,
+      wins: Number(record.wins || 0),
+      draws: Number(record.draws || 0),
+      losses: Number(record.losses || 0),
+    };
+    const streak = Number(record.currentStreak || 0);
+    if (Math.abs(streak) >= 2) {
+      memory.streak = {
+        owner: streak > 0 ? 'human' : 'cpu',
+        games: Math.abs(streak),
+      };
+    }
+  }
+
+  const opening = String(context.opening || '').trim();
+  const openingRow = opening ? record?.byOpening?.[opening] : null;
+  if (openingRow && Number(openingRow.games || 0) >= 3) {
+    memory.currentOpening = { name: opening, ...compactOutcomeRow(openingRow) };
+  }
+
+  const difficulty = difficultySummary(record, context.difficulty);
+  if (difficulty) memory.currentDifficultyRecent = difficulty;
+
+  const recent = Array.isArray(record.recentGames) ? record.recentGames : [];
+  const last = recent[0];
+  if (last && (context.rematch || occurrenceNumber > 1)) {
+    memory.lastGame = {
+      outcome: last.outcome || null,
+      difficulty: last.difficulty ?? null,
+      opening: last.opening || null,
+      moves: Number(last.moves || 0),
+    };
+  }
+
+  return memory;
+}
+
+/**
+ * Fallback local cuando Workers AI no está disponible. Sólo añade memoria a
+ * eventos muy graves/brillantes y con una muestra suficiente; las
+ * reincidencias ya las cubre recurrenceSuffix().
+ */
+export function noteworthyMemorySuffix(memory, event, actor = 'human') {
+  if (!memory || !event?.type || Number(memory?.incident?.previousOccurrences || 0) > 0) return '';
+  if (Number(event.priority || 0) < 85) return '';
+
+  const opening = memory.currentOpening;
+  if (opening?.games >= 4) {
+    const humanTrouble = (actor === 'human' && HUMAN_TROUBLE_EVENTS.has(event.type))
+      || (actor === 'cpu' && HUMAN_SUCCESS_EVENTS.has(event.type));
+    const humanSuccess = (actor === 'human' && HUMAN_SUCCESS_EVENTS.has(event.type))
+      || (actor === 'cpu' && HUMAN_TROUBLE_EVENTS.has(event.type));
+    if (humanTrouble && opening.losses >= opening.wins + 2) {
+      return ` En ${opening.name} llevas ${opening.wins}-${opening.losses} en ${opening.games} registradas. El escenario del crimen empieza a ser reconocible.`;
+    }
+    if (humanSuccess && opening.wins >= opening.losses + 2) {
+      return ` En ${opening.name} llevas ${opening.wins}-${opening.losses} en ${opening.games} registradas. Empiezo a tener motivos documentales para odiar esta apertura.`;
+    }
+  }
+
+  const difficulty = memory.currentDifficultyRecent;
+  if (difficulty?.games >= 5) {
+    const humanTrouble = (actor === 'human' && HUMAN_TROUBLE_EVENTS.has(event.type))
+      || (actor === 'cpu' && HUMAN_SUCCESS_EVENTS.has(event.type));
+    if (humanTrouble && difficulty.losses >= difficulty.wins + 3) {
+      return ` En nivel ${difficulty.level} el balance reciente ya va ${difficulty.wins}-${difficulty.losses}. La estadística no está siendo precisamente ambigua.`;
+    }
+  }
+  return '';
+}
+
+function resultCareerMemory(record, outcome, context = {}) {
+  const games = Number(record?.games || 0);
+  // Hitos deliberadamente escasos: no convertimos cada final en una rueda de
+  // prensa. Estos comentarios sólo aparecen en umbrales o balances fuertes.
+  if ([10, 25, 50, 100, 200].includes(games)) {
+    return `${games} partidas oficiales entre nosotros: tú ${Number(record.wins || 0)}, yo ${Number(record.losses || 0)}, tablas ${Number(record.draws || 0)}. Ya hay suficiente muestra para dejar de llamarlo casualidad.`;
+  }
+
+  const opening = String(context.opening || '').trim();
+  const row = opening ? record?.byOpening?.[opening] : null;
+  if (row && Number(row.games || 0) >= 6 && Number(row.games || 0) % 3 === 0) {
+    const wins = Number(row.wins || 0);
+    const losses = Number(row.losses || 0);
+    if (outcome === 'loss' && losses >= wins + 3) return `${opening}: el expediente queda ${wins}-${losses} en ${row.games}. A estas alturas ya reconozco el lugar del accidente.`;
+    if (outcome === 'win' && wins >= losses + 3) return `${opening}: ${wins}-${losses} para ti en ${row.games}. Esta apertura está empezando a requerir medidas administrativas.`;
+  }
+
+  const difficulty = difficultySummary(record, context.difficulty);
+  if (difficulty && difficulty.games >= 6 && difficulty.games % 3 === 0) {
+    if (outcome === 'loss' && difficulty.losses >= difficulty.wins + 3) return `Nivel ${difficulty.level}: balance reciente ${difficulty.wins}-${difficulty.losses}. Sigues volviendo al mismo mostrador a presentar la misma reclamación.`;
+    if (outcome === 'win' && difficulty.wins >= difficulty.losses + 3) return `Nivel ${difficulty.level}: últimamente vas ${difficulty.wins}-${difficulty.losses}. Consta en acta y me irrita de manera perfectamente objetiva.`;
+  }
+  return null;
 }
 
 export function resultMemoryComment(outcome, rivalry, context = {}) {
@@ -143,7 +295,13 @@ export function resultMemoryComment(outcome, rivalry, context = {}) {
     if (facts.decider) return `La decisiva es mía: serie ${series.cpuWins}-${series.humanWins}. El expediente agradece tu colaboración.`;
     return `Serie cerrada ${series.cpuWins}-${series.humanWins}. Puedes llamarlo revancha si eso ayuda al proceso de duelo.`;
   }
-  if (series && !series.winner) return `Marcador de la serie: tú ${series.humanWins}, yo ${series.cpuWins}. Todavía quedan formas creativas de empeorarlo.`;
+  if (series && !series.winner) {
+    const moment = seriesLiveMoment(series);
+    if (moment?.kind === 'decider') return `Todo o nada: ${series.humanWins}-${series.cpuWins}. La próxima victoria cierra la serie.`;
+    if (moment?.kind === 'human-match-point') return `Punto de serie para ti: ${series.humanWins}-${series.cpuWins}. Una más y firmas el acta.`;
+    if (moment?.kind === 'cpu-match-point') return `Punto de serie para mí: ${series.humanWins}-${series.cpuWins}. Conviene que la siguiente te importe bastante.`;
+    return null;
+  }
 
   const latest = Array.isArray(record.recentGames) ? record.recentGames[0] : null;
   if (outcome === 'win' && milestones.fastestWinMoves && latest?.date === milestones.fastestWinDate) {
@@ -151,6 +309,8 @@ export function resultMemoryComment(outcome, rivalry, context = {}) {
   }
   if (outcome === 'loss' && streak <= -3) return `${Math.abs(streak)} derrotas seguidas. El expediente ya no necesita interpretación, sólo índice.`;
   if (outcome === 'win' && streak >= 3) return `${streak} victorias seguidas. Empiezo a considerar el sabotaje como herramienta pedagógica.`;
+  const career = resultCareerMemory(record, outcome, context);
+  if (career) return career;
   if (outcome === 'draw') return 'Tablas. Hemos empleado una cantidad notable de electricidad para no resolver absolutamente nada.';
   return null;
 }

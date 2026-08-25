@@ -351,7 +351,7 @@
 .admin-subview-heading h2 { margin: .1rem 0 0; }
 .admin-observability-launcher-kpis {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .45rem;
 }
 .admin-observability-launcher-kpis > div {
@@ -444,3 +444,46 @@
   border-top: 1px solid var(--border, rgba(255,255,255,.12));
 }
 .admin-users-heading h2 { margin-bottom: 0.25rem; }
+
+/* v16.6dm43k · prioridad única de entrenamiento basada en datos reales */
+.training-now-card {
+  margin: .9rem 0 1rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(214,184,111,.24);
+  border-left: 4px solid var(--brass);
+  border-radius: 12px;
+  background: rgba(214,184,111,.055);
+}
+.training-now-card.priority-high { border-left-color: var(--danger); }
+.training-now-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
+.training-now-heading h3 { margin: .12rem 0 0; font-size: 1.08rem; }
+.training-now-card > p { margin: .7rem 0; color: var(--parchment); line-height: 1.5; }
+.primary-training-cta { margin-top: .8rem; }
+.training-now-no-material { display: block; margin-top: .75rem; }
+@media (max-width: 620px) {
+  .training-now-heading { align-items: flex-start; }
+  .training-now-card { padding: .9rem; }
+}
+
+/* v16.6dm43m · narrativa ligera para series BO3/BO5 */
+.series-live-strip { display:flex; align-items:center; justify-content:space-between; gap:.7rem; }
+.series-live-strip strong { font:700 .62rem var(--font-mono); letter-spacing:.08em; color:var(--brass); white-space:nowrap; }
+.series-endgame-moment { display:grid; gap:.18rem; margin:.6rem 0 .85rem; padding:.65rem .75rem; border:1px solid rgba(214,184,111,.18); border-radius:10px; background:rgba(214,184,111,.045); }
+.series-endgame-moment > span { font:700 .6rem var(--font-mono); letter-spacing:.09em; color:var(--brass); }
+.series-endgame-moment > strong { font-size:.92rem; }
+.series-endgame-moment > small { color:var(--parchment-dim); line-height:1.35; }
+.series-endgame-moment.cpu-match-point { border-left:3px solid var(--danger); }
+@media (max-width:620px) { .series-live-strip { align-items:flex-start; flex-direction:column; gap:.25rem; } }
+
+
+/* dm43q · Admin: salud técnica primero, presencia después, sin telemetría nueva */
+.admin-presence-block{display:grid;gap:.6rem;margin:.85rem 0 1rem;padding:.8rem;border:1px solid rgba(255,255,255,.08);border-radius:.65rem;background:rgba(255,255,255,.012)}
+.admin-presence-block-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:.75rem;flex-wrap:wrap}.admin-presence-block-heading h3{margin:.1rem 0 0}.admin-presence-block-heading>small{color:var(--parchment-dim);font-size:.68rem}
+.admin-release-summary{margin-top:.1rem}.admin-release-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.45rem}.admin-release-summary-grid>span{display:grid;gap:.12rem;padding:.45rem;border-radius:.45rem;background:rgba(255,255,255,.025);text-align:center}.admin-release-summary-grid b{font-family:var(--font-mono);font-size:.9rem}
+@media(max-width:700px){.admin-release-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* v16.6dm43t · rivalidad compacta, veteranos memorables y logros discretos */
+.rivalry-dossier{display:grid;gap:.75rem}.rivalry-dossier-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem}.rivalry-dossier-heading h2{margin:.12rem 0 0}.rivalry-dossier-lead{font:700 .68rem var(--font-mono);letter-spacing:.06em;padding:.36rem .5rem;border-radius:999px;border:1px solid rgba(255,255,255,.1);white-space:nowrap}.rivalry-dossier-lead.lead-human{color:var(--success)}.rivalry-dossier-lead.lead-cpu{color:var(--danger)}.rivalry-dossier-lead.lead-even{color:var(--parchment-dim)}.rivalry-dossier-more{margin-top:.1rem}.rivalry-memory-list{display:grid;gap:.4rem;margin-top:.7rem;padding-top:.65rem;border-top:1px solid rgba(255,255,255,.07)}.rivalry-memory-list>span{font-size:.8rem;color:var(--parchment-dim);line-height:1.4}
+.army-unit-legacy{display:grid;gap:.22rem;margin:.8rem 0;padding:.75rem .8rem;border-left:3px solid var(--brass);border-radius:.45rem;background:rgba(214,184,111,.045)}.army-unit-legacy>strong{font-size:1rem}.army-unit-legacy>p{margin:0;color:var(--parchment);line-height:1.4}.army-unit-legacy>small{color:var(--parchment-dim)}
+.achievements-modal{display:grid;gap:.7rem}.achievements-featured{max-height:44vh;overflow:auto}.achievements-catalog{margin-top:.2rem}.achievements-catalog .army-list{max-height:50vh;overflow:auto;padding-top:.55rem}.achievements-empty{padding:.7rem;border:1px dashed rgba(255,255,255,.1);border-radius:.5rem}
+@media(max-width:620px){.rivalry-dossier-heading{flex-direction:column}.rivalry-dossier-lead{white-space:normal}.achievements-featured{max-height:none}.achievements-catalog .army-list{max-height:55vh}}

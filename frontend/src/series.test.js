@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createSeries, loadActiveSeries, loadSeriesHistory, recordSeriesGame, saveActiveSeries, seriesFacts, seriesHeadline, seriesHistoryStats, validateSeriesState } from './series.js';
+import { createSeries, loadActiveSeries, loadSeriesHistory, recordSeriesGame, saveActiveSeries, seriesFacts, seriesHeadline, seriesHistoryStats, seriesLiveMoment, seriesNextActionLabel, validateSeriesState } from './series.js';
 
 describe('series al mejor de N', () => {
   beforeEach(() => localStorage.clear());
@@ -71,6 +71,16 @@ describe('series al mejor de N', () => {
       humanSweeps: 1, cpuSweeps: 1,
       humanComebacks: 0, cpuComebacks: 1, deciders: 2,
     });
+  });
+
+  it('narra el momento vivo de la serie sólo desde el marcador real', () => {
+    const base = { bestOf: 5, winsNeeded: 3, winner: null, draws: 0 };
+    expect(seriesLiveMoment({ ...base, humanWins: 0, cpuWins: 0, games: [] })).toMatchObject({ kind: 'opening', label: 'ARRANQUE' });
+    expect(seriesLiveMoment({ ...base, humanWins: 2, cpuWins: 1, games: [{ outcome: 'win' }, { outcome: 'loss' }, { outcome: 'win' }] })).toMatchObject({ kind: 'human-match-point', label: 'PUNTO DE SERIE' });
+    expect(seriesLiveMoment({ ...base, humanWins: 1, cpuWins: 2, games: [{ outcome: 'loss' }, { outcome: 'win' }, { outcome: 'loss' }] })).toMatchObject({ kind: 'cpu-match-point', label: 'CONTRA LAS CUERDAS' });
+    const decider = { ...base, humanWins: 2, cpuWins: 2, games: [{ outcome: 'win' }, { outcome: 'loss' }, { outcome: 'win' }, { outcome: 'loss' }] };
+    expect(seriesLiveMoment(decider)).toMatchObject({ kind: 'decider', label: 'TODO O NADA' });
+    expect(seriesNextActionLabel(decider)).toBe('Jugar la decisiva');
   });
 
 });

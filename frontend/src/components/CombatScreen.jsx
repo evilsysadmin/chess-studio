@@ -42,6 +42,7 @@ export default function CombatScreen(props) {
         deadCount={Object.values(controller.roster.pieces).filter((p) => p.alive === false).length}
         deadRosterEntries={controller.deadRosterEntries}
         handleStartBattleClick={controller.handleStartBattleClick}
+        handleQuickStartBattle={controller.handleQuickStartBattle}
         showArmy={controller.showArmy}
         setShowArmy={controller.setShowArmy}
         showDeployment={controller.showDeployment}

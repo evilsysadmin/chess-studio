@@ -171,12 +171,10 @@ export async function openCampaignBriefing(page) {
 export async function openDeployment(page) {
   const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
 
-  // Current campaign UX opens Mesa de Guerra automatically as soon as the
-  // briefing accepts "PREPARAR EJÉRCITO". Older UX stopped first on the
-  // preparation screen and required a second "PREPARAR DESPLIEGUE" click.
-  // Support both transitions, but never click a button hidden *behind* the
-  // deployment overlay: Playwright correctly waits for that occlusion and the
-  // whole test used to die on the global timeout.
+  // La ruta normal de campaña usa defaults en un clic y ya no abre la Mesa
+  // de Guerra automáticamente. Este helper entra explícitamente por la ruta
+  // avanzada de personalización, pero conserva tolerancia con builds antiguas
+  // que montaban el overlay directamente.
   if (await deployment.isVisible().catch(() => false)) return deployment;
 
   const enterPreparation = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
@@ -195,7 +193,7 @@ export async function openDeployment(page) {
     }
   }
 
-  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR/i });
+  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Personalizar despliegue/i });
   await expect(reviewDeployment).toBeVisible();
   await reviewDeployment.click();
   await dismissTutorialIfVisible(page);

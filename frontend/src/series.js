@@ -148,6 +148,45 @@ export function seriesStatusText(series) {
   return `Mejor de ${series.bestOf} · ${seriesScoreText(series)}`;
 }
 
+// Narrativa puramente derivada del marcador. No añade estado, azar ni hechos
+// inventados: sirve para que BO3/BO5 se sientan como una serie sin convertir
+// la pantalla en otro modo de juego distinto.
+export function seriesLiveMoment(series) {
+  if (!series) return null;
+  if (series.winner) {
+    return {
+      kind: 'finished',
+      label: 'SERIE CERRADA',
+      headline: seriesHeadline(series),
+      detail: 'El resultado ya está archivado en el expediente de series.',
+    };
+  }
+
+  const winsNeeded = Number(series.winsNeeded || Math.floor(Number(series.bestOf || 3) / 2) + 1);
+  const humanWins = Number(series.humanWins || 0);
+  const cpuWins = Number(series.cpuWins || 0);
+  const played = Array.isArray(series.games) ? series.games.length : 0;
+  const humanNeed = Math.max(0, winsNeeded - humanWins);
+  const cpuNeed = Math.max(0, winsNeeded - cpuWins);
+
+  if (played === 0) return { kind: 'opening', label: 'ARRANQUE', headline: `Mejor de ${series.bestOf}`, detail: `Primero en llegar a ${winsNeeded} victorias.` };
+  if (humanNeed === 1 && cpuNeed === 1) return { kind: 'decider', label: 'TODO O NADA', headline: 'La próxima victoria cierra la serie', detail: `Marcador ${humanWins}-${cpuWins}. Unas tablas sólo aplazan la sentencia.` };
+  if (humanNeed === 1) return { kind: 'human-match-point', label: 'PUNTO DE SERIE', headline: 'Puedes cerrarla en la siguiente', detail: `Mandas ${humanWins}-${cpuWins}; una victoria más y se acabó.` };
+  if (cpuNeed === 1) return { kind: 'cpu-match-point', label: 'CONTRA LAS CUERDAS', headline: 'La CPU puede cerrar la serie', detail: `Vas ${humanWins}-${cpuWins}; necesitas responder antes de que firme el acta.` };
+  if (humanWins > cpuWins) return { kind: 'leading', label: 'VENTAJA', headline: `Mandas ${humanWins}-${cpuWins}`, detail: 'La siguiente puede convertir ventaja en punto de serie.' };
+  if (cpuWins > humanWins) return { kind: 'trailing', label: 'TOCA REMONTAR', headline: `Vas ${humanWins}-${cpuWins}`, detail: 'La serie sigue abierta, pero ya no sobra margen.' };
+  return { kind: 'tied', label: 'IGUALADA', headline: `Marcador ${humanWins}-${cpuWins}`, detail: 'Nadie tiene aún punto de serie.' };
+}
+
+export function seriesNextActionLabel(series) {
+  const moment = seriesLiveMoment(series);
+  if (!moment || moment.kind === 'finished') return 'Volver al menú';
+  if (moment.kind === 'decider') return 'Jugar la decisiva';
+  if (moment.kind === 'human-match-point') return 'Intentar cerrar la serie';
+  if (moment.kind === 'cpu-match-point') return 'Seguir vivo en la serie';
+  return 'Siguiente partida de la serie';
+}
+
 
 
 function completedSeriesRows(history) {

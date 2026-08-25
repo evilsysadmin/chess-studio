@@ -131,6 +131,19 @@ export function deriveRpgProfile(history = [], archive = {}, career = {}) {
   return { title, games, attributes, leaderId: leader?.id || null };
 }
 
+export function summarizeRpgProfile(profile = {}) {
+  const measured = (Array.isArray(profile?.attributes) ? profile.attributes : []).filter((attribute) => Number.isFinite(attribute?.value) && Number(attribute?.sample) > 0);
+  const leader = measured.find((attribute) => attribute.id === profile?.leaderId) || [...measured].sort((a, b) => b.value - a.value)[0] || null;
+  const lowest = measured.length > 1 ? [...measured].filter((attribute) => attribute.id !== leader?.id).sort((a, b) => a.value - b.value)[0] || null : null;
+  return {
+    title: profile?.title || 'Recluta estadístico',
+    games: Math.max(0, Number(profile?.games) || 0),
+    measuredCount: measured.length,
+    leader,
+    lowest,
+  };
+}
+
 export function lastDailyCells(solvedDates = [], days = 28, now = new Date()) {
   const solved = new Set(Array.isArray(solvedDates) ? solvedDates : []);
   const out = [];

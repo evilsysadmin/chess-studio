@@ -806,3 +806,13 @@
   .mode-tutorial-tip-button.is-featured { animation: none; }
 }
 
+
+/* v16.6dm43n · profundidad de campaña detrás de un clic; camino normal = jugar */
+.campaign-army-glance { display:grid; gap:.45rem; padding:.72rem .78rem; border:1px solid rgba(214,184,111,.15); border-radius:10px; background:rgba(255,255,255,.025); }
+.campaign-army-glance-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:.7rem; }
+.campaign-army-glance-heading > span { font:700 .58rem var(--font-mono); letter-spacing:.08em; color:var(--parchment-dim); }
+.campaign-army-glance-heading > strong { font-size:.78rem; text-align:right; }
+.campaign-army-glance-facts { display:flex; gap:.55rem; flex-wrap:wrap; color:var(--parchment-dim); font-size:.68rem; }
+.campaign-army-glance-facts span { padding:.2rem .42rem; border-radius:999px; background:rgba(255,255,255,.035); }
+.campaign-army-glance > small { color:var(--parchment-dim); line-height:1.4; }
+@media (max-width:620px) { .campaign-army-glance-heading { flex-direction:column; gap:.25rem; } .campaign-army-glance-heading > strong { text-align:left; } }

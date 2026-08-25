@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers } from './adminFormatting.js';
+import { adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from './adminFormatting.js';
 
 describe('formato temporal del panel admin', () => {
   it('usa español y reloj de 24 horas sin AM/PM', () => {
@@ -48,6 +48,16 @@ describe('formato temporal del panel admin', () => {
     expect(filterAdminUsers(users, 'combat').map((u) => u.username)).toEqual(['bea']);
     expect(filterAdminUsers(users, 'tournament').map((u) => u.username)).toEqual(['cora']);
     expect(filterAdminUsers(users, 'insights').map((u) => u.username)).toEqual(['dani']);
+  });
+
+
+  it('resume versiones de clientes sin contar al admin actual', () => {
+    expect(summarizeAdminClientReleases([
+      { username:'admin', clientRelease:'v16.6dm43t' },
+      { username:'ana', clientRelease:'v16.6dm43t' },
+      { username:'bea', clientRelease:'v16.6dm43n' },
+      { username:'cora', clientRelease:null },
+    ], 'admin', 'v16.6dm43t')).toEqual({ current:1, outdated:1, newer:0, different:0, unknown:1 });
   });
 
 });

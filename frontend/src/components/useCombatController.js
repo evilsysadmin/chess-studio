@@ -26,6 +26,7 @@ import {
   deploymentSummary,
   ensureDeploymentState,
   isDeploymentReadyForBattle,
+  autofillDeployment,
 } from '../combatDeployment.js';
 import { techniqueTargetsFor, techniqueAttackChance, resolveTechniqueAttack, techniqueById } from '../combatTechniques.js';
 import { checkAchievements } from '../achievements.js';
@@ -218,13 +219,45 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     runDeploymentStartGate(startBattle);
   }
 
-  function startBattle() {
-    if (!guardBattleStart()) return;
+  function handleQuickStartBattle() {
+    if (!requireDeploymentConfirmation) {
+      handleStartBattleClick();
+      return true;
+    }
+    if (deadRosterEntries.length > 0) {
+      setShowDeployment(true);
+      onError?.('Hay bajas pendientes. Decide si revivir o reemplazar antes de entrar en combate.');
+      return false;
+    }
+
+    let candidate = roster;
+    if (!isDeploymentReadyForBattle(candidate)) candidate = autofillDeployment(candidate, { preferVeterans: true });
+    if (!isDeploymentReadyForBattle(candidate)) {
+      setShowDeployment(true);
+      onError?.('No se pudo completar una formación válida automáticamente. Revisa el despliegue.');
+      return false;
+    }
+
+    if (candidate !== roster) {
+      setRoster(candidate);
+      saveRoster(candidate);
+    }
+    setDeploymentConfirmed(true);
+    setShowDeployment(false);
+    startBattle({ rosterOverride: candidate, deploymentValidated: true });
+    return true;
+  }
+
+  function startBattle(options = {}) {
+    const rosterOverride = options?.rosterOverride || null;
+    const deploymentValidated = options?.deploymentValidated === true;
+    if (!deploymentValidated && !guardBattleStart()) return;
     const resolved = forcedHumanColor || resolveHumanColor(colorChoice);
 
     // Se cierra acá la ventana de revivir: cualquier pieza que sigue caída
     // sin que la hayas recuperado pierde su veteranía a partir de ahora; el slot volverá como nivel 1.
-    const activeRoster = ensureDeploymentState(expireDeadPieces(roster));
+    const sourceRoster = rosterOverride || roster;
+    const activeRoster = ensureDeploymentState(expireDeadPieces(sourceRoster));
     if (activeRoster !== roster) {
       setRoster(activeRoster);
       saveRoster(activeRoster);
@@ -978,7 +1011,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
     pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
     showArmy, setShowArmy, showDeployment, setShowDeployment, deploymentConfirmed, requireDeploymentConfirmation, handleConfirmDeployment, localChess, legalTargets,
-    pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick,
+    pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick, handleQuickStartBattle,
     startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
     handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,

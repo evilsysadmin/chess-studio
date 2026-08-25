@@ -10,16 +10,18 @@ describe('remote narrative wiring', () => {
     expect(game).toContain('requestRemoteNarrativeDetached(');
     expect(game).toContain('cooldownGate: remoteNarrativeGateRef.current');
     expect(game).toContain('eventType: comment.event?.type');
+    expect(game).toContain('memory,');
   });
 
   it('conserva el comentario procedural como fallback de red', () => {
     expect(game).toContain('const showLocal = () => showCpuComment');
     expect(game).toContain('onUnavailable: showLocal');
+    expect(game).toContain('onText: (text) => showCpuComment({ ...comment, text }, meta)');
   });
 
   it('no envía hechos remotos antes de que FastAPI confirme la jugada', () => {
     const apiCommit = game.indexOf('await Promise.all([api.playMove');
-    const humanNarrative = game.indexOf("showNoteworthy(humanComment, 'human');", apiCommit);
+    const humanNarrative = game.indexOf("showNoteworthy(humanComment, 'human', { history: updated.history });", apiCommit);
     expect(apiCommit).toBeGreaterThan(-1);
     expect(humanNarrative).toBeGreaterThan(apiCommit);
     expect(game).toContain("showNoteworthy(humanComment, 'human', { allowRemote: false });");

@@ -4,14 +4,14 @@ import { buildHomeToday } from './homeToday.js';
 describe('Home · Hoy', () => {
   it('resume reto diario, racha y última partida terminada sin inventar datos', () => {
     const summary = buildHomeToday({
-      daily: { solvedDates: ['2026-08-23'], streak: 4, bestStreak: 9 },
+      daily: { solvedDates: ['2026-08-23'], streak: 4, bestStreak: 9, results: { '2026-08-23': { solved: true, clean: false } } },
       todayKey: '2026-08-23',
       activity: [
         { state: 'started', outcome: null, modeLabel: 'Partida rápida' },
         { state: 'finished', outcome: 'win', modeLabel: 'Torneo', date: '2026-08-22T20:00:00Z' },
       ],
     });
-    expect(summary).toMatchObject({ dailySolved: true, streak: 4, bestStreak: 9 });
+    expect(summary).toMatchObject({ dailySolved: true, streak: 4, bestStreak: 9, dailyHeadline: 'Resuelto. Hubo negociación.' });
     expect(summary.lastResult).toMatchObject({ label: 'Victoria', modeLabel: 'Torneo' });
   });
 
@@ -20,6 +20,8 @@ describe('Home · Hoy', () => {
       dailySolved: false,
       streak: 0,
       bestStreak: 0,
+      dailyHeadline: 'Desafío de hoy pendiente',
+      dailyDetail: 'Una posición. Cero excusas administrativas.',
       lastResult: null,
     });
   });

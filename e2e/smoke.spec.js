@@ -63,19 +63,20 @@ test('Combat Chess · Campaña abre el mapa estratégico y mantiene la intel ocu
 });
 
 
-test('Combat Chess · Campaña obliga a confirmar despliegue antes de iniciar combate', async ({ page }) => {
+test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el despliegue manual opcional', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
 
-  await expect(page.getByRole('button', { name: /INICIAR COMBATE/i })).toHaveCount(0);
-  const deployment = await openDeployment(page);
-  const confirm = deployment.getByRole('button', { name: 'CONFIRMAR DESPLIEGUE', exact: true });
-  await expect(confirm).toBeEnabled();
-  await confirm.click();
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  await expect(page.getByLabel('Resumen de preparación')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Personalizar despliegue/i })).toBeVisible();
 
-  await expect(deployment).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /INICIAR COMBATE/i })).toBeVisible();
+  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  await expect(quick).toBeVisible();
+  await quick.click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 });
 
 
@@ -109,12 +110,11 @@ test('Combat Chess · una batalla activa sobrevive a reload y no vuelve a Setup'
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
-  const deployment = await openDeployment(page);
-  await deployment.getByRole('button', { name: 'CONFIRMAR DESPLIEGUE', exact: true }).click();
-
-  const start = page.getByRole('button', { name: /INICIAR COMBATE/i });
-  await expect(start).toBeVisible();
-  await start.click();
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  await expect(quick).toBeVisible();
+  await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
   await page.reload();

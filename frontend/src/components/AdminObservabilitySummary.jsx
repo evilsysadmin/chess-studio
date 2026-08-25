@@ -39,10 +39,9 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
         <div><span>5xx · 24 h</span><strong>{metric(summary.error5xxPercent, '%')}</strong></div>
         <div><span>Mongo</span><strong>{summary.databaseLabel}</strong></div>
         <div><span>Workers AI</span><strong>{summary.aiCloudflarePercent == null ? '—' : `${metric(summary.aiCloudflarePercent, '%')} CF`}</strong></div>
-        <div><span>Usuarios online</span><strong>{metric(summary.onlineUsers)}</strong></div>
       </div>
       <div className="admin-observability-launcher-actions">
-        <p className="hint-text">Resumen de 24 h. Dashboards, histórico, percentiles y auto-refresh viven en su propia vista.</p>
+        <p className="hint-text">Resumen técnico de 24 h. Presencia y usuarios van debajo; dashboards e histórico viven en su propia vista.</p>
         <button type="button" className="secondary-btn" onClick={onOpen}>Abrir observabilidad →</button>
       </div>
     </section>

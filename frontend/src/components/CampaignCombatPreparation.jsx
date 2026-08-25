@@ -3,6 +3,7 @@ import ArmyScreen from './ArmyScreen.jsx';
 import CombatDeploymentView from './CombatDeploymentView.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
+import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { deploymentSummary } from '../combatDeployment.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
@@ -24,6 +25,7 @@ export default function CampaignCombatPreparation({
   rosterCount,
   deadCount,
   handleStartBattleClick,
+  handleQuickStartBattle,
   showArmy,
   setShowArmy,
   showDeployment,
@@ -58,9 +60,9 @@ export default function CampaignCombatPreparation({
   const nextAction = deadCount > 0
     ? `Tienes ${deadCount} baja${deadCount === 1 ? '' : 's'} pendiente${deadCount === 1 ? '' : 's'}. Resuélvela antes de combatir.`
     : !deploy.ready
-      ? `Faltan ${missing} puesto${missing === 1 ? '' : 's'}. Puedes completar la formación automáticamente o colocar las unidades tú.`
+      ? `Faltan ${missing} puesto${missing === 1 ? '' : 's'}. Puedes jugar con la recomendada o personalizarla.`
       : !deploymentConfirmed
-        ? 'La formación está completa. Revísala y confírmala.'
+        ? 'La formación está lista. Puedes jugar ya o personalizarla.'
         : 'Todo listo. Puedes iniciar el combate.';
 
   return (
@@ -92,21 +94,29 @@ export default function CampaignCombatPreparation({
 
         <div className="campaign-operation-primary-zone campaign-preparation-primary-zone friendly-primary-zone">
           <div>
-            <span>{deploymentConfirmed ? 'LISTO PARA COMBATIR' : 'DESPLIEGUE'}</span>
-            <small>{deploymentConfirmed ? 'La formación ya está confirmada.' : 'Puedes revisar las piezas antes de confirmar.'}</small>
+            <span>{deadCount > 0 ? 'BAJAS PENDIENTES' : deploymentConfirmed ? 'LISTO PARA COMBATIR' : 'JUGAR CON DEFAULTS'}</span>
+            <small>{deadCount > 0
+              ? 'Una baja puede implicar perder una identidad: aquí sí te pedimos decidir.'
+              : deploymentConfirmed
+                ? 'La formación ya está confirmada.'
+                : deploy.ready
+                  ? 'Un clic usa la formación actual.'
+                  : 'Un clic completa los huecos con la formación recomendada y entra.'}</small>
           </div>
-          {deploymentConfirmed ? (
+          {deadCount > 0 ? (
+            <button type="button" className="primary-btn campaign-main-cta" onClick={() => setShowDeployment(true)}>RESOLVER BAJAS →</button>
+          ) : deploymentConfirmed ? (
             <button type="button" className="primary-btn campaign-main-cta" onClick={handleStartBattleClick}>INICIAR COMBATE →</button>
           ) : (
-            <button type="button" className="primary-btn campaign-main-cta" onClick={() => setShowDeployment(true)}>
-              {deploy.ready ? 'REVISAR Y CONFIRMAR →' : 'PREPARAR DESPLIEGUE →'}
+            <button type="button" className="primary-btn campaign-main-cta" onClick={handleQuickStartBattle}>
+              {deploy.ready ? 'JUGAR CON ESTA FORMACIÓN →' : 'JUGAR CON FORMACIÓN RECOMENDADA →'}
             </button>
           )}
         </div>
 
-        {deadCount === 0 && !deploy.ready && (
-          <button type="button" className="secondary-btn campaign-recommended-formation" onClick={handleAutofillDeployment}>
-            Usar formación recomendada
+        {deadCount === 0 && !deploymentConfirmed && (
+          <button type="button" className="secondary-btn campaign-recommended-formation" onClick={() => setShowDeployment(true)}>
+            Personalizar despliegue
           </button>
         )}
 
@@ -136,6 +146,7 @@ export default function CampaignCombatPreparation({
             <span>Efectivos: <b>{rosterCount}</b> · Reserva: <b>{deploy.reserveCount}</b> · Veteranos: <b>{veteranCount}</b> · XP: <b>{roster.combatXp || 0}</b></span>
             <button type="button" className="secondary-btn combat-reset-link" onClick={handleResetRoster}>Reiniciar progreso persistente</button>
           </div>
+          <CampaignArmyGlance roster={roster} />
           <CombatServicePanel summary={serviceSummary} compact />
         </details>
       </section>

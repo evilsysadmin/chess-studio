@@ -106,3 +106,14 @@ export function adminClientReleaseState(clientRelease, currentRelease) {
   if (cmp > 0) return { id: 'newer', label: 'Más nueva' };
   return { id: 'different', label: 'Distinta' };
 }
+
+
+export function summarizeAdminClientReleases(users = [], currentAdmin = null, currentRelease = '') {
+  const counts = { current: 0, outdated: 0, newer: 0, different: 0, unknown: 0 };
+  for (const user of users || []) {
+    if (user?.username === currentAdmin) continue;
+    const state = adminClientReleaseState(user?.clientRelease, currentRelease).id;
+    counts[state] = (counts[state] || 0) + 1;
+  }
+  return counts;
+}

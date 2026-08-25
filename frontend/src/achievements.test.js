@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS } from './achievements.js';
+import { checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS, featuredAchievements } from './achievements.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -80,6 +80,32 @@ describe('checkAchievements', () => {
     expect(unlocked.has('daily_streak_3')).toBe(true);
     expect(unlocked.has('daily_streak_7')).toBe(true);
     expect(unlocked.has('daily_streak_30')).toBe(false);
+  });
+
+  it('desbloquea sólo hitos de rivalidad demostrados por el expediente', () => {
+    localStorage.setItem('chess-study-cpu-rivalry', JSON.stringify({
+      version: 3,
+      totalGames: 25,
+      record: {
+        games: 25,
+        wins: 12,
+        draws: 3,
+        losses: 10,
+        bestHumanStreak: 3,
+        milestones: { highestDifficultyWin: 80 },
+      },
+      incidents: {},
+    }));
+    const { unlocked } = checkAchievements();
+    expect(unlocked.has('rivalry_25')).toBe(true);
+    expect(unlocked.has('rivalry_streak_3')).toBe(true);
+    expect(unlocked.has('rivalry_hard_75')).toBe(true);
+  });
+
+  it('selecciona pocos distintivos destacados y nunca enseña bloqueados', () => {
+    const unlocked = new Set(['ten_games', 'crime_missed_mate', 'rivalry_hard_75']);
+    const featured = featuredAchievements(unlocked, 2);
+    expect(featured.map((item) => item.id)).toEqual(['rivalry_hard_75', 'crime_missed_mate']);
   });
 
   it('persiste entre llamadas (usa loadUnlocked)', () => {

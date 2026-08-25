@@ -26,7 +26,7 @@ import {
   shouldCommitManualPortraitRefresh,
 } from '../aiPlayerPortrait.js';
 import { findWorstMoveEver } from '../gameReport.js';
-import { generateRoast, generateCoaching, trainingTargetForCoaching } from '../insights.js';
+import { generateRoast, generateCoaching, selectTrainingNow, trainingTargetForCoaching } from '../insights.js';
 import { formatLongMove } from '../notation.js';
 import { loadUnlocked, ACHIEVEMENTS } from '../achievements.js';
 import { loadPuzzlesSolved } from '../puzzleStats.js';
@@ -244,6 +244,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     item,
     target: trainingTargetForCoaching(item, personalPuzzles),
   })), [coaching, personalPuzzles]);
+  const trainingNow = useMemo(() => selectTrainingNow(coaching, personalPuzzles), [coaching, personalPuzzles]);
   const trainingDossier = useMemo(() => buildTrainingPlanDossier({
     insights,
     coaching,
@@ -541,6 +542,29 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             </div>
             <span className="coaching-count">{coaching.length} prioridades</span>
           </div>
+          {trainingNow && (
+            <article className={`training-now-card priority-${trainingNow.item.priority}`} aria-label="Entrenamiento recomendado ahora">
+              <div className="training-now-heading">
+                <div>
+                  <span className="section-label">AHORA MISMO</span>
+                  <h3>{trainingNow.item.title}</h3>
+                </div>
+                <span className="coaching-priority">{trainingNow.item.priorityLabel}</span>
+              </div>
+              <p>{trainingNow.item.diagnosis}</p>
+              <div className="coaching-action"><strong>Sesión recomendada:</strong> {trainingNow.item.action}</div>
+              {trainingNow.target ? (
+                <div className="coaching-training-cta primary-training-cta">
+                  <button type="button" className="primary-btn" onClick={() => onOpenPuzzles(trainingNow.target.source, trainingNow.target.rush, trainingNow.target.filter)}>
+                    Entrenar esto ahora →
+                  </button>
+                  <small>{trainingNow.target.count} {trainingNow.target.count === 1 ? 'posición real disponible' : 'posiciones reales disponibles'}</small>
+                </div>
+              ) : (
+                <small className="hint-text training-now-no-material">Prioridad calculada con datos reales; aún no hay posiciones personales específicas para convertirla en ejercicio.</small>
+              )}
+            </article>
+          )}
           {trainingAiStatus === 'loading' && <p className="hint-text coaching-ai-status">Workers AI está ordenando las prioridades…</p>}
           {trainingAiText && (
             <div className="ai-task-card coaching-ai-plan">
@@ -566,7 +590,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             </div>
           )}
           <div className="coaching-grid">
-            {coachingWithTraining.map(({ item, target }, i) => (
+            {coachingWithTraining.filter(({ item }) => item !== trainingNow?.item).map(({ item, target }, i) => (
               <article className={`coaching-card priority-${item.priority}`} key={`${item.title}-${i}`}>
                 <div className="coaching-card-top">
                   <span className="coaching-priority">{item.priorityLabel}</span>

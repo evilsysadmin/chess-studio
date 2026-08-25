@@ -25,9 +25,9 @@ export function dailyPuzzle(pool, date = new Date()) {
 export function loadDailyChallenge() {
   try {
     const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, KEY) || '{}');
-    return { solvedDates: [], bestStreak: 0, ...parsed };
+    return { solvedDates: [], bestStreak: 0, results: {}, ...parsed, results: parsed?.results && typeof parsed.results === 'object' ? parsed.results : {} };
   } catch {
-    return { solvedDates: [], bestStreak: 0 };
+    return { solvedDates: [], bestStreak: 0, results: {} };
   }
 }
 
@@ -44,15 +44,43 @@ function streakFromDates(dates) {
   return streak;
 }
 
-export function markDailySolved(day = dailyChallengeDayKey()) {
+export function markDailySolved(day = dailyChallengeDayKey(), { clean = null } = {}) {
   const state = loadDailyChallenge();
-  if (!state.solvedDates.includes(day)) state.solvedDates.push(day);
+  const firstSolve = !state.solvedDates.includes(day);
+  const previousBest = Math.max(0, Number(state.bestStreak) || 0);
+  if (firstSolve) state.solvedDates.push(day);
   state.solvedDates = state.solvedDates.sort().slice(-120);
+  state.results = state.results && typeof state.results === 'object' ? state.results : {};
   const streak = streakFromDates(state.solvedDates);
-  state.bestStreak = Math.max(state.bestStreak || 0, streak);
+  if (!state.results[day]) {
+    state.results[day] = { solved: true, ...(typeof clean === 'boolean' ? { clean } : {}), newBest: firstSolve && streak > previousBest };
+  }
+  state.bestStreak = Math.max(previousBest, streak);
   setProfileStorageItem(KEY, JSON.stringify(state));
   return { ...state, streak };
 }
+
+export function dailyChallengeBrief(state = {}, day = dailyChallengeDayKey()) {
+  const solvedDates = Array.isArray(state?.solvedDates) ? state.solvedDates : [];
+  const solved = Boolean(day && solvedDates.includes(day));
+  const streak = Math.max(0, Number(state?.streak) || 0);
+  const bestStreak = Math.max(0, Number(state?.bestStreak) || 0);
+  const result = state?.results && typeof state.results === 'object' ? state.results[day] : null;
+
+  if (!solved) {
+    if (streak >= 7) return { solved, clean: null, headline: `Racha de ${streak} días en juego`, detail: 'Hoy toca defenderla. El tablero no acepta justificantes.' };
+    if (streak >= 2) return { solved, clean: null, headline: `${streak} días seguidos. Falta hoy.`, detail: 'Una posición y fuera. Luego ya puedes presumir.' };
+    return { solved, clean: null, headline: 'Desafío de hoy pendiente', detail: 'Una posición. Cero excusas administrativas.' };
+  }
+
+  const clean = typeof result?.clean === 'boolean' ? result.clean : null;
+  const newBest = Boolean(result?.newBest) && streak >= 2;
+  if (clean === true && newBest) return { solved, clean, headline: `Nueva mejor racha: ${streak} días`, detail: 'Y además limpio. Qué irritante nivel de competencia.' };
+  if (clean === true) return { solved, clean, headline: 'Resuelto a la primera', detail: streak ? `Racha intacta: ${streak} día${streak === 1 ? '' : 's'}.` : 'Trabajo limpio. Puedes seguir con tu vida.' };
+  if (clean === false) return { solved, clean, headline: 'Resuelto. Hubo negociación.', detail: streak ? `La racha sigue viva: ${streak} día${streak === 1 ? '' : 's'}.` : 'No fue limpio, pero cuenta. El expediente es misericordioso hoy.' };
+  return { solved, clean: null, headline: 'Desafío de hoy resuelto', detail: streak ? `Racha actual: ${streak} día${streak === 1 ? '' : 's'}.` : 'Hecho. Sin necesidad de redactar un informe.' };
+}
+
 
 function activeStreakFromDates(dates, now = new Date()) {
   const unique = [...new Set(dates)].sort().reverse();

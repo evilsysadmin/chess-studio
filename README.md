@@ -1,3 +1,26 @@
+### v16.6dm43t · Rivalidad CPU + veteranos memorables + distintivos discretos
+
+- Añade un expediente compacto de rivalidad contra la CPU: marcador, racha, forma reciente e incidente dominante visibles; aperturas, hitos y antecedentes quedan detrás de «Ver expediente completo». Todo se deriva del historial/rivalidad ya persistidos.
+- Combat Chess hace más memorables los veteranos dentro de su dossier: cada unidad recibe un «Legado» factual (jefes, bajas, supervivencias, revives, veterania) y, si existe, muestra su última condecoración real. La pantalla principal de campaña y el camino «Jugar» no ganan complejidad.
+- Los logros pasan a presentarse como Distintivos: por defecto sólo se muestran hasta seis ya desbloqueados; el catálogo completo queda a un clic. Se añaden únicamente tres hitos de rivalidad medibles: 25 partidas, racha de tres y victoria contra dificultad 75+.
+- Sin nueva telemetría, sin cambios de CI/Render, sin nueva economía y sin cambios intencionados de reglas de ajedrez.
+
+### v16.6dm43n · Entrenamiento prioritario + rivalidad + series + Combat simple
+
+- **Qué entrenaría ahora** elige una sola prioridad a partir de datos medidos y favorece errores que ya tienen posiciones personales entrenables. El CTA aparece sólo cuando existe material real; Workers AI puede redactar el plan, pero no decide qué debilidad existe.
+- **Memoria CPU v2** amplía la rivalidad entre partidas con balances históricos de apertura, hitos de carrera y dificultad reciente. Los comentarios siguen siendo escasos: en series activas sólo habla ante punto de serie/decisiva o hechos realmente destacables.
+- **BO3/BO5 narrativas** derivan del marcador estados como Punto de serie, Contra las cuerdas y Todo o nada, con CTA contextual para la siguiente partida y sin crear estado narrativo paralelo.
+- **Combat Chess mantiene el camino simple**: si no hay bajas pendientes, el botón principal juega con la formación actual o completa huecos con defaults recomendados. Personalizar despliegue, veteranos, medallas, hoja de servicio y Memorial quedan detrás de un clic. Una baja pendiente sí obliga a decidir porque puede implicar pérdida permanente de identidad.
+- La profundidad de campaña usa sólo expedientes reales: un resumen opcional muestra veteranos con experiencia, condecorados, Memorial y un veterano destacado calculado desde batallas/supervivencias/bajas/bosses existentes.
+- El smoke crítico de Playwright cubre ahora el camino de Combat con defaults y mantiene la Mesa de Guerra como ruta avanzada.
+- Inventario estático esperado: 726 tests frontend / 119 archivos, 221 backend / 10, 15 E2E / 2 y 8 Worker / 1. Sin cambios intencionados en reglas de ajedrez normal.
+
+### v16.6dm43h · Cabecera centrada
+
+- Corrige el masthead principal: `Escuela de Ajedrez` queda centrado de verdad aunque exista el bloque de acciones/ajustes a la derecha.
+- El engranaje y el estado de guardado permanecen anclados a la derecha en escritorio; en móvil vuelven al flujo normal para evitar solapes.
+- Cambio exclusivamente visual, sin tocar navegación, gameplay ni sincronización.
+
 ### v16.6dm43g · Hotfix simple de perfil/CORS
 
 - Mantiene el pipeline simple de dm43e: `Preflight → [Frontend || Backend || Security/Docker || Playwright] → Terraform/Worker → Pages`. GitHub Actions no espera a Render ni compara SHAs del backend; Render conserva su despliegue independiente como antes.

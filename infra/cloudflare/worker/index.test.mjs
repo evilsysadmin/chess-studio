@@ -155,6 +155,31 @@ test('training_plan usa bucket/routing de análisis, sanitiza HECHOS y normaliza
   assert.doesNotMatch(prompt, /password|api_token/);
 });
 
+
+
+test('comentarios de partida conservan memoria contextual factual dentro de HECHOS', async () => {
+  const fake = fakeEnv();
+  const response = await worker.fetch(
+    await narrativeRequest({
+      event_type: 'MISSED_MATE',
+      facts: {
+        san: 'Qe2',
+        memory: {
+          incident: { occurrenceNumber: 3, previousOccurrences: 2 },
+          currentOpening: { name: 'Defensa Siciliana', games: 6, wins: 1, losses: 4 },
+        },
+      },
+    }),
+    fake.env,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(fake.calls.rates, [{ key: 'render-comments' }]);
+  const prompt = fake.calls.ai[0].options.messages.at(-1).content;
+  assert.match(prompt, /"memory"/);
+  assert.match(prompt, /"occurrenceNumber":3/);
+  assert.match(prompt, /"Defensa Siciliana"/);
+});
+
 test('player_portrait usa su bucket y generación específica', async () => {
   const fake = fakeEnv();
   const response = await worker.fetch(

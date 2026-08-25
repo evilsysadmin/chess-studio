@@ -4,7 +4,7 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, randomPuzzle } from '../puzzles.js';
 import { loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
-import { dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
+import { dailyChallengeBrief, dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
 import { puzzleRetryCost } from '../tournament.js';
@@ -50,6 +50,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const personalStats = useMemo(() => personalTrainingSummary(), [personalPuzzles]);
   const filteredPersonalCount = useMemo(() => personalPuzzles.filter((p) => matchesPersonalPuzzleFilter(p, initialFilter)).length, [personalPuzzles, initialFilter]);
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
+  const dailyBrief = useMemo(() => dailyChallengeBrief(dailyStats, puzzle.dailyKey), [dailyStats, puzzle.dailyKey]);
 
   useEffect(() => {
     setFen(puzzle.fen);
@@ -180,7 +181,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       setSolvedCount((n) => n + 1);
       incrementPuzzlesSolved();
       if (source === 'daily' && puzzle.dailyKey) {
-        setDailyStats(markDailySolved(puzzle.dailyKey));
+        setDailyStats(markDailySolved(puzzle.dailyKey, { clean: !personalHadError }));
         checkAchievements();
       }
       if (wrongThisPuzzle) {
@@ -310,7 +311,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           <p className="hint-text friendly-inline-note">Juegas con <b>{humanColor === 'w' ? 'blancas' : 'negras'}</b>. Elige pieza y destino; si fallas puedes volver a intentarlo.</p>
 
           {source === 'daily' && (
-            <p className="hint-text daily-challenge-note">📅 Reto de hoy · racha <b>{dailyStats.streak || 0}</b>{dailyStats.solvedDates?.includes(puzzle.dailyKey) ? ' · resuelto' : ''}</p>
+            <div className={`daily-challenge-note ${dailyBrief.solved ? 'is-solved' : ''}`}><b>📅 {dailyBrief.headline}</b><span>{dailyBrief.detail}</span></div>
           )}
           {source === 'personal' && (
             <p className="hint-text personal-puzzle-note">☠ Posición nacida de una de tus propias autopsias.{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>

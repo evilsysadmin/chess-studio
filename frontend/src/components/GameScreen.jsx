@@ -16,8 +16,8 @@ import { flagOutcome, flagPgnResult, formatClock } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
-import { startMemoryComment, openingMemoryComment, resultMemoryComment } from '../cpuMemory.js';
-import { loadSeriesHistory, seriesHistoryStats, seriesStatusText } from '../series.js';
+import { startMemoryComment, openingMemoryComment, resultMemoryComment, noteworthyMemoryFacts, noteworthyMemorySuffix } from '../cpuMemory.js';
+import { loadSeriesHistory, seriesHistoryStats, seriesLiveMoment, seriesNextActionLabel, seriesStatusText } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
@@ -208,7 +208,7 @@ export default function GameScreen({
     onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: outcome === 'draw' ? 'flag-insufficient-material' : 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
-        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0 });
+        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0, difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
         if (text) showCpuComment({ text });
       }, 1100);
     }
@@ -227,7 +227,7 @@ export default function GameScreen({
     onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: game.status, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
-        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0 });
+        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0, difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
         if (text) showCpuComment({ text });
       }, 1100);
     }
@@ -242,6 +242,8 @@ export default function GameScreen({
       const text = resultMemoryComment(last?.outcome || 'draw', loadRivalry(), {
         moves: game.history?.length || 0,
         series: seriesState,
+        difficulty: game.difficulty,
+        opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)),
       });
       if (text) showCpuComment({ text });
     }, 900);
@@ -284,16 +286,25 @@ export default function GameScreen({
     audienceReactionTimeout.current = setTimeout(() => setAudienceReaction(null), 4200);
   }
 
-  function showNoteworthy(comment, actor, { allowRemote = true } = {}) {
+  function showNoteworthy(comment, actor, { allowRemote = true, history = null } = {}) {
     if (!comment) return;
-    const ply = game.history?.length ?? 0;
+    const moveHistory = history || game.history || [];
+    const ply = moveHistory.length;
     const presentation = noteworthyPresentation(comment.event, actor, ply);
+    const rivalryBefore = loadRivalry();
     const recurrenceCount = recordRivalryIncident(comment.event, actor);
+    const opening = identifyOpening(moveHistory.map((move) => move?.san).filter(Boolean));
+    const memory = noteworthyMemoryFacts(rivalryBefore, comment.event, actor, {
+      occurrenceNumber: recurrenceCount,
+      opening,
+      difficulty: game.difficulty,
+      rematch: !!memoryContext.rematch,
+    });
     if (!zenModeRef.current && (presentation.cpu || presentation.audience)) playNoteworthySound(comment.event, actor);
     if (presentation.cpu) {
-      const suffix = recurrenceSuffix(comment.event, actor, recurrenceCount);
+      const localSuffix = `${recurrenceSuffix(comment.event, actor, recurrenceCount)}${noteworthyMemorySuffix(memory, comment.event, actor)}`;
       const meta = { actor, event: comment.event?.type, ply };
-      const showLocal = () => showCpuComment({ ...comment, text: `${comment.text}${suffix}` }, meta);
+      const showLocal = () => showCpuComment({ ...comment, text: `${comment.text}${localSuffix}` }, meta);
       if (!allowRemote) {
         showLocal();
       } else {
@@ -305,12 +316,15 @@ export default function GameScreen({
               ...comment.event,
               actor,
               ply,
+              memory,
             },
           },
           {
             token: getToken(),
             cooldownGate: remoteNarrativeGateRef.current,
-            onText: (text) => showCpuComment({ ...comment, text: `${text}${suffix}` }, meta),
+            // El remoto ya recibe memory dentro de HECHOS. No añadimos otra
+            // coletilla local encima para evitar repetir la misma estadística.
+            onText: (text) => showCpuComment({ ...comment, text }, meta),
             onUnavailable: showLocal,
           },
         );
@@ -459,11 +473,11 @@ export default function GameScreen({
       // quede escrito; aquí sólo sabemos que el backend ya confirmó la jugada.
       // La narrativa remota sólo recibe hechos de una jugada que el backend ya confirmó.
       // Sigue siendo fire-and-forget: no retrasa tablero, reloj ni persistencia.
-      showNoteworthy(humanComment, 'human');
+      showNoteworthy(humanComment, 'human', { history: updated.history });
 
       if (updated.lastMove && updated.lastMove.by === 'cpu') {
         cpuNoteworthy = noteworthyComment(optimistic.fen(), updated.lastMove, 'cpu');
-        showNoteworthy(cpuNoteworthy, 'cpu');
+        showNoteworthy(cpuNoteworthy, 'cpu', { history: updated.history });
         // 2) Llegó la respuesta de la CPU: animamos su jugada por separado.
         setBoardFen(updated.fen);
         setLastMoveSquares({ from: updated.lastMove.from, to: updated.lastMove.to });
@@ -633,6 +647,8 @@ export default function GameScreen({
   if (hintLoading) hintButtonLabel = 'Pensando…';
   else if (hintMode === 'paid') hintButtonLabel = `Pista (${currentHintCost} pts)`;
 
+  const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
+
   const topColor = humanColor === 'w' ? 'b' : 'w'; // el rival siempre arriba
   const bottomColor = humanColor;
   const topTime = topColor === 'w' ? whiteTime : blackTime;
@@ -666,7 +682,12 @@ export default function GameScreen({
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
           {!zenMode && memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin ELO</div>}
           {!zenMode && game.ghostStyle && <div className="series-strip ghost-strip">Modo Rival Fantasma · nivel {game.difficulty} · estilo derivado de tus partidas</div>}
-          {!zenMode && seriesState && <div className={`series-strip ${seriesState.winner ? 'finished' : ''}`}>{seriesStatusText(seriesState)}</div>}
+          {!zenMode && seriesState && (
+            <div className={`series-strip series-live-strip ${seriesState.winner ? 'finished' : ''}`}>
+              <span>{seriesStatusText(seriesState)}</span>
+              {liveSeriesMoment?.label && <strong>{liveSeriesMoment.label}</strong>}
+            </div>
+          )}
           {!zenMode && runState?.active && <div className="series-strip">{runState.mode === 'boss' ? `Boss Run · fase ${runState.stage + 1}/6 · CPU ${runState.difficulty}` : runState.mode === 'cup' ? `Copa · ${runState.completedStages || 0}/8 · ${runState.points || 0} pts · CPU ${runState.difficulty}` : `Racha · ${runState.wins} victorias · CPU ${runState.difficulty}`}</div>}
           {activeContract && <div className="contract-strip"><b>Contrato:</b> {activeContract.label} · {activeContract.text}</div>}
           {!zenMode && achievementToast && (
@@ -754,8 +775,15 @@ export default function GameScreen({
               ? game.turn === humanColor ? 'Ganó la CPU.' : '¡Ganaste la partida!'
               : 'La partida terminó en tablas.'}
           </p>
+          {seriesState && !seriesState.winner && liveSeriesMoment && (
+            <div className={`series-endgame-moment ${liveSeriesMoment.kind}`}>
+              <span>{liveSeriesMoment.label}</span>
+              <strong>{liveSeriesMoment.headline}</strong>
+              <small>{liveSeriesMoment.detail}</small>
+            </div>
+          )}
           {seriesState && !seriesState.winner && onNextSeriesGame ? (
-            <button className="primary-btn" onClick={onNextSeriesGame}>Siguiente partida de la serie</button>
+            <button className="primary-btn" onClick={onNextSeriesGame}>{seriesNextActionLabel(seriesState)}</button>
           ) : runState?.active && onNextRunGame ? (
             <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
           ) : (
