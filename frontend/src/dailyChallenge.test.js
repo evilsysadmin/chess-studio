@@ -4,6 +4,7 @@ import {
   currentDailyStreak,
   dailyChallengeBrief,
   dailyChallengeProgress,
+  dailyChallengeStats,
   dailyPuzzle,
   dailyPuzzles,
   markDailySolved,
@@ -52,5 +53,34 @@ describe('daily challenge · tres retos', () => {
     markDailySolved('2026-08-20', { slot: 'tactic', clean: false });
     const state = markDailySolved('2026-08-20', { slot: 'tactic', clean: true });
     expect(dailyChallengeProgress(state, '2026-08-20')).toMatchObject({ solvedCount: 1, cleanCount: 0 });
+  });
+
+  it('resume retos, días activos, plenos y plenos limpios sin duplicar', () => {
+    const state = {
+      solvedDates: ['2026-08-19', '2026-08-20'],
+      bestStreak: 2,
+      results: {
+        '2026-08-19': { slots: { tactic: { solved: true, clean: true } } },
+        '2026-08-20': { slots: {
+          tactic: { solved: true, clean: true },
+          precision: { solved: true, clean: true },
+          finish: { solved: true, clean: true },
+        } },
+      },
+    };
+    expect(dailyChallengeStats(state)).toEqual({
+      completedChallenges: 4,
+      activeDays: 2,
+      fullDays: 1,
+      cleanFullDays: 1,
+      bestStreak: 2,
+    });
+  });
+
+  it('cuenta el desafío único antiguo aunque sólo exista solvedDates', () => {
+    expect(dailyChallengeStats({ solvedDates: ['2026-08-20'], bestStreak: 1 })).toMatchObject({
+      completedChallenges: 1,
+      activeDays: 1,
+    });
   });
 });

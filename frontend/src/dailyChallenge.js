@@ -93,6 +93,31 @@ export function dailyChallengeProgress(state = {}, day = dailyChallengeDayKey())
   };
 }
 
+export function dailyChallengeStats(state = {}) {
+  const results = state?.results && typeof state.results === 'object' ? state.results : {};
+  const solvedDates = new Set(Array.isArray(state?.solvedDates) ? state.solvedDates : []);
+  let completedChallenges = 0;
+  let fullDays = 0;
+  let cleanFullDays = 0;
+
+  for (const day of new Set([...solvedDates, ...Object.keys(results)])) {
+    const progress = dailyChallengeProgress(state, day);
+    // Los perfiles del desafío único anterior pueden tener sólo solvedDates.
+    const solvedCount = progress.solvedCount || (solvedDates.has(day) ? 1 : 0);
+    completedChallenges += solvedCount;
+    if (progress.full) fullDays += 1;
+    if (progress.full && progress.cleanCount === DAILY_CHALLENGE_SLOTS.length) cleanFullDays += 1;
+  }
+
+  return {
+    completedChallenges,
+    activeDays: new Set([...solvedDates, ...Object.keys(results).filter((day) => dailyChallengeProgress(state, day).solvedCount > 0)]).size,
+    fullDays,
+    cleanFullDays,
+    bestStreak: Math.max(0, Number(state?.bestStreak) || 0),
+  };
+}
+
 export function markDailySolved(day = dailyChallengeDayKey(), { clean = null, slot = 'tactic' } = {}) {
   const state = loadDailyChallenge();
   const firstSolveOfDay = !state.solvedDates.includes(day);

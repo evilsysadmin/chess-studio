@@ -5,6 +5,7 @@ import {
   dailyChallengeBrief,
   dailyChallengeDayKey,
   dailyChallengeProgress,
+  dailyChallengeStats,
 } from '../dailyChallenge.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 
@@ -14,6 +15,7 @@ export default function DailyChallengesScreen({ onExit, onPlay }) {
   const day = dailyChallengeDayKey();
   const progress = dailyChallengeProgress(state, day);
   const brief = dailyChallengeBrief(state, day);
+  const totals = dailyChallengeStats(state);
 
   return (
     <div className="tutorial-shell daily-hub-screen">
@@ -26,7 +28,8 @@ export default function DailyChallengesScreen({ onExit, onPlay }) {
         </div>
         <div className="daily-hub-score" aria-label={`Progreso diario ${progress.solvedCount} de 3`}>
           <strong>{progress.solvedCount}/3</strong>
-          <span>Racha {state.streak || 0} · mejor {state.bestStreak || 0}</span>
+          <span>{totals.completedChallenges} completados · {totals.fullDays} plenos</span>
+          <small>Racha {state.streak || 0} · mejor {state.bestStreak || 0}</small>
         </div>
       </div>
 

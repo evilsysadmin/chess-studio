@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { updateRating, ratingChangeDetails, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating } from './playerRating.js';
+import { updateRating, ratingChangeDetails, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingPeriodCheckpoints, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating } from './playerRating.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -183,6 +183,28 @@ describe('recordRatingHistory / loadRatingHistory', () => {
     recordRatingHistory(700);
     resetRatingHistory();
     expect(loadRatingHistory()).toEqual([]);
+  });
+});
+
+describe('ratingPeriodCheckpoints', () => {
+  it('resume hoy, siete y treinta días usando el punto anterior como referencia', () => {
+    const history = [
+      { date: '2026-07-01T12:00:00Z', rating: 700 },
+      { date: '2026-08-01T12:00:00Z', rating: 730 },
+      { date: '2026-08-20T12:00:00Z', rating: 760 },
+      { date: '2026-08-25T07:00:00Z', rating: 775 },
+      { date: '2026-08-25T10:00:00Z', rating: 770 },
+    ];
+    const checkpoints = ratingPeriodCheckpoints(history, new Date('2026-08-25T12:00:00Z'));
+    expect(checkpoints.map((item) => item.label)).toEqual(['Hoy', '7 días', '30 días']);
+    expect(checkpoints[0]).toMatchObject({ delta: 10, games: 2, hasData: true });
+    expect(checkpoints[1]).toMatchObject({ delta: 40, games: 3, hasData: true });
+    expect(checkpoints[2]).toMatchObject({ delta: 70, games: 4, hasData: true });
+  });
+
+  it('tolera historial vacío o puntos inválidos sin fabricar progreso', () => {
+    expect(ratingPeriodCheckpoints([], new Date('2026-08-25T12:00:00Z'))).toEqual([]);
+    expect(ratingPeriodCheckpoints([{ date: 'no', rating: 'x' }], new Date('2026-08-25T12:00:00Z'))).toEqual([]);
   });
 });
 

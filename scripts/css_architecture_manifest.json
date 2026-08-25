@@ -20,9 +20,10 @@
     "18-account-menu.css",
     "19-game-focus.css",
     "20-piece-skins.css",
-    "21-home-command.css"
+    "21-home-command.css",
+    "22-progression-gamification.css"
   ],
-  "combinedSha256": "77d10e61bbc82b211957ab7a2e24ce9f92f07336ba730dd0d76d5ee8893df8b4",
-  "combinedBytes": 364791,
-  "combinedLines": 11082
+  "combinedSha256": "083791063a13f87ffba00253941dc5d9b42a1bef7f885f9a281e53cb9bb69bc2",
+  "combinedBytes": 368475,
+  "combinedLines": 11230
 }

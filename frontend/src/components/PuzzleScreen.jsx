@@ -28,6 +28,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
   const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle());
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
+  const [achievementUnlocked, setAchievementUnlocked] = useState(null);
   const [fen, setFen] = useState(puzzle.fen);
   const [stepIndex, setStepIndex] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -62,6 +63,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     setWrongThisPuzzle(false);
     setPersonalHadError(false);
     setRetryOffer(false);
+    setAchievementUnlocked(null);
   }, [puzzle]);
 
   useEffect(() => () => {
@@ -182,7 +184,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       incrementPuzzlesSolved();
       if (source === 'daily' && puzzle.dailyKey) {
         setDailyStats(markDailySolved(puzzle.dailyKey, { clean: !personalHadError, slot: puzzle.dailySlot || dailySlot }));
-        checkAchievements();
+        const achievementResult = checkAchievements();
+        if (achievementResult.newAchievements.length) {
+          setAchievementUnlocked({ first: achievementResult.newAchievements[0], count: achievementResult.newAchievements.length });
+        }
       }
       if (wrongThisPuzzle) {
         resetPuzzleStreak();
@@ -312,6 +317,13 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
           {source === 'daily' && (
             <div className={`daily-challenge-note ${dailyBrief.full ? 'is-solved' : ''}`}><b>📅 {puzzle.dailySlotLabel ? `${puzzle.dailySlotLabel} · ` : ''}{dailyBrief.headline}</b><span>{dailyBrief.detail}</span></div>
+          )}
+          {source === 'daily' && achievementUnlocked && (
+            <div className="daily-achievement-unlock" role="status">
+              <span>🏅</span>
+              <div><small>Distintivo desbloqueado</small><strong>{achievementUnlocked.first.name}</strong></div>
+              {achievementUnlocked.count > 1 && <b>+{achievementUnlocked.count - 1}</b>}
+            </div>
           )}
           {source === 'personal' && (
             <p className="hint-text personal-puzzle-note">☠ Posición nacida de una de tus propias autopsias.{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>

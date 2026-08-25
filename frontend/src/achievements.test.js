@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS, featuredAchievements } from './achievements.js';
+import { achievementProgress, checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS, featuredAchievements } from './achievements.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -80,6 +80,31 @@ describe('checkAchievements', () => {
     expect(unlocked.has('daily_streak_3')).toBe(true);
     expect(unlocked.has('daily_streak_7')).toBe(true);
     expect(unlocked.has('daily_streak_30')).toBe(false);
+  });
+
+  it('convierte desafíos, plenos y resolución limpia en distintivos medibles', () => {
+    const results = {};
+    for (let day = 1; day <= 7; day += 1) {
+      results[`2026-08-${String(day).padStart(2, '0')}`] = { slots: {
+        tactic: { solved: true, clean: true },
+        precision: { solved: true, clean: day <= 3 },
+        finish: { solved: true, clean: day <= 3 },
+      } };
+    }
+    localStorage.setItem('chess-study-daily-challenge', JSON.stringify({ results, solvedDates: Object.keys(results), bestStreak: 7 }));
+    const { unlocked, newAchievements } = checkAchievements();
+    expect(unlocked.has('daily_challenges_10')).toBe(true);
+    expect(unlocked.has('daily_full_first')).toBe(true);
+    expect(unlocked.has('daily_full_7')).toBe(true);
+    expect(unlocked.has('daily_clean_full_3')).toBe(true);
+    expect(newAchievements.some((item) => item.id === 'daily_full_7')).toBe(true);
+  });
+
+  it('expone progreso parcial sólo para hitos diarios cuantificables', () => {
+    const daily = { solvedDates: ['2026-08-20'], bestStreak: 2, results: { '2026-08-20': { slots: { tactic: { solved: true } } } } };
+    expect(achievementProgress('daily_challenges_10', daily)).toEqual({ current: 1, goal: 10, percent: 10 });
+    expect(achievementProgress('daily_streak_3', daily)).toEqual({ current: 2, goal: 3, percent: 67 });
+    expect(achievementProgress('first_game', daily)).toBeNull();
   });
 
   it('desbloquea sólo hitos de rivalidad demostrados por el expediente', () => {

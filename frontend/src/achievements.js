@@ -12,7 +12,7 @@ import { loadRating } from './playerRating.js';
 import { loadRoster } from './combatRoster.js';
 import { loadPuzzlesSolved } from './puzzleStats.js';
 import { derivedLevel } from './combat.js';
-import { loadDailyChallenge } from './dailyChallenge.js';
+import { dailyChallengeStats, loadDailyChallenge } from './dailyChallenge.js';
 import { loadRivalry } from './rivalry.js';
 
 const KEY = 'chess-study-achievements';
@@ -35,6 +35,10 @@ export const ACHIEVEMENTS = [
   { id: 'daily_streak_3', name: 'Tres días sin excusas', description: 'Mantuviste una racha diaria de 3 días.' },
   { id: 'daily_streak_7', name: 'Semana de guardia', description: 'Mantuviste una racha diaria de 7 días.' },
   { id: 'daily_streak_30', name: 'Funcionario del tablero', description: 'Alcanzaste una racha diaria de 30 días.' },
+  { id: 'daily_challenges_10', name: 'Diez casos cerrados', description: 'Completaste 10 desafíos diarios.' },
+  { id: 'daily_full_first', name: 'Triple corona', description: 'Completaste los tres desafíos de un mismo día.' },
+  { id: 'daily_full_7', name: 'Siete plenos', description: 'Firmaste 7 plenos diarios.' },
+  { id: 'daily_clean_full_3', name: 'Expediente impecable', description: 'Completaste 3 plenos sin un solo fallo.' },
   { id: 'rivalry_25', name: 'Veinticinco asaltos', description: 'Completaste 25 partidas competitivas contra la misma CPU.' },
   { id: 'rivalry_streak_3', name: 'Tres al hilo', description: 'Encadenaste 3 victorias competitivas contra la CPU.' },
   { id: 'rivalry_hard_75', name: 'Tumbagigantes', description: 'Derrotaste a la CPU en dificultad 75 o superior.' },
@@ -75,6 +79,7 @@ function saveUnlocked(set) {
 // avisarlas en el momento.
 export function checkAchievements(extra = {}) {
   const unlocked = loadUnlocked();
+  const previouslyUnlocked = new Set(unlocked);
   const before = unlocked.size;
 
   const tournament = loadTournament();
@@ -82,6 +87,7 @@ export function checkAchievements(extra = {}) {
   const roster = loadRoster();
   const puzzlesSolved = loadPuzzlesSolved();
   const daily = loadDailyChallenge();
+  const dailyStats = dailyChallengeStats(daily);
   const rivalry = loadRivalry();
 
   if (rating.games >= 1) unlocked.add('first_game');
@@ -99,6 +105,10 @@ export function checkAchievements(extra = {}) {
   if (Number(daily.bestStreak || 0) >= 3) unlocked.add('daily_streak_3');
   if (Number(daily.bestStreak || 0) >= 7) unlocked.add('daily_streak_7');
   if (Number(daily.bestStreak || 0) >= 30) unlocked.add('daily_streak_30');
+  if (dailyStats.completedChallenges >= 10) unlocked.add('daily_challenges_10');
+  if (dailyStats.fullDays >= 1) unlocked.add('daily_full_first');
+  if (dailyStats.fullDays >= 7) unlocked.add('daily_full_7');
+  if (dailyStats.cleanFullDays >= 3) unlocked.add('daily_clean_full_3');
   if (Number(rivalry.record?.games || 0) >= 25) unlocked.add('rivalry_25');
   if (Number(rivalry.record?.bestHumanStreak || 0) >= 3) unlocked.add('rivalry_streak_3');
   if (Number(rivalry.record?.milestones?.highestDifficultyWin || 0) >= 75) unlocked.add('rivalry_hard_75');
@@ -112,16 +122,36 @@ export function checkAchievements(extra = {}) {
 
   if (extra.combatFlawlessWin) unlocked.add('combat_flawless');
 
+  const newAchievements = ACHIEVEMENTS.filter((achievement) => !previouslyUnlocked.has(achievement.id) && unlocked.has(achievement.id));
   if (unlocked.size !== before) saveUnlocked(unlocked);
-  return { unlocked, newlyUnlocked: unlocked.size > before };
+  return { unlocked, newlyUnlocked: unlocked.size > before, newAchievements };
 }
 
 
 const FEATURED_PRIORITY = Object.freeze([
   'rivalry_hard_75', 'rivalry_streak_3', 'feat_mate', 'feat_pawn_queen',
-  'combat_flawless', 'combat_gold_piece', 'daily_streak_7', 'rating_advanced',
+  'combat_flawless', 'combat_gold_piece', 'daily_full_7', 'daily_streak_7',
+  'daily_full_first', 'daily_challenges_10', 'rating_advanced',
   'crime_queen_to_pawn', 'crime_missed_mate', 'rivalry_25', 'ten_games',
 ]);
+
+export function achievementProgress(achievementId, dailyState = loadDailyChallenge()) {
+  const stats = dailyChallengeStats(dailyState);
+  const targets = {
+    daily_streak_3: [stats.bestStreak, 3],
+    daily_streak_7: [stats.bestStreak, 7],
+    daily_streak_30: [stats.bestStreak, 30],
+    daily_challenges_10: [stats.completedChallenges, 10],
+    daily_full_first: [stats.fullDays, 1],
+    daily_full_7: [stats.fullDays, 7],
+    daily_clean_full_3: [stats.cleanFullDays, 3],
+  };
+  const target = targets[achievementId];
+  if (!target) return null;
+  const [rawCurrent, goal] = target;
+  const current = Math.max(0, Math.min(goal, Number(rawCurrent) || 0));
+  return { current, goal, percent: Math.round((current / goal) * 100) };
+}
 
 export function featuredAchievements(unlocked, limit = 6) {
   const set = unlocked instanceof Set ? unlocked : new Set(unlocked || []);
@@ -162,4 +192,3 @@ export function recordNoteworthyAchievement(event, actor = 'human') {
   const achievement = ACHIEVEMENTS.find((a) => a.id === id);
   return achievement ? [achievement] : [];
 }
-

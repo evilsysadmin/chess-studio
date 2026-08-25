@@ -1,4 +1,4 @@
-import { RATING_TIERS, ratingProgress, loadRatingHistory } from '../playerRating.js';
+import { RATING_TIERS, ratingPeriodCheckpoints, ratingProgress, loadRatingHistory } from '../playerRating.js';
 import { ratingTrend, tierTrendComment } from '../insights.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import RatingChart from './RatingChart.jsx';
@@ -9,6 +9,7 @@ export default function RatingDetailModal({ rating, onClose }) {
   const history = loadRatingHistory();
   const trend = ratingTrend(history);
   const comment = tierTrendComment(progress.tier.label, trend);
+  const checkpoints = ratingPeriodCheckpoints(history);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -33,6 +34,26 @@ export default function RatingDetailModal({ rating, onClose }) {
             Llegaste a la categoría más alta — no hay techo más arriba, pero el rating sigue moviéndose igual
             según tus resultados.
           </p>
+        )}
+
+        {checkpoints.length > 0 && (
+          <section className="rating-checkpoints" aria-labelledby="rating-checkpoints-title">
+            <div className="rating-checkpoints-heading">
+              <h2 id="rating-checkpoints-title">Tu ritmo</h2>
+              <span>Balance reciente</span>
+            </div>
+            <div className="rating-checkpoints-grid">
+              {checkpoints.map((checkpoint) => (
+                <div className="rating-checkpoint" key={checkpoint.label}>
+                  <span>{checkpoint.label}</span>
+                  <strong className={checkpoint.delta > 0 ? 'is-positive' : checkpoint.delta < 0 ? 'is-negative' : ''}>
+                    {checkpoint.hasData ? `${checkpoint.delta > 0 ? '+' : ''}${checkpoint.delta}` : '—'}
+                  </strong>
+                  <small>{checkpoint.games} partida{checkpoint.games === 1 ? '' : 's'}</small>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         <div className="menu-section">

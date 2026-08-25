@@ -1,3 +1,12 @@
+### v16.6dm45w · Ritmo visible + carrera de desafíos
+
+- El detalle de rating incorpora checkpoints compactos de **Hoy**, **7 días** y **30 días**, con balance y partidas registradas. La curva conserva la visión completa, pero ya no obliga a interpretarla para saber si el periodo fue positivo o negativo.
+- Los desafíos diarios pasan a formar parte explícita de la carrera: se cuentan retos completados, plenos y plenos limpios, además de la racha existente.
+- Añade cuatro distintivos medibles de desafío diario: 10 retos, primer pleno, 7 plenos y 3 plenos limpios. Los hitos bloqueados muestran progreso real en el catálogo.
+- Al ganar un distintivo resolviendo un reto diario aparece un aviso compacto y no invasivo; el hub diario muestra también el acumulado histórico.
+- La presentación se ha validado visualmente en escritorio y 360/390 px sin overflow. No añade moneda, XP paralela ni obligaciones artificiales: gamifica constancia y dominio demostrable.
+- Sin cambios en reglas de ajedrez, backend, CI o infraestructura.
+
 ### v16.6dm45v · Home con foco + audio con identidad + tests semánticos
 
 - Rediseña Home con una jerarquía de producto más clara: Torneo lidera la acción, Combat y Partida rápida mantienen su peso secundario y las tarjetas se compactan en móvil sin perder contexto ni accesibilidad.

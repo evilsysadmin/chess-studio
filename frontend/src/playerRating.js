@@ -98,6 +98,48 @@ export function resetRatingHistory() {
   return [];
 }
 
+function validRatingPoint(point) {
+  const time = new Date(point?.date).getTime();
+  const rating = Number(point?.rating);
+  return Number.isFinite(time) && Number.isFinite(rating) ? { ...point, time, rating } : null;
+}
+
+function periodCheckpoint(points, cutoff, label) {
+  const current = points[points.length - 1];
+  const previous = [...points].reverse().find((point) => point.time < cutoff);
+  const periodPoints = points.filter((point) => point.time >= cutoff);
+  const baseline = previous || periodPoints[0] || current;
+  return {
+    label,
+    delta: current.rating - baseline.rating,
+    games: periodPoints.length,
+    rating: current.rating,
+    hasData: periodPoints.length > 0,
+  };
+}
+
+// Resumen móvil y legible del ritmo reciente. Los periodos son deliberadamente
+// rodantes salvo "Hoy", que empieza a medianoche local: responde mejor a
+// "¿cómo voy esta semana?" que obligar al usuario a interpretar la curva.
+export function ratingPeriodCheckpoints(history = [], now = new Date()) {
+  const nowTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const points = history
+    .map(validRatingPoint)
+    .filter(Boolean)
+    .filter((point) => point.time <= nowTime)
+    .sort((a, b) => a.time - b.time);
+  if (!points.length || !Number.isFinite(nowTime)) return [];
+
+  const startOfToday = new Date(nowTime);
+  startOfToday.setHours(0, 0, 0, 0);
+  const dayMs = 24 * 60 * 60 * 1000;
+  return [
+    periodCheckpoint(points, startOfToday.getTime(), 'Hoy'),
+    periodCheckpoint(points, nowTime - (7 * dayMs), '7 días'),
+    periodCheckpoint(points, nowTime - (30 * dayMs), '30 días'),
+  ];
+}
+
 // Rating efectivo INTERNO de la CPU. No pretende ser una equivalencia FIDE:
 // sirve para que el cambio ELO tenga sentido relativo a la fuerza real del
 // motor. La curva sigue los saltos de búsqueda del motor (0/20/45/70/90) en
