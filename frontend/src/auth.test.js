@@ -196,6 +196,12 @@ describe('fetchMe/authHeader/wakeBackend', () => {
       }),
     );
 
+    touchActivity('Partida', false, { keepalive: true });
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining('/auth/activity'),
+      expect.objectContaining({ keepalive: true, body: JSON.stringify({ activity: 'Partida', foreground: false, release: APP_RELEASE }) }),
+    );
+
     global.fetch = vi.fn().mockRejectedValue(new Error('offline'));
     expect(() => touchActivity()).not.toThrow();
   });

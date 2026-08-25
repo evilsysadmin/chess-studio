@@ -700,10 +700,14 @@ function AppInner({ isAdminUser }) {
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
                 <SaveStatusBadge state={gameSaveState} />
               )}
-              <button type="button" className="masthead-account-button" onClick={() => setShowGlobalAccount(true)} aria-label="Abrir mi cuenta" title="Mi cuenta">
-                <span aria-hidden="true">♙</span><span>Mi cuenta</span>
-              </button>
-              <button type="button" className="settings-gear-button" onClick={() => setShowSettings(true)} aria-label="Abrir ajustes" title="Ajustes">⚙</button>
+              <div className="masthead-account-group" role="group" aria-label="Cuenta y preferencias">
+                <button type="button" className="masthead-account-button" onClick={() => setShowGlobalAccount(true)} aria-label="Abrir mi cuenta" title="Mi cuenta">
+                  <span aria-hidden="true">♙</span><span>Mi cuenta</span>
+                </button>
+                <button type="button" className="masthead-settings-button" onClick={() => setShowSettings(true)} aria-label="Abrir ajustes" title="Ajustes">
+                  <span aria-hidden="true">⚙</span><span>Ajustes</span>
+                </button>
+              </div>
               <button type="button" className="masthead-logout-button" onClick={() => void handleGlobalLogout()} disabled={loggingOut} aria-label="Cerrar sesión" title="Cerrar sesión">
                 <span aria-hidden="true">↪</span><span>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</span>
               </button>
@@ -715,7 +719,6 @@ function AppInner({ isAdminUser }) {
               tournament={tournament}
               combatXp={combatXp}
               rating={rating}
-              compact={view === 'menu' || view === 'admin'}
               onTournamentClick={() => navigateTo('tournament')}
               onCombatClick={() => setShowCombatSummary(true)}
               onRatingClick={() => setShowRatingDetail(true)}

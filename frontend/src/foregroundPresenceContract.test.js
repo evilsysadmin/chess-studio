@@ -8,6 +8,8 @@ describe('foreground presence contract', () => {
   it('no convierte presencia en telemetría de interacción de alta frecuencia', () => {
     expect(presenceHook).toContain('PRESENCE_HEARTBEAT_MS');
     expect(presenceHook).toContain("document.addEventListener('visibilitychange', handleVisibility)");
+    expect(presenceHook).toContain("window.addEventListener('pagehide', handlePageHide)");
+    expect(presenceHook).toContain("{ keepalive: true }");
     expect(presenceHook).not.toMatch(/pointermove|mousemove|keydown|click/);
   });
 

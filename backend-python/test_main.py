@@ -67,7 +67,7 @@ def test_health():
 
 def test_status_requires_auth_and_counts_recent_users_without_exposing_identities():
     assert raw_client.get("/api/status").status_code == 401
-    asyncio.run(ustore.touch_last_activity("testuser", force=True))
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True))
     r = client.get("/api/status")
     assert r.status_code == 200
     assert r.json() == {"ok": True, "onlineUsers": 1, "presenceAvailable": True}
@@ -78,7 +78,7 @@ def test_status_hides_authenticated_admin_from_public_presence(monkeypatch):
     import main as main_module
 
     monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
-    asyncio.run(ustore.touch_last_activity("testuser", force=True))
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True))
     r = client.get("/api/status")
     assert r.status_code == 200
     assert r.json() == {"ok": True, "onlineUsers": 0, "presenceAvailable": True}

@@ -30,7 +30,10 @@ function formatPresenceAge(seconds) {
 }
 
 function Presence({ user, compact = false }) {
-  const status = user?.presence || 'never';
+  // Un heartbeat reciente significa sesión válida, no necesariamente una
+  // ventana abierta. La señal explícita de segundo plano/cierre tiene prioridad.
+  const rawStatus = user?.presence || 'never';
+  const status = rawStatus === 'online' && user?.foreground === false ? 'idle' : rawStatus;
   const label = status === 'online'
     ? 'En línea'
     : status === 'recent'
@@ -48,7 +51,7 @@ function Presence({ user, compact = false }) {
         <span>{label}</span>
         {status === 'online' && user?.currentActivity && <small>{user.currentActivity}</small>}
         {user?.foreground === true && <small className="admin-foreground-state is-foreground">● Primer plano</small>}
-        {status === 'online' && user?.foreground === false && <small className="admin-foreground-state">○ Segundo plano</small>}
+        {user?.foreground === false && <small className="admin-foreground-state">○ Segundo plano / cerrada</small>}
         {!compact && user?.lastActivity && <small>{formatAdminTimestamp(user.lastActivity)}</small>}
       </span>
     </span>
@@ -256,8 +259,8 @@ export default function AdminScreen({ onExit }) {
   const currentAdmin = getUsername();
   const otherUsers = (users || []).filter((user) => user.username !== currentAdmin);
   const foregroundCount = otherUsers.filter((user) => user.foreground === true).length;
-  const onlineCount = otherUsers.filter((user) => user.presence === 'online').length;
-  const idleCount = otherUsers.filter((user) => user.presence === 'idle').length;
+  const onlineCount = otherUsers.filter((user) => user.presence === 'online' && user.foreground === true).length;
+  const idleCount = otherUsers.filter((user) => user.presence === 'idle' || (user.presence === 'online' && user.foreground === false)).length;
   const filteredUsers = filterAdminUsers(users || [], activityFilter);
   const releaseSummary = summarizeAdminClientReleases(users || [], currentAdmin, APP_RELEASE);
   const activeFeedback = (feedback || []).filter((item) => item.status !== 'resolved');

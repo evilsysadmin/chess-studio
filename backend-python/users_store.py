@@ -212,20 +212,30 @@ async def count_online_users(*, window_seconds: int = 150) -> int:
     col = await _get_collection()
     if col is not None:
         try:
-            return int(await col.count_documents({"last_activity": {"$gte": cutoff_iso}}))
+            return int(await col.count_documents({
+                "last_activity": {"$gte": cutoff_iso},
+                "is_foreground": True,
+                "foreground_updated_at": {"$gte": cutoff_iso},
+            }))
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para contar presencia.") from exc
 
     count = 0
     for user in _memory_users.values():
+        if user.get("is_foreground") is not True:
+            continue
         raw = user.get("last_activity")
-        if not raw:
+        foreground_raw = user.get("foreground_updated_at")
+        if not raw or not foreground_raw:
             continue
         try:
             parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            foreground_parsed = datetime.fromisoformat(str(foreground_raw).replace("Z", "+00:00"))
             if parsed.tzinfo is None:
                 parsed = parsed.replace(tzinfo=timezone.utc)
-            if parsed.astimezone(timezone.utc) >= cutoff:
+            if foreground_parsed.tzinfo is None:
+                foreground_parsed = foreground_parsed.replace(tzinfo=timezone.utc)
+            if parsed.astimezone(timezone.utc) >= cutoff and foreground_parsed.astimezone(timezone.utc) >= cutoff:
                 count += 1
         except (TypeError, ValueError):
             continue

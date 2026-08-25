@@ -93,7 +93,8 @@ for (const [id, profile] of profiled) {
   if (profile.drumMode === 'none') continue;
   for (let step = 0; step < Math.max(1, profile.percussionPeriod || 16); step += 1) {
     const preview = getPercussionHumanizationPreview(id, step, step % 8 === 0 ? 'K' : 'H');
-    assert((preview?.delayMs || 0) <= 7, `${id}: microtiming demasiado separado (${preview?.delayMs} ms)`);
+    assert((preview?.delayMs || 0) === 0, `${id}: ataque de percusión fuera de rejilla (${preview?.delayMs} ms)`);
+    assert(preview?.ghost === false, `${id}: conserva un golpe fantasma capaz de sonar como flam`);
   }
 }
 

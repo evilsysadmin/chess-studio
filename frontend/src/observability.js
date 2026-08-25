@@ -64,8 +64,8 @@ export function summarizeAdminUsers(users = [], currentAdmin = null) {
   return {
     registered: rows.length,
     foreground: rows.filter((user) => user?.foreground === true).length,
-    online: rows.filter((user) => user?.presence === 'online').length,
-    idle: rows.filter((user) => user?.presence === 'idle').length,
+    online: rows.filter((user) => user?.presence === 'online' && user?.foreground === true).length,
+    idle: rows.filter((user) => user?.presence === 'idle' || (user?.presence === 'online' && user?.foreground === false)).length,
     totalGames,
     combatBattles,
     releases,

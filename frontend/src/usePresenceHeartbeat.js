@@ -37,15 +37,18 @@ export function usePresenceHeartbeat(view) {
       touchActivity(coarseActivity, foreground);
     };
     const handleVisibility = () => reportPresence();
+    const handlePageHide = () => touchActivity(coarseActivity, false, { keepalive: true });
 
     reportPresence();
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') reportPresence();
     }, PRESENCE_HEARTBEAT_MS);
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pagehide', handlePageHide);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, [coarseActivity]);
 

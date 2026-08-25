@@ -204,7 +204,7 @@ export async function fetchLiveStatus() {
   }
 }
 
-export function touchActivity(activity = null, foreground = null) {
+export function touchActivity(activity = null, foreground = null, { keepalive = false } = {}) {
   if (!getToken()) return;
   const hasForeground = typeof foreground === 'boolean';
   const hasBody = !!activity || hasForeground || !!APP_RELEASE;
@@ -218,5 +218,6 @@ export function touchActivity(activity = null, foreground = null) {
     method: 'POST',
     headers,
     body: hasBody ? JSON.stringify(payload) : undefined,
+    keepalive,
   }).catch(() => {});
 }

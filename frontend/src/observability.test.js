@@ -34,15 +34,16 @@ describe('admin observability helpers', () => {
       { username: 'admin', totalGames: 99, clientRelease: 'vX' },
       { username: 'ana', totalGames: 5, combatBattles: 2, foreground: true, presence: 'online', clientRelease: 'v16.6dm23' },
       { username: 'bob', totalGames: 3, combatBattles: 1, foreground: false, presence: 'idle', clientRelease: 'v16.6dm22' },
+      { username: 'cora', totalGames: 0, foreground: false, presence: 'online', clientRelease: 'v16.6dm22' },
     ], 'admin');
     expect(summary).toEqual({
-      registered: 2,
+      registered: 3,
       foreground: 1,
       online: 1,
-      idle: 1,
+      idle: 2,
       totalGames: 8,
       combatBattles: 3,
-      releases: { 'v16.6dm23': 1, 'v16.6dm22': 1 },
+      releases: { 'v16.6dm23': 1, 'v16.6dm22': 2 },
     });
     expect(JSON.stringify(summary)).not.toContain('ana');
     expect(JSON.stringify(summary)).not.toContain('bob');
@@ -61,7 +62,7 @@ describe('admin observability helpers', () => {
       database: { status: 'ok' },
     }, [
       { username: 'admin', presence: 'online' },
-      { username: 'ana', presence: 'online' },
+      { username: 'ana', presence: 'online', foreground: true },
       { username: 'bob', presence: 'idle' },
     ], 'admin');
     expect(healthy).toEqual({

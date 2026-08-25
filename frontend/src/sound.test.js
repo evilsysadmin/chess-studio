@@ -10,6 +10,7 @@ import {
   isAmbientExcluded,
   getAmbientThemeSoundProfile,
   getPercussionHumanizationPreview,
+  structuredPercussionPatternStep,
   getAmbientThemeVariationDurationMs,
   getAmbientTrackDurationMs,
   getAmbientVolume,
@@ -219,14 +220,14 @@ describe('ambient music catalog', () => {
     expect(damascus.space).toBeGreaterThan(cairo.space);
   });
 
-  it('humaniza la percusión sin soltar el downbeat del pulso', () => {
+  it('humaniza timbre y dinámica sin retrasar ni duplicar ataques', () => {
     const downbeat = getPercussionHumanizationPreview('beirut0113', 0, 'K');
     const secondaryA = getPercussionHumanizationPreview('beirut0113', 3, 'H');
     const secondaryB = getPercussionHumanizationPreview('beirut0113', 9, 'H');
 
     expect(downbeat.delayMs).toBe(0);
-    expect(secondaryA.delayMs).toBeGreaterThanOrEqual(0);
-    expect(secondaryA.delayMs).toBeLessThanOrEqual(9);
+    expect(secondaryA.delayMs).toBe(0);
+    expect(secondaryA.ghost).toBe(false);
     expect(secondaryA).toEqual(getPercussionHumanizationPreview('beirut0113', 3, 'H'));
     expect(secondaryA.tone).toBeGreaterThanOrEqual(-0.78);
     expect(secondaryA.tone).toBeLessThanOrEqual(0.78);
@@ -235,6 +236,13 @@ describe('ambient music catalog', () => {
     expect(secondaryA.pan).toBeGreaterThanOrEqual(-0.13);
     expect(secondaryA.pan).toBeLessThanOrEqual(0.13);
     expect(secondaryA).not.toEqual(secondaryB);
+  });
+
+  it('mantiene el patrón de percusión continuo al cruzar una sección', () => {
+    expect(structuredPercussionPatternStep(71, 16)).toBe(7);
+    expect(structuredPercussionPatternStep(72, 16)).toBe(8);
+    expect(structuredPercussionPatternStep(73, 16)).toBe(9);
+    expect(structuredPercussionPatternStep(224, 18)).toBe(8);
   });
 
   it('añade estilos no mediterráneos con siluetas claramente distintas', () => {

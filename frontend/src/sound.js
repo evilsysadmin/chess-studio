@@ -1131,22 +1131,18 @@ function percussionHumanization(feel, localStep, code) {
   if (code === 'H') accent *= 0.82;
   if (code === 'B') accent *= 0.9;
 
-  // Downbeats remain tight so the ensemble does not drift. Secondary hand
-  // strokes sit a few milliseconds behind/ahead perceptually (implemented as
-  // tiny positive scheduling offsets) and vary in patch, decay and stereo
-  // position like real hands/brushes hitting slightly different spots.
-  const anchored = pos === 0 || (code === 'K' && pos === half);
+  // Todo ataque comparte exactamente el reloj de melodía/bajo. El carácter
+  // humano vive en dinámica, timbre y panorama: retrasar o duplicar golpes
+  // hacía que algunos grooves con swing sonaran despegados del conjunto.
   const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(feel?.percussion?.kit);
-  const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush'].includes(feel?.percussion?.kit);
   // Antes algunos ataques de batería quedaban hasta 12 ms detrás de la
   // melodía. Conservamos variación humana de timbre/dinámica, pero no flams.
-  const maxDelayMs = anchored ? 0 : handKit ? 5 : brushKit ? 7 : 3;
-  const delayMs = anchored ? 0 : (((seed >>> 3) % 1001) / 1000) * maxDelayMs;
+  const delayMs = 0;
   const microDynamics = 0.92 + (((seed >>> 5) % 17) / 100); // 0.92 .. 1.08
   const tone = signed(7) * (handKit ? 0.78 : 0.45);
   const decay = 0.9 + (((seed >>> 9) % 21) / 100); // 0.90 .. 1.10
   const pan = signed(11) * (handKit ? 0.13 : 0.09);
-  const ghost = !anchored && (handKit || brushKit) && ((seed >>> 13) % 9 === 0);
+  const ghost = false;
 
   return {
     velocity: accent * microDynamics * (feel?.percussion?.punch || 1),
@@ -1455,11 +1451,19 @@ function shouldPlayStructuredDrum(mode, code) {
   return true;
 }
 
-function structuredDrumAtStep(section, feel, localStep) {
+export function structuredPercussionPatternStep(globalStep, period) {
+  const safePeriod = Math.max(1, Math.floor(Number(period) || 1));
+  return ((Math.floor(Number(globalStep) || 0) % safePeriod) + safePeriod) % safePeriod;
+}
+
+function structuredDrumAtStep(section, feel, localStep, globalStep = localStep) {
   if (!feel?.percussion) return section.drums?.[localStep] || null;
   const { period, pattern } = feel.percussion;
   if (!period || !pattern) return null;
-  return pattern[localStep % period] || null;
+  // El groove continúa entre secciones aunque stepsPerSection no sea múltiplo
+  // del patrón. Reiniciarlo en cada sección desplazaba Beirut, Estambul y
+  // otras métricas respecto a bajo/melodía.
+  return pattern[structuredPercussionPatternStep(globalStep, period)] || null;
 }
 
 function structuredSignatureAtStep(feel, localStep, sectionIndex, cycleIndex) {
@@ -1503,7 +1507,7 @@ function startStructuredMusic(theme, startPositionMs = 0) {
     const feel = arrangement.feel;
     const layers = feel?.layers || {};
     const layerEnabled = (name) => layers[name] !== false;
-    const drum = structuredDrumAtStep(section, feel, localStep);
+    const drum = structuredDrumAtStep(section, feel, localStep, step);
     const signature = structuredSignatureAtStep(feel, localStep, rawSectionIndex, cycleIndex);
     const tone = feel ? {
       warmth: feel.warmth,
@@ -1541,7 +1545,7 @@ function startStructuredMusic(theme, startPositionMs = 0) {
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
       playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, tone);
     }
-    if (drum && layerEnabled('drums') && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum, feel, localStep);
+    if (drum && layerEnabled('drums') && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum, feel, step);
 
     step += 1;
     // Reloj absoluto: setTimeout puede llegar tarde, pero el retraso ya no se
