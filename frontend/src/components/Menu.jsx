@@ -278,20 +278,29 @@ export default function Menu({
       />
 
       <section className="home-account-panel" aria-label="Cuenta y utilidades">
-        <div className="home-account-identity">
-          <span className="section-label">TU CUENTA</span>
-          <strong>{username || 'Jugador'}</strong>
+        <div className="home-account-main">
+          <span className="home-account-avatar" aria-hidden="true">{(username || 'J').slice(0, 1).toUpperCase()}</span>
+          <div className="home-account-identity">
+            <span className="section-label">SESIÓN ACTIVA</span>
+            <strong>{username || 'Jugador'}</strong>
+            <small>Progreso sincronizado con tu cuenta</small>
+          </div>
+          <div className="home-account-session-actions">
+            <button type="button" className="secondary-btn" onClick={() => setShowAccount(true)}>Mi cuenta</button>
+            <button type="button" className="home-logout-button" onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? 'Guardando…' : 'Cerrar sesión'}
+            </button>
+          </div>
         </div>
-        <nav className="home-utility-actions" aria-label="Utilidades de Chess Studio">
-          <button type="button" onClick={() => setShowAccount(true)}>Mi cuenta</button>
-          <button type="button" onClick={() => setShowAchievements(true)}>Distintivos</button>
-          <button type="button" onClick={() => setShowHomeGuide(true)}>Guía rápida</button>
-          <button type="button" onClick={() => setShowBackup(true)}>Gestionar progreso</button>
-          <button type="button" onClick={onBoard3D}>Experimento 3D</button>
-        </nav>
-        <button type="button" className="home-logout-button" onClick={handleLogout} disabled={loggingOut}>
-          {loggingOut ? 'Guardando progreso…' : 'Cerrar sesión'}
-        </button>
+        <details className="home-tools-disclosure">
+          <summary>Más opciones</summary>
+          <nav className="home-utility-actions" aria-label="Utilidades de Chess Studio">
+            <button type="button" onClick={() => setShowAchievements(true)}><strong>Distintivos</strong><span>Logros y títulos</span></button>
+            <button type="button" onClick={() => setShowHomeGuide(true)}><strong>Guía rápida</strong><span>Cómo empezar</span></button>
+            <button type="button" onClick={() => setShowBackup(true)}><strong>Gestionar progreso</strong><span>Sincronización y copia</span></button>
+            <button type="button" onClick={onBoard3D}><strong>Tablero 3D</strong><span>Experimento visual</span></button>
+          </nav>
+        </details>
         {logoutError && <p className="error-text home-account-error">{logoutError}</p>}
       </section>
 

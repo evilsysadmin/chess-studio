@@ -1138,8 +1138,10 @@ function percussionHumanization(feel, localStep, code) {
   const anchored = pos === 0 || (code === 'K' && pos === half);
   const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(feel?.percussion?.kit);
   const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush'].includes(feel?.percussion?.kit);
-  const maxDelayMs = anchored ? 0 : handKit ? 9 : brushKit ? 12 : 6;
-  const delayMs = Math.max(0, signed(3) * maxDelayMs + maxDelayMs * 0.45);
+  // Antes algunos ataques de batería quedaban hasta 12 ms detrás de la
+  // melodía. Conservamos variación humana de timbre/dinámica, pero no flams.
+  const maxDelayMs = anchored ? 0 : handKit ? 5 : brushKit ? 7 : 3;
+  const delayMs = anchored ? 0 : (((seed >>> 3) % 1001) / 1000) * maxDelayMs;
   const microDynamics = 0.92 + (((seed >>> 5) % 17) / 100); // 0.92 .. 1.08
   const tone = signed(7) * (handKit ? 0.78 : 0.45);
   const decay = 0.9 + (((seed >>> 9) % 21) / 100); // 0.90 .. 1.10
@@ -1673,6 +1675,7 @@ export function startAmbientMusic() {
   let saxPhraseIndex = Math.floor(step / Math.max(1, theme.saxGapSteps));
   let percussionIndex = Math.floor(step / STEPS_PER_BAR);
   let currentPercussionPattern = theme.percussionPatterns[percussionIndex % theme.percussionPatterns.length] || theme.percussionPatterns[0];
+  let nextTickAtMs = transportNowMs();
   keyCenterIndex = Math.floor(step / Math.max(1, keyChangeSteps));
   padIndex = Math.floor(step / PAD_GAP_STEPS);
 
@@ -1727,7 +1730,12 @@ export function startAmbientMusic() {
     }
 
     step += 1;
-    stepTimer = setTimeout(tick, theme.stepMs);
+    // Reloj absoluto también para Al-Ándalus. Un tick tardío no desplaza
+    // progresivamente toda la interpretación respecto al transporte.
+    const now = transportNowMs();
+    if (nextTickAtMs < now - (theme.stepMs * 2)) nextTickAtMs = now;
+    nextTickAtMs += theme.stepMs;
+    stepTimer = setTimeout(tick, Math.max(12, Math.round(nextTickAtMs - transportNowMs())));
   }
 
   ambientResumeFn = tick;

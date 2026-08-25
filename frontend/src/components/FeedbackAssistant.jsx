@@ -66,16 +66,18 @@ export default function FeedbackAssistant({ blocked = false, onFeedback }) {
           </div>
         </aside>
       )}
-      <button
-        type="button"
-        className="feedback-assistant-launcher"
-        onClick={toggleAssistant}
-        aria-label={open ? 'Cerrar asistente de feedback' : 'Abrir asistente de feedback'}
-        aria-expanded={open}
-      >
-        <img src={avatarSrc} alt="" className="feedback-assistant-avatar" />
-        <span>Feedback</span>
-      </button>
+      {!open && (
+        <button
+          type="button"
+          className="feedback-assistant-launcher"
+          onClick={toggleAssistant}
+          aria-label="Abrir asistente de feedback"
+          aria-expanded="false"
+        >
+          <img src={avatarSrc} alt="" className="feedback-assistant-avatar" />
+          <span>Feedback</span>
+        </button>
+      )}
     </div>
   );
 }

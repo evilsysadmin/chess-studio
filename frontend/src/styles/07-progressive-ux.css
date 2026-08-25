@@ -175,7 +175,7 @@
   height: 16px;
   border-radius: 50%;
   border: 1px solid var(--brass);
-  background: var(--ink-1);
+  background: var(--ink);
   color: var(--brass);
   font: 900 .72rem/1 var(--font-mono);
   box-shadow: 0 0 0 2px rgba(0,0,0,.22);

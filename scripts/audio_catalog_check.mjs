@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
+import { AMBIENT_THEMES, PHRASE_NOTE_GAP_MS, SAX_NOTE_GAP_MS } from '../frontend/src/ambientCatalog.js';
 
 class MemoryStorage {
   constructor() { this.map = new Map(); }
@@ -18,6 +19,7 @@ const {
   AMBIENT_THEME_OPTIONS,
   getAmbientThemeSoundProfile,
   getAmbientThemeVariationDurationMs,
+  getPercussionHumanizationPreview,
   getAmbientTrackDurationMs,
   getAmbientRadioMode,
   ambientRadioThemeIds,
@@ -85,6 +87,15 @@ assert(new Set(profiles.map(([, profile]) => profile.family)).size === added.len
 assert(getAmbientThemeSoundProfile('mistSpa').drumMode === 'none', 'SPA · niebla debería carecer de batería');
 assert(getAmbientThemeSoundProfile('endgameAdagio').drumMode === 'none', 'Adagio debería carecer de batería');
 assert(getAmbientThemeSoundProfile('rookGarage').percussionPunch > 1.2, 'Garage necesita pegada rock diferenciada');
+assert(PHRASE_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: melodía fuera de la rejilla rítmica');
+assert(SAX_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: saxo fuera de la rejilla rítmica');
+for (const [id, profile] of profiled) {
+  if (profile.drumMode === 'none') continue;
+  for (let step = 0; step < Math.max(1, profile.percussionPeriod || 16); step += 1) {
+    const preview = getPercussionHumanizationPreview(id, step, step % 8 === 0 ? 'K' : 'H');
+    assert((preview?.delayMs || 0) <= 7, `${id}: microtiming demasiado separado (${preview?.delayMs} ms)`);
+  }
+}
 
 const bt = ['concreteRain','velvetStatic','abyssalArchive','redVault','queenBossa','havana205','fourSquares','verticalRainPiano'];
 const btProfiles = bt.map((id) => [id, getAmbientThemeSoundProfile(id)]);

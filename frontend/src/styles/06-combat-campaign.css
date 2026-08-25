@@ -738,7 +738,7 @@
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--brass) 72%, var(--ink-3));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--brass) 14%, var(--ink-1));
+  background: color-mix(in srgb, var(--brass) 14%, var(--ink));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brass) 8%, transparent);
   color: #f3e6c6;
   font: 900 .78rem var(--font-mono);
@@ -748,7 +748,7 @@
 }
 .mode-tutorial-tip-button.is-featured {
   border-color: var(--brass);
-  background: color-mix(in srgb, var(--brass) 22%, var(--ink-1));
+  background: color-mix(in srgb, var(--brass) 22%, var(--ink));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--brass) 12%, transparent), 0 0 18px rgba(224,180,74,.18);
   animation: tutorial-tip-pulse 2.8s ease-in-out infinite;
 }
@@ -761,7 +761,7 @@
 .mode-tutorial-tip-button:focus-visible {
   opacity: 1;
   border-color: var(--brass);
-  background: color-mix(in srgb, var(--brass) 22%, var(--ink-1));
+  background: color-mix(in srgb, var(--brass) 22%, var(--ink));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--brass) 14%, transparent);
   transform: translateY(-1px);
   outline: none;

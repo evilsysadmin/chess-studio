@@ -12,9 +12,10 @@
     "10-studio-art-direction.css",
     "11-game-table.css",
     "12-feedback-assistant.css",
-    "13-product-expansion.css"
+    "13-product-expansion.css",
+    "14-home-account-hub.css"
   ],
-  "combinedSha256": "d9610f5c74ea504050a51b456b15a2890384fad7c185bbbcecdf356051682e89",
-  "combinedBytes": 322308,
-  "combinedLines": 10149
+  "combinedSha256": "4f8e6b06e48a94152efef4228b35339f137ca10ce511984a772d63b9242f4c93",
+  "combinedBytes": 325792,
+  "combinedLines": 10245
 }

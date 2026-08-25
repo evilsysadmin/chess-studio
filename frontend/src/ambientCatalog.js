@@ -50,7 +50,7 @@ const STEP_MS = 130; // grilla de dieciseisavos, ~115 BPM — antes 140ms/~107 B
 export const STEPS_PER_BAR = 16;
 const BAR_MS = STEP_MS * STEPS_PER_BAR; // 2240ms, un compás completo
 
-export const PHRASE_NOTE_GAP_MS = 190; // notas dentro de una frase, bien pegadas
+export const PHRASE_NOTE_GAP_MS = STEP_MS * 2; // corcheas exactas: melodía y percusión comparten rejilla
 const PLUCK_GAP_STEPS = 8; // cada medio compás intenta una frase
 export const PLUCK_DURATION_S = 1.4;
 const PLUCK_CHANCE = 0.7;
@@ -66,7 +66,7 @@ const SAX_PHRASES = [
   [3, 0], // subdominante bajando a la tónica — cálida, nueva
   [4, 6, 4], // giro corto legato alrededor de la quinta y la séptima — nueva
 ];
-export const SAX_NOTE_GAP_MS = 620;
+export const SAX_NOTE_GAP_MS = STEP_MS * 5; // fraseo amplio, cuantizado al mismo pulso
 const SAX_GAP_STEPS = 32; // 2 compases exactos — antes eran 20, que NO es múltiplo de 16 (el compás):
 // tardaba 4 compases en volver a alinearse con el patrón de percusión, entrando en un punto
 // distinto cada vez — eso sonaba a "cada voz por su lado" aunque compartieran el mismo reloj.

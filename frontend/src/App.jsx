@@ -684,7 +684,7 @@ function AppInner({ isAdminUser }) {
               tournament={tournament}
               combatXp={combatXp}
               rating={rating}
-              compact={view === 'menu'}
+              compact={view === 'menu' || view === 'admin'}
               onTournamentClick={() => navigateTo('tournament')}
               onCombatClick={() => setShowCombatSummary(true)}
               onRatingClick={() => setShowRatingDetail(true)}
