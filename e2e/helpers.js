@@ -128,6 +128,15 @@ export function buttonWithVisibleText(scope, text) {
   return scope.getByRole('button').filter({ has: visibleLabel });
 }
 
+
+export function buttonWithHeading(scope, text) {
+  // Some compact status chips repeat mode names such as "Torneo". Home
+  // mode cards own an actual heading, so anchoring the button to that heading
+  // keeps the locator semantic and unambiguous without depending on card copy.
+  const heading = scope.getByRole('heading', { name: text, exact: true });
+  return scope.getByRole('button').filter({ has: heading });
+}
+
 export async function dismissTutorialIfVisible(page) {
   // Defensive fallback: close every visible mechanic tutorial. A strict
   // getByRole('button', { name: 'Saltar' }) can throw when two overlays are

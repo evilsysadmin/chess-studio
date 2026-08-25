@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, dismissTutorialIfVisible, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
+import { buttonWithHeading, buttonWithVisibleText, dismissTutorialIfVisible, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
@@ -36,7 +36,7 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
   await mockApi(page);
   await login(page);
 
-  await buttonWithVisibleText(page, 'Torneo').click();
+  await buttonWithHeading(page, 'Torneo').click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Jugar siguiente partida', exact: true }).click();
   await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();

@@ -225,12 +225,19 @@ const e2eSource = e2eFiles.map((name) => read(path.join(e2eDir, name))).join('\n
 // role selector therefore becomes ambiguous in Playwright strict mode. Keep
 // this as a suite-level contract so a future refactor cannot reintroduce the
 // evita reintroducir selectores ambiguos cuando la ayuda contextual comparte nombre con la tarjeta.
-for (const label of ['Así juegas', 'Partida rápida', 'Combat Chess · Campaña']) {
+for (const label of ['Así juegas', 'Partida rápida', 'Torneo', 'Combat Chess · Campaña']) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const broadRoleSelector = new RegExp(`getByRole\\(['\"]button['\"],\\s*\\{\\s*name:\\s*\\/[^\\n/]*${escaped}`, 'i');
   if (broadRoleSelector.test(e2eSource)) {
     fail(`E2E usa selector de botón ambiguo para ${label}; usa buttonWithVisibleText(..., ${JSON.stringify(label)}) o exact:true`);
   }
+}
+
+if (/buttonWithVisibleText\([^\n]*['"]Torneo['"]\)/.test(e2eSource)) {
+  fail('E2E no debe localizar la tarjeta Torneo sólo por texto visible: el chip de estado repite ese texto; usa buttonWithHeading(..., "Torneo")');
+}
+if (!e2eSource.includes("buttonWithHeading(page, 'Torneo').click()")) {
+  fail('El smoke de Torneo debe anclar la tarjeta Home a su heading para evitar colisión con el chip de estado');
 }
 
 for (const required of [
