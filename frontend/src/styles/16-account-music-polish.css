@@ -1,0 +1,32 @@
+/* dm45f · Cuenta útil y música por intención, con detalle avanzado opcional. */
+.account-center { width: min(92vw, 520px); max-width: 520px; }
+.account-center-identity { display: grid; grid-template-columns: 46px minmax(0,1fr); align-items: center; gap: .7rem; margin: .75rem 0 1rem; }
+.account-center-avatar { display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid var(--brass-dim); border-radius: 50%; color: var(--brass); background: rgba(201,162,39,.08); font: 800 1rem var(--font-display); }
+.account-center-identity > div, .account-center-section > div, .account-center-session > div { display: grid; gap: .1rem; min-width: 0; }
+.account-center-identity small, .account-center-section small, .account-center-session small { color: var(--parchment-dim); font-size: .68rem; line-height: 1.35; }
+.account-center-section { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .8rem; padding: .78rem 0; border-top: 1px solid var(--line-soft); }
+.account-center-section select { min-width: 132px; padding: .5rem .6rem; border: 1px solid var(--ink-3); border-radius: 7px; background: var(--ink); color: var(--parchment); }
+.account-center-recovery .secondary-btn { max-width: 210px; }
+.account-recovery-form { grid-column: 1 / -1; margin-top: .15rem; }
+.account-center-session { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .8rem; padding-top: .85rem; border-top: 1px solid var(--line-soft); }
+.destructive-btn { min-height: 40px; padding: .55rem .78rem; border: 1px solid color-mix(in srgb,var(--danger) 62%,var(--ink-3)); border-radius: 7px; background: color-mix(in srgb,var(--danger) 9%,transparent); color: var(--parchment); font-weight: 750; }
+.destructive-btn:hover:not(:disabled), .destructive-btn:focus-visible { border-color: var(--danger); background: color-mix(in srgb,var(--danger) 16%,transparent); }
+
+.music-experiences { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .28rem; margin-top: .42rem; }
+.music-experiences button { min-width: 0; padding: .38rem .22rem; overflow: hidden; border: 1px solid rgba(255,255,255,.11); border-radius: 5px; background: rgba(255,255,255,.035); color: var(--parchment-dim); font: 700 .57rem var(--font-body); text-overflow: ellipsis; white-space: nowrap; }
+.music-experiences button:hover, .music-experiences button:focus-visible { color: var(--parchment); border-color: var(--brass-dim); }
+.music-experiences button.active { color: var(--parchment); border-color: var(--brass-dim); background: rgba(201,162,39,.11); }
+.music-deck-advanced { margin-top: .35rem; border-top: 1px solid rgba(255,255,255,.07); }
+.music-deck-advanced > summary { padding: .38rem 0 .15rem; color: var(--parchment-dim); cursor: pointer; font: 700 .59rem var(--font-body); list-style-position: inside; }
+.music-deck-advanced > summary:hover, .music-deck-advanced > summary:focus-visible { color: var(--parchment); }
+.music-deck-advanced .music-deck-selector { display: block; margin-top: .3rem; }
+
+.masthead-game-compact .masthead-account-button, .masthead-game-compact .masthead-logout-button { width: 36px; min-height: 36px; justify-content: center; padding: 0; }
+.masthead-game-compact .masthead-account-button > span:last-child, .masthead-game-compact .masthead-logout-button > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+@media (max-width: 430px) {
+  .account-center { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); overflow-y: auto; padding: 1rem; }
+  .account-center-section, .account-center-session { grid-template-columns: 1fr; align-items: stretch; }
+  .account-center-section select, .account-center-recovery .secondary-btn, .account-center-session .destructive-btn { width: 100%; max-width: none; }
+  .music-experiences button { font-size: .53rem; }
+}

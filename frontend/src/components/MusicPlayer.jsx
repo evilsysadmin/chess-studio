@@ -219,6 +219,11 @@ export default function MusicPlayer({ forceExpanded = false } = {}) {
     setRadioModeState(next);
   }
 
+  function chooseExperience(mode) {
+    const next = setAmbientRadioMode(mode);
+    setRadioModeState(next);
+  }
+
   function changeVolume(event) {
     const next = Number(event.target.value);
     setVolume(next);
@@ -336,19 +341,24 @@ export default function MusicPlayer({ forceExpanded = false } = {}) {
           <button type="button" className="music-deck-button" onClick={next} aria-label="Tema siguiente" title="Tema siguiente">⏭</button>
         </div>
 
-        <label className="music-deck-selector" title={current?.description || 'Tema musical'}>
-          <span className="sr-only">Tema musical</span>
-          <select value={themeId} onChange={chooseTheme} aria-label="Tema musical">
-            {AMBIENT_THEME_GROUPS.map((group) => (
-              <optgroup key={group.genre} label={group.genre}>
-                {group.themes.map((theme) => (
-                  <option key={theme.id} value={theme.id}>{theme.label}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+        <div className="music-experiences" role="group" aria-label="Ambiente musical">
+          <button type="button" className={radioMode === 'focus' ? 'active' : ''} onClick={() => chooseExperience('focus')} aria-pressed={radioMode === 'focus'}>Concentración</button>
+          <button type="button" className={radioMode === 'genre:Clásica' ? 'active' : ''} onClick={() => chooseExperience('genre:Clásica')} aria-pressed={radioMode === 'genre:Clásica'}>Cinemática</button>
+          <button type="button" className={radioMode === 'genre:Rock' ? 'active' : ''} onClick={() => chooseExperience('genre:Rock')} aria-pressed={radioMode === 'genre:Rock'}>Energía</button>
+        </div>
 
+        <details className="music-deck-advanced">
+          <summary>Explorar música</summary>
+          <label className="music-deck-selector" title={current?.description || 'Tema musical'}>
+            <span className="sr-only">Tema musical</span>
+            <select value={themeId} onChange={chooseTheme} aria-label="Tema musical">
+              {AMBIENT_THEME_GROUPS.map((group) => (
+                <optgroup key={group.genre} label={group.genre}>
+                  {group.themes.map((theme) => <option key={theme.id} value={theme.id}>{theme.label}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </label>
         <div className="music-deck-radio-row">
           <label className="music-deck-radio-mode" title="Qué pistas puede elegir la radio automática">
             <span>RADIO</span>
@@ -364,6 +374,7 @@ export default function MusicPlayer({ forceExpanded = false } = {}) {
             <button type="button" className={`music-deck-pref ${excluded ? 'active danger' : ''}`} onClick={toggleExcluded} aria-pressed={excluded} aria-label="Excluir pista de la radio" title="Excluir de la radio">🚫</button>
           </div>
         </div>
+        </details>
 
         <div className="music-deck-bottom-row">
           <label className="music-deck-volume" title={`Volumen de música: ${volume}%`}>

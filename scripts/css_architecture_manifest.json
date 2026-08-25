@@ -14,9 +14,10 @@
     "12-feedback-assistant.css",
     "13-product-expansion.css",
     "14-home-account-hub.css",
-    "15-header-tools.css"
+    "15-header-tools.css",
+    "16-account-music-polish.css"
   ],
-  "combinedSha256": "54e39d56ab05e1627ff523102499d6e8aa97c336fb45f7458a9cc6e8974e7a1c",
-  "combinedBytes": 327717,
-  "combinedLines": 10294
+  "combinedSha256": "7809a90620163358dedcaf731dd63b2e38d772a660fb49d299bfba6e27db7448",
+  "combinedBytes": 331602,
+  "combinedLines": 10326
 }

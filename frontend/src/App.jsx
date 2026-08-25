@@ -737,7 +737,7 @@ function AppInner({ isAdminUser }) {
           />
         )}
         {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} />}
-        {showGlobalAccount && <AccountModal onClose={() => setShowGlobalAccount(false)} />}
+        {showGlobalAccount && <AccountModal onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (

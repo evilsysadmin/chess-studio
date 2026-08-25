@@ -22,7 +22,7 @@ import { rosterKeyFor, CANONICAL_ROSTER_SLOTS, rosterSlotKey, reviveCost } from 
 import { ensureCombatIdentities, combatIdentityFor, createCombatIdentity } from './combatIdentity.js';
 import { normalizeTechniqueState } from './combatTechniques.js';
 import { ensureUnitServiceState, recordUnitRevive, archivePermanentCasualty } from './combatUnitService.js';
-import { ensureDeploymentState } from './combatDeployment.js';
+import { ensureDeploymentState, firstFreeDeploymentSlotForUnit, isUnitCompatibleWithSlot, rosterUnitKeys, setDeploymentUnit } from './combatDeployment.js';
 
 const ROSTER_KEY = 'chess-study-combat-roster';
 
@@ -244,7 +244,19 @@ export function replaceDeadPiece(rosterState, key, at = new Date().toISOString()
     identities[key] = createCombatIdentity(aliases);
   }
 
-  return ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...state, pieces, identities })));
+  let replaced = ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...state, pieces, identities })));
+  const freeSlot = firstFreeDeploymentSlotForUnit(replaced, key);
+  if (freeSlot) {
+    // Si ya existe una reserva compatible con ESTE hueco, respetamos esa
+    // elección potencial: el recién llegado no se adelanta a un veterano.
+    const hasCompatibleReserve = rosterUnitKeys(replaced).some((candidateKey) => (
+      candidateKey !== key
+      && !Object.values(replaced.deployment || {}).includes(candidateKey)
+      && isUnitCompatibleWithSlot(replaced, candidateKey, freeSlot.key)
+    ));
+    if (!hasCompatibleReserve) replaced = setDeploymentUnit(replaced, freeSlot.key, key);
+  }
+  return replaced;
 }
 
 // La ventana para revivir a una pieza caída se cierra apenas arranca la

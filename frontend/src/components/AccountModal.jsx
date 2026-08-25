@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { fetchMe, updateRecoveryEmail } from '../auth.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { getUiLanguage, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 
-export default function AccountModal({ onClose }) {
+export default function AccountModal({ onClose, onLogout, loggingOut = false }) {
   useEscapeToClose(onClose);
   const [me, setMe] = useState(null);
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ export default function AccountModal({ onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [language, setLanguage] = useState(() => getUiLanguage());
 
   useEffect(() => {
     let live = true;
@@ -43,9 +45,17 @@ export default function AccountModal({ onClose }) {
     }
   }
 
+  function changeLanguage(event) {
+    const next = setUiLanguage(event.target.value);
+    setLanguage(next);
+    setNotice(next === 'en'
+      ? 'English saved. Sign-in is already translated; the rest of the studio will follow progressively.'
+      : 'Idioma guardado.');
+  }
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" role="dialog" aria-modal="true" aria-label="Mi cuenta" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+      <div className="army-card account-center" role="dialog" aria-modal="true" aria-label="Mi cuenta" onClick={(e) => e.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">Cuenta</span>
         <h3>Mi cuenta</h3>
@@ -54,17 +64,23 @@ export default function AccountModal({ onClose }) {
         {!error && !me && <div className="ui-state ui-state-loading" role="status"><b>Cargando tu cuenta</b><span>Recuperando la información del perfil…</span></div>}
         {me && (
           <>
-            <div className="admin-detail-grid">
-              <div><span>Usuario</span><strong>{me.username}</strong></div>
-              <div><span>Rol</span><strong>{me.isAdmin ? 'Administrador' : 'Jugador'}</strong></div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <span>Email de recuperación</span>
-                <strong>{me.email || 'No configurado'}</strong>
-              </div>
+            <div className="account-center-identity">
+              <span className="account-center-avatar" aria-hidden="true">{(me.username || 'J').slice(0, 1).toUpperCase()}</span>
+              <div><strong>{me.username}</strong><small>{me.isAdmin ? 'Administrador' : 'Jugador'} · progreso sincronizado</small></div>
             </div>
 
+            <section className="account-center-section" aria-labelledby="account-language-heading">
+              <div><strong id="account-language-heading">Idioma</strong><small>Se recuerda en este perfil.</small></div>
+              <select value={language} onChange={changeLanguage} aria-label="Idioma de la interfaz">
+                {SUPPORTED_UI_LANGUAGES.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}
+              </select>
+            </section>
+
+            <section className="account-center-section account-center-recovery" aria-labelledby="account-recovery-heading">
+              <div><strong id="account-recovery-heading">Recuperación</strong><small>{me.email || 'Añade un email por si pierdes el acceso.'}</small></div>
+
             {!editingEmail ? (
-              <button type="button" className="secondary-btn" style={{ width: '100%', marginTop: '1rem' }} onClick={() => {
+              <button type="button" className="secondary-btn" onClick={() => {
                 setEditingEmail(true);
                 setError(null);
                 setNotice(null);
@@ -72,7 +88,7 @@ export default function AccountModal({ onClose }) {
                 {me.email ? 'Cambiar email de recuperación' : 'Añadir email de recuperación'}
               </button>
             ) : (
-              <form onSubmit={saveEmail} style={{ marginTop: '1rem' }}>
+              <form className="account-recovery-form" onSubmit={saveEmail}>
                 <label className="field-label" htmlFor="account-email">Nuevo email</label>
                 <input id="account-email" type="email" className="text-input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" maxLength={254} required style={{ width: '100%', marginBottom: '0.7rem' }} />
 
@@ -93,6 +109,14 @@ export default function AccountModal({ onClose }) {
                   <button type="submit" className="primary-btn" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
                 </div>
               </form>
+            )}
+            </section>
+
+            {onLogout && (
+              <div className="account-center-session">
+                <div><strong>Sesión</strong><small>Guardaremos el progreso antes de salir.</small></div>
+                <button type="button" className="destructive-btn" onClick={onLogout} disabled={loggingOut}>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</button>
+              </div>
             )}
           </>
         )}

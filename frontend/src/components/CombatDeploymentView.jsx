@@ -726,7 +726,7 @@ export default function CombatDeploymentView({
                           <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
                             Revivir · {cost} XP
                           </button>
-                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial y entra un recluta nuevo de nivel 1." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
+                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial. El recluta nuevo sólo cubre el hueco si no hay otra reserva compatible." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
                             Nuevo recluta
                           </button>
                           {!canRevive && progress > 0 && (
@@ -741,7 +741,7 @@ export default function CombatDeploymentView({
                   })}
                 </div>
                 {summary.fallenCount > 1 && (
-                  <button type="button" className="secondary-btn deployment-replace-all" onClick={() => summary.fallenKeys.forEach((unitKey) => onReplaceFallen?.(unitKey))}>
+                  <button type="button" className="secondary-btn deployment-replace-all" title="Los nuevos sólo cubren huecos sin otra reserva compatible." onClick={() => summary.fallenKeys.forEach((unitKey) => onReplaceFallen?.(unitKey))}>
                     Aceptar {summary.fallenCount} reclutas nuevos
                   </button>
                 )}

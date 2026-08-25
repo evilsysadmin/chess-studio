@@ -87,8 +87,21 @@ describe('Combat Chess deployment board', () => {
     summary = deploymentSummary(roster);
     expect(summary.totalRoster).toBe(16);
     expect(summary.fallenCount).toBe(0);
+    expect(summary.reserveCount).toBe(0);
+    expect(summary.assignedCount).toBe(16);
+  });
+
+  it('un reemplazo no se autodespliega cuando ya hay una reserva compatible', () => {
+    let roster = grantReserveRecruit(loadRoster(), { grantId: 'replacement:priority', originType: 'p', rng: () => 0.1, now: 1000 });
+    roster = {
+      ...roster,
+      pieces: { ...roster.pieces, 'p-a': { ...roster.pieces['p-a'], alive: false } },
+    };
+    const replaced = expireDeadPieces(ensureDeploymentState(roster), '2026-08-22T22:00:00.000Z');
+    const summary = deploymentSummary(replaced);
+    expect(summary.assignedCount).toBe(15);
     expect(summary.reserveCount).toBe(2);
-    expect(summary.assignedCount).toBe(14);
+    expect(summary.deployedKeys).not.toContain('p-a');
   });
 
   it('un refuerzo aumenta el barracón por encima de 16 pero nace en reserva', () => {

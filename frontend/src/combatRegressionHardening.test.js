@@ -77,7 +77,7 @@ describe('REGRESSION · bajas, reemplazos y formación incompleta', () => {
     expect(deploymentSummary(roster)).toMatchObject({ assignedCount: 14, fallenCount: 2, totalIdentities: 16 });
 
     const replaced = expireDeadPieces(roster, '2026-08-23T06:30:00.000Z');
-    expect(deploymentSummary(replaced)).toMatchObject({ assignedCount: 14, reserveCount: 2, fallenCount: 0, totalRoster: 16 });
+    expect(deploymentSummary(replaced)).toMatchObject({ assignedCount: 16, reserveCount: 0, fallenCount: 0, totalRoster: 16 });
   });
 
   it('quitar una unidad deja formación incompleta aunque el estado se normalice otra vez', () => {
