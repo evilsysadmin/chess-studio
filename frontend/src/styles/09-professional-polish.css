@@ -204,3 +204,44 @@ button[disabled] {
 @media (max-width: 360px) {
   .home-start-guide-actions { grid-template-columns: 1fr; }
 }
+
+/* Herramientas para usuarios avanzados: disponibles sin ocupar el flujo normal. */
+.game-advanced-tools {
+  width: min(100%, 680px);
+  margin: .65rem auto 0;
+  border-top: 1px solid var(--line-soft);
+  color: var(--parchment-dim);
+}
+.game-advanced-tools > summary {
+  width: fit-content;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+  font: 700 .68rem var(--font-mono);
+  letter-spacing: .025em;
+}
+.game-advanced-tools > summary::-webkit-details-marker { display: none; }
+.game-advanced-tools > summary::before { content: '＋'; width: 1.1rem; color: var(--brass); }
+.game-advanced-tools[open] > summary::before { content: '−'; }
+.game-advanced-tools-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  padding: .7rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  background: rgba(0,0,0,.1);
+}
+.game-advanced-tools-body > div { display: grid; gap: .1rem; text-align: left; }
+.game-advanced-tools-body b { color: var(--parchment); font-size: .78rem; }
+.game-advanced-tools-body small { max-width: 52ch; line-height: 1.4; }
+.game-advanced-tools-body .secondary-btn { flex: 0 0 auto; }
+.replay-advanced-tools { margin-top: .65rem; }
+
+@media (max-width: 520px) {
+  .game-advanced-tools-body { align-items: stretch; flex-direction: column; }
+  .game-advanced-tools-body .secondary-btn { width: 100%; }
+}

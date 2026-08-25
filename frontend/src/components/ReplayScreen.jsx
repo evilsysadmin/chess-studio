@@ -232,10 +232,16 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
               ↶ Volver a antes del crimen
             </button>
           )}
-          <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleDownloadPGN}>
-            Descargar PGN
-          </button>
-          <p className="hint-text glossary-inline-hint">Formato de exportación: <GlossaryTerm term="PGN">PGN</GlossaryTerm>.</p>
+          <details className="game-advanced-tools replay-advanced-tools">
+            <summary>Opciones avanzadas</summary>
+            <div className="game-advanced-tools-body">
+              <div>
+                <b>Exportar partida</b>
+                <small>Formato <GlossaryTerm term="PGN">PGN</GlossaryTerm>, compatible con otras aplicaciones de ajedrez.</small>
+              </div>
+              <button className="secondary-btn" onClick={handleDownloadPGN}>Exportar archivo .pgn</button>
+            </div>
+          </details>
           {onPlayFromHere && (
             <button className="primary-btn lab-from-here-btn" style={{ marginTop: '0.6rem' }} onClick={() => onPlayFromHere(fen, record.humanColor, record.difficulty, { sourceRecord: record })}>
               🧪 Jugar desde aquí contra la CPU

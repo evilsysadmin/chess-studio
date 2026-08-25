@@ -746,11 +746,6 @@ export default function GameScreen({
                 Deshacer jugada
               </button>
             )}
-            {game.history.length > 0 && (
-              <button className="secondary-btn" onClick={handleDownloadPGN}>
-                Descargar PGN
-              </button>
-            )}
             <button
               type="button"
               className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
@@ -762,6 +757,18 @@ export default function GameScreen({
             </button>
             <button className="secondary-btn" onClick={handleAbandon}>Abandonar partida</button>
           </div>
+          {game.history.length > 0 && (
+            <details className="game-advanced-tools">
+              <summary>Opciones avanzadas</summary>
+              <div className="game-advanced-tools-body">
+                <div>
+                  <b>Exportar partida</b>
+                  <small>Descarga un archivo estándar para analizarlo en otras aplicaciones de ajedrez.</small>
+                </div>
+                <button className="secondary-btn" onClick={handleDownloadPGN}>Exportar archivo .pgn</button>
+              </div>
+            </details>
+          )}
         </div>
       </div>
 

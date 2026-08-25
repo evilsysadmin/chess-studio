@@ -56,3 +56,14 @@ test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse'
   await expect(guide).toBeVisible();
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
 });
+
+test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Exportar archivo .pgn', exact: true })).toHaveCount(0);
+});
