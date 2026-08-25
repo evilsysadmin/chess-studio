@@ -40,8 +40,6 @@ export default function Menu({
   onTrainPersonal,
   onCombat,
   onCombatRoguelike,
-  isAdminUser,
-  onAdmin,
   onSpectator,
   onHistory,
   onInsights,
@@ -240,14 +238,6 @@ export default function Menu({
           </div>
         </details>
       </div>
-
-      {isAdminUser && (
-        <div className="menu-group home-admin-group">
-          <button type="button" className="menu-card accent-danger home-admin-card" onClick={onAdmin}>
-            <IconEye className="menu-card-icon" /><h3>Admin Panel</h3><p>Usuarios, feedback y operación.</p><span className="menu-card-cta">Abrir →</span>
-          </button>
-        </div>
-      )}
 
       {error && <p className="error-text">{error}</p>}
 

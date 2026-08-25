@@ -26,7 +26,7 @@ import { recordGameActivity } from './gameActivity.js';
 import { humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
-import { loadRating, saveRating, updateRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
+import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
 import { handicapForGap } from './handicap.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
@@ -90,6 +90,8 @@ function AppInner({ isAdminUser }) {
   const [tournament, setTournament] = useState(() => loadTournament());
   const [tournamentGame, setTournamentGame] = useState(null);
   const [lastResult, setLastResult] = useState(null);
+  const [casualResult, setCasualResult] = useState(null);
+  const [exitNotice, setExitNotice] = useState(null);
   const {
     historyList, setHistoryList,
     combatHistoryList, setCombatHistoryList,
@@ -281,6 +283,8 @@ function AppInner({ isAdminUser }) {
   }, [view]);
 
   async function handleNewGame(difficulty, color, opts) {
+    setExitNotice(null);
+    setCasualResult(null);
     setLoading(true);
     setError(null);
     try {
@@ -325,10 +329,19 @@ function AppInner({ isAdminUser }) {
 
   function handleExitGame() {
     if (game?.id) {
+      if (casualResult?.gameId === game.id) {
+        setExitNotice(casualResult);
+      } else {
       const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
       const exitDisposition = gameExitDisposition({ moveCount: humanMoveCount(game.history?.length || 0, game.humanColor), isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
-      if (exitDisposition === 'forfeit') handleCasualGameEnd('loss', game, { endReason: 'resignation' });
-      else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
+      if (exitDisposition === 'forfeit') {
+        const summary = handleCasualGameEnd('loss', game, { endReason: 'resignation' });
+        setExitNotice(summary);
+      } else {
+        recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
+        setExitNotice({ outcome: 'cancelled', title: 'Partida cancelada', detail: 'No hiciste ninguna jugada. Tu rating no cambia.', ratingApplied: false });
+      }
+      }
     }
     if (game?.id) clearClockSnapshot(game.id);
     clearActiveGameSession();
@@ -355,13 +368,14 @@ function AppInner({ isAdminUser }) {
   // la "pista inversa" del Historial funcione acá también, no solo en
   // Torneo — con una etiqueta de modo para distinguirlas al navegar la lista.
   function handleCasualGameEnd(outcome, finishedGame, endMeta = {}) {
-    if (!finishedGame || !isCompletedGameOutcome(outcome)) return;
+    if (!finishedGame || !isCompletedGameOutcome(outcome)) return null;
     clearClockSnapshot(finishedGame.id);
     const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
     const opening = identifyOpening(moveSans);
     let seriesSnapshot = activeSeries;
     const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
 
+    let ratingSummary = { ratingApplied: false };
     if (shouldApplyCompetitiveProgress(outcome, { learningMode, trainingPosition })) {
       if (activeSeries && !activeSeries.winner) {
         seriesSnapshot = recordSeriesGame(activeSeries, outcome, {
@@ -386,12 +400,16 @@ function AppInner({ isAdminUser }) {
       pressureIncidents: Number(endMeta.pressureIncidents || 0),
       });
       const score = ratingScoreForOutcome(outcome);
-      setRating((prev) => {
-        const next = updateRating(prev, finishedGame.difficulty, score);
-        saveRating(next);
-        recordRatingHistory(next.rating);
-        return next;
-      });
+      const details = ratingChangeDetails(rating, finishedGame.difficulty, score);
+      saveRating(details.next);
+      recordRatingHistory(details.next.rating);
+      setRating(details.next);
+      ratingSummary = {
+        ratingApplied: true,
+        eloDelta: details.delta,
+        eloBefore: rating.rating,
+        eloAfter: details.next.rating,
+      };
     }
 
     const record = {
@@ -427,10 +445,19 @@ function AppInner({ isAdminUser }) {
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
+    const title = endMeta.endReason === 'resignation'
+      ? 'Abandono registrado como derrota'
+      : outcome === 'win' ? 'Victoria' : outcome === 'draw' ? 'Tablas' : 'Derrota';
+    const detail = ratingSummary.ratingApplied
+      ? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}`
+      : 'Esta modalidad no afecta a tu rating.';
+    const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, ...ratingSummary };
+    setCasualResult(summary);
     if (specialRun?.active && gameContext.runMode) {
       const nextRun = recordSpecialRunResult(specialRun, outcome);
       setSpecialRun(nextRun);
     }
+    return summary;
   }
 
   async function handleNextSeriesGame() {
@@ -741,6 +768,11 @@ function AppInner({ isAdminUser }) {
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
                       <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
                     </button>
+                    {isAdminUser && (
+                      <button type="button" role="menuitem" className="masthead-account-menu-admin" onClick={() => { setShowAccountMenu(false); navigateTo('admin'); }}>
+                        <span aria-hidden="true">◉</span><span><b>Administración</b><small>Usuarios y operación</small></span>
+                      </button>
+                    )}
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}>
                       <span aria-hidden="true">◫</span><span><b>Mi progreso</b><small>Diagnóstico y siguiente mejora</small></span>
                     </button>
@@ -771,6 +803,13 @@ function AppInner({ isAdminUser }) {
             <div className="navigation-back-hint">ESC o clic derecho · volver / cerrar</div>
           )}
         </div>
+
+        {!isBoardGameView && exitNotice && (
+          <div className={`session-result-notice outcome-${exitNotice.outcome}`} role="status" aria-live="polite">
+            <div><strong>{exitNotice.title}</strong><span>{exitNotice.detail}</span></div>
+            <button type="button" aria-label="Cerrar resumen de la partida" onClick={() => setExitNotice(null)}>×</button>
+          </div>
+        )}
 
         {showRatingDetail && (
           <RatingDetailModal rating={rating} onClose={() => setShowRatingDetail(false)} />
@@ -815,8 +854,6 @@ function AppInner({ isAdminUser }) {
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}
             onCombatRoguelike={() => navigateTo('roguelike')}
-            isAdminUser={isAdminUser}
-            onAdmin={() => navigateTo('admin')}
             onHistory={() => navigateTo('history')}
             onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
             onLab={() => navigateTo('lab')}
@@ -838,6 +875,7 @@ function AppInner({ isAdminUser }) {
             onPersistenceState={setGameSaveState}
             onCustomize={() => setShowSettings(true)}
             onGameEnd={handleCasualGameEnd}
+            resultSummary={casualResult?.gameId === game.id ? casualResult : null}
             onChatUpdate={handleGameChatUpdate}
             hintMode={learningMode ? 'free' : 'off'}
             timeControl={activeTimeControl}

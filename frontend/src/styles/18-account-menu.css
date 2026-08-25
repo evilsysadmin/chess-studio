@@ -70,6 +70,8 @@
 .masthead-account-menu-separator { height: 1px; margin: .28rem .42rem; background: var(--line-soft); }
 .masthead-account-popover .masthead-account-menu-logout > span:first-child,
 .masthead-account-popover .masthead-account-menu-logout b { color: color-mix(in srgb, var(--danger) 72%, var(--parchment)); }
+.masthead-account-popover .masthead-account-menu-admin { min-height: 44px; }
+.masthead-account-popover .masthead-account-menu-admin b { color: color-mix(in srgb, var(--brass) 70%, var(--parchment)); }
 .masthead-account-popover button:disabled { cursor: wait; opacity: .62; }
 
 .masthead-game-compact .masthead-account-trigger { width: 38px; min-height: 38px; justify-content: center; padding: 0; }
@@ -105,3 +107,35 @@
   .masthead-account-trigger > span:not(.masthead-account-avatar) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .masthead-account-popover { position: fixed; top: max(3.6rem, calc(env(safe-area-inset-top) + 3rem)); right: max(.5rem, env(safe-area-inset-right)); }
 }
+
+.session-result-notice {
+  display: flex;
+  width: min(760px, calc(100% - 2rem));
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 1rem;
+  padding: .72rem .82rem;
+  border: 1px solid var(--ink-3);
+  border-left: 3px solid var(--brass);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink-2) 94%, var(--brass));
+}
+.session-result-notice > div { display: grid; gap: .18rem; }
+.session-result-notice strong { color: var(--parchment); font-size: .8rem; }
+.session-result-notice span { color: var(--parchment-dim); font-size: .7rem; }
+.session-result-notice button {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--parchment-dim);
+  font-size: 1.1rem;
+}
+.session-result-notice.outcome-loss { border-left-color: var(--danger); }
+.session-result-notice.outcome-win { border-left-color: var(--success); }
+.endgame-rating-impact { display: grid; gap: .18rem; }
+.endgame-rating-impact strong { color: var(--brass); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+.endgame-rating-impact span { color: var(--parchment); }

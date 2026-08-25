@@ -66,6 +66,7 @@ export default function GameScreen({
   onExit,
   onError,
   onGameEnd,
+  resultSummary = null,
   hintMode = 'off',
   tournamentLevel = 1,
   points = 0,
@@ -796,6 +797,12 @@ export default function GameScreen({
               ? game.turn === humanColor ? 'Ganó la CPU.' : '¡Ganaste la partida!'
               : 'La partida terminó en tablas.'}
           </p>
+          {resultSummary && (
+            <p className="endgame-rating-impact">
+              <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
+              <span>{resultSummary.detail}</span>
+            </p>
+          )}
           {seriesState && !seriesState.winner && liveSeriesMoment && (
             <div className={`series-endgame-moment ${liveSeriesMoment.kind}`}>
               <span>{liveSeriesMoment.label}</span>

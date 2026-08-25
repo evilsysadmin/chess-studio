@@ -60,6 +60,8 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-zen-mode',
   'chess-study-default-time-control',
   'chess-study-ui-language',
+  'chess-study-reduced-motion',
+  'chess-study-board-coordinates',
 ]);
 
 export const PROFILE_STORAGE_KEYS = Object.freeze([
