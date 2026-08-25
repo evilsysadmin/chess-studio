@@ -29,6 +29,7 @@ import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../
 import { useGameClock } from '../useGameClock.js';
 import { nextBestAction } from '../nextBestAction.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { humanMoveCount } from '../gameOutcome.js';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -67,6 +68,7 @@ export default function GameScreen({
   onError,
   onGameEnd,
   resultSummary = null,
+  abandonRatingPreview = null,
   hintMode = 'off',
   tournamentLevel = 1,
   points = 0,
@@ -93,6 +95,7 @@ export default function GameScreen({
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [busy, setBusy] = useState(false);
   const [showBoardCoordinates, setShowBoardCoordinates] = useState(() => getBoardCoordinates());
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [zenMode, setZenMode] = useState(() => loadZenMode());
   const zenModeRef = useRef(zenMode);
   zenModeRef.current = zenMode;
@@ -769,7 +772,7 @@ export default function GameScreen({
             >
               {zenMode ? 'Zen: ON' : 'Zen: OFF'}
             </button>
-            <button className="secondary-btn" onClick={handleAbandon}>Abandonar partida</button>
+            <button className="secondary-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
           </div>
           {game.history.length > 0 && (
             <details className="game-advanced-tools">
@@ -838,6 +841,25 @@ export default function GameScreen({
       )}
 
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
+      {showAbandonConfirm && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowAbandonConfirm(false); }}>
+          <div className="army-card abandon-confirm-card" role="dialog" aria-modal="true" aria-labelledby="abandon-confirm-title">
+            <span className="eyebrow">Antes de salir</span>
+            <h3 id="abandon-confirm-title">¿Abandonar la partida?</h3>
+            {humanMoveCount(game.history.length, humanColor) === 0 ? (
+              <p>La partida se cancelará sin resultado. <strong>Tu rating no cambiará.</strong></p>
+            ) : abandonRatingPreview ? (
+              <p>Se registrará como derrota. <strong>Rating estimado {abandonRatingPreview.delta >= 0 ? '+' : ''}{abandonRatingPreview.delta} · {abandonRatingPreview.before} → {abandonRatingPreview.after}.</strong></p>
+            ) : (
+              <p>Se registrará como derrota, pero esta modalidad no afecta a tu rating.</p>
+            )}
+            <div className="abandon-confirm-actions">
+              <button type="button" className="secondary-btn" autoFocus onClick={() => setShowAbandonConfirm(false)}>Seguir jugando</button>
+              <button type="button" className="danger-btn" onClick={handleAbandon}>{humanMoveCount(game.history.length, humanColor) === 0 ? 'Cancelar partida' : 'Abandonar y asumir resultado'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showReport && (
         <React.Suspense fallback={<div className="modal-backdrop"><div className="army-card game-autopsy" role="status">Preparando resumen…</div></div>}>
         <GameReportModal

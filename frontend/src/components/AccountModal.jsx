@@ -122,6 +122,14 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
               <button type="button" onClick={() => setShowBackup(true)}><b>Gestionar progreso</b><small>Sincronización y copia</small></button>
             </section>
 
+            <details className="friendly-disclosure account-privacy-disclosure">
+              <summary>Privacidad y datos</summary>
+              <div className="friendly-disclosure-body">
+                <p>Sincronizamos tu progreso, preferencias e historial para recuperarlos en otros dispositivos. Los datos técnicos de conexión se usan para seguridad y operación del servicio; no forman parte de tu perfil público.</p>
+                <button type="button" className="secondary-btn" onClick={() => setShowBackup(true)}>Exportar o borrar mi progreso</button>
+              </div>
+            </details>
+
             {onLogout && (
               <div className="account-center-session">
                 <div><strong>Sesión</strong><small>Guardaremos el progreso antes de salir.</small></div>

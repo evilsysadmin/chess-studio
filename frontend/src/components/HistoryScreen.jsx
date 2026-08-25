@@ -1,5 +1,6 @@
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { gameModeLabel } from '../gameModes.js';
+import { useMemo, useState } from 'react';
 
 const OUTCOME_LABEL = { win: 'Victoria', draw: 'Tablas', loss: 'Derrota' };
 
@@ -18,6 +19,13 @@ function formatDate(iso) {
 
 export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExit, onClear, title = 'Historial de partidas', emptyText, backLabel = '← Volver' }) {
   useEscapeToClose(onExit);
+  const [outcomeFilter, setOutcomeFilter] = useState('all');
+  const [modeFilter, setModeFilter] = useState('all');
+  const modes = useMemo(() => [...new Set(records.map((record) => gameModeLabel(record)))].sort(), [records]);
+  const visibleRecords = useMemo(() => records.filter((record) => (
+    (outcomeFilter === 'all' || record.outcome === outcomeFilter)
+    && (modeFilter === 'all' || gameModeLabel(record) === modeFilter)
+  )), [records, outcomeFilter, modeFilter]);
   return (
     <div className="menu tournament-panel">
       <button className="back-link" onClick={onExit}>{backLabel}</button>
@@ -34,15 +42,25 @@ export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExi
       </div>
 
       {records.length > 0 && (
+        <div className="history-filters" aria-label="Filtrar historial">
+          <label>Resultado<select value={outcomeFilter} onChange={(event) => setOutcomeFilter(event.target.value)}><option value="all">Todos</option><option value="win">Victorias</option><option value="draw">Tablas</option><option value="loss">Derrotas</option></select></label>
+          <label>Modo<select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}><option value="all">Todos</option>{modes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}</select></label>
+          <span>{visibleRecords.length} de {records.length}</span>
+        </div>
+      )}
+
+      {records.length > 0 && visibleRecords.length === 0 && <div className="ui-state ui-state-empty"><b>No hay partidas con esos filtros</b><span>Prueba otra combinación.</span></div>}
+
+      {visibleRecords.length > 0 && (
         <div className="history-list">
-          {records.map((r) => {
+          {visibleRecords.map((r) => {
             const moveCount = (r.moves || r.log || []).length;
             return (
               <div key={r.id} className="history-row-wrap">
                 <button className="history-row" onClick={() => onOpen(r)}>
                   <span className={`history-outcome ${r.outcome}`}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span>
                   <span className="history-mode-tag">{gameModeLabel(r)}</span>
-                  <span className="history-meta">CPU nivel {r.difficulty} · {moveCount} jugadas{r.timeControl?.label ? ` · ${r.timeControl.label}` : ''}</span>
+                  <span className="history-meta">CPU nivel {r.difficulty} · {moveCount} jugadas{r.opening?.name ? ` · ${r.opening.name}` : ''}{r.timeControl?.label ? ` · ${r.timeControl.label}` : ''}</span>
                   <span className="history-date">{formatDate(r.date)}</span>
                 </button>
                 <div className="history-side-actions">

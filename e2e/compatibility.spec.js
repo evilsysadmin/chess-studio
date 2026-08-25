@@ -39,6 +39,16 @@ for (const width of [360, 390, 430]) {
     await expect(page.getByText('Más modos de juego', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   });
+
+  test(`Mi progreso · diagnóstico visible y sin desbordar a ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await mockApi(page);
+    await login(page);
+    await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
+    await expect(page.getByRole('tab', { name: /Diagnóstico/ })).toHaveAttribute('aria-selected', 'true');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  });
 }
 
 test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse', async ({ page }) => {
@@ -64,7 +74,7 @@ test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page
 
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: /Mi cuenta/ })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: /Ajustes/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /Personalizar/ })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /Cerrar sesión/ })).toBeVisible();
   await page.getByRole('region', { name: 'Guía rápida de Chess Studio' }).getByRole('button', { name: 'Explorar Home', exact: true }).click();
   await page.getByRole('button', { name: 'Abrir asistente de feedback' }).click();

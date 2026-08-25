@@ -139,3 +139,28 @@
 .endgame-rating-impact { display: grid; gap: .18rem; }
 .endgame-rating-impact strong { color: var(--brass); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
 .endgame-rating-impact span { color: var(--parchment); }
+.abandon-confirm-card { width: min(460px, calc(100vw - 1.5rem)); }
+.abandon-confirm-card h3 { margin: .25rem 0 .55rem; }
+.abandon-confirm-card p { color: var(--parchment-dim); line-height: 1.55; }
+.abandon-confirm-card p strong { color: var(--parchment); }
+.abandon-confirm-actions { display: flex; justify-content: flex-end; gap: .55rem; margin-top: 1rem; flex-wrap: wrap; }
+@media (max-width: 520px) {
+  .abandon-confirm-actions { display: grid; }
+  .abandon-confirm-actions button { width: 100%; }
+}
+.history-filters { display: flex; align-items: end; gap: .65rem; flex-wrap: wrap; padding: .65rem .75rem; border: 1px solid var(--ink-3); border-radius: 9px; background: rgba(0,0,0,.1); }
+.history-filters label { display: grid; gap: .22rem; color: var(--parchment-dim); font-size: .65rem; }
+.history-filters select { min-width: 145px; min-height: 40px; border: 1px solid var(--ink-3); border-radius: 7px; padding: .35rem .5rem; background: var(--ink); color: var(--parchment); }
+.history-filters > span { margin-left: auto; padding-bottom: .65rem; color: var(--parchment-dim); font-size: .65rem; }
+
+/* Foco de teclado uniforme para controles que no tengan un tratamiento más específico. */
+:where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  :where(button, select, input):not(.square) { min-height: 44px; }
+  .history-filters { display: grid; grid-template-columns: 1fr 1fr; }
+  .history-filters select { width: 100%; min-width: 0; }
+  .history-filters > span { grid-column: 1 / -1; margin-left: 0; padding-bottom: 0; }
+}

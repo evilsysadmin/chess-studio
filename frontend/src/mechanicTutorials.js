@@ -70,9 +70,9 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     id: 'tournament',
     group: 'Competición',
     title: 'Torneo y progresión',
-    summary: 'Puntos de torneo, niveles y recompensas separadas del ELO.',
+    summary: 'Puntos de torneo, niveles y recompensas separados del rating.',
     steps: [
-      { title: 'Torneo no es partida rápida', text: 'La progresión del torneo sigue sus propios puntos y niveles. El ELO del jugador se calcula por separado.' },
+      { title: 'Torneo no es partida rápida', text: 'La progresión del torneo sigue sus propios puntos y niveles. El rating del jugador se calcula por separado.' },
       { title: 'La recompensa depende del resultado', text: 'El progreso se concede por resultados reales y puede variar con la dificultad y el rendimiento según las reglas activas.' },
       { title: 'Las pistas usan otra cartera', text: 'Las capturas pueden alimentar recursos de pista sin inflar artificialmente tu rating.' },
     ],
@@ -105,7 +105,7 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     summary: 'Recorre líneas clásicas jugada a jugada y entiende la idea de cada movimiento.',
     steps: [
       { title: 'Aprende la secuencia y la idea', text: 'Cada apertura se practica paso a paso. El objetivo no es memorizar coordenadas sin contexto, sino reconocer el plan que justifica cada jugada.' },
-      { title: 'Repite sin penalización', text: 'Si fallas una jugada puedes reintentar la línea. Este modo es entrenamiento y no modifica tu ELO ni simula una partida competitiva completa.' },
+      { title: 'Repite sin penalización', text: 'Si fallas una jugada puedes reintentar la línea. Este modo es entrenamiento y no modifica tu rating ni simula una partida competitiva completa.' },
     ],
   },
   {
@@ -143,7 +143,7 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     id: 'lab',
     group: 'Herramientas',
     title: 'Laboratorio libre',
-    summary: 'Monta posiciones o pega FEN sin afectar tu ELO.',
+    summary: 'Monta posiciones o pega FEN sin afectar tu rating.',
     steps: [
       { title: 'Edita la posición', text: 'Puedes colocar piezas manualmente o cargar un FEN. El laboratorio no presupone una partida jugada desde la posición inicial.' },
       { title: 'Es un entorno de prueba', text: 'Jugar desde el laboratorio sirve para experimentar y no debe contaminar tu rating competitivo.' },

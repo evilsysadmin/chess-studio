@@ -61,7 +61,7 @@ export default function RatingDetailModal({ rating, onClose }) {
               })}
             </div>
             <p className="hint-text rating-detail-explanation">
-              Funciona como ELO: ganar a un rival fuerte mueve más el rating que ganar a uno flojo. Cuentan Torneo y partidas normales; Partida de práctica y Combat Chess quedan fuera para no mezclar pistas o azar de combate. Hay <b>{rating.games}</b> partida{rating.games === 1 ? '' : 's'} contadas.
+              El cálculo sigue el sistema Elo: ganar a un rival fuerte mueve más el rating que ganar a uno flojo. Cuentan Torneo y partidas normales; Partida de práctica y Combat Chess quedan fuera para no mezclar pistas o azar de combate. Hay <b>{rating.games}</b> partida{rating.games === 1 ? '' : 's'} contadas.
             </p>
           </div>
         </details>

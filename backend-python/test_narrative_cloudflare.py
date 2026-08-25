@@ -58,6 +58,7 @@ def test_missing_cloud_configuration_uses_local_fallback(monkeypatch):
     assert "Qd4" in result["text"]
     metrics = provider.get_ai_metrics()
     assert metrics["local_fallback"] == 1
+    assert metrics["reasons"]["not_configured"] == 1
 
 
 def test_player_portrait_fallback_is_actionable_and_never_empty_commentary():
@@ -66,7 +67,6 @@ def test_player_portrait_fallback_is_actionable_and_never_empty_commentary():
     assert "próxima partida" in text
     assert "jaques, capturas y amenazas" in text
     assert "no voy a inventarle detalles" not in text
-    assert metrics["reasons"]["not_configured"] == 1
 
 
 def test_cloud_success_is_used_signed_and_measured(monkeypatch):

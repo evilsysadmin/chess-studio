@@ -93,7 +93,7 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
           {lastResult.outcome === 'win' && <p>Última partida: victoria · +{lastResult.gained} XP</p>}
           {lastResult.outcome === 'draw' && <p>Última partida: tablas · +{lastResult.gained} XP</p>}
           {lastResult.outcome === 'loss' && <p>Última partida: derrota · puedes reintentar</p>}
-          {Number.isFinite(lastResult.eloDelta) && <p>ELO {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta} · {lastResult.eloBefore} → {lastResult.eloAfter}</p>}
+          {Number.isFinite(lastResult.eloDelta) && <p>Rating {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta} · {lastResult.eloBefore} → {lastResult.eloAfter}</p>}
           {lastResult.leveledUp && <p className="level-up-text">¡Subiste al nivel {lastResult.newLevel}!</p>}
         </div>
       )}

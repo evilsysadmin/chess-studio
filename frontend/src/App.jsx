@@ -876,6 +876,7 @@ function AppInner({ isAdminUser }) {
             onCustomize={() => setShowSettings(true)}
             onGameEnd={handleCasualGameEnd}
             resultSummary={casualResult?.gameId === game.id ? casualResult : null}
+            abandonRatingPreview={!learningMode && !gameContext.lab && !gameContext.rescue && !gameContext.suddenDeath ? (() => { const preview = ratingChangeDetails(rating, game.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })() : null}
             onChatUpdate={handleGameChatUpdate}
             hintMode={learningMode ? 'free' : 'off'}
             timeControl={activeTimeControl}
@@ -1011,6 +1012,7 @@ function AppInner({ isAdminUser }) {
             onError={setError}
             onPersistenceState={setGameSaveState}
             onGameEnd={handleTournamentGameEnd}
+            abandonRatingPreview={(() => { const preview = ratingChangeDetails(rating, tournamentGame.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })()}
             onChatUpdate={handleGameChatUpdate}
             hintMode="paid"
             tournamentLevel={levelForPoints(tournament.progressPoints || 0)}
