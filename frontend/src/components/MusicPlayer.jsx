@@ -45,9 +45,9 @@ function saveDeckExpanded(value) {
   try { setStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
 }
 
-export default function MusicPlayer({ forceExpanded = false } = {}) {
+export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false } = {}) {
   const [state, setState] = useState(() => snapshot());
-  const [expanded, setExpanded] = useState(() => forceExpanded || loadDeckExpanded());
+  const [expanded, setExpanded] = useState(() => forceExpanded || (!initiallyCollapsed && loadDeckExpanded()));
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => Math.round(getAmbientVolume() * 100));
   const [seekPreviewMs, setSeekPreviewMs] = useState(null);

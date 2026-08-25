@@ -41,6 +41,18 @@ import wN_esmeralda from '../pieces-medieval-esmeralda/wN.png';
 import wP_esmeralda from '../pieces-medieval-esmeralda/wP.png';
 import wQ_esmeralda from '../pieces-medieval-esmeralda/wQ.png';
 import wR_esmeralda from '../pieces-medieval-esmeralda/wR.png';
+import bB_studio from '../pieces-studio/bB.png';
+import bK_studio from '../pieces-studio/bK.png';
+import bN_studio from '../pieces-studio/bN.png';
+import bP_studio from '../pieces-studio/bP.png';
+import bQ_studio from '../pieces-studio/bQ.png';
+import bR_studio from '../pieces-studio/bR.png';
+import wB_studio from '../pieces-studio/wB.png';
+import wK_studio from '../pieces-studio/wK.png';
+import wN_studio from '../pieces-studio/wN.png';
+import wP_studio from '../pieces-studio/wP.png';
+import wQ_studio from '../pieces-studio/wQ.png';
+import wR_studio from '../pieces-studio/wR.png';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { loadBoardTheme } from '../career.js';
 
@@ -119,6 +131,10 @@ const PIECE_IMAGES_BY_SKIN = {
     p: bP_esmeralda, n: bN_esmeralda, b: bB_esmeralda, r: bR_esmeralda, q: bQ_esmeralda, k: bK_esmeralda,
     P: wP_esmeralda, N: wN_esmeralda, B: wB_esmeralda, R: wR_esmeralda, Q: wQ_esmeralda, K: wK_esmeralda,
   },
+  studio: {
+    p: bP_studio, n: bN_studio, b: bB_studio, r: bR_studio, q: bQ_studio, k: bK_studio,
+    P: wP_studio, N: wN_studio, B: wB_studio, R: wR_studio, Q: wQ_studio, K: wK_studio,
+  },
 };
 
 const PIECE_NAMES = {
@@ -183,7 +199,8 @@ export default function Board({
   // muchas pantallas que ya usan <Board> necesite tocarse — cambiar la
   // skin elegida en la pantalla de recompensas alcanza para que todo
   // tablero nuevo que se monte la use, sin plomería adicional.
-  const pieceImages = PIECE_IMAGES_BY_SKIN[loadSelectedSkin()] || PIECE_IMAGES_BY_SKIN.default;
+  const [pieceSkin, setPieceSkin] = useState(() => loadSelectedSkin());
+  const pieceImages = PIECE_IMAGES_BY_SKIN[pieceSkin] || PIECE_IMAGES_BY_SKIN.default;
   const grid = parseFen(fen);
   const files = orientation === 'white' ? FILES : [...FILES].reverse();
   const ranks = orientation === 'white' ? RANKS : [...RANKS].reverse();
@@ -195,6 +212,12 @@ export default function Board({
   // flechas mueven el foco entre casillas vecinas; Enter/Espacio activa la
   // casilla enfocada, igual que un clic.
   const [focusedSquare, setFocusedSquare] = useState(orientation === 'white' ? 'e1' : 'e8');
+
+  useEffect(() => {
+    const refreshSkin = (event) => setPieceSkin(event?.detail || loadSelectedSkin());
+    window.addEventListener('chess-piece-skin-change', refreshSkin);
+    return () => window.removeEventListener('chess-piece-skin-change', refreshSkin);
+  }, []);
 
   function handleSquareKeyDown(e, square) {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -299,7 +322,7 @@ export default function Board({
   }, [animate, fen]);
 
   return (
-    <div className={`board-wrap board-theme-${loadBoardTheme()} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'}`}>
+    <div className={`board-wrap board-theme-${loadBoardTheme()} piece-skin-${pieceSkin} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'}`}>
       <div className="board-grid">
         {ranks.map((rank, rIdxDisplay) => {
           const rIdx = RANKS.indexOf(rank);

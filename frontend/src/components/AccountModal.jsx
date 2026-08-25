@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { fetchMe, updateRecoveryEmail } from '../auth.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { getUiLanguage, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
+import ProfileBackupModal from './ProfileBackupModal.jsx';
+import AchievementsModal from './AchievementsModal.jsx';
 
 export default function AccountModal({ onClose, onLogout, loggingOut = false }) {
   useEscapeToClose(onClose);
@@ -13,6 +15,8 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [language, setLanguage] = useState(() => getUiLanguage());
+  const [showBackup, setShowBackup] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -54,6 +58,7 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
   }
 
   return (
+    <>
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card account-center" role="dialog" aria-modal="true" aria-label="Mi cuenta" onClick={(e) => e.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
@@ -112,6 +117,11 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
             )}
             </section>
 
+            <section className="account-center-tools" aria-label="Perfil y progreso">
+              <button type="button" onClick={() => setShowAchievements(true)}><b>Distintivos</b><small>Logros y títulos</small></button>
+              <button type="button" onClick={() => setShowBackup(true)}><b>Gestionar progreso</b><small>Sincronización y copia</small></button>
+            </section>
+
             {onLogout && (
               <div className="account-center-session">
                 <div><strong>Sesión</strong><small>Guardaremos el progreso antes de salir.</small></div>
@@ -122,5 +132,8 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
         )}
       </div>
     </div>
+    {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} />}
+    {showBackup && <ProfileBackupModal onClose={() => setShowBackup(false)} />}
+    </>
   );
 }

@@ -17,9 +17,11 @@
     "15-header-tools.css",
     "16-account-music-polish.css",
     "17-premium-board.css",
-    "18-account-menu.css"
+    "18-account-menu.css",
+    "19-game-focus.css",
+    "20-piece-skins.css"
   ],
-  "combinedSha256": "00fc351c070fbf4d6abbe293b0b1e58f61c9c1ae8ebe857f87759bd4005be1b0",
-  "combinedBytes": 345372,
-  "combinedLines": 10669
+  "combinedSha256": "175b5356b61b7bdd22b0478707256eee63dc86481033882900ac7968bc500234",
+  "combinedBytes": 350324,
+  "combinedLines": 10780
 }

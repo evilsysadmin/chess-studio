@@ -778,7 +778,7 @@ function AppInner({ isAdminUser }) {
             onOpenCombat={() => { setShowCombatSummary(false); navigateTo('roguelike'); }}
           />
         )}
-        {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} />}
+        {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
@@ -816,7 +816,6 @@ function AppInner({ isAdminUser }) {
             onHistory={() => navigateTo('history')}
             onInsights={() => navigateTo('insights')}
             onLab={() => navigateTo('lab')}
-            onBoard3D={() => navigateTo('board3d')}
             hasSavedGame={hasSavedGame}
             loading={loading}
             error={error}

@@ -3,14 +3,34 @@ import { TIME_CONTROLS } from '../clock.js';
 import { getAmbientVolume, isFxMuted, isMusicMuted, setAmbientVolume, setFxMuted, setMusicMuted } from '../sound.js';
 import { getDefaultTimeControlId, getUiLanguage, setDefaultTimeControlId, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { levelForPoints, loadTournament } from '../tournament.js';
+import { loadSelectedSkin, PIECE_SKINS, saveSelectedSkin, unlockedSkins } from '../tournamentRewards.js';
+import pixelWhiteKnight from '../pieces-medieval/wN.png';
+import pixelBlackKnight from '../pieces-medieval/bN.png';
+import blueWhiteKnight from '../pieces-medieval-azul/wN.png';
+import blueBlackKnight from '../pieces-medieval-azul/bN.png';
+import emeraldWhiteKnight from '../pieces-medieval-esmeralda/wN.png';
+import emeraldBlackKnight from '../pieces-medieval-esmeralda/bN.png';
+import studioWhiteKnight from '../pieces-studio/wN.png';
+import studioBlackKnight from '../pieces-studio/bN.png';
 
-export default function UserSettingsPanel({ onClose }) {
+const SKIN_PREVIEWS = {
+  default: [pixelWhiteKnight, pixelBlackKnight],
+  studio: [studioWhiteKnight, studioBlackKnight],
+  azul: [blueWhiteKnight, blueBlackKnight],
+  esmeralda: [emeraldWhiteKnight, emeraldBlackKnight],
+};
+
+export default function UserSettingsPanel({ onClose, onBoard3D }) {
   useEscapeToClose(onClose);
   const [timeControlId, setTimeControlIdState] = useState(() => getDefaultTimeControlId());
   const [language, setLanguageState] = useState(() => getUiLanguage());
   const [musicMuted, setMusicMutedState] = useState(() => isMusicMuted());
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => getAmbientVolume());
+  const [pieceSkin, setPieceSkin] = useState(() => loadSelectedSkin());
+  const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
+  const availableSkinIds = new Set(unlockedSkins(tournamentLevel).map((skin) => skin.id));
 
   function updateTimeControl(value) {
     setTimeControlIdState(setDefaultTimeControlId(value));
@@ -29,6 +49,10 @@ export default function UserSettingsPanel({ onClose }) {
   function updateVolume(value) {
     const normalized = setAmbientVolume(Number(value));
     setVolume(normalized);
+  }
+  function updatePieceSkin(id) {
+    saveSelectedSkin(id);
+    setPieceSkin(id);
   }
 
   return (
@@ -58,6 +82,28 @@ export default function UserSettingsPanel({ onClose }) {
             <label className="settings-field"><span>Interfaz</span><select value={language} onChange={(event) => updateLanguage(event.target.value)}>{SUPPORTED_UI_LANGUAGES.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
             <small>La pantalla de acceso ya está localizada. El resto de la interfaz irá adoptando esta preferencia progresivamente.</small>
           </section>
+
+          <section>
+            <h3>Apariencia</h3>
+            <span className="settings-field-label">Piezas</span>
+            <div className="piece-skin-picker" role="radiogroup" aria-label="Estilo de piezas">
+              {PIECE_SKINS.map((skin) => {
+                const unlocked = availableSkinIds.has(skin.id);
+                const preview = SKIN_PREVIEWS[skin.id];
+                return (
+                  <button key={skin.id} type="button" role="radio" aria-checked={pieceSkin === skin.id} className={`piece-skin-option${pieceSkin === skin.id ? ' is-selected' : ''}`} disabled={!unlocked} onClick={() => updatePieceSkin(skin.id)}>
+                    <span className={`piece-skin-preview piece-skin-preview-${skin.id}`} aria-hidden="true"><img src={preview[0]} alt="" /><img src={preview[1]} alt="" /></span>
+                    <span><b>{unlocked ? skin.label : `🔒 ${skin.label}`}</b><small>{unlocked ? skin.description : `Se desbloquea en Torneo · nivel ${skin.level}`}</small></span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {onBoard3D && <section>
+            <h3>Experimentos</h3>
+            <div className="settings-inline-action"><div><strong>Tablero 3D</strong><small>Vista experimental independiente del tablero principal.</small></div><button type="button" className="secondary-btn" onClick={onBoard3D}>Abrir</button></div>
+          </section>}
         </div>
       </section>
     </div>

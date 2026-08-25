@@ -15,11 +15,10 @@ import {
 beforeEach(() => localStorage.clear());
 
 describe('unlockedTitles / unlockedSkins', () => {
-  it('en nivel 1 solo desbloquea el título y skin de nivel 1', () => {
+  it('en nivel 1 desbloquea el título y los dos estilos iniciales', () => {
     expect(unlockedTitles(1)).toHaveLength(1);
     expect(unlockedTitles(1)[0].id).toBe('novato');
-    expect(unlockedSkins(1)).toHaveLength(1);
-    expect(unlockedSkins(1)[0].id).toBe('default');
+    expect(unlockedSkins(1).map((skin) => skin.id)).toEqual(['default', 'studio']);
   });
 
   it('los desbloqueos son acumulativos, no se pierden al subir de nivel', () => {
@@ -65,5 +64,10 @@ describe('selección persistida', () => {
     expect(loadSelectedTitle()).toBe('estratega');
     saveSelectedSkin('azul');
     expect(loadSelectedSkin()).toBe('azul');
+  });
+
+  it('rechaza identificadores de skin desconocidos', () => {
+    saveSelectedSkin('no-existe');
+    expect(loadSelectedSkin()).toBe('default');
   });
 });

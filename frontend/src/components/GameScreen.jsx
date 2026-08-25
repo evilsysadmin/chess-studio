@@ -3,7 +3,6 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import NotationPanel from './NotationPanel.jsx';
 import PromotionModal from './PromotionModal.jsx';
-import CpuPresence from './CpuPresence.jsx';
 import GameChat from './GameChat.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import { api } from '../api.js';
@@ -123,11 +122,8 @@ export default function GameScreen({
   // Aviso de "la CPU ya jugó, te toca a ti".
   const [turnBanner, setTurnBanner] = useState(null);
   const turnBannerTimeout = useRef(null);
-  const [cpuComment, setCpuComment] = useState(null);
-  const [cpuCommentSeq, setCpuCommentSeq] = useState(0);
   const [audienceReaction, setAudienceReaction] = useState(null);
   const [gameChat, setGameChat] = useState(() => loadActiveGameChat(game.id));
-  const cpuCommentTimeout = useRef(null);
   const remoteNarrativeGateRef = useRef(null);
   if (!remoteNarrativeGateRef.current) {
     remoteNarrativeGateRef.current = createNarrativeCooldownGate({ minPlyGap: 2, minIntervalMs: 2500 });
@@ -157,7 +153,6 @@ export default function GameScreen({
     setSelected(null);
     setPendingAnim(null);
     setTurnBanner(null);
-    setCpuComment(null);
     setAudienceReaction(null);
     setGameChat(loadActiveGameChat(game.id));
     setHint(null);
@@ -179,7 +174,6 @@ export default function GameScreen({
   useEffect(() => {
     if (!zenMode) return;
     stopCpuSpeech();
-    setCpuComment(null);
   }, [zenMode]);
 
   useEffect(() => {
@@ -272,11 +266,7 @@ export default function GameScreen({
     // Zen no borra el expediente: conserva el comentario para el replay y la
     // memoria histórica, pero no lo enseña ni lo pronuncia durante la partida.
     if (zenModeRef.current) return;
-    setCpuComment(comment.text);
-    setCpuCommentSeq((n) => n + 1);
     speakCpuComment(comment.text);
-    if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
-    cpuCommentTimeout.current = setTimeout(() => setCpuComment(null), 6500);
   }
 
 
@@ -350,7 +340,6 @@ export default function GameScreen({
   useEffect(() => () => {
     if (turnBannerTimeout.current) clearTimeout(turnBannerTimeout.current);
     if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
-    if (cpuCommentTimeout.current) clearTimeout(cpuCommentTimeout.current);
     if (audienceReactionTimeout.current) clearTimeout(audienceReactionTimeout.current);
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
@@ -649,6 +638,10 @@ export default function GameScreen({
   else if (hintMode === 'paid') hintButtonLabel = `Pista (${currentHintCost} pts)`;
 
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
+  const gameContextMessages = [
+    !zenMode && prediction ? { id: 'game-prediction', by: 'system', event: 'PRONÓSTICO', text: prediction.text.replace(/^Pronóstico:\s*/i, '') } : null,
+    activeContract ? { id: 'game-contract', by: 'system', event: 'CONTRATO', text: `${activeContract.label} · ${activeContract.text}` } : null,
+  ].filter(Boolean);
 
   const topColor = humanColor === 'w' ? 'b' : 'w'; // el rival siempre arriba
   const bottomColor = humanColor;
@@ -686,7 +679,6 @@ export default function GameScreen({
             {statusText}
           </div>
           {!zenMode && audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{audienceReaction}</b></div>}
-          {!zenMode && prediction && <div className="prediction-strip">{prediction.text}</div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
           {!zenMode && memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin afectar al rating</div>}
@@ -698,7 +690,6 @@ export default function GameScreen({
             </div>
           )}
           {!zenMode && runState?.active && <div className="series-strip">{runState.mode === 'boss' ? `Boss Run · fase ${runState.stage + 1}/6 · CPU ${runState.difficulty}` : runState.mode === 'cup' ? `Copa · ${runState.completedStages || 0}/8 · ${runState.points || 0} pts · CPU ${runState.difficulty}` : `Racha · ${runState.wins} victorias · CPU ${runState.difficulty}`}</div>}
-          {activeContract && <div className="contract-strip"><b>Contrato:</b> {activeContract.label} · {activeContract.text}</div>}
           {!zenMode && achievementToast && (
             <div className={`achievement-toast ${achievementToast.kind === 'shame' ? 'shame' : 'glory'}`}>
               <b>{achievementToast.kind === 'shame' ? '☠ Trofeo de vergüenza' : '🏆 Logro desbloqueado'}</b>
@@ -706,9 +697,6 @@ export default function GameScreen({
             </div>
           )}
           <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
-            <aside className="game-music-rail" aria-label="Música de la partida">
-              <MusicPlayer />
-            </aside>
             <div className="game-board-stack">
               {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
               <Board
@@ -729,18 +717,18 @@ export default function GameScreen({
                 </div>
               )}
               {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
-              {!zenMode && (
-                <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
-                  <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
-                  <div className="game-notation-row">
-                  <NotationPanel history={game.history} difficulty={game.difficulty} />
-                  </div>
-                </details>
-              )}
             </div>
             {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
-              <CpuPresence key={cpuCommentSeq} comment={cpuComment} pulse={!!cpuComment} rivalryRecord={loadRivalry().record} />
-              <GameChat messages={gameChat} />
+              <div className="game-side-music" aria-label="Música de la partida">
+                <MusicPlayer initiallyCollapsed />
+              </div>
+              <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
+                <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
+                <div className="game-notation-row">
+                  <NotationPanel history={game.history} difficulty={game.difficulty} />
+                </div>
+              </details>
+              <GameChat messages={gameChat} contextMessages={gameContextMessages} />
             </aside>}
           </div>
           {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}

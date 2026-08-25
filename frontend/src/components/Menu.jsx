@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints } from '../tournament.js';
-import { getUsername } from '../auth.js';
 import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn } from './Icons.jsx';
-import ProfileBackupModal from './ProfileBackupModal.jsx';
-import AchievementsModal from './AchievementsModal.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import ModeTutorialTip from './ModeTutorialTip.jsx';
@@ -48,7 +45,6 @@ export default function Menu({
   onHistory,
   onInsights,
   onLab,
-  onBoard3D,
   hasSavedGame,
   loading,
   error,
@@ -62,15 +58,12 @@ export default function Menu({
   const [seriesBestOf, setSeriesBestOf] = useState(1);
   const [suddenDeath, setSuddenDeath] = useState(false);
   const [threatCheck, setThreatCheck] = useState(false);
-  const [showBackup, setShowBackup] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
-  const [showAchievements, setShowAchievements] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
-  const username = getUsername();
-  const hasOpenOverlay = showBackup || showQuickMatch || showMirrorMode || showAchievements || showFeedback;
+  const hasOpenOverlay = showQuickMatch || showMirrorMode || showFeedback;
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const today = useMemo(() => buildHomeToday({
     daily: currentDailyStreak(),
@@ -151,11 +144,11 @@ export default function Menu({
           <p>Empieza con una opción principal o explora más modos cuando quieras.</p>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
-          <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card" onClick={() => setShowQuickMatch(true)}>
-            <IconPawn className="menu-card-icon" />
-            <h3>Partida rápida</h3>
-            <p>CPU, nivel configurable y a jugar.</p>
-            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} →</span>
+          <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card" onClick={onTournament}>
+            <IconTrophy className="menu-card-icon" />
+            <h3>Torneo</h3>
+            <p>Rivales cada vez más duros y progreso por resultados.</p>
+            <span className="menu-card-cta">Nivel {tournamentLevel} →</span>
           </TutorialModeCard>
 
           <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger home-primary-card" onClick={onCombatRoguelike}>
@@ -165,11 +158,11 @@ export default function Menu({
             <span className="menu-card-cta">Abrir campaña →</span>
           </TutorialModeCard>
 
-          <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card" onClick={onTournament}>
-            <IconTrophy className="menu-card-icon" />
-            <h3>Torneo</h3>
-            <p>Rivales cada vez más duros y progreso por resultados.</p>
-            <span className="menu-card-cta">Nivel {tournamentLevel} →</span>
+          <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card" onClick={() => setShowQuickMatch(true)}>
+            <IconPawn className="menu-card-icon" />
+            <h3>Partida rápida</h3>
+            <p>CPU, nivel configurable y a jugar.</p>
+            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} →</span>
           </TutorialModeCard>
         </div>
 
@@ -254,29 +247,7 @@ export default function Menu({
         onPlay={() => setShowQuickMatch(true)}
       />
 
-      <section className="home-account-panel" aria-label="Cuenta y utilidades">
-        <div className="home-account-main">
-          <span className="home-account-avatar" aria-hidden="true">{(username || 'J').slice(0, 1).toUpperCase()}</span>
-          <div className="home-account-identity">
-            <span className="section-label">SESIÓN ACTIVA</span>
-            <strong>{username || 'Jugador'}</strong>
-            <small>Progreso sincronizado con tu cuenta</small>
-          </div>
-        </div>
-        <details className="home-tools-disclosure">
-          <summary>Más opciones</summary>
-          <nav className="home-utility-actions" aria-label="Utilidades de Chess Studio">
-            <button type="button" onClick={() => setShowAchievements(true)}><strong>Distintivos</strong><span>Logros y títulos</span></button>
-            <button type="button" onClick={() => setShowHomeGuide(true)}><strong>Guía rápida</strong><span>Cómo empezar</span></button>
-            <button type="button" onClick={() => setShowBackup(true)}><strong>Gestionar progreso</strong><span>Sincronización y copia</span></button>
-            <button type="button" onClick={onBoard3D}><strong>Tablero 3D</strong><span>Experimento visual</span></button>
-          </nav>
-        </details>
-      </section>
-
       {showFeedback && <FeedbackModal context="Home" onClose={() => setShowFeedback(false)} />}
-      {showBackup && <ProfileBackupModal onClose={() => setShowBackup(false)} />}
-      {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} />}
       {showQuickMatch && (
         <QuickMatchModal
           difficulty={difficulty}

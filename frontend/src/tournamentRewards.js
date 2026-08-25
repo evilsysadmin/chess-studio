@@ -21,12 +21,11 @@ export const TITLES = [
   { level: 80, id: 'maestro-de-casa', label: 'Maestro de casa' },
 ];
 
-// Cada skin es un sufijo de carpeta bajo pieces-medieval-<skin>/ — el set
-// "default" (sin sufijo) es el crema+dorado/carbón+carmesí de siempre.
 export const PIECE_SKINS = [
-  { level: 1, id: 'default', label: 'Clásico (crema/carbón)' },
-  { level: 10, id: 'azul', label: 'Azulado' },
-  { level: 25, id: 'esmeralda', label: 'Esmeralda' },
+  { level: 1, id: 'default', label: 'Pixel medieval', description: 'El clásico de Chess Studio.' },
+  { level: 1, id: 'studio', label: 'Studio Marfil', description: 'Ilustrado, limpio y detallado.' },
+  { level: 10, id: 'azul', label: 'Pixel azulado', description: 'Variante fría del set medieval.' },
+  { level: 25, id: 'esmeralda', label: 'Pixel esmeralda', description: 'Variante de campaña en verde.' },
 ];
 
 export function unlockedTitles(level) {
@@ -61,6 +60,7 @@ export function loadSelectedSkin() {
 }
 
 export function saveSelectedSkin(id) {
-  setProfileStorageItem(SKIN_KEY, id);
+  const safeId = PIECE_SKINS.some((skin) => skin.id === id) ? id : 'default';
+  setProfileStorageItem(SKIN_KEY, safeId);
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('chess-piece-skin-change', { detail: safeId }));
 }
-
