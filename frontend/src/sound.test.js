@@ -299,8 +299,8 @@ describe('ambient music catalog', () => {
   });
 
   it('encadena pistas con una transición corta en vez de un agujero largo', () => {
-    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeGreaterThanOrEqual(400);
-    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeLessThanOrEqual(900);
+    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeGreaterThanOrEqual(1800);
+    expect(AMBIENT_INTER_TRACK_SILENCE_MS).toBeLessThanOrEqual(3200);
   });
 
   it('permite radio por estilo, favoritos, exclusiones y concentración', () => {

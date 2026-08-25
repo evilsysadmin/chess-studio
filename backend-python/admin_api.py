@@ -113,6 +113,8 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
                 "createdAt": user_doc.get("created_at"),
                 "currentActivity": user_doc.get("current_activity"),
                 "clientRelease": user_doc.get("client_release"),
+                "lastClientIp": user_doc.get("last_client_ip"),
+                "lastClientCountry": user_doc.get("last_client_country"),
                 **_presence_summary(activity_anchor),
                 **_foreground_summary(user_doc),
                 **_extract_summary_stats(profile),

@@ -58,6 +58,40 @@ function Presence({ user, compact = false }) {
   );
 }
 
+function countryFlag(code) {
+  const normalized = String(code || '').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) return '🌐';
+  return String.fromCodePoint(...[...normalized].map((char) => 127397 + char.charCodeAt(0)));
+}
+
+function countryName(code) {
+  const normalized = String(code || '').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) return 'Sin geolocalizar';
+  try { return new Intl.DisplayNames(['es'], { type: 'region' }).of(normalized) || normalized; } catch { return normalized; }
+}
+
+function maskedIp(value) {
+  const ip = String(value || '');
+  if (!ip) return 'Sin IP';
+  if (ip.includes(':')) return `${ip.split(':').slice(0, 3).join(':')}::…`;
+  const parts = ip.split('.');
+  return parts.length === 4 ? `${parts[0]}.${parts[1]}.x.x` : 'IP registrada';
+}
+
+function NetworkIdentity({ user, compact = false }) {
+  const [revealed, setRevealed] = useState(false);
+  const ip = user?.lastClientIp || null;
+  const country = user?.lastClientCountry || null;
+  const location = countryName(country);
+  return (
+    <span className="admin-network" title={`${location}${ip ? ' · última IP observada' : ''}`}>
+      <span className="admin-network-flag" aria-hidden="true">{countryFlag(country)}</span>
+      <span className="admin-network-copy"><b>{location}</b>{!compact && <small>{revealed ? ip : maskedIp(ip)}</small>}</span>
+      {ip && <button type="button" onClick={() => setRevealed((value) => !value)} aria-label={revealed ? 'Ocultar IP completa' : 'Mostrar IP completa'}>{revealed ? 'Ocultar' : compact ? maskedIp(ip) : 'Revelar IP'}</button>}
+    </span>
+  );
+}
+
 function WorstMove({ move, compact = false }) {
   if (!move) return <span className="admin-muted">—</span>;
   if (compact) return <strong className="admin-worst-malus">−{move.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></strong>;
@@ -377,6 +411,7 @@ export default function AdminScreen({ onExit }) {
                 <tr>
                   <th>Usuario</th>
                   <th>Actividad</th>
+                  <th>Red</th>
                   <th>Rating</th>
                   <th>Partidas</th>
                   <th>V/T/D</th>
@@ -408,6 +443,7 @@ export default function AdminScreen({ onExit }) {
                           </button>
                         </td>
                         <td data-label="Actividad"><Presence user={u} compact /></td>
+                        <td data-label="Red"><NetworkIdentity user={u} compact /></td>
                         <td data-label="Rating">{u.rating ?? '—'}</td>
                         <td data-label="Partidas">{u.totalGames ?? u.gamesPlayed ?? '—'}</td>
                         <td data-label="V/T/D">{u.totalGames ? `${u.wins}/${u.draws}/${u.losses}` : '—'}</td>
@@ -428,7 +464,7 @@ export default function AdminScreen({ onExit }) {
                       </tr>
                       {isOpen && (
                         <tr className="admin-detail-row" id={detailId}>
-                          <td colSpan="8">
+                          <td colSpan="9">
                             <div className="admin-detail-grid">
                               <div><span>Registrado</span><strong>{formatAdminTimestamp(u.createdAt)}</strong></div>
                               <div><span>Presencia</span><strong><Presence user={u} /></strong></div>
@@ -436,6 +472,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Versión del cliente</span><strong>{releaseState.label}{u.clientRelease ? ` · ${u.clientRelease}` : ''}</strong></div>
                               <div><span>Ventana</span><strong>{u.foreground === true ? 'Primer plano' : u.foreground === false ? 'Segundo plano / no visible' : 'Sin dato'}</strong></div>
                               <div><span>Última actividad exacta</span><strong>{formatAdminTimestamp(u.lastActivity)}</strong></div>
+                              <div><span>Última red observada</span><strong><NetworkIdentity user={u} /></strong></div>
                               <div><span>Porcentaje de victoria</span><strong>{u.winPct == null ? '—' : `${u.winPct}%`}</strong></div>
                               <div><span>Rating / partidas <GlossaryTerm term="ELO">ELO</GlossaryTerm></span><strong>{u.rating ?? '—'} / {u.ratingGames ?? '—'}</strong></div>
                               <div><span>Pico de rating</span><strong>{u.ratingPeak ?? '—'}</strong></div>

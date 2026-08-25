@@ -61,7 +61,7 @@ const DEFAULT_AMBIENT_THEME = 'andalus';
 // La radio de sesión deja un pequeño hueco real entre piezas. No encadenamos
 // los finales como si fueran jingles publicitarios: termina el tema, respira,
 // y entra otro distinto.
-export const AMBIENT_INTER_TRACK_SILENCE_MS = 700;
+export const AMBIENT_INTER_TRACK_SILENCE_MS = 2400;
 const ANDALUS_TRACK_DURATION_MS = 240000;
 
 export function setMusicMuted(muted) {
@@ -554,8 +554,8 @@ function finishAmbientTrackNaturally() {
   ambientTransport.positionMs = durationMs;
   ambientTransport.startedAtMs = 0;
 
-  // Transición corta de radio: fade-out y una respiración mínima antes del
-  // siguiente tema. No hay corte seco ni dos segundos de vacío entre piezas.
+  // Transición de radio con respiración musical perceptible: el fade pertenece
+  // al tema que termina y después dejamos aire antes de presentar el siguiente.
   if (ambientOutputNode) {
     const ctx = ambientOutputNode.context;
     const gain = ambientOutputNode.gain;

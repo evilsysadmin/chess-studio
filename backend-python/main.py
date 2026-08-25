@@ -9,6 +9,7 @@ import time
 import uuid
 import hmac
 import re
+import ipaddress
 from typing import Optional
 from urllib.parse import quote, urlsplit
 
@@ -91,6 +92,26 @@ def _request_username(request: Request) -> str:
         return "-"
     username = verify_token(header[len("Bearer "):])
     return username or "-"
+
+
+def _client_network(request: Request) -> tuple[str | None, str | None]:
+    """Última red observada, sin lookup externo ni confianza ciega en proxies.
+
+    Cloudflare sólo se considera fuente de IP si también llega CF-Ray. Fuera
+    de Cloudflare usamos la dirección resuelta por ASGI (útil en local/Render).
+    Guardamos un único valor por cuenta; nunca construimos historial de IPs.
+    """
+    cloudflare_request = bool((request.headers.get("cf-ray") or "").strip())
+    raw_ip = (request.headers.get("cf-connecting-ip") or "").strip() if cloudflare_request else ""
+    if not raw_ip and request.client:
+        raw_ip = str(request.client.host or "").strip()
+    try:
+        client_ip = str(ipaddress.ip_address(raw_ip)) if raw_ip else None
+    except ValueError:
+        client_ip = None
+    raw_country = (request.headers.get("cf-ipcountry") or "").strip().upper() if cloudflare_request else ""
+    country = raw_country if re.fullmatch(r"[A-Z]{2}", raw_country) and raw_country not in {"XX", "T1"} else None
+    return client_ip, country
 
 
 def rate_limit_key(request: Request) -> str:
@@ -342,7 +363,7 @@ def _password_reset_link(token: str) -> str:
 # necesariamente son públicas.
 
 
-async def _touch_activity_best_effort(username: str, *, force: bool = False) -> None:
+async def _touch_activity_best_effort(username: str, *, force: bool = False, request: Request | None = None) -> None:
     """La presencia es telemetría útil, nunca una dependencia del juego.
 
     Si Mongo tiene un tropiezo puntual no vamos a convertir un heartbeat o un
@@ -351,7 +372,8 @@ async def _touch_activity_best_effort(username: str, *, force: bool = False) -> 
     siguen propagando su error normalmente.
     """
     try:
-        await ustore.touch_last_activity(username, force=force)
+        client_ip, client_country = _client_network(request) if request else (None, None)
+        await ustore.touch_last_activity(username, force=force, client_ip=client_ip, client_country=client_country)
     except PersistentStorageUnavailable:
         access_logger.warning("No se pudo actualizar last_activity para user=%s", username)
 
@@ -374,7 +396,7 @@ async def get_current_user(request: Request) -> str:
         raise HTTPException(503, "No se puede verificar la sesión temporalmente.") from exc
     if not account_exists:
         raise HTTPException(401, "La cuenta ya no existe.")
-    await _touch_activity_best_effort(username)
+    await _touch_activity_best_effort(username, request=request)
     return username
 
 
@@ -455,7 +477,7 @@ async def login(body: LoginRequest, request: Request):
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Usuario o contraseña incorrectos.")
     request.state.username = username
-    await _touch_activity_best_effort(username, force=True)
+    await _touch_activity_best_effort(username, force=True, request=request)
     return {"token": create_token(username), "username": username}
 
 
@@ -543,7 +565,11 @@ async def activity_heartbeat(request: Request, payload: Optional[ActivityHeartbe
     foreground = payload.foreground if payload else None
     raw_release = (payload.release or '').strip() if payload else ''
     release = raw_release if re.fullmatch(r"v[0-9A-Za-z][0-9A-Za-z._-]{0,30}", raw_release) else None
-    await ustore.touch_last_activity(username, force=True, activity=activity, foreground=foreground, release=release)
+    client_ip, client_country = _client_network(request)
+    await ustore.touch_last_activity(
+        username, force=True, activity=activity, foreground=foreground, release=release,
+        client_ip=client_ip, client_country=client_country,
+    )
     return None
 
 

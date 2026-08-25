@@ -249,6 +249,8 @@ async def touch_last_activity(
     activity: str | None = None,
     foreground: bool | None = None,
     release: str | None = None,
+    client_ip: str | None = None,
+    client_country: str | None = None,
 ) -> str:
     """Actualiza la última actividad con coalescing para no martillear Mongo.
 
@@ -274,6 +276,10 @@ async def touch_last_activity(
                 fields["foreground_updated_at"] = value
             if release:
                 fields["client_release"] = release
+            if client_ip:
+                fields["last_client_ip"] = str(client_ip)[:64]
+            if client_country:
+                fields["last_client_country"] = str(client_country)[:2].upper()
             # `force=True` se usa en login (y tras reset, que también entrega
             # sesión nueva). Guardamos un ancla de último acceso además del
             # heartbeat para que cuentas legacy nunca vuelvan a quedar como
@@ -297,6 +303,10 @@ async def touch_last_activity(
                 user["foreground_updated_at"] = value
             if release:
                 user["client_release"] = release
+            if client_ip:
+                user["last_client_ip"] = str(client_ip)[:64]
+            if client_country:
+                user["last_client_country"] = str(client_country)[:2].upper()
             if force:
                 user["last_login"] = value
 

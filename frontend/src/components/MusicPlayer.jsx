@@ -302,7 +302,7 @@ export default function MusicPlayer({ forceExpanded = false } = {}) {
       <div className="music-deck-display" title={current?.description || 'Música ambiental'}>
         <div className="music-deck-title-row">
           <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />
-          <span className="music-deck-track">{current?.label || 'Música ambiental'}</span>
+          <span className="music-deck-track">{state.status === 'gap' ? 'Respirando antes del siguiente tema…' : (current?.label || 'Música ambiental')}</span>
           <span className="music-deck-time">
             {formatTime(displayedPositionMs)} / {totalLabel}
           </span>
