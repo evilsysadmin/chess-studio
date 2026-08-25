@@ -36,7 +36,7 @@ variable "render_api_hostname" {
 variable "render_api_cname_target" {
   description = "Render service hostname shown in the Render dashboard."
   type        = string
-  default     = "chess-study-backend.onrender.com"
+  default     = "chess-studio.onrender.com"
 }
 
 variable "worker_name" {
