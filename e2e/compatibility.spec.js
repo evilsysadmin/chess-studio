@@ -75,6 +75,28 @@ test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
 
+test('Home · Combat abre un resumen compacto del ejército', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+  await page.getByRole('button', { name: /Combat.*XP/i }).click();
+  const summary = page.getByRole('dialog', { name: 'Tu ejército' });
+  await expect(summary).toBeVisible();
+  await expect(summary.getByText('XP disponible', { exact: true })).toBeVisible();
+  await expect(summary.getByText('veteranos', { exact: true })).toBeVisible();
+  await expect(summary.getByRole('button', { name: 'Ver ejército', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+});
+
+test('Registro · permite elegir inglés y localiza el acceso', async ({ page }) => {
+  await mockApi(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: '¿No tienes cuenta? Créala', exact: true }).click();
+  await page.getByLabel('Idioma', { exact: true }).selectOption('en');
+  await expect(page.getByRole('heading', { name: 'Create account', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeVisible();
+});
+
 test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ page }) => {
   await mockApi(page);
   await login(page);

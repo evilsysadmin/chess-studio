@@ -124,3 +124,12 @@ def test_short_ranges_use_fine_grained_series_resolution():
     series = history._group_series(rows, int(at), int(at + 15 * 60))
     assert history.BUCKET_SECONDS == 5 * 60
     assert len(series) == 2
+
+
+def test_presence_history_is_aggregate_and_exposes_average_and_peak():
+    history.reset_history_for_tests()
+    history.record_presence_snapshot(2, timestamp=1_800_000_000)
+    history.record_presence_snapshot(6, timestamp=1_800_000_010)
+    bucket = history._PENDING[history._bucket_start(1_800_000_000)]
+    summary = history._summarize_presence(bucket["presence"])
+    assert summary == {"samples": 2, "average_online": 4.0, "peak_online": 6}

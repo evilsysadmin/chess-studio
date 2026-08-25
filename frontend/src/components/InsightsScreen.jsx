@@ -401,7 +401,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
               <h2>Así te ve la CPU</h2>
             </div>
             <span className={`ai-player-portrait-source source-${portraitStatus}`}>
-              {portraitStatus === 'loading' ? 'Pensando…' : portraitStatus === 'cloudflare' ? 'Workers AI' : 'Lectura local'}
+              {portraitStatus === 'loading' ? 'Preparando consejos…' : 'Consejos'}
             </span>
           </div>
           <p className="ai-player-portrait-text">{portraitText || localPortrait}</p>
@@ -425,7 +425,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                 </small>
               </>
             ) : (
-              <small>Workers AI se activa cuando haya al menos 3 partidas reales que comentar.</small>
+              <small>Los consejos se activan cuando haya al menos 3 partidas reales que comentar.</small>
             )}
           </div>
           <details className="friendly-disclosure ai-player-portrait-details">
@@ -564,10 +564,10 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
               )}
             </article>
           )}
-          {trainingAiStatus === 'loading' && <p className="hint-text coaching-ai-status">Workers AI está ordenando las prioridades…</p>}
+          {trainingAiStatus === 'loading' && <p className="hint-text coaching-ai-status">Preparando tus próximas prioridades…</p>}
           {trainingAiText && (
             <div className="ai-task-card coaching-ai-plan">
-              <small>CPU // PLAN DE ENTRENAMIENTO · WORKERS AI</small>
+              <small>CONSEJOS // PLAN DE ENTRENAMIENTO</small>
               <p>{trainingAiText}</p>
               <div className="ai-player-portrait-actions ai-player-portrait-actions-visible">
                 <button

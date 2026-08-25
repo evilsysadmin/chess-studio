@@ -11,9 +11,10 @@
     "09-professional-polish.css",
     "10-studio-art-direction.css",
     "11-game-table.css",
-    "12-feedback-assistant.css"
+    "12-feedback-assistant.css",
+    "13-product-expansion.css"
   ],
-  "combinedSha256": "b1817e48c8ed4bcefaee6ebc30151485b93bd295c8d5efdfc83000661da32c9b",
-  "combinedBytes": 320335,
-  "combinedLines": 10105
+  "combinedSha256": "d9610f5c74ea504050a51b456b15a2890384fad7c185bbbcecdf356051682e89",
+  "combinedBytes": 322308,
+  "combinedLines": 10149
 }

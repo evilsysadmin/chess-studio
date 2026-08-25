@@ -56,7 +56,7 @@ export default function UserSettingsPanel({ onClose }) {
           <section>
             <h3>Idioma</h3>
             <label className="settings-field"><span>Interfaz</span><select value={language} onChange={(event) => updateLanguage(event.target.value)}>{SUPPORTED_UI_LANGUAGES.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
-            <small>De momento la interfaz está disponible en español. La preferencia ya queda centralizada para futuras traducciones.</small>
+            <small>La pantalla de acceso ya está localizada. El resto de la interfaz irá adoptando esta preferencia progresivamente.</small>
           </section>
         </div>
       </section>

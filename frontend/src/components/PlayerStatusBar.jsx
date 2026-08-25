@@ -8,7 +8,7 @@ function ratingTierClass(rating) {
   return '';
 }
 
-export default function PlayerStatusBar({ tournament, combatXp, rating, onTournamentClick, onRatingClick, compact = false }) {
+export default function PlayerStatusBar({ tournament, combatXp, rating, onTournamentClick, onCombatClick, onRatingClick, compact = false }) {
   const level = levelForPoints(tournament.progressPoints || 0);
   const into = pointsIntoLevel(tournament.progressPoints || 0);
   const progressPct = Math.round((into / POINTS_PER_LEVEL) * 100);
@@ -20,10 +20,10 @@ export default function PlayerStatusBar({ tournament, combatXp, rating, onTourna
           <IconTrophy className="status-chip-icon" />
           <span><small>Torneo</small><b>Nivel {level}</b></span>
         </button>
-        <div className="status-chip status-chip-compact" title="XP de Combat Chess">
+        <button type="button" className="status-chip status-chip-compact" onClick={onCombatClick} title="Ver el estado de tu ejército">
           <IconSword className="status-chip-icon" />
           <span><small>Combat</small><b>{combatXp} XP</b></span>
-        </div>
+        </button>
         <button type="button" className={`status-chip status-chip-compact ${ratingTierClass(rating.rating)}`} onClick={onRatingClick} title="Ver el detalle de tu rating">
           <IconStar className="status-chip-icon" />
           <span><small>Rating</small><b>{rating.rating}</b></span>
@@ -44,10 +44,10 @@ export default function PlayerStatusBar({ tournament, combatXp, rating, onTourna
         </span>
       </button>
 
-      <div className="status-chip" title="XP de combate acumulado, para revivir piezas caídas">
+      <button type="button" className="status-chip" onClick={onCombatClick} title="Ver el estado de tu ejército">
         <IconSword className="status-chip-icon" />
         <span className="status-chip-body"><span className="status-chip-label">Combat Chess</span><span className="status-chip-value">{combatXp} XP</span></span>
-      </div>
+      </button>
 
       <button type="button" className={`status-chip ${ratingTierClass(rating.rating)}`} onClick={onRatingClick} title="Ver el detalle de tu rating">
         <IconStar className="status-chip-icon" />

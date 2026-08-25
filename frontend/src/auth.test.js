@@ -49,6 +49,12 @@ describe('register/login', () => {
     expect(JSON.parse(options.body)).toEqual(expect.objectContaining({ inviteCode: 'codigo-secreto', email: 'invitado@example.com' }));
   });
 
+  it('conserva el idioma elegido al crear la cuenta', async () => {
+    mockFetchOnce(201, { token: 'english-token', username: 'english' });
+    await register('english', 'clave123456', 'english@example.com', '', 'en');
+    expect(localStorage.getItem('chess-study-ui-language')).toBe('en');
+  });
+
   it('crear Bob en el mismo navegador no hereda la caché de Alice', async () => {
     localStorage.setItem('chess-study-auth-token', 'alice-token');
     localStorage.setItem('chess-study-auth-username', 'alice');

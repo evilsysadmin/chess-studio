@@ -58,6 +58,7 @@ const RANGE_LABELS = {
 
 const DASHBOARD_TABS = [
   { id: 'health', label: 'Salud general' },
+  { id: 'users', label: 'Usuarios online' },
   { id: 'ai', label: 'Workers AI' },
   { id: 'traffic', label: 'Tráfico' },
 ];
@@ -221,6 +222,20 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
   const quality = tab === 'ai' ? aiQuality : httpQuality;
   const qualityNotice = quality.level === 'enough' ? null : <p className="admin-observability-sample-warning">{quality.label}. Interpreta percentiles y conclusiones con cautela.</p>;
 
+  if (tab === 'users') {
+    const presence = history?.presence || {};
+    return (
+      <div className="admin-observability-dashboard-grid">
+        <LineChart series={series} valueKeys={[{ key: 'online_average', label: 'Media' }, { key: 'online_peak', label: 'Pico' }]} title="Usuarios conectados" resolution={resolution} />
+        <div className="admin-observability-dashboard-kpis">
+          <div><span>Media del rango</span><strong>{metric(presence.average_online)}</strong></div>
+          <div><span>Pico del rango</span><strong>{metric(presence.peak_online)}</strong></div>
+          <div><span>Muestras</span><strong>{metric(presence.samples)}</strong></div>
+        </div>
+      </div>
+    );
+  }
+
   if (tab === 'ai') {
     return (
       <div className="admin-observability-dashboard-grid">
@@ -366,6 +381,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
   const history = runtime?.history || {};
   const historyHttp = history?.http || {};
   const historyAi = history?.ai || {};
+  const historyPresence = history?.presence || {};
   const historyRange = history?.range || {};
   const aiStatus = aiNarrativeStatus(ai);
   const rangeLabel = RANGE_LABELS[rangePreset] || 'rango';
@@ -411,6 +427,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
         <div><span>API p95 · {rangeLabel}</span><strong>{metric(historyHttp.p95_ms, ' ms')}</strong></div>
         <div><span>Errores 5xx · {rangeLabel}</span><strong>{metric(historyHttp.error_5xx_percent, '%')}</strong></div>
         <div><span>Persistencia</span><strong>{databaseLabel(database)}</strong></div>
+        <div><span>Pico online · {rangeLabel}</span><strong>{metric(historyPresence.peak_online)}</strong></div>
         <div><span>Workers AI · {rangeLabel}</span><strong>{historyAi.samples ? `${formatAiMetric(historyAi.cloudflare_percent, '%')} CF` : '—'}</strong></div>
       </div>
 

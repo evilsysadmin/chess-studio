@@ -60,7 +60,7 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
 
       {(aiDebriefLoading || aiDebrief) && (
         <div className={`ai-task-card combat-ai-debrief ${aiDebriefLoading ? 'is-loading' : ''}`} aria-live="polite">
-          <small>CPU // DEBRIEFING AI{aiDebrief ? ' · WORKERS AI' : ''}</small>
+          <small>CONSEJOS // RESUMEN TÁCTICO</small>
           <p>{aiDebrief || 'Recontando bajas. Hasta aquí las matemáticas siguen colaborando…'}</p>
         </div>
       )}

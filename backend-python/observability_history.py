@@ -87,6 +87,7 @@ def _fresh_bucket() -> dict[str, Any]:
             "worker_errors": {},
             "channels": {},
         },
+        "presence": {"samples": 0, "online_sum": 0, "online_max": 0},
     }
 
 
@@ -168,6 +169,22 @@ def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) ->
         _inc(channel_row["reasons"], _safe_key(str(event.get("reason") or "unknown")[:64]))
 
 
+def record_presence_snapshot(online_users: int, *, timestamp: float | None = None) -> None:
+    """Record one anonymous concurrency sample; never stores user identity."""
+    at = time.time() if timestamp is None else float(timestamp)
+    bucket_key = _bucket_start(at)
+    online = max(0, int(online_users or 0))
+    with _PENDING_LOCK:
+        presence = _PENDING.setdefault(bucket_key, _fresh_bucket())["presence"]
+        presence["samples"] += 1
+        presence["online_sum"] += online
+        presence["online_max"] = max(int(presence.get("online_max") or 0), online)
+
+
+def _is_max_key(key: str) -> bool:
+    return key.endswith("_max_ms") or key.endswith("_max")
+
+
 def _subtract_delta(target: dict[str, Any], sent: dict[str, Any]) -> None:
     for key, value in sent.items():
         if key not in target:
@@ -182,7 +199,7 @@ def _subtract_delta(target: dict[str, Any], sent: dict[str, Any]) -> None:
             # flush is harmless but would double-count only if treated as $inc;
             # maxima are persisted separately with $max, so remove the sent max
             # only when no newer/larger value replaced it.
-            if key.endswith("_max_ms"):
+            if _is_max_key(key):
                 if float(target[key]) <= float(value):
                     target[key] = 0.0
             else:
@@ -203,7 +220,7 @@ def _mongo_update(bucket: dict[str, Any]) -> tuple[dict[str, int | float], dict[
             return
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return
-        if prefix.endswith("_max_ms"):
+        if _is_max_key(prefix):
             if float(value) > 0:
                 maxima[prefix] = float(value)
         elif value:
@@ -337,7 +354,7 @@ def _merge_numeric(target: dict[str, Any], source: dict[str, Any]) -> None:
             if isinstance(row, dict):
                 _merge_numeric(row, value)
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
-            if key.endswith("_max_ms"):
+            if _is_max_key(key):
                 target[key] = max(float(target.get(key) or 0.0), float(value))
             else:
                 target[key] = target.get(key, 0) + value
@@ -375,6 +392,16 @@ def _summarize_http(http: dict[str, Any], range_seconds: int) -> dict[str, Any]:
         "p95_ms": _hist_percentile(http.get("latency_hist") or {}, 0.95, float(http.get("latency_max_ms") or 0.0)),
         "p99_ms": _hist_percentile(http.get("latency_hist") or {}, 0.99, float(http.get("latency_max_ms") or 0.0)),
         "top_routes": routes[:8],
+    }
+
+
+def _summarize_presence(presence: dict[str, Any]) -> dict[str, Any]:
+    samples = max(0, int(presence.get("samples") or 0))
+    total = max(0, int(presence.get("online_sum") or 0))
+    return {
+        "samples": samples,
+        "average_online": round(total / samples, 1) if samples else None,
+        "peak_online": max(0, int(presence.get("online_max") or 0)) if samples else None,
     }
 
 
@@ -493,6 +520,8 @@ def _group_series(rows: list[tuple[int, dict[str, Any]]], start: int, end: int) 
             "ai_p50_ms": ai["p50_ms"],
             "ai_p95_ms": ai["p95_ms"],
             "ai_p99_ms": ai["p99_ms"],
+            "online_average": _summarize_presence(payload.get("presence") or {})["average_online"],
+            "online_peak": _summarize_presence(payload.get("presence") or {})["peak_online"],
         })
     return series
 
@@ -524,6 +553,7 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
                     _merge_numeric(target, {
                         "http": document.get("http") or {},
                         "ai": document.get("ai") or {},
+                        "presence": document.get("presence") or {},
                     })
     except Exception:
         persistent = False
@@ -564,6 +594,7 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
         },
         "http": _summarize_http(total.get("http") or {}, range_seconds),
         "ai": _summarize_ai(total.get("ai") or {}),
+        "presence": _summarize_presence(total.get("presence") or {}),
         "series": _group_series(selected, start, end),
     }
 

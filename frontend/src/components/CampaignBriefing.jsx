@@ -66,7 +66,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
 
       {(aiBriefingLoading || aiBriefing) && (
         <div className={`ai-task-card combat-ai-briefing ${aiBriefingLoading ? 'is-loading' : ''}`} aria-live="polite">
-          <small>CPU // BRIEFING AI{aiBriefing ? ' · WORKERS AI' : ''}</small>
+          <small>CONSEJOS // PLAN DE BATALLA</small>
           <p>{aiBriefing || 'Procesando la inteligencia sin añadir tanques imaginarios…'}</p>
         </div>
       )}

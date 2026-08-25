@@ -5,7 +5,10 @@ import { TIME_CONTROLS } from './clock.js';
 export const DEFAULT_TIME_CONTROL_KEY = 'chess-study-default-time-control';
 export const UI_LANGUAGE_KEY = 'chess-study-ui-language';
 export const USER_PREFERENCES_CHANGED_EVENT = 'chess-study-user-preferences-changed';
-export const SUPPORTED_UI_LANGUAGES = [{ id: 'es', label: 'Español' }];
+export const SUPPORTED_UI_LANGUAGES = [
+  { id: 'es', label: 'Español' },
+  { id: 'en', label: 'English' },
+];
 
 export function getDefaultTimeControlId() {
   const value = getStorageItem(STORAGE_LOCAL, DEFAULT_TIME_CONTROL_KEY) || 'none';

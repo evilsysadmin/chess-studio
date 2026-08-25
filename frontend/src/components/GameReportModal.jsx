@@ -120,7 +120,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             </div>
 
             {aiAutopsyStatus === 'loading' && <div className="ai-task-card is-loading"><small>CPU // AUTOPSIA AI</small><p>Revisando las pruebas sin inventarme cadáveres adicionales…</p></div>}
-            {aiAutopsy && <div className="ai-task-card"><small>CPU // AUTOPSIA AI · WORKERS AI</small><p>{aiAutopsy}</p></div>}
+            {aiAutopsy && <div className="ai-task-card"><small>CONSEJOS // ANÁLISIS DE PARTIDA</small><p>{aiAutopsy}</p></div>}
 
             {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
 

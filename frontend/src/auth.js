@@ -12,6 +12,7 @@ import { clearCombatSession } from './combatSession.js';
 import { clearHomePlayNudgeSession } from './homePlayNudge.js';
 import { APP_RELEASE } from './release.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { setUiLanguage } from './userPreferences.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 const USERNAME_KEY = 'chess-study-auth-username';
@@ -102,13 +103,14 @@ export function logout() {
   removeStorageItem(STORAGE_LOCAL, USERNAME_KEY);
 }
 
-export async function register(username, password, email, inviteCode = '') {
+export async function register(username, password, email, inviteCode = '', language = 'es') {
   const body = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: withRequestId({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ username, password, email, inviteCode }),
   }).then(handle);
   saveSession(body.token, body.username);
+  setUiLanguage(language);
   return body;
 }
 

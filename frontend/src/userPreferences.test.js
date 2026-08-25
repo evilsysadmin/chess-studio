@@ -12,6 +12,7 @@ describe('user preferences', () => {
   });
   it('mantiene idioma en valores realmente soportados', () => {
     expect(getUiLanguage()).toBe('es');
-    expect(setUiLanguage('en')).toBe('es');
+    expect(setUiLanguage('en')).toBe('en');
+    expect(getUiLanguage()).toBe('en');
   });
 });

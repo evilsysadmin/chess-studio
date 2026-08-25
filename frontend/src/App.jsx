@@ -16,6 +16,7 @@ const CombatScreen = React.lazy(() => import('./components/CombatScreen.jsx'));
 const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.jsx'));
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
 import RatingDetailModal from './components/RatingDetailModal.jsx';
+import CombatArmySummaryModal from './components/CombatArmySummaryModal.jsx';
 const MusicPlayer = React.lazy(() => import('./components/MusicPlayer.jsx'));
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
@@ -149,6 +150,7 @@ function AppInner({ isAdminUser }) {
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
   const [showRatingDetail, setShowRatingDetail] = useState(false);
+  const [showCombatSummary, setShowCombatSummary] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
 
@@ -684,6 +686,7 @@ function AppInner({ isAdminUser }) {
               rating={rating}
               compact={view === 'menu'}
               onTournamentClick={() => navigateTo('tournament')}
+              onCombatClick={() => setShowCombatSummary(true)}
               onRatingClick={() => setShowRatingDetail(true)}
             />
           )}
@@ -694,6 +697,13 @@ function AppInner({ isAdminUser }) {
 
         {showRatingDetail && (
           <RatingDetailModal rating={rating} onClose={() => setShowRatingDetail(false)} />
+        )}
+        {showCombatSummary && (
+          <CombatArmySummaryModal
+            roster={loadCombatRoster()}
+            onClose={() => setShowCombatSummary(false)}
+            onOpenCombat={() => { setShowCombatSummary(false); navigateTo('roguelike'); }}
+          />
         )}
         {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} />}
 

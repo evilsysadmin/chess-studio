@@ -9,7 +9,7 @@ const authenticatedAudio = readFileSync(new URL('./useAuthenticatedAudio.js', im
 describe('frontend architecture contract', () => {
   it('los modales comunes mantienen semántica de diálogo accesible', () => {
     const modalFiles = [
-      'AccountModal.jsx', 'AchievementsModal.jsx', 'AttackConfirmModal.jsx', 'FeedbackModal.jsx',
+      'AccountModal.jsx', 'AchievementsModal.jsx', 'AttackConfirmModal.jsx', 'CombatArmySummaryModal.jsx', 'FeedbackModal.jsx',
       'GameReportModal.jsx', 'MechanicTutorialModal.jsx', 'MirrorModeModal.jsx', 'PieceInfoModal.jsx',
       'ProfileBackupModal.jsx', 'PromotionModal.jsx', 'QuickMatchModal.jsx', 'RatingDetailModal.jsx', 'ShareResultModal.jsx',
     ];
