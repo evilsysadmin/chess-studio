@@ -8,7 +8,7 @@ import CombatDebrief from './CombatDebrief.jsx';
 export default function CombatBattleView({
   onExit, onViewBattle, phase, localChess, status, statusLabel, statusClass, statusText,
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
-  pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap,
+  pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap, registry, roster,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
   handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig,
 }) {
@@ -45,6 +45,8 @@ export default function CombatBattleView({
                 pieceLevels={pieceLevels}
                 pieceXp={pieceXp}
                 pieceVeteranMarks={pieceVeteranMarks}
+                squareClassName={(square) => roster?.pieces?.[registry?.[square]?.rosterKey]?.mercenary ? 'combat-square-mercenary' : ''}
+                squareBadge={(square) => roster?.pieces?.[registry?.[square]?.rosterKey]?.mercenary ? <span className="deployment-mercenary-badge" title="Unidad mercenaria">M</span> : null}
                 orientation={humanColor === 'b' ? 'black' : 'white'}
               />
             </div>

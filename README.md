@@ -1,3 +1,15 @@
+### v16.6dm46c · Dirección visual + solución legible + mercado desplegable
+
+- **Ver solución** usa el mismo idioma visual que Autopsia y Replay: jugada realizada con origen/destino en rojo y pieza fantasma en el origen; alternativa del motor con origen/destino en azul. SAN y coordenadas acompañan el color.
+- Añade cinco familias de piezas ilustradas —Regimiento Español, Shogunato Neón, División Cyber, Expedicionarios Marines y Delta Nocturna— desbloqueables con el nivel de Torneo y sin alterar el tamaño del tablero ni las reglas.
+- El mercado de Combat queda visible tanto en la preparación rápida como dentro del despliegue; al cerrarlo vuelve al punto exacto del flujo. Los mercenarios se distinguen con tratamiento cromático y distintivo propio sin confundir el bando.
+- Home gana ilustraciones atmosféricas específicas para Torneo, Combat y Partida rápida; «Más aprendizaje y herramientas» adopta la jerarquía, ritmo y acabado de las tarjetas principales.
+- La protección de racha explica el saldo y el uso de los puntos; el email puede prepararse aunque el proveedor de salida esté temporalmente desactivado, sin esconder el estado operativo real.
+- La radio parte de **Aleatorio**, conserva cualquier emisora elegida en el perfil y recupera anterior/siguiente desde las teclas multimedia con un único dueño estable de Media Session.
+- Las lecciones se ordenan alfabéticamente con Aperturas/Gambitos primero y Defensas después.
+- Home incorpora **Novedades** por release: un changelog breve y persistente que sólo muestra mejoras útiles para quien juega y omite ruido técnico.
+- Incluye una guía de migración pragmática a Oracle Cloud Always Free manteniendo dominio propio, Pages como frontend y rollback durante la transición.
+
 ### v16.6dm46b · Aislamiento estricto entre cuentas
 
 - Una respuesta tardía, una pestaña antigua o un análisis en curso ya no puede escribir datos bajo otra identidad autenticada.

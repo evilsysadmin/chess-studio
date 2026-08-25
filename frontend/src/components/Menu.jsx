@@ -19,6 +19,12 @@ import { setProfileStorageItem } from '../profileKeys.js';
 import { homeNextBestAction } from '../nextBestAction.js';
 import { difficultyForRating } from '../playerRating.js';
 import { HOME_GUIDE_KEY, HOME_GUIDE_OPEN_EVENT } from '../homeGuide.js';
+import tournamentCardArt from '../assets/home-modes/tournament.webp';
+import combatCardArt from '../assets/home-modes/combat.webp';
+import quickCardArt from '../assets/home-modes/quick.webp';
+import UserReleaseNotesModal from './UserReleaseNotesModal.jsx';
+import { APP_RELEASE } from '../release.js';
+import { USER_RELEASE_NOTES_KEY } from '../userReleaseNotes.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -63,11 +69,13 @@ export default function Menu({
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+  const [seenReleaseNotes, setSeenReleaseNotes] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === APP_RELEASE);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
-  const hasOpenOverlay = showQuickMatch || showMirrorMode || showFeedback;
+  const hasOpenOverlay = showQuickMatch || showMirrorMode || showFeedback || showReleaseNotes;
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const today = useMemo(() => buildHomeToday({
     daily: currentDailyStreak(),
@@ -93,8 +101,19 @@ export default function Menu({
     setShowHomeGuide(false);
   }
 
+  function openReleaseNotes() {
+    setProfileStorageItem(USER_RELEASE_NOTES_KEY, APP_RELEASE);
+    setSeenReleaseNotes(true);
+    setShowReleaseNotes(true);
+  }
+
   return (
     <div className="menu home-friendly">
+      <button type="button" className={`home-release-notes-link ${seenReleaseNotes ? '' : 'has-new'}`} onClick={openReleaseNotes}>
+        <span>{seenReleaseNotes ? 'Novedades' : 'Nuevo'}</span>
+        <b>{APP_RELEASE}</b>
+        <i aria-hidden="true">→</i>
+      </button>
       {hasSavedGame && (
         <div className="menu-group home-continue-group">
           <button type="button" className="home-continue-card" disabled={loading} onClick={onContinue}>
@@ -167,6 +186,7 @@ export default function Menu({
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
           <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card home-mode-card home-mode-featured" onClick={onTournament}>
+            <img className="home-mode-art" src={tournamentCardArt} alt="" aria-hidden="true" />
             <span className="home-mode-icon" aria-hidden="true"><IconTrophy className="menu-card-icon" /></span>
             <span className="home-mode-copy">
               <span className="home-mode-kicker"><b>Recomendado</b><i>Nivel {tournamentLevel}</i></span>
@@ -181,6 +201,7 @@ export default function Menu({
           </TutorialModeCard>
 
           <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger home-primary-card home-mode-card home-mode-campaign" onClick={onCombatRoguelike}>
+            <img className="home-mode-art" src={combatCardArt} alt="" aria-hidden="true" />
             <span className="home-mode-icon" aria-hidden="true"><IconSword className="menu-card-icon" /></span>
             <span className="home-mode-copy">
               <span className="home-mode-kicker"><b>{combatProgress?.rank?.label || 'Recluta'}</b><i>{combatProgress?.credits || 0} créditos</i></span>
@@ -192,6 +213,7 @@ export default function Menu({
           </TutorialModeCard>
 
           <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card home-mode-card home-mode-quick" onClick={() => setShowQuickMatch(true)}>
+            <img className="home-mode-art" src={quickCardArt} alt="" aria-hidden="true" />
             <span className="home-mode-icon" aria-hidden="true"><IconPawn className="menu-card-icon" /></span>
             <span className="home-mode-copy">
               <span className="home-mode-kicker"><b>A tu ritmo</b><i>CPU adaptable</i></span>
@@ -242,18 +264,18 @@ export default function Menu({
 
         <details className="friendly-disclosure home-learning-more">
           <summary>Más aprendizaje y herramientas</summary>
-          <div className="friendly-disclosure-body menu-grid menu-grid-3 compact-mode-grid">
-            <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint home-tool-card" onClick={onPuzzle}>
-              <IconPuzzle className="menu-card-icon" /><h3>Puzzles</h3><p>Clásicos y reto diario.</p><span className="menu-card-cta">Resolver →</span>
+          <div className="friendly-disclosure-body menu-grid compact-mode-grid home-tools-grid">
+            <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint home-mode-card home-tool-card" onClick={onPuzzle}>
+              <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Táctica</b><i>Diario</i></span><h3>Puzzles</h3><span className="home-mode-description">Casos clásicos y un reto nuevo cada día.</span></span><span className="menu-card-cta">Resolver <b aria-hidden="true">→</b></span>
             </TutorialModeCard>
-            <button type="button" className="menu-card accent-success home-tool-card" onClick={onTutorial}>
-              <IconBook className="menu-card-icon" /><h3>Aprendizaje</h3><p>Lecciones, glosario y tutoriales.</p><span className="menu-card-cta">Abrir →</span>
+            <button type="button" className="menu-card accent-success home-mode-card home-tool-card" onClick={onTutorial}>
+              <span className="home-mode-icon" aria-hidden="true"><IconBook className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Fundamentos</b><i>Guía</i></span><h3>Aprendizaje</h3><span className="home-mode-description">Lecciones breves, glosario y reglas esenciales.</span></span><span className="menu-card-cta">Abrir <b aria-hidden="true">→</b></span>
             </button>
-            <TutorialModeCard tutorialId="openings" className="menu-card accent-success home-tool-card" onClick={onOpenings}>
-              <IconBookmark className="menu-card-icon" /><h3>Aperturas</h3><p>Practica líneas clásicas paso a paso.</p><span className="menu-card-cta">Practicar →</span>
+            <TutorialModeCard tutorialId="openings" className="menu-card accent-success home-mode-card home-tool-card" onClick={onOpenings}>
+              <span className="home-mode-icon" aria-hidden="true"><IconBookmark className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Repertorio</b><i>Paso a paso</i></span><h3>Aperturas</h3><span className="home-mode-description">Ensaya líneas útiles con contexto y repetición.</span></span><span className="menu-card-cta">Practicar <b aria-hidden="true">→</b></span>
             </TutorialModeCard>
-            <button type="button" className="menu-card accent-brass home-tool-card" onClick={onHistory}>
-              <IconBookmark className="menu-card-icon" /><h3>Historial</h3><p>Tus partidas, resultados y replays.</p><span className="menu-card-cta">Abrir →</span>
+            <button type="button" className="menu-card accent-brass home-mode-card home-tool-card" onClick={onHistory}>
+              <span className="home-mode-icon" aria-hidden="true"><IconBookmark className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Archivo</b><i>Replays</i></span><h3>Historial</h3><span className="home-mode-description">Resultados, partidas guardadas y revisiones.</span></span><span className="menu-card-cta">Abrir <b aria-hidden="true">→</b></span>
             </button>
           </div>
         </details>
@@ -271,6 +293,7 @@ export default function Menu({
       />
 
       {showFeedback && <FeedbackModal context="Home" onClose={() => setShowFeedback(false)} />}
+      {showReleaseNotes && <UserReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
       {showQuickMatch && (
         <QuickMatchModal
           difficulty={difficulty}

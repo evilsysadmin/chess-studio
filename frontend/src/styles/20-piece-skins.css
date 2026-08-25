@@ -8,6 +8,11 @@
 .piece-skin-azul .piece,
 .piece-skin-esmeralda .piece { image-rendering: pixelated; image-rendering: crisp-edges; }
 .piece-skin-studio .piece { width: 94%; height: 94%; image-rendering: auto; }
+.piece-skin-regimiento .piece,
+.piece-skin-shogunate .piece,
+.piece-skin-cyber .piece,
+.piece-skin-marines .piece,
+.piece-skin-delta .piece { width: 96%; height: 96%; image-rendering: auto; }
 
 .settings-field-label { display: block; margin-bottom: .48rem; color: var(--parchment-dim); font-size: .72rem; }
 .settings-appearance-featured { border-color: color-mix(in srgb, var(--brass-dim) 55%, var(--line-soft)) !important; background: linear-gradient(145deg,rgba(201,162,39,.06),rgba(0,0,0,.08)) !important; }
@@ -51,7 +56,12 @@
 .piece-skin-preview-default img,
 .piece-skin-preview-azul img,
 .piece-skin-preview-esmeralda img { image-rendering: pixelated; }
-.piece-skin-preview-studio img { image-rendering: auto; }
+.piece-skin-preview-studio img,
+.piece-skin-preview-regimiento img,
+.piece-skin-preview-shogunate img,
+.piece-skin-preview-cyber img,
+.piece-skin-preview-marines img,
+.piece-skin-preview-delta img { width: 38px; height: 42px; image-rendering: auto; }
 .piece-skin-selected-label { position: absolute; top: .42rem; right: .42rem; padding: .18rem .32rem; border-radius: 999px; background: var(--brass); color: #17130a; font: 750 .52rem/1 var(--font-body); }
 
 .account-center-tools { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; padding: .8rem 0; border-top: 1px solid var(--line-soft); }

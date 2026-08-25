@@ -38,7 +38,7 @@ import { canReturnCombatToSetup } from '../combatSession.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
 import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry } from '../combatControllerSupport.js';
 import { createCombatRosterActions } from '../combatRosterActions.js';
-import { awardCombatCredits, battleCreditReward, settleMercenaryContracts } from '../combatEconomy.js';
+import { awardCombatCredits, battleCreditReward, buyEquipment, hireMercenary, settleMercenaryContracts } from '../combatEconomy.js';
 import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
 import { useCombatDeploymentGate } from '../useCombatDeploymentGate.js';
 
@@ -85,6 +85,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const difficulty = difficultyBalance.adjusted;
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [showArmy, setShowArmy] = useState(false);
+  const [showMarket, setShowMarket] = useState(false);
   const deadRosterEntries = Object.entries(roster.pieces).filter(([, p]) => p.alive === false);
   const {
     showDeployment, setShowDeployment, deploymentConfirmed, setDeploymentConfirmed,
@@ -100,7 +101,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // Un solo listener de ESC para la pantalla base. Deployment y Army traen
   // su propio cierre y consumen el gesto mientras están abiertos.
   useEscapeToClose(() => {
-    if (showDeployment || showArmy) return;
+    if (showDeployment || showArmy || showMarket) return;
     if (phase === 'setup' || phase === 'over') {
       onExit();
     }
@@ -1014,6 +1015,28 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const handleReviveRosterPiece = rosterActions.revive;
   const handleReplaceRosterPiece = rosterActions.replace;
 
+  function handleHireMercenary(offer, contract) {
+    let hired = false;
+    setRoster((current) => {
+      const next = hireMercenary(current, offer, contract);
+      hired = next !== current;
+      if (hired) saveRoster(next);
+      return next;
+    });
+    return hired;
+  }
+
+  function handleBuyEquipment(itemId, unitKey) {
+    let bought = false;
+    setRoster((current) => {
+      const next = buyEquipment(current, itemId, unitKey);
+      bought = next !== current;
+      if (bought) saveRoster(next);
+      return next;
+    });
+    return bought;
+  }
+
   const rosterCount = Object.values(roster.pieces).filter((p) => p.alive !== false).length;
   const deadCount = Object.values(roster.pieces).filter((p) => p.alive === false).length;
 
@@ -1048,10 +1071,10 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     pieceVeteranMarks,
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
     pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
-    showArmy, setShowArmy, showDeployment, setShowDeployment, deploymentConfirmed, requireDeploymentConfirmation, handleConfirmDeployment, localChess, legalTargets,
+    showArmy, setShowArmy, showMarket, setShowMarket, showDeployment, setShowDeployment, deploymentConfirmed, requireDeploymentConfirmation, handleConfirmDeployment, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick, handleQuickStartBattle,
     startBattle, confirmAttack, cancelAttack, choosePromotion, suspendBattleToMenu, retireBattle, backToSetup, handleResetRoster,
-    handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
+    handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleHireMercenary, handleBuyEquipment, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,
   };

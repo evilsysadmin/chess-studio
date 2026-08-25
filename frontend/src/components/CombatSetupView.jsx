@@ -5,6 +5,7 @@ import CombatServicePanel from './CombatServicePanel.jsx';
 import CombatDeploymentView from './CombatDeploymentView.jsx';
 import CampaignCombatPreparation from './CampaignCombatPreparation.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
+import CombatMarket from './CombatMarket.jsx';
 import { deploymentSummary } from '../combatDeployment.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 
@@ -13,14 +14,26 @@ export default function CombatSetupView({
   onExit, difficulty, difficultyBalance, ratingInfo, difficultyOverride, difficultyLabel, forcedHumanColor, encounterLabel, encounterDescription, encounterTier, encounterIntel, bossConfig, runPerks, combatVariant, colorChoice, setColorChoice, autoLevelUpEnabled,
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
   handleStartBattleClick, handleQuickStartBattle,
-  showArmy, setShowArmy, showDeployment, setShowDeployment, requireDeploymentConfirmation, deploymentConfirmed, handleConfirmDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique,
+  showArmy, setShowArmy, showMarket, setShowMarket, showDeployment, setShowDeployment, requireDeploymentConfirmation, deploymentConfirmed, handleConfirmDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleHireMercenary, handleBuyEquipment,
   handleResetRoster, onHistory, serviceSummary,
 }) {
   const deploy = deploymentSummary(roster);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-basics']?.seen);
+  const [marketReturnToDeployment, setMarketReturnToDeployment] = useState(false);
+  const openMarketFromDeployment = () => {
+    setShowDeployment(false);
+    setMarketReturnToDeployment(true);
+    setShowMarket(true);
+  };
+  const closeMarket = () => {
+    setShowMarket(false);
+    if (marketReturnToDeployment) setShowDeployment(true);
+    setMarketReturnToDeployment(false);
+  };
 
   if (requireDeploymentConfirmation) {
     return (
+      <>
       <CampaignCombatPreparation
         onExit={onExit}
         difficulty={difficulty}
@@ -43,6 +56,8 @@ export default function CombatSetupView({
         setShowArmy={setShowArmy}
         showDeployment={showDeployment}
         setShowDeployment={setShowDeployment}
+        onOpenMarket={() => setShowMarket(true)}
+        onOpenMarketFromDeployment={openMarketFromDeployment}
         deploymentConfirmed={deploymentConfirmed}
         handleConfirmDeployment={handleConfirmDeployment}
         handleBuyRosterStat={handleBuyRosterStat}
@@ -61,6 +76,8 @@ export default function CombatSetupView({
         onHistory={onHistory}
         serviceSummary={serviceSummary}
       />
+      {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={closeMarket} />}
+      </>
     );
   }
 
@@ -255,11 +272,14 @@ export default function CombatSetupView({
             onBuy={handleBuyRosterStat}
             onRevive={handleReviveRosterPiece}
             onReplaceFallen={handleReplaceRosterPiece}
+            onOpenMarket={openMarketFromDeployment}
             onClose={() => setShowDeployment(false)}
           />
         )}
 
         {showTutorial && <MechanicTutorialModal tutorialId="combat-basics" onClose={() => setShowTutorial(false)} />}
+
+        {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={closeMarket} />}
 
         {showArmy && (
           <ArmyScreen roster={roster} onBuy={handleBuyRosterStat} onRevive={handleReviveRosterPiece} onRename={handleRenameRosterPiece} onMetamorphose={handleMetamorphoseRosterPiece} onUnlockTechnique={handleUnlockRosterTechnique} onEquipTechnique={handleEquipRosterTechnique} onClose={() => setShowArmy(false)} />

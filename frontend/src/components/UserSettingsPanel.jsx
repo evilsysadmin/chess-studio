@@ -13,12 +13,14 @@ import emeraldWhiteKnight from '../pieces-medieval-esmeralda/wN.png';
 import emeraldBlackKnight from '../pieces-medieval-esmeralda/bN.png';
 import studioWhiteKnight from '../pieces-studio/wN.png';
 import studioBlackKnight from '../pieces-studio/bN.png';
+import { GENERATED_SKIN_PREVIEWS } from '../generatedPieceSkins.js';
 
 const SKIN_PREVIEWS = {
   default: [pixelWhiteKnight, pixelBlackKnight],
   studio: [studioWhiteKnight, studioBlackKnight],
   azul: [blueWhiteKnight, blueBlackKnight],
   esmeralda: [emeraldWhiteKnight, emeraldBlackKnight],
+  ...GENERATED_SKIN_PREVIEWS,
 };
 
 export default function UserSettingsPanel({ onClose, onBoard3D }) {

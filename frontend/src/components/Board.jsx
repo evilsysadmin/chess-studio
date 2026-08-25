@@ -55,6 +55,7 @@ import wQ_studio from '../pieces-studio/wQ.png';
 import wR_studio from '../pieces-studio/wR.png';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { loadBoardTheme } from '../career.js';
+import { GENERATED_PIECE_IMAGES_BY_SKIN } from '../generatedPieceSkins.js';
 
 const CAPTURE_PARTICLE_ANGLES = [45, 135, 225, 315];
 
@@ -135,6 +136,7 @@ const PIECE_IMAGES_BY_SKIN = {
     p: bP_studio, n: bN_studio, b: bB_studio, r: bR_studio, q: bQ_studio, k: bK_studio,
     P: wP_studio, N: wN_studio, B: wB_studio, R: wR_studio, Q: wQ_studio, K: wK_studio,
   },
+  ...GENERATED_PIECE_IMAGES_BY_SKIN,
 };
 
 const PIECE_NAMES = {

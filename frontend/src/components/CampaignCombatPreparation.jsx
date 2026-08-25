@@ -47,6 +47,8 @@ export default function CampaignCombatPreparation({
   handleResetRoster,
   onHistory,
   serviceSummary,
+  onOpenMarket,
+  onOpenMarketFromDeployment,
 }) {
   const deploy = deploymentSummary(roster);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-deployment']?.seen);
@@ -85,6 +87,7 @@ export default function CampaignCombatPreparation({
           <span>Formación <b>{deploy.assignedCount}/{deploy.totalSlots}</b></span>
           {deadCount > 0 && <span className="danger-text">Bajas <b>{deadCount}</b></span>}
           <span>Amenaza <b>{intelLabel}</b></span>
+          <button type="button" className="campaign-market-link" onClick={onOpenMarket}>Mercado · {roster.credits || 0} cr →</button>
         </div>
 
         <div className={`campaign-situation-banner ${deploymentConfirmed ? 'ready' : deadCount ? 'danger' : ''}`}>
@@ -164,6 +167,7 @@ export default function CampaignCombatPreparation({
           onBuy={handleBuyRosterStat}
           onRevive={handleReviveRosterPiece}
           onReplaceFallen={handleReplaceRosterPiece}
+          onOpenMarket={onOpenMarketFromDeployment || onOpenMarket}
           onClose={() => setShowDeployment(false)}
           onConfirm={handleConfirmDeployment}
           requireExplicitConfirmation

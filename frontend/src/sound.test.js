@@ -33,6 +33,12 @@ import {
 describe('ambient music catalog', () => {
   beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
+  it('empieza en radio Aleatorio y conserva cualquier cambio explícito del perfil', () => {
+    expect(getAmbientRadioMode()).toBe('all');
+    setAmbientRadioMode('genre:Clásica');
+    expect(getAmbientRadioMode()).toBe('genre:Clásica');
+  });
+
   it('expone setenta y tres temas seleccionables tras curar los experimentales', () => {
     expect(AMBIENT_THEME_OPTIONS).toHaveLength(73);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');

@@ -45,7 +45,7 @@ function saveDeckExpanded(value) {
   try { setStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
 }
 
-export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false } = {}) {
+export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false, ownsMediaSession = false } = {}) {
   const [state, setState] = useState(() => snapshot());
   const [expanded, setExpanded] = useState(() => forceExpanded || (!initiallyCollapsed && loadDeckExpanded()));
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
@@ -80,6 +80,7 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   }, []);
 
   useEffect(() => {
+    if (!ownsMediaSession) return undefined;
     // No existe una prioridad absoluta entre pestañas: el navegador arbitra.
     // Reclamamos la sesión al montar y cada vez que Chess Studio recupera
     // foco/visibilidad; además declaramos AudioSession=playback si existe.
@@ -136,7 +137,7 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
       window.removeEventListener('pointerdown', reclaim);
       release();
     };
-  }, []);
+  }, [ownsMediaSession]);
 
   const themeId = state.themeId || getAmbientThemeId();
   const current = useMemo(

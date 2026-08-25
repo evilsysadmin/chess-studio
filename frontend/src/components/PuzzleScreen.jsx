@@ -13,6 +13,7 @@ import { recordPuzzleRush } from '../career.js';
 import { lastDailyCells } from '../careerVisuals.js';
 import { checkAchievements } from '../achievements.js';
 import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
+import { buildPuzzleReveal } from '../puzzleReveal.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
 
@@ -52,6 +53,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const filteredPersonalCount = useMemo(() => personalPuzzles.filter((p) => matchesPersonalPuzzleFilter(p, initialFilter)).length, [personalPuzzles, initialFilter]);
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
   const dailyBrief = useMemo(() => dailyChallengeBrief(dailyStats, puzzle.dailyKey), [dailyStats, puzzle.dailyKey]);
+  const revealGuide = useMemo(() => buildPuzzleReveal(puzzle), [puzzle]);
 
   useEffect(() => {
     setFen(puzzle.fen);
@@ -240,10 +242,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       setPersonalPuzzles(loadPersonalPuzzles());
     }
     if (replyTimeout.current) clearTimeout(replyTimeout.current);
-    const c = new Chess();
-    c.load(puzzle.fen);
-    for (const san of puzzle.solution) c.move(san);
-    setFen(c.fen());
+    // Mismo lenguaje que Replay/Autopsia: posición tras la jugada realizada,
+    // origen y destino rojos (con pieza fantasma en origen), y alternativa
+    // del motor encuadrada en azul sobre esas mismas coordenadas.
+    setFen(revealGuide.displayFen);
     setStepIndex(puzzle.solution.length);
     setStatus('revealed');
     setBusy(false);
@@ -278,13 +280,30 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
             selectedSquare={selected}
             legalTargets={legalTargets}
             orientation={humanColor === 'b' ? 'black' : 'white'}
+            mistakeMove={status === 'revealed' ? revealGuide.played : null}
+            hintMove={status === 'revealed' ? revealGuide.preferred : null}
           />
+          {status === 'revealed' && (
+            <div className="puzzle-solution-guide" role="status" aria-live="polite">
+              {revealGuide.played && (
+                <span className="puzzle-solution-move is-played"><i aria-hidden="true" />Tu jugada <b>{revealGuide.played.san}</b><small>{revealGuide.played.from} → {revealGuide.played.to}</small></span>
+              )}
+              {revealGuide.preferred && (
+                <span className="puzzle-solution-move is-preferred"><i aria-hidden="true" />Mejor jugada <b>{revealGuide.preferred.san}</b><small>{revealGuide.preferred.from} → {revealGuide.preferred.to}</small></span>
+              )}
+              {revealGuide.line.length > 1 && <span className="puzzle-solution-line">Línea: <b>{revealGuide.line.join(' · ')}</b></span>}
+            </div>
+          )}
           {feedback && <p className="error-text" style={{ marginTop: '0.5rem' }}>{feedback}</p>}
           {retryOffer && (
             <div className="menu-section" style={{ marginTop: '0.6rem', padding: '0.8rem' }}>
               <p className="hint-text" style={{ margin: '0 0 0.5rem' }}>
                 Esa no era la jugada — tienes una racha de {streak}. ¿Pagas {puzzleRetryCost(streak)} puntos
                 para que este fallo no la rompa?
+              </p>
+              <p className="puzzle-protection-balance" role="status">
+                <b>Saldo: {points} puntos</b>
+                <span>Los ganas en Torneo y sirven para pedir pistas o proteger una racha de entrenamiento. No afectan a tu nivel competitivo.</span>
               </p>
               <div className="game-controls">
                 <button

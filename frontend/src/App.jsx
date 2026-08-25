@@ -1014,7 +1014,7 @@ function GlobalMusicDock({ isAdminUser, onAdmin }) {
   return (
     <div className="global-music-dock" aria-label="Reproductor global">
       <React.Suspense fallback={null}>
-        <MusicPlayer />
+        <MusicPlayer ownsMediaSession />
       </React.Suspense>
       <LiveServiceStatus isAdminUser={isAdminUser} onAdmin={onAdmin} />
     </div>

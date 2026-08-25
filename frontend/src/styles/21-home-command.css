@@ -1,6 +1,36 @@
 /* dm45v · Home como portada de juego: foco, ritmo y decisión principal. */
 .home-modes-section { position: relative; }
 
+.home-release-notes-link {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 34px;
+  margin-bottom: -.15rem;
+  padding: .4rem .62rem;
+  border: 1px solid var(--studio-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--studio-panel) 82%, transparent);
+  color: var(--parchment-dim);
+  font: .62rem var(--font-mono);
+}
+.home-release-notes-link span { color: var(--parchment); font-family: var(--font-body); font-size: .72rem; font-weight: 750; }
+.home-release-notes-link b { color: var(--brass); font-weight: 650; }
+.home-release-notes-link i { font-style: normal; transition: transform .16s ease; }
+.home-release-notes-link:hover i,
+.home-release-notes-link:focus-visible i { transform: translateX(2px); }
+.home-release-notes-link.has-new { border-color: color-mix(in srgb, var(--brass) 54%, var(--studio-line)); box-shadow: 0 0 18px rgba(201,162,39,.08); }
+
+.release-notes-modal { width: min(680px, calc(100vw - 1.4rem)); max-height: min(82vh, 760px); overflow: auto; }
+.release-notes-modal > h2 { margin: .25rem 2.2rem .35rem 0; font-size: 1.55rem; }
+.release-notes-list { display: grid; gap: .58rem; margin-top: 1rem; }
+.release-notes-list details { border: 1px solid var(--studio-line); border-radius: 10px; background: color-mix(in srgb, var(--ink) 34%, transparent); }
+.release-notes-list summary { display: grid; gap: .18rem; padding: .8rem .9rem; cursor: pointer; }
+.release-notes-list summary span { color: var(--brass); font: .62rem var(--font-mono); }
+.release-notes-list summary b { color: var(--parchment); font-size: .9rem; }
+.release-notes-list ul { display: grid; gap: .5rem; margin: 0; padding: 0 .95rem .9rem 2rem; color: var(--parchment-dim); font-size: .8rem; line-height: 1.48; }
+
 /* En Home el asistente forma parte del flujo: nunca tapa una tarjeta. */
 .home-friendly > .feedback-assistant {
   position: static;
@@ -31,6 +61,12 @@
   filter: blur(34px);
   pointer-events: none;
 }
+
+.home-mode-art { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .24; mix-blend-mode: luminosity; pointer-events: none; mask-image: linear-gradient(90deg,transparent 0%,rgba(0,0,0,.18) 30%,#000 100%); }
+.home-mode-card > *:not(.home-mode-art) { position: relative; z-index: 1; }
+.home-mode-featured .home-mode-art { opacity: .3; mix-blend-mode: soft-light; }
+.home-mode-campaign .home-mode-art { opacity: .27; mix-blend-mode: luminosity; }
+.home-mode-quick .home-mode-art { opacity: .28; }
 
 .home-mode-featured {
   border-color: color-mix(in srgb, var(--brass) 54%, var(--studio-line));
@@ -145,6 +181,7 @@
   .home-mode-card h3 { font-size: .98rem; }
   .home-mode-description { max-width: none; font-size: .72rem; line-height: 1.38; }
   .home-mode-card .menu-card-cta { padding-top: .42rem; font-size: .68rem; }
+  .home-mode-art { opacity: .14 !important; object-position: 66% center; mask-image: linear-gradient(90deg,transparent 10%,#000 100%); }
 }
 
 @media (max-width: 390px) {

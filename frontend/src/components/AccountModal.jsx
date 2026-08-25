@@ -99,7 +99,11 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false, ra
             </section>
 
             <section className="account-center-section account-center-recovery" aria-labelledby="account-recovery-heading">
-              <div><strong id="account-recovery-heading">Recuperación</strong><small>{me.email || 'Añade un email por si pierdes el acceso.'}</small></div>
+              <div>
+                <strong id="account-recovery-heading">Recuperación</strong>
+                <small>{me.email || 'Añade un email por si pierdes el acceso.'}</small>
+                {me.emailRecoveryEnabled === false && <small>El email puede guardarse ahora; el envío de enlaces aún no está activo en este servidor.</small>}
+              </div>
 
             {!editingEmail ? (
               <button type="button" className="secondary-btn" onClick={() => {

@@ -37,6 +37,12 @@ describe('unlockedTitles / unlockedSkins', () => {
     const titles9 = unlockedTitles(9);
     expect(titles9.some((t) => t.id === 'constante')).toBe(false); // constante es nivel 10
   });
+
+  it('reparte las nuevas skins temáticas como hitos de Torneo', () => {
+    expect(unlockedSkins(5).map((skin) => skin.id)).toContain('regimiento');
+    expect(unlockedSkins(14).map((skin) => skin.id)).not.toContain('shogunate');
+    expect(unlockedSkins(60).map((skin) => skin.id)).toEqual(PIECE_SKINS.map((skin) => skin.id));
+  });
 });
 
 describe('nextTitleToUnlock / nextSkinToUnlock', () => {

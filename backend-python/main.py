@@ -538,8 +538,9 @@ async def reset_password(body: ResetPasswordRequest, request: Request):
 @app.put("/api/auth/email")
 @limiter.limit("10/hour")
 async def update_recovery_email(request: Request, body: UpdateEmailRequest, username: str = Depends(get_current_user)):
-    if not ENABLE_EMAIL_RECOVERY:
-        raise HTTPException(404, "Recuperación por email no habilitada.")
+    # Guardar/cambiar el email de la cuenta no depende del proveedor de envío.
+    # ENABLE_EMAIL_RECOVERY sólo controla el flujo público de reset: una mala
+    # variable de despliegue no debe impedir al usuario preparar su cuenta.
     user = await ustore.get_user(username)
     if not user or not verify_password(body.password, user.get("password_hash", "")):
         raise HTTPException(401, "La contraseña actual no es correcta.")
@@ -559,9 +560,12 @@ async def update_recovery_email(request: Request, body: UpdateEmailRequest, user
 @app.get("/api/auth/me")
 async def me(username: str = Depends(get_current_user)):
     user = await ustore.get_user(username)
-    payload = {"username": username, "isAdmin": is_admin(username)}
-    if ENABLE_EMAIL_RECOVERY:
-        payload["email"] = (user or {}).get("email")
+    payload = {
+        "username": username,
+        "isAdmin": is_admin(username),
+        "email": (user or {}).get("email"),
+        "emailRecoveryEnabled": ENABLE_EMAIL_RECOVERY,
+    }
     return payload
 
 

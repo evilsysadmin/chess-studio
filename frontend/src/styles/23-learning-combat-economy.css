@@ -13,9 +13,22 @@
 .home-context-guide:hover,.home-context-guide:focus-visible,.home-progress-link:hover,.home-progress-link:focus-visible { border-color: color-mix(in srgb, var(--brass) 62%, var(--studio-line)); color: var(--parchment); }
 .home-learning-card { min-height: 168px; }
 .home-mode-card.accent-success .home-mode-icon { color: var(--success); }
-.home-tool-card { min-height: 108px !important; grid-template-columns: auto minmax(0,1fr); align-content: center; padding: .85rem !important; }
+.home-tools-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.home-tool-card { min-height: 152px !important; align-content: start; padding: .82rem !important; }
 .home-tool-card h3 { font-style: normal; }
 .home-tool-card .menu-card-cta { color: var(--brass); }
+
+.puzzle-solution-guide { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; width: 100%; margin-top: .65rem; }
+.puzzle-solution-move { display: grid; grid-template-columns: 8px auto 1fr; align-items: center; gap: .35rem; padding: .55rem .65rem; border: 1px solid var(--studio-line); border-radius: 9px; background: rgba(8,11,17,.22); color: var(--parchment-dim); font-size: .68rem; }
+.puzzle-solution-move i { width: 8px; height: 8px; border-radius: 2px; }
+.puzzle-solution-move b { color: var(--parchment); font: 800 .78rem var(--font-mono); }
+.puzzle-solution-move small { justify-self: end; font: .58rem var(--font-mono); }
+.puzzle-solution-move.is-played { border-color: color-mix(in srgb,var(--danger) 52%,var(--studio-line)); }
+.puzzle-solution-move.is-played i { background: var(--danger); }
+.puzzle-solution-move.is-preferred { border-color: color-mix(in srgb,var(--hint) 55%,var(--studio-line)); }
+.puzzle-solution-move.is-preferred i { background: var(--hint); }
+.puzzle-solution-line { grid-column: 1 / -1; padding: .45rem .65rem; color: var(--parchment-dim); font-size: .64rem; }
+.puzzle-solution-line b { color: var(--parchment); font-family: var(--font-mono); }
 
 .campaign-economy-strip {
   display: flex; align-items: stretch; gap: .55rem; margin: .9rem 0;
@@ -58,6 +71,12 @@
 .combat-market-balance-note { display: grid; grid-template-columns: auto 1fr; gap: .65rem; margin-top: .8rem; padding: .65rem .75rem; border-radius: 9px; background: rgba(68,139,93,.07); color: var(--parchment-dim); font-size: .68rem; line-height: 1.4; }
 .combat-market-balance-note strong { color: var(--success); white-space: nowrap; }
 
+.deployment-market-btn { min-width: 132px; white-space: nowrap; }
+.deployment-square-mercenary .piece,
+.combat-square-mercenary .piece { filter: drop-shadow(0 0 4px rgba(60,205,211,.85)) saturate(.78) hue-rotate(132deg); }
+.deployment-mercenary-badge { position: absolute; z-index: 7; top: 4px; right: 4px; display: grid; width: 18px; height: 18px; place-items: center; border: 1px solid rgba(83,220,224,.82); border-radius: 50%; background: #10363b; color: #9ff8f6; font: 850 .52rem/1 var(--font-mono); box-shadow: 0 2px 7px rgba(0,0,0,.35); }
+.campaign-preparation-quick-status .campaign-market-link { margin-left: auto; padding: .25rem .45rem; }
+
 .army-unit-bio,.army-unit-equipment { display: grid; gap: .35rem; padding: .7rem .8rem; border: 1px solid var(--studio-line); border-radius: 10px; background: rgba(0,0,0,.12); }
 .army-unit-bio p,.army-unit-equipment small { margin: 0; color: var(--parchment-dim); font-size: .72rem; line-height: 1.48; }
 .army-unit-equipment { grid-template-columns: minmax(0,1fr); }
@@ -81,6 +100,9 @@
 .career-profile-details { margin-bottom: .8rem; }
 
 @media (max-width: 760px) {
+  .home-tools-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .puzzle-solution-guide { grid-template-columns: 1fr; }
+  .puzzle-solution-line { grid-column: 1; }
   .home-group-heading { align-items: flex-start; }
   .home-heading-actions { align-items: flex-start; justify-content: flex-start; }
   .home-heading-actions > div { justify-content: flex-start; }
@@ -90,6 +112,7 @@
   .combat-market-card > p { min-height: 0; }
   .career-section-nav { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+@media (max-width: 520px) { .home-tools-grid { grid-template-columns: 1fr; } .home-tool-card { min-height: 0 !important; } }
 
 @media (max-width: 430px) {
   .home-heading-actions { display: grid; width: 100%; }
@@ -109,3 +132,15 @@
   .career-hero-grid { grid-template-columns: 1fr; }
   .combat-market-tabs { grid-template-columns: 1fr; }
 }
+.puzzle-protection-balance {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--ink-3));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
+.puzzle-protection-balance b { color: var(--parchment); }
+.puzzle-protection-balance span { color: var(--parchment-dim); font-size: 0.82rem; line-height: 1.4; }

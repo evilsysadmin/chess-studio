@@ -68,6 +68,7 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-music-radio-mode',
   'chess-study-music-favorites',
   'chess-study-music-excluded',
+  'chess-study-user-release-notes-seen',
   'chess-study-fx-muted',
   'chess-study-voice-enabled',
   'chess-study-mechanic-tutorial-progress-v1',

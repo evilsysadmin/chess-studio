@@ -24,8 +24,13 @@ export const TITLES = [
 export const PIECE_SKINS = [
   { level: 1, id: 'default', label: 'Pixel medieval', description: 'El clásico de Chess Studio.' },
   { level: 1, id: 'studio', label: 'Studio Marfil', description: 'Ilustrado, limpio y detallado.' },
+  { level: 5, id: 'regimiento', label: 'Regimiento Español', description: 'Ceremonial rojo, oro y marfil.' },
   { level: 10, id: 'azul', label: 'Pixel azulado', description: 'Variante fría del set medieval.' },
+  { level: 15, id: 'shogunate', label: 'Shogunato Neón', description: 'Samuráis de marfil, cobalto y carmesí.' },
   { level: 25, id: 'esmeralda', label: 'Pixel esmeralda', description: 'Variante de campaña en verde.' },
+  { level: 30, id: 'cyber', label: 'División Cyber', description: 'Siluetas futuristas de luz fría.' },
+  { level: 45, id: 'marines', label: 'Marines Expedicionarios', description: 'Uniforme de campaña y mando táctico.' },
+  { level: 60, id: 'delta', label: 'Delta Nocturna', description: 'Operadores de élite en negro y rojo.' },
 ];
 
 export function unlockedTitles(level) {

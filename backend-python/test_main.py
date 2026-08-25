@@ -1347,6 +1347,27 @@ def test_recovery_email_can_be_edited_only_with_current_password(email_recovery_
     assert client.get("/api/auth/me", headers=headers).json()["email"] == "new@example.com"
 
 
+def test_email_can_be_prepared_even_if_outbound_recovery_is_temporarily_disabled(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "ENABLE_EMAIL_RECOVERY", False)
+    registered = client.post(
+        "/api/auth/register",
+        json={"username": "correo_preparado", "password": "clave123456"},
+    )
+    headers = {"Authorization": f"Bearer {registered.json()['token']}"}
+    updated = client.put(
+        "/api/auth/email",
+        headers=headers,
+        json={"email": "ready@example.com", "password": "clave123456"},
+    )
+
+    assert updated.status_code == 200
+    me = client.get("/api/auth/me", headers=headers).json()
+    assert me["email"] == "ready@example.com"
+    assert me["emailRecoveryEnabled"] is False
+
+
 def test_forgot_password_never_reveals_if_email_exists(monkeypatch, email_recovery_enabled):
     import main as main_module
 

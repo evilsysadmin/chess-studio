@@ -45,6 +45,8 @@ export default function CombatScreen(props) {
         handleQuickStartBattle={controller.handleQuickStartBattle}
         showArmy={controller.showArmy}
         setShowArmy={controller.setShowArmy}
+        showMarket={controller.showMarket}
+        setShowMarket={controller.setShowMarket}
         showDeployment={controller.showDeployment}
         setShowDeployment={controller.setShowDeployment}
         requireDeploymentConfirmation={controller.requireDeploymentConfirmation}
@@ -62,6 +64,8 @@ export default function CombatScreen(props) {
         handleApplyDeploymentPreset={controller.handleApplyDeploymentPreset}
         handleUnlockRosterTechnique={controller.handleUnlockRosterTechnique}
         handleEquipRosterTechnique={controller.handleEquipRosterTechnique}
+        handleHireMercenary={controller.handleHireMercenary}
+        handleBuyEquipment={controller.handleBuyEquipment}
         handleResetRoster={controller.handleResetRoster}
         onHistory={props.onHistory}
         serviceSummary={controller.serviceSummary}

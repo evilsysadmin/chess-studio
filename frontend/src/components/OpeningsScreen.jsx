@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { OPENING_LESSONS } from '../openings-data.js';
+import { orderOpeningLessons } from '../openingLessonOrder.js';
 
 function OpeningDetail({ opening, onBack }) {
   useEscapeToClose(onBack);
@@ -70,7 +71,7 @@ export default function OpeningsScreen({ onExit }) {
           Dieciocho aperturas clásicas, recorridas jugada por jugada con explicación en cada una.
         </p>
         <div className="menu-grid menu-grid-2">
-          {OPENING_LESSONS.map((op) => (
+          {orderOpeningLessons(OPENING_LESSONS).map((op) => (
             <button key={op.key} type="button" className="menu-card accent-hint" onClick={() => setSelected(op)}>
               <h3>{op.title}</h3>
               <p>{op.intro}</p>

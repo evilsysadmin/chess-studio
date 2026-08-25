@@ -364,6 +364,7 @@ export default function CombatDeploymentView({
   onBuy,
   onRevive,
   onReplaceFallen,
+  onOpenMarket,
   onClose,
   onConfirm,
   requireExplicitConfirmation = false,
@@ -627,6 +628,7 @@ export default function CombatDeploymentView({
     return [
       'deployment-square',
       occupant ? 'deployment-square-occupied' : 'deployment-square-empty',
+      occupant && roster.pieces?.[occupant]?.mercenary ? 'deployment-square-mercenary' : '',
       canTakeSelected ? 'deployment-square-valid' : '',
       dragHoverSquare === square ? 'deployment-square-drop-hover' : '',
     ].filter(Boolean).join(' ');
@@ -635,6 +637,11 @@ export default function CombatDeploymentView({
   function squareBadge(square) {
     const slot = deploymentSlotForSquare(square, 'w');
     if (!slot) return null;
+    const unitKey = roster.deployment?.[slot.key];
+    if (unitKey && roster.pieces?.[unitKey]?.mercenary) {
+      const remaining = roster.pieces[unitKey].mercenary.battlesRemaining;
+      return <span className="deployment-mercenary-badge" title={`Mercenario · ${remaining == null ? 'contrato permanente' : `${remaining} batalla${remaining === 1 ? '' : 's'} restante${remaining === 1 ? '' : 's'}`}`}>M</span>;
+    }
     return <span className="deployment-slot-badge" title={`Slot exclusivo: ${TYPE_NAME[slot.type]}`}>{TYPE_SYMBOL[slot.type]}</span>;
   }
 
@@ -667,6 +674,7 @@ export default function CombatDeploymentView({
             <strong>{summary.assignedCount}/{summary.totalSlots}</strong>
             <span>{summary.ready ? 'Formación lista' : 'Formación incompleta'}</span>
           </div>
+          {onOpenMarket && <button type="button" className="secondary-btn deployment-market-btn" onClick={onOpenMarket}>Mercado · {Number(roster.credits || 0)} cr</button>}
         </header>
 
         <div className="combat-deployment-layout">
