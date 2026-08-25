@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Menu from './components/Menu.jsx';
 const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
@@ -156,11 +156,32 @@ function AppInner({ isAdminUser }) {
   const [showCombatSummary, setShowCombatSummary] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalAccount, setShowGlobalAccount] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef(null);
+  const accountMenuButtonRef = useRef(null);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(null);
 
   useProfileSyncLifecycle(view);
+
+  useEffect(() => {
+    if (!showAccountMenu) return undefined;
+    function closeOnOutsidePointer(event) {
+      if (!accountMenuRef.current?.contains(event.target)) setShowAccountMenu(false);
+    }
+    function closeOnEscape(event) {
+      if (event.key !== 'Escape') return;
+      setShowAccountMenu(false);
+      accountMenuButtonRef.current?.focus();
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showAccountMenu]);
 
   async function handleGlobalLogout() {
     setLogoutError(null);
@@ -700,17 +721,35 @@ function AppInner({ isAdminUser }) {
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
                 <SaveStatusBadge state={gameSaveState} />
               )}
-              <div className="masthead-account-group" role="group" aria-label="Cuenta y preferencias">
-                <button type="button" className="masthead-account-button" onClick={() => setShowGlobalAccount(true)} aria-label="Abrir mi cuenta" title="Mi cuenta">
-                  <span aria-hidden="true">♙</span><span>Mi cuenta</span>
+              <div className="masthead-account-menu" ref={accountMenuRef}>
+                <button
+                  ref={accountMenuButtonRef}
+                  type="button"
+                  className="masthead-account-trigger"
+                  onClick={() => setShowAccountMenu((open) => !open)}
+                  aria-label="Abrir menú de cuenta"
+                  aria-haspopup="menu"
+                  aria-expanded={showAccountMenu}
+                >
+                  <span className="masthead-account-avatar" aria-hidden="true">♙</span>
+                  <span>Cuenta</span>
+                  <span className="masthead-account-chevron" aria-hidden="true">⌄</span>
                 </button>
-                <button type="button" className="masthead-settings-button" onClick={() => setShowSettings(true)} aria-label="Abrir ajustes" title="Ajustes">
-                  <span aria-hidden="true">⚙</span><span>Ajustes</span>
-                </button>
+                {showAccountMenu && (
+                  <div className="masthead-account-popover" role="menu" aria-label="Cuenta">
+                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
+                      <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>
+                      <span aria-hidden="true">⚙</span><span><b>Ajustes</b><small>Sonido y experiencia</small></span>
+                    </button>
+                    <div className="masthead-account-menu-separator" role="separator" />
+                    <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { setShowAccountMenu(false); void handleGlobalLogout(); }} disabled={loggingOut}>
+                      <span aria-hidden="true">↪</span><span><b>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</b><small>Guarda antes de salir</small></span>
+                    </button>
+                  </div>
+                )}
               </div>
-              <button type="button" className="masthead-logout-button" onClick={() => void handleGlobalLogout()} disabled={loggingOut} aria-label="Cerrar sesión" title="Cerrar sesión">
-                <span aria-hidden="true">↪</span><span>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</span>
-              </button>
             </div>
           </div>
           {logoutError && <p className="error-text masthead-session-error" role="alert">{logoutError}</p>}
