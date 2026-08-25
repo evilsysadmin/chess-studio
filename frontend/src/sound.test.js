@@ -222,6 +222,18 @@ describe('ambient music catalog', () => {
     expect(damascus.space).toBeGreaterThan(cairo.space);
   });
 
+  it('separa Cairo Quiet Hours y Nilo balcón por decisiones audibles, no sólo por nombre', () => {
+    const cairoQuiet = getAmbientThemeSoundProfile('cairoQuietHours');
+    const nileBalcony = getAmbientThemeSoundProfile('nileBalcony0152');
+
+    expect(cairoQuiet.family).not.toBe(nileBalcony.family);
+    expect(cairoQuiet.percussionKit).not.toBe(nileBalcony.percussionKit);
+    expect(cairoQuiet.drumMode).not.toBe(nileBalcony.drumMode);
+    expect(cairoQuiet.signatureInstrument).not.toBe(nileBalcony.signatureInstrument);
+    expect(cairoQuiet.enabledLayers).toContain('drums');
+    expect(nileBalcony.enabledLayers).not.toContain('drums');
+  });
+
   it('humaniza timbre y dinámica sin retrasar ni duplicar ataques', () => {
     const downbeat = getPercussionHumanizationPreview('beirut0113', 0, 'K');
     const secondaryA = getPercussionHumanizationPreview('beirut0113', 3, 'H');
@@ -241,11 +253,11 @@ describe('ambient music catalog', () => {
   });
 
   it('asigna voces de percusión distintas según la familia musical', () => {
-    expect(getPercussionVoiceKit('rookGarage')).toBe('acoustic-rock');
-    expect(getPercussionVoiceKit('neonKnight')).toBe('electronic');
-    expect(getPercussionVoiceKit('lofiRainTape')).toBe('lofi');
-    expect(getPercussionVoiceKit('beirut0113')).toBe('darbuka');
-    expect(new Set(['rookGarage', 'neonKnight', 'lofiRainTape', 'beirut0113'].map(getPercussionVoiceKit)).size).toBe(4);
+    const ids = ['rookGarage', 'neonKnight', 'lofiRainTape', 'beirut0113'];
+    expect(new Set(ids.map(getPercussionVoiceKit)).size).toBe(ids.length);
+    expect(getAmbientThemeSoundProfile('rookGarage').percussionPunch).toBeGreaterThan(1.2);
+    expect(getAmbientThemeSoundProfile('lofiRainTape').percussionPunch).toBeLessThan(0.8);
+    expect(getAmbientThemeSoundProfile('lofiRainTape').family).toContain('lofi');
   });
 
   it('mantiene el patrón de percusión continuo al cruzar una sección', () => {

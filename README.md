@@ -1,3 +1,12 @@
+### v16.6dm45v · Home con foco + audio con identidad + tests semánticos
+
+- Rediseña Home con una jerarquía de producto más clara: Torneo lidera la acción, Combat y Partida rápida mantienen su peso secundario y las tarjetas se compactan en móvil sin perder contexto ni accesibilidad.
+- El asistente de feedback deja de abrirse sobre el contenido: permanece disponible, avisa con discreción y ocupa su propio espacio dentro de Home.
+- Cairo · Quiet Hours y Nilo · Balcón dejan de compartir perfil musical. Cairo adopta oud, metales apagados, contrabajo y percusión de mano; Nilo usa ney, vibráfono, piano eléctrico y violonchelo, sin batería.
+- La Guía rápida vuelve a estar disponible desde Cuenta y los accesos de estado exponen nombres accesibles completos también cuando el texto visual se compacta en móvil.
+- Los tests de copy pasan a validar contratos estables y significado en lugar de redacciones accidentales; los contratos de audio comparan identidad perceptiva entre familias y los E2E se anclan a regiones y acciones accesibles.
+- Sin cambios en reglas de ajedrez, backend, despliegue ni infraestructura.
+
 ### v16.6dm43w · Higiene pre-beta + continuidad UX
 
 - Endurece la continuidad de partidas: un fallo transitorio de red/5xx durante restore conserva la ruta y el snapshot en vez de expulsar al usuario a Home. El smoke crítico cubre partida rápida, torneo y Combat Chess.

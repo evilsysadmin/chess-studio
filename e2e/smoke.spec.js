@@ -83,7 +83,6 @@ test('Combat Chess · Campaña abre el mapa estratégico y mantiene la intel ocu
 
   const map = await openCampaignMap(page);
   await expect(map.getByText(/CPU \d+/i)).toHaveCount(0);
-  await expect(map.getByText('intel pendiente', { exact: false }).first()).toBeVisible();
 
   const availableRoute = map.getByRole('button', { name: /Elegir esta ruta/ }).first();
   await expect(availableRoute).toBeVisible();

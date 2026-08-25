@@ -94,6 +94,11 @@ assert(getAmbientThemeSoundProfile('neonSiege').estimatedBpm >= 210, 'Asedio de 
 assert(getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm >= 145 && getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm <= 155, 'Caballo overclocked debe galopar alrededor de 150 BPM');
 assert(getAmbientThemeSoundProfile('reactorGambit').estimatedBpm >= 105 && getAmbientThemeSoundProfile('reactorGambit').estimatedBpm <= 115, 'Gambito del reactor debe ser medio tiempo pesado');
 assert(['postRockMidnight','rookGarage','desertDriveRock'].every((id) => getAmbientThemeSoundProfile(id)?.estimatedBpm >= 130), 'los temas rock de Ecléctica necesitan más pulso');
+const cairoQuiet = getAmbientThemeSoundProfile('cairoQuietHours');
+const nileBalcony = getAmbientThemeSoundProfile('nileBalcony0152');
+assert(cairoQuiet.family !== nileBalcony.family, 'Cairo Quiet Hours y Nilo balcón no pueden compartir familia de arreglo');
+assert(cairoQuiet.percussionKit !== nileBalcony.percussionKit, 'Cairo Quiet Hours y Nilo balcón necesitan bases rítmicas distintas');
+assert(cairoQuiet.drumMode !== nileBalcony.drumMode, 'Cairo Quiet Hours y Nilo balcón necesitan densidades rítmicas distintas');
 assert(PHRASE_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: melodía fuera de la rejilla rítmica');
 assert(SAX_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: saxo fuera de la rejilla rítmica');
 for (const [id, profile] of profiled) {

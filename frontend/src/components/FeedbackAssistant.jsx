@@ -20,31 +20,40 @@ function pauseAssistant(duration) {
   setProfileStorageItem(STORAGE_KEY, JSON.stringify({ nextPromptAt: Date.now() + duration }));
 }
 
-export default function FeedbackAssistant({ blocked = false, onFeedback }) {
+export default function FeedbackAssistant({ blocked = false, autoOpen = true, onFeedback }) {
   const [open, setOpen] = useState(false);
+  const [attention, setAttention] = useState(false);
 
   useEffect(() => {
     if (blocked || open) return undefined;
     const { nextPromptAt = 0 } = readAssistantState();
     if (nextPromptAt > Date.now()) return undefined;
-    const timer = window.setTimeout(() => setOpen(true), NUDGE_DELAY_MS);
+    const timer = window.setTimeout(() => {
+      if (autoOpen) setOpen(true);
+      else setAttention(true);
+    }, NUDGE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [blocked, open]);
+  }, [autoOpen, blocked, open]);
 
   function dismiss() {
     pauseAssistant(SNOOZE_MS);
+    setAttention(false);
     setOpen(false);
   }
 
   function openFeedback() {
     pauseAssistant(THANK_YOU_PAUSE_MS);
+    setAttention(false);
     setOpen(false);
     onFeedback();
   }
 
   function toggleAssistant() {
     if (open) dismiss();
-    else setOpen(true);
+    else {
+      setAttention(false);
+      setOpen(true);
+    }
   }
 
   const avatarSrc = `${import.meta.env.BASE_URL}support-pawn.png`;
@@ -69,7 +78,7 @@ export default function FeedbackAssistant({ blocked = false, onFeedback }) {
       {!open && (
         <button
           type="button"
-          className="feedback-assistant-launcher"
+          className={`feedback-assistant-launcher ${attention ? 'has-attention' : ''}`}
           onClick={toggleAssistant}
           aria-label="Abrir asistente de feedback"
           aria-expanded="false"

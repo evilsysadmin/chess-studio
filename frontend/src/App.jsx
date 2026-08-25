@@ -63,6 +63,7 @@ import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
 import { logout } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
+import { requestHomeGuideOpen } from './homeGuide.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -748,6 +749,11 @@ function AppInner({ isAdminUser }) {
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>
                       <span aria-hidden="true">⚙</span><span><b>Personalizar</b><small>Tablero, piezas y sonido</small></span>
                     </button>
+                    {view === 'menu' && (
+                      <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); requestHomeGuideOpen(); }}>
+                        <span aria-hidden="true">?</span><span><b>Guía rápida</b><small>Cómo empezar y qué elegir</small></span>
+                      </button>
+                    )}
                     <div className="masthead-account-menu-separator" role="separator" />
                     <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { setShowAccountMenu(false); void handleGlobalLogout(); }} disabled={loggingOut}>
                       <span aria-hidden="true">↪</span><span><b>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</b><small>Guarda antes de salir</small></span>

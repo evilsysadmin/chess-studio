@@ -19,9 +19,10 @@
     "17-premium-board.css",
     "18-account-menu.css",
     "19-game-focus.css",
-    "20-piece-skins.css"
+    "20-piece-skins.css",
+    "21-home-command.css"
   ],
-  "combinedSha256": "dd24a6e4efb754278308a999ebd0da249fef413b1659db8eef35af30a2e53131",
-  "combinedBytes": 359412,
-  "combinedLines": 10903
+  "combinedSha256": "77d10e61bbc82b211957ab7a2e24ce9f92f07336ba730dd0d76d5ee8893df8b4",
+  "combinedBytes": 364791,
+  "combinedLines": 11082
 }

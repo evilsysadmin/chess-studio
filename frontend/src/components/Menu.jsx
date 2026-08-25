@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
-import { levelForPoints } from '../tournament.js';
+import { levelForPoints, pointsIntoLevel, POINTS_PER_LEVEL } from '../tournament.js';
 import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn } from './Icons.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
@@ -18,8 +18,7 @@ import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
 import { setProfileStorageItem } from '../profileKeys.js';
 import { homeNextBestAction } from '../nextBestAction.js';
 import { difficultyForRating } from '../playerRating.js';
-
-const HOME_GUIDE_KEY = 'chess-study-home-guide-dismissed-v1';
+import { HOME_GUIDE_KEY, HOME_GUIDE_OPEN_EVENT } from '../homeGuide.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -64,6 +63,8 @@ export default function Menu({
   const [showFeedback, setShowFeedback] = useState(false);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
+  const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
+  const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
   const hasOpenOverlay = showQuickMatch || showMirrorMode || showFeedback;
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const today = useMemo(() => buildHomeToday({
@@ -77,6 +78,12 @@ export default function Menu({
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());
     window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
     return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
+  }, []);
+
+  useEffect(() => {
+    const reopenGuide = () => setShowHomeGuide(true);
+    window.addEventListener(HOME_GUIDE_OPEN_EVENT, reopenGuide);
+    return () => window.removeEventListener(HOME_GUIDE_OPEN_EVENT, reopenGuide);
   }, []);
 
   function closeHomeGuide() {
@@ -151,31 +158,44 @@ export default function Menu({
         </section>
       )}
 
-      <div className="menu-group home-primary-group">
+      <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
         <div className="home-group-heading">
-          <div><span className="section-label">Jugar</span><h2>¿Qué te apetece?</h2></div>
-          <p>Empieza con una opción principal o explora más modos cuando quieras.</p>
+          <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
+          <p>Compite, continúa tu campaña o juega a tu ritmo.</p>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
-          <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card" onClick={onTournament}>
-            <IconTrophy className="menu-card-icon" />
-            <h3>Torneo</h3>
-            <p>Rivales cada vez más duros y progreso por resultados.</p>
-            <span className="menu-card-cta">Nivel {tournamentLevel} →</span>
+          <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card home-mode-card home-mode-featured" onClick={onTournament}>
+            <span className="home-mode-icon" aria-hidden="true"><IconTrophy className="menu-card-icon" /></span>
+            <span className="home-mode-copy">
+              <span className="home-mode-kicker"><b>Recomendado</b><i>Nivel {tournamentLevel}</i></span>
+              <h3>Torneo</h3>
+              <span className="home-mode-description">Encadena rivales, sube de nivel y construye una racha.</span>
+            </span>
+            <span className="home-mode-progress" aria-label={`${tournamentProgress} de ${POINTS_PER_LEVEL} XP para el siguiente nivel`}>
+              <span><i style={{ width: `${tournamentProgressPct}%` }} /></span>
+              <small>{tournamentProgress}/{POINTS_PER_LEVEL} XP</small>
+            </span>
+            <span className="menu-card-cta">Jugar siguiente rival <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
-          <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger home-primary-card" onClick={onCombatRoguelike}>
-            <IconSword className="menu-card-icon" />
-            <h3>{COMBAT_CHESS_CAMPAIGN_LABEL}</h3>
-            <p>Campaña, ejército persistente y batallas progresivas.</p>
-            <span className="menu-card-cta">Abrir campaña →</span>
+          <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger home-primary-card home-mode-card home-mode-campaign" onClick={onCombatRoguelike}>
+            <span className="home-mode-icon" aria-hidden="true"><IconSword className="menu-card-icon" /></span>
+            <span className="home-mode-copy">
+              <span className="home-mode-kicker"><b>Campaña</b><i>Ejército persistente</i></span>
+              <h3>{COMBAT_CHESS_CAMPAIGN_LABEL}</h3>
+              <span className="home-mode-description">Tus unidades ganan experiencia y continúan entre batallas.</span>
+            </span>
+            <span className="menu-card-cta">Continuar campaña <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
-          <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card" onClick={() => setShowQuickMatch(true)}>
-            <IconPawn className="menu-card-icon" />
-            <h3>Partida rápida</h3>
-            <p>CPU, nivel configurable y a jugar.</p>
-            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} →</span>
+          <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card home-mode-card home-mode-quick" onClick={() => setShowQuickMatch(true)}>
+            <span className="home-mode-icon" aria-hidden="true"><IconPawn className="menu-card-icon" /></span>
+            <span className="home-mode-copy">
+              <span className="home-mode-kicker"><b>A tu ritmo</b><i>CPU adaptable</i></span>
+              <h3>Partida rápida</h3>
+              <span className="home-mode-description">Una partida limpia contra una CPU ajustada a tu nivel.</span>
+            </span>
+            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
         </div>
 
@@ -196,7 +216,7 @@ export default function Menu({
             </TutorialModeCard>
           </div>
         </details>
-      </div>
+      </section>
 
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">
@@ -243,7 +263,7 @@ export default function Menu({
 
       {error && <p className="error-text">{error}</p>}
 
-      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide} onFeedback={() => setShowFeedback(true)} />
+      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide} autoOpen={false} onFeedback={() => setShowFeedback(true)} />
 
       <HomePlayNudge
         enabled={homePlayNudgeEnabled}

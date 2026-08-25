@@ -7,8 +7,9 @@ describe('nextBestAction', () => {
   });
 
   it('propone avanzar tras victoria o tablas sin ofrecer revancha', () => {
-    expect(nextBestAction({ outcome: 'win' }).label).toBe('Ver siguiente objetivo');
+    expect(nextBestAction({ outcome: 'win' }).id).toBe('advance');
     expect(nextBestAction({ outcome: 'draw' }).id).toBe('advance');
+    expect(nextBestAction({ outcome: 'win' }).label).toBeTruthy();
     expect(nextBestAction({ outcome: 'draw' }).detail.toLowerCase()).not.toContain('revancha');
   });
 

@@ -34,7 +34,7 @@ for (const width of [360, 390, 430]) {
     await mockApi(page);
     await login(page);
 
-    await expect(page.getByRole('heading', { name: '¿Qué te apetece?', exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await expect(page.getByText('Más modos de juego', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
@@ -62,7 +62,8 @@ test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse'
 
   await page.reload();
   await expect(guide).toHaveCount(0);
-  await page.getByRole('button', { name: 'Guía rápida', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Guía rápida/ }).click();
   await expect(guide).toBeVisible();
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
 });
@@ -89,7 +90,7 @@ test('Home · Combat abre un resumen compacto del ejército', async ({ page }) =
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await login(page);
-  await page.getByRole('button', { name: /Combat.*XP/i }).click();
+  await page.getByRole('button', { name: /Estado de Combat:.*XP/i }).click();
   const summary = page.getByRole('dialog', { name: 'Tu ejército' });
   await expect(summary).toBeVisible();
   await expect(summary.getByText('XP disponible', { exact: true })).toBeVisible();
