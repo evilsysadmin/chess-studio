@@ -147,8 +147,9 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
 
           <details className="friendly-subdisclosure danger-disclosure">
             <summary>Opciones del torneo</summary>
-            <div className="friendly-disclosure-body">
-              <button className="secondary-btn" style={{ width: '100%' }} onClick={onReset}>Reiniciar progreso del torneo</button>
+            <div className="friendly-disclosure-body danger-action-zone">
+              <div><b>Reiniciar el torneo</b><small>Se perderán los puntos y el nivel de torneo actuales.</small></div>
+              <button className="danger-btn" onClick={onReset}>Reiniciar progreso</button>
             </div>
           </details>
         </div>

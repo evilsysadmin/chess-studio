@@ -202,7 +202,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
         <div className="crime-scene-banner">
           <div>
             <span className="eyebrow">CÁMARA DEL CRIMEN</span>
-            <b>Jugada {pinnedReport.moveNumber}: {pinnedReport.played} · −{pinnedReport.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></b>
+            <b>Jugada {pinnedReport.moveNumber}: {pinnedReport.played} · pérdida estimada de {pinnedReport.loss} puntos</b>
             <p>Estás justo antes del impacto. Reproduce la jugada y compara después con la alternativa marcada por el motor.</p>
           </div>
           <button className="primary-btn" onClick={() => goTo(pinnedReport.index + 1)}>

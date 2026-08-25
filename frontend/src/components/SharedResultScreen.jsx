@@ -1,4 +1,3 @@
-import GlossaryTerm from './GlossaryTerm.jsx';
 
 const OUTCOME = { win: 'Victoria', loss: 'Derrota', draw: 'Tablas' };
 
@@ -25,7 +24,7 @@ export default function SharedResultScreen({ record, onOpenApp }) {
             <span>{record.humanColor === 'w' ? 'Blancas' : 'Negras'}</span>
             {record.timeControl?.label && <span>{record.timeControl.label}</span>}
           </div>
-          {record.incident && <p>Jugada {record.incident.moveNumber}: <b>{record.incident.played}</b> en vez de <b>{record.incident.suggested}</b> · −{record.incident.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></p>}
+          {record.incident && <p>Jugada {record.incident.moveNumber}: <b>{record.incident.played}</b> en vez de <b>{record.incident.suggested}</b> · pérdida estimada de {record.incident.loss} puntos</p>}
           {!record.incident && record.opening && <p>{record.opening}</p>}
           {record.series && <p>Serie: Tú {record.series.humanWins} · CPU {record.series.cpuWins}{record.series.draws ? ` · tablas ${record.series.draws}` : ''}</p>}
         </div>

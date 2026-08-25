@@ -67,3 +67,15 @@ test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ pa
   await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Exportar archivo .pgn', exact: true })).toHaveCount(0);
 });
+
+test('Laboratorio · FEN sólo aparece dentro de opciones avanzadas', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.getByText('Más modos de juego', { exact: true }).click();
+  await buttonWithVisibleText(page, 'Laboratorio').click();
+
+  await expect(page.getByRole('heading', { name: 'Prepara una posición y juega', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /FEN/ })).toHaveCount(0);
+  await page.getByText('Opciones avanzadas de la posición', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Importar posición en formato FEN', exact: true })).toBeVisible();
+});

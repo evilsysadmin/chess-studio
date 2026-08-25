@@ -37,7 +37,6 @@ import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
 import CareerScreen from './CareerScreen.jsx';
 import { GAME_MODE_LABELS, gameModeLabel } from '../gameModes.js';
-import GlossaryTerm from './GlossaryTerm.jsx';
 
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
@@ -457,7 +456,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
                   to: searchResult.moveReport.playedTo,
                 })}
               </span>
-              <span className="worst-move-loss">-{searchResult.moveReport.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></span>
+              <span className="worst-move-loss">−{searchResult.moveReport.loss} puntos de evaluación</span>
             </span>
             <span className="worst-move-detail">
               Debías jugar{' '}
@@ -494,7 +493,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
             </div>
             <p className="hint-text">
               Revisando {searchProgress.done} de {searchProgress.total}…
-              {searchResult && <> Peor hasta ahora: {searchResult.moveReport.played} (-{searchResult.moveReport.loss} <GlossaryTerm term="cp">cp</GlossaryTerm>).</>}
+              {searchResult && <> Peor hasta ahora: {searchResult.moveReport.played} (−{searchResult.moveReport.loss} puntos).</>}
             </p>
             <button type="button" className="secondary-btn" onClick={cancelSearch}>Cancelar</button>
           </div>

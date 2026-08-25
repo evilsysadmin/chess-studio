@@ -680,7 +680,7 @@ export default function GameScreen({
           {!zenMode && prediction && <div className="prediction-strip">{prediction.text}</div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
-          {!zenMode && memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin ELO</div>}
+          {!zenMode && memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin afectar al rating</div>}
           {!zenMode && game.ghostStyle && <div className="series-strip ghost-strip">Modo Rival Fantasma · nivel {game.difficulty} · estilo derivado de tus partidas</div>}
           {!zenMode && seriesState && (
             <div className={`series-strip series-live-strip ${seriesState.winner ? 'finished' : ''}`}>
@@ -776,7 +776,7 @@ export default function GameScreen({
         <div className="endgame-banner">
           <h2>{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
           <p>
-            {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al ELO.' : flagFallen
+            {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al rating.' : flagFallen
               ? (flagFinalOutcome === 'draw' ? 'Cayó una bandera, pero el rival no tenía material suficiente para dar mate.' : flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
               : game.status === 'checkmate'
               ? game.turn === humanColor ? 'Ganó la CPU.' : '¡Ganaste la partida!'

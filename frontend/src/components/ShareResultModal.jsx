@@ -59,7 +59,7 @@ export default function ShareResultModal({ record, onClose }) {
           {data.series && !data.incident && <p>Serie: Tú {data.series.humanWins} · CPU {data.series.cpuWins}{data.series.draws ? ` · tablas ${data.series.draws}` : ''}</p>}
         </div>
 
-        <p className="hint-text share-result-privacy">El enlace contiene sólo datos de esta partida. No incluye sesión, JWT ni perfil.</p>
+        <p className="hint-text share-result-privacy">El enlace contiene sólo datos de esta partida. No incluye credenciales, sesión ni perfil.</p>
         <div className="share-result-actions">
           <button className="primary-btn" onClick={nativeShare}>Compartir</button>
           <button className="secondary-btn" onClick={() => copy(url,'Enlace copiado.')}>Copiar enlace</button>

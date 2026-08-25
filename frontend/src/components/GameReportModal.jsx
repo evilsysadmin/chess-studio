@@ -100,14 +100,14 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
         <p className="eyebrow">Post-partida</p>
         <h3>Resumen de la partida</h3>
 
-        {status === 'loading' && <p className="hint-text">Buscando los momentos que más explican la partida…</p>}
-        {status === 'error' && <p className="hint-text import-error">No se pudo generar el resumen. El backend no respondió al análisis.</p>}
+        {status === 'loading' && <div className="ui-state ui-state-loading" role="status"><b>Preparando el resumen</b><span>Buscando los momentos que más explican la partida…</span></div>}
+        {status === 'error' && <div className="ui-state ui-state-error" role="alert"><b>No se pudo generar el resumen</b><span>El servicio de análisis no respondió. Cierra esta ventana e inténtalo de nuevo.</span></div>}
 
         {status === 'done' && report && <>
           {report.analyzedCount === 0 ? <p className="hint-text">No hubo suficientes jugadas propias para analizar.</p> : <>
             <div className="autopsy-summary">
-              <div><span><GlossaryTerm term="Accuracy">Accuracy</GlossaryTerm> propia</span><b>{accuracy}%</b></div>
-              <div><span>Pérdida media</span><b>−{report.averageLoss} <GlossaryTerm term="cp">cp</GlossaryTerm></b></div>
+              <div><span>Precisión estimada</span><b>{accuracy}%</b></div>
+              <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>
               <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
             </div>
             <div className="autopsy-key-moments" aria-label="Momentos clave de la partida">
@@ -132,7 +132,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             <details className="autopsy-full-details">
               <summary>Abrir autopsia completa</summary>
               <div className="autopsy-full-details-body">
-                <p className="hint-text">La <GlossaryTerm term="Accuracy">accuracy</GlossaryTerm> es una escala propia de Chess Studio basada en pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+                <p className="hint-text">La precisión estimada es una escala propia de Chess Studio basada en la pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
 
                 <details className="autopsy-glossary">
               <summary>Glosario rápido · cp / CCT</summary>
@@ -145,7 +145,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
 
             {incidents.length ? <div className="autopsy-timeline">{incidents.map((m, i) => <div className={`autopsy-incident sev-${m.severity}`} key={m.index}>
               <div className="autopsy-incident-number">#{i + 1}</div>
-              <div><b>{noReturn?.index === m.index ? '☠ Punto de no retorno' : incidentTitle(i, m, incidents.length)}</b><p>Jugada {m.moveNumber}: <strong>{m.played}</strong> en vez de <strong>{m.suggested}</strong> · pérdida aproximada: <strong>−{m.loss} <GlossaryTerm term="cp">cp</GlossaryTerm></strong></p><MoveContext move={m} /><small>{explainMoveReport(m)}</small></div>
+              <div><b>{noReturn?.index === m.index ? '☠ Punto de no retorno' : incidentTitle(i, m, incidents.length)}</b><p>Jugada {m.moveNumber}: <strong>{m.played}</strong> en vez de <strong>{m.suggested}</strong> · pérdida aproximada: <strong>−{m.loss} puntos de evaluación</strong></p><MoveContext move={m} /><small>{explainMoveReport(m)}</small></div>
             </div>)}</div> : <p className="hint-text">No encontramos heridas tácticas de consideración. Francamente decepcionante para el departamento forense.</p>}
 
             <div className="autopsy-verdict"><b>DICTAMEN DE LA CPU</b><p>{forensicVerdict(report)}</p></div>

@@ -245,3 +245,50 @@ button[disabled] {
   .game-advanced-tools-body { align-items: stretch; flex-direction: column; }
   .game-advanced-tools-body .secondary-btn { width: 100%; }
 }
+
+/* Estados y acciones irreversibles comparten un lenguaje visual estable. */
+.ui-state {
+  display: grid;
+  gap: .18rem;
+  padding: .78rem .85rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  background: rgba(0,0,0,.1);
+  color: var(--parchment-dim);
+  line-height: 1.45;
+}
+.ui-state b { color: var(--parchment); font-size: .82rem; }
+.ui-state span { font-size: .76rem; }
+.ui-state-loading { border-left: 3px solid var(--hint); }
+.ui-state-loading::after {
+  content: '';
+  width: 2.8rem;
+  height: 3px;
+  margin-top: .35rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--hint), transparent);
+  animation: state-loading 1.15s ease-in-out infinite alternate;
+}
+.ui-state-error { border-left: 3px solid var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.ui-state-empty { border-style: dashed; text-align: center; }
+@keyframes state-loading { from { opacity: .35; transform: translateX(0); } to { opacity: 1; transform: translateX(2rem); } }
+
+.danger-action-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .75rem;
+  border-left: 3px solid color-mix(in srgb, var(--danger) 68%, transparent);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
+}
+.danger-action-zone > div { display: grid; gap: .12rem; }
+.danger-action-zone b { font-size: .78rem; }
+.danger-action-zone small { color: var(--parchment-dim); line-height: 1.4; }
+.lab-fen-readout { display: grid; gap: .55rem; }
+.lab-fen-readout > .secondary-btn { justify-self: start; }
+
+@media (max-width: 520px) {
+  .danger-action-zone { grid-template-columns: 1fr; }
+  .danger-action-zone .danger-btn,
+  .lab-fen-readout > .secondary-btn { width: 100%; }
+}

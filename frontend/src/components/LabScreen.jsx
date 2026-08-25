@@ -36,9 +36,9 @@ export default function LabScreen({ onExit, onStart }){
   function resetInitial() { applyPosition(initialState()); }
 
   function applyFen(){
-    const raw=prompt('Pega un FEN completo o sólo la colocación de piezas:',fen); if(!raw)return;
+    const raw=prompt('Pega una posición en formato FEN:',fen); if(!raw)return;
     try { applyPosition(parseLabPosition(raw, turn)); }
-    catch { setError('FEN/colocación inválida. El tablero ha rechazado el cadáver antes de que llegue al laboratorio.'); }
+    catch { setError('La posición no es válida. Revisa el texto e inténtalo de nuevo.'); }
   }
 
   function editSquare(sq) {
@@ -59,12 +59,11 @@ export default function LabScreen({ onExit, onStart }){
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={onExit}>← Volver al menú</button>
-    <div className="menu-section friendly-primary-zone"><div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div><h2>Prepara una posición y juega</h2><p className="hint-text friendly-lead">Mueve piezas en el tablero o pega un FEN. No afecta a tu <GlossaryTerm term="ELO">ELO</GlossaryTerm>.</p></div>
+    <div className="menu-section friendly-primary-zone"><div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div><h2>Prepara una posición y juega</h2><p className="hint-text friendly-lead">Coloca las piezas en el tablero y empieza desde ahí. No afecta a tu rating competitivo.</p></div>
     <div className="lab-toolbar">
       <div className="lab-brushes">{BRUSHES.map(p=><button key={p||'erase'} className={`lab-brush ${brush===p?'active':''}`} onClick={()=>setBrush(p)} title={p?'Colocar pieza':'Borrar'}>{p?GLYPH[p]:'⌫'}</button>)}</div>
       <button className="secondary-btn" onClick={resetInitial}>Posición inicial</button>
       <button className="secondary-btn" onClick={emptyBoard}>Vaciar</button>
-      <button className="secondary-btn" onClick={applyFen}>Pegar FEN</button>
     </div>
     <div className="lab-board-editor">
       <Board fen={fen} orientation="white" onSquareClick={editSquare} />
@@ -76,8 +75,9 @@ export default function LabScreen({ onExit, onStart }){
     {error&&<p className="error-text">{error}</p>}
     <button className="primary-btn friendly-main-cta" onClick={launch}>Jugar esta posición</button>
     <details className="friendly-disclosure lab-technical-details">
-      <summary>Detalles técnicos de la posición</summary>
+      <summary>Opciones avanzadas de la posición</summary>
       <div className="friendly-disclosure-body lab-fen-readout">
+        <button className="secondary-btn" onClick={applyFen}>Importar posición en formato FEN</button>
         <span className="section-label"><GlossaryTerm term="FEN">FEN</GlossaryTerm></span>
         <code>{fen}</code>
         <small>Piezas · turno · enroques · en passant · contador de 50 movimientos · número de jugada.</small>

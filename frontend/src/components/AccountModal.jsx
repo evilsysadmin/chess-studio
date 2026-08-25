@@ -51,7 +51,7 @@ export default function AccountModal({ onClose }) {
         <h3>Mi cuenta</h3>
         {error && <p className="error-text">{error}</p>}
         {notice && <p className="hint-text">{notice}</p>}
-        {!error && !me && <p className="hint-text">Cargando…</p>}
+        {!error && !me && <div className="ui-state ui-state-loading" role="status"><b>Cargando tu cuenta</b><span>Recuperando la información del perfil…</span></div>}
         {me && (
           <>
             <div className="admin-detail-grid">

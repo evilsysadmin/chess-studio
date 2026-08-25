@@ -62,8 +62,9 @@ export default function HistoryScreen({ records, onOpen, onShare, onMovie, onExi
       {records.length > 0 && (
         <details className="friendly-disclosure history-options">
           <summary>Opciones del historial</summary>
-          <div className="friendly-disclosure-body">
-            <button className="secondary-btn" style={{ width: '100%' }} onClick={onClear}>Borrar historial</button>
+          <div className="friendly-disclosure-body danger-action-zone">
+            <div><b>Borrar todo el historial</b><small>Eliminará la lista de partidas guardadas. Esta acción no se puede deshacer.</small></div>
+            <button className="danger-btn" onClick={onClear}>Borrar historial</button>
           </div>
         </details>
       )}
