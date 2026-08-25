@@ -17,7 +17,7 @@ export default function DailyChallengesScreen({ onExit, onPlay }) {
 
   return (
     <div className="tutorial-shell daily-hub-screen">
-      <button className="back-link" onClick={onExit}>← Volver</button>
+      <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="daily-hub-heading">
         <div>
           <span className="eyebrow">HOY</span>

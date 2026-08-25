@@ -18,6 +18,10 @@ import { loadGameActivity } from '../gameActivity.js';
 import { buildHomeToday } from '../homeToday.js';
 import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { shouldEnableHomePlayNudge } from '../homePlayNudgePolicy.js';
+import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
+import { setProfileStorageItem } from '../profileKeys.js';
+
+const HOME_GUIDE_KEY = 'chess-study-home-guide-dismissed-v1';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -65,6 +69,7 @@ export default function Menu({
   const [showAchievements, setShowAchievements] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const [logoutError, setLogoutError] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
@@ -101,6 +106,11 @@ export default function Menu({
     }
   }
 
+  function closeHomeGuide() {
+    setProfileStorageItem(HOME_GUIDE_KEY, '1');
+    setShowHomeGuide(false);
+  }
+
   return (
     <div className="menu home-friendly">
       {hasSavedGame && (
@@ -115,6 +125,26 @@ export default function Menu({
             <span className="home-continue-cta">Volver al tablero →</span>
           </button>
         </div>
+      )}
+
+      {showHomeGuide && (
+        <section className="home-start-guide" aria-label="Guía rápida de Chess Studio">
+          <button type="button" className="home-start-guide-close" onClick={closeHomeGuide} aria-label="Cerrar guía rápida">×</button>
+          <div className="home-start-guide-copy">
+            <span className="section-label">EMPIEZA AQUÍ</span>
+            <h2>Juega primero. Descubre el resto a tu ritmo.</h2>
+            <p>Una partida rápida usa buenos valores iniciales. Entrenamiento, desafíos y Combat quedan disponibles cuando quieras profundizar.</p>
+          </div>
+          <div className="home-start-guide-path" aria-label="Opciones principales">
+            <span><b>Jugar</b><small>Partida contra la CPU</small></span>
+            <span><b>Mejorar</b><small>Análisis y práctica</small></span>
+            <span><b>Desafíos</b><small>Tres objetivos diarios</small></span>
+          </div>
+          <div className="home-start-guide-actions">
+            <button type="button" className="primary-btn" onClick={() => { closeHomeGuide(); setShowQuickMatch(true); }}>Jugar ahora</button>
+            <button type="button" className="secondary-btn" onClick={closeHomeGuide}>Explorar Home</button>
+          </div>
+        </section>
       )}
 
       <section className="home-today-card" aria-label="Hoy en Chess Studio">
@@ -249,6 +279,7 @@ export default function Menu({
       />
 
       <div className="footer-links-row">
+        <button type="button" className="backup-link" onClick={() => setShowHomeGuide(true)}>Guía rápida</button>
         <button type="button" className="backup-link" onClick={() => setShowAchievements(true)}>Distintivos</button>
         <button type="button" className="backup-link" onClick={() => setShowAccount(true)}>Mi cuenta</button>
         <button type="button" className="backup-link" onClick={() => setShowBackup(true)}>Exportar / importar mi progreso</button>

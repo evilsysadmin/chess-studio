@@ -251,7 +251,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
   return (
     <div className="tutorial-shell">
-      <button className="back-link" onClick={onExit}>← Volver</button>
+      <button className="back-link" onClick={onExit}>← Volver al menú</button>
       {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
         <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalCount === 0} onClick={() => changeSource('personal')}>

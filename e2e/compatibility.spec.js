@@ -40,3 +40,19 @@ for (const width of [360, 390, 430]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   });
 }
+
+test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+  await guide.getByRole('button', { name: 'Explorar Home', exact: true }).click();
+  await expect(guide).toHaveCount(0);
+
+  await page.reload();
+  await expect(guide).toHaveCount(0);
+  await page.getByRole('button', { name: 'Guía rápida', exact: true }).click();
+  await expect(guide).toBeVisible();
+  await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
+});

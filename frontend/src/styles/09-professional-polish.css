@@ -163,3 +163,44 @@ button[disabled] {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .menu-card:not(:disabled):hover, .menu-card:not(:disabled):focus-visible { transform: none; }
 }
+
+/* Onboarding inline: orienta sin bloquear Home ni competir con Continuar. */
+.home-start-guide {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, .9fr);
+  gap: 1rem 1.25rem;
+  padding: clamp(1rem, 2.4vw, 1.4rem);
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--ink-3));
+  border-radius: var(--radius-surface);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ink-2) 91%, var(--brass) 9%), var(--ink-2));
+  box-shadow: var(--shadow-raised);
+}
+.home-start-guide-copy { min-width: 0; padding-right: 1.8rem; }
+.home-start-guide-copy h2 { margin: .18rem 0 .4rem; font-size: clamp(1.25rem, 2.5vw, 1.65rem); line-height: 1.18; }
+.home-start-guide-copy p { max-width: 62ch; margin: 0; color: var(--parchment-dim); font-size: .84rem; }
+.home-start-guide-path { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; grid-column: 1 / -1; }
+.home-start-guide-path > span { display: grid; gap: .1rem; padding: .62rem .7rem; border: 1px solid var(--line-soft); border-radius: var(--radius-control); background: rgba(0,0,0,.12); }
+.home-start-guide-path b { font-size: .78rem; color: var(--parchment); }
+.home-start-guide-path small { color: var(--parchment-dim); font-size: .66rem; }
+.home-start-guide-actions { display: flex; align-items: center; justify-content: flex-end; gap: .55rem; grid-column: 2; grid-row: 1; padding-right: 1.8rem; }
+.home-start-guide-actions .primary-btn,
+.home-start-guide-actions .secondary-btn { min-width: 116px; }
+.home-start-guide-close { position: absolute; top: .65rem; right: .65rem; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 50%; background: transparent; color: var(--parchment-dim); font-size: 1.2rem; }
+.home-start-guide-close:hover { color: var(--parchment); border-color: var(--ink-3); background: rgba(255,255,255,.035); }
+
+@media (max-width: 760px) {
+  .home-start-guide { grid-template-columns: 1fr; }
+  .home-start-guide-actions { grid-column: 1; grid-row: auto; justify-content: flex-start; padding-right: 0; }
+}
+@media (max-width: 430px) {
+  .home-start-guide { padding: .9rem; gap: .8rem; }
+  .home-start-guide-copy { padding-right: 1.5rem; }
+  .home-start-guide-path { grid-template-columns: 1fr; }
+  .home-start-guide-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .home-start-guide-actions .primary-btn,
+  .home-start-guide-actions .secondary-btn { min-width: 0; padding-inline: .65rem; }
+}
+@media (max-width: 360px) {
+  .home-start-guide-actions { grid-template-columns: 1fr; }
+}
