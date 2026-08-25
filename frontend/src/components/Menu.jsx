@@ -125,7 +125,7 @@ export default function Menu({
             <small>{today.dailyDetail}</small>
           </div>
           <button type="button" className={today.dailySolved ? 'secondary-btn' : 'primary-btn'} onClick={onDailyChallenge}>
-            {today.dailySolved ? 'Ver desafío' : 'Jugar desafío →'}
+            {today.dailySolved ? 'Ver desafíos' : 'Abrir desafíos →'}
           </button>
         </div>
         <details className="home-today-details">

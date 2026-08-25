@@ -190,3 +190,23 @@ test('móvil 390px · Admin sigue legible y sin overflow global', async ({ page 
   await expect(page.getByRole('heading', { name: 'Usuarios registrados', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
+
+
+test('Combat Chess · salir al menú conserva campaña y batalla activas', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  await expect(quick).toBeVisible();
+  await quick.click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+
+  await buttonWithVisibleText(page, 'Combat Chess · Campaña').click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Empezar campaña/i })).toHaveCount(0);
+});

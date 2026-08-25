@@ -20,13 +20,13 @@ const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana ma
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null }) {
+export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic' }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const filteredInitialPersonal = personalPuzzlesForFilter(initialFilter);
   const resolvedInitialSource = initialSource === 'personal' && filteredInitialPersonal.length === 0 ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
-  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES) : randomPuzzle());
+  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle());
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [fen, setFen] = useState(puzzle.fen);
   const [stepIndex, setStepIndex] = useState(0);
@@ -98,7 +98,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
   function choosePuzzle(nextSource, excludeId = null) {
     if (nextSource === 'personal') return randomPersonalPuzzle(excludeId, initialFilter) || randomPuzzle(excludeId);
-    if (nextSource === 'daily') return dailyPuzzle(PUZZLES);
+    if (nextSource === 'daily') return dailyPuzzle(PUZZLES, new Date(), dailySlot);
     return randomPuzzle(excludeId);
   }
 
@@ -181,7 +181,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       setSolvedCount((n) => n + 1);
       incrementPuzzlesSolved();
       if (source === 'daily' && puzzle.dailyKey) {
-        setDailyStats(markDailySolved(puzzle.dailyKey, { clean: !personalHadError }));
+        setDailyStats(markDailySolved(puzzle.dailyKey, { clean: !personalHadError, slot: puzzle.dailySlot || dailySlot }));
         checkAchievements();
       }
       if (wrongThisPuzzle) {
@@ -251,7 +251,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
   return (
     <div className="tutorial-shell">
-      <button className="back-link" onClick={onExit}>← Volver al menú</button>
+      <button className="back-link" onClick={onExit}>← Volver</button>
       {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
         <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalCount === 0} onClick={() => changeSource('personal')}>
@@ -311,7 +311,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           <p className="hint-text friendly-inline-note">Juegas con <b>{humanColor === 'w' ? 'blancas' : 'negras'}</b>. Elige pieza y destino; si fallas puedes volver a intentarlo.</p>
 
           {source === 'daily' && (
-            <div className={`daily-challenge-note ${dailyBrief.solved ? 'is-solved' : ''}`}><b>📅 {dailyBrief.headline}</b><span>{dailyBrief.detail}</span></div>
+            <div className={`daily-challenge-note ${dailyBrief.full ? 'is-solved' : ''}`}><b>📅 {puzzle.dailySlotLabel ? `${puzzle.dailySlotLabel} · ` : ''}{dailyBrief.headline}</b><span>{dailyBrief.detail}</span></div>
           )}
           {source === 'personal' && (
             <p className="hint-text personal-puzzle-note">☠ Posición nacida de una de tus propias autopsias.{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>

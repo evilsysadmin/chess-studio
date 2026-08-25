@@ -494,7 +494,8 @@ async def reset_password(body: ResetPasswordRequest, request: Request):
 
 
 @app.put("/api/auth/email")
-async def update_recovery_email(body: UpdateEmailRequest, username: str = Depends(get_current_user)):
+@limiter.limit("10/hour")
+async def update_recovery_email(request: Request, body: UpdateEmailRequest, username: str = Depends(get_current_user)):
     if not ENABLE_EMAIL_RECOVERY:
         raise HTTPException(404, "Recuperación por email no habilitada.")
     user = await ustore.get_user(username)
@@ -523,7 +524,8 @@ async def me(username: str = Depends(get_current_user)):
 
 
 @app.post("/api/auth/activity", status_code=204)
-async def activity_heartbeat(payload: Optional[ActivityHeartbeatRequest] = None, username: str = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def activity_heartbeat(request: Request, payload: Optional[ActivityHeartbeatRequest] = None, username: str = Depends(get_current_user)):
     # Telemetría deliberadamente gruesa: sólo etiquetas de pantalla/acción,
     # nunca jugadas, FEN, mensajes, rivales ni contenido privado.
     allowed = {
@@ -549,23 +551,30 @@ async def activity_heartbeat(payload: Optional[ActivityHeartbeatRequest] = None,
 # nunca del body enviado por el cliente.
 
 @app.get("/api/profile")
-async def get_profile(username: str = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_profile(request: Request, username: str = Depends(get_current_user)):
     profile = await pstore.get_profile(username)
     return profile or {}
 
 
 @app.put("/api/profile")
-async def save_profile(body: dict, username: str = Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def save_profile(request: Request, body: dict, username: str = Depends(get_current_user)):
     saved = await pstore.save_profile(username, body)
     return saved
 
 
 @app.patch("/api/profile")
-async def patch_profile(body: dict, username: str = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def patch_profile(request: Request, body: dict, username: str = Depends(get_current_user)):
     changes = body.get("data") if isinstance(body, dict) else None
     revisions = body.get("revisions") if isinstance(body, dict) else None
     if not isinstance(changes, dict) or not isinstance(revisions, dict):
         raise HTTPException(400, "PATCH de perfil inválido.")
+    if len(changes) > 128 or len(revisions) > 128:
+        raise HTTPException(413, "PATCH de perfil demasiado grande.")
+    if any(len(str(key)) > 160 for key in changes) or any(len(str(key)) > 160 for key in revisions):
+        raise HTTPException(400, "PATCH de perfil contiene una clave inválida.")
     result = await pstore.patch_profile(username, changes, revisions)
     if isinstance(result, pstore.ProfilePatchConflict):
         raise HTTPException(

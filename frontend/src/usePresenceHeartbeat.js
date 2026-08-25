@@ -14,6 +14,7 @@ const ACTIVITY_BY_VIEW = Object.freeze({
   insights: 'Así juegas',
   history: 'Historial',
   puzzle: 'Puzzle',
+  dailyChallenges: 'Puzzle',
   tutorial: 'Aprendizaje',
   openings: 'Aperturas',
   lab: 'Laboratorio',

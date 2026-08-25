@@ -2,6 +2,7 @@ import React from 'react';
 import { loadActiveGameSession } from '../activeGameSession.js';
 import { STORAGE_KEY } from '../api.js';
 import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
+import { buildClientDiagnostic, copyDiagnosticText } from '../clientDiagnostics.js';
 
 function hasRecoverableGame() {
   if (loadActiveGameSession()) return true;
@@ -15,17 +16,23 @@ function hasRecoverableGame() {
 export default class AppRootErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, lastError: null, diagnosticCopied: false };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, lastError: error, diagnosticCopied: false };
   }
 
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
     console.error('Error atrapado por AppRootErrorBoundary:', error, info);
   }
+
+  handleCopyDiagnostic = async () => {
+    const text = buildClientDiagnostic({ error: this.state.lastError, canRecover: hasRecoverableGame() });
+    const copied = await copyDiagnosticText(text).catch(() => false);
+    this.setState({ diagnosticCopied: copied });
+  };
 
   handleReload = () => {
     const reload = this.props.onReload || (() => window.location.reload());
@@ -48,9 +55,14 @@ export default class AppRootErrorBoundary extends React.Component {
             <span>Al recargar, la continuidad de sesión intentará devolverla al tablero.</span>
           </p>
         )}
-        <button type="button" className="primary-btn" onClick={this.handleReload}>
-          {canRecover ? 'Recargar y recuperar partida' : 'Recargar interfaz'}
-        </button>
+        <div className="error-boundary-actions">
+          <button type="button" className="primary-btn" onClick={this.handleReload}>
+            {canRecover ? 'Recargar y recuperar partida' : 'Recargar interfaz'}
+          </button>
+          <button type="button" className="secondary-btn" onClick={this.handleCopyDiagnostic}>
+            {this.state.diagnosticCopied ? 'Diagnóstico copiado ✓' : 'Copiar diagnóstico'}
+          </button>
+        </div>
       </div>
     );
   }

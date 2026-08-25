@@ -25,6 +25,15 @@ PUBLIC = {
 AUTH_DEPS = {"get_current_user", "get_user_or_m2m", "require_admin", "auth_dependency", "compute_auth_dependency", "admin_dependency"}
 ADMIN_DEPS = {"require_admin", "admin_dependency"}
 RATE_LIMITED_PUBLIC = PUBLIC - {("GET", "/api/health"), ("GET", "/api/ready")}
+RATE_LIMITED_PRIVATE = {
+    ("PUT", "/api/auth/email"),
+    ("POST", "/api/auth/activity"),
+    ("GET", "/api/profile"),
+    ("PUT", "/api/profile"),
+    ("PATCH", "/api/profile"),
+    ("POST", "/api/analyze"),
+    ("POST", "/api/analyze-move"),
+}
 METHODS = {"get", "post", "put", "delete", "patch"}
 
 
@@ -168,6 +177,8 @@ for source in production_sources():
                 if key in RATE_LIMITED_PUBLIC and not has_rate_limit(node):
                     failures.append(f"{method} {path}: endpoint público sensible sin @limiter.limit ({source.name}:{node.name})")
                 continue
+            if key in RATE_LIMITED_PRIVATE and not has_rate_limit(node):
+                failures.append(f"{method} {path}: endpoint privado sensible sin @limiter.limit ({source.name}:{node.name})")
             if not (deps & AUTH_DEPS):
                 failures.append(f"{method} {path}: sin dependencia de autenticación ({source.name}:{node.name})")
             if path.startswith("/api/admin") and not (deps & ADMIN_DEPS):
@@ -212,4 +223,4 @@ if failures:
     for item in failures:
         print(f"  - {item}")
     sys.exit(1)
-print("\nOK: rutas privadas con auth, admin con dependencia admin, routers incluidos, CORS cubre métodos públicos y auth pública con rate-limit.")
+print("\nOK: rutas privadas con auth, endpoints sensibles rate-limited, admin con dependencia admin, routers incluidos y CORS completo.")

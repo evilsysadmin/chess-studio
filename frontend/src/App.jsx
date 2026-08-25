@@ -11,6 +11,7 @@ const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.js
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
 import { loadCombatHistory } from './combatHistory.js';
 const PuzzleScreen = React.lazy(() => import('./components/PuzzleScreen.jsx'));
+const DailyChallengesScreen = React.lazy(() => import('./components/DailyChallengesScreen.jsx'));
 const CombatScreen = React.lazy(() => import('./components/CombatScreen.jsx'));
 const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.jsx'));
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
@@ -143,7 +144,7 @@ function AppInner({ isAdminUser }) {
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
   const [shareRecord, setShareRecord] = useState(null);
-  const [puzzleLaunch, setPuzzleLaunch] = useState({ source: 'curated', rush: false, filter: null });
+  const [puzzleLaunch, setPuzzleLaunch] = useState({ source: 'curated', rush: false, filter: null, dailySlot: 'tactic' });
   const [activeContract, setActiveContract] = useState(() => loadActiveContract());
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
@@ -487,9 +488,13 @@ function AppInner({ isAdminUser }) {
     } finally { setLoading(false); }
   }
 
-  function openPuzzleMode(source = 'curated', rush = false, filter = null) {
-    setPuzzleLaunch({ source, rush, filter });
+  function openPuzzleMode(source = 'curated', rush = false, filter = null, dailySlot = 'tactic') {
+    setPuzzleLaunch({ source, rush, filter, dailySlot });
     navigateTo('puzzle');
+  }
+
+  function openDailyChallengeSlot(slot = 'tactic') {
+    openPuzzleMode('daily', false, null, slot);
   }
 
   async function launchRun(run) {
@@ -653,6 +658,7 @@ function AppInner({ isAdminUser }) {
       {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
       <ReleaseUpdateNotice deferReload={isBoardGameView} />
       <ErrorBoundary
+        view={view}
         onReset={resetNavigation}
         onRecover={recoverSessionFromBoundary}
         canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
@@ -700,7 +706,7 @@ function AppInner({ isAdminUser }) {
             onTutorial={() => navigateTo('tutorial')}
             onOpenings={() => navigateTo('openings')}
             onPuzzle={() => openPuzzleMode('curated', false)}
-            onDailyChallenge={() => openPuzzleMode('daily', false)}
+            onDailyChallenge={() => navigateTo('dailyChallenges')}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}
@@ -748,8 +754,12 @@ function AppInner({ isAdminUser }) {
         {view === 'tutorial' && <Tutorial onExit={goBack} />}
         {view === 'openings' && <OpeningsScreen onExit={goBack} />}
 
+        {view === 'dailyChallenges' && (
+          <DailyChallengesScreen onExit={goBack} onPlay={openDailyChallengeSlot} />
+        )}
+
         {view === 'puzzle' && (
-          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} onExit={goBack} points={tournament.points} onSpendPoints={handleSpendPoints} />
+          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} onExit={goBack} points={tournament.points} onSpendPoints={handleSpendPoints} />
         )}
 
         {view === 'spectator' && <SpectatorScreen onExit={goBack} />}

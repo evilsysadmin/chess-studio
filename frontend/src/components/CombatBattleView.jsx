@@ -10,7 +10,7 @@ export default function CombatBattleView({
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
   pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
-  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, retireBattle, combatVariant, bossHp, bossPhase, bossConfig,
+  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, combatVariant, bossHp, bossPhase, bossConfig,
 }) {
   return (
     <div className="combat-battle-screen">
@@ -108,8 +108,12 @@ export default function CombatBattleView({
           </div>
 
           <div className="game-controls combat-game-controls">
-            <button className="secondary-btn" onClick={combatVariant === 'roguelike' ? retireBattle : backToSetup}>
-              {combatVariant === 'roguelike' ? 'Abandonar intento' : 'Salir del combate'}
+            <button
+              className="secondary-btn"
+              onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
+              title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
+            >
+              {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
             </button>
           </div>
         </div>

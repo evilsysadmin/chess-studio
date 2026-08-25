@@ -83,27 +83,27 @@ class NewGameRequest(BaseModel):
     difficulty: float = 50
     color: str = "w"
     handicap: Optional[str] = None  # None | "pawn" | "knight" | "rook" | "queen" — ver HANDICAP_SQUARES
-    starting_fen: Optional[str] = Field(default=None, alias="startingFen")
+    starting_fen: Optional[str] = Field(default=None, alias="startingFen", max_length=128)
     ghost_style: Optional[GhostStyle] = Field(default=None, alias="ghostStyle")
 
 
 class MoveRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    from_square: str = Field(alias="from")
-    to: str
-    promotion: Optional[str] = None
+    from_square: str = Field(alias="from", min_length=2, max_length=2)
+    to: str = Field(min_length=2, max_length=2)
+    promotion: Optional[str] = Field(default=None, max_length=1)
 
 
 class AnalyzeRequest(BaseModel):
-    fen: str
+    fen: str = Field(max_length=128)
     level: float = HINT_STRENGTH
 
 
 class AnalyzeMoveRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fen: str
-    from_square: Optional[str] = Field(default=None, alias="from")
-    to: Optional[str] = None
-    promotion: Optional[str] = None
+    fen: str = Field(max_length=128)
+    from_square: Optional[str] = Field(default=None, alias="from", min_length=2, max_length=2)
+    to: Optional[str] = Field(default=None, min_length=2, max_length=2)
+    promotion: Optional[str] = Field(default=None, max_length=1)
     level: float = 45
 

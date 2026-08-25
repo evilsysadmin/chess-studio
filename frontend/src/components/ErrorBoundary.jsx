@@ -1,4 +1,5 @@
 import React from 'react';
+import { buildClientDiagnostic, copyDiagnosticText } from '../clientDiagnostics.js';
 
 // Red de seguridad a nivel de toda la app. Si una pantalla revienta durante
 // render, mantenemos la app viva y, cuando existe una partida activa, damos
@@ -7,11 +8,11 @@ import React from 'react';
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, recovering: false, recoveryError: null };
+    this.state = { hasError: false, recovering: false, recoveryError: null, lastError: null, diagnosticCopied: false };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, lastError: error, diagnosticCopied: false };
   }
 
   componentDidCatch(error, info) {
@@ -31,7 +32,7 @@ export default class ErrorBoundary extends React.Component {
         });
         return;
       }
-      this.setState({ hasError: false, recovering: false, recoveryError: null });
+      this.setState({ hasError: false, recovering: false, recoveryError: null, diagnosticCopied: false });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Falló la recuperación desde ErrorBoundary:', error);
@@ -42,8 +43,22 @@ export default class ErrorBoundary extends React.Component {
     }
   };
 
+  handleRetry = () => {
+    this.setState({ hasError: false, recovering: false, recoveryError: null, diagnosticCopied: false });
+  };
+
+  handleCopyDiagnostic = async () => {
+    const text = buildClientDiagnostic({
+      error: this.state.lastError,
+      view: this.props.view,
+      canRecover: Boolean(this.props.canRecover),
+    });
+    const copied = await copyDiagnosticText(text).catch(() => false);
+    this.setState({ diagnosticCopied: copied });
+  };
+
   handleReset = () => {
-    this.setState({ hasError: false, recovering: false, recoveryError: null });
+    this.setState({ hasError: false, recovering: false, recoveryError: null, diagnosticCopied: false });
     this.props.onReset?.();
   };
 
@@ -78,9 +93,17 @@ export default class ErrorBoundary extends React.Component {
             <p className="hint-text">No hay una partida activa recuperable en esta sesión.</p>
           )}
 
-          <button type="button" className="secondary-btn" onClick={this.handleReset} disabled={this.state.recovering}>
-            Volver al menú
-          </button>
+          <div className="error-boundary-actions">
+            <button type="button" className="secondary-btn" onClick={this.handleRetry} disabled={this.state.recovering}>
+              Reintentar pantalla
+            </button>
+            <button type="button" className="secondary-btn" onClick={this.handleReset} disabled={this.state.recovering}>
+              Volver al menú
+            </button>
+            <button type="button" className="secondary-btn" onClick={this.handleCopyDiagnostic}>
+              {this.state.diagnosticCopied ? 'Diagnóstico copiado ✓' : 'Copiar diagnóstico'}
+            </button>
+          </div>
         </div>
       );
     }

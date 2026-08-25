@@ -187,7 +187,7 @@ jobs:
         working-directory: e2e
         run: >-
           ./node_modules/.bin/playwright test smoke.spec.js
-          --grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña permite jugar con defaults"
+          --grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña"
           --workers=2 --retries=0
 
       - name: Upload Playwright diagnostics on failure

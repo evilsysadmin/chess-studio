@@ -873,6 +873,21 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     proposeOrCommitMove(from, to, code, moveInfo);
   }
 
+  function suspendBattleToMenu() {
+    if (phase !== 'battle') return;
+
+    // Salir de la pantalla no equivale a retirarse de la campaña. Guardamos
+    // explícitamente el snapshot más reciente y dejamos la batalla exactamente
+    // donde estaba. Al volver a Combat Chess, RoguelikeScreen detecta la sesión
+    // persistida y ofrece continuar la misma campaña/pelea, sin rerollear nada.
+    const persisted = persistBattleSession();
+    if (!persisted) {
+      onError?.('No se pudo guardar la batalla antes de salir. Sigue en el tablero e inténtalo de nuevo.');
+      return;
+    }
+    onExit?.();
+  }
+
   function retireBattle() {
     if (phase !== 'battle') return;
 
@@ -1012,7 +1027,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
     showArmy, setShowArmy, showDeployment, setShowDeployment, deploymentConfirmed, requireDeploymentConfirmation, handleConfirmDeployment, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick, handleQuickStartBattle,
-    startBattle, confirmAttack, cancelAttack, choosePromotion, retireBattle, backToSetup, handleResetRoster,
+    startBattle, confirmAttack, cancelAttack, choosePromotion, suspendBattleToMenu, retireBattle, backToSetup, handleResetRoster,
     handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleBuyStat,
     handleSquareClick, handleSquareDoubleClick, handleActivateTechnique, infoTechniqueTargets, setInfoSquare,
     status, statusLabel, statusClass, statusText, bossHp, bossPhase, bossConfig,

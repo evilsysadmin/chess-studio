@@ -17,11 +17,17 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
 doctor:
 	@$(PYTHON) scripts/repo_doctor.py
+
+## Probe manual de carga ligera contra una API ya desplegada. No entra en CI ni pre-push.
+## Ejemplo: make load-probe API_BASE_URL=https://tu-backend.example
+load-probe:
+	@test -n "$(API_BASE_URL)" || { echo "ERROR: define API_BASE_URL=https://..."; exit 2; }
+	$(PYTHON) scripts/api_load_probe.py --base-url "$(API_BASE_URL)" --requests 60 --concurrency 8
 
 ## Levanta el juego (build si hace falta) y se queda mostrando logs.
 game:

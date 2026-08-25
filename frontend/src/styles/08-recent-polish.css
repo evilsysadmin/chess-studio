@@ -487,3 +487,16 @@
 .army-unit-legacy{display:grid;gap:.22rem;margin:.8rem 0;padding:.75rem .8rem;border-left:3px solid var(--brass);border-radius:.45rem;background:rgba(214,184,111,.045)}.army-unit-legacy>strong{font-size:1rem}.army-unit-legacy>p{margin:0;color:var(--parchment);line-height:1.4}.army-unit-legacy>small{color:var(--parchment-dim)}
 .achievements-modal{display:grid;gap:.7rem}.achievements-featured{max-height:44vh;overflow:auto}.achievements-catalog{margin-top:.2rem}.achievements-catalog .army-list{max-height:50vh;overflow:auto;padding-top:.55rem}.achievements-empty{padding:.7rem;border:1px dashed rgba(255,255,255,.1);border-radius:.5rem}
 @media(max-width:620px){.rivalry-dossier-heading{flex-direction:column}.rivalry-dossier-lead{white-space:normal}.achievements-featured{max-height:none}.achievements-catalog .army-list{max-height:55vh}}
+
+/* v16.6dm43v · Daily Challenge como sección propia, simple por defecto. */
+.daily-hub-screen{display:grid;gap:1rem;max-width:980px;margin:0 auto;width:100%}
+.daily-hub-heading{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end}
+.daily-hub-heading h2{margin:.1rem 0 .35rem}.daily-hub-heading p{margin:0;max-width:62ch}
+.daily-hub-score{display:grid;justify-items:end;gap:.15rem;min-width:max-content}.daily-hub-score strong{font-family:var(--font-mono);font-size:1.65rem;color:var(--brass)}.daily-hub-score span{font-size:.75rem;color:var(--parchment-dim)}
+.daily-hub-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}
+.daily-hub-card{display:grid;align-content:start;gap:.55rem;padding:1rem;border:1px solid rgba(198,164,93,.22);border-radius:12px;background:rgba(255,255,255,.025)}
+.daily-hub-card.is-solved{border-color:rgba(95,170,110,.42);background:rgba(95,170,110,.07)}
+.daily-hub-card-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}.daily-hub-card h3,.daily-hub-card p{margin:0}.daily-hub-card p{color:var(--parchment-dim);font-size:.86rem;line-height:1.45;min-height:2.5em}.daily-hub-card button{margin-top:.25rem}
+.daily-hub-status{font-size:.7rem;font-weight:700;color:var(--success)}.daily-hub-details{margin-top:.15rem}
+@media(max-width:760px){.daily-hub-heading{align-items:flex-start;flex-direction:column}.daily-hub-score{justify-items:start}.daily-hub-grid{grid-template-columns:1fr}}
+.error-boundary-actions{display:flex;gap:.55rem;flex-wrap:wrap;justify-content:center;margin-top:.45rem}

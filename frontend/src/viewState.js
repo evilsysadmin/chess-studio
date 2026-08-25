@@ -20,6 +20,7 @@ const RESTORABLE_VIEWS = Object.freeze([
   'admin',
   'history',
   'insights',
+  'dailyChallenges',
   'lab',
   'board3d',
 ]);

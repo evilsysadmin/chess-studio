@@ -191,7 +191,7 @@ if (checkCiWiring) {
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
   if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
-  if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña permite jugar con defaults"')) fail('Browser smoke crítico debe cubrir el camino Combat con defaults');
+  if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña"')) fail('Browser smoke crítico debe cubrir defaults y continuidad de Combat');
   const informationalCoverageSteps = (coverageWorkflowSource.match(/continue-on-error:\s*true/g) || []).length;
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');
 }
@@ -202,6 +202,9 @@ if (!playwrightConfig.includes('fullyParallel: true')) fail('Playwright CI debe 
 if (/workers:\s*process\.env\.CI\s*\?\s*1\s*:/.test(playwrightConfig)) fail('Playwright CI no debe volver a 1 worker: serializa toda la suite');
 if (!playwrightConfig.includes('actionTimeout:')) fail('Playwright debe tener actionTimeout explícito para fallar cerca de la causa y no a los 30 s');
 if (!/retries:\s*0/.test(playwrightConfig)) fail('Playwright informativo no debe reintentar: los retries alargan ruido y esconden fallos deterministas');
+if (!playwrightConfig.includes("PLAYWRIGHT_ALL_BROWSERS") || !playwrightConfig.includes("Desktop Firefox") || !playwrightConfig.includes("Desktop Safari")) fail('Playwright informativo debe conservar matriz Chromium/Firefox/WebKit');
+const fullE2EWorkflow = read(path.join(root, '.github', 'workflows', 'e2e-full.yml'));
+if (!fullE2EWorkflow.includes('chromium firefox webkit') || !fullE2EWorkflow.includes("PLAYWRIGHT_ALL_BROWSERS: '1'")) fail('Workflow E2E completo no activa la matriz multi-browser');
 if (e2eTests < 11) fail(`Cobertura E2E/DOM demasiado testimonial: ${e2eTests} caso(s); mínimo 11`);
 const resilienceBehaviorTests = [
   'backNavigationStack.test.js',
@@ -235,6 +238,7 @@ for (const required of [
   'una batalla activa sobrevive a reload y no vuelve a Setup',
   'clic simple fija la ficha sin mover la unidad',
   'la batalla usa el rail derecho como Registro de batalla',
+  'salir al menú conserva campaña y batalla activas',
   'las piezas interactivas reciben pointer events reales en Mesa de Guerra',
   'focus de teclado sobre una reserva abre la ficha rápida sin ratón',
   'Escape cierra primero la ficha fijada sin abandonar Preparar despliegue',

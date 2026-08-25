@@ -39,6 +39,17 @@ describe('ErrorBoundary · recuperación de partida', () => {
     expect(onRecover).toHaveBeenCalledTimes(2);
   });
 
+
+  it('reintentar pantalla limpia sólo el fallback y conserva la navegación actual', () => {
+    const boundary = boundaryWith({});
+    boundary.state.recoveryError = 'fallo previo';
+    boundary.state.diagnosticCopied = true;
+
+    boundary.handleRetry();
+
+    expect(boundary.state).toMatchObject({ hasError: false, recovering: false, recoveryError: null, diagnosticCopied: false });
+  });
+
   it('volver al menú limpia sólo el error visual y delega la navegación', () => {
     const onReset = vi.fn();
     const boundary = boundaryWith({ onReset });

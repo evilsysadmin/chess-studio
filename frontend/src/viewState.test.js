@@ -17,6 +17,11 @@ describe('navegación resistente a refresh', () => {
     expect(loadSessionView({ isAdminUser: true })).toBe('admin');
   });
 
+  it('restaura el hub de Desafíos diarios después de refresh', () => {
+    rememberSessionView('dailyChallenges');
+    expect(loadSessionView()).toBe('dailyChallenges');
+  });
+
   it('no restaura Admin para un usuario que no es admin', () => {
     sessionStorage.setItem(VIEW_STORAGE_KEY, 'admin');
     expect(loadSessionView({ isAdminUser: false })).toBe('menu');

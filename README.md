@@ -1,3 +1,8 @@
+### v16.6dm43u · Hotfix contrato memoria de serie
+
+- Ajusta el test de memoria de serie al contrato semántico actual: decisiva + marcador real + referencia a partidas anteriores, sin acoplarlo a una redacción antigua.
+- Sin cambios de gameplay ni comportamiento de la CPU.
+
 ### v16.6dm43t · Rivalidad CPU + veteranos memorables + distintivos discretos
 
 - Añade un expediente compacto de rivalidad contra la CPU: marcador, racha, forma reciente e incidente dominante visibles; aperturas, hitos y antecedentes quedan detrás de «Ver expediente completo». Todo se deriva del historial/rivalidad ya persistidos.

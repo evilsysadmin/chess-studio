@@ -3,6 +3,12 @@ import { setProfileStorageItem } from './profileKeys.js';
 
 const KEY = 'chess-study-daily-challenge';
 
+export const DAILY_CHALLENGE_SLOTS = Object.freeze([
+  { id: 'tactic', label: 'Táctica', title: 'Golpe táctico', description: 'Una posición corta para encontrar la idea correcta.' },
+  { id: 'precision', label: 'Precisión', title: 'Sin regalar nada', description: 'Resuélvela; si sale limpia, queda registrado.' },
+  { id: 'finish', label: 'Remate', title: 'Cierra el expediente', description: 'La tercera posición del día. Completar las tres da pleno.' },
+]);
+
 export function dailyChallengeDayKey(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -16,16 +22,45 @@ function hash(text) {
   return Math.abs(h);
 }
 
-export function dailyPuzzle(pool, date = new Date()) {
-  if (!pool?.length) return null;
+export function dailyPuzzles(pool, date = new Date()) {
+  if (!pool?.length) return [];
   const day = dailyChallengeDayKey(date);
-  return { ...pool[hash(day) % pool.length], dailyKey: day };
+  const ranked = [...pool].sort((a, b) => {
+    const ah = hash(`${day}:${a?.id || a?.title || ''}`);
+    const bh = hash(`${day}:${b?.id || b?.title || ''}`);
+    return ah - bh || String(a?.id || '').localeCompare(String(b?.id || ''));
+  });
+  return DAILY_CHALLENGE_SLOTS.map((slot, index) => ({
+    ...ranked[index % ranked.length],
+    dailyKey: day,
+    dailySlot: slot.id,
+    dailySlotLabel: slot.label,
+  }));
+}
+
+export function dailyPuzzle(pool, date = new Date(), slot = 'tactic') {
+  const puzzles = dailyPuzzles(pool, date);
+  if (!puzzles.length) return null;
+  const index = Math.max(0, DAILY_CHALLENGE_SLOTS.findIndex((item) => item.id === slot));
+  return puzzles[index] || puzzles[0];
+}
+
+function normalizeResult(result) {
+  if (!result || typeof result !== 'object') return { slots: {} };
+  const slots = result.slots && typeof result.slots === 'object' ? { ...result.slots } : {};
+  // Compatibilidad con el desafío único anterior: cuenta como el primer reto.
+  if (result.solved && !slots.tactic) {
+    slots.tactic = { solved: true, ...(typeof result.clean === 'boolean' ? { clean: result.clean } : {}) };
+  }
+  return { ...result, slots };
 }
 
 export function loadDailyChallenge() {
   try {
     const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, KEY) || '{}');
-    return { solvedDates: [], bestStreak: 0, results: {}, ...parsed, results: parsed?.results && typeof parsed.results === 'object' ? parsed.results : {} };
+    const rawResults = parsed?.results && typeof parsed.results === 'object' ? parsed.results : {};
+    const results = Object.fromEntries(Object.entries(rawResults).map(([day, result]) => [day, normalizeResult(result)]));
+    return { solvedDates: [], bestStreak: 0, results, ...parsed, results };
   } catch {
     return { solvedDates: [], bestStreak: 0, results: {} };
   }
@@ -44,17 +79,41 @@ function streakFromDates(dates) {
   return streak;
 }
 
-export function markDailySolved(day = dailyChallengeDayKey(), { clean = null } = {}) {
+export function dailyChallengeProgress(state = {}, day = dailyChallengeDayKey()) {
+  const result = normalizeResult(state?.results?.[day]);
+  const slots = Object.fromEntries(DAILY_CHALLENGE_SLOTS.map((slot) => [slot.id, result.slots?.[slot.id] || null]));
+  const solvedCount = DAILY_CHALLENGE_SLOTS.filter((slot) => Boolean(slots[slot.id]?.solved)).length;
+  const cleanCount = DAILY_CHALLENGE_SLOTS.filter((slot) => slots[slot.id]?.clean === true).length;
+  return {
+    day,
+    slots,
+    solvedCount,
+    cleanCount,
+    full: solvedCount === DAILY_CHALLENGE_SLOTS.length,
+  };
+}
+
+export function markDailySolved(day = dailyChallengeDayKey(), { clean = null, slot = 'tactic' } = {}) {
   const state = loadDailyChallenge();
-  const firstSolve = !state.solvedDates.includes(day);
+  const firstSolveOfDay = !state.solvedDates.includes(day);
   const previousBest = Math.max(0, Number(state.bestStreak) || 0);
-  if (firstSolve) state.solvedDates.push(day);
-  state.solvedDates = state.solvedDates.sort().slice(-120);
   state.results = state.results && typeof state.results === 'object' ? state.results : {};
-  const streak = streakFromDates(state.solvedDates);
-  if (!state.results[day]) {
-    state.results[day] = { solved: true, ...(typeof clean === 'boolean' ? { clean } : {}), newBest: firstSolve && streak > previousBest };
+  const result = normalizeResult(state.results[day]);
+  const knownSlot = DAILY_CHALLENGE_SLOTS.some((item) => item.id === slot) ? slot : 'tactic';
+
+  if (!result.slots[knownSlot]?.solved) {
+    result.slots[knownSlot] = { solved: true, ...(typeof clean === 'boolean' ? { clean } : {}) };
   }
+  if (firstSolveOfDay) state.solvedDates.push(day);
+  state.solvedDates = state.solvedDates.sort().slice(-120);
+  const streak = streakFromDates(state.solvedDates);
+  const progress = dailyChallengeProgress({ ...state, results: { ...state.results, [day]: result } }, day);
+  state.results[day] = {
+    ...result,
+    solved: progress.solvedCount > 0,
+    full: progress.full,
+    newBest: firstSolveOfDay && streak > previousBest,
+  };
   state.bestStreak = Math.max(previousBest, streak);
   setProfileStorageItem(KEY, JSON.stringify(state));
   return { ...state, streak };
@@ -64,23 +123,29 @@ export function dailyChallengeBrief(state = {}, day = dailyChallengeDayKey()) {
   const solvedDates = Array.isArray(state?.solvedDates) ? state.solvedDates : [];
   const solved = Boolean(day && solvedDates.includes(day));
   const streak = Math.max(0, Number(state?.streak) || 0);
-  const bestStreak = Math.max(0, Number(state?.bestStreak) || 0);
-  const result = state?.results && typeof state.results === 'object' ? state.results[day] : null;
+  const progress = dailyChallengeProgress(state, day);
 
-  if (!solved) {
-    if (streak >= 7) return { solved, clean: null, headline: `Racha de ${streak} días en juego`, detail: 'Hoy toca defenderla. El tablero no acepta justificantes.' };
-    if (streak >= 2) return { solved, clean: null, headline: `${streak} días seguidos. Falta hoy.`, detail: 'Una posición y fuera. Luego ya puedes presumir.' };
-    return { solved, clean: null, headline: 'Desafío de hoy pendiente', detail: 'Una posición. Cero excusas administrativas.' };
+  if (!solved || progress.solvedCount === 0) {
+    if (streak >= 7) return { solved: false, full: false, solvedCount: 0, headline: `Racha de ${streak} días en juego`, detail: 'Tres retos hoy. Con uno mantienes la racha; 3/3 firma el pleno.' };
+    if (streak >= 2) return { solved: false, full: false, solvedCount: 0, headline: `${streak} días seguidos. Falta hoy.`, detail: 'Tres retos disponibles. Uno mantiene la racha; tú decides cuánto sufrir.' };
+    return { solved: false, full: false, solvedCount: 0, headline: 'Desafíos de hoy · 0/3', detail: 'Tres posiciones. Completa al menos una para mantener la racha.' };
   }
 
-  const clean = typeof result?.clean === 'boolean' ? result.clean : null;
-  const newBest = Boolean(result?.newBest) && streak >= 2;
-  if (clean === true && newBest) return { solved, clean, headline: `Nueva mejor racha: ${streak} días`, detail: 'Y además limpio. Qué irritante nivel de competencia.' };
-  if (clean === true) return { solved, clean, headline: 'Resuelto a la primera', detail: streak ? `Racha intacta: ${streak} día${streak === 1 ? '' : 's'}.` : 'Trabajo limpio. Puedes seguir con tu vida.' };
-  if (clean === false) return { solved, clean, headline: 'Resuelto. Hubo negociación.', detail: streak ? `La racha sigue viva: ${streak} día${streak === 1 ? '' : 's'}.` : 'No fue limpio, pero cuenta. El expediente es misericordioso hoy.' };
-  return { solved, clean: null, headline: 'Desafío de hoy resuelto', detail: streak ? `Racha actual: ${streak} día${streak === 1 ? '' : 's'}.` : 'Hecho. Sin necesidad de redactar un informe.' };
-}
+  if (!progress.full) {
+    return {
+      solved: true,
+      full: false,
+      solvedCount: progress.solvedCount,
+      headline: `Desafíos de hoy · ${progress.solvedCount}/3`,
+      detail: `Racha asegurada${streak ? ` (${streak} día${streak === 1 ? '' : 's'})` : ''}. El pleno sigue disponible.`,
+    };
+  }
 
+  if (progress.cleanCount === DAILY_CHALLENGE_SLOTS.length) {
+    return { solved: true, full: true, solvedCount: 3, headline: 'Pleno diario · 3/3 limpio', detail: `Racha ${streak || 1}. Ni una mancha en el expediente.` };
+  }
+  return { solved: true, full: true, solvedCount: 3, headline: 'Pleno diario · 3/3', detail: `Racha ${streak || 1}. Hubo negociación, pero están los tres.` };
+}
 
 function activeStreakFromDates(dates, now = new Date()) {
   const unique = [...new Set(dates)].sort().reverse();

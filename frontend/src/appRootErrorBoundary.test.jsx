@@ -25,6 +25,7 @@ describe('AppRootErrorBoundary · último fusible', () => {
   it('el error raíz no se limpia solo y requiere una acción explícita', () => {
     const boundary = boundaryWith();
     expect(boundary.state.hasError).toBe(true);
-    expect(AppRootErrorBoundary.getDerivedStateFromError()).toEqual({ hasError: true });
+    const error = new Error('boom');
+    expect(AppRootErrorBoundary.getDerivedStateFromError(error)).toEqual({ hasError: true, lastError: error, diagnosticCopied: false });
   });
 });
