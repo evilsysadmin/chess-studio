@@ -667,7 +667,8 @@ function AppInner({ isAdminUser }) {
         <div className="masthead">
           <div className="masthead-top-row">
             <div className="masthead-text">
-              <h1>Escuela de Ajedrez</h1>
+              <span className="masthead-kicker">JUEGA · APRENDE · COMPITE</span>
+              <h1>Chess Studio</h1>
             </div>
             <div className="masthead-actions">
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
@@ -941,7 +942,7 @@ function App() {
         <div className="app-shell">
           <div className="menu" style={{ maxWidth: 560, margin: '3rem auto' }}>
             <div className="menu-section">
-              <span className="eyebrow">Escuela de Ajedrez</span>
+              <span className="eyebrow">Chess Studio</span>
               <h2>{syncError ? 'No se pudo sincronizar' : 'Sincronizando tu perfil…'}</h2>
               {syncError ? (
                 <>

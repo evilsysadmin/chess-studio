@@ -94,7 +94,7 @@ export default function LoginScreen({ onLoggedIn }) {
     <div className="app-shell">
       <div className="menu" style={{ maxWidth: 420 }}>
         <div className="menu-section">
-          <span className="eyebrow">Escuela de Ajedrez</span>
+          <span className="eyebrow">Chess Studio</span>
           <h2>{title}</h2>
           <p className="hint-text" style={{ marginBottom: '1rem' }}>
             {mode === 'register' && 'Cada cuenta tiene su propio progreso. El email se usa únicamente para recuperar el acceso.'}

@@ -64,6 +64,8 @@ test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ pa
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
   await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(page.locator('.square-coordinate')).toHaveCount(16);
+  await expect(page.locator('.rank-labels, .file-labels')).toHaveCount(0);
   await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Exportar archivo .pgn', exact: true })).toHaveCount(0);
 });

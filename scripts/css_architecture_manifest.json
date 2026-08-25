@@ -8,9 +8,10 @@
     "06-combat-campaign.css",
     "07-progressive-ux.css",
     "08-recent-polish.css",
-    "09-professional-polish.css"
+    "09-professional-polish.css",
+    "10-studio-art-direction.css"
   ],
-  "combinedSha256": "6becbe486f1ebd4ae8ebdd33cc9b1830d86ce84e25960c0bcff13db6d13028e8",
-  "combinedBytes": 302364,
-  "combinedLines": 9609
+  "combinedSha256": "68ea36bd90041c6da2381311bae59f45e9c67e119e5b5327cd2f42071e6b1233",
+  "combinedBytes": 308404,
+  "combinedLines": 9787
 }

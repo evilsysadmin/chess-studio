@@ -12,7 +12,7 @@ function numberedMoves(moves) {
 export default function SharedResultScreen({ record, onOpenApp }) {
   return (
     <div className="app-shell shared-result-page">
-      <div className="masthead shared-masthead"><h1>Escuela de Ajedrez</h1></div>
+      <div className="masthead shared-masthead"><h1>Chess Studio</h1></div>
       <main className="menu shared-result-shell">
         <span className="eyebrow">{record.incident ? 'Cámara del crimen compartida' : 'Partida compartida'}</span>
         <h2>{record.incident ? 'Prueba forense' : (OUTCOME[record.outcome] || record.outcome)}</h2>

@@ -300,11 +300,6 @@ export default function Board({
 
   return (
     <div className={`board-wrap board-theme-${loadBoardTheme()} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'}`}>
-      {showCoordinates && (
-        <div className="rank-labels">
-          {ranks.map((r) => <span key={r}>{r}</span>)}
-        </div>
-      )}
       <div className="board-grid">
         {ranks.map((rank, rIdxDisplay) => {
           const rIdx = RANKS.indexOf(rank);
@@ -346,6 +341,8 @@ export default function Board({
                 aria-label={`Casilla ${square}${piece ? `, ${PIECE_NAMES[piece]}` : ', vacía'}${isSelected ? ', seleccionada' : ''}${piece && onSquareDoubleClick ? '. Tecla i para ver detalles' : ''}`}
                 tabIndex={focusedSquare === square ? 0 : -1}
               >
+                {showCoordinates && fIdxDisplay === 0 && <span className="square-coordinate rank-coordinate" aria-hidden="true">{rank}</span>}
+                {showCoordinates && rIdxDisplay === 7 && <span className="square-coordinate file-coordinate" aria-hidden="true">{file}</span>}
                 {piece && pieceLevels?.[square] > 1 && (
                   <span className={`piece-level-glow tier-${levelTier(pieceLevels[square])}`} />
                 )}
@@ -422,12 +419,6 @@ export default function Board({
           });
         })}
       </div>
-      {showCoordinates && <div />}
-      {showCoordinates && (
-        <div className="file-labels">
-          {files.map((f) => <span key={f}>{f}</span>)}
-        </div>
-      )}
     </div>
   );
 }
