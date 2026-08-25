@@ -44,12 +44,12 @@ import wR_esmeralda from '../pieces-medieval-esmeralda/wR.png';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { loadBoardTheme } from '../career.js';
 
-const CAPTURE_PARTICLE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+const CAPTURE_PARTICLE_ANGLES = [45, 135, 225, 315];
 
 // Efecto de "golpe" al capturar: un destello circular en la casilla, una
-// sacudida breve de la pieza que acaba de llegar, y partículas pixeladas
-// (cuadraditos, no círculos — encaja con el pixel art) que salen disparadas
-// del punto de impacto. Se dispara al terminar el deslizamiento, no antes,
+// sacudida breve de la pieza que acaba de llegar y cuatro motas contenidas
+// que salen del punto de impacto sin tapar el estado del tablero.
+// Se dispara al terminar el deslizamiento, no antes,
 // para que se sienta como el impacto de la captura.
 function playCaptureImpact(squareEl, pieceEl) {
   const burst = document.createElement('span');
@@ -59,8 +59,8 @@ function playCaptureImpact(squareEl, pieceEl) {
 
   for (const deg of CAPTURE_PARTICLE_ANGLES) {
     const rad = (deg * Math.PI) / 180;
-    const dx = Math.cos(rad) * 26;
-    const dy = Math.sin(rad) * 26;
+    const dx = Math.cos(rad) * 20;
+    const dy = Math.sin(rad) * 20;
     const particle = document.createElement('span');
     particle.className = 'capture-particle';
     particle.style.setProperty('--dx', `${dx}px`);
@@ -283,7 +283,7 @@ export default function Board({
     pieceEl.getBoundingClientRect();
 
     const raf = requestAnimationFrame(() => {
-      pieceEl.style.transition = 'transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
+      pieceEl.style.transition = 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)';
       pieceEl.style.transform = 'translate(0, 0)';
     });
 
@@ -366,7 +366,7 @@ export default function Board({
                 )}
                 {piece && (
                   <img
-                    className={`piece ${piece === piece.toUpperCase() ? 'white' : 'black'} ${(onPieceClick || onPieceDoubleClick || onPieceMouseEnter || onPieceMouseLeave || onPieceDragStart || pieceDraggable) ? 'piece-event-target' : ''}`}
+                    className={`piece piece-${piece.toLowerCase()} ${piece === piece.toUpperCase() ? 'white' : 'black'} ${(onPieceClick || onPieceDoubleClick || onPieceMouseEnter || onPieceMouseLeave || onPieceDragStart || pieceDraggable) ? 'piece-event-target' : ''}`}
                     src={pieceImages[piece]}
                     alt={PIECE_NAMES[piece]}
                     draggable={pieceDraggable}
