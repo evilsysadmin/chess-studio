@@ -54,7 +54,7 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
       <div className="combat-debrief-score">
         <span><b>{debrief.boardSurvivorCount ?? debrief.survivorCount}/{debrief.boardDeployedCount ?? debrief.deployedCount}</b><small>piezas en pie</small></span>
         <span><b>{debrief.totalKills}</b><small>bajas enemigas</small></span>
-        <span><b>{debrief.combatXpGained > 0 ? `+${debrief.combatXpGained}` : '0'}</b><small>XP combate</small></span>
+        <span title="Capturas, resultado y sector asegurado"><b>{debrief.creditsGained > 0 ? `+${debrief.creditsGained}` : '0'}</b><small>créditos</small></span>
         <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
       </div>
 
@@ -101,6 +101,7 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
       )}
 
       {promoted.length > 0 && <p className="combat-service-promotion">ASCENSOS · {promoted.map((unit) => `${unit.alias} → ${unit.afterRank}`).join(' · ')}</p>}
+      {debrief.contractsCompleted?.length > 0 && <p className="combat-service-promotion">CONTRATO CUMPLIDO · {debrief.contractsCompleted.join(' · ')}</p>}
       {debrief.newDecorations?.length > 0 && (
         <div className="combat-service-awards-earned">{debrief.newDecorations.map((medal) => <span key={medal.id}>✦ {medal.label}</span>)}</div>
       )}

@@ -40,14 +40,15 @@ import { GAME_MODE_LABELS, gameModeLabel } from '../gameModes.js';
 
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
+  const isCareer = section === 'career';
   return (
     <>
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section insights-hub-hero">
         <span className="section-label">Mi progreso</span>
-        <div className="combat-heading-row"><h2>Así juegas</h2><MechanicTutorialHelp tutorialId="insights" /></div>
-        <p className="hero-scope-note">Qué mejorar ahora y cómo estás evolucionando.</p>
-        <div className="insights-subnav" role="tablist" aria-label="Secciones de Así juegas">
+        <div className="combat-heading-row"><h2>{isCareer ? 'Mi progreso' : 'Así juegas'}</h2><MechanicTutorialHelp tutorialId="insights" /></div>
+        <p className="hero-scope-note">{isCareer ? 'Tu evolución, tendencias e historial en un solo lugar.' : 'Qué mejorar ahora y cuál es tu siguiente acción.'}</p>
+        <div className="insights-subnav" role="tablist" aria-label="Vistas de progreso del jugador">
           <button
             type="button"
             role="tab"
@@ -55,8 +56,8 @@ function InsightsHubHeader({ section, onSectionChange, onExit }) {
             className={section === 'diagnosis' ? 'active' : ''}
             onClick={() => onSectionChange('diagnosis')}
           >
-            Diagnóstico
-            <small>Qué mejorar ahora</small>
+            Así juegas
+            <small>Diagnóstico y siguiente acción</small>
           </button>
           <button
             type="button"
@@ -65,8 +66,8 @@ function InsightsHubHeader({ section, onSectionChange, onExit }) {
             className={section === 'career' ? 'active' : ''}
             onClick={() => onSectionChange('career')}
           >
-            Expediente
-            <small>Historial y progreso</small>
+            Mi progreso
+            <small>Evolución e historial</small>
           </button>
         </div>
       </div>

@@ -1,3 +1,13 @@
+### v16.6dm46a · Progreso accionable + economía Combat
+
+- Home diferencia las dos necesidades del jugador: **Así juegas** abre el diagnóstico con la siguiente acción concreta y **Mi progreso** abre directamente la evolución e historial. La guía contextual deja de vivir dentro de Cuenta y las tarjetas de aprendizaje usan la misma jerarquía visual que los modos principales.
+- **Mi progreso** se reorganiza en Resumen, Rendimiento, Aperturas y Archivo. El mapa de aperturas deja de ocupar una página casi vacía, limita profundidad y líneas visibles, y presenta cada variante como una fila compacta. En móvil las secciones forman una cuadrícula 2×2 sin scrollbar ni overflow.
+- Combat Chess incorpora una economía persistente de créditos obtenidos jugando, con recompensas acotadas por captura, resultado y sector. La campaña base sigue siendo ganable sin comprar nada: mercado, mercenarios y equipo son opciones laterales, nunca un peaje de progresión.
+- El mercado ofrece contratos mercenarios de 1 batalla, 3 batallas o permanentes y equipo con un único slot por unidad, requisitos de nivel y bonus explícitos. Los bonus no contaminan las estadísticas base ni encarecen la subida de nivel; los contratos sólo consumen batalla si la unidad fue desplegada.
+- Cada alta nueva queda pendiente de una biografía individual generada por Cloudflare Workers AI. La interfaz no inventa una personalidad genérica: muestra un estado honesto de redacción hasta recibir una bio válida y persistirla junto a la identidad de la unidad.
+- El rango de Combat sustituye al antiguo XP global como señal de carrera; los créditos quedan como moneda y la XP se reserva para subir unidades. Dossiers, resúmenes, debrief y reanimación muestran esa separación con copy consistente.
+- Validación visual en escritorio y 360/390/430 px, compilación de producción y suites completas. Sin cambios en las reglas del ajedrez normal ni en CI; el backend sólo amplía el contrato narrativo necesario para las biografías.
+
 ### v16.6dm45w · Ritmo visible + carrera de desafíos
 
 - El detalle de rating incorpora checkpoints compactos de **Hoy**, **7 días** y **30 días**, con balance y partidas registradas. La curva conserva la visión completa, pero ya no obliga a interpretarla para saber si el periodo fue positivo o negativo.

@@ -7,7 +7,7 @@ function ratingTierClass(rating) {
   return '';
 }
 
-export default function PlayerStatusBar({ tournament, combatXp, rating, onTournamentClick, onCombatClick, onRatingClick }) {
+export default function PlayerStatusBar({ tournament, combatOverview, rating, onTournamentClick, onCombatClick, onRatingClick }) {
   const level = levelForPoints(tournament.progressPoints || 0);
 
   return (
@@ -16,9 +16,9 @@ export default function PlayerStatusBar({ tournament, combatXp, rating, onTourna
         <IconTrophy className="status-chip-icon" />
         <span><small>Torneo</small><b>Nivel {level}</b></span>
       </button>
-      <button type="button" className="status-chip status-chip-compact" onClick={onCombatClick} title="Ver el estado de tu ejército" aria-label={`Estado de Combat: ${combatXp} XP`}>
+      <button type="button" className="status-chip status-chip-compact" onClick={onCombatClick} title={`Ver ejército y saldo · ${combatOverview?.credits || 0} créditos`} aria-label={`Estado de Combat: rango ${combatOverview?.rank?.label || 'Recluta'}`}>
         <IconSword className="status-chip-icon" />
-        <span><small>Combat</small><b>{combatXp} XP</b></span>
+        <span><small>Combat</small><b>{combatOverview?.rank?.label || 'Recluta'}</b></span>
       </button>
       <button type="button" className={`status-chip status-chip-compact ${ratingTierClass(rating.rating)}`} onClick={onRatingClick} title="Ver el detalle de tu rating" aria-label={`Rating: ${rating.rating}`}>
         <IconStar className="status-chip-icon" />

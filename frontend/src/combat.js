@@ -241,8 +241,8 @@ export function rosterSlotKey(slot) {
   return `${slot.type}-${slot.file}`;
 }
 
-// Coste en XP de COMBATE (la moneda del ejército, distinta del XP de cada
-// pieza) para revivir una pieza caída. Cuanto más vale la pieza, más
+// Coste en créditos para revivir una pieza caída. La XP queda reservada a
+// cada unidad y no se usa como divisa. Cuanto más vale la pieza, más
 // cuesta traerla de vuelta. El rey nunca aparece acá: nunca llega a
 // "morir" en este sentido, la partida termina en jaque mate antes.
 export function reviveCost(type) {

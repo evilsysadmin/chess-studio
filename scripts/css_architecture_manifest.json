@@ -21,9 +21,10 @@
     "19-game-focus.css",
     "20-piece-skins.css",
     "21-home-command.css",
-    "22-progression-gamification.css"
+    "22-progression-gamification.css",
+    "23-learning-combat-economy.css"
   ],
-  "combinedSha256": "083791063a13f87ffba00253941dc5d9b42a1bef7f885f9a281e53cb9bb69bc2",
-  "combinedBytes": 368475,
-  "combinedLines": 11230
+  "combinedSha256": "e8bcefdf9994f6209397569a18acd01e0a5fcd85e2fcbb97f515014c0ea5ca6c",
+  "combinedBytes": 378984,
+  "combinedLines": 11341
 }

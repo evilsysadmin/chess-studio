@@ -149,7 +149,7 @@ export default function CombatBattleView({
           ) : battleRecap ? (
             <p className="hint-text combat-recap-line">
               {battleRecap.survivorCount}/{battleRecap.totalCount} piezas sobrevivieron
-              {battleRecap.xpGained > 0 ? ` · +${battleRecap.xpGained} XP de combate` : ''}
+              {battleRecap.creditsGained > 0 ? ` · +${battleRecap.creditsGained} créditos` : ''}
             </p>
           ) : null}
           <button className="primary-btn" onClick={backToSetup}>Volver a jugar</button>

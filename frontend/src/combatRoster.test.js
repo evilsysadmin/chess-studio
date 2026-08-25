@@ -91,12 +91,13 @@ describe('saveSurvivorsToRoster', () => {
     expect(revived.pieces['p-a']).toMatchObject({ alive: true, deploymentType: 'b', strengthPoints: 2, speedPoints: 2 });
   });
 
-  it('otorga XP de combate según el resultado (ganar > tablas > perder)', () => {
+  it('no fabrica XP global: el resultado se liquida como créditos en la economía', () => {
     const win = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'win');
     const draw = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'draw');
     const loss = saveSurvivorsToRoster({}, { pieces: {}, combatXp: 0 }, 'w', 'loss');
-    expect(win.combatXp).toBeGreaterThan(draw.combatXp);
-    expect(draw.combatXp).toBeGreaterThan(loss.combatXp);
+    expect(win.combatXp).toBe(0);
+    expect(draw.combatXp).toBe(0);
+    expect(loss.combatXp).toBe(0);
   });
   it('el rey nunca entra al roster, aunque haya sobrevivido con XP', () => {
     const registry = {
@@ -155,7 +156,7 @@ describe('revivePiece', () => {
     expect(revived.unitRecords['unit-starky'].stats.revives).toBe(1);
   });
 
-  it('no revive si no alcanza el XP de combate', () => {
+  it('no revive si no alcanza los créditos de campaña', () => {
     const roster = { pieces: { 'q-d': { strengthPoints: 6, speedPoints: 6, bankedXp: 0, alive: false } }, combatXp: 1 };
     const result = revivePiece(roster, 'q-d', 'q'); // la dama cuesta 30
     expect(result).toBe(roster); // no cambia nada
@@ -170,7 +171,7 @@ describe('revivePiece', () => {
   it('guard defensivo: no revive una pieza sin progreso real (nada que devolver)', () => {
     const roster = { pieces: { 'q-d': { strengthPoints: 0, speedPoints: 0, bankedXp: 0, alive: false } }, combatXp: 100 };
     const result = revivePiece(roster, 'q-d', 'q');
-    expect(result).toBe(roster); // sin cambios, aunque sobre XP de combate
+    expect(result).toBe(roster); // sin cambios, aunque sobre saldo
   });
 });
 

@@ -143,7 +143,7 @@ export default function CampaignCombatPreparation({
               <span>Auto-subida al terminar</span>
             </label>
             <span>Dificultad: <b>{encounterIntel && encounterIntel.level < 2 ? intelLabel : (difficultyLabel || difficulty)}</b></span>
-            <span>Efectivos: <b>{rosterCount}</b> · Reserva: <b>{deploy.reserveCount}</b> · Veteranos: <b>{veteranCount}</b> · XP: <b>{roster.combatXp || 0}</b></span>
+            <span>Efectivos: <b>{rosterCount}</b> · Reserva: <b>{deploy.reserveCount}</b> · Veteranos: <b>{veteranCount}</b> · Créditos: <b>{roster.credits || 0}</b></span>
             <button type="button" className="secondary-btn combat-reset-link" onClick={handleResetRoster}>Reiniciar progreso persistente</button>
           </div>
           <CampaignArmyGlance roster={roster} />

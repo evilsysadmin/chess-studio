@@ -8,7 +8,7 @@ import { canInstallChessStudio, promptChessStudioInstall, PWA_INSTALL_AVAILABLE_
 import { levelForPoints } from '../tournament.js';
 import { ratingLabel } from '../playerRating.js';
 
-export default function AccountModal({ onClose, onLogout, loggingOut = false, rating = null, tournament = null, combatXp = 0 }) {
+export default function AccountModal({ onClose, onLogout, loggingOut = false, rating = null, tournament = null, combatOverview = null }) {
   useEscapeToClose(onClose);
   const [me, setMe] = useState(null);
   const [email, setEmail] = useState('');
@@ -87,7 +87,7 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false, ra
             <section className="account-progress-glance" aria-label="Tu avance">
               <div><span>Rating</span><b>{rating?.rating ?? '—'}</b><small>{rating ? ratingLabel(rating.rating) : 'Sin calibrar'}</small></div>
               <div><span>Torneo</span><b>Nivel {levelForPoints(tournament?.progressPoints || 0)}</b><small>Progreso competitivo</small></div>
-              <div><span>Combat</span><b>{combatXp || 0} XP</b><small>Ejército persistente</small></div>
+              <div><span>Combat</span><b>{combatOverview?.rank?.label || 'Recluta'}</b><small>{combatOverview?.credits || 0} créditos</small></div>
               <div><span>Aprendizaje</span><b>Diagnóstico</b><small>Prioridad accionable</small></div>
             </section>
 

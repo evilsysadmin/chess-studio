@@ -5,6 +5,7 @@ import {
   buildObservabilitySummaryDossier,
   buildPostGameAutopsyDossier,
   buildTrainingPlanDossier,
+  buildUnitBioDossier,
 } from './aiNarrativeTasks.js';
 
 describe('AI narrative task dossiers', () => {
@@ -54,6 +55,17 @@ describe('AI narrative task dossiers', () => {
     expect(dossier.facts.sample_band).toBe('10-19');
     expect(dossier.facts.priorities[0]).toMatchObject({ title: 'Revisa tus mates', matching_training_positions: 3 });
     expect(JSON.stringify(dossier)).not.toMatch(/MISSED_MATE|source|filter|username|fen|token/i);
+  });
+
+  it('unit bio uses a persistent identity seed without leaking account or game history', () => {
+    const dossier = buildUnitBioDossier({
+      identity: { identityId: 'unit-unique-123', alias: 'Rivas' },
+      unitKey: 'n-merc-123',
+      piece: { strengthPoints: 2, speedPoints: 1, mercenary: { rarity: 'regular' } },
+      existingBios: ['Salcedo creció cerca del puerto y evita las ceremonias.'],
+    });
+    expect(dossier).toMatchObject({ eventType: 'unit_bio', requestKind: 'unit_bio', facts: { identity_seed: 'unit-unique-123', alias: 'Rivas', origin_type: 'n', level: 4, mercenary: true } });
+    expect(JSON.stringify(dossier)).not.toMatch(/username|email|token|history|fen/i);
   });
 
   it('observability summary is aggregated and does not include users or request bodies', () => {

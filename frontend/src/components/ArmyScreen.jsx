@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BASE_STATS,
   statsFor,
@@ -18,6 +18,7 @@ import { unitRecordForKey, unitDecorations } from '../combatUnitService.js';
 import { veteranLegacy } from '../combatVeteranLegacy.js';
 import { deploymentSummary } from '../combatDeployment.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import { equipmentBonus, equipmentById } from '../combatEconomy.js';
 
 const PIECE_GLYPH = Object.freeze({ k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' });
 
@@ -26,10 +27,11 @@ function unitAlias(roster, key) {
 }
 
 function basePieceFor(slot, saved, activeType = slot.type) {
+  const gear = equipmentBonus(saved?.equipmentId);
   return {
     type: activeType,
-    strengthPoints: saved?.strengthPoints || 0,
-    speedPoints: saved?.speedPoints || 0,
+    strengthPoints: (saved?.strengthPoints || 0) + gear.strength,
+    speedPoints: (saved?.speedPoints || 0) + gear.speed,
     bankedXp: saved?.bankedXp || 0,
     deploymentType: saved?.deploymentType || null,
     unlockedTechniques: Array.isArray(saved?.unlockedTechniques) ? saved.unlockedTechniques : [],
@@ -175,7 +177,7 @@ function ReserveRosterCard({ roster, unitKey, onOpen, deployedSlotKey = null }) 
   );
 }
 
-function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
+function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onRequestBio, onClose }) {
   const key = unitKey || (slot ? rosterSlotKey(slot) : null);
   if (!key) return null;
   const originType = slot?.type || String(key).split('-')[0] || 'p';
@@ -198,13 +200,19 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
   const unlockableTechniques = isKing || isDead ? [] : techniquesEligibleToUnlock(key, saved);
   const unlockedTechniques = isKing ? [] : unlockedTechniquesFor(key, saved);
   const equippedTechnique = saved?.equippedTechnique || null;
-  const strCost = isKing ? null : costForNextPoint(piece.strengthPoints);
-  const spdCost = isKing ? null : costForNextPoint(piece.speedPoints);
+  const strCost = isKing ? null : costForNextPoint(saved?.strengthPoints || 0);
+  const spdCost = isKing ? null : costForNextPoint(saved?.speedPoints || 0);
   const canRevive = isDead && (saved?.strengthPoints || 0) + (saved?.speedPoints || 0) > 0;
   const reviveType = saved?.deploymentType || originType;
   const revivePrice = isDead ? reviveCost(reviveType) : 0;
   const service = unitRecord?.stats || {};
   const legacy = isKing ? null : veteranLegacy(unitRecord);
+  const identity = roster?.identities?.[key] || {};
+  const equipment = equipmentById(saved?.equipmentId);
+
+  useEffect(() => {
+    if (identity.bioStatus === 'unrequested') onRequestBio?.(key);
+  }, [identity.bioStatus, key, onRequestBio]);
 
   return (
     <div className="army-unit-detail-backdrop" onClick={onClose}>
@@ -257,6 +265,11 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
               <div><span>Estado</span><b className={isDead ? 'danger-text' : ''}>{isDead ? 'Caído' : 'En pie'}</b></div>
             </div>
 
+            <div className={`army-unit-equipment ${equipment ? 'equipped' : 'empty'}`}>
+              <div><span className="army-memorial-kicker">OBJETO EQUIPADO · 1 HUECO</span><strong>{equipment ? `${equipment.icon} ${equipment.label}` : 'Sin objeto'}</strong></div>
+              <small>{equipment ? `${equipment.description} Bonus aplicado sólo mientras lo lleva esta unidad.` : 'Compra y asigna armas o utilidades desde el Mercado.'}</small>
+            </div>
+
             <div className="army-dossier-service">
               <strong>Expediente de combate</strong>
               <div className="army-dossier-service-grid">
@@ -287,8 +300,8 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
                     : 'No hay progreso invertido que recuperar. Al iniciar otra batalla pasará al Memorial y será reemplazado.'}
                 </p>
                 {canRevive && (
-                  <button type="button" className="primary-btn" disabled={roster.combatXp < revivePrice} onClick={() => onRevive(key, reviveType)}>
-                    Revivir {unitAlias(roster, key)} · {revivePrice} XP de combate
+                  <button type="button" className="primary-btn" disabled={roster.credits < revivePrice} onClick={() => onRevive(key, reviveType)}>
+                    Revivir {unitAlias(roster, key)} · {revivePrice} créditos
                   </button>
                 )}
               </div>
@@ -374,12 +387,19 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
             )}
           </>
         )}
+
+        <div className="army-unit-bio" aria-live="polite">
+          <span className="army-memorial-kicker">BIO · ARCHIVO DE CAMPAÑA</span>
+          {identity.bioStatus === 'ready' && identity.bio
+            ? <p>{identity.bio}</p>
+            : <p className="hint-text">Workers AI está redactando un expediente único para esta identidad. Se guardará aquí cuando esté listo.</p>}
+        </div>
       </section>
     </div>
   );
 }
 
-export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, embedded = false, showMemorial = true }) {
+export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onRequestBio, embedded = false, showMemorial = true }) {
   const [selectedKey, setSelectedKey] = useState(null);
   const deploy = deploymentSummary(roster);
   useEscapeToClose(() => setSelectedKey(null), { disabled: !selectedKey });
@@ -414,7 +434,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
       </div>
       <p className="combat-operational-hint army-roster-intro" title="El barracón puede superar 16 unidades. Solo 16 slots canónicos entran en batalla; las reservas mantienen identidad, rango e historial.">16 desplegados · reservas persistentes.</p>
       <p className="hint-text army-combat-xp">
-        XP de combate disponible: <b>{roster.combatXp}</b> · reservado para revivir bajas recuperables.
+        Créditos disponibles: <b>{roster.credits || 0}</b> · revives, contratos y equipo. La XP pertenece a cada unidad.
       </p>
 
       <div className="army-command-strip" aria-label="Estado del barracón">
@@ -457,6 +477,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
           onMetamorphose={onMetamorphose}
           onUnlockTechnique={onUnlockTechnique}
           onEquipTechnique={onEquipTechnique}
+          onRequestBio={onRequestBio}
           onClose={() => setSelectedKey(null)}
         />
       )}

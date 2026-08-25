@@ -29,10 +29,10 @@ describe('Combat Chess debriefing', () => {
       survivorIdentityIds: [identityId],
       killsByIdentity: { [identityId]: 2 },
       bossDamageByIdentity: { [identityId]: 1 },
-      combatXpGained: 12,
+      creditsGained: 12,
       serviceResult: { meritGained: 4, promoted: false, newDecorations: [] },
     });
-    expect(debrief).toMatchObject({ survivorCount: 1, deployedCount: 1, fallenCount: 0, totalKills: 2, totalBossDamage: 1, combatXpGained: 12, meritGained: 4 });
+    expect(debrief).toMatchObject({ survivorCount: 1, deployedCount: 1, fallenCount: 0, totalKills: 2, totalBossDamage: 1, creditsGained: 12, meritGained: 4 });
     expect(debrief.units[0]).toMatchObject({ alias: 'Morcilla', survived: true, kills: 2, levelGain: 1 });
   });
 

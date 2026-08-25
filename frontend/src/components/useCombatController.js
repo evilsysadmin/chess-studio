@@ -38,6 +38,7 @@ import { canReturnCombatToSetup } from '../combatSession.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
 import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry } from '../combatControllerSupport.js';
 import { createCombatRosterActions } from '../combatRosterActions.js';
+import { awardCombatCredits, battleCreditReward, settleMercenaryContracts } from '../combatEconomy.js';
 import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
 import { useCombatDeploymentGate } from '../useCombatDeploymentGate.js';
 
@@ -382,9 +383,17 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     let leveledRegistry = finalRegistry;
     if (autoLevelUpEnabled) {
       leveledRegistry = Object.fromEntries(
-        Object.entries(finalRegistry).map(([sq, piece]) =>
-          piece.color === currentHumanColor ? [sq, autoLevelUp(piece)] : [sq, piece]
-        )
+        Object.entries(finalRegistry).map(([sq, piece]) => {
+          if (piece.color !== currentHumanColor) return [sq, piece];
+          const strengthBonus = piece.equipmentStrengthBonus || 0;
+          const speedBonus = piece.equipmentSpeedBonus || 0;
+          const leveled = autoLevelUp({
+            ...piece,
+            strengthPoints: Math.max(0, (piece.strengthPoints || 0) - strengthBonus),
+            speedPoints: Math.max(0, (piece.speedPoints || 0) - speedBonus),
+          });
+          return [sq, { ...leveled, strengthPoints: leveled.strengthPoints + strengthBonus, speedPoints: leveled.speedPoints + speedBonus }];
+        })
       );
     }
 
@@ -399,7 +408,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       .filter((piece) => piece.color === currentHumanColor && piece.type !== 'k' && piece.identityId)
       .map((piece) => piece.identityId);
     const unitStats = unitBattleStatsRef.current || emptyUnitBattleStats();
-    const nextRoster = recordUnitBattle(rosterAfterSurvival, {
+    let nextRoster = recordUnitBattle(rosterAfterSurvival, {
       battleId,
       date: battleDate,
       outcome,
@@ -410,6 +419,18 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       bossFinisherIdentityId: unitStats.bossFinisherIdentityId,
       bossDefeated: isWin && !!bossConfig,
     });
+    const totalCaptures = Object.values(unitStats.killsByIdentity || {}).reduce((sum, count) => sum + (Number(count) || 0), 0);
+    const creditReward = battleCreditReward({
+      outcome,
+      captures: totalCaptures,
+      floor: roguelikeFloor,
+      encounterTier,
+      variant: combatVariant || 'combat',
+    });
+    nextRoster = awardCombatCredits(nextRoster, creditReward, battleId);
+    const rosterForDebrief = nextRoster;
+    const contractSettlement = settleMercenaryContracts(nextRoster, deployedKeys);
+    nextRoster = contractSettlement.roster;
     saveRoster(nextRoster);
     setRoster(nextRoster);
 
@@ -453,23 +474,24 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     clearBattleSession();
 
-    const combatXpGained = Math.max(0, nextRoster.combatXp - roster.combatXp);
     const debrief = buildCombatDebrief({
       outcome,
       beforeRoster: battleStartRosterRef.current || roster,
-      afterRoster: nextRoster,
+      afterRoster: rosterForDebrief,
       participants: battleParticipantsRef.current,
       survivorIdentityIds,
       killsByIdentity: unitStats.killsByIdentity,
       bossDamageByIdentity: unitStats.bossDamageByIdentity,
       battleRecord,
       serviceResult,
-      combatXpGained,
+      creditsGained: creditReward.total,
+      creditBreakdown: creditReward,
+      contractsCompleted: contractSettlement.completed,
     });
     setBattleRecap({
       survivorCount,
       totalCount: 16,
-      xpGained: combatXpGained,
+      creditsGained: creditReward.total,
       record: battleRecord,
       serviceResult,
       debrief,
@@ -893,7 +915,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     // En Roguelike, "Salir del combate" no puede ser un reset gratuito del
     // piso. Conservamos el progreso/bajas que existen en ESTE estado, pero no
-    // damos XP de combate por retirarse (COMBAT_XP_REWARD no tiene 'retired').
+    // No concedemos créditos por retirarse: abandonar no debe ser una ruta de
+    // farmeo y el inventario persistente conserva exactamente su estado.
     const battleId = `combat-${Date.now()}`;
     const battleDate = new Date().toISOString();
     const deployedKeys = (battleParticipantsRef.current || []).map((participant) => participant.slotKey).filter(Boolean);
@@ -954,9 +977,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       bossDamageByIdentity: unitStats.bossDamageByIdentity,
       battleRecord,
       serviceResult,
-      combatXpGained: 0,
+      creditsGained: 0,
     });
-    setBattleRecap({ survivorCount: battleRecord.survivorCount, totalCount: 16, xpGained: 0, record: battleRecord, serviceResult, debrief });
+    setBattleRecap({ survivorCount: battleRecord.survivorCount, totalCount: 16, creditsGained: 0, record: battleRecord, serviceResult, debrief });
     clearBattleSession();
     onBattleResult?.('retired', debrief, {
       gameId: activityGameIdRef.current || battleRecord.id,

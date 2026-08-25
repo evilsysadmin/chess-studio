@@ -3,7 +3,7 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 
 // Hoja de servicio de Combate.
 //
-// A diferencia del XP de piezas o del XP de combate, esto NO es una moneda.
+// A diferencia del XP de cada pieza o de los créditos, esto NO es una moneda.
 // Resume hechos reales y persistentes: batallas terminadas, victorias,
 // supervivientes, pisos Roguelike superados y bosses derrotados. El rango se
 // deriva de esos datos y no concede ninguna ventaja jugable.

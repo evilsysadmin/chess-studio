@@ -91,11 +91,30 @@ export function buildCombatDebriefDossier(debrief) {
       survivors: finiteNumber(debrief.boardSurvivorCount ?? debrief.survivorCount, 0),
       enemy_kills: finiteNumber(debrief.totalKills, 0),
       boss_damage: finiteNumber(debrief.totalBossDamage, 0),
-      combat_xp: finiteNumber(debrief.combatXpGained, 0),
+      credits_earned: finiteNumber(debrief.creditsGained, 0),
       merit: finiteNumber(debrief.meritGained, 0),
       notable_units: notable,
       fallen_aliases: fallen,
       new_decorations: (debrief.newDecorations || []).slice(0, 4).map((item) => cleanText(item?.label, 64)).filter(Boolean),
+    },
+  };
+}
+
+export function buildUnitBioDossier({ identity, unitKey, piece, existingBios = [] } = {}) {
+  if (!identity?.identityId || !identity?.alias) return null;
+  const originType = String(unitKey || '').split('-')[0] || 'p';
+  return {
+    eventType: 'unit_bio',
+    requestKind: 'unit_bio',
+    tone: 'grounded_military',
+    facts: {
+      identity_seed: cleanText(identity.identityId, 80),
+      alias: cleanText(identity.alias, 48),
+      origin_type: cleanText(originType, 8),
+      level: 1 + finiteNumber(piece?.strengthPoints, 0) + finiteNumber(piece?.speedPoints, 0),
+      mercenary: Boolean(piece?.mercenary),
+      rarity: cleanText(piece?.mercenary?.rarity, 24),
+      avoid_openings: existingBios.slice(0, 10).map((bio) => cleanText(bio, 72)).filter(Boolean),
     },
   };
 }

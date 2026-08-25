@@ -192,6 +192,38 @@ test('player_portrait usa su bucket y generación específica', async () => {
   assert.equal(fake.calls.ai[0].options.max_tokens, 384);
 });
 
+test('unit_bio conserva identidad, exclusiones y límites en el prompt de Workers AI', async () => {
+  const fake = fakeEnv({
+    aiResult: {
+      choices: [{ message: { content: 'Serrano creció entre talleres ferroviarios y escucha antes de hablar. Detesta la improvisación, aunque guarda siempre una ruta alternativa doblada en el bolsillo.' } }],
+      usage: { prompt_tokens: 81, completion_tokens: 34 },
+    },
+  });
+  const response = await worker.fetch(
+    await narrativeRequest({
+      event_type: 'unit_bio',
+      request_id: 'req:unit-serrano',
+      facts: {
+        alias: 'Serrano',
+        identity_seed: 'unit-l9-serrano',
+        piece_type: 'n',
+        level: 3,
+        avoid_openings: ['Serrano nació'],
+      },
+    }),
+    fake.env,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(fake.calls.rates, [{ key: 'render-comments' }]);
+  assert.equal(fake.calls.ai[0].model, COMMENT_MODEL);
+  assert.equal(fake.calls.ai[0].options.max_tokens, 120);
+  const prompt = fake.calls.ai[0].options.messages.at(-1).content;
+  assert.match(prompt, /TIPO_DE_EVENTO: unit_bio/);
+  assert.match(prompt, /"identity_seed":"unit-l9-serrano"/);
+  assert.match(prompt, /"avoid_openings":\["Serrano nació"\]/);
+  assert.match(prompt, /biografía irrepetible y concreta/i);
+});
+
 test('rate limiter corta antes del binding AI', async () => {
   const fake = fakeEnv({ rateSuccess: false });
   const response = await worker.fetch(

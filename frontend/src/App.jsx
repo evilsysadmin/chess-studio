@@ -26,6 +26,7 @@ import { recordGameActivity } from './gameActivity.js';
 import { humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
+import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
 import { handicapForGap } from './handicap.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
@@ -63,7 +64,6 @@ import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
 import { logout } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
-import { requestHomeGuideOpen } from './homeGuide.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -148,7 +148,11 @@ function AppInner({ isAdminUser }) {
   // cada vez que cambia la vista, así la cabecera se mantiene al día sin
   // tener que levantar ese estado hasta acá arriba.
   const [rating, setRating] = useState(() => loadRating());
-  const [combatXp, setCombatXp] = useState(() => loadCombatRoster().combatXp);
+  const [combatOverview, setCombatOverview] = useState(() => {
+    const roster = loadCombatRoster();
+    const service = summarizeCombatService(loadCombatService());
+    return { credits: roster.credits || 0, rank: service.rank, nextProgress: service.nextProgress };
+  });
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
   const [shareRecord, setShareRecord] = useState(null);
@@ -278,7 +282,9 @@ function AppInner({ isAdminUser }) {
 
   useEffect(() => {
     setRating(loadRating());
-    setCombatXp(loadCombatRoster().combatXp);
+    const combatRoster = loadCombatRoster();
+    const combatService = summarizeCombatService(loadCombatService());
+    setCombatOverview({ credits: combatRoster.credits || 0, rank: combatService.rank, nextProgress: combatService.nextProgress });
     setCombatHistoryList(loadCombatHistory());
     checkAchievements();
   }, [view]);
@@ -749,11 +755,6 @@ function AppInner({ isAdminUser }) {
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>
                       <span aria-hidden="true">⚙</span><span><b>Personalizar</b><small>Tablero, piezas y sonido</small></span>
                     </button>
-                    {view === 'menu' && (
-                      <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); requestHomeGuideOpen(); }}>
-                        <span aria-hidden="true">?</span><span><b>Guía rápida</b><small>Cómo empezar y qué elegir</small></span>
-                      </button>
-                    )}
                     <div className="masthead-account-menu-separator" role="separator" />
                     <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { setShowAccountMenu(false); void handleGlobalLogout(); }} disabled={loggingOut}>
                       <span aria-hidden="true">↪</span><span><b>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</b><small>Guarda antes de salir</small></span>
@@ -767,7 +768,7 @@ function AppInner({ isAdminUser }) {
           {!isBoardGameView && (
             <PlayerStatusBar
               tournament={tournament}
-              combatXp={combatXp}
+              combatOverview={combatOverview}
               rating={rating}
               onTournamentClick={() => navigateTo('tournament')}
               onCombatClick={() => setShowCombatSummary(true)}
@@ -797,7 +798,7 @@ function AppInner({ isAdminUser }) {
           />
         )}
         {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
-        {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatXp={combatXp} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
+        {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
@@ -831,12 +832,14 @@ function AppInner({ isAdminUser }) {
             onCombatRoguelike={() => navigateTo('roguelike')}
             onHistory={() => navigateTo('history')}
             onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
+            onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}
             onLab={() => navigateTo('lab')}
             hasSavedGame={hasSavedGame}
             loading={loading}
             error={error}
             tournament={tournament}
             rating={rating}
+            combatProgress={combatOverview}
             suppressHomeNudge={showSettings}
           />
         )}

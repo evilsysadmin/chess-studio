@@ -43,12 +43,14 @@ export default function Menu({
   onSpectator,
   onHistory,
   onInsights,
+  onProgress,
   onLab,
   hasSavedGame,
   loading,
   error,
   tournament,
   rating,
+  combatProgress,
   suppressHomeNudge = false,
 }) {
   const [difficulty, setDifficulty] = useState(50);
@@ -161,7 +163,7 @@ export default function Menu({
       <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
         <div className="home-group-heading">
           <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
-          <p>Compite, continúa tu campaña o juega a tu ritmo.</p>
+          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p><button type="button" className="home-context-guide" onClick={() => setShowHomeGuide(true)}><span>?</span> Juega primero</button></div>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
           <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card home-mode-card home-mode-featured" onClick={onTournament}>
@@ -181,10 +183,11 @@ export default function Menu({
           <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger home-primary-card home-mode-card home-mode-campaign" onClick={onCombatRoguelike}>
             <span className="home-mode-icon" aria-hidden="true"><IconSword className="menu-card-icon" /></span>
             <span className="home-mode-copy">
-              <span className="home-mode-kicker"><b>Campaña</b><i>Ejército persistente</i></span>
+              <span className="home-mode-kicker"><b>{combatProgress?.rank?.label || 'Recluta'}</b><i>{combatProgress?.credits || 0} créditos</i></span>
               <h3>{COMBAT_CHESS_CAMPAIGN_LABEL}</h3>
-              <span className="home-mode-description">Tus unidades ganan experiencia y continúan entre batallas.</span>
+              <span className="home-mode-description">Tu ejército gana experiencia, rango y recursos entre sectores.</span>
             </span>
+            <span className="home-mode-progress" aria-label={`Progreso hacia el siguiente rango de Combat: ${Math.round((combatProgress?.nextProgress || 0) * 100)}%`}><span><i style={{ width: `${Math.round((combatProgress?.nextProgress || 0) * 100)}%` }} /></span><small>{Math.round((combatProgress?.nextProgress || 0) * 100)}% al siguiente rango</small></span>
             <span className="menu-card-cta">Continuar campaña <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
@@ -221,40 +224,35 @@ export default function Menu({
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">
           <div><span className="section-label">Mejorar</span><h2>Aprender y practicar</h2></div>
-          <p>Tres accesos principales. El resto queda a un toque.</p>
+          <div className="home-heading-actions"><p>Analiza, entrena y vuelve al tablero con una idea clara.</p><div><button type="button" className="home-context-guide" onClick={onTutorial}><span>?</span> Aprende a jugar</button><button type="button" className="home-progress-link" onClick={onProgress}>Ver mi progreso →</button></div></div>
         </div>
-        <div className="menu-grid menu-grid-3 home-primary-grid">
-          <div className="insights-feature-shell home-insights-shell">
-            <button type="button" className="insights-feature-card home-primary-insights" onClick={onInsights}>
-              <span className="insights-feature-icon" aria-hidden="true"><IconEye /></span>
-              <span className="insights-feature-copy"><span className="insights-feature-kicker">TU JUEGO</span><strong>Así juegas</strong><span>Qué haces bien, qué falla y qué practicar ahora.</span></span>
-              <span className="insights-feature-cta">Analizar →</span>
-            </button>
-            <ModeTutorialTip tutorialId="insights" />
-          </div>
-
-          <TutorialModeCard tutorialId="puzzles" className="menu-card accent-danger home-primary-card" onClick={onTrainPersonal}>
-            <IconPuzzle className="menu-card-icon" /><h3>Practicar tus errores</h3><p>Puzzles creados a partir de tus propias partidas.</p><span className="menu-card-cta">Entrenar →</span>
+        <div className="menu-grid menu-grid-3 home-primary-grid home-learning-grid">
+          <TutorialModeCard tutorialId="insights" className="menu-card accent-hint home-primary-card home-mode-card home-learning-card" onClick={onInsights}>
+            <span className="home-mode-icon" aria-hidden="true"><IconEye className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Diagnóstico</b><i>Tu juego real</i></span><h3>Así juegas</h3><span className="home-mode-description">Tu prioridad actual y una acción concreta para mejorar.</span></span><span className="menu-card-cta">Ver diagnóstico <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
-          <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
-            <IconBulb className="menu-card-icon" /><h3>Partida de práctica</h3><p>Juega con pistas gratis y sin afectar al rating.</p><span className="menu-card-cta">Jugar →</span>
+          <TutorialModeCard tutorialId="puzzles" className="menu-card accent-danger home-primary-card home-mode-card home-learning-card" onClick={onTrainPersonal}>
+            <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Entrenamiento</b><i>Desde tus partidas</i></span><h3>Practicar tus errores</h3><span className="home-mode-description">Puzzles construidos con posiciones donde fallaste.</span></span><span className="menu-card-cta">Entrenar ahora <b aria-hidden="true">→</b></span>
+          </TutorialModeCard>
+
+          <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card home-mode-card home-learning-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
+            <span className="home-mode-icon" aria-hidden="true"><IconBulb className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Sin presión</b><i>No afecta al rating</i></span><h3>Partida de práctica</h3><span className="home-mode-description">Juega con pistas gratuitas y aplica lo aprendido.</span></span><span className="menu-card-cta">Empezar práctica <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
         </div>
 
         <details className="friendly-disclosure home-learning-more">
           <summary>Más aprendizaje y herramientas</summary>
           <div className="friendly-disclosure-body menu-grid menu-grid-3 compact-mode-grid">
-            <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint" onClick={onPuzzle}>
+            <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint home-tool-card" onClick={onPuzzle}>
               <IconPuzzle className="menu-card-icon" /><h3>Puzzles</h3><p>Clásicos y reto diario.</p><span className="menu-card-cta">Resolver →</span>
             </TutorialModeCard>
-            <button type="button" className="menu-card accent-success" onClick={onTutorial}>
+            <button type="button" className="menu-card accent-success home-tool-card" onClick={onTutorial}>
               <IconBook className="menu-card-icon" /><h3>Aprendizaje</h3><p>Lecciones, glosario y tutoriales.</p><span className="menu-card-cta">Abrir →</span>
             </button>
-            <TutorialModeCard tutorialId="openings" className="menu-card accent-success" onClick={onOpenings}>
+            <TutorialModeCard tutorialId="openings" className="menu-card accent-success home-tool-card" onClick={onOpenings}>
               <IconBookmark className="menu-card-icon" /><h3>Aperturas</h3><p>Practica líneas clásicas paso a paso.</p><span className="menu-card-cta">Practicar →</span>
             </TutorialModeCard>
-            <button type="button" className="menu-card accent-brass" onClick={onHistory}>
+            <button type="button" className="menu-card accent-brass home-tool-card" onClick={onHistory}>
               <IconBookmark className="menu-card-icon" /><h3>Historial</h3><p>Tus partidas, resultados y replays.</p><span className="menu-card-cta">Abrir →</span>
             </button>
           </div>

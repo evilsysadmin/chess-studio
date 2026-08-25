@@ -1,0 +1,111 @@
+/* dm46a · aprendizaje, economía Combat y progreso como superficies de producto. */
+.home-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; flex-wrap: wrap; }
+.home-heading-actions > p { margin: 0; }
+.home-heading-actions > div { display: flex; gap: .45rem; flex-wrap: wrap; justify-content: flex-end; }
+.home-context-guide,
+.home-progress-link {
+  display: inline-flex; min-height: 34px; align-items: center; gap: .38rem; padding: .38rem .62rem;
+  border: 1px solid var(--studio-line); border-radius: 999px; background: rgba(9,12,18,.22);
+  color: var(--parchment-dim); font: 700 .63rem/1 var(--font-body); cursor: pointer;
+}
+.home-context-guide span { display: grid; width: 19px; height: 19px; place-items: center; border: 1px solid color-mix(in srgb, var(--brass) 60%, var(--studio-line)); border-radius: 50%; color: var(--brass); }
+.home-progress-link { color: var(--brass); }
+.home-context-guide:hover,.home-context-guide:focus-visible,.home-progress-link:hover,.home-progress-link:focus-visible { border-color: color-mix(in srgb, var(--brass) 62%, var(--studio-line)); color: var(--parchment); }
+.home-learning-card { min-height: 168px; }
+.home-mode-card.accent-success .home-mode-icon { color: var(--success); }
+.home-tool-card { min-height: 108px !important; grid-template-columns: auto minmax(0,1fr); align-content: center; padding: .85rem !important; }
+.home-tool-card h3 { font-style: normal; }
+.home-tool-card .menu-card-cta { color: var(--brass); }
+
+.campaign-economy-strip {
+  display: flex; align-items: stretch; gap: .55rem; margin: .9rem 0;
+  padding: .55rem; border: 1px solid var(--studio-line); border-radius: 12px; background: rgba(8,11,17,.17);
+}
+.campaign-economy-strip > span { display: grid; min-width: 115px; gap: .12rem; padding: .35rem .55rem; }
+.campaign-economy-strip small { color: var(--parchment-dim); font: .55rem var(--font-mono); letter-spacing: .08em; }
+.campaign-economy-strip b { color: var(--parchment); font-size: .84rem; }
+.campaign-economy-strip button,.campaign-market-link { margin-left: auto; border: 0; background: transparent; color: var(--brass); font-weight: 800; cursor: pointer; }
+.campaign-quick-status .campaign-market-link { padding: .2rem .35rem; }
+
+.combat-market { width: min(1040px, calc(100vw - 2rem)); max-height: min(88vh, 820px); overflow: auto; padding: 1.1rem; }
+.combat-market-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding: .15rem 2.4rem .9rem 0; border-bottom: 1px solid var(--studio-line); }
+.combat-market-heading h2 { margin: .18rem 0; }
+.combat-market-heading p { margin: 0; color: var(--parchment-dim); font-size: .76rem; }
+.combat-market-wallet { display: grid; min-width: 108px; padding: .55rem .7rem; border: 1px solid color-mix(in srgb, var(--brass) 50%, var(--studio-line)); border-radius: 10px; text-align: right; background: rgba(198,164,40,.055); }
+.combat-market-wallet small { color: var(--parchment-dim); font: .52rem var(--font-mono); letter-spacing: .1em; }
+.combat-market-wallet strong { color: var(--brass); font-size: 1.3rem; }
+.combat-market-wallet span { color: var(--parchment-dim); font-size: .62rem; }
+.combat-market-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; margin: .8rem 0; padding: .25rem; border-radius: 10px; background: rgba(0,0,0,.16); }
+.combat-market-tabs button { min-height: 42px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--parchment-dim); font-weight: 800; cursor: pointer; }
+.combat-market-tabs button.active { border-color: var(--studio-line); background: var(--studio-panel-raised); color: var(--parchment); box-shadow: 0 5px 16px rgba(0,0,0,.15); }
+.combat-market-notice { margin: 0 0 .7rem; padding: .55rem .7rem; border: 1px solid color-mix(in srgb, var(--success) 40%, var(--studio-line)); border-radius: 8px; color: var(--success); font-size: .72rem; }
+.combat-market-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .65rem; }
+.combat-market-grid.equipment-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.combat-market-card { display: grid; align-content: start; gap: .5rem; min-width: 0; padding: .85rem; border: 1px solid var(--studio-line); border-radius: 12px; background: linear-gradient(145deg,var(--studio-panel-raised),var(--studio-panel)); }
+.combat-market-card.veterano { border-color: color-mix(in srgb, var(--brass) 65%, var(--studio-line)); box-shadow: inset 0 1px rgba(255,255,255,.04); }
+.combat-market-card-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.combat-market-card-top > span { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--studio-line); border-radius: 9px; color: var(--brass); font-size: 1.3rem; }
+.combat-market-card-top i { color: var(--parchment-dim); font: normal .5rem var(--font-mono); letter-spacing: .07em; }
+.combat-market-card h3 { margin: .1rem 0 0; font-size: .98rem; font-style: normal; }
+.combat-market-card > p { min-height: 2.4em; margin: 0; color: var(--parchment-dim); font-size: .7rem; line-height: 1.4; }
+.combat-market-contracts { display: grid; gap: .35rem; margin-top: auto; }
+.combat-market-contracts button { display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: .5rem; padding: .45rem .55rem; border: 1px solid var(--studio-line); border-radius: 8px; background: rgba(0,0,0,.13); color: var(--parchment); cursor: pointer; }
+.combat-market-contracts button b { color: var(--brass); font-size: .68rem; }
+.combat-market-contracts button:disabled { opacity: .42; cursor: not-allowed; }
+.combat-market-card label { display: grid; gap: .3rem; color: var(--parchment-dim); font-size: .62rem; }
+.combat-market-card select { width: 100%; min-height: 40px; padding: .45rem; border: 1px solid var(--studio-line); border-radius: 8px; background: var(--studio-panel); color: var(--parchment); }
+.combat-market-buy { width: 100%; margin-top: auto; }
+.combat-market-balance-note { display: grid; grid-template-columns: auto 1fr; gap: .65rem; margin-top: .8rem; padding: .65rem .75rem; border-radius: 9px; background: rgba(68,139,93,.07); color: var(--parchment-dim); font-size: .68rem; line-height: 1.4; }
+.combat-market-balance-note strong { color: var(--success); white-space: nowrap; }
+
+.army-unit-bio,.army-unit-equipment { display: grid; gap: .35rem; padding: .7rem .8rem; border: 1px solid var(--studio-line); border-radius: 10px; background: rgba(0,0,0,.12); }
+.army-unit-bio p,.army-unit-equipment small { margin: 0; color: var(--parchment-dim); font-size: .72rem; line-height: 1.48; }
+.army-unit-equipment { grid-template-columns: minmax(0,1fr); }
+.army-unit-equipment.equipped { border-color: color-mix(in srgb,var(--brass) 48%,var(--studio-line)); background: rgba(198,164,40,.045); }
+.army-unit-equipment strong { display: block; margin-top: .2rem; color: var(--parchment); font-size: .8rem; }
+
+.career-section-nav { position: sticky; z-index: 3; top: .5rem; display: grid; grid-template-columns: repeat(4,1fr); gap: .3rem; margin: .15rem 0 .75rem; padding: .28rem; border: 1px solid var(--studio-line); border-radius: 11px; background: color-mix(in srgb,var(--studio-bg) 92%,transparent); backdrop-filter: blur(12px); }
+.career-section-nav button { min-height: 40px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--parchment-dim); font-weight: 800; cursor: pointer; }
+.career-section-nav button.active { border-color: color-mix(in srgb,var(--brass) 48%,var(--studio-line)); background: var(--studio-panel-raised); color: var(--parchment); }
+.career-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.career-section-heading h2 { margin: .15rem 0 0; }
+.career-section-heading > small { color: var(--parchment-dim); font-size: .65rem; }
+.career-opening-map { overflow: hidden; }
+.career-tree { display: grid; gap: .45rem; margin-top: .8rem; }
+.career-tree-level { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.career-tree-level.depth-1,.career-tree-level.depth-2 { margin: .35rem 0 0 .85rem; padding-left: .65rem; border-left: 1px solid var(--studio-line); }
+.career-tree-row { display: grid; grid-template-columns: minmax(70px,1fr) auto auto; align-items: center; gap: .7rem; min-height: 38px; padding: .4rem .55rem; border: 1px solid color-mix(in srgb,var(--studio-line) 70%,transparent); border-radius: 8px; background: rgba(0,0,0,.1); }
+.career-tree-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.career-tree-row b { color: var(--parchment); font-size: .72rem; }
+.career-tree-row small { min-width: 82px; color: var(--parchment-dim); font-size: .62rem; text-align: right; }
+.career-profile-details { margin-bottom: .8rem; }
+
+@media (max-width: 760px) {
+  .home-group-heading { align-items: flex-start; }
+  .home-heading-actions { align-items: flex-start; justify-content: flex-start; }
+  .home-heading-actions > div { justify-content: flex-start; }
+  .campaign-economy-strip { display: grid; grid-template-columns: 1fr 1fr; }
+  .campaign-economy-strip button { grid-column: 1 / -1; min-height: 40px; margin-left: 0; border-top: 1px solid var(--studio-line); }
+  .combat-market-grid,.combat-market-grid.equipment-grid { grid-template-columns: 1fr; }
+  .combat-market-card > p { min-height: 0; }
+  .career-section-nav { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 430px) {
+  .home-heading-actions { display: grid; width: 100%; }
+  .home-context-guide,.home-progress-link { justify-content: center; }
+  .home-heading-actions > div { display: grid; grid-template-columns: 1fr; }
+  .combat-market { width: calc(100vw - .8rem); max-height: 94vh; padding: .8rem; }
+  .combat-market-heading { align-items: flex-start; flex-direction: column; padding-right: 2rem; }
+  .combat-market-wallet { min-width: 92px; text-align: left; }
+  .combat-market-balance-note { grid-template-columns: 1fr; }
+  .career-hero-grid { grid-template-columns: 1fr 1fr; }
+  .career-tree-level.depth-1,.career-tree-level.depth-2 { margin-left: .35rem; padding-left: .4rem; }
+  .career-tree-row { grid-template-columns: minmax(50px,1fr) auto; gap: .4rem; }
+  .career-tree-row small { grid-column: 1 / -1; min-width: 0; text-align: left; }
+}
+
+@media (max-width: 370px) {
+  .career-hero-grid { grid-template-columns: 1fr; }
+  .combat-market-tabs { grid-template-columns: 1fr; }
+}

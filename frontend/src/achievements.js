@@ -28,7 +28,7 @@ export const ACHIEVEMENTS = [
   { id: 'rating_advanced', name: 'Avanzado', description: 'Tu rating llegó a "Avanzado" (1600+).' },
   { id: 'rating_master', name: 'Maestro', description: 'Tu rating llegó a "Maestro" (1900+).' },
   { id: 'combat_gold_piece', name: 'Pieza dorada', description: 'Una pieza de tu ejército llegó a nivel 6 o más.' },
-  { id: 'combat_reviver', name: 'Resucitador', description: 'Reviviste una pieza caída con XP de combate.' },
+  { id: 'combat_reviver', name: 'Resucitador', description: 'Reviviste una pieza caída con créditos de campaña.' },
   { id: 'combat_flawless', name: 'Victoria perfecta', description: 'Ganaste una batalla de combate sin perder ninguna pieza.' },
   { id: 'puzzles_10', name: 'Resolvedor', description: 'Resolviste 10 puzzles.' },
   { id: 'puzzles_50', name: 'Especialista en puzzles', description: 'Resolviste 50 puzzles.' },

@@ -267,8 +267,8 @@ function UnitDossierPopover({
           )}
           {isFallen && (
             <div className="deployment-revive-decision">
-              <span>XP de combate disponible: <b>{Number(roster.combatXp || 0)}</b>.</span>
-              <span>Revivir cuesta <b>{cost} XP de combate</b> y conserva identidad, historial, condecoraciones y técnicas.</span>
+              <span>Créditos disponibles: <b>{Number(roster.credits || 0)}</b>.</span>
+              <span>Revivir cuesta <b>{cost} créditos</b> y conserva identidad, historial, condecoraciones, equipo y técnicas.</span>
               <span>Nuevo recluta archiva esta identidad en el Memorial y crea una unidad nv.1 sin heredar progreso.</span>
             </div>
           )}
@@ -679,11 +679,11 @@ export default function CombatDeploymentView({
               <section className="deployment-casualties" aria-label="Bajas pendientes">
                 <div className="deployment-casualties-heading">
                   <div><span>BAJAS PENDIENTES</span><b>{summary.fallenCount}</b></div>
-                  <div className="deployment-casualties-xp" title="Moneda disponible para recuperar veteranos caídos">
-                    <small>XP COMBATE</small><strong>{Number(roster.combatXp || 0)}</strong>
+                  <div className="deployment-casualties-xp" title="Créditos disponibles para recuperar veteranos caídos">
+                    <small>CRÉDITOS</small><strong>{Number(roster.credits || 0)}</strong>
                   </div>
                 </div>
-                <p>Decide a quién recuperar. La XP disponible se comparte entre todas las bajas.</p>
+                <p>Decide a quién recuperar. El saldo se comparte con contratos y equipo.</p>
                 <div className="deployment-casualty-list">
                   {summary.fallenKeys.map((unitKey) => {
                     const origin = originTypeForRosterKey(unitKey);
@@ -692,12 +692,12 @@ export default function CombatDeploymentView({
                     const level = levelForSaved(saved);
                     const progress = Math.max(0, Number(saved.strengthPoints) || 0) + Math.max(0, Number(saved.speedPoints) || 0);
                     const cost = reviveCost(origin);
-                    const canRevive = progress > 0 && Number(roster.combatXp || 0) >= cost;
+                    const canRevive = progress > 0 && Number(roster.credits || 0) >= cost;
                     const reviveTitle = progress <= 0
                       ? 'Recluta de nivel 1: no tiene progreso que recuperar.'
                       : canRevive
-                        ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} XP.`
-                        : `Necesitas ${cost} XP de combate para revivir esta unidad.`;
+                        ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} créditos.`
+                        : `Necesitas ${cost} créditos para revivir esta unidad.`;
                     const dossierVisible = dossierUnitKey === unitKey;
                     return (
                       <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''}`} key={unitKey}>
@@ -724,13 +724,13 @@ export default function CombatDeploymentView({
                         </div>
                         <div className="deployment-casualty-actions">
                           <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
-                            Revivir · {cost} XP
+                            Revivir · {cost} cr
                           </button>
                           <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial. El recluta nuevo sólo cubre el hueco si no hay otra reserva compatible." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
                             Nuevo recluta
                           </button>
                           {!canRevive && progress > 0 && (
-                            <small className="deployment-revive-shortfall">Faltan {Math.max(0, cost - Number(roster.combatXp || 0))} XP de combate para recuperar esta unidad.</small>
+                            <small className="deployment-revive-shortfall">Faltan {Math.max(0, cost - Number(roster.credits || 0))} créditos para recuperar esta unidad.</small>
                           )}
                           {progress <= 0 && (
                             <small className="deployment-revive-shortfall neutral">Sin progreso invertido que recuperar: el reemplazo no pierde veteranía.</small>
@@ -897,7 +897,7 @@ export default function CombatDeploymentView({
           </div>
           <div className="deployment-footer-copy">
             <span>Reservas: <b>{summary.reserveCount}</b></span>
-            <span>XP de combate: <b>{Number(roster.combatXp || 0)}</b></span>
+            <span>Créditos: <b>{Number(roster.credits || 0)}</b></span>
             {summary.fallenCount > 0 && <span>Bajas pendientes: <b>{summary.fallenCount}</b></span>}
           </div>
           <button type="button" className="primary-btn" disabled={!canConfirm} onClick={() => {

@@ -69,6 +69,11 @@ def test_player_portrait_fallback_is_actionable_and_never_empty_commentary():
     assert "no voy a inventarle detalles" not in text
 
 
+def test_unit_bio_fallback_is_never_presented_as_generated_personality():
+    text = provider._fallback("unit_bio", {"alias": "Rivas", "identity_seed": "unit-1"})
+    assert text == "Expediente pendiente de redacción por el archivo de campaña."
+
+
 def test_cloud_success_is_used_signed_and_measured(monkeypatch):
     monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev/")
     monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "a"*64)

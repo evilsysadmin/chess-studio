@@ -13,7 +13,7 @@ export default function CombatArmySummaryModal({ roster, onOpenCombat, onClose }
         <span className="section-label">COMBAT CHESS</span>
         <h2 id="combat-summary-title">Tu ejército</h2>
         <p className="hint-text">Estado actual de tus unidades persistentes.</p>
-        <div className="combat-summary-xp"><span>XP disponible</span><strong>{Number(roster?.combatXp || 0)}</strong><small>Sirve para recuperar bajas y preparar futuras batallas.</small></div>
+        <div className="combat-summary-xp"><span>Créditos disponibles</span><strong>{Number(roster?.credits || 0)}</strong><small>Revives, contratos y equipo. La XP mejora únicamente a cada unidad.</small></div>
         <div className="combat-summary-facts">
           <div><strong>{summary.active}</strong><span>unidades activas</span></div>
           <div><strong>{summary.experienced}</strong><span>veteranos</span></div>

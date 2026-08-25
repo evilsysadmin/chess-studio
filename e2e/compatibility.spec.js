@@ -49,6 +49,22 @@ for (const width of [360, 390, 430]) {
     await expect(page.getByRole('tab', { name: /Diagnóstico/ })).toHaveAttribute('aria-selected', 'true');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   });
+
+  test(`Home → Mi progreso · abre la carrera y sus secciones caben a ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await mockApi(page);
+    await login(page);
+    const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+    await guide.getByRole('button', { name: 'Explorar Home', exact: true }).click();
+    await page.getByRole('button', { name: 'Ver mi progreso →', exact: true }).click();
+
+    await expect(page.getByRole('heading', { name: 'Mi progreso', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Mi progreso.*Evolución e historial/ })).toHaveAttribute('aria-selected', 'true');
+    const sections = page.getByRole('navigation', { name: 'Secciones de Mi progreso' });
+    await expect(sections).toBeVisible();
+    expect(await sections.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  });
 }
 
 test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse', async ({ page }) => {
@@ -62,10 +78,9 @@ test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse'
 
   await page.reload();
   await expect(guide).toHaveCount(0);
-  await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
-  await page.getByRole('menuitem', { name: /Guía rápida/ }).click();
+  await page.getByRole('button', { name: /Juega primero/ }).click();
   await expect(guide).toBeVisible();
-  await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
+  await expect(guide.getByRole('button', { name: 'Jugar ahora', exact: true })).toBeVisible();
 });
 
 test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page }) => {
@@ -90,10 +105,10 @@ test('Home · Combat abre un resumen compacto del ejército', async ({ page }) =
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await login(page);
-  await page.getByRole('button', { name: /Estado de Combat:.*XP/i }).click();
+  await page.getByRole('button', { name: /Estado de Combat: rango/i }).click();
   const summary = page.getByRole('dialog', { name: 'Tu ejército' });
   await expect(summary).toBeVisible();
-  await expect(summary.getByText('XP disponible', { exact: true })).toBeVisible();
+  await expect(summary.getByText('Créditos disponibles', { exact: true })).toBeVisible();
   await expect(summary.getByText('veteranos', { exact: true })).toBeVisible();
   await expect(summary.getByRole('button', { name: 'Ver ejército', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);

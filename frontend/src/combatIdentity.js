@@ -65,23 +65,62 @@ export function createCombatIdentity(existingAliases = [], rng = Math.random, no
   const available = MARTIAL_ALIASES.filter((alias) => !used.has(alias));
   const pool = available.length ? available : MARTIAL_ALIASES;
   const alias = pool[Math.floor(rng() * pool.length) % pool.length];
-  return { alias, identityId: `unit-${now.toString(36)}-${randomToken(rng)}`, createdAt: new Date(now).toISOString() };
+  return {
+    alias,
+    identityId: `unit-${now.toString(36)}-${randomToken(rng)}`,
+    createdAt: new Date(now).toISOString(),
+    bio: null,
+    bioStatus: 'pending',
+  };
 }
 
 export function ensureCombatIdentities(rosterState, rng = Math.random, now = Date.now()) {
   const migrated = migrateLegacyAliases(rosterState || {});
   const identities = { ...(migrated?.identities || {}) };
   let changed = migrated !== rosterState;
+  for (const [key, identity] of Object.entries(identities)) {
+    if (!identity?.identityId || 'bioStatus' in identity) continue;
+    identities[key] = {
+      ...identity,
+      bio: identity.bio || null,
+      bioStatus: identity.bio ? 'ready' : 'pending',
+    };
+    changed = true;
+  }
   const aliases = Object.values(identities).map((entry) => entry?.alias).filter(Boolean);
   for (const slot of CANONICAL_ROSTER_SLOTS) {
     const key = rosterSlotKey(slot);
-    if (identities[key]?.alias && identities[key]?.identityId) continue;
+    if (identities[key]?.alias && identities[key]?.identityId) {
+      continue;
+    }
     const identity = createCombatIdentity(aliases, rng, now + aliases.length);
+    // Todas las altas, también el regimiento inicial, quedan en la misma cola
+    // secuencial. Nunca mostramos una personalidad local genérica como si la
+    // hubiera escrito Workers AI.
     identities[key] = identity;
     aliases.push(identity.alias);
     changed = true;
   }
   return changed ? { ...migrated, identities } : migrated;
+}
+
+export function saveCombatIdentityBio(rosterState, key, bio) {
+  const identity = rosterState?.identities?.[key];
+  const clean = String(bio || '').replace(/\s+/g, ' ').trim().slice(0, 520);
+  if (!identity?.identityId || !clean) return rosterState;
+  return {
+    ...rosterState,
+    identities: {
+      ...rosterState.identities,
+      [key]: { ...identity, bio: clean, bioStatus: 'ready', bioGeneratedAt: new Date().toISOString() },
+    },
+  };
+}
+
+export function markCombatIdentityBioPending(rosterState, key) {
+  const identity = rosterState?.identities?.[key];
+  if (!identity?.identityId || identity.bioStatus === 'ready') return rosterState;
+  return { ...rosterState, identities: { ...rosterState.identities, [key]: { ...identity, bio: null, bioStatus: 'pending' } } };
 }
 
 export function combatIdentityFor(rosterState, key) {

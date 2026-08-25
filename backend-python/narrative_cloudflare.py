@@ -251,6 +251,10 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         if isinstance(draws, (int, float)) and draws > 0:
             return "Objetivo para la próxima partida: cuando tengas ventaja, simplifica una sola vez cambiando piezas y conserva los peones; comprueba después si el final fue más fácil de convertir."
         return "Objetivo para la próxima partida: antes de mover, identifica la amenaza rival y compara dos jugadas candidatas; elige sólo después de esa comprobación."
+    if event_type == "unit_bio":
+        # El cliente no muestra ni persiste este fallback: una bio de unidad
+        # sólo se considera válida cuando procede realmente de Workers AI.
+        return "Expediente pendiente de redacción por el archivo de campaña."
     if event_type in RICH_ANALYSIS_EVENT_TYPES:
         return "Siguiente paso: revisa la posición crítica, compara dos jugadas candidatas y practica una vez el patrón que decidió la partida."
     return "Antes de tu próxima jugada, revisa jaques, capturas y amenazas; esa pausa de diez segundos evita más errores que mover por intuición."

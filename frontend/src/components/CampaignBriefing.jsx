@@ -81,7 +81,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
 
       <details className="campaign-optional-panel campaign-intel-optional">
         <summary>Ver informe completo</summary>
-        <p className="hint-text">Opcional: precisión de amenaza, créditos, boss y compra de inteligencia.</p>
+        <p className="hint-text">Opcional: precisión de amenaza, suministros, boss y compra de inteligencia.</p>
         <div className="campaign-briefing-grid simplified">
           <section className="campaign-intel-panel" aria-label="Inteligencia de la operación">
             <span className="campaign-intel-kicker">INTELIGENCIA · {intel.levelLabel}</span>
@@ -100,7 +100,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
               <>
                 <p>Siguiente nivel: {nextTier.label} · <b>{nextTier.cost}</b> cr.</p>
                 <button type="button" className="secondary-btn" disabled={!canBuy} onClick={onBuyIntel}>
-                  {canBuy ? `Comprar inteligencia · −${nextTier.cost}` : `Faltan ${nextTier.cost - campaign.operationalCredits} créditos`}
+                  {canBuy ? `Comprar inteligencia · −${nextTier.cost} suministros` : `Faltan ${nextTier.cost - campaign.operationalCredits} suministros`}
                 </button>
               </>
             ) : (

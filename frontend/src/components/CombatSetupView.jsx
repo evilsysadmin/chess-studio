@@ -202,7 +202,7 @@ export default function CombatSetupView({
             <span title="Unidades con progreso persistente"><b>{rosterCount}</b><small>con progreso</small></span>
             <span title="Unidades disponibles en reserva"><b>{deploy.reserveCount}</b><small>reservas</small></span>
             <span className={deadCount ? 'danger-text' : ''} title="Unidades caídas pendientes de resolver"><b>{deadCount}</b><small>caídas</small></span>
-            <span title="XP de combate disponible"><b>{roster.combatXp || 0}</b><small>XP combate</small></span>
+            <span title="Créditos para bajas, contratos y equipo"><b>{roster.credits || 0}</b><small>créditos</small></span>
             <span title="Identidades perdidas definitivamente"><b>{roster.memorial?.length || 0}</b><small>memorial</small></span>
           </div>
 
@@ -222,8 +222,8 @@ export default function CombatSetupView({
               <span>Preparar despliegue · {deploy.assignedCount}/16</span>
               <small>{deploy.reserveCount > 0 ? `${deploy.reserveCount} reserva${deploy.reserveCount === 1 ? '' : 's'}` : 'sin reservas'}</small>
             </button>
-            <button type="button" className="secondary-btn" onClick={() => setShowArmy(true)} title="Alias, rango, XP, técnicas, metamorfosis y bajas.">
-              Expedientes {roster.combatXp > 0 ? `· ${roster.combatXp} XP` : ''}
+            <button type="button" className="secondary-btn" onClick={() => setShowArmy(true)} title="Alias, rango, XP de unidad, objetos, técnicas, metamorfosis y bajas.">
+              Expedientes · {roster.credits || 0} cr
             </button>
             {onHistory && <button type="button" className="secondary-btn" onClick={onHistory}>Batallas anteriores</button>}
             {rosterCount > 0 && (

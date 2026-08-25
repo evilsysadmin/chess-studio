@@ -135,6 +135,13 @@ REGLAS INVIOLABLES:
 - Para combat_debrief escribe 2 o 3 frases: resultado real, hecho destacado más
   importante (bajas, veterano, ascenso, boss o supervivencia sólo si aparecen en
   HECHOS) y, si procede, una observación práctica. No inventes heroicidades.
+- Para unit_bio escribe exactamente 2 frases y entre 35 y 55 palabras en total.
+  Crea un origen concreto, un rasgo de carácter y una pequeña contradicción que
+  hagan reconocible a esa identidad. Usa identity_seed para variar el enfoque,
+  menciona el alias una sola vez, evita frases de avoid_openings y no inventes
+  batallas, rangos, medallas ni logros que HECHOS no contenga. Tono militar humano,
+  sobrio y sin chistes. No uses clichés como "veterano curtido", "nacido para" o
+  "nadie sabe de dónde viene".
 - Para observability_summary escribe exactamente 3 frases: estado general, señal
   técnica más relevante y qué conviene vigilar o revisar. Usa cifras concretas
   de HECHOS. Distingue SIEMPRE volumen, latencia y errores: muchas requests o un
@@ -384,6 +391,7 @@ async function handleNarrative(request, env) {
     post_game_autopsy: "Haz la autopsia compacta de esta partida usando sólo los hechos analizados. Explica, no adornes.",
     combat_briefing: "Redacta un briefing táctico corto usando sólo la inteligencia realmente disponible y termina con una preparación concreta.",
     combat_debrief: "Redacta un debriefing corto usando sólo el resultado y hechos de servicio registrados.",
+    unit_bio: "Escribe una biografía irrepetible y concreta para esta unidad. Respeta estrictamente longitud, hechos y exclusiones.",
     observability_summary: "Resume la salud técnica separando errores, latencia y volumen. Trata /api/narrative como ruta de IA externa con presupuesto propio y cita motivos concretos de fallback cuando existan.",
   };
   const task = tasks[eventType] || "Escribe el comentario ahora usando exclusivamente esos hechos.";

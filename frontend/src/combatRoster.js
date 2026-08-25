@@ -8,7 +8,8 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 //  - `pieces`: progreso/loadout de cada slot militar;
 //  - `identities` + `unitRecords`: nombre e historial de la identidad actual;
 //  - `memorial`: identidades que murieron de forma definitiva;
-//  - `combatXp`: moneda separada que sólo sirve para revivir bajas recuperables.
+//  - `credits`: fondos persistentes para revivir, contratar y equipar;
+//  - la XP queda dentro de cada unidad (`bankedXp`) y sólo mejora esa unidad.
 //
 // OJO con el color: si eliges "aleatorio" puedes jugar blancas una partida y
 // negras la siguiente. Por eso la clave de cada pieza NO incluye el color
@@ -23,15 +24,13 @@ import { ensureCombatIdentities, combatIdentityFor, createCombatIdentity } from 
 import { normalizeTechniqueState } from './combatTechniques.js';
 import { ensureUnitServiceState, recordUnitRevive, archivePermanentCasualty } from './combatUnitService.js';
 import { ensureDeploymentState, firstFreeDeploymentSlotForUnit, isUnitCompatibleWithSlot, rosterUnitKeys, setDeploymentUnit } from './combatDeployment.js';
+import { equipmentBonus, normalizeCombatEconomy } from './combatEconomy.js';
 
 const ROSTER_KEY = 'chess-study-combat-roster';
 
-// Cuánta XP de combate da cada resultado de partida.
-const COMBAT_XP_REWARD = { win: 12, draw: 5, loss: 2 };
-
 function emptyState() {
   return ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({
-    pieces: {}, identities: {}, unitRecords: {}, memorial: [], unitServiceProcessedBattleIds: [], reserveRecruitGrantIds: [], combatXp: 0, revivesUsed: 0,
+    pieces: {}, identities: {}, unitRecords: {}, memorial: [], unitServiceProcessedBattleIds: [], reserveRecruitGrantIds: [], ...normalizeCombatEconomy(), revivesUsed: 0,
   })));
 }
 
@@ -62,7 +61,7 @@ export function loadRoster() {
       memorial: Array.isArray(parsed.memorial) ? parsed.memorial : [],
       unitServiceProcessedBattleIds: Array.isArray(parsed.unitServiceProcessedBattleIds) ? parsed.unitServiceProcessedBattleIds : [],
       reserveRecruitGrantIds: Array.isArray(parsed.reserveRecruitGrantIds) ? parsed.reserveRecruitGrantIds : [],
-      combatXp: parsed.combatXp || 0,
+      ...normalizeCombatEconomy(parsed),
       revivesUsed: parsed.revivesUsed || 0,
     })));
     saveRoster(state); // persiste migraciones, aliases y expedientes recién creados
@@ -124,11 +123,15 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
       next[square] = { ...piece, ...identity }; // fresca de nivel 1, pero ya tiene nombre
       continue;
     }
+    const gear = equipmentBonus(saved.equipmentId);
     next[square] = {
       ...piece,
-      strengthPoints: saved.strengthPoints || 0,
-      speedPoints: saved.speedPoints || 0,
+      strengthPoints: (saved.strengthPoints || 0) + gear.strength,
+      speedPoints: (saved.speedPoints || 0) + gear.speed,
       bankedXp: saved.bankedXp || 0,
+      equipmentId: saved.equipmentId || null,
+      equipmentStrengthBonus: gear.strength,
+      equipmentSpeedBonus: gear.speed,
       deploymentType: saved.deploymentType || null,
       unlockedTechniques: Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques] : [],
       equippedTechnique: saved.equippedTechnique || null,
@@ -157,10 +160,12 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
     const key = rosterKeyFor(piece);
     survivingKeys.add(key);
     pieces[key] = {
-      strengthPoints: piece.strengthPoints || 0,
-      speedPoints: piece.speedPoints || 0,
+      strengthPoints: Math.max(0, (piece.strengthPoints || 0) - (piece.equipmentStrengthBonus || 0)),
+      speedPoints: Math.max(0, (piece.speedPoints || 0) - (piece.equipmentSpeedBonus || 0)),
       bankedXp: piece.bankedXp || 0,
       alive: true,
+      equipmentId: piece.equipmentId || rosterState.pieces?.[key]?.equipmentId || null,
+      mercenary: rosterState.pieces?.[key]?.mercenary || null,
       deploymentType: piece.deploymentType || null,
       unlockedTechniques: Array.isArray(piece.unlockedTechniques) ? [...piece.unlockedTechniques] : [],
       equippedTechnique: piece.equippedTechnique || null,
@@ -188,15 +193,17 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
         deploymentType: prev?.deploymentType || null,
         unlockedTechniques: Array.isArray(prev?.unlockedTechniques) ? [...prev.unlockedTechniques] : [],
         equippedTechnique: prev?.equippedTechnique || null,
+        equipmentId: prev?.equipmentId || null,
+        mercenary: prev?.mercenary || null,
       };
     }
   }
 
-  const combatXp = (rosterState.combatXp || 0) + (COMBAT_XP_REWARD[outcome] || 0);
-  return ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...rosterState, pieces, combatXp, identities, revivesUsed: rosterState.revivesUsed || 0 })));
+  const credits = Number.isFinite(Number(rosterState.credits)) ? Number(rosterState.credits) : Number(rosterState.combatXp || 0);
+  return ensureDeploymentState(ensureUnitServiceState(ensureCombatIdentities({ ...rosterState, pieces, identities, credits, combatXp: 0, revivesUsed: rosterState.revivesUsed || 0 })));
 }
 
-// Revive una pieza caída gastando XP de combate: le devuelve la MITAD de
+// Revive una pieza caída gastando créditos: le devuelve la MITAD de
 // los puntos de fuerza/velocidad que tenía al morir (redondeando hacia
 // abajo) — no vuelve intacta, pero tampoco arranca totalmente de cero.
 export function revivePiece(rosterState, key, type) {
@@ -204,7 +211,8 @@ export function revivePiece(rosterState, key, type) {
   if (!dead || dead.alive !== false) return rosterState;
   if ((dead.strengthPoints || 0) + (dead.speedPoints || 0) === 0) return rosterState; // nada que revivir, la mitad de 0 es 0
   const cost = reviveCost(type);
-  if ((rosterState.combatXp || 0) < cost) return rosterState;
+  const availableCredits = Number.isFinite(Number(rosterState.credits)) ? Number(rosterState.credits) : Number(rosterState.combatXp || 0);
+  if (availableCredits < cost) return rosterState;
 
   const revived = {
     strengthPoints: Math.floor((dead.strengthPoints || 0) / 2),
@@ -214,12 +222,15 @@ export function revivePiece(rosterState, key, type) {
     deploymentType: dead.deploymentType || null,
     unlockedTechniques: Array.isArray(dead.unlockedTechniques) ? [...dead.unlockedTechniques] : [],
     equippedTechnique: dead.equippedTechnique || null,
+    equipmentId: dead.equipmentId || null,
+    mercenary: dead.mercenary || null,
   };
 
   return recordUnitRevive({
     ...rosterState,
     pieces: { ...rosterState.pieces, [key]: revived },
-    combatXp: rosterState.combatXp - cost,
+    credits: availableCredits - cost,
+    combatXp: 0,
     revivesUsed: (rosterState.revivesUsed || 0) + 1,
   }, key);
 }

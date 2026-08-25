@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import CombatScreen from './CombatScreen.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
@@ -8,10 +8,16 @@ import CombatCampaignMap from './CombatCampaignMap.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
+import CombatMarket from './CombatMarket.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { applyModifierToFen, encounterForRun } from '../roguelikeModifiers.js';
 import { buyStatPoint } from '../combat.js';
 import { loadRoster, saveRoster, revivePiece, renameRosterIdentity } from '../combatRoster.js';
+import { markCombatIdentityBioPending, saveCombatIdentityBio } from '../combatIdentity.js';
+import { buildUnitBioDossier } from '../aiNarrativeTasks.js';
+import { requestRemoteNarrative } from '../narrativeRemote.js';
+import { getToken } from '../auth.js';
+import { buyEquipment, hireMercenary } from '../combatEconomy.js';
 import { setRosterDeploymentType } from '../combatMetamorphosis.js';
 import { deploymentSummary, grantReserveRecruit, reserveRecruitTypeForNode } from '../combatDeployment.js';
 import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
@@ -85,7 +91,69 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   const [roster, setRoster] = useState(() => loadRoster());
   const [battleDebrief, setBattleDebrief] = useState(null);
   const [showCampaignTutorial, setShowCampaignTutorial] = useState(() => campaign.active && !loadMechanicTutorialProgress()?.['combat-campaign']?.seen);
+  const [showMarket, setShowMarket] = useState(false);
+  const [bioQueueTick, setBioQueueTick] = useState(0);
+  const bioRequestsRef = useRef(new Set());
+  const mountedRef = useRef(true);
   const serviceSummary = useMemo(() => summarizeCombatService(serviceRecord), [serviceRecord]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    const queued = Object.entries(roster.identities || {}).find(([key, identity]) => (
+      identity?.bioStatus === 'pending' && !bioRequestsRef.current.has(`${key}:${identity.identityId}`)
+    ));
+    if (!queued) return;
+    const [key, identity] = queued;
+    const requestKey = `${key}:${identity.identityId}`;
+    bioRequestsRef.current.add(requestKey);
+    const dossier = buildUnitBioDossier({
+      identity,
+      unitKey: key,
+      piece: roster.pieces?.[key],
+      existingBios: Object.values(roster.identities || {}).map((entry) => entry?.bio).filter(Boolean),
+    });
+    void requestRemoteNarrative(dossier, { token, timeoutMs: 8000 }).then((bio) => {
+      if (!bio || !mountedRef.current) return;
+      setRoster((current) => {
+        if (current.identities?.[key]?.identityId !== identity.identityId) return current;
+        const next = saveCombatIdentityBio(current, key, bio);
+        if (next !== current) saveRoster(next);
+        return next;
+      });
+    }).finally(() => {
+      if (mountedRef.current) setBioQueueTick((tick) => tick + 1);
+    });
+  }, [roster, bioQueueTick]);
+
+  function handleRequestUnitBio(key) {
+    setRoster((current) => {
+      const next = markCombatIdentityBioPending(current, key);
+      if (next !== current) saveRoster(next);
+      return next;
+    });
+  }
+
+  function handleHireMercenary(offer, contract) {
+    const next = hireMercenary(roster, offer, contract);
+    if (next === roster) return false;
+    saveRoster(next);
+    setRoster(next);
+    return true;
+  }
+
+  function handleBuyEquipment(itemId, key) {
+    const next = buyEquipment(roster, itemId, key);
+    if (next === roster) return false;
+    saveRoster(next);
+    setRoster(next);
+    return true;
+  }
 
   // `combatSessionActive` es útil para forzar un render al arrancar/terminar,
   // pero NO es la fuente de verdad de una batalla `fighting`: puede quedar
@@ -508,8 +576,10 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
               <>
                 <div className="campaign-quick-status" aria-label="Resumen de campaña">
                   <span>Sector <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
-                  <span><b>{campaign.operationalCredits}</b> créditos</span>
+                  <span title="Recurso temporal de esta campaña"><b>{campaign.operationalCredits}</b> suministros</span>
+                  <span title="Fondos persistentes para mercado y bajas"><b>{roster.credits || 0}</b> créditos</span>
                   {rosterDeployment.fallenCount > 0 && <span className="danger-text"><b>{rosterDeployment.fallenCount}</b> bajas</span>}
+                  <button type="button" className="campaign-market-link" onClick={() => setShowMarket(true)}>Mercado →</button>
                 </div>
                 <div className={`campaign-situation-banner campaign-friendly-next ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
                   <span>QUÉ HACER AHORA</span>
@@ -599,7 +669,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <details className="campaign-optional-panel campaign-session-details">
             <summary>Progreso, ejército y diario</summary>
             <div className="campaign-session-detail-grid">
-              <span>XP de combate <b>{roster.combatXp || 0}</b></span>
+              <span>Créditos <b>{roster.credits || 0}</b></span>
               <span>Efectivos <b>{rosterDeployment.totalRoster}</b></span>
               <span>Reserva <b>{rosterDeployment.reserveCount}</b></span>
             </div>
@@ -623,6 +693,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           </details>
 
           {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
+          {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
         </div>
       </div>
     );
@@ -639,6 +710,12 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             <p className="hero-scope-note campaign-home-lead">
               Una campaña de ajedrez con un ejército que recuerda lo que le pasa. Las reglas nuevas aparecen poco a poco.
             </p>
+
+            <div className="campaign-economy-strip" aria-label="Progreso de Combat">
+              <span><small>RANGO</small><b>{serviceSummary.rank.label}</b></span>
+              <span><small>CRÉDITOS</small><b>{roster.credits || 0}</b></span>
+              <button type="button" onClick={() => setShowMarket(true)}>Abrir mercado →</button>
+            </div>
 
             {!campaignEndResult && (
               <div className="campaign-home-action friendly">
@@ -680,6 +757,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
                     onMetamorphose={handleMetamorphoseRosterPiece}
                     onUnlockTechnique={handleUnlockRosterTechnique}
                     onEquipTechnique={handleEquipRosterTechnique}
+                    onRequestBio={handleRequestUnitBio}
                   />
                 </details>
 
@@ -710,6 +788,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
                 )}
               </div>
             </details>
+            {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
           </div>
         ) : (
           <>

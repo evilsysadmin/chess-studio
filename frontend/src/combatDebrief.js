@@ -38,7 +38,9 @@ export function buildCombatDebrief({
   bossDamageByIdentity = {},
   battleRecord = null,
   serviceResult = null,
-  combatXpGained = 0,
+  creditsGained = 0,
+  creditBreakdown = null,
+  contractsCompleted = [],
 } = {}) {
   const survivors = new Set(survivorIdentityIds || []);
   const stillAlive = aliveIdentityIds(afterRoster);
@@ -88,7 +90,9 @@ export function buildCombatDebrief({
     fallenCount: units.filter((unit) => unit.fallen).length,
     totalKills: units.reduce((sum, unit) => sum + unit.kills, 0),
     totalBossDamage: units.reduce((sum, unit) => sum + unit.bossDamage, 0),
-    combatXpGained: Math.max(0, Number(combatXpGained) || 0),
+    creditsGained: Math.max(0, Number(creditsGained) || 0),
+    creditBreakdown,
+    contractsCompleted: Array.isArray(contractsCompleted) ? contractsCompleted : [],
     meritGained: Math.max(0, Number(serviceResult?.meritGained) || 0),
     promoted: serviceResult?.promoted || false,
     currentRank: serviceResult?.currentRank || null,

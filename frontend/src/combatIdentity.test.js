@@ -7,6 +7,7 @@ describe('identidad de piezas de Combate', () => {
     expect(Object.keys(roster.identities)).toHaveLength(16);
     expect(roster.identities['p-a'].alias).toBeTruthy();
     expect(roster.identities['k-e'].alias).toBeTruthy();
+    expect(Object.values(roster.identities).every((identity) => identity.bioStatus === 'pending')).toBe(true);
     expect(new Set(Object.values(roster.identities).map((x) => x.alias)).size).toBe(16);
   });
 
@@ -26,6 +27,7 @@ describe('identidad de piezas de Combate', () => {
     }, () => 0, 1000);
     expect(roster.identities['p-a'].alias).toBe('Varela');
     expect(roster.identities['p-a'].identityId).toBe('unit-old');
+    expect(roster.identities['p-a'].bioStatus).toBe('pending');
     expect(roster.unitRecords['unit-old'].alias).toBe('Varela');
     expect(Object.values(roster.identities).some((entry) => ['Skippy', 'Biscuit', 'Noodles', 'Pogo'].includes(entry.alias))).toBe(false);
   });

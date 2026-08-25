@@ -5,6 +5,7 @@ import {
   buildObservabilitySummaryDossier,
   buildPostGameAutopsyDossier,
   buildTrainingPlanDossier,
+  buildUnitBioDossier,
 } from './aiNarrativeTasks.js';
 import {
   ANALYSIS_MODEL,
@@ -55,6 +56,13 @@ describe('AI task wiring', () => {
     expect(ANALYSIS_MODEL).toBe(QWEN_MODEL);
     expect(modelFor('generic')).toBe(QWEN_MODEL);
     expect(modelFor('player_portrait')).toBe(QWEN_MODEL);
+    expect(modelFor('unit_bio')).toBe(QWEN_MODEL);
     for (const eventType of RICH_ANALYSIS_EVENTS) expect(modelFor(eventType)).toBe(QWEN_MODEL);
+  });
+
+  it('la bio de unidad nace de una identidad persistente y no de datos privados', () => {
+    const dossier = buildUnitBioDossier({ identity: { identityId: 'unit-a', alias: 'Varela' }, unitKey: 'p-a', piece: {} });
+    expect(dossier).toMatchObject({ eventType: 'unit_bio', requestKind: 'unit_bio' });
+    expect(serialized(dossier)).not.toMatch(/username|email|token|password/i);
   });
 });
