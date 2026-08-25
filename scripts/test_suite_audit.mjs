@@ -129,9 +129,9 @@ if (checkCiWiring) {
     : [];
   if (!workflowFiles.length) fail('No hay workflows de GitHub Actions que auditar');
   const workflowSource = workflowFiles.map((name) => read(path.join(workflowsDir, name))).join('\n');
-  const mainCiPath = path.join(workflowsDir, 'ci.yml');
+  const mainCiPath = path.join(workflowsDir, 'cicd.yml');
   const coverageWorkflowPath = path.join(workflowsDir, 'coverage.yml');
-  if (!fs.existsSync(mainCiPath)) fail('Falta .github/workflows/ci.yml');
+  if (!fs.existsSync(mainCiPath)) fail('Falta .github/workflows/cicd.yml');
   if (!fs.existsSync(coverageWorkflowPath)) fail('Coverage informativo debe vivir fuera del CI de cada push');
   const mainCiSource = read(mainCiPath);
   const coverageWorkflowSource = read(coverageWorkflowPath);

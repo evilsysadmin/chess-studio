@@ -8,6 +8,11 @@ export function shouldApplyCompetitiveProgress(outcome, { learningMode = false, 
   return isCompletedGameOutcome(outcome) && !learningMode && !trainingPosition;
 }
 
+export function humanMoveCount(moveCount = 0, humanColor = 'w') {
+  const plies = Math.max(0, Number(moveCount) || 0);
+  return humanColor === 'b' ? Math.floor(plies / 2) : Math.ceil(plies / 2);
+}
+
 export function shouldTreatExitAsForfeit({ moveCount = 0, isGameOver = false, learningMode = false, trainingPosition = false } = {}) {
   return Number(moveCount || 0) > 0 && !isGameOver && !learningMode && !trainingPosition;
 }

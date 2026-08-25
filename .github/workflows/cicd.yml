@@ -1,4 +1,4 @@
-name: Chess Studio Pipeline
+name: Chess Studio CI/CD
 
 on:
   push:

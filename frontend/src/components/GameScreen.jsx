@@ -27,6 +27,8 @@ import { noteworthyPresentation } from '../spectatorReactions.js';
 import { getToken, getUsername } from '../auth.js';
 import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
 import { useGameClock } from '../useGameClock.js';
+import { nextBestAction } from '../nextBestAction.js';
+import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -83,14 +85,22 @@ export default function GameScreen({
   onTrainPersonal,
   onChatUpdate,
   onPersistenceState,
+  onCustomize,
 }) {
   const humanColor = game.humanColor || 'w';
   const [selected, setSelected] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [busy, setBusy] = useState(false);
+  const [showBoardCoordinates, setShowBoardCoordinates] = useState(() => getBoardCoordinates());
   const [zenMode, setZenMode] = useState(() => loadZenMode());
   const zenModeRef = useRef(zenMode);
   zenModeRef.current = zenMode;
+
+  useEffect(() => {
+    const refreshAccessibilityPreferences = () => setShowBoardCoordinates(getBoardCoordinates());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshAccessibilityPreferences);
+    return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshAccessibilityPreferences);
+  }, []);
 
   const [forcedOutcome, setForcedOutcome] = useState(null);
   const { hasClock, whiteTime, blackTime, flagFallen, addIncrement, tickingColor } = useGameClock({
@@ -623,6 +633,7 @@ export default function GameScreen({
     : game.status === 'checkmate'
       ? (game.turn === humanColor ? 'loss' : 'win')
       : 'draw');
+  const nextAction = nextBestAction({ outcome: finalOutcome, moveCount: game.history.length, hasReport: game.history.length > 0 });
 
   let statusText;
   if (forcedOutcome) statusText = 'Sudden Death · tres vidas agotadas';
@@ -708,7 +719,8 @@ export default function GameScreen({
                 animate={pendingAnim}
                 hintMove={zenMode ? null : hint}
                 orientation={humanColor === 'b' ? 'black' : 'white'}
-                showCoordinates={!zenMode}
+                showCoordinates={!zenMode && showBoardCoordinates}
+                onCustomize={onCustomize}
               />
               {!zenMode && selectionNotice && (
                 <div className={`move-availability-note ${selectionNotice.kind}`} role="status" aria-live="polite">
@@ -774,7 +786,8 @@ export default function GameScreen({
       </div>
 
       {(game.isGameOver || flagFallen || forcedOutcome) && (
-        <div className="endgame-banner">
+        <div className={`endgame-banner outcome-${finalOutcome}`}>
+          <span className="endgame-eyebrow">{nextAction.eyebrow}</span>
           <h2>{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
           <p>
             {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al rating.' : flagFallen
@@ -794,21 +807,22 @@ export default function GameScreen({
             <button className="primary-btn" onClick={onNextSeriesGame}>{seriesNextActionLabel(seriesState)}</button>
           ) : runState?.active && onNextRunGame ? (
             <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
+          ) : nextAction.id === 'review' ? (
+            <button className="primary-btn" onClick={() => setShowReport(true)}>{nextAction.label}</button>
+          ) : onRematch ? (
+            <button className="primary-btn" onClick={() => onRematch({ difficulty: game.difficulty, humanColor, timeControl, ghostStyle: game.ghostStyle || null })}>{nextAction.label}</button>
           ) : (
             <button className="primary-btn" onClick={handleAbandon}>Volver al menú</button>
           )}
-          {onRematch && !seriesState && !runState?.active && (
-            <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onRematch({ difficulty: game.difficulty, humanColor, timeControl, ghostStyle: game.ghostStyle || null })}>
-              Revancha inmediata
-            </button>
-          )}
+          {!seriesState && !runState?.active && <p className="endgame-next-detail">{nextAction.detail}</p>}
+          {(seriesState || runState?.active || nextAction.id === 'review' || onRematch) && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleAbandon}>Volver al menú</button>}
           {onShareResult && (
             <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
               Compartir resultado
             </button>
           )}
           {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
-          {game.history.length > 0 && (
+          {game.history.length > 0 && nextAction.id !== 'review' && (
             <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => setShowReport(true)}>
               Resumen de la partida
             </button>

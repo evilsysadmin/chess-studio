@@ -1132,6 +1132,10 @@
   padding: 1.25rem;
   margin-top: 1rem;
 }
+.endgame-eyebrow { display: block; margin-bottom: .35rem; color: var(--brass-dim); font: 600 .64rem/1.2 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
+.endgame-banner.outcome-win { border-color: color-mix(in srgb, var(--success) 55%, var(--ink-3)); box-shadow: 0 18px 48px rgba(0,0,0,.22); }
+.endgame-banner .primary-btn { min-width: min(100%, 230px); }
+.endgame-next-detail { max-width: 38ch; margin: .65rem auto 0 !important; font-size: .74rem !important; }
 
 .endgame-banner h2 {
   font-family: var(--font-display);

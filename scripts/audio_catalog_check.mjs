@@ -46,9 +46,8 @@ assert(new Set(grouped.map((theme) => theme.id)).size === ids.length, 'un tema a
 const expectedGenres = new Map([
   ['SPA / Zen', 2],
   ['Ecléctica', 3],
-  ['Synth Metal', 3],
+  ['Energía', 5],
   ['Lo-Fi / Chill', 2],
-  ['Synthwave', 2],
   ['Trip-Hop / Downtempo', 2],
   ['Bossa / Latin Lounge', 2],
   ['Piano / Minimal', 2],
@@ -91,6 +90,8 @@ assert(getAmbientThemeSoundProfile('rookGarage').percussionPunch > 1.2, 'Garage 
 const energyIds = ['neonSiege', 'overclockedKnight', 'reactorGambit'];
 assert(energyIds.every((id) => getAmbientThemeSoundProfile(id)?.percussionKit === 'synth-metal'), 'Energía debe usar batería synth-metal propia');
 assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.family)).size === energyIds.length, 'los temas de Energía necesitan identidades distintas');
+assert(['neonKnight','midnightArcade',...energyIds].every((id) => getAmbientThemeSoundProfile(id)?.estimatedBpm >= 150), 'Energía necesita al menos 150 BPM percibidos');
+assert(['postRockMidnight','rookGarage','desertDriveRock'].every((id) => getAmbientThemeSoundProfile(id)?.estimatedBpm >= 130), 'los temas rock de Ecléctica necesitan más pulso');
 assert(PHRASE_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: melodía fuera de la rejilla rítmica');
 assert(SAX_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: saxo fuera de la rejilla rítmica');
 for (const [id, profile] of profiled) {

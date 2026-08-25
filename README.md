@@ -62,7 +62,7 @@
 
 ### v16.6dm43d · Pipeline único + Retro Player persistente en refresh
 
-- GitHub Actions concentra la ruta de producción en `.github/workflows/ci.yml` con tres jobs seriales y visibles: `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Desaparecen `workflow_run`, `terraform-cloudflare.yml` y `static.yml`; Pages sólo puede arrancar después de Terraform y ambos despliegan `github.sha`, el mismo commit que acaba de pasar Tests.
+- GitHub Actions concentra la ruta de producción en `.github/workflows/cicd.yml` con tres jobs seriales y visibles: `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Desaparecen `workflow_run`, `terraform-cloudflare.yml` y `static.yml`; Pages sólo puede arrancar después de Terraform y ambos despliegan `github.sha`, el mismo commit que acaba de pasar Tests.
 - El job `Tests` reúne frontend, backend, preflight estático, seguridad, imágenes Docker, smoke real de Compose y el smoke crítico de Playwright antes de permitir cualquier despliegue.
 - El Retro Player conserva en `sessionStorage` pista, posición y transporte (`playing`, `paused`, `stopped`) durante refresh/remount. Un Stop sigue siendo Stop después de F5; Pausa conserva la posición; Play continúa la sesión. Logout/login limpia ese transporte y abre una sesión musical nueva con selección aleatoria como antes.
 - El preflight y el auditor de suite consideran regresión volver a introducir workflows de producción separados o `workflow_run`.
@@ -900,7 +900,7 @@ Detalles en `docs/v16.1-global-player-game-chat.md`.
 # Estudio de Ajedrez
 
 <!-- Cambia TU-USUARIO/TU-REPO por los reales una vez que publiques el repo -->
-![CI](https://github.com/TU-USUARIO/TU-REPO/actions/workflows/ci.yml/badge.svg)
+![CI/CD](https://github.com/TU-USUARIO/TU-REPO/actions/workflows/cicd.yml/badge.svg)
 
 App de ajedrez full-stack: motor de IA propio (minimax con poda alfa-beta),
 seis modos de juego, progresión persistente, cuentas de usuario, y un
@@ -991,7 +991,7 @@ npm test           # corre toda la suite una vez
 npm run test:watch # modo watch
 ```
 
-Hay suites de backend y frontend para motor de IA, endpoints, combate, rating, torneo, análisis de partidas, autenticación y el resto de módulos. `.github/workflows/ci.yml` ejecuta el pipeline principal en cada push y pull request; en `main` encadena `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Los workflows auxiliares de coverage/E2E completo son informativos/manuales o programados; el deploy de producción no vive en ellos.
+Hay suites de backend y frontend para motor de IA, endpoints, combate, rating, torneo, análisis de partidas, autenticación y el resto de módulos. `.github/workflows/cicd.yml` ejecuta el pipeline principal en cada push y pull request; en `main` encadena `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Los workflows auxiliares de coverage/E2E completo son informativos/manuales o programados; el deploy de producción no vive en ellos.
 frontend antes de publicar — si algo falla, el deploy no arranca.
 
 ## Modos de juego
@@ -1244,7 +1244,7 @@ genérico de FastAPI; `/api/health` es liveness y `/api/ready` es el readiness q
 1. En el repo de GitHub: **Settings → Pages → Source: GitHub Actions**.
 2. **Settings → Secrets and variables → Actions → Variables**, agrega
    una variable `VITE_API_URL` con `https://tu-backend.onrender.com/api`.
-3. Haz push a `main`. `.github/workflows/ci.yml` ejecuta un único pipeline serial: `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Si Tests o Terraform fallan, Pages no arranca; las tres etapas trabajan sobre el mismo `github.sha`.
+3. Haz push a `main`. `.github/workflows/cicd.yml` ejecuta un único pipeline serial: `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Si Tests o Terraform fallan, Pages no arranca; las tres etapas trabajan sobre el mismo `github.sha`.
 4. En un par de minutos, el sitio queda en
    `https://tu-usuario.github.io/nombre-del-repo/`.
 

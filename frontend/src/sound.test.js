@@ -87,8 +87,8 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cuarteto nocturno');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Lo-fi · lluvia en cassette');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Lo-fi · ventana encendida');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Synthwave · caballo de neón');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Synthwave · arcade 02:17');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Outrun · caballo de neón');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Boombox · arcade 02:17');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · lluvia sobre hormigón');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · estática de terciopelo');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Bossa · dama en la terraza');
@@ -110,9 +110,8 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_GROUPS.flatMap((group) => group.themes)).toHaveLength(AMBIENT_THEME_OPTIONS.length);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'SPA / Zen')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Ecléctica')?.themes).toHaveLength(3);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Synth Metal')?.themes).toHaveLength(3);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Energía')?.themes).toHaveLength(5);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Lo-Fi / Chill')?.themes).toHaveLength(2);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Synthwave')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Trip-Hop / Downtempo')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Dark Ambient')).toBeUndefined();
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.id)).not.toEqual(expect.arrayContaining(['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault']));

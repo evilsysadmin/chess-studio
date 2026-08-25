@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
+import { gameExitDisposition, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
 
 describe('completed game outcomes', () => {
   it('solo considera completadas victoria, tablas y derrota', () => {
@@ -30,5 +30,12 @@ describe('completed game outcomes', () => {
     expect(shouldTreatExitAsForfeit({ moveCount: 7, isGameOver: true })).toBe(false);
     expect(shouldTreatExitAsForfeit({ moveCount: 7, learningMode: true })).toBe(false);
     expect(shouldTreatExitAsForfeit({ moveCount: 7, trainingPosition: true })).toBe(false);
+  });
+
+  it('no penaliza al jugador negro si abandona después de la apertura automática de la CPU', () => {
+    expect(humanMoveCount(1, 'b')).toBe(0);
+    expect(gameExitDisposition({ moveCount: humanMoveCount(1, 'b'), explicitAction: true })).toBe('cancel');
+    expect(humanMoveCount(2, 'b')).toBe(1);
+    expect(gameExitDisposition({ moveCount: humanMoveCount(2, 'b'), explicitAction: true })).toBe('forfeit');
   });
 });

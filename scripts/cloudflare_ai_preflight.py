@@ -22,7 +22,7 @@ WRANGLER = ROOT / "infra/cloudflare/wrangler.toml"
 TF_MAIN = ROOT / "infra/cloudflare/main.tf"
 BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
-WORKFLOW = ROOT / ".github/workflows/ci.yml"
+WORKFLOW = ROOT / ".github/workflows/cicd.yml"
 
 EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
 EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]

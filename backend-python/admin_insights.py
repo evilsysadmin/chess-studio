@@ -262,6 +262,9 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
     # distinguir iniciada/cancelada/finalizada sin inventarlo a partir del
     # historial final. Builds antiguas caen al historial tradicional de abajo.
     lifecycle_rows = [row for row in game_activity if isinstance(row, dict)]
+    lifecycle_started = {str(row.get("gameId")) for row in lifecycle_rows if row.get("gameId") and row.get("state") == "started"}
+    lifecycle_finished = {str(row.get("gameId")) for row in lifecycle_rows if row.get("gameId") and row.get("state") == "finished"}
+    lifecycle_cancelled = {str(row.get("gameId")) for row in lifecycle_rows if row.get("gameId") and row.get("state") == "cancelled"}
     for row in sorted(lifecycle_rows, key=lambda r: str(r.get("date") or ""), reverse=True)[:12]:
         state = str(row.get("state") or "").lower()
         if state not in {"started", "cancelled", "finished"}:
@@ -359,6 +362,10 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         "gamesPlayed": len(game_history),
         "combatBattles": len(combat_history),
         "totalGames": total_games,
+        "funnelStarted": len(lifecycle_started),
+        "funnelFinished": len(lifecycle_finished),
+        "funnelCancelled": len(lifecycle_cancelled),
+        "funnelCompletionPct": round((len(lifecycle_finished) / len(lifecycle_started)) * 100) if lifecycle_started else None,
         "wins": wins,
         "draws": draws,
         "losses": losses,

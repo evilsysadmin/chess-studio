@@ -44,9 +44,9 @@ function InsightsHubHeader({ section, onSectionChange, onExit }) {
     <>
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section insights-hub-hero">
-        <span className="section-label">Tu expediente de juego</span>
+        <span className="section-label">Mi progreso</span>
         <div className="combat-heading-row"><h2>Así juegas</h2><MechanicTutorialHelp tutorialId="insights" /></div>
-        <p className="hero-scope-note">Tus patrones, tus errores y qué entrenar ahora.</p>
+        <p className="hero-scope-note">Qué mejorar ahora y cómo estás evolucionando.</p>
         <div className="insights-subnav" role="tablist" aria-label="Secciones de Así juegas">
           <button
             type="button"

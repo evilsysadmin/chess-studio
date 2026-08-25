@@ -192,6 +192,7 @@ export default function Board({
   onPieceClick, // (square, event) => void; si existe, el click de la pieza no burbujea a la casilla
   onPieceDoubleClick, // (square, event) => void; acción explícita de doble clic sobre la pieza
   pieceLabels, // { square: string } etiqueta corta de identidad para deployment
+  onCustomize, // acceso contextual y opcional a piezas/apariencia
   // encuadre rojo (distinto del dorado genérico de lastMove) + pieza fantasma semitransparente
   // en la casilla de origen, para que quede claro qué jugada se está señalando como error.
 }) {
@@ -323,6 +324,7 @@ export default function Board({
 
   return (
     <div className={`board-wrap board-theme-${loadBoardTheme()} piece-skin-${pieceSkin} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'}`}>
+      {onCustomize && <button type="button" className="board-appearance-tab" onClick={onCustomize} aria-label="Cambiar apariencia y piezas del tablero" title="Cambiar piezas"><span aria-hidden="true">♞</span><b>Piezas</b></button>}
       <div className="board-grid">
         {ranks.map((rank, rIdxDisplay) => {
           const rIdx = RANKS.indexOf(rank);

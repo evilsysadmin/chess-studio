@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TIME_CONTROLS } from '../clock.js';
 import { getAmbientVolume, isFxMuted, isMusicMuted, setAmbientVolume, setFxMuted, setMusicMuted } from '../sound.js';
-import { getDefaultTimeControlId, getUiLanguage, setDefaultTimeControlId, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
+import { getBoardCoordinates, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setDefaultTimeControlId, setReducedMotion, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { levelForPoints, loadTournament } from '../tournament.js';
 import { loadSelectedSkin, PIECE_SKINS, saveSelectedSkin, unlockedSkins } from '../tournamentRewards.js';
@@ -29,6 +29,8 @@ export default function UserSettingsPanel({ onClose, onBoard3D }) {
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => getAmbientVolume());
   const [pieceSkin, setPieceSkin] = useState(() => loadSelectedSkin());
+  const [reducedMotion, setReducedMotionState] = useState(() => getReducedMotion());
+  const [boardCoordinates, setBoardCoordinatesState] = useState(() => getBoardCoordinates());
   const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
   const availableSkinIds = new Set(unlockedSkins(tournamentLevel).map((skin) => skin.id));
 
@@ -64,6 +66,24 @@ export default function UserSettingsPanel({ onClose, onBoard3D }) {
         </div>
 
         <div className="settings-sections">
+          <section className="settings-appearance-featured">
+            <div className="settings-section-intro"><span className="section-label">Tu mesa</span><h3>Apariencia del juego</h3><small>Elige una skin y comprueba el resultado directamente en el mini-tablero.</small></div>
+            <div className="piece-skin-picker" role="radiogroup" aria-label="Estilo de piezas">
+              {PIECE_SKINS.map((skin) => {
+                const unlocked = availableSkinIds.has(skin.id);
+                const preview = SKIN_PREVIEWS[skin.id];
+                return (
+                  <button key={skin.id} type="button" role="radio" aria-checked={pieceSkin === skin.id} className={`piece-skin-option${pieceSkin === skin.id ? ' is-selected' : ''}`} disabled={!unlocked} onClick={() => updatePieceSkin(skin.id)}>
+                    <span className={`piece-skin-preview piece-skin-preview-${skin.id}`} aria-hidden="true"><span><img src={preview[0]} alt="" /></span><span><img src={preview[1]} alt="" /></span><span /><span /></span>
+                    <span><b>{unlocked ? skin.label : `🔒 ${skin.label}`}</b><small>{unlocked ? skin.description : `Se desbloquea en Torneo · nivel ${skin.level}`}</small></span>
+                    {pieceSkin === skin.id && <span className="piece-skin-selected-label">Seleccionada</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="settings-toggle"><input type="checkbox" checked={boardCoordinates} onChange={(event) => setBoardCoordinatesState(setBoardCoordinates(event.target.checked))} /><span>Mostrar coordenadas del tablero</span></label>
+            <label className="settings-toggle"><input type="checkbox" checked={reducedMotion} onChange={(event) => setReducedMotionState(setReducedMotion(event.target.checked))} /><span>Reducir animaciones</span></label>
+          </section>
           <section>
             <h3>Partidas</h3>
             <label className="settings-field"><span>Reloj por defecto</span><select value={timeControlId} onChange={(event) => updateTimeControl(event.target.value)}>{TIME_CONTROLS.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
@@ -81,23 +101,6 @@ export default function UserSettingsPanel({ onClose, onBoard3D }) {
             <h3>Idioma</h3>
             <label className="settings-field"><span>Interfaz</span><select value={language} onChange={(event) => updateLanguage(event.target.value)}>{SUPPORTED_UI_LANGUAGES.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
             <small>La pantalla de acceso ya está localizada. El resto de la interfaz irá adoptando esta preferencia progresivamente.</small>
-          </section>
-
-          <section>
-            <h3>Apariencia</h3>
-            <span className="settings-field-label">Piezas</span>
-            <div className="piece-skin-picker" role="radiogroup" aria-label="Estilo de piezas">
-              {PIECE_SKINS.map((skin) => {
-                const unlocked = availableSkinIds.has(skin.id);
-                const preview = SKIN_PREVIEWS[skin.id];
-                return (
-                  <button key={skin.id} type="button" role="radio" aria-checked={pieceSkin === skin.id} className={`piece-skin-option${pieceSkin === skin.id ? ' is-selected' : ''}`} disabled={!unlocked} onClick={() => updatePieceSkin(skin.id)}>
-                    <span className={`piece-skin-preview piece-skin-preview-${skin.id}`} aria-hidden="true"><img src={preview[0]} alt="" /><img src={preview[1]} alt="" /></span>
-                    <span><b>{unlocked ? skin.label : `🔒 ${skin.label}`}</b><small>{unlocked ? skin.description : `Se desbloquea en Torneo · nivel ${skin.level}`}</small></span>
-                  </button>
-                );
-              })}
-            </div>
           </section>
 
           {onBoard3D && <section>

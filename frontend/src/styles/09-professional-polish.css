@@ -163,6 +163,13 @@ button[disabled] {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .menu-card:not(:disabled):hover, .menu-card:not(:disabled):focus-visible { transform: none; }
 }
+html[data-reduced-motion='true'] *, html[data-reduced-motion='true'] *::before, html[data-reduced-motion='true'] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+
+.home-next-action { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .8rem; margin-top: .65rem; padding: .72rem .85rem; border: 1px solid var(--line-soft); border-radius: var(--radius-control); background: rgba(0,0,0,.10); }
+.home-next-action > div { display: grid; gap: .1rem; }
+.home-next-action strong { color: var(--parchment); font-size: .86rem; }
+.home-next-action small { color: var(--parchment-dim); font-size: .7rem; }
+@media (max-width: 560px) { .home-next-action { grid-template-columns: 1fr; } .home-next-action .secondary-btn { width: 100%; } }
 
 /* Onboarding inline: orienta sin bloquear Home ni competir con Continuar. */
 .home-start-guide {

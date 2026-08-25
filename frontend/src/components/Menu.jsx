@@ -16,6 +16,7 @@ import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../user
 import { shouldEnableHomePlayNudge } from '../homePlayNudgePolicy.js';
 import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
 import { setProfileStorageItem } from '../profileKeys.js';
+import { homeNextBestAction } from '../nextBestAction.js';
 
 const HOME_GUIDE_KEY = 'chess-study-home-guide-dismissed-v1';
 
@@ -70,6 +71,7 @@ export default function Menu({
     todayKey: dailyChallengeDayKey(),
     activity: loadGameActivity(),
   }), []);
+  const nextAction = useMemo(() => homeNextBestAction(loadGameActivity()), []);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());
@@ -137,6 +139,17 @@ export default function Menu({
           </div>
         </details>
       </section>
+
+      {nextAction && (
+        <section className="home-next-action" aria-label="Recomendación para tu próxima partida">
+          <div><span className="section-label">{nextAction.eyebrow}</span><strong>{nextAction.title}</strong><small>{nextAction.detail}</small></div>
+          <button type="button" className="secondary-btn" onClick={() => {
+            if (nextAction.id === 'practice') onNewGame(difficulty, color, { learning: true, timeControlId });
+            else if (nextAction.id === 'tournament') onTournament();
+            else setShowQuickMatch(true);
+          }}>{nextAction.label} →</button>
+        </section>
+      )}
 
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">

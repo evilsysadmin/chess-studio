@@ -242,7 +242,18 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         return f"{san}. Queda registrado."
     if isinstance(result, str) and result:
         return f"Resultado: {result}. El tablero ya ha presentado su informe."
-    return "El tablero ha hablado. Yo, por una vez, no voy a inventarle detalles."
+    if event_type == "player_portrait":
+        overall = clean.get("overall", {}) if isinstance(clean, dict) else {}
+        losses = overall.get("losses", 0) if isinstance(overall, dict) else 0
+        draws = overall.get("draws", 0) if isinstance(overall, dict) else 0
+        if isinstance(losses, (int, float)) and losses > 0:
+            return "Objetivo para la próxima partida: antes de cada jugada rival, revisa jaques, capturas y amenazas; anota la primera ocasión en que esa pausa evita perder material."
+        if isinstance(draws, (int, float)) and draws > 0:
+            return "Objetivo para la próxima partida: cuando tengas ventaja, simplifica una sola vez cambiando piezas y conserva los peones; comprueba después si el final fue más fácil de convertir."
+        return "Objetivo para la próxima partida: antes de mover, identifica la amenaza rival y compara dos jugadas candidatas; elige sólo después de esa comprobación."
+    if event_type in RICH_ANALYSIS_EVENT_TYPES:
+        return "Siguiente paso: revisa la posición crítica, compara dos jugadas candidatas y practica una vez el patrón que decidió la partida."
+    return "Antes de tu próxima jugada, revisa jaques, capturas y amenazas; esa pausa de diez segundos evita más errores que mover por intuición."
 
 
 def _grounding_haystack(event_type: str, facts: dict[str, Any]) -> str:

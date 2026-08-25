@@ -1168,6 +1168,23 @@ def test_admin_recent_activity_prefers_explicit_game_lifecycle():
     assert not any(row.get("text") == "Victoria" for row in rows)
 
 
+def test_admin_summary_exposes_anonymous_game_completion_funnel():
+    import json
+    from admin_insights import _extract_summary_stats
+
+    profile = {"data": {"chess-study-game-activity": json.dumps([
+        {"gameId": "g1", "state": "started"},
+        {"gameId": "g1", "state": "finished", "outcome": "win"},
+        {"gameId": "g2", "state": "started"},
+        {"gameId": "g2", "state": "cancelled"},
+    ])}}
+    summary = _extract_summary_stats(profile)
+    assert summary["funnelStarted"] == 2
+    assert summary["funnelFinished"] == 1
+    assert summary["funnelCancelled"] == 1
+    assert summary["funnelCompletionPct"] == 50
+
+
 def test_activity_heartbeat_is_protected_and_lightweight():
     assert raw_client.post("/api/auth/activity").status_code == 401
     assert client.post("/api/auth/activity").status_code == 204

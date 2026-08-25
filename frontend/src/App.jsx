@@ -23,7 +23,7 @@ import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { saveGameRecord, updateGameRecordChat } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
-import { isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
+import { humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadRating, saveRating, updateRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
@@ -326,7 +326,7 @@ function AppInner({ isAdminUser }) {
   function handleExitGame() {
     if (game?.id) {
       const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-      const exitDisposition = gameExitDisposition({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
+      const exitDisposition = gameExitDisposition({ moveCount: humanMoveCount(game.history?.length || 0, game.humanColor), isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
       if (exitDisposition === 'forfeit') handleCasualGameEnd('loss', game, { endReason: 'resignation' });
       else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
     }
@@ -489,7 +489,7 @@ function AppInner({ isAdminUser }) {
     try {
       if (game?.id) {
         const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-        const exitDisposition = gameExitDisposition({ moveCount: game.history?.length || 0, isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
+        const exitDisposition = gameExitDisposition({ moveCount: humanMoveCount(game.history?.length || 0, game.humanColor), isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
         if (exitDisposition === 'forfeit') handleCasualGameEnd('loss', game, { endReason: 'resignation' });
         else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
         await api.deleteGame(game.id).catch(() => {});
@@ -741,11 +741,11 @@ function AppInner({ isAdminUser }) {
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
                       <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
                     </button>
-                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setInsightsLandingSection('career'); navigateTo('insights'); }}>
-                      <span aria-hidden="true">◫</span><span><b>Mi progreso</b><small>Historial, logros y evolución</small></span>
+                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}>
+                      <span aria-hidden="true">◫</span><span><b>Mi progreso</b><small>Diagnóstico y siguiente mejora</small></span>
                     </button>
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>
-                      <span aria-hidden="true">⚙</span><span><b>Ajustes</b><small>Sonido y experiencia</small></span>
+                      <span aria-hidden="true">⚙</span><span><b>Personalizar</b><small>Tablero, piezas y sonido</small></span>
                     </button>
                     <div className="masthead-account-menu-separator" role="separator" />
                     <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { setShowAccountMenu(false); void handleGlobalLogout(); }} disabled={loggingOut}>
@@ -767,7 +767,7 @@ function AppInner({ isAdminUser }) {
               onRatingClick={() => setShowRatingDetail(true)}
             />
           )}
-          {!isBoardGameView && view !== 'menu' && (
+          {!isBoardGameView && view !== 'menu' && view !== 'insights' && (
             <div className="navigation-back-hint">ESC o clic derecho · volver / cerrar</div>
           )}
         </div>
@@ -836,6 +836,7 @@ function AppInner({ isAdminUser }) {
             onExit={handleExitGame}
             onError={setError}
             onPersistenceState={setGameSaveState}
+            onCustomize={() => setShowSettings(true)}
             onGameEnd={handleCasualGameEnd}
             onChatUpdate={handleGameChatUpdate}
             hintMode={learningMode ? 'free' : 'off'}
@@ -882,6 +883,7 @@ function AppInner({ isAdminUser }) {
             combatSessionId="free"
             onBattleUiActive={setCombatBattleUiActive}
             onPersistenceState={setGameSaveState}
+            onCustomize={() => setShowSettings(true)}
             onBattleStart={(meta = {}) => {
               if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord });
             }}

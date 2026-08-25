@@ -111,7 +111,7 @@ add(bool(git), "git disponible", git or "git no está en PATH")
 # CI and security wiring. The production workflow intentionally delegates
 # cheap structural checks to `make static-preflight`; diagnose the effective
 # wiring instead of requiring every script name to appear literally in YAML.
-ci = root / ".github/workflows/ci.yml"
+ci = root / ".github/workflows/cicd.yml"
 ci_text = ci.read_text("utf-8", errors="ignore") if ci.exists() else ""
 makefile_text = (root / "Makefile").read_text("utf-8", errors="ignore") if (root / "Makefile").exists() else ""
 static_preflight_line = re.search(r"(?m)^static-preflight:([^\n]*)$", makefile_text)

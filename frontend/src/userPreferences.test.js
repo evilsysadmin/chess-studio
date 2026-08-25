@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
-import { getDefaultTimeControlId, getUiLanguage, setDefaultTimeControlId, setUiLanguage } from './userPreferences.js';
+import { getBoardCoordinates, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setDefaultTimeControlId, setReducedMotion, setUiLanguage } from './userPreferences.js';
 
 describe('user preferences', () => {
   beforeEach(() => { localStorage.clear(); clearStorageMemoryFallback(); });
@@ -14,5 +14,13 @@ describe('user preferences', () => {
     expect(getUiLanguage()).toBe('es');
     expect(setUiLanguage('en')).toBe('en');
     expect(getUiLanguage()).toBe('en');
+  });
+  it('guarda preferencias explícitas de accesibilidad del tablero', () => {
+    expect(getBoardCoordinates()).toBe(true);
+    expect(setBoardCoordinates(false)).toBe(false);
+    expect(getBoardCoordinates()).toBe(false);
+    expect(getReducedMotion()).toBe(false);
+    expect(setReducedMotion(true)).toBe(true);
+    expect(getReducedMotion()).toBe(true);
   });
 });

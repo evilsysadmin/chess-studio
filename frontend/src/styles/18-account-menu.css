@@ -75,6 +75,30 @@
 .masthead-game-compact .masthead-account-trigger { width: 38px; min-height: 38px; justify-content: center; padding: 0; }
 .masthead-game-compact .masthead-account-trigger > span:not(.masthead-account-avatar) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .masthead-game-compact .masthead-account-avatar { width: 28px; height: 28px; }
+.masthead-game-compact .masthead-actions { gap: .55rem; }
+.masthead-game-compact .masthead-actions .save-status-badge {
+  position: static;
+  right: auto;
+  top: auto;
+  flex: 0 0 auto;
+  transform: none;
+}
+
+/* Mi progreso comparte la amplitud y el ritmo de tarjetas de Home. */
+.insights-hub { gap: .65rem; }
+.insights-hub > .back-link { margin-bottom: 0; }
+.insights-hub-hero { padding-top: .55rem; padding-bottom: .55rem; }
+.insights-hub-hero h2 { margin-block: .12rem; }
+.insights-hub-hero .hero-scope-note { margin-block: .1rem .45rem; }
+.insights-hub-hero .insights-subnav { margin-top: .45rem; }
+.insights-hub .ai-player-portrait { margin-top: 0; padding-block: .85rem; }
+.insights-hub .ai-player-portrait-text { margin-block: .55rem; }
+
+@media (min-width: 900px) {
+  .menu.tournament-panel.insights-hub { max-width: min(1480px, calc(100vw - 3rem)); }
+  .insights-hub-hero .combat-heading-row { min-height: 0; }
+  .insights-hub-hero .insights-subnav button { padding-block: .55rem; }
+}
 
 @media (max-width: 700px) {
   .masthead-account-trigger { width: 40px; min-height: 40px; justify-content: center; padding: 0; }

@@ -17,7 +17,7 @@ const app = read('frontend/src/App.jsx');
 const outcome = read('frontend/src/gameOutcome.js');
 const combat = read('frontend/src/components/useCombatController.js');
 const smoke = read('e2e/smoke.spec.js');
-const ci = read('.github/workflows/ci.yml');
+const ci = read('.github/workflows/cicd.yml');
 
 requireText(restore, "return classifyRestoreFailure(error) === 'stale-session';", 'restauración debe distinguir sesión obsoleta de fallo transitorio');
 requireText(restore, "Tu sesión sigue guardada; reintenta cuando vuelva el servidor.", 'fallo transitorio debe conservar snapshot y ofrecer reintento');
