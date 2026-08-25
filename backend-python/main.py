@@ -465,6 +465,20 @@ async def register(body: RegisterRequest, request: Request):
     except ustore.UserAlreadyExists:
         # Cubre la carrera entre el GET anterior y el INSERT único de Mongo.
         raise HTTPException(409, "Ese usuario ya existe.")
+    try:
+        # La cuenta acaba de nacer y todavía no se ha entregado ningún token.
+        # Si quedó un perfil huérfano de una eliminación antigua con el mismo
+        # username, debe desaparecer antes del primer login: un alta nueva es
+        # siempre vanilla y jamás hereda datos de una identidad anterior.
+        await pstore.delete_profile(username)
+    except PersistentStorageUnavailable as exc:
+        # No entregamos una cuenta cuyo estado inicial no podemos garantizar.
+        # El rollback deja el username disponible para reintentar el alta.
+        try:
+            await ustore.delete_user(username)
+        except PersistentStorageUnavailable:
+            access_logger.error("No se pudo revertir el alta incompleta de user=%s", username)
+        raise HTTPException(503, "No se pudo inicializar el perfil nuevo. Reintenta en unos segundos.") from exc
     request.state.username = username
     return {"token": create_token(username), "username": username}
 

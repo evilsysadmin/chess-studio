@@ -274,6 +274,27 @@ describe('pullProfileFromServer', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(401, { detail: 'Sesión expirada' })));
     expect((await pullProfileFromServer()).status).toBe('unauthorized');
   });
+
+  it('una respuesta tardía de Alice no rehidrata su historial después de autenticar a Bob', async () => {
+    localStorage.setItem('chess-study-auth-token', 'alice-token');
+    localStorage.setItem('chess-study-auth-username', 'alice');
+
+    let resolveProfile;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => { resolveProfile = resolve; })));
+    const pending = pullProfileFromServer();
+    await Promise.resolve();
+
+    localStorage.setItem('chess-study-auth-token', 'bob-token');
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    localStorage.setItem('chess-study-game-history', '[{"id":"bob-only"}]');
+    resolveProfile(response(200, {
+      data: { 'chess-study-game-history': '[{"id":"alice-secret"}]' },
+      revisions: { 'chess-study-game-history': 4 },
+    }));
+
+    await expect(pending).resolves.toMatchObject({ status: 'superseded', restored: 0 });
+    expect(localStorage.getItem('chess-study-game-history')).toBe('[{"id":"bob-only"}]');
+  });
 });
 
 describe('pushProfileToServer', () => {

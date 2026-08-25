@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
 import { APP_RELEASE } from './release.js';
+import { setProfileStorageItem } from './profileKeys.js';
 
 function mockFetchOnce(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -94,6 +95,19 @@ describe('register/login', () => {
     await expect(login('juan', 'mal')).rejects.toThrow('Usuario o contraseña incorrectos.');
     expect(localStorage.getItem('chess-study-tournament')).toBe('{"points":42}');
     expect(isLoggedIn()).toBe(false);
+  });
+
+  it('una pestaña ligada a Alice no puede escribir progreso después de que otra cambie la sesión a Bob', async () => {
+    mockFetchOnce(200, { token: 'alice-token', username: 'alice' });
+    await login('alice', 'clave123456');
+    setProfileStorageItem('chess-study-tournament', '{"points":42}');
+
+    // Simula el storage event de otra pestaña antes de que ésta se recargue.
+    localStorage.setItem('chess-study-auth-token', 'bob-token');
+    localStorage.setItem('chess-study-auth-username', 'bob');
+
+    expect(setProfileStorageItem('chess-study-tournament', '{"points":999}')).toBe(false);
+    expect(localStorage.getItem('chess-study-tournament')).toBe('{"points":42}');
   });
 });
 

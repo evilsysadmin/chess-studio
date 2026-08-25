@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import { PROFILE_CHANGED_EVENT } from './profileKeys.js';
 import { cancelScheduledProfileSync, pushProfileToServer, scheduleProfileSync } from './profileBackup.js';
+import { getToken, getUsername } from './auth.js';
 
 export function useProfileSyncLifecycle(view) {
   useEffect(() => {
-    const handleProfileChanged = () => scheduleProfileSync();
+    const expectedUsername = getUsername();
+    const expectedToken = getToken();
+    const handleProfileChanged = () => scheduleProfileSync(300, { expectedUsername, expectedToken });
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') pushProfileToServer({ keepalive: true });
+      if (document.visibilityState === 'hidden') pushProfileToServer({ keepalive: true, expectedUsername, expectedToken });
     };
     window.addEventListener(PROFILE_CHANGED_EVENT, handleProfileChanged);
     document.addEventListener('visibilitychange', handleVisibility);
@@ -18,6 +21,6 @@ export function useProfileSyncLifecycle(view) {
   }, []);
 
   useEffect(() => {
-    pushProfileToServer();
+    pushProfileToServer({ expectedUsername: getUsername(), expectedToken: getToken() });
   }, [view]);
 }

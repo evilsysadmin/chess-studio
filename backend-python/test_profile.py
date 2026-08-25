@@ -6,6 +6,7 @@ compartido) — cada test se registra un usuario propio y usa su token.
 from fastapi.testclient import TestClient
 
 from main import app
+import profile_store
 
 client = TestClient(app)
 
@@ -34,6 +35,31 @@ def test_profile_starts_empty():
     r = client.get("/api/profile", headers=headers)
     assert r.status_code == 200
     assert r.json() == {}
+
+
+def test_new_registration_removes_orphan_profile_for_reused_username():
+    username = "perfil_huerfano"
+    orphan = {
+        "data": {
+            "chess-study-game-history": '[{"id":"otra-identidad"}]',
+            "chess-study-worst-move-cache": '{"leak":true}',
+        }
+    }
+    profile_store._memory_profiles[username] = profile_store._build_internal(
+        username,
+        orphan,
+        {key: 1 for key in orphan["data"]},
+        1,
+    )
+
+    registered = client.post(
+        "/api/auth/register",
+        json={"username": username, "password": "clave123456"},
+    )
+
+    assert registered.status_code == 201
+    headers = {"Authorization": f"Bearer {registered.json()['token']}"}
+    assert client.get("/api/profile", headers=headers).json() == {}
 
 
 def test_save_and_retrieve_profile():

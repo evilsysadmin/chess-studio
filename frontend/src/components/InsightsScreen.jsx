@@ -323,6 +323,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   }
 
   async function startSearch() {
+    const searchOwner = getUsername();
     stopRef.current = false;
     setSearchStatus('running');
     // Conserva visible el mejor resultado cacheado mientras revisa lo nuevo.
@@ -346,6 +347,10 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       { cache }
     );
 
+    // El análisis puede durar bastante. Si durante ese tiempo cambió la
+    // cuenta, el resultado pertenece al dueño que inició la búsqueda y se
+    // descarta en esta pestaña en vez de contaminar al usuario nuevo.
+    if (getUsername() !== searchOwner) return;
     saveWorstMoveCache(updatedCache);
     setSearchResult(best);
     setSearchStatus('done');

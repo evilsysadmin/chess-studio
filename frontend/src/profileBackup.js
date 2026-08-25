@@ -29,6 +29,10 @@ function cloneData(data) {
   return Object.fromEntries(Object.entries(data || {}));
 }
 
+function identityStillCurrent(username, token) {
+  return getUsername() === username && getToken() === token;
+}
+
 function rememberRemote(remote, username = getUsername()) {
   syncedUsername = username || null;
   syncedData = cloneData(remote?.data || {});
@@ -161,6 +165,12 @@ export async function pullProfileFromServer() {
     const dirtyKeys = wasDirty && dirtyState.valid ? dirtyState.keys : [];
     const localSnapshot = wasDirty && dirtyState.valid ? exportProfile() : null;
     const remote = await loadRemoteForSync({ token, username });
+    // Una respuesta de Alice puede llegar después de que otra pestaña haya
+    // autenticado a Bob. Nunca importamos ni limpiamos journals si el token o
+    // el username ya no son exactamente los que iniciaron este GET.
+    if (!identityStillCurrent(username, token)) {
+      return { status: 'superseded', restored: 0 };
+    }
 
     if (wasDirty && !dirtyState.valid) {
       // Una marca dirty corrupta/incompleta no contiene información fiable
@@ -185,6 +195,9 @@ export async function pullProfileFromServer() {
       // recién leídas y, si otra pestaña cambia algo entre medias, resolverá el
       // 409 sin pisar claves ajenas.
       const saved = await patchSnapshot(localSnapshot, { token, username, dirtyKeys });
+      if (!identityStillCurrent(username, token)) {
+        return { status: 'superseded', restored: 0 };
+      }
       const merged = saved || remote;
       rememberRemote(merged, username);
 
@@ -209,6 +222,9 @@ export async function pullProfileFromServer() {
     clearProfileDirty();
     return { status: 'loaded', restored };
   } catch (error) {
+    if (!identityStillCurrent(username, token)) {
+      return { status: 'superseded', restored: 0 };
+    }
     if (error?.status === 401) return { status: 'unauthorized', restored: 0, error };
     return {
       status: 'offline',
@@ -220,8 +236,11 @@ export async function pullProfileFromServer() {
   }
 }
 
-export function pushProfileToServer({ throwOnError = false, keepalive = false } = {}) {
+export function pushProfileToServer({ throwOnError = false, keepalive = false, expectedUsername = null, expectedToken = null } = {}) {
   cancelScheduledProfileSync();
+  if ((expectedUsername && getUsername() !== expectedUsername) || (expectedToken && getToken() !== expectedToken)) {
+    return Promise.resolve(null);
+  }
   const snapshot = exportProfile();
   const token = getToken();
   const username = getUsername();
@@ -248,11 +267,11 @@ export function resetProfileSyncStateForTests() {
   syncedRevisions = {};
 }
 
-export function scheduleProfileSync(delayMs = 300) {
+export function scheduleProfileSync(delayMs = 300, { expectedUsername = null, expectedToken = null } = {}) {
   cancelScheduledProfileSync();
   scheduledTimer = setTimeout(() => {
     scheduledTimer = null;
-    pushProfileToServer();
+    pushProfileToServer({ expectedUsername, expectedToken });
   }, delayMs);
 }
 

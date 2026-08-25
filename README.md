@@ -1,3 +1,9 @@
+### v16.6dm46b · Aislamiento estricto entre cuentas
+
+- Una respuesta tardía, una pestaña antigua o un análisis en curso ya no puede escribir datos bajo otra identidad autenticada.
+- Cada alta elimina cualquier perfil huérfano del mismo username antes de entregar la sesión: una cuenta nueva empieza siempre vacía.
+- Regresiones específicas cubren `Alice → Bob`, respuestas GET tardías y reutilización de usernames sin heredar historial ni peor jugada.
+
 ### v16.6dm46a · Progreso accionable + economía Combat
 
 - Home diferencia las dos necesidades del jugador: **Así juegas** abre el diagnóstico con la siguiente acción concreta y **Mi progreso** abre directamente la evolución e historial. La guía contextual deja de vivir dentro de Cuenta y las tarjetas de aprendizaje usan la misma jerarquía visual que los modos principales.

@@ -9,6 +9,22 @@ const PROFILE_DIRTY_USER_KEY = 'chess-study-profile-dirty-user';
 const PROFILE_DIRTY_KEYS_KEY = 'chess-study-profile-dirty-keys';
 const AUTH_USERNAME_KEY = 'chess-study-auth-username';
 
+// Cada documento del navegador queda ligado a la identidad con la que montó
+// la aplicación. localStorage se comparte entre pestañas: si otra pestaña
+// cambia Alice -> Bob, la pestaña vieja puede conservar promesas/callbacks de
+// Alice durante unos milisegundos antes de recargarse. Esas escrituras tardías
+// no deben caer jamás en el perfil de Bob.
+let boundProfileUsername = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY) || null;
+
+export function bindProfileStorageIdentity(username) {
+  boundProfileUsername = String(username || '').trim().toLowerCase() || null;
+}
+
+export function profileStorageIdentityMatchesCurrentUser() {
+  const current = String(getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY) || '').trim().toLowerCase() || null;
+  return !boundProfileUsername || !current || boundProfileUsername === current;
+}
+
 export const PROFILE_PROGRESS_KEYS = Object.freeze([
   'chess-study-tournament',
   'chess-study-game-history',
@@ -92,8 +108,9 @@ function emitProfileChanged() {
 }
 
 export function markProfileDirtyForCurrentUser(key = null) {
+  if (!profileStorageIdentityMatchesCurrentUser()) return false;
   const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
-  if (!username) return;
+  if (!username) return false;
   const previousOwner = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY);
   // Una marca incompleta de otra sesión/identidad nunca puede heredarse. Si
   // el navegador cambió de cuenta sin pasar por un logout limpio, empezamos
@@ -113,6 +130,7 @@ export function markProfileDirtyForCurrentUser(key = null) {
   if (!Array.isArray(keys)) keys = [];
   if (!keys.includes(key)) keys.push(key);
   setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY, JSON.stringify(keys));
+  return true;
 }
 
 export function profileDirtyStateForCurrentUser() {
@@ -158,34 +176,42 @@ export function setProfileStorageItem(key, value) {
   if (!PROFILE_STORAGE_KEYS.includes(key)) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
+  if (!profileStorageIdentityMatchesCurrentUser()) return false;
   setStorageItem(STORAGE_LOCAL, key, value);
   markProfileDirtyForCurrentUser(key);
   emitProfileChanged();
+  return true;
 }
 
 export function removeProfileStorageItem(key) {
   if (!PROFILE_STORAGE_KEYS.includes(key)) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
+  if (!profileStorageIdentityMatchesCurrentUser()) return false;
   removeStorageItem(STORAGE_LOCAL, key);
   markProfileDirtyForCurrentUser(key);
   emitProfileChanged();
+  return true;
 }
 
 
 export function clearProfileProgress() {
+  if (!profileStorageIdentityMatchesCurrentUser()) return false;
   for (const key of PROFILE_PROGRESS_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   for (const key of DERIVED_LOCAL_CACHE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   markProfileDirtyForCurrentUser();
   emitProfileChanged();
+  return true;
 }
 
 export function clearProfileCache({ notify = false } = {}) {
+  if (!profileStorageIdentityMatchesCurrentUser()) return false;
   for (const key of PROFILE_STORAGE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   for (const key of DERIVED_LOCAL_CACHE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
   removeStorageItem(STORAGE_LOCAL, 'chess-study-cpu-personality'); // legado de versiones con selector: ya no existe
   removeStorageItem(STORAGE_LOCAL, 'chess-study-ambient-theme'); // V15.4: la música pasa a ser de sesión, no de perfil
   if (notify) emitProfileChanged();
+  return true;
 }
 
 export function clearLocalUserState() {

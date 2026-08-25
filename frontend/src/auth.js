@@ -3,7 +3,7 @@
 // — cada usuario necesita loguearse para que `/api/profile` sepa de
 // quién es el progreso que está subiendo o bajando.
 
-import { clearLocalUserState } from './profileKeys.js';
+import { bindProfileStorageIdentity, clearLocalUserState } from './profileKeys.js';
 import { withRequestId, requestErrorMessage } from './requestId.js';
 import { markAmbientThemeSessionFresh, clearAmbientThemeSessionStorage } from './audioSession.js';
 import { clearSessionView } from './viewState.js';
@@ -80,11 +80,16 @@ function saveSession(token, username) {
   // El login acaba de confirmar una identidad nueva. Borramos la caché del
   // usuario anterior ANTES de guardar la nueva sesión; Mongo la rellenará en
   // el arranque autenticado. Esto evita la herencia Alice -> Bob.
+  // Una autenticación explícita tiene autoridad para adoptar la identidad que
+  // actualmente figura en localStorage antes de limpiarla. Las pestañas viejas
+  // no pasan por aquí salvo que el usuario inicie sesión en ellas de verdad.
+  bindProfileStorageIdentity(getUsername());
   clearLocalUserState();
   clearAllClockSnapshots();
   clearCombatSession();
   setStorageItem(STORAGE_LOCAL, TOKEN_KEY, token);
   setStorageItem(STORAGE_LOCAL, USERNAME_KEY, username);
+  bindProfileStorageIdentity(username);
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
   // puede cambiar el tema después y se conservará hasta logout/nuevo login.
   markAmbientThemeSessionFresh();
@@ -101,6 +106,7 @@ export function logout() {
   clearHomePlayNudgeSession();
   removeStorageItem(STORAGE_LOCAL, TOKEN_KEY);
   removeStorageItem(STORAGE_LOCAL, USERNAME_KEY);
+  bindProfileStorageIdentity(null);
 }
 
 export async function register(username, password, email, inviteCode = '', language = 'es') {
