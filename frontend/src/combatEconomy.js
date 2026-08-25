@@ -1,6 +1,7 @@
 import { createCombatIdentity } from './combatIdentity.js';
 import { ensureUnitServiceState } from './combatUnitService.js';
 import { ensureDeploymentState } from './combatDeployment.js';
+import { hasAdminPreviewAccess } from './adminPreview.js';
 
 export const COMBAT_STARTING_CREDITS = 60;
 export const COMBAT_ECONOMY_VERSION = 1;
@@ -85,10 +86,11 @@ export function unitLevel(piece) {
 export function buyEquipment(rosterState, itemId, unitKey) {
   const item = equipmentById(itemId);
   const piece = rosterState?.pieces?.[unitKey];
-  if (!item || !piece || piece.alive === false || piece.equipmentId || unitLevel(piece) < item.minLevel || int(rosterState?.credits) < item.cost) return rosterState;
+  const adminPreview = hasAdminPreviewAccess();
+  if (!item || !piece || piece.alive === false || piece.equipmentId || (!adminPreview && (unitLevel(piece) < item.minLevel || int(rosterState?.credits) < item.cost))) return rosterState;
   return {
     ...rosterState,
-    credits: int(rosterState.credits) - item.cost,
+    credits: adminPreview ? int(rosterState.credits) : int(rosterState.credits) - item.cost,
     pieces: { ...rosterState.pieces, [unitKey]: { ...piece, equipmentId: item.id } },
   };
 }
@@ -138,7 +140,8 @@ function mercenaryKey(type, identityId) {
 
 export function hireMercenary(rosterState, offer, contract = 'one', now = Date.now()) {
   const price = int(offer?.prices?.[contract]);
-  if (!offer || !price || !(contract in CONTRACT_BATTLES) || int(rosterState?.credits) < price) return rosterState;
+  const adminPreview = hasAdminPreviewAccess();
+  if (!offer || !price || !(contract in CONTRACT_BATTLES) || (!adminPreview && int(rosterState?.credits) < price)) return rosterState;
   const purchaseId = offer.id;
   const purchases = Array.isArray(rosterState.marketPurchases) ? rosterState.marketPurchases : [];
   if (purchases.includes(purchaseId)) return rosterState;
@@ -149,7 +152,7 @@ export function hireMercenary(rosterState, offer, contract = 'one', now = Date.n
   while (rosterState.identities?.[key]) key = `${mercenaryKey(offer.type, identity.identityId)}-${suffix++}`;
   const state = ensureUnitServiceState({
     ...rosterState,
-    credits: int(rosterState.credits) - price,
+    credits: adminPreview ? int(rosterState.credits) : int(rosterState.credits) - price,
     marketPurchases: [...purchases, purchaseId].slice(-80),
     identities: { ...(rosterState.identities || {}), [key]: identity },
     pieces: {

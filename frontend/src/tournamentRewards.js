@@ -33,12 +33,12 @@ export const PIECE_SKINS = [
   { level: 60, id: 'delta', label: 'Delta Nocturna', description: 'Operadores de élite en negro y rojo.' },
 ];
 
-export function unlockedTitles(level) {
-  return TITLES.filter((t) => level >= t.level);
+export function unlockedTitles(level, { isAdmin = false } = {}) {
+  return isAdmin ? TITLES : TITLES.filter((t) => level >= t.level);
 }
 
-export function unlockedSkins(level) {
-  return PIECE_SKINS.filter((s) => level >= s.level);
+export function unlockedSkins(level, { isAdmin = false } = {}) {
+  return isAdmin ? PIECE_SKINS : PIECE_SKINS.filter((s) => level >= s.level);
 }
 
 export function nextTitleToUnlock(level) {

@@ -43,6 +43,12 @@ describe('unlockedTitles / unlockedSkins', () => {
     expect(unlockedSkins(14).map((skin) => skin.id)).not.toContain('shogunate');
     expect(unlockedSkins(60).map((skin) => skin.id)).toEqual(PIECE_SKINS.map((skin) => skin.id));
   });
+
+  it('abre el catálogo completo para administradores sin falsear el nivel del torneo', () => {
+    expect(unlockedTitles(1, { isAdmin: true })).toEqual(TITLES);
+    expect(unlockedSkins(1, { isAdmin: true })).toEqual(PIECE_SKINS);
+    expect(unlockedSkins(1)).not.toEqual(PIECE_SKINS);
+  });
 });
 
 describe('nextTitleToUnlock / nextSkinToUnlock', () => {

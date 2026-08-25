@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { COMBAT_EQUIPMENT, mercenaryMarketOffers, unitLevel } from '../combatEconomy.js';
 import { BASE_STATS } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { hasAdminPreviewAccess } from '../adminPreview.js';
 
 const CONTRACTS = Object.freeze([
   { id: 'one', label: '1 batalla' },
@@ -9,9 +10,9 @@ const CONTRACTS = Object.freeze([
   { id: 'permanent', label: 'Permanente' },
 ]);
 
-function eligibleUnits(roster, item) {
+function eligibleUnits(roster, item, bypassLevel = false) {
   return Object.entries(roster?.pieces || {})
-    .filter(([key, piece]) => !key.startsWith('k-') && piece?.alive !== false && !piece?.equipmentId && unitLevel(piece) >= item.minLevel)
+    .filter(([key, piece]) => !key.startsWith('k-') && piece?.alive !== false && !piece?.equipmentId && (bypassLevel || unitLevel(piece) >= item.minLevel))
     .map(([key, piece]) => ({ key, level: unitLevel(piece), alias: roster?.identities?.[key]?.alias || key }))
     .sort((a, b) => b.level - a.level || a.alias.localeCompare(b.alias));
 }
@@ -23,6 +24,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
   const [notice, setNotice] = useState(null);
   const offers = useMemo(() => mercenaryMarketOffers({ merit: serviceSummary?.merit || 0 }), [serviceSummary?.merit]);
   const credits = Number(roster?.credits || 0);
+  const adminPreview = hasAdminPreviewAccess();
 
   function hire(offer, contract) {
     if (onHire(offer, contract)) setNotice(`${offer.alias} se incorpora al barracón.`);
@@ -38,8 +40,8 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
       <section className="army-card combat-market" role="dialog" aria-modal="true" aria-labelledby="combat-market-title" onMouseDown={(event) => event.stopPropagation()}>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label="Cerrar mercado">×</button>
         <header className="combat-market-heading">
-          <div><span className="section-label">COMBAT CHESS · ABASTECIMIENTO</span><h2 id="combat-market-title">Mercado</h2><p>Opciones tácticas, nunca requisitos para ganar.</p></div>
-          <div className="combat-market-wallet"><small>SALDO</small><strong>{credits}</strong><span>créditos</span></div>
+          <div><span className="section-label">COMBAT CHESS · ABASTECIMIENTO</span><h2 id="combat-market-title">Mercado</h2><p>{adminPreview ? 'Modo admin: catálogo y compras de prueba abiertos.' : 'Opciones tácticas, nunca requisitos para ganar.'}</p></div>
+          <div className="combat-market-wallet"><small>{adminPreview ? 'PRUEBA ADMIN' : 'SALDO'}</small><strong>{credits}</strong><span>{adminPreview ? 'sin coste' : 'créditos'}</span></div>
         </header>
 
         <div className="combat-market-tabs" role="tablist" aria-label="Secciones del mercado">
@@ -65,7 +67,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
                     {CONTRACTS.map((contract) => {
                       const price = offer.prices[contract.id];
                       const sold = (roster.marketPurchases || []).includes(offer.id);
-                      return <button type="button" key={contract.id} disabled={sold || credits < price} onClick={() => hire(offer, contract.id)}><span>{sold ? 'Contratado' : contract.label}</span><b>{price} cr</b></button>;
+                      return <button type="button" key={contract.id} disabled={sold || (!adminPreview && credits < price)} onClick={() => hire(offer, contract.id)}><span>{sold ? 'Contratado' : contract.label}</span><b>{adminPreview ? 'Prueba' : `${price} cr`}</b></button>;
                     })}
                   </div>
                 </article>
@@ -75,11 +77,11 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
         ) : (
           <div className="combat-market-grid equipment-grid">
             {COMBAT_EQUIPMENT.map((item) => {
-              const units = eligibleUnits(roster, item);
+              const units = eligibleUnits(roster, item, adminPreview);
               const selected = assignment[item.id] || '';
               return (
                 <article className="combat-market-card equipment" key={item.id}>
-                  <div className="combat-market-card-top"><span aria-hidden="true">{item.icon}</span><i>{item.kind} · NV. {item.minLevel}+</i></div>
+                  <div className="combat-market-card-top"><span aria-hidden="true">{item.icon}</span><i>{item.kind} · {adminPreview ? 'PRUEBA ABIERTA' : `NV. ${item.minLevel}+`}</i></div>
                   <h3>{item.label}</h3><p>{item.description}</p>
                   <label>Asignar a
                     <select value={selected} onChange={(event) => setAssignment((current) => ({ ...current, [item.id]: event.target.value }))}>
@@ -87,7 +89,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
                       {units.map((unit) => <option key={unit.key} value={unit.key}>{unit.alias} · nv.{unit.level}</option>)}
                     </select>
                   </label>
-                  <button type="button" className="secondary-btn combat-market-buy" disabled={!selected || credits < item.cost} onClick={() => buy(item)}>Comprar y equipar · {item.cost} cr</button>
+                  <button type="button" className="secondary-btn combat-market-buy" disabled={!selected || (!adminPreview && credits < item.cost)} onClick={() => buy(item)}>{adminPreview ? 'Equipar para probar' : `Comprar y equipar · ${item.cost} cr`}</button>
                 </article>
               );
             })}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   COMBAT_STARTING_CREDITS,
   awardCombatCredits,
@@ -9,6 +9,9 @@ import {
   normalizeCombatEconomy,
   settleMercenaryContracts,
 } from './combatEconomy.js';
+import { setAdminPreviewAccess } from './adminPreview.js';
+
+afterEach(() => setAdminPreviewAccess(false));
 
 describe('economía de Combat', () => {
   it('migra la vieja XP global a créditos y deja la XP sólo en las unidades', () => {
@@ -36,6 +39,17 @@ describe('economía de Combat', () => {
     expect(bought.credits).toBe(30);
     expect(bought.pieces['p-a'].equipmentId).toBe('mobility-rig');
     expect(buyEquipment(bought, 'service-pistol', 'p-a')).toBe(bought);
+  });
+
+  it('permite a un admin probar equipo y mercenarios sin falsear créditos ni nivel', () => {
+    setAdminPreviewAccess(true);
+    const base = { credits: 0, pieces: { 'p-a': { alive: true, strengthPoints: 0, speedPoints: 0 } }, identities: {}, unitRecords: {} };
+    const equipped = buyEquipment(base, 'sniper-rifle', 'p-a');
+    expect(equipped).toMatchObject({ credits: 0, pieces: { 'p-a': { equipmentId: 'sniper-rifle' } } });
+    const offer = mercenaryMarketOffers({ rotationKey: '2026-08-25' })[0];
+    const hired = hireMercenary(base, offer, 'one', 1000);
+    expect(Object.keys(hired.pieces).some((key) => key.includes('-merc-'))).toBe(true);
+    expect(hired.credits).toBe(0);
   });
 
   it('ofrece mercenarios estables, los contrata y consume sólo batallas desplegadas', () => {

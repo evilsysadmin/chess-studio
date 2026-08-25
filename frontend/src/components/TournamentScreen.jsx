@@ -39,7 +39,7 @@ function colorLabel(color) {
   return 'Aleatorio';
 }
 
-export default function TournamentScreen({ tournament, onPlay, onExit, onReset, onHistory, loading, lastResult }) {
+export default function TournamentScreen({ tournament, onPlay, onExit, onReset, onHistory, loading, lastResult, isAdminUser = false }) {
   useEscapeToClose(onExit);
   const [color, setColor] = useState('random');
   const [selectedTitle, setSelectedTitle] = useState(loadSelectedTitle());
@@ -51,12 +51,12 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
   const maxedOut = cpuLevel >= 100;
   const justLeveledUp = !!lastResult?.leveledUp;
   const currentTitle = TITLES.find((t) => t.id === selectedTitle) || TITLES[0];
-  const myUnlockedTitles = unlockedTitles(level);
-  const myUnlockedSkins = unlockedSkins(level);
+  const myUnlockedTitles = unlockedTitles(level, { isAdmin: isAdminUser });
+  const myUnlockedSkins = unlockedSkins(level, { isAdmin: isAdminUser });
   const unlockedTitleIds = new Set(myUnlockedTitles.map((t) => t.id));
   const unlockedSkinIds = new Set(myUnlockedSkins.map((s) => s.id));
-  const nextTitle = nextTitleToUnlock(level);
-  const nextSkin = nextSkinToUnlock(level);
+  const nextTitle = isAdminUser ? null : nextTitleToUnlock(level);
+  const nextSkin = isAdminUser ? null : nextSkinToUnlock(level);
 
   function pickTitle(id) { saveSelectedTitle(id); setSelectedTitle(id); }
   function pickSkin(id) { saveSelectedSkin(id); setSelectedSkin(id); }
@@ -114,7 +114,7 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
 
           <section className="friendly-subsection">
             <h3>Recompensas</h3>
-            <p className="hint-text">Se desbloquean solas al subir de nivel. Título actual: <b>{currentTitle.label}</b>.</p>
+            <p className="hint-text">{isAdminUser ? 'Catálogo completo abierto para pruebas de administración.' : 'Se desbloquean solas al subir de nivel.'} Título actual: <b>{currentTitle.label}</b>.</p>
             <p className="hint-text" style={{ marginTop: '0.65rem', marginBottom: '0.25rem' }}>Título</p>
             <div className="rewards-grid">
               {TITLES.map((t) => {

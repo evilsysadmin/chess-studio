@@ -64,9 +64,14 @@ import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
 import { logout } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
+import { setAdminPreviewAccess } from './adminPreview.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
+  useEffect(() => {
+    setAdminPreviewAccess(isAdminUser);
+  }, [isAdminUser]);
+
   const {
     view,
     navigateTo,
@@ -797,7 +802,7 @@ function AppInner({ isAdminUser }) {
             onOpenCombat={() => { setShowCombatSummary(false); navigateTo('roguelike'); }}
           />
         )}
-        {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
+        {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
@@ -931,6 +936,7 @@ function AppInner({ isAdminUser }) {
         {view === 'tournament' && (
           <TournamentScreen
             tournament={tournament}
+            isAdminUser={isAdminUser}
             onPlay={handlePlayTournament}
             onExit={goBack}
             onReset={handleResetTournament}

@@ -1,5 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { hasAdminPreviewAccess } from './adminPreview.js';
 
 const CAREER_KEY = 'chess-study-career';
 const CONTRACT_KEY = 'chess-study-active-contract';
@@ -223,7 +224,7 @@ export function recordSpecialRunResult(run,outcome){
 
 export function recordPuzzleRush(score){let s=loadCareer();const prev=s.records?.puzzleRushBest||0;if(score>prev){s.records={...s.records,puzzleRushBest:score};s=milestone(s,`Nuevo récord de Puzzle Rush: ${score} resueltos.`);}return saveCareer(s);}
 
-export function unlockedBoardThemes(career=loadCareer()) { return BOARD_THEMES.filter((t)=>t.unlock(career)); }
+export function unlockedBoardThemes(career=loadCareer()) { return hasAdminPreviewAccess() ? BOARD_THEMES : BOARD_THEMES.filter((t)=>t.unlock(career)); }
 export function loadBoardTheme() {
   const id=getStorageItem(STORAGE_LOCAL, BOARD_THEME_KEY)||'classic';
   const allowed=new Set(unlockedBoardThemes().map((t)=>t.id));
@@ -234,4 +235,3 @@ export function saveBoardTheme(id) {
   setProfileStorageItem(BOARD_THEME_KEY,allowed.has(id)?id:'classic');
   return loadBoardTheme();
 }
-

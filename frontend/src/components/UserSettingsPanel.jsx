@@ -23,7 +23,7 @@ const SKIN_PREVIEWS = {
   ...GENERATED_SKIN_PREVIEWS,
 };
 
-export default function UserSettingsPanel({ onClose, onBoard3D }) {
+export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = false }) {
   useEscapeToClose(onClose);
   const [timeControlId, setTimeControlIdState] = useState(() => getDefaultTimeControlId());
   const [language, setLanguageState] = useState(() => getUiLanguage());
@@ -34,7 +34,7 @@ export default function UserSettingsPanel({ onClose, onBoard3D }) {
   const [reducedMotion, setReducedMotionState] = useState(() => getReducedMotion());
   const [boardCoordinates, setBoardCoordinatesState] = useState(() => getBoardCoordinates());
   const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
-  const availableSkinIds = new Set(unlockedSkins(tournamentLevel).map((skin) => skin.id));
+  const availableSkinIds = new Set(unlockedSkins(tournamentLevel, { isAdmin: isAdminUser }).map((skin) => skin.id));
 
   function updateTimeControl(value) {
     setTimeControlIdState(setDefaultTimeControlId(value));
@@ -69,7 +69,7 @@ export default function UserSettingsPanel({ onClose, onBoard3D }) {
 
         <div className="settings-sections">
           <section className="settings-appearance-featured">
-            <div className="settings-section-intro"><span className="section-label">Tu mesa</span><h3>Apariencia del juego</h3><small>Elige una skin y comprueba el resultado directamente en el mini-tablero.</small></div>
+            <div className="settings-section-intro"><span className="section-label">Tu mesa</span><h3>Apariencia del juego</h3><small>{isAdminUser ? 'Catálogo completo disponible para pruebas de administración.' : 'Elige una skin y comprueba el resultado directamente en el mini-tablero.'}</small></div>
             <div className="piece-skin-picker" role="radiogroup" aria-label="Estilo de piezas">
               {PIECE_SKINS.map((skin) => {
                 const unlocked = availableSkinIds.has(skin.id);

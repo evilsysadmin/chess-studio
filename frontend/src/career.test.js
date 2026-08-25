@@ -12,11 +12,13 @@ import {
   startSpecialRun,
   unlockedBoardThemes,
 } from './career.js';
+import { setAdminPreviewAccess } from './adminPreview.js';
 
 const NOW = new Date('2026-08-22T12:00:00.000Z');
 
 beforeEach(() => {
   localStorage.clear();
+  setAdminPreviewAccess(false);
   vi.useFakeTimers();
   vi.setSystemTime(NOW);
 });
@@ -37,6 +39,13 @@ function game(overrides = {}) {
 }
 
 describe('career persistente', () => {
+  it('muestra todos los tableros durante una sesión de administrador sin cambiar hitos reales', () => {
+    const career = loadCareer();
+    expect(unlockedBoardThemes(career)).toHaveLength(1);
+    setAdminPreviewAccess(true);
+    expect(unlockedBoardThemes(career)).toEqual(BOARD_THEMES);
+  });
+
   it('arranca con esquema completo y tema clásico', () => {
     const state = loadCareer();
     expect(state.version).toBe(2);
