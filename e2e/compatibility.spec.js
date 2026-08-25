@@ -64,8 +64,8 @@ test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page
 
   const accountPanel = page.getByRole('region', { name: 'Cuenta y utilidades' });
   await expect(accountPanel.getByText('e2e', { exact: true })).toBeVisible();
-  await expect(accountPanel.getByRole('button', { name: 'Mi cuenta', exact: true })).toBeVisible();
-  await expect(accountPanel.getByRole('button', { name: 'Cerrar sesión', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Abrir mi cuenta', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cerrar sesión', exact: true })).toBeVisible();
   await expect(accountPanel.getByText('Más opciones', { exact: true })).toBeVisible();
   await page.getByRole('region', { name: 'Guía rápida de Chess Studio' }).getByRole('button', { name: 'Explorar Home', exact: true }).click();
   await page.getByRole('button', { name: 'Abrir asistente de feedback' }).click();

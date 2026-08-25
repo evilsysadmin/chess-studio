@@ -37,6 +37,7 @@ import LiveServiceStatus from './components/LiveServiceStatus.jsx';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
+import AccountModal from './components/AccountModal.jsx';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
@@ -60,6 +61,8 @@ import { useAuthenticatedAudio } from './useAuthenticatedAudio.js';
 import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
 import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
+import { logout } from './auth.js';
+import { pushProfileToServer } from './profileBackup.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -152,9 +155,30 @@ function AppInner({ isAdminUser }) {
   const [showRatingDetail, setShowRatingDetail] = useState(false);
   const [showCombatSummary, setShowCombatSummary] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showGlobalAccount, setShowGlobalAccount] = useState(false);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState(null);
 
   useProfileSyncLifecycle(view);
+
+  async function handleGlobalLogout() {
+    setLogoutError(null);
+    setLoggingOut(true);
+    try {
+      await pushProfileToServer({ throwOnError: true });
+      logout();
+      window.location.reload();
+    } catch (error) {
+      if (error?.status === 401) {
+        logout();
+        window.location.reload();
+        return;
+      }
+      setLogoutError('No se pudo guardar tu progreso. Reintenta cuando vuelva la conexión.');
+      setLoggingOut(false);
+    }
+  }
 
 
   // V15.1: usuarios veteranos pueden tener decenas de partidas anteriores a
@@ -676,9 +700,16 @@ function AppInner({ isAdminUser }) {
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
                 <SaveStatusBadge state={gameSaveState} />
               )}
+              <button type="button" className="masthead-account-button" onClick={() => setShowGlobalAccount(true)} aria-label="Abrir mi cuenta" title="Mi cuenta">
+                <span aria-hidden="true">♙</span><span>Mi cuenta</span>
+              </button>
               <button type="button" className="settings-gear-button" onClick={() => setShowSettings(true)} aria-label="Abrir ajustes" title="Ajustes">⚙</button>
+              <button type="button" className="masthead-logout-button" onClick={() => void handleGlobalLogout()} disabled={loggingOut} aria-label="Cerrar sesión" title="Cerrar sesión">
+                <span aria-hidden="true">↪</span><span>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</span>
+              </button>
             </div>
           </div>
+          {logoutError && <p className="error-text masthead-session-error" role="alert">{logoutError}</p>}
           {!isBoardGameView && (
             <PlayerStatusBar
               tournament={tournament}
@@ -706,6 +737,7 @@ function AppInner({ isAdminUser }) {
           />
         )}
         {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} />}
+        {showGlobalAccount && <AccountModal onClose={() => setShowGlobalAccount(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (

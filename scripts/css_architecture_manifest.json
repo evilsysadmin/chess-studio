@@ -13,9 +13,10 @@
     "11-game-table.css",
     "12-feedback-assistant.css",
     "13-product-expansion.css",
-    "14-home-account-hub.css"
+    "14-home-account-hub.css",
+    "15-header-tools.css"
   ],
-  "combinedSha256": "4f8e6b06e48a94152efef4228b35339f137ca10ce511984a772d63b9242f4c93",
-  "combinedBytes": 325792,
-  "combinedLines": 10245
+  "combinedSha256": "54e39d56ab05e1627ff523102499d6e8aa97c336fb45f7458a9cc6e8974e7a1c",
+  "combinedBytes": 327717,
+  "combinedLines": 10294
 }

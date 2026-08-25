@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints } from '../tournament.js';
-import { logout, getUsername } from '../auth.js';
-import { pushProfileToServer } from '../profileBackup.js';
+import { getUsername } from '../auth.js';
 import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn } from './Icons.jsx';
 import ProfileBackupModal from './ProfileBackupModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
-import AccountModal from './AccountModal.jsx';
 import ModeTutorialTip from './ModeTutorialTip.jsx';
 import FeedbackModal from './FeedbackModal.jsx';
 import FeedbackAssistant from './FeedbackAssistant.jsx';
@@ -68,15 +66,12 @@ export default function Menu({
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
-  const [showAccount, setShowAccount] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
-  const [logoutError, setLogoutError] = useState(null);
-  const [loggingOut, setLoggingOut] = useState(false);
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const username = getUsername();
-  const hasOpenOverlay = showBackup || showQuickMatch || showMirrorMode || showAchievements || showAccount || showFeedback;
-  const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut, hasSavedGame });
+  const hasOpenOverlay = showBackup || showQuickMatch || showMirrorMode || showAchievements || showFeedback;
+  const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const today = useMemo(() => buildHomeToday({
     daily: currentDailyStreak(),
     todayKey: dailyChallengeDayKey(),
@@ -88,24 +83,6 @@ export default function Menu({
     window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
     return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
   }, []);
-
-  async function handleLogout() {
-    setLogoutError(null);
-    setLoggingOut(true);
-    try {
-      await pushProfileToServer({ throwOnError: true });
-      logout();
-      window.location.reload();
-    } catch (error) {
-      if (error?.status === 401) {
-        logout();
-        window.location.reload();
-        return;
-      }
-      setLogoutError('No se pudo guardar tu progreso antes de cerrar sesión. Reintenta cuando vuelva la conexión.');
-      setLoggingOut(false);
-    }
-  }
 
   function closeHomeGuide() {
     setProfileStorageItem(HOME_GUIDE_KEY, '1');
@@ -268,7 +245,7 @@ export default function Menu({
 
       {error && <p className="error-text">{error}</p>}
 
-      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide || loggingOut} onFeedback={() => setShowFeedback(true)} />
+      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide} onFeedback={() => setShowFeedback(true)} />
 
       <HomePlayNudge
         enabled={homePlayNudgeEnabled}
@@ -285,12 +262,6 @@ export default function Menu({
             <strong>{username || 'Jugador'}</strong>
             <small>Progreso sincronizado con tu cuenta</small>
           </div>
-          <div className="home-account-session-actions">
-            <button type="button" className="secondary-btn" onClick={() => setShowAccount(true)}>Mi cuenta</button>
-            <button type="button" className="home-logout-button" onClick={handleLogout} disabled={loggingOut}>
-              {loggingOut ? 'Guardando…' : 'Cerrar sesión'}
-            </button>
-          </div>
         </div>
         <details className="home-tools-disclosure">
           <summary>Más opciones</summary>
@@ -301,10 +272,8 @@ export default function Menu({
             <button type="button" onClick={onBoard3D}><strong>Tablero 3D</strong><span>Experimento visual</span></button>
           </nav>
         </details>
-        {logoutError && <p className="error-text home-account-error">{logoutError}</p>}
       </section>
 
-      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
       {showFeedback && <FeedbackModal context="Home" onClose={() => setShowFeedback(false)} />}
       {showBackup && <ProfileBackupModal onClose={() => setShowBackup(false)} />}
       {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} />}

@@ -33,6 +33,10 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
   const backendLabel = checking ? 'Backend …' : `Backend ${backendUp ? 'UP' : 'DOWN'}${latency}`;
   const canOpenAdmin = isAdminUser && typeof onAdmin === 'function';
 
+  // Para un jugador, la ausencia de problemas ya es suficiente información.
+  // Admin conserva presencia/latencia; el público sólo ve una incidencia real.
+  if (!isAdminUser && (backendUp || checking)) return null;
+
   return (
     <aside className={`live-service-status ${backendUp ? 'is-up' : checking ? 'is-checking' : 'is-down'}`} aria-live="polite" title="Usuarios activos en los últimos ~2,5 minutos">
       <span className="live-service-dot" aria-hidden="true" />
@@ -40,11 +44,9 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
         <button type="button" className="live-service-online-link" onClick={onAdmin} title="Abrir Panel de admin">
           {onlineLabel}
         </button>
-      ) : (
-        <span>{onlineLabel}</span>
-      )}
-      <span className="live-service-separator" aria-hidden="true">·</span>
-      <strong>{backendLabel}</strong>
+      ) : null}
+      {canOpenAdmin && <span className="live-service-separator" aria-hidden="true">·</span>}
+      <strong>{canOpenAdmin ? backendLabel : 'Conexión no disponible'}</strong>
     </aside>
   );
 }

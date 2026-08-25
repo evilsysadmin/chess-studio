@@ -1,0 +1,62 @@
+/* Secondary tools belong at the edge; the brand owns the centre. */
+.global-music-dock {
+  position: fixed;
+  top: max(.75rem, env(safe-area-inset-top));
+  left: max(.75rem, env(safe-area-inset-left));
+  z-index: 70;
+  width: min(460px, calc(100vw - 1.5rem));
+  margin: 0;
+}
+
+.global-music-dock:has(.music-deck-collapsed) { width: min(290px, calc(100vw - 1.5rem)); }
+.global-music-dock .music-deck { box-shadow: 0 10px 30px rgba(0,0,0,.24); }
+.global-music-dock .live-service-status { margin: .34rem 0 0; }
+
+.masthead-account-button,
+.masthead-logout-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: .4rem;
+  padding: .48rem .68rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 999px;
+  background: rgba(0,0,0,.12);
+  color: var(--parchment-dim);
+  font: 700 .68rem var(--font-body);
+  white-space: nowrap;
+}
+.masthead-account-button:hover,
+.masthead-account-button:focus-visible { border-color: var(--brass-dim); color: var(--parchment); }
+.masthead-logout-button { border-color: color-mix(in srgb, var(--danger) 44%, var(--ink-3)); }
+.masthead-logout-button:hover:not(:disabled),
+.masthead-logout-button:focus-visible { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--parchment); }
+.masthead-logout-button:disabled { cursor: wait; opacity: .65; }
+.masthead-session-error { align-self: flex-end; max-width: 390px; margin: .4rem 0 0; font-size: .72rem; }
+
+@media (max-width: 860px) {
+  .global-music-dock:has(.music-deck-collapsed) { width: 76px; }
+  .global-music-dock .music-deck-collapsed { grid-template-columns: 42px 32px; }
+  .global-music-dock .music-deck-collapsed-track,
+  .global-music-dock .music-deck-collapsed-hint { display: none; }
+  .global-music-dock .music-deck-expand { grid-template-columns: auto auto; justify-content: center; padding-inline: .35rem; }
+  .global-music-dock .music-deck-status-light { display: none; }
+}
+
+@media (max-width: 700px) {
+  .masthead-actions { position: absolute; right: 0; }
+  .masthead-account-button,
+  .masthead-logout-button { width: 38px; min-height: 38px; justify-content: center; padding: 0; }
+  .masthead-account-button > span:last-child,
+  .masthead-logout-button > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+
+@media (max-width: 520px) {
+  .global-music-dock {
+    top: max(.5rem, env(safe-area-inset-top));
+    left: max(.5rem, env(safe-area-inset-left));
+    width: calc(100vw - 1rem);
+  }
+  .global-music-dock:has(.music-deck-collapsed) { width: 76px; }
+  .global-music-dock .live-service-status { max-width: calc(100vw - 1rem); }
+}

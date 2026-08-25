@@ -13,7 +13,7 @@
 
 .home-account-main {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  grid-template-columns: 46px minmax(0, 1fr);
   align-items: center;
   gap: .75rem;
   padding: .85rem;
@@ -35,17 +35,6 @@
 .home-account-identity .section-label { margin: 0; font-size: .58rem; }
 .home-account-identity strong { font-size: .96rem; }
 .home-account-identity small { overflow: hidden; color: var(--parchment-dim); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
-
-.home-account-session-actions { display: flex; align-items: center; gap: .45rem; }
-.home-account-session-actions .secondary-btn,
-.home-account-session-actions .home-logout-button { min-height: 42px; }
-.home-logout-button {
-  border-color: color-mix(in srgb, var(--danger) 55%, var(--studio-line));
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
-  color: var(--parchment);
-}
-.home-logout-button:hover:not(:disabled),
-.home-logout-button:focus-visible { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 
 .home-tools-disclosure { border-top: 1px solid color-mix(in srgb, var(--studio-line) 68%, transparent); }
 .home-tools-disclosure > summary {
@@ -83,8 +72,6 @@
 @media (max-width: 680px) {
   .home-account-main { grid-template-columns: 42px minmax(0, 1fr); }
   .home-account-avatar { width: 42px; height: 42px; }
-  .home-account-session-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
-  .home-account-session-actions button { width: 100%; }
   .home-utility-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
