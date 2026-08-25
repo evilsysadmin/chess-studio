@@ -2,7 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/chess-studio/',
+  // GitHub Pages usa /chess-studio/ en el dominio github.io, pero un dominio
+  // propio sirve la aplicación desde /. El workflow de Pages fija la segunda
+  // variante sin romper previews ni E2E locales.
+  base: process.env.VITE_PUBLIC_BASE || '/chess-studio/',
 
   plugins: [react()],
 

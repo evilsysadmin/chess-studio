@@ -1043,6 +1043,11 @@ def test_cors_config_with_github_pages_path_is_normalized():
     assert main_module._normalize_cors_origin("https://evilsysadmin.github.io/chess-studio/") == "https://evilsysadmin.github.io"
 
 
+def test_custom_pages_domain_is_an_explicit_cors_origin():
+    import main as main_module
+    assert "https://chess-studio.shadowops.dpdns.org" in main_module._CORS_ORIGINS
+
+
 def test_registration_requires_invite_code_when_configured(monkeypatch):
     import main as main_module
     monkeypatch.setattr(main_module, "ALLOW_REGISTRATION", True)

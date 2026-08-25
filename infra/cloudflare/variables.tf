@@ -10,6 +10,35 @@ variable "cloudflare_account_id" {
   sensitive   = true
 }
 
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for the public Chess Studio DNS records. CI resolves it from the zone name."
+  type        = string
+}
+
+variable "pages_hostname" {
+  description = "Public GitHub Pages hostname for Chess Studio."
+  type        = string
+  default     = "chess-studio.shadowops.dpdns.org"
+}
+
+variable "github_pages_cname_target" {
+  description = "GitHub Pages user/organization hostname; never include the repository path."
+  type        = string
+  default     = "evilsysadmin.github.io"
+}
+
+variable "render_api_hostname" {
+  description = "Public API hostname delegated to the Render web service."
+  type        = string
+  default     = "api.chess-studio.shadowops.dpdns.org"
+}
+
+variable "render_api_cname_target" {
+  description = "Render service hostname shown in the Render dashboard."
+  type        = string
+  default     = "chess-study-backend.onrender.com"
+}
+
 variable "worker_name" {
   description = "Workers AI narrative Worker name."
   type        = string

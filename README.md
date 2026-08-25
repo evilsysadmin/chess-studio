@@ -1,3 +1,9 @@
+### v16.6dm46d · Dominio propio + catálogo admin de pruebas
+
+- GitHub Pages queda preparado para `chess-studio.shadowops.dpdns.org` desde raíz, con CNAME publicado en el artefacto y CORS del backend restringido al origen nuevo y al histórico de GitHub Pages.
+- Render usa `api.chess-studio.shadowops.dpdns.org`, separado del frontend. Terraform gestiona e importa de forma segura los CNAME DNS-only de Pages y Render antes de aplicar cambios.
+- Las cuentas administradoras desbloquean el catálogo de prueba completo: piezas, títulos, tableros, armas y mercenarios se pueden revisar sin gastar créditos ni falsificar progreso, y el acceso se revoca al cerrar sesión.
+
 ### v16.6dm46c · Dirección visual + solución legible + mercado desplegable
 
 - **Ver solución** usa el mismo idioma visual que Autopsia y Replay: jugada realizada con origen/destino en rojo y pieza fantasma en el origen; alternativa del motor con origen/destino en azul. SAN y coordenadas acompañan el color.
@@ -1269,19 +1275,20 @@ ejemplo) + **MongoDB Atlas** para persistencia.
 > sus credenciales, en vez de que el cold-start le pegue justo en el
 > login real.
 
-### Dominio propio del backend (Cloudflare + Render)
+### Dominio propio: Pages + API (Cloudflare + Render)
 
-Este proyecto también deja preparado `chess-studio.shadowops.dpdns.org` como
-dominio del backend. **Un CNAME por sí solo no basta**: el hostname debe estar
-asociado al mismo servicio en **Render -> Settings -> Custom Domains** y
-verificado allí. En Cloudflare, durante la verificación, usa un CNAME
-`chess-studio -> chess-studio.onrender.com` en **DNS only**, sin `https://` en
-el target, y SSL/TLS en modo **Full**.
+`chess-studio.shadowops.dpdns.org` es el dominio público del frontend en
+GitHub Pages. La API no puede compartir ese hostname: usa el dominio actual
+de Render o el subdominio independiente `api.chess-studio.shadowops.dpdns.org`.
+Para este último, asócialo al servicio en **Render -> Settings -> Custom
+Domains** y verifica el CNAME en DNS.
 
-La guía paso a paso y el diagnóstico de 404 están en
-`docs/render-cloudflare-domain.md`. Cuando funcione, usa
-`https://chess-studio.shadowops.dpdns.org/api` como `VITE_API_URL` de GitHub
-Pages y vuelve a desplegar el frontend. La API incluye ahora una ruta `/`
+Terraform crea e importa, si ya existían, ambos CNAME DNS-only: el frontend
+apunta a `evilsysadmin.github.io` y la API a `chess-study-backend.onrender.com`.
+En Render añade primero `api.chess-studio.shadowops.dpdns.org` como Custom
+Domain y, cuando quede verificado, configura
+`VITE_API_URL=https://api.chess-studio.shadowops.dpdns.org/api` en las variables
+de Actions de GitHub y vuelve a desplegar el frontend. La API incluye ahora una ruta `/`
 de diagnóstico para que abrir el dominio del backend no termine en el 404
 genérico de FastAPI; `/api/health` es liveness y `/api/ready` es el readiness que comprueba el almacenamiento persistente.
 
@@ -1289,10 +1296,11 @@ genérico de FastAPI; `/api/health` es liveness y `/api/ready` es el readiness q
 
 1. En el repo de GitHub: **Settings → Pages → Source: GitHub Actions**.
 2. **Settings → Secrets and variables → Actions → Variables**, agrega
-   una variable `VITE_API_URL` con `https://tu-backend.onrender.com/api`.
+   una variable `VITE_API_URL` con `https://api.chess-studio.shadowops.dpdns.org/api`
+   después de verificar el dominio en Render.
 3. Haz push a `main`. `.github/workflows/cicd.yml` ejecuta un único pipeline serial: `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Si Tests o Terraform fallan, Pages no arranca; las tres etapas trabajan sobre el mismo `github.sha`.
 4. En un par de minutos, el sitio queda en
-   `https://tu-usuario.github.io/nombre-del-repo/`.
+   `https://chess-studio.shadowops.dpdns.org/`.
 
 ### Persistencia
 

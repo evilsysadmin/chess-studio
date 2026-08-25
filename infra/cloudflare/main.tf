@@ -46,6 +46,29 @@ resource "cloudflare_workers_custom_domain" "narrative_ai" {
   depends_on = [cloudflare_workers_script.narrative_ai]
 }
 
+# DNS de las dos superficies públicas. GitHub Pages y Render validan el CNAME
+# directamente, por eso ambos permanecen DNS-only; no se añade un proxy que
+# pueda ocultar el target durante la emisión de sus certificados.
+resource "cloudflare_dns_record" "github_pages" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.pages_hostname
+  type    = "CNAME"
+  content = var.github_pages_cname_target
+  proxied = false
+  ttl     = 1
+  comment = "Chess Studio frontend · GitHub Pages"
+}
+
+resource "cloudflare_dns_record" "render_api" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.render_api_hostname
+  type    = "CNAME"
+  content = var.render_api_cname_target
+  proxied = false
+  ttl     = 1
+  comment = "Chess Studio API · Render"
+}
+
 # Deliberadamente NO declaramos CHESS_AI_SHARED_SECRET como secret_text.
 # Aunque Terraform lo marque sensitive, su valor acabaría almacenado en state.
 # GitHub Actions lo instala tras terraform apply con `wrangler secret put`.

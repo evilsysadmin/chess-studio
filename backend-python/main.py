@@ -217,6 +217,9 @@ _DEFAULT_CORS_ORIGINS = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://evilsysadmin.github.io",
+    # Frontend público con dominio propio. Se mantiene el origen github.io
+    # mientras haya enlaces/cache de releases anteriores en circulación.
+    "https://chess-studio.shadowops.dpdns.org",
 }
 _CONFIGURED_CORS_ORIGINS = {
     normalized

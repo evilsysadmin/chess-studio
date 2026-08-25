@@ -6,6 +6,14 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46d',
+    title: 'Dominio propio y catálogo de pruebas',
+    highlights: [
+      'Chess Studio ya puede publicarse desde su propio dominio, con rutas y recuperación de cuenta alineadas.',
+      'Las cuentas administradoras tienen acceso de prueba a todas las apariencias, tableros, armas y mercenarios sin alterar el progreso real.',
+    ],
+  },
+  {
     release: 'v16.6dm46c',
     title: 'Más personalidad dentro y fuera del tablero',
     highlights: [

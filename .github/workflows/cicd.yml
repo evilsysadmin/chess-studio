@@ -218,6 +218,15 @@ jobs:
       TF_VAR_worker_name: chess-studio-narrative-ai
       TF_VAR_custom_domain_hostname: ai.shadowops.dpdns.org
       TF_VAR_custom_domain_zone_name: shadowops.dpdns.org
+      TF_VAR_pages_hostname: chess-studio.shadowops.dpdns.org
+      TF_VAR_github_pages_cname_target: evilsysadmin.github.io
+      TF_VAR_render_api_hostname: api.chess-studio.shadowops.dpdns.org
+      TF_VAR_render_api_cname_target: chess-study-backend.onrender.com
+      CF_DNS_ZONE_NAME: shadowops.dpdns.org
+      PAGES_HOSTNAME: chess-studio.shadowops.dpdns.org
+      PAGES_CNAME_TARGET: evilsysadmin.github.io
+      RENDER_API_HOSTNAME: api.chess-studio.shadowops.dpdns.org
+      RENDER_API_CNAME_TARGET: chess-study-backend.onrender.com
       WORKER_NAME: chess-studio-narrative-ai
       CUSTOM_DOMAIN: ai.shadowops.dpdns.org
 
@@ -254,6 +263,26 @@ jobs:
 
       - name: Terraform init
         run: terraform init
+
+      - name: Resolve managed DNS zone
+        id: dns_zone
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          zone_body="$RUNNER_TEMP/cf-zone.json"
+          zone_status="$(curl --silent --show-error --output "$zone_body" --write-out '%{http_code}' --get \
+            --data-urlencode "name=$CF_DNS_ZONE_NAME" \
+            --data-urlencode "account.id=$CLOUDFLARE_ACCOUNT_ID" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            'https://api.cloudflare.com/client/v4/zones')"
+          [[ "$zone_status" == 200 ]] || { cat "$zone_body" >&2; exit 1; }
+          zone_id="$(python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")).get("result") or []; len(rows)==1 or sys.exit(f"Se esperaba una única zona activa: {rows}"); print(rows[0]["id"])' "$zone_body")"
+          echo "TF_VAR_cloudflare_zone_id=$zone_id" >> "$GITHUB_ENV"
+          echo "zone_id=$zone_id" >> "$GITHUB_OUTPUT"
 
       - name: Terraform validate
         run: terraform validate
@@ -374,6 +403,41 @@ jobs:
       - name: Import existing Custom Domain state
         if: steps.cf_state.outputs.custom_domain_exists == 'true'
         run: terraform import cloudflare_workers_custom_domain.narrative_ai "$TF_VAR_cloudflare_account_id/${{ steps.cf_state.outputs.custom_domain_id }}"
+
+      - name: Probe managed frontend and API CNAMEs
+        id: dns_state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          probe_record() {
+            local hostname="$1"
+            local label="$2"
+            local body="$RUNNER_TEMP/cf-dns-$label.json"
+            local status
+            status="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' --get \
+              --data-urlencode "name=$hostname" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Accept: application/json' \
+              "https://api.cloudflare.com/client/v4/zones/$TF_VAR_cloudflare_zone_id/dns_records")"
+            [[ "$status" == 200 ]] || { cat "$body" >&2; exit 1; }
+            python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")).get("result") or []; host=sys.argv[2]; len(rows)<=1 or sys.exit(f"Más de un DNS record para {host}: {rows}"); row=rows[0] if rows else None; row is None or row.get("type")=="CNAME" or sys.exit(f"{host} existe pero no es CNAME: {row}"); print(row.get("id") if row else "")' "$body" "$hostname"
+          }
+
+          pages_id="$(probe_record "$PAGES_HOSTNAME" pages)"
+          api_id="$(probe_record "$RENDER_API_HOSTNAME" api)"
+          if [[ -n "$pages_id" ]]; then echo 'pages_exists=true' >> "$GITHUB_OUTPUT"; echo "pages_id=$pages_id" >> "$GITHUB_OUTPUT"; else echo 'pages_exists=false' >> "$GITHUB_OUTPUT"; fi
+          if [[ -n "$api_id" ]]; then echo 'api_exists=true' >> "$GITHUB_OUTPUT"; echo "api_id=$api_id" >> "$GITHUB_OUTPUT"; else echo 'api_exists=false' >> "$GITHUB_OUTPUT"; fi
+
+      - name: Import existing GitHub Pages CNAME
+        if: steps.dns_state.outputs.pages_exists == 'true'
+        run: terraform import cloudflare_dns_record.github_pages "$TF_VAR_cloudflare_zone_id/${{ steps.dns_state.outputs.pages_id }}"
+
+      - name: Import existing Render API CNAME
+        if: steps.dns_state.outputs.api_exists == 'true'
+        run: terraform import cloudflare_dns_record.render_api "$TF_VAR_cloudflare_zone_id/${{ steps.dns_state.outputs.api_id }}"
 
       - name: Terraform plan
         run: terraform plan -out=tfplan
@@ -526,6 +590,7 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_PUBLIC_BASE: /
           VITE_BUILD_SHA: ${{ github.sha }}
         run: npm run build
 

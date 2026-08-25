@@ -14,11 +14,10 @@ services:
     dockerContext: ./backend-python
     plan: free
     healthCheckPath: /api/ready
-    # Dominio público del backend. Si este Blueprint gestiona tu servicio,
-    # Render intentará asociarlo al desplegar/sincronizar. Si el servicio se
-    # creó manualmente, añádelo también en Settings -> Custom Domains.
+    # El frontend vive en GitHub Pages; la API usa su propio subdominio. Si el
+    # servicio se creó manualmente, añádelo también en Settings -> Custom Domains.
     domains:
-      - chess-studio.shadowops.dpdns.org
+      - api.chess-studio.shadowops.dpdns.org
     envVars:
       - key: MONGO_URL
         sync: false
@@ -33,7 +32,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: PASSWORD_RESET_URL
-        value: https://evilsysadmin.github.io/chess-studio/
+        value: https://chess-studio.shadowops.dpdns.org/
       - key: ENVIRONMENT
         value: production
       # Recuperación por email activa. Durante la prueba, onboarding@resend.dev
@@ -52,4 +51,4 @@ services:
       - key: INVITE_CODE
         sync: false
       - key: CORS_ORIGINS
-        value: https://evilsysadmin.github.io
+        value: https://evilsysadmin.github.io,https://chess-studio.shadowops.dpdns.org
