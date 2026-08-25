@@ -1534,7 +1534,7 @@ Object.assign(AMBIENT_THEMES, {
     ],
   },
   postRockMidnight: {
-    id: 'postRockMidnight', genre: 'Rock', engine: 'structured', label: 'Post-rock · medianoche',
+    id: 'postRockMidnight', genre: 'Ecléctica', engine: 'structured', label: 'Post-rock · medianoche',
     description: 'Guitarra con tremolo, bajo amplio y batería contenida; crece despacio y nunca se convierte en un solo de quince minutos.',
     stepMs: 132, stepsPerSection: 64, longFormMs: 380000, leadInstrument: 'tremolo', counterInstrument: 'guitar2', chordInstrument: 'pad', bassInstrument: 'bass',
     sections: [
@@ -1544,7 +1544,7 @@ Object.assign(AMBIENT_THEMES, {
     ],
   },
   rookGarage: {
-    id: 'rookGarage', genre: 'Rock', engine: 'structured', label: 'Rock · garaje de la torre',
+    id: 'rookGarage', genre: 'Ecléctica', engine: 'structured', label: 'Rock · garaje de la torre',
     description: 'Riff grave, bajo directo y caja seca. Más rock que ambient, pero todavía deja espacio para pensar antes de estrellar la dama.',
     stepMs: 108, stepsPerSection: 48, longFormMs: 330000, leadInstrument: 'overdriveGuitar', chordInstrument: 'guitar2', bassInstrument: 'bass',
     sections: [
@@ -1553,7 +1553,7 @@ Object.assign(AMBIENT_THEMES, {
     ],
   },
   desertDriveRock: {
-    id: 'desertDriveRock', genre: 'Rock', engine: 'structured', label: 'Rock · carretera del desierto',
+    id: 'desertDriveRock', genre: 'Ecléctica', engine: 'structured', label: 'Rock · carretera del desierto',
     description: 'Guitarra limpia, riff polvoriento y batería de carretera; medio western, medio post-rock, cero gasolinera abierta.',
     stepMs: 122, stepsPerSection: 48, longFormMs: 340000, leadInstrument: 'guitar2', counterInstrument: 'mutedHorn', chordInstrument: 'tremolo', bassInstrument: 'uprightBass',
     sections: [
@@ -1803,7 +1803,38 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
-export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Rock', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Synthwave', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
+// Energía tiene repertorio propio: no es un alias de Rock ni «todo aleatorio».
+Object.assign(AMBIENT_THEMES, {
+  neonSiege: {
+    id:'neonSiege', genre:'Synth Metal', engine:'structured', label:'Synth metal · asedio de neón',
+    description:'Riff grave, doble pulso y sintetizadores afilados; presión sostenida sin convertir el menú en una pared de volumen.',
+    stepMs:88, stepsPerSection:64, longFormMs:330000, leadInstrument:'guitar2', counterInstrument:'arp', chordInstrument:'synth', bassInstrument:'synthbass',
+    sections:[
+      {lead:{0:52,4:52,8:55,12:52,16:59,20:57,24:55,28:52,32:52,36:55,40:60,44:59,48:57,52:55,56:52,60:50},counter:{2:76,6:71,10:79,14:74,18:76,22:71,26:81,30:79,34:76,38:72,42:79,46:83,50:81,54:76,58:74,62:71},chords:{0:[40,47,52],16:[43,50,55],32:[45,52,57],48:[38,45,50]},bass:{0:28,2:28,4:28,8:31,12:28,16:35,20:33,24:31,28:28,32:28,36:31,40:36,44:35,48:33,52:31,56:28,60:26},drums:{0:'K',2:'H',4:'K',6:'H',8:'S',10:'K',12:'H',14:'K',16:'K',18:'H',20:'K',22:'H',24:'S',26:'K',28:'H',30:'K',32:'K',34:'H',36:'K',38:'H',40:'S',42:'K',44:'H',46:'K',48:'K',50:'H',52:'K',54:'H',56:'S',58:'K',60:'H',62:'K'}},
+      {lead:{0:55,4:55,8:59,12:55,16:62,20:60,24:59,28:55,32:57,36:60,40:64,44:62,48:60,52:59,56:55,60:52},counter:{2:79,6:74,10:83,14:77,18:79,22:74,26:84,30:83,34:81,38:76,42:83,46:86,50:84,54:81,58:77,62:74},chords:{0:[43,50,55],16:[46,53,58],32:[45,52,57],48:[40,47,52]},bass:{0:31,2:31,4:31,8:35,12:31,16:38,20:36,24:35,28:31,32:33,36:36,40:40,44:38,48:36,52:35,56:31,60:28},drums:{0:'K',2:'H',4:'K',6:'H',8:'S',10:'K',12:'H',14:'K',16:'K',18:'H',20:'K',22:'H',24:'S',26:'K',28:'H',30:'K',32:'K',34:'H',36:'K',38:'H',40:'S',42:'K',44:'H',46:'K',48:'K',50:'H',52:'K',54:'H',56:'S',58:'K',60:'H',62:'K'}}
+    ],
+  },
+  overclockedKnight: {
+    id:'overclockedKnight', genre:'Synth Metal', engine:'structured', label:'Synth metal · caballo overclocked',
+    description:'Bajo galopante, riff sincopado y arpegio digital; rápido, mecánico y diseñado para encadenar partidas.',
+    stepMs:82, stepsPerSection:64, longFormMs:325000, leadInstrument:'pulse', counterInstrument:'guitar2', chordInstrument:'pad', bassInstrument:'synthbass',
+    sections:[
+      {lead:{0:64,6:67,8:71,14:67,16:72,22:71,24:67,30:64,32:64,38:67,40:74,46:72,48:71,54:67,56:64,62:62},counter:{0:52,3:52,4:55,7:52,8:59,11:57,12:55,15:52,16:52,19:55,20:60,23:59,24:57,27:55,28:52,31:50,32:52,35:52,36:55,39:52,40:59,43:57,44:55,47:52,48:55,51:55,52:59,55:55,56:62,59:60,60:59,63:55},chords:{0:[40,47,52],16:[38,45,50],32:[43,50,55],48:[45,52,57]},bass:{0:28,3:28,4:31,7:28,8:35,11:33,12:31,15:28,16:26,19:26,20:29,23:26,24:33,27:31,28:29,31:26,32:31,35:31,36:35,39:31,40:38,43:36,44:35,47:31,48:33,51:33,52:36,55:33,56:40,59:38,60:36,63:33},drums:{0:'K',2:'H',4:'K',6:'H',8:'S',10:'H',12:'K',14:'H',16:'K',18:'H',20:'K',22:'H',24:'S',26:'H',28:'K',30:'H',32:'K',34:'H',36:'K',38:'H',40:'S',42:'H',44:'K',46:'H',48:'K',50:'H',52:'K',54:'H',56:'S',58:'H',60:'K',62:'H'}},
+      {lead:{0:67,6:71,8:74,14:71,16:76,22:74,24:71,30:67,32:69,38:72,40:76,46:74,48:72,54:69,56:67,62:64},counter:{0:55,3:55,4:59,7:55,8:62,11:60,12:59,15:55,16:57,19:57,20:60,23:57,24:64,27:62,28:60,31:57,32:55,35:55,36:59,39:55,40:62,43:60,44:59,47:55,48:57,51:57,52:60,55:57,56:64,59:62,60:60,63:57},chords:{0:[43,50,55],16:[45,52,57],32:[41,48,53],48:[45,52,57]},bass:{0:31,3:31,4:35,7:31,8:38,11:36,12:35,15:31,16:33,19:33,20:36,23:33,24:40,27:38,28:36,31:33,32:29,35:29,36:33,39:29,40:36,43:34,44:33,47:29,48:33,51:33,52:36,55:33,56:40,59:38,60:36,63:33},drums:{0:'K',2:'H',4:'K',6:'H',8:'S',10:'H',12:'K',14:'H',16:'K',18:'H',20:'K',22:'H',24:'S',26:'H',28:'K',30:'H',32:'K',34:'H',36:'K',38:'H',40:'S',42:'H',44:'K',46:'H',48:'K',50:'H',52:'K',54:'H',56:'S',58:'H',60:'K',62:'H'}}
+    ],
+  },
+  reactorGambit: {
+    id:'reactorGambit', genre:'Synth Metal', engine:'structured', label:'Synth metal · gambito del reactor',
+    description:'Medio tiempo pesado, acordes de reactor y una subida electrónica; menos velocidad, más impacto.',
+    stepMs:94, stepsPerSection:64, longFormMs:340000, leadInstrument:'guitar2', counterInstrument:'synth', chordInstrument:'pad', bassInstrument:'synthbass',
+    sections:[
+      {lead:{0:47,8:47,12:50,16:52,24:50,28:47,32:45,40:45,44:48,48:50,56:48,60:45},counter:{4:71,20:74,36:69,52:72},chords:{0:[35,42,47],16:[40,47,52],32:[33,40,45],48:[38,45,50]},bass:{0:23,4:23,8:23,12:26,16:28,20:28,24:26,28:23,32:21,36:21,40:21,44:24,48:26,52:26,56:24,60:21},drums:{0:'K',4:'H',8:'S',10:'K',12:'H',16:'K',20:'H',24:'S',26:'K',28:'H',32:'K',36:'H',40:'S',42:'K',44:'H',48:'K',52:'H',56:'S',58:'K',60:'H'}},
+      {lead:{0:50,8:50,12:53,16:55,24:53,28:50,32:48,40:48,44:52,48:53,56:52,60:48},counter:{4:74,20:77,36:72,52:76},chords:{0:[38,45,50],16:[43,50,55],32:[36,43,48],48:[41,48,53]},bass:{0:26,4:26,8:26,12:29,16:31,20:31,24:29,28:26,32:24,36:24,40:24,44:28,48:29,52:29,56:28,60:24},drums:{0:'K',4:'H',8:'S',10:'K',12:'H',16:'K',20:'H',24:'S',26:'K',28:'H',32:'K',36:'H',40:'S',42:'K',44:'H',48:'K',52:'H',56:'S',58:'K',60:'H'}}
+    ],
+  },
+});
+
+export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Synth Metal', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Synthwave', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
   'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',
   'beirutRooftop0412','casablancaLastCall','cairoQuietHours','nileBalcony0152','aleppoAfterRain','ammanVelvetRoom','medinaBlueSmoke','cairoRedLantern',

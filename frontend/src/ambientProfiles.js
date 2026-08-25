@@ -393,6 +393,24 @@ const EXTRA_STRUCTURED_FEELS = Object.freeze({
 
 
 const V166BT_STRUCTURED_FEELS = Object.freeze({
+  neonSiege: Object.freeze({
+    family:'synth-metal-neon-siege', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,3,0], swing:0, warmth:.48, releaseScale:.68, space:.05, delayMs:68,
+    leadInstrument:'guitar2', counterInstrument:'arp', chordInstrument:'synth', bassInstrument:'synthbass', chordHoldSteps:8, bassHoldSteps:1.7,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.74,counter:.40,bass:1.18,chord:.30},
+    percussion:{period:16,kit:'synth-metal',punch:1.34,pattern:{0:'K',2:'H',4:'K',6:'H',8:'S',10:'K',12:'H',14:'K'}},
+  }),
+  overclockedKnight: Object.freeze({
+    family:'synth-metal-overclocked-gallop', preserveSectionOrder:true, harmonyPath:[0,0,3,0,-2,0], swing:0, warmth:.44, releaseScale:.62, space:.04, delayMs:58,
+    leadInstrument:'pulse', counterInstrument:'guitar2', chordInstrument:'pad', bassInstrument:'synthbass', chordHoldSteps:8, bassHoldSteps:1.45,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.62,counter:.66,bass:1.22,chord:.24},
+    percussion:{period:16,kit:'synth-metal',punch:1.42,pattern:{0:'K',2:'H',4:'K',6:'H',8:'S',10:'H',12:'K',14:'H'}},
+  }),
+  reactorGambit: Object.freeze({
+    family:'synth-metal-reactor-half-time', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,5,0], swing:0, warmth:.52, releaseScale:.78, space:.07, delayMs:82,
+    leadInstrument:'guitar2', counterInstrument:'synth', chordInstrument:'pad', bassInstrument:'synthbass', chordHoldSteps:12, bassHoldSteps:2,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.78,counter:.34,bass:1.24,chord:.34},
+    percussion:{period:16,kit:'synth-metal',punch:1.38,pattern:{0:'K',4:'H',8:'S',10:'K',12:'H'}},
+  }),
   concreteRain: Object.freeze({
     family:'concrete-trip-hop-noir', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,-5,0], swing:.08, warmth:.68, releaseScale:1.28, space:.22, delayMs:240,
     leadInstrument:'mutedHorn', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'synthbass', chordHoldSteps:16, bassHoldSteps:8,
@@ -477,6 +495,7 @@ const EXTRA_STRUCTURED_FEEL_BY_THEME = Object.freeze({
 
 
 const V166BT_STRUCTURED_FEEL_BY_THEME = Object.freeze({
+  neonSiege:'neonSiege', overclockedKnight:'overclockedKnight', reactorGambit:'reactorGambit',
   concreteRain:'concreteRain', velvetStatic:'velvetStatic', abyssalArchive:'abyssalArchive', redVault:'redVault',
   queenBossa:'queenBossa', havana205:'havana205', fourSquares:'fourSquares', verticalRainPiano:'verticalRainPiano',
 });

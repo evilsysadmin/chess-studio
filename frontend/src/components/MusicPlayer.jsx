@@ -348,7 +348,9 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
         <div className="music-experiences" role="group" aria-label="Ambiente musical">
           <button type="button" className={radioMode === 'focus' ? 'active' : ''} onClick={() => chooseExperience('focus')} aria-pressed={radioMode === 'focus'}>Concentración</button>
           <button type="button" className={radioMode === 'genre:Clásica' ? 'active' : ''} onClick={() => chooseExperience('genre:Clásica')} aria-pressed={radioMode === 'genre:Clásica'}>Clásica</button>
-          <button type="button" className={radioMode === 'genre:Rock' ? 'active' : ''} onClick={() => chooseExperience('genre:Rock')} aria-pressed={radioMode === 'genre:Rock'}>Energía</button>
+          <button type="button" className={radioMode === 'genre:Synth Metal' ? 'active' : ''} onClick={() => chooseExperience('genre:Synth Metal')} aria-pressed={radioMode === 'genre:Synth Metal'}>Energía</button>
+          <button type="button" className={radioMode === 'genre:Ecléctica' ? 'active' : ''} onClick={() => chooseExperience('genre:Ecléctica')} aria-pressed={radioMode === 'genre:Ecléctica'}>Ecléctica</button>
+          <button type="button" className={radioMode === 'all' ? 'active' : ''} onClick={() => chooseExperience('all')} aria-pressed={radioMode === 'all'}>Aleatorio</button>
         </div>
 
         <details className="music-deck-advanced">

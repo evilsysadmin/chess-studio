@@ -35,7 +35,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-assert(AMBIENT_THEME_OPTIONS.length === 70, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
+assert(AMBIENT_THEME_OPTIONS.length === 73, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
 const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
 assert(new Set(ids).size === ids.length, 'hay IDs musicales duplicados');
 
@@ -45,7 +45,8 @@ assert(new Set(grouped.map((theme) => theme.id)).size === ids.length, 'un tema a
 
 const expectedGenres = new Map([
   ['SPA / Zen', 2],
-  ['Rock', 3],
+  ['Ecléctica', 3],
+  ['Synth Metal', 3],
   ['Lo-Fi / Chill', 2],
   ['Synthwave', 2],
   ['Trip-Hop / Downtempo', 2],
@@ -87,6 +88,9 @@ assert(new Set(profiles.map(([, profile]) => profile.family)).size === added.len
 assert(getAmbientThemeSoundProfile('mistSpa').drumMode === 'none', 'SPA · niebla debería carecer de batería');
 assert(getAmbientThemeSoundProfile('endgameAdagio').drumMode === 'none', 'Adagio debería carecer de batería');
 assert(getAmbientThemeSoundProfile('rookGarage').percussionPunch > 1.2, 'Garage necesita pegada rock diferenciada');
+const energyIds = ['neonSiege', 'overclockedKnight', 'reactorGambit'];
+assert(energyIds.every((id) => getAmbientThemeSoundProfile(id)?.percussionKit === 'synth-metal'), 'Energía debe usar batería synth-metal propia');
+assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.family)).size === energyIds.length, 'los temas de Energía necesitan identidades distintas');
 assert(PHRASE_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: melodía fuera de la rejilla rítmica');
 assert(SAX_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: saxo fuera de la rejilla rítmica');
 for (const [id, profile] of profiled) {
@@ -122,8 +126,8 @@ for (const theme of AMBIENT_THEME_OPTIONS) {
 setAmbientRadioMode('focus');
 assert(getAmbientRadioMode() === 'focus', 'radio focus no persiste');
 assert(ambientRadioThemeIds().length > 0, 'radio focus no tiene pistas');
-setAmbientRadioMode('genre:Rock');
-assert(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Rock'), 'radio Rock filtra mal');
+setAmbientRadioMode('genre:Ecléctica');
+assert(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Ecléctica'), 'radio Ecléctica filtra mal');
 toggleAmbientFavorite('rookGarage');
 assert(isAmbientFavorite('rookGarage'), 'favorito no persiste');
 toggleAmbientExcluded('rookGarage');

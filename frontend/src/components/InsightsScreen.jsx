@@ -89,9 +89,9 @@ function WinBar({ stats }) {
   );
 }
 
-export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, isAdminUser = false }) {
+export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, isAdminUser = false, initialSection = 'diagnosis' }) {
   useEscapeToClose(onExit);
-  const [section, setSection] = useState('diagnosis');
+  const [section, setSection] = useState(initialSection === 'career' ? 'career' : 'diagnosis');
 
   const [searchStatus, setSearchStatus] = useState('idle'); // 'idle' | 'running' | 'done'
   const [searchProgress, setSearchProgress] = useState({ done: 0, total: 0 });

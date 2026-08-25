@@ -1366,6 +1366,14 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
+  if (kit === 'synth-metal') {
+    if (code === 'K') { playBassDrum(0.064 * velocity, { ...human, tone: -0.42, decay: 0.72 }); playSoftPercussion(0.016 * velocity, { ...human, decay: 0.62 }); }
+    else if (code === 'S') { playNoiseHit('snare', 0.050 * velocity, { ...human, brightness: 1.02, durationScale: 1.12 }); playMembraneHit('tak', 0.010 * velocity, { ...human, tone: -0.28, decay: 0.72 }); }
+    else if (code === 'H') playNoiseHit('hat', 0.011 * velocity, { ...human, brightness: 1.08, durationScale: 0.54 });
+    else if (code === 'M') playMetalHit();
+    return;
+  }
+
   if (kit === 'lofi') {
     if (code === 'K') { playSoftPercussion(0.026 * velocity, { ...human, tone: -0.42, decay: 1.12 }); playBassDrum(0.020 * velocity, { ...human, decay: 0.92 }); }
     else if (code === 'S') playNoiseHit('snare', 0.020 * velocity, { ...human, brightness: 0.62, durationScale: 1.35 });

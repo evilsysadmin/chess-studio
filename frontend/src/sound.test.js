@@ -33,8 +33,8 @@ import {
 describe('ambient music catalog', () => {
   beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
 
-  it('expone setenta temas seleccionables tras curar los experimentales', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(70);
+  it('expone setenta y tres temas seleccionables tras curar los experimentales', () => {
+    expect(AMBIENT_THEME_OPTIONS).toHaveLength(73);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Gambito del rey');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Vals del zugzwang');
@@ -109,7 +109,8 @@ describe('ambient music catalog', () => {
   it('agrupa el catálogo por estilo sin perder pistas', () => {
     expect(AMBIENT_THEME_GROUPS.flatMap((group) => group.themes)).toHaveLength(AMBIENT_THEME_OPTIONS.length);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'SPA / Zen')?.themes).toHaveLength(2);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Rock')?.themes).toHaveLength(3);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Ecléctica')?.themes).toHaveLength(3);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Synth Metal')?.themes).toHaveLength(3);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Lo-Fi / Chill')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Synthwave')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Trip-Hop / Downtempo')?.themes).toHaveLength(2);
@@ -317,8 +318,8 @@ describe('ambient music catalog', () => {
     setAmbientRadioMode('focus');
     expect(getAmbientRadioMode()).toBe('focus');
     expect(ambientRadioThemeIds().length).toBeGreaterThan(0);
-    setAmbientRadioMode('genre:Rock');
-    expect(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Rock')).toBe(true);
+    setAmbientRadioMode('genre:Ecléctica');
+    expect(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Ecléctica')).toBe(true);
     toggleAmbientFavorite('rookGarage');
     expect(isAmbientFavorite('rookGarage')).toBe(true);
     setAmbientRadioMode('favorites');
@@ -331,10 +332,10 @@ describe('ambient music catalog', () => {
 
   it('cambiar de estilo selecciona inmediatamente una pista de esa emisora', () => {
     setAmbientTheme('andalus');
-    const selected = selectAmbientRadioModeTheme('genre:Rock');
-    expect(selected.mode).toBe('genre:Rock');
+    const selected = selectAmbientRadioModeTheme('genre:Ecléctica');
+    expect(selected.mode).toBe('genre:Ecléctica');
     expect(selected.themeId).not.toBe('andalus');
-    expect(AMBIENT_THEME_OPTIONS.find((theme) => theme.id === selected.themeId)?.genre).toBe('Rock');
+    expect(AMBIENT_THEME_OPTIONS.find((theme) => theme.id === selected.themeId)?.genre).toBe('Ecléctica');
     expect(getAmbientThemeId()).toBe(selected.themeId);
   });
 

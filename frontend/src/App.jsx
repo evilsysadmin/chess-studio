@@ -77,6 +77,7 @@ function AppInner({ isAdminUser }) {
     initialView: () => loadActiveGameSession()?.route || null,
   });
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
+  const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');
 
   usePresenceHeartbeat(view);
 
@@ -740,6 +741,9 @@ function AppInner({ isAdminUser }) {
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
                       <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
                     </button>
+                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setInsightsLandingSection('career'); navigateTo('insights'); }}>
+                      <span aria-hidden="true">◫</span><span><b>Mi progreso</b><small>Historial, logros y evolución</small></span>
+                    </button>
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>
                       <span aria-hidden="true">⚙</span><span><b>Ajustes</b><small>Sonido y experiencia</small></span>
                     </button>
@@ -814,7 +818,7 @@ function AppInner({ isAdminUser }) {
             isAdminUser={isAdminUser}
             onAdmin={() => navigateTo('admin')}
             onHistory={() => navigateTo('history')}
-            onInsights={() => navigateTo('insights')}
+            onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
             onLab={() => navigateTo('lab')}
             hasSavedGame={hasSavedGame}
             loading={loading}
@@ -920,6 +924,7 @@ function AppInner({ isAdminUser }) {
 
         {view === 'insights' && (
           <InsightsScreen
+            initialSection={insightsLandingSection}
             insights={insights}
             gameHistory={historyList}
             combatHistory={combatHistoryList}
