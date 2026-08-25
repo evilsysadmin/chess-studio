@@ -5,6 +5,7 @@ import { SERIES_OPTIONS } from '../series.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { handicapForGap } from '../handicap.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import { difficultyForRating } from '../playerRating.js';
 
 function colorLabel(color) {
   if (color === 'w' || color === 'white') return 'Blancas';
@@ -15,6 +16,8 @@ function colorLabel(color) {
 export default function QuickMatchModal({
   difficulty,
   setDifficulty,
+  autoDifficulty,
+  setAutoDifficulty,
   color,
   setColor,
   timeControlId,
@@ -32,6 +35,7 @@ export default function QuickMatchModal({
 }) {
   useEscapeToClose(onClose);
   const handicap = rating ? handicapForGap(rating.rating, difficulty) : null;
+  const adaptiveLevel = difficultyForRating(rating?.rating ?? 400);
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
 
@@ -43,23 +47,30 @@ export default function QuickMatchModal({
         <div className="combat-heading-row"><h3>Elige dificultad y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
         <p className="hint-text friendly-lead">Puedes dejar todo lo demás en automático.</p>
 
-        <div className="difficulty-slider-row friendly-difficulty-main">
+        <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
+          <span aria-hidden="true">◎</span><span><b>Encuentra mi nivel</b><small>Ajusta la CPU a tu rating actual · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
+        </button>
+
+        <div className={`difficulty-slider-row friendly-difficulty-main ${autoDifficulty ? 'is-disabled' : ''}`}>
           <input
             type="range"
             min="0"
             max="100"
-            value={difficulty}
+            value={autoDifficulty ? adaptiveLevel : difficulty}
+            disabled={autoDifficulty}
             onChange={(e) => setDifficulty(Number(e.target.value))}
             aria-label="Nivel de dificultad de la CPU"
             className="difficulty-slider"
           />
           <div className="difficulty-readout">
-            <span className="difficulty-number">{difficulty}</span>
-            <span className="difficulty-word">{difficultyLabel(difficulty)}</span>
+            <span className="difficulty-number">{autoDifficulty ? adaptiveLevel : difficulty}</span>
+            <span className="difficulty-word">{autoDifficulty ? 'Automático' : difficultyLabel(difficulty)}</span>
           </div>
         </div>
 
-        {handicap && (
+        {autoDifficulty && <button type="button" className="text-action adaptive-manual-link" onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
+
+        {!autoDifficulty && handicap && (
           <p className="hint-text friendly-inline-note">
             Ajuste recomendado: <b>{handicap.label.toLowerCase()}</b> para compensar la diferencia de rating.
           </p>

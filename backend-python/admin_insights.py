@@ -66,6 +66,10 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
     game_activity = _profile_json(data, "chess-study-game-activity", [])
     if not isinstance(game_activity, list):
         game_activity = []
+    adaptive_started_ids = {
+        str(row.get("gameId")) for row in game_activity
+        if isinstance(row, dict) and row.get("state") == "started" and row.get("detail") == "adaptive-difficulty" and row.get("gameId")
+    }
 
     combat_history = _profile_json(data, "chess-study-combat-history", [])
     if not isinstance(combat_history, list):
@@ -366,6 +370,8 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         "funnelFinished": len(lifecycle_finished),
         "funnelCancelled": len(lifecycle_cancelled),
         "funnelCompletionPct": round((len(lifecycle_finished) / len(lifecycle_started)) * 100) if lifecycle_started else None,
+        "adaptiveStarted": len(adaptive_started_ids),
+        "adaptiveFinished": len(lifecycle_finished & adaptive_started_ids),
         "wins": wins,
         "draws": draws,
         "losses": losses,

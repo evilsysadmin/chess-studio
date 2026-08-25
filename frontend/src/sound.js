@@ -1366,11 +1366,26 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
-  if (kit === 'synth-metal') {
+  if (kit === 'synth-metal' || kit === 'synth-metal-thrash') {
     if (code === 'K') { playBassDrum(0.064 * velocity, { ...human, tone: -0.42, decay: 0.72 }); playSoftPercussion(0.016 * velocity, { ...human, decay: 0.62 }); }
     else if (code === 'S') { playNoiseHit('snare', 0.050 * velocity, { ...human, brightness: 1.02, durationScale: 1.12 }); playMembraneHit('tak', 0.010 * velocity, { ...human, tone: -0.28, decay: 0.72 }); }
     else if (code === 'H') playNoiseHit('hat', 0.011 * velocity, { ...human, brightness: 1.08, durationScale: 0.54 });
     else if (code === 'M') playMetalHit();
+    return;
+  }
+
+  if (kit === 'synth-metal-gallop') {
+    if (code === 'K') { playBassDrum(0.058 * velocity, { ...human, tone: -0.34, decay: 0.88 }); playMembraneHit('dum', 0.012 * velocity, { ...human, decay: 0.68 }); }
+    else if (code === 'S') playNoiseHit('snare', 0.044 * velocity, { ...human, brightness: 0.9, durationScale: 1.24 });
+    else if (code === 'H') playNoiseHit('hat', 0.008 * velocity, { ...human, brightness: 0.94, durationScale: 0.76 });
+    return;
+  }
+
+  if (kit === 'industrial-half-time') {
+    if (code === 'K') { playBassDrum(0.078 * velocity, { ...human, tone: -0.58, decay: 1.16 }); playSoftPercussion(0.022 * velocity, { ...human, decay: 1.05 }); }
+    else if (code === 'S') playNoiseHit('snare', 0.060 * velocity, { ...human, brightness: 0.72, durationScale: 1.65 });
+    else if (code === 'M') playMetalHit();
+    else if (code === 'H') playNoiseHit('hat', 0.006 * velocity, { ...human, brightness: 0.7, durationScale: 1.05 });
     return;
   }
 

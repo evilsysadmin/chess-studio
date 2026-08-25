@@ -4,8 +4,11 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { getUiLanguage, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import ProfileBackupModal from './ProfileBackupModal.jsx';
 import AchievementsModal from './AchievementsModal.jsx';
+import { canInstallChessStudio, promptChessStudioInstall, PWA_INSTALL_AVAILABLE_EVENT } from '../pwaInstall.js';
+import { levelForPoints } from '../tournament.js';
+import { ratingLabel } from '../playerRating.js';
 
-export default function AccountModal({ onClose, onLogout, loggingOut = false }) {
+export default function AccountModal({ onClose, onLogout, loggingOut = false, rating = null, tournament = null, combatXp = 0 }) {
   useEscapeToClose(onClose);
   const [me, setMe] = useState(null);
   const [email, setEmail] = useState('');
@@ -17,6 +20,7 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
   const [language, setLanguage] = useState(() => getUiLanguage());
   const [showBackup, setShowBackup] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [canInstall, setCanInstall] = useState(() => canInstallChessStudio());
 
   useEffect(() => {
     let live = true;
@@ -28,6 +32,12 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
       if (live) setError('No se pudo cargar la cuenta.');
     });
     return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setCanInstall(canInstallChessStudio());
+    window.addEventListener(PWA_INSTALL_AVAILABLE_EVENT, refresh);
+    return () => window.removeEventListener(PWA_INSTALL_AVAILABLE_EVENT, refresh);
   }, []);
 
   async function saveEmail(e) {
@@ -73,6 +83,13 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
               <span className="account-center-avatar" aria-hidden="true">{(me.username || 'J').slice(0, 1).toUpperCase()}</span>
               <div><strong>{me.username}</strong><small>{me.isAdmin ? 'Administrador' : 'Jugador'} · progreso sincronizado</small></div>
             </div>
+
+            <section className="account-progress-glance" aria-label="Tu avance">
+              <div><span>Rating</span><b>{rating?.rating ?? '—'}</b><small>{rating ? ratingLabel(rating.rating) : 'Sin calibrar'}</small></div>
+              <div><span>Torneo</span><b>Nivel {levelForPoints(tournament?.progressPoints || 0)}</b><small>Progreso competitivo</small></div>
+              <div><span>Combat</span><b>{combatXp || 0} XP</b><small>Ejército persistente</small></div>
+              <div><span>Aprendizaje</span><b>Diagnóstico</b><small>Prioridad accionable</small></div>
+            </section>
 
             <section className="account-center-section" aria-labelledby="account-language-heading">
               <div><strong id="account-language-heading">Idioma</strong><small>Se recuerda en este perfil.</small></div>
@@ -120,6 +137,7 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false }) 
             <section className="account-center-tools" aria-label="Perfil y progreso">
               <button type="button" onClick={() => setShowAchievements(true)}><b>Distintivos</b><small>Logros y títulos</small></button>
               <button type="button" onClick={() => setShowBackup(true)}><b>Gestionar progreso</b><small>Sincronización y copia</small></button>
+              {canInstall && <button type="button" onClick={async () => { const installed = await promptChessStudioInstall(); setCanInstall(canInstallChessStudio()); if (installed) setNotice('Chess Studio instalado en este dispositivo.'); }}><b>Instalar aplicación</b><small>Acceso directo y pantalla completa</small></button>}
             </section>
 
             <details className="friendly-disclosure account-privacy-disclosure">

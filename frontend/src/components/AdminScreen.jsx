@@ -486,6 +486,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Partidas normales</span><strong>{u.gamesPlayed ?? 0}</strong></div>
                               <div><span>Embudo de partidas</span><strong>{u.funnelStarted ?? 0} iniciadas · {u.funnelFinished ?? 0} terminadas</strong></div>
                               <div><span>Finalización</span><strong>{u.funnelCompletionPct == null ? '—' : `${u.funnelCompletionPct}%`}{u.funnelCancelled ? ` · ${u.funnelCancelled} abandonadas` : ''}</strong></div>
+                              <div><span>Dificultad adaptativa</span><strong>{u.adaptiveStarted ?? 0} iniciadas · {u.adaptiveFinished ?? 0} terminadas</strong></div>
                               <div><span>Batallas Combat Chess</span><strong>{u.combatBattles ?? 0}</strong></div>
                               <div><span>Capturas humanas</span><strong>{u.humanCaptures ?? 0}</strong></div>
                               <div><span>Damas capturadas</span><strong>{u.queensCaptured ?? 0}</strong></div>

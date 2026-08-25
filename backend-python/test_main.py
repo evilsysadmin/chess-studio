@@ -1185,6 +1185,18 @@ def test_admin_summary_exposes_anonymous_game_completion_funnel():
     assert summary["funnelCompletionPct"] == 50
 
 
+def test_admin_summary_counts_adaptive_difficulty_completion():
+    from admin_insights import _extract_summary_stats
+    profile = {"data": {"chess-study-game-activity": json.dumps([
+        {"gameId": "adaptive-1", "state": "started", "detail": "adaptive-difficulty"},
+        {"gameId": "adaptive-1", "state": "finished", "outcome": "win"},
+        {"gameId": "manual-1", "state": "started"},
+    ])}}
+    summary = _extract_summary_stats(profile)
+    assert summary["adaptiveStarted"] == 1
+    assert summary["adaptiveFinished"] == 1
+
+
 def test_activity_heartbeat_is_protected_and_lightweight():
     assert raw_client.post("/api/auth/activity").status_code == 401
     assert client.post("/api/auth/activity").status_code == 204

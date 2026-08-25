@@ -291,11 +291,11 @@ function AppInner({ isAdminUser }) {
       const handicap = handicapForGap(rating.rating, difficulty);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null);
       const isLearning = !!opts?.learning;
-      const nextContext = { rematch: !!opts?.rematch, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null };
+      const nextContext = { rematch: !!opts?.rematch, adaptiveDifficulty: !!opts?.adaptiveDifficulty, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null };
       setLearningMode(isLearning);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
       setGameContext(nextContext);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: isLearning, gameContext: nextContext }) });
+      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: isLearning, gameContext: nextContext }), detail: nextContext.adaptiveDifficulty ? 'adaptive-difficulty' : null });
       const shouldOfferContract = !isLearning && !opts?.runMode && !opts?.lab && !opts?.rescue && Number(opts?.seriesBestOf || 1) <= 1;
       const contract = shouldOfferContract ? chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents }) : null;
       if (contract) saveActiveContract(contract); else clearActiveContract();
@@ -507,37 +507,6 @@ function AppInner({ isAdminUser }) {
         winner: series.winner,
       } : null,
     };
-  }
-
-  async function handleRematch({ difficulty, humanColor, timeControl, ghostStyle = null }) {
-    if (game?.id) clearClockSnapshot(game.id);
-    setLoading(true);
-    setError(null);
-    try {
-      if (game?.id) {
-        const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-        const exitDisposition = gameExitDisposition({ moveCount: humanMoveCount(game.history?.length || 0, game.humanColor), isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
-        if (exitDisposition === 'forfeit') handleCasualGameEnd('loss', game, { endReason: 'resignation' });
-        else recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
-        await api.deleteGame(game.id).catch(() => {});
-      }
-      const nextColor = humanColor === 'w' ? 'b' : 'w';
-      const created = await api.createGame(difficulty, nextColor, null, null, ghostStyle);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: ghostStyle ? 'ghost' : 'casual' });
-      const contract = chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents });
-      saveActiveContract(contract);
-      setActiveContract(contract);
-      setGameContext({ rematch: true, ghost: !!ghostStyle, ghostStyle });
-      setActiveTimeControl(timeControl || null);
-      setLearningMode(false);
-      clearActiveSeries();
-      setActiveSeries(null);
-      setGame(created);
-      setHasSavedGame(true);
-      navigateTo('game');
-    } catch (e) {
-      setError(e?.requestId ? e.message : 'No se pudo preparar la revancha.');
-    } finally { setLoading(false); }
   }
 
   async function handlePlayFromHere(fen, humanColor, difficulty, meta = {}) {
@@ -822,7 +791,7 @@ function AppInner({ isAdminUser }) {
           />
         )}
         {showSettings && <UserSettingsPanel onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
-        {showGlobalAccount && <AccountModal onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
+        {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatXp={combatXp} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
@@ -888,7 +857,6 @@ function AppInner({ isAdminUser }) {
             activeContract={activeContract}
             runState={specialRun && gameContext.runMode ? specialRun : null}
             onNextRunGame={() => handleContinueRun(specialRun)}
-            onRematch={handleRematch}
             memoryContext={gameContext}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
           />

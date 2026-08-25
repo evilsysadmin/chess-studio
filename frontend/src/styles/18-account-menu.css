@@ -107,6 +107,21 @@
   .masthead-account-trigger > span:not(.masthead-account-avatar) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .masthead-account-popover { position: fixed; top: max(3.6rem, calc(env(safe-area-inset-top) + 3rem)); right: max(.5rem, env(safe-area-inset-right)); }
 }
+.adaptive-difficulty-choice { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: .6rem; width: 100%; min-height: 58px; padding: .55rem .65rem; border: 1px solid var(--ink-3); border-radius: 9px; background: var(--ink); color: var(--parchment-dim); text-align: left; }
+.adaptive-difficulty-choice.active { border-color: var(--brass); background: color-mix(in srgb,var(--ink) 92%,var(--brass)); }
+.adaptive-difficulty-choice > span:first-child { color: var(--brass); font-size: 1.1rem; }
+.adaptive-difficulty-choice > span:nth-child(2) { display: grid; gap: .16rem; }
+.adaptive-difficulty-choice b { color: var(--parchment); font-size: .76rem; }
+.adaptive-difficulty-choice small { color: var(--parchment-dim); font-size: .63rem; line-height: 1.35; }
+.adaptive-difficulty-choice i { color: var(--brass); font: 700 .62rem/1 var(--font-body); font-style: normal; text-transform: uppercase; letter-spacing: .05em; }
+.difficulty-slider-row.is-disabled { opacity: .5; }
+.adaptive-manual-link { margin: -.2rem 0 .5rem; }
+.account-progress-glance { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .45rem; }
+.account-progress-glance > div { display: grid; gap: .15rem; padding: .55rem; border: 1px solid var(--ink-3); border-radius: 8px; background: rgba(0,0,0,.1); }
+.account-progress-glance span { color: var(--brass-dim); font: 650 .58rem/1.2 var(--font-body); text-transform: uppercase; letter-spacing: .05em; }
+.account-progress-glance b { color: var(--parchment); font-size: .75rem; }
+.account-progress-glance small { color: var(--parchment-dim); font-size: .58rem; line-height: 1.3; }
+@media (max-width: 620px) { .account-progress-glance { grid-template-columns: 1fr 1fr; } }
 
 .session-result-notice {
   display: flex;

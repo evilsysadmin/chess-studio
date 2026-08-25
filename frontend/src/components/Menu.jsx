@@ -17,6 +17,7 @@ import { shouldEnableHomePlayNudge } from '../homePlayNudgePolicy.js';
 import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
 import { setProfileStorageItem } from '../profileKeys.js';
 import { homeNextBestAction } from '../nextBestAction.js';
+import { difficultyForRating } from '../playerRating.js';
 
 const HOME_GUIDE_KEY = 'chess-study-home-guide-dismissed-v1';
 
@@ -52,6 +53,7 @@ export default function Menu({
   suppressHomeNudge = false,
 }) {
   const [difficulty, setDifficulty] = useState(50);
+  const [autoDifficulty, setAutoDifficulty] = useState(true);
   const [color, setColor] = useState('random');
   const [timeControlId, setTimeControlId] = useState(() => getDefaultTimeControlId());
   const [seriesBestOf, setSeriesBestOf] = useState(1);
@@ -255,6 +257,8 @@ export default function Menu({
         <QuickMatchModal
           difficulty={difficulty}
           setDifficulty={setDifficulty}
+          autoDifficulty={autoDifficulty}
+          setAutoDifficulty={setAutoDifficulty}
           color={color}
           setColor={setColor}
           timeControlId={timeControlId}
@@ -267,7 +271,7 @@ export default function Menu({
           setThreatCheck={setThreatCheck}
           loading={loading}
           rating={rating}
-          onStart={() => { onNewGame(difficulty, color, { timeControlId, seriesBestOf, suddenDeath, threatCheck }); setShowQuickMatch(false); }}
+          onStart={() => { onNewGame(autoDifficulty ? difficultyForRating(rating?.rating ?? 400) : difficulty, color, { timeControlId, seriesBestOf, suddenDeath, threatCheck, adaptiveDifficulty: autoDifficulty }); setShowQuickMatch(false); }}
           onClose={() => setShowQuickMatch(false)}
         />
       )}

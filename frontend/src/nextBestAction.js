@@ -3,12 +3,12 @@ export function nextBestAction({ outcome, moveCount = 0, hasReport = false } = {
     return { id: 'review', eyebrow: 'Siguiente paso', title: 'Revisa el momento decisivo', detail: 'Encuentra la jugada que cambió la partida antes de volver a intentarlo.', label: 'Revisar partida' };
   }
   if (outcome === 'win') {
-    return { id: 'again', eyebrow: 'Mantén el ritmo', title: 'Sube un poco la exigencia', detail: 'Otra partida consolida mejor lo aprendido que una explicación larga.', label: 'Jugar otra' };
+    return { id: 'advance', eyebrow: 'Mantén el ritmo', title: 'Sube un poco la exigencia', detail: 'Tu siguiente objetivo ya puede pedirte un rival más fuerte.', label: 'Ver siguiente objetivo' };
   }
   if (outcome === 'draw') {
-    return { id: 'again', eyebrow: 'Siguiente paso', title: 'Desempata en el tablero', detail: 'Mismo contexto, una oportunidad nueva para convertir la ventaja.', label: 'Jugar otra' };
+    return { id: 'advance', eyebrow: 'Siguiente paso', title: 'Convierte mejor la ventaja', detail: 'Revisa el cierre y avanza con un objetivo concreto.', label: 'Ver siguiente objetivo' };
   }
-  return { id: 'again', eyebrow: 'Siguiente paso', title: 'Vuelve al tablero', detail: 'Repite con la misma configuración y ajusta una sola decisión.', label: 'Intentarlo de nuevo' };
+  return { id: 'advance', eyebrow: 'Siguiente paso', title: 'Entrena una decisión', detail: 'Avanza con un objetivo nuevo en lugar de repetir la misma partida.', label: 'Ver siguiente objetivo' };
 }
 
 export function homeNextBestAction(activity = []) {
@@ -16,5 +16,5 @@ export function homeNextBestAction(activity = []) {
   if (!latest) return null;
   if (latest.outcome === 'loss') return { id: 'practice', eyebrow: 'Recomendado para ti', title: 'Practica sin presión', detail: 'Tu última partida terminó en derrota. Usa pistas gratis para probar otra idea.', label: 'Abrir práctica' };
   if (latest.outcome === 'win') return { id: 'tournament', eyebrow: 'Recomendado para ti', title: 'Pon a prueba la racha', detail: 'Vienes de ganar. Torneo te propone el siguiente rival adecuado.', label: 'Ir a Torneo' };
-  return { id: 'quick', eyebrow: 'Recomendado para ti', title: 'Busca el desempate', detail: 'Una partida rápida mantiene la continuidad sin complicar la preparación.', label: 'Jugar otra' };
+  return { id: 'quick', eyebrow: 'Recomendado para ti', title: 'Convierte la próxima ventaja', detail: 'Una partida rápida adaptada mantiene la continuidad con un objetivo nuevo.', label: 'Jugar siguiente' };
 }

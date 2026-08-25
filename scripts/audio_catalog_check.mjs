@@ -88,9 +88,11 @@ assert(getAmbientThemeSoundProfile('mistSpa').drumMode === 'none', 'SPA · niebl
 assert(getAmbientThemeSoundProfile('endgameAdagio').drumMode === 'none', 'Adagio debería carecer de batería');
 assert(getAmbientThemeSoundProfile('rookGarage').percussionPunch > 1.2, 'Garage necesita pegada rock diferenciada');
 const energyIds = ['neonSiege', 'overclockedKnight', 'reactorGambit'];
-assert(energyIds.every((id) => getAmbientThemeSoundProfile(id)?.percussionKit === 'synth-metal'), 'Energía debe usar batería synth-metal propia');
+assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.percussionKit)).size === energyIds.length, 'Synth metal necesita tres baterías realmente distintas');
 assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.family)).size === energyIds.length, 'los temas de Energía necesitan identidades distintas');
-assert(['neonKnight','midnightArcade',...energyIds].every((id) => getAmbientThemeSoundProfile(id)?.estimatedBpm >= 150), 'Energía necesita al menos 150 BPM percibidos');
+assert(getAmbientThemeSoundProfile('neonSiege').estimatedBpm >= 210, 'Asedio de neón debe sentirse thrash');
+assert(getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm >= 145 && getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm <= 155, 'Caballo overclocked debe galopar alrededor de 150 BPM');
+assert(getAmbientThemeSoundProfile('reactorGambit').estimatedBpm >= 105 && getAmbientThemeSoundProfile('reactorGambit').estimatedBpm <= 115, 'Gambito del reactor debe ser medio tiempo pesado');
 assert(['postRockMidnight','rookGarage','desertDriveRock'].every((id) => getAmbientThemeSoundProfile(id)?.estimatedBpm >= 130), 'los temas rock de Ecléctica necesitan más pulso');
 assert(PHRASE_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: melodía fuera de la rejilla rítmica');
 assert(SAX_NOTE_GAP_MS % AMBIENT_THEMES.andalus.stepMs === 0, 'Al-Ándalus: saxo fuera de la rejilla rítmica');

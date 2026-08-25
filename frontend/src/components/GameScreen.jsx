@@ -83,7 +83,6 @@ export default function GameScreen({
   activeContract = null,
   runState = null,
   onNextRunGame,
-  onRematch,
   memoryContext = {},
   onTrainPersonal,
   onChatUpdate,
@@ -819,13 +818,11 @@ export default function GameScreen({
             <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
           ) : nextAction.id === 'review' ? (
             <button className="primary-btn" onClick={() => setShowReport(true)}>{nextAction.label}</button>
-          ) : onRematch ? (
-            <button className="primary-btn" onClick={() => onRematch({ difficulty: game.difficulty, humanColor, timeControl, ghostStyle: game.ghostStyle || null })}>{nextAction.label}</button>
           ) : (
-            <button className="primary-btn" onClick={handleAbandon}>Volver al menú</button>
+            <button className="primary-btn" onClick={handleAbandon}>{nextAction.label}</button>
           )}
           {!seriesState && !runState?.active && <p className="endgame-next-detail">{nextAction.detail}</p>}
-          {(seriesState || runState?.active || nextAction.id === 'review' || onRematch) && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleAbandon}>Volver al menú</button>}
+          {(seriesState || runState?.active || nextAction.id === 'review') && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleAbandon}>Volver al menú</button>}
           {onShareResult && (
             <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
               Compartir resultado

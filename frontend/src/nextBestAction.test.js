@@ -6,9 +6,10 @@ describe('nextBestAction', () => {
     expect(nextBestAction({ outcome: 'loss', moveCount: 18, hasReport: true }).id).toBe('review');
   });
 
-  it('propone continuidad tras victoria o tablas', () => {
-    expect(nextBestAction({ outcome: 'win' }).label).toBe('Jugar otra');
-    expect(nextBestAction({ outcome: 'draw' }).id).toBe('again');
+  it('propone avanzar tras victoria o tablas sin ofrecer revancha', () => {
+    expect(nextBestAction({ outcome: 'win' }).label).toBe('Ver siguiente objetivo');
+    expect(nextBestAction({ outcome: 'draw' }).id).toBe('advance');
+    expect(nextBestAction({ outcome: 'draw' }).detail.toLowerCase()).not.toContain('revancha');
   });
 
   it('adapta Home al último resultado terminado sin usar datos privados', () => {

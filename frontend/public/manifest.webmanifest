@@ -1,0 +1,17 @@
+{
+  "name": "Chess Studio",
+  "short_name": "Chess Studio",
+  "description": "Juega, aprende y compite al ajedrez.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1b2230",
+  "theme_color": "#1b2230",
+  "categories": ["games", "education"],
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
