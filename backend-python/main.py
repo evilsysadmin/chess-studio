@@ -93,6 +93,20 @@ def _request_username(request: Request) -> str:
     return username or "-"
 
 
+def rate_limit_key(request: Request) -> str:
+    """Clave estable y justa para límites de API.
+
+    Las rutas autenticadas se limitan por cuenta, evitando que varios usuarios
+    detrás de la misma NAT compartan el mismo bucket. Antes de autenticar
+    (login/registro y tráfico anónimo) se conserva el límite por dirección
+    cliente resuelta por ASGI/Uvicorn.
+    """
+    username = _request_username(request)
+    if username != "-":
+        return f"user:{username}"
+    return f"ip:{get_remote_address(request)}"
+
+
 @app.middleware("http")
 async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
@@ -190,8 +204,8 @@ _CONFIGURED_CORS_ORIGINS = {
 }
 _CORS_ORIGINS = sorted(_DEFAULT_CORS_ORIGINS | _CONFIGURED_CORS_ORIGINS)
 
-# Rate limiting por IP — sin esto, cualquiera con curl puede hacer que un
-# hosting gratuito (o de pago) se quede corto de cómputo mandando cientos
+# Rate limiting por identidad autenticada y, antes de login, por IP. Sin esto,
+# cualquiera con curl puede hacer que un hosting gratuito se quede corto mandando cientos
 # de requests por segundo a un endpoint que corre minimax de verdad.
 # `default_limits` cubre TODO lo que no tenga su propio @limiter.limit —
 # 120/minuto es generoso para jugar de verdad (una jugada humana por vez) y
@@ -205,21 +219,13 @@ _CORS_ORIGINS = sorted(_DEFAULT_CORS_ORIGINS | _CONFIGURED_CORS_ORIGINS)
 # cliente (`gameReport.js`, `ANALYZE_MOVE_MIN_GAP_MS`) para no ir MÁS
 # rápido de lo que un hosting gratuito puede sostener de verdad, aunque el
 # límite del servidor lo permitiría.
-limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
+limiter = Limiter(key_func=rate_limit_key, default_limits=["120/minute"])
 
-# ---------- Auth M2M (empieza chico, sin usuarios ni sesiones) ----------
+# ---------- Auth M2M ----------
 #
-# Primer paso de un tema pendiente más grande (auth humano, perfiles por
-# usuario, storage por usuario) que se decidió NO encarar entero de una —
-# esto es solo la pieza M2M: una lista fija de API keys por variable de
-# entorno, sin base de datos, sin login, sin nada que un humano jugando
-# desde el navegador necesite tocar nunca. El frontend actual no manda
-# ningún header nuevo y sigue funcionando exactamente igual que antes —
-# esto es 100% aditivo, no un requisito nuevo para nadie.
-#
-# `M2M_API_KEYS` sin configurar (el caso por defecto, incluido en
-# desarrollo local) deja el set vacío — ninguna key valida nunca, cero
-# diferencia de comportamiento respecto a como estaba antes.
+# Las integraciones servidor-a-servidor pueden autenticarse con una lista
+# fija de API keys suministrada por entorno. El navegador no necesita ni
+# recibe estas credenciales. Sin `M2M_API_KEYS`, ninguna key M2M es válida.
 _M2M_API_KEYS = {k.strip() for k in os.environ.get("M2M_API_KEYS", "").split(",") if k.strip()}
 
 
@@ -278,7 +284,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
     allow_credentials=False,
-    # PATCH forma parte del contrato público de /api/profile desde dm41.
+    # PATCH forma parte del contrato público de /api/profile y debe cruzar CORS.
     # Si se omite aquí, los navegadores que tienen progreso local pendiente
     # hacen correctamente el preflight pero Starlette lo rechaza con 400 antes
     # de que el PATCH llegue a FastAPI. Incógnito suele ocultar el problema

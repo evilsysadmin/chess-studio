@@ -32,6 +32,40 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
 });
 
+test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Torneo').click();
+  await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Jugar siguiente partida', exact: true }).click();
+  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toHaveCount(0);
+});
+
+
+test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintentar sin caer a Home', async ({ page }) => {
+  await mockApi(page, { gameGetFailures: 1 });
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText('La partida sigue guardada.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reintentar recuperación', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
+  await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Reintentar recuperación', exact: true }).click();
+  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+});
+
 
 test('admin · clicar usuarios online abre el Panel Admin', async ({ page }) => {
   await mockApi(page, { isAdmin: true });
@@ -201,6 +235,15 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
   await expect(quick).toBeVisible();
   await quick.click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+
+  const abandon = page.getByRole('button', { name: 'Abandonar batalla y asumir bajas', exact: true });
+  await expect(abandon).toBeVisible();
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('¿Abandonar batalla y asumir bajas?');
+    await dialog.dismiss();
+  });
+  await abandon.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();

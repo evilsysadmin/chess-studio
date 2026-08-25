@@ -75,8 +75,8 @@ def main() -> int:
     revisions = saved.get("revisions") or {}
     assert revisions.get(rating_key, 0) >= 1, saved
 
-    # dm41+: el camino normal de guardado es PATCH optimista por clave. El
-    # smoke de stack real debe atravesarlo contra Mongo, no limitarse al PUT
+    # El camino normal de guardado es PATCH optimista por clave. El smoke de
+    # stack real debe atravesarlo contra Mongo, no limitarse al PUT
     # legado, para detectar wiring roto, CAS defectuoso o respuestas sin
     # revisiones antes de desplegar.
     status, patched = request(

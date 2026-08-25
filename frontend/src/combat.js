@@ -112,7 +112,7 @@ export function autoLevelUp(piece) {
   return current;
 }
 
-// V16.5 — Fuerza y Velocidad dejan de ser dos nombres para la misma sopa.
+// Fuerza y Velocidad deben producir efectos tácticos distintos.
 // Fuerza es OFENSIVA; Velocidad es DEFENSIVA. Además la velocidad INNATA del
 // tipo vuelve a importar: el primer arreglo separaba las mejoras, pero al
 // normalizar cada tipo contra su propia velocidad base conseguía la proeza de

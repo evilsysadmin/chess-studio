@@ -14,6 +14,10 @@ export function classifyRestoreFailure(error) {
   return error?.status === 404 || error?.status === 403 ? 'stale-session' : 'transient';
 }
 
+export function shouldLeaveActiveRouteAfterRestoreFailure(error) {
+  return classifyRestoreFailure(error) === 'stale-session';
+}
+
 export function resolveRestoredGameContext(saved, found, storedRun) {
   if (saved?.gameContext && Object.keys(saved.gameContext).length) return saved.gameContext;
   if (storedRun?.active && storedRun.currentGameId === found?.id) return { runMode: storedRun.mode };
@@ -126,19 +130,20 @@ export function useActiveSessionRestore({
       replaceView('game');
       return true;
     } catch (error) {
-      // 404/403 = el savegame ya no existe o no pertenece a esta cuenta. Un
-      // fallo transitorio conserva la sesión para poder reintentar después.
-      if (classifyRestoreFailure(error) === 'stale-session') {
+      // Sólo una sesión realmente inexistente/no autorizada abandona la ruta
+      // activa. Red/5xx conserva la pantalla de partida y el snapshot para que
+      // el usuario pueda reintentar sin sufrir un salto involuntario a Home.
+      if (shouldLeaveActiveRouteAfterRestoreFailure(error)) {
         clearActiveGameSession();
         removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);
         setHasSavedGame(false);
         setError('La partida guardada ya no existe en el servidor.');
+        replaceView('menu');
       } else {
         setHasSavedGame(true);
         setGameSaveState(SAVE_STATUS.ERROR);
-        setError('No se pudo recuperar la partida en curso. Puedes reintentar cuando vuelva el servidor.');
+        setError('No se pudo recuperar la partida en curso. Tu sesión sigue guardada; reintenta cuando vuelva el servidor.');
       }
-      replaceView('menu');
       return false;
     } finally {
       setLoading(false);

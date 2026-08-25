@@ -510,9 +510,9 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
         database = await get_db()
         if database is not None:
             persistent = True
-            # Conserva histórico dm28-dm33 (buckets horarios) y añade los
-            # buckets de 5 minutos de dm34. La colección legacy queda sólo
-            # en lectura; toda escritura nueva va a observability_5min_v2.
+            # Lee tanto el histórico horario legado como los buckets actuales
+            # de 5 minutos. La colección legacy queda sólo en lectura; toda
+            # escritura nueva va a observability_5min_v2.
             for collection_name, bucket_size in ((LEGACY_COLLECTION_NAME, 60 * 60), (COLLECTION_NAME, BUCKET_SECONDS)):
                 lower = start - (start % bucket_size)
                 upper = end - (end % bucket_size)

@@ -135,7 +135,7 @@ export function resetRoguelikeRun() {
   removeProfileStorageItem(COMPLETED_KEY);
 }
 
-// Curva deliberadamente más amable que la V16.5. El usuario ya llega al
+// Curva deliberadamente más amable que la anterior. El usuario ya llega al
 // boss con nueve batallas y perks encima; no hace falta convertir el piso 10
 // en Stockfish con resaca. En infinito sí sigue escalando hasta 95.
 export function difficultyForFloor(floor) {

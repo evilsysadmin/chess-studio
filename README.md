@@ -1,3 +1,22 @@
+### v16.6dm43w · Higiene pre-beta + continuidad UX
+
+- Endurece la continuidad de partidas: un fallo transitorio de red/5xx durante restore conserva la ruta y el snapshot en vez de expulsar al usuario a Home. El smoke crítico cubre partida rápida, torneo y Combat Chess.
+- Combat Chess separa claramente dos acciones: **Salir al menú** guarda la batalla sin consecuencias; **Abandonar batalla y asumir bajas** exige confirmación y registra la retirada con las bajas ya producidas.
+- El rate limiter usa la cuenta autenticada como bucket en rutas privadas y reserva la IP para tráfico previo al login, evitando que usuarios distintos detrás de la misma NAT compartan límites de juego/perfil.
+- `repo_doctor.py` entiende el CI actual y deja de producir falsos FAIL cuando los gates se ejecutan mediante `make static-preflight`.
+- Reduce deuda de tests estáticos: los contratos de `safeStorage` y continuidad de releases pasan a gates dedicados; el presupuesto baja de 5 a 3 source-reader tests y de 6 a 5 assertions acopladas a implementación.
+- Limpia comentarios de producción ligados a números de release y los sustituye por explicaciones del comportamiento o compatibilidad que protegen.
+- Sin refactors grandes, sin cambios de reglas de ajedrez, sin nueva telemetría y sin cambios en la cadena Terraform/Pages.
+
+### v16.6dm43v · Pre-beta hardening + Desafíos diarios + continuidad Combat
+
+- Añade una sección propia de **Desafíos diarios** con tres retos deterministas por día. Completar al menos uno mantiene la racha; completar 3/3 registra el pleno diario. Home sólo muestra el progreso compacto y la profundidad queda a un clic. El hub es restaurable después de refresh.
+- **Combat Chess** distingue salir de una batalla de retirar la campaña: «Salir al menú» persiste el snapshot y permite continuar exactamente la misma campaña/batalla al volver. La retirada permanente sigue siendo una acción deliberada separada.
+- Endurece la recuperación de errores con **Reintentar**, **Volver al menú**, recuperación de partida cuando existe snapshot y **Copiar diagnóstico** privado (release, vista, storage/online y error técnico; sin tokens, FEN, jugadas ni contenido de partida).
+- Añade hardening pre-beta sin cambiar la arquitectura: límites explícitos en perfil/presencia/análisis, validación de tamaños de payload y un `make load-probe` manual y no bloqueante para `/health` y `/ready`. El API gate exige conservar los límites sensibles.
+- Amplía compatibilidad de navegador de forma informativa: el E2E completo puede recorrer Chromium, Firefox y WebKit, mientras el gate crítico de cada push sigue usando Chromium para no triplicar tiempos. Añade regresiones de storage bloqueado y overflow móvil.
+- Mantiene intacto el pipeline de producción `Preflight → [Frontend || Backend || Security || Playwright] → Terraform → Pages`; sin nuevas dependencias de Render ni nueva telemetría.
+
 ### v16.6dm43u · Hotfix contrato memoria de serie
 
 - Ajusta el test de memoria de serie al contrato semántico actual: decisiva + marcador real + referencia a partidas anteriores, sin acoplarlo a una redacción antigua.

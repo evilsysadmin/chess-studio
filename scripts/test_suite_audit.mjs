@@ -85,7 +85,7 @@ for (const relative of [...FRONTEND_SMOKE_TESTS, ...FRONTEND_CONTRACT_TESTS]) {
 }
 
 const sourceReaders = frontendFiles.filter((name) => /(?:readFileSync|fs\.readFileSync)/.test(read(path.join(frontendSrc, name))));
-const MAX_SOURCE_READER_TESTS = 5; // dm40f baseline: bajar, nunca volver a inflar.
+const MAX_SOURCE_READER_TESTS = 3; // Presupuesto actual: puede bajar, no debe volver a crecer.
 if (sourceReaders.length > MAX_SOURCE_READER_TESTS) fail(`Demasiados contract-tests que inspeccionan source text: ${sourceReaders.length} > ${MAX_SOURCE_READER_TESTS}. Prefiere tests de comportamiento. Detectados: ${sourceReaders.join(', ')}`);
 for (const name of sourceReaders) {
   if (!contractBasenames.has(name)) fail(`${name} inspecciona source text pero no pertenece al grupo contract`);
@@ -104,6 +104,7 @@ if (new Set(grouped).size !== frontendFiles.length || grouped.length !== fronten
 const makefile = read(path.join(root, 'Makefile'));
 if (!/npm\s+test/.test(makefile)) fail('Makefile no ejecuta la suite frontend agrupada con npm test');
 if (!/^tests:.*\bstatic-preflight\b/m.test(makefile)) fail('make tests debe incluir static-preflight para adelantar gates estructurales antes del push');
+if (!/^static-preflight:.*\bsession-continuity-check\b/m.test(makefile)) fail('static-preflight debe incluir session-continuity-check para impedir saltos involuntarios de partida a Home');
 const prePushHook = read(path.join(root, '.githooks', 'pre-push'));
 if (!/\bmake\s+tests\b/.test(prePushHook)) fail('pre-push debe ejecutar make tests');
 if (!makefile.includes('--ignore=test_chess_ai.py --ignore=test_core_game.py')) fail('backend integration no autodetecta nuevos tests backend');
@@ -191,7 +192,7 @@ if (checkCiWiring) {
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
   if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
-  if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña"')) fail('Browser smoke crítico debe cubrir defaults y continuidad de Combat');
+  if (!workflowSource.includes('--grep "login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña"')) fail('Browser smoke crítico debe cubrir defaults y continuidad de Combat');
   const informationalCoverageSteps = (coverageWorkflowSource.match(/continue-on-error:\s*true/g) || []).length;
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');
 }
@@ -223,7 +224,7 @@ const e2eSource = e2eFiles.map((name) => read(path.join(e2eDir, name))).join('\n
 // repeats the feature name ("Ayuda de Partida rápida", etc.). A broad regex
 // role selector therefore becomes ambiguous in Playwright strict mode. Keep
 // this as a suite-level contract so a future refactor cannot reintroduce the
-// exact class of CI failure fixed in dm43c.
+// evita reintroducir selectores ambiguos cuando la ayuda contextual comparte nombre con la tarjeta.
 for (const label of ['Así juegas', 'Partida rápida', 'Combat Chess · Campaña']) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const broadRoleSelector = new RegExp(`getByRole\\(['\"]button['\"],\\s*\\{\\s*name:\\s*\\/[^\\n/]*${escaped}`, 'i');
@@ -239,6 +240,7 @@ for (const required of [
   'clic simple fija la ficha sin mover la unidad',
   'la batalla usa el rail derecho como Registro de batalla',
   'salir al menú conserva campaña y batalla activas',
+  'un 503 al restaurar conserva la ruta y permite reintentar sin caer a Home',
   'las piezas interactivas reciben pointer events reales en Mesa de Guerra',
   'focus de teclado sobre una reserva abre la ficha rápida sin ratón',
   'Escape cierra primero la ficha fijada sin abandonar Preparar despliegue',

@@ -375,7 +375,7 @@
 .admin-presence-offline .admin-presence-dot,
 .admin-presence-never .admin-presence-dot { opacity: 0.58; }
 
-/* ---------- V16.1 · reproductor global ---------- */
+/* ---------- Reproductor global ---------- */
 .global-music-dock {
   position: sticky;
   top: 0.55rem;
@@ -403,7 +403,7 @@
   background: color-mix(in srgb, var(--ink-2) 78%, transparent);
 }
 
-/* ---------- V16.2 · Game Chat pegado al tablero ---------- */
+/* ---------- Game Chat pegado al tablero ---------- */
 .board-live-row {
   width: 100%;
   display: flex;
@@ -545,7 +545,7 @@
   .game-side-column .notation-panel { max-height: 320px; }
 }
 
-/* ---------- V16.2 · mesa de partida: radio / tablero / rival ---------- */
+/* ---------- Mesa de partida: radio / tablero / rival ---------- */
 .game-layout {
   max-width: var(--surface-max-ultra);
 }
@@ -706,7 +706,7 @@
 }
 
 /* ========================================================================== */
-/* V16.4 · mesa alineada + Game Chat con voz + compartir compacto             */
+/* Mesa alineada, Game Chat con voz y compartir compacto. */
 /* ========================================================================== */
 
 /* Desktop: tres piezas de mobiliario independientes, pero con el mismo borde
@@ -923,7 +923,7 @@
 }
 
 /* Reafirmamos el formato estrecho del aparato en desktop; la media query vieja
-   de V16.2 no debe convertir sus controles a formato horizontal entre 1060 y
+   del reproductor no debe convertir sus controles a formato horizontal entre 1060 y
    1100 px mientras el Winamp siga viviendo en la columna izquierda. */
 @media (min-width: 1061px) {
   .game-music-rail .music-deck-controls { grid-template-columns: 1fr; gap: 0.34rem; }
@@ -941,7 +941,7 @@
   .game-music-rail .music-deck-channels { grid-row: 3; grid-column: 1; }
 }
 
-/* ---------- V16.5 · volumen Winamp + encuentro Roguelike ---------- */
+/* ---------- Volumen del reproductor y encuentro Roguelike ---------- */
 .music-deck-bottom-row {
   grid-column: 1 / -1;
   display: flex;
@@ -1014,7 +1014,7 @@
   .music-deck-bottom-row .music-deck-channels { justify-content: center; }
 }
 
-/* V16.5 — una pieza seleccionable pero inmóvil no debe parecer un bug. */
+/* Una pieza seleccionable pero inmóvil no debe parecer un bug. */
 .move-availability-note {
   margin-top: 0.55rem;
   padding: 0.55rem 0.7rem;
@@ -1034,7 +1034,7 @@
   .move-availability-note { flex-direction: column; gap: 0.2rem; }
 }
 
-/* V16.6 — Roguelike con objetivo, perks y Rey Boss. */
+/* Roguelike con objetivo, perks y Rey Boss. */
 .roguelike-objective-strip {
   display: flex;
   flex-wrap: wrap;
@@ -1208,7 +1208,7 @@
 }
 
 
-/* V16.6ae — acceso visible a entrenamiento desde errores reales. */
+/* Acceso visible a entrenamiento desde errores reales. */
 .personal-training-spotlight { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
 .personal-training-spotlight > div:first-child { min-width:0; }
 .personal-training-spotlight h2 { margin:.15rem 0 .35rem; }
@@ -1216,4 +1216,4 @@
 .personal-training-spotlight-actions strong { white-space:nowrap; color:var(--parchment); }
 @media (max-width: 760px) { .personal-training-spotlight { align-items:stretch; flex-direction:column; } .personal-training-spotlight-actions { justify-content:flex-start; } }
 
-/* ---------- V16.6ag · Laboratorio: FEN comprensible ---------- */
+/* ---------- Laboratorio: FEN comprensible ---------- */

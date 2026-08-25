@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 
-export async function mockApi(page, { isAdmin = false } = {}) {
+export async function mockApi(page, { isAdmin = false, gameGetFailures = 0 } = {}) {
   // These E2E specs exercise navigation/gameplay, not tutorial onboarding.
   // Seed Combat tutorials as already seen so modal overlays cannot intercept
   // unrelated clicks and burn Playwright's 30 s action timeout.
@@ -13,6 +13,7 @@ export async function mockApi(page, { isAdmin = false } = {}) {
   };
   let profileRevisions = {};
   let nextGameId = 1;
+  let remainingGameGetFailures = Math.max(0, Number(gameGetFailures || 0));
   const games = new Map();
   await page.route('http://localhost:4000/api/**', async (route) => {
     const url = new URL(route.request().url());
@@ -94,6 +95,10 @@ export async function mockApi(page, { isAdmin = false } = {}) {
     }
     const gameMatch = path.match(/\/games\/([^/]+)$/);
     if (gameMatch && method === 'GET') {
+      if (remainingGameGetFailures > 0) {
+        remainingGameGetFailures -= 1;
+        return json({ detail: 'Backend temporalmente no disponible' }, 503);
+      }
       const game = games.get(gameMatch[1]);
       return game ? json(game) : json({ detail: 'Partida no encontrada' }, 404);
     }

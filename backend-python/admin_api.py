@@ -103,7 +103,7 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             user = await ustore.get_user(uname)
             profile = await pstore.get_profile(uname)
             user_doc = user or {}
-            # Cuentas antiguas podían no tener `last_activity`. Desde V16.6 el
+            # Cuentas heredadas podían no tener `last_activity`. El
             # login fuerza también `last_login`; mientras migran, created_at es
             # mejor fallback que mostrar “Sin actividad” como si nunca hubieran
             # existido. El siguiente login/heartbeat reemplaza enseguida ese dato.

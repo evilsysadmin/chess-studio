@@ -1376,7 +1376,7 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
-// V16.6 — otro bloque menos contemplativo: costa andalusí (oud + guitarra)
+// Bloque menos contemplativo: costa andalusí (oud + guitarra)
 // y chill-jazz luminoso con vibráfono/Rhodes. Inspiración de atmósfera, no
 // melodías ajenas: material original generado por este motor.
 Object.assign(AMBIENT_THEMES, {
@@ -1449,7 +1449,7 @@ Object.assign(AMBIENT_THEMES, {
 });
 
 
-// V16.6ac — segundo bloque de estilos: deliberadamente NO mediterráneo.
+// Segundo bloque de estilos: deliberadamente no mediterráneo.
 // Aquí no cambiamos sólo el timbre: cambian métrica implícita, densidad,
 // función del bajo y presencia/ausencia de percusión para ampliar el catálogo.
 Object.assign(AMBIENT_THEMES, {
@@ -1509,7 +1509,7 @@ Object.assign(AMBIENT_THEMES, {
   },
  });
 
-// V16.6bp — expansión transversal del catálogo: SPA/zen, rock ambiental y
+// Expansión transversal del catálogo: SPA/zen, rock ambiental y
 // clásica/cámara. Son composiciones originales del motor Web Audio; no se
 // samplean ni reproducen obras externas.
 Object.assign(AMBIENT_THEMES, {
@@ -1592,7 +1592,7 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
-// V16.6bq — dos familias nuevas para ampliar contraste real: lo-fi/chill
+// Dos familias adicionales para ampliar contraste real: lo-fi/chill
 // y synthwave. Siguen siendo composiciones originales del motor Web Audio.
 Object.assign(AMBIENT_THEMES, {
   lofiRainTape: {
@@ -1634,7 +1634,7 @@ Object.assign(AMBIENT_THEMES, {
 });
 
 
-// V16.6bt — cuatro familias nuevas con contraste de arreglo, no sólo de preset.
+// Cuatro familias con contraste de arreglo, no sólo de preset.
 // Nada de campanillas/pajaritos: todos los leads viven en registros medios o graves.
 Object.assign(AMBIENT_THEMES, {
   concreteRain: {
@@ -1716,7 +1716,7 @@ Object.assign(AMBIENT_THEMES, {
 
 
 
-// V16.6ci — catálogo más melódico: ocho escenas nuevas de jazz mediterráneo.
+// Bloque más melódico: ocho escenas de jazz mediterráneo.
 // Priorizan líneas cantables y contramelodía sobre textura/ruido. Las pistas
 // experimentales retiradas más abajo se conservan internamente para no romper
 // sesiones antiguas, pero dejan de entrar en selector y radio aleatoria.

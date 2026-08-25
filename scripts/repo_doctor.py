@@ -35,6 +35,12 @@ def major_version(text: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def make_target_body(source: str, target: str) -> str:
+    pattern = rf"(?ms)^{re.escape(target)}:[^\n]*\n(?P<body>(?:\t[^\n]*\n|[ ]*\n)*)"
+    match = re.search(pattern, source)
+    return match.group("body") if match else ""
+
+
 # Repository shape / release contract.
 for relative, label in (
     ("backend-python/main.py", "backend main.py"),
@@ -102,11 +108,31 @@ else:
 git = shutil.which("git")
 add(bool(git), "git disponible", git or "git no está en PATH")
 
-# CI and security wiring.
+# CI and security wiring. The production workflow intentionally delegates
+# cheap structural checks to `make static-preflight`; diagnose the effective
+# wiring instead of requiring every script name to appear literally in YAML.
 ci = root / ".github/workflows/ci.yml"
 ci_text = ci.read_text("utf-8", errors="ignore") if ci.exists() else ""
-add("scripts/ai_security_gate.py" in ci_text and "scripts/api_surface_gate.py" in ci_text, "security/API gates in CI")
-add("scripts/test_suite_audit.mjs" in ci_text, "test-suite audit in CI")
+makefile_text = (root / "Makefile").read_text("utf-8", errors="ignore") if (root / "Makefile").exists() else ""
+static_preflight_line = re.search(r"(?m)^static-preflight:([^\n]*)$", makefile_text)
+static_preflight_deps = static_preflight_line.group(1) if static_preflight_line else ""
+ci_uses_preflight = "make static-preflight" in ci_text
+security_wired = (
+    ("scripts/ai_security_gate.py" in ci_text and "scripts/api_surface_gate.py" in ci_text)
+    or (ci_uses_preflight and "security-api" in static_preflight_deps)
+)
+audit_wired = (
+    "scripts/test_suite_audit.mjs" in ci_text
+    or (ci_uses_preflight and "test-suite-audit-ci" in static_preflight_deps)
+)
+continuity_wired = ci_uses_preflight and "session-continuity-check" in static_preflight_deps
+add(security_wired, "security/API gates in CI", "directos o vía static-preflight")
+add(audit_wired, "test-suite audit in CI", "directo o vía static-preflight")
+add(continuity_wired, "session continuity gate in CI", "normal/tournament/Combat")
+
+main_text = (root / "backend-python/main.py").read_text("utf-8", errors="ignore") if (root / "backend-python/main.py").exists() else ""
+rate_limit_user_aware = "def rate_limit_key(" in main_text and "user:" in main_text and "ip:" in main_text
+add(rate_limit_user_aware, "rate-limit identity policy", "usuario autenticado; IP para anónimos")
 
 # Narrative integration remains intentionally detached from the move pipeline.
 provider = root / "frontend/src/narrativeProvider.js"

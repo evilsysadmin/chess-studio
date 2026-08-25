@@ -1,5 +1,9 @@
 from pathlib import Path
 
+from starlette.requests import Request
+
+from auth import create_token
+from main import rate_limit_key
 from api_models import AnalyzeRequest, MoveRequest, NewGameRequest
 from pydantic import ValidationError
 import pytest
@@ -21,3 +25,31 @@ def test_profile_and_presence_routes_keep_explicit_rate_limits():
     assert '@limiter.limit("20/minute")\nasync def save_profile' in source
     assert '@limiter.limit("60/minute")\nasync def patch_profile' in source
     assert 'PATCH de perfil demasiado grande.' in source
+
+
+def _request(*, token=None, client_host="203.0.113.10"):
+    headers = []
+    if token:
+        headers.append((b"authorization", f"Bearer {token}".encode()))
+    return Request({
+        "type": "http",
+        "method": "GET",
+        "path": "/api/profile",
+        "headers": headers,
+        "client": (client_host, 43210),
+        "server": ("testserver", 80),
+        "scheme": "http",
+        "query_string": b"",
+    })
+
+
+def test_rate_limit_key_uses_account_for_authenticated_requests_and_ip_before_login():
+    alice = create_token("alice")
+    bob = create_token("bob")
+
+    # Misma NAT, cuentas distintas: no comparten bucket.
+    assert rate_limit_key(_request(token=alice)) == "user:alice"
+    assert rate_limit_key(_request(token=bob)) == "user:bob"
+
+    # Sin identidad válida, el límite sigue protegiendo login/registro por IP.
+    assert rate_limit_key(_request()) == "ip:203.0.113.10"

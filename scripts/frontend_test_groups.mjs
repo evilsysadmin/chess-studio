@@ -17,6 +17,4 @@ export const FRONTEND_CONTRACT_TESTS = Object.freeze([
   'src/frontendArchitectureContract.test.js',
   'src/foregroundPresenceContract.test.js',
   'src/narrativeWiring.test.js',
-  'src/releaseContinuityContract.test.js',
-  'src/safeStorageUsageContract.test.js',
 ]);

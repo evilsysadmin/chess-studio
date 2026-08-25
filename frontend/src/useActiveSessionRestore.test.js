@@ -4,6 +4,7 @@ import {
   classifyRestoreFailure,
   resolveRestoredGameContext,
   selectBoundaryRecovery,
+  shouldLeaveActiveRouteAfterRestoreFailure,
 } from './useActiveSessionRestore.js';
 
 describe('active session restore helpers', () => {
@@ -46,6 +47,13 @@ describe('active session restore helpers', () => {
     expect(classifyRestoreFailure({ status: 401 })).toBe('transient');
     expect(classifyRestoreFailure({ status: 503 })).toBe('transient');
     expect(classifyRestoreFailure(new TypeError('Failed to fetch'))).toBe('transient');
+  });
+
+  it('un fallo transitorio nunca expulsa una partida recuperable al menú', () => {
+    expect(shouldLeaveActiveRouteAfterRestoreFailure({ status: 404 })).toBe(true);
+    expect(shouldLeaveActiveRouteAfterRestoreFailure({ status: 403 })).toBe(true);
+    expect(shouldLeaveActiveRouteAfterRestoreFailure({ status: 503 })).toBe(false);
+    expect(shouldLeaveActiveRouteAfterRestoreFailure(new TypeError('Failed to fetch'))).toBe(false);
   });
 
 });

@@ -1441,7 +1441,7 @@ def test_admin_can_mark_feedback_read_and_resolved(monkeypatch):
     invalid = client.post(f'/api/admin/feedback/{feedback_id}/status', json={'status': 'burned'})
     assert invalid.status_code == 400
 
-# ---------- v16.6dm11: primer plano aproximado ----------
+# ---------- Primer plano aproximado ----------
 
 def test_foreground_summary_expires_stale_visible_tabs():
     from datetime import datetime, timedelta, timezone

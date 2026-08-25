@@ -1,4 +1,4 @@
-/* v16.6bq — carrera visual: perfil RPG, heatmaps, Daily y replay cinematográfico 2.0 */
+/* Carrera visual: perfil RPG, heatmaps, Daily y replay cinematográfico. */
 .career-rpg-heading{display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;margin-bottom:.8rem}.career-rpg-heading>div{display:grid;gap:.15rem}.career-rpg-heading h2{margin:0}.career-rpg-heading>small{max-width:420px;opacity:.68;text-align:right}.career-rpg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.7rem}.career-rpg-stat{display:grid;gap:.4rem;padding:.8rem;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(0,0,0,.12)}.career-rpg-stat.leader{border-color:rgba(198,164,93,.65);box-shadow:inset 0 0 0 1px rgba(198,164,93,.18)}.career-rpg-stat>b{font-size:1.35rem}.career-rpg-stat>div{height:7px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.08)}.career-rpg-stat i{display:block;height:100%;background:currentColor;opacity:.78}.career-rpg-stat small{opacity:.66;line-height:1.35}
 .career-heatmap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:.85rem}.career-heatmap-card{display:grid;gap:.5rem;padding:.75rem;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(0,0,0,.12)}.career-heatmap-card>small{opacity:.62;line-height:1.35}.career-heat-board{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;border:2px solid rgba(198,164,93,.28);border-radius:6px;overflow:hidden}.career-heat-cell{display:grid;place-items:center;position:relative;font-size:clamp(.56rem,1.8vw,.78rem);font-variant-numeric:tabular-nums}.career-heat-cell.light{background-color:rgba(255,255,255,.075)}.career-heat-cell.dark{background-color:rgba(255,255,255,.025)}.career-heat-cell span{position:relative;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .daily-challenge-panel{display:grid;gap:.55rem;margin:.8rem 0;padding:.7rem;border:1px solid rgba(198,164,93,.24);border-radius:10px;background:rgba(198,164,93,.04)}.daily-challenge-panel p{margin:0}.daily-calendar{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:.28rem}.daily-calendar>span{display:grid;place-items:center;gap:.08rem;min-height:40px;padding:.2rem;border:1px solid rgba(255,255,255,.08);border-radius:6px;background:rgba(0,0,0,.14);opacity:.55}.daily-calendar>span.solved{opacity:1;border-color:rgba(95,170,110,.5);background:rgba(95,170,110,.12)}.daily-calendar>span.today{outline:2px solid rgba(198,164,93,.7);outline-offset:1px}.daily-calendar small{font-size:.62rem;opacity:.62;text-transform:uppercase}.daily-calendar b{font-size:.8rem}
@@ -7,7 +7,7 @@
 .audience-reaction{display:flex;align-items:baseline;gap:.6rem;width:min(100%,620px);box-sizing:border-box;margin:.25rem auto .55rem;padding:.5rem .7rem;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.025);animation:audience-in .18s ease-out}.audience-reaction span{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;opacity:.55;white-space:nowrap}.audience-reaction b{font-size:.86rem;font-weight:550;line-height:1.35}@keyframes audience-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}@media(max-width:650px){.audience-reaction{align-items:flex-start;flex-direction:column;gap:.2rem}}
 
 
-/* V16.6bu · Audio UX 2.0 + barracón + presets + debriefing */
+/* Audio UX, barracón, presets y debriefing. */
 .music-deck-radio-row {
   display: flex;
   gap: .45rem;
@@ -106,7 +106,7 @@
   .combat-debrief-unit-grid { grid-template-columns: 1fr; }
 }
 
-/* ---------- v16.6bv · mapa estratégico completo de Combat Chess ---------- */
+/* ---------- Mapa estratégico de Combat Chess ---------- */
 .combat-campaign-map-wrap {
   margin: 1rem 0 0.85rem;
   padding: 0.8rem;
@@ -240,7 +240,7 @@
   .campaign-map-route-summary { flex-wrap: wrap; }
 }
 
-/* ---------- v16.6bv · reliquias operativas de campaña ---------- */
+/* ---------- Reliquias operativas de campaña ---------- */
 .campaign-relic-rack {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -262,7 +262,7 @@
 .campaign-relic-chip strong { color: var(--parchment); font-size: .72rem; }
 .campaign-relic-chip small { color: var(--parchment-dim); font: .52rem/1.35 var(--font-mono); }
 
-/* ---------- v16.6bv · archivo de operaciones ---------- */
+/* ---------- Archivo de operaciones ---------- */
 .campaign-operation-archive { margin: .8rem 0; border: 1px solid rgba(132,146,131,.22); border-radius: 9px; background: rgba(0,0,0,.12); }
 .campaign-operation-archive > summary { cursor: pointer; padding: .65rem .72rem; color: var(--parchment); font: .68rem var(--font-mono); }
 .campaign-operation-list { display: grid; gap: .42rem; padding: 0 .62rem .62rem; }
@@ -280,7 +280,7 @@
 }
 
 
-/* ---------- v16.6bz · Combat Chess operativo / workspace ancho ---------- */
+/* ---------- Combat Chess operativo / workspace ancho ---------- */
 .menu.combat-workspace {
   max-width: min(1420px, calc(100vw - 3rem));
   padding: clamp(1rem, 1.8vw, 1.55rem);
@@ -315,7 +315,7 @@
 .admin-activity-type.activity-tournament { color: #d4b16a; }
 @media (max-width: 700px) { .admin-activity-list em { grid-template-columns: 1fr; gap: .15rem; } .admin-activity-type { justify-self: start; } }
 
-/* ---------- v16.6cr · Combat Chess campaign flow by operational phases ---------- */
+/* ---------- Flujo de campaña por fases operativas ---------- */
 .campaign-operation-steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -474,7 +474,7 @@
 @media (max-width: 900px) { .combat-workspace .campaign-status-strip.campaign-command-status-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .combat-workspace .campaign-status-strip.campaign-command-status-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* ---------- v16.6cs · Combat battle uses the standard live-game furniture ---------- */
+/* ---------- La batalla reutiliza la estructura visual estándar de partida ---------- */
 .combat-game-layout {
   width: 100%;
   max-width: 1240px;
@@ -653,6 +653,20 @@
   margin-top: 0.1rem;
 }
 
+/* La retirada es deliberadamente secundaria: está disponible, pero no compite
+   visualmente con el camino seguro de guardar la batalla y salir al menú. */
+.combat-retreat-btn {
+  border-color: color-mix(in srgb, var(--danger) 58%, var(--ink-3));
+  color: color-mix(in srgb, var(--danger) 72%, var(--parchment));
+}
+
+.combat-retreat-btn:hover,
+.combat-retreat-btn:focus-visible {
+  border-color: var(--danger);
+  color: var(--parchment);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
 @media (max-width: 1240px) {
   .combat-board-live-row {
     width: min(100%, 980px);
@@ -695,7 +709,7 @@
   }
 }
 
-/* ---------- v16.6cv · campaña más legible + ayuda de modos ---------- */
+/* ---------- Legibilidad de campaña y ayuda contextual ---------- */
 .menu-card-shell,
 .insights-feature-shell {
   position: relative;
@@ -862,7 +876,7 @@
   .campaign-intel-buy .secondary-btn { grid-column: 1 / -1; }
 }
 
-/* ---------- v16.6cy · iconos militares + ayuda contextual de rango ---------- */
+/* ---------- Iconos militares y ayuda contextual de rango ---------- */
 .rank-insignia {
   color: #d9cfb7;
   pointer-events: auto;
@@ -941,7 +955,7 @@
 
 
 
-/* ---------- v16.6cy · mejoras directas desde la Ficha de unidad ---------- */
+/* ---------- Mejoras directas desde la ficha de unidad ---------- */
 .deployment-unit-upgrades {
   display: grid;
   gap: .48rem;
@@ -982,7 +996,7 @@
 }
 
 
-/* ---------- v16.6cz · Registro de batalla ocupa el rail derecho ---------- */
+/* ---------- Registro de batalla en el rail derecho ---------- */
 .combat-tactical-panel {
   display: flex;
   flex-direction: column;
@@ -1010,7 +1024,7 @@
 }
 
 
-/* ---------- v16.6da · consolidación operativa Combat ---------- */
+/* ---------- Consolidación operativa de Combat ---------- */
 .combat-workspace .campaign-status-strip.campaign-command-status-strip {
   grid-template-columns: repeat(7, minmax(92px, 1fr));
   position: sticky;
@@ -1081,6 +1095,6 @@
 
 
 
-/* dm43p · Perfil RPG: resumen primero, detalle a un clic */
+/* Perfil RPG: resumen primero, detalle a un clic. */
 .career-rpg-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin-bottom:.7rem}.career-rpg-summary-grid>article{display:grid;gap:.25rem;padding:.75rem;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(0,0,0,.1)}.career-rpg-summary-grid span{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;opacity:.68}.career-rpg-summary-grid b{font-size:.9rem}.career-rpg-summary-grid small{opacity:.68;line-height:1.35}.career-rpg-details{margin-top:.35rem}
 @media(max-width:760px){.career-rpg-summary-grid{grid-template-columns:1fr}}

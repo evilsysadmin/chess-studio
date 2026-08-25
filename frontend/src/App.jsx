@@ -696,7 +696,20 @@ function AppInner({ isAdminUser }) {
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
-          <div className="route-loading" role="status">Restaurando partida en curso…</div>
+          <div className="route-loading active-session-recovery" role="status">
+            {error ? (
+              <>
+                <strong>La partida sigue guardada.</strong>
+                <span>{error}</span>
+                <div className="active-session-recovery-actions">
+                  <button type="button" className="primary-btn" onClick={continueActiveSession} disabled={loading}>
+                    {loading ? 'Reintentando…' : 'Reintentar recuperación'}
+                  </button>
+                  <button type="button" className="secondary-btn" onClick={resetNavigation}>Volver al menú</button>
+                </div>
+              </>
+            ) : 'Restaurando partida en curso…'}
+          </div>
         )}
         {view === 'menu' && (
           <Menu

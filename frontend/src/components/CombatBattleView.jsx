@@ -10,7 +10,7 @@ export default function CombatBattleView({
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
   pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
-  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, combatVariant, bossHp, bossPhase, bossConfig,
+  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig,
 }) {
   return (
     <div className="combat-battle-screen">
@@ -107,15 +107,32 @@ export default function CombatBattleView({
             </aside>
           </div>
 
-          <div className="game-controls combat-game-controls">
-            <button
-              className="secondary-btn"
-              onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
-              title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
-            >
-              {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
-            </button>
-          </div>
+          {phase === 'battle' && (
+            <div className="game-controls combat-game-controls">
+              <button
+                className="secondary-btn"
+                onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
+                title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
+              >
+                {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
+              </button>
+              {combatVariant === 'roguelike' && (
+                <button
+                  type="button"
+                  className="secondary-btn combat-retreat-btn"
+                  title="Termina esta batalla como retirada y conserva las bajas que ya se hayan producido."
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      '¿Abandonar batalla y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
+                    );
+                    if (confirmed) retireBattle();
+                  }}
+                >
+                  Abandonar batalla y asumir bajas
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

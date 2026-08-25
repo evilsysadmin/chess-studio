@@ -2,8 +2,8 @@
 //
 // MongoDB es la fuente persistente de verdad. localStorage sigue siendo una
 // caché de trabajo síncrona porque muchas pantallas ya leen/escriben desde
-// ahí. Desde v16.6dm41 los guardados normales usan PATCH optimista por clave:
-// dos pestañas que tocan cosas distintas se fusionan y un 409 sólo obliga a
+// ahí. Los guardados normales usan PATCH optimista por clave: dos pestañas
+// que tocan cosas distintas se fusionan y un 409 sólo obliga a
 // releer/reintentar las claves que este snapshot realmente cambió.
 
 import { api } from './api.js';

@@ -21,7 +21,7 @@
   line-height: 1.45;
 }
 
-/* ---------- V16.6am · admin móvil legible ----------
+/* ---------- Admin móvil legible ----------
    En pantallas estrechas la tabla deja de fingir que sigue en escritorio:
    cada usuario pasa a una ficha táctil y los detalles ocupan todo el ancho. */
 @media (max-width: 700px) {
@@ -234,7 +234,7 @@
   .admin-user-actions { grid-template-columns: 1fr; }
 }
 
-/* v16.6an — expediente persistente de series */
+/* Expediente persistente de series. */
 .series-dossier-heading {
   display: flex;
   align-items: end;
@@ -323,7 +323,7 @@
   .series-dossier-stats { grid-template-columns: 1fr; }
 }
 
-/* ---------- V16.6ao · Modo Zen / examen ----------
+/* ---------- Modo Zen / examen ----------
    El modo no altera reglas ni el historial: sólo retira ayudas y mobiliario
    visual durante la partida. El Winamp permanece porque el silencio absoluto
    ya sería una auditoría fiscal, no concentración. */
@@ -356,7 +356,7 @@
   }
 }
 
-/* V16.6aq — Némesis adaptativa: evidencia real + entrenamiento dirigido. */
+/* Némesis adaptativa: evidencia real y entrenamiento dirigido. */
 .nemesis-section {
   border-color: rgba(190, 70, 70, .28);
   background: linear-gradient(145deg, rgba(120, 35, 35, .07), rgba(255, 255, 255, .018));
@@ -409,7 +409,7 @@
   .nemesis-actions { width: 100%; }
 }
 
-/* ---------- V16.6ar · hoja de servicio militar de Combate ---------- */
+/* ---------- Hoja de servicio militar de Combat ---------- */
 .combat-service-card {
   margin: 0.8rem 0;
   padding: 0.85rem;
@@ -579,7 +579,7 @@
   .combat-medal-grid { grid-template-columns: 1fr; }
 }
 
-/* v16.6ar · rango militar individual de cada veterano */
+/* Rango militar individual de cada veterano. */
 .army-piece-rank {
   display: inline-flex;
   align-items: center;
@@ -594,7 +594,7 @@
   vertical-align: middle;
 }
 
-/* v16.6as · metamorfosis de veteranos */
+/* Metamorfosis de veteranos. */
 .army-metamorphosis-status {
   display: block;
   margin-top: 0.28rem;
@@ -620,13 +620,13 @@
   .army-metamorphosis-actions { grid-template-columns: 1fr; }
 }
 
-/* v16.6av · loadout prebatalla: la forma activa debe verse de un vistazo. */
+/* Loadout prebatalla: la forma activa debe verse de un vistazo. */
 .army-metamorphosis-actions .metamorphosis-btn.active {
   box-shadow: inset 0 0 0 2px currentColor;
   font-weight: 700;
 }
 
-/* v16.6ax · técnicas tácticas de un solo uso en Combate */
+/* Técnicas tácticas de un solo uso en Combat. */
 .army-technique-block {
   display: flex;
   flex-direction: column;
@@ -683,7 +683,7 @@
   .army-technique-actions { display: grid; grid-template-columns: 1fr; }
 }
 
-/* v16.6ay · expediente individual y Memorial de Caídos */
+/* Expediente individual y Memorial de Caídos. */
 .army-unit-service {
   display: flex;
   flex-wrap: wrap;
@@ -879,7 +879,7 @@
   color: var(--brass);
 }
 
-/* v16.6az · metamorfosis ganada + compensación por potencia del ejército */
+/* Metamorfosis ganada y compensación por potencia del ejército. */
 .combat-threat-note {
   margin: 0 0 0.7rem;
   padding: 0.55rem 0.65rem;
@@ -895,7 +895,7 @@
   opacity: 0.88;
 }
 
-/* ---------- v16.6bd · roster completo de Combat Chess ---------- */
+/* ---------- Roster completo de Combat Chess ---------- */
 .army-card.army-roster-card {
   width: min(1120px, 96vw);
   max-height: 90vh;
@@ -1201,7 +1201,7 @@
   .army-dossier-button-grid { grid-template-columns: 1fr; }
 }
 
-/* ---------- v16.6bf · Campaña: roster visible + hoja global compacta ---------- */
+/* ---------- Campaña: roster visible y hoja global compacta ---------- */
 .combat-service-card.compact {
   padding: 0.68rem 0.78rem;
 }
@@ -1258,7 +1258,7 @@
   .combat-service-next-copy small { text-align: left; }
 }
 
-/* ---------- v16.6bf · Tutorial + glosario ---------- */
+/* ---------- Tutorial y glosario ---------- */
 .tutorial-shell { max-width: 980px; }
 .tutorial-main {
   width: 100%;
@@ -1511,7 +1511,7 @@
 }
 .army-rename-button:hover { color: var(--brass); border-color: var(--brass); }
 
-/* v16.6bm — Combat Chess deployment board / barracks */
+/* Tablero de despliegue y barracón de Combat Chess. */
 .combat-deployment-entry {
   display: grid;
   gap: .18rem;
@@ -2001,7 +2001,7 @@
 .army-reserve-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.5rem; }
 .army-reserve-unit { min-height: 118px; }
 
-/* ---------- v16.6bn · XCOM-lite + Deployment 2.0 + tutoriales no estándar ---------- */
+/* ---------- Despliegue táctico y tutoriales de reglas no estándar ---------- */
 .combat-heading-row,
 .deployment-title-row,
 .campaign-briefing-heading {

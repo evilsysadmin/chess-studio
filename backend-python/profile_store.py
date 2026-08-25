@@ -1,8 +1,8 @@
 """Persistencia del perfil, un documento por username autenticado.
 
-v16.6dm41 añade PATCH optimista por clave. El payload público sigue siendo el
-backup flexible de siempre; las revisiones viven en metadata privada del
-servidor y permiten que dos pestañas cambien claves distintas sin pisarse.
+El guardado normal usa PATCH optimista por clave. El payload público sigue
+siendo flexible; las revisiones viven en metadata privada del servidor y
+permiten que dos pestañas cambien claves distintas sin pisarse.
 """
 
 from __future__ import annotations

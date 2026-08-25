@@ -207,7 +207,7 @@ export function ambientRadioThemeIds(mode = getAmbientRadioMode()) {
 }
 
 
-// V16.6m — identidad de mezcla/arreglo para el bloque de jazz mediterráneo.
+// Identidad de mezcla/arreglo para el bloque de jazz mediterráneo.
 // Antes todos estos temas pasaban por la misma "máquina de variación": misma
 // ruta armónica, misma forma de mover secciones y el mismo pulso básico. Eso
 // evitaba loops cortos pero homogeneizaba demasiado el catálogo y podía romper
@@ -505,7 +505,7 @@ function getAmbientOutput(ctx) {
 function getAmbientPercussionOutput(ctx) {
   if (!ctx) return null;
   if (!ambientPercussionBus || ambientPercussionBus.context !== ctx) {
-    // V16.6bc: la percusión sintetizada tenía demasiado ataque medio/agudo y
+    // La percusión sintetizada tenía demasiado ataque medio/agudo y
     // poco peso. Un low-shelf suave antes del compresor conserva darbukas,
     // brushes y hats, pero deja sitio a un dum/kick que realmente empuje aire.
     const lowShelf = ctx.createBiquadFilter();
@@ -1609,7 +1609,7 @@ export function disposeAmbientMusic() {
 }
 
 export function startAmbientMusic() {
-  // V16.2: Play/Stop sustituyen al antiguo mute general de música. Un perfil
+  // Play/Stop sustituyen al antiguo mute general de música. Un perfil
   // viejo puede traer el flag MUSIC_MUTED_KEY; al pulsar Play (o arrancar la
   // sesión) lo limpiamos para que nunca exista un estado 'playing pero mudo'.
   if (isMusicMuted()) setMusicMuted(false);

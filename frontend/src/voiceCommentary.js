@@ -2,7 +2,7 @@ import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { duckAmbientMusic } from './sound.js';
 
-// V16.5 — TTS del Game Chat. Opt-in y OFF por defecto.
+// TTS del Game Chat: opt-in y desactivado por defecto.
 //
 // Chrome/Edge tienen dos rarezas frecuentes: la lista de voces llega tarde y
 // `cancel(); speak()` en el mismo tick puede tragarse la primera frase. Por eso

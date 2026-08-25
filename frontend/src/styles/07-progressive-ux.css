@@ -1,4 +1,4 @@
-/* ---------- v16.6di · Combat campaign progressive disclosure ---------- */
+/* ---------- Progressive disclosure de la campaña Combat ---------- */
 .campaign-command-status-strip.simplified {
   grid-template-columns: repeat(3, minmax(110px, 1fr)) !important;
   max-width: 640px;
@@ -51,7 +51,7 @@
   .campaign-command-strip.simplified { grid-template-columns: 1fr !important; max-width: none; }
 }
 
-/* ---------- v16.6dj · home simple + feedback operativo ---------- */
+/* ---------- Home simple y feedback operativo ---------- */
 .live-service-online-link {
   appearance: none;
   border: 0;
@@ -188,7 +188,7 @@
   .admin-feedback-status { margin-left: 0; }
 }
 
-/* v16.6dj · señal visual de XP gastable */
+/* Señal visual de XP gastable. */
 .deployment-unit-symbol-wrap { position: relative; }
 .deployment-upgrade-ready {
   position: absolute;
@@ -208,7 +208,7 @@
 .piece-info-stat span { letter-spacing: .085em; }
 .piece-info-xp-line { letter-spacing: .035em; }
 
-/* ---------- v16.6dk · Combat Chess friendly-by-default ---------- */
+/* ---------- Combat Chess simple por defecto ---------- */
 .campaign-operation-progress {
   display: flex;
   align-items: center;
@@ -335,7 +335,7 @@
   .campaign-map-toolbar.simplified { align-items: flex-start; }
 }
 
-/* ---------- v16.6dl · UX global: profundidad sin avalancha ---------- */
+/* ---------- UX global: profundidad sin avalancha ---------- */
 .home-friendly .menu-group { margin-bottom: 1.15rem; }
 .home-primary-group { display: grid; gap: .7rem; }
 .home-group-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
@@ -434,7 +434,7 @@
 .status-chip-compact small { color: var(--parchment-dim); font: .55rem var(--font-mono); text-transform: uppercase; }
 .status-chip-compact b { color: var(--brass); font: 700 .68rem var(--font-mono); }
 
-/* ---------- v16.6dm5d · polish UX: modales, rangos y reproductor plegable ---------- */
+/* ---------- Modales, rangos y reproductor plegable ---------- */
 .modal-backdrop {
   z-index: 140; /* siempre por encima del dock global (70) */
   padding: 1rem;
@@ -583,7 +583,7 @@
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
 }
 
-/* v16.6dm8 — estado de persistencia de la partida activa. Compacto y fuera
+/* Estado de persistencia de la partida activa. Compacto y fuera
    del tablero: informa sin competir con reloj, CPU, chat o notación. */
 .save-status-badge {
   position: absolute;
@@ -635,7 +635,7 @@
   .save-status-badge.is-saving .save-status-dot { animation: none; }
 }
 
-/* v16.6dm10 — recordatorio amable de Home. No es modal ni bloquea nada:
+/* Recordatorio amable de Home. No es modal ni bloquea nada:
    aparece sólo tras inactividad real y se limita por sesión/cooldown. */
 .home-play-nudge {
   position: fixed;
@@ -701,7 +701,7 @@
 }
 
 
-/* v16.6dm11 — presencia de pestaña deliberadamente gruesa. El panel admin
+/* Presencia de pestaña deliberadamente gruesa. El panel admin
    resume usuarios visibles sin convertir Chess Studio en una sonda de telemetría. */
 .admin-presence-summary {
   width: min(100%, 560px);
@@ -744,7 +744,7 @@
 }
 
 
-/* v16.6dm12 — filtros rápidos, presencia que envejece sola y release por usuario. */
+/* Filtros rápidos, presencia que envejece sola y release por usuario. */
 .admin-presence-idle { color: color-mix(in srgb, var(--parchment) 82%, var(--brass)); }
 .admin-presence-idle .admin-presence-dot {
   background: var(--brass-dim);
@@ -807,7 +807,7 @@
 }
 
 
-/* v16.6dm43n · profundidad de campaña detrás de un clic; camino normal = jugar */
+/* Profundidad de campaña detrás de un clic; camino normal = jugar. */
 .campaign-army-glance { display:grid; gap:.45rem; padding:.72rem .78rem; border:1px solid rgba(214,184,111,.15); border-radius:10px; background:rgba(255,255,255,.025); }
 .campaign-army-glance-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:.7rem; }
 .campaign-army-glance-heading > span { font:700 .58rem var(--font-mono); letter-spacing:.08em; color:var(--parchment-dim); }

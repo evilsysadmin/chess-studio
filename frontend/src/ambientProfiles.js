@@ -2,7 +2,7 @@
 // Datos puros: sin AudioContext, timers ni estado de reproducción.
 
 const STRUCTURED_FEELS = Object.freeze({
-  // V16.6aa: identidad por AUSENCIA además de timbre. Cada familia decide
+  // Identidad por AUSENCIA además de timbre. Cada familia decide
   // qué capas existen; no todo tema necesita lead+counter+chords+bass+drums.
   // El objetivo es que la silueta se reconozca antes que el preset.
   alexandriaLounge: Object.freeze({

@@ -118,7 +118,7 @@ class TTEntry:
 def settings_for_level(raw_level) -> LevelSettings:
     level = max(0, min(100, round(float(raw_level))))
 
-    # V16.6y — curva recalibrada. Profundidad 4 desde 45 hacía que casi
+    # Curva recalibrada: profundidad 4 desde 45 hacía que casi
     # todo el tramo Intermedio fuese mucho más fuerte de lo que sugería la
     # etiqueta: nivel 64 ya era alpha-beta + TT + quiescence a profundidad 4.
     # Conservamos cero ruleta en Intermedio, pero retrasamos los saltos caros.

@@ -47,7 +47,7 @@ export function loadRoster() {
     const parsed = JSON.parse(raw);
     const migratedPieces = Object.fromEntries(Object.entries(parsed.pieces || {}).map(([key, piece]) => {
       const next = { ...piece };
-      // Migración desde v16.6as: la metamorfosis permanente pasa a ser una
+      // Compatibilidad con el formato anterior: la metamorfosis permanente pasa a ser una
       // preferencia de despliegue. Si ya no está desbloqueada, el aplicador
       // la ignorará y la pieza saldrá en su clase original.
       if (next.metamorphosis && !next.deploymentType) next.deploymentType = next.metamorphosis;

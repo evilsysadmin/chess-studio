@@ -15,7 +15,7 @@ export function loadTournament() {
     const raw = getStorageItem(STORAGE_LOCAL, STORAGE_KEY);
     if (!raw) return { ...EMPTY_STATE };
     const parsed = JSON.parse(raw);
-    // Migración V16.6: antes `points` era a la vez moneda de pistas y XP de
+    // Compatibilidad con el formato anterior: `points` era a la vez moneda de pistas y XP de
     // torneo. Conservamos el nivel histórico una vez, pero a partir de ahora
     // ambas economías avanzan por caminos independientes.
     const progressPoints = Number.isFinite(Number(parsed.progressPoints))
@@ -46,9 +46,9 @@ export function pointsIntoLevel(points) {
   return points % POINTS_PER_LEVEL;
 }
 
-// Traduce el nivel del torneo a dificultad CPU 0–100. El motor V16.x es
+// Traduce el nivel del torneo a dificultad CPU 0–100. El motor actual es
 // bastante más serio que cuando nació la curva anterior (alpha-beta + TT +
-// quiescence y sin azar bruto en Intermedio), así que V16.6 la recalibra un
+// quiescence y sin azar bruto en Intermedio), así que la curva se recalibra un
 // hacia abajo. El nivel ~24 pasa del antiguo ~62 a ~48: el torneo conserva
 // progresión, pero no mete al jugador aficionado en el tramo Intermedio duro
 // demasiado pronto. El techo se alcanza mucho más tarde, alrededor del 101.

@@ -20,8 +20,8 @@ for (const name of readers) {
 const byFile = new Map();
 for (const item of findings) byFile.set(item.name, (byFile.get(item.name) || 0) + 1);
 const hotspots = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-const SOURCE_READER_BUDGET = 5;
-const IMPLEMENTATION_ASSERT_BUDGET = 6;
+const SOURCE_READER_BUDGET = 3;
+const IMPLEMENTATION_ASSERT_BUDGET = 5;
 console.log(`static-contract-risk audit · ${readers.length} source-reader tests · ${findings.length} implementation-coupled assertion candidates`);
 if (hotspots.length) console.log(`hotspots: ${hotspots.map(([name, count]) => `${name}:${count}`).join(' · ')}`);
 console.log(`budget: source-readers <= ${SOURCE_READER_BUDGET} · implementation-coupled <= ${IMPLEMENTATION_ASSERT_BUDGET}`);

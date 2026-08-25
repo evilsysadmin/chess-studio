@@ -88,7 +88,7 @@ assert(getAmbientThemeSoundProfile('rookGarage').percussionPunch > 1.2, 'Garage 
 
 const bt = ['concreteRain','velvetStatic','abyssalArchive','redVault','queenBossa','havana205','fourSquares','verticalRainPiano'];
 const btProfiles = bt.map((id) => [id, getAmbientThemeSoundProfile(id)]);
-assert(new Set(btProfiles.map(([, profile]) => profile.family)).size === bt.length, 'las familias v16.6bt no son únicas');
+assert(new Set(btProfiles.map(([, profile]) => profile.family)).size === bt.length, 'las familias de perfiles ambientales no son únicas');
 assert(getAmbientThemeSoundProfile('abyssalArchive').drumMode === 'none', 'Archivo abisal no debe tener batería');
 assert(getAmbientThemeSoundProfile('redVault').drumMode === 'none', 'Cámara roja no debe tener batería');
 assert(getAmbientThemeSoundProfile('fourSquares').drumMode === 'none', 'Cuatro casillas no debe tener batería');

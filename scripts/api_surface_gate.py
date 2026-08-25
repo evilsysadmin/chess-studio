@@ -200,6 +200,12 @@ if any(path.startswith("/api/games") or path in {"/api/analyze", "/api/analyze-m
     if main_tree is None or not game_router_wiring_ok(main_tree):
         failures.append("build_game_router debe inyectar get_current_user + get_user_or_m2m + limiter en main.py")
 
+main_source = MAIN.read_text(encoding="utf-8") if MAIN.exists() else ""
+if "Limiter(key_func=rate_limit_key" not in main_source:
+    failures.append("Limiter principal debe usar rate_limit_key, no una IP compartida para usuarios autenticados")
+if 'return f"user:{username}"' not in main_source or 'return f"ip:{get_remote_address(request)}"' not in main_source:
+    failures.append("rate_limit_key debe separar buckets por cuenta autenticada y usar IP sólo para tráfico anónimo")
+
 cors_methods = cors_allowed_methods(main_tree)
 required_cors_methods = {method for method, _path in seen} | {"OPTIONS"}
 if cors_methods is None:
@@ -223,4 +229,4 @@ if failures:
     for item in failures:
         print(f"  - {item}")
     sys.exit(1)
-print("\nOK: rutas privadas con auth, endpoints sensibles rate-limited, admin con dependencia admin, routers incluidos y CORS completo.")
+print("\nOK: rutas privadas con auth, endpoints sensibles rate-limited por identidad, admin protegido, routers incluidos y CORS completo.")

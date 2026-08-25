@@ -15,7 +15,7 @@ describe('puzzleStats', () => {
     expect(loadPuzzlesSolved()).toBe(0);
   });
 
-  it('se incrementa y persiste', () => {
+  it('el total resuelto se incrementa y persiste', () => {
     incrementPuzzlesSolved();
     incrementPuzzlesSolved();
     expect(loadPuzzlesSolved()).toBe(2);
@@ -28,7 +28,7 @@ describe('racha de puzzles', () => {
     expect(loadBestPuzzleStreak()).toBe(0);
   });
 
-  it('se incrementa y persiste', () => {
+  it('la racha se incrementa y persiste', () => {
     incrementPuzzleStreak();
     incrementPuzzleStreak();
     expect(loadPuzzleStreak()).toBe(2);
