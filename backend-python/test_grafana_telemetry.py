@@ -28,6 +28,8 @@ def setup_function():
 def test_stays_disabled_without_render_credentials(monkeypatch):
     monkeypatch.delenv("GRAFANA_OTLP_ENDPOINT", raising=False)
     monkeypatch.delenv("GRAFANA_OTLP_HEADERS", raising=False)
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_HEADERS", raising=False)
     monkeypatch.delenv("GRAFANA_OTLP_INSTANCE_ID", raising=False)
     monkeypatch.delenv("GRAFANA_OTLP_TOKEN", raising=False)
 
@@ -39,6 +41,15 @@ def test_accepts_the_encoded_header_copied_from_grafana_portal():
     assert telemetry._headers_from_portal("Authorization=Basic%20ZXhhbXBsZTpwYXNz") == {
         "Authorization": "Basic ZXhhbXBsZTpwYXNz",
     }
+
+
+def test_prefers_grafana_standard_environment_variable_names(monkeypatch):
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://otlp.example.net/otlp")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "Authorization=Basic%20ZXhhbXBsZTpwYXNz")
+
+    endpoint, headers = telemetry._configuration()
+    assert endpoint == "https://otlp.example.net/otlp"
+    assert headers == {"Authorization": "Basic ZXhhbXBsZTpwYXNz"}
 
 
 def test_http_metrics_are_bounded_and_do_not_include_client_release():

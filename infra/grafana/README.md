@@ -8,12 +8,12 @@ publica un endpoint `/metrics`.
 
 En Grafana Cloud abre tu stack y, en la tarjeta `OpenTelemetry`, pulsa
 `Configure`. En la sección `Environment variables` copia los dos valores que
-Grafana ya prepara. En Render guárdalos con estos nombres:
+Grafana ya prepara. En Render usa esos mismos nombres, sin renombrarlos:
 
 | Variable | Valor |
 | --- | --- |
-| `GRAFANA_OTLP_ENDPOINT` | Valor de `OTEL_EXPORTER_OTLP_ENDPOINT` |
-| `GRAFANA_OTLP_HEADERS` | Valor completo de `OTEL_EXPORTER_OTLP_HEADERS` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Valor que muestra Grafana |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Valor completo que muestra Grafana |
 
 No pegues estos valores en el repositorio, en GitHub ni en la aplicación. El
 segundo contiene una autorización Basic codificada; el backend la usa sólo en

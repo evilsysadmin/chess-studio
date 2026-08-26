@@ -30,6 +30,14 @@ def _env(name: str) -> str:
     return (os.getenv(name) or "").strip()
 
 
+def _first_env(*names: str) -> str:
+    for name in names:
+        value = _env(name)
+        if value:
+            return value
+    return ""
+
+
 def _otlp_signal_endpoint(base: str, signal: str) -> str:
     clean = base.rstrip("/")
     suffix = f"/v1/{signal}"
@@ -49,8 +57,10 @@ def _headers_from_portal(value: str) -> dict[str, str]:
 
 
 def _configuration() -> tuple[str, dict[str, str]] | None:
-    endpoint = _env("GRAFANA_OTLP_ENDPOINT")
-    portal_headers = _headers_from_portal(_env("GRAFANA_OTLP_HEADERS"))
+    # Acepta directamente los nombres que muestra Grafana Cloud. Los nombres
+    # GRAFANA_* se conservan por compatibilidad con el primer ZIP publicado.
+    endpoint = _first_env("OTEL_EXPORTER_OTLP_ENDPOINT", "GRAFANA_OTLP_ENDPOINT")
+    portal_headers = _headers_from_portal(_first_env("OTEL_EXPORTER_OTLP_HEADERS", "GRAFANA_OTLP_HEADERS"))
     instance_id = _env("GRAFANA_OTLP_INSTANCE_ID")
     token = _env("GRAFANA_OTLP_TOKEN")
     if not any((endpoint, portal_headers, instance_id, token)):
