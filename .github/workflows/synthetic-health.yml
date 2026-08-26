@@ -1,0 +1,30 @@
+name: Synthetic health (production)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-production-synthetic
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Liveness + readiness + optional login
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CHESS_SYNTHETIC_BASE_URL: ${{ vars.VITE_API_URL || 'https://api.chess-studio.shadowops.dpdns.org/api' }}
+      CHESS_SYNTHETIC_USERNAME: ${{ secrets.CHESS_SYNTHETIC_USERNAME }}
+      CHESS_SYNTHETIC_PASSWORD: ${{ secrets.CHESS_SYNTHETIC_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Probe production
+        run: python3 scripts/synthetic_health_check.py --timeout 75

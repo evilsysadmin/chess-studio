@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { evaluateProductSlos, fetchAdminObservability, observabilityRangeForPreset, summarizeObservabilityHealth } from '../observability.js';
+import { errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, summarizeObservabilityHealth } from '../observability.js';
+import { APP_RELEASE } from '../release.js';
 
 function metric(value, suffix = '') {
   return value == null || Number.isNaN(Number(value)) ? '—' : `${Number(value).toLocaleString('es-ES')}${suffix}`;
@@ -23,6 +24,8 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
     [runtime, users, currentAdmin],
   );
   const slo = useMemo(() => evaluateProductSlos(runtime), [runtime]);
+  const errorBudget = useMemo(() => errorBudgetForSlo(runtime), [runtime]);
+  const releaseHealth = useMemo(() => evaluateReleaseHealth(runtime, APP_RELEASE), [runtime]);
 
   return (
     <section className="admin-observability-launcher" aria-label="Resumen de observabilidad">
@@ -41,9 +44,11 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
         <div><span>Mongo</span><strong>{summary.databaseLabel}</strong></div>
         <div><span>Workers AI</span><strong>{summary.aiCloudflarePercent == null ? '—' : `${metric(summary.aiCloudflarePercent, '%')} CF`}</strong></div>
         <div className={`admin-slo-kpi ${slo.status === 'missed' ? 'is-warn' : ''}`}><span>SLO producto</span><strong>{slo.statusLabel}</strong><small>{slo.availabilityPercent == null ? 'Disponibilidad —' : `${metric(slo.availabilityPercent, '%')} · objetivo ${metric(slo.availabilityTarget, '%')}`} · {slo.apiP95Ms == null ? 'p95 —' : `p95 ${metric(slo.apiP95Ms, ' ms')} / ${metric(slo.apiP95TargetMs, ' ms')}`}</small></div>
+        <div className={`admin-slo-kpi ${errorBudget.status === 'exhausted' ? 'is-warn' : ''}`}><span>Error budget · 24 h</span><strong>{errorBudget.statusLabel}</strong><small>{errorBudget.consumedPercent == null ? 'Sin muestra suficiente' : `${metric(errorBudget.consumedPercent, '%')} consumido · ${metric(errorBudget.remainingPercent, '%')} restante`}</small></div>
+        <div className={`admin-slo-kpi ${['regression', 'degraded'].includes(releaseHealth.status) ? 'is-warn' : ''}`}><span>Release health</span><strong>{releaseHealth.statusLabel}</strong><small><code>{APP_RELEASE}</code> · {releaseHealth.requests || 0} requests{releaseHealth.p95Ms == null ? '' : ` · p95 ${metric(releaseHealth.p95Ms, ' ms')}`}</small></div>
       </div>
       <div className="admin-observability-launcher-actions">
-        <p className="hint-text">Resumen técnico de 24 h con SLO explícito de disponibilidad y latencia. Presencia y usuarios van debajo; dashboards e histórico viven en su propia vista.</p>
+        <p className="hint-text">Resumen técnico de 24 h con SLO, error budget y salud de la release actual. Presencia y usuarios van debajo; dashboards e histórico viven en su propia vista.</p>
         <button type="button" className="secondary-btn" onClick={onOpen}>Abrir observabilidad →</button>
       </div>
     </section>

@@ -1,3 +1,5 @@
+import { withRequestId } from './requestId.js';
+
 function apiBase() {
   return String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 }
@@ -10,7 +12,7 @@ export async function fetchAdminObservability({ token, from = null, to = null, f
     if (to) params.set('to_time', String(to));
     const suffix = params.size ? `?${params.toString()}` : '';
     const response = await fetchImpl(`${apiBase()}/admin/observability${suffix}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: withRequestId({ Authorization: `Bearer ${token}` }),
     });
     if (!response.ok) return null;
     const body = await response.json();
@@ -121,6 +123,66 @@ export function evaluateProductSlos(runtime, targets = PRODUCT_SLOS) {
     apiP95TargetMs: Number(targets.apiP95Ms),
     latencyMet,
     samples: Number.isFinite(samples) ? samples : null,
+  };
+}
+
+
+export function errorBudgetForSlo(runtime, targets = PRODUCT_SLOS) {
+  const http = runtime?.history?.http || runtime?.http?.last_1h || {};
+  const samples = Number(http.samples);
+  const errors = Number(http.status_5xx);
+  const target = Number(targets.availabilityPercent);
+  if (!Number.isFinite(samples) || samples < 20 || !Number.isFinite(errors) || !Number.isFinite(target) || target >= 100) {
+    return { status: 'unknown', statusLabel: 'Sin muestra', consumedPercent: null, remainingPercent: null, allowedErrors: null, errors: Number.isFinite(errors) ? errors : null, samples: Number.isFinite(samples) ? samples : null };
+  }
+  const allowedErrors = samples * ((100 - target) / 100);
+  const consumedPercent = allowedErrors > 0 ? (errors / allowedErrors) * 100 : null;
+  const remainingPercent = consumedPercent == null ? null : Math.max(0, 100 - consumedPercent);
+  const status = consumedPercent == null ? 'unknown' : consumedPercent > 100 ? 'exhausted' : consumedPercent >= 50 ? 'watch' : 'healthy';
+  return {
+    status,
+    statusLabel: status === 'exhausted' ? 'Agotado' : status === 'watch' ? 'Vigilar' : status === 'healthy' ? 'Con margen' : 'Sin muestra',
+    consumedPercent: consumedPercent == null ? null : Math.round(consumedPercent * 10) / 10,
+    remainingPercent: remainingPercent == null ? null : Math.round(remainingPercent * 10) / 10,
+    allowedErrors: Math.round(allowedErrors * 100) / 100,
+    errors,
+    samples,
+  };
+}
+
+export function evaluateReleaseHealth(runtime, currentRelease, targets = PRODUCT_SLOS) {
+  const rows = runtime?.history?.http?.releases || runtime?.http?.last_1h?.releases || [];
+  const release = String(currentRelease || '').trim();
+  const current = rows.find((row) => row?.release === release) || null;
+  if (!current || Number(current.requests) < 20) {
+    return { status: 'unknown', statusLabel: 'Sin muestra', release, requests: Number(current?.requests || 0), error5xxPercent: current?.error_5xx_percent ?? null, p95Ms: current?.p95_ms ?? null, baseline: null };
+  }
+  const others = rows.filter((row) => row?.release && row.release !== release && Number(row.requests) > 0);
+  const otherRequests = others.reduce((sum, row) => sum + Number(row.requests || 0), 0);
+  const baselineError = otherRequests ? others.reduce((sum, row) => sum + Number(row.error_5xx_percent || 0) * Number(row.requests || 0), 0) / otherRequests : null;
+  const baselineP95 = otherRequests ? others.reduce((sum, row) => sum + Number(row.p95_ms || 0) * Number(row.requests || 0), 0) / otherRequests : null;
+  const errorPercent = Number(current.error_5xx_percent || 0);
+  const p95Ms = Number(current.p95_ms);
+  const hasBaseline = otherRequests >= 20;
+  const missesAvailability = errorPercent > (100 - Number(targets.availabilityPercent));
+  const missesLatency = Number.isFinite(p95Ms) && p95Ms > Number(targets.apiP95Ms);
+  const errorRegression = hasBaseline && baselineError != null
+    && errorPercent > Math.max(baselineError + 0.5, baselineError * 2);
+  const latencyRegression = hasBaseline && baselineP95 != null && Number.isFinite(p95Ms)
+    && p95Ms > Math.max(Number(targets.apiP95Ms), baselineP95 * 1.5);
+  const status = errorRegression || latencyRegression
+    ? 'regression'
+    : missesAvailability || missesLatency
+      ? 'degraded'
+      : 'healthy';
+  return {
+    status,
+    statusLabel: status === 'regression' ? 'Regresión probable' : status === 'degraded' ? 'Fuera de SLO' : 'Saludable',
+    release,
+    requests: Number(current.requests),
+    error5xxPercent: errorPercent,
+    p95Ms: Number.isFinite(p95Ms) ? p95Ms : null,
+    baseline: hasBaseline ? { requests: otherRequests, error5xxPercent: baselineError, p95Ms: baselineP95 } : null,
   };
 }
 

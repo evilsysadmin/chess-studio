@@ -1,3 +1,11 @@
+### v16.6dm46j · SRE product ops: request tracing, error budget, release health y synthetic checks
+
+- Request IDs siguen extremo a extremo y cada cliente añade su release mediante `X-Client-Release`; CORS permite esa cabecera y el backend la sanea antes de agregarla.
+- Los access logs HTTP pasan a JSON estructurado (`request_id`, username autenticado, release, ruta, status y latencia), sin IP, bodies, FEN, contraseñas ni tokens. El username se mantiene fuera de labels/agregados de métricas para evitar alta cardinalidad.
+- Observabilidad agrega `5xx` y `p95` por release. Admin muestra un error budget basado en el SLO 99,5 % y detecta una regresión probable de la release actual sólo con muestra suficiente.
+- `scripts/synthetic_health_check.py` valida `/api/health` y `/api/ready`; con `CHESS_SYNTHETIC_USERNAME` + `CHESS_SYNTHETIC_PASSWORD` también comprueba login y `/api/status`. El workflow `synthetic-health.yml` lo ejecuta cada 2 horas y puede lanzarse manualmente; concede hasta 75 s al primer probe para tolerar el cold start del hosting gratuito sin ocultar su latencia.
+- `make synthetic-check API_BASE_URL=https://...` permite ejecutar el mismo probe desde local. El preflight valida su contrato sin red.
+
 ### v16.6dm46i · Product hardening: onboarding, flags, errores y SLO
 
 - La guía inicial se convierte en un recorrido de tres pasos con progreso real: terminar una partida, resolver un puzzle y abrir Así juegas. No obliga a recorrer el catálogo completo.

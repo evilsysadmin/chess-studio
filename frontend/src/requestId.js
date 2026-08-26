@@ -1,10 +1,16 @@
+import { APP_RELEASE } from './release.js';
+
 export function newRequestId() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
   return `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function withRequestId(headers = {}) {
-  return { ...headers, 'X-Request-ID': newRequestId() };
+  return {
+    ...headers,
+    'X-Request-ID': newRequestId(),
+    ...(APP_RELEASE ? { 'X-Client-Release': APP_RELEASE } : {}),
+  };
 }
 
 export function requestErrorMessage(response, body = {}) {

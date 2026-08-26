@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import re
 import threading
 import time
 from collections import Counter, defaultdict, deque
@@ -15,6 +16,15 @@ from typing import Any
 
 
 PROCESS_STARTED_AT = time.time()
+
+_CLIENT_RELEASE_RE = re.compile(r"^v?[0-9A-Za-z][0-9A-Za-z._-]{0,39}$")
+
+
+def sanitize_client_release(value: Any) -> str | None:
+    raw = str(value or "").strip()[:40]
+    return raw if raw and _CLIENT_RELEASE_RE.fullmatch(raw) else None
+
+
 MAX_HTTP_EVENTS = 5000
 HTTP_WINDOW_SECONDS = 60 * 60
 _HTTP_LOCK = threading.Lock()
@@ -29,10 +39,11 @@ def _percentile(values: list[float], percentile: float) -> float | None:
     return round(float(ordered[index]), 2)
 
 
-def record_http_request(method: str, route: str, status_code: int, latency_ms: float) -> None:
+def record_http_request(method: str, route: str, status_code: int, latency_ms: float, *, client_release: str | None = None) -> None:
     """Registra sólo metadatos técnicos agregables y de cardinalidad acotada."""
     clean_route = str(route or "unknown")[:120]
     clean_method = str(method or "?").upper()[:8]
+    release = sanitize_client_release(client_release)
     with _HTTP_LOCK:
         _HTTP_EVENTS.append({
             "at": time.time(),
@@ -40,11 +51,12 @@ def record_http_request(method: str, route: str, status_code: int, latency_ms: f
             "route": clean_route,
             "status": int(status_code or 0),
             "latency_ms": max(0.0, round(float(latency_ms or 0.0), 2)),
+            "client_release": release,
         })
     try:
         from observability_history import record_http_event
 
-        record_http_event(clean_method, clean_route, status_code, latency_ms)
+        record_http_event(clean_method, clean_route, status_code, latency_ms, client_release=release)
     except Exception:
         # El histórico es auxiliar; nunca debe romper una request productiva.
         pass
@@ -79,6 +91,23 @@ def _summarize_http(events: list[dict[str, Any]], window_seconds: int) -> dict[s
             "errors_5xx": errors,
         })
 
+    release_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in events:
+        release = sanitize_client_release(row.get("client_release"))
+        if release:
+            release_rows[release].append(row)
+    releases = []
+    for release, rows in sorted(release_rows.items(), key=lambda item: len(item[1]), reverse=True)[:8]:
+        release_latencies = [float(row["latency_ms"]) for row in rows]
+        errors = sum(1 for row in rows if int(row["status"]) >= 500)
+        releases.append({
+            "release": release,
+            "requests": len(rows),
+            "errors_5xx": errors,
+            "error_5xx_percent": round(errors * 100 / len(rows), 2) if rows else 0.0,
+            "p95_ms": _percentile(release_latencies, 0.95),
+        })
+
     total = len(events)
     errors_5xx = statuses.get(5, 0)
     effective_seconds = max(1.0, min(float(window_seconds), time.time() - PROCESS_STARTED_AT))
@@ -95,6 +124,7 @@ def _summarize_http(events: list[dict[str, Any]], window_seconds: int) -> dict[s
         "p95_ms": _percentile(latencies, 0.95),
         "p99_ms": _percentile(latencies, 0.99),
         "top_routes": top_routes,
+        "releases": releases,
     }
 
 

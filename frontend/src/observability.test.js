@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { evaluateProductSlos, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
+import { errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -10,7 +10,9 @@ describe('admin observability helpers', () => {
     const technical = { http: { last_1h: { samples: 12 } }, database: { status: 'ok', latency_ms: 3.2 } };
     const okFetch = vi.fn(async () => ({ ok: true, json: async () => technical }));
     expect(await fetchAdminObservability({ token: 'jwt', from: '2026-08-20T00:00:00Z', to: '2026-08-21T00:00:00Z', fetchImpl: okFetch })).toEqual(technical);
-    const [url] = okFetch.mock.calls[0];
+    const [url, options] = okFetch.mock.calls[0];
+    expect(options.headers['X-Request-ID']).toBeTruthy();
+    expect(options.headers['X-Client-Release']).toBeTruthy();
     expect(url).toContain('from_time=2026-08-20T00%3A00%3A00Z');
     expect(url).toContain('to_time=2026-08-21T00%3A00%3A00Z');
   });
@@ -107,5 +109,26 @@ describe('product SLOs', () => {
 
   it('no pinta verde cuando aún no hay muestra útil', () => {
     expect(evaluateProductSlos({ history: { http: { samples: 0 } } }).status).toBe('unknown');
+  });
+});
+
+
+describe('error budget + release health', () => {
+  it('calcula consumo de error budget sin fingir precisión con muestra pequeña', () => {
+    expect(errorBudgetForSlo({ history: { http: { samples: 10, status_5xx: 0 } } }).status).toBe('unknown');
+    const healthy = errorBudgetForSlo({ history: { http: { samples: 1000, status_5xx: 1 } } });
+    expect(healthy).toMatchObject({ status: 'healthy', consumedPercent: 20, remainingPercent: 80 });
+    const exhausted = errorBudgetForSlo({ history: { http: { samples: 1000, status_5xx: 8 } } });
+    expect(exhausted.status).toBe('exhausted');
+    expect(exhausted.consumedPercent).toBeGreaterThan(100);
+  });
+
+  it('evalúa la release actual con su tráfico real y detecta regresiones', () => {
+    const runtime = { history: { http: { releases: [
+      { release: 'vOld', requests: 200, error_5xx_percent: 0, p95_ms: 300 },
+      { release: 'vNew', requests: 100, error_5xx_percent: 2, p95_ms: 1200 },
+    ] } } };
+    expect(evaluateReleaseHealth(runtime, 'vNew')).toMatchObject({ status: 'regression', requests: 100 });
+    expect(evaluateReleaseHealth(runtime, 'vMissing').status).toBe('unknown');
   });
 });

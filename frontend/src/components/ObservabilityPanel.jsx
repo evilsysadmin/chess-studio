@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { aiNarrativeStatus, fetchAiNarrativeMetrics, formatAiMetric } from '../aiMetrics.js';
 import {
+  errorBudgetForSlo,
+  evaluateReleaseHealth,
   fetchAdminObservability,
   formatDuration,
   observabilityRangeForPreset,
@@ -14,6 +16,7 @@ import {
   OBSERVABILITY_AUTO_REFRESH_OPTIONS,
 } from '../observabilityRefresh.js';
 import { OBSERVABILITY_LATENCY_VIEWS, observabilityLatencyTitle } from '../observabilityLatency.js';
+import { APP_RELEASE } from '../release.js';
 
 const EVENT_LABELS = {
   player_portrait: 'Así te ve la CPU',
@@ -382,6 +385,8 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
   const historyHttp = history?.http || {};
   const historyAi = history?.ai || {};
   const historyPresence = history?.presence || {};
+  const errorBudget = errorBudgetForSlo(runtime);
+  const releaseHealth = evaluateReleaseHealth(runtime, APP_RELEASE);
   const historyRange = history?.range || {};
   const aiStatus = aiNarrativeStatus(ai);
   const rangeLabel = RANGE_LABELS[rangePreset] || 'rango';
@@ -429,6 +434,8 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
         <div><span>Persistencia</span><strong>{databaseLabel(database)}</strong></div>
         <div><span>Pico online · {rangeLabel}</span><strong>{metric(historyPresence.peak_online)}</strong></div>
         <div><span>Workers AI · {rangeLabel}</span><strong>{historyAi.samples ? `${formatAiMetric(historyAi.cloudflare_percent, '%')} CF` : '—'}</strong></div>
+        <div><span>Error budget</span><strong>{errorBudget.consumedPercent == null ? '—' : `${metric(errorBudget.consumedPercent, '%')} usado`}</strong></div>
+        <div><span>Release {APP_RELEASE}</span><strong>{releaseHealth.statusLabel}</strong></div>
       </div>
 
       <div className="admin-observability-dashboard" aria-label="Dashboards de observabilidad">
@@ -527,6 +534,19 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
                   </li>
                 ))}
               </ul>
+            </article>
+            <article>
+              <h4>Salud por release · {rangeLabel}</h4>
+              {(historyHttp.releases || []).length ? (
+                <ul className="admin-observability-list">
+                  {(historyHttp.releases || []).map((row) => (
+                    <li key={row.release}>
+                      <span><code>{row.release}</code>{row.release === APP_RELEASE ? ' · actual' : ''}</span>
+                      <strong>{metric(row.requests)} req · {metric(row.error_5xx_percent, '%')} 5xx · p95 {metric(row.p95_ms, ' ms')}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="hint-text">Las releases empezarán a aparecer cuando lleguen requests con el cliente actualizado.</p>}
             </article>
             <article><h4>Releases en uso · ahora</h4><KeyValueList values={userSummary.releases} /></article>
             <article><h4>Modelos AI · {rangeLabel}</h4><KeyValueList values={historyAi.models} /></article>

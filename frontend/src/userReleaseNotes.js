@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46j',
+    title: 'Release health y operación trazable',
+    highlights: [
+      'Administración muestra error budget y salud de la release actual usando tráfico real, sin identificar jugadores.',
+      'Las peticiones llevan una referencia y versión de cliente para correlacionar fallos; los logs HTTP pasan a formato estructurado y dejan de escribir usernames.',
+      'Un probe sintético programado comprueba liveness/readiness de producción y puede validar también login con una cuenta técnica opcional.',
+    ],
+  },
+  {
     release: 'v16.6dm46i',
     title: 'Primer minuto más claro + operación más seria',
     highlights: [

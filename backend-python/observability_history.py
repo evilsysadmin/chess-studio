@@ -71,6 +71,7 @@ def _fresh_bucket() -> dict[str, Any]:
             "latency_hist": {},
             "latency_max_ms": 0.0,
             "routes": {},
+            "releases": {},
         },
         "ai": {
             "samples": 0,
@@ -95,7 +96,7 @@ def _inc(mapping: dict[str, Any], key: str, amount: int | float = 1) -> None:
     mapping[key] = mapping.get(key, 0) + amount
 
 
-def record_http_event(method: str, route: str, status_code: int, latency_ms: float, *, timestamp: float | None = None) -> None:
+def record_http_event(method: str, route: str, status_code: int, latency_ms: float, *, client_release: str | None = None, timestamp: float | None = None) -> None:
     at = time.time() if timestamp is None else float(timestamp)
     bucket_key = _bucket_start(at)
     route_label = f"{str(method or '?').upper()[:8]} {str(route or 'unknown')[:120]}"
@@ -125,6 +126,20 @@ def record_http_event(method: str, route: str, status_code: int, latency_ms: flo
             route_row["errors_5xx"] += 1
         _inc(route_row["latency_hist"], hist_key)
         route_row["latency_max_ms"] = max(float(route_row.get("latency_max_ms") or 0.0), latency)
+
+        release = str(client_release or "").strip()[:40]
+        if release:
+            release_row = http["releases"].setdefault(_safe_key(release), {
+                "requests": 0,
+                "errors_5xx": 0,
+                "latency_hist": {},
+                "latency_max_ms": 0.0,
+            })
+            release_row["requests"] += 1
+            if family == 5:
+                release_row["errors_5xx"] += 1
+            _inc(release_row["latency_hist"], hist_key)
+            release_row["latency_max_ms"] = max(float(release_row.get("latency_max_ms") or 0.0), latency)
 
 
 def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) -> None:
@@ -381,6 +396,20 @@ def _summarize_http(http: dict[str, Any], range_seconds: int) -> dict[str, Any]:
             "p95_ms": _hist_percentile(row.get("latency_hist") or {}, 0.95, float(row.get("latency_max_ms") or 0.0)),
         })
     routes.sort(key=lambda row: row["requests"], reverse=True)
+    releases = []
+    for encoded, row in (http.get("releases") or {}).items():
+        if not isinstance(row, dict):
+            continue
+        requests = max(0, int(row.get("requests") or 0))
+        errors = max(0, int(row.get("errors_5xx") or 0))
+        releases.append({
+            "release": _unsafe_key(str(encoded)),
+            "requests": requests,
+            "errors_5xx": errors,
+            "error_5xx_percent": round(errors * 100 / requests, 2) if requests else 0.0,
+            "p95_ms": _hist_percentile(row.get("latency_hist") or {}, 0.95, float(row.get("latency_max_ms") or 0.0)),
+        })
+    releases.sort(key=lambda row: row["requests"], reverse=True)
     return {
         "samples": total,
         "requests_per_minute": round(total / max(1 / 60, range_seconds / 60), 2),
@@ -392,6 +421,7 @@ def _summarize_http(http: dict[str, Any], range_seconds: int) -> dict[str, Any]:
         "p95_ms": _hist_percentile(http.get("latency_hist") or {}, 0.95, float(http.get("latency_max_ms") or 0.0)),
         "p99_ms": _hist_percentile(http.get("latency_hist") or {}, 0.99, float(http.get("latency_max_ms") or 0.0)),
         "top_routes": routes[:8],
+        "releases": releases[:8],
     }
 
 
