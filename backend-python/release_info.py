@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 
-APP_RELEASE = "v16.6dm46q"
+APP_RELEASE = "v16.6dm46r"
 
 
 def backend_release() -> str:

@@ -43,6 +43,12 @@ def test_accepts_the_encoded_header_copied_from_grafana_portal():
     }
 
 
+def test_accepts_a_basic_header_value_without_the_authorization_key():
+    assert telemetry._headers_from_portal("Basic%20ZXhhbXBsZTpwYXNz") == {
+        "Authorization": "Basic ZXhhbXBsZTpwYXNz",
+    }
+
+
 def test_prefers_grafana_standard_environment_variable_names(monkeypatch):
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://otlp.example.net/otlp")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "Authorization=Basic%20ZXhhbXBsZTpwYXNz")

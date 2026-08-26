@@ -46,13 +46,20 @@ def _otlp_signal_endpoint(base: str, signal: str) -> str:
 
 def _headers_from_portal(value: str) -> dict[str, str]:
     """Convierte el valor copiado de ``OTEL_EXPORTER_OTLP_HEADERS`` a headers."""
+    raw = str(value or "").strip()
     headers: dict[str, str] = {}
-    for item in str(value or "").split(","):
+    for item in raw.split(","):
         key, separator, raw_value = item.partition("=")
         clean_key = key.strip()
         clean_value = unquote(raw_value.strip())
         if separator and clean_key and clean_value:
             headers[clean_key] = clean_value
+    # Algunas tarjetas muestran sólo el valor Basic en vez de
+    # "Authorization=Basic ...". Aceptarlo evita que el operador tenga que
+    # reescribir un secreto que Grafana ya generó.
+    decoded_raw = unquote(raw)
+    if not headers and decoded_raw.lower().startswith("basic "):
+        headers["Authorization"] = decoded_raw
     return headers
 
 
@@ -63,6 +70,10 @@ def _configuration() -> tuple[str, dict[str, str]] | None:
     portal_headers = _headers_from_portal(_first_env("OTEL_EXPORTER_OTLP_HEADERS", "GRAFANA_OTLP_HEADERS"))
     instance_id = _env("GRAFANA_OTLP_INSTANCE_ID")
     token = _env("GRAFANA_OTLP_TOKEN")
+    raw_standard_endpoint = _env("OTEL_EXPORTER_OTLP_ENDPOINT")
+    raw_standard_headers = _env("OTEL_EXPORTER_OTLP_HEADERS")
+    raw_legacy_endpoint = _env("GRAFANA_OTLP_ENDPOINT")
+    raw_legacy_headers = _env("GRAFANA_OTLP_HEADERS")
     if not any((endpoint, portal_headers, instance_id, token)):
         return None
     if endpoint and portal_headers:
@@ -74,7 +85,16 @@ def _configuration() -> tuple[str, dict[str, str]] | None:
     # Compatibilidad con el contrato inicial. Hoy recomendamos copiar el
     # valor completo que Grafana muestra como OTEL_EXPORTER_OTLP_HEADERS.
     if not all((endpoint, instance_id, token)):
-        logger.warning("grafana_telemetry_disabled reason=incomplete_configuration")
+        logger.warning(
+            "grafana_telemetry_disabled reason=incomplete_configuration "
+            "standard_endpoint_present=%s standard_headers_present=%s "
+            "legacy_endpoint_present=%s legacy_headers_present=%s headers_parsed=%s",
+            bool(raw_standard_endpoint),
+            bool(raw_standard_headers),
+            bool(raw_legacy_endpoint),
+            bool(raw_legacy_headers),
+            bool(portal_headers),
+        )
         return None
     parsed = urlsplit(endpoint)
     if parsed.scheme != "https" or not parsed.netloc:
