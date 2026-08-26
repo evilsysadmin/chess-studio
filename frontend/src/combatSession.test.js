@@ -4,6 +4,7 @@ import { clearCombatSession, hasCombatSession, loadCombatSession, saveCombatSess
 
 describe('Combat Chess active session snapshot', () => {
   beforeEach(() => {
+    localStorage.clear();
     sessionStorage.clear();
     clearStorageMemoryFallback();
     clearCombatSession();
@@ -16,13 +17,13 @@ describe('Combat Chess active session snapshot', () => {
     expect(loadCombatSession('campaign:abc:n2')).toBeNull();
   });
 
-  it('informa si sessionStorage no pudo hacer durable el snapshot', () => {
+  it('usa el respaldo local si sessionStorage no puede guardar', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const setItem = vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => { throw new Error('quota'); });
 
-    expect(saveCombatSession('free', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } } })).toBe(false);
+    expect(saveCombatSession('free', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } } })).toBe(true);
     expect(loadCombatSession('free')?.fen).toBe('fen-demo');
-    expect(consoleError).toHaveBeenCalledWith('[CombatSession] No se pudo persistir el snapshot; se mantiene respaldo en memoria.');
+    expect(consoleError).not.toHaveBeenCalled();
 
     setItem.mockRestore();
     consoleError.mockRestore();
@@ -32,6 +33,13 @@ describe('Combat Chess active session snapshot', () => {
     saveCombatSession('free', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } } });
     clearCombatSession('free');
     expect(loadCombatSession('free')).toBeNull();
+  });
+  it('restaura la batalla desde el respaldo local tras perder la sesión del navegador', () => {
+    saveCombatSession('campaign:abc:n1', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } }, humanColor: 'w' });
+    sessionStorage.clear();
+    clearStorageMemoryFallback();
+
+    expect(loadCombatSession('campaign:abc:n1')?.fen).toBe('fen-demo');
   });
   it('recupera desde memoria si sessionStorage queda ilegible durante un remount', () => {
     saveCombatSession('campaign:abc:n1', { phase: 'battle', fen: 'fen-demo', registry: { e4: { type: 'p' } }, humanColor: 'w' });

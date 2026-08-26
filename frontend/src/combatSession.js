@@ -1,9 +1,9 @@
-import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
+import { STORAGE_LOCAL, STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 
 // Snapshot efímero de una batalla de Combat Chess.
-// sessionStorage sobrevive a reload/remount en la misma pestaña, pero no se
-// sincroniza al perfil ni entre dispositivos: sirve como cinturón de seguridad
-// frente a recargas accidentales sin convertir una pelea activa en un save
+// sessionStorage resuelve el caso rápido de remount. La copia local se borra
+// con la identidad y no se sincroniza al perfil: permite sobrevivir un reinicio
+// del navegador o un deploy, sin convertir una pelea activa en un save remoto
 // portable/farmeable.
 const KEY = 'chess-study-active-combat-session-v1';
 const VERSION = 1;
@@ -43,10 +43,12 @@ export function saveCombatSession(sessionId, snapshot) {
   // por el entorno del navegador no puede convertir un remount React en Setup.
   memorySnapshots.set(id, payload);
 
-  const durable = writeJsonStorage(STORAGE_SESSION, KEY, payload);
+  const sessionDurable = writeJsonStorage(STORAGE_SESSION, KEY, payload);
+  const localDurable = writeJsonStorage(STORAGE_LOCAL, KEY, payload);
+  const durable = sessionDurable || localDurable;
   if (!durable) {
-    // Un fallo de persistencia no debe romper la partida en curso. El snapshot
-    // de memoria/safeStorage sigue siendo recuperable durante esta pestaña.
+    // Un fallo de persistencia no debe romper la partida en curso. El respaldo
+    // en memoria mantiene la batalla recuperable durante esta pestaña.
     // eslint-disable-next-line no-console
     console.error('[CombatSession] No se pudo persistir el snapshot; se mantiene respaldo en memoria.');
   }
@@ -55,10 +57,12 @@ export function saveCombatSession(sessionId, snapshot) {
 
 export function loadCombatSession(sessionId) {
   const id = combatSessionId(sessionId);
-  const parsed = readJsonStorage(STORAGE_SESSION, KEY, { fallback: null, removeMalformed: true });
-  if (validSnapshot(parsed, id)) {
-    memorySnapshots.set(id, parsed);
-    return parsed;
+  for (const area of [STORAGE_SESSION, STORAGE_LOCAL]) {
+    const parsed = readJsonStorage(area, KEY, { fallback: null, removeMalformed: true });
+    if (validSnapshot(parsed, id)) {
+      memorySnapshots.set(id, parsed);
+      return parsed;
+    }
   }
 
   const memory = memorySnapshots.get(id) || null;
@@ -81,12 +85,14 @@ export function clearCombatSession(sessionId = null) {
   if (sessionId == null) {
     memorySnapshots.clear();
     removeStorageItem(STORAGE_SESSION, KEY);
+    removeStorageItem(STORAGE_LOCAL, KEY);
     return;
   }
 
   const id = combatSessionId(sessionId);
   memorySnapshots.delete(id);
-  const parsed = readJsonStorage(STORAGE_SESSION, KEY, { fallback: null, removeMalformed: true });
-  if (!parsed || parsed?.sessionId === id) removeStorageItem(STORAGE_SESSION, KEY);
+  for (const area of [STORAGE_SESSION, STORAGE_LOCAL]) {
+    const parsed = readJsonStorage(area, KEY, { fallback: null, removeMalformed: true });
+    if (!parsed || parsed?.sessionId === id) removeStorageItem(area, KEY);
+  }
 }
-
