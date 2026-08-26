@@ -194,7 +194,8 @@
   font: 700 .68rem/1 var(--font-body);
   cursor: pointer;
 }
-.masthead-feedback-trigger > span:first-child { color: var(--brass); }
+.masthead-feedback-trigger > span:first-child,
+.masthead-feedback-trigger > svg { width: 1rem; height: 1rem; color: var(--brass); }
 .masthead-feedback-trigger:hover,
 .masthead-feedback-trigger:focus-visible {
   border-color: var(--brass);

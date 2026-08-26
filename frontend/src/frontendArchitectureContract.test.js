@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const read = (name) => readFileSync(new URL(`./components/${name}`, import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
 const authenticatedAudio = readFileSync(new URL('./useAuthenticatedAudio.js', import.meta.url), 'utf8');
+const combatBattle = read('CombatBattleView.jsx');
 
 describe('frontend architecture contract', () => {
   it('los modales comunes mantienen semántica de diálogo accesible', () => {
@@ -20,6 +21,15 @@ describe('frontend architecture contract', () => {
     }
   });
 
+  it('feedback carga de forma diferida sin derribar la pantalla y conserva su icono de peón', () => {
+    expect(app).toContain("import { IconPawn } from './components/Icons.jsx';");
+    expect(app).toContain('<IconPawn aria-hidden="true" />');
+    expect(app).toMatch(/showGlobalFeedback[\s\S]*<React\.Suspense fallback=\{null\}>[\s\S]*<FeedbackModal/);
+    const feedback = read('FeedbackModal.jsx');
+    expect(feedback).toContain("useState('general')");
+    expect(feedback).not.toContain('Me he liado / UX');
+  });
+
   it('las pantallas pesadas y el audio siguen cargándose bajo demanda', () => {
     for (const module of ['GameScreen', 'RoguelikeScreen', 'AdminScreen', 'InsightsScreen', 'MusicPlayer']) {
       expect(app).toContain(`const ${module} = React.lazy(`);
@@ -27,6 +37,12 @@ describe('frontend architecture contract', () => {
     expect(app).toContain("useAuthenticatedAudio(loggedIn, ready);");
     expect(authenticatedAudio).toContain("import('./sound.js').then((module) => {");
     expect(authenticatedAudio).not.toContain("import { startAmbientMusic, stopAmbientMusic } from './sound.js';");
+  });
+
+  it('en combate la radio conserva la sesión sin convertir el tablero en una esquina de reproductor', () => {
+    expect(combatBattle).not.toContain("import MusicPlayer from './MusicPlayer.jsx';");
+    expect(combatBattle).not.toContain('<MusicPlayer forceExpanded');
+    expect(app).toContain('!isBoardGameView && <GlobalMusicDock');
   });
 
   it('el asistente de feedback es descartable, aplaza nuevos avisos y no simula un chat', () => {

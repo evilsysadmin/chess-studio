@@ -1461,7 +1461,7 @@ def test_password_reset_rejects_garbage_token(email_recovery_enabled):
 # ---------- V16.6dj: feedback operativo ----------
 
 def test_feedback_requires_auth():
-    response = raw_client.post('/api/feedback', json={'category': 'ux', 'message': 'Demasiada información junta.'})
+    response = raw_client.post('/api/feedback', json={'category': 'general', 'message': 'Demasiada información junta.'})
     assert response.status_code == 401
 
 
@@ -1469,7 +1469,7 @@ def test_authenticated_user_can_submit_feedback_and_admin_can_read_it(monkeypatc
     import main as main_module
 
     created = client.post('/api/feedback', json={
-        'category': 'ux',
+        'category': 'general',
         'message': 'La home de campaña me satura un poco.',
         'context': 'Home',
     })
@@ -1477,7 +1477,7 @@ def test_authenticated_user_can_submit_feedback_and_admin_can_read_it(monkeypatc
     feedback = created.json()['feedback']
     assert feedback['username'] == 'testuser'
     assert feedback['status'] == 'new'
-    assert feedback['category'] == 'ux'
+    assert feedback['category'] == 'general'
 
     monkeypatch.setattr(main_module, '_ADMIN_USERNAMES', {'testuser'})
     listed = client.get('/api/admin/feedback')

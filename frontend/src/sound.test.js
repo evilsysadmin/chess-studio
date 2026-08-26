@@ -39,8 +39,8 @@ describe('ambient music catalog', () => {
     expect(getAmbientRadioMode()).toBe('genre:Clásica');
   });
 
-  it('expone setenta y tres temas seleccionables tras curar los experimentales', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(73);
+  it('expone setenta y nueve temas seleccionables tras curar los experimentales', () => {
+    expect(AMBIENT_THEME_OPTIONS).toHaveLength(79);
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Gambito del rey');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Vals del zugzwang');
@@ -101,6 +101,10 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Havana · 02:05');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Minimal · cuatro casillas');
     expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Piano · lluvia vertical');
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toEqual(expect.arrayContaining([
+      'Tuareg · luna sobre el erg', 'Manouche · tinta negra', 'Post-rock · la sala vacía',
+      'Flamenco-jazz · después del cierre', 'Anatolia · cristal eléctrico', 'Surf noir · muelle sin testigos',
+    ]));
   });
 
   it('expulsa de una sesión antigua los temas retirados de la curación', () => {
@@ -117,6 +121,7 @@ describe('ambient music catalog', () => {
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'SPA / Zen')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Ecléctica')?.themes).toHaveLength(3);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Energía')?.themes).toHaveLength(5);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Guitarra / Nocturna')?.themes).toHaveLength(6);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Lo-Fi / Chill')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Trip-Hop / Downtempo')?.themes).toHaveLength(2);
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Dark Ambient')).toBeUndefined();
@@ -176,6 +181,15 @@ describe('ambient music catalog', () => {
     expect(getAmbientThemeSoundProfile('postRockMidnight').enabledLayers).toEqual(expect.arrayContaining(['lead','counter','chords','bass','drums']));
     expect(getAmbientThemeSoundProfile('lofiRainTape').family).toBe('lofi-rain-cassette');
     expect(getAmbientThemeSoundProfile('neonKnight').family).toBe('neon-synthwave-arp');
+  });
+
+  it('compone seis estilos de guitarra con familias y formas largas distintas', () => {
+    const ids = ['tuaregMoon', 'manoucheBlack', 'postRockStill', 'flamencoAfter', 'anatolianGlass', 'surfNoir'];
+    const profiles = ids.map(getAmbientThemeSoundProfile);
+    expect(new Set(profiles.map((profile) => profile.family)).size).toBe(ids.length);
+    expect(ids.every((id) => getAmbientThemeVariationDurationMs(id) >= 120_000)).toBe(true);
+    expect(getAmbientThemeSoundProfile('postRockStill').estimatedBpm).toBeLessThan(100);
+    expect(getAmbientThemeSoundProfile('surfNoir').percussionPunch).toBeGreaterThan(1);
   });
 
 

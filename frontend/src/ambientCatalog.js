@@ -1548,8 +1548,10 @@ Object.assign(AMBIENT_THEMES, {
     description: 'Riff grave, bajo directo y caja seca. Más rock que ambient, pero todavía deja espacio para pensar antes de estrellar la dama.',
     stepMs: 94, stepsPerSection: 48, longFormMs: 330000, leadInstrument: 'overdriveGuitar', chordInstrument: 'guitar2', bassInstrument: 'bass',
     sections: [
-      { lead:{0:52,6:55,12:59,18:57,24:52,30:60,36:59,42:55}, chords:{0:[40,47,52],24:[38,45,50]}, bass:{0:28,6:35,12:31,18:35,24:26,30:33,36:31,42:33}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'K',36:'S',42:'H'} },
-      { lead:{0:55,6:59,12:62,18:60,24:55,30:64,36:62,42:59}, chords:{0:[43,50,55],24:[41,48,53]}, bass:{0:31,6:38,12:34,18:38,24:29,30:36,36:34,42:36}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'H',36:'S',42:'K'} },
+      { lead:{0:52,6:55,12:59,18:57,24:52,30:60,36:59,42:55}, counter:{9:64,21:67,33:65,45:62}, chords:{0:[40,47,52],24:[38,45,50]}, bass:{0:28,6:35,12:31,18:35,24:26,30:33,36:31,42:33}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'K',36:'S',42:'H'} },
+      { lead:{0:55,6:59,12:62,18:60,24:55,30:64,36:62,42:59}, counter:{3:67,15:69,27:67,39:65}, chords:{0:[43,50,55],24:[41,48,53]}, bass:{0:31,6:38,12:34,18:38,24:29,30:36,36:34,42:36}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'H',36:'S',42:'K'} },
+      { lead:{3:59,9:62,15:65,21:64,27:62,33:59,39:57,45:55}, counter:{0:69,12:71,24:69,36:67}, chords:{0:[47,54,59],24:[43,50,55]}, bass:{0:35,6:42,12:38,18:42,24:31,30:38,36:35,42:38}, drums:{0:'K',6:'H',12:'S',18:'K',24:'S',30:'H',36:'K',42:'H'} },
+      { lead:{6:64,18:62,30:59,42:55}, counter:{12:67,36:64}, chords:{0:[40,47,52],24:[38,45,50]}, bass:{0:28,24:26}, drums:{0:'K',24:'S'} },
     ],
   },
   desertDriveRock: {
@@ -1559,6 +1561,8 @@ Object.assign(AMBIENT_THEMES, {
     sections: [
       { lead:{0:57,6:60,12:64,18:62,24:57,30:65,36:64,42:60}, counter:{9:69,21:67,33:72,45:69}, chords:{0:[45,52,57],24:[43,50,55]}, bass:{0:33,6:40,12:36,18:40,24:31,30:38,36:36,42:38}, drums:{0:'K',6:'H',12:'S',18:'H',24:'K',30:'H',36:'S',42:'H'} },
       { lead:{3:60,9:64,15:67,21:69,27:67,33:64,39:62,45:60}, counter:{12:72,30:69}, chords:{0:[48,55,60],24:[45,52,57]}, bass:{0:36,6:43,12:40,18:43,24:33,30:40,36:38,42:40}, drums:{0:'K',6:'H',12:'S',18:'K',24:'K',30:'H',36:'S',42:'H'} },
+      { lead:{0:64,5:67,10:71,15:72,20:71,25:67,30:64,35:62,40:60,45:62}, counter:{8:76,20:74,32:72,44:69}, chords:{0:[52,57,60],24:[50,55,59]}, bass:{0:40,6:47,12:43,18:47,24:38,30:45,36:43,42:45}, drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'K',42:'H'} },
+      { lead:{6:69,18:67,30:64,42:60}, counter:{12:64,36:62}, chords:{0:[45,52,57],24:[43,50,55]}, bass:{0:33,24:31}, drums:{0:'K',24:'H'} },
     ],
   },
   endgameAdagio: {
@@ -1834,7 +1838,79 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
-export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Energía', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
+// Seis piezas originales de guitarra. Cada una tiene una forma de cuatro
+// secciones y respuestas entre voces: no son presets con otro nombre ni
+// loops de ocho compases disfrazados.
+Object.assign(AMBIENT_THEMES, {
+  tuaregMoon: {
+    id:'tuaregMoon', genre:'Guitarra / Nocturna', engine:'structured', label:'Tuareg · luna sobre el erg',
+    description:'Desert blues nocturno: guitarra seca, bajo de arena y una segunda voz que responde desde lejos.',
+    stepMs:154, stepsPerSection:64, longFormMs:420000, leadInstrument:'guitar2', counterInstrument:'oudJazz', chordInstrument:'tremolo', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:57,6:60,12:64,18:62,24:60,30:57,36:55,42:57,48:60,54:64,60:57},counter:{9:69,21:67,33:64,45:62,57:60},chords:{0:[45,52,57],16:[43,50,55],32:[41,48,53],48:[45,52,57]},bass:{0:33,8:40,16:31,24:38,32:29,40:36,48:33,56:40},drums:{0:'K',8:'H',16:'B',24:'H',32:'K',40:'H',48:'S',56:'H'}},
+      {lead:{3:60,9:64,15:67,21:69,27:67,33:64,39:62,45:60,51:57,57:60,63:55},counter:{12:55,24:57,36:60,48:57,60:53},chords:{0:[48,55,60],16:[45,52,57],32:[43,50,55],48:[41,48,53]},bass:{0:36,8:43,16:33,24:40,32:31,40:38,48:29,56:36},drums:{0:'K',10:'H',16:'B',26:'H',32:'K',42:'H',48:'S',58:'H'}},
+      {lead:{0:64,5:67,10:69,15:72,20:69,25:67,30:64,35:62,40:60,45:62,50:64,55:67,60:60},counter:{8:72,20:69,32:67,44:64,56:62},chords:{0:[52,57,60],16:[50,55,59],32:[48,53,57],48:[45,52,57]},bass:{0:40,4:43,8:45,12:43,16:38,20:41,24:43,28:41,32:36,40:40,48:33,56:38},drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'K',42:'H',48:'S',54:'H',60:'B'}},
+      {lead:{8:67,20:64,32:62,44:60,56:57},counter:{14:60,38:57,62:55},chords:{0:[45,52,57],24:[43,50,55],48:[41,48,53]},bass:{0:33,24:31,48:29},drums:{0:'K',24:'H',48:'B'}},
+    ],
+  },
+  manoucheBlack: {
+    id:'manoucheBlack', genre:'Guitarra / Nocturna', engine:'structured', label:'Manouche · tinta negra',
+    description:'Manouche oscuro: guitarra ágil, clarinete de sombra y contrabajo en conversación cerrada.',
+    stepMs:126, stepsPerSection:72, longFormMs:405000, leadInstrument:'guitar2', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:67,3:70,6:73,9:76,12:74,15:70,18:67,21:65,24:67,27:70,30:73,33:77,36:76,39:73,42:70,45:67,48:65,51:67,54:70,57:74,60:72,63:69,66:67,69:65},counter:{8:79,20:76,32:74,44:71,56:79,68:76},chords:{0:[55,59,62,67],18:[52,56,59,64],36:[57,60,64,69],54:[50,55,59,62]},bass:{0:43,6:50,12:47,18:45,24:40,30:47,36:43,42:50,48:45,54:52,60:48,66:45},drums:{0:'B',6:'H',12:'B',18:'H',24:'S',30:'H',36:'B',42:'H',48:'B',54:'H',60:'S',66:'H'}},
+      {leadInstrument:'clarinet',counterInstrument:'guitar2',lead:{2:72,8:76,14:79,20:77,26:74,32:72,38:69,44:72,50:74,56:77,62:81,68:79},counter:{5:62,17:65,29:67,41:65,53:62,65:60},chords:{0:[57,60,64,69],18:[55,59,62,67],36:[52,56,59,64],54:[50,55,59,62]},bass:{0:45,6:52,12:48,18:47,24:43,30:50,36:45,42:52,48:41,54:48,60:45,66:50},drums:{0:'B',9:'H',18:'S',27:'H',36:'B',45:'H',54:'S',63:'H'}},
+      {lead:{0:69,6:72,12:76,18:74,24:71,30:69,36:67,42:64,48:67,54:71,60:74,66:67},counter:{10:57,22:60,34:62,46:60,58:57,70:55},chords:{0:[52,56,59,64],18:[50,55,59,62],36:[48,52,55,60],54:[55,59,62,67]},bass:{0:40,6:47,12:43,18:45,24:38,30:45,36:36,42:43,48:40,54:47,60:43,66:45},drums:{0:'B',12:'H',24:'S',36:'B',48:'H',60:'S'}},
+      {lead:{6:76,18:74,30:72,42:69,54:67,66:64},counter:{12:62,36:59,60:57},chords:{0:[55,59,62,67],24:[52,56,59,64],48:[50,55,59,62]},bass:{0:43,24:40,48:38},drums:{0:'B',24:'H',48:'S'}},
+    ],
+  },
+  postRockStill: {
+    id:'postRockStill', genre:'Guitarra / Nocturna', engine:'structured', label:'Post-rock · la sala vacía',
+    description:'Post-rock minimalista: guitarra suspendida, cello y un crescendo que tarda en llegar porque sabe esperar.',
+    stepMs:182, stepsPerSection:64, longFormMs:450000, leadInstrument:'tremolo', counterInstrument:'cello', chordInstrument:'pad', bassInstrument:'bass',
+    sections:[
+      {lead:{4:64,16:67,28:69,40:67,52:64},counter:{12:48,36:50,60:47},chords:{0:[48,55,60],32:[45,52,57]},bass:{0:36,16:36,32:33,48:33},drums:{16:'B',48:'B'}},
+      {lead:{0:67,8:69,16:72,24:69,32:67,40:64,48:67,56:69},counter:{6:52,22:55,38:54,54:50},chords:{0:[52,57,60],16:[55,60,64],32:[50,55,59],48:[48,55,60]},bass:{0:40,8:40,16:43,24:43,32:38,40:38,48:40,56:40},drums:{0:'K',16:'B',32:'S',48:'B'}},
+      {lead:{0:69,4:72,8:74,12:76,16:74,20:72,24:69,28:67,32:69,36:72,40:76,44:79,48:76,52:74,56:72,60:69},counter:{10:57,26:60,42:59,58:55},chords:{0:[57,60,64],16:[60,64,69],32:[55,59,62],48:[52,57,60]},bass:{0:45,4:45,8:48,12:48,16:45,20:45,24:43,28:43,32:41,36:41,40:45,44:45,48:40,52:40,56:43,60:43},drums:{0:'K',4:'H',8:'B',12:'H',16:'S',20:'H',24:'B',28:'H',32:'K',36:'H',40:'B',44:'H',48:'S',52:'H',56:'B',60:'H'}},
+      {lead:{8:76,20:74,32:72,44:69,56:67},counter:{14:60,38:57,62:55},chords:{0:[52,57,60],24:[50,55,59],48:[48,55,60]},bass:{0:40,24:38,48:36},drums:{0:'B',32:'H'}},
+    ],
+  },
+  flamencoAfter: {
+    id:'flamencoAfter', genre:'Guitarra / Nocturna', engine:'structured', label:'Flamenco-jazz · después del cierre',
+    description:'Flamenco-jazz nocturno: guitarra, Rhodes y clarinete se cruzan con un pulso de club muy contenido.',
+    stepMs:144, stepsPerSection:64, longFormMs:430000, leadInstrument:'guitar2', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:64,5:67,10:71,15:69,20:67,25:64,30:62,35:64,40:67,45:69,50:72,55:71,60:67},counter:{8:76,20:74,32:72,44:71,56:69},chords:{0:[52,57,60,64],16:[50,55,59,62],32:[55,59,62,67],48:[53,57,60,65]},bass:{0:40,4:47,8:52,12:47,16:38,20:45,24:50,28:45,32:43,36:50,40:55,44:50,48:41,52:48,56:53,60:48},drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'B',42:'H',48:'K',54:'H',60:'S'}},
+      {leadInstrument:'clarinet',counterInstrument:'guitar2',lead:{3:69,11:72,19:76,27:74,35:71,43:69,51:67,59:64},counter:{6:57,18:60,30:62,42:60,54:57},chords:{0:[55,59,62,67],16:[52,57,60,64],32:[57,60,64,69],48:[50,55,59,62]},bass:{0:43,8:50,16:40,24:47,32:45,40:52,48:38,56:45},drums:{0:'B',8:'H',16:'S',24:'B',32:'K',40:'H',48:'S',56:'H'}},
+      {lead:{0:72,6:74,12:77,18:79,24:77,30:74,36:72,42:69,48:67,54:69,60:72},counter:{9:64,21:67,33:69,45:67,57:64},chords:{0:[57,60,64,69],16:[55,59,62,67],32:[53,57,60,65],48:[50,55,59,62]},bass:{0:45,8:52,16:41,24:48,32:43,40:50,48:38,56:45},drums:{0:'K',4:'H',8:'B',12:'H',16:'S',20:'H',24:'B',28:'H',32:'K',36:'H',40:'B',44:'H',48:'S',52:'H',56:'B',60:'H'}},
+      {lead:{8:74,20:72,32:69,44:67,56:64},counter:{14:60,38:62,62:57},chords:{0:[52,57,60,64],24:[55,59,62,67],48:[50,55,59,62]},bass:{0:40,24:43,48:38},drums:{0:'B',24:'H',48:'B'}},
+    ],
+  },
+  anatolianGlass: {
+    id:'anatolianGlass', genre:'Guitarra / Nocturna', engine:'structured', label:'Anatolia · cristal eléctrico',
+    description:'Psicodelia anatolia instrumental: guitarra eléctrica, ney y bajo circular, con giros modales y espacio para pensar.',
+    stepMs:138, stepsPerSection:72, longFormMs:440000, leadInstrument:'tremolo', counterInstrument:'ney', chordInstrument:'pad', bassInstrument:'bass',
+    sections:[
+      {lead:{0:62,4:63,8:66,12:69,16:67,20:66,24:63,28:62,32:64,36:67,40:70,44:69,48:66,52:64,56:62,60:60,64:62,68:66},counter:{10:74,22:72,34:69,46:67,58:74,70:72},chords:{0:[50,57,60],18:[51,57,60],36:[48,55,58],54:[50,57,60]},bass:{0:38,6:45,12:38,18:43,24:36,30:43,36:38,42:45,48:36,54:43,60:34,66:41},drums:{0:'K',6:'H',12:'B',18:'H',24:'S',30:'H',36:'K',42:'H',48:'S',54:'H',60:'B',66:'H'}},
+      {leadInstrument:'ney',counterInstrument:'tremolo',lead:{3:69,9:72,15:74,21:77,27:74,33:72,39:69,45:67,51:69,57:72,63:76,69:74},counter:{6:57,18:60,30:63,42:60,54:57,66:55},chords:{0:[53,57,60],18:[50,55,59],36:[55,60,64],54:[51,57,60]},bass:{0:41,9:48,18:40,27:47,36:43,45:50,54:38,63:45},drums:{0:'K',9:'B',18:'S',27:'H',36:'K',45:'B',54:'S',63:'H'}},
+      {lead:{0:74,5:76,10:79,15:81,20:79,25:76,30:74,35:70,40:69,45:72,50:74,55:77,60:79,65:76,70:74},counter:{8:66,20:69,32:67,44:64,56:66,68:69},chords:{0:[57,60,64],18:[55,59,62],36:[53,57,60],54:[50,55,59]},bass:{0:45,6:52,12:45,18:50,24:43,30:50,36:41,42:48,48:40,54:47,60:38,66:45},drums:{0:'K',4:'H',8:'B',12:'H',16:'S',20:'H',24:'B',28:'H',32:'K',36:'H',40:'B',44:'H',48:'S',52:'H',56:'B',60:'H',64:'K',68:'H'}},
+      {lead:{10:76,22:74,34:72,46:69,58:67,70:64},counter:{16:60,40:57,64:55},chords:{0:[50,57,60],24:[48,55,58],48:[51,57,60]},bass:{0:38,24:36,48:34},drums:{0:'K',24:'H',48:'B'}},
+    ],
+  },
+  surfNoir: {
+    id:'surfNoir', genre:'Guitarra / Nocturna', engine:'structured', label:'Surf noir · muelle sin testigos',
+    description:'Surf guitar noir: trémolo, bajo caminante y clarinete de película; elegante, oscuro y nada playero de postal.',
+    stepMs:118, stepsPerSection:64, longFormMs:400000, leadInstrument:'tremolo', counterInstrument:'clarinet', chordInstrument:'guitar2', bassInstrument:'bass',
+    sections:[
+      {lead:{0:64,2:67,4:69,6:72,8:69,10:67,12:64,14:62,16:64,18:67,20:71,22:74,24:72,26:69,28:67,30:64,32:62,34:65,36:69,38:72,40:76,42:74,44:71,46:69,48:67,50:64,52:62,54:64,56:67,58:69,60:72,62:64},counter:{7:76,15:74,23:72,31:69,39:76,47:74,55:72,63:69},chords:{0:[52,57,60],16:[50,55,59],32:[53,57,60],48:[48,55,60]},bass:{0:40,4:47,8:52,12:47,16:38,20:45,24:50,28:45,32:41,36:48,40:53,44:48,48:36,52:43,56:48,60:43},drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'}},
+      {leadInstrument:'clarinet',counterInstrument:'tremolo',lead:{4:69,12:72,20:76,28:74,36:71,44:69,52:67,60:64},counter:{2:57,10:60,18:62,26:60,34:57,42:60,50:62,58:57},chords:{0:[55,59,62],16:[52,57,60],32:[57,60,64],48:[50,55,59]},bass:{0:43,8:50,16:40,24:47,32:45,40:52,48:38,56:45},drums:{0:'K',8:'S',16:'K',24:'H',32:'S',40:'K',48:'S',56:'H'}},
+      {lead:{0:72,3:76,6:79,9:81,12:79,15:76,18:72,21:69,24:72,27:74,30:77,33:81,36:79,39:76,42:74,45:72,48:69,51:72,54:76,57:79,60:76,63:72},counter:{8:64,20:67,32:69,44:67,56:64},chords:{0:[57,60,64],16:[55,59,62],32:[53,57,60],48:[50,55,59]},bass:{0:45,4:52,8:57,12:52,16:43,20:50,24:55,28:50,32:41,36:48,40:53,44:48,48:38,52:45,56:50,60:45},drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'}},
+      {lead:{8:76,20:74,32:72,44:69,56:67},counter:{14:62,38:60,62:57},chords:{0:[52,57,60],24:[50,55,59],48:[48,55,60]},bass:{0:40,24:38,48:36},drums:{0:'K',24:'S',48:'K'}},
+    ],
+  },
+});
+
+export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Energía', 'Ecléctica', 'Guitarra / Nocturna', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
   'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',
   'beirutRooftop0412','casablancaLastCall','cairoQuietHours','nileBalcony0152','aleppoAfterRain','ammanVelvetRoom','medinaBlueSmoke','cairoRedLantern',

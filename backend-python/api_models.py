@@ -49,7 +49,7 @@ class AdminInsightsRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    category: str = Field(default="other", max_length=24)
+    category: str = Field(default="general", max_length=24)
     message: str = Field(max_length=2000)
     context: Optional[str] = Field(default="Home", max_length=80)
 
@@ -116,4 +116,3 @@ class AnalyzeMoveRequest(BaseModel):
     to: Optional[str] = Field(default=None, min_length=2, max_length=2)
     promotion: Optional[str] = Field(default=None, max_length=1)
     level: float = 45
-

@@ -32,6 +32,14 @@ async def get_db():
     if _db is not None:
         return _db
 
+    # Sin una URL configurada el backend trabaja deliberadamente con los
+    # respaldos en memoria de cada store. No debemos intentar conectar al
+    # "localhost" de ejemplo: además de no aportar persistencia, una tarea
+    # auxiliar (por ejemplo la telemetría agregada) podría retener una
+    # respuesta mientras vence ese timeout.
+    if not persistent_storage_required():
+        return None
+
     try:
         client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=3000)
         await client.admin.command("ping")

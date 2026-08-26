@@ -35,7 +35,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-assert(AMBIENT_THEME_OPTIONS.length === 73, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
+assert(AMBIENT_THEME_OPTIONS.length === 79, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
 const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
 assert(new Set(ids).size === ids.length, 'hay IDs musicales duplicados');
 
@@ -46,6 +46,7 @@ assert(new Set(grouped.map((theme) => theme.id)).size === ids.length, 'un tema a
 const expectedGenres = new Map([
   ['SPA / Zen', 2],
   ['Ecléctica', 3],
+  ['Guitarra / Nocturna', 6],
   ['Energía', 5],
   ['Lo-Fi / Chill', 2],
   ['Trip-Hop / Downtempo', 2],
@@ -62,6 +63,7 @@ assert(curatedHidden.every((id) => !ids.includes(id)), 'han reaparecido temas ex
 assert(!AMBIENT_THEME_GROUPS.some((group) => group.genre === 'Dark Ambient'), 'Dark Ambient debería quedar fuera del catálogo curado');
 
 const added = ['mistSpa','moonOnsen','postRockMidnight','rookGarage','desertDriveRock','endgameAdagio','knightFugue','nocturnalQuartet','lofiRainTape','lofiWindowLight','neonKnight','midnightArcade'];
+const guitarNocturnes = ['tuaregMoon','manoucheBlack','postRockStill','flamencoAfter','anatolianGlass','surfNoir'];
 const mediterraneanExpansion = ['beirutHarbor2340','cairoBlueNote0211','alexandriaHarborCafe','cordobaRooftop0026','damascusCourtyard0144','tangierNightTrain0058','granadaCopperRain0232','ammanLateTable0303'];
 assert(mediterraneanExpansion.every((id) => ids.includes(id)), 'faltan pistas nuevas de jazz mediterráneo');
 
@@ -84,6 +86,10 @@ for (const theme of AMBIENT_THEME_OPTIONS) {
 const profiles = added.map((id) => [id, getAmbientThemeSoundProfile(id)]);
 for (const [id, profile] of profiles) assert(profile, `${id}: no tiene perfil estructurado`);
 assert(new Set(profiles.map(([, profile]) => profile.family)).size === added.length, 'las nuevas pistas comparten accidentalmente la misma familia sonora');
+assert(guitarNocturnes.every((id) => ids.includes(id)), 'faltan estilos nuevos de guitarra');
+assert(new Set(guitarNocturnes.map((id) => getAmbientThemeSoundProfile(id)?.family)).size === guitarNocturnes.length, 'los estilos de guitarra comparten accidentalmente el mismo arreglo');
+assert(getAmbientThemeSoundProfile('postRockStill').estimatedBpm < 100, 'el post-rock minimalista debe conservar espacio');
+assert(getAmbientThemeSoundProfile('surfNoir').percussionPunch > 1, 'el surf noir necesita pulso de guitarra');
 assert(getAmbientThemeSoundProfile('mistSpa').drumMode === 'none', 'SPA · niebla debería carecer de batería');
 assert(getAmbientThemeSoundProfile('endgameAdagio').drumMode === 'none', 'Adagio debería carecer de batería');
 assert(getAmbientThemeSoundProfile('rookGarage').percussionPunch > 1.2, 'Garage necesita pegada rock diferenciada');

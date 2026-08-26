@@ -6,31 +6,39 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46k',
-    title: 'Resiliencia operativa sin sacrificar partidas',
+    release: 'v16.6dm46l',
+    title: 'Combat más claro y radio con más alma',
     highlights: [
-      'Las funciones secundarias ceden capacidad antes que movimiento, login y persistencia cuando el backend está bajo presión.',
-      'Administración muestra burn rate, dependencias, señales del frontend y marcas de deploy sobre los gráficos.',
-      'La evaluación paralela permite comparar mejoras internas sin cambiar ninguna respuesta para el jugador y permanece desactivada por defecto en Render Free.',
-      'Feedback pasa a la cabecera, junto a Cuenta, para que sea visible desde cualquier pantalla sin buscarlo al final de Home.',
+      'Los mercenarios ya no se confunden con reclutas: llegan con una especialización útil desde la primera batalla, cuestan créditos y trabajan sólo por contrato. No acumulan XP ni se convierten en veteranos.',
+      'La radio suma seis ambientes originales: blues del desierto nocturno, manouche oscuro, post-rock minimalista, flamenco-jazz nocturno, psicodelia anatolia instrumental y surf noir.',
+      'Las guitarras actuales tienen frases más largas, melodías que se responden y cambios de sección para que la sesión respire en vez de girar sobre un loop corto.',
+      'En Combate el tablero recupera protagonismo: el reproductor no invade la mesa. Feedback vuelve a llevar su peón de apoyo, abre sin romper la pantalla y empieza en “Comentario general”.',
+    ],
+  },
+  {
+    release: 'v16.6dm46k',
+    title: 'Partidas más seguras y feedback más accesible',
+    highlights: [
+      'En momentos de mucha actividad, Chess Studio protege antes que nada el movimiento, el acceso y el guardado de tu partida.',
+      'Los errores de una función secundaria no interrumpen una partida en curso ni borran tu progreso.',
+      'Feedback pasó a la cabecera, junto a Cuenta, para que esté disponible desde cualquier pantalla.',
     ],
   },
   {
     release: 'v16.6dm46j',
-    title: 'Release health y operación trazable',
+    title: 'Conexión más fácil de recuperar',
     highlights: [
-      'Administración muestra error budget y salud de la release actual usando tráfico real, sin identificar jugadores.',
-      'Las peticiones llevan una referencia y versión de cliente para correlacionar fallos; los logs HTTP pasan a formato estructurado sin guardar contenido de partida.',
-      'Un probe sintético programado comprueba liveness/readiness de producción y puede validar también login con una cuenta técnica opcional.',
+      'Cuando algo falla, Chess Studio explica qué puedes hacer y conserva una referencia segura para soporte.',
+      'La conexión y el acceso se revisan continuamente para detectar problemas antes de que afecten a una sesión.',
     ],
   },
   {
     release: 'v16.6dm46i',
-    title: 'Primer minuto más claro + operación más seria',
+    title: 'Primer minuto más claro',
     highlights: [
       'La bienvenida guía por una partida, un puzzle y Así juegas con progreso real, sin obligarte a aprender todos los modos.',
       'Los fallos técnicos se convierten en mensajes recuperables y el equipo conserva una referencia segura cuando hace falta diagnosticar.',
-      'Chess Studio gana flags operables desde backend y un SLO visible de disponibilidad/latencia en Administración.',
+      'Las funciones opcionales pueden apartarse temporalmente para que sigas jugando con normalidad.',
     ],
   },
   {

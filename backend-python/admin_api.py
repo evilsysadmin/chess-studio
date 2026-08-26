@@ -42,8 +42,8 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
     @router.post("/api/feedback", status_code=201)
     @limiter.limit("10/hour")
     async def submit_feedback(request: Request, body: FeedbackRequest, username: str = Depends(auth_dependency)):
-        category = (body.category or "other").strip().lower()
-        allowed_categories = {"bug", "idea", "ux", "other"}
+        category = (body.category or "general").strip().lower()
+        allowed_categories = {"general", "bug", "idea", "other"}
         if category not in allowed_categories:
             raise HTTPException(400, "Categoría de feedback inválida.")
         message = (body.message or "").strip()

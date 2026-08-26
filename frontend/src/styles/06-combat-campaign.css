@@ -483,8 +483,8 @@
 
 .combat-board-live-row {
   width: 100%;
-  grid-template-columns: 220px max-content 270px;
-  grid-template-areas: "music board chat";
+  grid-template-columns: max-content 270px;
+  grid-template-areas: "board chat";
   align-items: start;
   justify-content: center;
 }
@@ -672,15 +672,7 @@
     width: min(100%, 980px);
     grid-template-columns: minmax(0, 1fr) 280px;
     grid-template-areas:
-      "music music"
       "board chat";
-  }
-  .combat-board-live-row .game-music-rail {
-    width: min(100%, 620px);
-    justify-self: center;
-  }
-  .combat-board-live-row .game-music-rail .music-deck {
-    width: min(100%, 520px);
   }
 }
 
@@ -689,7 +681,6 @@
     width: 100%;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "music"
       "board"
       "chat";
     justify-items: center;

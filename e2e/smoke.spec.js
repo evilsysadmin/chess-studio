@@ -231,11 +231,11 @@ test('cuenta nueva · Login y bienvenida inicial son claros y no desbordan en m�
   await page.getByLabel('Usuario').fill('e2e');
   await page.getByLabel('Contraseña').fill('clave123456');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Tu cuenta está lista. Empieza por tu primer rival.', exact: true })).toBeVisible();
-  await expect(page.getByText('Empiezas desde cero: este progreso es solo tuyo.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tres pasos y ya sabes dónde está todo.', exact: true })).toBeVisible();
+  await expect(page.getByText('No necesitas aprender todos los modos ahora.', { exact: false })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
-  await page.getByRole('button', { name: 'Ver rival', exact: true }).click();
+  await page.getByRole('button', { name: 'Jugar primer rival', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
 });
 

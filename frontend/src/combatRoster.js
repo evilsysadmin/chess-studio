@@ -132,6 +132,7 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
       equipmentId: saved.equipmentId || null,
       equipmentStrengthBonus: gear.strength,
       equipmentSpeedBonus: gear.speed,
+      mercenary: saved.mercenary || null,
       deploymentType: saved.deploymentType || null,
       unlockedTechniques: Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques] : [],
       equippedTechnique: saved.equippedTechnique || null,
@@ -162,7 +163,7 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
     pieces[key] = {
       strengthPoints: Math.max(0, (piece.strengthPoints || 0) - (piece.equipmentStrengthBonus || 0)),
       speedPoints: Math.max(0, (piece.speedPoints || 0) - (piece.equipmentSpeedBonus || 0)),
-      bankedXp: piece.bankedXp || 0,
+      bankedXp: piece.mercenary ? 0 : (piece.bankedXp || 0),
       alive: true,
       equipmentId: piece.equipmentId || rosterState.pieces?.[key]?.equipmentId || null,
       mercenary: rosterState.pieces?.[key]?.mercenary || null,
