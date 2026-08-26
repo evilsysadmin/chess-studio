@@ -214,6 +214,31 @@ test('móvil 360/390/430px · Home y briefing Combat no desbordan horizontalment
 });
 
 
+test('cuenta nueva · Login y bienvenida inicial son claros y no desbordan en móvil', async ({ page }) => {
+  const widths = [360, 390, 430];
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await page.goto('./');
+
+  for (const width of widths) {
+    await test.step(`Login ${width}px`, async () => {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    });
+  }
+
+  await page.getByLabel('Usuario').fill('e2e');
+  await page.getByLabel('Contraseña').fill('clave123456');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page.getByRole('heading', { name: 'Tu cuenta está lista. Empieza por tu primer rival.', exact: true })).toBeVisible();
+  await expect(page.getByText('Empiezas desde cero: este progreso es solo tuyo.', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
+  await page.getByRole('button', { name: 'Ver rival', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
+});
+
 test('móvil 390px · Admin sigue legible y sin overflow global', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page, { isAdmin: true });

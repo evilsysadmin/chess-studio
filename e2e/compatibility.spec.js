@@ -80,7 +80,7 @@ test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse'
   await expect(guide).toHaveCount(0);
   await page.getByRole('button', { name: /Juega primero/ }).click();
   await expect(guide).toBeVisible();
-  await expect(guide.getByRole('button', { name: 'Jugar ahora', exact: true })).toBeVisible();
+  await expect(guide.getByRole('button', { name: 'Ver rival', exact: true })).toBeVisible();
 });
 
 test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page }) => {

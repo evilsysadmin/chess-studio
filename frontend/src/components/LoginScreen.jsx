@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { forgotPassword, login, register, resetPassword, wakeBackend } from '../auth.js';
 import { SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
+import { connectionErrorCopy } from '../networkErrorCopy.js';
 
 const COPY = {
   es: {
@@ -95,7 +96,7 @@ export default function LoginScreen({ onLoggedIn }) {
         onLoggedIn();
       }
     } catch (err) {
-      setError(err.message);
+      setError(connectionErrorCopy(err, language));
     } finally {
       setLoading(false);
     }
@@ -123,7 +124,7 @@ export default function LoginScreen({ onLoggedIn }) {
             {mode === 'reset' && text.resetHint}
           </p>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} aria-busy={loading}>
             {(mode === 'login' || mode === 'register') && (
               <>
                 <label className="field-label" htmlFor="login-username">{text.username}</label>
@@ -161,8 +162,8 @@ export default function LoginScreen({ onLoggedIn }) {
               </>
             )}
 
-            {error && <p className="error-text" style={{ marginBottom: '0.7rem' }}>{error}</p>}
-            {notice && <p className="hint-text" style={{ marginBottom: '0.7rem' }}>{notice}</p>}
+            {error && <p className="error-text" role="alert" style={{ marginBottom: '0.7rem' }}>{error}</p>}
+            {notice && <p className="hint-text" role="status" style={{ marginBottom: '0.7rem' }}>{notice}</p>}
 
             <button type="submit" className="primary-btn" style={{ width: '100%' }} disabled={loading}>
               {loading ? text.wait : mode === 'register' ? text.create : mode === 'forgot' ? text.send : mode === 'reset' ? text.change : text.enter}

@@ -1,4 +1,10 @@
-### v16.6dm46d · Dominio propio + catálogo admin de pruebas
+### v16.6dm46f · Puzzles con más variedad real
+
+- 19 posiciones curadas: mates, horquillas, columnas, diagonales, promociones y ganancias de material con distintas piezas.
+- La selección evita los últimos cinco puzzles y procura alternar entre tipos de ejercicio.
+- Gate de integridad ampliado: valida legalidad, variedad mínima y que la rotación no repita el bloque reciente.
+
+### v16.6dm46e · Primeros pasos y conexión recuperable
 
 - GitHub Pages queda preparado para `chess-studio.shadowops.dpdns.org` desde raíz, con CNAME publicado en el artefacto y CORS del backend restringido al origen nuevo y al histórico de GitHub Pages.
 - Render usa `api.chess-studio.shadowops.dpdns.org`, separado del frontend. Terraform gestiona e importa de forma segura los CNAME DNS-only de Pages y Render antes de aplicar cambios.

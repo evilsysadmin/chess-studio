@@ -30,6 +30,7 @@ export function useAuthenticatedApp() {
   const [ready, setReady] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [syncError, setSyncError] = useState(null);
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
 
   useEffect(() => watchSessionIdentity(() => window.location.reload()), [loggedIn]);
 
@@ -85,7 +86,13 @@ export function useAuthenticatedApp() {
       cancelled = true;
       if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
-  }, [loggedIn]);
+  }, [loggedIn, bootstrapAttempt]);
 
-  return { loggedIn, setLoggedIn, ready, isAdminUser, syncError };
+  function retryBootstrap() {
+    setSyncError(null);
+    setReady(false);
+    setBootstrapAttempt((attempt) => attempt + 1);
+  }
+
+  return { loggedIn, setLoggedIn, ready, isAdminUser, syncError, retryBootstrap };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Chess } from 'chess.js';
-import { PUZZLES } from './puzzles.js';
+import { PUZZLES, randomPuzzle } from './puzzles.js';
 import { validateLabPosition } from './labPosition.js';
 
 const FILES = 'abcdefgh';
@@ -57,6 +57,19 @@ describe('banco de puzzles curados', () => {
   it('no contiene IDs duplicados', () => {
     const ids = PUZZLES.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('tiene una variedad mínima de técnicas y piezas que ganan material', () => {
+    expect(PUZZLES.length).toBeGreaterThanOrEqual(18);
+    expect(new Set(PUZZLES.map((puzzle) => puzzle.kind)).size).toBeGreaterThanOrEqual(2);
+    expect([...new Set(PUZZLES.filter((puzzle) => puzzle.kind === 'material').map((puzzle) => puzzle.solution[0][0]))]).toEqual(expect.arrayContaining(['B', 'N', 'Q', 'R', 'g', 'e']));
+  });
+
+  it('la selección evita los últimos puzzles y alterna tipo cuando hay alternativa', () => {
+    const recent = PUZZLES.filter((puzzle) => puzzle.kind === 'material').slice(0, 5).map((puzzle) => puzzle.id);
+    const next = randomPuzzle(recent, 'material');
+    expect(recent).not.toContain(next.id);
+    expect(next.kind).toBe('mate1');
   });
 
   it.each(PUZZLES)('$id pasa el gate completo de integridad', (puzzle) => {

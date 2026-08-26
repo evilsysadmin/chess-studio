@@ -1033,7 +1033,7 @@ function GlobalMusicDock({ isAdminUser, onAdmin }) {
 // una caché potencialmente perteneciente a otra identidad.
 function App() {
   const sharedRecord = shareRecordFromHash();
-  const { loggedIn, setLoggedIn, ready, isAdminUser, syncError } = useAuthenticatedApp();
+  const { loggedIn, setLoggedIn, ready, isAdminUser, syncError, retryBootstrap } = useAuthenticatedApp();
   useAuthenticatedAudio(loggedIn, ready);
 
   if (sharedRecord) {
@@ -1061,13 +1061,13 @@ function App() {
               <h2>{syncError ? 'No se pudo sincronizar' : 'Sincronizando tu perfil…'}</h2>
               {syncError ? (
                 <>
-                  <p className="error-text">{syncError}</p>
-                  <button type="button" className="primary-btn" onClick={() => window.location.reload()}>
+                  <p className="error-text" role="alert">{syncError}</p>
+                  <button type="button" className="primary-btn" onClick={retryBootstrap}>
                     Reintentar
                   </button>
                 </>
               ) : (
-                <p className="hint-text">Cargando tu progreso antes de abrir la aplicación.</p>
+                <p className="hint-text" role="status">Cargando tu progreso antes de abrir la aplicación.</p>
               )}
             </div>
           </div>

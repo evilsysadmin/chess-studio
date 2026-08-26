@@ -16,6 +16,7 @@ import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
 import { buildPuzzleReveal } from '../puzzleReveal.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
+const RECENT_CURATED_LIMIT = 5;
 
 // Tiempo (ms) que se espera antes de aplicar la respuesta forzada del
 // rival, para que se note que hubo dos jugadas separadas.
@@ -28,6 +29,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const resolvedInitialSource = initialSource === 'personal' && filteredInitialPersonal.length === 0 ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
   const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle());
+  const [recentCuratedIds, setRecentCuratedIds] = useState([]);
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [achievementUnlocked, setAchievementUnlocked] = useState(null);
   const [fen, setFen] = useState(puzzle.fen);
@@ -68,6 +70,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     setAchievementUnlocked(null);
   }, [puzzle]);
 
+  useEffect(() => {
+    if (source !== 'curated' || !puzzle?.id) return;
+    setRecentCuratedIds((ids) => [...new Set([...ids, puzzle.id])].slice(-RECENT_CURATED_LIMIT));
+  }, [puzzle?.id, source]);
+
   useEffect(() => () => {
     if (replyTimeout.current) clearTimeout(replyTimeout.current);
     if (rushNextTimeout.current) clearTimeout(rushNextTimeout.current);
@@ -103,7 +110,8 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   function choosePuzzle(nextSource, excludeId = null) {
     if (nextSource === 'personal') return randomPersonalPuzzle(excludeId, initialFilter) || randomPuzzle(excludeId);
     if (nextSource === 'daily') return dailyPuzzle(PUZZLES, new Date(), dailySlot);
-    return randomPuzzle(excludeId);
+    const recent = [...recentCuratedIds, excludeId].filter(Boolean);
+    return randomPuzzle(recent, puzzle?.kind);
   }
 
   function changeSource(nextSource) {
@@ -332,6 +340,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
+          {source === 'curated' && <p className="hint-text friendly-inline-note">Rotamos entre remates, horquillas, diagonales, columnas y promociones para que el entrenamiento no se convierta en repetir la misma posición.</p>}
           <p className="hint-text friendly-inline-note">Juegas con <b>{humanColor === 'w' ? 'blancas' : 'negras'}</b>. Elige pieza y destino; si fallas puedes volver a intentarlo.</p>
 
           {source === 'daily' && (

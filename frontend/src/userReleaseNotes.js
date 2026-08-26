@@ -6,6 +6,24 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46f',
+    title: 'Puzzles con más variedad real',
+    highlights: [
+      'El banco crece con remates, horquillas, diagonales, columnas abiertas, promociones y capturas con todas las piezas.',
+      'Siguiente puzzle evita los últimos ejercicios y alterna el tipo de reto siempre que hay una alternativa.',
+      'El entrenamiento explica la rotación para que sea fácil entender qué estás practicando.',
+    ],
+  },
+  {
+    release: 'v16.6dm46e',
+    title: 'Primeros pasos y conexión más claros',
+    highlights: [
+      'Las cuentas nuevas confirman que empiezan desde cero y llevan directamente al primer rival de Torneo.',
+      'Los problemas de conexión ya no muestran errores técnicos: explican qué hacer y permiten reintentar sin recargar.',
+      'Login, bienvenida y flujos principales se comprueban también en móviles de 360, 390 y 430 px.',
+    ],
+  },
+  {
     release: 'v16.6dm46d',
     title: 'Dominio propio y catálogo de pruebas',
     highlights: [

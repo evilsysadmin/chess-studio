@@ -25,6 +25,7 @@ import quickCardArt from '../assets/home-modes/quick.webp';
 import UserReleaseNotesModal from './UserReleaseNotesModal.jsx';
 import { APP_RELEASE } from '../release.js';
 import { USER_RELEASE_NOTES_KEY } from '../userReleaseNotes.js';
+import { isFreshAccount } from '../homeOnboarding.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -77,12 +78,14 @@ export default function Menu({
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
   const hasOpenOverlay = showQuickMatch || showMirrorMode || showFeedback || showReleaseNotes;
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
+  const activity = useMemo(() => loadGameActivity(), []);
   const today = useMemo(() => buildHomeToday({
     daily: currentDailyStreak(),
     todayKey: dailyChallengeDayKey(),
-    activity: loadGameActivity(),
+    activity,
   }), []);
-  const nextAction = useMemo(() => homeNextBestAction(loadGameActivity()), []);
+  const nextAction = useMemo(() => homeNextBestAction(activity), [activity]);
+  const freshAccount = useMemo(() => isFreshAccount({ activity, tournament }), [activity, tournament]);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());
@@ -133,16 +136,16 @@ export default function Menu({
           <button type="button" className="home-start-guide-close" onClick={closeHomeGuide} aria-label="Cerrar guía rápida">×</button>
           <div className="home-start-guide-copy">
             <span className="section-label">EMPIEZA AQUÍ</span>
-            <h2>Juega primero. Descubre el resto a tu ritmo.</h2>
-            <p>Una partida rápida usa buenos valores iniciales. Entrenamiento, desafíos y Combat quedan disponibles cuando quieras profundizar.</p>
+            <h2>{freshAccount ? 'Tu cuenta está lista. Empieza por tu primer rival.' : 'Juega primero. Descubre el resto a tu ritmo.'}</h2>
+            <p>{freshAccount ? 'Empiezas desde cero: este progreso es solo tuyo. Torneo te propone un rival adecuado; Combat, práctica y desafíos estarán ahí cuando quieras variar.' : 'Torneo, entrenamiento, desafíos y Combat quedan disponibles cuando quieras profundizar.'}</p>
           </div>
           <div className="home-start-guide-path" aria-label="Opciones principales">
-            <span><b>Jugar</b><small>Partida contra la CPU</small></span>
-            <span><b>Mejorar</b><small>Análisis y práctica</small></span>
-            <span><b>Desafíos</b><small>Tres objetivos diarios</small></span>
+            <span><b>Torneo</b><small>Tu primer rival</small></span>
+            <span><b>Combat</b><small>Campaña a tu ritmo</small></span>
+            <span><b>Práctica</b><small>Con pistas, sin presión</small></span>
           </div>
           <div className="home-start-guide-actions">
-            <button type="button" className="primary-btn" onClick={() => { closeHomeGuide(); setShowQuickMatch(true); }}>Jugar ahora</button>
+            <button type="button" className="primary-btn" onClick={() => { closeHomeGuide(); onTournament(); }}>Ver rival</button>
             <button type="button" className="secondary-btn" onClick={closeHomeGuide}>Explorar Home</button>
           </div>
         </section>
