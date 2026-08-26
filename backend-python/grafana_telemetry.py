@@ -11,7 +11,7 @@ import logging
 import os
 from contextlib import nullcontext
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 
 logger = logging.getLogger("uvicorn.error")
@@ -36,12 +36,33 @@ def _otlp_signal_endpoint(base: str, signal: str) -> str:
     return clean if clean.endswith(suffix) else f"{clean}{suffix}"
 
 
-def _configuration() -> tuple[str, str, str] | None:
+def _headers_from_portal(value: str) -> dict[str, str]:
+    """Convierte el valor copiado de ``OTEL_EXPORTER_OTLP_HEADERS`` a headers."""
+    headers: dict[str, str] = {}
+    for item in str(value or "").split(","):
+        key, separator, raw_value = item.partition("=")
+        clean_key = key.strip()
+        clean_value = unquote(raw_value.strip())
+        if separator and clean_key and clean_value:
+            headers[clean_key] = clean_value
+    return headers
+
+
+def _configuration() -> tuple[str, dict[str, str]] | None:
     endpoint = _env("GRAFANA_OTLP_ENDPOINT")
+    portal_headers = _headers_from_portal(_env("GRAFANA_OTLP_HEADERS"))
     instance_id = _env("GRAFANA_OTLP_INSTANCE_ID")
     token = _env("GRAFANA_OTLP_TOKEN")
-    if not any((endpoint, instance_id, token)):
+    if not any((endpoint, portal_headers, instance_id, token)):
         return None
+    if endpoint and portal_headers:
+        parsed = urlsplit(endpoint)
+        if parsed.scheme != "https" or not parsed.netloc:
+            logger.warning("grafana_telemetry_disabled reason=invalid_endpoint")
+            return None
+        return endpoint, portal_headers
+    # Compatibilidad con el contrato inicial. Hoy recomendamos copiar el
+    # valor completo que Grafana muestra como OTEL_EXPORTER_OTLP_HEADERS.
     if not all((endpoint, instance_id, token)):
         logger.warning("grafana_telemetry_disabled reason=incomplete_configuration")
         return None
@@ -49,7 +70,8 @@ def _configuration() -> tuple[str, str, str] | None:
     if parsed.scheme != "https" or not parsed.netloc:
         logger.warning("grafana_telemetry_disabled reason=invalid_endpoint")
         return None
-    return endpoint, instance_id, token
+    encoded = base64.b64encode(f"{instance_id}:{token}".encode("utf-8")).decode("ascii")
+    return endpoint, {"Authorization": f"Basic {encoded}"}
 
 
 def configure(*, service_name: str, service_version: str, environment: str) -> bool:
@@ -68,7 +90,7 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
     if config is None:
         _state = {"enabled": False, "reason": "not_configured"}
         return False
-    endpoint, instance_id, token = config
+    endpoint, headers = config
     try:
         from opentelemetry import metrics, trace
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
@@ -79,8 +101,6 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        encoded = base64.b64encode(f"{instance_id}:{token}".encode("utf-8")).decode("ascii")
-        headers = {"Authorization": f"Basic {encoded}"}
         resource = Resource.create({
             "service.name": service_name,
             "service.version": service_version[:40],

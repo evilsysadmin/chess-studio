@@ -6,7 +6,7 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46n',
+    release: 'v16.6dm46o',
     title: 'Salud del servicio más visible',
     highlights: [
       'Chess Studio puede conectar su API con un panel privado de salud para detectar errores y lentitud antes de que afecten a una partida.',

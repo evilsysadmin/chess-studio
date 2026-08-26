@@ -27,11 +27,18 @@ def setup_function():
 
 def test_stays_disabled_without_render_credentials(monkeypatch):
     monkeypatch.delenv("GRAFANA_OTLP_ENDPOINT", raising=False)
+    monkeypatch.delenv("GRAFANA_OTLP_HEADERS", raising=False)
     monkeypatch.delenv("GRAFANA_OTLP_INSTANCE_ID", raising=False)
     monkeypatch.delenv("GRAFANA_OTLP_TOKEN", raising=False)
 
     assert telemetry.configure(service_name="chess-studio-api", service_version="test", environment="test") is False
     assert telemetry.status() == {"enabled": False, "reason": "not_configured"}
+
+
+def test_accepts_the_encoded_header_copied_from_grafana_portal():
+    assert telemetry._headers_from_portal("Authorization=Basic%20ZXhhbXBsZTpwYXNz") == {
+        "Authorization": "Basic ZXhhbXBsZTpwYXNz",
+    }
 
 
 def test_http_metrics_are_bounded_and_do_not_include_client_release():

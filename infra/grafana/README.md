@@ -6,19 +6,18 @@ publica un endpoint `/metrics`.
 
 ## Configuración en Render
 
-En Grafana Cloud, abre `Connections` y busca `OpenTelemetry`. Copia los datos
-de la tarjeta OTLP y crea una access policy token con permisos de escritura
-para métricas y trazas. En las variables de entorno del servicio Render añade:
+En Grafana Cloud abre tu stack y, en la tarjeta `OpenTelemetry`, pulsa
+`Configure`. En la sección `Environment variables` copia los dos valores que
+Grafana ya prepara. En Render guárdalos con estos nombres:
 
 | Variable | Valor |
 | --- | --- |
-| `GRAFANA_OTLP_ENDPOINT` | URL OTLP de Grafana Cloud |
-| `GRAFANA_OTLP_INSTANCE_ID` | Instance ID de la tarjeta OTLP |
-| `GRAFANA_OTLP_TOKEN` | Access policy token de Grafana Cloud |
+| `GRAFANA_OTLP_ENDPOINT` | Valor de `OTEL_EXPORTER_OTLP_ENDPOINT` |
+| `GRAFANA_OTLP_HEADERS` | Valor completo de `OTEL_EXPORTER_OTLP_HEADERS` |
 
-No pegues el token en este repositorio, en GitHub ni en la aplicación. El
-backend construye la autenticación Basic sólo en memoria. Si falta cualquiera
-de las tres variables, la integración queda apagada y Chess Studio funciona
+No pegues estos valores en el repositorio, en GitHub ni en la aplicación. El
+segundo contiene una autorización Basic codificada; el backend la usa sólo en
+memoria. Si falta cualquiera de las dos variables, la integración queda apagada y Chess Studio funciona
 igual que antes.
 
 Tras guardar las variables, redeploy del servicio Render. La primera tanda de
