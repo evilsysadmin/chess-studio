@@ -11,7 +11,7 @@ export const USER_RELEASE_NOTES = Object.freeze([
     highlights: [
       'Las funciones secundarias ceden capacidad antes que movimiento, login y persistencia cuando el backend está bajo presión.',
       'Administración muestra burn rate, dependencias, señales del frontend y marcas de deploy sobre los gráficos.',
-      'Shadow evaluation queda preparada para comparar candidatos sin cambiar ninguna respuesta y está apagada por defecto en Render Free.',
+      'La evaluación paralela permite comparar mejoras internas sin cambiar ninguna respuesta para el jugador y permanece desactivada por defecto en Render Free.',
       'Feedback pasa a la cabecera, junto a Cuenta, para que sea visible desde cualquier pantalla sin buscarlo al final de Home.',
     ],
   },
