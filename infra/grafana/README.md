@@ -36,6 +36,28 @@ El dashboard incluido es `chess-studio-overview.dashboard.json`. En Grafana:
 `Dashboards` → `New` → `Import` → sube el archivo y elige el datasource
 Prometheus/Mimir de tu stack.
 
+## Dashboard como código
+
+`terraform/` y el workflow `Grafana dashboards` publican el dashboard desde el
+repositorio. Es independiente del despliegue de la app: un problema de
+observabilidad no bloquea partidas ni GitHub Pages.
+
+En Grafana crea una **service account** con permiso Editor (más adelante se
+puede reducir a permisos de carpeta/dashboard) y genera un token `glsa_…`.
+No uses aquí el token OTLP de ingesta. En GitHub configura estos secrets:
+
+| Secret | Valor |
+| --- | --- |
+| `GRAFANA_URL` | URL base del stack, p. ej. `https://tu-stack.grafana.net` |
+| `GRAFANA_AUTH` | Token de service account `glsa_…` |
+
+Opcionalmente, define la variable de repositorio
+`GRAFANA_METRICS_DATASOURCE_UID` si el UID de métricas no es
+`grafanacloud-metrics`. Lanza una vez el workflow manualmente desde Actions;
+después, cada cambio bajo `infra/grafana/` lo actualiza. El workflow adopta por
+UID la carpeta y el dashboard existentes antes de aplicar, de forma que es
+idempotente incluso en runners efímeros.
+
 ## Alertas iniciales sugeridas
 
 - Error HTTP 5xx: más de 2% durante 10 minutos.

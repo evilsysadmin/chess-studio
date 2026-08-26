@@ -1,0 +1,66 @@
+name: Grafana dashboards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/grafana/**"
+      - ".github/workflows/grafana-dashboards.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grafana-dashboards-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish dashboards
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/grafana/terraform
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
+      TF_VAR_metrics_datasource_uid: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-metrics' }}
+      TF_VAR_commit_sha: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+
+      - name: Check Grafana credentials exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$GRAFANA_URL" ]] || { echo "::error::Falta el secret GRAFANA_URL."; exit 1; }
+          [[ -n "$GRAFANA_AUTH" ]] || { echo "::error::Falta el secret GRAFANA_AUTH."; exit 1; }
+
+      - name: Terraform format and init
+        run: |
+          terraform fmt -check -recursive
+          terraform init -input=false
+          terraform validate
+
+      # El runner es efímero. Adoptamos recursos existentes antes de planificar
+      # para que el mismo UID haga el flujo idempotente sin guardar state en Git.
+      - name: Adopt existing Grafana resources
+        shell: bash
+        run: |
+          terraform import grafana_folder.chess_studio chess-studio || true
+          terraform import grafana_dashboard.chess_studio_overview chess-studio-api-overview || true
+
+      - name: Plan and apply
+        run: |
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
