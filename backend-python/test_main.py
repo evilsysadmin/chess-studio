@@ -65,6 +65,21 @@ def test_health():
     assert r.json() == {"ok": True}
 
 
+def test_public_features_require_auth_and_expose_only_known_boolean_flags(monkeypatch):
+    assert raw_client.get("/api/features").status_code == 401
+    monkeypatch.setenv("CHESS_DISABLED_FEATURES", "spectator")
+    response = client.get("/api/features")
+    assert response.status_code == 200
+    assert response.json() == {
+        "features": {
+            "homeGuide": True,
+            "postGameFeedback": True,
+            "rivalGhost": True,
+            "spectator": False,
+        }
+    }
+
+
 def test_status_requires_auth_and_counts_recent_users_without_exposing_identities():
     assert raw_client.get("/api/status").status_code == 401
     asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True))

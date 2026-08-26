@@ -94,6 +94,36 @@ export function observabilitySampleQuality(samples, minimum = 20) {
 }
 
 
+export const PRODUCT_SLOS = Object.freeze({
+  availabilityPercent: 99.5,
+  apiP95Ms: 750,
+});
+
+export function evaluateProductSlos(runtime, targets = PRODUCT_SLOS) {
+  const http = runtime?.history?.http || runtime?.http?.last_1h || {};
+  const error5xxPercent = Number(http.error_5xx_percent);
+  const p95Ms = Number(http.p95_ms);
+  const samples = Number(http.samples);
+  const availabilityPercent = Number.isFinite(error5xxPercent) ? Math.max(0, 100 - error5xxPercent) : null;
+  const enoughData = Number.isFinite(samples) ? samples >= 20 : (availabilityPercent != null || Number.isFinite(p95Ms));
+  const availabilityMet = availabilityPercent == null ? null : availabilityPercent >= Number(targets.availabilityPercent);
+  const latencyMet = !Number.isFinite(p95Ms) ? null : p95Ms <= Number(targets.apiP95Ms);
+  const checks = [availabilityMet, latencyMet].filter((value) => value !== null);
+  const met = checks.length > 0 && checks.every(Boolean);
+  const status = !enoughData || checks.length === 0 ? 'unknown' : met ? 'met' : 'missed';
+  return {
+    status,
+    statusLabel: status === 'met' ? 'SLO cumplido' : status === 'missed' ? 'SLO en riesgo' : 'SLO sin muestra',
+    availabilityPercent,
+    availabilityTarget: Number(targets.availabilityPercent),
+    availabilityMet,
+    apiP95Ms: Number.isFinite(p95Ms) ? p95Ms : null,
+    apiP95TargetMs: Number(targets.apiP95Ms),
+    latencyMet,
+    samples: Number.isFinite(samples) ? samples : null,
+  };
+}
+
 export function summarizeObservabilityHealth(runtime, users = [], currentAdmin = null) {
   const historyHttp = runtime?.history?.http || {};
   const historyAi = runtime?.history?.ai || {};

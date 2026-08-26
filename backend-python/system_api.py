@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 import db
 import users_store as ustore
+from feature_flags import public_feature_flags
 from observability_history import record_presence_snapshot
 
 
@@ -38,6 +39,12 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter) -> APIRoute
         if storage_required and await db.get_db() is None:
             raise HTTPException(503, "MongoDB no está lista.")
         return {"ok": True, "storage": "mongo" if storage_required else "memory"}
+
+    @router.get("/api/features")
+    async def public_features(_username: str = Depends(auth_dependency)):
+        # Sólo expone booleanos de producto deliberadamente públicos. Nunca
+        # secretos, nombres de variables internas ni configuración sensible.
+        return {"features": public_feature_flags()}
 
     @router.get("/api/status")
     async def public_status(_username: str = Depends(auth_dependency)):

@@ -91,6 +91,7 @@ export default function GameScreen({
   onChatUpdate,
   onPersistenceState,
   onCustomize,
+  postGameFeedbackEnabled = true,
 }) {
   const humanColor = game.humanColor || 'w';
   const [selected, setSelected] = useState(null);
@@ -122,13 +123,13 @@ export default function GameScreen({
 
   useEffect(() => {
     const finished = Boolean(game.isGameOver || flagFallen || forcedOutcome);
-    if (!finished || !game.id || feedbackRegisteredGameRef.current === game.id) return;
+    if (!postGameFeedbackEnabled || !finished || !game.id || feedbackRegisteredGameRef.current === game.id) return;
     // No interrumpimos una serie entre partidas ni una run activa: la pregunta
     // sólo compite por atención cuando la partida ya ha terminado de verdad.
     if ((seriesState && !seriesState.winner) || runState?.active) return;
     feedbackRegisteredGameRef.current = game.id;
     if (registerCompletedGameForFeedback({ gameId: game.id })) setShowPostGameFeedback(true);
-  }, [game.id, game.isGameOver, flagFallen, forcedOutcome, seriesState?.winner, runState?.active]);
+  }, [game.id, game.isGameOver, flagFallen, forcedOutcome, seriesState?.winner, runState?.active, postGameFeedbackEnabled]);
 
   const [showReport, setShowReport] = useState(false);
   const [notationOpen, setNotationOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 820);
@@ -861,7 +862,7 @@ export default function GameScreen({
         </div>
       )}
 
-      {showPostGameFeedback && (game.isGameOver || flagFallen || forcedOutcome) && (
+      {postGameFeedbackEnabled && showPostGameFeedback && (game.isGameOver || flagFallen || forcedOutcome) && (
         <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />
       )}
 

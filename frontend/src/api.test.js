@@ -56,6 +56,13 @@ describe('trazabilidad de usuario en llamadas de juego', () => {
     expect(first).not.toBe(second);
   });
 
+  it('consulta feature flags con la sesión autenticada', async () => {
+    await api.getFeatures();
+    const [url, options] = global.fetch.mock.calls[0];
+    expect(url).toContain('/features');
+    expect(options.headers.Authorization).toBe('Bearer token-de-prueba');
+  });
+
   it('manda Authorization también en GET y DELETE de partida', async () => {
     await api.getGame('g1');
     await api.getHint('g1');

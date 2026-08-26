@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
+import { evaluateProductSlos, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -92,5 +92,20 @@ describe('observabilitySampleQuality', () => {
     expect(observabilitySampleQuality(0)).toMatchObject({ level: 'none', samples: 0 });
     expect(observabilitySampleQuality(3, 5)).toMatchObject({ level: 'low', samples: 3, minimum: 5 });
     expect(observabilitySampleQuality(20)).toMatchObject({ level: 'enough', samples: 20 });
+  });
+});
+
+
+describe('product SLOs', () => {
+  it('evalúa disponibilidad y p95 con objetivos explícitos', () => {
+    const met = evaluateProductSlos({ history: { http: { samples: 120, error_5xx_percent: 0.2, p95_ms: 410 } } });
+    expect(met).toMatchObject({ status: 'met', availabilityPercent: 99.8, availabilityMet: true, latencyMet: true });
+
+    const missed = evaluateProductSlos({ history: { http: { samples: 120, error_5xx_percent: 1.1, p95_ms: 910 } } });
+    expect(missed).toMatchObject({ status: 'missed', availabilityMet: false, latencyMet: false });
+  });
+
+  it('no pinta verde cuando aún no hay muestra útil', () => {
+    expect(evaluateProductSlos({ history: { http: { samples: 0 } } }).status).toBe('unknown');
   });
 });

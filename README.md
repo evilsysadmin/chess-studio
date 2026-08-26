@@ -1,3 +1,11 @@
+### v16.6dm46i · Product hardening: onboarding, flags, errores y SLO
+
+- La guía inicial se convierte en un recorrido de tres pasos con progreso real: terminar una partida, resolver un puzzle y abrir Así juegas. No obliga a recorrer el catálogo completo.
+- Añade feature flags públicos servidos por el backend para poder desactivar Home Guide, feedback post-partida, Rival Fantasma o Espectador sin reconstruir el frontend (`CHESS_DISABLED_FEATURES`). Los defaults siguen siendo operativos si la configuración no está disponible.
+- Centraliza los errores de red/HTTP en copy de producto: los 5xx dejan de filtrar mensajes técnicos y conservan un request ID seguro cuando existe para soporte.
+- Admin muestra un SLO explícito de producto: disponibilidad objetivo 99,5% y API p95 objetivo 750 ms, sin pintar verde cuando la muestra es insuficiente.
+- Accesibilidad: enlace «Saltar al contenido», objetivos táctiles de 44 px para puntero grueso, progreso de onboarding legible y fallback para forced-colors. Sin telemetría nueva ni cambios en reglas/IA.
+
 ### v16.6dm46h · Puzzles de cálculo + feedback descubrible
 
 - El banco curado crece de 19 a 30 posiciones e incorpora dificultad explícita, mates forzados en 2/3, sacrificios y combinaciones históricas de 3 a 7 medias jugadas.

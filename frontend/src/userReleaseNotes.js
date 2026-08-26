@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46i',
+    title: 'Primer minuto más claro + operación más seria',
+    highlights: [
+      'La bienvenida guía por una partida, un puzzle y Así juegas con progreso real, sin obligarte a aprender todos los modos.',
+      'Los fallos técnicos se convierten en mensajes recuperables y el equipo conserva una referencia segura cuando hace falta diagnosticar.',
+      'Chess Studio gana flags operables desde backend y un SLO visible de disponibilidad/latencia en Administración.',
+    ],
+  },
+  {
     release: 'v16.6dm46h',
     title: 'Puzzles que ya muerden + feedback visible',
     highlights: [

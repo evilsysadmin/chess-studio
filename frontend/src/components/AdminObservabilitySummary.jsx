@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchAdminObservability, observabilityRangeForPreset, summarizeObservabilityHealth } from '../observability.js';
+import { evaluateProductSlos, fetchAdminObservability, observabilityRangeForPreset, summarizeObservabilityHealth } from '../observability.js';
 
 function metric(value, suffix = '') {
   return value == null || Number.isNaN(Number(value)) ? '—' : `${Number(value).toLocaleString('es-ES')}${suffix}`;
@@ -22,6 +22,7 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
     () => summarizeObservabilityHealth(runtime, users, currentAdmin),
     [runtime, users, currentAdmin],
   );
+  const slo = useMemo(() => evaluateProductSlos(runtime), [runtime]);
 
   return (
     <section className="admin-observability-launcher" aria-label="Resumen de observabilidad">
@@ -39,9 +40,10 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
         <div><span>5xx · 24 h</span><strong>{metric(summary.error5xxPercent, '%')}</strong></div>
         <div><span>Mongo</span><strong>{summary.databaseLabel}</strong></div>
         <div><span>Workers AI</span><strong>{summary.aiCloudflarePercent == null ? '—' : `${metric(summary.aiCloudflarePercent, '%')} CF`}</strong></div>
+        <div className={`admin-slo-kpi ${slo.status === 'missed' ? 'is-warn' : ''}`}><span>SLO producto</span><strong>{slo.statusLabel}</strong><small>{slo.availabilityPercent == null ? 'Disponibilidad —' : `${metric(slo.availabilityPercent, '%')} · objetivo ${metric(slo.availabilityTarget, '%')}`} · {slo.apiP95Ms == null ? 'p95 —' : `p95 ${metric(slo.apiP95Ms, ' ms')} / ${metric(slo.apiP95TargetMs, ' ms')}`}</small></div>
       </div>
       <div className="admin-observability-launcher-actions">
-        <p className="hint-text">Resumen técnico de 24 h. Presencia y usuarios van debajo; dashboards e histórico viven en su propia vista.</p>
+        <p className="hint-text">Resumen técnico de 24 h con SLO explícito de disponibilidad y latencia. Presencia y usuarios van debajo; dashboards e histórico viven en su propia vista.</p>
         <button type="button" className="secondary-btn" onClick={onOpen}>Abrir observabilidad →</button>
       </div>
     </section>

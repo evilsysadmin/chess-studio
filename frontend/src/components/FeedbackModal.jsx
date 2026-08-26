@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { submitFeedback } from '../feedback.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { userFacingError } from '../userFacingError.js';
 
 const CATEGORIES = [
   ['ux', 'Me he liado / UX'],
@@ -27,7 +28,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
       await submitFeedback({ category, message: text, context });
       setSent(true);
     } catch (err) {
-      setError(err?.message || 'No se pudo enviar el feedback.');
+      setError(userFacingError(err, 'No se pudo enviar el feedback.'));
     } finally {
       setSending(false);
     }

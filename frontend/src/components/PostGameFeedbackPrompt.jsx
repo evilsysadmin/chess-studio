@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { submitFeedback } from '../feedback.js';
 import { completePostGameFeedback, snoozePostGameFeedback } from '../postGameFeedback.js';
 import FeedbackModal from './FeedbackModal.jsx';
+import { userFacingError } from '../userFacingError.js';
 
 const QUICK_RATINGS = [
   ['love', '👍 Sí', 'Pulso post-partida: me gusta Chess Studio.'],
@@ -24,7 +25,7 @@ export default function PostGameFeedbackPrompt({ onDone }) {
       completePostGameFeedback();
       setSent(true);
     } catch (err) {
-      setError(err?.message || 'No se pudo enviar ahora.');
+      setError(userFacingError(err, 'No se pudo enviar ahora.'));
     } finally {
       setSending(false);
     }

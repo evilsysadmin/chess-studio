@@ -5,6 +5,9 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 
 export const api = {
+  getFeatures() {
+    return requestJson(`${BASE_URL}/features`, { headers: { ...authHeader() } });
+  },
   createGame(difficulty, color = 'w', handicap = null, startingFen = null, ghostStyle = null) {
     return requestJson(`${BASE_URL}/games`, {
       method: 'POST',
