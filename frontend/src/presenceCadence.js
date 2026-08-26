@@ -1,0 +1,2 @@
+export const PRESENCE_HEARTBEAT_MS = 120000;
+export const ADMIN_REFRESH_MS = 120000;

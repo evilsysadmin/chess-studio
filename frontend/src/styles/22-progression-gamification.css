@@ -1,0 +1,148 @@
+/* Progreso legible: ritmo de rating y retos diarios sin crear otra economía. */
+.rating-detail-modal {
+  width: min(500px, calc(100vw - 2rem));
+}
+
+.rating-checkpoints {
+  display: grid;
+  gap: .45rem;
+  margin: .85rem 0 .55rem;
+}
+
+.rating-checkpoints-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.rating-checkpoints-heading h2 {
+  margin: 0;
+  font-size: .95rem;
+}
+
+.rating-checkpoints-heading > span {
+  color: var(--parchment-dim);
+  font: .58rem var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.rating-checkpoints-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .42rem;
+}
+
+.rating-checkpoint {
+  display: grid;
+  gap: .08rem;
+  min-width: 0;
+  padding: .5rem .58rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  background: rgba(8,10,14,.18);
+}
+
+.rating-checkpoint > span {
+  color: var(--parchment-dim);
+  font: 700 .58rem var(--font-mono);
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.rating-checkpoint > strong {
+  color: var(--parchment);
+  font: 800 1rem var(--font-mono);
+}
+
+.rating-checkpoint > strong.is-positive { color: var(--success); }
+.rating-checkpoint > strong.is-negative { color: var(--danger); }
+.rating-checkpoint > small { color: var(--parchment-dim); font-size: .65rem; }
+
+.achievement-daily-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .42rem;
+}
+
+.achievement-daily-summary > div {
+  display: grid;
+  gap: .12rem;
+  padding: .55rem;
+  border: 1px solid rgba(198,164,93,.18);
+  border-radius: 9px;
+  background: rgba(198,164,93,.04);
+  text-align: center;
+}
+
+.achievement-daily-summary strong {
+  color: var(--brass);
+  font: 800 1rem var(--font-mono);
+}
+
+.achievement-daily-summary span {
+  color: var(--parchment-dim);
+  font-size: .65rem;
+  line-height: 1.2;
+}
+
+.achievement-progress {
+  position: relative;
+  display: block;
+  width: min(180px, 100%);
+  height: 4px;
+  margin-top: .34rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.09);
+}
+
+.achievement-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brass);
+}
+
+.achievement-progress > small {
+  position: absolute;
+  left: calc(100% + .4rem);
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--parchment-dim);
+  font: .58rem var(--font-mono);
+  white-space: nowrap;
+}
+
+.daily-achievement-unlock {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .55rem;
+  padding: .58rem .68rem;
+  border: 1px solid rgba(198,164,93,.42);
+  border-radius: 10px;
+  background: linear-gradient(105deg, rgba(198,164,93,.12), rgba(198,164,93,.035));
+}
+
+.daily-achievement-unlock > span { font-size: 1.15rem; }
+.daily-achievement-unlock > div { display: grid; gap: .05rem; min-width: 0; }
+.daily-achievement-unlock small { color: var(--brass); font: 700 .56rem var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.daily-achievement-unlock strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daily-achievement-unlock > b { color: var(--brass); font: 800 .72rem var(--font-mono); }
+
+.daily-hub-score small {
+  color: var(--parchment-dim);
+  font-size: .68rem;
+}
+
+@media (max-width: 430px) {
+  .rating-checkpoints-grid,
+  .achievement-daily-summary { gap: .3rem; }
+  .rating-checkpoint { padding: .44rem; }
+  .rating-checkpoint > strong { font-size: .9rem; }
+  .rating-checkpoint > small,
+  .achievement-daily-summary span { font-size: .58rem; }
+  .achievement-daily-summary > div { padding: .45rem .28rem; }
+  .achievement-progress { width: min(130px, calc(100% - 2.2rem)); }
+}

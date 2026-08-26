@@ -1,0 +1,211 @@
+.masthead-account-menu { position: relative; }
+.masthead-account-trigger {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: .48rem;
+  padding: .42rem .65rem .42rem .44rem;
+  border: 1px solid var(--ink-3);
+  border-radius: 999px;
+  background: rgba(0,0,0,.14);
+  color: var(--parchment);
+  font: 750 .72rem/1 var(--font-body);
+  white-space: nowrap;
+}
+.masthead-account-trigger:hover,
+.masthead-account-trigger:focus-visible,
+.masthead-account-trigger[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--brass-dim) 72%, var(--ink-3));
+  background: rgba(255,255,255,.035);
+  outline: none;
+}
+.masthead-account-avatar {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(201,162,39,.42);
+  border-radius: 50%;
+  background: rgba(201,162,39,.09);
+  color: var(--brass);
+  font-size: .78rem;
+}
+.masthead-account-chevron { color: var(--parchment-dim); font-size: .78rem; transform: translateY(-1px); }
+.masthead-account-trigger[aria-expanded='true'] .masthead-account-chevron { transform: rotate(180deg) translateY(1px); }
+
+.masthead-account-popover {
+  position: absolute;
+  top: calc(100% + .5rem);
+  right: 0;
+  z-index: 90;
+  display: grid;
+  width: min(260px, calc(100vw - 1rem));
+  padding: .38rem;
+  border: 1px solid color-mix(in srgb, var(--ink-3) 86%, var(--brass-dim));
+  border-radius: 11px;
+  background: #1b2230;
+  box-shadow: 0 18px 44px rgba(2,4,9,.48), inset 0 1px rgba(255,255,255,.035);
+}
+.masthead-account-popover button {
+  display: grid;
+  grid-template-columns: 26px minmax(0,1fr);
+  align-items: center;
+  gap: .55rem;
+  width: 100%;
+  min-height: 52px;
+  padding: .48rem .55rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--parchment-dim);
+  text-align: left;
+}
+.masthead-account-popover button > span:first-child { color: var(--brass-dim); font-size: .86rem; text-align: center; }
+.masthead-account-popover button > span:last-child { display: grid; gap: .13rem; }
+.masthead-account-popover b { color: var(--parchment); font: 750 .74rem/1.2 var(--font-body); }
+.masthead-account-popover small { color: var(--parchment-dim); font: .62rem/1.25 var(--font-body); }
+.masthead-account-popover button:hover:not(:disabled),
+.masthead-account-popover button:focus-visible { background: rgba(255,255,255,.045); outline: none; }
+.masthead-account-menu-separator { height: 1px; margin: .28rem .42rem; background: var(--line-soft); }
+.masthead-account-popover .masthead-account-menu-logout > span:first-child,
+.masthead-account-popover .masthead-account-menu-logout b { color: color-mix(in srgb, var(--danger) 72%, var(--parchment)); }
+.masthead-account-popover .masthead-account-menu-admin { min-height: 44px; }
+.masthead-account-popover .masthead-account-menu-admin b { color: color-mix(in srgb, var(--brass) 70%, var(--parchment)); }
+.masthead-account-popover button:disabled { cursor: wait; opacity: .62; }
+
+.masthead-game-compact .masthead-account-trigger { width: 38px; min-height: 38px; justify-content: center; padding: 0; }
+.masthead-game-compact .masthead-account-trigger > span:not(.masthead-account-avatar) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.masthead-game-compact .masthead-account-avatar { width: 28px; height: 28px; }
+.masthead-game-compact .masthead-actions { gap: .55rem; }
+.masthead-game-compact .masthead-actions .save-status-badge {
+  position: static;
+  right: auto;
+  top: auto;
+  flex: 0 0 auto;
+  transform: none;
+}
+
+/* Mi progreso comparte la amplitud y el ritmo de tarjetas de Home. */
+.insights-hub { gap: .65rem; }
+.insights-hub > .back-link { margin-bottom: 0; }
+.insights-hub-hero { padding-top: .55rem; padding-bottom: .55rem; }
+.insights-hub-hero h2 { margin-block: .12rem; }
+.insights-hub-hero .hero-scope-note { margin-block: .1rem .45rem; }
+.insights-hub-hero .insights-subnav { margin-top: .45rem; }
+.insights-hub .ai-player-portrait { margin-top: 0; padding-block: .85rem; }
+.insights-hub .ai-player-portrait-text { margin-block: .55rem; }
+
+@media (min-width: 900px) {
+  .menu.tournament-panel.insights-hub { max-width: min(1480px, calc(100vw - 3rem)); }
+  .insights-hub-hero .combat-heading-row { min-height: 0; }
+  .insights-hub-hero .insights-subnav button { padding-block: .55rem; }
+}
+
+@media (max-width: 700px) {
+  .masthead-account-trigger { width: 40px; min-height: 40px; justify-content: center; padding: 0; }
+  .masthead-account-trigger > span:not(.masthead-account-avatar) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .masthead-account-popover { position: fixed; top: max(3.6rem, calc(env(safe-area-inset-top) + 3rem)); right: max(.5rem, env(safe-area-inset-right)); }
+}
+.adaptive-difficulty-choice { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: .6rem; width: 100%; min-height: 58px; padding: .55rem .65rem; border: 1px solid var(--ink-3); border-radius: 9px; background: var(--ink); color: var(--parchment-dim); text-align: left; }
+.adaptive-difficulty-choice.active { border-color: var(--brass); background: color-mix(in srgb,var(--ink) 92%,var(--brass)); }
+.adaptive-difficulty-choice > span:first-child { color: var(--brass); font-size: 1.1rem; }
+.adaptive-difficulty-choice > span:nth-child(2) { display: grid; gap: .16rem; }
+.adaptive-difficulty-choice b { color: var(--parchment); font-size: .76rem; }
+.adaptive-difficulty-choice small { color: var(--parchment-dim); font-size: .63rem; line-height: 1.35; }
+.adaptive-difficulty-choice i { color: var(--brass); font: 700 .62rem/1 var(--font-body); font-style: normal; text-transform: uppercase; letter-spacing: .05em; }
+.difficulty-slider-row.is-disabled { opacity: .5; }
+.adaptive-manual-link { margin: -.2rem 0 .5rem; }
+.account-progress-glance { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .45rem; }
+.account-progress-glance > div { display: grid; gap: .15rem; padding: .55rem; border: 1px solid var(--ink-3); border-radius: 8px; background: rgba(0,0,0,.1); }
+.account-progress-glance span { color: var(--brass-dim); font: 650 .58rem/1.2 var(--font-body); text-transform: uppercase; letter-spacing: .05em; }
+.account-progress-glance b { color: var(--parchment); font-size: .75rem; }
+.account-progress-glance small { color: var(--parchment-dim); font-size: .58rem; line-height: 1.3; }
+@media (max-width: 620px) { .account-progress-glance { grid-template-columns: 1fr 1fr; } }
+
+.session-result-notice {
+  display: flex;
+  width: min(760px, calc(100% - 2rem));
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 1rem;
+  padding: .72rem .82rem;
+  border: 1px solid var(--ink-3);
+  border-left: 3px solid var(--brass);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink-2) 94%, var(--brass));
+}
+.session-result-notice > div { display: grid; gap: .18rem; }
+.session-result-notice strong { color: var(--parchment); font-size: .8rem; }
+.session-result-notice span { color: var(--parchment-dim); font-size: .7rem; }
+.session-result-notice button {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--parchment-dim);
+  font-size: 1.1rem;
+}
+.session-result-notice.outcome-loss { border-left-color: var(--danger); }
+.session-result-notice.outcome-win { border-left-color: var(--success); }
+.endgame-rating-impact { display: grid; gap: .18rem; }
+.endgame-rating-impact strong { color: var(--brass); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+.endgame-rating-impact span { color: var(--parchment); }
+.abandon-confirm-card { width: min(460px, calc(100vw - 1.5rem)); }
+.abandon-confirm-card h3 { margin: .25rem 0 .55rem; }
+.abandon-confirm-card p { color: var(--parchment-dim); line-height: 1.55; }
+.abandon-confirm-card p strong { color: var(--parchment); }
+.abandon-confirm-actions { display: flex; justify-content: flex-end; gap: .55rem; margin-top: 1rem; flex-wrap: wrap; }
+@media (max-width: 520px) {
+  .abandon-confirm-actions { display: grid; }
+  .abandon-confirm-actions button { width: 100%; }
+}
+.history-filters { display: flex; align-items: end; gap: .65rem; flex-wrap: wrap; padding: .65rem .75rem; border: 1px solid var(--ink-3); border-radius: 9px; background: rgba(0,0,0,.1); }
+.history-filters label { display: grid; gap: .22rem; color: var(--parchment-dim); font-size: .65rem; }
+.history-filters select { min-width: 145px; min-height: 40px; border: 1px solid var(--ink-3); border-radius: 7px; padding: .35rem .5rem; background: var(--ink); color: var(--parchment); }
+.history-filters > span { margin-left: auto; padding-bottom: .65rem; color: var(--parchment-dim); font-size: .65rem; }
+
+/* Foco de teclado uniforme para controles que no tengan un tratamiento más específico. */
+:where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  :where(button, select, input):not(.square) { min-height: 44px; }
+  .history-filters { display: grid; grid-template-columns: 1fr 1fr; }
+  .history-filters select { width: 100%; min-width: 0; }
+  .history-filters > span { grid-column: 1 / -1; margin-left: 0; padding-bottom: 0; }
+}
+
+/* Feedback is a first-class account-adjacent action: visible without opening a menu. */
+.masthead-feedback-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .38rem;
+  min-height: 40px;
+  padding: .45rem .72rem;
+  border: 1px solid color-mix(in srgb, var(--brass-dim) 62%, var(--ink-3));
+  border-radius: 999px;
+  background: rgba(0,0,0,.12);
+  color: var(--parchment-dim);
+  font: 700 .68rem/1 var(--font-body);
+  cursor: pointer;
+}
+.masthead-feedback-trigger > span:first-child,
+.masthead-feedback-trigger > svg { width: 1rem; height: 1rem; color: var(--brass); }
+.masthead-feedback-trigger:hover,
+.masthead-feedback-trigger:focus-visible {
+  border-color: var(--brass);
+  color: var(--parchment);
+  background: rgba(255,255,255,.04);
+  outline: none;
+}
+.masthead-game-compact .masthead-feedback-trigger { width: 38px; min-height: 38px; padding: 0; }
+.masthead-game-compact .masthead-feedback-trigger > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 560px) {
+  .masthead-feedback-trigger { width: 40px; min-height: 40px; padding: 0; }
+  .masthead-feedback-trigger > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}

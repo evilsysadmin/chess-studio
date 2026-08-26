@@ -1,0 +1,239 @@
+.board-wrap {
+  position: relative;
+  padding: clamp(5px, .9vw, 9px);
+  border: 1px solid rgba(166, 135, 91, .42);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, transparent 49.5%, rgba(255,255,255,.025) 50%, transparent 50.5%),
+    linear-gradient(145deg, rgba(255,255,255,.07), transparent 26%),
+    linear-gradient(135deg, #49392d, #241c18 68%, #35271f);
+  box-shadow:
+    0 18px 42px rgba(3, 5, 9, .36),
+    0 3px 8px rgba(0,0,0,.3),
+    inset 0 1px rgba(255,255,255,.09),
+    inset 0 0 0 2px rgba(8,7,6,.2);
+}
+
+.board-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(225, 197, 142, .08);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+/* La mesa indica de quién depende la acción sin competir con las piezas.
+   El dorado avisa que puedes jugar; el azul enfría el marco mientras piensa
+   la CPU. Es una señal periférica, no una alerta invasiva. */
+.board-wrap.board-turn-human {
+  border-color: rgba(225, 188, 83, .78);
+  box-shadow:
+    0 18px 42px rgba(3, 5, 9, .36),
+    0 0 0 1px rgba(220, 179, 59, .16),
+    0 0 24px rgba(220, 179, 59, .11),
+    inset 0 1px rgba(255,255,255,.09),
+    inset 0 0 0 2px rgba(8,7,6,.2);
+}
+.board-wrap.board-turn-cpu {
+  border-color: rgba(97, 146, 184, .54);
+  box-shadow:
+    0 18px 42px rgba(3, 5, 9, .36),
+    0 0 16px rgba(82, 133, 173, .08),
+    inset 0 1px rgba(255,255,255,.07),
+    inset 0 0 0 2px rgba(8,7,6,.2);
+}
+
+.board-grid {
+  border: 1px solid rgba(8, 8, 8, .82);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(235, 218, 184, .08),
+    inset 0 0 18px rgba(8, 6, 4, .1);
+}
+
+/* Classic es el identificador persistido; default se conserva por compatibilidad. */
+.board-theme-classic .square.light,
+.board-theme-default .square.light {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.12), transparent 44%),
+    linear-gradient(315deg, rgba(80,57,39,.035), transparent 55%),
+    #ded3c1;
+}
+.board-theme-classic .square.dark,
+.board-theme-default .square.dark {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.055), transparent 42%),
+    linear-gradient(315deg, rgba(40,24,17,.08), transparent 58%),
+    #775b43;
+}
+
+.board-theme-midnight .square.light {
+  background: linear-gradient(145deg, rgba(255,255,255,.09), transparent 48%), #74808a;
+}
+.board-theme-midnight .square.dark {
+  background: linear-gradient(145deg, rgba(117,153,175,.08), transparent 50%), #27333e;
+}
+.board-theme-blood .square.light {
+  background: linear-gradient(145deg, rgba(255,255,255,.1), transparent 48%), #d2b9ae;
+}
+.board-theme-blood .square.dark {
+  background: linear-gradient(145deg, rgba(255,255,255,.055), transparent 48%), #71313a;
+}
+.board-theme-royal .square.light {
+  background: linear-gradient(145deg, rgba(255,255,255,.1), transparent 48%), #d8cfab;
+}
+.board-theme-royal .square.dark {
+  background: linear-gradient(145deg, rgba(255,255,255,.055), transparent 48%), #55476e;
+}
+.board-theme-forensic .square.light {
+  background: linear-gradient(145deg, rgba(255,255,255,.11), transparent 48%), #c9cbc5;
+}
+.board-theme-forensic .square.dark {
+  background: linear-gradient(145deg, rgba(255,255,255,.05), transparent 48%), #53615a;
+}
+
+.square {
+  cursor: pointer;
+  transition: filter .14s ease, box-shadow .14s ease;
+}
+.square .piece {
+  width: 86%;
+  height: 86%;
+  transform-origin: 50% 78%;
+  filter:
+    drop-shadow(0 2px 1px rgba(22, 14, 9, .48))
+    drop-shadow(0 5px 4px rgba(9, 7, 6, .2));
+}
+.square.dark .piece.black {
+  filter:
+    drop-shadow(0 1px 0 rgba(239, 225, 198, .42))
+    drop-shadow(0 3px 2px rgba(7, 5, 4, .58))
+    drop-shadow(0 6px 5px rgba(7, 5, 4, .24));
+}
+.square .piece.white {
+  filter:
+    drop-shadow(0 1px 0 rgba(255,255,255,.16))
+    drop-shadow(0 3px 2px rgba(35, 22, 12, .45))
+    drop-shadow(0 6px 5px rgba(14, 10, 8, .2));
+}
+.square .piece.piece-event-target { transition: filter .14s ease, translate .14s ease; }
+.square .piece.piece-event-target:hover { translate: 0 -2px; }
+
+/* Estados de juego sobrios: se leen de inmediato sin tapar pieza ni casilla. */
+.square.last-move {
+  box-shadow: inset 0 0 0 999px rgba(222, 183, 61, .16);
+}
+.square.last-move::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(250, 220, 124, .22);
+  pointer-events: none;
+}
+.square.selected::after {
+  inset: 3px;
+  border: 2px solid #f2ce68;
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(32,24,14,.42),
+    inset 0 0 14px rgba(246, 211, 104, .16),
+    0 0 10px rgba(224, 180, 51, .12);
+}
+.square.legal-move::before {
+  width: 18%;
+  height: 18%;
+  border: 1px solid rgba(255,255,255,.24);
+  background: rgba(31, 42, 37, .56);
+  box-shadow: 0 2px 4px rgba(0,0,0,.2);
+}
+.square.legal-capture::before {
+  inset: 7%;
+  border: 3px solid rgba(119, 48, 42, .68);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 0 8px rgba(80,22,19,.08);
+}
+
+/* El jaque no puede depender de leer una línea de estado fuera del tablero.
+   El aro no tapa la pieza y el pulso se detiene si el usuario reduce movimiento. */
+.square.king-in-check {
+  z-index: 2;
+  box-shadow:
+    inset 0 0 0 3px rgba(235, 80, 70, .96),
+    inset 0 0 20px rgba(180, 31, 27, .44),
+    0 0 0 2px rgba(124, 22, 20, .38),
+    0 0 18px rgba(233, 65, 57, .5);
+  animation: kingInCheckPulse 1.15s ease-in-out infinite;
+}
+.square.king-in-check::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(255, 203, 191, .72);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.check-marker {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  z-index: 5;
+  padding: 2px 3px;
+  border: 1px solid rgba(255, 213, 204, .68);
+  border-radius: 3px;
+  background: rgba(122, 22, 20, .92);
+  color: #fff4eb;
+  font: 800 clamp(.37rem, .8vw, .5rem)/1 var(--font-mono);
+  letter-spacing: .04em;
+  pointer-events: none;
+  box-shadow: 0 1px 5px rgba(0,0,0,.34);
+}
+@keyframes kingInCheckPulse {
+  0%, 100% { filter: brightness(1); box-shadow: inset 0 0 0 3px rgba(235,80,70,.96), inset 0 0 20px rgba(180,31,27,.44), 0 0 0 2px rgba(124,22,20,.38), 0 0 12px rgba(233,65,57,.34); }
+  50% { filter: brightness(1.08); box-shadow: inset 0 0 0 3px rgba(255,119,102,1), inset 0 0 26px rgba(205,39,33,.56), 0 0 0 2px rgba(124,22,20,.48), 0 0 22px rgba(244,69,60,.7); }
+}
+.square:focus-visible,
+.square.last-move:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px #f2ce68, inset 0 0 0 5px rgba(27,21,14,.5);
+}
+
+.impact-burst {
+  border-width: 2px;
+  border-color: rgba(246, 211, 104, .85);
+  background: radial-gradient(circle, rgba(255,239,177,.44), rgba(210,151,45,.1) 44%, transparent 70%);
+  box-shadow: 0 0 12px rgba(230, 183, 65, .24);
+}
+.capture-particle {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #eed06f;
+  box-shadow: 0 0 4px rgba(238,208,111,.42);
+}
+.piece.capture-shake { animation-duration: .18s; }
+
+@media (hover: hover) {
+  .square:hover { filter: brightness(1.035); }
+  .square.selected:hover,
+  .square.last-move:hover { filter: none; }
+}
+
+@media (max-width: 520px) {
+  .board-wrap { padding: 4px; border-radius: 7px; box-shadow: 0 12px 28px rgba(3,5,9,.34); }
+  .board-wrap::after { inset: 1px; border-radius: 5px; }
+  .board-grid { border-radius: 3px; }
+  .square .piece { width: 88%; height: 88%; }
+  .square.selected::after { inset: 2px; }
+  .square.legal-capture::before { inset: 6%; border-width: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .square,
+  .square .piece.piece-event-target { transition: none; }
+  .square .piece.piece-event-target:hover { translate: none; }
+  .impact-burst,
+  .capture-particle,
+  .piece.capture-shake,
+  .piece.dodge-flinch,
+  .square.king-in-check { animation: none !important; }
+}

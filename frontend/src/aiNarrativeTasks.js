@@ -1,0 +1,214 @@
+function finiteNumber(value, fallback = null) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function cleanText(value, max = 120) {
+  const text = String(value ?? '').replace(/[\r\n\t]+/g, ' ').trim();
+  return text ? text.slice(0, max) : null;
+}
+
+function compactMistake(move) {
+  if (!move) return null;
+  return {
+    move_number: finiteNumber(move.moveNumber),
+    played: cleanText(move.played, 24),
+    suggested: cleanText(move.suggested, 24),
+    loss_cp: finiteNumber(move.loss, 0),
+    severity: cleanText(move.severity, 24),
+    played_piece: cleanText(move.playedPiece, 8),
+    suggested_piece: cleanText(move.suggestedPiece, 8),
+  };
+}
+
+export function buildPostGameAutopsyDossier(report, meta = {}) {
+  if (!report || finiteNumber(report.analyzedCount, 0) <= 0) return null;
+  const topMistakes = (report.topMistakes || []).slice(0, 3).map(compactMistake).filter(Boolean);
+  return {
+    eventType: 'post_game_autopsy',
+    requestKind: 'post_game',
+    tone: 'friendly_sarcastic',
+    facts: {
+      outcome: cleanText(meta.outcome, 24),
+      mode: cleanText(meta.mode, 32),
+      opening: cleanText(meta.opening, 100),
+      difficulty: finiteNumber(meta.difficulty),
+      accuracy_percent: finiteNumber(meta.accuracy),
+      average_loss_cp: finiteNumber(report.averageLoss, 0),
+      analyzed_moves: finiteNumber(report.analyzedCount, 0),
+      worst_move: compactMistake(report.worst),
+      top_mistakes: topMistakes,
+      pressure_moves: finiteNumber(meta.pressureMoves),
+      pressure_incidents: finiteNumber(meta.pressureIncidents),
+    },
+  };
+}
+
+export function buildCombatBriefingDossier({ campaign, node, intel, armySummary } = {}) {
+  if (!node || !intel) return null;
+  return {
+    eventType: 'combat_briefing',
+    requestKind: 'combat_briefing',
+    tone: 'friendly_sarcastic',
+    facts: {
+      sector: finiteNumber(node.stage),
+      sector_label: cleanText(node.label, 80),
+      threat_band: cleanText(intel.threatBand, 48),
+      opponent_level_range: cleanText(intel.opponentLevelRange, 24),
+      opponent_level_confidence: cleanText(intel.opponentLevelConfidence, 24),
+      threat_range: cleanText(intel.threatRange, 48),
+      intel_level: cleanText(intel.levelLabel, 48),
+      exact_cpu: finiteNumber(intel.exactDifficulty),
+      modifier: cleanText(intel.modifierLabel, 80),
+      modifier_description: cleanText(intel.modifierDescription, 180),
+      boss_hp: finiteNumber(intel.bossHp),
+      operational_credits: finiteNumber(campaign?.operationalCredits, 0),
+      army_assigned: finiteNumber(armySummary?.assignedCount),
+      army_slots: finiteNumber(armySummary?.totalSlots),
+    },
+  };
+}
+
+export function buildCombatDebriefDossier(debrief) {
+  if (!debrief) return null;
+  const notable = (debrief.topUnits || []).slice(0, 3).map((unit) => ({
+    alias: cleanText(unit.alias, 48),
+    piece: cleanText(unit.originType, 8),
+    kills: finiteNumber(unit.kills, 0),
+    boss_damage: finiteNumber(unit.bossDamage, 0),
+    promoted: Boolean(unit.promoted),
+    after_rank: cleanText(unit.afterRank, 48),
+    survived: Boolean(unit.survived),
+  }));
+  const fallen = (debrief.units || []).filter((unit) => unit?.fallen).slice(0, 6).map((unit) => cleanText(unit.alias, 48)).filter(Boolean);
+  return {
+    eventType: 'combat_debrief',
+    requestKind: 'combat_debrief',
+    tone: 'friendly_sarcastic',
+    facts: {
+      outcome: cleanText(debrief.outcome, 24),
+      deployed: finiteNumber(debrief.boardDeployedCount ?? debrief.deployedCount, 0),
+      survivors: finiteNumber(debrief.boardSurvivorCount ?? debrief.survivorCount, 0),
+      enemy_kills: finiteNumber(debrief.totalKills, 0),
+      boss_damage: finiteNumber(debrief.totalBossDamage, 0),
+      credits_earned: finiteNumber(debrief.creditsGained, 0),
+      merit: finiteNumber(debrief.meritGained, 0),
+      notable_units: notable,
+      fallen_aliases: fallen,
+      new_decorations: (debrief.newDecorations || []).slice(0, 4).map((item) => cleanText(item?.label, 64)).filter(Boolean),
+    },
+  };
+}
+
+export function buildUnitBioDossier({ identity, unitKey, piece, existingBios = [] } = {}) {
+  if (!identity?.identityId || !identity?.alias) return null;
+  const originType = String(unitKey || '').split('-')[0] || 'p';
+  return {
+    eventType: 'unit_bio',
+    requestKind: 'unit_bio',
+    tone: 'grounded_military',
+    facts: {
+      identity_seed: cleanText(identity.identityId, 80),
+      alias: cleanText(identity.alias, 48),
+      origin_type: cleanText(originType, 8),
+      level: 1 + finiteNumber(piece?.strengthPoints, 0) + finiteNumber(piece?.speedPoints, 0),
+      mercenary: Boolean(piece?.mercenary),
+      rarity: cleanText(piece?.mercenary?.rarity, 24),
+      avoid_openings: existingBios.slice(0, 10).map((bio) => cleanText(bio, 72)).filter(Boolean),
+    },
+  };
+}
+
+
+export function buildTrainingPlanDossier({ insights, coaching = [], trainingTargets = [] } = {}) {
+  const priorities = (coaching || []).slice(0, 3).map((item, index) => {
+    const target = trainingTargets[index] || null;
+    return {
+      priority: cleanText(item?.priorityLabel || item?.priority, 32),
+      title: cleanText(item?.title, 90),
+      diagnosis: cleanText(item?.diagnosis, 220),
+      action: cleanText(item?.action, 220),
+      matching_training_positions: finiteNumber(target?.count, 0),
+    };
+  }).filter((item) => item.title && item.action);
+  if (!priorities.length) return null;
+
+  const games = finiteNumber(insights?.totalGames, 0);
+  const sampleBand = games >= 20 ? '20+' : games >= 10 ? '10-19' : games >= 6 ? '6-9' : '3-5';
+  return {
+    eventType: 'training_plan',
+    requestKind: 'training_plan',
+    tone: 'friendly_sarcastic',
+    facts: {
+      sample_band: sampleBand,
+      priorities,
+    },
+  };
+}
+
+export function buildObservabilitySummaryDossier({ runtime, ai, rangeLabel = 'rango actual' } = {}) {
+  const http = runtime?.history?.http || {};
+  const historicalAi = runtime?.history?.ai || {};
+  const database = runtime?.database || {};
+  const topRoutes = (http.top_routes || []).slice(0, 6).map((row) => {
+    const route = cleanText(row.route, 120);
+    return {
+      route,
+      requests: finiteNumber(row.requests, 0),
+      errors_5xx: finiteNumber(row.errors_5xx, 0),
+      p95_ms: finiteNumber(row.p95_ms),
+      latency_class: route === 'POST /api/narrative' ? 'external_ai' : 'standard_api',
+    };
+  });
+  const narrativeRoute = topRoutes.find((row) => row.route === 'POST /api/narrative') || null;
+  const errorRoutes = topRoutes
+    .filter((row) => row.errors_5xx > 0)
+    .sort((a, b) => b.errors_5xx - a.errors_5xx)
+    .slice(0, 4);
+  const slowStandardRoutes = topRoutes
+    .filter((row) => row.latency_class === 'standard_api' && row.p95_ms != null)
+    .sort((a, b) => Number(b.p95_ms || 0) - Number(a.p95_ms || 0))
+    .slice(0, 4);
+  const topFallbacks = Object.entries(historicalAi.reasons || {})
+    .filter(([reason]) => String(reason).toLowerCase() !== 'ok')
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 4)
+    .map(([reason, count]) => ({ reason: cleanText(reason, 80), count: finiteNumber(count, 0) }));
+
+  return {
+    eventType: 'observability_summary',
+    requestKind: 'observability_summary',
+    tone: 'friendly_sarcastic',
+    facts: {
+      range: cleanText(rangeLabel, 48),
+      api_requests: finiteNumber(http.samples, 0),
+      api_sample_quality: finiteNumber(http.samples, 0) >= 20 ? 'enough' : 'low',
+      api_requests_per_minute: finiteNumber(http.requests_per_minute, 0),
+      api_p50_ms: finiteNumber(http.p50_ms),
+      api_p95_ms: finiteNumber(http.p95_ms),
+      api_p99_ms: finiteNumber(http.p99_ms),
+      api_4xx: finiteNumber(http.status_4xx, 0),
+      api_5xx: finiteNumber(http.status_5xx, 0),
+      api_5xx_percent: finiteNumber(http.error_5xx_percent, 0),
+      database_status: cleanText(database.status, 24),
+      database_latency_ms: finiteNumber(database.latency_ms),
+      ai_samples: finiteNumber(historicalAi.samples, 0),
+      ai_sample_quality: finiteNumber(historicalAi.samples, 0) >= 5 ? 'enough' : 'low',
+      ai_cloudflare_percent: finiteNumber(historicalAi.cloudflare_percent, 0),
+      ai_fallback_percent: finiteNumber(historicalAi.fallback_percent, 0),
+      ai_p95_ms: finiteNumber(historicalAi.p95_ms),
+      ai_circuit_open: Boolean(ai?.circuit?.open),
+      ai_consecutive_failures: finiteNumber(ai?.circuit?.consecutiveFailures, 0),
+      top_routes: topRoutes,
+      narrative_route: narrativeRoute ? {
+        ...narrativeRoute,
+        expected_latency_note: 'Incluye llamada externa a Workers AI; evalúa su latencia por separado de la API estándar.',
+        interactive_comment_timeout_ms: 2000,
+        rich_analysis_timeout_ms: 5000,
+      } : null,
+      error_routes: errorRoutes,
+      slow_standard_routes: slowStandardRoutes,
+      top_ai_fallbacks: topFallbacks,
+    },
+  };
+}
