@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46g',
+    title: 'Tablero más claro en momentos críticos',
+    highlights: [
+      'Cuando hay jaque, el rey afectado queda señalado en rojo directamente sobre el tablero.',
+      'El marco distingue con discreción tu turno de la espera de la CPU.',
+      'El tablero mejora sus indicaciones para teclado y lectores de pantalla.',
+    ],
+  },
+  {
     release: 'v16.6dm46f',
     title: 'Puzzles con más variedad real',
     highlights: [

@@ -30,6 +30,7 @@ import { useGameClock } from '../useGameClock.js';
 import { nextBestAction } from '../nextBestAction.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { humanMoveCount } from '../gameOutcome.js';
+import { checkedKingSquare } from '../boardState.js';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -379,6 +380,12 @@ export default function GameScreen({
   const legalTargets = selected
     ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
     : [];
+  // La regla sigue siendo responsabilidad del motor; el tablero recibe sólo
+  // la coordenada ya resuelta para representar el jaque de manera inequívoca.
+  const kingInCheckSquare = useMemo(() => checkedKingSquare(boardFen), [boardFen]);
+  const boardTurnState = !game.isGameOver && !flagFallen && !forcedOutcome
+    ? ((busy || game.turn !== humanColor) ? 'cpu' : 'human')
+    : null;
   const selectionNotice = selected && legalTargets.length === 0
     ? immobilityReason(localChess, selected, humanColor)
     : null;
@@ -721,6 +728,8 @@ export default function GameScreen({
                 lastMove={zenMode ? null : lastMoveSquares}
                 animate={pendingAnim}
                 hintMove={zenMode ? null : hint}
+                checkSquare={zenMode ? null : kingInCheckSquare}
+                turnState={boardTurnState}
                 orientation={humanColor === 'b' ? 'black' : 'white'}
                 showCoordinates={!zenMode && showBoardCoordinates}
                 onCustomize={onCustomize}

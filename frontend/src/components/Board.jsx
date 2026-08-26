@@ -195,6 +195,8 @@ export default function Board({
   onPieceDoubleClick, // (square, event) => void; acción explícita de doble clic sobre la pieza
   pieceLabels, // { square: string } etiqueta corta de identidad para deployment
   onCustomize, // acceso contextual y opcional a piezas/apariencia
+  checkSquare, // casilla del rey en jaque; el estado visual lo calcula la partida
+  turnState = null, // 'human' | 'cpu' — foco visual, sin aportar reglas
   // encuadre rojo (distinto del dorado genérico de lastMove) + pieza fantasma semitransparente
   // en la casilla de origen, para que quede claro qué jugada se está señalando como error.
 }) {
@@ -325,7 +327,11 @@ export default function Board({
   }, [animate, fen]);
 
   return (
-    <div className={`board-wrap board-theme-${loadBoardTheme()} piece-skin-${pieceSkin} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'}`}>
+    <div
+      className={`board-wrap board-theme-${loadBoardTheme()} piece-skin-${pieceSkin} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'} ${turnState ? `board-turn-${turnState}` : ''}`}
+      role="group"
+      aria-label="Tablero de ajedrez. Usa las flechas para recorrer casillas y Enter o espacio para seleccionar."
+    >
       {onCustomize && <button type="button" className="board-appearance-tab" onClick={onCustomize} aria-label="Cambiar apariencia y piezas del tablero" title="Cambiar piezas"><span aria-hidden="true">♞</span><b>Piezas</b></button>}
       <div className="board-grid">
         {ranks.map((rank, rIdxDisplay) => {
@@ -341,6 +347,7 @@ export default function Board({
             const isHint = hintMove && (hintMove.from === square || hintMove.to === square);
             const isMistakeSquare = mistakeMove && (mistakeMove.from === square || mistakeMove.to === square);
             const isMistakeOrigin = mistakeMove && mistakeMove.from === square && !piece;
+            const isCheckedKing = checkSquare === square;
 
             const classes = ['square', isLight ? 'light' : 'dark'];
             if (isSelected) classes.push('selected');
@@ -349,6 +356,7 @@ export default function Board({
             if (isLastMove) classes.push('last-move');
             if (isHint) classes.push('hint-move');
             if (isMistakeSquare) classes.push('mistake-move');
+            if (isCheckedKing) classes.push('king-in-check');
             const extraSquareClass = squareClassName?.(square);
             if (extraSquareClass) classes.push(extraSquareClass);
 
@@ -365,11 +373,12 @@ export default function Board({
                 onDragLeave={(e) => onSquareDragLeave?.(square, e)}
                 onDrop={(e) => onSquareDrop?.(square, e)}
                 role="button"
-                aria-label={`Casilla ${square}${piece ? `, ${PIECE_NAMES[piece]}` : ', vacía'}${isSelected ? ', seleccionada' : ''}${piece && onSquareDoubleClick ? '. Tecla i para ver detalles' : ''}`}
+                aria-label={`Casilla ${square}${piece ? `, ${PIECE_NAMES[piece]}` : ', vacía'}${isSelected ? ', seleccionada' : ''}${isCheckedKing ? ', rey en jaque' : ''}${piece && onSquareDoubleClick ? '. Tecla i para ver detalles' : ''}`}
                 tabIndex={focusedSquare === square ? 0 : -1}
               >
                 {showCoordinates && fIdxDisplay === 0 && <span className="square-coordinate rank-coordinate" aria-hidden="true">{rank}</span>}
                 {showCoordinates && rIdxDisplay === 7 && <span className="square-coordinate file-coordinate" aria-hidden="true">{file}</span>}
+                {isCheckedKing && <span className="check-marker" aria-hidden="true">JAQUE</span>}
                 {piece && pieceLevels?.[square] > 1 && (
                   <span className={`piece-level-glow tier-${levelTier(pieceLevels[square])}`} />
                 )}

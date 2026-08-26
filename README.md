@@ -1,3 +1,9 @@
+### v16.6dm46g · Tablero legible en momentos críticos
+
+- El rey en jaque recibe un aro rojo, pulso contenido y etiqueta inequívoca dentro de su casilla.
+- El marco de la mesa diferencia de forma periférica cuándo puedes mover y cuándo piensa la CPU.
+- El tablero anuncia el jaque y sus atajos de teclado de manera accesible.
+
 ### v16.6dm46f · Puzzles con más variedad real
 
 - 19 posiciones curadas: mates, horquillas, columnas, diagonales, promociones y ganancias de material con distintas piezas.
