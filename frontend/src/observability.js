@@ -206,3 +206,32 @@ export function summarizeObservabilityHealth(runtime, users = [], currentAdmin =
     onlineUsers: userSummary.online,
   };
 }
+
+export function burnRateForSlo(runtime, targets = PRODUCT_SLOS) {
+  const allowedErrorPercent = 100 - Number(targets.availabilityPercent);
+  const summarize = (http = {}) => {
+    const samples = Number(http.samples);
+    const errorPercent = Number(http.error_5xx_percent);
+    if (!Number.isFinite(samples) || samples < 20 || !Number.isFinite(errorPercent) || allowedErrorPercent <= 0) {
+      return { samples: Number.isFinite(samples) ? samples : 0, errorPercent: Number.isFinite(errorPercent) ? errorPercent : null, burnRate: null };
+    }
+    return { samples, errorPercent, burnRate: Math.round((errorPercent / allowedErrorPercent) * 100) / 100 };
+  };
+  const short = summarize(runtime?.http?.last_15m || {});
+  const long = summarize(runtime?.http?.last_1h || {});
+  const shortRate = short.burnRate;
+  const longRate = long.burnRate;
+  let status = 'unknown';
+  if (shortRate != null || longRate != null) {
+    if ((shortRate ?? 0) >= 14 || ((shortRate ?? 0) >= 6 && (longRate ?? 0) >= 6)) status = 'fast';
+    else if ((shortRate ?? 0) >= 2 || (longRate ?? 0) >= 2) status = 'watch';
+    else status = 'healthy';
+  }
+  return {
+    status,
+    statusLabel: status === 'fast' ? 'Quemando rápido' : status === 'watch' ? 'Vigilar burn rate' : status === 'healthy' ? 'Burn rate sano' : 'Sin muestra',
+    allowedErrorPercent,
+    short,
+    long,
+  };
+}

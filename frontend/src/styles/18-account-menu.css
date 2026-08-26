@@ -178,3 +178,33 @@
   .history-filters select { width: 100%; min-width: 0; }
   .history-filters > span { grid-column: 1 / -1; margin-left: 0; padding-bottom: 0; }
 }
+
+/* Feedback is a first-class account-adjacent action: visible without opening a menu. */
+.masthead-feedback-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .38rem;
+  min-height: 40px;
+  padding: .45rem .72rem;
+  border: 1px solid color-mix(in srgb, var(--brass-dim) 62%, var(--ink-3));
+  border-radius: 999px;
+  background: rgba(0,0,0,.12);
+  color: var(--parchment-dim);
+  font: 700 .68rem/1 var(--font-body);
+  cursor: pointer;
+}
+.masthead-feedback-trigger > span:first-child { color: var(--brass); }
+.masthead-feedback-trigger:hover,
+.masthead-feedback-trigger:focus-visible {
+  border-color: var(--brass);
+  color: var(--parchment);
+  background: rgba(255,255,255,.04);
+  outline: none;
+}
+.masthead-game-compact .masthead-feedback-trigger { width: 38px; min-height: 38px; padding: 0; }
+.masthead-game-compact .masthead-feedback-trigger > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 560px) {
+  .masthead-feedback-trigger { width: 40px; min-height: 40px; padding: 0; }
+  .masthead-feedback-trigger > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}

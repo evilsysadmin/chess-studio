@@ -1,3 +1,13 @@
+### v16.6dm46k · Resiliencia adaptativa, burn rate, deploy annotations y shadow evaluation
+
+- El proveedor Workers AI conserva sus circuit breakers por canal y añade **bulkheads** separados para comentarios, retratos y análisis ricos; saturar un tipo de trabajo no consume la capacidad de los demás.
+- La presión del proceso se clasifica como `normal`, `degraded` o `critical`. En degradado, los análisis AI ricos pasan a fallback local antes de afectar al juego; en crítico, las rutas secundarias (`/narrative`, análisis, observabilidad y telemetría) pueden responder 503 con `Retry-After` mientras movimiento, login y persistencia siguen protegidos.
+- Admin muestra **burn rate** del SLO de disponibilidad con ventanas de 15 min / 1 h, estado de dependencias, presión/load shedding, rechazos de bulkhead, señales de frontend y estado de shadow evaluation.
+- Cada release backend tiene identidad propia y las deployment annotations se persisten por commit/release; los gráficos de observabilidad dibujan una marca vertical de deploy para correlacionar cambios con latencia y errores. Los cold starts del mismo commit en Render no crean un deploy nuevo.
+- El frontend captura sólo telemetría gruesa autenticada: clase de error y Web Vitals (`FCP`, `LCP`, `CLS`, `TTFB`, `INP`). No manda stack traces, mensajes libres, inputs, FEN ni contenido de partida. Esta capa queda desacoplada para exportarla posteriormente a Grafana Cloud/Faro.
+- `SHADOW_EVAL_PERCENT` habilita muestreo no autoritativo sobre `/analyze-move`; el candidato corre en background con bulkhead de una tarea, nunca cambia la respuesta y queda **OFF por defecto** para no gastar CPU en Render Free.
+- Feedback deja de depender del final de Home: hay una acción global junto a `Cuenta`; el pulso post-partida ocasional se mantiene como segunda vía no invasiva.
+
 ### v16.6dm46j · SRE product ops: request tracing, error budget, release health y synthetic checks
 
 - Request IDs siguen extremo a extremo y cada cliente añade su release mediante `X-Client-Release`; CORS permite esa cabecera y el backend la sanea antes de agregarla.

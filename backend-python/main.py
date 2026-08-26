@@ -41,6 +41,7 @@ from system_api import build_system_router
 from observability import record_http_request, sanitize_client_release
 from structured_logging import emit_http_event
 from observability_history import schedule_history_flush
+from resilience import request_enter, request_exit, should_shed, record_shed
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -137,9 +138,23 @@ async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
     request_id = _request_id(request)
     client_release = _client_release(request)
+    inflight = request_enter()
     status_code = 500
     raised = False
     try:
+        if should_shed(request.url.path, inflight):
+            status_code = 503
+            record_shed()
+            request.state.route_label = request.url.path
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Servicio ocupado; la función secundaria se ha aplazado para proteger las partidas.",
+                    "requestId": request_id,
+                    "degraded": True,
+                },
+                headers={"X-Request-ID": request_id, "Retry-After": "5"},
+            )
         response = await call_next(request)
         status_code = response.status_code
         response.headers["X-Request-ID"] = request_id
@@ -148,7 +163,7 @@ async def log_request_with_user(request: Request, call_next):
         raised = True
         elapsed_ms = (time.perf_counter() - started) * 1000
         route_obj = request.scope.get("route")
-        route_pattern = getattr(route_obj, "path", None) or "unmatched"
+        route_pattern = getattr(request.state, "route_label", None) or getattr(route_obj, "path", None) or "unmatched"
         emit_http_event(
             access_logger,
             request_id=request_id,
@@ -169,8 +184,9 @@ async def log_request_with_user(request: Request, call_next):
         )
     finally:
         elapsed_ms = (time.perf_counter() - started) * 1000
+        request_exit()
         route_obj = request.scope.get("route")
-        route_pattern = getattr(route_obj, "path", None) or "unmatched"
+        route_pattern = getattr(request.state, "route_label", None) or getattr(route_obj, "path", None) or "unmatched"
         record_http_request(
             request.method,
             route_pattern,

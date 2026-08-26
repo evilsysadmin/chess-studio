@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
+import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -130,5 +130,17 @@ describe('error budget + release health', () => {
     ] } } };
     expect(evaluateReleaseHealth(runtime, 'vNew')).toMatchObject({ status: 'regression', requests: 100 });
     expect(evaluateReleaseHealth(runtime, 'vMissing').status).toBe('unknown');
+  });
+});
+
+
+describe('SLO burn rate', () => {
+  it('detecta consumo rápido con ventanas 15m/1h sin fingir precisión', () => {
+    expect(burnRateForSlo({ http: { last_15m: { samples: 3, error_5xx_percent: 50 }, last_1h: { samples: 5, error_5xx_percent: 50 } } }).status).toBe('unknown');
+    const healthy = burnRateForSlo({ http: { last_15m: { samples: 1000, error_5xx_percent: 0.1 }, last_1h: { samples: 2000, error_5xx_percent: 0.1 } } });
+    expect(healthy).toMatchObject({ status: 'healthy' });
+    expect(healthy.short.burnRate).toBe(0.2);
+    const fast = burnRateForSlo({ http: { last_15m: { samples: 100, error_5xx_percent: 8 }, last_1h: { samples: 500, error_5xx_percent: 4 } } });
+    expect(fast.status).toBe('fast');
   });
 });

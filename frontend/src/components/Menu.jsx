@@ -5,8 +5,6 @@ import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, Ic
 import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import ModeTutorialTip from './ModeTutorialTip.jsx';
-import FeedbackModal from './FeedbackModal.jsx';
-import FeedbackAssistant from './FeedbackAssistant.jsx';
 import HomePlayNudge from './HomePlayNudge.jsx';
 import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL } from '../combatChessBrand.js';
 import { currentDailyStreak, dailyChallengeDayKey } from '../dailyChallenge.js';
@@ -71,14 +69,13 @@ export default function Menu({
   const [threatCheck, setThreatCheck] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [seenReleaseNotes, setSeenReleaseNotes] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === APP_RELEASE);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
-  const hasOpenOverlay = showQuickMatch || showMirrorMode || showFeedback || showReleaseNotes;
+  const hasOpenOverlay = showQuickMatch || showMirrorMode || showReleaseNotes;
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const activity = useMemo(() => loadGameActivity(), []);
   const today = useMemo(() => buildHomeToday({
@@ -270,7 +267,6 @@ export default function Menu({
         </details>
       </section>
 
-      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide} autoOpen={false} onFeedback={() => setShowFeedback(true)} />
 
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">
@@ -319,7 +315,6 @@ export default function Menu({
         onPlay={() => setShowQuickMatch(true)}
       />
 
-      {showFeedback && <FeedbackModal context="Home" onClose={() => setShowFeedback(false)} />}
       {showReleaseNotes && <UserReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
       {showQuickMatch && (
         <QuickMatchModal

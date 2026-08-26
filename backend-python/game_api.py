@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
 from chess_ai import analyze_move as ai_analyze_move
+from shadow_evaluation import maybe_schedule_move_shadow
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 from chess_core import apply_handicap, board_sans, load_board, resolve_move, serialize_game
 
@@ -232,6 +233,10 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         analyzed = ai_analyze_move(board, level)
         if not analyzed:
             raise HTTPException(404, "No hay jugadas disponibles.")
+
+        # Optional shadow candidate: sampled, background-only and never used to
+        # answer this request. Disabled by default on Render Free.
+        maybe_schedule_move_shadow(board.copy(stack=False), level, analyzed, ai_analyze_move)
 
         eval_after_played = None
         if body.from_square and body.to:

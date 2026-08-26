@@ -6,11 +6,21 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46k',
+    title: 'Resiliencia operativa sin sacrificar partidas',
+    highlights: [
+      'Las funciones secundarias ceden capacidad antes que movimiento, login y persistencia cuando el backend está bajo presión.',
+      'Administración muestra burn rate, dependencias, señales del frontend y marcas de deploy sobre los gráficos.',
+      'Shadow evaluation queda preparada para comparar candidatos sin cambiar ninguna respuesta y está apagada por defecto en Render Free.',
+      'Feedback pasa a la cabecera, junto a Cuenta, para que sea visible desde cualquier pantalla sin buscarlo al final de Home.',
+    ],
+  },
+  {
     release: 'v16.6dm46j',
     title: 'Release health y operación trazable',
     highlights: [
       'Administración muestra error budget y salud de la release actual usando tráfico real, sin identificar jugadores.',
-      'Las peticiones llevan una referencia y versión de cliente para correlacionar fallos; los logs HTTP pasan a formato estructurado y dejan de escribir usernames.',
+      'Las peticiones llevan una referencia y versión de cliente para correlacionar fallos; los logs HTTP pasan a formato estructurado sin guardar contenido de partida.',
       'Un probe sintético programado comprueba liveness/readiness de producción y puede validar también login con una cuenta técnica opcional.',
     ],
   },

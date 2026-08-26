@@ -39,6 +39,7 @@ import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
+const FeedbackModal = React.lazy(() => import('./components/FeedbackModal.jsx'));
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
@@ -67,12 +68,15 @@ import { pushProfileToServer } from './profileBackup.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
 import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
 import { userFacingError } from './userFacingError.js';
+import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
   useEffect(() => {
     setAdminPreviewAccess(isAdminUser);
   }, [isAdminUser]);
+
+  useEffect(() => startFrontendTelemetry(), []);
 
   const {
     view,
@@ -171,6 +175,7 @@ function AppInner({ isAdminUser }) {
   const [showCombatSummary, setShowCombatSummary] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalAccount, setShowGlobalAccount] = useState(false);
+  const [showGlobalFeedback, setShowGlobalFeedback] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
   const accountMenuButtonRef = useRef(null);
@@ -718,6 +723,10 @@ function AppInner({ isAdminUser }) {
     setLastResult(null);
   }
 
+  useEffect(() => {
+    setFrontendTelemetryContext(view);
+  }, [view]);
+
   const isBoardGameView = view === 'game' || view === 'tournamentGame' || combatBattleUiActive;
 
   return (
@@ -742,6 +751,16 @@ function AppInner({ isAdminUser }) {
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
                 <SaveStatusBadge state={gameSaveState} />
               )}
+              <button
+                type="button"
+                className="masthead-feedback-trigger"
+                onClick={() => setShowGlobalFeedback(true)}
+                aria-label="Enviar feedback"
+                title="Enviar feedback"
+              >
+                <span aria-hidden="true">✦</span>
+                <span>Feedback</span>
+              </button>
               <div className="masthead-account-menu" ref={accountMenuRef}>
                 <button
                   ref={accountMenuButtonRef}
@@ -816,6 +835,7 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
+        {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (

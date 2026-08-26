@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, summarizeObservabilityHealth } from '../observability.js';
+import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, summarizeObservabilityHealth } from '../observability.js';
 import { APP_RELEASE } from '../release.js';
 
 function metric(value, suffix = '') {
@@ -25,6 +25,7 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
   );
   const slo = useMemo(() => evaluateProductSlos(runtime), [runtime]);
   const errorBudget = useMemo(() => errorBudgetForSlo(runtime), [runtime]);
+  const burnRate = useMemo(() => burnRateForSlo(runtime), [runtime]);
   const releaseHealth = useMemo(() => evaluateReleaseHealth(runtime, APP_RELEASE), [runtime]);
 
   return (
@@ -45,6 +46,8 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
         <div><span>Workers AI</span><strong>{summary.aiCloudflarePercent == null ? '—' : `${metric(summary.aiCloudflarePercent, '%')} CF`}</strong></div>
         <div className={`admin-slo-kpi ${slo.status === 'missed' ? 'is-warn' : ''}`}><span>SLO producto</span><strong>{slo.statusLabel}</strong><small>{slo.availabilityPercent == null ? 'Disponibilidad —' : `${metric(slo.availabilityPercent, '%')} · objetivo ${metric(slo.availabilityTarget, '%')}`} · {slo.apiP95Ms == null ? 'p95 —' : `p95 ${metric(slo.apiP95Ms, ' ms')} / ${metric(slo.apiP95TargetMs, ' ms')}`}</small></div>
         <div className={`admin-slo-kpi ${errorBudget.status === 'exhausted' ? 'is-warn' : ''}`}><span>Error budget · 24 h</span><strong>{errorBudget.statusLabel}</strong><small>{errorBudget.consumedPercent == null ? 'Sin muestra suficiente' : `${metric(errorBudget.consumedPercent, '%')} consumido · ${metric(errorBudget.remainingPercent, '%')} restante`}</small></div>
+        <div className={`admin-slo-kpi ${burnRate.status === 'fast' ? 'is-warn' : ''}`}><span>Burn rate</span><strong>{burnRate.statusLabel}</strong><small>15 min {burnRate.short.burnRate == null ? '—' : `${burnRate.short.burnRate}×`} · 1 h {burnRate.long.burnRate == null ? '—' : `${burnRate.long.burnRate}×`}</small></div>
+        <div className={`admin-slo-kpi ${runtime?.resilience?.level === 'critical' ? 'is-warn' : ''}`}><span>Resiliencia</span><strong>{runtime?.resilience?.level || '—'}</strong><small>{metric(runtime?.resilience?.shed_last_5m)} shed · {metric(runtime?.resilience?.bulkhead_rejections_last_5m)} bulkhead / 5 min</small></div>
         <div className={`admin-slo-kpi ${['regression', 'degraded'].includes(releaseHealth.status) ? 'is-warn' : ''}`}><span>Release health</span><strong>{releaseHealth.statusLabel}</strong><small><code>{APP_RELEASE}</code> · {releaseHealth.requests || 0} requests{releaseHealth.p95Ms == null ? '' : ` · p95 ${metric(releaseHealth.p95Ms, ' ms')}`}</small></div>
       </div>
       <div className="admin-observability-launcher-actions">
