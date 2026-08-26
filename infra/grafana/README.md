@@ -60,9 +60,13 @@ No uses aquí el token OTLP de ingesta. En GitHub configura estos secrets:
 | `GRAFANA_URL` | URL base del stack, p. ej. `https://tu-stack.grafana.net` |
 | `GRAFANA_AUTH` | Token de service account `glsa_…` |
 
-Opcionalmente, define la variable de repositorio
-`GRAFANA_METRICS_DATASOURCE_UID` si el UID de métricas no es
-`grafanacloud-humbletoucan355-prom`. Lanza una vez el workflow manualmente desde Actions;
+Opcionalmente, define las variables de repositorio
+`GRAFANA_METRICS_DATASOURCE_UID`, `GRAFANA_LOGS_DATASOURCE_UID` y
+`GRAFANA_TRACES_DATASOURCE_UID` si los UID de tu stack no son,
+respectivamente, `grafanacloud-humbletoucan355-prom`,
+`grafanacloud-humbletoucan355-logs` y `grafanacloud-humbletoucan355-traces`.
+El UID aparece al abrir cada datasource en Grafana; es el último segmento de
+la URL de edición. Lanza una vez el workflow manualmente desde Actions;
 después, cada cambio bajo `infra/grafana/` lo actualiza. El workflow adopta por
 su UID real la carpeta existente llamada `Chess Studio`, y por UID el dashboard
 existente, antes de aplicar. Así el flujo sigue siendo
@@ -100,6 +104,20 @@ En Tempo busca el servicio `chess-studio-api`. Cada request HTTP abre una traza
 con método, ruta normalizada y estado; las respuestas 5xx se marcan como error.
 El evento de Loki se emite con esa traza todavía activa, por lo que Grafana puede
 correlacionarlos mediante su contexto OTLP cuando el datasource lo presenta.
+
+El dashboard publicado incluye una fila **Investigación de incidentes**:
+
+- **Errores 5xx recientes**: logs de nivel error, para abrir el detalle de una
+  petición sin exponer datos personales.
+- **Narrativa reciente**: compara las llamadas a `/api/narrative` con el p95
+  de Workers AI y fallback ya mostrado arriba.
+- **Trazas lentas**: las veinte peticiones de más de un segundo. Abre una y
+  utiliza `Logs for this span` si el enlace aparece.
+
+Si Grafana no muestra aún el salto de traza a logs, abre el datasource Tempo,
+en **Trace to logs** elige Loki y configura `service.name` → `service_name`,
+con una ventana de `-2s` a `2s`. Es una mejora de navegación: los tres paneles
+siguen funcionando de forma independiente.
 
 ## Alertas iniciales sugeridas
 

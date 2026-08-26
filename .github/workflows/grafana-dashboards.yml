@@ -28,6 +28,8 @@ jobs:
       GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
       GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
       TF_VAR_metrics_datasource_uid: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
+      TF_VAR_logs_datasource_uid: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-logs' }}
+      TF_VAR_traces_datasource_uid: ${{ vars.GRAFANA_TRACES_DATASOURCE_UID || 'grafanacloud-humbletoucan355-traces' }}
       TF_VAR_commit_sha: ${{ github.sha }}
 
     steps:

@@ -7,6 +7,22 @@
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
+    },
+    {
+      "name": "DS_LOKI",
+      "label": "Grafana Cloud Logs",
+      "description": "Datasource Loki de este stack",
+      "type": "datasource",
+      "pluginId": "loki",
+      "pluginName": "Loki"
+    },
+    {
+      "name": "DS_TEMPO",
+      "label": "Grafana Cloud Traces",
+      "description": "Datasource Tempo de este stack",
+      "type": "datasource",
+      "pluginId": "tempo",
+      "pluginName": "Tempo"
     }
   ],
   "title": "Chess Studio · Salud de API",
@@ -214,6 +230,42 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "noValue": "Sin fallback" },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.5 }, { "color": "red", "value": 1.5 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 8, "x": 16, "y": 45 }
+    },
+    {
+      "id": 19,
+      "title": "Investigación de incidentes · logs y trazas",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 }
+    },
+    {
+      "id": 20,
+      "title": "Errores 5xx recientes · Loki",
+      "description": "Eventos HTTP seguros de nivel error. No contienen usuario, IP, cuerpos, FEN ni prompt. Abre una línea para saltar a la traza cuando Grafana muestre el enlace.",
+      "type": "logs",
+      "datasource": "${DS_LOKI}",
+      "targets": [{ "refId": "A", "expr": "{service_name=\"chess-studio-api\", detected_level=~\"error|fatal\"}" }],
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "prettifyJSON": false, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 51 }
+    },
+    {
+      "id": 21,
+      "title": "Narrativa reciente · Loki",
+      "description": "Petición/respuesta segura de `/api/narrative`: útil para contrastar la latencia end-to-end con la llamada a Workers AI y su fallback.",
+      "type": "logs",
+      "datasource": "${DS_LOKI}",
+      "targets": [{ "refId": "A", "expr": "{service_name=\"chess-studio-api\"} | http_route = \"/api/narrative\"" }],
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "prettifyJSON": false, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 51 }
+    },
+    {
+      "id": 22,
+      "title": "Trazas lentas · Tempo",
+      "description": "Las 20 peticiones de `chess-studio-api` de más de un segundo en el rango elegido. Abre una traza para ver ruta, duración, estado y sus logs correlacionados.",
+      "type": "traces",
+      "datasource": "${DS_TEMPO}",
+      "targets": [{ "refId": "A", "queryType": "search", "service": "chess-studio-api", "limit": 20, "minDuration": "1s" }],
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 60 }
     }
   ]
 }

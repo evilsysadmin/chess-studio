@@ -4,12 +4,20 @@ resource "grafana_folder" "chess_studio" {
 
 resource "grafana_dashboard" "chess_studio_overview" {
   folder = grafana_folder.chess_studio.uid
-  # El JSON sigue pudiendo importarse desde la UI. Terraform sustituye sólo el
-  # placeholder del datasource por el UID real de este stack.
+  # El JSON sigue pudiendo importarse desde la UI. Terraform sustituye los
+  # placeholders por los UID reales de métricas, logs y trazas del stack.
   config_json = replace(
-    file("${path.module}/../chess-studio-overview.dashboard.json"),
-    "$${DS_PROMETHEUS}",
-    var.metrics_datasource_uid,
+    replace(
+      replace(
+        file("${path.module}/../chess-studio-overview.dashboard.json"),
+        "$${DS_PROMETHEUS}",
+        var.metrics_datasource_uid,
+      ),
+      "$${DS_LOKI}",
+      var.logs_datasource_uid,
+    ),
+    "$${DS_TEMPO}",
+    var.traces_datasource_uid,
   )
   overwrite = true
   message   = "Chess Studio dashboard · ${var.commit_sha}"
