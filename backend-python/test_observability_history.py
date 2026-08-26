@@ -136,3 +136,20 @@ def test_presence_history_is_aggregate_and_exposes_average_and_peak():
     bucket = history._PENDING[history._bucket_start(1_800_000_000)]
     summary = history._summarize_presence(bucket["presence"])
     assert summary == {"samples": 2, "average_online": 4.0, "peak_online": 6}
+
+
+def test_presence_recovers_a_partial_pending_bucket_left_by_incremental_flush():
+    at = 1_800_000_000
+    bucket_key = history._bucket_start(at)
+    with history._PENDING_LOCK:
+        # Simula un delta HTTP nuevo que llegó durante el flush: el resto de
+        # secciones ya se vaciaron y no deben provocar un KeyError posterior.
+        history._PENDING[bucket_key] = {"http": {"samples": 1}}
+
+    history.record_presence_snapshot(3, timestamp=at)
+    history.record_http_event("GET", "/api/status", 200, 10, timestamp=at)
+
+    bucket = history._PENDING[bucket_key]
+    assert bucket["presence"]["samples"] == 1
+    assert bucket["presence"]["online_max"] == 3
+    assert bucket["http"]["samples"] == 2

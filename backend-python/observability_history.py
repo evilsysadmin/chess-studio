@@ -92,6 +92,24 @@ def _fresh_bucket() -> dict[str, Any]:
     }
 
 
+def _ensure_bucket_schema(bucket: dict[str, Any]) -> dict[str, Any]:
+    """Rellena secciones eliminadas por el flush incremental.
+
+    Tras persistir un delta, ``_subtract_delta`` elimina contadores que quedan
+    a cero. Si mientras tanto entró tráfico de otra familia, el bucket puede
+    seguir vivo pero sin ``presence`` (o con un ``http`` parcialmente vacío).
+    Un snapshot secundario jamás debe convertir ``/api/status`` en un 500.
+    """
+    for section, defaults in _fresh_bucket().items():
+        current = bucket.get(section)
+        if not isinstance(current, dict):
+            bucket[section] = copy.deepcopy(defaults)
+            continue
+        for key, value in defaults.items():
+            current.setdefault(key, copy.deepcopy(value))
+    return bucket
+
+
 def _inc(mapping: dict[str, Any], key: str, amount: int | float = 1) -> None:
     mapping[key] = mapping.get(key, 0) + amount
 
@@ -105,7 +123,7 @@ def record_http_event(method: str, route: str, status_code: int, latency_ms: flo
     status = int(status_code or 0)
 
     with _PENDING_LOCK:
-        bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+        bucket = _ensure_bucket_schema(_PENDING.setdefault(bucket_key, _fresh_bucket()))
         http = bucket["http"]
         http["samples"] += 1
         family = status // 100 if status > 0 else 0
@@ -149,7 +167,7 @@ def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) ->
     provider = str(event.get("provider") or "local")[:32]
 
     with _PENDING_LOCK:
-        bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+        bucket = _ensure_bucket_schema(_PENDING.setdefault(bucket_key, _fresh_bucket()))
         ai = bucket["ai"]
         ai["samples"] += 1
         ai["cloudflare" if provider == "cloudflare" else "local"] += 1
@@ -190,7 +208,7 @@ def record_presence_snapshot(online_users: int, *, timestamp: float | None = Non
     bucket_key = _bucket_start(at)
     online = max(0, int(online_users or 0))
     with _PENDING_LOCK:
-        presence = _PENDING.setdefault(bucket_key, _fresh_bucket())["presence"]
+        presence = _ensure_bucket_schema(_PENDING.setdefault(bucket_key, _fresh_bucket()))["presence"]
         presence["samples"] += 1
         presence["online_sum"] += online
         presence["online_max"] = max(int(presence.get("online_max") or 0), online)
