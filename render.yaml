@@ -50,5 +50,14 @@ services:
       # Si lo configuras, el registro exige este código además de usuario/contraseña.
       - key: INVITE_CODE
         sync: false
+      # Grafana Cloud (OTLP directo). Los tres valores se copian desde
+      # Connections -> OpenTelemetry de tu stack; el token sólo se crea en
+      # Render, nunca en el repo ni en GitHub Pages.
+      - key: GRAFANA_OTLP_ENDPOINT
+        sync: false
+      - key: GRAFANA_OTLP_INSTANCE_ID
+        sync: false
+      - key: GRAFANA_OTLP_TOKEN
+        sync: false
       - key: CORS_ORIGINS
         value: https://evilsysadmin.github.io,https://chess-studio.shadowops.dpdns.org

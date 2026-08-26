@@ -54,6 +54,14 @@ def record_http_request(method: str, route: str, status_code: int, latency_ms: f
             "client_release": release,
         })
     try:
+        from grafana_telemetry import record_http_request as record_grafana_http_request
+
+        record_grafana_http_request(clean_method, clean_route, status_code, max(0.0, float(latency_ms or 0.0)) / 1000)
+    except Exception:
+        # La salida a Grafana es opcional; la métrica local sigue siendo útil
+        # aunque falte configuración, dependencias o red.
+        pass
+    try:
         from observability_history import record_http_event
 
         record_http_event(clean_method, clean_route, status_code, latency_ms, client_release=release)

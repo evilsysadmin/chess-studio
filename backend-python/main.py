@@ -10,6 +10,7 @@ import uuid
 import hmac
 import re
 import ipaddress
+from contextlib import asynccontextmanager
 from typing import Optional
 from urllib.parse import quote, urlsplit
 
@@ -42,6 +43,8 @@ from observability import record_http_request, sanitize_client_release
 from structured_logging import emit_http_event
 from observability_history import schedule_history_flush
 from resilience import request_enter, request_exit, should_shed, record_shed
+from release_info import backend_release
+from grafana_telemetry import annotate_http_span, configure as configure_grafana_telemetry, shutdown as shutdown_grafana_telemetry, start_http_span
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -50,11 +53,26 @@ INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
 ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
 
+
+@asynccontextmanager
+async def app_lifespan(_app: FastAPI):
+    configure_grafana_telemetry(
+        service_name="chess-studio-api",
+        service_version=backend_release(),
+        environment=ENVIRONMENT,
+    )
+    try:
+        yield
+    finally:
+        shutdown_grafana_telemetry()
+
+
 app = FastAPI(
     title="Estudio de Ajedrez API",
     docs_url="/docs" if EXPOSE_API_DOCS else None,
     redoc_url="/redoc" if EXPOSE_API_DOCS else None,
     openapi_url="/openapi.json" if EXPOSE_API_DOCS else None,
+    lifespan=app_lifespan,
 )
 
 # Logger operativo estructurado. Incluye username autenticado para poder ver uso
@@ -141,6 +159,8 @@ async def log_request_with_user(request: Request, call_next):
     inflight = request_enter()
     status_code = 500
     raised = False
+    span_context = start_http_span(request.method)
+    span = span_context.__enter__()
     try:
         if should_shed(request.url.path, inflight):
             status_code = 503
@@ -194,6 +214,16 @@ async def log_request_with_user(request: Request, call_next):
             elapsed_ms,
             client_release=client_release,
         )
+        annotate_http_span(
+            span,
+            method=request.method,
+            route=route_pattern,
+            status_code=status_code,
+        )
+        try:
+            span_context.__exit__(None, None, None)
+        except Exception:
+            pass
         schedule_history_flush()
         if not raised:
             emit_http_event(

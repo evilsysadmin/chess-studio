@@ -598,6 +598,12 @@ def _record(
     except Exception:
         # Observabilidad jamás debe romper una partida ni una respuesta AI.
         pass
+    try:
+        from grafana_telemetry import record_ai_request
+
+        record_ai_request(provider, event["channel"], float(event["latency_ms"]) / 1000)
+    except Exception:
+        pass
 
 
 def reset_ai_metrics() -> None:
