@@ -53,7 +53,7 @@ No uses aquí el token OTLP de ingesta. En GitHub configura estos secrets:
 
 Opcionalmente, define la variable de repositorio
 `GRAFANA_METRICS_DATASOURCE_UID` si el UID de métricas no es
-`grafanacloud-metrics`. Lanza una vez el workflow manualmente desde Actions;
+`grafanacloud-humbletoucan355-prom`. Lanza una vez el workflow manualmente desde Actions;
 después, cada cambio bajo `infra/grafana/` lo actualiza. El workflow adopta por
 su UID real la carpeta existente llamada `Chess Studio`, y por UID el dashboard
 existente, antes de aplicar. Así el flujo sigue siendo

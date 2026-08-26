@@ -11,6 +11,7 @@ import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
+import { GRAFANA_HEALTH_DASHBOARD_URL } from '../adminObservabilityLinks.js';
 import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
 import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
@@ -336,10 +337,13 @@ export default function AdminScreen({ onExit }) {
         <button className="back-link" onClick={() => setAdminView('overview')}>← Volver al panel admin</button>
         <div className="menu-section">
           <div className="admin-subview-heading">
-            <div><span className="section-label">Admin</span><h2>Observabilidad</h2></div>
-            <button type="button" className="secondary-btn" onClick={onExit}>Salir al menú</button>
+            <div><span className="section-label">Admin · fallback</span><h2>Histórico interno</h2></div>
+            <div className="admin-subview-actions">
+              <a className="secondary-btn" href={GRAFANA_HEALTH_DASHBOARD_URL} target="_blank" rel="noreferrer">Abrir Grafana ↗</a>
+              <button type="button" className="secondary-btn" onClick={onExit}>Salir al menú</button>
+            </div>
           </div>
-          <p className="hint-text">Dashboards operativos, histórico temporal, Workers AI y diagnóstico SRE.</p>
+          <p className="hint-text">Fallback agregado para cuando necesites contraste o Grafana no esté disponible. La operación en tiempo real vive en Grafana Cloud.</p>
           <ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />
         </div>
       </div>
@@ -355,9 +359,6 @@ export default function AdminScreen({ onExit }) {
         <p className="hint-text">Primero la salud de Chess Studio; después ya interrogamos a los humanos.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
         <AdminObservabilitySummary
-          token={getToken()}
-          users={users || []}
-          currentAdmin={currentAdmin}
           onOpen={() => setAdminView('observability')}
         />
         {users && (

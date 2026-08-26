@@ -27,7 +27,7 @@ jobs:
       TF_INPUT: "false"
       GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
       GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
-      TF_VAR_metrics_datasource_uid: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-metrics' }}
+      TF_VAR_metrics_datasource_uid: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
       TF_VAR_commit_sha: ${{ github.sha }}
 
     steps:

@@ -377,6 +377,11 @@
 .admin-observability-launcher-actions { justify-content: center; }
 .admin-observability-launcher-actions .hint-text { margin: 0; flex: 1 1 100%; text-align: center; }
 .admin-observability-launcher-actions .secondary-btn { margin-inline: auto; }
+.admin-grafana-link { text-decoration: none; }
+.admin-observability-legacy { margin-top: .1rem; }
+.admin-observability-legacy .friendly-disclosure-body { display: grid; gap: .65rem; }
+.admin-observability-legacy .hint-text { margin: 0; }
+.admin-subview-actions { display: flex; gap: .45rem; flex-wrap: wrap; }
 .admin-observability-view .admin-observability { margin-top: .9rem; }
 @media (max-width: 900px) {
   .admin-observability-launcher-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }

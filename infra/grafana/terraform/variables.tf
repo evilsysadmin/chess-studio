@@ -1,7 +1,7 @@
 variable "metrics_datasource_uid" {
   description = "UID del datasource Prometheus/Mimir de Grafana Cloud."
   type        = string
-  default     = "grafanacloud-metrics"
+  default     = "grafanacloud-humbletoucan355-prom"
 }
 
 variable "commit_sha" {
