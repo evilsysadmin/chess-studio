@@ -220,11 +220,8 @@ async def log_request_with_user(request: Request, call_next):
             route=route_pattern,
             status_code=status_code,
         )
-        try:
-            span_context.__exit__(None, None, None)
-        except Exception:
-            pass
-        schedule_history_flush()
+        # El evento OTLP se emite mientras el span sigue activo. Así Grafana
+        # puede correlacionar el log seguro de Loki con la traza de Tempo.
         if not raised:
             emit_http_event(
                 access_logger,
@@ -236,6 +233,11 @@ async def log_request_with_user(request: Request, call_next):
                 client_release=client_release,
                 username=_request_username(request),
             )
+        try:
+            span_context.__exit__(None, None, None)
+        except Exception:
+            pass
+        schedule_history_flush()
 
 
 @app.exception_handler(PersistentStorageUnavailable)

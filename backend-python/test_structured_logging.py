@@ -1,6 +1,7 @@
 import json
 import logging
 
+import structured_logging
 from structured_logging import emit_http_event
 
 
@@ -30,3 +31,28 @@ def test_structured_http_log_is_json_and_keeps_sensitive_payloads_out(caplog):
     }
     assert payload["username"] == "stan"
     assert "fen" not in payload
+
+
+def test_grafana_copy_excludes_the_local_support_username(monkeypatch):
+    calls = []
+    monkeypatch.setattr(structured_logging, "record_http_log", lambda **kwargs: calls.append(kwargs))
+
+    emit_http_event(
+        logging.getLogger("test.chess.structured"),
+        request_id="req-safe",
+        method="GET",
+        route="/api/status",
+        status_code=200,
+        duration_ms=3.5,
+        client_release="v16.6dm46t",
+        username="stan",
+    )
+
+    assert calls == [{
+        "request_id": "req-safe",
+        "method": "GET",
+        "route": "/api/status",
+        "status_code": 200,
+        "duration_ms": 3.5,
+        "client_release": "v16.6dm46t",
+    }]

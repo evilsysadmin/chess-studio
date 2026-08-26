@@ -21,33 +21,33 @@
   "panels": [
     {
       "id": 1,
-      "title": "Disponibilidad SLI · 15 min",
-      "description": "Porcentaje de respuestas que no son 5xx. Los 4xx se contabilizan como API disponible.",
+      "title": "Disponibilidad API core · 15 min",
+      "description": "SLI de las rutas de juego y cuenta. Narrativa se mide aparte porque depende de Workers AI; los 4xx cuentan como API disponible.",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_response_status_class!~\"5xx|unknown\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total[15m])), 0.001)" }],
+      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\", http_response_status_class!~\"5xx|unknown\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\"}[15m])), 0.001)" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto" },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 99 }, { "color": "green", "value": 99.5 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 }
     },
     {
       "id": 2,
-      "title": "Latencia HTTP p95 · 15 min",
-      "description": "El 95% de las peticiones termina en este tiempo o menos.",
+      "title": "Latencia API core p95 · 15 min",
+      "description": "Rutas de juego y cuenta, sin `/api/narrative`: la espera de Workers AI tiene su propia sección.",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket[15m])))" }],
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!=\"/api/narrative\"}[15m])))" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto" },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.8 }, { "color": "red", "value": 1.5 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 }
     },
     {
       "id": 3,
-      "title": "Errores 5xx · 15 min",
-      "description": "Fallos del servidor sobre el total de peticiones.",
+      "title": "Errores API core 5xx · 15 min",
+      "description": "Fallos de servidor en rutas core; los problemas de narrativa se ven separados de la salud de la aplicación.",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_response_status_class=\"5xx\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total[15m])), 0.001)" }],
+      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\", http_response_status_class=\"5xx\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\"}[15m])), 0.001)" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto" },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 2 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 }
@@ -97,11 +97,11 @@
     },
     {
       "id": 8,
-      "title": "p95 por ruta · 15 min",
-      "description": "Las rutas más lentas para priorizar trabajo real de producto.",
+      "title": "p95 por ruta core · 15 min",
+      "description": "Las rutas lentas de juego y cuenta; narrativa se separa para no ocultar la salud del producto.",
       "type": "table",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(chess_studio_http_server_duration_seconds_bucket[15m]))))", "format": "table", "instant": true }],
+      "targets": [{ "refId": "A", "expr": "topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!=\"/api/narrative\"}[15m]))))", "format": "table", "instant": true }],
       "fieldConfig": { "defaults": { "unit": "s", "decimals": 2 }, "overrides": [] },
       "options": { "showHeader": true, "sortBy": [{ "displayName": "Value", "desc": true }] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 }
@@ -119,11 +119,11 @@
     },
     {
       "id": 10,
-      "title": "Latencia HTTP p95",
-      "description": "Evolución de la latencia de la API; el SLI superior usa la misma fuente con ventana más larga.",
+      "title": "Latencia API core p95",
+      "description": "Evolución de las rutas core; el SLI superior usa la misma fuente con ventana más larga.",
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket[5m])))", "legendFormat": "p95" }],
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!=\"/api/narrative\"}[5m])))", "legendFormat": "core p95" }],
       "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 }
@@ -162,11 +162,11 @@
     },
     {
       "id": 14,
-      "title": "Latencia de IA p95 por canal",
-      "description": "Compara la experiencia de narrativa por contexto de juego.",
+      "title": "Latencia de IA p95 por proveedor",
+      "description": "Tiempo de la dependencia de narrativa, separado por Workers AI y fallback local.",
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (ai_channel, le) (rate(chess_studio_ai_duration_seconds_bucket[15m])))", "legendFormat": "{{ai_channel}}" }],
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (ai_provider, ai_channel, le) (rate(chess_studio_ai_duration_seconds_bucket[15m])))", "legendFormat": "{{ai_provider}} · {{ai_channel}}" }],
       "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 }
@@ -181,6 +181,39 @@
       "fieldConfig": { "defaults": { "unit": "reqpm", "min": 0 }, "overrides": [] },
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 37 }
+    },
+    {
+      "id": 16,
+      "title": "Narrativa end-to-end p95 · 15 min",
+      "description": "Tiempo que percibe el jugador en `/api/narrative`, incluido Workers AI y la preparación de la respuesta.",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route=\"/api/narrative\"}[15m])))" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "noValue": "Sin narrativa" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 2 }, { "color": "red", "value": 5 }] } }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 45 }
+    },
+    {
+      "id": 17,
+      "title": "Workers AI p95 · 15 min",
+      "description": "Sólo la llamada al proveedor Cloudflare; explica la mayor parte de la espera de narrativa cuando hay éxito.",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_ai_duration_seconds_bucket{ai_provider=\"cloudflare\"}[15m])))" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "noValue": "Sin Workers AI" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1.5 }, { "color": "red", "value": 4 }] } }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 45 }
+    },
+    {
+      "id": 18,
+      "title": "Fallback local p95 · 15 min",
+      "description": "Tiempo de la alternativa local cuando Workers AI no responde; acompáñalo del porcentaje de fallback.",
+      "type": "stat",
+      "datasource": "${DS_PROMETHEUS}",
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_ai_duration_seconds_bucket{ai_provider=\"local\"}[15m])))" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "noValue": "Sin fallback" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.5 }, { "color": "red", "value": 1.5 }] } }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 45 }
     }
   ]
 }

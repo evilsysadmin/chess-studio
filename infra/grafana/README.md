@@ -23,6 +23,10 @@ igual que antes.
 Tras guardar las variables, redeploy del servicio Render. La primera tanda de
 métricas se envía como máximo un minuto después de que haya tráfico.
 
+Las mismas dos variables activan las tres señales OTLP del backend: métricas en
+Prometheus/Mimir, trazas en Tempo y logs operativos seguros en Loki. No hace
+falta un token de Loki ni de Tempo adicional.
+
 ## Datos enviados
 
 Métricas:
@@ -32,6 +36,10 @@ Métricas:
 - usuarios concurrentes como una cifra agregada de la ventana de presencia;
 - trazas HTTP sin query strings, cuerpos, credenciales, IPs, usuarios, FEN ni
   contenido de partidas.
+- logs HTTP estructurados para Loki: método, ruta normalizada, estado,
+  duración, versión cliente y request-id efímero. Los logs de Render conservan
+  su circuito de soporte propio; la copia OTLP no contiene usernames ni
+  tracebacks.
 
 El dashboard incluido es `chess-studio-overview.dashboard.json`. En Grafana:
 `Dashboards` → `New` → `Import` → sube el archivo y elige el datasource
@@ -62,10 +70,13 @@ idempotente incluso en runners efímeros.
 
 ## Qué vigilar en el dashboard
 
-- **Disponibilidad SLI**: respuestas que no son 5xx durante 15 minutos. Los
-  4xx cuentan como API disponible: no son una caída del servicio.
-- **p95 HTTP** y **p95 por ruta**: el tiempo de una petición lenta típica, para
-  priorizar la ruta que realmente impacta al jugador.
+- **Disponibilidad API core** y **p95 core**: rutas de juego y cuenta sin
+  `/api/narrative`. Los 4xx cuentan como API disponible: no son una caída del
+  servicio.
+- **Narrativa end-to-end** y **Workers AI p95**: la espera que percibe el
+  jugador se separa de la salud de API. Así una dependencia lenta no vuelve
+  roja una ruta normal de juego; el panel por proveedor muestra si llegó a
+  Cloudflare o se resolvió con fallback local.
 - **Usuarios concurrentes**: presencia agregada que aparece tras el siguiente
   redeploy de Render y una llamada a `/api/status`; no exporta cuentas ni
   sesiones.
@@ -76,6 +87,19 @@ idempotente incluso en runners efímeros.
 Los paneles usan ventanas de 5–15 minutos para que una sola petición o el ciclo
 de exportación OTLP no produzcan falsas alarmas. El dashboard no instala alertas
 por sí solo: observa una semana y ajusta los umbrales al tráfico real.
+
+## Loki y Tempo
+
+En **Explore**, selecciona el datasource Loki y filtra por
+`service_name="chess-studio-api"`. Puedes empezar con `{service_name="chess-studio-api"}`
+para ver cada request seguro. Los atributos OTLP aparecen como metadatos
+estructurados: usa los filtros de Grafana para acotar por ruta o por familia de
+estado, sin buscar cuerpos ni usuarios.
+
+En Tempo busca el servicio `chess-studio-api`. Cada request HTTP abre una traza
+con método, ruta normalizada y estado; las respuestas 5xx se marcan como error.
+El evento de Loki se emite con esa traza todavía activa, por lo que Grafana puede
+correlacionarlos mediante su contexto OTLP cuando el datasource lo presenta.
 
 ## Alertas iniciales sugeridas
 

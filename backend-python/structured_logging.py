@@ -10,6 +10,8 @@ import json
 import logging
 from typing import Any
 
+from grafana_telemetry import record_http_log
+
 
 def emit_http_event(
     logger: logging.Logger,
@@ -41,3 +43,13 @@ def emit_http_event(
         logger.exception(message)
     else:
         logger.info(message)
+    # El log local anterior conserva username para soporte de Render. Loki usa
+    # un contrato más reducido: no pasamos esa identidad ni el traceback.
+    record_http_log(
+        request_id=request_id,
+        method=method,
+        route=route,
+        status_code=status_code,
+        duration_ms=duration_ms,
+        client_release=client_release,
+    )

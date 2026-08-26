@@ -19,6 +19,8 @@ logger = logging.getLogger("uvicorn.error")
 _tracer: Any = None
 _meter_provider: Any = None
 _tracer_provider: Any = None
+_logger_provider: Any = None
+_otlp_logger: Any = None
 _http_requests: Any = None
 _http_duration: Any = None
 _ai_requests: Any = None
@@ -118,7 +120,7 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
     jugar: el proceso conserva las métricas internas y deja una advertencia
     operativa sin incluir secretos.
     """
-    global _tracer, _meter_provider, _tracer_provider
+    global _tracer, _meter_provider, _tracer_provider, _logger_provider, _otlp_logger
     global _http_requests, _http_duration, _ai_requests, _ai_duration
     global _online_users_gauge, _state
 
@@ -130,10 +132,13 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
         return False
     endpoint, headers, use_standard_exporter_environment = config
     try:
-        from opentelemetry import metrics, trace
+        from opentelemetry import _logs, metrics, trace
         from opentelemetry.metrics import Observation
+        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.sdk._logs import LoggerProvider
+        from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
         from opentelemetry.sdk.metrics import MeterProvider
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
         from opentelemetry.sdk.resources import Resource
@@ -181,6 +186,26 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
             unit="1",
             description="Usuarios activos agregados durante la ventana de presencia",
         )
+        # Loki recibe únicamente los eventos operativos que emitimos de forma
+        # explícita más abajo. No acoplamos un handler al logger global de
+        # Uvicorn porque ese flujo conserva usernames y traceback de Render.
+        try:
+            if use_standard_exporter_environment:
+                log_exporter = OTLPLogExporter(timeout=5)
+            else:
+                log_exporter = OTLPLogExporter(
+                    endpoint=_otlp_signal_endpoint(endpoint, "logs"), headers=headers, timeout=5,
+                )
+            _logger_provider = LoggerProvider(resource=resource)
+            _logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+            _otlp_logger = _logs.get_logger(
+                "chess_studio.operational", logger_provider=_logger_provider,
+            )
+            logger.info("grafana_logs_enabled source=safe_operational_events")
+        except Exception as exc:
+            _logger_provider = None
+            _otlp_logger = None
+            logger.warning("grafana_logs_disabled reason=setup_failed error=%s", type(exc).__name__)
         _state = {"enabled": True, "reason": "configured"}
         logger.info(
             "grafana_telemetry_enabled service=%s configuration=%s",
@@ -234,6 +259,48 @@ def record_ai_request(provider: str, channel: str, duration_seconds: float) -> N
         pass
 
 
+def record_http_log(
+    *,
+    request_id: str,
+    method: str,
+    route: str,
+    status_code: int,
+    duration_ms: float,
+    client_release: str | None = None,
+) -> None:
+    """Envía a Loki un evento HTTP deliberadamente sin datos personales.
+
+    El logger local de Render puede conservar ``username`` y traceback para
+    depurar una incidencia concreta. Esta copia OTLP es un contrato distinto:
+    sólo ruta normalizada, estado, duración, release y un id efímero de
+    petición; nunca usuario, IP, cabeceras, cuerpo, FEN ni prompt.
+    """
+    if not _state["enabled"] or _otlp_logger is None:
+        return
+    try:
+        code = max(0, int(status_code or 0))
+        level = "ERROR" if code >= 500 else "WARN" if code >= 400 else "INFO"
+        attributes = {
+            "event.name": "http_request",
+            "request.id": str(request_id or "-")[:80],
+            "http.request.method": str(method or "?").upper()[:8],
+            "http.route": str(route or "unmatched")[:120],
+            "http.response.status_code": code,
+            "http.response.status_class": _status_class(code),
+            "http.server.duration_ms": round(max(0.0, float(duration_ms or 0.0)), 2),
+        }
+        if client_release:
+            attributes["client.release"] = str(client_release)[:40]
+        _otlp_logger.emit(
+            severity_text=level,
+            body="http_request",
+            attributes=attributes,
+        )
+    except Exception:
+        # Loki tampoco puede formar parte del camino crítico de una request.
+        pass
+
+
 def record_online_users(value: int | float | None) -> None:
     """Actualiza la muestra agregada de presencia para el observable gauge.
 
@@ -266,6 +333,10 @@ def annotate_http_span(span: Any, *, method: str, route: str, status_code: int) 
         span.set_attribute("http.request.method", str(method or "?").upper()[:8])
         span.set_attribute("http.route", str(route or "unmatched")[:120])
         span.set_attribute("http.response.status_code", int(status_code or 0))
+        if int(status_code or 0) >= 500:
+            from opentelemetry.trace import Status, StatusCode
+
+            span.set_status(Status(StatusCode.ERROR))
     except Exception:
         pass
 
@@ -273,7 +344,7 @@ def annotate_http_span(span: Any, *, method: str, route: str, status_code: int) 
 def shutdown() -> None:
     """Vacía el lote al apagar Render, sin retrasar ni bloquear el shutdown."""
     global _state
-    for provider in (_meter_provider, _tracer_provider):
+    for provider in (_logger_provider, _meter_provider, _tracer_provider):
         try:
             if provider is not None:
                 provider.shutdown()
