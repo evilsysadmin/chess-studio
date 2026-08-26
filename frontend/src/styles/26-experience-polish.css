@@ -1,0 +1,151 @@
+/* Experience polish: una capa transversal para que el producto se sienta
+   estable, táctil y predecible sin abrir nuevas rutas ni añadir chrome. */
+
+:root {
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brass) 42%, transparent);
+  --control-surface: color-mix(in srgb, var(--ink) 72%, var(--ink-2));
+}
+
+/* El foco no debe depender de recordar dónde está el cursor: teclado, lector
+   de pantalla y puntero obtienen la misma señal cálida, sobria y consistente. */
+a:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+button,
+summary,
+[role='button'],
+.square {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.primary-btn:not(:disabled):hover {
+  filter: brightness(1.06);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, .18);
+}
+.secondary-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, .035);
+  border-color: color-mix(in srgb, var(--brass) 72%, var(--ink-3));
+}
+.danger-btn:not(:disabled):hover { box-shadow: 0 7px 18px rgba(0, 0, 0, .16); }
+
+/* Formularios: el mismo peso visual y la misma recuperación de foco en
+   login, cuenta, feedback, ajustes y herramientas administrativas. */
+.text-input,
+.feedback-field,
+.account-center-section input,
+.account-center-section select,
+.account-center-section textarea {
+  min-height: 44px;
+  border-radius: var(--radius-control, 8px);
+  background: var(--control-surface);
+  border-color: color-mix(in srgb, var(--ink-3) 86%, transparent);
+  color: var(--parchment);
+}
+.text-input:focus,
+.feedback-field:focus,
+.account-center-section input:focus,
+.account-center-section select:focus,
+.account-center-section textarea:focus {
+  border-color: var(--brass-dim);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+textarea.text-input,
+.feedback-field { min-height: 7.5rem; resize: vertical; }
+::placeholder { color: color-mix(in srgb, var(--parchment-dim) 68%, transparent); opacity: 1; }
+
+/* Los mensajes ya eran claros; esta capa los separa del contenido sin que una
+   alerta parezca una pantalla rota o compita con el CTA siguiente. */
+[role='status'].hint-text,
+.ui-state {
+  border-radius: var(--radius-control, 8px);
+  background: rgba(255, 255, 255, .025);
+}
+.error-text[role='alert'],
+.error-text {
+  overflow-wrap: anywhere;
+}
+
+/* El tablero conserva el protagonismo, pero sus controles se leen como una
+   barra de decisión: no quedan botones apretados ni zonas difíciles de tocar. */
+.game-controls,
+.combat-game-controls {
+  width: min(100%, 700px);
+  gap: .65rem;
+  margin-inline: auto;
+}
+.game-controls > button,
+.combat-game-controls > button { min-height: 44px; }
+.game-side-column,
+.combat-game-side-column { overscroll-behavior: contain; }
+.notation-panel,
+.game-chat { overflow-wrap: anywhere; }
+
+/* Home y Torneo: la recomendación principal conserva contraste, mientras que
+   las acciones secundarias siguen estando presentes sin pedir atención igual. */
+.home-continue-card,
+.home-today-card,
+.home-next-action,
+.tournament-next-card {
+  scroll-margin-top: 1rem;
+}
+.home-mode-card .menu-card-cta,
+.tournament-next-card .friendly-main-cta { min-height: 46px; }
+
+@media (max-width: 760px) {
+  .app-shell {
+    min-height: 100dvh;
+    padding-bottom: max(4rem, env(safe-area-inset-bottom));
+  }
+  .menu {
+    width: min(100%, var(--surface-max-wide));
+    box-shadow: 0 18px 46px rgba(3, 6, 12, .2);
+  }
+  .game-controls,
+  .combat-game-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .game-controls > .primary-btn,
+  .combat-game-controls > .primary-btn { grid-column: 1 / -1; }
+  .backup-link { min-height: 42px; }
+}
+
+@media (max-width: 480px) {
+  .app-shell { padding-inline: max(.65rem, env(safe-area-inset-left)); }
+  .masthead { gap: .6rem; }
+  .masthead-actions { gap: .35rem; }
+  .home-continue-card { grid-template-columns: auto minmax(0, 1fr); }
+  .home-continue-cta { grid-column: 2; justify-self: start; margin-top: .18rem; }
+  .home-today-main { align-items: stretch; }
+  .home-today-main .primary-btn,
+  .home-today-main .secondary-btn { width: 100%; }
+  .game-controls,
+  .combat-game-controls { grid-template-columns: 1fr; }
+  .game-controls > .primary-btn,
+  .combat-game-controls > .primary-btn { grid-column: auto; }
+  .modal-backdrop { padding-bottom: max(.5rem, env(safe-area-inset-bottom)); }
+}
+
+@media (hover: none) {
+  .menu-card:not(:disabled):hover { transform: none; box-shadow: 0 1px 0 rgba(255,255,255,.025); }
+  .primary-btn:not(:disabled):hover,
+  .secondary-btn:not(:disabled):hover,
+  .danger-btn:not(:disabled):hover { filter: none; box-shadow: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-btn:not(:disabled):active,
+  .secondary-btn:not(:disabled):active,
+  .danger-btn:not(:disabled):active { transform: none; }
+}

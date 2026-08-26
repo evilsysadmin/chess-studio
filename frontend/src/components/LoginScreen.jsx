@@ -162,8 +162,8 @@ export default function LoginScreen({ onLoggedIn }) {
               </>
             )}
 
-            {error && <p className="error-text" role="alert" style={{ marginBottom: '0.7rem' }}>{error}</p>}
-            {notice && <p className="hint-text" role="status" style={{ marginBottom: '0.7rem' }}>{notice}</p>}
+            {error && <p className="error-text" role="alert" aria-live="assertive" style={{ marginBottom: '0.7rem' }}>{error}</p>}
+            {notice && <p className="hint-text" role="status" aria-live="polite" style={{ marginBottom: '0.7rem' }}>{notice}</p>}
 
             <button type="submit" className="primary-btn" style={{ width: '100%' }} disabled={loading}>
               {loading ? text.wait : mode === 'register' ? text.create : mode === 'forgot' ? text.send : mode === 'reset' ? text.change : text.enter}
