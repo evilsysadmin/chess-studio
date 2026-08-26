@@ -81,9 +81,9 @@ idempotente incluso en runners efímeros.
   jugador se separa de la salud de API. Así una dependencia lenta no vuelve
   roja una ruta normal de juego; el panel por proveedor muestra si llegó a
   Cloudflare o se resolvió con fallback local.
-- **Usuarios concurrentes**: presencia agregada que aparece tras el siguiente
-  redeploy de Render y una llamada a `/api/status`; no exporta cuentas ni
-  sesiones.
+- **Usuarios concurrentes**: presencia agregada de los últimos 15 minutos.
+  El panel muestra `0` si no hay jugadores activos; tras desplegar basta una
+  llamada autenticada a `/api/status` y unos segundos para publicar muestra.
 - **Workers AI / fallback local**: proporción de narrativa servida por Workers
   AI y la alternativa local. Un fallback alto no rompe la partida, pero señala
   que conviene revisar la dependencia de Cloudflare.
@@ -111,8 +111,9 @@ El dashboard publicado incluye una fila **Investigación de incidentes**:
   petición sin exponer datos personales.
 - **Narrativa reciente**: compara las llamadas a `/api/narrative` con el p95
   de Workers AI y fallback ya mostrado arriba.
-- **Trazas lentas**: las veinte peticiones de más de un segundo. Abre una y
-  utiliza `Logs for this span` si el enlace aparece.
+- **Trazas recientes**: las últimas veinte peticiones, rápidas o lentas. El
+  panel de revisión conserva el filtro de más de 500 ms. Abre una y utiliza
+  `Logs for this span` si el enlace aparece.
 
 Si Grafana no muestra aún el salto de traza a logs, abre el datasource Tempo,
 en **Trace to logs** elige Loki y configura `service.name` → `service_name`,

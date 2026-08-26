@@ -25,9 +25,10 @@
     "23-learning-combat-economy.css",
     "24-product-hardening.css",
     "25-game-workspace.css",
-    "26-experience-polish.css"
+    "26-experience-polish.css",
+    "27-distinction-archive.css"
   ],
-  "combinedSha256": "c32aead0749054cc4ff02a9f3c2f957fc99ecceb77443cd06c16d634c56b4df4",
-  "combinedBytes": 401570,
-  "combinedLines": 11907
+  "combinedSha256": "3fc4f8254add5274e65bc15aa3807ab5996707d36fbed00c1cfc387cad2a511b",
+  "combinedBytes": 403851,
+  "combinedLines": 11928
 }

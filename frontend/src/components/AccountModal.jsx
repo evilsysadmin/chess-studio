@@ -7,6 +7,7 @@ import AchievementsModal from './AchievementsModal.jsx';
 import { canInstallChessStudio, promptChessStudioInstall, PWA_INSTALL_AVAILABLE_EVENT } from '../pwaInstall.js';
 import { levelForPoints } from '../tournament.js';
 import { ratingLabel } from '../playerRating.js';
+import { loadUnlocked, selectedDistinction } from '../achievements.js';
 
 export default function AccountModal({ onClose, onLogout, loggingOut = false, rating = null, tournament = null, combatOverview = null }) {
   useEscapeToClose(onClose);
@@ -20,7 +21,9 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false, ra
   const [language, setLanguage] = useState(() => getUiLanguage());
   const [showBackup, setShowBackup] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [activeDistinctionId, setActiveDistinctionId] = useState(() => selectedDistinction(loadUnlocked())?.id || null);
   const [canInstall, setCanInstall] = useState(() => canInstallChessStudio());
+  const activeDistinction = selectedDistinction(loadUnlocked());
 
   useEffect(() => {
     let live = true;
@@ -81,7 +84,7 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false, ra
           <>
             <div className="account-center-identity">
               <span className="account-center-avatar" aria-hidden="true">{(me.username || 'J').slice(0, 1).toUpperCase()}</span>
-              <div><strong>{me.username}</strong><small>{me.isAdmin ? 'Administrador' : 'Jugador'} · progreso sincronizado</small></div>
+              <div><strong>{me.username}</strong><small>{me.isAdmin ? 'Administrador' : 'Jugador'} · progreso sincronizado</small>{activeDistinction && <em className="account-distinction">✦ {activeDistinction.name} · {activeDistinction.collection}</em>}</div>
             </div>
 
             <section className="account-progress-glance" aria-label="Tu avance">
@@ -139,7 +142,7 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false, ra
             </section>
 
             <section className="account-center-tools" aria-label="Perfil y progreso">
-              <button type="button" onClick={() => setShowAchievements(true)}><b>Distintivos</b><small>Logros y títulos</small></button>
+              <button type="button" onClick={() => setShowAchievements(true)}><b>Archivo personal</b><small>{activeDistinctionId ? 'Distintivo en vitrina' : 'Distinciones y hitos'}</small></button>
               <button type="button" onClick={() => setShowBackup(true)}><b>Gestionar progreso</b><small>Sincronización y copia</small></button>
               {canInstall && <button type="button" onClick={async () => { const installed = await promptChessStudioInstall(); setCanInstall(canInstallChessStudio()); if (installed) setNotice('Chess Studio instalado en este dispositivo.'); }}><b>Instalar aplicación</b><small>Acceso directo y pantalla completa</small></button>}
             </section>
@@ -162,7 +165,7 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false, ra
         )}
       </div>
     </div>
-    {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} />}
+    {showAchievements && <AchievementsModal onClose={() => setShowAchievements(false)} onSelected={setActiveDistinctionId} />}
     {showBackup && <ProfileBackupModal onClose={() => setShowBackup(false)} />}
     </>
   );

@@ -25,13 +25,21 @@ class _OtlpLogger:
         self.calls.append(kwargs)
 
 
+class _UpDownCounter:
+    def __init__(self):
+        self.calls = []
+
+    def add(self, value, attributes):
+        self.calls.append((value, attributes))
+
+
 def setup_function():
     telemetry._state = {"enabled": False, "reason": "not_configured"}
     telemetry._http_requests = None
     telemetry._http_duration = None
     telemetry._ai_requests = None
     telemetry._ai_duration = None
-    telemetry._online_users_gauge = None
+    telemetry._online_users_metric = None
     telemetry._online_users = 0
     telemetry._logger_provider = None
     telemetry._otlp_logger = None
@@ -116,6 +124,22 @@ def test_online_users_is_aggregated_and_bounded():
 
     telemetry.record_online_users("not-a-number")
     assert telemetry._online_users == 0
+
+
+def test_online_users_emits_current_window_even_when_the_value_does_not_change():
+    counter = _UpDownCounter()
+    telemetry._state = {"enabled": True, "reason": "configured"}
+    telemetry._online_users_metric = counter
+
+    telemetry.record_online_users(3)
+    telemetry.record_online_users(3)
+    telemetry.record_online_users(1)
+
+    assert counter.calls == [
+        (3, {"presence.window": "150s"}),
+        (0, {"presence.window": "150s"}),
+        (-2, {"presence.window": "150s"}),
+    ]
 
 
 def test_loki_http_log_is_safe_and_contains_only_operational_fields():

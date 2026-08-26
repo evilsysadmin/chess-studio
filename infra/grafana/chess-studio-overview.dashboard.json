@@ -70,12 +70,12 @@
     },
     {
       "id": 4,
-      "title": "Usuarios concurrentes",
-      "description": "Usuarios activos agregados en la ventana de presencia; no incluye identidades.",
+      "title": "Usuarios concurrentes · 15 min",
+      "description": "Última muestra agregada de presencia de los últimos 15 minutos. Un cero significa que no hay jugadores activos; no se incluyen identidades.",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "last_over_time(chess_studio_presence_online_users[5m])" }],
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "noValue": "Sin muestra" },
+      "targets": [{ "refId": "A", "expr": "last_over_time(chess_studio_presence_online_users{presence_window=\"150s\"}[15m]) or vector(0)" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "noValue": "0" },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "decimals": 0, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "gray", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 }
     },
@@ -261,12 +261,21 @@
     },
     {
       "id": 22,
-      "title": "Trazas lentas · Tempo",
-      "description": "Las 20 peticiones de `chess-studio-api` de más de un segundo en el rango elegido. Abre una traza para ver ruta, duración, estado y sus logs correlacionados.",
+      "title": "Trazas recientes · Tempo",
+      "description": "Las últimas 20 peticiones de `chess-studio-api`, sean rápidas o lentas. Abre una para ver ruta, duración, estado y logs correlacionados.",
       "type": "traces",
       "datasource": "${DS_TEMPO}",
-      "targets": [{ "refId": "A", "queryType": "search", "service": "chess-studio-api", "limit": 20, "minDuration": "1s" }],
+      "targets": [{ "refId": "A", "queryType": "search", "service": "chess-studio-api", "limit": 20 }],
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 60 }
+    },
+    {
+      "id": 23,
+      "title": "Trazas a revisar · Tempo",
+      "description": "Peticiones de más de 500 ms: complemento de las trazas recientes para revisar esperas de API o proveedores externos.",
+      "type": "traces",
+      "datasource": "${DS_TEMPO}",
+      "targets": [{ "refId": "A", "queryType": "search", "service": "chess-studio-api", "limit": 20, "minDuration": "500ms" }],
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 70 }
     }
   ]
 }

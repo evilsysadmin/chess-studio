@@ -25,7 +25,7 @@ _http_requests: Any = None
 _http_duration: Any = None
 _ai_requests: Any = None
 _ai_duration: Any = None
-_online_users_gauge: Any = None
+_online_users_metric: Any = None
 # Se actualiza desde /api/status. Es una cifra agregada: jamás usuarios,
 # sesiones, IPs ni otros identificadores.
 _online_users = 0
@@ -122,7 +122,7 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
     """
     global _tracer, _meter_provider, _tracer_provider, _logger_provider, _otlp_logger
     global _http_requests, _http_duration, _ai_requests, _ai_duration
-    global _online_users_gauge, _state
+    global _online_users_metric, _state
 
     if _state["enabled"]:
         return True
@@ -133,7 +133,6 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
     endpoint, headers, use_standard_exporter_environment = config
     try:
         from opentelemetry import _logs, metrics, trace
-        from opentelemetry.metrics import Observation
         from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -162,27 +161,30 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
             )
         _meter_provider = MeterProvider(
             resource=resource,
-            metric_readers=[PeriodicExportingMetricReader(metric_exporter, export_interval_millis=60_000)],
+            metric_readers=[PeriodicExportingMetricReader(metric_exporter, export_interval_millis=15_000)],
         )
         _tracer_provider = TracerProvider(resource=resource)
         _tracer_provider.add_span_processor(BatchSpanProcessor(
-            trace_exporter
+            trace_exporter, schedule_delay_millis=2_000, max_export_batch_size=64,
         ))
         metrics.set_meter_provider(_meter_provider)
         trace.set_tracer_provider(_tracer_provider)
         meter = metrics.get_meter("chess_studio.telemetry")
-        _tracer = trace.get_tracer("chess_studio.telemetry")
+        # Usamos el provider que acabamos de configurar directamente. Así los
+        # spans de Chess Studio no dependen de que una dependencia haya fijado
+        # antes el provider global de OpenTelemetry.
+        _tracer = _tracer_provider.get_tracer("chess_studio.telemetry")
         _http_requests = meter.create_counter("chess_studio.http.server.request", unit="1")
         _http_duration = meter.create_histogram("chess_studio.http.server.duration", unit="s")
         _ai_requests = meter.create_counter("chess_studio.ai.request", unit="1")
         _ai_duration = meter.create_histogram("chess_studio.ai.duration", unit="s")
 
-        def observe_online_users(_options):
-            return [Observation(max(0, _online_users))]
-
-        _online_users_gauge = meter.create_observable_gauge(
+        # Un contador bidireccional se exporta como una serie de valor actual
+        # en Prometheus, pero además recibe una medición en cada /api/status.
+        # Es más fiable que un observable callback en servicios que duermen o
+        # se reciclan entre dos lecturas del panel.
+        _online_users_metric = meter.create_up_down_counter(
             "chess_studio.presence.online_users",
-            callbacks=[observe_online_users],
             unit="1",
             description="Usuarios activos agregados durante la ventana de presencia",
         )
@@ -311,9 +313,18 @@ def record_online_users(value: int | float | None) -> None:
     """
     global _online_users
     try:
-        _online_users = min(1_000_000, max(0, int(value or 0)))
+        next_value = min(1_000_000, max(0, int(value or 0)))
     except (TypeError, ValueError, OverflowError):
-        _online_users = 0
+        next_value = 0
+    delta = next_value - _online_users
+    _online_users = next_value
+    if _state["enabled"] and _online_users_metric is not None:
+        try:
+            # Incluso con delta cero emitimos la muestra: el panel debe poder
+            # mostrar que hay exactamente cero usuarios y no "No data".
+            _online_users_metric.add(delta, {"presence.window": "150s"})
+        except Exception:
+            pass
 
 
 def start_http_span(method: str):
