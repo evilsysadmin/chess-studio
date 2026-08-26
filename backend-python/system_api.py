@@ -11,6 +11,7 @@ from feature_flags import public_feature_flags
 from observability_history import record_presence_snapshot
 from api_models import ClientTelemetryRequest
 from client_telemetry import record_client_event
+from grafana_telemetry import record_online_users
 
 
 def build_system_router(*, auth_dependency, is_admin_check, limiter) -> APIRouter:
@@ -61,6 +62,7 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter) -> APIRoute
             if is_admin_check(_username):
                 online_users = max(0, online_users - 1)
             record_presence_snapshot(online_users)
+            record_online_users(online_users)
             return {"ok": True, "onlineUsers": online_users, "presenceAvailable": True}
         except db.PersistentStorageUnavailable:
             return {"ok": True, "onlineUsers": None, "presenceAvailable": False}

@@ -40,6 +40,83 @@
 .admin-slo-kpi.is-warn { border-color: color-mix(in srgb, var(--danger) 52%, var(--ink-3)); }
 .admin-slo-kpi.is-warn strong { color: var(--danger); }
 
+/* Mesa de partida: tablero protagonista, utilidades en su rail. */
+.board-live-row:has(.game-music-rail) {
+  grid-template-columns: 220px max-content 270px;
+  grid-template-areas: "music board chat";
+  align-items: start;
+  justify-content: center;
+  column-gap: 1rem;
+}
+.board-live-row:has(.game-music-rail) .game-music-rail {
+  grid-area: music;
+  width: 220px;
+  justify-self: end;
+}
+.board-live-row:has(.game-music-rail) .game-music-rail .music-deck {
+  width: 220px;
+  margin: 0 !important;
+}
+.board-live-row:has(.game-music-rail) .game-board-stack { grid-area: board; }
+.board-live-row:has(.game-music-rail) .game-side-column {
+  grid-area: chat;
+  height: 620px;
+  max-height: 620px;
+}
+.game-board-stack {
+  width: min(100%, 720px);
+  gap: .58rem;
+}
+.game-board-stack .game-player-rail,
+.game-board-stack .game-notation-disclosure { width: 100%; }
+
+@media (min-width: 821px) {
+  .game-board-stack .board-grid {
+    grid-template-columns: repeat(8, min(8.5vw, 70px));
+    grid-template-rows: repeat(8, min(8.5vw, 70px));
+  }
+  .game-board-stack .rank-labels { grid-template-rows: repeat(8, min(8.5vw, 70px)); }
+  .game-board-stack .file-labels { grid-template-columns: repeat(8, min(8.5vw, 70px)); }
+}
+
+@media (max-width: 1060px) and (min-width: 821px) {
+  .board-live-row:has(.game-music-rail) {
+    grid-template-columns: max-content 270px;
+    grid-template-areas:
+      "music music"
+      "board chat";
+  }
+  .board-live-row:has(.game-music-rail) .game-music-rail {
+    width: min(100%, 620px);
+    justify-self: center;
+  }
+  .board-live-row:has(.game-music-rail) .game-music-rail .music-deck {
+    width: min(100%, 520px);
+    margin-inline: auto !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .board-live-row:has(.game-music-rail) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "board"
+      "chat"
+      "music";
+  }
+  .board-live-row:has(.game-music-rail) .game-music-rail,
+  .board-live-row:has(.game-music-rail) .game-music-rail .music-deck,
+  .board-live-row:has(.game-music-rail) .game-side-column {
+    width: min(100%, 520px);
+    justify-self: center;
+  }
+  .board-live-row:has(.game-music-rail) .game-side-column {
+    height: auto;
+    max-height: none;
+    min-height: 230px;
+  }
+}
+
 @media (pointer: coarse) {
   :where(button, a, summary, [role="button"]) { min-height: 44px; }
 }

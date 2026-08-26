@@ -23,6 +23,8 @@ def setup_function():
     telemetry._http_duration = None
     telemetry._ai_requests = None
     telemetry._ai_duration = None
+    telemetry._online_users_gauge = None
+    telemetry._online_users = 0
 
 
 def test_stays_disabled_without_render_credentials(monkeypatch):
@@ -90,3 +92,17 @@ def test_ai_metrics_use_only_provider_and_bounded_channel():
 
     assert counter.calls == [(1, {"ai.provider": "cloudflare", "ai.channel": "combat"})]
     assert histogram.calls == [(0.8, {"ai.provider": "cloudflare", "ai.channel": "combat"})]
+
+
+def test_online_users_is_aggregated_and_bounded():
+    telemetry.record_online_users(7)
+    assert telemetry._online_users == 7
+
+    telemetry.record_online_users(-8)
+    assert telemetry._online_users == 0
+
+    telemetry.record_online_users(9_999_999)
+    assert telemetry._online_users == 1_000_000
+
+    telemetry.record_online_users("not-a-number")
+    assert telemetry._online_users == 0

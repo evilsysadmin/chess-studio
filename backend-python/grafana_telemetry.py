@@ -23,6 +23,10 @@ _http_requests: Any = None
 _http_duration: Any = None
 _ai_requests: Any = None
 _ai_duration: Any = None
+_online_users_gauge: Any = None
+# Se actualiza desde /api/status. Es una cifra agregada: jamás usuarios,
+# sesiones, IPs ni otros identificadores.
+_online_users = 0
 _state = {"enabled": False, "reason": "not_configured"}
 
 
@@ -115,7 +119,8 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
     operativa sin incluir secretos.
     """
     global _tracer, _meter_provider, _tracer_provider
-    global _http_requests, _http_duration, _ai_requests, _ai_duration, _state
+    global _http_requests, _http_duration, _ai_requests, _ai_duration
+    global _online_users_gauge, _state
 
     if _state["enabled"]:
         return True
@@ -126,6 +131,7 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
     endpoint, headers, use_standard_exporter_environment = config
     try:
         from opentelemetry import metrics, trace
+        from opentelemetry.metrics import Observation
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         from opentelemetry.sdk.metrics import MeterProvider
@@ -165,6 +171,16 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
         _http_duration = meter.create_histogram("chess_studio.http.server.duration", unit="s")
         _ai_requests = meter.create_counter("chess_studio.ai.request", unit="1")
         _ai_duration = meter.create_histogram("chess_studio.ai.duration", unit="s")
+
+        def observe_online_users(_options):
+            return [Observation(max(0, _online_users))]
+
+        _online_users_gauge = meter.create_observable_gauge(
+            "chess_studio.presence.online_users",
+            callbacks=[observe_online_users],
+            unit="1",
+            description="Usuarios activos agregados durante la ventana de presencia",
+        )
         _state = {"enabled": True, "reason": "configured"}
         logger.info(
             "grafana_telemetry_enabled service=%s configuration=%s",
@@ -216,6 +232,21 @@ def record_ai_request(provider: str, channel: str, duration_seconds: float) -> N
         _ai_duration.record(max(0.0, float(duration_seconds or 0.0)), attributes)
     except Exception:
         pass
+
+
+def record_online_users(value: int | float | None) -> None:
+    """Actualiza la muestra agregada de presencia para el observable gauge.
+
+    El valor procede del contador existente de presencia y se acota para que
+    una respuesta anómala de storage no convierta la telemetría en una fuente
+    de ruido. También se conserva cuando OTLP está apagado, de forma que una
+    activación posterior exporta la siguiente muestra válida.
+    """
+    global _online_users
+    try:
+        _online_users = min(1_000_000, max(0, int(value or 0)))
+    except (TypeError, ValueError, OverflowError):
+        _online_users = 0
 
 
 def start_http_span(method: str):

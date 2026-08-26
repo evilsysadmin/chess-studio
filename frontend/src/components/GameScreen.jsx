@@ -734,6 +734,11 @@ export default function GameScreen({
             </div>
           )}
           <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
+            {!zenMode && (
+              <aside className="game-music-rail" aria-label="Música de la partida">
+                <MusicPlayer initiallyCollapsed />
+              </aside>
+            )}
             <div className="game-board-stack">
               {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
               <Board
@@ -759,9 +764,6 @@ export default function GameScreen({
               {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
             </div>
             {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
-              <div className="game-side-music" aria-label="Música de la partida">
-                <MusicPlayer initiallyCollapsed />
-              </div>
               <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
                 <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
                 <div className="game-notation-row">

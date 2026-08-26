@@ -29,6 +29,7 @@ Métricas:
 
 - volumen HTTP y duración, con método, ruta normalizada y familia de estado;
 - volumen y duración de las solicitudes de narrativa/IA, con proveedor y canal;
+- usuarios concurrentes como una cifra agregada de la ventana de presencia;
 - trazas HTTP sin query strings, cuerpos, credenciales, IPs, usuarios, FEN ni
   contenido de partidas.
 
@@ -58,6 +59,23 @@ después, cada cambio bajo `infra/grafana/` lo actualiza. El workflow adopta por
 su UID real la carpeta existente llamada `Chess Studio`, y por UID el dashboard
 existente, antes de aplicar. Así el flujo sigue siendo
 idempotente incluso en runners efímeros.
+
+## Qué vigilar en el dashboard
+
+- **Disponibilidad SLI**: respuestas que no son 5xx durante 15 minutos. Los
+  4xx cuentan como API disponible: no son una caída del servicio.
+- **p95 HTTP** y **p95 por ruta**: el tiempo de una petición lenta típica, para
+  priorizar la ruta que realmente impacta al jugador.
+- **Usuarios concurrentes**: presencia agregada que aparece tras el siguiente
+  redeploy de Render y una llamada a `/api/status`; no exporta cuentas ni
+  sesiones.
+- **Workers AI / fallback local**: proporción de narrativa servida por Workers
+  AI y la alternativa local. Un fallback alto no rompe la partida, pero señala
+  que conviene revisar la dependencia de Cloudflare.
+
+Los paneles usan ventanas de 5–15 minutos para que una sola petición o el ciclo
+de exportación OTLP no produzcan falsas alarmas. El dashboard no instala alertas
+por sí solo: observa una semana y ajusta los umbrales al tráfico real.
 
 ## Alertas iniciales sugeridas
 
