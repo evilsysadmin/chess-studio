@@ -85,6 +85,7 @@ export function useActiveSessionRestore({
   setGameSaveState,
   setLoading,
   setError,
+  recoverCombat,
 }) {
   const startupRestoreAttempted = useRef(false);
 
@@ -188,7 +189,10 @@ export function useActiveSessionRestore({
       timeControlId: activeTimeControl?.id || null,
       currentView,
     });
-    if (candidate.type === 'combat') return true;
+    // Combat no consulta Mongo: reconstruye desde su snapshot local. El
+    // llamador incrementa una clave de montaje para que una pantalla que
+    // acaba de fallar no vuelva a renderizar exactamente la misma instancia.
+    if (candidate.type === 'combat') return recoverCombat?.() === true;
     if (candidate.type === 'session') return restoreActiveSession(candidate.session);
     return false;
   }, [
@@ -197,6 +201,7 @@ export function useActiveSessionRestore({
     game,
     gameContext,
     learningMode,
+    recoverCombat,
     restoreActiveSession,
     tournamentGame,
   ]);

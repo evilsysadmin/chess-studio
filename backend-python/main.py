@@ -51,7 +51,15 @@ EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in 
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower() in {"1", "true", "yes", "on"}
 INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
-ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
+# En Render puede existir un servicio creado antes del Blueprint: en ese caso
+# una RESEND_API_KEY válida no debe quedar inutilizada porque faltase el flag
+# redundante. El flag explícito sigue mandando (sirve para apagar el flujo).
+_email_recovery_flag = os.environ.get("ENABLE_EMAIL_RECOVERY", "").strip().lower()
+ENABLE_EMAIL_RECOVERY = (
+    _email_recovery_flag in {"1", "true", "yes", "on"}
+    if _email_recovery_flag
+    else bool(os.environ.get("RESEND_API_KEY", "").strip())
+)
 
 
 @asynccontextmanager

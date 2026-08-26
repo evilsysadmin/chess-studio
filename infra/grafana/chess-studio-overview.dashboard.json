@@ -26,7 +26,7 @@
     }
   ],
   "title": "Chess Studio · Salud de API",
-  "description": "Tráfico, experiencia y dependencia de IA. Las métricas son agregadas y no contienen identidades ni contenido de partidas.",
+  "description": "Tráfico de producto, experiencia y dependencia de IA. Las métricas son agregadas y no contienen identidades ni contenido de partidas; las sondas automáticas se conservan para plataforma, pero no inflan SLIs ni tráfico de jugadores.",
   "uid": "chess-studio-api-overview",
   "editable": true,
   "timezone": "browser",
@@ -38,10 +38,10 @@
     {
       "id": 1,
       "title": "Disponibilidad API core · 15 min",
-      "description": "SLI de las rutas de juego y cuenta. Narrativa se mide aparte porque depende de Workers AI; los 4xx cuentan como API disponible.",
+      "description": "SLI de las rutas de juego y cuenta. Excluye narrativa y sondas automáticas (`/api/status`, `/api/health`, `/api/ready`); los 4xx cuentan como API disponible.",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\", http_response_status_class!~\"5xx|unknown\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\"}[15m])), 0.001)" }],
+      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_route!~\"/api/narrative|/api/status|/api/health|/api/ready\", http_response_status_class!~\"5xx|unknown\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total{http_route!~\"/api/narrative|/api/status|/api/health|/api/ready\"}[15m])), 0.001)" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto" },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 99 }, { "color": "green", "value": 99.5 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 }
@@ -49,10 +49,10 @@
     {
       "id": 2,
       "title": "Latencia API core p95 · 15 min",
-      "description": "Rutas de juego y cuenta, sin `/api/narrative`: la espera de Workers AI tiene su propia sección.",
+      "description": "Rutas de juego y cuenta, sin narrativa ni sondas automáticas: la espera de Workers AI tiene su propia sección.",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!=\"/api/narrative\"}[15m])))" }],
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!~\"/api/narrative|/api/status|/api/health|/api/ready\"}[15m])))" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto" },
       "fieldConfig": { "defaults": { "unit": "s", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.8 }, { "color": "red", "value": 1.5 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 }
@@ -60,10 +60,10 @@
     {
       "id": 3,
       "title": "Errores API core 5xx · 15 min",
-      "description": "Fallos de servidor en rutas core; los problemas de narrativa se ven separados de la salud de la aplicación.",
+      "description": "Fallos de servidor en rutas core; narrativa y sondas automáticas se ven fuera de la salud del producto.",
       "type": "stat",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\", http_response_status_class=\"5xx\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total{http_route!=\"/api/narrative\"}[15m])), 0.001)" }],
+      "targets": [{ "refId": "A", "expr": "100 * sum(rate(chess_studio_http_server_request_total{http_route!~\"/api/narrative|/api/status|/api/health|/api/ready\", http_response_status_class=\"5xx\"}[15m])) / clamp_min(sum(rate(chess_studio_http_server_request_total{http_route!~\"/api/narrative|/api/status|/api/health|/api/ready\"}[15m])), 0.001)" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area", "justifyMode": "auto" },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "decimals": 2, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 2 }] } }, "overrides": [] },
       "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 }
@@ -81,10 +81,11 @@
     },
     {
       "id": 5,
-      "title": "Peticiones por minuto",
+      "title": "Interacciones de producto por minuto",
+      "description": "No cuenta las sondas automáticas de disponibilidad. La narrativa sigue incluida como interacción de producto y se desglosa en su sección propia.",
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "sum(rate(chess_studio_http_server_request_total[5m])) * 60", "legendFormat": "total" }],
+      "targets": [{ "refId": "A", "expr": "sum(rate(chess_studio_http_server_request_total{http_route!~\"/api/status|/api/health|/api/ready\"}[5m])) * 60", "legendFormat": "total" }],
       "fieldConfig": { "defaults": { "unit": "reqpm", "min": 0 }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 }
@@ -92,10 +93,10 @@
     {
       "id": 6,
       "title": "Tráfico por familia de respuesta",
-      "description": "Ayuda a separar errores de cliente, servidor y respuestas correctas.",
+      "description": "Familias de respuesta de interacciones de producto; excluye sondas automáticas.",
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "sum by (http_response_status_class) (rate(chess_studio_http_server_request_total[5m])) * 60", "legendFormat": "{{http_response_status_class}}" }],
+      "targets": [{ "refId": "A", "expr": "sum by (http_response_status_class) (rate(chess_studio_http_server_request_total{http_route!~\"/api/status|/api/health|/api/ready\"}[5m])) * 60", "legendFormat": "{{http_response_status_class}}" }],
       "fieldConfig": { "defaults": { "unit": "reqpm", "min": 0 }, "overrides": [] },
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 }
@@ -103,10 +104,10 @@
     {
       "id": 7,
       "title": "Rutas más visitadas · última hora",
-      "description": "Volumen por ruta normalizada, sin parámetros ni identificadores de usuario.",
+      "description": "Volumen de producto por ruta normalizada, sin parámetros, identidades ni sondas automáticas.",
       "type": "table",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "topk(10, sum by (http_route) (increase(chess_studio_http_server_request_total[1h])))", "format": "table", "instant": true }],
+      "targets": [{ "refId": "A", "expr": "topk(10, sum by (http_route) (increase(chess_studio_http_server_request_total{http_route!~\"/api/status|/api/health|/api/ready\"}[1h])))", "format": "table", "instant": true }],
       "fieldConfig": { "defaults": { "decimals": 0 }, "overrides": [] },
       "options": { "showHeader": true, "sortBy": [{ "displayName": "Value", "desc": true }] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 }
@@ -114,10 +115,10 @@
     {
       "id": 8,
       "title": "p95 por ruta core · 15 min",
-      "description": "Las rutas lentas de juego y cuenta; narrativa se separa para no ocultar la salud del producto.",
+      "description": "Las rutas lentas de juego y cuenta; narrativa y sondas automáticas se separan para no ocultar la salud del producto.",
       "type": "table",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!=\"/api/narrative\"}[15m]))))", "format": "table", "instant": true }],
+      "targets": [{ "refId": "A", "expr": "topk(10, histogram_quantile(0.95, sum by (http_route, le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!~\"/api/narrative|/api/status|/api/health|/api/ready\"}[15m]))))", "format": "table", "instant": true }],
       "fieldConfig": { "defaults": { "unit": "s", "decimals": 2 }, "overrides": [] },
       "options": { "showHeader": true, "sortBy": [{ "displayName": "Value", "desc": true }] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 }
@@ -128,7 +129,7 @@
       "description": "Sólo rutas normalizadas; úsalo como punto de partida para revisar logs y trazas.",
       "type": "table",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "topk(10, sum by (http_route) (increase(chess_studio_http_server_request_total{http_response_status_class=\"5xx\"}[1h])))", "format": "table", "instant": true }],
+      "targets": [{ "refId": "A", "expr": "topk(10, sum by (http_route) (increase(chess_studio_http_server_request_total{http_route!~\"/api/status|/api/health|/api/ready\", http_response_status_class=\"5xx\"}[1h])))", "format": "table", "instant": true }],
       "fieldConfig": { "defaults": { "decimals": 0 }, "overrides": [] },
       "options": { "showHeader": true, "sortBy": [{ "displayName": "Value", "desc": true }] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 21 }
@@ -136,10 +137,10 @@
     {
       "id": 10,
       "title": "Latencia API core p95",
-      "description": "Evolución de las rutas core; el SLI superior usa la misma fuente con ventana más larga.",
+      "description": "Evolución de rutas core de producto; el SLI superior usa la misma fuente con ventana más larga.",
       "type": "timeseries",
       "datasource": "${DS_PROMETHEUS}",
-      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!=\"/api/narrative\"}[5m])))", "legendFormat": "core p95" }],
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{http_route!~\"/api/narrative|/api/status|/api/health|/api/ready\"}[5m])))", "legendFormat": "core p95" }],
       "fieldConfig": { "defaults": { "unit": "s", "min": 0 }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 }

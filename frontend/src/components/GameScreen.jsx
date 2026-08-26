@@ -132,7 +132,9 @@ export default function GameScreen({
   }, [game.id, game.isGameOver, flagFallen, forcedOutcome, seriesState?.winner, runState?.active, postGameFeedbackEnabled]);
 
   const [showReport, setShowReport] = useState(false);
-  const [notationOpen, setNotationOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 820);
+  // En la mesa ancha la notación acompaña al tablero; en portátil queda
+  // disponible pero no le roba altura al chat ni a la posición.
+  const [notationOpen, setNotationOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 1180);
   const [achievementToast, setAchievementToast] = useState(null);
   const [suddenLives, setSuddenLives] = useState(3);
   const [controlPrompt, setControlPrompt] = useState(null);

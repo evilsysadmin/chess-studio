@@ -913,7 +913,7 @@ Detalles en `docs/v16.6f-ci-insights-hub.md`.
 - **Mi cuenta** permite añadir/cambiar el email confirmando la contraseña actual.
 - **He olvidado la contraseña** ya tiene flujo UI completo; la respuesta pública no revela si el email existe.
 - El enlace `?resetToken=...` abre directamente la pantalla de nueva contraseña, caduca a los **30 minutos**, inicia sesión al completarse e invalida enlaces anteriores al cambiar el hash.
-- **Resend por HTTPS**, sin SMTP gestionado por Chess Studio. `RESEND_API_KEY` vive sólo en Render.
+- **Resend por HTTPS**, sin SMTP gestionado por Chess Studio. `RESEND_API_KEY` vive sólo en Render; si existe, la recuperación se activa automáticamente salvo que `ENABLE_EMAIL_RECOVERY=false` la desactive expresamente.
 - Mongo aplica **índice único parcial de email** para cerrar carreras entre registros/cambios concurrentes sin romper usuarios legacy sin email.
 - `render.yaml` activa `ENABLE_EMAIL_RECOVERY=true` y deja el remitente de prueba de Resend; tras verificar `shadowops.dpdns.org`, se cambia `PASSWORD_RESET_FROM` en Render.
 

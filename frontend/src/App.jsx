@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Menu from './components/Menu.jsx';
 const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
@@ -94,6 +94,7 @@ function AppInner({ isAdminUser }) {
     initialView: () => loadActiveGameSession()?.route || null,
   });
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
+  const [combatRecoveryVersion, setCombatRecoveryVersion] = useState(0);
   const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');
 
   usePresenceHeartbeat(view);
@@ -291,6 +292,15 @@ function AppInner({ isAdminUser }) {
   // Restauración de F5/deploy, Continuar partida y recovery del ErrorBoundary.
   // El hook concentra la rehidratación de contrato/run/serie/reloj sin hacer
   // que App conozca otra vez todos los detalles de persistencia.
+  const recoverCombatFromBoundary = useCallback(() => {
+    // El snapshot de Combat vive en storage local. Forzar un montaje nuevo
+    // vuelve a pasar por el controlador, que rehidrata esa foto sin tirar la
+    // batalla ni enviar al usuario al menú.
+    setCombatBattleUiActive(false);
+    setCombatRecoveryVersion((version) => version + 1);
+    return true;
+  }, []);
+
   const { continueActiveSession, recoverSessionFromBoundary } = useActiveSessionRestore({
     currentView: view,
     game,
@@ -311,6 +321,7 @@ function AppInner({ isAdminUser }) {
     setGameSaveState,
     setLoading,
     setError,
+    recoverCombat: recoverCombatFromBoundary,
   });
 
 
@@ -956,6 +967,7 @@ function AppInner({ isAdminUser }) {
 
         {view === 'combat' && (
           <CombatScreen
+            key={`combat-recovery-${combatRecoveryVersion}`}
             onExit={goBack}
             onError={setError}
             onHistory={() => navigateTo('history')}
@@ -981,6 +993,7 @@ function AppInner({ isAdminUser }) {
 
         {view === 'roguelike' && (
           <RoguelikeScreen
+            key={`roguelike-recovery-${combatRecoveryVersion}`}
             onExit={goBack}
             onError={setError}
             onHistory={() => navigateTo('history')}
