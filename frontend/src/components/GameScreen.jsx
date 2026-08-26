@@ -31,6 +31,8 @@ import { nextBestAction } from '../nextBestAction.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { humanMoveCount } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
+import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
+import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -96,6 +98,8 @@ export default function GameScreen({
   const [busy, setBusy] = useState(false);
   const [showBoardCoordinates, setShowBoardCoordinates] = useState(() => getBoardCoordinates());
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [showPostGameFeedback, setShowPostGameFeedback] = useState(false);
+  const feedbackRegisteredGameRef = useRef(null);
   const [zenMode, setZenMode] = useState(() => loadZenMode());
   const zenModeRef = useRef(zenMode);
   zenModeRef.current = zenMode;
@@ -115,6 +119,17 @@ export default function GameScreen({
     forcedOutcome,
     onPressure: () => setTurnBanner('30 segundos. Ahora cada clic viene con auditoría.'),
   });
+
+  useEffect(() => {
+    const finished = Boolean(game.isGameOver || flagFallen || forcedOutcome);
+    if (!finished || !game.id || feedbackRegisteredGameRef.current === game.id) return;
+    // No interrumpimos una serie entre partidas ni una run activa: la pregunta
+    // sólo compite por atención cuando la partida ya ha terminado de verdad.
+    if ((seriesState && !seriesState.winner) || runState?.active) return;
+    feedbackRegisteredGameRef.current = game.id;
+    if (registerCompletedGameForFeedback({ gameId: game.id })) setShowPostGameFeedback(true);
+  }, [game.id, game.isGameOver, flagFallen, forcedOutcome, seriesState?.winner, runState?.active]);
+
   const [showReport, setShowReport] = useState(false);
   const [notationOpen, setNotationOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 820);
   const [achievementToast, setAchievementToast] = useState(null);
@@ -844,6 +859,10 @@ export default function GameScreen({
             </button>
           )}
         </div>
+      )}
+
+      {showPostGameFeedback && (game.isGameOver || flagFallen || forcedOutcome) && (
+        <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />
       )}
 
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}

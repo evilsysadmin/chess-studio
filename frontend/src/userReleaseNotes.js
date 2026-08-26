@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46h',
+    title: 'Puzzles que ya muerden + feedback visible',
+    highlights: [
+      'El banco clásico sube a 30 posiciones y añade mates en 2/3, sacrificios y combinaciones largas con dificultad visible.',
+      'La rotación evita repetir tipo y dificultad para que los ejercicios fáciles no monopolicen la sesión.',
+      'Feedback aparece antes en Home, conserva su nombre en móvil y puede pedir un pulso post-partida de forma ocasional y no invasiva.',
+    ],
+  },
+  {
     release: 'v16.6dm46g',
     title: 'Tablero más claro en momentos críticos',
     highlights: [

@@ -1,4 +1,3 @@
-/* dm45i · El tablero es el centro visual: material, legible y contenido. */
 .board-wrap {
   position: relative;
   padding: clamp(5px, .9vw, 9px);

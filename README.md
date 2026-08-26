@@ -1,3 +1,10 @@
+### v16.6dm46h · Puzzles de cálculo + feedback descubrible
+
+- El banco curado crece de 19 a 30 posiciones e incorpora dificultad explícita, mates forzados en 2/3, sacrificios y combinaciones históricas de 3 a 7 medias jugadas.
+- La selección rota también por dificultad, y el gate exige profundidad mínima real para impedir que el banco vuelva a degradarse a ejercicios de una jugada.
+- Feedback se adelanta en Home y mantiene la etiqueta visible en móvil. Tras partidas terminadas puede aparecer un pulso inline opcional: primera invitación en la tercera partida, después 20% de partidas elegibles, máximo una por sesión y con cooldown.
+- Se eliminan encabezados CSS ligados a iteraciones antiguas. Sin cambios en reglas de partida, IA ni backend.
+
 ### v16.6dm46g · Tablero legible en momentos críticos
 
 - El rey en jaque recibe un aro rojo, pulso contenido y etiqueta inequívoca dentro de su casilla.

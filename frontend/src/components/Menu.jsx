@@ -246,6 +246,8 @@ export default function Menu({
         </details>
       </section>
 
+      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide} autoOpen={false} onFeedback={() => setShowFeedback(true)} />
+
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">
           <div><span className="section-label">Mejorar</span><h2>Aprender y practicar</h2></div>
@@ -285,8 +287,6 @@ export default function Menu({
       </div>
 
       {error && <p className="error-text">{error}</p>}
-
-      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide} autoOpen={false} onFeedback={() => setShowFeedback(true)} />
 
       <HomePlayNudge
         enabled={homePlayNudgeEnabled}
