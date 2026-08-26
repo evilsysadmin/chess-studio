@@ -52,12 +52,25 @@ jobs:
           terraform init -input=false
           terraform validate
 
-      # El runner es efímero. Adoptamos recursos existentes antes de planificar
-      # para que el mismo UID haga el flujo idempotente sin guardar state en Git.
+      # El runner es efímero. Si ya existe una carpeta con este título, se adopta
+      # por su UID real antes de planificar. Así no chocamos con una carpeta que
+      # hubiera sido creada previamente desde la UI.
       - name: Adopt existing Grafana resources
         shell: bash
         run: |
-          terraform import grafana_folder.chess_studio chess-studio || true
+          set -euo pipefail
+          existing_folder_uid="$(
+            curl --fail --silent --show-error \
+              --header "Authorization: Bearer $GRAFANA_AUTH" \
+              "${GRAFANA_URL%/}/api/folders?limit=1000" \
+              | jq -r '.[] | select(.title == "Chess Studio") | .uid' \
+              | head -n 1
+          )"
+
+          if [[ -n "$existing_folder_uid" && "$existing_folder_uid" != "null" ]]; then
+            terraform import grafana_folder.chess_studio "$existing_folder_uid"
+          fi
+
           terraform import grafana_dashboard.chess_studio_overview chess-studio-api-overview || true
 
       - name: Plan and apply

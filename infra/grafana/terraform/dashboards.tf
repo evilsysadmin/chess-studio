@@ -1,5 +1,4 @@
 resource "grafana_folder" "chess_studio" {
-  uid   = "chess-studio"
   title = "Chess Studio"
 }
 

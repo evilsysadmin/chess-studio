@@ -55,7 +55,8 @@ Opcionalmente, define la variable de repositorio
 `GRAFANA_METRICS_DATASOURCE_UID` si el UID de métricas no es
 `grafanacloud-metrics`. Lanza una vez el workflow manualmente desde Actions;
 después, cada cambio bajo `infra/grafana/` lo actualiza. El workflow adopta por
-UID la carpeta y el dashboard existentes antes de aplicar, de forma que es
+su UID real la carpeta existente llamada `Chess Studio`, y por UID el dashboard
+existente, antes de aplicar. Así el flujo sigue siendo
 idempotente incluso en runners efímeros.
 
 ## Alertas iniciales sugeridas
