@@ -53,9 +53,10 @@ def test_prefers_grafana_standard_environment_variable_names(monkeypatch):
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://otlp.example.net/otlp")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "Authorization=Basic%20ZXhhbXBsZTpwYXNz")
 
-    endpoint, headers = telemetry._configuration()
+    endpoint, headers, uses_standard_environment = telemetry._configuration()
     assert endpoint == "https://otlp.example.net/otlp"
     assert headers == {"Authorization": "Basic ZXhhbXBsZTpwYXNz"}
+    assert uses_standard_environment is True
 
 
 def test_http_metrics_are_bounded_and_do_not_include_client_release():

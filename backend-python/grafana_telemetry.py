@@ -63,7 +63,7 @@ def _headers_from_portal(value: str) -> dict[str, str]:
     return headers
 
 
-def _configuration() -> tuple[str, dict[str, str]] | None:
+def _configuration() -> tuple[str, dict[str, str], bool] | None:
     # Acepta directamente los nombres que muestra Grafana Cloud. Los nombres
     # GRAFANA_* se conservan por compatibilidad con el primer ZIP publicado.
     endpoint = _first_env("OTEL_EXPORTER_OTLP_ENDPOINT", "GRAFANA_OTLP_ENDPOINT")
@@ -81,7 +81,10 @@ def _configuration() -> tuple[str, dict[str, str]] | None:
         if parsed.scheme != "https" or not parsed.netloc:
             logger.warning("grafana_telemetry_disabled reason=invalid_endpoint")
             return None
-        return endpoint, portal_headers
+        # Con las variables estándar dejamos que el exporter oficial construya
+        # sus URLs /v1/metrics y /v1/traces y parsee los headers exactamente
+        # como especifica OpenTelemetry.
+        return endpoint, portal_headers, bool(raw_standard_endpoint and raw_standard_headers)
     # Compatibilidad con el contrato inicial. Hoy recomendamos copiar el
     # valor completo que Grafana muestra como OTEL_EXPORTER_OTLP_HEADERS.
     if not all((endpoint, instance_id, token)):
@@ -101,7 +104,7 @@ def _configuration() -> tuple[str, dict[str, str]] | None:
         logger.warning("grafana_telemetry_disabled reason=invalid_endpoint")
         return None
     encoded = base64.b64encode(f"{instance_id}:{token}".encode("utf-8")).decode("ascii")
-    return endpoint, {"Authorization": f"Basic {encoded}"}
+    return endpoint, {"Authorization": f"Basic {encoded}"}, False
 
 
 def configure(*, service_name: str, service_version: str, environment: str) -> bool:
@@ -120,7 +123,7 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
     if config is None:
         _state = {"enabled": False, "reason": "not_configured"}
         return False
-    endpoint, headers = config
+    endpoint, headers, use_standard_exporter_environment = config
     try:
         from opentelemetry import metrics, trace
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
@@ -136,16 +139,23 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
             "service.version": service_version[:40],
             "deployment.environment.name": environment[:32],
         })
-        metric_exporter = OTLPMetricExporter(
-            endpoint=_otlp_signal_endpoint(endpoint, "metrics"), headers=headers, timeout=5,
-        )
+        if use_standard_exporter_environment:
+            metric_exporter = OTLPMetricExporter(timeout=5)
+            trace_exporter = OTLPSpanExporter(timeout=5)
+        else:
+            metric_exporter = OTLPMetricExporter(
+                endpoint=_otlp_signal_endpoint(endpoint, "metrics"), headers=headers, timeout=5,
+            )
+            trace_exporter = OTLPSpanExporter(
+                endpoint=_otlp_signal_endpoint(endpoint, "traces"), headers=headers, timeout=5,
+            )
         _meter_provider = MeterProvider(
             resource=resource,
             metric_readers=[PeriodicExportingMetricReader(metric_exporter, export_interval_millis=60_000)],
         )
         _tracer_provider = TracerProvider(resource=resource)
         _tracer_provider.add_span_processor(BatchSpanProcessor(
-            OTLPSpanExporter(endpoint=_otlp_signal_endpoint(endpoint, "traces"), headers=headers, timeout=5)
+            trace_exporter
         ))
         metrics.set_meter_provider(_meter_provider)
         trace.set_tracer_provider(_tracer_provider)
@@ -156,7 +166,11 @@ def configure(*, service_name: str, service_version: str, environment: str) -> b
         _ai_requests = meter.create_counter("chess_studio.ai.request", unit="1")
         _ai_duration = meter.create_histogram("chess_studio.ai.duration", unit="s")
         _state = {"enabled": True, "reason": "configured"}
-        logger.info("grafana_telemetry_enabled service=%s", service_name)
+        logger.info(
+            "grafana_telemetry_enabled service=%s configuration=%s",
+            service_name,
+            "otel_standard_environment" if use_standard_exporter_environment else "legacy_compatibility",
+        )
         return True
     except Exception as exc:
         _state = {"enabled": False, "reason": "setup_failed"}
