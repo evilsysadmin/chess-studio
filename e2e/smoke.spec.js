@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithHeading, buttonWithVisibleText, dismissTutorialIfVisible, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
+import { buttonWithHeading, buttonWithVisibleText, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
@@ -17,16 +17,23 @@ test('login → menú → Así juegas → refresh → ESC conserva navegación',
 
 
 test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve al tablero', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
   await mockApi(page);
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.locator('.game-wordmark')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeInViewport();
+  const compactPlayer = page.getByRole('group', { name: 'Reproductor de audio plegado' });
+  await expect(compactPlayer).toBeVisible();
+  const compactPlayerBox = await compactPlayer.boundingBox();
+  expect(compactPlayerBox?.width || 0).toBeGreaterThan(180);
 
   await page.reload();
-  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(gameTurn(page)).toBeVisible();
   await expect(page.getByText('Restaurando partida en curso…', { exact: true })).toHaveCount(0);
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
 });
@@ -38,10 +45,10 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
   await buttonWithHeading(page, 'Torneo').click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Jugar siguiente partida', exact: true }).click();
-  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(gameTurn(page)).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(gameTurn(page)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toHaveCount(0);
 });
@@ -53,7 +60,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(gameTurn(page)).toBeVisible();
 
   await page.reload();
   await expect(page.getByText('La partida sigue guardada.', { exact: true })).toBeVisible();
@@ -62,7 +69,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Reintentar recuperación', exact: true }).click();
-  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(gameTurn(page)).toBeVisible();
 });
 
 

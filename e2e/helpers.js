@@ -137,6 +137,14 @@ export function buttonWithHeading(scope, text) {
   return scope.getByRole('button').filter({ has: heading });
 }
 
+export function gameStatus(page) {
+  return page.getByRole('status', { name: 'Estado de la partida' });
+}
+
+export function gameTurn(page, text = 'Tu turno') {
+  return gameStatus(page).getByText(text, { exact: true });
+}
+
 export async function dismissTutorialIfVisible(page) {
   // Defensive fallback: close every visible mechanic tutorial. A strict
   // getByRole('button', { name: 'Saltar' }) can throw when two overlays are

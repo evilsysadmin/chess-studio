@@ -719,12 +719,12 @@ function AppInner({ isAdminUser }) {
         onRecover={recoverSessionFromBoundary}
         canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
       >
-      <div className="app-shell">
+      <div className={`app-shell ${isBoardGameView ? 'game-app-shell' : ''}`}>
         <div className={`masthead ${isBoardGameView ? 'masthead-game-compact' : ''}`}>
           <div className="masthead-top-row">
             <div className="masthead-text">
               {!isBoardGameView && <span className="masthead-kicker">JUEGA · APRENDE · COMPITE</span>}
-              {isBoardGameView ? <span className="game-wordmark">Chess Studio</span> : <h1>Chess Studio</h1>}
+              {isBoardGameView ? <span className="game-wordmark"><span aria-hidden="true">♞</span><b>Chess Studio</b></span> : <h1>Chess Studio</h1>}
             </div>
             <div className="masthead-actions">
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (

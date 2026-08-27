@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46i',
+    title: 'Mesa de partida más limpia',
+    highlights: [
+      'Studio Marfil es la apariencia inicial de piezas para cuentas nuevas; las skins retro siguen disponibles.',
+      'La pantalla de partida aprovecha mejor la altura: tablero, estado y acciones importantes quedan más a mano.',
+      'La cabecera y el reproductor se integran mejor en la mesa y el jaque se señala con menos ruido visual.',
+    ],
+  },
+  {
     release: 'v16.6dm46h',
     title: 'Partidas más fáciles de leer',
     highlights: [

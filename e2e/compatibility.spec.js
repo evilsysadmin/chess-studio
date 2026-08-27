@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
 test('storage bloqueado · login y navegación básica siguen utilizables', async ({ page }) => {
   await page.addInitScript(() => {
@@ -129,7 +129,7 @@ test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ pa
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
-  await expect(page.getByText('Tu turno', { exact: true })).toBeVisible();
+  await expect(gameTurn(page)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Chess Studio', exact: true })).toHaveCount(0);
   await expect(page.locator('.player-status-bar')).toHaveCount(0);
   await expect(page.locator('.square-coordinate')).toHaveCount(16);

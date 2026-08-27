@@ -675,6 +675,10 @@ export default function GameScreen({
   if (hintLoading) hintButtonLabel = 'Pensando…';
   else if (hintMode === 'paid') hintButtonLabel = `Pista (${currentHintCost} pts)`;
 
+  const showProminentStatus = Boolean(
+    forcedOutcome || flagFallen || (!zenMode && turnBanner) || statusLabel
+  );
+
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
   const gameContextMessages = [
     !zenMode && prediction ? { id: 'game-prediction', by: 'system', event: 'PRONÓSTICO', text: prediction.text.replace(/^Pronóstico:\s*/i, '') } : null,
@@ -713,9 +717,11 @@ export default function GameScreen({
     <div>
       <div className="game-layout">
         <div className="board-column">
-          <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`}>
-            {statusText}
-          </div>
+          {showProminentStatus && (
+            <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`}>
+              {statusText}
+            </div>
+          )}
           {!zenMode && audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{audienceReaction}</b></div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
@@ -765,25 +771,6 @@ export default function GameScreen({
                   <span className={`board-reading-save is-${saveState}`}><i aria-hidden="true" />{saveState === 'saving' ? 'Guardando' : saveState === 'error' ? 'Sin guardar' : 'Guardado'}</span>
                 </div>
               )}
-            </div>
-            {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
-              <div className="game-side-music" aria-label="Música de la partida">
-                <MusicPlayer initiallyCollapsed />
-              </div>
-              <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
-                <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
-                <div className="game-notation-row">
-                  <NotationPanel history={game.history} difficulty={game.difficulty} />
-                </div>
-              </details>
-              <GameChat messages={gameChat} contextMessages={gameContextMessages} />
-            </aside>}
-          </div>
-          {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
-          {!zenMode && captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
-          {!zenMode && hintMode === 'paid' && (
-            <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
-          )}
           <div className="game-controls">
             {!zenMode && hintMode !== 'off' && (
               <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
@@ -806,6 +793,25 @@ export default function GameScreen({
             </button>
             <button className="secondary-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
           </div>
+            </div>
+            {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
+              <div className="game-side-music" aria-label="Música de la partida">
+                <MusicPlayer context="game" />
+              </div>
+              <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
+                <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
+                <div className="game-notation-row">
+                  <NotationPanel history={game.history} difficulty={game.difficulty} />
+                </div>
+              </details>
+              <GameChat messages={gameChat} contextMessages={gameContextMessages} />
+            </aside>}
+          </div>
+          {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
+          {!zenMode && captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
+          {!zenMode && hintMode === 'paid' && (
+            <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
+          )}
           {game.history.length > 0 && (
             <details className="game-advanced-tools">
               <summary>Opciones avanzadas</summary>

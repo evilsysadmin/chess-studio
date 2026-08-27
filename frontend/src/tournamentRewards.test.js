@@ -68,7 +68,7 @@ describe('selección persistida', () => {
   });
 
   it('el skin por defecto es "default" si nunca se eligió nada', () => {
-    expect(loadSelectedSkin()).toBe('default');
+    expect(loadSelectedSkin()).toBe('studio');
   });
 
   it('guarda y recupera la selección', () => {
@@ -80,6 +80,6 @@ describe('selección persistida', () => {
 
   it('rechaza identificadores de skin desconocidos', () => {
     saveSelectedSkin('no-existe');
-    expect(loadSelectedSkin()).toBe('default');
+    expect(loadSelectedSkin()).toBe('studio');
   });
 });

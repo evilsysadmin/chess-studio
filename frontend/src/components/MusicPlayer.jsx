@@ -45,7 +45,7 @@ function saveDeckExpanded(value) {
   try { setStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
 }
 
-export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false, ownsMediaSession = false } = {}) {
+export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false, ownsMediaSession = false, context = 'default' } = {}) {
   const [state, setState] = useState(() => snapshot());
   const [expanded, setExpanded] = useState(() => forceExpanded || (!initiallyCollapsed && loadDeckExpanded()));
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
@@ -279,7 +279,7 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
 
   if (!expanded && !forceExpanded) {
     return (
-      <div className="music-deck music-deck-collapsed" role="group" aria-label="Reproductor de audio plegado">
+      <div className={`music-deck music-deck-collapsed ${context === 'game' ? 'music-deck-game' : ''}`} role="group" aria-label="Reproductor de audio plegado">
         <button type="button" className="music-deck-expand" onClick={() => setDeckExpanded(true)} aria-label="Abrir reproductor de música" title="Abrir reproductor">
           <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />
           <span aria-hidden="true">♫</span>
@@ -300,7 +300,7 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   }
 
   return (
-    <div className="music-deck music-deck-expanded" role="group" aria-label="Reproductor y controles de audio">
+    <div className={`music-deck music-deck-expanded ${context === 'game' ? 'music-deck-game' : ''}`} role="group" aria-label="Reproductor y controles de audio">
       {!forceExpanded && (
         <button type="button" className="music-deck-collapse" onClick={() => setDeckExpanded(false)} aria-label="Plegar reproductor de música" title="Plegar reproductor">−</button>
       )}

@@ -1,0 +1,152 @@
+/* La partida prioriza tablero, estado y decisiones; el resto acompaña sin
+   empujar controles importantes fuera del viewport. */
+.game-app-shell {
+  padding-top: clamp(.55rem, 1.2vh, .9rem);
+  padding-bottom: 1.25rem;
+}
+
+.masthead-game-compact {
+  margin-bottom: .28rem;
+  padding-bottom: .28rem;
+  border-bottom-color: color-mix(in srgb, var(--studio-line) 42%, transparent);
+}
+.masthead-game-compact .masthead-top-row { min-height: 38px; }
+.game-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  color: color-mix(in srgb, var(--parchment) 90%, var(--parchment-dim));
+  font: 700 .92rem/1 var(--font-display);
+  letter-spacing: .012em;
+}
+.game-wordmark > span {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--brass-dim) 48%, var(--studio-line));
+  border-radius: 7px;
+  background: rgba(0,0,0,.14);
+  color: var(--brass);
+  font: 700 .92rem/1 var(--font-body);
+}
+.game-wordmark > b { font-weight: 700; }
+
+/* En altura limitada el tablero cede espacio antes que las acciones. */
+.game-layout {
+  --game-cell-size: min(11vw, 62px, max(42px, calc((100dvh - 330px) / 8)));
+}
+.game-layout .board-grid {
+  grid-template-columns: repeat(8, var(--game-cell-size));
+  grid-template-rows: repeat(8, var(--game-cell-size));
+}
+.game-board-stack { gap: .4rem; }
+.game-player-rail {
+  min-height: 48px;
+  padding-block: .36rem;
+}
+
+/* El marco parece una mesa, no un indicador luminoso de estado. */
+.game-layout .board-wrap {
+  border-color: rgba(166,135,91,.38);
+  background: linear-gradient(135deg, #403229, #251e1a 70%, #31251f);
+  box-shadow: 0 14px 32px rgba(3,5,9,.34), inset 0 1px rgba(255,255,255,.055);
+}
+.game-layout .board-wrap::after { display: none; }
+.game-layout .board-wrap.board-turn-human {
+  border-color: rgba(205,172,85,.48);
+  box-shadow: 0 14px 32px rgba(3,5,9,.34), inset 0 1px rgba(255,255,255,.055);
+}
+.game-layout .board-wrap.board-turn-cpu {
+  border-color: rgba(104,137,164,.38);
+  box-shadow: 0 14px 32px rgba(3,5,9,.34), inset 0 1px rgba(255,255,255,.05);
+}
+
+/* Jaque inequívoco pero sobrio: la casilla habla por sí sola. */
+.game-layout .square.king-in-check {
+  animation: none;
+  filter: none;
+  box-shadow: inset 0 0 0 3px rgba(221,77,67,.92), inset 0 0 14px rgba(166,34,30,.28);
+}
+.game-layout .square.king-in-check::after,
+.game-layout .check-marker { display: none; }
+
+/* Acciones frecuentes viven con el tablero y permanecen visibles aunque el
+   panel lateral sea más alto. Las destructivas siguen siendo secundarias. */
+.game-board-stack .game-controls {
+  width: min(100%, 620px);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .42rem;
+  margin: .02rem 0 0;
+  padding: .34rem;
+  border: 1px solid color-mix(in srgb, var(--studio-line) 55%, transparent);
+  border-radius: 9px;
+  background: rgba(9,12,18,.22);
+}
+.game-board-stack .game-controls .secondary-btn {
+  min-height: 34px;
+  padding: .48rem .68rem;
+  font-size: .72rem;
+}
+
+/* En partida el reproductor plegado es una fila deliberada del panel lateral,
+   no una pastilla flotante ni un icono huérfano. */
+.game-side-music .music-deck-game.music-deck-collapsed {
+  width: 100%;
+  min-height: 42px;
+  grid-template-columns: minmax(0,1fr) 34px;
+  padding: .3rem .34rem;
+  border-color: color-mix(in srgb, var(--studio-line) 72%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(25,31,40,.96), rgba(15,20,27,.96));
+  box-shadow: inset 0 1px rgba(255,255,255,.025);
+}
+.game-side-music .music-deck-game.music-deck-collapsed .music-deck-expand {
+  width: 100%;
+  grid-template-columns: auto auto minmax(0,1fr) auto;
+  padding-inline: .45rem;
+}
+.game-side-music .music-deck-game.music-deck-collapsed .music-deck-collapsed-track {
+  display: block;
+  color: var(--parchment-dim);
+}
+.game-side-music .music-deck-game.music-deck-collapsed .music-deck-collapsed-hint {
+  display: block;
+  color: color-mix(in srgb, var(--brass) 82%, var(--parchment-dim));
+}
+.game-side-music .music-deck-game.music-deck-expanded {
+  border-radius: 9px;
+}
+
+@media (max-height: 760px) and (min-width: 700px) {
+  .game-app-shell { padding-top: .35rem; }
+  .masthead-game-compact { min-height: 34px; margin-bottom: .15rem; }
+  .game-player-rail { min-height: 44px; padding-block: .28rem; }
+  .game-player-avatar { width: 32px; height: 32px; }
+  .game-board-stack { gap: .3rem; }
+  .board-reading-rail { min-height: 27px; padding-block: .25rem; }
+  .game-board-stack .game-controls { padding-block: .25rem; }
+  .game-board-stack .game-controls .secondary-btn { min-height: 32px; padding-block: .4rem; }
+}
+
+@media (max-width: 980px) {
+  .game-layout { --game-cell-size: min(11vw, 62px); }
+}
+
+@media (max-width: 520px) {
+  .game-app-shell { padding-top: .35rem; padding-bottom: 1rem; }
+  .game-wordmark { font-size: .8rem; }
+  .game-wordmark > span { width: 25px; height: 25px; font-size: .82rem; }
+  .game-board-stack .game-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    width: 100%;
+  }
+  .game-board-stack .game-controls .secondary-btn { width: 100%; }
+}
+
+@media (max-width: 360px) {
+  .game-board-stack .game-controls { grid-template-columns: 1fr; }
+}

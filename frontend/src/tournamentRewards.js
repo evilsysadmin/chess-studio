@@ -61,11 +61,11 @@ export function saveSelectedTitle(id) {
 }
 
 export function loadSelectedSkin() {
-  return getStorageItem(STORAGE_LOCAL, SKIN_KEY) || 'default';
+  return getStorageItem(STORAGE_LOCAL, SKIN_KEY) || 'studio';
 }
 
 export function saveSelectedSkin(id) {
-  const safeId = PIECE_SKINS.some((skin) => skin.id === id) ? id : 'default';
+  const safeId = PIECE_SKINS.some((skin) => skin.id === id) ? id : 'studio';
   setProfileStorageItem(SKIN_KEY, safeId);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('chess-piece-skin-change', { detail: safeId }));
 }

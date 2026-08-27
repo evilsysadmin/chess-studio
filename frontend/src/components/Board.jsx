@@ -378,7 +378,6 @@ export default function Board({
               >
                 {showCoordinates && fIdxDisplay === 0 && <span className="square-coordinate rank-coordinate" aria-hidden="true">{rank}</span>}
                 {showCoordinates && rIdxDisplay === 7 && <span className="square-coordinate file-coordinate" aria-hidden="true">{file}</span>}
-                {isCheckedKing && <span className="check-marker" aria-hidden="true">JAQUE</span>}
                 {piece && pieceLevels?.[square] > 1 && (
                   <span className={`piece-level-glow tier-${levelTier(pieceLevels[square])}`} />
                 )}

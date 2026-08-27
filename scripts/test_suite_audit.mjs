@@ -239,6 +239,13 @@ if (/buttonWithVisibleText\([^\n]*['"]Torneo['"]\)/.test(e2eSource)) {
 if (!e2eSource.includes("buttonWithHeading(page, 'Torneo').click()")) {
   fail('El smoke de Torneo debe anclar la tarjeta Home a su heading para evitar colisión con el chip de estado');
 }
+
+if (/getByText\(['"]Tu turno['"]/m.test(e2eSource)) {
+  fail('E2E no debe localizar "Tu turno" globalmente: el estado puede aparecer en varias superficies; usa gameTurn(page)');
+}
+if (!e2eSource.includes('gameTurn(page)')) {
+  fail('Los smoke de continuidad deben anclar el turno al rail accesible Estado de la partida');
+}
 if (/getByRole\(['"]heading['"],[^\n]*(?:¿Qué te apetece\?|Elige tu próxima partida)/.test(e2eSource)) {
   fail('E2E no debe acoplar la Home a su titular editorial; usa la región estable "Modos principales"');
 }

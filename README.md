@@ -1,3 +1,11 @@
+### v16.6dm46i · Mesa profesional y compacta
+
+- Studio Marfil pasa a ser la apariencia inicial de piezas para cuentas nuevas; las skins retro siguen disponibles como cosméticos.
+- La pantalla de partida aprovecha la altura disponible: acciones frecuentes viven con el tablero, la cabecera se compacta y el tablero cede tamaño en viewports bajos antes de esconder controles.
+- El reproductor conserva su estado de sesión y, plegado durante una partida, ocupa una fila real del panel lateral en lugar de convertirse en un control flotante diminuto.
+- Jaque y turno reducen señales duplicadas: el rail del tablero posee el estado normal y la casilla del rey usa un aviso rojo sobrio.
+- Playwright ancla «Tu turno» al estado accesible de la partida y el smoke crítico valida 1366×768, acciones dentro del viewport y player compacto con ancho útil.
+
 ### v16.6dm46h · Mesa y cierre de partida más claros
 
 - Una franja compacta debajo de la mesa reúne turno, última jugada y confirmación de guardado; en móvil conserva sólo lo esencial.
