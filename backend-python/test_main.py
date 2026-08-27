@@ -1608,6 +1608,41 @@ def test_admin_can_mark_feedback_read_and_resolved(monkeypatch):
     invalid = client.post(f'/api/admin/feedback/{feedback_id}/status', json={'status': 'burned'})
     assert invalid.status_code == 400
 
+
+def test_admin_can_reply_to_feedback_and_user_sees_only_their_thread(monkeypatch):
+    import asyncio
+    import feedback_store as fstore
+    import main as main_module
+
+    own = client.post('/api/feedback', json={'category': 'bug', 'message': 'Se bloquea el tablero al entrenar.'})
+    assert own.status_code == 201
+    own_id = own.json()['feedback']['id']
+    asyncio.run(fstore.create_feedback(username='otro_user', category='bug', message='Esto es privado del otro usuario.'))
+
+    mine = client.get('/api/feedback/mine')
+    assert mine.status_code == 200
+    assert [row['id'] for row in mine.json()['feedback']] == [own_id]
+
+    monkeypatch.setattr(main_module, '_ADMIN_USERNAMES', {'testuser'})
+    replied = client.post(
+        f'/api/admin/feedback/{own_id}/reply',
+        json={'message': 'RESUELTO: ya no bloquea el tablero.', 'resolve': True},
+    )
+    assert replied.status_code == 200
+    assert replied.json()['feedback']['status'] == 'resolved'
+    assert replied.json()['feedback']['admin_reply'] == 'RESUELTO: ya no bloquea el tablero.'
+    assert replied.json()['feedback']['replied_at']
+
+    mine_after = client.get('/api/feedback/mine').json()['feedback']
+    assert mine_after[0]['admin_reply'] == 'RESUELTO: ya no bloquea el tablero.'
+    assert mine_after[0]['status'] == 'resolved'
+
+
+def test_feedback_reply_requires_admin_and_nonempty_message():
+    created = client.post('/api/feedback', json={'category': 'idea', 'message': 'Más temas de tablero.'})
+    feedback_id = created.json()['feedback']['id']
+    assert client.post(f'/api/admin/feedback/{feedback_id}/reply', json={'message': 'Gracias'}).status_code == 403
+
 # ---------- Primer plano aproximado ----------
 
 def test_foreground_summary_expires_stale_visible_tabs():

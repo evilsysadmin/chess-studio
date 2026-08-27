@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { request, requestJson } from './http.js';
 
 beforeEach(() => { global.fetch = vi.fn(); });
+afterEach(() => { vi.useRealTimers(); });
 
 describe('HTTP común', () => {
   it('añade un request id sin pisar headers del caller', async () => {
@@ -30,4 +31,17 @@ describe('HTTP común', () => {
     global.fetch.mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(requestJson('/api/test')).rejects.toThrow('No hemos podido conectar con Chess Studio.');
   });
+
+  it('aborta un fetch colgado y libera el watchdog', async () => {
+    vi.useFakeTimers();
+    global.fetch.mockImplementation((_url, options = {}) => new Promise((_resolve, reject) => {
+      options.signal?.addEventListener('abort', () => reject(options.signal.reason || new Error('aborted')), { once: true });
+    }));
+    const pending = request('/api/slow', { timeoutMs: 25 });
+    const assertion = expect(pending).rejects.toMatchObject({ name: 'TimeoutError', timedOut: true });
+    await vi.advanceTimersByTimeAsync(30);
+    await assertion;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
 });

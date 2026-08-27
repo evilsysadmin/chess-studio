@@ -76,6 +76,11 @@ class AdminFeedbackStatusRequest(BaseModel):
     status: str = Field(max_length=16)
 
 
+class AdminFeedbackReplyRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+    resolve: bool = True
+
+
 class AdminDeleteUserRequest(BaseModel):
     username: str = Field(max_length=64)
 

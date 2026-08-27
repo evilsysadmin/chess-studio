@@ -158,16 +158,6 @@ export function recurrenceIndex(rivalry) {
   return { score, total, repeated };
 }
 
-export function cpuConfidence(record = {}) {
-  const games = Math.max(1, Number(record.games || 0));
-  const balance = (Number(record.losses || 0) - Number(record.wins || 0)) / games;
-  const streak = Number(record.currentStreak || 0); // positivo = humano, negativo = CPU
-  const raw = 50 + balance * 35 - streak * 5;
-  const value = Math.max(5, Math.min(95, Math.round(raw)));
-  const label = value >= 75 ? 'insufriblemente confiada' : value >= 58 ? 'sobrada' : value <= 25 ? 'molestamente prudente' : value <= 42 ? 'con respeto estadístico' : 'vigilante';
-  return { value, label };
-}
-
 export function preGamePrediction(rivalry, { difficulty = null, timeControlId = null } = {}) {
   const recent = Array.isArray(rivalry?.record?.recentGames) ? rivalry.record.recentGames : [];
   let sample = recent;

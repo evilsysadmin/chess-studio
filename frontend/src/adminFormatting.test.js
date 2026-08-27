@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from './adminFormatting.js';
+import { adminActivityTypeLabel, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from './adminFormatting.js';
 
 describe('formato temporal del panel admin', () => {
   it('usa español y reloj de 24 horas sin AM/PM', () => {
@@ -58,6 +58,14 @@ describe('formato temporal del panel admin', () => {
       { username:'bea', clientRelease:'v16.6dm43n' },
       { username:'cora', clientRelease:null },
     ], 'admin', 'v16.6dm43t')).toEqual({ current:1, outdated:1, newer:0, different:0, unknown:1 });
+  });
+
+
+  it('no enseña slugs internos en Actividad reciente', () => {
+    expect(adminActivityTypeLabel({ type: 'contract-loss' })).toBe('Contrato fallido');
+    expect(adminActivityTypeLabel({ type: 'contract-win' })).toBe('Contrato cumplido');
+    expect(adminActivityTypeLabel({ type: 'weird-old-event' })).toBe('Weird old event');
+    expect(adminActivityTypeLabel({ type: 'contract-loss', modeLabel: 'Ejecución sumaria' })).toBe('Ejecución sumaria');
   });
 
 });

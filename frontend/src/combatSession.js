@@ -1,3 +1,4 @@
+import { Chess } from 'chess.js';
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 
 // Snapshots efímeros de batallas Combat Chess.
@@ -20,14 +21,26 @@ export function combatSessionId(value = 'free') {
   return id || 'free';
 }
 
+function validFen(fen) {
+  if (typeof fen !== 'string' || !fen.trim()) return false;
+  try {
+    new Chess(fen);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function validSnapshot(parsed, id) {
   return !!(
     parsed &&
     parsed.version === SNAPSHOT_VERSION &&
     parsed.sessionId === id &&
     parsed.phase === 'battle' &&
-    typeof parsed.fen === 'string' &&
-    parsed.registry
+    validFen(parsed.fen) &&
+    parsed.registry &&
+    typeof parsed.registry === 'object' &&
+    !Array.isArray(parsed.registry)
   );
 }
 
@@ -64,6 +77,14 @@ export function saveCombatSession(sessionId, snapshot) {
     savedAt: new Date().toISOString(),
     ...snapshot,
   };
+
+  if (!validSnapshot(payload, id)) {
+    // Never overwrite a recoverable battle with an impossible FEN/registry.
+    // A corrupted in-memory state is safer to reject than to resurrect later.
+    // eslint-disable-next-line no-console
+    console.error('[CombatSession] Snapshot inválido descartado antes de persistir.');
+    return false;
+  }
 
   // La copia en memoria se actualiza primero. Así incluso un setItem que falle
   // por el entorno del navegador no puede convertir un remount React en Setup.

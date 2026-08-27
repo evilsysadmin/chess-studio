@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { submitFeedback } from '../feedback.js';
+import { useEffect, useState } from 'react';
+import { fetchMyFeedback, submitFeedback } from '../feedback.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { userFacingError } from '../userFacingError.js';
 import { MAX_FEEDBACK_IMAGES, prepareFeedbackAttachments, validateFeedbackFiles } from '../feedbackAttachments.js';
@@ -19,6 +19,13 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
   const [images, setImages] = useState([]);
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchMyFeedback().then((payload) => { if (mounted) setHistory(payload.feedback || []); }).catch(() => {});
+    return () => { mounted = false; };
+  }, [sent]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -101,6 +108,19 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
               )}
             </label>
             {error && <p className="error-text">{error}</p>}
+            {history.some((item) => item.admin_reply) && (
+              <details className="feedback-thread-history">
+                <summary>Respuestas de los admins</summary>
+                <div className="feedback-thread-list">
+                  {history.filter((item) => item.admin_reply).slice(0, 5).map((item) => (
+                    <article key={item.id} className="feedback-thread-item">
+                      <small>{item.status === 'resolved' ? 'Resuelto' : 'Respondido'} · {item.context || 'Feedback'}</small>
+                      <p>{item.admin_reply}</p>
+                    </article>
+                  ))}
+                </div>
+              </details>
+            )}
             <div className="game-controls">
               <button type="button" className="secondary-btn" onClick={onClose}>Cancelar</button>
               <button type="submit" className="primary-btn" disabled={sending || message.trim().length < 3}>

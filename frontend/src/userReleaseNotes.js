@@ -6,12 +6,13 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46zc',
-    title: 'Tus cagadas ya no congelan el tablero',
+    release: 'v16.6dm46zd',
+    title: 'Más difícil dejar Chess Studio tieso',
     highlights: [
-      'Al fallar un puzzle personal puedes seguir moviendo aunque aparezca la opción de proteger tu racha; esa decisión ya no bloquea el tablero.',
-      'Si un ejercicio antiguo contiene una respuesta inválida, se detiene con seguridad y permite pasar al siguiente en vez de quedarse esperando para siempre.',
-      'Los puzzles personales guardados se comprueban antes de entrar en la cola para apartar posiciones corruptas o imposibles.',
+      'Las peticiones que se quedan colgadas tienen límite de tiempo y Combat protege mejor los turnos diferidos para no dejar el tablero bloqueado.',
+      'Las batallas guardadas descartan posiciones corruptas antes de restaurarlas en vez de tirar la pantalla completa.',
+      'Feedback permite al admin responderte directamente; las respuestas aparecen en el propio formulario, incluido un RESUELTO cuando toque.',
+      'El entrenamiento personal conserva las protecciones contra ejercicios imposibles y bloqueos de interacción.',
     ],
   },
   {

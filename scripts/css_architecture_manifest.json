@@ -11,7 +11,6 @@
     "09-professional-polish.css",
     "10-studio-art-direction.css",
     "11-game-table.css",
-    "12-feedback-assistant.css",
     "13-product-expansion.css",
     "14-home-account-hub.css",
     "15-header-tools.css",
@@ -26,7 +25,7 @@
     "24-product-hardening.css",
     "25-visual-coherence.css"
   ],
-  "combinedSha256": "13472bd03c5695578dbed59b3b363c96aa6581c2a735a64a58b63b944f293eaf",
-  "combinedBytes": 447639,
-  "combinedLines": 12797
+  "combinedSha256": "7ed68df6843324dd45a2b7c068f6715d278e9b8e286aaa666b0d9d07599c386e",
+  "combinedBytes": 441990,
+  "combinedLines": 12593
 }

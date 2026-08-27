@@ -1,4 +1,12 @@
-### v16.6dm46zc · Entrenamiento personal fail-open
+### v16.6dm46zd · Hardening de estabilidad, feedback bidireccional y Tempo verificable
+
+- Las peticiones HTTP del frontend tienen watchdog central (15 s; 8 s para análisis), evitando `busy/loading` eternos cuando red, proxy o backend dejan una conexión pendiente.
+- Combat controla y cancela sus callbacks diferidos al desmontar la pantalla; la aplicación de la jugada CPU queda protegida con `try/finally` y conserva contexto de reintento si aparece un estado imposible.
+- Los snapshots de Combat validan el FEN con `chess.js` antes de restaurarlo para que una sesión antigua/corrupta no caiga al ErrorBoundary.
+- El probe de trazas ya no confunde `force_flush()` con una exportación correcta: registra el resultado real del `OTLPSpanExporter` y sólo declara éxito cuando el exporter devuelve `SUCCESS`. `enabled=true` sin endpoint deja de anunciar tracing activo.
+- Feedback es bidireccional: Admin puede responder y resolver en una sola acción, y cada usuario sólo puede consultar sus propios feedback y las respuestas asociadas.
+
+### v16.6dm46zd · Entrenamiento personal fail-open
 
 Corrige un bloqueo aparente en Puzzles personales: la protección opcional de racha ya no captura la interacción del tablero, y una respuesta histórica/corrupta de un puzzle nunca puede dejar la pantalla esperando indefinidamente. Los puzzles personales guardados se validan antes de entrar en la cola activa.
 

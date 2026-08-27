@@ -791,3 +791,15 @@
 .campaign-army-glance-facts span { padding:.2rem .42rem; border-radius:999px; background:rgba(255,255,255,.035); }
 .campaign-army-glance > small { color:var(--parchment-dim); line-height:1.4; }
 @media (max-width:620px) { .campaign-army-glance-heading { flex-direction:column; gap:.25rem; } .campaign-army-glance-heading > strong { text-align:left; } }
+
+.admin-feedback-reply { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem; align-items: center; }
+.admin-feedback-reply textarea { min-width: 0; width: 100%; resize: vertical; }
+.admin-feedback-reply-actions { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.admin-feedback-reply-actions .primary-btn, .admin-feedback-reply-actions .secondary-btn { min-height: 38px; white-space: nowrap; }
+.admin-feedback-reply-sent { padding: .5rem .6rem; border: 1px solid var(--ink-3); border-radius: 6px; background: rgba(255,255,255,.025); }
+.admin-feedback-reply-sent strong { font: 700 .68rem var(--font-mono); text-transform: uppercase; letter-spacing: .04em; }
+.feedback-thread-history { margin: .5rem 0; }
+.feedback-thread-list { display: grid; gap: .45rem; margin-top: .45rem; }
+.feedback-thread-item { padding: .5rem .6rem; border: 1px solid var(--ink-3); border-radius: 6px; }
+.feedback-thread-item p { margin: .2rem 0 0; white-space: pre-wrap; }
+@media (max-width: 700px) { .admin-feedback-reply { grid-template-columns: 1fr; } }

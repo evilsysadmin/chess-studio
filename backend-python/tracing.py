@@ -10,6 +10,8 @@ import json
 import logging
 import os
 import secrets
+import threading
+from collections import deque
 from typing import Any
 
 LOGGER = logging.getLogger("uvicorn.error")
@@ -24,6 +26,17 @@ _FRONTEND_VITAL: Any | None = None
 _LAST_INIT_ERROR: str | None = None
 _SIGNAL_ERRORS: dict[str, str | None] = {"traces": None, "metrics": None, "logs": None}
 _OTEL_LOG_HANDLER: Any | None = None
+_TRACE_EXPORT_STATE: dict[str, Any] = {
+    "attemptCount": 0,
+    "successCount": 0,
+    "failureCount": 0,
+    "exportedSpanCount": 0,
+    "lastResult": None,
+    "lastError": None,
+    "lastHttpStatus": None,
+}
+_TRACE_EXPORT_LOCK = threading.Lock()
+_TRACE_RECENT_SUCCESS_IDS: deque[str] = deque(maxlen=128)
 
 
 def _truthy(value: str | None) -> bool:
@@ -32,7 +45,11 @@ def _truthy(value: str | None) -> bool:
 
 def _enabled(explicit: str | None, endpoint: str) -> bool:
     raw = str(explicit or "").strip()
-    return _truthy(raw) if raw else bool(endpoint)
+    if raw and not _truthy(raw):
+        return False
+    # "enabled=true" sin endpoint era engañoso: el SDK quedaba marcado como
+    # activo aunque no hubiera ningún destino al que exportar.
+    return bool(endpoint)
 
 
 def tracing_settings(environ: dict[str, str] | None = None) -> dict[str, Any]:
@@ -94,9 +111,23 @@ def tracing_diagnostics(environ: dict[str, str] | None = None) -> dict[str, Any]
         "protocol": settings["protocol"],
         "providerBinding": "explicit" if _TRACE_PROVIDER is not None else "none",
         "exporter": "otlp-http",
+        "traceExporter": _trace_export_snapshot(),
         "initializationError": _LAST_INIT_ERROR,
         "signals": signals,
     }
+
+
+def _trace_export_snapshot() -> dict[str, Any]:
+    with _TRACE_EXPORT_LOCK:
+        return dict(_TRACE_EXPORT_STATE)
+
+
+def _trace_export_error(http_status: int | None, result_name: str | None = None) -> str | None:
+    if result_name == "SUCCESS":
+        return None
+    if http_status:
+        return f"http_{int(http_status)}"
+    return "export_failed" if result_name else None
 
 
 def current_trace_id() -> str | None:
@@ -176,13 +207,25 @@ def emit_trace_probe() -> dict[str, Any]:
         from opentelemetry import trace
         from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, TraceState
         from opentelemetry.context import attach, detach
+
+        # Capture the success counter BEFORE creating the probe span. Batch export can
+        # run immediately on another thread; taking the baseline afterwards creates a
+        # race that incorrectly reports a successful export as missing.
+        before = _trace_export_snapshot()
+        before_successes = int(before.get("successCount") or 0)
+        before_spans = int(before.get("exportedSpanCount") or 0)
+
         trace_id = secrets.randbits(128) or 1
         parent_span_id = secrets.randbits(64) or 1
-        parent = SpanContext(trace_id=trace_id, span_id=parent_span_id, is_remote=True, trace_flags=TraceFlags.SAMPLED, trace_state=TraceState())
+        parent = SpanContext(
+            trace_id=trace_id,
+            span_id=parent_span_id,
+            is_remote=True,
+            trace_flags=TraceFlags.SAMPLED,
+            trace_state=TraceState(),
+        )
         token = attach(trace.set_span_in_context(NonRecordingSpan(parent)))
         try:
-            # Probe the exact provider/exporter used by Chess Studio rather than
-            # whichever provider happens to be global in the process.
             tracer = _TRACE_PROVIDER.get_tracer("chess-studio.admin-probe")
             with tracer.start_as_current_span("chess-studio.tempo.probe") as span:
                 span.set_attribute("chess_studio.probe", True)
@@ -192,8 +235,28 @@ def emit_trace_probe() -> dict[str, Any]:
                 emitted_trace_id = f"{context.trace_id:032x}" if context.is_valid else f"{trace_id:032x}"
         finally:
             detach(token)
+
         flushed = _force_flush(_TRACE_PROVIDER)
-        return {"ok": flushed and sampled, "traceId": emitted_trace_id, "sampled": sampled, "flushed": flushed, "serviceName": diagnostics["serviceName"]}
+        state = _trace_export_snapshot()
+        with _TRACE_EXPORT_LOCK:
+            exact_trace_exported = emitted_trace_id in _TRACE_RECENT_SUCCESS_IDS
+        exported = (
+            exact_trace_exported
+            and int(state.get("successCount") or 0) > before_successes
+            and int(state.get("exportedSpanCount") or 0) > before_spans
+        )
+        exporter_ok = state.get("lastResult") == "SUCCESS"
+        return {
+            "ok": bool(flushed and sampled and exported and exporter_ok),
+            "traceId": emitted_trace_id,
+            "sampled": sampled,
+            "flushed": flushed,
+            "exported": exported,
+            "exportResult": state.get("lastResult"),
+            "exportError": state.get("lastError"),
+            "httpStatus": state.get("lastHttpStatus"),
+            "serviceName": diagnostics["serviceName"],
+        }
     except Exception as exc:
         LOGGER.warning("Tempo trace probe failed open: %s", type(exc).__name__)
         return {"ok": False, "reason": "probe_failed", "errorType": type(exc).__name__, "diagnostics": tracing_diagnostics()}
@@ -212,7 +275,15 @@ def emit_observability_probe() -> dict[str, Any]:
         "ok": bool(trace_result.get("ok") and metrics_flushed and logs_flushed),
         "traceId": trace_result.get("traceId"),
         "signals": {
-            "traces": {"configured": diagnostics["signals"]["traces"]["configured"], "flushed": bool(trace_result.get("flushed"))},
+            "traces": {
+                "configured": diagnostics["signals"]["traces"]["configured"],
+                "flushed": bool(trace_result.get("flushed")),
+                "exported": bool(trace_result.get("exported")),
+                "ok": bool(trace_result.get("ok")),
+                "exportResult": trace_result.get("exportResult"),
+                "exportError": trace_result.get("exportError"),
+                "httpStatus": trace_result.get("httpStatus"),
+            },
             "metrics": {"configured": diagnostics["signals"]["metrics"]["configured"], "flushed": metrics_flushed},
             "logs": {"configured": diagnostics["signals"]["logs"]["configured"], "flushed": logs_flushed},
         },
@@ -262,7 +333,60 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
             provider = TracerProvider(resource=resource)
-            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+
+            class TrackingOTLPSpanExporter(OTLPSpanExporter):
+                """OTLP exporter that exposes only safe delivery diagnostics.
+
+                `force_flush()` only means that the batch queue was drained; it does
+                NOT prove Grafana accepted the HTTP request. Capturing the actual
+                exporter result/status prevents Admin from reporting a false positive.
+                """
+
+                def _export(self, serialized_data, timeout_sec=None):
+                    try:
+                        response = super()._export(serialized_data, timeout_sec)
+                    except Exception as exc:
+                        with _TRACE_EXPORT_LOCK:
+                            _TRACE_EXPORT_STATE["lastHttpStatus"] = None
+                            _TRACE_EXPORT_STATE["lastError"] = type(exc).__name__
+                        raise
+                    status = getattr(response, "status_code", None)
+                    with _TRACE_EXPORT_LOCK:
+                        _TRACE_EXPORT_STATE["lastHttpStatus"] = int(status) if status is not None else None
+                    return response
+
+                def export(self, spans):
+                    with _TRACE_EXPORT_LOCK:
+                        _TRACE_EXPORT_STATE["attemptCount"] = int(_TRACE_EXPORT_STATE.get("attemptCount") or 0) + 1
+                    try:
+                        result = super().export(spans)
+                    except Exception as exc:
+                        with _TRACE_EXPORT_LOCK:
+                            _TRACE_EXPORT_STATE["failureCount"] = int(_TRACE_EXPORT_STATE.get("failureCount") or 0) + 1
+                            _TRACE_EXPORT_STATE["lastResult"] = "EXCEPTION"
+                            _TRACE_EXPORT_STATE["lastError"] = type(exc).__name__
+                        raise
+
+                    result_name = getattr(result, "name", str(result))
+                    with _TRACE_EXPORT_LOCK:
+                        _TRACE_EXPORT_STATE["lastResult"] = result_name
+                        status = _TRACE_EXPORT_STATE.get("lastHttpStatus")
+                        if result_name == "SUCCESS":
+                            _TRACE_EXPORT_STATE["successCount"] = int(_TRACE_EXPORT_STATE.get("successCount") or 0) + 1
+                            _TRACE_EXPORT_STATE["exportedSpanCount"] = int(_TRACE_EXPORT_STATE.get("exportedSpanCount") or 0) + len(spans)
+                            for readable_span in spans:
+                                context = getattr(readable_span, "context", None)
+                                trace_id = getattr(context, "trace_id", 0)
+                                if trace_id:
+                                    _TRACE_RECENT_SUCCESS_IDS.append(f"{int(trace_id):032x}")
+                            _TRACE_EXPORT_STATE["lastError"] = None
+                        else:
+                            _TRACE_EXPORT_STATE["failureCount"] = int(_TRACE_EXPORT_STATE.get("failureCount") or 0) + 1
+                            existing_error = _TRACE_EXPORT_STATE.get("lastError")
+                            _TRACE_EXPORT_STATE["lastError"] = _trace_export_error(status, result_name) if status else (existing_error or "export_failed")
+                    return result
+
+            provider.add_span_processor(BatchSpanProcessor(TrackingOTLPSpanExporter()))
             # Bind instrumentation explicitly to Chess Studio's provider.  A hosting
             # layer or another library may already have installed a global provider;
             # trace.set_tracer_provider() deliberately refuses to replace it.  Without

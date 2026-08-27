@@ -29,6 +29,7 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ fen, level }),
+      timeoutMs: 8000,
     });
   },
   analyzeMove(fen, from, to, promotion, level) {
@@ -36,6 +37,7 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ fen, from, to, promotion, level }),
+      timeoutMs: 8000,
     });
   },
   playMove(id, from, to, promotion) {

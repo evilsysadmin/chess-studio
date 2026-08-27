@@ -30,13 +30,6 @@
 .release-notes-list summary b { color: var(--parchment); font-size: .9rem; }
 .release-notes-list ul { display: grid; gap: .5rem; margin: 0; padding: 0 .95rem .9rem 2rem; color: var(--parchment-dim); font-size: .8rem; line-height: 1.48; }
 
-/* En Home el asistente forma parte del flujo: nunca tapa una tarjeta. */
-.home-friendly > .feedback-assistant {
-  position: static;
-  align-self: flex-end;
-  margin-top: -.35rem;
-}
-.home-friendly > .feedback-assistant .feedback-assistant-card { width: min(420px, 100%); }
 
 .home-mode-card {
   isolation: isolate;

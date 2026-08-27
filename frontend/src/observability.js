@@ -1,5 +1,18 @@
 import { withRequestId } from './requestId.js';
 
+
+const OBSERVABILITY_TIMEOUT_MS = 12000;
+
+async function observabilityFetch(fetchImpl, url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), OBSERVABILITY_TIMEOUT_MS);
+  try {
+    return await fetchImpl(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function apiBase() {
   return String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 }
@@ -11,7 +24,7 @@ export async function fetchAdminObservability({ token, from = null, to = null, f
     if (from) params.set('from_time', String(from));
     if (to) params.set('to_time', String(to));
     const suffix = params.size ? `?${params.toString()}` : '';
-    const response = await fetchImpl(`${apiBase()}/admin/observability${suffix}`, {
+    const response = await observabilityFetch(fetchImpl, `${apiBase()}/admin/observability${suffix}`, {
       headers: withRequestId({ Authorization: `Bearer ${token}` }),
     });
     if (!response.ok) return null;
@@ -25,7 +38,7 @@ export async function fetchAdminObservability({ token, from = null, to = null, f
 export async function runObservabilityProbe({ token, fetchImpl = fetch } = {}) {
   if (!token) return { ok: false, reason: 'missing_token' };
   try {
-    const response = await fetchImpl(`${apiBase()}/admin/observability/probe`, {
+    const response = await observabilityFetch(fetchImpl, `${apiBase()}/admin/observability/probe`, {
       method: 'POST',
       headers: withRequestId({ Authorization: `Bearer ${token}` }),
     });
@@ -40,7 +53,7 @@ export async function runObservabilityProbe({ token, fetchImpl = fetch } = {}) {
 export async function runTempoTraceProbe({ token, fetchImpl = fetch } = {}) {
   if (!token) return { ok: false, reason: 'missing_token' };
   try {
-    const response = await fetchImpl(`${apiBase()}/admin/observability/trace-probe`, {
+    const response = await observabilityFetch(fetchImpl, `${apiBase()}/admin/observability/trace-probe`, {
       method: 'POST',
       headers: withRequestId({ Authorization: `Bearer ${token}` }),
     });

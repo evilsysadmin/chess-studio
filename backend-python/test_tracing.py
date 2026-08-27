@@ -89,3 +89,30 @@ def test_tracing_respects_explicit_otlp_protocol():
         "OTEL_EXPORTER_OTLP_PROTOCOL": "HTTP/PROTOBUF",
     })
     assert cfg["protocol"] == "http/protobuf"
+
+
+def test_explicit_enable_without_endpoint_stays_disabled():
+    cfg = tracing_settings({"OTEL_TRACES_ENABLED": "true"})
+    assert cfg["enabled"] is False
+    assert cfg["traces_enabled"] is False
+
+
+def test_trace_export_error_reports_safe_http_status():
+    import tracing
+    assert tracing._trace_export_error(401, "FAILURE") == "http_401"
+    assert tracing._trace_export_error(404, "FAILURE") == "http_404"
+    assert tracing._trace_export_error(None, "FAILURE") == "export_failed"
+    assert tracing._trace_export_error(200, "SUCCESS") is None
+
+
+def test_trace_export_diagnostics_exposes_counts_not_secrets(monkeypatch):
+    import tracing
+    monkeypatch.setattr(tracing, "_TRACE_EXPORT_STATE", {
+        "attemptCount": 3, "successCount": 2, "failureCount": 1,
+        "exportedSpanCount": 9, "lastResult": "FAILURE",
+        "lastError": "http_401", "lastHttpStatus": 401,
+    })
+    diagnostics = tracing.tracing_diagnostics({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://secret.example/otlp"})
+    assert diagnostics["traceExporter"]["successCount"] == 2
+    assert diagnostics["traceExporter"]["lastHttpStatus"] == 401
+    assert "secret.example" not in str(diagnostics)

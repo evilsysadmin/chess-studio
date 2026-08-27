@@ -102,14 +102,6 @@
   max-height: 570px;
   gap: .55rem;
 }
-.game-side-column .cpu-presence {
-  width: 100%;
-  max-width: none;
-  flex: 0 0 auto;
-  margin: 0;
-  border-radius: 9px;
-  box-sizing: border-box;
-}
 .game-side-column .game-chat { flex: 1 1 auto; min-height: 0; opacity: .88; }
 .game-side-column .game-chat:focus-within,
 .game-side-column .game-chat:hover { opacity: 1; }
@@ -148,7 +140,6 @@
   .game-side-column,
   .game-music-rail { width: min(100%, 646px); }
   .game-side-column { height: auto; max-height: none; min-height: 0; }
-  .game-side-column .cpu-presence { order: 1; }
   .game-side-column .game-chat { order: 2; min-height: 210px; max-height: 330px; }
   .game-music-rail { margin-top: .25rem; }
   .game-music-rail .music-deck { width: min(100%, 390px); }

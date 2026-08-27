@@ -6,6 +6,18 @@ function metric(value, suffix = '') {
   return value == null || Number.isNaN(Number(value)) ? '—' : `${Number(value).toLocaleString('es-ES')}${suffix}`;
 }
 
+
+function tempoProbeFailure(probe) {
+  const status = Number(probe?.httpStatus);
+  if (status === 401 || status === 403) return `HTTP ${status} · credenciales OTLP rechazadas`;
+  if (status === 404) return 'HTTP 404 · endpoint OTLP incorrecto';
+  if (status === 429) return 'HTTP 429 · límite/cuota de ingesta';
+  if (status >= 500) return `HTTP ${status} · gateway OTLP no disponible`;
+  if (status > 0) return `HTTP ${status} · exportación rechazada`;
+  if (probe?.exportError) return String(probe.exportError);
+  return probe?.exportResult || probe?.reason || 'exportación OTLP no confirmada';
+}
+
 function operationalVerdict({ loading, summary, slo, burnRate, runtime }) {
   if (loading) return { level: 'unknown', label: 'COMPROBANDO', message: 'Midiendo la salud operativa…' };
   if (summary.status === 'unknown') return { level: 'unknown', label: 'SIN DATOS', message: 'No hay muestra suficiente para afirmar que todo está bien.' };
@@ -96,7 +108,7 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
           </button>
           <small>
             {signalProbe
-              ? `Logs ${signalProbe.signals?.logs?.flushed ? 'OK' : '—'} · Métricas ${signalProbe.signals?.metrics?.flushed ? 'OK' : '—'} · Trazas ${signalProbe.signals?.traces?.flushed ? 'OK' : '—'}`
+              ? `Logs ${signalProbe.signals?.logs?.flushed ? 'OK' : '—'} · Métricas ${signalProbe.signals?.metrics?.flushed ? 'OK' : '—'} · Trazas ${signalProbe.signals?.traces?.ok ? 'OK' : 'FALLO'}`
               : tracing?.signals
                 ? `OTLP · logs ${tracing.signals.logs?.configured ? 'OK' : 'OFF'} · métricas ${tracing.signals.metrics?.configured ? 'OK' : 'OFF'} · trazas ${tracing.signals.traces?.configured ? 'OK' : 'OFF'}`
                 : 'Comprueba de extremo a extremo las tres señales.'}
@@ -109,9 +121,9 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
           </button>
           <small>
             {tempoProbe?.ok
-              ? <>Traza enviada · <code>{tempoProbe.traceId}</code></>
+              ? <>Entrega OTLP confirmada · <code>{tempoProbe.traceId}</code></>
               : tempoProbe
-                ? `No confirmada · ${tempoProbe.reason || 'revisa OTLP'}`
+                ? `No confirmada · ${tempoProbeFailure(tempoProbe)}`
                 : tracing?.configured
                   ? `OTLP activo · ${tracing.serviceName || 'backend'}`
                   : tracing?.enabled

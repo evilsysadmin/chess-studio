@@ -1241,57 +1241,6 @@
   * { transition: none !important; animation: none !important; }
 }
 
-/* ---------- Presencia CPU / comentarios selectivos ---------- */
-.cpu-presence {
-  width: min(100%, 620px);
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-height: 54px;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--ink-3);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.14);
-}
-
-.cpu-avatar {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  border: 1px solid var(--brass-dim);
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  position: relative;
-  font-family: var(--font-mono);
-  color: var(--brass);
-  background: var(--ink-2);
-  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.025);
-}
-
-.cpu-avatar-eyes { position: absolute; top: 8px; letter-spacing: 4px; margin-left: 4px; }
-.cpu-avatar-mouth { position: absolute; bottom: 5px; font-size: 1.05rem; }
-.cpu-presence-copy { min-width: 0; text-align: left; }
-.cpu-presence-name {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--brass-dim);
-}
-.cpu-presence-comment {
-  margin-top: 0.1rem;
-  font-size: 0.84rem;
-  line-height: 1.25;
-  color: var(--parchment-dim);
-}
-.cpu-presence.speaking {
-  border-color: var(--brass-dim);
-  background: var(--ink-2);
-}
-.cpu-presence.speaking .cpu-presence-comment { color: var(--parchment); }
-.cpu-presence.pulse { animation: statusPulse 0.42s cubic-bezier(0.22, 1, 0.36, 1); }
-
 /* ---------- Admin: expediente/cotilleo ---------- */
 .admin-screen { max-width: var(--surface-max-ultra); }
 .admin-table-wrap { width: 100%; overflow-x: auto; border-radius: 8px; }
@@ -1497,7 +1446,6 @@
 @media (max-width: 520px) {
   .admin-detail-grid { grid-template-columns: 1fr; }
   .admin-detail-wide { grid-column: auto; }
-  .cpu-presence { max-width: 340px; }
 }
 
 /* ---------- V6+ · trofeos y autopsia ---------- */

@@ -31,12 +31,6 @@ describe('frontend architecture contract', () => {
     expect(authenticatedAudio).not.toContain("import { startAmbientMusic, stopAmbientMusic } from './sound.js';");
   });
 
-  it('el asistente de feedback es descartable, aplaza nuevos avisos y no simula un chat', () => {
-    const assistant = read('FeedbackAssistant.jsx');
-    expect(assistant).toContain('SNOOZE_MS = 7 * 24 * 60 * 60 * 1000');
-    expect(assistant).toContain('THANK_YOU_PAUSE_MS = 14 * 24 * 60 * 60 * 1000');
-    expect(assistant).toContain('onFeedback();');
-  });
 
   it('conserva los anclajes de layout que evitan regresiones visibles en Combat y Home', () => {
     const battle = read('CombatBattleView.jsx');

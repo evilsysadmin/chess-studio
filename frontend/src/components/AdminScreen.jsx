@@ -11,8 +11,8 @@ import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
-import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
-import { fetchAdminFeedback, fetchAdminFeedbackAttachment, updateAdminFeedbackStatus } from '../feedback.js';
+import { ADMIN_USER_FILTERS, adminActivityTypeLabel, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
+import { fetchAdminFeedback, fetchAdminFeedbackAttachment, replyAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 import { ADMIN_REFRESH_MS } from '../presenceCadence.js';
 
@@ -224,6 +224,7 @@ export default function AdminScreen({ onExit }) {
   const [feedback, setFeedback] = useState(null);
   const [feedbackError, setFeedbackError] = useState(null);
   const [feedbackUpdating, setFeedbackUpdating] = useState(null);
+  const [feedbackReplies, setFeedbackReplies] = useState({});
   const [activityFilter, setActivityFilter] = useState('all');
   const [adminView, setAdminView] = useState('overview');
   const [aiPortraitByUser, setAiPortraitByUser] = useState({});
@@ -264,6 +265,22 @@ export default function AdminScreen({ onExit }) {
       setFeedback((current) => (current || []).map((item) => item.id === feedbackId ? result.feedback : item));
     } catch (e) {
       setFeedbackError(e?.message || 'No se pudo actualizar el feedback.');
+    } finally {
+      setFeedbackUpdating(null);
+    }
+  }
+
+  async function handleFeedbackReply(feedbackId, resolve = false) {
+    const message = String(feedbackReplies[feedbackId] || '').trim();
+    if (!message || feedbackUpdating) return;
+    setFeedbackUpdating(feedbackId);
+    setFeedbackError(null);
+    try {
+      const result = await replyAdminFeedback(feedbackId, message, resolve);
+      setFeedback((current) => (current || []).map((item) => item.id === feedbackId ? result.feedback : item));
+      setFeedbackReplies((current) => ({ ...current, [feedbackId]: '' }));
+    } catch (e) {
+      setFeedbackError(e?.message || 'No se pudo responder al feedback.');
     } finally {
       setFeedbackUpdating(null);
     }
@@ -355,6 +372,23 @@ export default function AdminScreen({ onExit }) {
             {item.attachments.map((attachment) => <FeedbackAttachmentPreview key={`${item.id}-${attachment.index}`} feedbackId={item.id} attachment={attachment} />)}
           </div>
         )}
+        {item.admin_reply && (
+          <div className="admin-feedback-reply-sent"><strong>Respuesta enviada</strong><p>{item.admin_reply}</p></div>
+        )}
+        <div className="admin-feedback-reply">
+          <textarea
+            value={feedbackReplies[item.id] || ''}
+            onChange={(event) => setFeedbackReplies((current) => ({ ...current, [item.id]: event.target.value }))}
+            maxLength={1000}
+            rows={2}
+            placeholder="Responder al usuario · ej. RESUELTO: ya está corregido"
+            aria-label={`Responder a ${item.username}`}
+          />
+          <div className="admin-feedback-reply-actions">
+            <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id || !(feedbackReplies[item.id] || '').trim()} onClick={() => handleFeedbackReply(item.id, false)}>Responder</button>
+            <button type="button" className="primary-btn" disabled={feedbackUpdating === item.id || !(feedbackReplies[item.id] || '').trim()} onClick={() => handleFeedbackReply(item.id, true)}>Responder + resolver</button>
+          </div>
+        </div>
         <div className="admin-feedback-actions">
           {item.status === 'new' && (
             <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Marcar leído</button>
@@ -557,7 +591,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>
                               <div><span>Forma reciente</span><strong>{(u.recentForm || []).map((r) => OUTCOME_LABEL[r]).join(' · ') || '—'}</strong></div>
                               <div className="admin-detail-wide admin-worst-detail"><span>Peor jugada registrada</span><WorstMoveAutopsy move={u.worstMove} data={insightsByUser[u.username]} /></div>
-                              <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}><i className={`admin-activity-type activity-${String(a.type || 'other').replace(/[^a-z0-9_-]/gi, '-')}`}>{a.modeLabel || a.type || 'Actividad'}</i><span>{a.date ? formatAdminTimestamp(a.date, '') : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</span></em>) : '—'}</strong></div>
+                              <div className="admin-detail-wide"><span>Actividad reciente</span><strong className="admin-activity-list">{(u.recentActivity || []).length ? (u.recentActivity || []).map((a, i) => <em key={`${a.date}-${i}`}><i className={`admin-activity-type activity-${String(a.type || 'other').replace(/[^a-z0-9_-]/gi, '-')}`}>{adminActivityTypeLabel(a)}</i><span>{a.date ? formatAdminTimestamp(a.date, '') : ''} · {a.text}{a.detail ? ` · ${a.detail}` : ''}</span></em>) : '—'}</strong></div>
                             </div>
 
                             <section className="admin-insights-panel">

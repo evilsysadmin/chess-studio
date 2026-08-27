@@ -117,3 +117,29 @@ export function summarizeAdminClientReleases(users = [], currentAdmin = null, cu
   }
   return counts;
 }
+
+
+const ADMIN_ACTIVITY_TYPE_LABELS = Object.freeze({
+  'contract-loss': 'Contrato fallido',
+  'contract-win': 'Contrato cumplido',
+  combat: 'Combat Chess',
+  tournament: 'Torneo',
+  practice: 'Práctica',
+  casual: 'Partida',
+  ghost: 'Rival fantasma',
+  'nemesis-training': 'Némesis',
+  sudden: 'Muerte súbita',
+  season: 'Temporada',
+  cup: 'Copa',
+  record: 'Récord',
+});
+
+export function adminActivityTypeLabel(activity = {}) {
+  const explicit = String(activity?.modeLabel || '').trim();
+  if (explicit) return explicit;
+  const type = String(activity?.type || '').trim();
+  if (!type) return 'Actividad';
+  if (ADMIN_ACTIVITY_TYPE_LABELS[type]) return ADMIN_ACTIVITY_TYPE_LABELS[type];
+  const humanized = type.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return humanized ? humanized.charAt(0).toUpperCase() + humanized.slice(1) : 'Actividad';
+}

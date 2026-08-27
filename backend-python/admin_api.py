@@ -22,6 +22,7 @@ from admin_insights import (
 )
 from api_models import (
     AdminDeleteUserRequest,
+    AdminFeedbackReplyRequest,
     AdminFeedbackStatusRequest,
     AdminInsightsRequest,
     AdminPlayerPortraitRequest,
@@ -63,6 +64,12 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             attachments=attachments,
         )
         return {"feedback": created}
+
+
+    @router.get("/api/feedback/mine")
+    async def user_list_feedback(username: str = Depends(auth_dependency)):
+        rows = await fstore.list_feedback_for_user(username, limit=20)
+        return {"feedback": rows}
 
 
     @router.get("/api/admin/observability")
@@ -163,6 +170,21 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
         if status not in {"new", "read", "resolved"}:
             raise HTTPException(400, "Estado de feedback inválido.")
         updated = await fstore.update_feedback_status(feedback_id, status)
+        if not updated:
+            raise HTTPException(404, "Feedback no encontrado.")
+        return {"feedback": updated}
+
+
+    @router.post("/api/admin/feedback/{feedback_id}/reply")
+    async def admin_reply_feedback(
+        feedback_id: str,
+        body: AdminFeedbackReplyRequest,
+        username: str = Depends(admin_dependency),
+    ):
+        message = (body.message or "").strip()
+        if not message:
+            raise HTTPException(400, "La respuesta no puede estar vacía.")
+        updated = await fstore.reply_to_feedback(feedback_id, message, resolve=bool(body.resolve))
         if not updated:
             raise HTTPException(404, "Feedback no encontrado.")
         return {"feedback": updated}

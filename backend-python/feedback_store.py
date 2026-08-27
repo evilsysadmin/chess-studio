@@ -47,6 +47,8 @@ async def create_feedback(*, username: str, category: str, message: str, context
         "context": context or "Home",
         "attachments": list(attachments or []),
         "status": "new",
+        "admin_reply": None,
+        "replied_at": None,
         "created_at": now,
         "updated_at": now,
     }
@@ -77,6 +79,62 @@ async def list_feedback(*, limit: int = 100) -> list[dict]:
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para leer feedback.") from exc
     return [_public_feedback(row) for row in sorted(_memory_feedback.values(), key=lambda row: row.get("created_at", ""), reverse=True)[:safe_limit]]
+
+
+async def list_feedback_for_user(username: str, *, limit: int = 20) -> list[dict]:
+    safe_limit = max(1, min(int(limit), 50))
+    col = await _get_collection()
+    if col is not None:
+        try:
+            cursor = col.find({"username": username}).sort("created_at", -1).limit(safe_limit)
+            result = []
+            async for row in cursor:
+                result.append(_public_feedback({"id": str(row.pop("_id")), **row}))
+            return result
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para leer tu feedback.") from exc
+    rows = [row for row in _memory_feedback.values() if row.get("username") == username]
+    return [_public_feedback(row) for row in sorted(rows, key=lambda row: row.get("created_at", ""), reverse=True)[:safe_limit]]
+
+
+async def reply_to_feedback(feedback_id: str, message: str, *, resolve: bool = True) -> dict | None:
+    now = datetime.now(timezone.utc).isoformat()
+    clean = str(message or "").strip()[:1000]
+    if not clean:
+        raise ValueError("La respuesta no puede estar vacía.")
+    fields = {
+        "admin_reply": clean,
+        "replied_at": now,
+        "updated_at": now,
+    }
+    if resolve:
+        fields["status"] = "resolved"
+    col = await _get_collection()
+    if col is not None:
+        try:
+            row = await col.find_one_and_update(
+                {"_id": feedback_id},
+                {"$set": fields},
+                return_document=True,
+            )
+        except TypeError:
+            try:
+                await col.update_one({"_id": feedback_id}, {"$set": fields})
+                row = await col.find_one({"_id": feedback_id})
+            except PyMongoError as exc:
+                raise PersistentStorageUnavailable("MongoDB no está disponible para responder al feedback.") from exc
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para responder al feedback.") from exc
+        if not row:
+            return None
+        return _public_feedback({"id": str(row.pop("_id")), **row})
+
+    row = _memory_feedback.get(feedback_id)
+    if not row:
+        return None
+    row = {**row, **fields}
+    _memory_feedback[feedback_id] = row
+    return _public_feedback(row)
 
 
 async def update_feedback_status(feedback_id: str, status: str) -> dict | None:

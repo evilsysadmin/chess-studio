@@ -123,6 +123,27 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const battleStartRosterRef = useRef(restoredSession?.battleStartRoster || null);
   const battleParticipantsRef = useRef(restoredSession?.battleParticipants || []);
   const unitBattleStatsRef = useRef(restoredSession?.unitBattleStats || emptyUnitBattleStats());
+  const mountedRef = useRef(true);
+  const scheduledTimersRef = useRef(new Set());
+
+  function scheduleCombatTimer(callback, delay) {
+    const timer = window.setTimeout(() => {
+      scheduledTimersRef.current.delete(timer);
+      if (mountedRef.current) callback();
+    }, delay);
+    scheduledTimersRef.current.add(timer);
+    return timer;
+  }
+
+  function cancelScheduledCombatTimers() {
+    for (const timer of scheduledTimersRef.current) window.clearTimeout(timer);
+    scheduledTimersRef.current.clear();
+  }
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    cancelScheduledCombatTimers();
+  }, []);
 
   const localChess = useMemo(() => {
     const c = new Chess();
@@ -256,6 +277,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function startBattle(options = {}) {
+    cancelScheduledCombatTimers();
     const rosterOverride = options?.rosterOverride || null;
     const deploymentValidated = options?.deploymentValidated === true;
     if (!deploymentValidated && !guardBattleStart()) return;
@@ -348,7 +370,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     // la partida se queda esperando para siempre a que "alguien" mueva.
     if (resolved === 'b') {
       setBusy(true);
-      setTimeout(() => runCpuTurn(startFen, initialRegistry, resolved, []), CPU_DELAY_MS);
+      scheduleCombatTimer(() => void runCpuTurn(startFen, initialRegistry, resolved, []), CPU_DELAY_MS);
     } else {
       setBusy(false);
     }
@@ -389,6 +411,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function finalizeBattle(outcome, finalRegistry, updatedLog, currentHumanColor) {
+    cancelScheduledCombatTimers();
+    setBusy(false);
     const isWin = outcome === 'win';
     if (isWin) playSuccessSound();
 
@@ -745,7 +769,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         }
         if (chessAfter.isCheckmate()) {
           setBusy(true);
-          setTimeout(() => resetBossPhase(currentHumanColor, finalRegistry), 650);
+          scheduleCombatTimer(() => resetBossPhase(currentHumanColor, finalRegistry), 650);
           return;
         }
       }
@@ -770,7 +794,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     if (chessAfter.turn() !== currentHumanColor) {
       setBusy(true);
-      setTimeout(() => runCpuTurn(result.fen, finalRegistry, currentHumanColor, updatedLog), CPU_DELAY_MS);
+      scheduleCombatTimer(() => void runCpuTurn(result.fen, finalRegistry, currentHumanColor, updatedLog), CPU_DELAY_MS);
     }
   }
 
@@ -791,16 +815,28 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         pushLog({ text: 'Análisis remoto no disponible · la CPU continúa con cálculo local. La batalla sigue.', tone: 'neutral', kind: 'event' });
       }
     } catch (e) {
+      if (!mountedRef.current) return;
       onError?.(e?.message || 'La CPU no pudo completar su turno.');
       pushLog({ text: 'La CPU no pudo completar su turno. Reintentar conserva exactamente esta batalla y sus bajas actuales.', tone: 'bad', kind: 'event' });
       setCpuRetryNeeded(true);
       setBusy(false);
       return;
     }
-    cpuRetryContextRef.current = null;
-    performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, suggestion.from, suggestion.to, suggestion.promotion);
-    if (recoveredLocally) setCpuRetryNeeded(false);
-    setBusy(false);
+    if (!mountedRef.current) return;
+    try {
+      performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, suggestion.from, suggestion.to, suggestion.promotion);
+      cpuRetryContextRef.current = null;
+      if (recoveredLocally) setCpuRetryNeeded(false);
+    } catch (e) {
+      // Nunca dejamos una batalla secuestrada por un estado imposible o un
+      // snapshot antiguo: se conserva el contexto exacto para poder reintentar.
+      cpuRetryContextRef.current = { fen: currentFen, registry: currentRegistry, humanColor: currentHumanColor, combatLog: currentCombatLog };
+      setCpuRetryNeeded(true);
+      onError?.(e?.message || 'La CPU no pudo aplicar su jugada.');
+      pushLog({ text: 'La jugada de la CPU no se pudo aplicar. La batalla sigue intacta; puedes reintentar el turno.', tone: 'bad', kind: 'event' });
+    } finally {
+      if (mountedRef.current) setBusy(false);
+    }
   }
 
   function retryCpuTurn() {
@@ -899,6 +935,22 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     proposeOrCommitMove(selected, square, undefined, move);
   }
 
+  function performHumanMoveSafely(from, to, promotion, techniqueId = null) {
+    try {
+      performMove(fen, registry, humanColor, combatLog, from, to, promotion, techniqueId);
+      return true;
+    } catch (error) {
+      setPendingAttack(null);
+      setPendingPromotion(null);
+      setActiveTechnique(null);
+      setSelected(null);
+      setBusy(false);
+      onError?.(error?.message || 'No se pudo aplicar la jugada. La batalla sigue intacta.');
+      pushLog({ text: 'La jugada no se pudo aplicar. No se ha cerrado la batalla; vuelve a intentarlo.', tone: 'bad', kind: 'event' });
+      return false;
+    }
+  }
+
   // Si la jugada captura algo, primero mostramos el % de acierto y esperamos
   // confirmación (un segundo clic en "Atacar") antes de comprometerla. Si no
   // es una captura, se aplica directo — no tiene sentido "confirmar" un
@@ -915,7 +967,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       // desincronizó (dato corrupto), no una captura real: aplicamos la
       // jugada directo, sin tirada ni modal de ataque.
       if (defender?.type === 'k') {
-        performMove(fen, registry, humanColor, combatLog, from, to, promotion);
+        performHumanMoveSafely(from, to, promotion);
         return;
       }
 
@@ -929,14 +981,14 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       setSelected(null);
       return;
     }
-    performMove(fen, registry, humanColor, combatLog, from, to, promotion);
+    performHumanMoveSafely(from, to, promotion);
   }
 
   function confirmAttack() {
     if (!pendingAttack) return;
     const { from, to, promotion, techniqueId } = pendingAttack;
     setPendingAttack(null);
-    performMove(fen, registry, humanColor, combatLog, from, to, promotion, techniqueId || null);
+    performHumanMoveSafely(from, to, promotion, techniqueId || null);
   }
 
   function cancelAttack() {
@@ -953,6 +1005,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function choosePromotion(code) {
+    if (!pendingPromotion) return;
     const { from, to } = pendingPromotion;
     setPendingPromotion(null);
     const moveInfo = localChess.moves({ square: from, verbose: true }).find((m) => m.to === to);
@@ -971,11 +1024,15 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       onError?.('No se pudo guardar la batalla antes de salir. Sigue en el tablero e inténtalo de nuevo.');
       return;
     }
+    cancelScheduledCombatTimers();
+    setBusy(false);
     onExit?.();
   }
 
   function retireBattle() {
     if (phase !== 'battle') return;
+    cancelScheduledCombatTimers();
+    setBusy(false);
 
     // En Roguelike, "Salir del combate" no puede ser un reset gratuito del
     // piso. Conservamos el progreso/bajas que existen en ESTE estado, pero no
@@ -1059,6 +1116,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       console.error('[Combat] Transición battle -> setup bloqueada durante una operación activa.', { combatSessionId });
       return;
     }
+    cancelScheduledCombatTimers();
+    setBusy(false);
     clearBattleSession();
     setPhase('setup');
   }
