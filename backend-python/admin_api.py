@@ -31,7 +31,6 @@ from observability_history import get_history as get_observability_history
 from narrative_cloudflare import generate_narrative, get_ai_dependency_health
 from ip_geolocation import network_location_status, resolve_country_code
 from resilience import pressure_state
-from client_telemetry import get_client_telemetry
 from deployment_annotations import ensure_current_deployment_annotation, list_deployment_annotations
 from shadow_evaluation import get_shadow_metrics
 from release_info import backend_release
@@ -97,7 +96,7 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             "dependencies": dependencies,
             "aiDependency": ai_dependency,
             "resilience": resilience,
-            "frontend": get_client_telemetry(),
+            "frontend": history.get("frontend") or {},
             "deployments": await list_deployment_annotations(),
             "shadow": get_shadow_metrics(),
             "tracing": tracing_diagnostics(),

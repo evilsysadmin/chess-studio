@@ -62,6 +62,24 @@ def record_client_event(payload: dict[str, Any], *, username: str | None = None)
     with _LOCK:
         _EVENTS.append(row)
 
+    # Keep the Admin/Grafana-facing aggregate durable across Render restarts.
+    # This path receives only the already-sanitized coarse fields above and is
+    # deliberately fail-open: telemetry must never break a product request.
+    try:
+        from observability_history import record_frontend_event
+
+        record_frontend_event(
+            row["event_type"],
+            metric_name=row["metric_name"],
+            value=row["value"],
+            error_name=row["error_name"],
+            context=row["context"],
+            release=row["release"],
+            timestamp=row["at"],
+        )
+    except Exception:
+        pass
+
     # Human-operational log may identify the authenticated account, while the
     # in-memory aggregate below stays identity-free and low-cardinality.
     log_row = {

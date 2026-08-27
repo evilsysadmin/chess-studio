@@ -69,6 +69,35 @@ def test_history_aggregates_ai_model_reason_and_usage():
     assert summary["usage"]["estimated_neurons"] > 0
 
 
+
+
+def test_frontend_history_survives_process_local_telemetry_and_stays_identity_free():
+    at = 1_800_000_000.0
+    history.record_frontend_event(
+        "web_vital", metric_name="LCP", value=832.0, context="menu", release="v16.6dm46o", timestamp=at
+    )
+    history.record_frontend_event(
+        "web_vital", metric_name="CLS", value=0.08, context="menu", release="v16.6dm46o", timestamp=at + 1
+    )
+    history.record_frontend_event(
+        "frontend_error", error_name="TypeError", context="game", release="v16.6dm46o", timestamp=at + 2
+    )
+
+    payload = _pending_bucket()["frontend"]
+    summary = history._summarize_frontend(payload)
+    assert summary["samples"] == 3
+    assert summary["errors"] == 1
+    assert summary["error_names"] == {"TypeError": 1}
+    assert summary["event_types"] == {"web_vital": 2, "frontend_error": 1}
+    assert summary["contexts"] == {"menu": 2, "game": 1}
+    assert summary["releases"] == {"v16.6dm46o": 3}
+    assert summary["vitals_p75"]["LCP"] >= 832.0
+    assert summary["vitals_p75"]["CLS"] >= 0.08
+    serialized = str(payload).lower()
+    assert "username" not in serialized
+    assert "evilsysadmin" not in serialized
+    assert "fen" not in serialized
+
 def test_history_range_is_bounded_and_defaults_to_24h():
     now = 1_800_000_000
     start, end = history.normalize_range(None, None, now=now)
@@ -153,6 +182,7 @@ def test_sparse_pending_bucket_is_rehydrated_after_flush_delta():
     history.record_presence_snapshot(3, timestamp=at)
     history.record_http_event("GET", "/api/status", 200, 12.0, timestamp=at)
     history.record_ai_event({"at": at, "provider": "local", "event_type": "generic", "channel": "comments"})
+    history.record_frontend_event("web_vital", metric_name="LCP", value=900, context="menu", release="v1", timestamp=at)
 
     bucket = history._PENDING[bucket_key]
     assert bucket["presence"] == {"samples": 1, "online_sum": 3, "online_max": 3}
@@ -161,3 +191,5 @@ def test_sparse_pending_bucket_is_rehydrated_after_flush_delta():
     assert bucket["http"]["routes"][route_key]["latency_hist"]
     assert bucket["ai"]["samples"] == 1
     assert bucket["ai"]["channels"][channel_key]["samples"] == 2
+    assert bucket["frontend"]["samples"] == 1
+    assert history._summarize_frontend(bucket["frontend"])["vital_samples"]["LCP"] == 1

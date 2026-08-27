@@ -28,12 +28,12 @@ def main() -> int:
         fail("UID estable ausente en dashboard portable de logs")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
-    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación"}
+    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente"}
     missing = sorted(required_titles - titles)
     if missing:
         fail(f"faltan paneles accionables: {', '.join(missing)}")
     expressions = "\n".join(str(target.get("expr") or "") for panel in panels for target in (panel.get("targets") or []))
-    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release"):
+    for token in ("request_path", "request_id", "status = 404", "status >= 500", "duration_ms", "client_release", "frontend_telemetry"):
         if token not in expressions:
             fail(f"las queries no cubren {token}")
     inputs = portable.get("__inputs") or []

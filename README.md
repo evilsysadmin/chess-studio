@@ -1,3 +1,10 @@
+### v16.6dm46r · Telemetría persistente + catálogo musical sin fixtures frágiles
+
+- Las señales coarse del frontend (Web Vitals y clases de error) dejan de depender sólo de memoria del proceso: se agregan en buckets anónimos de 5 minutos y sobreviven a reinicios/deploys del backend.
+- Admin usa ese histórico persistente para `Frontend · ahora`; no se guardan usernames, URLs, stacks, FEN, inputs ni texto libre.
+- Grafana `Logs accionables` añade contador y stream específico de `frontend_telemetry`, útil para distinguir ingestión real de un panel vacío.
+- El test de catálogo musical valida dinámicamente la relación pista ↔ género para todas las opciones; ya no depende de IDs representativos que una curación puede renombrar.
+
 ### v16.6dm46q · Combat recupera su flujo, audio sin números mágicos y Tempo comprobable
 
 - El mini reproductor de Combat vive dentro del rail táctico derecho y respeta el layout responsive; deja de caer como un elemento auto-colocado fuera de la rejilla.

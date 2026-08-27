@@ -24,6 +24,8 @@ FLUSH_INTERVAL_SECONDS = 30.0
 COLLECTION_NAME = "observability_5min_v2"
 LEGACY_COLLECTION_NAME = "observability_hourly_v1"
 _LATENCY_BOUNDS_MS = (25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 20000)
+_FRONTEND_MS_BOUNDS = (50, 100, 200, 500, 800, 1000, 1500, 2000, 2500, 4000, 6000, 10000, 20000)
+_FRONTEND_CLS_MILLI_BOUNDS = (10, 50, 100, 150, 250, 500, 1000, 2000, 5000)
 
 _PENDING_LOCK = threading.Lock()
 _PENDING: dict[int, dict[str, Any]] = {}
@@ -61,6 +63,21 @@ def _hist_key(latency_ms: float) -> str:
     return "inf"
 
 
+def _frontend_scaled_value(metric_name: str, value: float) -> tuple[float, tuple[int, ...]]:
+    numeric = max(0.0, float(value or 0.0))
+    if str(metric_name or '').upper() == 'CLS':
+        return numeric * 1000.0, _FRONTEND_CLS_MILLI_BOUNDS
+    return numeric, _FRONTEND_MS_BOUNDS
+
+
+def _frontend_hist_key(metric_name: str, value: float) -> tuple[str, float]:
+    scaled, bounds = _frontend_scaled_value(metric_name, value)
+    for boundary in bounds:
+        if scaled <= boundary:
+            return f"le_{boundary}", scaled
+    return "inf", scaled
+
+
 def _fresh_bucket() -> dict[str, Any]:
     return {
         "http": {
@@ -89,6 +106,15 @@ def _fresh_bucket() -> dict[str, Any]:
             "channels": {},
         },
         "presence": {"samples": 0, "online_sum": 0, "online_max": 0},
+        "frontend": {
+            "samples": 0,
+            "errors": 0,
+            "event_types": {},
+            "error_names": {},
+            "contexts": {},
+            "releases": {},
+            "metrics": {},
+        },
     }
 
 
@@ -226,6 +252,53 @@ def record_presence_snapshot(online_users: int, *, timestamp: float | None = Non
         presence["samples"] += 1
         presence["online_sum"] += online
         presence["online_max"] = max(int(presence.get("online_max") or 0), online)
+
+
+def record_frontend_event(
+    event_type: str,
+    *,
+    metric_name: str | None = None,
+    value: float | None = None,
+    error_name: str | None = None,
+    context: str | None = None,
+    release: str | None = None,
+    timestamp: float | None = None,
+) -> None:
+    """Persist only coarse, identity-free frontend telemetry aggregates.
+
+    This intentionally mirrors the already-sanitized client telemetry contract:
+    no username, URL, stack, input, FEN or free-form text reaches Mongo.
+    """
+    at = time.time() if timestamp is None else float(timestamp)
+    bucket_key = _bucket_start(at)
+    clean_event = str(event_type or "unknown")[:32]
+    clean_metric = str(metric_name or "")[:16].upper() or None
+    clean_error = str(error_name or "")[:80] or None
+    clean_context = str(context or "unknown")[:48]
+    clean_release = str(release or "unknown")[:40]
+
+    with _PENDING_LOCK:
+        frontend = _pending_bucket(bucket_key)["frontend"]
+        frontend["samples"] += 1
+        _inc(frontend["event_types"], _safe_key(clean_event))
+        _inc(frontend["contexts"], _safe_key(clean_context))
+        _inc(frontend["releases"], _safe_key(clean_release))
+
+        if clean_event != "web_vital":
+            frontend["errors"] += 1
+            if clean_error:
+                _inc(frontend["error_names"], _safe_key(clean_error))
+
+        if clean_event == "web_vital" and clean_metric and value is not None:
+            hist_key, scaled = _frontend_hist_key(clean_metric, float(value))
+            metric_defaults = {"samples": 0, "hist": {}, "value_max": 0.0}
+            row = _restore_missing_schema(
+                frontend["metrics"].setdefault(_safe_key(clean_metric), copy.deepcopy(metric_defaults)),
+                metric_defaults,
+            )
+            row["samples"] += 1
+            _inc(row["hist"], hist_key)
+            row["value_max"] = max(float(row.get("value_max") or 0.0), scaled)
 
 
 def _is_max_key(key: str) -> bool:
@@ -519,6 +592,54 @@ def _summarize_ai(ai: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _hist_percentile_for_bounds(hist: dict[str, Any], bounds: tuple[int, ...], percentile: float, max_value: float = 0.0) -> float | None:
+    counts: list[tuple[float, int]] = []
+    total = 0
+    for boundary in bounds:
+        count = max(0, int(hist.get(f"le_{boundary}") or 0))
+        if count:
+            counts.append((float(boundary), count))
+            total += count
+    inf_count = max(0, int(hist.get("inf") or 0))
+    if inf_count:
+        counts.append((max(float(max_value or 0.0), float(bounds[-1])), inf_count))
+        total += inf_count
+    if not total:
+        return None
+    target = max(1, math.ceil(total * percentile))
+    seen = 0
+    for boundary, count in counts:
+        seen += count
+        if seen >= target:
+            return round(boundary, 3)
+    return round(counts[-1][0], 3)
+
+
+def _summarize_frontend(frontend: dict[str, Any]) -> dict[str, Any]:
+    vitals_p75: dict[str, float] = {}
+    vital_samples: dict[str, int] = {}
+    for encoded, row in (frontend.get("metrics") or {}).items():
+        if not isinstance(row, dict):
+            continue
+        metric = _unsafe_key(str(encoded)).upper()
+        bounds = _FRONTEND_CLS_MILLI_BOUNDS if metric == "CLS" else _FRONTEND_MS_BOUNDS
+        p75 = _hist_percentile_for_bounds(row.get("hist") or {}, bounds, 0.75, float(row.get("value_max") or 0.0))
+        if p75 is not None:
+            vitals_p75[metric] = round(p75 / 1000.0, 3) if metric == "CLS" else p75
+        vital_samples[metric] = max(0, int(row.get("samples") or 0))
+    return {
+        "samples": max(0, int(frontend.get("samples") or 0)),
+        "errors": max(0, int(frontend.get("errors") or 0)),
+        "error_names": _decoded_counter(frontend.get("error_names") or {}, 8),
+        "event_types": _decoded_counter(frontend.get("event_types") or {}, 8),
+        "contexts": _decoded_counter(frontend.get("contexts") or {}, 8),
+        "releases": _decoded_counter(frontend.get("releases") or {}, 8),
+        "vitals_p75": vitals_p75,
+        "vital_samples": vital_samples,
+        "scope": "persistent_identity_free",
+    }
+
+
 def _parse_iso(value: str | None) -> float | None:
     if not value:
         return None
@@ -584,6 +705,11 @@ def _group_series(rows: list[tuple[int, dict[str, Any]]], start: int, end: int) 
             "ai_p99_ms": ai["p99_ms"],
             "online_average": _summarize_presence(payload.get("presence") or {})["average_online"],
             "online_peak": _summarize_presence(payload.get("presence") or {})["peak_online"],
+            "frontend_samples": _summarize_frontend(payload.get("frontend") or {})["samples"],
+            "frontend_errors": _summarize_frontend(payload.get("frontend") or {})["errors"],
+            "frontend_lcp_p75_ms": _summarize_frontend(payload.get("frontend") or {})["vitals_p75"].get("LCP"),
+            "frontend_cls_p75": _summarize_frontend(payload.get("frontend") or {})["vitals_p75"].get("CLS"),
+            "frontend_inp_p75_ms": _summarize_frontend(payload.get("frontend") or {})["vitals_p75"].get("INP"),
         })
     return series
 
@@ -616,6 +742,7 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
                         "http": document.get("http") or {},
                         "ai": document.get("ai") or {},
                         "presence": document.get("presence") or {},
+                        "frontend": document.get("frontend") or {},
                     })
     except Exception:
         persistent = False
@@ -657,6 +784,7 @@ async def get_history(from_value: str | None = None, to_value: str | None = None
         "http": _summarize_http(total.get("http") or {}, range_seconds),
         "ai": _summarize_ai(total.get("ai") or {}),
         "presence": _summarize_presence(total.get("presence") or {}),
+        "frontend": _summarize_frontend(total.get("frontend") or {}),
         "series": _group_series(selected, start, end),
     }
 

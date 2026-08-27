@@ -6,6 +6,14 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46r',
+    title: 'La telemetría deja de evaporarse',
+    highlights: [
+      'Administración conserva las señales agregadas del frontend entre reinicios del backend en lugar de depender sólo de memoria del proceso.',
+      'Grafana Logs gana una vista directa del flujo de telemetría para comprobar de un vistazo si Web Vitals y errores están llegando.',
+    ],
+  },
+  {
     release: 'v16.6dm46q',
     title: 'Combat vuelve a su sitio y la operación se deja diagnosticar',
     highlights: [

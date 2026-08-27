@@ -549,7 +549,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
                 <div><dt>CLS p75</dt><dd>{metric(runtime?.frontend?.vitals_p75?.CLS)}</dd></div>
                 <div><dt>INP p75</dt><dd>{metric(runtime?.frontend?.vitals_p75?.INP, ' ms')}</dd></div>
               </dl>
-              <small>Señales mínimas y sin stack, contenido de partida ni inputs. Preparado para exportarse después a Grafana Cloud/Faro.</small>
+              <small>Señales mínimas y sin stack, contenido de partida ni inputs. Agregado en buckets de 5 min para sobrevivir a reinicios del backend; Loki conserva además el log operacional.</small>
             </article>
 
             <article>

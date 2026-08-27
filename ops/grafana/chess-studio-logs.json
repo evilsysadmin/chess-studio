@@ -450,6 +450,81 @@
         "enableLogDetails": true,
         "sortOrder": "Descending"
       }
+    },
+    {
+      "id": 13,
+      "title": "Frontend telemetry · 15 min",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "sum(count_over_time($selector | json | event=\"frontend_telemetry\" [15m]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 14,
+      "title": "Frontend telemetry · flujo reciente",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 38,
+        "w": 18,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "$selector | json | event=\"frontend_telemetry\" | line_format \"{{.event_type}} · {{.metric_name}}={{.value}} · {{.context}} · release={{.release}} · {{.error_name}}\"",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
     }
   ],
   "refresh": "30s",
