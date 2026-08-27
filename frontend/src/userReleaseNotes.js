@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zef',
+    title: 'El inicio de sesión vuelve a hablar claro',
+    highlights: [
+      'Cancelar un inicio de sesión cancela también la petición en curso sin dejar una operación colgada.',
+      'Una contraseña incorrecta vuelve a mostrar el error correcto en vez de confundirse con una sesión caducada.',
+      'Las protecciones contra peticiones eternas se mantienen sin alterar el comportamiento normal del acceso.',
+    ],
+  },
+  {
     release: 'v16.6dm46ze',
     title: 'Más ajedrez, menos pantallas tiesas',
     highlights: [

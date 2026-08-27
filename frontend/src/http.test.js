@@ -22,6 +22,23 @@ describe('HTTP común', () => {
     await expect(requestJson('/api/test')).rejects.toMatchObject({ message: 'Conflicto controlado. · Ref: req-409', status: 409, requestId: 'req-409' });
   });
 
+
+  it('conserva el detalle de un 401 público de autenticación', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false, status: 401, headers: { get: () => null },
+      json: async () => ({ detail: 'Usuario o contraseña incorrectos.' }),
+    });
+    await expect(requestJson('/api/auth/login', { method: 'POST' })).rejects.toThrow('Usuario o contraseña incorrectos.');
+  });
+
+  it('convierte un 401 autenticado en sesión caducada', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false, status: 401, headers: { get: () => null },
+      json: async () => ({ detail: 'token expired' }),
+    });
+    await expect(requestJson('/api/profile', { headers: { Authorization: 'Bearer x' } })).rejects.toThrow('Tu sesión ha caducado.');
+  });
+
   it('tolera error sin cuerpo JSON sin enseñar el mensaje técnico', async () => {
     global.fetch.mockResolvedValue({ ok: false, status: 500, headers: { get: () => null }, json: async () => { throw new Error('no json'); } });
     await expect(requestJson('/api/test')).rejects.toThrow('Chess Studio ha tenido un problema al procesar esto.');

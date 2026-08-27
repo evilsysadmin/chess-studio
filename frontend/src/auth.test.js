@@ -39,11 +39,17 @@ describe('register/login', () => {
 
 
 
-  it('propaga AbortSignal a las peticiones de autenticación', async () => {
-    mockFetchOnce(200, { token: 'abortable-token', username: 'abortable' });
+  it('propaga la cancelación del AbortSignal a las peticiones de autenticación', async () => {
+    let fetchSignal = null;
+    global.fetch = vi.fn().mockImplementation((_url, options = {}) => new Promise((_resolve, reject) => {
+      fetchSignal = options.signal;
+      options.signal?.addEventListener('abort', () => reject(options.signal.reason || new DOMException('Aborted', 'AbortError')), { once: true });
+    }));
     const controller = new AbortController();
-    await login('abortable', 'clave123456', { signal: controller.signal });
-    expect(global.fetch.mock.calls[0][1].signal).toBe(controller.signal);
+    const pending = login('abortable', 'clave123456', { signal: controller.signal });
+    controller.abort(new DOMException('Caller cancelled', 'AbortError'));
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchSignal?.aborted).toBe(true);
   });
   it('cada login inicializa un tema musical para esa sesión', async () => {
     mockFetchOnce(200, { token: 'music-token', username: 'melomano' });

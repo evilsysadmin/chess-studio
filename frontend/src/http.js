@@ -59,7 +59,14 @@ export async function request(url, options = {}) {
   }
 }
 
-async function parseJsonResponse(response) {
+function hasAuthorizationHeader(headers) {
+  if (!headers) return false;
+  if (typeof Headers !== 'undefined' && headers instanceof Headers) return headers.has('Authorization');
+  if (Array.isArray(headers)) return headers.some(([key]) => String(key).toLowerCase() === 'authorization');
+  return Object.keys(headers).some((key) => String(key).toLowerCase() === 'authorization');
+}
+
+async function parseJsonResponse(response, { authenticatedRequest = false } = {}) {
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     const { message, requestId } = requestErrorMessage(response, body);
@@ -68,6 +75,7 @@ async function parseJsonResponse(response) {
     error.requestId = requestId;
     error.body = body;
     error.technicalMessage = message;
+    error.authenticatedRequest = authenticatedRequest;
     error.message = userFacingError(error, message);
     throw error;
   }
@@ -75,5 +83,6 @@ async function parseJsonResponse(response) {
 }
 
 export async function requestJson(url, options = {}) {
-  return parseJsonResponse(await request(url, options));
+  const authenticatedRequest = hasAuthorizationHeader(options?.headers);
+  return parseJsonResponse(await request(url, options), { authenticatedRequest });
 }

@@ -1,3 +1,9 @@
+### v16.6dm46zef · Hotfix del contrato de autenticación
+
+- La cancelación externa de login/registro se compone correctamente con el watchdog HTTP: cancelar el formulario cancela la petición real sin renunciar al límite de tiempo de seguridad.
+- Un `401` en endpoints públicos de autenticación conserva el mensaje de negocio del backend (por ejemplo, credenciales incorrectas); sólo las peticiones que ya llevaban `Authorization` se presentan como sesión caducada.
+- Los tests verifican el comportamiento observable de la cancelación en vez de exigir identidad de objeto entre señales compuestas.
+
 ### v16.6dm46ze · Auditoría de estabilidad, concurrencia y reglas
 
 - Endurece los flujos asíncronos de juego y administración con exclusión mutua inmediata, cancelación de requests obsoletos, watchdogs y protección frente a respuestas tardías. Login, Feedback, feedback post-partida, Admin, Observabilidad, Puzzles y operaciones de backup no pueden solaparse accidentalmente desde la UI.
