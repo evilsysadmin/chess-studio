@@ -14,6 +14,32 @@ function outcomeTitle(outcome) {
   return 'Operación perdida';
 }
 
+function debriefWhatHappened(debrief) {
+  if (debrief.outcome === 'retired') return 'Retirada táctica. El sector queda pendiente y puedes reorganizar antes de reintentarlo.';
+  if (debrief.outcome === 'win') return debrief.totalBossDamage > 0
+    ? `Jefe neutralizado tras ${debrief.totalBossDamage} puntos de daño acumulado.`
+    : `Sector asegurado con ${debrief.totalKills} baja${debrief.totalKills === 1 ? '' : 's'} enemiga${debrief.totalKills === 1 ? '' : 's'}.`;
+  if (debrief.outcome === 'draw') return 'Contacto sin resolución. No se fuerza una victoria ni se inventan recompensas.';
+  return `El sector se perdió. ${debrief.fallenCount ? `${debrief.fallenCount} ${debrief.fallenCount === 1 ? 'unidad cayó' : 'unidades cayeron'}.` : 'El ejército sobrevivió, pero la misión no se completó.'}`;
+}
+
+function debriefGainLine(debrief) {
+  const gains = [];
+  if (debrief.creditsGained > 0) gains.push(`+${debrief.creditsGained} créditos`);
+  if (debrief.meritGained > 0) gains.push(`+${debrief.meritGained} méritos`);
+  if (debrief.newDecorations?.length) gains.push(`${debrief.newDecorations.length} condecoración${debrief.newDecorations.length === 1 ? '' : 'es'}`);
+  if (debrief.units?.some((unit) => unit.promoted)) gains.push('ascenso');
+  return gains.length ? gains.join(' · ') : 'Sin ganancias registradas.';
+}
+
+function debriefNextStep(debrief, nextAction) {
+  if (nextAction) return nextAction;
+  if (debrief.fallenCount > 0) return 'Revisa bajas y ventanas de revive antes de la siguiente batalla.';
+  if (debrief.outcome === 'retired') return 'Reorganiza el despliegue y vuelve al briefing cuando quieras reintentar.';
+  if (debrief.outcome === 'win') return 'Continúa la campaña o invierte los créditos antes del siguiente sector.';
+  return 'Revisa la batalla antes de volver a desplegar.';
+}
+
 export default function CombatDebrief({ debrief, compact = false, onViewBattle = null, nextAction = null }) {
   const [aiDebrief, setAiDebrief] = useState(null);
   const [aiDebriefLoading, setAiDebriefLoading] = useState(false);
@@ -56,6 +82,12 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
         <span><b>{debrief.totalKills}</b><small>bajas enemigas</small></span>
         <span title="Capturas, resultado y sector asegurado"><b>{debrief.creditsGained > 0 ? `+${debrief.creditsGained}` : '0'}</b><small>créditos</small></span>
         <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
+      </div>
+
+      <div className="combat-debrief-overview" aria-label="Resumen accionable del combate">
+        <section><small>QUÉ OCURRIÓ</small><strong>{debriefWhatHappened(debrief)}</strong></section>
+        <section><small>GANANCIAS</small><strong>{debriefGainLine(debrief)}</strong></section>
+        <section><small>QUÉ HACER AHORA</small><strong>{debriefNextStep(debrief, nextAction)}</strong></section>
       </div>
 
       {(aiDebriefLoading || aiDebrief) && (
@@ -105,7 +137,6 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
       {debrief.newDecorations?.length > 0 && (
         <div className="combat-service-awards-earned">{debrief.newDecorations.map((medal) => <span key={medal.id}>✦ {medal.label}</span>)}</div>
       )}
-      {nextAction && <div className="combat-debrief-next"><span>SIGUIENTE</span><strong>{nextAction}</strong></div>}
       {onViewBattle && debrief.battleRecord && <button type="button" className="secondary-btn combat-debrief-analysis" onClick={() => onViewBattle(debrief.battleRecord)}>Ver análisis de la batalla →</button>}
     </section>
   );

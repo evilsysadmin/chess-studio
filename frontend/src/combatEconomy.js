@@ -19,6 +19,20 @@ const CONTRACT_MULTIPLIER = Object.freeze({ one: 1, three: 2.35, permanent: 7 })
 const CONTRACT_BATTLES = Object.freeze({ one: 1, three: 3, permanent: null });
 const MERCENARY_NAMES = Object.freeze(['Ámbar', 'Boreal', 'Cobra', 'Delta', 'Eco', 'Faro', 'Galia', 'Halcón', 'Ícaro', 'Jade', 'Kilo', 'Lince']);
 
+const MERCENARY_SPECIALTIES = Object.freeze([
+  { id: 'scout', label: 'Explorador', description: 'Movilidad y supervivencia para abrir rutas.', preferredEquipment: ['mobility-rig', 'service-pistol'] },
+  { id: 'assault', label: 'Asalto', description: 'Pegada inmediata para sectores duros.', preferredEquipment: ['assault-rifle', 'service-pistol'] },
+  { id: 'guard', label: 'Guardia', description: 'Perfil equilibrado para proteger veteranos.', preferredEquipment: ['field-armor', 'mobility-rig', 'service-pistol'] },
+]);
+
+function mercenaryEquipmentFor(level, specialty) {
+  for (const itemId of specialty.preferredEquipment) {
+    const item = COMBAT_EQUIPMENT.find((candidate) => candidate.id === itemId);
+    if (item && level >= item.minLevel) return item;
+  }
+  return null;
+}
+
 function int(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
@@ -121,6 +135,8 @@ export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationK
     const speedPoints = Math.floor(points / 2);
     const baseCost = Math.round((UNIT_VALUE[type] + points * 5) * (rare ? 1.45 : 1));
     const id = `${rotationKey}-${index}-${type}-${level}`;
+    const specialty = MERCENARY_SPECIALTIES[(typeOffset + index) % MERCENARY_SPECIALTIES.length];
+    const includedEquipment = mercenaryEquipmentFor(level, specialty);
     return {
       id,
       type,
@@ -129,6 +145,11 @@ export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationK
       speedPoints,
       rarity: rare ? 'veterano' : 'regular',
       alias: `${MERCENARY_NAMES[(nameOffset + index * 5) % MERCENARY_NAMES.length]}-${index + 1}`,
+      specialtyId: specialty.id,
+      specialtyLabel: specialty.label,
+      specialtyDescription: specialty.description,
+      equipmentId: includedEquipment?.id || null,
+      equipmentLabel: includedEquipment?.label || null,
       prices: Object.fromEntries(Object.entries(CONTRACT_MULTIPLIER).map(([contract, multiplier]) => [contract, Math.ceil(baseCost * multiplier)])),
     };
   });
@@ -159,8 +180,16 @@ export function hireMercenary(rosterState, offer, contract = 'one', now = Date.n
       ...(rosterState.pieces || {}),
       [key]: {
         strengthPoints: int(offer.strengthPoints), speedPoints: int(offer.speedPoints), bankedXp: 0, alive: true,
-        deploymentType: null, unlockedTechniques: [], equippedTechnique: null, equipmentId: null,
-        mercenary: { offerId: offer.id, contract, battlesRemaining: CONTRACT_BATTLES[contract], rarity: offer.rarity || 'regular', hiredAt: new Date(now).toISOString() },
+        deploymentType: null, unlockedTechniques: [], equippedTechnique: null, equipmentId: offer.equipmentId || null,
+        mercenary: {
+          offerId: offer.id,
+          contract,
+          battlesRemaining: CONTRACT_BATTLES[contract],
+          rarity: offer.rarity || 'regular',
+          specialtyId: offer.specialtyId || null,
+          specialtyLabel: offer.specialtyLabel || null,
+          hiredAt: new Date(now).toISOString(),
+        },
       },
     },
   });

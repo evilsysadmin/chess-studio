@@ -1,3 +1,11 @@
+### v16.6dm46v · Bosses con identidad, rutas con decisión y Combat más coherente
+
+- La campaña selecciona de forma determinista uno de tres reyes finales: Rey de Hierro (más HP), Rey Nómada (mates más dañinos) o Rey Sombra (menos HP, más presión de CPU). Cada uno tiene retrato propio en mapa, briefing y batalla.
+- Los nodos accesibles del mapa explican su intercambio táctico antes de elegirlos: seguro, incierto, combate, peligro o jefe. La cartografía sigue sin revelar movimientos concretos del motor.
+- Los mercenarios dejan de ser reclutas caros: llegan con especialidad operativa y equipo incluido; sus contratos siguen consumiéndose sólo si realmente son desplegados.
+- Mercado y debrief se refinan con jerarquía de producto: inversión persistente frente a fuerza temporal, y resumen postcombate en Qué ocurrió / Ganancias / Qué hacer ahora.
+- Se unifica la gramática visual de Combat: dorado para progreso/recompensa, verde para seguro, rojo para peligro y azul para inteligencia, manteniendo los detalles avanzados en segundo plano.
+
 ### v16.6dm46u · Contrato accesible estable en batalla Combat
 
 - El rail derecho de Combat vuelve a exponer el landmark accesible estable `Registro de batalla y estado táctico`; la música permanece dentro del rail sin formar parte de su identidad semántica.

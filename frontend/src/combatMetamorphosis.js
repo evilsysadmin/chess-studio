@@ -27,7 +27,7 @@ const FORM_REQUIREMENTS = Object.freeze({
   r: {
     rankId: 'general',
     rankLabel: 'General',
-    requirementLabel: 'Veterano de campaña + Cicatriz del Rey Viejo',
+    requirementLabel: 'Veterano de campaña + Cicatriz del jefe',
     serviceTest: (stats) => (stats?.battles || 0) >= 10 && (stats?.survivals || 0) >= 7 && (stats?.bossVictories || 0) >= 1,
     progressLabel: (stats) => `${Math.min(10, stats?.battles || 0)}/10 batallas · ${Math.min(7, stats?.survivals || 0)}/7 supervivencias · ${Math.min(1, stats?.bossVictories || 0)}/1 boss`,
   },

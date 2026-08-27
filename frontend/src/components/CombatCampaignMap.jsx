@@ -6,6 +6,12 @@ import {
   campaignNodeStatus,
 } from '../campaignMapVisual.js';
 import campaignCommandMapArt from '../assets/combat-campaign-command-map.webp';
+import { campaignBossForSeed } from '../combatBosses.js';
+import ironKing from '../assets/bosses/iron-king.webp';
+import nomadKing from '../assets/bosses/nomad-king.webp';
+import shadowKing from '../assets/bosses/shadow-king.webp';
+
+const BOSS_SPRITES = { iron_king: ironKing, nomad_king: nomadKing, shadow_king: shadowKing };
 
 function edgePath(edge, orientation) {
   const a = campaignNodePoint(edge.from, orientation);
@@ -34,8 +40,17 @@ function CampaignEdges({ edges, orientation }) {
   );
 }
 
+function routeDecision(node) {
+  if (node.type === 'camp') return { tone: 'safe', label: 'SEGURO', detail: 'reorganiza · ventaja' };
+  if (node.type === 'event') return { tone: 'intel', label: 'INCIERTO', detail: 'riesgo / recompensa' };
+  if (node.type === 'elite') return { tone: 'danger', label: 'ALTO RIESGO', detail: 'botín élite · ×2 ventaja' };
+  if (node.type === 'boss') return { tone: 'boss', label: 'JEFE', detail: node.mechanicLabel || 'objetivo final' };
+  return { tone: node.stage >= 5 ? 'danger' : 'normal', label: node.stage >= 5 ? 'PELIGRO' : 'COMBATE', detail: 'créditos · ventaja' };
+}
+
 function MapNode({ node, status, selectable, onSelect }) {
   const label = `${node.typeLabel}: ${node.label}`;
+  const decision = routeDecision(node);
   return (
     <button
       type="button"
@@ -47,12 +62,15 @@ function MapNode({ node, status, selectable, onSelect }) {
       aria-label={selectable ? `${label}. Elegir esta ruta.` : label}
       title={`${label} · ${node.description}`}
     >
-      <span className="campaign-map-point-core" aria-hidden="true">{node.icon}</span>
+      <span className={`campaign-map-point-core ${node.type === 'boss' ? 'has-boss-sprite' : ''}`} aria-hidden="true">
+        {node.type === 'boss' && BOSS_SPRITES[node.bossId] ? <img src={BOSS_SPRITES[node.bossId]} alt="" /> : node.icon}
+      </span>
       <span className="campaign-map-point-copy">
         <strong>{node.label}</strong>
         <small>{node.typeLabel}</small>
       </span>
       {status === 'cleared' && <span className="campaign-map-point-badge">✓</span>}
+      {status === 'available' && <span className={`campaign-route-decision ${decision.tone}`}><b>{decision.label}</b><small>{decision.detail}</small></span>}
       {status === 'available' && <span className="campaign-map-point-pulse" aria-hidden="true" />}
     </button>
   );
@@ -65,6 +83,7 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
   const progressStage = Math.max(0, Math.min(7, (campaign.route || []).length - 1));
   const selectedNode = nodes.find((node) => node.id === campaign.selectedNodeId) || null;
   const artFocus = `${44 + progressStage * 1.25}%`;
+  const boss = campaignBossForSeed(campaign.seed);
 
   return (
     <section className="combat-campaign-map-wrap" aria-label="Mapa completo de campaña Combat Chess" title="La topología es visible; dificultad, modificadores y boss requieren inteligencia.">
@@ -113,7 +132,7 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
         <span>→</span>
         <strong>{Math.max(0, (campaign.route || []).length - 1)} / 7 sectores asegurados</strong>
         <span>→</span>
-        <span>♚ Objetivo · Rey Viejo</span>
+        <span>♚ Objetivo · {boss.shortLabel}</span>
       </div>
     </section>
   );

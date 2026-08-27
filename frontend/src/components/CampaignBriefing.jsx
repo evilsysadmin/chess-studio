@@ -9,6 +9,12 @@ import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildCombatBriefingDossier } from '../aiNarrativeTasks.js';
+import { campaignBossForSeed } from '../combatBosses.js';
+import ironKing from '../assets/bosses/iron-king.webp';
+import nomadKing from '../assets/bosses/nomad-king.webp';
+import shadowKing from '../assets/bosses/shadow-king.webp';
+
+const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
 
 export default function CampaignBriefing({ campaign, node, armySummary, onBuyIntel, onContinue, onRetire }) {
   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
@@ -37,6 +43,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
 
   if (!node || !intel) return null;
   const canBuy = nextTier && campaign.operationalCredits >= nextTier.cost;
+  const boss = node.type === 'boss' ? campaignBossForSeed(campaign.seed) : null;
 
   return (
     <div className="campaign-briefing-card campaign-operation-stage simplified-stage">
@@ -58,10 +65,21 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
         <span><small>Intel</small><b>{intel.levelLabel}</b></span>
       </div>
 
+      {boss && (
+        <article className="campaign-boss-dossier" aria-label={`Boss: ${boss.label}`}>
+          <img src={BOSS_SPRITES[boss.spriteId]} alt="" aria-hidden="true" />
+          <div>
+            <small>OBJETIVO FINAL</small>
+            <strong>{boss.label}</strong>
+            <span><b>{boss.mechanicLabel}</b> · {boss.mechanicDescription}</span>
+          </div>
+        </article>
+      )}
+
       <div className="campaign-rule-alert" aria-label="Regla visible del encuentro">
         <span>EN ESTA BATALLA</span>
-        <strong>{intel.modifierLabel}</strong>
-        <p>{intel.modifierDescription}</p>
+        <strong>{boss ? boss.mechanicLabel : intel.modifierLabel}</strong>
+        <p>{boss ? boss.mechanicDescription : intel.modifierDescription}</p>
       </div>
 
       {(aiBriefingLoading || aiBriefing) && (
@@ -89,7 +107,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
               <div><dt>Nivel rival</dt><dd>Nv. {intel.opponentLevelRange} · confianza {intel.opponentLevelConfidence.toLowerCase()}</dd></div>
               <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : `${intel.threatBand} · estimación básica`}</dd></div>
               {intel.exactDifficulty != null && <div><dt>CPU exacta</dt><dd>{intel.exactDifficulty} · nivel {intel.exactOpponentLevel}</dd></div>}
-              {intel.bossHp != null && <div><dt>Boss</dt><dd>Rey con {intel.bossHp} HP</dd></div>}
+              {boss && <div><dt>Jefe</dt><dd>{boss.label}{intel.bossHp != null ? ` · ${intel.bossHp} HP` : ' · HP exacto requiere Dossier'}</dd></div>}
             </dl>
           </section>
 

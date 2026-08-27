@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46v',
+    title: 'Los reyes dejan de ser clones',
+    highlights: [
+      'La campaña elige entre tres bosses finales con retrato, HP, presión y regla propia: Rey de Hierro, Rey Nómada y Rey Sombra.',
+      'Los sectores accesibles muestran de un vistazo el tipo de decisión: seguridad, incertidumbre, combate o alto riesgo, sin revelar movimientos del motor.',
+      'Los mercenarios llegan con especialidad y equipo incluido, de modo que aportan valor táctico inmediato en vez de ser reclutas caros.',
+      'Mercado y debrief usan una jerarquía más clara: qué compras, qué ocurrió, qué ganaste y qué conviene hacer después.',
+    ],
+  },
+  {
     release: 'v16.6dm46u',
     title: 'Combat recupera su contrato de navegación',
     highlights: [

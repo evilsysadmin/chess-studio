@@ -23,6 +23,7 @@ import { deploymentSummary, grantReserveRecruit, reserveRecruitTypeForNode } fro
 import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTechniques.js';
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
+import { campaignBossForSeed } from '../combatBosses.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE } from '../combatChessBrand.js';
 import { recordGameActivity } from '../gameActivity.js';
@@ -507,7 +508,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         requireDeploymentConfirmation
         runPerks={campaign.perks || []}
         runPerkDetails={campaignPerkDetails}
-        bossConfig={isBoss ? ROGUELIKE_BOSS : null}
+        bossConfig={isBoss ? campaignBossForSeed(campaign.seed) : null}
         onBattleStart={handleCampaignBattleStarted}
         onBattleResult={handleCampaignBattleResult}
         roguelikeFloor={node?.floor || node?.stage || 1}
@@ -690,7 +691,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           {campaign.phase === 'completed' && (
             <div className="tournament-result roguelike-boss-victory campaign-node-resolution">
               <span className="section-label">OPERACIÓN CUMPLIDA</span>
-              <h3>El Rey Viejo ha caído.</h3>
+              <h3>{campaignBossForSeed(campaign.seed).label} ha caído.</h3>
               <p className="combat-operational-hint" title="La operación se archiva. Las ventajas temporales desaparecen; roster, medallas y bajas persistentes se conservan.">Operación archivada.</p>
               <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={() => finishCampaign('completed')}>Cerrar campaña victoriosa</button>
             </div>
@@ -874,7 +875,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         {run.inRun && run.phase === 'completed' && (
           <div className="tournament-result roguelike-boss-victory" style={{ marginTop: '0.8rem' }}>
             <span className="section-label">OBJETIVO CUMPLIDO</span>
-            <h3>El Rey Viejo ha caído.</h3>
+            <h3>{campaignBossForSeed(campaign.seed).label} ha caído.</h3>
             <p className="hero-scope-note">Diez pisos. Cinco puntos de vida. Ninguna necesidad de fingir que esto era una partida normal.</p>
             <div className="game-controls">
               <button type="button" className="primary-btn" onClick={handleContinueEndless}>Seguir en modo infinito → piso 11</button>

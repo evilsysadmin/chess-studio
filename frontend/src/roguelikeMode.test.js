@@ -202,6 +202,12 @@ describe('Rey Boss: HP sólo en el jefe', () => {
     expect(bossDamageAfterHumanMove(chess, 'w')).toBe(2);
   });
 
+  it('un boss de campaña puede cambiar el daño de mate sin tocar el boss clásico', () => {
+    const chess = new Chess('7k/6Q1/6K1/8/8/8/8/8 b - - 0 1');
+    expect(bossDamageAfterHumanMove(chess, 'w', { checkDamage: 1, mateDamage: 3 })).toBe(3);
+    expect(bossDamageAfterHumanMove(chess, 'w')).toBe(2);
+  });
+
   it('un jaque contra el humano NO daña al boss', () => {
     const chess = new Chess('4k3/4r3/8/8/8/8/8/4K3 w - - 0 1');
     expect(chess.inCheck()).toBe(true);

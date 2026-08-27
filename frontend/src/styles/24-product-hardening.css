@@ -270,3 +270,111 @@
   .home-today-actions { grid-column: 1 / -1; grid-row: 4; width: 100%; }
   .home-today-actions > button { width: 100%; }
 }
+
+/* dm46v · Combat Chess product polish: one visual language for routes, bosses,
+   market and debrief. Gold = action/reward, green = safe, red = danger,
+   blue = intel. Advanced detail stays secondary. */
+.campaign-route-decision {
+  position: absolute;
+  left: 50%;
+  bottom: -2.2rem;
+  translate: -50% 0;
+  z-index: 6;
+  display: grid;
+  min-width: 112px;
+  gap: .12rem;
+  padding: .34rem .46rem;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--ink-1) 92%, transparent);
+  box-shadow: 0 6px 18px rgba(0,0,0,.26);
+  pointer-events: none;
+  text-align: center;
+}
+.campaign-route-decision b { font: 700 .52rem/1 var(--font-mono); letter-spacing: .09em; color: var(--parchment); }
+.campaign-route-decision small { font: .49rem/1.2 var(--font-mono); color: var(--parchment-dim); white-space: nowrap; }
+.campaign-route-decision.safe { border-color: color-mix(in srgb, var(--success) 48%, transparent); }
+.campaign-route-decision.safe b { color: var(--success); }
+.campaign-route-decision.intel { border-color: rgba(91,160,211,.45); }
+.campaign-route-decision.intel b { color: #8bc8f1; }
+.campaign-route-decision.danger,
+.campaign-route-decision.boss { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.campaign-route-decision.danger b,
+.campaign-route-decision.boss b { color: #df7a68; }
+
+.campaign-boss-dossier {
+  display: grid;
+  grid-template-columns: 92px minmax(0,1fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--line-soft));
+  border-radius: 10px;
+  background: linear-gradient(100deg, rgba(83,27,24,.18), rgba(0,0,0,.10));
+}
+.campaign-boss-dossier img { width: 92px; height: 112px; object-fit: cover; object-position: top center; filter: saturate(.9) contrast(1.05); }
+.campaign-boss-dossier > div { display: grid; align-content: center; gap: .28rem; padding: .7rem .85rem; }
+.campaign-boss-dossier small { color: #d47763; font: 700 .55rem/1 var(--font-mono); letter-spacing: .12em; }
+.campaign-boss-dossier strong { color: var(--parchment); font: 700 1.05rem/1.1 var(--font-serif); }
+.campaign-boss-dossier span { color: var(--parchment-dim); line-height: 1.35; }
+.campaign-boss-dossier span b { color: var(--brass); }
+
+.roguelike-boss-hud {
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: stretch;
+  overflow: hidden;
+}
+.roguelike-boss-portrait { width: 76px; min-height: 82px; height: 100%; object-fit: cover; object-position: top center; border-right: 1px solid rgba(255,255,255,.08); }
+.roguelike-boss-copy { display: grid; gap: .15rem; align-content: center; min-width: 0; }
+.roguelike-boss-copy em { color: var(--parchment-dim); font: normal .58rem/1.3 var(--font-mono); }
+.roguelike-boss-copy em b { color: var(--brass); }
+.roguelike-boss-hud.boss-shadow { border-color: rgba(136,89,190,.52); box-shadow: inset 0 0 30px rgba(83,42,125,.08); }
+.roguelike-boss-hud.boss-iron { border-color: rgba(185,94,62,.5); }
+.roguelike-boss-hud.boss-nomad { border-color: rgba(181,137,68,.5); }
+
+.mercenary-value-card {
+  display: grid;
+  gap: .18rem;
+  margin: .55rem 0 .65rem;
+  padding: .52rem .58rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 24%, var(--line-soft));
+  border-radius: 7px;
+  background: rgba(0,0,0,.12);
+}
+.mercenary-value-card strong { color: var(--brass); font-size: .78rem; }
+.mercenary-value-card span { color: var(--parchment); font-size: .7rem; line-height: 1.35; }
+.mercenary-value-card small { color: var(--success); font: .58rem/1.2 var(--font-mono); }
+
+.combat-debrief-overview {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr 1fr;
+  gap: .55rem;
+  margin: .7rem 0;
+}
+.combat-debrief-overview section {
+  display: grid;
+  align-content: start;
+  gap: .3rem;
+  min-height: 82px;
+  padding: .62rem .68rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(0,0,0,.10);
+}
+.combat-debrief-overview small { color: var(--brass-dim); font: 700 .52rem/1 var(--font-mono); letter-spacing: .1em; }
+.combat-debrief-overview strong { color: var(--parchment); font-size: .72rem; line-height: 1.4; font-weight: 600; }
+.combat-debrief-overview section:nth-child(2) strong { color: var(--success); }
+
+@media (max-width: 900px) {
+  .campaign-route-decision { display: none; }
+  .combat-debrief-overview { grid-template-columns: 1fr; }
+  .combat-debrief-overview section { min-height: 0; }
+}
+@media (max-width: 560px) {
+  .campaign-boss-dossier { grid-template-columns: 72px minmax(0,1fr); }
+  .campaign-boss-dossier img { width: 72px; height: 96px; }
+  .roguelike-boss-portrait { width: 62px; }
+  .roguelike-boss-copy em { display: none; }
+}
+.campaign-map-point-core.has-boss-sprite { overflow: hidden; padding: 0; background: rgba(0,0,0,.55); }
+.campaign-map-point-core.has-boss-sprite img { width: 100%; height: 100%; object-fit: cover; object-position: top center; filter: saturate(.92) contrast(1.08); }
+.combat-debrief.compact .combat-debrief-overview { display: none; }

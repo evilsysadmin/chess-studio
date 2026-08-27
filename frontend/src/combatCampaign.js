@@ -2,7 +2,7 @@ import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { perkById, rewardOptionsForFloor } from './roguelikePerks.js';
 import { ROGUELIKE_MODIFIERS, seededUnit } from './roguelikeModifiers.js';
-import { ROGUELIKE_BOSS } from './roguelikeBoss.js';
+import { campaignBossForSeed } from './combatBosses.js';
 
 // Combat Chess · campaña procedural v3 (mapa estratégico + intel + reliquias operativas).
 //
@@ -34,7 +34,7 @@ const CAMPAIGN_RELICS = Object.freeze([
   { id: 'forwardObserver', icon: '⌖', label: 'Óptica del observador', description: 'Al seleccionar un combate obtienes Contacto automáticamente.' },
   { id: 'quartermasterSeal', icon: '▣', label: 'Sello de intendencia', description: 'Cada victoria de campaña entrega +2 créditos operativos.' },
   { id: 'silentBoots', icon: '⌁', label: 'Equipo de infiltración', description: 'El ruido positivo generado por eventos se reduce en 2.' },
-  { id: 'kingDossier', icon: '♚', label: 'Dossier del Rey Viejo', description: 'El boss final tiene −4 de dificultad estratégica.' },
+  { id: 'kingDossier', icon: '♚', label: 'Dossier del jefe', description: 'El boss final tiene −4 de dificultad estratégica.' },
   { id: 'campLedger', icon: '✚', label: 'Libro de retaguardia', description: 'Cada campamento completado recupera +3 créditos.' },
 ]);
 const CAMPAIGN_RELIC_BY_ID = Object.fromEntries(CAMPAIGN_RELICS.map((relic) => [relic.id, relic]));
@@ -126,12 +126,18 @@ export function campaignIntelBriefing(state, node = campaignNode(state)) {
     bossHp: null,
     note: 'La inteligencia nunca revela movimientos concretos del motor.',
   };
+  if (node.type === 'boss') {
+    const boss = campaignBossForSeed(state?.seed);
+    result.bossLabel = boss.label;
+    result.bossMechanic = boss.mechanicLabel;
+    result.bossMechanicDescription = boss.mechanicDescription;
+  }
   if (level >= 1) result.threatRange = `${Math.max(5, difficulty - 5)}–${Math.min(100, difficulty + 5)}`;
   if (level >= 2) {
     result.exactDifficulty = difficulty;
   }
   if (level >= 3) {
-    if (node.type === 'boss') result.bossHp = ROGUELIKE_BOSS.maxHp;
+    if (node.type === 'boss') result.bossHp = campaignBossForSeed(state?.seed).maxHp;
   }
   return result;
 }
@@ -186,7 +192,7 @@ const TYPE_META = Object.freeze({
   elite: { icon: '☠', label: 'Élite', description: 'Más amenaza. La ventaja elegida entra con doble carga.' },
   event: { icon: '?', label: 'Evento', description: 'Decisión de riesgo/recompensa sin batalla inmediata.' },
   camp: { icon: '⛺', label: 'Campamento', description: 'Nodo seguro: reorganiza y gana una ventaja temporal.' },
-  boss: { icon: '♚', label: 'Boss', description: 'El Rey Viejo. Cinco HP. Aquí termina la operación.' },
+  boss: { icon: '♚', label: 'Boss', description: 'Jefe final de la operación. Su regla especial siempre se anuncia antes del combate.' },
 });
 
 function makeSeed() {
@@ -218,7 +224,7 @@ function modifierForNode(seed, stage, lane, type) {
 }
 
 function nodeName(seed, stage, lane, type) {
-  if (type === 'boss') return 'El Rey Viejo';
+  if (type === 'boss') return campaignBossForSeed(seed).label;
   if (type === 'battle') return pick(seed, `name-battle-${stage}-${lane}`, BATTLE_NAMES);
   if (type === 'elite') return pick(seed, `name-elite-${stage}-${lane}`, ELITE_NAMES);
   if (type === 'event') return pick(seed, `name-event-${stage}-${lane}`, EVENT_NAMES);
@@ -269,9 +275,12 @@ export function campaignMap(seed) {
         icon: meta.icon,
         typeLabel: meta.label,
         label: nodeName(safeSeed, stage, lane, type),
-        description: meta.description,
+        description: type === 'boss' ? campaignBossForSeed(safeSeed).description : meta.description,
         modifierId: modifierForNode(safeSeed, stage, lane, type),
         baseDifficulty: baseDifficultyFor(stage, type),
+        bossId: type === 'boss' ? campaignBossForSeed(safeSeed).id : null,
+        mechanicLabel: type === 'boss' ? campaignBossForSeed(safeSeed).mechanicLabel : null,
+        mechanicDescription: type === 'boss' ? campaignBossForSeed(safeSeed).mechanicDescription : null,
         tier: type === 'boss' ? 'boss' : type === 'elite' ? 'elite' : type === 'battle' ? 'normal' : type,
         connections: [],
       };
@@ -439,7 +448,7 @@ export function markCampaignBattleWon(state) {
     eventLog: [
       ...(state.eventLog || []),
       ...(earned > 0 ? [`Objetivo cumplido: +${earned} créditos operativos`] : []),
-      ...(dossierEarned ? ['Intel élite recuperada: Dossier del Rey Viejo'] : []),
+      ...(dossierEarned ? ['Intel élite recuperada: Dossier del jefe'] : []),
     ].slice(-30),
   };
   if (node.type === 'boss') {
@@ -551,8 +560,10 @@ export function resolveCampaignEvent(state, choiceId) {
 
 export function campaignDifficulty(state, node = campaignNode(state)) {
   if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return 0;
-  const bossDelta = node.type === 'boss' && hasRelic(state, 'kingDossier') ? -4 : 0;
-  return Math.max(5, Math.min(95, node.baseDifficulty + (Number(state?.nextDifficultyDelta) || 0) + bossDelta));
+  const boss = node.type === 'boss' ? campaignBossForSeed(state?.seed) : null;
+  const dossierDelta = boss && hasRelic(state, 'kingDossier') ? -4 : 0;
+  const bossDelta = boss?.difficultyDelta || 0;
+  return Math.max(5, Math.min(95, node.baseDifficulty + (Number(state?.nextDifficultyDelta) || 0) + bossDelta + dossierDelta));
 }
 
 
@@ -577,6 +588,8 @@ function archiveCampaignOperation(state, reason, stage) {
     route,
     routeLabels: route.map((id) => byId.get(id)?.label || id),
     relicIds: [...(state.relicIds || [])],
+    bossId: campaignBossForSeed(state.seed).id,
+    bossLabel: campaignBossForSeed(state.seed).label,
     credits: Math.max(0, Number(state.operationalCredits) || 0),
     cleared: (state.clearedNodeIds || []).length,
   };

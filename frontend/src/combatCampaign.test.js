@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { campaignBossForSeed, CAMPAIGN_BOSSES } from './combatBosses.js';
 import {
   campaignMap,
   startCampaign,
@@ -32,7 +33,22 @@ describe('Combat Chess campaign map', () => {
     expect(a).toEqual(b);
     expect(a.stages).toHaveLength(7);
     expect(a.stages.at(-1)).toHaveLength(1);
-    expect(a.stages.at(-1)[0]).toMatchObject({ type: 'boss', label: 'El Rey Viejo', floor: 10 });
+    const boss = campaignBossForSeed('rivas');
+    expect(a.stages.at(-1)[0]).toMatchObject({ type: 'boss', label: boss.label, bossId: boss.id, floor: 10 });
+  });
+
+
+
+  it('elige bosses deterministas con identidad y regla propias', () => {
+    const seen = new Set();
+    for (let i = 0; i < 60; i += 1) seen.add(campaignBossForSeed(`boss-seed-${i}`).id);
+    expect(seen.size).toBe(CAMPAIGN_BOSSES.length);
+    for (const boss of CAMPAIGN_BOSSES) {
+      expect(boss.maxHp).toBeGreaterThanOrEqual(4);
+      expect(boss.mechanicLabel).toBeTruthy();
+      expect(boss.mechanicDescription).toBeTruthy();
+      expect(boss.spriteId).toBeTruthy();
+    }
   });
 
   it('sólo deja elegir nodos conectados desde la posición actual', () => {
@@ -201,7 +217,7 @@ describe('Combat Chess campaign map', () => {
     expect(result.archiveEntry).toBeTruthy();
     const archive = loadCampaignArchive();
     expect(archive).toHaveLength(1);
-    expect(archive[0]).toMatchObject({ reason:'retired', credits:9, relicIds:['fieldCipher'] });
+    expect(archive[0]).toMatchObject({ reason:'retired', credits:9, relicIds:['fieldCipher'], bossId: campaignBossForSeed('archive').id });
   });
 
   it('un reinicio de campaña puede archivarse como reinicio sin borrar el ejército/meta progreso', () => {

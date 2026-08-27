@@ -568,9 +568,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     focusRef.current = { w: null, b: null };
     positionCountsRef.current = new Map([[repetitionKey(nextFen), 1]]);
     setRepetitionDraw(false);
-    const restoredBossPhase = bossPhaseForHp(bossHpRef.current, bossConfig?.maxHp);
+    const restoredBossPhase = bossPhaseForHp(bossHpRef.current, bossConfig);
     setBossPhase(restoredBossPhase);
-    pushLog({ text: `El Rey Viejo rompe la posición y abre una nueva fase · ${bossHpRef.current}/${bossConfig?.maxHp} HP · tus bajas se arrastran`, tone: 'bad', kind: 'boss' });
+    pushLog({ text: `${bossConfig?.label || 'El Rey Viejo'} rompe la posición y abre una nueva fase · ${bossHpRef.current}/${bossConfig?.maxHp} HP · tus bajas se arrastran`, tone: 'bad', kind: 'boss' });
     saveBattleSnapshot({
       phase: 'battle',
       fen: nextFen,
@@ -696,7 +696,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     // el mate hace 2. Si el mate no lo mata, rompe la fase y reinicia el
     // tablero del boss de forma explícita — no fingimos una captura del rey.
     if (bossConfig && attackerBefore?.color === currentHumanColor) {
-      const damage = bossDamageAfterHumanMove(chessAfter, currentHumanColor);
+      const damage = bossDamageAfterHumanMove(chessAfter, currentHumanColor, bossConfig);
       if (damage > 0) {
         if (attackerBefore?.identityId && attackerBefore.type !== 'k') {
           unitBattleStatsRef.current = {
@@ -707,11 +707,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         const nextHp = Math.max(0, (bossHpRef.current ?? bossConfig.maxHp) - damage);
         bossHpRef.current = nextHp;
         setBossHp(nextHp);
-        setBossPhase(bossPhaseForHp(nextHp, bossConfig.maxHp));
+        setBossPhase(bossPhaseForHp(nextHp, bossConfig));
         pushLog({
-          text: damage === 2
-            ? `JAQUE MATE CRÍTICO · -2 HP al Rey Viejo · ${nextHp}/${bossConfig.maxHp} HP`
-            : `Jaque al Rey Viejo · -1 HP · ${nextHp}/${bossConfig.maxHp} HP`,
+          text: chessAfter.isCheckmate()
+            ? `JAQUE MATE CRÍTICO · -${damage} HP a ${bossConfig.label} · ${nextHp}/${bossConfig.maxHp} HP`
+            : `Jaque a ${bossConfig.label} · -${damage} HP · ${nextHp}/${bossConfig.maxHp} HP`,
           tone: 'good',
           kind: 'boss',
         });
@@ -745,7 +745,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       nextRegistry: finalRegistry,
       nextCombatLog: updatedLog,
       nextBossHp: bossHpRef.current,
-      nextBossPhase: bossConfig ? bossPhaseForHp(bossHpRef.current, bossConfig.maxHp) : null,
+      nextBossPhase: bossConfig ? bossPhaseForHp(bossHpRef.current, bossConfig) : null,
     });
 
     if (chessAfter.turn() !== currentHumanColor) {

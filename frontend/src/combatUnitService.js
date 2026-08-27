@@ -30,7 +30,7 @@ const UNIT_DECORATIONS = Object.freeze([
     test: (stats) => stats.battles >= 10 && stats.survivals >= 7,
   },
   {
-    id: 'boss_survivor', short: 'BOSS', label: 'Cicatriz del Rey Viejo',
+    id: 'boss_survivor', short: 'BOSS', label: 'Cicatriz del jefe',
     description: 'Sobrevivió a una victoria contra un jefe.',
     test: (stats) => stats.bossVictories >= 1,
   },

@@ -58,10 +58,14 @@ describe('economía de Combat', () => {
     expect(new Set(offers.map((entry) => entry.alias)).size).toBe(3);
     expect(offers).toEqual(mercenaryMarketOffers({ merit: 90, rotationKey: '2026-08-25' }));
     const offer = offers[0];
+    expect(offer.specialtyLabel).toBeTruthy();
+    expect(offer.specialtyDescription).toBeTruthy();
     const hired = hireMercenary({ credits: 500, pieces: {}, identities: {}, unitRecords: {} }, offer, 'three', 1000);
     const key = Object.keys(hired.pieces).find((candidate) => candidate.includes('-merc-'));
     expect(key).toBeTruthy();
     expect(hired.pieces[key].mercenary.battlesRemaining).toBe(3);
+    expect(hired.pieces[key].mercenary.specialtyLabel).toBe(offer.specialtyLabel);
+    expect(hired.pieces[key].equipmentId).toBe(offer.equipmentId);
     expect(settleMercenaryContracts(hired, []).roster).toBe(hired);
     const one = settleMercenaryContracts(hired, [key]).roster;
     expect(one.pieces[key].mercenary.battlesRemaining).toBe(2);

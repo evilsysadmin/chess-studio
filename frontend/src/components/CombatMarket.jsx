@@ -40,7 +40,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
       <section className="army-card combat-market" role="dialog" aria-modal="true" aria-labelledby="combat-market-title" onMouseDown={(event) => event.stopPropagation()}>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label="Cerrar mercado">×</button>
         <header className="combat-market-heading">
-          <div><span className="section-label">COMBAT CHESS · ABASTECIMIENTO</span><h2 id="combat-market-title">Mercado</h2><p>{adminPreview ? 'Modo admin: catálogo y compras de prueba abiertos.' : 'Opciones tácticas, nunca requisitos para ganar.'}</p></div>
+          <div><span className="section-label">COMBAT CHESS · ABASTECIMIENTO</span><h2 id="combat-market-title">Mercado táctico</h2><p>{adminPreview ? 'Modo admin: catálogo y compras de prueba abiertos.' : 'Compra una ventaja concreta. Nada de llenar el inventario por llenar.'}</p></div>
           <div className="combat-market-wallet"><small>{adminPreview ? 'PRUEBA ADMIN' : 'SALDO'}</small><strong>{credits}</strong><span>{adminPreview ? 'sin coste' : 'créditos'}</span></div>
         </header>
 
@@ -63,6 +63,11 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
                   <div className="combat-market-card-top"><span aria-hidden="true">{offer.type === 'p' ? '♟' : offer.type === 'n' ? '♞' : offer.type === 'b' ? '♝' : offer.type === 'r' ? '♜' : '♛'}</span><i>{offer.rarity === 'veterano' ? 'OFERTA RARA' : 'DISPONIBLE HOY'}</i></div>
                   <h3>{offer.alias}</h3>
                   <p>{pieceName} · nivel {offer.level} · {training}</p>
+                  <div className="mercenary-value-card">
+                    <strong>{offer.specialtyLabel}</strong>
+                    <span>{offer.specialtyDescription}</span>
+                    <small>{offer.equipmentLabel ? `Incluye ${offer.equipmentLabel}` : 'Sin equipo incluido'}</small>
+                  </div>
                   <div className="combat-market-contracts">
                     {CONTRACTS.map((contract) => {
                       const price = offer.prices[contract.id];
@@ -96,7 +101,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
           </div>
         )}
 
-        <footer className="combat-market-balance-note"><strong>Equilibrio limpio</strong><span>Los créditos se ganan jugando. El ejército base puede completar toda la campaña; cada unidad sólo admite un objeto y sus bonus están limitados.</span></footer>
+        <footer className="combat-market-balance-note"><strong>Compra con intención</strong><span>Mercenarios = fuerza inmediata y temporal. Equipo = inversión en tus veteranos. El ejército base sigue siendo suficiente para completar la campaña.</span></footer>
       </section>
     </div>
   );

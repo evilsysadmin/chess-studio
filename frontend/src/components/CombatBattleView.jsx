@@ -4,6 +4,11 @@ import PromotionModal from './PromotionModal.jsx';
 import PieceInfoModal from './PieceInfoModal.jsx';
 import AttackConfirmModal from './AttackConfirmModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
+import ironKing from '../assets/bosses/iron-king.webp';
+import nomadKing from '../assets/bosses/nomad-king.webp';
+import shadowKing from '../assets/bosses/shadow-king.webp';
+
+const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
 
 export default function CombatBattleView({
   onExit, onViewBattle, phase, localChess, status, statusLabel, statusClass, statusText,
@@ -19,13 +24,17 @@ export default function CombatBattleView({
           <div className={`status-line ${statusClass}`}>{statusText}</div>
 
           {bossConfig && bossHp != null && (
-            <div className="roguelike-boss-hud" role="status" aria-label={`Rey Boss: ${bossHp} de ${bossConfig.maxHp} puntos de vida`}>
-              <span className="roguelike-boss-kicker">BOSS · FASE {bossPhase}</span>
-              <strong>{bossConfig.label}</strong>
-              <span className="roguelike-boss-hearts" aria-hidden="true">
-                {Array.from({ length: bossConfig.maxHp }, (_, i) => (i < bossHp ? '♥' : '♡')).join(' ')}
-              </span>
-              <small>{bossHp}/{bossConfig.maxHp} HP · jaque = 1 · mate = 2</small>
+            <div className={`roguelike-boss-hud boss-${bossConfig.spriteId || 'classic'}`} role="status" aria-label={`${bossConfig.label}: ${bossHp} de ${bossConfig.maxHp} puntos de vida`}>
+              {BOSS_SPRITES[bossConfig.spriteId] && <img className="roguelike-boss-portrait" src={BOSS_SPRITES[bossConfig.spriteId]} alt="" aria-hidden="true" />}
+              <div className="roguelike-boss-copy">
+                <span className="roguelike-boss-kicker">BOSS · FASE {bossPhase}</span>
+                <strong>{bossConfig.label}</strong>
+                <span className="roguelike-boss-hearts" aria-hidden="true">
+                  {Array.from({ length: bossConfig.maxHp }, (_, i) => (i < bossHp ? '♥' : '♡')).join(' ')}
+                </span>
+                <small>{bossHp}/{bossConfig.maxHp} HP · jaque = {bossConfig.checkDamage || 1} · mate = {bossConfig.mateDamage || 2}</small>
+                {bossConfig.mechanicLabel && <em><b>{bossConfig.mechanicLabel}</b> · {bossConfig.mechanicDescription}</em>}
+              </div>
             </div>
           )}
 

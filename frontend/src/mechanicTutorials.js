@@ -51,7 +51,7 @@ export const MECHANIC_TUTORIALS = Object.freeze([
       { title: 'El barracón persiste', text: 'Los veteranos, reservas, rangos y bajas sobreviven a la campaña. Las ventajas de campaña son temporales.' },
       { title: 'Las élites pagan mejor', text: 'Una victoria élite entrega más créditos operativos, mejores recompensas y puede ampliar el barracón con un refuerzo.' },
       { title: 'Reliquias operativas', text: 'Algunos eventos y élites dejan equipo estratégico que abarata intel, mejora créditos o reduce ruido. Dura sólo durante esa operación y no cambia cómo se mueve ninguna pieza.' },
-      { title: 'El Rey Viejo rompe el final estándar', text: 'El boss usa HP. Los detalles exactos aparecen en su dossier cuando compras suficiente inteligencia.' },
+      { title: 'Cada rey final tiene su propia regla', text: 'El boss usa HP y una mecánica visible. La campaña elige un rey distinto por seed; la inteligencia mejora la precisión del dossier.' },
     ],
   },
   {

@@ -14,12 +14,17 @@ export const ROGUELIKE_BOSS = {
 // Se llama DESPUÉS de una jugada humana ya aplicada. `chessAfter.turn()` es
 // el bando que debe responder; por tanto sólo hacemos daño si le toca a la
 // CPU y su rey está en jaque.
-export function bossDamageAfterHumanMove(chessAfter, humanColor) {
+export function bossDamageAfterHumanMove(chessAfter, humanColor, bossConfig = ROGUELIKE_BOSS) {
   if (!chessAfter || chessAfter.turn() === humanColor || !chessAfter.inCheck()) return 0;
-  return chessAfter.isCheckmate() ? 2 : 1;
+  const checkDamage = Math.max(1, Number(bossConfig?.checkDamage) || 1);
+  const mateDamage = Math.max(checkDamage, Number(bossConfig?.mateDamage) || 2);
+  return chessAfter.isCheckmate() ? mateDamage : checkDamage;
 }
 
-export function bossPhaseForHp(hp, maxHp = ROGUELIKE_BOSS_MAX_HP) {
+export function bossPhaseForHp(hp, configOrMaxHp = ROGUELIKE_BOSS_MAX_HP) {
+  const maxHp = typeof configOrMaxHp === 'object'
+    ? Math.max(1, Number(configOrMaxHp?.maxHp) || ROGUELIKE_BOSS_MAX_HP)
+    : Math.max(1, Number(configOrMaxHp) || ROGUELIKE_BOSS_MAX_HP);
   const value = Math.max(0, Number(hp) || 0);
   if (value <= 1) return 3;
   if (value <= Math.ceil(maxHp * 0.6)) return 2;
