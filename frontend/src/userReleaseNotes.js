@@ -6,6 +6,13 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46u',
+    title: 'Combat recupera su contrato de navegación',
+    highlights: [
+      'El rail táctico de batalla conserva un nombre accesible estable aunque incluya el reproductor de música, evitando regresiones en navegación asistida y en los flujos E2E.',
+    ],
+  },
+  {
     release: 'v16.6dm46t',
     title: 'Combat encaja en la pantalla y la campaña pasa revista',
     highlights: [

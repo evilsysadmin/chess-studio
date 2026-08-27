@@ -1,3 +1,8 @@
+### v16.6dm46u · Contrato accesible estable en batalla Combat
+
+- El rail derecho de Combat vuelve a exponer el landmark accesible estable `Registro de batalla y estado táctico`; la música permanece dentro del rail sin formar parte de su identidad semántica.
+- No cambia el flujo ni las reglas de Combat: el hotfix evita que Playwright y tecnologías asistivas pierdan el landmark al entrar o restaurar una batalla.
+
 ### v16.6dm46t · Mesa adaptable y campaña auditada de extremo a extremo
 
 - Combat usa una única fuente de verdad para el tamaño del tablero: en escritorio se adapta al ancho y alto del viewport y el rail táctico comparte su altura; en tablet/móvil el tablero prioriza el ancho y el rail baja debajo.

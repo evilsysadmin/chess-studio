@@ -47,7 +47,7 @@ export default function CombatBattleView({
               />
             </div>
 
-            <aside className="game-side-column combat-game-side-column" aria-label="Registro de batalla, música y estado táctico">
+            <aside className="game-side-column combat-game-side-column" aria-label="Registro de batalla y estado táctico">
               <div className="game-side-music combat-side-music" aria-label="Música de la batalla">
                 <MusicPlayer initiallyCollapsed />
               </div>
