@@ -18,7 +18,8 @@ export function loadPersonalPuzzles() {
 
 
 function normalizeStoredPuzzle(puzzle) {
-  if (!puzzle || typeof puzzle !== 'object' || Array.isArray(puzzle.incidentKeys)) return puzzle;
+  if (!puzzle || typeof puzzle !== 'object') return puzzle;
+  if (Array.isArray(puzzle.incidentKeys)) return puzzle;
   if (!puzzle.fen || !puzzle.played) return { ...puzzle, incidentKeys: [] };
   try {
     const board = new Chess(puzzle.fen);
@@ -29,6 +30,10 @@ function normalizeStoredPuzzle(puzzle) {
   } catch {
     return { ...puzzle, incidentKeys: [] };
   }
+}
+
+export function isPersonalPuzzleMastered(puzzle) {
+  return Boolean(puzzle?.masteredAt) || Number(puzzle?.solves || 0) > 0;
 }
 
 function detectIncidentKeys(fenBefore, moveReport) {
@@ -131,8 +136,19 @@ export function savePersonalPuzzlesFromReport(history, humanColor, report, meta 
   for (const puzzle of candidates) {
     const previous = byId.get(puzzle.id);
     if (!previous) added += 1;
-    if (!previous || JSON.stringify(previous) !== JSON.stringify(puzzle)) changed = true;
-    byId.set(puzzle.id, puzzle);
+    const merged = previous ? {
+      ...previous,
+      ...puzzle,
+      createdAt: previous.createdAt || puzzle.createdAt,
+      attempts: Number(previous.attempts || 0),
+      solves: Number(previous.solves || 0),
+      cleanSolves: Number(previous.cleanSolves || 0),
+      lastAttemptAt: previous.lastAttemptAt || null,
+      lastSolvedAt: previous.lastSolvedAt || null,
+      masteredAt: previous.masteredAt || null,
+    } : puzzle;
+    if (!previous || JSON.stringify(previous) !== JSON.stringify(merged)) changed = true;
+    byId.set(puzzle.id, merged);
   }
   const next = [...byId.values()]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -141,16 +157,57 @@ export function savePersonalPuzzlesFromReport(history, humanColor, report, meta 
   return { added, total: next.length };
 }
 
-export function personalPuzzlesForFilter(filter = null) {
-  return loadPersonalPuzzles().filter((p) => matchesPersonalPuzzleFilter(p, filter));
+export function personalPuzzlesForFilter(filter = null, { includeMastered = false, masteredOnly = false } = {}) {
+  return loadPersonalPuzzles().filter((puzzle) => {
+    if (!matchesPersonalPuzzleFilter(puzzle, filter)) return false;
+    const mastered = isPersonalPuzzleMastered(puzzle);
+    if (masteredOnly) return mastered;
+    return includeMastered || !mastered;
+  });
 }
 
+export function personalPuzzleHistory(filter = null) {
+  return personalPuzzlesForFilter(filter, { masteredOnly: true })
+    .sort((a, b) => new Date(b.masteredAt || b.lastSolvedAt || b.createdAt || 0) - new Date(a.masteredAt || a.lastSolvedAt || a.createdAt || 0));
+}
 
-export function randomPersonalPuzzle(excludeId, filter = null) {
-  const eligible = personalPuzzlesForFilter(filter);
+export function randomPersonalPuzzle(excludeId, filter = null, { includeMastered = false, fallbackToMastered = false } = {}) {
+  let eligible = personalPuzzlesForFilter(filter, { includeMastered });
+  if (!eligible.length && fallbackToMastered) eligible = personalPuzzlesForFilter(filter, { masteredOnly: true });
   const pool = excludeId ? eligible.filter((p) => p.id !== excludeId) : eligible;
   const list = pool.length ? pool : eligible;
   return list.length ? list[Math.floor(Math.random() * list.length)] : null;
+}
+
+export function saveGeneratedPersonalPuzzles(puzzles = []) {
+  const candidates = (Array.isArray(puzzles) ? puzzles : [])
+    .filter((puzzle) => puzzle?.fen && Array.isArray(puzzle?.solution) && puzzle.solution.length > 0)
+    .slice(0, 4)
+    .map((puzzle) => ({
+      ...puzzle,
+      id: puzzle.id || stableId(puzzle.fen, puzzle.solution[0]),
+      kind: 'personal',
+      source: 'workers-ai-validated',
+      createdAt: puzzle.createdAt || new Date().toISOString(),
+      incidentKeys: Array.isArray(puzzle.incidentKeys) ? puzzle.incidentKeys : [],
+    }));
+  if (!candidates.length) return { added: 0, total: loadPersonalPuzzles().length, saved: [] };
+
+  const current = loadPersonalPuzzles();
+  const byId = new Map(current.map((p) => [p.id, p]));
+  let added = 0;
+  const saved = [];
+  for (const puzzle of candidates) {
+    if (!byId.has(puzzle.id)) added += 1;
+    const merged = { ...(byId.get(puzzle.id) || {}), ...puzzle };
+    byId.set(puzzle.id, merged);
+    saved.push(merged);
+  }
+  const next = [...byId.values()]
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, MAX_PUZZLES);
+  setProfileStorageItem(KEY, JSON.stringify(next));
+  return { added, total: next.length, saved };
 }
 
 export function recordPersonalPuzzleResult(id, { solved = false, clean = false } = {}) {
@@ -167,6 +224,7 @@ export function recordPersonalPuzzleResult(id, { solved = false, clean = false }
     cleanSolves: Number(previous.cleanSolves || 0) + (solved && clean ? 1 : 0),
     lastAttemptAt: now,
     lastSolvedAt: solved ? now : (previous.lastSolvedAt || null),
+    masteredAt: solved ? (previous.masteredAt || now) : (previous.masteredAt || null),
   };
   all[index] = updated;
   setProfileStorageItem(KEY, JSON.stringify(all));
@@ -178,6 +236,8 @@ export function personalTrainingSummary() {
   const attempts = all.reduce((sum, p) => sum + Number(p.attempts || 0), 0);
   const solves = all.reduce((sum, p) => sum + Number(p.solves || 0), 0);
   const cleanSolves = all.reduce((sum, p) => sum + Number(p.cleanSolves || 0), 0);
-  return { total: all.length, attempts, solves, cleanSolves, cleanRate: attempts ? Math.round((cleanSolves / attempts) * 100) : null };
+  const mastered = all.filter(isPersonalPuzzleMastered).length;
+  const active = Math.max(0, all.length - mastered);
+  return { total: all.length, active, mastered, attempts, solves, cleanSolves, cleanRate: attempts ? Math.round((cleanSolves / attempts) * 100) : null };
 }
 

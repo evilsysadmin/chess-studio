@@ -21,6 +21,8 @@ from typing import Any
 
 import httpx
 
+from resilience import adaptive_ai_mode, try_enter_ai_bulkhead, leave_ai_bulkhead
+
 ai_logger = logging.getLogger("uvicorn.error")
 
 DEFAULT_TIMEOUT_SECONDS = 5.0
@@ -28,7 +30,8 @@ DEFAULT_COMMENT_TIMEOUT_SECONDS = 2.0
 DEFAULT_MAX_OUTPUT_CHARS = 420
 PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
 RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900
-RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan"})
+PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200
+RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch"})
 MAX_FACT_DEPTH = 3
 MAX_FACT_STRING = 240
 MAX_FACT_ARRAY = 12
@@ -204,6 +207,8 @@ def _circuit_reset_seconds_for(channel: str) -> float:
 
 
 def _max_output_chars(event_type: str) -> int:
+    if event_type == "personal_puzzle_batch":
+        return PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS
     if event_type == "player_portrait":
         return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS
     if event_type in RICH_ANALYSIS_EVENT_TYPES:
@@ -611,6 +616,34 @@ def _percentile(values: list[float], percentile: float) -> float | None:
     return round(float(ordered[idx]), 2)
 
 
+def get_ai_dependency_health() -> dict[str, Any]:
+    enabled = ai_narrative_enabled()
+    configured = bool(_env("CF_AI_WORKER_URL") and _env("CHESS_AI_SHARED_SECRET"))
+    circuit = _circuit_snapshot()
+    if not enabled:
+        status = "disabled"
+    elif not configured:
+        status = "unconfigured"
+    elif circuit.get("open"):
+        status = "degraded"
+    else:
+        status = "ok"
+    return {
+        "status": status,
+        "enabled": enabled,
+        "configured": configured,
+        "circuitOpen": bool(circuit.get("open")),
+        "channels": {
+            name: {
+                "open": bool(row.get("open")),
+                "secondsRemaining": row.get("seconds_remaining"),
+                "failures": row.get("consecutive_failures", 0),
+            }
+            for name, row in (circuit.get("channels") or {}).items()
+        },
+    }
+
+
 def get_ai_metrics() -> dict[str, Any]:
     with _TELEMETRY_LOCK:
         events = list(_TELEMETRY)
@@ -688,6 +721,11 @@ async def request_cloud_narrative(
     if not ai_narrative_enabled():
         return ProviderOutcome(None, "disabled", 0.0)
 
+    adaptive_mode = adaptive_ai_mode(channel)
+    if adaptive_mode != "normal":
+        # Load pressure is not a provider failure: do not poison the circuit.
+        return ProviderOutcome(None, f"adaptive_{adaptive_mode}", 0.0)
+
     allowed, blocked_reason = _circuit_before_request(channel)
     if not allowed:
         return ProviderOutcome(None, blocked_reason or "circuit_open", 0.0)
@@ -706,6 +744,11 @@ async def request_cloud_narrative(
         "x-chess-ai-timestamp": timestamp,
         "x-chess-ai-signature": sign_request(secret, timestamp, body),
     }
+
+    bulkhead = await try_enter_ai_bulkhead(channel)
+    if bulkhead is None:
+        # Saturation of one AI class must not consume capacity from the others.
+        return ProviderOutcome(None, "bulkhead_full", 0.0)
 
     timeout_s = _timeout_seconds(channel)
     owns_client = client is None
@@ -776,6 +819,7 @@ async def request_cloud_narrative(
     finally:
         if owns_client:
             await client.aclose()
+        leave_ai_bulkhead(bulkhead)
 
 
 async def generate_narrative(

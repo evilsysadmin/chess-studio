@@ -1,0 +1,49 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildPersonalPuzzleBatchDossier,
+  parsePersonalPuzzleBatch,
+  shouldOfferAiPersonalPuzzleGeneration,
+  validateAiPersonalPuzzleCandidate,
+} from './aiPersonalPuzzles.js';
+
+const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+describe('AI personal puzzle batches', () => {
+  it('manda como máximo dos semillas reales y no filtra ids de partida', () => {
+    const dossier = buildPersonalPuzzleBatchDossier([
+      { fen: START, suggested: 'e4', played: 'a3', loss: 300, sourceGameId: 'SECRET-GAME', incidentKeys: ['human:BLUNDER'] },
+      { fen: START, suggested: 'd4', played: 'h3', loss: 200, opening: 'Apertura X' },
+      { fen: START, suggested: 'Nf3', played: 'a4', loss: 100 },
+    ]);
+    expect(dossier.eventType).toBe('personal_puzzle_batch');
+    expect(dossier.requestKind).toBe('personal_puzzle_batch');
+    expect(dossier.facts.seeds).toHaveLength(2);
+    expect(JSON.stringify(dossier)).not.toContain('SECRET-GAME');
+  });
+
+  it('parsea JSON limpio o cercado y limita el lote', () => {
+    const payload = { candidates: Array.from({ length: 6 }, (_, index) => ({ fen: START, best_uci: index ? 'd2d4' : 'e2e4' })) };
+    expect(parsePersonalPuzzleBatch(JSON.stringify(payload))).toHaveLength(4);
+    expect(parsePersonalPuzzleBatch('```json\n' + JSON.stringify(payload) + '\n```')).toHaveLength(4);
+    expect(parsePersonalPuzzleBatch('esto no es json')).toEqual([]);
+  });
+
+  it('acepta sólo una jugada legal que coincida con el minimax local', async () => {
+    const candidate = { fen: START, best_uci: 'e2e4', title: 'Centro', description: 'Empuja el centro.' };
+    const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzePosition: async () => ({ from: 'e2', to: 'e4', san: 'e4' }),
+    });
+    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92 });
+
+    const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzePosition: async () => ({ from: 'd2', to: 'd4', san: 'd4' }),
+    });
+    expect(rejected).toBeNull();
+  });
+
+  it('sólo ofrece Workers AI cuando existe historial y la cola activa está corta', () => {
+    expect(shouldOfferAiPersonalPuzzleGeneration({ total: 1, active: 0 })).toBe(true);
+    expect(shouldOfferAiPersonalPuzzleGeneration({ total: 4, active: 3 })).toBe(false);
+    expect(shouldOfferAiPersonalPuzzleGeneration({ total: 0, active: 0 })).toBe(false);
+  });
+});

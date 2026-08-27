@@ -23,9 +23,9 @@
     "21-home-command.css",
     "22-progression-gamification.css",
     "23-learning-combat-economy.css",
-    "24-game-polish.css"
+    "24-product-hardening.css"
   ],
-  "combinedSha256": "342d6abbde00fc90ac5411711a7ecd093c2bacff8d10d368324a28181a436cc9",
-  "combinedBytes": 394308,
-  "combinedLines": 11675
+  "combinedSha256": "794d3929c4a6d32f54cd6ec203b64076bfb0a633d93de76e43249bf14e3c676d",
+  "combinedBytes": 392009,
+  "combinedLines": 11601
 }

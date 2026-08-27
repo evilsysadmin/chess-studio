@@ -31,6 +31,8 @@ import { nextBestAction } from '../nextBestAction.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { humanMoveCount } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
+import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
+import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -89,14 +91,16 @@ export default function GameScreen({
   onChatUpdate,
   onPersistenceState,
   onCustomize,
+  postGameFeedbackEnabled = true,
 }) {
   const humanColor = game.humanColor || 'w';
   const [selected, setSelected] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [busy, setBusy] = useState(false);
-  const [saveState, setSaveState] = useState('saved');
   const [showBoardCoordinates, setShowBoardCoordinates] = useState(() => getBoardCoordinates());
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [showPostGameFeedback, setShowPostGameFeedback] = useState(false);
+  const feedbackRegisteredGameRef = useRef(null);
   const [zenMode, setZenMode] = useState(() => loadZenMode());
   const zenModeRef = useRef(zenMode);
   zenModeRef.current = zenMode;
@@ -116,6 +120,17 @@ export default function GameScreen({
     forcedOutcome,
     onPressure: () => setTurnBanner('30 segundos. Ahora cada clic viene con auditoría.'),
   });
+
+  useEffect(() => {
+    const finished = Boolean(game.isGameOver || flagFallen || forcedOutcome);
+    if (!postGameFeedbackEnabled || !finished || !game.id || feedbackRegisteredGameRef.current === game.id) return;
+    // No interrumpimos una serie entre partidas ni una run activa: la pregunta
+    // sólo compite por atención cuando la partida ya ha terminado de verdad.
+    if ((seriesState && !seriesState.winner) || runState?.active) return;
+    feedbackRegisteredGameRef.current = game.id;
+    if (registerCompletedGameForFeedback({ gameId: game.id })) setShowPostGameFeedback(true);
+  }, [game.id, game.isGameOver, flagFallen, forcedOutcome, seriesState?.winner, runState?.active, postGameFeedbackEnabled]);
+
   const [showReport, setShowReport] = useState(false);
   const [notationOpen, setNotationOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 820);
   const [achievementToast, setAchievementToast] = useState(null);
@@ -173,7 +188,6 @@ export default function GameScreen({
     setHint(null);
     setHintsUsedThisGame(0);
     setCaptureFeedback(null);
-    setSaveState('saved');
     captureStreakRef.current = 0;
     reportedResultRef.current = false;
     openingMemoryShownRef.current = false;
@@ -268,11 +282,6 @@ export default function GameScreen({
     setPendingAnim({ from, to, capture, seq: animSeqRef.current });
     if (capture) playCaptureSound();
     else playMoveSound();
-  }
-
-  function updatePersistence(state) {
-    setSaveState(state);
-    onPersistenceState?.(state);
   }
 
   function showCpuComment(comment, meta = {}) {
@@ -393,14 +402,6 @@ export default function GameScreen({
   const boardTurnState = !game.isGameOver && !flagFallen && !forcedOutcome
     ? ((busy || game.turn !== humanColor) ? 'cpu' : 'human')
     : null;
-  const boardTurnLabel = game.isGameOver || flagFallen || forcedOutcome
-    ? 'Partida finalizada'
-    : busy || game.turn !== humanColor
-      ? 'CPU pensando'
-      : 'Tu turno';
-  const lastMoveLabel = lastMoveSquares?.from && lastMoveSquares?.to
-    ? `${lastMoveSquares.from} → ${lastMoveSquares.to}`
-    : 'Apertura';
   const selectionNotice = selected && legalTargets.length === 0
     ? immobilityReason(localChess, selected, humanColor)
     : null;
@@ -430,7 +431,7 @@ export default function GameScreen({
     setSelected(null);
     setTurnBanner(null);
     setBusy(true);
-    updatePersistence('saving');
+    onPersistenceState?.('saving');
 
     const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
     let cpuNoteworthy = null;
@@ -494,7 +495,6 @@ export default function GameScreen({
     try {
       const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion), minThink]);
       setGame(updated);
-      updatePersistence('saved');
       // App marcará 'saved' cuando el snapshot local de esta respuesta también
       // quede escrito; aquí sólo sabemos que el backend ya confirmó la jugada.
       // La narrativa remota sólo recibe hechos de una jugada que el backend ya confirmó.
@@ -528,7 +528,7 @@ export default function GameScreen({
         }
       }
     } catch (e) {
-      updatePersistence('error');
+      onPersistenceState?.('error');
       onError?.(e.message);
       // Revertimos al último estado confirmado por el servidor.
       setBoardFen(game.fen);
@@ -611,20 +611,19 @@ export default function GameScreen({
   async function handleUndo() {
     if (busy || flagFallen || game.history.length === 0) return;
     setBusy(true);
-    updatePersistence('saving');
+    onPersistenceState?.('saving');
     setHint(null);
     setTurnBanner(null);
     setCpuComment(null);
     try {
       const updated = await api.undoMove(game.id);
       setGame(updated);
-      updatePersistence('saved');
       setBoardFen(updated.fen);
       setLastMoveSquares(updated.lastMove);
       setSelected(null);
       setPendingAnim(null); // el deshacer salta directo, no se anima
     } catch (e) {
-      updatePersistence('error');
+      onPersistenceState?.('error');
       onError?.(e.message);
     } finally {
       setBusy(false);
@@ -675,10 +674,6 @@ export default function GameScreen({
   if (hintLoading) hintButtonLabel = 'Pensando…';
   else if (hintMode === 'paid') hintButtonLabel = `Pista (${currentHintCost} pts)`;
 
-  const showProminentStatus = Boolean(
-    forcedOutcome || flagFallen || (!zenMode && turnBanner) || statusLabel
-  );
-
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
   const gameContextMessages = [
     !zenMode && prediction ? { id: 'game-prediction', by: 'system', event: 'PRONÓSTICO', text: prediction.text.replace(/^Pronóstico:\s*/i, '') } : null,
@@ -717,11 +712,9 @@ export default function GameScreen({
     <div>
       <div className="game-layout">
         <div className="board-column">
-          {showProminentStatus && (
-            <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`}>
-              {statusText}
-            </div>
-          )}
+          <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`} role="status" aria-label="Estado de la partida" aria-live="polite">
+            {statusText}
+          </div>
           {!zenMode && audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{audienceReaction}</b></div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
@@ -764,13 +757,25 @@ export default function GameScreen({
                 </div>
               )}
               {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
-              {!zenMode && (
-                <div className="board-reading-rail" role="status" aria-live="polite" aria-label="Estado de la partida">
-                  <span className={`board-reading-turn ${boardTurnState === 'human' ? 'is-human' : ''}`}><i aria-hidden="true" />{boardTurnLabel}</span>
-                  <span className="board-reading-last">Última <b>{lastMoveLabel}</b></span>
-                  <span className={`board-reading-save is-${saveState}`}><i aria-hidden="true" />{saveState === 'saving' ? 'Guardando' : saveState === 'error' ? 'Sin guardar' : 'Guardado'}</span>
+            </div>
+            {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
+              <div className="game-side-music" aria-label="Música de la partida">
+                <MusicPlayer initiallyCollapsed />
+              </div>
+              <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
+                <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
+                <div className="game-notation-row">
+                  <NotationPanel history={game.history} difficulty={game.difficulty} />
                 </div>
-              )}
+              </details>
+              <GameChat messages={gameChat} contextMessages={gameContextMessages} />
+            </aside>}
+          </div>
+          {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
+          {!zenMode && captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
+          {!zenMode && hintMode === 'paid' && (
+            <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
+          )}
           <div className="game-controls">
             {!zenMode && hintMode !== 'off' && (
               <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
@@ -793,25 +798,6 @@ export default function GameScreen({
             </button>
             <button className="secondary-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
           </div>
-            </div>
-            {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
-              <div className="game-side-music" aria-label="Música de la partida">
-                <MusicPlayer context="game" />
-              </div>
-              <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
-                <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
-                <div className="game-notation-row">
-                  <NotationPanel history={game.history} difficulty={game.difficulty} />
-                </div>
-              </details>
-              <GameChat messages={gameChat} contextMessages={gameContextMessages} />
-            </aside>}
-          </div>
-          {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
-          {!zenMode && captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
-          {!zenMode && hintMode === 'paid' && (
-            <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
-          )}
           {game.history.length > 0 && (
             <details className="game-advanced-tools">
               <summary>Opciones avanzadas</summary>
@@ -839,10 +825,10 @@ export default function GameScreen({
               : 'La partida terminó en tablas.'}
           </p>
           {resultSummary && (
-            <div className={`endgame-rating-impact ${resultSummary.ratingApplied ? 'is-applied' : ''}`}>
+            <p className="endgame-rating-impact">
               <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
               <span>{resultSummary.detail}</span>
-            </div>
+            </p>
           )}
           {seriesState && !seriesState.winner && liveSeriesMoment && (
             <div className={`series-endgame-moment ${liveSeriesMoment.kind}`}>
@@ -874,6 +860,10 @@ export default function GameScreen({
             </button>
           )}
         </div>
+      )}
+
+      {postGameFeedbackEnabled && showPostGameFeedback && (game.isGameOver || flagFallen || forcedOutcome) && (
+        <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />
       )}
 
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}

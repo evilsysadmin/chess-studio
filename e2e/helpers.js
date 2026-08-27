@@ -119,6 +119,15 @@ export async function login(page) {
 }
 
 
+export function gameStatus(page) {
+  return page.getByRole('status', { name: 'Estado de la partida' });
+}
+
+export function gameTurn(page, text = 'Tu turno') {
+  return gameStatus(page).getByText(text, { exact: true });
+}
+
+
 export function buttonWithVisibleText(scope, text) {
   // Prefer the visible copy rendered inside the action button, not a broad
   // accessible-name regex. Tutorial help buttons intentionally include the
@@ -135,14 +144,6 @@ export function buttonWithHeading(scope, text) {
   // keeps the locator semantic and unambiguous without depending on card copy.
   const heading = scope.getByRole('heading', { name: text, exact: true });
   return scope.getByRole('button').filter({ has: heading });
-}
-
-export function gameStatus(page) {
-  return page.getByRole('status', { name: 'Estado de la partida' });
-}
-
-export function gameTurn(page, text = 'Tu turno') {
-  return gameStatus(page).getByText(text, { exact: true });
 }
 
 export async function dismissTutorialIfVisible(page) {

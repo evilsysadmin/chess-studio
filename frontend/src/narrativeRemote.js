@@ -5,7 +5,8 @@ const DEFAULT_MIN_INTERVAL_MS = 2500;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
 const PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900;
 const RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900;
-const RICH_ANALYSIS_EVENTS = new Set(['post_game_autopsy', 'combat_briefing', 'combat_debrief', 'observability_summary', 'training_plan']);
+const PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200;
+const RICH_ANALYSIS_EVENTS = new Set(['post_game_autopsy', 'combat_briefing', 'combat_debrief', 'observability_summary', 'training_plan', 'personal_puzzle_batch']);
 
 function apiBase() {
   const raw = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
@@ -42,6 +43,7 @@ export function createNarrativeCooldownGate({
 }
 
 function maxOutputCharsFor(dossier) {
+  if (dossier?.eventType === 'personal_puzzle_batch') return PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS;
   if (dossier?.eventType === 'player_portrait') return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS;
   if (RICH_ANALYSIS_EVENTS.has(dossier?.eventType)) return RICH_ANALYSIS_MAX_OUTPUT_CHARS;
   return DEFAULT_MAX_OUTPUT_CHARS;

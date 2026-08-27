@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
+import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -10,7 +10,9 @@ describe('admin observability helpers', () => {
     const technical = { http: { last_1h: { samples: 12 } }, database: { status: 'ok', latency_ms: 3.2 } };
     const okFetch = vi.fn(async () => ({ ok: true, json: async () => technical }));
     expect(await fetchAdminObservability({ token: 'jwt', from: '2026-08-20T00:00:00Z', to: '2026-08-21T00:00:00Z', fetchImpl: okFetch })).toEqual(technical);
-    const [url] = okFetch.mock.calls[0];
+    const [url, options] = okFetch.mock.calls[0];
+    expect(options.headers['X-Request-ID']).toBeTruthy();
+    expect(options.headers['X-Client-Release']).toBeTruthy();
     expect(url).toContain('from_time=2026-08-20T00%3A00%3A00Z');
     expect(url).toContain('to_time=2026-08-21T00%3A00%3A00Z');
   });
@@ -92,5 +94,53 @@ describe('observabilitySampleQuality', () => {
     expect(observabilitySampleQuality(0)).toMatchObject({ level: 'none', samples: 0 });
     expect(observabilitySampleQuality(3, 5)).toMatchObject({ level: 'low', samples: 3, minimum: 5 });
     expect(observabilitySampleQuality(20)).toMatchObject({ level: 'enough', samples: 20 });
+  });
+});
+
+
+describe('product SLOs', () => {
+  it('evalúa disponibilidad y p95 con objetivos explícitos', () => {
+    const met = evaluateProductSlos({ history: { http: { samples: 120, error_5xx_percent: 0.2, p95_ms: 410 } } });
+    expect(met).toMatchObject({ status: 'met', availabilityPercent: 99.8, availabilityMet: true, latencyMet: true });
+
+    const missed = evaluateProductSlos({ history: { http: { samples: 120, error_5xx_percent: 1.1, p95_ms: 910 } } });
+    expect(missed).toMatchObject({ status: 'missed', availabilityMet: false, latencyMet: false });
+  });
+
+  it('no pinta verde cuando aún no hay muestra útil', () => {
+    expect(evaluateProductSlos({ history: { http: { samples: 0 } } }).status).toBe('unknown');
+  });
+});
+
+
+describe('error budget + release health', () => {
+  it('calcula consumo de error budget sin fingir precisión con muestra pequeña', () => {
+    expect(errorBudgetForSlo({ history: { http: { samples: 10, status_5xx: 0 } } }).status).toBe('unknown');
+    const healthy = errorBudgetForSlo({ history: { http: { samples: 1000, status_5xx: 1 } } });
+    expect(healthy).toMatchObject({ status: 'healthy', consumedPercent: 20, remainingPercent: 80 });
+    const exhausted = errorBudgetForSlo({ history: { http: { samples: 1000, status_5xx: 8 } } });
+    expect(exhausted.status).toBe('exhausted');
+    expect(exhausted.consumedPercent).toBeGreaterThan(100);
+  });
+
+  it('evalúa la release actual con su tráfico real y detecta regresiones', () => {
+    const runtime = { history: { http: { releases: [
+      { release: 'vOld', requests: 200, error_5xx_percent: 0, p95_ms: 300 },
+      { release: 'vNew', requests: 100, error_5xx_percent: 2, p95_ms: 1200 },
+    ] } } };
+    expect(evaluateReleaseHealth(runtime, 'vNew')).toMatchObject({ status: 'regression', requests: 100 });
+    expect(evaluateReleaseHealth(runtime, 'vMissing').status).toBe('unknown');
+  });
+});
+
+
+describe('SLO burn rate', () => {
+  it('detecta consumo rápido con ventanas 15m/1h sin fingir precisión', () => {
+    expect(burnRateForSlo({ http: { last_15m: { samples: 3, error_5xx_percent: 50 }, last_1h: { samples: 5, error_5xx_percent: 50 } } }).status).toBe('unknown');
+    const healthy = burnRateForSlo({ http: { last_15m: { samples: 1000, error_5xx_percent: 0.1 }, last_1h: { samples: 2000, error_5xx_percent: 0.1 } } });
+    expect(healthy).toMatchObject({ status: 'healthy' });
+    expect(healthy.short.burnRate).toBe(0.2);
+    const fast = burnRateForSlo({ http: { last_15m: { samples: 100, error_5xx_percent: 8 }, last_1h: { samples: 500, error_5xx_percent: 4 } } });
+    expect(fast.status).toBe('fast');
   });
 });

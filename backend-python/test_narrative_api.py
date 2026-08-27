@@ -217,3 +217,40 @@ def test_admin_training_plan_manual_refresh_has_no_cooldown(monkeypatch):
     payload = {"eventType": "training_plan", "requestKind": "training_plan_manual", "facts": {"priorities": [{"title": "Táctica"}]}}
     assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
     assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
+
+
+
+def test_personal_puzzle_batch_has_its_own_expensive_generation_cooldown(monkeypatch):
+    monkeypatch.setenv("AI_PERSONAL_PUZZLE_COOLDOWN_SECONDS", "43200")
+
+    async def cloud_success(*args, **kwargs):
+        return {"text": '{"candidates":[]}', "provider": "cloudflare", "latencyMs": 10.0}
+
+    monkeypatch.setattr(narrative_api, "generate_narrative", cloud_success)
+    client = build_client()
+    headers = {"Authorization": "Bearer ok"}
+    payload = {
+        "eventType": "personal_puzzle_batch",
+        "requestKind": "personal_puzzle_batch",
+        "facts": {"requested_candidates": 4, "seeds": [{"fen": "8/8/8/8/8/8/4K3/7k w - - 0 1", "better_move": "Ke3"}]},
+    }
+    first = client.post("/api/narrative", headers=headers, json=payload)
+    second = client.post("/api/narrative", headers=headers, json=payload)
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert "Personal puzzle generation cooldown" in second.json()["detail"]
+    assert int(second.headers["retry-after"]) > 0
+
+
+def test_personal_puzzle_batch_fallback_does_not_burn_cooldown(monkeypatch):
+    monkeypatch.setenv("AI_PERSONAL_PUZZLE_COOLDOWN_SECONDS", "43200")
+
+    async def local_fallback(*args, **kwargs):
+        return {"text": "fallback", "provider": "local", "latencyMs": 0.0}
+
+    monkeypatch.setattr(narrative_api, "generate_narrative", local_fallback)
+    client = build_client()
+    headers = {"Authorization": "Bearer ok"}
+    payload = {"eventType": "personal_puzzle_batch", "requestKind": "personal_puzzle_batch", "facts": {"seeds": [{"fen": "x"}]}}
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200
+    assert client.post("/api/narrative", headers=headers, json=payload).status_code == 200

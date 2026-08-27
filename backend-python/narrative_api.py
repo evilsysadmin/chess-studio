@@ -126,6 +126,14 @@ def _training_plan_manual_cooldown_seconds() -> int:
     return _manual_cooldown_seconds("AI_TRAINING_PLAN_MANUAL_COOLDOWN_SECONDS")
 
 
+def _personal_puzzle_batch_cooldown_seconds() -> int:
+    raw = (os.getenv("AI_PERSONAL_PUZZLE_COOLDOWN_SECONDS") or "").strip()
+    try:
+        return max(60, min(int(raw), 7 * 24 * 60 * 60)) if raw else 12 * 60 * 60
+    except ValueError:
+        return 12 * 60 * 60
+
+
 def build_narrative_router(
     *,
     auth_dependency: Callable[..., Any],
@@ -145,6 +153,9 @@ def build_narrative_router(
     training_plan_manual_limiter = CooldownLimiter(
         _training_plan_manual_cooldown_seconds(), detail="Training plan manual refresh cooldown"
     )
+    personal_puzzle_batch_limiter = CooldownLimiter(
+        _personal_puzzle_batch_cooldown_seconds(), detail="Personal puzzle generation cooldown"
+    )
 
     @router.post("/api/narrative")
     async def narrative(request: Request, body: NarrativeRequest, identity: Any = Depends(auth_dependency)):
@@ -152,7 +163,7 @@ def build_narrative_router(
         identity_name = _identity_name(identity)
         admin_bypass = bool(is_admin_check and identity_name and is_admin_check(identity_name))
         request_kind = (body.requestKind or "default").strip().lower()
-        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "unit_bio", "observability_summary", "training_plan", "training_plan_manual"}
+        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "unit_bio", "observability_summary", "training_plan", "training_plan_manual", "personal_puzzle_batch"}
         if request_kind not in allowed_request_kinds:
             request_kind = "default"
         is_portrait = body.eventType == "player_portrait"
@@ -165,6 +176,8 @@ def build_narrative_router(
                 portrait_manual_limiter.check(identity_key)
             if body.eventType == "training_plan" and request_kind == "training_plan_manual" and not admin_bypass:
                 training_plan_manual_limiter.check(identity_key)
+            if body.eventType == "personal_puzzle_batch" and request_kind == "personal_puzzle_batch" and not admin_bypass:
+                personal_puzzle_batch_limiter.check(identity_key)
         except HTTPException as exc:
             if exc.status_code == 429:
                 narrative_logger.warning(
@@ -192,6 +205,8 @@ def build_narrative_router(
             portrait_manual_limiter.commit(identity_key)
         if body.eventType == "training_plan" and request_kind == "training_plan_manual" and result.get("provider") == "cloudflare" and not admin_bypass:
             training_plan_manual_limiter.commit(identity_key)
+        if body.eventType == "personal_puzzle_batch" and request_kind == "personal_puzzle_batch" and result.get("provider") == "cloudflare" and not admin_bypass:
+            personal_puzzle_batch_limiter.commit(identity_key)
         return result
 
     if admin_dependency is not None:

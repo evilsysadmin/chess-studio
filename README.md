@@ -1,16 +1,44 @@
-### v16.6dm46i · Mesa profesional y compacta
+### v16.6dm46l · Tus cagadas, entrenadas sin freír Workers AI
 
-- Studio Marfil pasa a ser la apariencia inicial de piezas para cuentas nuevas; las skins retro siguen disponibles como cosméticos.
-- La pantalla de partida aprovecha la altura disponible: acciones frecuentes viven con el tablero, la cabecera se compacta y el tablero cede tamaño en viewports bajos antes de esconder controles.
-- El reproductor conserva su estado de sesión y, plegado durante una partida, ocupa una fila real del panel lateral en lugar de convertirse en un control flotante diminuto.
-- Jaque y turno reducen señales duplicadas: el rail del tablero posee el estado normal y la casilla del rey usa un aviso rojo sobrio.
-- Playwright ancla «Tu turno» al estado accesible de la partida y el smoke crítico valida 1366×768, acciones dentro del viewport y player compacto con ancho útil.
+- **Puzzles personales** pasa a ser una vía de entrenamiento visible: `Entrena tus grandes cagadas` abre directamente la cola de errores propios pendientes.
+- Resolver un puzzle personal lo marca como **superado** y lo retira de la rotación normal; el caso sigue disponible en un histórico revisitable para entrenarlo a propósito.
+- Workers AI puede proponer un lote pequeño de posiciones nuevas usando sólo incidentes reales de autopsias como semilla. Cada candidato debe pasar legalidad local con `chess.js` y después coincidir con el **minimax local** antes de guardarse; si el motor no lo confirma, se descarta.
+- La generación es deliberadamente austera: una llamada por lote, máximo tres variantes aceptadas, sólo cuando faltan pendientes y con cooldown backend de 12 horas. Un fallback/error local no consume el cooldown.
+- Para cuentas sin apariencia elegida, **Studio Marfil** pasa a ser la apariencia inicial por su legibilidad; las preferencias existentes no se pisan.
+- Los E2E de partida dejan de buscar `Tu turno` de forma global y lo anclan al estado accesible de la partida, evitando colisiones cuando la UI repite esa frase.
 
-### v16.6dm46h · Mesa y cierre de partida más claros
+### v16.6dm46k · Resiliencia adaptativa, burn rate, deploy annotations y shadow evaluation
 
-- Una franja compacta debajo de la mesa reúne turno, última jugada y confirmación de guardado; en móvil conserva sólo lo esencial.
-- El resultado agrupa claramente el impacto de rating y la siguiente acción.
-- "Más aprendizaje y herramientas" queda abierto al alcanzar su sección de Home.
+- El proveedor Workers AI conserva sus circuit breakers por canal y añade **bulkheads** separados para comentarios, retratos y análisis ricos; saturar un tipo de trabajo no consume la capacidad de los demás.
+- La presión del proceso se clasifica como `normal`, `degraded` o `critical`. En degradado, los análisis AI ricos pasan a fallback local antes de afectar al juego; en crítico, las rutas secundarias (`/narrative`, análisis, observabilidad y telemetría) pueden responder 503 con `Retry-After` mientras movimiento, login y persistencia siguen protegidos.
+- Admin muestra **burn rate** del SLO de disponibilidad con ventanas de 15 min / 1 h, estado de dependencias, presión/load shedding, rechazos de bulkhead, señales de frontend y estado de shadow evaluation.
+- Cada release backend tiene identidad propia y las deployment annotations se persisten por commit/release; los gráficos de observabilidad dibujan una marca vertical de deploy para correlacionar cambios con latencia y errores. Los cold starts del mismo commit en Render no crean un deploy nuevo.
+- El frontend captura sólo telemetría gruesa autenticada: clase de error y Web Vitals (`FCP`, `LCP`, `CLS`, `TTFB`, `INP`). No manda stack traces, mensajes libres, inputs, FEN ni contenido de partida. Esta capa queda desacoplada para exportarla posteriormente a Grafana Cloud/Faro.
+- `SHADOW_EVAL_PERCENT` habilita muestreo no autoritativo sobre `/analyze-move`; el candidato corre en background con bulkhead de una tarea, nunca cambia la respuesta y queda **OFF por defecto** para no gastar CPU en Render Free.
+- Feedback deja de depender del final de Home: hay una acción global junto a `Cuenta`; el pulso post-partida ocasional se mantiene como segunda vía no invasiva.
+
+### v16.6dm46j · SRE product ops: request tracing, error budget, release health y synthetic checks
+
+- Request IDs siguen extremo a extremo y cada cliente añade su release mediante `X-Client-Release`; CORS permite esa cabecera y el backend la sanea antes de agregarla.
+- Los access logs HTTP pasan a JSON estructurado (`request_id`, username autenticado, release, ruta, status y latencia), sin IP, bodies, FEN, contraseñas ni tokens. El username se mantiene fuera de labels/agregados de métricas para evitar alta cardinalidad.
+- Observabilidad agrega `5xx` y `p95` por release. Admin muestra un error budget basado en el SLO 99,5 % y detecta una regresión probable de la release actual sólo con muestra suficiente.
+- `scripts/synthetic_health_check.py` valida `/api/health` y `/api/ready`; con `CHESS_SYNTHETIC_USERNAME` + `CHESS_SYNTHETIC_PASSWORD` también comprueba login y `/api/status`. El workflow `synthetic-health.yml` lo ejecuta cada 2 horas y puede lanzarse manualmente; concede hasta 75 s al primer probe para tolerar el cold start del hosting gratuito sin ocultar su latencia.
+- `make synthetic-check API_BASE_URL=https://...` permite ejecutar el mismo probe desde local. El preflight valida su contrato sin red.
+
+### v16.6dm46i · Product hardening: onboarding, flags, errores y SLO
+
+- La guía inicial se convierte en un recorrido de tres pasos con progreso real: terminar una partida, resolver un puzzle y abrir Así juegas. No obliga a recorrer el catálogo completo.
+- Añade feature flags públicos servidos por el backend para poder desactivar Home Guide, feedback post-partida, Rival Fantasma o Espectador sin reconstruir el frontend (`CHESS_DISABLED_FEATURES`). Los defaults siguen siendo operativos si la configuración no está disponible.
+- Centraliza los errores de red/HTTP en copy de producto: los 5xx dejan de filtrar mensajes técnicos y conservan un request ID seguro cuando existe para soporte.
+- Admin muestra un SLO explícito de producto: disponibilidad objetivo 99,5% y API p95 objetivo 750 ms, sin pintar verde cuando la muestra es insuficiente.
+- Accesibilidad: enlace «Saltar al contenido», objetivos táctiles de 44 px para puntero grueso, progreso de onboarding legible y fallback para forced-colors. Sin telemetría nueva ni cambios en reglas/IA.
+
+### v16.6dm46h · Puzzles de cálculo + feedback descubrible
+
+- El banco curado crece de 19 a 30 posiciones e incorpora dificultad explícita, mates forzados en 2/3, sacrificios y combinaciones históricas de 3 a 7 medias jugadas.
+- La selección rota también por dificultad, y el gate exige profundidad mínima real para impedir que el banco vuelva a degradarse a ejercicios de una jugada.
+- Feedback se adelanta en Home y mantiene la etiqueta visible en móvil. Tras partidas terminadas puede aparecer un pulso inline opcional: primera invitación en la tercera partida, después 20% de partidas elegibles, máximo una por sesión y con cooldown.
+- Se eliminan encabezados CSS ligados a iteraciones antiguas. Sin cambios en reglas de partida, IA ni backend.
 
 ### v16.6dm46g · Tablero legible en momentos críticos
 

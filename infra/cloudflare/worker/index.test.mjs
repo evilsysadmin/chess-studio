@@ -157,6 +157,29 @@ test('training_plan usa bucket/routing de análisis, sanitiza HECHOS y normaliza
 
 
 
+test('personal_puzzle_batch usa una sola llamada rica, salida JSON amplia y bucket de análisis', async () => {
+  const fake = fakeEnv({
+    aiResult: {
+      choices: [{ message: { content: '{"candidates":[{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","best_uci":"e2e4","title":"Centro","description":"Prueba","incident_keys":[]}]}' } }],
+      usage: { prompt_tokens: 200, completion_tokens: 80 },
+    },
+  });
+  const response = await worker.fetch(
+    await narrativeRequest({
+      event_type: 'personal_puzzle_batch',
+      facts: { requested_candidates: 4, seeds: [{ fen: 'seed-fen', better_move: 'e4' }] },
+    }),
+    fake.env,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(fake.calls.rates, [{ key: 'render-analysis' }]);
+  assert.equal(fake.calls.ai[0].model, ANALYSIS_MODEL);
+  assert.equal(fake.calls.ai[0].options.max_tokens, 900);
+  const prompt = fake.calls.ai[0].options.messages.at(-1).content;
+  assert.match(prompt, /TIPO_DE_EVENTO: personal_puzzle_batch/);
+  assert.match(prompt, /exclusivamente el JSON/i);
+});
+
 test('comentarios de partida conservan memoria contextual factual dentro de HECHOS', async () => {
   const fake = fakeEnv();
   const response = await worker.fetch(

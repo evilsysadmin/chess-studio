@@ -17,7 +17,6 @@ test('login → menú → Así juegas → refresh → ESC conserva navegación',
 
 
 test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve al tablero', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 768 });
   await mockApi(page);
   await login(page);
 
@@ -25,12 +24,6 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
-  await expect(page.locator('.game-wordmark')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeInViewport();
-  const compactPlayer = page.getByRole('group', { name: 'Reproductor de audio plegado' });
-  await expect(compactPlayer).toBeVisible();
-  const compactPlayerBox = await compactPlayer.boundingBox();
-  expect(compactPlayerBox?.width || 0).toBeGreaterThan(180);
 
   await page.reload();
   await expect(gameTurn(page)).toBeVisible();

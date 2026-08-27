@@ -38,8 +38,10 @@ from narrative_api import build_narrative_router
 from game_api import build_game_router
 from admin_api import build_admin_router
 from system_api import build_system_router
-from observability import record_http_request
+from observability import record_http_request, sanitize_client_release
+from structured_logging import emit_http_event
 from observability_history import schedule_history_flush
+from resilience import request_enter, request_exit, should_shed, record_shed
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -55,10 +57,9 @@ app = FastAPI(
     openapi_url="/openapi.json" if EXPOSE_API_DOCS else None,
 )
 
-# Logger de acceso propio. Uvicorn mantiene sus access logs normales, pero
-# esta línea añade el dato que más nos interesa al depurar una partida:
-# quién generó la petición. Usamos el logger ya configurado por Uvicorn para
-# que funcione igual en Docker, local y Render sin inventar otra configuración.
+# Logger operativo estructurado. Incluye username autenticado para poder ver uso
+# e investigar incidencias, pero nunca IP, bodies, FEN, contraseñas ni tokens.
+# El username NO se usa como label de métricas para evitar alta cardinalidad.
 access_logger = logging.getLogger("uvicorn.error")
 
 
@@ -73,6 +74,10 @@ def _request_id(request: Request) -> str:
         value = uuid.uuid4().hex[:12]
     request.state.request_id = value
     return value
+
+
+def _client_release(request: Request) -> str | None:
+    return sanitize_client_release(request.headers.get("x-client-release"))
 
 
 def _request_username(request: Request) -> str:
@@ -132,10 +137,24 @@ def rate_limit_key(request: Request) -> str:
 async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
     request_id = _request_id(request)
-    username_before = _request_username(request)
+    client_release = _client_release(request)
+    inflight = request_enter()
     status_code = 500
     raised = False
     try:
+        if should_shed(request.url.path, inflight):
+            status_code = 503
+            record_shed()
+            request.state.route_label = request.url.path
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Servicio ocupado; la función secundaria se ha aplazado para proteger las partidas.",
+                    "requestId": request_id,
+                    "degraded": True,
+                },
+                headers={"X-Request-ID": request_id, "Retry-After": "5"},
+            )
         response = await call_next(request)
         status_code = response.status_code
         response.headers["X-Request-ID"] = request_id
@@ -143,19 +162,21 @@ async def log_request_with_user(request: Request, call_next):
     except Exception:
         raised = True
         elapsed_ms = (time.perf_counter() - started) * 1000
-        username = _request_username(request)
-        if username == "-":
-            username = username_before
-        access_logger.exception(
-            "request request_id=%s user=%s method=%s path=%s status=500 duration_ms=%.1f",
-            request_id,
-            username,
-            request.method,
-            request.url.path,
-            elapsed_ms,
+        route_obj = request.scope.get("route")
+        route_pattern = getattr(request.state, "route_label", None) or getattr(route_obj, "path", None) or "unmatched"
+        emit_http_event(
+            access_logger,
+            request_id=request_id,
+            method=request.method,
+            route=route_pattern,
+            status_code=500,
+            duration_ms=elapsed_ms,
+            client_release=client_release,
+            username=_request_username(request),
+            exception=True,
         )
-        # El detalle técnico completo queda en el traceback de Render; al
-        # navegador sólo vuelve una referencia segura para correlacionarlo.
+        # El detalle técnico completo queda en el traceback del servidor; al
+        # cliente sólo vuelve una referencia segura para correlacionarlo.
         return JSONResponse(
             status_code=500,
             content={"detail": "Error interno del servidor.", "requestId": request_id},
@@ -163,22 +184,27 @@ async def log_request_with_user(request: Request, call_next):
         )
     finally:
         elapsed_ms = (time.perf_counter() - started) * 1000
+        request_exit()
         route_obj = request.scope.get("route")
-        route_pattern = getattr(route_obj, "path", None) or "unmatched"
-        record_http_request(request.method, route_pattern, status_code, elapsed_ms)
+        route_pattern = getattr(request.state, "route_label", None) or getattr(route_obj, "path", None) or "unmatched"
+        record_http_request(
+            request.method,
+            route_pattern,
+            status_code,
+            elapsed_ms,
+            client_release=client_release,
+        )
         schedule_history_flush()
         if not raised:
-            username = _request_username(request)
-            if username == "-":
-                username = username_before
-            access_logger.info(
-                "request request_id=%s user=%s method=%s path=%s status=%s duration_ms=%.1f",
-                request_id,
-                username,
-                request.method,
-                request.url.path,
-                status_code,
-                elapsed_ms,
+            emit_http_event(
+                access_logger,
+                request_id=request_id,
+                method=request.method,
+                route=route_pattern,
+                status_code=status_code,
+                duration_ms=elapsed_ms,
+                client_release=client_release,
+                username=_request_username(request),
             )
 
 
@@ -314,7 +340,7 @@ app.add_middleware(
     # de que el PATCH llegue a FastAPI. Incógnito suele ocultar el problema
     # porque no trae la marca local dirty y sólo necesita el GET inicial.
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-ID", "X-Client-Release"],
     expose_headers=["X-Request-ID"],
     max_age=600,
 )

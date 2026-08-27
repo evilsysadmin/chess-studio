@@ -6,21 +6,50 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46i',
-    title: 'Mesa de partida más limpia',
+    release: 'v16.6dm46l',
+    title: 'Tus errores ahora entrenan de verdad',
     highlights: [
-      'Studio Marfil es la apariencia inicial de piezas para cuentas nuevas; las skins retro siguen disponibles.',
-      'La pantalla de partida aprovecha mejor la altura: tablero, estado y acciones importantes quedan más a mano.',
-      'La cabecera y el reproductor se integran mejor en la mesa y el jaque se señala con menos ruido visual.',
+      'Puzzles personales pone tus errores reales en una cola clara: al superarlos salen de la rotación normal pero siguen disponibles en el histórico.',
+      'Cuando faltan ejercicios, Workers AI puede proponer variantes de tus cagadas y el motor local descarta cualquier posición que no valide antes de guardarla.',
+      'La generación trabaja por lotes y con cooldown para gastar IA sólo cuando aporta material nuevo.',
+      'Studio Marfil es la apariencia inicial para cuentas nuevas por su lectura limpia de las piezas; tus preferencias actuales se respetan.',
+    ],
+  },
+  {
+    release: 'v16.6dm46k',
+    title: 'Resiliencia operativa sin sacrificar partidas',
+    highlights: [
+      'Las funciones secundarias ceden capacidad antes que movimiento, login y persistencia cuando el backend está bajo presión.',
+      'Administración muestra burn rate, dependencias, señales del frontend y marcas de deploy sobre los gráficos.',
+      'La evaluación paralela permite comparar mejoras internas sin cambiar ninguna respuesta para el jugador y permanece desactivada por defecto en Render Free.',
+      'Feedback pasa a la cabecera, junto a Cuenta, para que sea visible desde cualquier pantalla sin buscarlo al final de Home.',
+    ],
+  },
+  {
+    release: 'v16.6dm46j',
+    title: 'Release health y operación trazable',
+    highlights: [
+      'Administración muestra error budget y salud de la release actual usando tráfico real, sin identificar jugadores.',
+      'Las peticiones llevan una referencia y versión de cliente para correlacionar fallos; los logs HTTP pasan a formato estructurado sin guardar contenido de partida.',
+      'Un probe sintético programado comprueba liveness/readiness de producción y puede validar también login con una cuenta técnica opcional.',
+    ],
+  },
+  {
+    release: 'v16.6dm46i',
+    title: 'Primer minuto más claro + operación más seria',
+    highlights: [
+      'La bienvenida guía por una partida, un puzzle y Así juegas con progreso real, sin obligarte a aprender todos los modos.',
+      'Los fallos técnicos se convierten en mensajes recuperables y el equipo conserva una referencia segura cuando hace falta diagnosticar.',
+      'Chess Studio gana flags operables desde backend y un SLO visible de disponibilidad/latencia en Administración.',
     ],
   },
   {
     release: 'v16.6dm46h',
-    title: 'Partidas más fáciles de leer',
+    title: 'Puzzles que ya muerden + feedback visible',
     highlights: [
-      'Bajo el tablero ves de un vistazo turno, última jugada y estado de guardado.',
-      'El cierre de partida presenta el impacto de rating como una tarjeta breve y clara.',
-      'Las herramientas de aprendizaje quedan visibles al llegar a esa parte de Home.',
+      'El banco clásico sube a 30 posiciones y añade mates en 2/3, sacrificios y combinaciones largas con dificultad visible.',
+      'La rotación evita repetir tipo y dificultad para que los ejercicios fáciles no monopolicen la sesión.',
+      'Feedback aparece antes en Home, conserva su nombre en móvil y puede pedir un pulso post-partida de forma ocasional y no invasiva.',
     ],
   },
   {

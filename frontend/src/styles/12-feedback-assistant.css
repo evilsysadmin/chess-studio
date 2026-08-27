@@ -119,10 +119,30 @@
     bottom: max(.65rem, env(safe-area-inset-bottom));
   }
   .feedback-assistant-card { width: min(320px, calc(100vw - 1.3rem)); }
-  .feedback-assistant-launcher span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .feedback-assistant-launcher { width: 50px; padding: .3rem; justify-content: center; }
+  .feedback-assistant-launcher { min-width: 0; width: auto; padding: .3rem .68rem .3rem .3rem; justify-content: center; }
+  .feedback-assistant-launcher span { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: nowrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .feedback-assistant-card { animation: none; }
 }
+
+.post-game-feedback {
+  width: min(720px, calc(100% - 2rem));
+  margin: .9rem auto 0;
+  display: grid;
+  gap: .7rem;
+  padding: .9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--studio-line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--studio-panel-raised) 92%, transparent);
+  box-shadow: 0 12px 28px rgba(0,0,0,.18);
+}
+.post-game-feedback > div:first-child { display: grid; gap: .2rem; }
+.post-game-feedback strong { color: var(--parchment); }
+.post-game-feedback small,
+.post-game-feedback > span { color: var(--parchment-dim); line-height: 1.4; }
+.post-game-feedback-ratings,
+.post-game-feedback-actions { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+.post-game-feedback-ratings .secondary-btn { min-height: 38px; }
+.post-game-feedback-actions .secondary-btn { min-height: 38px; }

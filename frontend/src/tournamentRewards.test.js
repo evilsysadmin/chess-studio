@@ -67,7 +67,7 @@ describe('selección persistida', () => {
     expect(loadSelectedTitle()).toBe('novato');
   });
 
-  it('el skin por defecto es "default" si nunca se eligió nada', () => {
+  it('Studio Marfil es el skin por defecto para cuentas sin preferencia previa', () => {
     expect(loadSelectedSkin()).toBe('studio');
   });
 

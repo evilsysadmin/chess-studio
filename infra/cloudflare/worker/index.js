@@ -2,12 +2,13 @@ export const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 export const COMMENT_MODEL = QWEN_MODEL;
 export const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;
 export const ANALYSIS_MODEL = QWEN_MODEL;
-export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan"]));
+export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch"]));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
 const PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900;
 const RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900;
+const PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200;
 const SENSITIVE_FACT_KEY_PARTS = Object.freeze([
   "password", "passwd", "secret", "token", "jwt", "authorization",
   "cookie", "session", "email", "api_key", "apikey", "bearer",
@@ -59,11 +60,13 @@ export function modelFor(eventType) {
 
 export function generationFor(eventType) {
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_GENERATION;
+  if (eventType === "personal_puzzle_batch") return { ...ANALYSIS_GENERATION, temperature: 0.55, max_tokens: 900 };
   if (RICH_ANALYSIS_EVENTS.has(eventType)) return ANALYSIS_GENERATION;
   return { ...COMMENT_GENERATION, max_tokens: 120 };
 }
 
 function maxOutputCharsFor(eventType) {
+  if (eventType === "personal_puzzle_batch") return PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS;
   if (eventType === "player_portrait") return PLAYER_PORTRAIT_MAX_OUTPUT_CHARS;
   if (RICH_ANALYSIS_EVENTS.has(eventType)) return RICH_ANALYSIS_MAX_OUTPUT_CHARS;
   return DEFAULT_MAX_OUTPUT_CHARS;
@@ -119,6 +122,15 @@ REGLAS INVIOLABLES:
 - Si mencionas una apertura en player_portrait, copia literalmente su nombre
   tal como aparece en HECHOS. No la rebautices, no inventes variantes y no
   añadas nombres de ajedrecistas que no estén escritos explícitamente allí.
+- personal_puzzle_batch es la ÚNICA excepción donde puedes proponer posiciones
+  hipotéticas nuevas. HECHOS contiene semillas reales del jugador, no soluciones
+  que debas copiar. Devuelve SOLO JSON válido, sin Markdown ni explicación, con
+  esta forma exacta: {"candidates":[{"fen":"...","best_uci":"e2e4",
+  "title":"...","description":"...","incident_keys":["human:..."]}]}.
+  Propón como máximo requested_candidates casos, cada uno con ambos reyes, turno
+  legal y una sola jugada táctica pretendidamente mejor. No incluyas username,
+  ids ni hechos personales. El motor local validará después cada candidato y
+  descartará cualquier posición o jugada incorrecta.
 - Para training_plan escribe exactamente 3 frases compactas basadas sólo en las
   prioridades ya calculadas dentro de HECHOS: qué atacar primero, qué atacar después
   si existe una segunda prioridad y una forma concreta de encadenar la práctica.
@@ -388,6 +400,7 @@ async function handleNarrative(request, env) {
   const tasks = {
     player_portrait: "Diagnostica el juego con datos: acierto principal, problema principal y siguiente acción. Mantén una sola pulla breve. Nada de adornos.",
     training_plan: "Convierte las prioridades ya calculadas por Chess Studio en un plan corto y accionable. No añadas diagnósticos nuevos.",
+    personal_puzzle_batch: "Crea un lote compacto de nuevos escenarios tácticos inspirados en las semillas. Devuelve exclusivamente el JSON exigido; nada más.",
     post_game_autopsy: "Haz la autopsia compacta de esta partida usando sólo los hechos analizados. Explica, no adornes.",
     combat_briefing: "Redacta un briefing táctico corto usando sólo la inteligencia realmente disponible y termina con una preparación concreta.",
     combat_debrief: "Redacta un debriefing corto usando sólo el resultado y hechos de servicio registrados.",

@@ -65,6 +65,21 @@ def test_health():
     assert r.json() == {"ok": True}
 
 
+def test_public_features_require_auth_and_expose_only_known_boolean_flags(monkeypatch):
+    assert raw_client.get("/api/features").status_code == 401
+    monkeypatch.setenv("CHESS_DISABLED_FEATURES", "spectator")
+    response = client.get("/api/features")
+    assert response.status_code == 200
+    assert response.json() == {
+        "features": {
+            "homeGuide": True,
+            "postGameFeedback": True,
+            "rivalGhost": True,
+            "spectator": False,
+        }
+    }
+
+
 def test_status_requires_auth_and_counts_recent_users_without_exposing_identities():
     assert raw_client.get("/api/status").status_code == 401
     asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True))
@@ -542,7 +557,7 @@ def test_me_endpoint_with_valid_token():
     assert r2.json()["username"] == "usuario_me"
 
 
-def test_access_log_includes_authenticated_username(caplog):
+def test_access_log_is_structured_and_includes_authenticated_username(caplog):
     caplog.set_level(logging.INFO, logger="uvicorn.error")
     registered = client.post(
         "/api/auth/register",
@@ -553,14 +568,14 @@ def test_access_log_includes_authenticated_username(caplog):
     caplog.clear()
     response = client.get(
         "/api/auth/me",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}", "X-Client-Release": "v16.6dm46j"},
     )
 
     assert response.status_code == 200
-    assert any(
-        "user=usuario_logs method=GET path=/api/auth/me status=200" in record.getMessage()
-        for record in caplog.records
-    )
+    messages = [record.getMessage() for record in caplog.records]
+    assert any('"event":"http_request"' in message and '"route":"/api/auth/me"' in message and '"status":200' in message for message in messages)
+    assert any('"client_release":"v16.6dm46j"' in message for message in messages)
+    assert any('"username":"usuario_logs"' in message for message in messages)
 
 
 def test_request_id_is_echoed_and_logged(caplog):
@@ -571,10 +586,10 @@ def test_request_id_is_echoed_and_logged(caplog):
 
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == request_id
-    assert any(f"request_id={request_id}" in record.getMessage() for record in caplog.records)
+    assert any(f'"request_id":"{request_id}"' in record.getMessage() for record in caplog.records)
 
 
-def test_register_access_log_attributes_new_username(caplog):
+def test_register_access_log_attributes_new_username_without_sensitive_fields(caplog):
     caplog.set_level(logging.INFO, logger="uvicorn.error")
     response = client.post(
         "/api/auth/register",
@@ -582,10 +597,10 @@ def test_register_access_log_attributes_new_username(caplog):
     )
 
     assert response.status_code == 201
-    assert any(
-        "user=alta_logueada method=POST path=/api/auth/register status=201" in record.getMessage()
-        for record in caplog.records
-    )
+    messages = [record.getMessage() for record in caplog.records]
+    assert any('"route":"/api/auth/register"' in message and '"status":201' in message for message in messages)
+    assert any('"username":"alta_logueada"' in message for message in messages)
+    assert all("clave123456" not in message for message in messages)
 
 
 def test_me_endpoint_without_token_rejected():

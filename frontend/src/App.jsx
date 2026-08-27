@@ -39,6 +39,7 @@ import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
+const FeedbackModal = React.lazy(() => import('./components/FeedbackModal.jsx'));
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
@@ -65,12 +66,17 @@ import { useReplayLibrary } from './useReplayLibrary.js';
 import { logout } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
+import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
+import { userFacingError } from './userFacingError.js';
+import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
   useEffect(() => {
     setAdminPreviewAccess(isAdminUser);
   }, [isAdminUser]);
+
+  useEffect(() => startFrontendTelemetry(), []);
 
   const {
     view,
@@ -169,14 +175,24 @@ function AppInner({ isAdminUser }) {
   const [showCombatSummary, setShowCombatSummary] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalAccount, setShowGlobalAccount] = useState(false);
+  const [showGlobalFeedback, setShowGlobalFeedback] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
   const accountMenuButtonRef = useRef(null);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(null);
+  const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
 
   useProfileSyncLifecycle(view);
+
+  useEffect(() => {
+    let active = true;
+    api.getFeatures()
+      .then((payload) => { if (active) setFeatureFlags(normalizeFeatureFlags(payload)); })
+      .catch(() => { /* defaults mantienen el producto operativo con backend antiguo/offline */ });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!showAccountMenu) return undefined;
@@ -332,7 +348,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
+      setError(userFacingError(e, 'No se pudo iniciar la partida.'));
     } finally {
       setLoading(false);
     }
@@ -491,7 +507,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(e?.requestId ? e.message : 'No se pudo crear la siguiente partida de la serie.');
+      setError(userFacingError(e, 'No se pudo crear la siguiente partida de la serie.'));
     } finally {
       setLoading(false);
     }
@@ -540,7 +556,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(e?.requestId ? e.message : 'No se pudo arrancar la posición del laboratorio.');
+      setError(userFacingError(e, 'No se pudo arrancar la posición del laboratorio.'));
     } finally { setLoading(false); }
   }
 
@@ -573,7 +589,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(e?.requestId ? e.message : 'No se pudo iniciar el desafío.');
+      setError(userFacingError(e, 'No se pudo iniciar el desafío.'));
     } finally { setLoading(false); }
   }
 
@@ -599,7 +615,7 @@ function AppInner({ isAdminUser }) {
       setTournamentGame(created);
       navigateTo('tournamentGame');
     } catch (e) {
-      setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
+      setError(userFacingError(e, 'No se pudo iniciar la partida.'));
     } finally {
       setLoading(false);
     }
@@ -707,10 +723,15 @@ function AppInner({ isAdminUser }) {
     setLastResult(null);
   }
 
+  useEffect(() => {
+    setFrontendTelemetryContext(view);
+  }, [view]);
+
   const isBoardGameView = view === 'game' || view === 'tournamentGame' || combatBattleUiActive;
 
   return (
     <>
+      <a className="skip-link" href="#main-content">Saltar al contenido</a>
       {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
       <ReleaseUpdateNotice deferReload={isBoardGameView} />
       <ErrorBoundary
@@ -719,17 +740,27 @@ function AppInner({ isAdminUser }) {
         onRecover={recoverSessionFromBoundary}
         canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
       >
-      <div className={`app-shell ${isBoardGameView ? 'game-app-shell' : ''}`}>
+      <div className="app-shell" id="main-content" tabIndex={-1}>
         <div className={`masthead ${isBoardGameView ? 'masthead-game-compact' : ''}`}>
           <div className="masthead-top-row">
             <div className="masthead-text">
               {!isBoardGameView && <span className="masthead-kicker">JUEGA · APRENDE · COMPITE</span>}
-              {isBoardGameView ? <span className="game-wordmark"><span aria-hidden="true">♞</span><b>Chess Studio</b></span> : <h1>Chess Studio</h1>}
+              {isBoardGameView ? <span className="game-wordmark">Chess Studio</span> : <h1>Chess Studio</h1>}
             </div>
             <div className="masthead-actions">
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
                 <SaveStatusBadge state={gameSaveState} />
               )}
+              <button
+                type="button"
+                className="masthead-feedback-trigger"
+                onClick={() => setShowGlobalFeedback(true)}
+                aria-label="Enviar feedback"
+                title="Enviar feedback"
+              >
+                <span aria-hidden="true">✦</span>
+                <span>Feedback</span>
+              </button>
               <div className="masthead-account-menu" ref={accountMenuRef}>
                 <button
                   ref={accountMenuButtonRef}
@@ -804,6 +835,7 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
+        {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
@@ -846,6 +878,7 @@ function AppInner({ isAdminUser }) {
             rating={rating}
             combatProgress={combatOverview}
             suppressHomeNudge={showSettings}
+            features={featureFlags}
           />
         )}
 
@@ -873,6 +906,7 @@ function AppInner({ isAdminUser }) {
             onNextRunGame={() => handleContinueRun(specialRun)}
             memoryContext={gameContext}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
+            postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
         )}
 
@@ -1005,6 +1039,7 @@ function AppInner({ isAdminUser }) {
             onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null))}
             onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
             onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(tournamentGame, moveReport, 'tournament', meta?.outcome)}
+            postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
         )}
 

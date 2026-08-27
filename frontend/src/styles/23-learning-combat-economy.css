@@ -1,4 +1,3 @@
-/* dm46a · aprendizaje, economía Combat y progreso como superficies de producto. */
 .home-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; flex-wrap: wrap; }
 .home-heading-actions > p { margin: 0; }
 .home-heading-actions > div { display: flex; gap: .45rem; flex-wrap: wrap; justify-content: flex-end; }
@@ -144,3 +143,21 @@
 
 .puzzle-protection-balance b { color: var(--parchment); }
 .puzzle-protection-balance span { color: var(--parchment-dim); font-size: 0.82rem; line-height: 1.4; }
+
+/* v16.6dm46l · entrenamiento personal: cola activa, histórico y generación validada */
+.personal-puzzle-training-panel { display: grid; gap: .62rem; }
+.personal-puzzle-ai-action { display: grid; gap: .34rem; padding: .72rem; border: 1px solid color-mix(in srgb,var(--hint) 34%,var(--studio-line)); border-radius: 10px; background: rgba(95,168,211,.055); }
+.personal-puzzle-ai-action .secondary-btn { justify-self: start; }
+.personal-puzzle-ai-action small { color: var(--muted); line-height: 1.45; }
+.personal-puzzle-history { margin-top: .15rem; }
+.personal-puzzle-history-list { display: grid; gap: .42rem; }
+.personal-puzzle-history-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .58rem .66rem; border: 1px solid var(--studio-line); border-radius: 8px; background: rgba(255,255,255,.025); color: inherit; text-align: left; cursor: pointer; }
+.personal-puzzle-history-row:hover, .personal-puzzle-history-row:focus-visible { border-color: var(--brass-dim); outline: none; }
+.personal-puzzle-history-row > span:first-child { display: grid; gap: .12rem; min-width: 0; }
+.personal-puzzle-history-row b { color: var(--parchment); }
+.personal-puzzle-history-row small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.personal-puzzle-history-row > span:last-child { color: var(--brass); white-space: nowrap; font-size: .72rem; }
+@media (max-width: 620px) {
+  .personal-puzzle-history-row { align-items: flex-start; }
+  .personal-puzzle-history-row small { white-space: normal; }
+}

@@ -1,8 +1,15 @@
 import { withRequestId, requestErrorMessage } from './requestId.js';
+import { userFacingError } from './userFacingError.js';
 
 export async function request(url, options = {}) {
   const { headers = {}, ...rest } = options;
-  return fetch(url, { ...rest, headers: withRequestId(headers) });
+  try {
+    return await fetch(url, { ...rest, headers: withRequestId(headers) });
+  } catch (cause) {
+    const error = new Error(userFacingError(cause));
+    error.cause = cause;
+    throw error;
+  }
 }
 
 async function parseJsonResponse(response) {
@@ -13,6 +20,8 @@ async function parseJsonResponse(response) {
     error.status = response.status;
     error.requestId = requestId;
     error.body = body;
+    error.technicalMessage = message;
+    error.message = userFacingError(error, message);
     throw error;
   }
   return body;

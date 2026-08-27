@@ -5,8 +5,6 @@ import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, Ic
 import QuickMatchModal from './QuickMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import ModeTutorialTip from './ModeTutorialTip.jsx';
-import FeedbackModal from './FeedbackModal.jsx';
-import FeedbackAssistant from './FeedbackAssistant.jsx';
 import HomePlayNudge from './HomePlayNudge.jsx';
 import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL } from '../combatChessBrand.js';
 import { currentDailyStreak, dailyChallengeDayKey } from '../dailyChallenge.js';
@@ -25,7 +23,8 @@ import quickCardArt from '../assets/home-modes/quick.webp';
 import UserReleaseNotesModal from './UserReleaseNotesModal.jsx';
 import { APP_RELEASE } from '../release.js';
 import { USER_RELEASE_NOTES_KEY } from '../userReleaseNotes.js';
-import { isFreshAccount } from '../homeOnboarding.js';
+import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboardingInsightsSeen } from '../homeOnboarding.js';
+import { loadPuzzlesSolved } from '../puzzleStats.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -59,6 +58,7 @@ export default function Menu({
   rating,
   combatProgress,
   suppressHomeNudge = false,
+  features = {},
 }) {
   const [difficulty, setDifficulty] = useState(50);
   const [autoDifficulty, setAutoDifficulty] = useState(true);
@@ -69,14 +69,13 @@ export default function Menu({
   const [threatCheck, setThreatCheck] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [seenReleaseNotes, setSeenReleaseNotes] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === APP_RELEASE);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
-  const hasOpenOverlay = showQuickMatch || showMirrorMode || showFeedback || showReleaseNotes;
+  const hasOpenOverlay = showQuickMatch || showMirrorMode || showReleaseNotes;
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const activity = useMemo(() => loadGameActivity(), []);
   const today = useMemo(() => buildHomeToday({
@@ -86,6 +85,11 @@ export default function Menu({
   }), []);
   const nextAction = useMemo(() => homeNextBestAction(activity), [activity]);
   const freshAccount = useMemo(() => isFreshAccount({ activity, tournament }), [activity, tournament]);
+  const onboarding = useMemo(() => buildHomeOnboarding({
+    activity,
+    puzzlesSolved: loadPuzzlesSolved(),
+    insightsSeen: onboardingInsightsSeen(),
+  }), [activity]);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());
@@ -110,6 +114,19 @@ export default function Menu({
     setShowReleaseNotes(true);
   }
 
+  function openOnboardingInsights() {
+    markOnboardingInsightsSeen();
+    closeHomeGuide();
+    onInsights();
+  }
+
+  function runOnboardingNext() {
+    if (onboarding.next === 'game') { closeHomeGuide(); onTournament(); return; }
+    if (onboarding.next === 'puzzle') { closeHomeGuide(); onPuzzle(); return; }
+    if (onboarding.next === 'insights') { openOnboardingInsights(); return; }
+    closeHomeGuide();
+  }
+
   return (
     <div className="menu home-friendly">
       <button type="button" className={`home-release-notes-link ${seenReleaseNotes ? '' : 'has-new'}`} onClick={openReleaseNotes}>
@@ -131,22 +148,26 @@ export default function Menu({
         </div>
       )}
 
-      {showHomeGuide && (
+      {features.homeGuide !== false && showHomeGuide && (
         <section className="home-start-guide" aria-label="Guía rápida de Chess Studio">
           <button type="button" className="home-start-guide-close" onClick={closeHomeGuide} aria-label="Cerrar guía rápida">×</button>
           <div className="home-start-guide-copy">
-            <span className="section-label">EMPIEZA AQUÍ</span>
-            <h2>{freshAccount ? 'Tu cuenta está lista. Empieza por tu primer rival.' : 'Juega primero. Descubre el resto a tu ritmo.'}</h2>
-            <p>{freshAccount ? 'Empiezas desde cero: este progreso es solo tuyo. Torneo te propone un rival adecuado; Combat, práctica y desafíos estarán ahí cuando quieras variar.' : 'Torneo, entrenamiento, desafíos y Combat quedan disponibles cuando quieras profundizar.'}</p>
+            <span className="section-label">PRIMEROS 60 SEGUNDOS · {onboarding.completed}/3</span>
+            <h2>{onboarding.complete ? 'Ya conoces el circuito básico.' : freshAccount ? 'Tres pasos y ya sabes dónde está todo.' : 'Sigue desde el siguiente paso útil.'}</h2>
+            <p>{onboarding.complete ? 'Juega, entrena y revisa tu diagnóstico cuando te apetezca. El resto de modos queda detrás de un clic.' : 'No necesitas aprender todos los modos ahora. Completa este recorrido corto y luego explora a tu ritmo.'}</p>
           </div>
-          <div className="home-start-guide-path" aria-label="Opciones principales">
-            <span><b>Torneo</b><small>Tu primer rival</small></span>
-            <span><b>Combat</b><small>Campaña a tu ritmo</small></span>
-            <span><b>Práctica</b><small>Con pistas, sin presión</small></span>
+          <div className="home-start-guide-path" aria-label="Primeros pasos de Chess Studio">
+            {onboarding.steps.map((step, index) => (
+              <span key={step.id} className={`${step.done ? 'is-done' : ''} ${onboarding.next === step.id ? 'is-next' : ''}`}>
+                <i aria-hidden="true">{step.done ? '✓' : index + 1}</i><b>{step.label}</b><small>{step.detail}</small>
+              </span>
+            ))}
           </div>
           <div className="home-start-guide-actions">
-            <button type="button" className="primary-btn" onClick={() => { closeHomeGuide(); onTournament(); }}>Ver rival</button>
-            <button type="button" className="secondary-btn" onClick={closeHomeGuide}>Explorar Home</button>
+            <button type="button" className="primary-btn" onClick={runOnboardingNext}>
+              {onboarding.next === 'game' ? 'Jugar primer rival' : onboarding.next === 'puzzle' ? 'Resolver un puzzle' : onboarding.next === 'insights' ? 'Abrir Así juegas' : 'Listo'}
+            </button>
+            {!onboarding.complete && <button type="button" className="secondary-btn" onClick={closeHomeGuide}>Ahora no</button>}
           </div>
         </section>
       )}
@@ -185,7 +206,7 @@ export default function Menu({
       <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
         <div className="home-group-heading">
           <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
-          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p><button type="button" className="home-context-guide" onClick={() => setShowHomeGuide(true)}><span>?</span> Juega primero</button></div>
+          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && <button type="button" className="home-context-guide" onClick={() => setShowHomeGuide(true)}><span>?</span> Juega primero</button>}</div>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
           <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card home-mode-card home-mode-featured" onClick={onTournament}>
@@ -233,12 +254,12 @@ export default function Menu({
             <TutorialModeCard tutorialId="combat-basics" className="menu-card accent-danger" onClick={onCombat}>
               <IconSword className="menu-card-icon" /><h3>{COMBAT_CHESS_FREE_LABEL}</h3><p>Batalla libre sin campaña.</p><span className="menu-card-cta">Preparar →</span>
             </TutorialModeCard>
-            <TutorialModeCard tutorialId="rival-ghost" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
+            {features.rivalGhost !== false && <TutorialModeCard tutorialId="rival-ghost" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
               <IconEye className="menu-card-icon" /><h3>Rival Fantasma</h3><p>CPU basada en tendencias reales de tu juego.</p><span className="menu-card-cta">Jugar →</span>
-            </TutorialModeCard>
-            <TutorialModeCard tutorialId="spectator" className="menu-card accent-hint" onClick={onSpectator}>
+            </TutorialModeCard>}
+            {features.spectator !== false && <TutorialModeCard tutorialId="spectator" className="menu-card accent-hint" onClick={onSpectator}>
               <IconEye className="menu-card-icon" /><h3>Espectador</h3><p>CPU contra CPU. Tú miras el incendio.</p><span className="menu-card-cta">Mirar →</span>
-            </TutorialModeCard>
+            </TutorialModeCard>}
             <TutorialModeCard tutorialId="lab" className="menu-card accent-success" onClick={onLab}>
               <IconPuzzle className="menu-card-icon" /><h3>Laboratorio</h3><p>Construye o pega una posición y juégala.</p><span className="menu-card-cta">Abrir →</span>
             </TutorialModeCard>
@@ -246,18 +267,19 @@ export default function Menu({
         </details>
       </section>
 
+
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">
           <div><span className="section-label">Mejorar</span><h2>Aprender y practicar</h2></div>
           <div className="home-heading-actions"><p>Analiza, entrena y vuelve al tablero con una idea clara.</p><div><button type="button" className="home-context-guide" onClick={onTutorial}><span>?</span> Aprende a jugar</button><button type="button" className="home-progress-link" onClick={onProgress}>Ver mi progreso →</button></div></div>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid home-learning-grid">
-          <TutorialModeCard tutorialId="insights" className="menu-card accent-hint home-primary-card home-mode-card home-learning-card" onClick={onInsights}>
+          <TutorialModeCard tutorialId="insights" className="menu-card accent-hint home-primary-card home-mode-card home-learning-card" onClick={() => { markOnboardingInsightsSeen(); onInsights(); }}>
             <span className="home-mode-icon" aria-hidden="true"><IconEye className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Diagnóstico</b><i>Tu juego real</i></span><h3>Así juegas</h3><span className="home-mode-description">Tu prioridad actual y una acción concreta para mejorar.</span></span><span className="menu-card-cta">Ver diagnóstico <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
           <TutorialModeCard tutorialId="puzzles" className="menu-card accent-danger home-primary-card home-mode-card home-learning-card" onClick={onTrainPersonal}>
-            <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Entrenamiento</b><i>Desde tus partidas</i></span><h3>Practicar tus errores</h3><span className="home-mode-description">Puzzles construidos con posiciones donde fallaste.</span></span><span className="menu-card-cta">Entrenar ahora <b aria-hidden="true">→</b></span>
+            <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Puzzles personales</b><i>Desde tus partidas</i></span><h3>Entrena tus grandes cagadas</h3><span className="home-mode-description">Tus errores reales se convierten en posiciones para que no vuelvas a pisar el mismo rastrillo.</span></span><span className="menu-card-cta">Entrenar pendientes <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
           <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card home-mode-card home-learning-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
@@ -265,7 +287,7 @@ export default function Menu({
           </TutorialModeCard>
         </div>
 
-        <details className="friendly-disclosure home-learning-more" open>
+        <details className="friendly-disclosure home-learning-more">
           <summary>Más aprendizaje y herramientas</summary>
           <div className="friendly-disclosure-body menu-grid compact-mode-grid home-tools-grid">
             <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint home-mode-card home-tool-card" onClick={onPuzzle}>
@@ -286,8 +308,6 @@ export default function Menu({
 
       {error && <p className="error-text">{error}</p>}
 
-      <FeedbackAssistant blocked={hasOpenOverlay || showHomeGuide} autoOpen={false} onFeedback={() => setShowFeedback(true)} />
-
       <HomePlayNudge
         enabled={homePlayNudgeEnabled}
         hasSavedGame={hasSavedGame}
@@ -295,7 +315,6 @@ export default function Menu({
         onPlay={() => setShowQuickMatch(true)}
       />
 
-      {showFeedback && <FeedbackModal context="Home" onClose={() => setShowFeedback(false)} />}
       {showReleaseNotes && <UserReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
       {showQuickMatch && (
         <QuickMatchModal

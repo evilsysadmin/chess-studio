@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
-import { PUZZLES, randomPuzzle } from '../puzzles.js';
-import { loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
+import { PUZZLES, PUZZLE_DIFFICULTY_LABELS, randomPuzzle } from '../puzzles.js';
+import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
+import { generateValidatedPersonalPuzzleBatch, shouldOfferAiPersonalPuzzleGeneration } from '../aiPersonalPuzzles.js';
 import { dailyChallengeBrief, dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
@@ -15,7 +16,7 @@ import { checkAchievements } from '../achievements.js';
 import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
 import { buildPuzzleReveal } from '../puzzleReveal.js';
 
-const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
+const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Tu crimen' };
 const RECENT_CURATED_LIMIT = 5;
 
 // Tiempo (ms) que se espera antes de aplicar la respuesta forzada del
@@ -25,10 +26,10 @@ const REPLY_DELAY_MS = 550;
 export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic' }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
-  const filteredInitialPersonal = personalPuzzlesForFilter(initialFilter);
-  const resolvedInitialSource = initialSource === 'personal' && filteredInitialPersonal.length === 0 ? 'curated' : initialSource;
+  const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
+  const resolvedInitialSource = initialSource === 'personal' && filteredInitialPersonalTotal === 0 ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
-  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle());
+  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter, { fallbackToMastered: true }) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle());
   const [recentCuratedIds, setRecentCuratedIds] = useState([]);
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [achievementUnlocked, setAchievementUnlocked] = useState(null);
@@ -49,10 +50,16 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const rushSavedRef = useRef(false);
   const [rushSeconds, setRushSeconds] = useState(rushMode ? 180 : null);
   const [rushEnded, setRushEnded] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGenerationStatus, setAiGenerationStatus] = useState(null);
 
   const humanColor = useMemo(() => new Chess(puzzle.fen).turn(), [puzzle]);
   const personalStats = useMemo(() => personalTrainingSummary(), [personalPuzzles]);
-  const filteredPersonalCount = useMemo(() => personalPuzzles.filter((p) => matchesPersonalPuzzleFilter(p, initialFilter)).length, [personalPuzzles, initialFilter]);
+  const filteredPersonalTotalCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length, [personalPuzzles, initialFilter]);
+  const filteredPersonalActiveCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter) && !isPersonalPuzzleMastered(item)).length, [personalPuzzles, initialFilter]);
+  const personalHistory = useMemo(() => personalPuzzleHistory(initialFilter), [personalPuzzles, initialFilter]);
+  const currentPersonalMastered = source === 'personal' && isPersonalPuzzleMastered(puzzle);
+  const offerAiGeneration = source === 'personal' && shouldOfferAiPersonalPuzzleGeneration({ ...personalStats, active: filteredPersonalActiveCount, total: filteredPersonalTotalCount });
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
   const dailyBrief = useMemo(() => dailyChallengeBrief(dailyStats, puzzle.dailyKey), [dailyStats, puzzle.dailyKey]);
   const revealGuide = useMemo(() => buildPuzzleReveal(puzzle), [puzzle]);
@@ -108,14 +115,14 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     : [];
 
   function choosePuzzle(nextSource, excludeId = null) {
-    if (nextSource === 'personal') return randomPersonalPuzzle(excludeId, initialFilter) || randomPuzzle(excludeId);
+    if (nextSource === 'personal') return randomPersonalPuzzle(excludeId, initialFilter, { fallbackToMastered: true }) || randomPuzzle(excludeId);
     if (nextSource === 'daily') return dailyPuzzle(PUZZLES, new Date(), dailySlot);
     const recent = [...recentCuratedIds, excludeId].filter(Boolean);
-    return randomPuzzle(recent, puzzle?.kind);
+    return randomPuzzle(recent, puzzle?.kind, puzzle?.difficulty);
   }
 
   function changeSource(nextSource) {
-    if (nextSource === 'personal' && filteredPersonalCount === 0) return;
+    if (nextSource === 'personal' && filteredPersonalTotalCount === 0) return;
     setSource(nextSource);
     setPuzzle(choosePuzzle(nextSource));
   }
@@ -123,6 +130,35 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   function newPuzzle() {
     setPersonalPuzzles(loadPersonalPuzzles());
     setPuzzle(choosePuzzle(source, puzzle.id));
+  }
+
+  function reviewPersonalPuzzle(item) {
+    if (!item) return;
+    setSource('personal');
+    setPuzzle(item);
+    setAiGenerationStatus(null);
+  }
+
+  async function generateAiPersonalVariants() {
+    if (aiGenerating || !offerAiGeneration) return;
+    setAiGenerating(true);
+    setAiGenerationStatus('Workers AI propone; el motor local decide si merece vivir.');
+    try {
+      const result = await generateValidatedPersonalPuzzleBatch({ puzzles: personalPuzzles });
+      const refreshed = loadPersonalPuzzles();
+      setPersonalPuzzles(refreshed);
+      if (result.added > 0) {
+        setAiGenerationStatus(`Añadidos ${result.added} escenarios nuevos. Los candidatos que no convencieron al minimax han ido directos al contenedor amarillo.`);
+        const next = result.saved?.find((item) => !isPersonalPuzzleMastered(item));
+        if (next) setPuzzle(next);
+      } else if (result.reason === 'all-rejected-or-duplicate') {
+        setAiGenerationStatus('Workers AI trajo material, pero el minimax no lo validó o ya lo tenías. Cero basura añadida.');
+      } else {
+        setAiGenerationStatus('No se ha gastado otra llamada útil: el proveedor está en cooldown/no disponible o no había semillas suficientes.');
+      }
+    } finally {
+      setAiGenerating(false);
+    }
   }
 
   function handleSquareClick(square) {
@@ -269,8 +305,8 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
-        <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalCount === 0} onClick={() => changeSource('personal')}>
-          {initialFilter?.label ? `Crímenes · ${initialFilter.label} (${filteredPersonalCount})` : initialFilter?.opening ? `Crímenes · ${initialFilter.opening} (${filteredPersonalCount})` : `Tus crímenes (${personalPuzzles.length})`}
+        <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalTotalCount === 0} onClick={() => changeSource('personal')}>
+          {initialFilter?.label ? `Personales · ${initialFilter.label} (${filteredPersonalActiveCount} pendientes)` : initialFilter?.opening ? `Personales · ${initialFilter.opening} (${filteredPersonalActiveCount} pendientes)` : `Puzzles personales (${filteredPersonalActiveCount} pendientes)`}
         </button>
         <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
       </div>}
@@ -337,10 +373,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
         </div>
 
         <div className="tutorial-text puzzle-friendly-info">
-          <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'}</span>
+          <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'}{puzzle.difficulty ? ` · ${PUZZLE_DIFFICULTY_LABELS[puzzle.difficulty] || puzzle.difficulty}` : ''}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
-          {source === 'curated' && <p className="hint-text friendly-inline-note">Rotamos entre remates, horquillas, diagonales, columnas y promociones para que el entrenamiento no se convierta en repetir la misma posición.</p>}
+          {source === 'curated' && <p className="hint-text friendly-inline-note">Rotamos dificultad y motivos: remates, cálculo largo, sacrificios, horquillas, redes multipieza y combinaciones históricas. Los ejercicios fáciles ya no monopolizan la sesión.</p>}
+          {source === 'curated' && puzzle.technique && <p className="hint-text friendly-inline-note">Motivo principal: <b>{puzzle.technique}</b>.</p>}
           <p className="hint-text friendly-inline-note">Juegas con <b>{humanColor === 'w' ? 'blancas' : 'negras'}</b>. Elige pieza y destino; si fallas puedes volver a intentarlo.</p>
 
           {source === 'daily' && (
@@ -354,7 +391,31 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
             </div>
           )}
           {source === 'personal' && (
-            <p className="hint-text personal-puzzle-note">☠ Posición nacida de una de tus propias autopsias.{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
+            <div className="personal-puzzle-training-panel">
+              <p className="hint-text personal-puzzle-note">☠ {puzzle.source === 'workers-ai-validated' ? 'Escenario nuevo inspirado en tus errores y confirmado por el minimax local.' : 'Posición nacida de una de tus propias autopsias.'}{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
+              {currentPersonalMastered && <p className="hint-text friendly-inline-note">✓ Este caso ya está superado y vive en tu histórico. Lo estás revisando a propósito; no vuelve a la cola normal.</p>}
+              {!currentPersonalMastered && filteredPersonalActiveCount > 0 && <p className="hint-text friendly-inline-note"><b>{filteredPersonalActiveCount}</b> cagada{filteredPersonalActiveCount === 1 ? '' : 's'} pendiente{filteredPersonalActiveCount === 1 ? '' : 's'} de domesticar.</p>}
+              {offerAiGeneration && (
+                <div className="personal-puzzle-ai-action">
+                  <button type="button" className="secondary-btn" disabled={aiGenerating} onClick={generateAiPersonalVariants}>{aiGenerating ? 'Validando propuestas…' : 'Generar variantes desde mis cagadas'}</button>
+                  <small>Una llamada por lote; después `chess.js` + minimax local validan cada candidato. El backend aplica cooldown para no freír Workers AI.</small>
+                </div>
+              )}
+              {aiGenerationStatus && <p className="hint-text" role="status">{aiGenerationStatus}</p>}
+              {personalHistory.length > 0 && (
+                <details className="friendly-disclosure personal-puzzle-history">
+                  <summary>Histórico superado ({personalHistory.length})</summary>
+                  <div className="friendly-disclosure-body personal-puzzle-history-list">
+                    {personalHistory.slice(0, 10).map((item) => (
+                      <button type="button" className="personal-puzzle-history-row" key={item.id} onClick={() => reviewPersonalPuzzle(item)}>
+                        <span><b>{item.title || 'Caso personal'}</b><small>{item.source === 'workers-ai-validated' ? 'Variante IA validada' : 'Autopsia real'}{item.opening ? ` · ${item.opening}` : ''}</small></span>
+                        <span>Revisar →</span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
           )}
 
           <details className="friendly-disclosure puzzle-progress-details">
@@ -362,7 +423,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
             <div className="friendly-disclosure-body">
               <p className="hint-text">Resueltos en esta sesión: <b>{solvedCount}</b> · racha: <b>{streak}</b> · mejor: <b>{bestStreak}</b></p>
               {source === 'personal' && personalStats.attempts > 0 && (
-                <p className="hint-text">Entrenamiento personal: <b>{personalStats.cleanSolves}/{personalStats.attempts}</b> limpias{personalStats.cleanRate !== null ? ` · ${personalStats.cleanRate}%` : ''}.</p>
+                <p className="hint-text">Entrenamiento personal: <b>{personalStats.active}</b> pendientes · <b>{personalStats.mastered}</b> superados · {personalStats.cleanSolves}/{personalStats.attempts} limpias{personalStats.cleanRate !== null ? ` · ${personalStats.cleanRate}%` : ''}.</p>
               )}
               {source === 'daily' && (
                 <div className="daily-challenge-panel compact">
