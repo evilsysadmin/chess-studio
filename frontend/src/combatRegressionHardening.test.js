@@ -12,6 +12,9 @@ import {
   setDeploymentUnit,
 } from './combatDeployment.js';
 
+const LIVE_CAMPAIGN_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+const LIVE_FREE_FEN = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1';
+
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
@@ -28,23 +31,23 @@ describe('REGRESSION · una batalla Combat viva jamás cae silenciosamente a Set
 
   it('una sesión activa sobrevive a storage corrupto durante un remount', () => {
     const id = 'campaign:regression:n3';
-    saveCombatSession(id, { phase: 'battle', fen: 'fen-live', registry: { e4: { type: 'p' } }, humanColor: 'w' });
+    saveCombatSession(id, { phase: 'battle', fen: LIVE_CAMPAIGN_FEN, registry: { e4: { type: 'p' } }, humanColor: 'w' });
     sessionStorage.setItem('chess-study-active-combat-session-v1', '{roto');
     expect(hasCombatSession(id)).toBe(true);
-    expect(loadCombatSession(id)).toMatchObject({ phase: 'battle', fen: 'fen-live', humanColor: 'w' });
+    expect(loadCombatSession(id)).toMatchObject({ phase: 'battle', fen: LIVE_CAMPAIGN_FEN, humanColor: 'w' });
   });
   it('campaña y combate libre pueden quedar suspendidos sin pisarse entre sí', () => {
     const campaignId = 'campaign:seed:s3-battle';
     const freeId = 'free';
-    saveCombatSession(campaignId, { phase: 'battle', fen: 'fen-campaign', registry: { e4: { type: 'p' } }, humanColor: 'w' });
-    saveCombatSession(freeId, { phase: 'battle', fen: 'fen-free', registry: { d4: { type: 'p' } }, humanColor: 'b' });
+    saveCombatSession(campaignId, { phase: 'battle', fen: LIVE_CAMPAIGN_FEN, registry: { e4: { type: 'p' } }, humanColor: 'w' });
+    saveCombatSession(freeId, { phase: 'battle', fen: LIVE_FREE_FEN, registry: { d4: { type: 'p' } }, humanColor: 'b' });
 
-    expect(loadCombatSession(campaignId)).toMatchObject({ fen: 'fen-campaign', humanColor: 'w' });
-    expect(loadCombatSession(freeId)).toMatchObject({ fen: 'fen-free', humanColor: 'b' });
+    expect(loadCombatSession(campaignId)).toMatchObject({ fen: LIVE_CAMPAIGN_FEN, humanColor: 'w' });
+    expect(loadCombatSession(freeId)).toMatchObject({ fen: LIVE_FREE_FEN, humanColor: 'b' });
 
     clearCombatSession(freeId);
     expect(loadCombatSession(freeId)).toBeNull();
-    expect(loadCombatSession(campaignId)).toMatchObject({ fen: 'fen-campaign' });
+    expect(loadCombatSession(campaignId)).toMatchObject({ fen: LIVE_CAMPAIGN_FEN });
   });
 
 });

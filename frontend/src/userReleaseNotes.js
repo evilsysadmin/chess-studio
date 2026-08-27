@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zda',
+    title: 'Combat conserva mejor sus batallas',
+    highlights: [
+      'Las batallas suspendidas usan posiciones de ajedrez válidas al comprobar su recuperación, manteniendo intacta la protección contra datos corruptos.',
+      'Una campaña y un combate libre pueden quedar suspendidos en la misma pestaña sin pisarse entre sí.',
+      'Si el almacenamiento de la pestaña queda ilegible, una batalla viva puede seguir recuperándose desde su respaldo en memoria.',
+    ],
+  },
+  {
     release: 'v16.6dm46zd',
     title: 'Más difícil dejar Chess Studio tieso',
     highlights: [
