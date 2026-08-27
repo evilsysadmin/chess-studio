@@ -69,6 +69,11 @@ def main() -> int:
     for token in ('infra/grafana/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'Validate Grafana datasources', '/api/datasources/uid/$uid', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform apply -auto-approve tfplan', 'Verify published dashboards', '/api/dashboards/uid/$uid'):
         if token not in workflow:
             fail(f"workflow Grafana incompleto: {token}")
+    # El token de publicación no necesita ampliar permisos sólo para este probe.
+    # 403 (sin datasources:read) debe ser warning; 404 de UID sí es error.
+    for token in ('403)', '::warning::No se puede leer el datasource Grafana', '404)', 'no existe: HTTP 404'):
+        if token not in workflow:
+            fail(f"workflow Grafana perdió el contrato least-privilege: {token}")
 
     tracing = (ROOT / "backend-python" / "tracing.py").read_text(encoding="utf-8")
     requirements = (ROOT / "backend-python" / "requirements.txt").read_text(encoding="utf-8")

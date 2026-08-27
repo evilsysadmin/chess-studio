@@ -62,12 +62,28 @@ jobs:
             code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
               --header "Authorization: Bearer $GRAFANA_AUTH" \
               "${GRAFANA_URL%/}/api/datasources/uid/$uid")"
-            if [[ "$code" != 200 ]]; then
-              echo "::error::Datasource Grafana $kind ($uid) no accesible: HTTP $code"
-              sed -n '1,20p' "$body" || true
-              exit 1
-            fi
-            echo "Datasource $kind OK · $uid"
+            case "$code" in
+              200)
+                echo "Datasource $kind OK · $uid"
+                ;;
+              403)
+                # El token de publicación puede ser deliberadamente de mínimo
+                # privilegio y no incluir datasources:read. No ampliamos permisos
+                # sólo para un preflight auxiliar: Terraform/Grafana validarán las
+                # referencias reales durante la publicación del dashboard.
+                echo "::warning::No se puede leer el datasource Grafana $kind ($uid): HTTP 403 · el token no tiene datasources:read. Se continúa con Terraform."
+                ;;
+              404)
+                echo "::error::Datasource Grafana $kind ($uid) no existe: HTTP 404"
+                sed -n '1,20p' "$body" || true
+                exit 1
+                ;;
+              *)
+                echo "::error::No se pudo validar el datasource Grafana $kind ($uid): HTTP $code"
+                sed -n '1,20p' "$body" || true
+                exit 1
+                ;;
+            esac
           done
 
       - name: Terraform format and init

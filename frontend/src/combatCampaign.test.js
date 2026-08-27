@@ -22,6 +22,8 @@ import {
   campaignRelicDetails,
   loadCampaignArchive,
   endCampaign,
+  campaignBiomeForNode,
+  CAMPAIGN_BIOMES,
 } from './combatCampaign.js';
 
 beforeEach(() => localStorage.clear());
@@ -38,6 +40,23 @@ describe('Combat Chess campaign map', () => {
   });
 
 
+
+  it('ambienta cada combate de campaña de forma determinista sin tocar los temas globales', () => {
+    const themes = new Set(Object.values(CAMPAIGN_BIOMES).map((biome) => biome.boardTheme));
+    expect(themes).toEqual(new Set(['combat-jungle', 'combat-urban', 'combat-desert', 'combat-citadel']));
+
+    for (let i = 0; i < 40; i += 1) {
+      const seed = `biome-seed-${i}`;
+      const map = campaignMap(seed);
+      for (const node of map.nodes.filter((item) => ['battle', 'elite', 'boss'].includes(item.type))) {
+        const first = campaignBiomeForNode(seed, node);
+        const second = campaignBiomeForNode(seed, node);
+        expect(second).toEqual(first);
+        expect(themes.has(first.boardTheme)).toBe(true);
+        if (node.type === 'boss') expect(first).toEqual(CAMPAIGN_BIOMES.citadel);
+      }
+    }
+  });
 
   it('elige bosses deterministas con identidad y regla propias', () => {
     const seen = new Set();

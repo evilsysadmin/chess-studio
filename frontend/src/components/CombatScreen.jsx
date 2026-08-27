@@ -79,6 +79,8 @@ export default function CombatScreen(props) {
       onExit={props.onExit}
       onViewBattle={props.onViewBattle}
       combatVariant={props.combatVariant}
+      battleTheme={props.battleTheme}
+      battleThemeLabel={props.battleThemeLabel}
     />
   );
 }

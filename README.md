@@ -1,3 +1,10 @@
+### v16.6dm46x · Campaña más visible, biomas de batalla y Grafana least-privilege
+
+- La cartografía artística de Combat gana presencia real: se reduce el velo oscuro/blur manteniendo nodos, rutas y estados dinámicos por encima.
+- Las batallas de campaña reciben un bioma determinista por sector (selva, urbano, desierto o ciudadela boss) que ambienta marco y casillas sin cambiar la preferencia global de tablero del usuario.
+- Los cuatro tilesets conservan masas claras/oscuras fuertes y una variante `prefers-contrast: more`; la decoración se concentra en marco/textura para no competir con piezas, jaques o destinos legales.
+- El preflight de datasources de Grafana respeta tokens de mínimo privilegio: un `403 datasources:read` avisa y deja que Terraform haga el gate real; un UID inexistente (`404`) sí bloquea publicación.
+
 ### v16.6dm46w · UI más útil, estadísticas limpias y observabilidad OTLP de verdad
 
 - Home convierte Táctica, Precisión y Remate en acciones directas; la cabecera alinea Feedback, Mi cuenta y Novedades, y el changelog visible se limita a cambios que importan al jugador.

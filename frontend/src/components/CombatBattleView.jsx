@@ -15,10 +15,10 @@ export default function CombatBattleView({
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
   pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap, registry, roster,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
-  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig, cpuRetryNeeded, retryCpuTurn,
+  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig, cpuRetryNeeded, retryCpuTurn, battleTheme, battleThemeLabel,
 }) {
   return (
-    <div className="combat-battle-screen">
+    <div className={`combat-battle-screen ${battleTheme ? `combat-biome-${battleTheme.replace('combat-', '')}` : ''}`}>
       <div className="game-layout combat-game-layout">
         <div className="board-column">
           <div className={`status-line ${statusClass}`}>{statusText}</div>
@@ -38,6 +38,8 @@ export default function CombatBattleView({
             </div>
           )}
 
+          {battleThemeLabel && <div className="combat-biome-label"><span>TERRENO</span><strong>{battleThemeLabel}</strong></div>}
+
           <div className="board-live-row combat-board-live-row">
             <div className="game-board-stack">
               <Board
@@ -53,6 +55,7 @@ export default function CombatBattleView({
                 squareClassName={(square) => roster?.pieces?.[registry?.[square]?.rosterKey]?.mercenary ? 'combat-square-mercenary' : ''}
                 squareBadge={(square) => roster?.pieces?.[registry?.[square]?.rosterKey]?.mercenary ? <span className="deployment-mercenary-badge" title="Unidad mercenaria">M</span> : null}
                 orientation={humanColor === 'b' ? 'black' : 'white'}
+                themeOverride={battleTheme}
               />
             </div>
 

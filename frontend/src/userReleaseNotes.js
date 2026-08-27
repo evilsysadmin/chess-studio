@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46x',
+    title: 'La campaña pisa terreno de verdad',
+    highlights: [
+      'El arte de la campaña gana presencia: la cartografía se ve claramente detrás de rutas y sectores sin ocultar la información útil.',
+      'Las batallas de campaña cambian de terreno entre selva, distrito sitiado, desierto y ciudadela final.',
+      'Cada terreno cambia el marco y las casillas manteniendo contraste alto para que piezas, jaques y movimientos sigan leyéndose de un vistazo.',
+    ],
+  },
+  {
     release: 'v16.6dm46w',
     title: 'Partidas más claras y estadísticas más justas',
     highlights: [

@@ -1131,8 +1131,8 @@
 .combat-campaign-map-wrap { border-color:rgba(200,155,76,.42); background:linear-gradient(180deg,rgba(7,11,11,.95),rgba(4,7,8,.98)); box-shadow:inset 0 1px 0 rgba(255,224,167,.035),0 18px 44px rgba(0,0,0,.18); }
 .campaign-map-toolbar strong { text-transform:uppercase; letter-spacing:.035em; font-size:1.02rem; }
 .campaign-map-toolbar .section-label { color:var(--campaign-gold); }
-.campaign-map-art { background-position:var(--campaign-art-focus,50%) 47%; opacity:.42; filter:saturate(.92) contrast(1.14) brightness(.67) blur(1.1px); transform:scale(1.032); }
-.combat-campaign-map::after { background:linear-gradient(90deg,rgba(5,8,8,.72),transparent 16%,transparent 82%,rgba(5,8,8,.67)),linear-gradient(180deg,rgba(3,6,7,.34),transparent 25%,transparent 70%,rgba(3,6,7,.52)),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px) 0 0/12.5% 100%; }
+.campaign-map-art { background-position:var(--campaign-art-focus,50%) 47%; opacity:.82; filter:saturate(.98) contrast(1.07) brightness(.88); transform:scale(1.018); }
+.combat-campaign-map::after { background:linear-gradient(90deg,rgba(5,8,8,.44),transparent 15%,transparent 84%,rgba(5,8,8,.42)),linear-gradient(180deg,rgba(3,6,7,.16),transparent 27%,transparent 72%,rgba(3,6,7,.30)),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px) 0 0/12.5% 100%; }
 .campaign-map-sector-bands span { color:rgba(231,215,181,.62);font-size:.56rem;font-weight:700;text-shadow:0 1px 4px #000; }
 .campaign-map-point { --node-accent:rgba(128,143,134,.52); width:112px;min-height:78px;border-color:var(--node-accent);border-radius:10px 10px 14px 14px;background:linear-gradient(180deg,rgba(15,20,21,.95),rgba(6,9,10,.97));box-shadow:0 8px 22px rgba(0,0,0,.35),inset 0 2px 0 color-mix(in srgb,var(--node-accent) 56%,transparent); }
 .campaign-map-point::before { content:'';position:absolute;left:18%;right:18%;top:-1px;height:2px;background:var(--node-accent);box-shadow:0 0 10px color-mix(in srgb,var(--node-accent) 55%,transparent); }
@@ -1149,5 +1149,121 @@
 .campaign-route-edge.cleared { stroke:rgba(113,155,74,.52); }
 .campaign-map-route-summary { color:rgba(218,203,171,.72);font-family:var(--font-mono);letter-spacing:.025em; }
 .campaign-map-route-summary strong { color:var(--campaign-gold); }
-.campaign-map-focus-boss .campaign-map-art,.campaign-map-progress-6 .campaign-map-art,.campaign-map-progress-7 .campaign-map-art { filter:saturate(1.04) contrast(1.16) brightness(.64) blur(1.05px); }
-@media(max-width:700px){.campaign-map-art{opacity:.25;filter:saturate(.76) contrast(1.12) brightness(.61) blur(1.2px)}.campaign-map-point{width:108px;min-height:74px}.campaign-map-toolbar strong{text-transform:none}}
+.campaign-map-focus-boss .campaign-map-art,.campaign-map-progress-6 .campaign-map-art,.campaign-map-progress-7 .campaign-map-art { filter:saturate(1.05) contrast(1.10) brightness(.76); }
+@media(max-width:700px){.campaign-map-art{opacity:.56;filter:saturate(.90) contrast(1.08) brightness(.78)}.campaign-map-point{width:108px;min-height:74px}.campaign-map-toolbar strong{text-transform:none}}
+
+
+/* dm46x · biomas tácticos. La ambientación pertenece sólo a Combat Campaign:
+   el usuario conserva su tablero global fuera de campaña. Las texturas son
+   deliberadamente suaves y la pareja clara/oscura mantiene contraste fuerte. */
+.combat-biome-label {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:.55rem;
+  width:min(100%,608px);
+  margin:-.3rem auto .05rem;
+  color:rgba(218,204,173,.82);
+  font-family:var(--font-mono);
+  font-size:.72rem;
+  letter-spacing:.035em;
+}
+.combat-biome-label span { font-size:.58rem; letter-spacing:.12em; opacity:.62; }
+.combat-biome-label strong { font-family:var(--font-display); font-weight:650; }
+
+.combat-battle-screen .board-theme-combat-jungle,
+.combat-battle-screen .board-theme-combat-urban,
+.combat-battle-screen .board-theme-combat-desert,
+.combat-battle-screen .board-theme-combat-citadel {
+  border-width:1px;
+  transition:border-color .2s ease, box-shadow .2s ease;
+}
+
+/* Selva: piedra húmeda + musgo. El dibujo vive en el marco; las casillas
+   mantienen dos masas tonales inequívocas. */
+.combat-biome-jungle .board-theme-combat-jungle {
+  border-color:rgba(111,142,82,.72);
+  background:
+    radial-gradient(circle at 8% 12%,rgba(104,139,70,.34),transparent 18%),
+    radial-gradient(circle at 92% 86%,rgba(58,93,52,.28),transparent 20%),
+    linear-gradient(135deg,#334332,#18251e 68%,#26392a);
+  box-shadow:0 20px 46px rgba(2,10,6,.42),0 0 28px rgba(78,118,59,.13),inset 0 0 0 2px rgba(6,18,10,.38);
+}
+.board-theme-combat-jungle .square.light {
+  background:linear-gradient(145deg,rgba(255,255,255,.09),transparent 46%),radial-gradient(circle at 20% 80%,rgba(81,113,62,.08),transparent 34%),#c8c69a;
+}
+.board-theme-combat-jungle .square.dark {
+  background:linear-gradient(145deg,rgba(202,224,167,.055),transparent 45%),radial-gradient(circle at 80% 18%,rgba(25,50,29,.12),transparent 35%),#496143;
+}
+.combat-biome-jungle .board-wrap::after { border-color:rgba(157,181,111,.18); }
+
+/* Urbano: losa clara y pizarra/adoquín. Sin ruido fotográfico que esconda piezas. */
+.combat-biome-urban .board-theme-combat-urban {
+  border-color:rgba(117,134,144,.68);
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px) 0 0/19px 19px,
+    linear-gradient(0deg,rgba(255,255,255,.018) 1px,transparent 1px) 0 0/19px 19px,
+    linear-gradient(135deg,#4b5357,#22292e 70%,#374047);
+  box-shadow:0 20px 46px rgba(3,7,10,.44),0 0 24px rgba(91,122,143,.10),inset 0 0 0 2px rgba(5,10,13,.42);
+}
+.board-theme-combat-urban .square.light {
+  background:linear-gradient(145deg,rgba(255,255,255,.11),transparent 48%),linear-gradient(35deg,rgba(75,85,91,.035) 1px,transparent 1px) 0 0/14px 14px,#c8c2b5;
+}
+.board-theme-combat-urban .square.dark {
+  background:linear-gradient(145deg,rgba(255,255,255,.045),transparent 46%),linear-gradient(35deg,rgba(190,205,211,.025) 1px,transparent 1px) 0 0/13px 13px,#4c5961;
+}
+.combat-biome-urban .board-wrap::after { border-color:rgba(157,176,187,.16); }
+
+/* Desierto: arenisca y arcilla. El marco sugiere polvo/ruina; no se dibujan
+   dunas encima de las casillas para preservar selección y movimientos. */
+.combat-biome-desert .board-theme-combat-desert {
+  border-color:rgba(185,139,76,.76);
+  background:
+    radial-gradient(circle at 14% 16%,rgba(224,181,101,.24),transparent 18%),
+    radial-gradient(circle at 88% 88%,rgba(126,75,43,.24),transparent 20%),
+    linear-gradient(135deg,#715239,#30231c 68%,#553d2d);
+  box-shadow:0 20px 46px rgba(18,8,3,.40),0 0 28px rgba(186,131,62,.12),inset 0 0 0 2px rgba(31,17,9,.35);
+}
+.board-theme-combat-desert .square.light {
+  background:linear-gradient(145deg,rgba(255,255,255,.12),transparent 48%),radial-gradient(circle at 72% 26%,rgba(147,92,46,.055),transparent 34%),#dfc78f;
+}
+.board-theme-combat-desert .square.dark {
+  background:linear-gradient(145deg,rgba(255,225,169,.055),transparent 46%),radial-gradient(circle at 24% 78%,rgba(67,35,23,.10),transparent 32%),#85583b;
+}
+.combat-biome-desert .board-wrap::after { border-color:rgba(229,185,111,.18); }
+
+/* Ciudadela/boss: mármol ceniza y hierro. Más solemne, nunca más oscuro que
+   lo necesario para distinguir las piezas negras. */
+.combat-biome-citadel .board-theme-combat-citadel {
+  border-color:rgba(172,147,104,.74);
+  background:
+    radial-gradient(circle at 50% -10%,rgba(197,169,113,.16),transparent 38%),
+    linear-gradient(135deg,#454440,#17191c 68%,#303035);
+  box-shadow:0 22px 52px rgba(0,0,0,.48),0 0 30px rgba(170,135,80,.11),inset 0 0 0 2px rgba(6,6,8,.5);
+}
+.board-theme-combat-citadel .square.light {
+  background:linear-gradient(145deg,rgba(255,255,255,.11),transparent 48%),linear-gradient(315deg,rgba(68,62,52,.035),transparent 55%),#cbc5b7;
+}
+.board-theme-combat-citadel .square.dark {
+  background:linear-gradient(145deg,rgba(255,255,255,.045),transparent 45%),linear-gradient(315deg,rgba(12,12,15,.09),transparent 58%),#44474d;
+}
+.combat-biome-citadel .board-wrap::after { border-color:rgba(214,184,126,.18); }
+
+@media (prefers-contrast: more) {
+  .board-theme-combat-jungle .square.light { background:#d5d2a7; }
+  .board-theme-combat-jungle .square.dark { background:#3d5738; }
+  .board-theme-combat-urban .square.light { background:#d1cbc0; }
+  .board-theme-combat-urban .square.dark { background:#42515a; }
+  .board-theme-combat-desert .square.light { background:#efd69f; }
+  .board-theme-combat-desert .square.dark { background:#754a31; }
+  .board-theme-combat-citadel .square.light { background:#d5d0c5; }
+  .board-theme-combat-citadel .square.dark { background:#383c43; }
+}
+
+@media (max-width:700px) {
+  .combat-biome-label { width:100%; margin:-.25rem 0 0; }
+  .combat-battle-screen .board-theme-combat-jungle,
+  .combat-battle-screen .board-theme-combat-urban,
+  .combat-battle-screen .board-theme-combat-desert,
+  .combat-battle-screen .board-theme-combat-citadel { box-shadow:0 13px 30px rgba(0,0,0,.38); }
+}

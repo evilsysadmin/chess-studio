@@ -252,6 +252,27 @@ function baseDifficultyFor(stage, type) {
   return stageBase;
 }
 
+
+
+export const CAMPAIGN_BIOMES = Object.freeze({
+  jungle: Object.freeze({ id: 'jungle', label: 'Selva en ruinas', boardTheme: 'combat-jungle' }),
+  urban: Object.freeze({ id: 'urban', label: 'Distrito sitiado', boardTheme: 'combat-urban' }),
+  desert: Object.freeze({ id: 'desert', label: 'Frontera de ceniza', boardTheme: 'combat-desert' }),
+  citadel: Object.freeze({ id: 'citadel', label: 'Ciudadela del rey', boardTheme: 'combat-citadel' }),
+});
+
+export function campaignBiomeForNode(seed, node) {
+  if (!node) return CAMPAIGN_BIOMES.jungle;
+  if (node.type === 'boss') return CAMPAIGN_BIOMES.citadel;
+  const stage = Math.max(1, Math.min(7, Number(node.stage) || 1));
+  const options = stage <= 2
+    ? [CAMPAIGN_BIOMES.jungle, CAMPAIGN_BIOMES.jungle, CAMPAIGN_BIOMES.urban]
+    : stage <= 4
+      ? [CAMPAIGN_BIOMES.urban, CAMPAIGN_BIOMES.jungle, CAMPAIGN_BIOMES.urban]
+      : [CAMPAIGN_BIOMES.desert, CAMPAIGN_BIOMES.urban, CAMPAIGN_BIOMES.desert];
+  return pick(String(seed || 'campaign'), `biome-${node.id}`, options);
+}
+
 function connectionsFor(stage, lane, nextNodes) {
   if (stage === 0) return nextNodes.map((node) => node.id);
   if (nextNodes.length === 1) return [nextNodes[0].id];

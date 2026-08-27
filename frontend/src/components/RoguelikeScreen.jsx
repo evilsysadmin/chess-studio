@@ -50,6 +50,7 @@ import {
   endCampaign,
   loadCampaignBestStage,
   campaignRelicDetails,
+  campaignBiomeForNode,
   loadCampaignArchive,
 } from '../combatCampaign.js';
 import {
@@ -505,6 +506,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         encounterTier={node?.tier}
         encounterIntel={encounterIntel}
         combatVariant="roguelike"
+        battleTheme={campaignBiomeForNode(campaign.seed, node)?.boardTheme}
+        battleThemeLabel={campaignBiomeForNode(campaign.seed, node)?.label}
         requireDeploymentConfirmation
         runPerks={campaign.perks || []}
         runPerkDetails={campaignPerkDetails}

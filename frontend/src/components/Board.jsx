@@ -197,9 +197,11 @@ export default function Board({
   onCustomize, // acceso contextual y opcional a piezas/apariencia
   checkSquare, // casilla del rey en jaque; el estado visual lo calcula la partida
   turnState = null, // 'human' | 'cpu' — foco visual, sin aportar reglas
+  themeOverride = null, // Combat Campaign puede ambientar el sector sin cambiar la preferencia global del usuario
   // encuadre rojo (distinto del dorado genérico de lastMove) + pieza fantasma semitransparente
   // en la casilla de origen, para que quede claro qué jugada se está señalando como error.
 }) {
+  const resolvedBoardTheme = themeOverride || loadBoardTheme();
   // La skin se lee acá adentro (no como prop) para que ninguna de las
   // muchas pantallas que ya usan <Board> necesite tocarse — cambiar la
   // skin elegida en la pantalla de recompensas alcanza para que todo
@@ -328,7 +330,7 @@ export default function Board({
 
   return (
     <div
-      className={`board-wrap board-theme-${loadBoardTheme()} piece-skin-${pieceSkin} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'} ${turnState ? `board-turn-${turnState}` : ''}`}
+      className={`board-wrap board-theme-${resolvedBoardTheme} piece-skin-${pieceSkin} ${showCoordinates ? 'coordinates-visible' : 'coordinates-hidden'} ${turnState ? `board-turn-${turnState}` : ''}`}
       role="group"
       aria-label="Tablero de ajedrez. Usa las flechas para recorrer casillas y Enter o espacio para seleccionar."
     >
