@@ -142,12 +142,35 @@
   border: 1px solid rgba(255,255,255,.055);
   border-radius: 9px;
   overflow: hidden;
+  background: rgba(0,0,0,.22);
+  isolation: isolate;
+}
+.campaign-map-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(90deg, rgba(5,8,6,.88) 0%, rgba(5,8,6,.48) 18%, rgba(5,8,6,.42) 68%, rgba(5,8,6,.78) 100%),
+    linear-gradient(180deg, rgba(5,8,6,.78), rgba(5,8,6,.22) 24%, rgba(5,8,6,.34) 72%, rgba(5,8,6,.82)),
+    var(--campaign-map-art);
+  background-size: cover;
+  background-position: center 48%;
+  opacity: .38;
+  filter: saturate(.72) contrast(1.08) blur(.35px);
+  transform: scale(1.012);
+  pointer-events: none;
+}
+.combat-campaign-map::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background:
     linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px) 0 0 / 12.5% 100%,
-    linear-gradient(180deg, rgba(255,255,255,.014) 1px, transparent 1px) 0 0 / 100% 33.333%,
-    rgba(0,0,0,.16);
+    linear-gradient(180deg, rgba(255,255,255,.014) 1px, transparent 1px) 0 0 / 100% 33.333%;
 }
-.campaign-map-sector-bands { position: absolute; inset: 0; pointer-events: none; }
+.campaign-map-sector-bands { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .campaign-map-sector-bands span {
   position: absolute;
   left: calc(5.9% + var(--stage) * 12.95%);
@@ -157,7 +180,7 @@
   font: .52rem var(--font-mono);
   letter-spacing: .12em;
 }
-.campaign-route-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.campaign-route-lines { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
 .campaign-route-lines-mobile { display: none; }
 .campaign-route-edge { fill: none; stroke: rgba(129,143,128,.19); stroke-width: 3; vector-effect: non-scaling-stroke; }
 .campaign-route-edge.available { stroke: rgba(159,191,107,.66); stroke-width: 4; stroke-dasharray: 8 8; animation: campaign-route-dash 1.6s linear infinite; }
@@ -186,6 +209,7 @@
   text-align: left;
   box-shadow: 0 6px 18px rgba(0,0,0,.18);
   z-index: 2;
+  backdrop-filter: blur(3px);
 }
 .campaign-map-point:disabled { cursor: default; opacity: .42; }
 .campaign-map-point-core {
@@ -219,6 +243,7 @@
   .combat-campaign-map-wrap { padding: .62rem; }
   .campaign-map-toolbar { align-items: flex-start; flex-direction: column; }
   .campaign-map-legend { justify-content: flex-start; }
+  .campaign-map-art { opacity: .18; filter: saturate(.55) brightness(.72) blur(1px); }
   .combat-campaign-map { min-height: 1120px; }
   .campaign-route-lines-desktop { display: none; }
   .campaign-route-lines-mobile { display: block; }

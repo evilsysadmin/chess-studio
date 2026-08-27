@@ -89,6 +89,21 @@ def test_status_requires_auth_and_counts_recent_users_without_exposing_identitie
     assert "testuser" not in r.text
 
 
+def test_status_stays_200_if_observability_history_recording_fails(monkeypatch):
+    import system_api
+
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True))
+
+    def explode(_online_users):
+        raise KeyError("presence")
+
+    monkeypatch.setattr(system_api, "record_presence_snapshot", explode)
+    r = client.get("/api/status")
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert r.json()["presenceAvailable"] is True
+
+
 def test_status_hides_authenticated_admin_from_public_presence(monkeypatch):
     import main as main_module
 

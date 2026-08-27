@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46o',
+    title: 'Operación más clara y campaña con más carácter',
+    highlights: [
+      'Administración resume el servicio como HEALTH OK, VIGILAR o PROBLEMAS y deja Grafana Cloud a un clic; el panel técnico anterior queda plegado como observabilidad legacy.',
+      'El mapa de campaña gana una capa visual estratégica sin sustituir sus rutas, nodos ni decisiones reales.',
+      'El estado público ya no puede caer porque falle el histórico de observabilidad.',
+    ],
+  },
+  {
     release: 'v16.6dm46n',
     title: 'Combat recupera mejor y Novedades deja de estorbar',
     highlights: [

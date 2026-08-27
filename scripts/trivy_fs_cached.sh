@@ -3,7 +3,7 @@ set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 TRIVY="${TRIVY:-$ROOT/.tools/trivy}"
-CACHE="${TRIVY_CACHE_DIR:-$ROOT/.trivy-cache}"
+CACHE="${TRIVY_CACHE_DIR:-${HOME:-$ROOT}/.cache/trivy}"
 TTL_MINUTES="${TRIVY_DB_TTL_MINUTES:-720}"
 OUTPUT="${1:-$ROOT/.security/trivy.json}"
 SCAN_ROOT="${2:-$ROOT}"

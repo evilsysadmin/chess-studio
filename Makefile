@@ -9,14 +9,18 @@ BACKEND_VENV_PY := $(VENV_PY)
 FRONTEND_VITEST := ./node_modules/.bin/vitest
 TRIVY := .tools/trivy
 SECURITY_DIR := .security
-TRIVY_CACHE := .trivy-cache
+ifeq ($(GITHUB_ACTIONS),true)
+TRIVY_CACHE ?= $(CURDIR)/.trivy-cache
+else
+TRIVY_CACHE ?= $(HOME)/.cache/trivy
+endif
 TRIVY_DB_TTL_MINUTES ?= 720
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check session-continuity-check safe-storage-check static-preflight \
+	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check session-continuity-check safe-storage-check grafana-check static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -300,6 +304,9 @@ session-continuity-check:
 safe-storage-check:
 	node scripts/safe_storage_gate.mjs
 
+grafana-check:
+	$(PYTHON) scripts/grafana_dashboard_check.py
+
 test-suite-audit-ci:
 	node scripts/test_suite_audit.mjs --ci-wiring
 
@@ -312,14 +319,15 @@ worker-test:
 release-check:
 	node scripts/release_consistency_check.mjs
 
-static-preflight: audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check session-continuity-check safe-storage-check security-api cf-ai-preflight worker-test
+static-preflight: audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check session-continuity-check safe-storage-check grafana-check security-api cf-ai-preflight worker-test
 	@python3 scripts/synthetic_health_contract.py
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py
 	@echo "==> Static preflight OK (sin npm, Docker ni red)."
 
-## Trivy local fijado por versión. Se instala dentro del repo para que Nobara
-## no necesite paquetes globales ni sudo. La caché de la DB se conserva.
+## Trivy local fijado por versión. El binario vive en el repo, pero la DB local
+## se conserva fuera del checkout en $HOME/.cache/trivy; CI usa .trivy-cache
+## para seguir aprovechando actions/cache.
 ensure-trivy:
 	@command -v curl >/dev/null || { echo "ERROR: falta curl para instalar Trivy."; exit 2; }
 	@command -v sha256sum >/dev/null || { echo "ERROR: falta sha256sum para verificar Trivy."; exit 2; }
@@ -348,7 +356,7 @@ security-be: ensure-backend-deps
 security-trivy: ensure-trivy
 	@mkdir -p "$(SECURITY_DIR)" "$(TRIVY_CACHE)"
 	TRIVY="$(CURDIR)/$(TRIVY)" \
-	TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" \
+	TRIVY_CACHE_DIR="$(TRIVY_CACHE)" \
 	TRIVY_DB_TTL_MINUTES="$(TRIVY_DB_TTL_MINUTES)" \
 		sh ./scripts/trivy_fs_cached.sh "$(CURDIR)/$(SECURITY_DIR)/trivy.json" "$(CURDIR)"
 	$(PYTHON) scripts/security_report.py "$(SECURITY_DIR)/trivy.json"
@@ -362,7 +370,7 @@ security: security-api security-fe security-be security-trivy
 ## Gate de release/contenedor: construye las dos imágenes reales y escanea también
 ## paquetes del SO/base image. No vive en `make tests` para mantener rápido el pre-push.
 security-images: ensure-trivy
-	TRIVY="$(CURDIR)/$(TRIVY)" TRIVY_CACHE_DIR="$(CURDIR)/$(TRIVY_CACHE)" TRIVY_DB_TTL_MINUTES="$(TRIVY_DB_TTL_MINUTES)" SECURITY_DIR="$(CURDIR)/$(SECURITY_DIR)" sh ./scripts/trivy_image_scan.sh
+	TRIVY="$(CURDIR)/$(TRIVY)" TRIVY_CACHE_DIR="$(TRIVY_CACHE)" TRIVY_DB_TTL_MINUTES="$(TRIVY_DB_TTL_MINUTES)" SECURITY_DIR="$(CURDIR)/$(SECURITY_DIR)" sh ./scripts/trivy_image_scan.sh
 
 security-full: security security-images
 	@echo "==> Security FULL: repo + dependencias + imágenes Docker."
@@ -372,6 +380,7 @@ deps-status: ensure-backend-deps
 	@echo "requirements: $$(grep -E '^[Pp]y[Jj][Ww][Tt]==' backend-python/requirements.txt || true)"
 	@$(VENV_PY) -c "import jwt; print('venv PyJWT:', jwt.__version__)"
 	@if [ -x "$(TRIVY)" ]; then $(TRIVY) --version | head -1; else echo "Trivy: no instalado"; fi
+	@echo "Trivy cache: $(TRIVY_CACHE)"
 
 help:
 	@echo "Comandos disponibles:"

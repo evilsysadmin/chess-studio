@@ -6,6 +6,24 @@ function metric(value, suffix = '') {
   return value == null || Number.isNaN(Number(value)) ? '—' : `${Number(value).toLocaleString('es-ES')}${suffix}`;
 }
 
+function operationalVerdict({ loading, summary, slo, burnRate, runtime }) {
+  if (loading) return { level: 'unknown', label: 'COMPROBANDO', message: 'Midiendo la salud operativa…' };
+  if (summary.status === 'unknown') return { level: 'unknown', label: 'SIN DATOS', message: 'No hay muestra suficiente para afirmar que todo está bien.' };
+  if (summary.databaseLabel === 'Mongo DOWN') return { level: 'critical', label: 'PROBLEMAS', message: 'Mongo no responde. Revisa Grafana y el backend antes de seguir.' };
+  const criticalDependency = (runtime?.dependencies || []).find((row) => row?.critical && row?.status === 'down');
+  if (criticalDependency) return { level: 'critical', label: 'PROBLEMAS', message: `${criticalDependency.label || 'Una dependencia crítica'} no responde.` };
+  if (runtime?.resilience?.level === 'critical') return { level: 'critical', label: 'PROBLEMAS', message: 'El backend está protegiendo capacidad mediante degradación o load shedding.' };
+  if (summary.status === 'degraded' || slo.status === 'missed' || burnRate.status === 'fast') {
+    const signals = [];
+    if (Number(summary.error5xxPercent) > 0) signals.push(`${metric(summary.error5xxPercent, '%')} de 5xx`);
+    if (slo.status === 'missed' && Number.isFinite(Number(summary.apiP95Ms))) signals.push(`p95 ${metric(summary.apiP95Ms, ' ms')}`);
+    if (burnRate.status === 'fast') signals.push('error budget quemándose rápido');
+    return { level: 'critical', label: 'PROBLEMAS', message: signals.length ? `Señales activas: ${signals.join(' · ')}.` : 'Hay señales operativas degradadas.' };
+  }
+  if (burnRate.status === 'watch' || runtime?.resilience?.level === 'degraded') return { level: 'warn', label: 'VIGILAR', message: 'El servicio responde, pero hay presión operativa que merece seguimiento.' };
+  return { level: 'ok', label: 'HEALTH OK', message: 'API y persistencia responden con normalidad en la muestra disponible.' };
+}
+
 export default function AdminObservabilitySummary({ token, users = [], currentAdmin = null, onOpen }) {
   const [runtime, setRuntime] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,44 +33,48 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
     const range = observabilityRangeForPreset('24h');
     fetchAdminObservability({ token, from: range.from, to: range.to })
       .then((payload) => { if (active) setRuntime(payload); })
+      .catch(() => { if (active) setRuntime(null); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [token]);
 
-  const summary = useMemo(
-    () => summarizeObservabilityHealth(runtime, users, currentAdmin),
-    [runtime, users, currentAdmin],
-  );
+  const summary = useMemo(() => summarizeObservabilityHealth(runtime, users, currentAdmin), [runtime, users, currentAdmin]);
   const slo = useMemo(() => evaluateProductSlos(runtime), [runtime]);
   const errorBudget = useMemo(() => errorBudgetForSlo(runtime), [runtime]);
   const burnRate = useMemo(() => burnRateForSlo(runtime), [runtime]);
   const releaseHealth = useMemo(() => evaluateReleaseHealth(runtime, APP_RELEASE), [runtime]);
+  const verdict = operationalVerdict({ loading, summary, slo, burnRate, runtime });
+  const grafanaUrl = String(import.meta.env.VITE_GRAFANA_LOGS_DASHBOARD_URL || import.meta.env.VITE_GRAFANA_CLOUD_URL || 'https://grafana.com/').trim();
 
   return (
-    <section className="admin-observability-launcher" aria-label="Resumen de observabilidad">
-      <div className="admin-observability-launcher-heading">
+    <section className={`admin-operational-status is-${verdict.level}`} aria-label="Estado operativo de Chess Studio">
+      <div className="admin-operational-status-main">
         <div>
-          <span className="section-label">Observabilidad</span>
-          <h3>Salud de Chess Studio</h3>
+          <span className="section-label">Estado operativo</span>
+          <h3>{verdict.label}</h3>
+          <p>{verdict.message}</p>
         </div>
-        <span className={`admin-observability-health${summary.status === 'degraded' ? ' is-warn' : ''}`}>
-          {loading ? 'Midiendo…' : summary.statusLabel}
-        </span>
+        <span className="admin-operational-status-dot" aria-hidden="true" />
       </div>
-      <div className="admin-observability-launcher-kpis">
-        <div><span>API p95 · 24 h</span><strong>{metric(summary.apiP95Ms, ' ms')}</strong></div>
-        <div><span>5xx · 24 h</span><strong>{metric(summary.error5xxPercent, '%')}</strong></div>
-        <div><span>Mongo</span><strong>{summary.databaseLabel}</strong></div>
-        <div><span>Workers AI</span><strong>{summary.aiCloudflarePercent == null ? '—' : `${metric(summary.aiCloudflarePercent, '%')} CF`}</strong></div>
-        <div className={`admin-slo-kpi ${slo.status === 'missed' ? 'is-warn' : ''}`}><span>SLO producto</span><strong>{slo.statusLabel}</strong><small>{slo.availabilityPercent == null ? 'Disponibilidad —' : `${metric(slo.availabilityPercent, '%')} · objetivo ${metric(slo.availabilityTarget, '%')}`} · {slo.apiP95Ms == null ? 'p95 —' : `p95 ${metric(slo.apiP95Ms, ' ms')} / ${metric(slo.apiP95TargetMs, ' ms')}`}</small></div>
-        <div className={`admin-slo-kpi ${errorBudget.status === 'exhausted' ? 'is-warn' : ''}`}><span>Error budget · 24 h</span><strong>{errorBudget.statusLabel}</strong><small>{errorBudget.consumedPercent == null ? 'Sin muestra suficiente' : `${metric(errorBudget.consumedPercent, '%')} consumido · ${metric(errorBudget.remainingPercent, '%')} restante`}</small></div>
-        <div className={`admin-slo-kpi ${burnRate.status === 'fast' ? 'is-warn' : ''}`}><span>Burn rate</span><strong>{burnRate.statusLabel}</strong><small>15 min {burnRate.short.burnRate == null ? '—' : `${burnRate.short.burnRate}×`} · 1 h {burnRate.long.burnRate == null ? '—' : `${burnRate.long.burnRate}×`}</small></div>
-        <div className={`admin-slo-kpi ${runtime?.resilience?.level === 'critical' ? 'is-warn' : ''}`}><span>Resiliencia</span><strong>{runtime?.resilience?.level || '—'}</strong><small>{metric(runtime?.resilience?.shed_last_5m)} shed · {metric(runtime?.resilience?.bulkhead_rejections_last_5m)} bulkhead / 5 min</small></div>
-        <div className={`admin-slo-kpi ${['regression', 'degraded'].includes(releaseHealth.status) ? 'is-warn' : ''}`}><span>Release health</span><strong>{releaseHealth.statusLabel}</strong><small><code>{APP_RELEASE}</code> · {releaseHealth.requests || 0} requests{releaseHealth.p95Ms == null ? '' : ` · p95 ${metric(releaseHealth.p95Ms, ' ms')}`}</small></div>
-      </div>
-      <div className="admin-observability-launcher-actions">
-        <p className="hint-text">Resumen técnico de 24 h con SLO, error budget y salud de la release actual. Presencia y usuarios van debajo; dashboards e histórico viven en su propia vista.</p>
-        <button type="button" className="secondary-btn" onClick={onOpen}>Abrir observabilidad →</button>
+
+      <div className="admin-operational-actions">
+        <a className="primary-btn admin-grafana-link" href={grafanaUrl} target="_blank" rel="noreferrer">Abrir Grafana Cloud ↗</a>
+        <details className="admin-legacy-observability">
+          <summary>Observabilidad legacy</summary>
+          <div className="admin-legacy-observability-body">
+            <div className="admin-legacy-observability-kpis">
+              <span><small>API p95 · 24 h</small><strong>{metric(summary.apiP95Ms, ' ms')}</strong></span>
+              <span><small>5xx · 24 h</small><strong>{metric(summary.error5xxPercent, '%')}</strong></span>
+              <span><small>Mongo</small><strong>{summary.databaseLabel}</strong></span>
+              <span><small>SLO</small><strong>{slo.statusLabel}</strong></span>
+              <span><small>Error budget</small><strong>{errorBudget.statusLabel}</strong></span>
+              <span><small>Burn rate</small><strong>{burnRate.statusLabel}</strong></span>
+              <span><small>Release</small><strong>{releaseHealth.statusLabel}</strong></span>
+              <span><small>Workers AI</small><strong>{summary.aiCloudflarePercent == null ? '—' : `${metric(summary.aiCloudflarePercent, '%')} CF`}</strong></span>
+            </div>
+            <button type="button" className="secondary-btn" onClick={onOpen}>Abrir panel legacy →</button>
+          </div>
+        </details>
       </div>
     </section>
   );

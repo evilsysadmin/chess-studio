@@ -5,6 +5,7 @@ import {
   campaignNodePoint,
   campaignNodeStatus,
 } from '../campaignMapVisual.js';
+import campaignCommandMapArt from '../assets/combat-campaign-command-map.webp';
 
 function edgePath(edge, orientation) {
   const a = campaignNodePoint(edge.from, orientation);
@@ -81,7 +82,8 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
         </details>
       </div>
 
-      <div className="combat-campaign-map">
+      <div className="combat-campaign-map" style={{ '--campaign-map-art': `url(${campaignCommandMapArt})` }}>
+        <div className="campaign-map-art" aria-hidden="true" />
         <CampaignEdges edges={edges} orientation="desktop" />
         <CampaignEdges edges={edges} orientation="mobile" />
 

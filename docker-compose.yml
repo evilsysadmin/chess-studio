@@ -43,6 +43,8 @@ services:
         # Como el navegador corre en el host (no dentro de la red de Docker),
         # tiene que ser el puerto publicado, no el nombre del servicio.
         VITE_API_URL: http://localhost:${BACKEND_PORT:-4000}/api
+        VITE_GRAFANA_CLOUD_URL: ${VITE_GRAFANA_CLOUD_URL:-}
+        VITE_GRAFANA_LOGS_DASHBOARD_URL: ${VITE_GRAFANA_LOGS_DASHBOARD_URL:-}
     ports:
       - "${FRONTEND_PORT:-5173}:8080"
     depends_on:

@@ -506,3 +506,42 @@
 .active-session-recovery > span { max-width:44rem; color:var(--parchment-dim); }
 .active-session-recovery-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:.5rem; margin-top:.2rem; }
 .admin-observability-chart .chart-deployment-line { stroke: rgba(104,205,190,.72); stroke-width: 1.5; stroke-dasharray: 2 3; }
+
+
+/* Estado operativo: señal primero, detalle legacy bajo demanda. */
+.admin-operational-status {
+  margin: .8rem 0 1rem;
+  padding: .9rem;
+  border: 1px solid rgba(151,171,142,.24);
+  border-radius: .7rem;
+  background: linear-gradient(145deg, rgba(255,255,255,.022), rgba(0,0,0,.1));
+  display: grid;
+  gap: .75rem;
+}
+.admin-operational-status-main { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.admin-operational-status-main h3 { margin:.12rem 0 .2rem; font:800 1.12rem var(--font-display); letter-spacing:.035em; }
+.admin-operational-status-main p { margin:0; color:var(--parchment-dim); font-size:.72rem; line-height:1.45; }
+.admin-operational-status-dot { width:14px; height:14px; flex:0 0 auto; border-radius:50%; background:#879087; box-shadow:0 0 0 5px rgba(135,144,135,.08); }
+.admin-operational-status.is-ok { border-color:rgba(128,175,117,.34); }
+.admin-operational-status.is-ok h3 { color:#a8cf98; }
+.admin-operational-status.is-ok .admin-operational-status-dot { background:#8fbd7d; box-shadow:0 0 0 5px rgba(143,189,125,.1),0 0 15px rgba(143,189,125,.26); }
+.admin-operational-status.is-warn { border-color:rgba(201,162,39,.34); }
+.admin-operational-status.is-warn h3 { color:var(--brass); }
+.admin-operational-status.is-warn .admin-operational-status-dot { background:var(--brass); }
+.admin-operational-status.is-critical { border-color:rgba(190,65,65,.42); }
+.admin-operational-status.is-critical h3 { color:#d98279; }
+.admin-operational-status.is-critical .admin-operational-status-dot { background:#c95a51; box-shadow:0 0 0 5px rgba(201,90,81,.1),0 0 15px rgba(201,90,81,.24); }
+.admin-operational-actions { display:flex; align-items:flex-start; gap:.65rem; flex-wrap:wrap; }
+.admin-grafana-link { text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+.admin-legacy-observability { flex:1 1 260px; border:1px solid rgba(255,255,255,.07); border-radius:.5rem; background:rgba(0,0,0,.1); }
+.admin-legacy-observability > summary { cursor:pointer; padding:.62rem .72rem; color:var(--parchment-dim); font:.65rem var(--font-mono); }
+.admin-legacy-observability-body { padding:0 .65rem .65rem; display:grid; gap:.65rem; }
+.admin-legacy-observability-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.4rem; }
+.admin-legacy-observability-kpis span { padding:.45rem; border-radius:.4rem; background:rgba(255,255,255,.025); display:grid; gap:.12rem; }
+.admin-legacy-observability-kpis small { color:var(--parchment-dim); font-size:.55rem; }
+.admin-legacy-observability-kpis strong { color:var(--parchment); font:.66rem var(--font-mono); overflow-wrap:anywhere; }
+@media (max-width:760px) {
+  .admin-operational-actions { display:grid; grid-template-columns:1fr; }
+  .admin-grafana-link { width:100%; }
+  .admin-legacy-observability-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}

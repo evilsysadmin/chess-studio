@@ -136,3 +136,28 @@ def test_presence_history_is_aggregate_and_exposes_average_and_peak():
     bucket = history._PENDING[history._bucket_start(1_800_000_000)]
     summary = history._summarize_presence(bucket["presence"])
     assert summary == {"samples": 2, "average_online": 4.0, "peak_online": 6}
+
+
+def test_sparse_pending_bucket_is_rehydrated_after_flush_delta():
+    at = 1_750_000_000.0
+    bucket_key = history._bucket_start(at)
+    history._PENDING.clear()
+    # Simulate the sparse shape left after a successful delta subtraction.
+    route_key = history._safe_key("GET /api/status")
+    channel_key = history._safe_key("comments")
+    history._PENDING[bucket_key] = {
+        "http": {"samples": 2, "routes": {route_key: {"requests": 2}}},
+        "ai": {"channels": {channel_key: {"samples": 1}}},
+    }
+
+    history.record_presence_snapshot(3, timestamp=at)
+    history.record_http_event("GET", "/api/status", 200, 12.0, timestamp=at)
+    history.record_ai_event({"at": at, "provider": "local", "event_type": "generic", "channel": "comments"})
+
+    bucket = history._PENDING[bucket_key]
+    assert bucket["presence"] == {"samples": 1, "online_sum": 3, "online_max": 3}
+    assert bucket["http"]["samples"] == 3
+    assert bucket["http"]["routes"][route_key]["requests"] == 3
+    assert bucket["http"]["routes"][route_key]["latency_hist"]
+    assert bucket["ai"]["samples"] == 1
+    assert bucket["ai"]["channels"][channel_key]["samples"] == 2

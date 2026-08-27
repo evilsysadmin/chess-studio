@@ -173,6 +173,7 @@ async def log_request_with_user(request: Request, call_next):
             duration_ms=elapsed_ms,
             client_release=client_release,
             username=_request_username(request),
+            request_path=request.url.path if route_pattern == "unmatched" else None,
             exception=True,
         )
         # El detalle técnico completo queda en el traceback del servidor; al
@@ -205,6 +206,7 @@ async def log_request_with_user(request: Request, call_next):
                 duration_ms=elapsed_ms,
                 client_release=client_release,
                 username=_request_username(request),
+                request_path=request.url.path if status_code == 404 or route_pattern == "unmatched" else None,
             )
 
 

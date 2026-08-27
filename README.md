@@ -1,3 +1,12 @@
+### v16.6dm46o · Estado operativo, logging accionable y mapa de campaña con identidad
+
+- Corrige el 500 de `/api/status`: los buckets históricos se rehidratan después de un flush y el registro de observabilidad es **fail-open**, de modo que una avería de telemetría no puede tumbar el endpoint de estado.
+- Los 404 estructurados añaden `request_path` normalizado sólo cuando hace falta diagnosticar rutas no encontradas; UUID, tokens largos, números largos y query strings no se conservan. Las excepciones HTTP se marcan explícitamente para filtrarlas en Loki.
+- Añade `ops/grafana/chess-studio-logs.json`, un dashboard importable de Grafana Cloud/Loki con 404 por path, 5xx por ruta/release, p95 por ruta, excepciones y drill-down por `request_id`.
+- Admin simplifica **Estado operativo** a `HEALTH OK`, `VIGILAR`, `PROBLEMAS` o `SIN DATOS`, enlaza Grafana Cloud como herramienta principal y pliega la observabilidad interna bajo **Observabilidad legacy**.
+- El mapa real de campaña usa el nuevo arte estratégico como fondo ambiental, manteniendo nodos, rutas y estados como UI viva por encima para no sacrificar legibilidad ni interacción.
+- Trivy conserva la DB local en `$HOME/.cache/trivy`; GitHub Actions mantiene `.trivy-cache` para seguir usando `actions/cache`, evitando descargar la base de vulnerabilidades con cada ZIP/release local.
+
 ### v16.6dm46n · Combat más recuperable + Novedades en Cuenta
 
 - Novedades se mueve justo debajo de **Mi cuenta** y desaparece de la cabecera de Home.

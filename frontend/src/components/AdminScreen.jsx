@@ -351,8 +351,8 @@ export default function AdminScreen({ onExit }) {
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section">
         <span className="section-label">Admin</span>
-        <h2>Estado operativo</h2>
-        <p className="hint-text">Primero la salud de Chess Studio; después ya interrogamos a los humanos.</p>
+        <h2>Administración</h2>
+        <p className="hint-text">Salud del servicio de un vistazo; usuarios y actividad quedan debajo.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
         <AdminObservabilitySummary
           token={getToken()}

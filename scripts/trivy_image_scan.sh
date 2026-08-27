@@ -3,7 +3,7 @@ set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 TRIVY="${TRIVY:-$ROOT/.tools/trivy}"
-CACHE="${TRIVY_CACHE_DIR:-$ROOT/.trivy-cache}"
+CACHE="${TRIVY_CACHE_DIR:-${HOME:-$ROOT}/.cache/trivy}"
 TTL_MINUTES="${TRIVY_DB_TTL_MINUTES:-720}"
 SECURITY_DIR="${SECURITY_DIR:-$ROOT/.security}"
 DB="$CACHE/db/trivy.db"

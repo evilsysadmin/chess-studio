@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 
@@ -11,6 +13,8 @@ from feature_flags import public_feature_flags
 from observability_history import record_presence_snapshot
 from api_models import ClientTelemetryRequest
 from client_telemetry import record_client_event
+
+_logger = logging.getLogger("chess.system")
 
 
 def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usernames_getter=None) -> APIRouter:
@@ -71,7 +75,13 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
                 online_users = await ustore.count_online_users(window_seconds=150)
                 if is_admin_check(_username):
                     online_users = max(0, online_users - 1)
-            record_presence_snapshot(online_users)
+            # Observability is auxiliary: a metrics/history bug must never turn
+            # the user-facing status endpoint into a 500. Presence counting is
+            # authoritative; history recording is explicitly fail-open.
+            try:
+                record_presence_snapshot(online_users)
+            except Exception as exc:
+                _logger.warning("presence_history_record_failed error=%s", type(exc).__name__)
             return {"ok": True, "onlineUsers": online_users, "presenceAvailable": True}
         except db.PersistentStorageUnavailable:
             return {"ok": True, "onlineUsers": None, "presenceAvailable": False}

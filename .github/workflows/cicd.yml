@@ -592,6 +592,8 @@ jobs:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_PUBLIC_BASE: /
           VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
         run: npm run build
 
       - name: Setup Pages

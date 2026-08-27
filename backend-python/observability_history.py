@@ -96,6 +96,26 @@ def _inc(mapping: dict[str, Any], key: str, amount: int | float = 1) -> None:
     mapping[key] = mapping.get(key, 0) + amount
 
 
+def _restore_missing_schema(target: dict[str, Any], template: dict[str, Any]) -> dict[str, Any]:
+    """Hydrate sparse in-memory buckets after a flush without resetting counters.
+
+    `_subtract_delta` deliberately removes zeroed branches. A new sample can arrive
+    in that same 5-minute bucket afterwards, so recorders must not assume every
+    branch from `_fresh_bucket()` is still present.
+    """
+    for key, default in template.items():
+        if key not in target or not isinstance(target.get(key), type(default)):
+            target[key] = copy.deepcopy(default)
+        elif isinstance(default, dict):
+            _restore_missing_schema(target[key], default)
+    return target
+
+
+def _pending_bucket(bucket_key: int) -> dict[str, Any]:
+    bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+    return _restore_missing_schema(bucket, _fresh_bucket())
+
+
 def record_http_event(method: str, route: str, status_code: int, latency_ms: float, *, client_release: str | None = None, timestamp: float | None = None) -> None:
     at = time.time() if timestamp is None else float(timestamp)
     bucket_key = _bucket_start(at)
@@ -105,7 +125,7 @@ def record_http_event(method: str, route: str, status_code: int, latency_ms: flo
     status = int(status_code or 0)
 
     with _PENDING_LOCK:
-        bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+        bucket = _pending_bucket(bucket_key)
         http = bucket["http"]
         http["samples"] += 1
         family = status // 100 if status > 0 else 0
@@ -115,12 +135,16 @@ def record_http_event(method: str, route: str, status_code: int, latency_ms: flo
         _inc(http["latency_hist"], hist_key)
         http["latency_max_ms"] = max(float(http.get("latency_max_ms") or 0.0), latency)
 
-        route_row = http["routes"].setdefault(encoded_route, {
+        route_defaults = {
             "requests": 0,
             "errors_5xx": 0,
             "latency_hist": {},
             "latency_max_ms": 0.0,
-        })
+        }
+        route_row = _restore_missing_schema(
+            http["routes"].setdefault(encoded_route, copy.deepcopy(route_defaults)),
+            route_defaults,
+        )
         route_row["requests"] += 1
         if family == 5:
             route_row["errors_5xx"] += 1
@@ -129,12 +153,16 @@ def record_http_event(method: str, route: str, status_code: int, latency_ms: flo
 
         release = str(client_release or "").strip()[:40]
         if release:
-            release_row = http["releases"].setdefault(_safe_key(release), {
+            release_defaults = {
                 "requests": 0,
                 "errors_5xx": 0,
                 "latency_hist": {},
                 "latency_max_ms": 0.0,
-            })
+            }
+            release_row = _restore_missing_schema(
+                http["releases"].setdefault(_safe_key(release), copy.deepcopy(release_defaults)),
+                release_defaults,
+            )
             release_row["requests"] += 1
             if family == 5:
                 release_row["errors_5xx"] += 1
@@ -149,7 +177,7 @@ def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) ->
     provider = str(event.get("provider") or "local")[:32]
 
     with _PENDING_LOCK:
-        bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+        bucket = _pending_bucket(bucket_key)
         ai = bucket["ai"]
         ai["samples"] += 1
         ai["cloudflare" if provider == "cloudflare" else "local"] += 1
@@ -169,14 +197,18 @@ def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) ->
 
         channel = str(event.get("channel") or "comments")[:32]
         channel_key = _safe_key(channel)
-        channel_row = ai["channels"].setdefault(channel_key, {
+        channel_defaults = {
             "samples": 0,
             "cloudflare": 0,
             "local": 0,
             "latency_hist": {},
             "latency_max_ms": 0.0,
             "reasons": {},
-        })
+        }
+        channel_row = _restore_missing_schema(
+            ai["channels"].setdefault(channel_key, copy.deepcopy(channel_defaults)),
+            channel_defaults,
+        )
         channel_row["samples"] += 1
         channel_row["cloudflare" if provider == "cloudflare" else "local"] += 1
         _inc(channel_row["latency_hist"], _hist_key(latency))
@@ -190,7 +222,7 @@ def record_presence_snapshot(online_users: int, *, timestamp: float | None = Non
     bucket_key = _bucket_start(at)
     online = max(0, int(online_users or 0))
     with _PENDING_LOCK:
-        presence = _PENDING.setdefault(bucket_key, _fresh_bucket())["presence"]
+        presence = _pending_bucket(bucket_key)["presence"]
         presence["samples"] += 1
         presence["online_sum"] += online
         presence["online_max"] = max(int(presence.get("online_max") or 0), online)
