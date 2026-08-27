@@ -1123,3 +1123,31 @@
 /* Perfil RPG: resumen primero, detalle a un clic. */
 .career-rpg-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin-bottom:.7rem}.career-rpg-summary-grid>article{display:grid;gap:.25rem;padding:.75rem;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(0,0,0,.1)}.career-rpg-summary-grid span{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;opacity:.68}.career-rpg-summary-grid b{font-size:.9rem}.career-rpg-summary-grid small{opacity:.68;line-height:1.35}.career-rpg-details{margin-top:.35rem}
 @media(max-width:760px){.career-rpg-summary-grid{grid-template-columns:1fr}}
+
+/* dm46p · dirección artística del mapa: la ilustración manda; el estado real vive encima. */
+.combat-campaign-shell { --campaign-gold:#c89b4c; --campaign-red:#b7513f; --campaign-blue:#5594bd; --campaign-green:#719b4a; }
+.combat-campaign-shell > .section-label { color:color-mix(in srgb,var(--campaign-gold) 86%,var(--parchment)); letter-spacing:.13em; }
+.combat-campaign-shell > .combat-heading-row h2 { font-family:var(--font-display); letter-spacing:.015em; text-shadow:0 2px 14px rgba(0,0,0,.34); }
+.combat-campaign-map-wrap { border-color:rgba(200,155,76,.42); background:linear-gradient(180deg,rgba(7,11,11,.95),rgba(4,7,8,.98)); box-shadow:inset 0 1px 0 rgba(255,224,167,.035),0 18px 44px rgba(0,0,0,.18); }
+.campaign-map-toolbar strong { text-transform:uppercase; letter-spacing:.035em; font-size:1.02rem; }
+.campaign-map-toolbar .section-label { color:var(--campaign-gold); }
+.campaign-map-art { background-position:var(--campaign-art-focus,50%) 47%; opacity:.42; filter:saturate(.92) contrast(1.14) brightness(.67) blur(1.1px); transform:scale(1.032); }
+.combat-campaign-map::after { background:linear-gradient(90deg,rgba(5,8,8,.72),transparent 16%,transparent 82%,rgba(5,8,8,.67)),linear-gradient(180deg,rgba(3,6,7,.34),transparent 25%,transparent 70%,rgba(3,6,7,.52)),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px) 0 0/12.5% 100%; }
+.campaign-map-sector-bands span { color:rgba(231,215,181,.62);font-size:.56rem;font-weight:700;text-shadow:0 1px 4px #000; }
+.campaign-map-point { --node-accent:rgba(128,143,134,.52); width:112px;min-height:78px;border-color:var(--node-accent);border-radius:10px 10px 14px 14px;background:linear-gradient(180deg,rgba(15,20,21,.95),rgba(6,9,10,.97));box-shadow:0 8px 22px rgba(0,0,0,.35),inset 0 2px 0 color-mix(in srgb,var(--node-accent) 56%,transparent); }
+.campaign-map-point::before { content:'';position:absolute;left:18%;right:18%;top:-1px;height:2px;background:var(--node-accent);box-shadow:0 0 10px color-mix(in srgb,var(--node-accent) 55%,transparent); }
+.campaign-map-point-core { border-radius:12px; border-color:color-mix(in srgb,var(--node-accent) 75%,rgba(255,255,255,.08));background:radial-gradient(circle at 45% 35%,color-mix(in srgb,var(--node-accent) 14%,transparent),rgba(0,0,0,.16));color:color-mix(in srgb,var(--node-accent) 72%,var(--parchment)); }
+.campaign-map-point-copy strong { font-family:var(--font-display);font-size:.67rem;letter-spacing:.012em; }
+.campaign-map-point-copy small { text-transform:uppercase;letter-spacing:.06em;font-size:.46rem; }
+.campaign-node-battle{--node-accent:var(--campaign-red)}.campaign-node-elite{--node-accent:#c58c3e}.campaign-node-event{--node-accent:var(--campaign-blue)}.campaign-node-camp{--node-accent:#7566a0}.campaign-node-boss{--node-accent:#d05d39}
+.campaign-map-point.available { opacity:1;border-color:color-mix(in srgb,var(--node-accent) 72%,#d5b568);transform:translate(-50%,-50%) scale(1.02); }
+.campaign-map-point.current { --node-accent:var(--campaign-green);opacity:1; }
+.campaign-map-point.cleared { --node-accent:#6f8554;opacity:.72; }
+.campaign-map-point.selected { opacity:1;box-shadow:0 0 0 2px rgba(210,174,92,.3),0 10px 28px rgba(0,0,0,.42); }
+.campaign-route-edge.available { stroke:rgba(85,148,189,.82);stroke-width:4; }
+.campaign-route-edge.traversed { stroke:rgba(113,155,74,.88); }
+.campaign-route-edge.cleared { stroke:rgba(113,155,74,.52); }
+.campaign-map-route-summary { color:rgba(218,203,171,.72);font-family:var(--font-mono);letter-spacing:.025em; }
+.campaign-map-route-summary strong { color:var(--campaign-gold); }
+.campaign-map-focus-boss .campaign-map-art,.campaign-map-progress-6 .campaign-map-art,.campaign-map-progress-7 .campaign-map-art { filter:saturate(1.04) contrast(1.16) brightness(.64) blur(1.05px); }
+@media(max-width:700px){.campaign-map-art{opacity:.25;filter:saturate(.76) contrast(1.12) brightness(.61) blur(1.2px)}.campaign-map-point{width:108px;min-height:74px}.campaign-map-toolbar strong{text-transform:none}}

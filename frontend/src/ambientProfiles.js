@@ -105,6 +105,7 @@ const STRUCTURED_FEELS = Object.freeze({
   }),
   granadaChamber: Object.freeze({
     family: 'granada-guitar-chamber', preserveSectionOrder: true,
+    leadInstrument: 'nylonGuitar', counterInstrument: 'qanun',
     harmonyPath: [0, 0, 5, 3, 0, 0],
     swing: 0, warmth: 1.0, releaseScale: 1.1, space: 0.2, delayMs: 210,
     chordInstrument: 'felt', bassInstrument: 'pizz', chordHoldSteps: 18, bassHoldSteps: 3.0,
@@ -143,6 +144,7 @@ const STRUCTURED_FEELS = Object.freeze({
   }),
   andalusWarm: Object.freeze({
     family: 'andalus-warm', preserveSectionOrder: true,
+    leadInstrument: 'nylonGuitar', counterInstrument: 'oudJazz',
     harmonyPath: [0, 0, 5, 5, 0, 0, -2, 0],
     swing: 0.09, warmth: 0.9, releaseScale: 1.08,
     bassInstrument: 'uprightBass', chordHoldSteps: 10, bassHoldSteps: 3.5,
@@ -217,13 +219,13 @@ const STRUCTURED_FEELS = Object.freeze({
     percussion: { period: 16, kit: 'legacy', punch: 0.96, pattern: {0:'K',4:'H',8:'S',12:'H'} },
   }),
   rookGarage: Object.freeze({
-    family: 'garage-rock-riff', preserveSectionOrder: true, harmonyPath: [0,0,3,5,0], swing: 0.02, warmth: 0.66, releaseScale: 0.88, space: 0.045, delayMs: 85,
+    family: 'garage-rock-riff', preserveSectionOrder: true, leadInstrument:'overdriveGuitar', harmonyPath: [0,0,3,5,0], swing: 0.02, warmth: 0.66, releaseScale: 0.88, space: 0.045, delayMs: 85,
     chordInstrument: 'guitar2', bassInstrument: 'bass', chordHoldSteps: 8, bassHoldSteps: 3,
     layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.82, counter: 0, bass: 1.05, chord: 0.42 },
     percussion: { period: 12, kit: 'legacy', punch: 1.26, pattern: {0:'K',3:'H',6:'S',9:'H'} },
   }),
   desertDriveRock: Object.freeze({
-    family: 'desert-road-rock', preserveSectionOrder: true, harmonyPath: [0,0,-2,5,0], swing: 0.08, warmth: 0.82, releaseScale: 1.05, space: 0.10, delayMs: 145,
+    family: 'desert-road-rock', preserveSectionOrder: true, leadInstrument:'guitar2', counterInstrument:'mutedHorn', harmonyPath: [0,0,-2,5,0], swing: 0.08, warmth: 0.82, releaseScale: 1.05, space: 0.10, delayMs: 145,
     chordInstrument: 'tremolo', bassInstrument: 'uprightBass', chordHoldSteps: 16, bassHoldSteps: 4,
     layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.70, counter: 0.40, bass: 0.94, chord: 0.34 },
     percussion: { period: 12, kit: 'legacy', punch: 1.08, pattern: {0:'K',3:'H',6:'S',9:'H'} },
@@ -400,7 +402,7 @@ const EXTRA_STRUCTURED_FEELS = Object.freeze({
     signature: { instrument: 'clarinet', sections: [0,1,2,3], everyCycles: 2, repeatPeriod: 32, durationSteps: 5.4, volume: 0.20, motif: {6:79,22:77} },
   }),
   cafeFirelight: Object.freeze({
-    family: 'cafe-firelight-jazz', preserveSectionOrder: true, harmonyPath: [0,-2,0,5,0], swing: 0.14, warmth: 0.86, releaseScale: 1.12, space: 0.14, delayMs: 155,
+    family: 'cafe-firelight-jazz', preserveSectionOrder: true, leadInstrument:'mutedHorn', counterInstrument:'jazzGuitar', harmonyPath: [0,-2,0,5,0], swing: 0.14, warmth: 0.86, releaseScale: 1.12, space: 0.14, delayMs: 155,
     chordInstrument: 'epiano', bassInstrument: 'bass', chordHoldSteps: 14, bassHoldSteps: 4,
     layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: true }, mix: { lead: 0.52, counter: 0.28, bass: 0.92, chord: 0.58 },
     percussion: { period: 16, kit: 'brush-jazz', punch: 0.78, pattern: {0:'B',8:'H'} },
@@ -464,7 +466,7 @@ const V166BT_STRUCTURED_FEELS = Object.freeze({
   }),
   queenBossa: Object.freeze({
     family:'queen-terrace-bossa', preserveSectionOrder:true, harmonyPath:[0,5,0,-2,0,3], swing:.20, warmth:1.02, releaseScale:1.08, space:.11, delayMs:125,
-    leadInstrument:'guitar2', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:4,
+    leadInstrument:'nylonGuitar', counterInstrument:'rhodesWarm', chordInstrument:'epiano', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:4,
     layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.58,counter:.30,bass:.90,chord:.50},
     percussion:{period:16,kit:'brush-jazz',punch:.64,pattern:{0:'B',6:'H',8:'B',14:'H'}},
     signature:{instrument:'guitar2',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:4.2,volume:.18,motif:{10:67,42:64}},
@@ -488,6 +490,35 @@ const V166BT_STRUCTURED_FEELS = Object.freeze({
     layers:{lead:true,counter:true,chords:true,bass:true,drums:false,signature:true}, mix:{lead:.54,counter:.20,bass:.30,chord:.28},
     percussion:{period:40,kit:'none',punch:0,pattern:{}},
     signature:{instrument:'felt',sections:[0,1,2],everyCycles:2,repeatPeriod:80,durationSteps:8,volume:.14,motif:{16:64,56:62}},
+  }),
+
+  midnightSatin: Object.freeze({
+    family:'smooth-jazz-hollowbody', preserveSectionOrder:true, harmonyPath:[0,0,-2,5,0,3], swing:.16, warmth:.90, releaseScale:1.18, space:.12, delayMs:145,
+    leadInstrument:'jazzGuitar', counterInstrument:'mutedHorn', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass', chordHoldSteps:14, bassHoldSteps:4,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.62,counter:.25,bass:.92,chord:.52},
+    percussion:{period:16,kit:'brush-jazz',punch:.58,pattern:{0:'B',8:'S',12:'H'}},
+    signature:{instrument:'jazzGuitar',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:5.2,volume:.17,motif:{10:71,42:67}},
+  }),
+  blueLobby: Object.freeze({
+    family:'smooth-jazz-blue-lobby', preserveSectionOrder:true, harmonyPath:[0,-2,0,5,0], swing:.13, warmth:.84, releaseScale:1.22, space:.16, delayMs:175,
+    leadInstrument:'mutedHorn', counterInstrument:'jazzGuitar', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:4,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.54,counter:.34,bass:.90,chord:.56},
+    percussion:{period:16,kit:'brush-jazz',punch:.62,pattern:{0:'B',8:'S',14:'H'}},
+    signature:{instrument:'mutedHorn',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:6,volume:.17,motif:{14:72,46:68}},
+  }),
+  palmsAtDusk: Object.freeze({
+    family:'tropical-house-palms', preserveSectionOrder:true, harmonyPath:[0,5,0,-2,0,3], swing:.02, warmth:.94, releaseScale:.88, space:.08, delayMs:105,
+    leadInstrument:'marimba', counterInstrument:'nylonGuitar', chordInstrument:'epiano', bassInstrument:'synthbass', chordHoldSteps:12, bassHoldSteps:3,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.56,counter:.38,bass:.92,chord:.44},
+    percussion:{period:16,kit:'tropical-house',punch:.86,pattern:{0:'K',4:'H',8:'K',12:'H'}},
+    signature:{instrument:'nylonGuitar',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:4,volume:.16,motif:{6:67,38:64}},
+  }),
+  islandKnight: Object.freeze({
+    family:'tropical-house-island-knight', preserveSectionOrder:true, harmonyPath:[0,0,3,5,0,-2], swing:.04, warmth:.88, releaseScale:.84, space:.10, delayMs:120,
+    leadInstrument:'nylonGuitar', counterInstrument:'marimba', chordInstrument:'rhodesWarm', bassInstrument:'synthbass', chordHoldSteps:12, bassHoldSteps:3,
+    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:true}, mix:{lead:.60,counter:.30,bass:.96,chord:.42},
+    percussion:{period:16,kit:'tropical-house-sidechain',punch:.92,pattern:{0:'K',4:'H',8:'K',12:'H'}},
+    signature:{instrument:'marimba',sections:[0,1],everyCycles:2,repeatPeriod:64,durationSteps:2.8,volume:.15,motif:{12:79,44:76}},
   }),
 });
 
@@ -522,6 +553,7 @@ const V166BT_STRUCTURED_FEEL_BY_THEME = Object.freeze({
   neonSiege:'neonSiege', overclockedKnight:'overclockedKnight', reactorGambit:'reactorGambit',
   concreteRain:'concreteRain', velvetStatic:'velvetStatic', abyssalArchive:'abyssalArchive', redVault:'redVault',
   queenBossa:'queenBossa', havana205:'havana205', fourSquares:'fourSquares', verticalRainPiano:'verticalRainPiano',
+  midnightSatin:'midnightSatin', blueLobby:'blueLobby', palmsAtDusk:'palmsAtDusk', islandKnight:'islandKnight',
 });
 
 export function structuredFeel(theme) {

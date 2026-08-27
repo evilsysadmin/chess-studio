@@ -8,6 +8,8 @@ export function buildHomeToday({ daily = {}, todayKey = '', activity = [] } = {}
   const dailyBrief = dailyChallengeBrief(daily, todayKey);
   return {
     dailySolved: Boolean(todayKey && solvedDates.includes(todayKey)),
+    dailySolvedCount: Math.max(0, Math.min(3, Number(dailyBrief.solvedCount) || 0)),
+    dailyFull: Boolean(dailyBrief.full),
     streak: Math.max(0, Number(daily?.streak) || 0),
     bestStreak: Math.max(0, Number(daily?.bestStreak) || 0),
     dailyHeadline: dailyBrief.headline,

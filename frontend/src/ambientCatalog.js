@@ -1834,7 +1834,54 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
-export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Energía', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
+
+
+// dm46p · familias acústicas/electrónicas con identidad explícita. El objetivo
+// es que cambiar de emisora cambie de banda, no sólo de progresión armónica.
+Object.assign(AMBIENT_THEMES, {
+  midnightSatin: {
+    id:'midnightSatin', genre:'Smooth Jazz', engine:'structured', label:'Smooth jazz · satén de medianoche',
+    description:'Guitarra jazz de caja, Rhodes, saxo apagado y contrabajo. Redonda, elegante y sin dientes de sierra.',
+    stepMs:156, stepsPerSection:64, longFormMs:420000, leadInstrument:'jazzGuitar', counterInstrument:'mutedHorn', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{2:64,8:67,14:71,20:69,28:67,34:64,42:62,50:64,58:67},counter:{11:76,27:74,43:71,59:69},chords:{0:[52,55,59,64],16:[50,53,57,62],32:[57,60,64,69],48:[55,59,62,67]},bass:{0:40,4:47,8:52,12:47,16:38,20:45,24:50,28:45,32:45,36:52,40:57,44:52,48:43,52:50,56:55,60:50},drums:{0:'B',8:'H',16:'B',24:'S',32:'B',40:'H',48:'B',56:'S'}},
+      {lead:{4:67,12:71,20:74,28:72,36:69,44:67,52:64,60:62},counter:{8:79,24:76,40:74,56:71},chords:{0:[55,59,62,67],16:[52,55,59,64],32:[50,53,57,62],48:[57,60,64,69]},bass:{0:43,8:50,16:40,24:47,32:38,40:45,48:45,56:52},drums:{0:'B',12:'H',16:'S',32:'B',44:'H',48:'S'}},
+      {lead:{6:62,18:65,30:67,42:64,54:60},counter:{12:69,36:67,60:64},chords:{0:[50,53,57,62],24:[48,52,55,60],48:[45,50,53,57]},bass:{0:38,16:36,32:33,48:31},drums:{0:'B',32:'B'}}
+    ],
+  },
+  blueLobby: {
+    id:'blueLobby', genre:'Smooth Jazz', engine:'structured', label:'Smooth jazz · lobby azul',
+    description:'Rhodes aterciopelado, guitarra limpia y saxo tenor imaginario; menos nocturno árabe, más club de hotel a las dos.',
+    stepMs:162, stepsPerSection:64, longFormMs:430000, leadInstrument:'mutedHorn', counterInstrument:'jazzGuitar', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{4:65,12:69,20:72,28:70,36:67,44:65,52:62,60:65},counter:{8:57,24:60,40:59,56:55},chords:{0:[53,57,60,64],16:[50,55,59,62],32:[57,60,64,69],48:[52,55,59,64]},bass:{0:41,8:48,16:38,24:45,32:45,40:52,48:40,56:47},drums:{0:'B',8:'H',16:'S',24:'H',32:'B',40:'H',48:'S',56:'H'}},
+      {lead:{2:68,10:72,18:75,26:73,34:70,42:68,50:65,58:63},counter:{6:60,22:63,38:62,54:58},chords:{0:[56,60,63,68],16:[53,58,62,65],32:[60,63,67,72],48:[55,58,62,67]},bass:{0:44,8:51,16:41,24:48,32:48,40:55,48:43,56:50},drums:{0:'B',12:'H',16:'S',32:'B',44:'H',48:'S'}},
+      {lead:{8:63,24:67,40:65,56:60},counter:{16:55,48:53},chords:{0:[51,55,58,63],24:[48,53,57,60],48:[46,51,55,58]},bass:{0:39,24:36,48:34},drums:{0:'B',32:'B'}}
+    ],
+  },
+  palmsAtDusk: {
+    id:'palmsAtDusk', genre:'Tropical House', engine:'structured', label:'Tropical house · palmeras al anochecer',
+    description:'Marimba seca, guitarra de nylon, bajo redondo y pulso four-on-the-floor ligero. Sol sin megafonía de chiringuito.',
+    stepMs:126, stepsPerSection:64, longFormMs:390000, leadInstrument:'marimba', counterInstrument:'nylonGuitar', chordInstrument:'epiano', bassInstrument:'synthbass',
+    sections:[
+      {lead:{0:72,8:76,16:79,24:76,32:74,40:72,48:69,56:72},counter:{4:64,12:67,20:69,28:67,36:62,44:66,52:69,60:67},chords:{0:[52,55,59,64],16:[55,59,62,67],32:[57,60,64,69],48:[50,55,59,62]},bass:{0:40,8:40,16:43,24:43,32:45,40:45,48:38,56:38},drums:{0:'K',4:'H',8:'K',12:'H',16:'K',20:'H',24:'K',28:'H',32:'K',36:'H',40:'K',44:'H',48:'K',52:'H',56:'K',60:'H'}},
+      {lead:{4:74,12:77,20:81,28:79,36:76,44:74,52:72,60:69},counter:{0:67,16:64,32:69,48:66},chords:{0:[55,59,62,67],16:[57,60,64,69],32:[52,55,59,64],48:[50,55,59,62]},bass:{0:43,8:43,16:45,24:45,32:40,40:40,48:38,56:38},drums:{0:'K',4:'H',8:'K',12:'H',16:'K',20:'H',24:'K',28:'H',32:'K',36:'H',40:'K',44:'H',48:'K',52:'H',56:'K',60:'H'}},
+      {lead:{8:76,24:74,40:72,56:69},counter:{12:64,28:62,44:60,60:62},chords:{0:[52,55,59,64],32:[50,55,59,62]},bass:{0:40,16:43,32:38,48:40},drums:{0:'K',8:'K',16:'K',24:'K',32:'K',40:'K',48:'K',56:'K'}}
+    ],
+  },
+  islandKnight: {
+    id:'islandKnight', genre:'Tropical House', engine:'structured', label:'Tropical house · caballo de isla',
+    description:'Pluck tropical, nylon sincopada, acordes suaves y bajo con bombeo sugerido; más playa nocturna que EDM de estadio.',
+    stepMs:122, stepsPerSection:64, longFormMs:400000, leadInstrument:'nylonGuitar', counterInstrument:'marimba', chordInstrument:'rhodesWarm', bassInstrument:'synthbass',
+    sections:[
+      {lead:{2:67,6:71,10:74,14:71,18:69,22:67,26:64,30:67,34:69,38:72,42:76,46:72,50:69,54:67,58:64,62:62},counter:{8:79,24:76,40:81,56:76},chords:{0:[55,59,62,67],16:[52,55,59,64],32:[57,60,64,69],48:[50,55,59,62]},bass:{0:43,8:43,16:40,24:40,32:45,40:45,48:38,56:38},drums:{0:'K',4:'H',8:'K',12:'H',16:'K',20:'H',24:'K',28:'H',32:'K',36:'H',40:'K',44:'H',48:'K',52:'H',56:'K',60:'H'}},
+      {lead:{4:69,12:72,20:76,28:74,36:71,44:69,52:67,60:64},counter:{0:81,16:79,32:76,48:74},chords:{0:[57,60,64,69],16:[55,59,62,67],32:[52,55,59,64],48:[50,55,59,62]},bass:{0:45,8:45,16:43,24:43,32:40,40:40,48:38,56:38},drums:{0:'K',4:'H',8:'K',12:'H',16:'K',20:'H',24:'K',28:'H',32:'K',36:'H',40:'K',44:'H',48:'K',52:'H',56:'K',60:'H'}},
+      {lead:{8:67,24:64,40:62,56:60},counter:{16:76,48:72},chords:{0:[55,59,62,67],32:[50,55,59,62]},bass:{0:43,16:40,32:38,48:36},drums:{0:'K',8:'K',16:'K',24:'K',32:'K',40:'K',48:'K',56:'K'}}
+    ],
+  },
+});
+
+export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Energía', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
   'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',
   'beirutRooftop0412','casablancaLastCall','cairoQuietHours','nileBalcony0152','aleppoAfterRain','ammanVelvetRoom','medinaBlueSmoke','cairoRedLantern',

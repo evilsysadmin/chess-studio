@@ -35,7 +35,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-assert(AMBIENT_THEME_OPTIONS.length === 73, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
+assert(AMBIENT_THEME_OPTIONS.length === 77, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
 const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
 assert(new Set(ids).size === ids.length, 'hay IDs musicales duplicados');
 
@@ -45,6 +45,8 @@ assert(new Set(grouped.map((theme) => theme.id)).size === ids.length, 'un tema a
 
 const expectedGenres = new Map([
   ['SPA / Zen', 2],
+  ['Smooth Jazz', 2],
+  ['Tropical House', 2],
   ['Ecléctica', 3],
   ['Energía', 5],
   ['Lo-Fi / Chill', 2],
@@ -81,6 +83,16 @@ for (const theme of AMBIENT_THEME_OPTIONS) {
   assert(!instruments.some((instrument) => forbiddenChiu.has(instrument)), `${theme.id}: conserva un timbre chiu-chiu (${instruments.filter(Boolean).join(', ')})`);
   assert(profile.masterTrim >= 0.76 && profile.masterTrim <= 1.12, `${theme.id}: normalización fuera de rango (${profile.masterTrim})`);
 }
+
+const characterExpansion = ['midnightSatin','blueLobby','palmsAtDusk','islandKnight'];
+assert(characterExpansion.every((id) => ids.includes(id)), 'faltan Smooth Jazz / Tropical House');
+assert(characterExpansion.every((id) => getAmbientThemeSoundProfile(id)), 'los estilos nuevos necesitan perfil sonoro dedicado');
+assert(new Set(characterExpansion.map((id) => getAmbientThemeSoundProfile(id).family)).size === characterExpansion.length, 'Smooth Jazz / Tropical House comparten personalidad accidentalmente');
+assert(['midnightSatin','blueLobby'].every((id) => getAmbientThemeSoundProfile(id).estimatedBpm < 100), 'Smooth Jazz debe permanecer relajado');
+assert(['palmsAtDusk','islandKnight'].every((id) => getAmbientThemeSoundProfile(id).estimatedBpm >= 118 && getAmbientThemeSoundProfile(id).estimatedBpm <= 125), 'Tropical House debe rondar 120 BPM');
+assert(soundSource.includes('playStructuredGuitar'), 'las guitarras estructuradas han vuelto a ser simples presets de oscilador');
+assert(soundSource.includes('Karplus-Strong'), 'falta el modelo físico de cuerda para guitarra');
+
 const profiles = added.map((id) => [id, getAmbientThemeSoundProfile(id)]);
 for (const [id, profile] of profiles) assert(profile, `${id}: no tiene perfil estructurado`);
 assert(new Set(profiles.map(([, profile]) => profile.family)).size === added.length, 'las nuevas pistas comparten accidentalmente la misma familia sonora');

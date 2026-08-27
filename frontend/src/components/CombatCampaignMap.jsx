@@ -62,12 +62,15 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
   const availableIds = new Set((availableNodes || []).map((node) => node.id));
   const edges = campaignMapEdges(map, campaign, availableNodes);
   const nodes = [map.start, ...map.stages.flat()];
+  const progressStage = Math.max(0, Math.min(7, (campaign.route || []).length - 1));
+  const selectedNode = nodes.find((node) => node.id === campaign.selectedNodeId) || null;
+  const artFocus = `${44 + progressStage * 1.25}%`;
 
   return (
     <section className="combat-campaign-map-wrap" aria-label="Mapa completo de campaña Combat Chess" title="La topología es visible; dificultad, modificadores y boss requieren inteligencia.">
       <div className="campaign-map-toolbar simplified">
         <div>
-          <span className="section-label">MAPA</span>
+          <span className="section-label">CARTOGRAFÍA TÁCTICA</span>
           <strong>Elige tu siguiente sector</strong>
         </div>
         <details className="campaign-map-legend-details">
@@ -82,7 +85,10 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
         </details>
       </div>
 
-      <div className="combat-campaign-map" style={{ '--campaign-map-art': `url(${campaignCommandMapArt})` }}>
+      <div
+        className={`combat-campaign-map campaign-map-progress-${progressStage} ${selectedNode ? `campaign-map-focus-${selectedNode.type}` : ''}`}
+        style={{ '--campaign-map-art': `url(${campaignCommandMapArt})`, '--campaign-art-focus': artFocus }}
+      >
         <div className="campaign-map-art" aria-hidden="true" />
         <CampaignEdges edges={edges} orientation="desktop" />
         <CampaignEdges edges={edges} orientation="mobile" />
@@ -103,11 +109,11 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
       </div>
 
       <div className="campaign-map-route-summary">
-        <span>◆ Base</span>
+        <span>⌂ Base de operaciones</span>
         <span>→</span>
-        <strong>{Math.max(0, (campaign.route || []).length - 1)} sectores atravesados</strong>
+        <strong>{Math.max(0, (campaign.route || []).length - 1)} / 7 sectores asegurados</strong>
         <span>→</span>
-        <span>♚ Rey Viejo</span>
+        <span>♚ Objetivo · Rey Viejo</span>
       </div>
     </section>
   );

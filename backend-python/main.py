@@ -42,6 +42,8 @@ from observability import record_http_request, sanitize_client_release
 from structured_logging import emit_http_event
 from observability_history import schedule_history_flush
 from resilience import request_enter, request_exit, should_shed, record_shed
+from tracing import configure_tracing
+from release_info import APP_RELEASE as BACKEND_RELEASE
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
@@ -668,3 +670,8 @@ async def patch_profile(request: Request, body: dict, username: str = Depends(ge
             },
         )
     return result
+
+
+# Optional OTLP/Tempo export. Must remain the last non-endpoint side effect so all
+# FastAPI routes are present before instrumentation. Fail-open inside the helper.
+configure_tracing(app, release=BACKEND_RELEASE)

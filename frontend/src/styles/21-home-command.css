@@ -196,3 +196,24 @@
 @media (prefers-reduced-motion: reduce) {
   .home-mode-card .menu-card-cta b { transition: none; }
 }
+
+/* dm46p · desafío diario: compacto, legible y con progreso útil. */
+.home-friendly .home-today-card {
+  grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:.8rem; padding:.68rem .78rem;
+  border-color:rgba(198,164,93,.18); background:linear-gradient(100deg,rgba(201,162,39,.035),rgba(255,255,255,.018) 46%,rgba(0,0,0,.08));
+}
+.home-today-emblem { width:42px;height:42px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(201,162,39,.28);background:rgba(201,162,39,.055);color:var(--brass);font-size:1.18rem;box-shadow:inset 0 0 18px rgba(201,162,39,.045); }
+.home-today-copy { min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr); gap:.08rem .5rem; align-items:baseline; }
+.home-today-copy .section-label { margin:0; }
+.home-today-copy strong { color:var(--parchment); font-size:.88rem; overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.home-today-copy small { grid-column:1/-1;color:var(--parchment-dim);font-size:.66rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.home-today-progress { grid-column:1/-1;display:flex;align-items:center;gap:.25rem;margin-top:.24rem; }
+.home-today-progress i { width:22px;height:3px;border-radius:99px;background:rgba(255,255,255,.09); }
+.home-today-progress i.done { background:var(--brass); box-shadow:0 0 7px rgba(201,162,39,.24); }
+.home-today-progress span { margin-left:.25rem;color:var(--parchment-dim);font:600 .54rem var(--font-mono); }
+.home-today-actions { display:grid;justify-items:end;gap:.1rem; }
+.home-today-actions > button { min-height:36px;padding:.42rem .72rem;white-space:nowrap; }
+.home-today-actions .home-today-details { border:0;padding:0; }
+.home-today-actions .home-today-details > summary { min-height:22px;padding:0;justify-content:flex-end;font-size:.54rem; }
+.home-today-card.is-complete .home-today-emblem { border-color:rgba(95,170,110,.42);color:var(--success);background:rgba(95,170,110,.065); }
+@media(max-width:700px){.home-friendly .home-today-card{grid-template-columns:auto 1fr}.home-today-actions{grid-column:1/-1;width:100%;grid-template-columns:1fr auto;align-items:center}.home-today-actions>button{width:100%}.home-today-copy small{white-space:normal}.home-today-emblem{width:38px;height:38px}}

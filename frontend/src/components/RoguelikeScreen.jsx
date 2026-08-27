@@ -554,9 +554,9 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       <div className="menu combat-workspace">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section combat-campaign-shell">
-          <span className="section-label">{COMBAT_CHESS_NAME} · Campaña procedural</span>
-          <div className="combat-heading-row"><h2>Operación La Torre</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
-          <p className="combat-operational-hint" title="Los detalles de campaña están en el tutorial. El mapa muestra rutas y tipos de nodo, pero no revela inteligencia enemiga no comprada.">Selecciona una ruta conectada.</p>
+          <span className="section-label">MESA DE GUERRA · OPERACIÓN LA TORRE</span>
+          <div className="combat-heading-row"><h2>Campaña de Combat Chess</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
+          <p className="combat-operational-hint" title="La cartografía muestra rutas y tipos de sector. La fuerza enemiga precisa requiere inteligencia.">Elige tu siguiente sector.</p>
 
           {(() => {
             const nextStep = campaign.phase === 'map'

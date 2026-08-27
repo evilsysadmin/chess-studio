@@ -594,6 +594,8 @@ jobs:
           VITE_BUILD_SHA: ${{ github.sha }}
           VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
           VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
         run: npm run build
 
       - name: Setup Pages

@@ -1,0 +1,358 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "chess-studio",
+    "health",
+    "sre",
+    "terraform",
+    "${commit_sha}"
+  ],
+  "timezone": "browser",
+  "title": "Chess Studio · Salud operativa",
+  "uid": "chess-studio-api-overview",
+  "version": 1,
+  "weekStart": "monday",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Operación",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Estado a primera vista.** Si algo sale mal, abre **Chess Studio · Logs accionables** para 404/5xx/request_id y **Chess Studio · Trazas** para seguir latencia extremo a extremo. Deploy `${commit_sha}`."
+      }
+    },
+    {
+      "id": 2,
+      "title": "5xx · 15 min",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time({} | json | event=\"http_request\" | status >= 500 [15m]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "title": "404 · 1 h",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time({} | json | event=\"http_request\" | status = 404 [1h]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "title": "p95 API · 15 min",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "max(quantile_over_time(0.95, {} | json | event=\"http_request\" | unwrap duration_ms | __error__=\"\" [15m]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Requests · 15 min",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum(count_over_time({} | json | event=\"http_request\" [15m]))",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 6,
+      "title": "HTTP por status",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "sum by (status) (count_over_time({} | json | event=\"http_request\" [$__interval]))",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "p95 por ruta",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "topk(8, quantile_over_time(0.95, {} | json | event=\"http_request\" | unwrap duration_ms | __error__=\"\" [$__interval]) by (route))",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "5xx recientes",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 14,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "{} | json | event=\"http_request\" | status >= 500 | line_format \"{{.status}} {{.method}} {{.route}} · {{.duration_ms}}ms · req={{.request_id}} · trace={{.trace_id}}\"",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Trazas recientes · Tempo",
+      "type": "traces",
+      "datasource": {
+        "type": "tempo",
+        "uid": "${traces_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 14,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "${traces_datasource_uid}"
+          },
+          "query": "{ resource.service.name = \"chess-studio-backend\" }",
+          "queryType": "traceql",
+          "refId": "A",
+          "limit": 50
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    }
+  ]
+}

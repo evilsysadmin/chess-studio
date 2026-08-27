@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46p',
+    title: 'Campaña con identidad, música con instrumentos y observabilidad recuperada',
+    highlights: [
+      'La campaña adopta la dirección artística del mapa de guerra y mantiene sectores, rutas e inteligencia dinámicos encima de ese lenguaje visual.',
+      'Las guitarras usan ahora una cuerda pulsada dedicada en vez de sonar como otro synth; llegan Smooth Jazz y Tropical House con cuatro pistas nuevas.',
+      'Novedades queda como botón independiente justo debajo de Mi cuenta y el desafío diario gana progreso visible sin ocupar media pantalla.',
+    ],
+  },
+  {
     release: 'v16.6dm46o',
     title: 'Operación más clara y campaña con más carácter',
     highlights: [

@@ -767,28 +767,26 @@ function AppInner({ isAdminUser }) {
                 <span aria-hidden="true">✦</span>
                 <span>Feedback</span>
               </button>
-              <div className="masthead-account-menu" ref={accountMenuRef}>
-                <button
-                  ref={accountMenuButtonRef}
-                  type="button"
-                  className="masthead-account-trigger"
-                  onClick={() => setShowAccountMenu((open) => !open)}
-                  aria-label="Abrir menú de cuenta"
-                  aria-haspopup="menu"
-                  aria-expanded={showAccountMenu}
-                >
-                  <span className="masthead-account-avatar" aria-hidden="true">♙</span>
-                  <span>Cuenta</span>
-                  <span className="masthead-account-chevron" aria-hidden="true">⌄</span>
-                </button>
-                {showAccountMenu && (
-                  <div className="masthead-account-popover" role="menu" aria-label="Cuenta">
-                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
-                      <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
-                    </button>
-                    <button type="button" role="menuitem" className={releaseNotesSeen ? '' : 'masthead-account-menu-new'} onClick={() => { setShowAccountMenu(false); setProfileStorageItem(USER_RELEASE_NOTES_KEY, APP_RELEASE); setReleaseNotesSeen(true); setShowGlobalReleaseNotes(true); }}>
-                      <span aria-hidden="true">✦</span><span><b>Novedades{releaseNotesSeen ? '' : ' · Nuevo'}</b><small>Qué ha cambiado en Chess Studio</small></span>
-                    </button>
+              <div className="masthead-account-stack">
+                <div className="masthead-account-menu" ref={accountMenuRef}>
+                  <button
+                    ref={accountMenuButtonRef}
+                    type="button"
+                    className="masthead-account-trigger"
+                    onClick={() => setShowAccountMenu((open) => !open)}
+                    aria-label="Abrir menú de cuenta"
+                    aria-haspopup="menu"
+                    aria-expanded={showAccountMenu}
+                  >
+                    <span className="masthead-account-avatar" aria-hidden="true">♙</span>
+                    <span>Mi cuenta</span>
+                    <span className="masthead-account-chevron" aria-hidden="true">⌄</span>
+                  </button>
+                  {showAccountMenu && (
+                    <div className="masthead-account-popover" role="menu" aria-label="Cuenta">
+                      <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
+                        <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
+                      </button>
                     {isAdminUser && (
                       <button type="button" role="menuitem" className="masthead-account-menu-admin" onClick={() => { setShowAccountMenu(false); navigateTo('admin'); }}>
                         <span aria-hidden="true">◉</span><span><b>Administración</b><small>Usuarios y operación</small></span>
@@ -804,8 +802,18 @@ function AppInner({ isAdminUser }) {
                     <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { setShowAccountMenu(false); void handleGlobalLogout(); }} disabled={loggingOut}>
                       <span aria-hidden="true">↪</span><span><b>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</b><small>Guarda antes de salir</small></span>
                     </button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className={`masthead-release-trigger ${releaseNotesSeen ? '' : 'is-new'}`}
+                  onClick={() => { setProfileStorageItem(USER_RELEASE_NOTES_KEY, APP_RELEASE); setReleaseNotesSeen(true); setShowGlobalReleaseNotes(true); }}
+                  aria-label={releaseNotesSeen ? 'Abrir novedades' : 'Abrir novedades nuevas'}
+                >
+                  <span aria-hidden="true">✦</span>
+                  <span>Novedades{releaseNotesSeen ? '' : ' · Nuevo'}</span>
+                </button>
               </div>
             </div>
           </div>

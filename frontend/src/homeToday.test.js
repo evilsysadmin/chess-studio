@@ -14,13 +14,15 @@ describe('Home · Hoy', () => {
         { state: 'finished', outcome: 'win', modeLabel: 'Torneo', date: '2026-08-22T20:00:00Z' },
       ],
     });
-    expect(summary).toMatchObject({ dailySolved: true, streak: 4, bestStreak: 9, dailyHeadline: 'Desafíos de hoy · 1/3' });
+    expect(summary).toMatchObject({ dailySolved: true, dailySolvedCount: 1, dailyFull: false, streak: 4, bestStreak: 9, dailyHeadline: 'Desafíos de hoy · 1/3' });
     expect(summary.lastResult).toMatchObject({ label: 'Victoria', modeLabel: 'Torneo' });
   });
 
   it('tolera perfiles nuevos sin historial', () => {
     expect(buildHomeToday({ todayKey: '2026-08-23' })).toEqual({
       dailySolved: false,
+      dailySolvedCount: 0,
+      dailyFull: false,
       streak: 0,
       bestStreak: 0,
       dailyHeadline: 'Desafíos de hoy · 0/3',

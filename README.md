@@ -1,3 +1,12 @@
+### v16.6dm46p · Campaña viva, audio con carácter y Grafana/Tempo recuperados
+
+- La cartografía de Combat Chess adopta la ilustración de campaña como dirección artística real: terreno, oro/cobre y tipografía táctica por debajo; nodos, rutas, selección, progreso e intel siguen siendo UI dinámica y nunca dependen de texto pintado en la imagen.
+- El motor Web Audio añade cuerda pulsada tipo Karplus-Strong para nylon/jazz/rock, rasgueo escalonado y cuatro pistas nuevas: dos Smooth Jazz y dos Tropical House. El catálogo sube a 77 temas.
+- `Novedades` es un control independiente justo bajo `Mi cuenta`; la tarjeta diaria se compacta y muestra 0/3–3/3 y racha sin desperdiciar el ancho de Home.
+- Se restaura `.github/workflows/grafana-dashboards.yml` con Terraform bajo `infra/grafana/`: salud, logs accionables y trazas Tempo quedan versionados y publicados como dashboards-as-code.
+- El backend exporta trazas FastAPI + HTTPX por OTLP/HTTP a Grafana Cloud cuando `OTEL_EXPORTER_OTLP_ENDPOINT`/headers están configurados; logs y traces comparten `trace_id`. Sin OTLP, tracing es fail-open y la app sigue arrancando.
+- Trivy conserva localmente la DB en `$HOME/.cache/trivy`; GitHub Actions mantiene su caché propia del runner.
+
 ### v16.6dm46o · Estado operativo, logging accionable y mapa de campaña con identidad
 
 - Corrige el 500 de `/api/status`: los buckets históricos se rehidratan después de un flush y el registro de observabilidad es **fail-open**, de modo que una avería de telemetría no puede tumbar el endpoint de estado.

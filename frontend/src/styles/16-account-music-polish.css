@@ -110,3 +110,8 @@
   .masthead-account-group .masthead-account-button > span:last-child,
   .masthead-settings-button > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 }
+
+.admin-grafana-actions { display:flex;align-items:center;justify-content:flex-end;gap:.45rem;flex-wrap:wrap; }
+.admin-grafana-actions > a:not(.secondary-btn) { color:var(--parchment-dim);font:650 .58rem var(--font-mono);text-decoration:none;border-bottom:1px solid rgba(198,164,93,.22);padding:.2rem .05rem; }
+.admin-grafana-actions > a:not(.secondary-btn):hover { color:var(--brass);border-color:var(--brass-dim); }
+@media(max-width:700px){.admin-grafana-actions{justify-content:flex-start}}

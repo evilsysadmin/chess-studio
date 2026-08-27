@@ -208,3 +208,16 @@
   .masthead-feedback-trigger { width: 40px; min-height: 40px; padding: 0; }
   .masthead-feedback-trigger > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 }
+
+/* dm46p · Novedades es una acción global visible, no una opción escondida. */
+.masthead-account-stack { display:grid; justify-items:stretch; gap:.26rem; min-width:max-content; }
+.masthead-release-trigger {
+  min-height: 24px; padding:.24rem .62rem; border:1px solid rgba(198,164,93,.22); border-radius:999px;
+  background:rgba(7,10,15,.48); color:var(--parchment-dim); font:650 .58rem/1 var(--font-mono);
+  letter-spacing:.035em; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:.32rem;
+}
+.masthead-release-trigger:hover,.masthead-release-trigger:focus-visible { color:var(--parchment); border-color:var(--brass-dim); background:rgba(198,164,93,.07); outline:none; }
+.masthead-release-trigger.is-new { color:var(--brass); border-color:rgba(201,162,39,.46); box-shadow:0 0 0 1px rgba(201,162,39,.06),0 0 16px rgba(201,162,39,.07); }
+.masthead-game-compact .masthead-account-stack { gap:.18rem; }
+.masthead-game-compact .masthead-release-trigger { min-height:20px; padding:.16rem .38rem; font-size:.49rem; }
+@media(max-width:700px){.masthead-release-trigger{min-height:22px;padding:.2rem .38rem}.masthead-release-trigger span:last-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)} }

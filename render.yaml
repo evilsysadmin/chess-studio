@@ -35,6 +35,18 @@ services:
         value: https://chess-studio.shadowops.dpdns.org/
       - key: ENVIRONMENT
         value: production
+      # OpenTelemetry -> Grafana Cloud Tempo. Los dos valores OTLP son secretos
+      # de despliegue; si no se configuran, tracing queda desactivado fail-open.
+      - key: OTEL_SERVICE_NAME
+        value: chess-studio-backend
+      - key: OTEL_TRACES_SAMPLER
+        value: parentbased_traceidratio
+      - key: OTEL_TRACES_SAMPLER_ARG
+        value: "0.20"
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
       # Recuperación por email activa. Durante la prueba, onboarding@resend.dev
       # puede usarse con las restricciones de Resend; tras verificar
       # shadowops.dpdns.org configura PASSWORD_RESET_FROM en el dashboard.

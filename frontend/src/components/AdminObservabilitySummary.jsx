@@ -44,7 +44,10 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
   const burnRate = useMemo(() => burnRateForSlo(runtime), [runtime]);
   const releaseHealth = useMemo(() => evaluateReleaseHealth(runtime, APP_RELEASE), [runtime]);
   const verdict = operationalVerdict({ loading, summary, slo, burnRate, runtime });
-  const grafanaUrl = String(import.meta.env.VITE_GRAFANA_LOGS_DASHBOARD_URL || import.meta.env.VITE_GRAFANA_CLOUD_URL || 'https://grafana.com/').trim();
+  const grafanaUrl = String(import.meta.env.VITE_GRAFANA_CLOUD_URL || 'https://grafana.com/').trim();
+  const grafanaHealthUrl = String(import.meta.env.VITE_GRAFANA_HEALTH_DASHBOARD_URL || '').trim();
+  const grafanaLogsUrl = String(import.meta.env.VITE_GRAFANA_LOGS_DASHBOARD_URL || '').trim();
+  const grafanaTracesUrl = String(import.meta.env.VITE_GRAFANA_TRACES_DASHBOARD_URL || '').trim();
 
   return (
     <section className={`admin-operational-status is-${verdict.level}`} aria-label="Estado operativo de Chess Studio">
