@@ -1544,6 +1544,47 @@ def test_authenticated_user_can_submit_feedback_and_admin_can_read_it(monkeypatc
     assert body['feedback'][0]['message'] == 'La home de campaña me satura un poco.'
 
 
+def test_feedback_accepts_only_real_png_jpg_gif_and_admin_can_open_attachment(monkeypatch):
+    import base64
+    import main as main_module
+
+    png = b"\x89PNG\r\n\x1a\n" + b"safe-test-payload"
+    created = client.post('/api/feedback', json={
+        'category': 'bug',
+        'message': 'Adjunto una captura del fallo.',
+        'context': 'Combat Chess',
+        'attachments': [{
+            'name': 'captura.png',
+            'mimeType': 'image/png',
+            'data': base64.b64encode(png).decode('ascii'),
+        }],
+    })
+    assert created.status_code == 201
+    item = created.json()['feedback']
+    assert item['attachments'] == [{'index': 0, 'name': 'captura.png', 'mime_type': 'image/png', 'size': len(png)}]
+    assert 'data' not in item['attachments'][0]
+
+    monkeypatch.setattr(main_module, '_ADMIN_USERNAMES', {'testuser'})
+    listed = client.get('/api/admin/feedback').json()['feedback'][0]
+    assert listed['attachments'][0]['name'] == 'captura.png'
+    attachment = client.get(f"/api/admin/feedback/{item['id']}/attachments/0")
+    assert attachment.status_code == 200
+    assert attachment.content == png
+    assert attachment.headers['content-type'].startswith('image/png')
+    assert attachment.headers['x-content-type-options'] == 'nosniff'
+
+    disguised = client.post('/api/feedback', json={
+        'category': 'bug',
+        'message': 'Esto no es un PNG real.',
+        'attachments': [{
+            'name': 'engaño.png',
+            'mimeType': 'image/png',
+            'data': base64.b64encode(b'GIF89a-not-a-png').decode('ascii'),
+        }],
+    })
+    assert disguised.status_code == 400
+
+
 def test_non_admin_cannot_read_feedback():
     response = client.get('/api/admin/feedback')
     assert response.status_code == 403

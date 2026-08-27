@@ -93,6 +93,21 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
         <strong>{debriefNextStep(debrief, nextAction)}</strong>
       </div>
 
+      {debrief.creditBreakdown && debrief.creditsGained > 0 && (
+        <details className="combat-credit-breakdown">
+          <summary>De dónde salen los +{debrief.creditsGained} créditos</summary>
+          <div className="combat-credit-breakdown-grid">
+            {debrief.creditBreakdown.captures > 0 && <span><b>+{debrief.creditBreakdown.captures}</b><small>capturas</small></span>}
+            {debrief.creditBreakdown.result > 0 && <span><b>+{debrief.creditBreakdown.result}</b><small>resultado</small></span>}
+            {debrief.creditBreakdown.sector > 0 && <span><b>+{debrief.creditBreakdown.sector}</b><small>sector</small></span>}
+            {debrief.creditBreakdown.preservation > 0 && <span><b>+{debrief.creditBreakdown.preservation}</b><small>pocas bajas</small></span>}
+            {debrief.creditBreakdown.underdog > 0 && <span><b>+{debrief.creditBreakdown.underdog}</b><small>capturas difíciles</small></span>}
+            {debrief.creditBreakdown.tactics > 0 && <span><b>+{debrief.creditBreakdown.tactics}</b><small>mérito táctico</small></span>}
+          </div>
+          {debrief.creditBreakdown.capped > 0 && <small className="combat-credit-cap-note">Límite anti-farming aplicado: {debrief.creditBreakdown.capped} créditos potenciales no se acumulan.</small>}
+        </details>
+      )}
+
       {(aiDebriefLoading || aiDebrief) && (
         <div className={`ai-task-card combat-ai-debrief ${aiDebriefLoading ? 'is-loading' : ''}`} aria-live="polite">
           <small>CONSEJOS // RESUMEN TÁCTICO</small>

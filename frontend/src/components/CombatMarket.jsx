@@ -56,8 +56,8 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
             {offers.map((offer) => {
               const pieceName = BASE_STATS[offer.type]?.name || 'Unidad';
               const training = offer.strengthPoints || offer.speedPoints
-                ? `${offer.strengthPoints} fuerza / ${offer.speedPoints} velocidad`
-                : 'sin mejoras';
+                ? `${offer.strengthPoints} fuerza / ${offer.speedPoints} velocidad base`
+                : 'sin veteranía previa';
               return (
                 <article className={`combat-market-card ${offer.rarity}`} key={offer.id}>
                   <div className="combat-market-card-top"><span aria-hidden="true">{offer.type === 'p' ? '♟' : offer.type === 'n' ? '♞' : offer.type === 'b' ? '♝' : offer.type === 'r' ? '♜' : '♛'}</span><i>{offer.rarity === 'veterano' ? 'OFERTA RARA' : 'DISPONIBLE HOY'}</i></div>
@@ -66,7 +66,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
                   <div className="mercenary-value-card">
                     <strong>{offer.specialtyLabel}</strong>
                     <span>{offer.specialtyDescription}</span>
-                    <small>{offer.equipmentLabel ? `Incluye ${offer.equipmentLabel}` : 'Sin equipo incluido'}</small>
+                    <small>{offer.fieldBonus?.label || 'Bono operativo incluido'}{offer.equipmentLabel ? ` · incluye ${offer.equipmentLabel}` : ''}</small>
                   </div>
                   <div className="combat-market-contracts">
                     {CONTRACTS.map((contract) => {
@@ -101,7 +101,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
           </div>
         )}
 
-        <footer className="combat-market-balance-note"><strong>Compra con intención</strong><span>Mercenarios = fuerza temporal con una especialidad clara. Equipo = inversión persistente en veteranos. La rotación es corta para que elegir importe más que navegar un catálogo.</span></footer>
+        <footer className="combat-market-balance-note"><strong>Compra con intención</strong><span>Mercenarios = refuerzo temporal con especialidad propia. Equipo = ventaja persistente mientras siga equipado, pero no sube nivel ni rango. La rotación es corta para que elegir importe más que navegar un catálogo.</span></footer>
       </section>
     </div>
   );

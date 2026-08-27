@@ -20,7 +20,7 @@ export function resolveHumanColor(choice, random = Math.random) {
 }
 
 export function emptyUnitBattleStats() {
-  return { killsByIdentity: {}, bossDamageByIdentity: {}, bossFinisherIdentityId: null };
+  return { killsByIdentity: {}, bossDamageByIdentity: {}, bossFinisherIdentityId: null, underdogCredits: 0, tacticalCredits: 0 };
 }
 
 export function incrementIdentityCounter(bucket, identityId, amount = 1) {
@@ -37,6 +37,60 @@ export function isLegalCombatCpuSuggestion(fen, suggestion) {
   } catch {
     return false;
   }
+}
+
+
+const EMERGENCY_CPU_PIECE_VALUE = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
+
+// Fallback estrictamente local para que una caída del endpoint de análisis no
+// secuestre una campaña. Sólo elige entre jugadas legales de chess.js y nunca
+// altera dificultad, XP ni reglas de Combat. Prioriza mate, capturas, promoción
+// y jaques; los empates se resuelven de forma determinista para facilitar tests
+// y recuperación de sesión.
+export function emergencyCombatCpuSuggestion(fen) {
+  try {
+    const chess = new Chess(fen);
+    const moves = chess.moves({ verbose: true });
+    if (!moves.length) return null;
+    const ranked = moves.map((move) => {
+      const probe = new Chess(fen);
+      let applied = null;
+      try { applied = probe.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' }); } catch { applied = null; }
+      if (!applied) return null;
+      let score = 0;
+      if (probe.isCheckmate()) score += 10000;
+      if (move.captured) score += 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10 - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
+      if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
+      if (probe.isCheck()) score += 18;
+      if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
+      return { from: move.from, to: move.to, promotion: move.promotion || undefined, score, key: `${move.from}${move.to}${move.promotion || ''}` };
+    }).filter(Boolean);
+    ranked.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+    const best = ranked[0];
+    return best ? { from: best.from, to: best.to, ...(best.promotion ? { promotion: best.promotion } : {}) } : null;
+  } catch {
+    return null;
+  }
+}
+
+// Política de disponibilidad del turno CPU: el análisis remoto mejora la
+// calidad de la jugada, pero nunca tiene derecho a bloquear una campaña.
+// Este helper hace el fail-open comprobable con tests sin montar React.
+export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition }) {
+  let remoteError = null;
+  try {
+    const remote = await analyzePosition(fen, difficulty);
+    if (!isLegalCombatCpuSuggestion(fen, remote)) throw new Error('La CPU devolvió una jugada inválida.');
+    return { suggestion: remote, source: 'remote', remoteError: null };
+  } catch (error) {
+    remoteError = error;
+  }
+
+  const local = emergencyCombatCpuSuggestion(fen);
+  if (local && isLegalCombatCpuSuggestion(fen, local)) {
+    return { suggestion: local, source: 'local', remoteError };
+  }
+  throw remoteError || new Error('La CPU no pudo completar su turno.');
 }
 
 export function buildCombatLogEntry(result, humanColor) {

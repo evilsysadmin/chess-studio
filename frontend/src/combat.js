@@ -57,7 +57,13 @@ export function costForNextPoint(currentPoints) {
 // Nivel derivado, solo para mostrar (insignia/aura en el tablero): la suma
 // de todos los puntos comprados, sea en fuerza o en velocidad.
 export function derivedLevel(piece) {
-  return 1 + (piece.strengthPoints || 0) + (piece.speedPoints || 0);
+  // El nivel/rango representa veteranía comprada con XP, no equipo. Durante
+  // una batalla el registro suma los bonus del objeto a strength/speedPoints
+  // para reutilizar el motor de combate, así que los descontamos únicamente
+  // cuando esos metadatos temporales están presentes.
+  const permanentStrength = Math.max(0, (piece.strengthPoints || 0) - (piece.equipmentStrengthBonus || 0));
+  const permanentSpeed = Math.max(0, (piece.speedPoints || 0) - (piece.equipmentSpeedBonus || 0));
+  return 1 + permanentStrength + permanentSpeed;
 }
 
 // Convierte un nivel en un "escalón" visual: sin marca, bronce, plata u oro.
@@ -70,7 +76,8 @@ export function levelTier(level) {
   return 'none';
 }
 
-// Stats reales de una pieza: la base de su tipo, más lo que se compró.
+// Stats reales en batalla: base + progreso permanente + equipo ya aplicado al
+// registro + bonus operativos temporales (perks/especialidad mercenaria).
 export function statsFor(piece) {
   const base = BASE_STATS[piece.type];
   return {

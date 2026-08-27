@@ -1,3 +1,11 @@
+### v16.6dm46z · Combat recuperable, economía calibrada y feedback con capturas
+
+- Combat Chess degrada de forma segura a cálculo local cuando el análisis remoto de la CPU falla o propone una jugada ilegal. La campaña conserva su estado y ya no fuerza al jugador a abandonar una batalla para desbloquear el turno.
+- La economía de campaña parte de 36 créditos y recompensa resultado, capturas con rendimiento decreciente, preservación de tropas, capturas con desventaja material y mérito táctico. Pérdidas/empates y cada batalla tienen techos explícitos anti-farming.
+- Los mercenarios ganan especialidades operativas reales y contratos que sólo consumen batallas desplegadas. Equipo, especialidad y perks quedan separados de la veteranía: mejoran combate sin inflar nivel/rango ni persistir como XP.
+- El debrief puede explicar el origen de los créditos ganados bajo divulgación progresiva. Mercado y controles de batalla refuerzan coherencia visual, botones de igual huella, rail a la altura del tablero y tablero en múltiplos de 8 px cuando el navegador lo permite.
+- Feedback admite exclusivamente PNG, JPG/JPEG y GIF, con validación de firma real en backend, límites de tamaño/cantidad, almacenamiento junto al feedback y previsualización perezosa sólo para admins.
+
 ### v16.6dm46y · Combat táctico, tablero sólido y coherencia visual
 
 - La cartografía artística de Combat gana presencia real: se reduce el velo oscuro/blur manteniendo nodos, rutas y estados dinámicos por encima.

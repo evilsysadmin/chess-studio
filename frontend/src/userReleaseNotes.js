@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46z',
+    title: 'Combat ya no te secuestra una batalla',
+    highlights: [
+      'Si el análisis de la CPU falla o devuelve una jugada inválida, Combat continúa con una jugada legal calculada localmente en vez de obligarte a abandonar y asumir bajas.',
+      'La economía premia capturas, pocas bajas, capturas difíciles y mérito táctico, con límites anti-farming para que comprar equipo siga costando trabajo.',
+      'Mercenarios y equipo separan mejor refuerzo temporal, bonus operativo y veteranía: llevar un arma ya no infla el nivel ni el rango visible de la unidad.',
+      'Feedback permite adjuntar capturas PNG, JPG/JPEG o GIF para que un bug llegue al admin con contexto visual.',
+    ],
+  },
+  {
     release: 'v16.6dm46y',
     title: 'Combat se siente más sólido y más táctico',
     highlights: [

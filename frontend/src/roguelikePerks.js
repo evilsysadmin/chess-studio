@@ -85,8 +85,12 @@ export function applyRunPerksToRegistry(registry, perks = [], humanColor = 'w') 
       next[square] = piece;
       continue;
     }
-    let strength = 0;
-    let speed = 0;
+    // Cada fuente temporal conserva su identidad. La especialidad del
+    // mercenario es la base operacional y los perks de campaña se calculan
+    // encima en cada aplicación; así no se duplican si una fase de boss vuelve
+    // a construir el registro y ninguno de estos bonus se confunde con nivel.
+    let strength = Number(piece.mercenaryStrengthBonus) || 0;
+    let speed = Number(piece.mercenarySpeedBonus) || 0;
     strength += (stacks.steel_pulse || 0) * 0.75;
     speed += (stacks.silk_shoes || 0) * 2;
     if (piece.type === 'p') strength += (stacks.pawn_union || 0) * 1.5;

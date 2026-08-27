@@ -3,6 +3,7 @@ import {
   COMBAT_STARTING_CREDITS,
   awardCombatCredits,
   battleCreditReward,
+  combatCreditSignalForAttempt,
   buyEquipment,
   hireMercenary,
   mercenaryMarketOffers,
@@ -23,8 +24,8 @@ describe('economía de Combat', () => {
   it('premia jugar y capturar sin convertir el mercado en requisito', () => {
     const win = battleCreditReward({ outcome: 'win', captures: 4, floor: 4, variant: 'roguelike' });
     const loss = battleCreditReward({ outcome: 'loss', captures: 1, floor: 4, variant: 'roguelike' });
-    expect(win).toEqual({ total: 18, captures: 8, result: 6, sector: 4 });
-    expect(loss.total).toBe(4);
+    expect(win).toEqual({ total: 22, captures: 8, result: 5, sector: 4, preservation: 5, underdog: 0, tactics: 0, capped: 0 });
+    expect(loss.total).toBe(2);
     expect(battleCreditReward({ outcome: 'retired', captures: 9 }).total).toBe(0);
   });
 
@@ -53,6 +54,13 @@ describe('economía de Combat', () => {
     expect(hired.credits).toBe(0);
   });
 
+  it('los créditos iniciales permiten una decisión útil, no barra libre', () => {
+    const offers = mercenaryMarketOffers({ merit: 0, rotationKey: '2026-08-27' });
+    expect(offers.some((offer) => offer.prices.one <= COMBAT_STARTING_CREDITS)).toBe(true);
+    expect(offers.every((offer) => offer.prices.three > COMBAT_STARTING_CREDITS)).toBe(true);
+    expect(COMBAT_STARTING_CREDITS).toBeLessThan(40); // ni siquiera abre de salida el rifle de asalto
+  });
+
   it('ofrece mercenarios estables, los contrata y consume sólo batallas desplegadas', () => {
     const offers = mercenaryMarketOffers({ merit: 90, rotationKey: '2026-08-25' });
     expect(new Set(offers.map((entry) => entry.type)).size).toBe(3);
@@ -61,6 +69,7 @@ describe('economía de Combat', () => {
     const offer = offers[0];
     expect(offer.specialtyLabel).toBeTruthy();
     expect(offer.specialtyDescription).toBeTruthy();
+    expect((offer.fieldBonus.strength || 0) + (offer.fieldBonus.speed || 0)).toBeGreaterThan(0);
     const hired = hireMercenary({ credits: 500, pieces: {}, identities: {}, unitRecords: {} }, offer, 'three', 1000);
     const key = Object.keys(hired.pieces).find((candidate) => candidate.includes('-merc-'));
     expect(key).toBeTruthy();
@@ -71,6 +80,42 @@ describe('economía de Combat', () => {
     const one = settleMercenaryContracts(hired, [key]).roster;
     expect(one.pieces[key].mercenary.battlesRemaining).toBe(2);
   });
+  it('premia preservar tropas y una captura difícil sin hacer rentable perder a propósito', () => {
+    const clean = battleCreditReward({ outcome: 'win', captures: 3, casualties: 0, floor: 2, variant: 'roguelike' });
+    const bloody = battleCreditReward({ outcome: 'win', captures: 3, casualties: 7, floor: 2, variant: 'roguelike' });
+    expect(clean.preservation).toBe(5);
+    expect(bloody.preservation).toBe(0);
+    expect(clean.total).toBeGreaterThan(bloody.total);
+
+    const farmedLoss = battleCreditReward({ outcome: 'loss', captures: 12, underdogCredits: 30, tacticalCredits: 30 });
+    expect(farmedLoss.total).toBe(8);
+    expect(farmedLoss.capped).toBeGreaterThan(0);
+  });
+
+  it('reconoce mérito táctico aunque el dado niegue una captura peón contra dama', () => {
+    const fen = '4k3/8/8/3q4/4P3/8/8/4K3 w - - 0 1';
+    const attacker = { type: 'p' };
+    const defender = { type: 'q' };
+    const hit = combatCreditSignalForAttempt({ fen, from: 'e4', to: 'd5', attacker, defender, hit: true });
+    const miss = combatCreditSignalForAttempt({ fen, from: 'e4', to: 'd5', attacker, defender, hit: false });
+    expect(hit.underdogCredits).toBe(3);
+    expect(miss.underdogCredits).toBe(0);
+    expect(miss.tacticalCredits).toBeGreaterThanOrEqual(2);
+  });
+
+  it('la campaña completa deja progreso útil, pero no compra todo el arsenal gratis', () => {
+    const conservative = Array.from({ length: 7 }, (_, index) => battleCreditReward({
+      outcome: 'win', captures: 3, casualties: index < 4 ? 1 : 2, floor: index + 1,
+      encounterTier: index === 6 ? 'boss' : index === 4 ? 'elite' : 'normal', variant: 'roguelike',
+    }).total).reduce((sum, value) => sum + value, COMBAT_STARTING_CREDITS);
+    const reckless = Array.from({ length: 7 }, (_, index) => battleCreditReward({
+      outcome: index % 3 === 2 ? 'loss' : 'win', captures: 6, casualties: 6, floor: index + 1, variant: 'roguelike',
+    }).total).reduce((sum, value) => sum + value, COMBAT_STARTING_CREDITS);
+    expect(conservative).toBeGreaterThan(reckless);
+    expect(conservative).toBeLessThan(220);
+    expect(reckless).toBeGreaterThan(COMBAT_STARTING_CREDITS);
+  });
+
 });
 
 describe('mercado táctico rotatorio', () => {

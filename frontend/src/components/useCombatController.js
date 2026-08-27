@@ -36,9 +36,9 @@ import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
 import { canReturnCombatToSetup } from '../combatSession.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
-import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry, isLegalCombatCpuSuggestion } from '../combatControllerSupport.js';
+import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry, resolveCombatCpuTurnSuggestion } from '../combatControllerSupport.js';
 import { createCombatRosterActions } from '../combatRosterActions.js';
-import { awardCombatCredits, battleCreditReward, buyEquipment, hireMercenary, settleMercenaryContracts } from '../combatEconomy.js';
+import { awardCombatCredits, battleCreditReward, buyEquipment, combatCreditSignalForAttempt, hireMercenary, settleMercenaryContracts } from '../combatEconomy.js';
 import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
 import { useCombatDeploymentGate } from '../useCombatDeploymentGate.js';
 
@@ -82,6 +82,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const [log, setLog] = useState(() => restoredSession?.uiLog || []);
   const uiLogRef = useRef(restoredSession?.uiLog || []);
   const [cpuRetryNeeded, setCpuRetryNeeded] = useState(false);
+  const cpuRetryContextRef = useRef(null);
   const [roster, setRoster] = useState(() => loadRoster());
   const difficultyBalance = useMemo(() => balancedCombatDifficulty(baseDifficulty, roster), [baseDifficulty, roster]);
   const difficulty = difficultyBalance.adjusted;
@@ -431,12 +432,18 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       bossDefeated: isWin && !!bossConfig,
     });
     const totalCaptures = Object.values(unitStats.killsByIdentity || {}).reduce((sum, count) => sum + (Number(count) || 0), 0);
+    const deployedUnitCount = (battleParticipantsRef.current || []).filter((participant) => participant?.identityId).length;
+    const casualties = Math.max(0, deployedUnitCount - survivorIdentityIds.length);
     const creditReward = battleCreditReward({
       outcome,
       captures: totalCaptures,
       floor: roguelikeFloor,
       encounterTier,
       variant: combatVariant || 'combat',
+      casualties,
+      deployed: deployedUnitCount,
+      underdogCredits: unitStats.underdogCredits || 0,
+      tacticalCredits: unitStats.tacticalCredits || 0,
     });
     nextRoster = awardCombatCredits(nextRoster, creditReward, battleId);
     const rosterForDebrief = nextRoster;
@@ -621,6 +628,19 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       : resolveCombatMove({ fen: currentFen, registry: currentRegistry, from, to, promotion, focusStreak: streak });
     if (!result) return;
 
+    if (attackerBefore?.color === currentHumanColor) {
+      const creditSignal = combatCreditSignalForAttempt({
+        fen: currentFen, from, to, promotion, attacker: attackerBefore, defender: defenderBefore, hit: result.hit,
+      });
+      if (creditSignal.underdogCredits || creditSignal.tacticalCredits) {
+        unitBattleStatsRef.current = {
+          ...unitBattleStatsRef.current,
+          underdogCredits: (unitBattleStatsRef.current.underdogCredits || 0) + creditSignal.underdogCredits,
+          tacticalCredits: (unitBattleStatsRef.current.tacticalCredits || 0) + creditSignal.tacticalCredits,
+        };
+      }
+    }
+
     setSelected(null);
     setActiveTechnique(null);
     setFen(result.fen);
@@ -756,25 +776,44 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
   async function runCpuTurn(currentFen, currentRegistry, currentHumanColor, currentCombatLog) {
     setCpuRetryNeeded(false);
+    cpuRetryContextRef.current = { fen: currentFen, registry: currentRegistry, humanColor: currentHumanColor, combatLog: currentCombatLog };
     let suggestion;
+    let recoveredLocally = false;
     try {
-      suggestion = await api.analyzePosition(currentFen, difficulty);
-      if (!isLegalCombatCpuSuggestion(currentFen, suggestion)) throw new Error('La CPU devolvió una jugada inválida.');
+      const resolved = await resolveCombatCpuTurnSuggestion({
+        fen: currentFen,
+        difficulty,
+        analyzePosition: api.analyzePosition,
+      });
+      suggestion = resolved.suggestion;
+      recoveredLocally = resolved.source === 'local';
+      if (recoveredLocally) {
+        pushLog({ text: 'Análisis remoto no disponible · la CPU continúa con cálculo local. La batalla sigue.', tone: 'neutral', kind: 'event' });
+      }
     } catch (e) {
-      onError?.(e.message);
-      pushLog({ text: 'La CPU no pudo completar su turno. Puedes reintentarlo sin perder la batalla.', tone: 'bad', kind: 'event' });
+      onError?.(e?.message || 'La CPU no pudo completar su turno.');
+      pushLog({ text: 'La CPU no pudo completar su turno. Reintentar conserva exactamente esta batalla y sus bajas actuales.', tone: 'bad', kind: 'event' });
       setCpuRetryNeeded(true);
       setBusy(false);
       return;
     }
-    performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, suggestion.from, suggestion.to, undefined);
+    cpuRetryContextRef.current = null;
+    performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, suggestion.from, suggestion.to, suggestion.promotion);
+    if (recoveredLocally) setCpuRetryNeeded(false);
     setBusy(false);
   }
 
   function retryCpuTurn() {
-    if (phase !== 'battle' || busy || localChess.turn() === humanColor) return false;
+    if (phase !== 'battle' || busy) return false;
+    const pending = cpuRetryContextRef.current || { fen, registry, humanColor, combatLog };
+    try {
+      const chess = new Chess(pending.fen);
+      if (chess.turn() === pending.humanColor) return false;
+    } catch {
+      return false;
+    }
     setBusy(true);
-    void runCpuTurn(fen, registry, humanColor, combatLog);
+    void runCpuTurn(pending.fen, pending.registry, pending.humanColor, pending.combatLog);
     return true;
   }
 

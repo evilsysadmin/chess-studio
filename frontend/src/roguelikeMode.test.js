@@ -103,6 +103,20 @@ describe('recompensas temporales', () => {
     expect(statsFor(pawn).speed).toBeGreaterThan(statsFor(registry.e2).speed);
     expect(boosted.e7.runStrengthBonus).toBeUndefined(); // CPU no hereda tus perks
   });
+
+  it('compone especialidad mercenaria + perks sin convertirlos en progreso ni duplicarlos', () => {
+    const chess = new Chess();
+    const registry = createInitialRegistry(chess);
+    registry.e2 = { ...registry.e2, mercenaryStrengthBonus: 1, mercenarySpeedBonus: 2 };
+    const once = applyRunPerksToRegistry(registry, ['steel_pulse'], 'w');
+    const twice = applyRunPerksToRegistry(once, ['steel_pulse'], 'w');
+    expect(once.e2.runStrengthBonus).toBeCloseTo(1.75);
+    expect(once.e2.runSpeedBonus).toBe(2);
+    expect(twice.e2.runStrengthBonus).toBeCloseTo(1.75);
+    expect(twice.e2.runSpeedBonus).toBe(2);
+    expect(twice.e2.strengthPoints).toBe(registry.e2.strengthPoints);
+    expect(twice.e2.speedPoints).toBe(registry.e2.speedPoints);
+  });
 });
 
 describe('máquina de estados del intento', () => {

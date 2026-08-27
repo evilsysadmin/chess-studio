@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { submitFeedback } from '../feedback.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { userFacingError } from '../userFacingError.js';
+import { MAX_FEEDBACK_IMAGES, prepareFeedbackAttachments, validateFeedbackFiles } from '../feedbackAttachments.js';
 
 const CATEGORIES = [
   ['ux', 'Me he liado / UX'],
@@ -17,6 +18,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
+  const [images, setImages] = useState([]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -25,13 +27,26 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
     setSending(true);
     setError(null);
     try {
-      await submitFeedback({ category, message: text, context });
+      const attachments = await prepareFeedbackAttachments(images);
+      await submitFeedback({ category, message: text, context, attachments });
       setSent(true);
     } catch (err) {
       setError(userFacingError(err, 'No se pudo enviar el feedback.'));
     } finally {
       setSending(false);
     }
+  }
+
+  function handleImages(event) {
+    const selected = Array.from(event.target.files || []);
+    const validation = validateFeedbackFiles(selected);
+    if (validation) {
+      setError(validation);
+      event.target.value = '';
+      return;
+    }
+    setError(null);
+    setImages(selected);
   }
 
   return (
@@ -49,7 +64,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
           <form onSubmit={handleSubmit}>
             <span className="section-label">Feedback</span>
             <h2 id="feedback-title">Dinos qué mejorar</h2>
-            <p className="hint-text">Dos campos y fuera. Llega directamente al panel de administración.</p>
+            <p className="hint-text">Mensaje corto y, si ayuda, una captura. Llega directamente al panel de administración.</p>
             <label className="feedback-field">
               <span>Tipo</span>
               <select value={category} onChange={(event) => setCategory(event.target.value)}>
@@ -67,6 +82,23 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
                 placeholder="Ej.: En Combat Chess no entendí por qué el rival tenía una pieza extra…"
               />
               <small>{message.length}/2000</small>
+            </label>
+            <label className="feedback-field feedback-image-field">
+              <span>Capturas opcionales</span>
+              <input
+                type="file"
+                accept=".png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif"
+                multiple
+                onChange={handleImages}
+              />
+              <small>PNG, JPG/JPEG o GIF · hasta {MAX_FEEDBACK_IMAGES} imágenes · 3 MiB cada una · 6 MiB total.</small>
+              {images.length > 0 && (
+                <div className="feedback-image-selection" aria-label="Imágenes seleccionadas">
+                  {images.map((file, index) => (
+                    <span key={`${file.name}-${file.size}-${index}`}><b>{file.name}</b><button type="button" onClick={() => setImages((current) => current.filter((_, i) => i !== index))} aria-label={`Quitar ${file.name}`}>×</button></span>
+                  ))}
+                </div>
+              )}
             </label>
             {error && <p className="error-text">{error}</p>}
             <div className="game-controls">

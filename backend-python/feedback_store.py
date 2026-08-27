@@ -22,7 +22,21 @@ async def _get_collection():
     return None
 
 
-async def create_feedback(*, username: str, category: str, message: str, context: str | None = None) -> dict:
+def _public_feedback(row: dict) -> dict:
+    public = dict(row or {})
+    attachments = []
+    for index, item in enumerate(public.get("attachments") or []):
+        attachments.append({
+            "index": index,
+            "name": item.get("name") or f"captura-{index + 1}",
+            "mime_type": item.get("mime_type") or "application/octet-stream",
+            "size": int(item.get("size") or len(item.get("data") or b"")),
+        })
+    public["attachments"] = attachments
+    return public
+
+
+async def create_feedback(*, username: str, category: str, message: str, context: str | None = None, attachments: list[dict] | None = None) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     feedback_id = uuid.uuid4().hex
     doc = {
@@ -31,6 +45,7 @@ async def create_feedback(*, username: str, category: str, message: str, context
         "category": category,
         "message": message,
         "context": context or "Home",
+        "attachments": list(attachments or []),
         "status": "new",
         "created_at": now,
         "updated_at": now,
@@ -43,7 +58,7 @@ async def create_feedback(*, username: str, category: str, message: str, context
             raise PersistentStorageUnavailable("MongoDB no está disponible para guardar feedback.") from exc
     else:
         _memory_feedback[feedback_id] = dict(doc)
-    return doc
+    return _public_feedback(doc)
 
 
 async def list_feedback(*, limit: int = 100) -> list[dict]:
@@ -54,14 +69,14 @@ async def list_feedback(*, limit: int = 100) -> list[dict]:
             cursor = col.find({}).sort("created_at", -1).limit(safe_limit)
             result = []
             async for row in cursor:
-                result.append({
+                result.append(_public_feedback({
                     "id": str(row.pop("_id")),
                     **row,
-                })
+                }))
             return result
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para leer feedback.") from exc
-    return sorted(_memory_feedback.values(), key=lambda row: row.get("created_at", ""), reverse=True)[:safe_limit]
+    return [_public_feedback(row) for row in sorted(_memory_feedback.values(), key=lambda row: row.get("created_at", ""), reverse=True)[:safe_limit]]
 
 
 async def update_feedback_status(feedback_id: str, status: str) -> dict | None:
@@ -85,11 +100,39 @@ async def update_feedback_status(feedback_id: str, status: str) -> dict | None:
             raise PersistentStorageUnavailable("MongoDB no está disponible para actualizar feedback.") from exc
         if not row:
             return None
-        return {"id": str(row.pop("_id")), **row}
+        return _public_feedback({"id": str(row.pop("_id")), **row})
 
     row = _memory_feedback.get(feedback_id)
     if not row:
         return None
     row = {**row, "status": status, "updated_at": now}
     _memory_feedback[feedback_id] = row
-    return dict(row)
+    return _public_feedback(row)
+
+
+async def get_feedback_attachment(feedback_id: str, index: int) -> dict | None:
+    if index < 0:
+        return None
+    col = await _get_collection()
+    if col is not None:
+        try:
+            row = await col.find_one({"_id": feedback_id}, {"attachments": 1})
+        except TypeError:
+            row = await col.find_one({"_id": feedback_id})
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para leer el adjunto de feedback.") from exc
+    else:
+        row = _memory_feedback.get(feedback_id)
+    attachments = (row or {}).get("attachments") or []
+    if index >= len(attachments):
+        return None
+    item = attachments[index]
+    data = item.get("data") or b""
+    if not isinstance(data, (bytes, bytearray)):
+        data = bytes(data)
+    return {
+        "name": item.get("name") or f"captura-{index + 1}",
+        "mime_type": item.get("mime_type") or "application/octet-stream",
+        "size": int(item.get("size") or len(data)),
+        "data": bytes(data),
+    }

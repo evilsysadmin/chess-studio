@@ -5,6 +5,7 @@ import {
   nextFocusTracker,
   isForcedCombatCapture,
   statsFor,
+  derivedLevel,
   costForNextPoint,
   buyStatPoint,
   autoLevelUp,
@@ -28,6 +29,19 @@ function mkPiece(type, overrides = {}) {
     ...overrides,
   };
 }
+
+describe('nivel visible y bonus operativos', () => {
+  it('el equipo mejora stats sin falsear nivel ni rango del veterano', () => {
+    const equipped = mkPiece('p', {
+      strengthPoints: 4,
+      speedPoints: 2,
+      equipmentStrengthBonus: 2,
+      equipmentSpeedBonus: 1,
+    });
+    expect(derivedLevel(equipped)).toBe(4); // 1 + (4-2) + (2-1)
+    expect(statsFor(equipped).strength).toBeGreaterThan(statsFor(mkPiece('p', { strengthPoints: 2, speedPoints: 1 })).strength);
+  });
+});
 
 describe('hitChance', () => {
   it('las piezas conservan arquetipos base: un caballo es más difícil de cazar que una torre', () => {

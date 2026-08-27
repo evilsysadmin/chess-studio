@@ -4,11 +4,11 @@ import json
 from request_limits import RequestBodyLimitMiddleware
 
 
-def run_asgi(middleware, *, headers=None, messages=None):
+def run_asgi(middleware, *, headers=None, messages=None, path="/api/test"):
     scope = {
         "type": "http",
         "method": "POST",
-        "path": "/api/test",
+        "path": path,
         "headers": headers or [],
     }
     incoming = list(messages or [{"type": "http.request", "body": b"", "more_body": False}])
@@ -134,3 +134,25 @@ def test_accepts_identical_duplicate_content_length_headers():
     )
     assert response_status(sent) == 204
     assert bytes(observed) == b"1234"
+
+
+def test_path_specific_limit_only_relaxes_the_named_endpoint():
+    observed = bytearray()
+
+    async def app(scope, receive, send):
+        message = await receive()
+        observed.extend(message.get("body", b""))
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    middleware = RequestBodyLimitMiddleware(app, max_bytes=4, path_limits={"/api/feedback": 8})
+    accepted = run_asgi(
+        middleware, path="/api/feedback", headers=[(b"content-length", b"8")],
+        messages=[{"type": "http.request", "body": b"12345678", "more_body": False}],
+    )
+    assert response_status(accepted) == 204
+    rejected = run_asgi(
+        middleware, path="/api/login", headers=[(b"content-length", b"8")],
+        messages=[{"type": "http.request", "body": b"12345678", "more_body": False}],
+    )
+    assert response_status(rejected) == 413

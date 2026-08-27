@@ -12,11 +12,46 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import { ADMIN_USER_FILTERS, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
-import { fetchAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
+import { fetchAdminFeedback, fetchAdminFeedbackAttachment, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 import { ADMIN_REFRESH_MS } from '../presenceCadence.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
+
+function FeedbackAttachmentPreview({ feedbackId, attachment }) {
+  const [src, setSrc] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => () => { if (src) URL.revokeObjectURL(src); }, [src]);
+
+  async function load() {
+    if (loading || src) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const blob = await fetchAdminFeedbackAttachment(feedbackId, attachment.index);
+      setSrc(URL.createObjectURL(blob));
+    } catch (err) {
+      setError(err?.message || 'No se pudo abrir la imagen.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="admin-feedback-attachment">
+      {src ? (
+        <a href={src} target="_blank" rel="noreferrer" title="Abrir imagen a tamaño completo">
+          <img src={src} alt={attachment.name || 'Captura adjunta al feedback'} />
+        </a>
+      ) : (
+        <button type="button" className="secondary-btn" onClick={load} disabled={loading}>{loading ? 'Cargando…' : `Ver imagen · ${attachment.name || 'captura'}`}</button>
+      )}
+      {error && <small className="error-text">{error}</small>}
+    </div>
+  );
+}
 
 function formatPresenceAge(seconds) {
   if (!Number.isFinite(seconds)) return null;
@@ -315,6 +350,11 @@ export default function AdminScreen({ onExit }) {
           <time>{formatAdminTimestamp(item.created_at)}</time>
         </div>
         <p>{item.message}</p>
+        {Array.isArray(item.attachments) && item.attachments.length > 0 && (
+          <div className="admin-feedback-attachments" aria-label={`${item.attachments.length} imágenes adjuntas`}>
+            {item.attachments.map((attachment) => <FeedbackAttachmentPreview key={`${item.id}-${attachment.index}`} feedbackId={item.id} attachment={attachment} />)}
+          </div>
+        )}
         <div className="admin-feedback-actions">
           {item.status === 'new' && (
             <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Marcar leído</button>

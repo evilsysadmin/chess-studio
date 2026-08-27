@@ -24,7 +24,7 @@ import { ensureCombatIdentities, combatIdentityFor, createCombatIdentity } from 
 import { normalizeTechniqueState } from './combatTechniques.js';
 import { ensureUnitServiceState, recordUnitRevive, archivePermanentCasualty } from './combatUnitService.js';
 import { ensureDeploymentState, firstFreeDeploymentSlotForUnit, isUnitCompatibleWithSlot, rosterUnitKeys, setDeploymentUnit } from './combatDeployment.js';
-import { equipmentBonus, normalizeCombatEconomy } from './combatEconomy.js';
+import { equipmentBonus, mercenaryFieldBonus, normalizeCombatEconomy } from './combatEconomy.js';
 
 const ROSTER_KEY = 'chess-study-combat-roster';
 
@@ -124,6 +124,7 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
       continue;
     }
     const gear = equipmentBonus(saved.equipmentId);
+    const mercenaryBonus = mercenaryFieldBonus(saved.mercenary?.specialtyId);
     next[square] = {
       ...piece,
       strengthPoints: (saved.strengthPoints || 0) + gear.strength,
@@ -132,6 +133,9 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
       equipmentId: saved.equipmentId || null,
       equipmentStrengthBonus: gear.strength,
       equipmentSpeedBonus: gear.speed,
+      mercenaryStrengthBonus: mercenaryBonus.strength,
+      mercenarySpeedBonus: mercenaryBonus.speed,
+      mercenaryFieldBonusLabel: saved.mercenary ? mercenaryBonus.label : null,
       deploymentType: saved.deploymentType || null,
       unlockedTechniques: Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques] : [],
       equippedTechnique: saved.equippedTechnique || null,

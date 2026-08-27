@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 import feedback_store as fstore
+from feedback_attachments import validate_feedback_attachments
 import game_store as store
 import profile_store as pstore
 import users_store as ustore
@@ -50,11 +51,16 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
         if len(message) < 3:
             raise HTTPException(400, "Cuéntanos un poco más para poder usar el feedback.")
         context = (body.context or "Home").strip() or "Home"
+        try:
+            attachments = validate_feedback_attachments(body.attachments)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
         created = await fstore.create_feedback(
             username=username,
             category=category,
             message=message,
             context=context,
+            attachments=attachments,
         )
         return {"feedback": created}
 
@@ -124,6 +130,27 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             "feedback": rows,
             "newCount": sum(1 for row in rows if row.get("status") == "new"),
         }
+
+
+    @router.get("/api/admin/feedback/{feedback_id}/attachments/{attachment_index}")
+    async def admin_feedback_attachment(
+        feedback_id: str,
+        attachment_index: int,
+        username: str = Depends(admin_dependency),
+    ):
+        item = await fstore.get_feedback_attachment(feedback_id, attachment_index)
+        if not item:
+            raise HTTPException(404, "Adjunto de feedback no encontrado.")
+        filename = str(item.get("name") or "captura").replace('"', "").replace("\r", "").replace("\n", "")
+        return Response(
+            content=item["data"],
+            media_type=item["mime_type"],
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "private, max-age=300",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
 
     @router.post("/api/admin/feedback/{feedback_id}/status")

@@ -328,9 +328,16 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-MAX_REQUEST_BODY_BYTES = 1_048_576  # 1 MiB; la API solo acepta JSON pequeño.
+MAX_REQUEST_BODY_BYTES = 1_048_576  # 1 MiB por defecto; la API acepta JSON pequeño.
+FEEDBACK_REQUEST_BODY_BYTES = 9 * 1024 * 1024  # Sólo /api/feedback: hasta 6 MiB reales de imágenes + base64/JSON.
 # Cuenta bytes reales, no solo Content-Length: también cubre cuerpos chunked.
-app.add_middleware(RequestBodyLimitMiddleware, max_bytes=MAX_REQUEST_BODY_BYTES)
+# El límite ampliado es exclusivo del endpoint autenticado/rate-limited de feedback;
+# no debilitamos el límite global para login, partidas, perfil ni APIs M2M.
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_bytes=MAX_REQUEST_BODY_BYTES,
+    path_limits={"/api/feedback": FEEDBACK_REQUEST_BODY_BYTES},
+)
 
 # Añadido DESPUÉS de SlowAPI/body-limit para que CORS sea la capa exterior y
 # pueda contestar preflight OPTIONS antes de rate-limit/routing.

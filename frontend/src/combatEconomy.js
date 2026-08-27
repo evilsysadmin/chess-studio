@@ -1,10 +1,11 @@
+import { Chess } from 'chess.js';
 import { createCombatIdentity } from './combatIdentity.js';
 import { ensureUnitServiceState } from './combatUnitService.js';
 import { ensureDeploymentState } from './combatDeployment.js';
 import { hasAdminPreviewAccess } from './adminPreview.js';
 
-export const COMBAT_STARTING_CREDITS = 60;
-export const COMBAT_ECONOMY_VERSION = 1;
+export const COMBAT_STARTING_CREDITS = 36;
+export const COMBAT_ECONOMY_VERSION = 2;
 
 export const COMBAT_EQUIPMENT = Object.freeze([
   { id: 'service-pistol', label: 'Pistola de servicio', kind: 'Arma', icon: '⌁', minLevel: 2, cost: 18, strength: 1, speed: 0, description: '+1 fuerza. Fiable y barata.' },
@@ -24,6 +25,16 @@ const MERCENARY_SPECIALTIES = Object.freeze([
   { id: 'assault', label: 'Asalto', description: 'Pegada inmediata para sectores duros.', preferredEquipment: ['assault-rifle', 'service-pistol'] },
   { id: 'guard', label: 'Guardia', description: 'Perfil equilibrado para proteger veteranos.', preferredEquipment: ['field-armor', 'mobility-rig', 'service-pistol'] },
 ]);
+
+const MERCENARY_FIELD_BONUS = Object.freeze({
+  scout: Object.freeze({ strength: 0, speed: 4, label: '+4 velocidad operativa' }),
+  assault: Object.freeze({ strength: 2, speed: 0, label: '+2 fuerza operativa' }),
+  guard: Object.freeze({ strength: 1, speed: 2, label: '+1 fuerza · +2 velocidad operativa' }),
+});
+
+export function mercenaryFieldBonus(specialtyId) {
+  return MERCENARY_FIELD_BONUS[specialtyId] || Object.freeze({ strength: 0, speed: 0, label: 'sin bono operativo' });
+}
 
 function mercenaryEquipmentFor(level, specialty) {
   for (const itemId of specialty.preferredEquipment) {
@@ -63,14 +74,61 @@ export function normalizeCombatEconomy(raw = {}) {
   };
 }
 
-export function battleCreditReward({ outcome, captures = 0, floor = 0, encounterTier = 'normal', variant = 'combat' } = {}) {
-  if (outcome === 'retired') return { total: 0, captures: 0, result: 0, sector: 0 };
-  const captureCredits = Math.min(14, int(captures) * 2);
-  const resultCredits = outcome === 'win' ? 6 : outcome === 'draw' ? 3 : 2;
+export function battleCreditReward({
+  outcome, captures = 0, floor = 0, encounterTier = 'normal', variant = 'combat',
+  casualties = 0, deployed = 15, underdogCredits = 0, tacticalCredits = 0,
+} = {}) {
+  if (outcome === 'retired') return { total: 0, captures: 0, result: 0, sector: 0, preservation: 0, underdog: 0, tactics: 0, capped: 0 };
+
+  // Capturar importa, pero con rendimiento decreciente: las primeras cuatro
+  // bajas pagan 2, las siguientes 1 y a partir de ocho dejan de imprimir
+  // dinero. Así una partida larga no se convierte en una granja de créditos.
+  const safeCaptures = int(captures);
+  const captureCredits = Math.min(8, safeCaptures) + Math.min(4, safeCaptures);
+  const resultCredits = outcome === 'win' ? 5 : outcome === 'draw' ? 1 : 0;
   const campaignBattle = variant === 'roguelike';
-  const tierBonus = encounterTier === 'boss' ? 8 : encounterTier === 'elite' ? 4 : 0;
-  const sectorCredits = outcome === 'win' && campaignBattle ? Math.min(10, 2 + Math.floor(int(floor) / 2) + tierBonus) : 0;
-  return { total: captureCredits + resultCredits + sectorCredits, captures: captureCredits, result: resultCredits, sector: sectorCredits };
+  const tierBonus = encounterTier === 'boss' ? 6 : encounterTier === 'elite' ? 3 : 0;
+  const sectorCredits = outcome === 'win' && campaignBattle ? Math.min(12, 2 + Math.floor(int(floor) / 2) + tierBonus) : 0;
+
+  const safeCasualties = Math.min(int(deployed), int(casualties));
+  const preservationCredits = outcome !== 'win' ? 0 : safeCasualties === 0 ? 5 : safeCasualties <= 2 ? 3 : safeCasualties <= 4 ? 1 : 0;
+  const underdog = Math.min(6, int(underdogCredits));
+  const tactics = Math.min(4, int(tacticalCredits));
+  const rawTotal = captureCredits + resultCredits + sectorCredits + preservationCredits + underdog + tactics;
+
+  // Perder puede reconocer una buena acción, pero nunca ser el método óptimo
+  // de financiar el mercado. Draw también tiene un techo bajo. Ganar élites y
+  // bosses abre algo más el grifo porque el riesgo real es mayor.
+  const cap = outcome === 'loss' ? 8 : outcome === 'draw' ? 12 : encounterTier === 'boss' ? 40 : encounterTier === 'elite' ? 34 : 28;
+  const total = Math.min(cap, rawTotal);
+  return { total, captures: captureCredits, result: resultCredits, sector: sectorCredits, preservation: preservationCredits, underdog, tactics, capped: Math.max(0, rawTotal - total) };
+}
+
+const CREDIT_MATERIAL_VALUE = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
+
+// Señales de mérito que miran la intención ajedrecística ANTES de que el dado
+// de Combat decida el impacto. Una captura legal de peón sobre dama, o un
+// ataque legal que daría jaque pero falla por esquive, conserva parte del
+// mérito económico aunque la animación termine en "fallo".
+export function combatCreditSignalForAttempt({ fen, from, to, promotion, attacker, defender, hit } = {}) {
+  let underdogCredits = 0;
+  let tacticalCredits = 0;
+  const attackerValue = CREDIT_MATERIAL_VALUE[attacker?.type] || 0;
+  const defenderValue = CREDIT_MATERIAL_VALUE[defender?.type] || 0;
+  const gap = defender ? defenderValue - attackerValue : 0;
+  if (defender && gap >= 2) {
+    const weight = gap >= 5 ? 3 : 2;
+    if (hit === true) underdogCredits += weight;
+    else if (hit === false) tacticalCredits += Math.max(1, weight - 1);
+  }
+  try {
+    const chess = new Chess(fen);
+    const applied = chess.move({ from, to, promotion: promotion || 'q' });
+    if (applied && chess.isCheck()) tacticalCredits += chess.isCheckmate() ? 2 : 1;
+  } catch {
+    // La señal económica nunca puede romper una jugada válida del motor.
+  }
+  return { underdogCredits, tacticalCredits };
 }
 
 export function awardCombatCredits(rosterState, reward, battleId = null) {
@@ -145,7 +203,12 @@ export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationK
         ? Math.floor(points * 0.25)
         : Math.ceil(points / 2);
     const speedPoints = Math.max(0, points - strengthPoints);
-    const baseCost = Math.round((UNIT_VALUE[type] + points * 5) * (rare ? 1.45 : 1));
+    const fieldBonus = mercenaryFieldBonus(specialty.id);
+    // La especialidad tiene valor real en el campo, así que también paga una
+    // pequeña prima. Evita que un mercenario operativo sea simplemente un
+    // recluta mejorado al mismo precio y mantiene el contrato como decisión.
+    const specialtyPremium = Math.ceil((fieldBonus.strength * 2) + fieldBonus.speed);
+    const baseCost = Math.round((UNIT_VALUE[type] + points * 5 + specialtyPremium) * (rare ? 1.45 : 1));
     const id = `${rotationKey}-${index}-${type}-${level}`;
     const includedEquipment = mercenaryEquipmentFor(level, specialty);
     return {
@@ -159,6 +222,7 @@ export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationK
       specialtyId: specialty.id,
       specialtyLabel: specialty.label,
       specialtyDescription: specialty.description,
+      fieldBonus,
       equipmentId: includedEquipment?.id || null,
       equipmentLabel: includedEquipment?.label || null,
       prices: Object.fromEntries(Object.entries(CONTRACT_MULTIPLIER).map(([contract, multiplier]) => [contract, Math.ceil(baseCost * multiplier)])),
@@ -199,6 +263,9 @@ export function hireMercenary(rosterState, offer, contract = 'one', now = Date.n
           rarity: offer.rarity || 'regular',
           specialtyId: offer.specialtyId || null,
           specialtyLabel: offer.specialtyLabel || null,
+          fieldStrengthBonus: Number(offer.fieldBonus?.strength) || 0,
+          fieldSpeedBonus: Number(offer.fieldBonus?.speed) || 0,
+          fieldBonusLabel: offer.fieldBonus?.label || null,
           hiredAt: new Date(now).toISOString(),
         },
       },

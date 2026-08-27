@@ -48,10 +48,18 @@ class AdminInsightsRequest(BaseModel):
     username: str = Field(max_length=64)
 
 
+class FeedbackAttachmentRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    name: str = Field(max_length=120)
+    mime_type: str = Field(alias="mimeType", max_length=32)
+    data: str = Field(max_length=4_300_000)
+
+
 class FeedbackRequest(BaseModel):
     category: str = Field(default="other", max_length=24)
     message: str = Field(max_length=2000)
     context: Optional[str] = Field(default="Home", max_length=80)
+    attachments: list[FeedbackAttachmentRequest] = Field(default_factory=list, max_length=3)
 
 
 class ClientTelemetryRequest(BaseModel):

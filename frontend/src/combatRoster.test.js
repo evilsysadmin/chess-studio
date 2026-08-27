@@ -124,6 +124,27 @@ describe('applyRosterToRegistry', () => {
     expect(applied.d1.speedPoints).toBe(2);
   });
 
+  it('separa veteranía, equipo y especialidad mercenaria al construir la batalla', () => {
+    const roster = {
+      pieces: {
+        'p-e': {
+          strengthPoints: 2, speedPoints: 1, bankedXp: 0, alive: true,
+          equipmentId: 'service-pistol',
+          mercenary: { specialtyId: 'scout' },
+        },
+      },
+      identities: {},
+      combatXp: 0,
+    };
+    const applied = applyRosterToRegistry(createInitialRegistry(new Chess()), roster, 'w');
+    expect(applied.e2.strengthPoints).toBe(3); // +1 de pistola para cálculo de combate
+    expect(applied.e2.speedPoints).toBe(1);
+    expect(applied.e2.equipmentStrengthBonus).toBe(1);
+    expect(applied.e2.mercenaryStrengthBonus).toBe(0);
+    expect(applied.e2.mercenarySpeedBonus).toBe(4);
+    expect(applied.e2.runSpeedBonus).toBeUndefined(); // lo compone la capa de perks, no el roster
+  });
+
   it('nunca toca las piezas del color rival, aunque tengan progreso guardado', () => {
     const roster = { pieces: { 'q-d': { strengthPoints: 8, speedPoints: 8, bankedXp: 0, alive: true } }, combatXp: 0 };
     // el humano juega NEGRAS esta vez: las blancas (rival) no deberian tocarse

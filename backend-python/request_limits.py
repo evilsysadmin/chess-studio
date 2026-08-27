@@ -14,15 +14,17 @@ ASGIApp = Callable[[dict[str, Any], Callable[[], Awaitable[dict[str, Any]]], Cal
 
 
 class RequestBodyLimitMiddleware:
-    def __init__(self, app: ASGIApp, max_bytes: int = 1_048_576):
+    def __init__(self, app: ASGIApp, max_bytes: int = 1_048_576, path_limits: dict[str, int] | None = None):
         self.app = app
         self.max_bytes = max(1, int(max_bytes))
+        self.path_limits = {str(path): max(1, int(limit)) for path, limit in (path_limits or {}).items()}
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") != "http":
             await self.app(scope, receive, send)
             return
 
+        request_limit = self.path_limits.get(str(scope.get("path") or ""), self.max_bytes)
         header_pairs = [(bytes(k).lower(), bytes(v)) for k, v in scope.get("headers", [])]
         content_lengths = [value for key, value in header_pairs if key == b"content-length"]
         if content_lengths:
@@ -41,7 +43,7 @@ class RequestBodyLimitMiddleware:
             if declared < 0:
                 await self._reject(scope, receive, send, 400, "Content-Length inválido.")
                 return
-            if declared > self.max_bytes:
+            if declared > request_limit:
                 await self._reject(scope, receive, send, 413, "Petición demasiado grande.")
                 return
 
@@ -59,7 +61,7 @@ class RequestBodyLimitMiddleware:
 
             chunk = message.get("body", b"") or b""
             received += len(chunk)
-            if received > self.max_bytes:
+            if received > request_limit:
                 await self._reject(scope, receive, send, 413, "Petición demasiado grande.")
                 return
             buffered.append(message)

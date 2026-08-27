@@ -28,7 +28,7 @@ describe('feedback API client', () => {
     expect(options.method).toBe('POST');
     expect(options.headers.Authorization).toBe('Bearer session-token');
     expect(options.headers['X-Request-ID']).toBeTruthy();
-    expect(JSON.parse(options.body)).toEqual({ category: 'ux', message: 'Demasiadas cosas.', context: 'Home' });
+    expect(JSON.parse(options.body)).toEqual({ category: 'ux', message: 'Demasiadas cosas.', context: 'Home', attachments: [] });
   });
 
   it('lee feedback admin y actualiza estado', async () => {
