@@ -76,3 +76,16 @@ def test_signal_diagnostics_never_expose_endpoints_or_headers(monkeypatch):
     assert all(d["signals"][name]["configured"] for name in ("traces", "metrics", "logs"))
     assert "super-secret" not in str(d)
     assert "no-me-mires" not in str(d)
+
+
+def test_tracing_defaults_to_otlp_http_protobuf_protocol():
+    cfg = tracing_settings({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp.example/otlp"})
+    assert cfg["protocol"] == "http/protobuf"
+
+
+def test_tracing_respects_explicit_otlp_protocol():
+    cfg = tracing_settings({
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp.example/otlp",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "HTTP/PROTOBUF",
+    })
+    assert cfg["protocol"] == "http/protobuf"

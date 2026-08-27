@@ -39,6 +39,10 @@ services:
       # Los valores OTLP son secretos; sin endpoint las señales quedan desactivadas fail-open.
       - key: OTEL_SERVICE_NAME
         value: chess-studio-backend
+      - key: OTEL_TRACES_ENABLED
+        value: "true"
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
       - key: OTEL_TRACES_SAMPLER
         value: parentbased_traceidratio
       - key: OTEL_TRACES_SAMPLER_ARG

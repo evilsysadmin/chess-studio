@@ -56,6 +56,7 @@ def tracing_settings(environ: dict[str, str] | None = None) -> dict[str, Any]:
         "environment": str(env.get("ENVIRONMENT") or "development").strip().lower()[:40],
         "sampler": str(env.get("OTEL_TRACES_SAMPLER") or "parentbased_traceidratio").strip()[:80],
         "sampler_arg": str(env.get("OTEL_TRACES_SAMPLER_ARG") or "0.20").strip()[:32],
+        "protocol": str(env.get("OTEL_EXPORTER_OTLP_PROTOCOL") or "http/protobuf").strip().lower()[:40],
     }
 
 
@@ -90,6 +91,8 @@ def tracing_diagnostics(environ: dict[str, str] | None = None) -> dict[str, Any]
         "environment": settings["environment"],
         "sampler": settings["sampler"],
         "samplerArg": settings["sampler_arg"],
+        "protocol": settings["protocol"],
+        "providerBinding": "explicit" if _TRACE_PROVIDER is not None else "none",
         "exporter": "otlp-http",
         "initializationError": _LAST_INIT_ERROR,
         "signals": signals,
@@ -178,7 +181,9 @@ def emit_trace_probe() -> dict[str, Any]:
         parent = SpanContext(trace_id=trace_id, span_id=parent_span_id, is_remote=True, trace_flags=TraceFlags.SAMPLED, trace_state=TraceState())
         token = attach(trace.set_span_in_context(NonRecordingSpan(parent)))
         try:
-            tracer = trace.get_tracer("chess-studio.admin-probe")
+            # Probe the exact provider/exporter used by Chess Studio rather than
+            # whichever provider happens to be global in the process.
+            tracer = _TRACE_PROVIDER.get_tracer("chess-studio.admin-probe")
             with tracer.start_as_current_span("chess-studio.tempo.probe") as span:
                 span.set_attribute("chess_studio.probe", True)
                 span.set_attribute("chess_studio.component", "admin")
@@ -258,9 +263,14 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
             provider = TracerProvider(resource=resource)
             provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+            # Bind instrumentation explicitly to Chess Studio's provider.  A hosting
+            # layer or another library may already have installed a global provider;
+            # trace.set_tracer_provider() deliberately refuses to replace it.  Without
+            # the explicit provider FastAPI can therefore create perfectly valid
+            # trace_ids that never reach our OTLP exporter.
             trace.set_tracer_provider(provider)
-            FastAPIInstrumentor.instrument_app(app)
-            HTTPXClientInstrumentor().instrument()
+            FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
+            HTTPXClientInstrumentor().instrument(tracer_provider=provider)
             _TRACE_PROVIDER = provider
             _SIGNAL_ERRORS["traces"] = None
         except Exception as exc:
@@ -314,8 +324,8 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
     _CONFIGURED = any((_TRACE_PROVIDER is not None, _METER_PROVIDER is not None, _LOGGER_PROVIDER is not None))
     _LAST_INIT_ERROR = None if _CONFIGURED else next((error for error in _SIGNAL_ERRORS.values() if error), "not_configured")
     LOGGER.info(
-        "OpenTelemetry signals: traces=%s metrics=%s logs=%s service=%s env=%s.",
+        "OpenTelemetry signals: traces=%s metrics=%s logs=%s service=%s env=%s trace_provider=explicit protocol=%s.",
         _TRACE_PROVIDER is not None, _METER_PROVIDER is not None, _LOGGER_PROVIDER is not None,
-        settings["service_name"], settings["environment"],
+        settings["service_name"], settings["environment"], settings["protocol"],
     )
     return _CONFIGURED

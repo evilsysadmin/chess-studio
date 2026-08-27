@@ -69,7 +69,7 @@ describe('frontend architecture contract', () => {
     expect(app).toContain('app-shell-board-game');
     expect(app).toMatch(/masthead-account-trigger[\s\S]*masthead-release-trigger/);
     expect(productHardeningCss).toContain('.masthead-game-compact .masthead-release-trigger { display:none; }');
-    expect(releaseNotes).not.toMatch(/\bE2E\b|Playwright|Grafana|Tempo|Terraform|telemetr[ií]a|pipeline|CI\/CD|quality gate/i);
+    expect(releaseNotes).not.toMatch(/\bE2E\b|Playwright|Grafana|\bTempo\b|Terraform|telemetr[ií]a|pipeline|CI\/CD|quality gate/i);
   });
 
 });

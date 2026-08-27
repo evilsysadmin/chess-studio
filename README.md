@@ -1,4 +1,9 @@
-### v16.6dm46z · Combat recuperable, economía calibrada y feedback con capturas
+### v16.6dm46za · Hotfix de Feedback y trazas OTLP
+
+- Feedback deja de ser un chunk lazy global: abrirlo tras un deploy ya no puede suspender fuera de `Suspense` ni tirar la pantalla completa. El modal contiene además cualquier error largo sin deformar la cabecera.
+- El guard de Novedades deja de confundir `Tempo` con palabras normales como `temporal`; se mantiene el veto a jerga de infraestructura real.
+- FastAPI y HTTPX se enlazan explícitamente al `TracerProvider` OTLP de Chess Studio y el probe usa exactamente ese provider. Así un provider global ajeno ya no puede generar `trace_id` en Loki sin exportar esas trazas a Tempo. Render fija además `OTEL_TRACES_ENABLED=true` y `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`.
+- El dashboard de trazas usa intrínsecos TraceQL (`trace:rootService`, `trace:duration`) y el preflight bloquea una regresión al provider global.
 
 - Combat Chess degrada de forma segura a cálculo local cuando el análisis remoto de la CPU falla o propone una jugada ilegal. La campaña conserva su estado y ya no fuerza al jugador a abandonar una batalla para desbloquear el turno.
 - La economía de campaña parte de 36 créditos y recompensa resultado, capturas con rendimiento decreciente, preservación de tropas, capturas con desventaja material y mérito táctico. Pérdidas/empates y cada batalla tienen techos explícitos anti-farming.

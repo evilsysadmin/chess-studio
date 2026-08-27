@@ -23,6 +23,8 @@ Configura en Render los secretos que Grafana Cloud muestra en **OpenTelemetry �
 
 Chess Studio añade `service.name=chess-studio-backend`, `service.version` y `deployment.environment.name`. El muestreo por defecto es 20% (`parentbased_traceidratio`) para no convertir Render Free en una fábrica de telemetría. Si OTLP no está configurado o falla al arrancar, el backend continúa sin tracing.
 
+El backend enlaza FastAPI/HTTPX **explícitamente** con su propio `TracerProvider` OTLP. Esto evita un caso engañoso: otro proveedor global del proceso podía generar `trace_id` válidos en los logs pero no exportarlos a Tempo. El probe de Admin usa ese mismo provider dedicado.
+
 
 ## Diagnóstico de las tres señales
 

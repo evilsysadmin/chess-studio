@@ -40,7 +40,7 @@ import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
 import UserReleaseNotesModal from './components/UserReleaseNotesModal.jsx';
-const FeedbackModal = React.lazy(() => import('./components/FeedbackModal.jsx'));
+import FeedbackModal from './components/FeedbackModal.jsx';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';

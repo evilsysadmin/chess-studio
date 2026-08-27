@@ -68,6 +68,7 @@ export async function mockApi(page, { isAdmin = false, gameGetFailures = 0 } = {
       return json({ app: 'estudio-de-ajedrez', version: 2, data: profileData, revisions: profileRevisions });
     }
     if (path.endsWith('/admin/users')) return json({ users: [] });
+    if (path.endsWith('/feedback') && method === 'POST') return json({ feedback: { id: 'e2e-feedback', status: 'new' } }, 201);
     if (path.endsWith('/admin/feedback')) return json({ feedback: [] });
     if (path.endsWith('/admin/ai-metrics')) return json({ samples: 0, enabled: true, circuit: { open: false } });
     if (path.endsWith('/status')) return json({ onlineUsers: 2, presenceAvailable: true });

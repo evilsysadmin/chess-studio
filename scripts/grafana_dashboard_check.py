@@ -81,6 +81,11 @@ def main() -> int:
     for token in ('OTEL_EXPORTER_OTLP_ENDPOINT', 'OTLPSpanExporter', 'OTLPMetricExporter', 'OTLPLogExporter', 'FastAPIInstrumentor'):
         if token not in tracing:
             fail(f"exportación OTLP incompleta: {token}")
+    for token in ('FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)', 'HTTPXClientInstrumentor().instrument(tracer_provider=provider)', '_TRACE_PROVIDER.get_tracer("chess-studio.admin-probe")'):
+        if token not in tracing:
+            fail(f"Tempo puede volver a usar un provider global sin exporter: {token}")
+    if 'trace:rootService' not in trace_dash or 'trace:duration > 500ms' not in trace_dash:
+        fail('dashboard Tempo perdió los intrínsecos TraceQL de servicio/duración')
     if 'opentelemetry-exporter-otlp-proto-http' not in requirements:
         fail("falta dependencia OTLP HTTP")
     if 'payload["trace_id"]' not in structured:

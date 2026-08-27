@@ -303,6 +303,28 @@ test('Partida rápida · las 64 casillas mantienen una geometría uniforme y el 
   expect(Math.abs(boardBox.height - chatBox.height)).toBeLessThan(2);
 });
 
+test('Home · Feedback abre y envía sin tumbar la pantalla ni deformar la cabecera', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  const trigger = page.getByRole('button', { name: 'Enviar feedback' });
+  const before = await trigger.boundingBox();
+  expect(before).not.toBeNull();
+
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'Dinos qué mejorar' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('¿Qué pasó o qué cambiarías?').fill('Feedback E2E sin romper la pantalla.');
+  await dialog.getByRole('button', { name: 'Enviar feedback' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Feedback enviado. Gracias.' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cerrar' }).click();
+  await expect(dialog).toBeHidden();
+
+  const after = await trigger.boundingBox();
+  expect(after).not.toBeNull();
+  expect(Math.abs(after.width - before.width)).toBeLessThan(1);
+  expect(Math.abs(after.height - before.height)).toBeLessThan(1);
+});
+
 test('Home · Feedback, Mi cuenta y Novedades comparten geometría de control', async ({ page }) => {
   await mockApi(page);
   await login(page);

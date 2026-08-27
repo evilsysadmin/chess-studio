@@ -354,6 +354,14 @@
   justify-content: center;
 }
 
+/* Feedback global es una acción crítica: sus errores quedan contenidos en el
+   modal y no pueden empujar/recalcular la cabecera. */
+.feedback-modal { overflow: auto; max-width: calc(100vw - 1rem); }
+.feedback-modal form,
+.feedback-modal .feedback-field,
+.feedback-modal .error-text { min-width: 0; max-width: 100%; }
+.feedback-modal .error-text { overflow-wrap: anywhere; word-break: break-word; }
+
 /* Feedback con imágenes: selector deliberadamente simple y previsualización
    admin perezosa. Sólo se muestran los formatos que valida también el backend. */
 .feedback-image-field input[type='file'] {

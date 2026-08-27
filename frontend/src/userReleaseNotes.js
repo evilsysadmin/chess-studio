@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46za',
+    title: 'Feedback deja de hacer el cafre',
+    highlights: [
+      'Abrir Feedback ya no depende de cargar una pieza aparte de la interfaz, así que no puede tumbar la pantalla de forma intermitente.',
+      'La pantalla conserva su sitio y muestra los errores de envío dentro del propio formulario, sin desmontar la navegación.',
+      'Las mejoras de diagnóstico interno ayudan a seguir incidencias sin cambiar nada del juego.',
+    ],
+  },
+  {
     release: 'v16.6dm46z',
     title: 'Combat ya no te secuestra una batalla',
     highlights: [
