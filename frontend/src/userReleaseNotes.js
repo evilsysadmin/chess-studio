@@ -6,6 +6,24 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46n',
+    title: 'Combat recupera mejor y Novedades deja de estorbar',
+    highlights: [
+      'Novedades vive ahora justo debajo de Mi cuenta y puede abrirse desde cualquier pantalla sin ocupar la cabecera de Home.',
+      'Combat Chess conserva la bitácora táctica y la preferencia de auto-level al recargar una batalla viva.',
+      'Si la CPU no puede completar su turno por un fallo temporal, aparece un reintento explícito en vez de dejar la batalla bloqueada.',
+      'Una campaña suspendida y una batalla libre ya no se pisan entre sí al compartir sessionStorage.',
+    ],
+  },
+  {
+    release: 'v16.6dm46m',
+    title: 'El contador online deja de comerse jugadores',
+    highlights: [
+      'Usuarios online usa la misma presencia reciente que Administración: una pestaña en segundo plano ya no hace desaparecer a alguien conectado.',
+      'Las cuentas admin siguen fuera del contador público, pero sin restas ciegas que podían mostrar 0 cuando había otro jugador real conectado.',
+    ],
+  },
+  {
     release: 'v16.6dm46l',
     title: 'Tus errores ahora entrenan de verdad',
     highlights: [

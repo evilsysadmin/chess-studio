@@ -34,6 +34,8 @@ export function useCombatSessionPersistence({
   registry,
   humanColor,
   combatLog,
+  uiLogRef,
+  autoLevelUpEnabled,
   bossPhase,
   localChess,
   focusRef,
@@ -64,6 +66,8 @@ export function useCombatSessionPersistence({
       registry: nextRegistry,
       humanColor,
       combatLog: nextCombatLog,
+      uiLog: uiLogRef?.current || [],
+      autoLevelUpEnabled,
       focus: focusRef.current,
       positionCounts: positionCountsRef.current.entries(),
       bossHp: nextBossHp,
@@ -78,7 +82,7 @@ export function useCombatSessionPersistence({
   useEffect(() => {
     if (!shouldPersistCombatSession({ phase, hasSnapshot: hasCombatSession(combatSessionId) })) return;
     persistBattleSession();
-  }, [phase, fen, registry, combatLog, bossPhase, humanColor, combatSessionId]);
+  }, [phase, fen, registry, combatLog, bossPhase, humanColor, autoLevelUpEnabled, combatSessionId]);
 
   useEffect(() => {
     if (!shouldResumeCombatCpu({ restoredSession, phase, turn: localChess.turn(), humanColor })) return undefined;

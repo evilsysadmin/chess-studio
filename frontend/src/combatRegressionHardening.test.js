@@ -33,6 +33,20 @@ describe('REGRESSION · una batalla Combat viva jamás cae silenciosamente a Set
     expect(hasCombatSession(id)).toBe(true);
     expect(loadCombatSession(id)).toMatchObject({ phase: 'battle', fen: 'fen-live', humanColor: 'w' });
   });
+  it('campaña y combate libre pueden quedar suspendidos sin pisarse entre sí', () => {
+    const campaignId = 'campaign:seed:s3-battle';
+    const freeId = 'free';
+    saveCombatSession(campaignId, { phase: 'battle', fen: 'fen-campaign', registry: { e4: { type: 'p' } }, humanColor: 'w' });
+    saveCombatSession(freeId, { phase: 'battle', fen: 'fen-free', registry: { d4: { type: 'p' } }, humanColor: 'b' });
+
+    expect(loadCombatSession(campaignId)).toMatchObject({ fen: 'fen-campaign', humanColor: 'w' });
+    expect(loadCombatSession(freeId)).toMatchObject({ fen: 'fen-free', humanColor: 'b' });
+
+    clearCombatSession(freeId);
+    expect(loadCombatSession(freeId)).toBeNull();
+    expect(loadCombatSession(campaignId)).toMatchObject({ fen: 'fen-campaign' });
+  });
+
 });
 
 describe('REGRESSION · identidad histórica y Memorial son inmutables', () => {

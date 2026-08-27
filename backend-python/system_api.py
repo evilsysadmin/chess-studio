@@ -13,7 +13,7 @@ from api_models import ClientTelemetryRequest
 from client_telemetry import record_client_event
 
 
-def build_system_router(*, auth_dependency, is_admin_check, limiter) -> APIRouter:
+def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usernames_getter=None) -> APIRouter:
     router = APIRouter()
 
     @router.get("/")
@@ -57,9 +57,20 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter) -> APIRoute
     @router.get("/api/status")
     async def public_status(_username: str = Depends(auth_dependency)):
         try:
-            online_users = await ustore.count_online_users(window_seconds=150)
-            if is_admin_check(_username):
-                online_users = max(0, online_users - 1)
+            if admin_usernames_getter is not None:
+                configured_admins = {str(name).strip().lower() for name in admin_usernames_getter() if str(name).strip()}
+                online_users = await ustore.count_online_users(
+                    window_seconds=150,
+                    exclude_usernames=configured_admins,
+                    exclude_all="*" in configured_admins,
+                )
+            else:
+                # Compatibilidad para routers embebidos fuera de main.py.
+                # La app principal siempre pasa el getter y excluye todos los
+                # admins en la consulta, no sólo al admin que hace la petición.
+                online_users = await ustore.count_online_users(window_seconds=150)
+                if is_admin_check(_username):
+                    online_users = max(0, online_users - 1)
             record_presence_snapshot(online_users)
             return {"ok": True, "onlineUsers": online_users, "presenceAvailable": True}
         except db.PersistentStorageUnavailable:

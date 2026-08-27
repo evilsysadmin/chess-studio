@@ -217,42 +217,52 @@ async def update_client_country(username: str, country: str) -> None:
     if user is not None:
         user["last_client_country"] = normalized
 
-async def count_online_users(*, window_seconds: int = 150) -> int:
-    """Cuenta actividad reciente sin exponer identidades.
+async def count_online_users(
+    *,
+    window_seconds: int = 150,
+    exclude_usernames: set[str] | None = None,
+    exclude_all: bool = False,
+) -> int:
+    """Cuenta sesiones con actividad reciente sin exponer identidades.
 
-    El frontend manda presencia cada 120 s; una ventana de 150 s tolera una
-    pequeña deriva de red sin mantener usuarios fantasma durante minutos.
-    En Mongo hacemos un único count_documents en vez de leer cada cuenta.
+    ``online`` y ``foreground`` son conceptos distintos: el heartbeat de
+    presencia mantiene ``last_activity`` cada 120 s, mientras que
+    ``is_foreground`` sólo describe si la pestaña estaba visible en el último
+    reporte. El contador público debe usar la misma semántica de ``online``
+    que Admin (actividad <= 150 s) y no desaparecer al mandar una pestaña al
+    segundo plano.
+
+    Los admins se pueden excluir en la propia consulta para no depender del
+    usuario que esté mirando Home ni hacer restas ciegas.
     """
+    if exclude_all:
+        return 0
+
+    excluded = {str(name).strip().lower() for name in (exclude_usernames or set()) if str(name).strip() and name != "*"}
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=max(1, int(window_seconds)))
     cutoff_iso = cutoff.isoformat()
     col = await _get_collection()
     if col is not None:
+        query: dict = {"last_activity": {"$gte": cutoff_iso}}
+        if excluded:
+            query["_id"] = {"$nin": sorted(excluded)}
         try:
-            return int(await col.count_documents({
-                "last_activity": {"$gte": cutoff_iso},
-                "is_foreground": True,
-                "foreground_updated_at": {"$gte": cutoff_iso},
-            }))
+            return int(await col.count_documents(query))
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para contar presencia.") from exc
 
     count = 0
-    for user in _memory_users.values():
-        if user.get("is_foreground") is not True:
+    for username, user in _memory_users.items():
+        if str(username).lower() in excluded:
             continue
         raw = user.get("last_activity")
-        foreground_raw = user.get("foreground_updated_at")
-        if not raw or not foreground_raw:
+        if not raw:
             continue
         try:
             parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-            foreground_parsed = datetime.fromisoformat(str(foreground_raw).replace("Z", "+00:00"))
             if parsed.tzinfo is None:
                 parsed = parsed.replace(tzinfo=timezone.utc)
-            if foreground_parsed.tzinfo is None:
-                foreground_parsed = foreground_parsed.replace(tzinfo=timezone.utc)
-            if parsed.astimezone(timezone.utc) >= cutoff and foreground_parsed.astimezone(timezone.utc) >= cutoff:
+            if parsed.astimezone(timezone.utc) >= cutoff:
                 count += 1
         except (TypeError, ValueError):
             continue

@@ -1,3 +1,18 @@
+### v16.6dm46n · Combat más recuperable + Novedades en Cuenta
+
+- Novedades se mueve justo debajo de **Mi cuenta** y desaparece de la cabecera de Home.
+- Combat persiste la bitácora táctica visible y la opción de auto-level durante una batalla reanudable.
+- Si la CPU falla temporalmente al analizar su turno, la batalla ofrece **Reintentar turno de la CPU** en lugar de quedar bloqueada.
+- Las sesiones de Combat se guardan por identidad: una campaña suspendida y una batalla libre ya no se pisan entre sí al recargar.
+- Mantiene el contrato de puzzles personales: sólo autopsias reales alimentan Workers AI; los puzzles generados por IA no se reciclan como semillas.
+
+### v16.6dm46m · Presencia coherente: online ya significa online
+
+- El contador público usa la misma ventana de **150 segundos** que Admin y considera online cualquier sesión con actividad reciente, aunque la pestaña esté momentáneamente en segundo plano.
+- `online` y `primer plano` vuelven a ser señales separadas: ocultar una pestaña no hace desaparecer a un jugador conectado.
+- El contador excluye **todos los admins configurados** directamente en la consulta; deja de restar a ciegas `1` cuando quien mira Home es admin, que podía convertir un jugador real en `0 usuarios online`.
+- Se añaden regresiones para segundo plano, admin observador y múltiples admins, sin exponer usernames en `/api/status`.
+
 ### v16.6dm46l · Tus cagadas, entrenadas sin freír Workers AI
 
 - **Puzzles personales** pasa a ser una vía de entrenamiento visible: `Entrena tus grandes cagadas` abre directamente la cola de errores propios pendientes.

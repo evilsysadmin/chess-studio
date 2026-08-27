@@ -99,6 +99,47 @@ def test_status_hides_authenticated_admin_from_public_presence(monkeypatch):
     assert r.json() == {"ok": True, "onlineUsers": 0, "presenceAvailable": True}
 
 
+def test_status_counts_recent_background_session_as_online(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", set())
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=False))
+    r = client.get("/api/status")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "onlineUsers": 1, "presenceAvailable": True}
+
+
+def test_status_admin_requester_does_not_hide_another_online_player(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    ustore._memory_users["jugando"] = {
+        "username": "jugando",
+        "password_hash": "fixture-only",
+        "created_at": "2026-01-01T00:00:00+00:00",
+    }
+    asyncio.run(ustore.touch_last_activity("jugando", force=True, foreground=True, activity="Partida"))
+    r = client.get("/api/status")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "onlineUsers": 1, "presenceAvailable": True}
+
+
+def test_status_excludes_all_configured_admins_not_only_requester(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"otro_admin"})
+    ustore._memory_users["otro_admin"] = {
+        "username": "otro_admin",
+        "password_hash": "fixture-only",
+        "created_at": "2026-01-01T00:00:00+00:00",
+    }
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=False))
+    asyncio.run(ustore.touch_last_activity("otro_admin", force=True, foreground=True))
+    r = client.get("/api/status")
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "onlineUsers": 1, "presenceAvailable": True}
+
+
 def test_root_identifies_backend_instead_of_returning_404():
     r = client.get("/")
     assert r.status_code == 200

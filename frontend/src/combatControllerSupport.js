@@ -1,3 +1,4 @@
+import { Chess } from 'chess.js';
 import { BASE_STATS, derivedLevel } from './combat.js';
 import { proceduralNarrative } from './narrativeProvider.js';
 
@@ -25,6 +26,17 @@ export function emptyUnitBattleStats() {
 export function incrementIdentityCounter(bucket, identityId, amount = 1) {
   if (!identityId || !Number.isFinite(Number(amount)) || Number(amount) <= 0) return bucket;
   return { ...bucket, [identityId]: (bucket[identityId] || 0) + Number(amount) };
+}
+
+
+export function isLegalCombatCpuSuggestion(fen, suggestion) {
+  if (!fen || !suggestion?.from || !suggestion?.to) return false;
+  try {
+    const chess = new Chess(fen);
+    return chess.moves({ square: suggestion.from, verbose: true }).some((move) => move.to === suggestion.to);
+  } catch {
+    return false;
+  }
 }
 
 export function buildCombatLogEntry(result, humanColor) {
@@ -63,6 +75,8 @@ export function buildCombatSessionSnapshot({
   registry,
   humanColor,
   combatLog,
+  uiLog,
+  autoLevelUpEnabled,
   focus,
   positionCounts,
   bossHp,
@@ -78,6 +92,8 @@ export function buildCombatSessionSnapshot({
     registry,
     humanColor,
     combatLog,
+    uiLog: Array.isArray(uiLog) ? uiLog.slice(0, 8) : [],
+    autoLevelUpEnabled: autoLevelUpEnabled !== false,
     focus,
     positionCounts: Array.from(positionCounts || []),
     bossHp,

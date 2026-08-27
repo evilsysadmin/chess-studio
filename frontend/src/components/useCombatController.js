@@ -36,7 +36,7 @@ import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
 import { canReturnCombatToSetup } from '../combatSession.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
-import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry } from '../combatControllerSupport.js';
+import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry, isLegalCombatCpuSuggestion } from '../combatControllerSupport.js';
 import { createCombatRosterActions } from '../combatRosterActions.js';
 import { awardCombatCredits, battleCreditReward, buyEquipment, hireMercenary, settleMercenaryContracts } from '../combatEconomy.js';
 import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
@@ -67,7 +67,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     [rating, difficultyOverride]
   );
   const [colorChoice, setColorChoice] = useState('random');
-  const [autoLevelUpEnabled, setAutoLevelUpEnabled] = useState(true);
+  const [autoLevelUpEnabled, setAutoLevelUpEnabled] = useState(() => restoredSession?.autoLevelUpEnabled !== false);
   const [humanColor, setHumanColor] = useState(() => restoredSession?.humanColor || 'w');
 
   const [fen, setFen] = useState(() => restoredSession?.fen || new Chess().fen());
@@ -79,7 +79,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const [infoSquare, setInfoSquare] = useState(null); // casilla inspeccionada (para poder refrescar tras comprar)
   const [busy, setBusy] = useState(false);
   const [pendingAnim, setPendingAnim] = useState(null);
-  const [log, setLog] = useState([]);
+  const [log, setLog] = useState(() => restoredSession?.uiLog || []);
+  const uiLogRef = useRef(restoredSession?.uiLog || []);
+  const [cpuRetryNeeded, setCpuRetryNeeded] = useState(false);
   const [roster, setRoster] = useState(() => loadRoster());
   const difficultyBalance = useMemo(() => balancedCombatDifficulty(baseDifficulty, roster), [baseDifficulty, roster]);
   const difficulty = difficultyBalance.adjusted;
@@ -137,6 +139,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     registry,
     humanColor,
     combatLog,
+    uiLogRef,
+    autoLevelUpEnabled,
     bossPhase,
     localChess,
     focusRef,
@@ -308,7 +312,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setPendingPromotion(null);
     setInfoSquare(null);
     setPendingAnim(null);
+    uiLogRef.current = [];
     setLog([]);
+    setCpuRetryNeeded(false);
     focusRef.current = { w: null, b: null };
     positionCountsRef.current = new Map([[repetitionKey(startFen), 1]]);
     setRepetitionDraw(false);
@@ -320,6 +326,8 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       registry: initialRegistry,
       humanColor: resolved,
       combatLog: [],
+      uiLog: [],
+      autoLevelUpEnabled,
       focus: focusRef.current,
       positionCounts: [...positionCountsRef.current.entries()],
       bossHp: bossHpRef.current,
@@ -347,7 +355,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
   function pushLog(entry) {
     if (!entry) return;
-    setLog((prev) => [entry, ...prev].slice(0, 8));
+    const next = [entry, ...uiLogRef.current].slice(0, 8);
+    uiLogRef.current = next;
+    setLog(next);
   }
 
   // Cuántos ataques consecutivos ya lleva ESTE bando contra ESTE objetivo,
@@ -560,12 +570,15 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setRepetitionDraw(false);
     const restoredBossPhase = bossPhaseForHp(bossHpRef.current, bossConfig?.maxHp);
     setBossPhase(restoredBossPhase);
+    pushLog({ text: `El Rey Viejo rompe la posición y abre una nueva fase · ${bossHpRef.current}/${bossConfig?.maxHp} HP · tus bajas se arrastran`, tone: 'bad', kind: 'boss' });
     saveBattleSnapshot({
       phase: 'battle',
       fen: nextFen,
       registry: fresh,
       humanColor: currentHumanColor,
       combatLog,
+      uiLog: uiLogRef.current,
+      autoLevelUpEnabled,
       focus: focusRef.current,
       positionCounts: [...positionCountsRef.current.entries()],
       bossHp: bossHpRef.current,
@@ -573,9 +586,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       battleStartRoster: battleStartRosterRef.current,
       battleParticipants: battleParticipantsRef.current,
       unitBattleStats: unitBattleStatsRef.current,
+      activityGameId: activityGameIdRef.current,
     });
     setBusy(false);
-    pushLog({ text: `El Rey Viejo rompe la posición y abre una nueva fase · ${bossHpRef.current}/${bossConfig?.maxHp} HP · tus bajas se arrastran`, tone: 'bad' });
   }
 
   // Todo lo que necesita esta función viaja como parámetro explícito (fen,
@@ -742,16 +755,27 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   async function runCpuTurn(currentFen, currentRegistry, currentHumanColor, currentCombatLog) {
+    setCpuRetryNeeded(false);
     let suggestion;
     try {
       suggestion = await api.analyzePosition(currentFen, difficulty);
+      if (!isLegalCombatCpuSuggestion(currentFen, suggestion)) throw new Error('La CPU devolvió una jugada inválida.');
     } catch (e) {
       onError?.(e.message);
+      pushLog({ text: 'La CPU no pudo completar su turno. Puedes reintentarlo sin perder la batalla.', tone: 'bad', kind: 'event' });
+      setCpuRetryNeeded(true);
       setBusy(false);
       return;
     }
     performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, suggestion.from, suggestion.to, undefined);
     setBusy(false);
+  }
+
+  function retryCpuTurn() {
+    if (phase !== 'battle' || busy || localChess.turn() === humanColor) return false;
+    setBusy(true);
+    void runCpuTurn(fen, registry, humanColor, combatLog);
+    return true;
   }
 
   function openPieceInfo(square) {
@@ -1060,7 +1084,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     : status === 'check'
     ? 'success'
     : '';
-  const statusText = activeTechnique
+  const statusText = cpuRetryNeeded
+    ? 'La CPU necesita reintentar su turno'
+    : activeTechnique
     ? `TÉCNICA · ${techniqueById(activeTechnique.techniqueId)?.label || activeTechnique.techniqueId}: elige un objetivo marcado`
     : busy
     ? 'La CPU está pensando…'
@@ -1070,7 +1096,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     phase, combatLog, battleRecap, ratingInfo, difficulty, difficultyBalance, colorChoice, setColorChoice,
     pieceVeteranMarks,
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
-    pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, pendingAnim, log, roster,
+    pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, cpuRetryNeeded, retryCpuTurn, pendingAnim, log, roster,
     showArmy, setShowArmy, showMarket, setShowMarket, showDeployment, setShowDeployment, deploymentConfirmed, requireDeploymentConfirmation, handleConfirmDeployment, localChess, legalTargets,
     pieceLevels, pieceXp, armySummary, infoPiece, infoUnitRecord, deadRosterEntries, serviceSummary, handleStartBattleClick, handleQuickStartBattle,
     startBattle, confirmAttack, cancelAttack, choosePromotion, suspendBattleToMenu, retireBattle, backToSetup, handleResetRoster,

@@ -39,6 +39,7 @@ import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
+import UserReleaseNotesModal from './components/UserReleaseNotesModal.jsx';
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal.jsx'));
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
@@ -69,6 +70,9 @@ import { setAdminPreviewAccess } from './adminPreview.js';
 import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
 import { userFacingError } from './userFacingError.js';
 import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
+import { APP_RELEASE } from './release.js';
+import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
+import { setProfileStorageItem } from './profileKeys.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -175,6 +179,8 @@ function AppInner({ isAdminUser }) {
   const [showCombatSummary, setShowCombatSummary] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalAccount, setShowGlobalAccount] = useState(false);
+  const [showGlobalReleaseNotes, setShowGlobalReleaseNotes] = useState(false);
+  const [releaseNotesSeen, setReleaseNotesSeen] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === APP_RELEASE);
   const [showGlobalFeedback, setShowGlobalFeedback] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
@@ -780,6 +786,9 @@ function AppInner({ isAdminUser }) {
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
                       <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
                     </button>
+                    <button type="button" role="menuitem" className={releaseNotesSeen ? '' : 'masthead-account-menu-new'} onClick={() => { setShowAccountMenu(false); setProfileStorageItem(USER_RELEASE_NOTES_KEY, APP_RELEASE); setReleaseNotesSeen(true); setShowGlobalReleaseNotes(true); }}>
+                      <span aria-hidden="true">✦</span><span><b>Novedades{releaseNotesSeen ? '' : ' · Nuevo'}</b><small>Qué ha cambiado en Chess Studio</small></span>
+                    </button>
                     {isAdminUser && (
                       <button type="button" role="menuitem" className="masthead-account-menu-admin" onClick={() => { setShowAccountMenu(false); navigateTo('admin'); }}>
                         <span aria-hidden="true">◉</span><span><b>Administración</b><small>Usuarios y operación</small></span>
@@ -835,6 +844,7 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
+        {showGlobalReleaseNotes && <UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} />}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
@@ -877,7 +887,7 @@ function AppInner({ isAdminUser }) {
             tournament={tournament}
             rating={rating}
             combatProgress={combatOverview}
-            suppressHomeNudge={showSettings}
+            suppressHomeNudge={showSettings || showGlobalAccount || showGlobalReleaseNotes || showGlobalFeedback}
             features={featureFlags}
           />
         )}

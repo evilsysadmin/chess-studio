@@ -10,7 +10,7 @@ export default function CombatBattleView({
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
   pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap, registry, roster,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
-  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig,
+  handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig, cpuRetryNeeded, retryCpuTurn,
 }) {
   return (
     <div className="combat-battle-screen">
@@ -111,6 +111,11 @@ export default function CombatBattleView({
 
           {phase === 'battle' && (
             <div className="game-controls combat-game-controls">
+              {cpuRetryNeeded && (
+                <button type="button" className="primary-btn" onClick={retryCpuTurn}>
+                  Reintentar turno de la CPU
+                </button>
+              )}
               <button
                 className="secondary-btn"
                 onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}

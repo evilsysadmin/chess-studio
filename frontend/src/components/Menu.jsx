@@ -20,9 +20,6 @@ import { HOME_GUIDE_KEY, HOME_GUIDE_OPEN_EVENT } from '../homeGuide.js';
 import tournamentCardArt from '../assets/home-modes/tournament.webp';
 import combatCardArt from '../assets/home-modes/combat.webp';
 import quickCardArt from '../assets/home-modes/quick.webp';
-import UserReleaseNotesModal from './UserReleaseNotesModal.jsx';
-import { APP_RELEASE } from '../release.js';
-import { USER_RELEASE_NOTES_KEY } from '../userReleaseNotes.js';
 import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboardingInsightsSeen } from '../homeOnboarding.js';
 import { loadPuzzlesSolved } from '../puzzleStats.js';
 
@@ -69,13 +66,11 @@ export default function Menu({
   const [threatCheck, setThreatCheck] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
-  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
-  const [seenReleaseNotes, setSeenReleaseNotes] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === APP_RELEASE);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
-  const hasOpenOverlay = showQuickMatch || showMirrorMode || showReleaseNotes;
+  const hasOpenOverlay = showQuickMatch || showMirrorMode;
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const activity = useMemo(() => loadGameActivity(), []);
   const today = useMemo(() => buildHomeToday({
@@ -108,12 +103,6 @@ export default function Menu({
     setShowHomeGuide(false);
   }
 
-  function openReleaseNotes() {
-    setProfileStorageItem(USER_RELEASE_NOTES_KEY, APP_RELEASE);
-    setSeenReleaseNotes(true);
-    setShowReleaseNotes(true);
-  }
-
   function openOnboardingInsights() {
     markOnboardingInsightsSeen();
     closeHomeGuide();
@@ -129,11 +118,6 @@ export default function Menu({
 
   return (
     <div className="menu home-friendly">
-      <button type="button" className={`home-release-notes-link ${seenReleaseNotes ? '' : 'has-new'}`} onClick={openReleaseNotes}>
-        <span>{seenReleaseNotes ? 'Novedades' : 'Nuevo'}</span>
-        <b>{APP_RELEASE}</b>
-        <i aria-hidden="true">→</i>
-      </button>
       {hasSavedGame && (
         <div className="menu-group home-continue-group">
           <button type="button" className="home-continue-card" disabled={loading} onClick={onContinue}>
@@ -315,7 +299,6 @@ export default function Menu({
         onPlay={() => setShowQuickMatch(true)}
       />
 
-      {showReleaseNotes && <UserReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />}
       {showQuickMatch && (
         <QuickMatchModal
           difficulty={difficulty}

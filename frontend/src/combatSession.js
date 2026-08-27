@@ -1,17 +1,18 @@
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 
-// Snapshot efímero de una batalla de Combat Chess.
+// Snapshots efímeros de batallas Combat Chess.
 // sessionStorage sobrevive a reload/remount en la misma pestaña, pero no se
 // sincroniza al perfil ni entre dispositivos: sirve como cinturón de seguridad
 // frente a recargas accidentales sin convertir una pelea activa en un save
 // portable/farmeable.
 const KEY = 'chess-study-active-combat-session-v1';
-const VERSION = 1;
+const SNAPSHOT_VERSION = 1;
+const BUCKET_VERSION = 2;
 
 // Segunda línea de defensa contra remounts de React/HMR dentro de la misma
-// carga de página. Si sessionStorage falla temporalmente o un render lee entre
-// escrituras, no devolvemos una batalla viva a Setup. Un reload completo sigue
-// dependiendo deliberadamente de sessionStorage.
+// carga de página. También permite conservar más de una batalla suspendida
+// dentro de la pestaña (por ejemplo campaña + combate libre) sin que una pise
+// a la otra antes de que sessionStorage llegue a intervenir.
 const memorySnapshots = new Map();
 
 export function combatSessionId(value = 'free') {
@@ -22,7 +23,7 @@ export function combatSessionId(value = 'free') {
 function validSnapshot(parsed, id) {
   return !!(
     parsed &&
-    parsed.version === VERSION &&
+    parsed.version === SNAPSHOT_VERSION &&
     parsed.sessionId === id &&
     parsed.phase === 'battle' &&
     typeof parsed.fen === 'string' &&
@@ -30,10 +31,35 @@ function validSnapshot(parsed, id) {
   );
 }
 
+function readSnapshotBucket() {
+  const parsed = readJsonStorage(STORAGE_SESSION, KEY, { fallback: null, removeMalformed: true });
+  if (!parsed) return {};
+
+  // Compatibilidad con el formato original: un único snapshot directamente
+  // bajo KEY. Se migra de forma perezosa al siguiente save, sin invalidarlo.
+  if (parsed.version === SNAPSHOT_VERSION && parsed.sessionId) {
+    return validSnapshot(parsed, parsed.sessionId) ? { [parsed.sessionId]: parsed } : {};
+  }
+
+  if (parsed.version !== BUCKET_VERSION || !parsed.sessions || typeof parsed.sessions !== 'object') return {};
+  return Object.fromEntries(
+    Object.entries(parsed.sessions).filter(([id, snapshot]) => validSnapshot(snapshot, id)),
+  );
+}
+
+function writeSnapshotBucket(sessions) {
+  const entries = Object.entries(sessions || {});
+  if (entries.length === 0) return removeStorageItem(STORAGE_SESSION, KEY);
+  return writeJsonStorage(STORAGE_SESSION, KEY, {
+    version: BUCKET_VERSION,
+    sessions: Object.fromEntries(entries),
+  });
+}
+
 export function saveCombatSession(sessionId, snapshot) {
   const id = combatSessionId(sessionId);
   const payload = {
-    version: VERSION,
+    version: SNAPSHOT_VERSION,
     sessionId: id,
     savedAt: new Date().toISOString(),
     ...snapshot,
@@ -43,7 +69,9 @@ export function saveCombatSession(sessionId, snapshot) {
   // por el entorno del navegador no puede convertir un remount React en Setup.
   memorySnapshots.set(id, payload);
 
-  const durable = writeJsonStorage(STORAGE_SESSION, KEY, payload);
+  const sessions = readSnapshotBucket();
+  sessions[id] = payload;
+  const durable = writeSnapshotBucket(sessions);
   if (!durable) {
     // Un fallo de persistencia no debe romper la partida en curso. El snapshot
     // de memoria/safeStorage sigue siendo recuperable durante esta pestaña.
@@ -55,10 +83,10 @@ export function saveCombatSession(sessionId, snapshot) {
 
 export function loadCombatSession(sessionId) {
   const id = combatSessionId(sessionId);
-  const parsed = readJsonStorage(STORAGE_SESSION, KEY, { fallback: null, removeMalformed: true });
-  if (validSnapshot(parsed, id)) {
-    memorySnapshots.set(id, parsed);
-    return parsed;
+  const snapshot = readSnapshotBucket()[id] || null;
+  if (validSnapshot(snapshot, id)) {
+    memorySnapshots.set(id, snapshot);
+    return snapshot;
   }
 
   const memory = memorySnapshots.get(id) || null;
@@ -76,7 +104,6 @@ export function canReturnCombatToSetup({ phase, combatVariant } = {}) {
   return !(phase === 'battle' && combatVariant === 'roguelike');
 }
 
-
 export function clearCombatSession(sessionId = null) {
   if (sessionId == null) {
     memorySnapshots.clear();
@@ -86,7 +113,7 @@ export function clearCombatSession(sessionId = null) {
 
   const id = combatSessionId(sessionId);
   memorySnapshots.delete(id);
-  const parsed = readJsonStorage(STORAGE_SESSION, KEY, { fallback: null, removeMalformed: true });
-  if (!parsed || parsed?.sessionId === id) removeStorageItem(STORAGE_SESSION, KEY);
+  const sessions = readSnapshotBucket();
+  delete sessions[id];
+  writeSnapshotBucket(sessions);
 }
-
