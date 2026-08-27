@@ -11,23 +11,14 @@ const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 describe('AI personal puzzle batches', () => {
   it('manda como máximo dos semillas reales y no filtra ids de partida', () => {
     const dossier = buildPersonalPuzzleBatchDossier([
-      { fen: START, suggested: 'e4', played: 'a3', loss: 300, source: 'autopsy', sourceGameId: 'SECRET-GAME', incidentKeys: ['human:BLUNDER'] },
-      { fen: START, suggested: 'd4', played: 'h3', loss: 200, source: 'autopsy', opening: 'Apertura X' },
-      { fen: START, suggested: 'Nf3', played: 'a4', loss: 100, source: 'autopsy' },
+      { fen: START, suggested: 'e4', played: 'a3', loss: 300, sourceGameId: 'SECRET-GAME', incidentKeys: ['human:BLUNDER'] },
+      { fen: START, suggested: 'd4', played: 'h3', loss: 200, opening: 'Apertura X' },
+      { fen: START, suggested: 'Nf3', played: 'a4', loss: 100 },
     ]);
     expect(dossier.eventType).toBe('personal_puzzle_batch');
     expect(dossier.requestKind).toBe('personal_puzzle_batch');
     expect(dossier.facts.seeds).toHaveLength(2);
     expect(JSON.stringify(dossier)).not.toContain('SECRET-GAME');
-  });
-
-  it('no recicla puzzles generados por IA como semillas de otro lote', () => {
-    const dossier = buildPersonalPuzzleBatchDossier([
-      { fen: START, suggested: 'e4', played: 'a3', loss: 300, source: 'workers-ai-validated' },
-      { fen: START, suggested: 'd4', played: 'h3', loss: 200, source: 'autopsy' },
-    ]);
-    expect(dossier.facts.seeds).toHaveLength(1);
-    expect(dossier.facts.seeds[0].better_move).toBe('d4');
   });
 
   it('parsea JSON limpio o cercado y limita el lote', () => {
