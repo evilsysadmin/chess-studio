@@ -9,7 +9,7 @@ import HomePlayNudge from './HomePlayNudge.jsx';
 import { COMBAT_CHESS_FREE_LABEL, COMBAT_CHESS_CAMPAIGN_LABEL } from '../combatChessBrand.js';
 import { currentDailyStreak, dailyChallengeDayKey } from '../dailyChallenge.js';
 import { loadGameActivity } from '../gameActivity.js';
-import { buildHomeToday } from '../homeToday.js';
+import { buildHomeToday, dailyMissionActionProps } from '../homeToday.js';
 import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { shouldEnableHomePlayNudge } from '../homePlayNudgePolicy.js';
 import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
@@ -164,11 +164,20 @@ export default function Menu({
           <small>{today.dailyDetail}</small>
         </div>
         <div className="home-today-missions" aria-label={`${today.dailySolvedCount || 0} de 3 desafíos completados`}>
-          {(today.dailySlots || []).map((slot) => (
-            <span key={slot.id} className={slot.solved ? 'done' : ''}>
-              <i aria-hidden="true">{slot.solved ? '✓' : '·'}</i><b>{slot.label}</b>
-            </span>
-          ))}
+          {(today.dailySlots || []).map((slot) => {
+            const action = dailyMissionActionProps(slot, onDailyChallenge);
+            return (
+              <button
+                type="button"
+                key={slot.id}
+                className={slot.solved ? 'done' : ''}
+                onClick={action.onClick}
+                aria-label={action.ariaLabel}
+              >
+                <i aria-hidden="true">{slot.solved ? '✓' : '·'}</i><b>{slot.label}</b>
+              </button>
+            );
+          })}
         </div>
         <div className="home-today-streaks" aria-label="Rachas de desafío diario">
           <span>Racha <b>{today.streak || 0}</b></span><i>·</i><span>Mejor <b>{today.bestStreak || 0}</b></span>

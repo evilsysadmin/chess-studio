@@ -6,6 +6,7 @@ const read = (name) => readFileSync(new URL(`./components/${name}`, import.meta.
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
 const authenticatedAudio = readFileSync(new URL('./useAuthenticatedAudio.js', import.meta.url), 'utf8');
 const productHardeningCss = readFileSync(new URL('./styles/24-product-hardening.css', import.meta.url), 'utf8');
+const releaseNotes = readFileSync(new URL('./userReleaseNotes.js', import.meta.url), 'utf8');
 
 describe('frontend architecture contract', () => {
   it('los modales comunes mantienen semántica de diálogo accesible', () => {
@@ -53,4 +54,22 @@ describe('frontend architecture contract', () => {
     expect(productHardeningCss).toContain('height: var(--combat-board-shell-height)');
     expect(productHardeningCss).toContain('--combat-board-size: min(608px, calc(100vw - 24px))');
   });
+  it('conserva el wiring visible de dm46w sin contaminar estadísticas ni Novedades', () => {
+    const game = read('GameScreen.jsx');
+    const menu = read('Menu.jsx');
+    expect(game).toContain('endgame-modal-backdrop');
+    expect(game).toContain('PARTIDA FINALIZADA');
+    expect(game).toContain('role="dialog"');
+    expect(game).toContain('Entrenar mis errores');
+    expect(game).toContain('Compartir resultado');
+    expect(game).toContain('lastCpuComment');
+    expect(menu).toContain('dailyMissionActionProps(slot, onDailyChallenge)');
+    expect(app).toContain('statisticalHistoryRecords(historyList)');
+    expect(app).toContain('reconcileRivalryHistory(statisticalHistory)');
+    expect(app).toContain('app-shell-board-game');
+    expect(app).toMatch(/masthead-account-trigger[\s\S]*masthead-release-trigger/);
+    expect(productHardeningCss).toContain('.masthead-game-compact .masthead-release-trigger { display:none; }');
+    expect(releaseNotes).not.toMatch(/\bE2E\b|Playwright|Grafana|Tempo|Terraform|telemetr[ií]a|pipeline|CI\/CD|quality gate/i);
+  });
+
 });

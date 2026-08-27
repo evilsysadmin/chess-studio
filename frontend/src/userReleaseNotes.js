@@ -6,196 +6,59 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46w',
+    title: 'Partidas más claras y estadísticas más justas',
+    highlights: [
+      'Táctica, Precisión y Remate del desafío diario se pueden abrir directamente desde Home.',
+      'Al terminar una partida aparece un resumen inmediato con resultado, rating, comentario de la CPU y las siguientes acciones útiles.',
+      'Cancelar o abandonar sin penalización queda fuera de tus estadísticas y del diagnóstico de la CPU.',
+      'La mesa de juego aprovecha mejor la altura disponible y mantiene los controles importantes a mano.',
+    ],
+  },
+  {
     release: 'v16.6dm46v',
     title: 'Los reyes dejan de ser clones',
     highlights: [
       'La campaña elige entre tres bosses finales con retrato, HP, presión y regla propia: Rey de Hierro, Rey Nómada y Rey Sombra.',
-      'Los sectores accesibles muestran de un vistazo el tipo de decisión: seguridad, incertidumbre, combate o alto riesgo, sin revelar movimientos del motor.',
-      'Los mercenarios llegan con especialidad y equipo incluido, de modo que aportan valor táctico inmediato en vez de ser reclutas caros.',
-      'Mercado y debrief usan una jerarquía más clara: qué compras, qué ocurrió, qué ganaste y qué conviene hacer después.',
-    ],
-  },
-  {
-    release: 'v16.6dm46u',
-    title: 'Combat recupera su contrato de navegación',
-    highlights: [
-      'El rail táctico de batalla conserva un nombre accesible estable aunque incluya el reproductor de música, evitando regresiones en navegación asistida y en los flujos E2E.',
+      'Los sectores accesibles explican mejor el riesgo y la recompensa antes de comprometer la ruta.',
+      'Los mercenarios llegan con especialidad y equipo incluido, para aportar valor táctico desde la primera batalla.',
+      'Mercado y debrief distinguen mejor qué ocurrió, qué ganaste y qué conviene hacer después.',
     ],
   },
   {
     release: 'v16.6dm46t',
-    title: 'Combat encaja en la pantalla y la campaña pasa revista',
+    title: 'Combat encaja mejor en cada pantalla',
     highlights: [
-      'El tablero de Combat se adapta al viewport en escritorio y comparte altura con el rail táctico; en móvil sigue priorizando el ancho disponible.',
-      'La campaña queda protegida por un recorrido automático completo de múltiples mapas procedurales hasta el boss, además del reintento seguro tras una retirada.',
-      'Se limpia markup/CSS obsoleto del desafío diario que podía romper CI aunque la tarjeta actual fuera correcta.',
+      'El tablero de Combat se adapta al espacio disponible y comparte altura con el registro táctico.',
+      'En móvil el tablero tiene prioridad y los paneles secundarios bajan debajo.',
+      'Una retirada conserva la operación para que puedas reorganizar y reintentar el mismo sector.',
     ],
   },
   {
     release: 'v16.6dm46s',
-    title: 'Combat vuelve a ocupar la mesa',
+    title: 'La campaña gana presencia',
     highlights: [
-      'El tablero y el registro de Combat comparten altura en escritorio; en móvil el tablero usa el ancho disponible y el rail baja debajo.',
-      'Mercado pasa a estar visible durante la campaña y Reiniciar campaña permite empezar una operación nueva sin borrar el ejército persistente.',
-      'La cartografía de campaña muestra de verdad el arte estratégico, manteniendo encima los sectores y rutas reales de cada operación.',
-      'Las guitarras dejan atrás el feedback resonante que podía producir pitidos en algunas pistas, incluida Bossa · dama en la terraza.',
-      'El desafío diario de Home muestra sus tres objetivos en una franja compacta con racha y progreso.',
-    ],
-  },
-  {
-    release: 'v16.6dm46r',
-    title: 'La telemetría deja de evaporarse',
-    highlights: [
-      'Administración conserva las señales agregadas del frontend entre reinicios del backend en lugar de depender sólo de memoria del proceso.',
-      'Grafana Logs gana una vista directa del flujo de telemetría para comprobar de un vistazo si Web Vitals y errores están llegando.',
-    ],
-  },
-  {
-    release: 'v16.6dm46q',
-    title: 'Combat vuelve a su sitio y la operación se deja diagnosticar',
-    highlights: [
-      'El reproductor retro vuelve al rail táctico de Combat y deja de flotar fuera del tablero.',
-      'Abandonar una batalla de campaña conserva la operación y devuelve al briefing del mismo sector para reorganizar o reintentar, manteniendo las bajas.',
-      'Desafío diario aprovecha el ancho con progreso, racha y mejor racha; el catálogo musical se valida dinámicamente y cada pista pasa por Play/Stop en tests.',
-      'Administración puede emitir una traza de prueba hacia Tempo y mostrar su trace ID sin exponer endpoints ni credenciales.',
-    ],
-  },
-  {
-    release: 'v16.6dm46o',
-    title: 'Operación más clara y campaña con más carácter',
-    highlights: [
-      'Administración resume el servicio como HEALTH OK, VIGILAR o PROBLEMAS y deja Grafana Cloud a un clic; el panel técnico anterior queda plegado como observabilidad legacy.',
-      'El mapa de campaña gana una capa visual estratégica sin sustituir sus rutas, nodos ni decisiones reales.',
-      'El estado público ya no puede caer porque falle el histórico de observabilidad.',
-    ],
-  },
-  {
-    release: 'v16.6dm46n',
-    title: 'Combat recupera mejor y Novedades deja de estorbar',
-    highlights: [
-      'Novedades vive ahora justo debajo de Mi cuenta y puede abrirse desde cualquier pantalla sin ocupar la cabecera de Home.',
-      'Combat Chess conserva la bitácora táctica y la preferencia de auto-level al recargar una batalla viva.',
-      'Si la CPU no puede completar su turno por un fallo temporal, aparece un reintento explícito en vez de dejar la batalla bloqueada.',
-      'Una campaña suspendida y una batalla libre ya no se pisan entre sí al compartir sessionStorage.',
-    ],
-  },
-  {
-    release: 'v16.6dm46m',
-    title: 'El contador online deja de comerse jugadores',
-    highlights: [
-      'Usuarios online usa la misma presencia reciente que Administración: una pestaña en segundo plano ya no hace desaparecer a alguien conectado.',
-      'Las cuentas admin siguen fuera del contador público, pero sin restas ciegas que podían mostrar 0 cuando había otro jugador real conectado.',
+      'Mercado queda visible durante la campaña y Reiniciar campaña permite empezar otra operación sin borrar tu ejército persistente.',
+      'El mapa muestra la cartografía artística bajo los sectores y rutas reales de cada operación.',
+      'Las guitarras y la familia Bossa se han reajustado para sonar más musicales y menos sintéticas.',
+      'El desafío diario reúne sus tres objetivos, racha y progreso en una sola franja compacta.',
     ],
   },
   {
     release: 'v16.6dm46l',
-    title: 'Tus errores ahora entrenan de verdad',
+    title: 'Tus errores entrenan de verdad',
     highlights: [
-      'Puzzles personales pone tus errores reales en una cola clara: al superarlos salen de la rotación normal pero siguen disponibles en el histórico.',
-      'Cuando faltan ejercicios, Workers AI puede proponer variantes de tus cagadas y el motor local descarta cualquier posición que no valide antes de guardarla.',
-      'La generación trabaja por lotes y con cooldown para gastar IA sólo cuando aporta material nuevo.',
-      'Studio Marfil es la apariencia inicial para cuentas nuevas por su lectura limpia de las piezas; tus preferencias actuales se respetan.',
-    ],
-  },
-  {
-    release: 'v16.6dm46k',
-    title: 'Resiliencia operativa sin sacrificar partidas',
-    highlights: [
-      'Las funciones secundarias ceden capacidad antes que movimiento, login y persistencia cuando el backend está bajo presión.',
-      'Administración muestra burn rate, dependencias, señales del frontend y marcas de deploy sobre los gráficos.',
-      'La evaluación paralela permite comparar mejoras internas sin cambiar ninguna respuesta para el jugador y permanece desactivada por defecto en Render Free.',
-      'Feedback pasa a la cabecera, junto a Cuenta, para que sea visible desde cualquier pantalla sin buscarlo al final de Home.',
-    ],
-  },
-  {
-    release: 'v16.6dm46j',
-    title: 'Release health y operación trazable',
-    highlights: [
-      'Administración muestra error budget y salud de la release actual usando tráfico real, sin identificar jugadores.',
-      'Las peticiones llevan una referencia y versión de cliente para correlacionar fallos; los logs HTTP pasan a formato estructurado sin guardar contenido de partida.',
-      'Un probe sintético programado comprueba liveness/readiness de producción y puede validar también login con una cuenta técnica opcional.',
-    ],
-  },
-  {
-    release: 'v16.6dm46i',
-    title: 'Primer minuto más claro + operación más seria',
-    highlights: [
-      'La bienvenida guía por una partida, un puzzle y Así juegas con progreso real, sin obligarte a aprender todos los modos.',
-      'Los fallos técnicos se convierten en mensajes recuperables y el equipo conserva una referencia segura cuando hace falta diagnosticar.',
-      'Chess Studio gana flags operables desde backend y un SLO visible de disponibilidad/latencia en Administración.',
-    ],
-  },
-  {
-    release: 'v16.6dm46h',
-    title: 'Puzzles que ya muerden + feedback visible',
-    highlights: [
-      'El banco clásico sube a 30 posiciones y añade mates en 2/3, sacrificios y combinaciones largas con dificultad visible.',
-      'La rotación evita repetir tipo y dificultad para que los ejercicios fáciles no monopolicen la sesión.',
-      'Feedback aparece antes en Home, conserva su nombre en móvil y puede pedir un pulso post-partida de forma ocasional y no invasiva.',
-    ],
-  },
-  {
-    release: 'v16.6dm46g',
-    title: 'Tablero más claro en momentos críticos',
-    highlights: [
-      'Cuando hay jaque, el rey afectado queda señalado en rojo directamente sobre el tablero.',
-      'El marco distingue con discreción tu turno de la espera de la CPU.',
-      'El tablero mejora sus indicaciones para teclado y lectores de pantalla.',
-    ],
-  },
-  {
-    release: 'v16.6dm46f',
-    title: 'Puzzles con más variedad real',
-    highlights: [
-      'El banco crece con remates, horquillas, diagonales, columnas abiertas, promociones y capturas con todas las piezas.',
-      'Siguiente puzzle evita los últimos ejercicios y alterna el tipo de reto siempre que hay una alternativa.',
-      'El entrenamiento explica la rotación para que sea fácil entender qué estás practicando.',
-    ],
-  },
-  {
-    release: 'v16.6dm46e',
-    title: 'Primeros pasos y conexión más claros',
-    highlights: [
-      'Las cuentas nuevas confirman que empiezan desde cero y llevan directamente al primer rival de Torneo.',
-      'Los problemas de conexión ya no muestran errores técnicos: explican qué hacer y permiten reintentar sin recargar.',
-      'Login, bienvenida y flujos principales se comprueban también en móviles de 360, 390 y 430 px.',
-    ],
-  },
-  {
-    release: 'v16.6dm46d',
-    title: 'Dominio propio y catálogo de pruebas',
-    highlights: [
-      'Chess Studio ya puede publicarse desde su propio dominio, con rutas y recuperación de cuenta alineadas.',
-      'Las cuentas administradoras tienen acceso de prueba a todas las apariencias, tableros, armas y mercenarios sin alterar el progreso real.',
+      'Puzzles personales pone tus errores reales en una cola clara y conserva los ya dominados en el histórico.',
+      'Cuando falta material, pueden aparecer variantes nuevas basadas en tus errores y validadas por el motor antes de guardarse.',
     ],
   },
   {
     release: 'v16.6dm46c',
     title: 'Más personalidad dentro y fuera del tablero',
     highlights: [
-      'Cinco estilos nuevos de piezas: Regimiento Español, Shogunato Neón, Cyber, Marines y Delta, desbloqueables al avanzar en Torneo.',
-      'Combat incorpora mercado en preparación y despliegue, con mercenarios reconocibles en tu ejército y sobre el tablero.',
-      'Al revelar una solución, tu jugada queda marcada en rojo y la alternativa del motor en azul, con origen, destino y notación.',
-      'Home y Aprender tienen tarjetas más visuales; proteger una racha muestra tu saldo y explica para qué sirven los puntos.',
-      'La radio empieza en Aleatorio, recuerda tu selección y recupera anterior/siguiente desde las teclas multimedia.',
-      'Las lecciones aparecen ordenadas: aperturas y gambitos primero; defensas después.',
-    ],
-  },
-  {
-    release: 'v16.6dm46a',
-    title: 'Progreso accionable y economía de Combat',
-    highlights: [
-      'Mi progreso se reorganiza en Resumen, Rendimiento, Aperturas y Archivo.',
-      'Combat separa rango, créditos y XP de unidad, y añade equipo y contratos mercenarios opcionales.',
-      'La campaña base sigue siendo ganable sin comprar bonus ni mercenarios.',
-    ],
-  },
-  {
-    release: 'v16.6dm45w',
-    title: 'Desafíos que construyen carrera',
-    highlights: [
-      'El rating muestra evolución de hoy, 7 días y 30 días.',
-      'Los desafíos diarios cuentan retos, plenos y rachas, con distintivos medibles.',
+      'Nuevos estilos de piezas y más identidad visual para personalizar el tablero.',
+      'Combat incorpora mercado, mercenarios y despliegue con más decisiones antes de entrar en batalla.',
+      'La radio recuerda tu selección y ofrece más estilos musicales.',
     ],
   },
 ]);

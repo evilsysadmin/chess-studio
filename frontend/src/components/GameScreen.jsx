@@ -680,6 +680,8 @@ export default function GameScreen({
     activeContract ? { id: 'game-contract', by: 'system', event: 'CONTRATO', text: `${activeContract.label} · ${activeContract.text}` } : null,
   ].filter(Boolean);
 
+  const lastCpuComment = [...gameChat].reverse().find((message) => message?.by !== 'system' && message?.text)?.text || null;
+
   const topColor = humanColor === 'w' ? 'b' : 'w'; // el rival siempre arriba
   const bottomColor = humanColor;
   const topTime = topColor === 'w' ? whiteTime : blackTime;
@@ -709,7 +711,7 @@ export default function GameScreen({
   }
 
   return (
-    <div>
+    <div className="game-screen">
       <div className="game-layout">
         <div className="board-column">
           <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`} role="status" aria-label="Estado de la partida" aria-live="polite">
@@ -776,7 +778,8 @@ export default function GameScreen({
           {!zenMode && hintMode === 'paid' && (
             <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
           )}
-          <div className="game-controls">
+          <div className="game-controls" aria-label="Controles principales de la partida">
+            <span className={`game-controls-status ${game.turn === humanColor && !game.isGameOver ? 'is-active' : ''}`}>{statusText}</span>
             {!zenMode && hintMode !== 'off' && (
               <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
                 {hintButtonLabel}
@@ -814,9 +817,11 @@ export default function GameScreen({
       </div>
 
       {(game.isGameOver || flagFallen || forcedOutcome) && (
-        <div className={`endgame-banner outcome-${finalOutcome}`}>
+        <div className="modal-backdrop endgame-modal-backdrop" role="presentation">
+          <section className={`endgame-banner endgame-dialog outcome-${finalOutcome}`} role="dialog" aria-modal="true" aria-labelledby="game-finished-title">
+            <span className="endgame-modal-kicker">PARTIDA FINALIZADA</span>
           <span className="endgame-eyebrow">{nextAction.eyebrow}</span>
-          <h2>{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
+          <h2 id="game-finished-title">{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
           <p>
             {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al rating.' : flagFallen
               ? (flagFinalOutcome === 'draw' ? 'Cayó una bandera, pero el rival no tenía material suficiente para dar mate.' : flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
@@ -829,6 +834,12 @@ export default function GameScreen({
               <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
               <span>{resultSummary.detail}</span>
             </p>
+          )}
+          {lastCpuComment && (
+            <blockquote className="endgame-cpu-verdict">
+              <span>CPU</span>
+              <p>{lastCpuComment}</p>
+            </blockquote>
           )}
           {seriesState && !seriesState.winner && liveSeriesMoment && (
             <div className={`series-endgame-moment ${liveSeriesMoment.kind}`}>
@@ -855,15 +866,15 @@ export default function GameScreen({
           )}
           {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
           {game.history.length > 0 && nextAction.id !== 'review' && (
-            <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => setShowReport(true)}>
+            <button className="secondary-btn" onClick={() => setShowReport(true)}>
               Resumen de la partida
             </button>
           )}
+          {postGameFeedbackEnabled && showPostGameFeedback && (
+            <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />
+          )}
+          </section>
         </div>
-      )}
-
-      {postGameFeedbackEnabled && showPostGameFeedback && (game.isGameOver || flagFallen || forcedOutcome) && (
-        <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />
       )}
 
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}

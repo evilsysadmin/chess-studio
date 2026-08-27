@@ -147,7 +147,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "{} | json | trace_id != \"\" | line_format \"trace={{.trace_id}} · {{.status}} {{.method}} {{.route}} · req={{.request_id}}\"",
+          "expr": "{service_name=\"chess-studio-backend\"} | json | trace_id != \"\" | line_format \"trace={{.trace_id}} · {{.status}} {{.method}} {{.route}} · req={{.request_id}}\"",
           "refId": "A",
           "queryType": "range"
         }

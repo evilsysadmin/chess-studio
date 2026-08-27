@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, runTempoTraceProbe, summarizeObservabilityHealth } from '../observability.js';
+import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, runObservabilityProbe, runTempoTraceProbe, summarizeObservabilityHealth } from '../observability.js';
 import { APP_RELEASE } from '../release.js';
 
 function metric(value, suffix = '') {
@@ -28,7 +28,9 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
   const [runtime, setRuntime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tempoProbe, setTempoProbe] = useState(null);
+  const [signalProbe, setSignalProbe] = useState(null);
   const [tempoProbeBusy, setTempoProbeBusy] = useState(false);
+  const [signalProbeBusy, setSignalProbeBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -60,6 +62,14 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
     setTempoProbeBusy(false);
   }
 
+  async function handleSignalProbe() {
+    if (signalProbeBusy) return;
+    setSignalProbeBusy(true);
+    const result = await runObservabilityProbe({ token });
+    setSignalProbe(result);
+    setSignalProbeBusy(false);
+  }
+
   return (
     <section className={`admin-operational-status is-${verdict.level}`} aria-label="Estado operativo de Chess Studio">
       <div className="admin-operational-status-main">
@@ -80,6 +90,19 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
             {grafanaTracesUrl ? <a href={grafanaTracesUrl} target="_blank" rel="noreferrer">Trazas ↗</a> : null}
           </nav>
         ) : null}
+        <div className="admin-tempo-check" aria-label="Diagnóstico de señales OTLP">
+          <button type="button" className="secondary-btn" onClick={handleSignalProbe} disabled={signalProbeBusy}>
+            {signalProbeBusy ? 'Probando señales…' : 'Probar logs + métricas + trazas'}
+          </button>
+          <small>
+            {signalProbe
+              ? `Logs ${signalProbe.signals?.logs?.flushed ? 'OK' : '—'} · Métricas ${signalProbe.signals?.metrics?.flushed ? 'OK' : '—'} · Trazas ${signalProbe.signals?.traces?.flushed ? 'OK' : '—'}`
+              : tracing?.signals
+                ? `OTLP · logs ${tracing.signals.logs?.configured ? 'OK' : 'OFF'} · métricas ${tracing.signals.metrics?.configured ? 'OK' : 'OFF'} · trazas ${tracing.signals.traces?.configured ? 'OK' : 'OFF'}`
+                : 'Comprueba de extremo a extremo las tres señales.'}
+          </small>
+          {signalProbe?.traceId ? <code>{signalProbe.traceId}</code> : null}
+        </div>
         <div className="admin-tempo-check" aria-label="Diagnóstico de trazas Tempo">
           <button type="button" className="secondary-btn" onClick={handleTempoProbe} disabled={tempoProbeBusy}>
             {tempoProbeBusy ? 'Enviando traza…' : 'Probar Tempo'}

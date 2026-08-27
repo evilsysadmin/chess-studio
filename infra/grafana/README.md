@@ -16,9 +16,14 @@ Variables opcionales: `GRAFANA_METRICS_DATASOURCE_UID`, `GRAFANA_LOGS_DATASOURCE
 
 ## Tempo / OTLP en Render
 
-Configura en Render los secretos que Grafana Cloud muestra en **OpenTelemetry → Send traces**:
+Configura en Render los secretos que Grafana Cloud muestra en **OpenTelemetry → Send data**. Chess Studio usa el mismo gateway OTLP para trazas, métricas y logs:
 
 - `OTEL_EXPORTER_OTLP_ENDPOINT` (gateway OTLP de tu stack; normalmente termina en `/otlp`).
 - `OTEL_EXPORTER_OTLP_HEADERS` (cabecera Authorization generada por Grafana Cloud).
 
 Chess Studio añade `service.name=chess-studio-backend`, `service.version` y `deployment.environment.name`. El muestreo por defecto es 20% (`parentbased_traceidratio`) para no convertir Render Free en una fábrica de telemetría. Si OTLP no está configurado o falla al arrancar, el backend continúa sin tracing.
+
+
+## Diagnóstico de las tres señales
+
+Admin → Estado operativo → **Probar logs + métricas + trazas** emite un evento sintético por los tres canales y fuerza flush. Si una señal aparece `OFF`, revisa `OTEL_EXPORTER_OTLP_ENDPOINT` y `OTEL_EXPORTER_OTLP_HEADERS` en Render. Si aparece configurada pero no hace flush, revisa las credenciales/endpoint del stack. Los dashboards usan `service_name="chess-studio-backend"` para Loki y métricas OTLP reales para Prometheus; ya no calculan las métricas principales a partir de logs.

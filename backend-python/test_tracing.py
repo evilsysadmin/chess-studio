@@ -50,7 +50,29 @@ def test_trace_probe_fails_open_when_tracing_is_not_initialized(monkeypatch):
     import tracing
 
     monkeypatch.setattr(tracing, "_CONFIGURED", False)
-    monkeypatch.setattr(tracing, "_PROVIDER", None)
+    monkeypatch.setattr(tracing, "_TRACE_PROVIDER", None)
     result = tracing.emit_trace_probe()
     assert result["ok"] is False
     assert result["reason"] == "tracing_not_configured"
+
+
+def test_generic_otlp_endpoint_enables_all_three_signals():
+    cfg = tracing_settings({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp.example/otlp"})
+    assert cfg["traces_enabled"] is True
+    assert cfg["metrics_enabled"] is True
+    assert cfg["logs_enabled"] is True
+    assert cfg["generic_endpoint_configured"] is True
+
+
+def test_signal_diagnostics_never_expose_endpoints_or_headers(monkeypatch):
+    import tracing
+    monkeypatch.setattr(tracing, "_TRACE_PROVIDER", object())
+    monkeypatch.setattr(tracing, "_METER_PROVIDER", object())
+    monkeypatch.setattr(tracing, "_LOGGER_PROVIDER", object())
+    d = tracing.tracing_diagnostics({
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://super-secret.example/otlp",
+        "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic no-me-mires",
+    })
+    assert all(d["signals"][name]["configured"] for name in ("traces", "metrics", "logs"))
+    assert "super-secret" not in str(d)
+    assert "no-me-mires" not in str(d)

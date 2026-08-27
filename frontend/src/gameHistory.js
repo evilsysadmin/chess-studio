@@ -12,9 +12,22 @@ const MAX_RECORDS = 120;
 // Partidas que forman parte de la rivalidad/rating normal. Los modos de
 // entrenamiento se guardan en Historial, pero no deben inflar el marcador
 // competitivo del Centro de Operaciones.
+export function isStatisticalHistoryRecord(record) {
+  const outcome = String(record?.outcome || '');
+  const endReason = String(record?.endReason || '');
+  if (!['win', 'draw', 'loss'].includes(outcome)) return false;
+  if (record?.excludedFromStats === true || record?.noPenalty === true) return false;
+  return !['cancelled', 'abandoned-no-penalty', 'cancel-no-move'].includes(endReason);
+}
+
 export function isCompetitiveHistoryRecord(record) {
+  if (!isStatisticalHistoryRecord(record)) return false;
   const mode = String(record?.mode || 'casual');
   return !['practice', 'lab', 'rescue', 'sudden'].includes(mode);
+}
+
+export function statisticalHistoryRecords(records) {
+  return (Array.isArray(records) ? records : []).filter(isStatisticalHistoryRecord);
 }
 
 export function loadGameHistory() {

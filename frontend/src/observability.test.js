@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, runTempoTraceProbe, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
+import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, runObservabilityProbe, runTempoTraceProbe, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -15,6 +15,17 @@ describe('admin observability helpers', () => {
     expect(options.headers['X-Client-Release']).toBeTruthy();
     expect(url).toContain('from_time=2026-08-20T00%3A00%3A00Z');
     expect(url).toContain('to_time=2026-08-21T00%3A00%3A00Z');
+  });
+
+  it('el probe OTLP comprueba logs, métricas y trazas con una sola acción', async () => {
+    const fetchImpl = vi.fn();
+    expect(await runObservabilityProbe({ fetchImpl })).toEqual({ ok: false, reason: 'missing_token' });
+    const okFetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, traceId: 'deadbeef', signals: { logs: { flushed: true }, metrics: { flushed: true }, traces: { flushed: true } } }) }));
+    const result = await runObservabilityProbe({ token: 'jwt', fetchImpl: okFetch });
+    expect(result.signals.logs.flushed).toBe(true);
+    expect(result.signals.metrics.flushed).toBe(true);
+    expect(result.signals.traces.flushed).toBe(true);
+    expect(okFetch.mock.calls[0][0]).toContain('/admin/observability/probe');
   });
 
   it('el probe de Tempo exige JWT y devuelve el trace id técnico sin inventarlo', async () => {

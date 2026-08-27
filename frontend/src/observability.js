@@ -22,6 +22,21 @@ export async function fetchAdminObservability({ token, from = null, to = null, f
   }
 }
 
+export async function runObservabilityProbe({ token, fetchImpl = fetch } = {}) {
+  if (!token) return { ok: false, reason: 'missing_token' };
+  try {
+    const response = await fetchImpl(`${apiBase()}/admin/observability/probe`, {
+      method: 'POST',
+      headers: withRequestId({ Authorization: `Bearer ${token}` }),
+    });
+    if (!response.ok) return { ok: false, reason: `http_${response.status}` };
+    const body = await response.json();
+    return body && typeof body === 'object' ? body : { ok: false, reason: 'invalid_response' };
+  } catch {
+    return { ok: false, reason: 'network_error' };
+  }
+}
+
 export async function runTempoTraceProbe({ token, fetchImpl = fetch } = {}) {
   if (!token) return { ok: false, reason: 'missing_token' };
   try {

@@ -1,3 +1,4 @@
+import { isStatisticalHistoryRecord } from './gameHistory.js';
 // insights.js — Estadísticas agregadas ("así juegas"), calculadas al
 // instante a partir de lo que ya está guardado (historial de partidas, de
 // combate, evolución de rating) — SIN volver a analizar cada partida
@@ -109,7 +110,7 @@ function humanCaptures(gameHistory, combatHistory) {
 }
 
 export function computeInsights(gameHistory, combatHistory, ratingHistory) {
-  const taggedGameHistory = gameHistory.filter((g) => !['lab', 'rescue'].includes(g.mode)).map((g) => ({ ...g, category: g.mode || 'tournament' }));
+  const taggedGameHistory = gameHistory.filter(isStatisticalHistoryRecord).filter((g) => !['lab', 'rescue'].includes(g.mode)).map((g) => ({ ...g, category: g.mode || 'tournament' }));
   const taggedCombatHistory = combatHistory.map((g) => ({ ...g, category: 'combat' }));
   const allGames = [...taggedGameHistory, ...taggedCombatHistory];
 
@@ -128,7 +129,7 @@ export function computeInsights(gameHistory, combatHistory, ratingHistory) {
     colorPreference: colorPreference(allGames),
     longestWinStreak: longestWinStreak(allGames),
     ratingTrend: ratingTrend(ratingHistory),
-    humanCaptures: humanCaptures(gameHistory, combatHistory),
+    humanCaptures: humanCaptures(gameHistory.filter(isStatisticalHistoryRecord), combatHistory),
   };
 }
 

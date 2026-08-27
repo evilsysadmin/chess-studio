@@ -1,3 +1,11 @@
+### v16.6dm46w · UI más útil, estadísticas limpias y observabilidad OTLP de verdad
+
+- Home convierte Táctica, Precisión y Remate en acciones directas; la cabecera alinea Feedback, Mi cuenta y Novedades, y el changelog visible se limita a cambios que importan al jugador.
+- Cancelaciones/abandonos sin penalización quedan fuera de carrera, rivalidad, insights y cualquier diagnóstico derivado; una rendición real que sí penaliza continúa contando como derrota.
+- La mesa normal usa mucho mejor el viewport: cabecera compacta, tablero dimensionado por ancho/alto reales y controles principales pegados a la zona jugable. El final aparece como diálogo inmediato con rating, comentario CPU y acciones de revisión/entrenamiento/compartir.
+- Observabilidad deja de fingir métricas desde Loki: el backend exporta logs, métricas y trazas por OTLP a Grafana Cloud, el overview usa Prometheus real y Admin puede emitir/forzar una prueba de las tres señales. El workflow valida datasources y dashboards antes/después de Terraform.
+- Incluye el polish de Combat de dm46v: bosses finales diferenciados, decisiones de ruta más claras, mercenarios útiles, mercado táctico y debrief reordenado.
+
 ### v16.6dm46v · Bosses con identidad, rutas con decisión y Combat más coherente
 
 - La campaña selecciona de forma determinista uno de tres reyes finales: Rey de Hierro (más HP), Rey Nómada (mates más dañinos) o Rey Sombra (menos HP, más presión de CPU). Cada uno tiene retrato propio en mapa, briefing y batalla.

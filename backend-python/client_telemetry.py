@@ -80,6 +80,18 @@ def record_client_event(payload: dict[str, Any], *, username: str | None = None)
     except Exception:
         pass
 
+    try:
+        from tracing import record_frontend_otel
+        record_frontend_otel(
+            row["event_type"],
+            metric_name=row["metric_name"],
+            value=row["value"],
+            context=row["context"],
+            release=row["release"],
+        )
+    except Exception:
+        pass
+
     # Human-operational log may identify the authenticated account, while the
     # in-memory aggregate below stays identity-free and low-cardinality.
     log_row = {

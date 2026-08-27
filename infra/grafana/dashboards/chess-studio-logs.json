@@ -532,10 +532,10 @@
         "name": "selector",
         "label": "Loki selector",
         "type": "textbox",
-        "query": "{}",
+        "query": "{service_name=\"chess-studio-backend\"}",
         "current": {
-          "text": "{}",
-          "value": "{}"
+          "text": "{service_name=\"chess-studio-backend\"}",
+          "value": "{service_name=\"chess-studio-backend\"}"
         },
         "hide": 0,
         "skipUrlSync": false

@@ -23,3 +23,13 @@ export function buildHomeToday({ daily = {}, todayKey = '', activity = [] } = {}
     } : null,
   };
 }
+
+export function dailyMissionActionProps(slot, onDailyChallenge) {
+  const id = String(slot?.id || '');
+  const label = String(slot?.label || 'desafío');
+  const solved = Boolean(slot?.solved);
+  return {
+    ariaLabel: `${solved ? 'Revisar' : 'Jugar'} desafío ${label}`,
+    onClick: () => onDailyChallenge?.(id),
+  };
+}

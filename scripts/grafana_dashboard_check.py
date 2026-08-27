@@ -66,22 +66,29 @@ def main() -> int:
         if resource not in tf:
             fail(f"Terraform no declara {resource}")
     workflow = WORKFLOW.read_text(encoding="utf-8") if WORKFLOW.exists() else ""
-    for token in ('infra/grafana/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform apply -auto-approve tfplan'):
+    for token in ('infra/grafana/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'Validate Grafana datasources', '/api/datasources/uid/$uid', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform apply -auto-approve tfplan', 'Verify published dashboards', '/api/dashboards/uid/$uid'):
         if token not in workflow:
             fail(f"workflow Grafana incompleto: {token}")
 
     tracing = (ROOT / "backend-python" / "tracing.py").read_text(encoding="utf-8")
     requirements = (ROOT / "backend-python" / "requirements.txt").read_text(encoding="utf-8")
     structured = (ROOT / "backend-python" / "structured_logging.py").read_text(encoding="utf-8")
-    for token in ('OTEL_EXPORTER_OTLP_ENDPOINT', 'OTLPSpanExporter', 'FastAPIInstrumentor'):
+    for token in ('OTEL_EXPORTER_OTLP_ENDPOINT', 'OTLPSpanExporter', 'OTLPMetricExporter', 'OTLPLogExporter', 'FastAPIInstrumentor'):
         if token not in tracing:
-            fail(f"exportación Tempo incompleta: {token}")
+            fail(f"exportación OTLP incompleta: {token}")
     if 'opentelemetry-exporter-otlp-proto-http' not in requirements:
         fail("falta dependencia OTLP HTTP")
     if 'payload["trace_id"]' not in structured:
         fail("los logs no correlacionan trace_id")
+    overview = (INFRA / "dashboards" / "chess-studio-overview.json").read_text(encoding="utf-8")
+    for token in ('${metrics_datasource_uid}', 'chess_studio_http_server_requests_total', 'chess_studio_http_server_duration_seconds_bucket', 'service_name=\\"chess-studio-backend\\"'):
+        if token not in overview:
+            fail(f"overview no usa señal real: {token}")
+    infra_logs = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
+    if '"query": "{}"' in infra_logs:
+        fail("Loki selector no puede volver a {}")
 
-    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · Terraform 3 dashboards · Tempo OTLP + trace_id")
+    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · Terraform 3 dashboards · OTLP logs+metrics+traces + trace_id")
     return 0
 
 

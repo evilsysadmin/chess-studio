@@ -60,6 +60,11 @@ def record_http_request(method: str, route: str, status_code: int, latency_ms: f
     except Exception:
         # El histórico es auxiliar; nunca debe romper una request productiva.
         pass
+    try:
+        from tracing import record_http_otel
+        record_http_otel(clean_method, clean_route, status_code, latency_ms, client_release=release)
+    except Exception:
+        pass
 
 
 def reset_http_metrics() -> None:

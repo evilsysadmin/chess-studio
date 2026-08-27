@@ -21,7 +21,7 @@ const MusicPlayer = React.lazy(() => import('./components/MusicPlayer.jsx'));
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
-import { saveGameRecord, updateGameRecordChat } from './gameHistory.js';
+import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
 import { humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
@@ -135,6 +135,7 @@ function AppInner({ isAdminUser }) {
       difficulty: finishedGame.difficulty,
       humanColor: finishedGame.humanColor,
       outcome,
+      endReason: endMeta.endReason || null,
       moves: finishedGame.history,
       finalFen: finishedGame.fen,
       initialFen: finishedGame.initialFen || null,
@@ -242,8 +243,9 @@ function AppInner({ isAdminUser }) {
   // Historial una sola vez cuando éste cambia; las funciones sólo escriben si
   // detectan que el historial contiene más datos que el expediente nuevo.
   useEffect(() => {
-    reconcileCareerHistory(historyList);
-    reconcileRivalryHistory(historyList);
+    const statisticalHistory = statisticalHistoryRecords(historyList);
+    reconcileCareerHistory(statisticalHistory);
+    reconcileRivalryHistory(statisticalHistory);
   }, [historyList]);
 
   useEffect(() => {
@@ -331,7 +333,7 @@ function AppInner({ isAdminUser }) {
       setGameContext(nextContext);
       recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: isLearning, gameContext: nextContext }), detail: nextContext.adaptiveDifficulty ? 'adaptive-difficulty' : null });
       const shouldOfferContract = !isLearning && !opts?.runMode && !opts?.lab && !opts?.rescue && Number(opts?.seriesBestOf || 1) <= 1;
-      const contract = shouldOfferContract ? chooseContract({ gameCount: historyList.length, incidents: loadRivalry().incidents }) : null;
+      const contract = shouldOfferContract ? chooseContract({ gameCount: statisticalHistoryList.length, incidents: loadRivalry().incidents }) : null;
       if (contract) saveActiveContract(contract); else clearActiveContract();
       setActiveContract(contract);
 
@@ -733,6 +735,8 @@ function AppInner({ isAdminUser }) {
     setFrontendTelemetryContext(view);
   }, [view]);
 
+  const statisticalHistoryList = statisticalHistoryRecords(historyList);
+
   const isBoardGameView = view === 'game' || view === 'tournamentGame' || combatBattleUiActive;
 
   return (
@@ -746,7 +750,7 @@ function AppInner({ isAdminUser }) {
         onRecover={recoverSessionFromBoundary}
         canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
       >
-      <div className="app-shell" id="main-content" tabIndex={-1}>
+      <div className={`app-shell ${isBoardGameView ? 'app-shell-board-game' : ''}`} id="main-content" tabIndex={-1}>
         <div className={`masthead ${isBoardGameView ? 'masthead-game-compact' : ''}`}>
           <div className="masthead-top-row">
             <div className="masthead-text">
@@ -880,7 +884,7 @@ function AppInner({ isAdminUser }) {
             onTutorial={() => navigateTo('tutorial')}
             onOpenings={() => navigateTo('openings')}
             onPuzzle={() => openPuzzleMode('curated', false)}
-            onDailyChallenge={() => navigateTo('dailyChallenges')}
+            onDailyChallenge={(slot) => slot ? openDailyChallengeSlot(slot) : navigateTo('dailyChallenges')}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}
@@ -1002,7 +1006,7 @@ function AppInner({ isAdminUser }) {
           <InsightsScreen
             initialSection={insightsLandingSection}
             insights={insights}
-            gameHistory={historyList}
+            gameHistory={statisticalHistoryList}
             combatHistory={combatHistoryList}
             ratingHistory={loadRatingHistory()}
             onExit={goBack}
