@@ -164,20 +164,17 @@ export default function Menu({
           <small>{today.dailyDetail}</small>
           <div className="home-today-progress" aria-label={`${today.dailySolvedCount || 0} de 3 desafíos completados`}>
             {[0, 1, 2].map((slot) => <i key={slot} className={slot < (today.dailySolvedCount || 0) ? 'done' : ''} />)}
-            <span>{today.streak > 0 ? `Racha · ${today.streak} día${today.streak === 1 ? '' : 's'}` : 'Empieza tu racha'}</span>
+            <span>{today.dailySolvedCount || 0}/3 hoy</span>
           </div>
+        </div>
+        <div className="home-today-stats" aria-label="Rachas de desafío diario">
+          <span><small>Racha</small><b>{today.streak || 0}</b><i>días</i></span>
+          <span><small>Mejor</small><b>{today.bestStreak || 0}</b><i>días</i></span>
         </div>
         <div className="home-today-actions">
           <button type="button" className={today.dailySolved ? 'secondary-btn' : 'primary-btn'} onClick={onDailyChallenge}>
             {today.dailyFull ? 'Revisar 3/3' : today.dailySolved ? `Seguir · ${today.dailySolvedCount || 0}/3 →` : 'Jugar ahora →'}
           </button>
-          <details className="home-today-details">
-            <summary>Detalles</summary>
-            <div>
-              <span>Mejor racha <b>{today.bestStreak}</b></span>
-              <span>Última partida <b>{today.lastResult ? `${today.lastResult.label} · ${today.lastResult.modeLabel}` : 'Sin partidas terminadas'}</b></span>
-            </div>
-          </details>
         </div>
       </section>
 

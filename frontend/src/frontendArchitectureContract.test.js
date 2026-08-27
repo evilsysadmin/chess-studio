@@ -35,4 +35,16 @@ describe('frontend architecture contract', () => {
     expect(assistant).toContain('THANK_YOU_PAUSE_MS = 14 * 24 * 60 * 60 * 1000');
     expect(assistant).toContain('onFeedback();');
   });
+
+  it('conserva los anclajes de layout que evitan regresiones visibles en Combat y Home', () => {
+    const battle = read('CombatBattleView.jsx');
+    const menu = read('Menu.jsx');
+    expect(battle).toContain('game-side-music combat-side-music');
+    expect(battle).toContain('<MusicPlayer initiallyCollapsed />');
+    expect(battle).not.toContain('className="game-music-rail"');
+    expect(battle).not.toContain('<MusicPlayer forceExpanded />');
+    expect(menu).toContain('className="home-today-stats"');
+    expect(menu).toContain('<small>Racha</small>');
+    expect(menu).toContain('<small>Mejor</small>');
+  });
 });

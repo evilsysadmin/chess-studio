@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, summarizeObservabilityHealth } from '../observability.js';
+import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, runTempoTraceProbe, summarizeObservabilityHealth } from '../observability.js';
 import { APP_RELEASE } from '../release.js';
 
 function metric(value, suffix = '') {
@@ -27,6 +27,8 @@ function operationalVerdict({ loading, summary, slo, burnRate, runtime }) {
 export default function AdminObservabilitySummary({ token, users = [], currentAdmin = null, onOpen }) {
   const [runtime, setRuntime] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tempoProbe, setTempoProbe] = useState(null);
+  const [tempoProbeBusy, setTempoProbeBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -48,6 +50,15 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
   const grafanaHealthUrl = String(import.meta.env.VITE_GRAFANA_HEALTH_DASHBOARD_URL || '').trim();
   const grafanaLogsUrl = String(import.meta.env.VITE_GRAFANA_LOGS_DASHBOARD_URL || '').trim();
   const grafanaTracesUrl = String(import.meta.env.VITE_GRAFANA_TRACES_DASHBOARD_URL || '').trim();
+  const tracing = runtime?.tracing || null;
+
+  async function handleTempoProbe() {
+    if (tempoProbeBusy) return;
+    setTempoProbeBusy(true);
+    const result = await runTempoTraceProbe({ token });
+    setTempoProbe(result);
+    setTempoProbeBusy(false);
+  }
 
   return (
     <section className={`admin-operational-status is-${verdict.level}`} aria-label="Estado operativo de Chess Studio">
@@ -62,6 +73,30 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
 
       <div className="admin-operational-actions">
         <a className="primary-btn admin-grafana-link" href={grafanaUrl} target="_blank" rel="noreferrer">Abrir Grafana Cloud ↗</a>
+        {(grafanaHealthUrl || grafanaLogsUrl || grafanaTracesUrl) ? (
+          <nav className="admin-grafana-shortcuts" aria-label="Dashboards de Grafana">
+            {grafanaHealthUrl ? <a href={grafanaHealthUrl} target="_blank" rel="noreferrer">Salud ↗</a> : null}
+            {grafanaLogsUrl ? <a href={grafanaLogsUrl} target="_blank" rel="noreferrer">Logs ↗</a> : null}
+            {grafanaTracesUrl ? <a href={grafanaTracesUrl} target="_blank" rel="noreferrer">Trazas ↗</a> : null}
+          </nav>
+        ) : null}
+        <div className="admin-tempo-check" aria-label="Diagnóstico de trazas Tempo">
+          <button type="button" className="secondary-btn" onClick={handleTempoProbe} disabled={tempoProbeBusy}>
+            {tempoProbeBusy ? 'Enviando traza…' : 'Probar Tempo'}
+          </button>
+          <small>
+            {tempoProbe?.ok
+              ? <>Traza enviada · <code>{tempoProbe.traceId}</code></>
+              : tempoProbe
+                ? `No confirmada · ${tempoProbe.reason || 'revisa OTLP'}`
+                : tracing?.configured
+                  ? `OTLP activo · ${tracing.serviceName || 'backend'}`
+                  : tracing?.enabled
+                    ? `OTLP configurado, pero no inicializado${tracing.initializationError ? ` · ${tracing.initializationError}` : ''}`
+                    : 'OTLP/Tempo sin configurar'}
+          </small>
+          {tempoProbe?.ok && grafanaTracesUrl ? <a href={grafanaTracesUrl} target="_blank" rel="noreferrer">Buscar en trazas ↗</a> : null}
+        </div>
         <details className="admin-legacy-observability">
           <summary>Observabilidad legacy</summary>
           <div className="admin-legacy-observability-body">

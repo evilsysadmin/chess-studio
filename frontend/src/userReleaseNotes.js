@@ -6,12 +6,13 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46p',
-    title: 'Campaña con identidad, música con instrumentos y observabilidad recuperada',
+    release: 'v16.6dm46q',
+    title: 'Combat vuelve a su sitio y la operación se deja diagnosticar',
     highlights: [
-      'La campaña adopta la dirección artística del mapa de guerra y mantiene sectores, rutas e inteligencia dinámicos encima de ese lenguaje visual.',
-      'Las guitarras usan ahora una cuerda pulsada dedicada en vez de sonar como otro synth; llegan Smooth Jazz y Tropical House con cuatro pistas nuevas.',
-      'Novedades queda como botón independiente justo debajo de Mi cuenta y el desafío diario gana progreso visible sin ocupar media pantalla.',
+      'El reproductor retro vuelve al rail táctico de Combat y deja de flotar fuera del tablero.',
+      'Abandonar una batalla de campaña conserva la operación y devuelve al briefing del mismo sector para reorganizar o reintentar, manteniendo las bajas.',
+      'Desafío diario aprovecha el ancho con progreso, racha y mejor racha; el catálogo musical se valida dinámicamente y cada pista pasa por Play/Stop en tests.',
+      'Administración puede emitir una traza de prueba hacia Tempo y mostrar su trace ID sin exponer endpoints ni credenciales.',
     ],
   },
   {

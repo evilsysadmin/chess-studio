@@ -24,3 +24,33 @@ def test_specific_trace_endpoint_wins_over_generic_endpoint():
     })
     assert cfg["endpoint"] == "https://tempo.example/v1/traces"
     assert cfg["service_name"] == "chess-studio-prod"
+
+
+def test_tracing_diagnostics_exposes_state_but_never_endpoint_or_headers(monkeypatch):
+    import tracing
+
+    monkeypatch.setattr(tracing, "_CONFIGURED", False)
+    monkeypatch.setattr(tracing, "_LAST_INIT_ERROR", "ExporterBoom")
+    diagnostics = tracing.tracing_diagnostics({
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://secret-tempo.example/otlp",
+        "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic ultra-secret",
+        "OTEL_SERVICE_NAME": "chess-prod",
+    })
+    assert diagnostics["enabled"] is True
+    assert diagnostics["endpointConfigured"] is True
+    assert diagnostics["headersConfigured"] is True
+    assert diagnostics["serviceName"] == "chess-prod"
+    assert diagnostics["initializationError"] == "ExporterBoom"
+    serialized = str(diagnostics)
+    assert "secret-tempo" not in serialized
+    assert "ultra-secret" not in serialized
+
+
+def test_trace_probe_fails_open_when_tracing_is_not_initialized(monkeypatch):
+    import tracing
+
+    monkeypatch.setattr(tracing, "_CONFIGURED", False)
+    monkeypatch.setattr(tracing, "_PROVIDER", None)
+    result = tracing.emit_trace_probe()
+    assert result["ok"] is False
+    assert result["reason"] == "tracing_not_configured"

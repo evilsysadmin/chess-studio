@@ -1,11 +1,11 @@
-### v16.6dm46p · Campaña viva, audio con carácter y Grafana/Tempo recuperados
+### v16.6dm46q · Combat recupera su flujo, audio sin números mágicos y Tempo comprobable
 
-- La cartografía de Combat Chess adopta la ilustración de campaña como dirección artística real: terreno, oro/cobre y tipografía táctica por debajo; nodos, rutas, selección, progreso e intel siguen siendo UI dinámica y nunca dependen de texto pintado en la imagen.
-- El motor Web Audio añade cuerda pulsada tipo Karplus-Strong para nylon/jazz/rock, rasgueo escalonado y cuatro pistas nuevas: dos Smooth Jazz y dos Tropical House. El catálogo sube a 77 temas.
-- `Novedades` es un control independiente justo bajo `Mi cuenta`; la tarjeta diaria se compacta y muestra 0/3–3/3 y racha sin desperdiciar el ancho de Home.
-- Se restaura `.github/workflows/grafana-dashboards.yml` con Terraform bajo `infra/grafana/`: salud, logs accionables y trazas Tempo quedan versionados y publicados como dashboards-as-code.
-- El backend exporta trazas FastAPI + HTTPX por OTLP/HTTP a Grafana Cloud cuando `OTEL_EXPORTER_OTLP_ENDPOINT`/headers están configurados; logs y traces comparten `trace_id`. Sin OTLP, tracing es fail-open y la app sigue arrancando.
-- Trivy conserva localmente la DB en `$HOME/.cache/trivy`; GitHub Actions mantiene su caché propia del runner.
+- El mini reproductor de Combat vive dentro del rail táctico derecho y respeta el layout responsive; deja de caer como un elemento auto-colocado fuera de la rejilla.
+- Una retirada de batalla de campaña conserva la operación, el sector seleccionado, la ruta, intel y consecuencias ya sufridas; vuelve al briefing del mismo objetivo para reorganizar o reintentar. La transición tolera también la ventana `battle -> fighting`.
+- La tarjeta de Desafío diario usa el ancho para progreso 0/3–3/3, racha y mejor racha, con una sola acción principal y composición compacta en escritorio/móvil.
+- El catálogo musical deja de tener un cardinal hardcodeado en tests: todas las opciones deben ser únicas, resolubles, con duración válida y capaces de recorrer Play/Stop sin excepción. Smooth Jazz y Tropical House se protegen como familias de producto.
+- Admin añade **Probar Tempo**: emite una traza sintética deliberadamente muestreada, fuerza flush OTLP y devuelve un `traceId` buscable en Grafana. Los diagnósticos sólo exponen booleanos/configuración segura, nunca URL ni headers OTLP.
+- Se mantienen la cartografía artística dinámica, Grafana/Terraform restaurado y el cache local de Trivy en `$HOME/.cache/trivy`.
 
 ### v16.6dm46o · Estado operativo, logging accionable y mapa de campaña con identidad
 

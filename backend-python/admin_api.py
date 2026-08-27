@@ -35,6 +35,7 @@ from client_telemetry import get_client_telemetry
 from deployment_annotations import ensure_current_deployment_annotation, list_deployment_annotations
 from shadow_evaluation import get_shadow_metrics
 from release_info import backend_release
+from tracing import emit_trace_probe, tracing_diagnostics
 
 
 def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRouter:
@@ -99,8 +100,16 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             "frontend": get_client_telemetry(),
             "deployments": await list_deployment_annotations(),
             "shadow": get_shadow_metrics(),
+            "tracing": tracing_diagnostics(),
             "backendRelease": backend_release(),
         }
+
+
+    @router.post("/api/admin/observability/trace-probe")
+    async def admin_trace_probe(username: str = Depends(admin_dependency)):
+        # Diagnostic only: emits one synthetic span and never exposes OTLP
+        # endpoint/header values. A failed exporter remains fail-open.
+        return emit_trace_probe()
 
 
     @router.get("/api/admin/feedback")

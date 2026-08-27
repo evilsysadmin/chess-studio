@@ -22,6 +22,21 @@ export async function fetchAdminObservability({ token, from = null, to = null, f
   }
 }
 
+export async function runTempoTraceProbe({ token, fetchImpl = fetch } = {}) {
+  if (!token) return { ok: false, reason: 'missing_token' };
+  try {
+    const response = await fetchImpl(`${apiBase()}/admin/observability/trace-probe`, {
+      method: 'POST',
+      headers: withRequestId({ Authorization: `Bearer ${token}` }),
+    });
+    if (!response.ok) return { ok: false, reason: `http_${response.status}` };
+    const body = await response.json();
+    return body && typeof body === 'object' ? body : { ok: false, reason: 'invalid_response' };
+  } catch {
+    return { ok: false, reason: 'network_error' };
+  }
+}
+
 export function observabilityRangeForPreset(preset = '24h', customFrom = '', customTo = '', now = new Date()) {
   const end = new Date(now);
   if (Number.isNaN(end.getTime())) return { from: null, to: null };

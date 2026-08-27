@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
+import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, formatDuration, observabilityRangeForPreset, observabilitySampleQuality, runTempoTraceProbe, summarizeAdminUsers, summarizeObservabilityHealth } from './observability.js';
 
 describe('admin observability helpers', () => {
   it('no consulta sin JWT y acepta sólo payload técnico', async () => {
@@ -15,6 +15,19 @@ describe('admin observability helpers', () => {
     expect(options.headers['X-Client-Release']).toBeTruthy();
     expect(url).toContain('from_time=2026-08-20T00%3A00%3A00Z');
     expect(url).toContain('to_time=2026-08-21T00%3A00%3A00Z');
+  });
+
+  it('el probe de Tempo exige JWT y devuelve el trace id técnico sin inventarlo', async () => {
+    const fetchImpl = vi.fn();
+    expect(await runTempoTraceProbe({ fetchImpl })).toEqual({ ok: false, reason: 'missing_token' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    const okFetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, traceId: 'abc123', sampled: true, flushed: true }) }));
+    expect(await runTempoTraceProbe({ token: 'jwt', fetchImpl: okFetch })).toMatchObject({ ok: true, traceId: 'abc123' });
+    const [url, options] = okFetch.mock.calls[0];
+    expect(url).toContain('/admin/observability/trace-probe');
+    expect(options.method).toBe('POST');
+    expect(options.headers.Authorization).toBe('Bearer jwt');
   });
 
   it('resuelve presets y fechas personalizadas a un rango real', () => {

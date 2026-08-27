@@ -409,6 +409,24 @@ function markNodeCleared(state, extras = {}) {
   });
 }
 
+export function markCampaignBattleRetired(state) {
+  if (!state?.active || !state.selectedNodeId || !['battle', 'fighting'].includes(state.phase)) return state;
+  const node = campaignNode(state);
+  // La retirada debe conservar la operación incluso si el navegador entrega el
+  // callback justo entre las transiciones battle -> fighting. Validar el tipo
+  // de nodo aquí sólo haría posible caer en el falso estado "interrumpida" al
+  // haber borrado ya el snapshot de la batalla. El selectedNodeId es la fuente
+  // de verdad suficiente para volver al briefing del mismo sector.
+  return saveCampaign({
+    ...state,
+    phase: 'briefing',
+    eventLog: [
+      ...(state.eventLog || []),
+      `Retirada táctica en ${node?.label || state.selectedNodeId}: el sector sigue pendiente y puede reintentarse`,
+    ].slice(-30),
+  });
+}
+
 export function markCampaignBattleWon(state) {
   const node = campaignNode(state);
   if (!state?.active || state.phase !== 'fighting' || !node) return state;

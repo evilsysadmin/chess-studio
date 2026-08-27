@@ -1,4 +1,4 @@
-const CACHE = 'chess-studio-shell-v16.6dm46p';
+const CACHE = 'chess-studio-shell-v16.6dm46q';
 const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './favicon-32.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {

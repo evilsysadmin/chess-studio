@@ -6,6 +6,7 @@ import {
   selectCampaignNode,
   markCampaignBriefingAccepted,
   markCampaignBattleStarted,
+  markCampaignBattleRetired,
   markCampaignBattleWon,
   campaignRewardOptions,
   chooseCampaignReward,
@@ -58,6 +59,37 @@ describe('Combat Chess campaign map', () => {
     run = chooseCampaignReward(run, perk.id);
     expect(run.phase).toBe('map');
     expect(run.perks).toContain(perk.id);
+  });
+
+  it('una retirada táctica conserva la campaña y devuelve el mismo sector al briefing', () => {
+    let run = startCampaign('retirada-tactica');
+    const first = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, first.id);
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    expect(run.phase).toBe('fighting');
+
+    const retired = markCampaignBattleRetired(run);
+    expect(retired.active).toBe(true);
+    expect(retired.phase).toBe('briefing');
+    expect(retired.selectedNodeId).toBe(first.id);
+    expect(retired.clearedNodeIds).not.toContain(first.id);
+    expect(retired.route).toEqual(run.route);
+    expect(retired.eventLog.at(-1)).toMatch(/Retirada táctica/);
+    expect(loadCampaign()).toEqual(retired);
+  });
+
+  it('tolera retirada en la ventana battle -> fighting sin declarar operación interrumpida', () => {
+    let run = startCampaign('retirada-race');
+    const first = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, first.id);
+    run = markCampaignBriefingAccepted(run);
+    expect(run.phase).toBe('battle');
+
+    const retired = markCampaignBattleRetired(run);
+    expect(retired.active).toBe(true);
+    expect(retired.phase).toBe('briefing');
+    expect(retired.selectedNodeId).toBe(first.id);
   });
 
   it('evento recon acumula inteligencia y la aplica a la siguiente batalla', () => {

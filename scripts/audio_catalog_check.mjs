@@ -26,6 +26,8 @@ const {
   isAmbientFavorite,
   isAmbientExcluded,
   pickRandomAmbientThemeId,
+  getAmbientThemeId,
+  setAmbientTheme,
   setAmbientRadioMode,
   toggleAmbientFavorite,
   toggleAmbientExcluded,
@@ -35,7 +37,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-assert(AMBIENT_THEME_OPTIONS.length === 77, `catálogo inesperado: ${AMBIENT_THEME_OPTIONS.length} temas`);
+assert(AMBIENT_THEME_OPTIONS.length > 0, 'el catálogo musical seleccionable está vacío');
 const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
 assert(new Set(ids).size === ids.length, 'hay IDs musicales duplicados');
 
@@ -43,22 +45,28 @@ const grouped = AMBIENT_THEME_GROUPS.flatMap((group) => group.themes);
 assert(grouped.length === AMBIENT_THEME_OPTIONS.length, 'los grupos no contienen todo el catálogo');
 assert(new Set(grouped.map((theme) => theme.id)).size === ids.length, 'un tema aparece en más de un grupo o falta otro');
 
-const expectedGenres = new Map([
-  ['SPA / Zen', 2],
-  ['Smooth Jazz', 2],
-  ['Tropical House', 2],
-  ['Ecléctica', 3],
-  ['Energía', 5],
-  ['Lo-Fi / Chill', 2],
-  ['Trip-Hop / Downtempo', 2],
-  ['Bossa / Latin Lounge', 2],
-  ['Piano / Minimal', 2],
-]);
-for (const [genre, expected] of expectedGenres) {
-  const group = AMBIENT_THEME_GROUPS.find((row) => row.genre === genre);
-  assert(group?.themes.length === expected, `${genre}: esperaba ${expected}, hay ${group?.themes.length ?? 0}`);
+assert(new Set(AMBIENT_THEME_GROUPS.map((group) => group.genre)).size === AMBIENT_THEME_GROUPS.length, 'hay estilos duplicados');
+assert(AMBIENT_THEME_GROUPS.every((group) => group.themes.length > 0), 'hay un estilo vacío publicado');
+for (const genre of ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Ecléctica', 'Energía', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Clásica']) {
+  assert(AMBIENT_THEME_GROUPS.some((row) => row.genre === genre), `falta la familia musical ${genre}`);
 }
-assert((AMBIENT_THEME_GROUPS.find((row) => row.genre === 'Clásica')?.themes.length || 0) >= 3, 'faltan temas clásicos');
+for (const option of AMBIENT_THEME_OPTIONS) {
+  const definition = AMBIENT_THEMES[option.id];
+  assert(definition, `${option.id}: la opción publicada no tiene definición de audio`);
+  assert(typeof option.label === 'string' && option.label.trim(), `${option.id}: label vacío`);
+  assert(typeof option.genre === 'string' && option.genre.trim(), `${option.id}: género vacío`);
+  assert(setAmbientTheme(option.id) === option.id, `${option.id}: el reproductor no puede seleccionar la pista`);
+  assert(getAmbientThemeId() === option.id, `${option.id}: la pista seleccionada no puede recuperarse`);
+  if (definition.engine === 'structured') {
+    assert(Number.isFinite(definition.stepMs) && definition.stepMs > 0, `${option.id}: stepMs inválido`);
+    assert(Number.isInteger(definition.stepsPerSection) && definition.stepsPerSection > 0, `${option.id}: stepsPerSection inválido`);
+    assert(Array.isArray(definition.sections) && definition.sections.length > 0, `${option.id}: no tiene secciones reproducibles`);
+    assert(definition.leadInstrument, `${option.id}: falta instrumento principal`);
+    assert(definition.chordInstrument, `${option.id}: falta instrumento armónico`);
+    assert(definition.bassInstrument, `${option.id}: falta instrumento de bajo`);
+  }
+}
+
 const curatedHidden = ['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault'];
 assert(curatedHidden.every((id) => !ids.includes(id)), 'han reaparecido temas experimentales retirados');
 assert(!AMBIENT_THEME_GROUPS.some((group) => group.genre === 'Dark Ambient'), 'Dark Ambient debería quedar fuera del catálogo curado');

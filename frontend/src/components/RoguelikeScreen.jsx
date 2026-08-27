@@ -36,6 +36,7 @@ import {
   availableCampaignNodes,
   selectCampaignNode,
   markCampaignBattleStarted,
+  markCampaignBattleRetired,
   markCampaignBattleWon,
   campaignRewardOptions,
   chooseCampaignReward,
@@ -274,7 +275,14 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       setCampaignBestStage(loadCampaignBestStage());
       return;
     }
-    finishCampaign(outcome === 'retired' ? 'retired' : 'over');
+    if (outcome === 'retired') {
+      // Retirarse de una batalla no equivale a abandonar la operación. Las
+      // bajas ya quedaron persistidas por CombatScreen, pero el mismo sector
+      // vuelve a briefing para poder reorganizar, comprar intel y reintentar.
+      setCampaign((current) => markCampaignBattleRetired(current));
+      return;
+    }
+    finishCampaign('over');
   }
 
   function handleCampaignReward(perkId) {

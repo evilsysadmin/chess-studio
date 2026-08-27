@@ -30,10 +30,6 @@ export default function CombatBattleView({
           )}
 
           <div className="board-live-row combat-board-live-row">
-            <aside className="game-music-rail" aria-label="Música de la batalla">
-              <MusicPlayer forceExpanded />
-            </aside>
-
             <div className="game-board-stack">
               <Board
                 fen={fen}
@@ -51,7 +47,10 @@ export default function CombatBattleView({
               />
             </div>
 
-            <aside className="game-side-column combat-game-side-column" aria-label="Registro de batalla y estado táctico">
+            <aside className="game-side-column combat-game-side-column" aria-label="Registro de batalla, música y estado táctico">
+              <div className="game-side-music combat-side-music" aria-label="Música de la batalla">
+                <MusicPlayer initiallyCollapsed />
+              </div>
               <section className="notation-panel combat-tactical-panel">
                 <header className="combat-tactical-heading">
                   <span className="game-chat-kicker">COMBAT CHESS</span>

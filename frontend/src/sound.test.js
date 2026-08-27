@@ -39,68 +39,49 @@ describe('ambient music catalog', () => {
     expect(getAmbientRadioMode()).toBe('genre:Clásica');
   });
 
-  it('expone setenta y tres temas seleccionables tras curar los experimentales', () => {
-    expect(AMBIENT_THEME_OPTIONS).toHaveLength(73);
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Relojería');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Gambito del rey');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Vals del zugzwang');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Blues del alfil');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Biblioteca bajo nieve');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Búnker analógico');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Réquiem para una dama');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Mercancías 04:12');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Final de madrugada');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tango del rey');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Alejandría 02:41');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cairo 00:47');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Beirut 01:13');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Beirut · puerto 23:40');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cairo · Blue Note 02:11');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Alejandría · café del puerto');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Córdoba · azotea 00:26');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Damasco · patio 01:44');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tánger · tren nocturno 00:58');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Granada · lluvia de cobre 02:32');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Amán · última mesa 03:03');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Damasco · hora azul');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Estambul 03:26');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tánger · humo');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Bósforo bajo la lluvia');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Beirut rooftop 04:12');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Casablanca · Last Call');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cairo · Quiet Hours');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Nilo · balcón 01:52');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Alepo · después de la lluvia');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Amán · habitación de terciopelo');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Medina · humo azul');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cairo · farol rojo 01:37');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Beirut · taxi nocturno 02:18');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Tánger · mesa roja');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Estambul · tavla 03:08');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Costa andalusí · tarde clara');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Granada · patio encendido');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cádiz · faroles al viento');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Luciérnagas en la terraza');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Café · luces pequeñas');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Málaga · último tranvía');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('SPA · niebla de cedro');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Onsen · agua de luna');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Post-rock · medianoche');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Rock · garaje de la torre');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Rock · carretera del desierto');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Adagio del final');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Fuga del caballo');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Cuarteto nocturno');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Lo-fi · lluvia en cassette');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Lo-fi · ventana encendida');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Outrun · caballo de neón');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Boombox · arcade 02:17');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · lluvia sobre hormigón');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Trip-hop · estática de terciopelo');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Bossa · dama en la terraza');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Havana · 02:05');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Minimal · cuatro casillas');
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.label)).toContain('Piano · lluvia vertical');
+  it('valida dinámicamente todo el catálogo seleccionable y puede resolver cada pista', () => {
+    expect(AMBIENT_THEME_OPTIONS.length).toBeGreaterThan(0);
+
+    const ids = AMBIENT_THEME_OPTIONS.map((theme) => theme.id);
+    const labels = AMBIENT_THEME_OPTIONS.map((theme) => theme.label);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(new Set(labels).size).toBe(labels.length);
+
+    for (const theme of AMBIENT_THEME_OPTIONS) {
+      expect(theme.id).toEqual(expect.any(String));
+      expect(theme.id.trim()).not.toBe('');
+      expect(theme.label).toEqual(expect.any(String));
+      expect(theme.label.trim()).not.toBe('');
+      expect(theme.genre).toEqual(expect.any(String));
+      expect(theme.genre.trim()).not.toBe('');
+
+      // Esto recorre el mismo camino de selección que usa el reproductor. Si
+      // una opción apunta a un id inexistente/oculto o deja de poder resolverse,
+      // el test falla sin mantener un número mágico de pistas.
+      expect(setAmbientTheme(theme.id)).toBe(theme.id);
+      expect(getAmbientThemeId()).toBe(theme.id);
+      expect(getAmbientTrackDurationMs(theme.id)).toBeGreaterThan(0);
+      // Smoke real del transporte: cada pista debe poder entrar por el mismo
+      // camino de Play que usa el mini-reproductor y detenerse sin excepción.
+      startAmbientMusic();
+      expect(getAmbientPlaybackState().status).toBe('playing');
+      expect(getAmbientPlaybackState().themeId).toBe(theme.id);
+      stopAmbientMusic();
+      expect(getAmbientPlaybackState().status).toBe('stopped');
+
+      if (theme.id !== 'andalus') {
+        const profile = getAmbientThemeSoundProfile(theme.id);
+        expect(profile).toBeTruthy();
+        expect(profile.leadInstrument).toBeTruthy();
+        expect(profile.chordInstrument).toBeTruthy();
+        expect(profile.bassInstrument).toBeTruthy();
+      }
+    }
+
+    // Protegemos las familias añadidas por producto, no un cardinal que cambia
+    // legítimamente cada vez que entra una canción nueva.
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Smooth Jazz')?.themes.length).toBeGreaterThanOrEqual(2);
+    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Tropical House')?.themes.length).toBeGreaterThanOrEqual(2);
   });
 
   it('expulsa de una sesión antigua los temas retirados de la curación', () => {
@@ -112,20 +93,24 @@ describe('ambient music catalog', () => {
     expect(setAmbientTheme('redVault')).not.toBe('redVault');
   });
 
-  it('agrupa el catálogo por estilo sin perder pistas', () => {
-    expect(AMBIENT_THEME_GROUPS.flatMap((group) => group.themes)).toHaveLength(AMBIENT_THEME_OPTIONS.length);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'SPA / Zen')?.themes).toHaveLength(2);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Ecléctica')?.themes).toHaveLength(3);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Energía')?.themes).toHaveLength(5);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Lo-Fi / Chill')?.themes).toHaveLength(2);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Trip-Hop / Downtempo')?.themes).toHaveLength(2);
+  it('agrupa dinámicamente el catálogo por estilo sin perder ni duplicar pistas', () => {
+    const grouped = AMBIENT_THEME_GROUPS.flatMap((group) => group.themes);
+    expect(grouped).toHaveLength(AMBIENT_THEME_OPTIONS.length);
+    expect(new Set(grouped.map((theme) => theme.id)).size).toBe(AMBIENT_THEME_OPTIONS.length);
+    expect(new Set(AMBIENT_THEME_GROUPS.map((group) => group.genre)).size).toBe(AMBIENT_THEME_GROUPS.length);
+    expect(AMBIENT_THEME_GROUPS.every((group) => group.themes.length > 0)).toBe(true);
+
+    const byId = new Map(AMBIENT_THEME_OPTIONS.map((theme) => [theme.id, theme]));
+    expect(byId.get('endgameAdagio')?.genre).toBe('Clásica');
+    expect(byId.get('midnightSatin')?.genre).toBe('Smooth Jazz');
+    expect(byId.get('palmsAtDusk')?.genre).toBe('Tropical House');
+    expect(byId.get('bossaQueen')?.genre).toBe('Bossa / Latin Lounge');
+    expect(byId.get('lofiRainCassette')?.genre).toBe('Lo-Fi / Chill');
+
+    expect(AMBIENT_THEME_OPTIONS.map((x) => x.id)).not.toEqual(expect.arrayContaining([
+      'orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault',
+    ]));
     expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Dark Ambient')).toBeUndefined();
-    expect(AMBIENT_THEME_OPTIONS.map((x) => x.id)).not.toEqual(expect.arrayContaining(['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault']));
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Bossa / Latin Lounge')?.themes).toHaveLength(2);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Piano / Minimal')?.themes).toHaveLength(2);
-    expect(AMBIENT_THEME_GROUPS.find((group) => group.genre === 'Clásica')?.themes.map((x) => x.id)).toEqual(
-      expect.arrayContaining(['endgameAdagio', 'knightFugue', 'nocturnalQuartet']),
-    );
   });
 
 
