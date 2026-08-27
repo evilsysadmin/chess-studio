@@ -1,3 +1,4 @@
+import { historyMoverColor } from './historyTimeline.js';
 import { isStatisticalHistoryRecord } from './gameHistory.js';
 // insights.js — Estadísticas agregadas ("así juegas"), calculadas al
 // instante a partir de lo que ya está guardado (historial de partidas, de
@@ -97,7 +98,7 @@ function humanCaptures(gameHistory, combatHistory) {
   let count = 0;
   for (const g of gameHistory) {
     (g.moves || []).forEach((m, i) => {
-      const mover = i % 2 === 0 ? 'w' : 'b';
+      const mover = historyMoverColor(i, g.initialFen);
       if (mover === g.humanColor && m.captured) count += 1;
     });
   }

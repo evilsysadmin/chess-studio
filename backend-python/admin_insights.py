@@ -11,6 +11,17 @@ import math
 from datetime import datetime, timezone
 from typing import Optional
 
+def _history_mover_color(record: dict, index: int) -> str:
+    """Derive mover colour from the saved starting FEN, including black-to-move labs."""
+    start = "w"
+    fen = record.get("initialFen") if isinstance(record, dict) else None
+    if isinstance(fen, str):
+        parts = fen.strip().split()
+        if len(parts) >= 2 and parts[1] in {"w", "b"}:
+            start = parts[1]
+    return start if max(0, int(index)) % 2 == 0 else ("b" if start == "w" else "w")
+
+
 def _profile_json(data: dict, key: str, default):
     raw = data.get(key)
     if not isinstance(raw, str):
@@ -175,7 +186,7 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         for index, move in enumerate(record.get("moves") or []):
             if not isinstance(move, dict):
                 continue
-            mover = "w" if index % 2 == 0 else "b"
+            mover = _history_mover_color(record, index)
             if not move.get("captured"):
                 continue
             captured_piece = move.get("capturedPiece") or move.get("captured")

@@ -102,6 +102,10 @@ describe('personal puzzles', () => {
     };
     expect(saveGeneratedPersonalPuzzles([generated]).added).toBe(1);
     expect(saveGeneratedPersonalPuzzles([generated]).added).toBe(0);
+
+    const broken = { ...generated, id: 'broken-ai', fen: 'esto no es un fen', solution: ['Qh7#'] };
+    expect(saveGeneratedPersonalPuzzles([broken]).added).toBe(0);
+    expect(loadPersonalPuzzles().some((puzzle) => puzzle.id === 'broken-ai')).toBe(false);
     expect(loadPersonalPuzzles()).toHaveLength(1);
     expect(loadPersonalPuzzles()[0]).toMatchObject({ source: 'workers-ai-validated', title: 'Centro o funeral' });
   });

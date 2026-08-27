@@ -1,13 +1,18 @@
+import { fetchWithTimeout } from './asyncControl.js';
+
+const AI_METRICS_TIMEOUT_MS = 12000;
+
 function apiBase() {
   return String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 }
 
-export async function fetchAiNarrativeMetrics({ token, fetchImpl = fetch } = {}) {
+export async function fetchAiNarrativeMetrics({ token, fetchImpl = fetch, signal } = {}) {
   if (!token) return null;
   try {
-    const response = await fetchImpl(`${apiBase()}/admin/ai-metrics`, {
+    const response = await fetchWithTimeout(fetchImpl, `${apiBase()}/admin/ai-metrics`, {
       headers: { Authorization: `Bearer ${token}` },
-    });
+      signal,
+    }, AI_METRICS_TIMEOUT_MS);
     if (!response.ok) return null;
     const body = await response.json();
     if (!body || typeof body !== 'object') return null;

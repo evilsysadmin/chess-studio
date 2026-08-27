@@ -8,43 +8,47 @@ export const api = {
   getFeatures() {
     return requestJson(`${BASE_URL}/features`, { headers: { ...authHeader() } });
   },
-  createGame(difficulty, color = 'w', handicap = null, startingFen = null, ghostStyle = null) {
+  createGame(difficulty, color = 'w', handicap = null, startingFen = null, ghostStyle = null, { signal } = {}) {
     return requestJson(`${BASE_URL}/games`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ difficulty, color, handicap, startingFen, ghostStyle }),
+      signal,
     });
   },
-  getGame(id) {
-    return requestJson(`${BASE_URL}/games/${id}`, { headers: { ...authHeader() } });
+  getGame(id, { signal } = {}) {
+    return requestJson(`${BASE_URL}/games/${id}`, { headers: { ...authHeader() }, signal });
   },
-  getHint(id) {
-    return requestJson(`${BASE_URL}/games/${id}/hint`, { headers: { ...authHeader() } });
+  getHint(id, { signal } = {}) {
+    return requestJson(`${BASE_URL}/games/${id}/hint`, { headers: { ...authHeader() }, signal });
   },
-  undoMove(id) {
-    return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...authHeader() } });
+  undoMove(id, { signal } = {}) {
+    return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...authHeader() }, signal });
   },
-  analyzePosition(fen, level) {
+  analyzePosition(fen, level, { signal } = {}) {
     return requestJson(`${BASE_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ fen, level }),
       timeoutMs: 8000,
+      signal,
     });
   },
-  analyzeMove(fen, from, to, promotion, level) {
+  analyzeMove(fen, from, to, promotion, level, { signal } = {}) {
     return requestJson(`${BASE_URL}/analyze-move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ fen, from, to, promotion, level }),
       timeoutMs: 8000,
+      signal,
     });
   },
-  playMove(id, from, to, promotion) {
+  playMove(id, from, to, promotion, { signal } = {}) {
     return requestJson(`${BASE_URL}/games/${id}/move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ from, to, promotion }),
+      signal,
     });
   },
   deleteGame(id) {

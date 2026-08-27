@@ -106,8 +106,8 @@ function squareDistance(from, to) {
 }
 
 function rookVirtualFen(fen, from, color) {
-  const chess = new Chess();
-  chess.load(fen);
+  let chess;
+  try { chess = new Chess(fen); } catch { return null; }
   const actual = chess.get(from);
   if (!actual || actual.color !== color) return null;
   chess.remove(from);
@@ -116,8 +116,8 @@ function rookVirtualFen(fen, from, color) {
 }
 
 function restoreAttackerTypeInFen(fen, square, attacker) {
-  const chess = new Chess();
-  chess.load(fen);
+  let chess;
+  try { chess = new Chess(fen); } catch { return null; }
   const current = chess.get(square);
   if (!current || current.color !== attacker.color) return fen;
   chess.remove(square);
@@ -130,15 +130,15 @@ export function techniqueTargetsFor(fen, registry, from) {
   const technique = techniqueById(attacker?.equippedTechnique);
   if (!attacker || !technique || attacker.techniqueUsed || !Array.isArray(attacker.unlockedTechniques) || !attacker.unlockedTechniques.includes(technique.id) || !technique.originTypes.includes(originalTypeForPiece(attacker))) return [];
 
-  const chess = new Chess();
-  chess.load(fen);
+  let chess;
+  try { chess = new Chess(fen); } catch { return []; }
   if (chess.turn() !== attacker.color || chess.inCheck()) return [];
 
   if (technique.id !== 'line_fire') return [];
   const virtualFen = rookVirtualFen(fen, from, attacker.color);
   if (!virtualFen) return [];
-  const virtual = new Chess();
-  virtual.load(virtualFen);
+  let virtual;
+  try { virtual = new Chess(virtualFen); } catch { return []; }
 
   return virtual.moves({ square: from, verbose: true })
     .filter((move) => move.captured && squareDistance(from, move.to) <= technique.maxRange)
@@ -185,13 +185,14 @@ export function resolveTechniqueAttack({ fen, registry, from, to, focusStreak = 
   let resolved = result;
   let occupiedSquare = resolved.hit === false ? from : to;
   let restoredFen = restoreAttackerTypeInFen(resolved.fen, occupiedSquare, attacker);
+  if (!restoredFen) return null;
 
   // Igual que el motor normal, no permitimos que un fallo cree por turno nulo
   // un mate/ahogado fantasma. La comprobación se hace DESPUÉS de restaurar la
   // clase real, no con la torre virtual usada para validar la trayectoria.
   if (resolved.hit === false) {
-    const afterMiss = new Chess();
-    afterMiss.load(restoredFen);
+    let afterMiss;
+    try { afterMiss = new Chess(restoredFen); } catch { return null; }
     if (afterMiss.moves().length === 0) {
       resolved = resolveCombatMove({
         fen: virtualFen,
@@ -206,6 +207,7 @@ export function resolveTechniqueAttack({ fen, registry, from, to, focusStreak = 
       if (!resolved) return null;
       occupiedSquare = to;
       restoredFen = restoreAttackerTypeInFen(resolved.fen, occupiedSquare, attacker);
+      if (!restoredFen) return null;
     }
   }
 

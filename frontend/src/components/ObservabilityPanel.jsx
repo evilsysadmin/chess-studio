@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { aiNarrativeStatus, fetchAiNarrativeMetrics, formatAiMetric } from '../aiMetrics.js';
 import {
   burnRateForSlo,
@@ -339,18 +339,37 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSummaryStatus, setAiSummaryStatus] = useState('idle');
   const userSummary = useMemo(() => summarizeAdminUsers(users, currentAdmin), [users, currentAdmin]);
+  const metricsRequestRef = useRef({ seq: 0, controller: null });
+  const summaryRequestSeqRef = useRef(0);
 
   async function loadMetrics({ silent = false, activeCheck = () => true } = {}) {
     if (!silent) setLoading(true);
     const rangeRequest = observabilityRangeForPreset(rangePreset, customFrom, customTo);
-    const [runtimeResult, aiResult] = await Promise.all([
-      fetchAdminObservability({ token, from: rangeRequest.from, to: rangeRequest.to }),
-      fetchAiNarrativeMetrics({ token }),
-    ]);
-    if (!activeCheck()) return;
-    setRuntime(runtimeResult);
-    setAi(aiResult);
-    setLoading(false);
+    const seq = metricsRequestRef.current.seq + 1;
+    metricsRequestRef.current.controller?.abort(new DOMException('Superseded observability refresh', 'AbortError'));
+    const controller = new AbortController();
+    metricsRequestRef.current = { seq, controller };
+    try {
+      const [runtimeResult, aiResult] = await Promise.all([
+        fetchAdminObservability({ token, from: rangeRequest.from, to: rangeRequest.to, signal: controller.signal }),
+        fetchAiNarrativeMetrics({ token, signal: controller.signal }),
+      ]);
+      if (!activeCheck() || controller.signal.aborted || metricsRequestRef.current.seq !== seq) return;
+      setRuntime(runtimeResult);
+      setAi(aiResult);
+    } catch {
+      // Los adaptadores normalmente degradan a null, pero un fallo inesperado
+      // tampoco puede dejar Observabilidad eternamente en "Cargando" ni una
+      // respuesta vieja puede pisar el rango recién seleccionado.
+      if (!activeCheck() || controller.signal.aborted || metricsRequestRef.current.seq !== seq) return;
+      setRuntime(null);
+      setAi(null);
+    } finally {
+      if (metricsRequestRef.current.seq === seq) {
+        metricsRequestRef.current = { seq, controller: null };
+        if (activeCheck() && !silent) setLoading(false);
+      }
+    }
   }
 
   function refresh({ silent = false } = {}) {
@@ -365,13 +384,17 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
     if (!runtime || aiSummaryStatus === 'loading') return;
     const dossier = buildObservabilitySummaryDossier({ runtime, ai, rangeLabel: RANGE_LABELS[rangePreset] || 'rango' });
     if (!dossier) return;
+    const seq = summaryRequestSeqRef.current + 1;
+    summaryRequestSeqRef.current = seq;
     setAiSummaryStatus('loading');
     const text = await requestRemoteNarrative(dossier, { token, timeoutMs: 8000 });
+    if (summaryRequestSeqRef.current !== seq) return;
     setAiSummary(text || null);
     setAiSummaryStatus(text ? 'done' : 'unavailable');
   }
 
   useEffect(() => {
+    summaryRequestSeqRef.current += 1;
     setAiSummary(null);
     setAiSummaryStatus('idle');
     let active = true;
@@ -379,6 +402,12 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
     void loadMetrics({ silent: false, activeCheck });
     return () => { active = false; };
   }, [token, rangePreset, customFrom, customTo]);
+
+  useEffect(() => () => {
+    summaryRequestSeqRef.current += 1;
+    metricsRequestRef.current.controller?.abort(new DOMException('Observability unmounted', 'AbortError'));
+    metricsRequestRef.current.controller = null;
+  }, []);
 
   useEffect(() => {
     if (!autoRefreshEnabled) return undefined;

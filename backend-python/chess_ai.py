@@ -615,6 +615,7 @@ def move_to_dict(board: chess.Board, move: chess.Move) -> dict:
         "to": chess.square_name(move.to_square),
         "san": san,
         "piece": chess.piece_symbol(piece.piece_type) if piece else None,
+        "promotion": chess.piece_symbol(move.promotion) if move.promotion else None,
         "captured": board.is_capture(move),
     }
 

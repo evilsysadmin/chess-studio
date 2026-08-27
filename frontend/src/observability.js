@@ -1,23 +1,18 @@
 import { withRequestId } from './requestId.js';
+import { fetchWithTimeout } from './asyncControl.js';
 
 
 const OBSERVABILITY_TIMEOUT_MS = 12000;
 
 async function observabilityFetch(fetchImpl, url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), OBSERVABILITY_TIMEOUT_MS);
-  try {
-    return await fetchImpl(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchWithTimeout(fetchImpl, url, options, OBSERVABILITY_TIMEOUT_MS);
 }
 
 function apiBase() {
   return String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 }
 
-export async function fetchAdminObservability({ token, from = null, to = null, fetchImpl = fetch } = {}) {
+export async function fetchAdminObservability({ token, from = null, to = null, fetchImpl = fetch, signal } = {}) {
   if (!token) return null;
   try {
     const params = new URLSearchParams();
@@ -26,6 +21,7 @@ export async function fetchAdminObservability({ token, from = null, to = null, f
     const suffix = params.size ? `?${params.toString()}` : '';
     const response = await observabilityFetch(fetchImpl, `${apiBase()}/admin/observability${suffix}`, {
       headers: withRequestId({ Authorization: `Bearer ${token}` }),
+      signal,
     });
     if (!response.ok) return null;
     const body = await response.json();
@@ -35,12 +31,13 @@ export async function fetchAdminObservability({ token, from = null, to = null, f
   }
 }
 
-export async function runObservabilityProbe({ token, fetchImpl = fetch } = {}) {
+export async function runObservabilityProbe({ token, fetchImpl = fetch, signal } = {}) {
   if (!token) return { ok: false, reason: 'missing_token' };
   try {
     const response = await observabilityFetch(fetchImpl, `${apiBase()}/admin/observability/probe`, {
       method: 'POST',
       headers: withRequestId({ Authorization: `Bearer ${token}` }),
+      signal,
     });
     if (!response.ok) return { ok: false, reason: `http_${response.status}` };
     const body = await response.json();
@@ -50,12 +47,13 @@ export async function runObservabilityProbe({ token, fetchImpl = fetch } = {}) {
   }
 }
 
-export async function runTempoTraceProbe({ token, fetchImpl = fetch } = {}) {
+export async function runTempoTraceProbe({ token, fetchImpl = fetch, signal } = {}) {
   if (!token) return { ok: false, reason: 'missing_token' };
   try {
     const response = await observabilityFetch(fetchImpl, `${apiBase()}/admin/observability/trace-probe`, {
       method: 'POST',
       headers: withRequestId({ Authorization: `Bearer ${token}` }),
+      signal,
     });
     if (!response.ok) return { ok: false, reason: `http_${response.status}` };
     const body = await response.json();

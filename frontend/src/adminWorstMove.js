@@ -64,7 +64,7 @@ export function buildWorstMoveAutopsy(payload, worstMove) {
   if (fenBefore && worstMove.suggestedFrom && worstMove.suggestedTo) {
     try {
       const best = new Chess(fenBefore);
-      const result = best.move({ from: worstMove.suggestedFrom, to: worstMove.suggestedTo, promotion: 'q' });
+      const result = best.move({ from: worstMove.suggestedFrom, to: worstMove.suggestedTo, promotion: worstMove.suggestedPromotion || 'q' });
       if (result) bestFen = best.fen();
     } catch {
       bestFen = null;
@@ -74,7 +74,7 @@ export function buildWorstMoveAutopsy(payload, worstMove) {
   const moveForDetection = {
     from: worstMove.playedFrom || entry?.from,
     to: worstMove.playedTo || entry?.to,
-    promotion: entry?.promotion,
+    promotion: worstMove.playedPromotion || entry?.promotion,
   };
   const event = fenBefore ? detectNoteworthyMove(fenBefore, moveForDetection) : null;
   const next = moves[index + 1];

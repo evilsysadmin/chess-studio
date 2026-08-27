@@ -1,4 +1,5 @@
 import { withRequestId } from './requestId.js';
+import { fetchWithTimeout } from './asyncControl.js';
 const DEFAULT_TIMEOUT_MS = 4500;
 const DEFAULT_MIN_PLY_GAP = 2;
 const DEFAULT_MIN_INTERVAL_MS = 2500;
@@ -61,13 +62,10 @@ export async function requestRemoteNarrative(
   if (!token || !dossier || typeof dossier !== 'object') return null;
   if (cooldownGate && typeof cooldownGate.allow === 'function' && !cooldownGate.allow(dossier)) return null;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.max(500, timeoutMs));
   try {
-    const response = await fetchImpl(`${apiBase()}/narrative`, {
+    const response = await fetchWithTimeout(fetchImpl, `${apiBase()}/narrative`, {
       method: 'POST',
       headers: withRequestId({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }),
-      signal: controller.signal,
       body: JSON.stringify({
         eventType: String(dossier.eventType || 'generic').slice(0, 48),
         requestKind: String(dossier.requestKind || 'default').slice(0, 32),
@@ -75,7 +73,7 @@ export async function requestRemoteNarrative(
         tone: String(dossier.tone || 'friendly_sarcastic').slice(0, 32),
         locale: 'es-ES',
       }),
-    });
+    }, Math.max(500, timeoutMs));
     if (!response.ok) return null;
     const body = await response.json();
     // El frontend ya tiene un fallback procedural más rico y contextual.
@@ -88,8 +86,6 @@ export async function requestRemoteNarrative(
       : null;
   } catch {
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -112,13 +108,17 @@ export function requestRemoteNarrativeDetached(dossier, {
   }
 
   let active = true;
-  void requestRemoteNarrative(dossier, options).then((text) => {
-    if (!active) return;
-    if (text && typeof onText === 'function') {
-      onText(text);
-      return;
-    }
-    if (typeof onUnavailable === 'function') onUnavailable();
-  });
+  void requestRemoteNarrative(dossier, options)
+    .then((text) => {
+      if (!active) return;
+      if (text && typeof onText === 'function') {
+        onText(text);
+        return;
+      }
+      if (typeof onUnavailable === 'function') onUnavailable();
+    })
+    .catch(() => {
+      if (active && typeof onUnavailable === 'function') onUnavailable();
+    });
   return () => { active = false; };
 }

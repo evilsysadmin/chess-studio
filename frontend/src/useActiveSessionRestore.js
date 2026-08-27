@@ -87,14 +87,26 @@ export function useActiveSessionRestore({
   setError,
 }) {
   const startupRestoreAttempted = useRef(false);
+  const restoreRequestRef = useRef(null);
 
-  const restoreActiveSession = useCallback(async (saved = loadActiveGameSession()) => {
-    if (!saved?.gameId) return false;
-    setLoading(true);
-    setError(null);
-    setGameSaveState(SAVE_STATUS.SAVING);
-    try {
-      const found = await api.getGame(saved.gameId);
+  const restoreActiveSession = useCallback((saved = loadActiveGameSession()) => {
+    if (!saved?.gameId) return Promise.resolve(false);
+
+    const inFlight = restoreRequestRef.current;
+    if (inFlight?.gameId === saved.gameId && inFlight.promise) return inFlight.promise;
+    inFlight?.controller?.abort(new DOMException('Superseded session restore', 'AbortError'));
+
+    const controller = new AbortController();
+    const request = { gameId: saved.gameId, controller, promise: null };
+    const isCurrent = () => restoreRequestRef.current === request && !controller.signal.aborted;
+
+    const promise = (async () => {
+      setLoading(true);
+      setError(null);
+      setGameSaveState(SAVE_STATUS.SAVING);
+      try {
+        const found = await api.getGame(saved.gameId, { signal: controller.signal });
+        if (!isCurrent()) return false;
       if (saved.route === 'tournamentGame') {
         setTournamentGame(found);
         replaceView('tournamentGame');
@@ -129,8 +141,9 @@ export function useActiveSessionRestore({
       setHasSavedGame(true);
       replaceView('game');
       return true;
-    } catch (error) {
-      // Sólo una sesión realmente inexistente/no autorizada abandona la ruta
+      } catch (error) {
+        if (!isCurrent()) return false;
+        // Sólo una sesión realmente inexistente/no autorizada abandona la ruta
       // activa. Red/5xx conserva la pantalla de partida y el snapshot para que
       // el usuario pueda reintentar sin sufrir un salto involuntario a Home.
       if (shouldLeaveActiveRouteAfterRestoreFailure(error)) {
@@ -145,9 +158,16 @@ export function useActiveSessionRestore({
         setError('No se pudo recuperar la partida en curso. Tu sesión sigue guardada; reintenta cuando vuelva el servidor.');
       }
       return false;
-    } finally {
-      setLoading(false);
-    }
+      } finally {
+        if (restoreRequestRef.current === request) {
+          restoreRequestRef.current = null;
+          setLoading(false);
+        }
+      }
+    })();
+    request.promise = promise;
+    restoreRequestRef.current = request;
+    return promise;
   }, [
     replaceView,
     setActiveContract,
@@ -163,6 +183,11 @@ export function useActiveSessionRestore({
     setSpecialRun,
     setTournamentGame,
   ]);
+
+  useEffect(() => () => {
+    restoreRequestRef.current?.controller?.abort(new DOMException('Session restore unmounted', 'AbortError'));
+    restoreRequestRef.current = null;
+  }, []);
 
   const continueActiveSession = useCallback(async () => {
     const savedSession = loadActiveGameSession();

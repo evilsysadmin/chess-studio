@@ -7,6 +7,7 @@ jugadas). Cada handler reconstruye el tablero reproduciendo las jugadas
 guardadas.
 """
 
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -36,8 +37,8 @@ async def create_game(game_id: str, data: dict) -> dict:
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
     else:
-        _memory_store[game_id] = doc
-    return doc
+        _memory_store[game_id] = deepcopy(doc)
+    return deepcopy(doc)
 
 
 async def get_game(game_id: str) -> Optional[dict]:
@@ -47,7 +48,8 @@ async def get_game(game_id: str) -> Optional[dict]:
             return await col.find_one({"_id": game_id})
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
-    return _memory_store.get(game_id)
+    row = _memory_store.get(game_id)
+    return deepcopy(row) if row is not None else None
 
 
 async def update_game(game_id: str, data: dict) -> dict:
@@ -59,8 +61,33 @@ async def update_game(game_id: str, data: dict) -> dict:
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
     else:
-        _memory_store[game_id] = doc
-    return doc
+        _memory_store[game_id] = deepcopy(doc)
+    return deepcopy(doc)
+
+
+async def update_game_if_moves(game_id: str, data: dict, expected_moves: list[str]) -> bool:
+    """CAS ligero para mutaciones de partida.
+
+    Dos requests de move/undo pueden leer la misma posición casi a la vez. La
+    primera que persiste gana; la segunda sólo escribe si el historial SAN
+    sigue siendo exactamente el que leyó. Evita doble movimiento, undo contra
+    estado viejo y pérdida silenciosa de actualizaciones.
+    """
+    doc = {"_id": game_id, **data, "updatedAt": datetime.now(timezone.utc)}
+    expected = list(expected_moves or [])
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.replace_one({"_id": game_id, "moves": expected}, doc, upsert=False)
+            return bool(result.matched_count)
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
+
+    current = _memory_store.get(game_id)
+    if current is None or list(current.get("moves") or []) != expected:
+        return False
+    _memory_store[game_id] = deepcopy(doc)
+    return True
 
 
 async def delete_game(game_id: str) -> bool:

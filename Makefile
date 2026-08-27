@@ -20,7 +20,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	frontend-install backend-install python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check session-continuity-check safe-storage-check grafana-check static-preflight \
+	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -295,6 +295,9 @@ static-contract-risk-audit:
 css-check:
 	@node scripts/css_architecture_check.mjs
 
+dead-code-check:
+	python3 scripts/dead_code_reachability_check.py
+
 dependency-cycle-check:
 	@$(PYTHON) scripts/dependency_cycle_check.py
 
@@ -303,6 +306,12 @@ session-continuity-check:
 
 safe-storage-check:
 	node scripts/safe_storage_gate.mjs
+
+chess-rules-check:
+	node scripts/chess_rules_gate.mjs
+
+async-resilience-check:
+	node scripts/async_resilience_gate.mjs
 
 grafana-check:
 	$(PYTHON) scripts/grafana_dashboard_check.py
@@ -319,7 +328,7 @@ worker-test:
 release-check:
 	node scripts/release_consistency_check.mjs
 
-static-preflight: audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check session-continuity-check safe-storage-check grafana-check security-api cf-ai-preflight worker-test
+static-preflight: audio-check data-ux-check pwa-check campaign-map-check release-check test-suite-audit-ci static-contract-risk-audit css-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check security-api cf-ai-preflight worker-test
 	@python3 scripts/synthetic_health_contract.py
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py

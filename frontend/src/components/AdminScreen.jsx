@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { APP_RELEASE } from '../release.js';
 import { deleteAdminUser, fetchAdminUsers, fetchAdminUserInsights, reanalyzeAdminUser } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -22,20 +22,35 @@ function FeedbackAttachmentPreview({ feedbackId, attachment }) {
   const [src, setSrc] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const loadAbortRef = useRef(null);
+  const objectUrlRef = useRef(null);
 
-  useEffect(() => () => { if (src) URL.revokeObjectURL(src); }, [src]);
+  useEffect(() => () => {
+    loadAbortRef.current?.abort(new DOMException('Feedback preview unmounted', 'AbortError'));
+    loadAbortRef.current = null;
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = null;
+  }, []);
 
   async function load() {
-    if (loading || src) return;
+    if (loading || src || loadAbortRef.current) return;
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const blob = await fetchAdminFeedbackAttachment(feedbackId, attachment.index);
-      setSrc(URL.createObjectURL(blob));
+      const blob = await fetchAdminFeedbackAttachment(feedbackId, attachment.index, { signal: controller.signal });
+      if (controller.signal.aborted || loadAbortRef.current !== controller) return;
+      const objectUrl = URL.createObjectURL(blob);
+      objectUrlRef.current = objectUrl;
+      setSrc(objectUrl);
     } catch (err) {
-      setError(err?.message || 'No se pudo abrir la imagen.');
+      if (!controller.signal.aborted) setError(err?.message || 'No se pudo abrir la imagen.');
     } finally {
-      setLoading(false);
+      if (loadAbortRef.current === controller) {
+        loadAbortRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -230,23 +245,34 @@ export default function AdminScreen({ onExit }) {
   const [aiPortraitByUser, setAiPortraitByUser] = useState({});
   const [aiPortraitLoading, setAiPortraitLoading] = useState({});
   const [aiPortraitError, setAiPortraitError] = useState({});
+  const adminDataEpochRef = useRef(0);
+  const adminRefreshInFlightRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
     async function refreshAdminData(silent = false) {
-      const [usersResult, feedbackResult] = await Promise.allSettled([fetchAdminUsers(), fetchAdminFeedback()]);
-      if (!mounted) return;
-      if (usersResult.status === 'fulfilled') {
-        setUsers(usersResult.value);
-        setError(null);
-      } else if (!silent) {
-        setError(usersResult.reason?.message || 'No se pudieron cargar los usuarios.');
-      }
-      if (feedbackResult.status === 'fulfilled') {
-        setFeedback(feedbackResult.value.feedback || []);
-        setFeedbackError(null);
-      } else if (!silent) {
-        setFeedbackError(feedbackResult.reason?.message || 'No se pudo cargar el feedback.');
+      if (adminRefreshInFlightRef.current) return adminRefreshInFlightRef.current.pending;
+      const epoch = adminDataEpochRef.current;
+      const requestToken = Symbol('admin-refresh');
+      const pending = Promise.allSettled([fetchAdminUsers(), fetchAdminFeedback()]);
+      adminRefreshInFlightRef.current = { requestToken, pending };
+      try {
+        const [usersResult, feedbackResult] = await pending;
+        if (!mounted || adminDataEpochRef.current !== epoch || adminRefreshInFlightRef.current?.requestToken !== requestToken) return;
+        if (usersResult.status === 'fulfilled') {
+          setUsers(usersResult.value);
+          setError(null);
+        } else if (!silent) {
+          setError(usersResult.reason?.message || 'No se pudieron cargar los usuarios.');
+        }
+        if (feedbackResult.status === 'fulfilled') {
+          setFeedback(feedbackResult.value.feedback || []);
+          setFeedbackError(null);
+        } else if (!silent) {
+          setFeedbackError(feedbackResult.reason?.message || 'No se pudo cargar el feedback.');
+        }
+      } finally {
+        if (adminRefreshInFlightRef.current?.requestToken === requestToken) adminRefreshInFlightRef.current = null;
       }
     }
     refreshAdminData();
@@ -258,6 +284,7 @@ export default function AdminScreen({ onExit }) {
   }, []);
 
   async function handleFeedbackStatus(feedbackId, status) {
+    adminDataEpochRef.current += 1;
     setFeedbackUpdating(feedbackId);
     setFeedbackError(null);
     try {
@@ -273,6 +300,7 @@ export default function AdminScreen({ onExit }) {
   async function handleFeedbackReply(feedbackId, resolve = false) {
     const message = String(feedbackReplies[feedbackId] || '').trim();
     if (!message || feedbackUpdating) return;
+    adminDataEpochRef.current += 1;
     setFeedbackUpdating(feedbackId);
     setFeedbackError(null);
     try {
@@ -292,6 +320,7 @@ export default function AdminScreen({ onExit }) {
     );
     if (!confirmed) return;
 
+    adminDataEpochRef.current += 1;
     setDeletingUser(targetUsername);
     setDeleteError(null);
     try {

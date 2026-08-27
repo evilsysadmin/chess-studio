@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { forgotPassword, login, register, resetPassword, wakeBackend } from '../auth.js';
 import { SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { connectionErrorCopy } from '../networkErrorCopy.js';
@@ -57,6 +57,9 @@ export default function LoginScreen({ onLoggedIn }) {
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false);
+  const submitInFlightRef = useRef(false);
+  const submitAbortRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     wakeBackend();
@@ -66,7 +69,21 @@ export default function LoginScreen({ onLoggedIn }) {
     clearAuthParamsFromUrl();
   }, []);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      submitAbortRef.current?.abort('Login screen closed');
+      submitAbortRef.current = null;
+      submitInFlightRef.current = false;
+    };
+  }, []);
+
   function changeMode(next) {
+    submitAbortRef.current?.abort('Authentication mode changed');
+    submitAbortRef.current = null;
+    submitInFlightRef.current = false;
+    setLoading(false);
     setMode(next);
     setError(null);
     setNotice(null);
@@ -76,29 +93,36 @@ export default function LoginScreen({ onLoggedIn }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+    const controller = new AbortController();
+    submitAbortRef.current?.abort('Superseded authentication request');
+    submitAbortRef.current = controller;
     setError(null);
     setNotice(null);
     setLoading(true);
     try {
       if (mode === 'register') {
-        await register(username, password, email, inviteCode, language);
-        onLoggedIn();
+        await register(username, password, email, inviteCode, language, { signal: controller.signal });
+        if (!controller.signal.aborted && mountedRef.current) onLoggedIn();
       } else if (mode === 'forgot') {
-        const result = await forgotPassword(email);
-        setNotice(result?.message || COPY[language].recoveryNotice);
+        const result = await forgotPassword(email, { signal: controller.signal });
+        if (!controller.signal.aborted && mountedRef.current) setNotice(result?.message || COPY[language].recoveryNotice);
       } else if (mode === 'reset') {
         if (!resetToken) throw new Error(COPY[language].missingToken);
         if (password !== confirmPassword) throw new Error(COPY[language].mismatch);
-        await resetPassword(resetToken, password);
-        onLoggedIn();
+        await resetPassword(resetToken, password, { signal: controller.signal });
+        if (!controller.signal.aborted && mountedRef.current) onLoggedIn();
       } else {
-        await login(username, password);
-        onLoggedIn();
+        await login(username, password, { signal: controller.signal });
+        if (!controller.signal.aborted && mountedRef.current) onLoggedIn();
       }
     } catch (err) {
-      setError(connectionErrorCopy(err, language));
+      if (!controller.signal.aborted && mountedRef.current) setError(connectionErrorCopy(err, language));
     } finally {
-      setLoading(false);
+      if (submitAbortRef.current === controller) submitAbortRef.current = null;
+      submitInFlightRef.current = false;
+      if (mountedRef.current) setLoading(false);
     }
   }
 

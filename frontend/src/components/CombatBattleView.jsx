@@ -7,6 +7,7 @@ import CombatDebrief from './CombatDebrief.jsx';
 import ironKing from '../assets/bosses/iron-king.webp';
 import nomadKing from '../assets/bosses/nomad-king.webp';
 import shadowKing from '../assets/bosses/shadow-king.webp';
+import { checkedKingSquare } from '../boardState.js';
 
 const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
 
@@ -56,6 +57,7 @@ export default function CombatBattleView({
                 squareBadge={(square) => roster?.pieces?.[registry?.[square]?.rosterKey]?.mercenary ? <span className="deployment-mercenary-badge" title="Unidad mercenaria">M</span> : null}
                 orientation={humanColor === 'b' ? 'black' : 'white'}
                 themeOverride={battleTheme}
+                checkSquare={checkedKingSquare(fen)}
               />
             </div>
 

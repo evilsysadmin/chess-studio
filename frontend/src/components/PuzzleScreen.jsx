@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { PUZZLES, PUZZLE_DIFFICULTY_LABELS, randomPuzzle } from '../puzzles.js';
 import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
@@ -16,6 +15,8 @@ import { checkAchievements } from '../achievements.js';
 import { applyPuzzleSolutionMove, matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
 import { canInteractWithPuzzle, canProtectPuzzleStreak, wrongPuzzleAttemptState } from '../puzzleAttemptFlow.js';
 import { buildPuzzleReveal } from '../puzzleReveal.js';
+import { chessFromFen } from '../chessRules.js';
+import PromotionModal from './PromotionModal.jsx';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Tu crimen' };
 const RECENT_CURATED_LIMIT = 5;
@@ -46,15 +47,18 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const [wrongThisPuzzle, setWrongThisPuzzle] = useState(false); // fallo que rompe racha (si no se protege)
   const [personalHadError, setPersonalHadError] = useState(false); // cualquier fallo: mide resolución limpia real
   const [retryOffer, setRetryOffer] = useState(false); // mostrando el prompt de "¿pagar para proteger la racha?"
+  const [pendingPromotion, setPendingPromotion] = useState(null);
   const replyTimeout = useRef(null);
   const rushNextTimeout = useRef(null);
+  const puzzleGenerationRef = useRef(0);
   const rushSavedRef = useRef(false);
   const [rushSeconds, setRushSeconds] = useState(rushMode ? 180 : null);
   const [rushEnded, setRushEnded] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiGenerationStatus, setAiGenerationStatus] = useState(null);
+  const aiGenerationInFlightRef = useRef(false);
 
-  const humanColor = useMemo(() => new Chess(puzzle.fen).turn(), [puzzle]);
+  const humanColor = useMemo(() => chessFromFen(puzzle?.fen)?.turn() || 'w', [puzzle]);
   const personalStats = useMemo(() => personalTrainingSummary(), [personalPuzzles]);
   const filteredPersonalTotalCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length, [personalPuzzles, initialFilter]);
   const filteredPersonalActiveCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter) && !isPersonalPuzzleMastered(item)).length, [personalPuzzles, initialFilter]);
@@ -66,6 +70,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const revealGuide = useMemo(() => buildPuzzleReveal(puzzle), [puzzle]);
 
   useEffect(() => {
+    puzzleGenerationRef.current += 1;
+    if (replyTimeout.current) { clearTimeout(replyTimeout.current); replyTimeout.current = null; }
+    if (rushNextTimeout.current) { clearTimeout(rushNextTimeout.current); rushNextTimeout.current = null; }
     setFen(puzzle.fen);
     setStepIndex(0);
     setSelected(null);
@@ -75,6 +82,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     setWrongThisPuzzle(false);
     setPersonalHadError(false);
     setRetryOffer(false);
+    setPendingPromotion(null);
     setAchievementUnlocked(null);
   }, [puzzle]);
 
@@ -84,8 +92,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }, [puzzle?.id, source]);
 
   useEffect(() => () => {
+    puzzleGenerationRef.current += 1;
     if (replyTimeout.current) clearTimeout(replyTimeout.current);
     if (rushNextTimeout.current) clearTimeout(rushNextTimeout.current);
+    replyTimeout.current = null;
+    rushNextTimeout.current = null;
   }, []);
 
   useEffect(() => {
@@ -105,13 +116,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     recordPuzzleRush(solvedCount);
   }, [rushMode, rushEnded, solvedCount]);
 
-  const localChess = useMemo(() => {
-    const c = new Chess();
-    c.load(fen);
-    return c;
-  }, [fen]);
+  const localChess = useMemo(() => chessFromFen(fen), [fen]);
 
-  const legalTargets = selected
+  const legalTargets = selected && localChess
     ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
     : [];
 
@@ -141,7 +148,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }
 
   async function generateAiPersonalVariants() {
-    if (aiGenerating || !offerAiGeneration) return;
+    if (aiGenerationInFlightRef.current || aiGenerating || !offerAiGeneration) return;
+    aiGenerationInFlightRef.current = true;
+    const startingPuzzleGeneration = puzzleGenerationRef.current;
     setAiGenerating(true);
     setAiGenerationStatus('Workers AI propone; el motor local decide si merece vivir.');
     try {
@@ -150,20 +159,28 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       setPersonalPuzzles(refreshed);
       if (result.added > 0) {
         setAiGenerationStatus(`Añadidos ${result.added} escenarios nuevos. Los candidatos que no convencieron al minimax han ido directos al contenedor amarillo.`);
-        const next = result.saved?.find((item) => !isPersonalPuzzleMastered(item));
-        if (next) setPuzzle(next);
+        // Generar material no puede secuestrar el ejercicio que el usuario
+        // abrió mientras Workers AI estaba pensando. Sólo saltamos al nuevo
+        // puzzle si seguimos exactamente en la misma generación de pantalla.
+        if (puzzleGenerationRef.current === startingPuzzleGeneration) {
+          const next = result.saved?.find((item) => !isPersonalPuzzleMastered(item));
+          if (next) setPuzzle(next);
+        }
       } else if (result.reason === 'all-rejected-or-duplicate') {
         setAiGenerationStatus('Workers AI trajo material, pero el minimax no lo validó o ya lo tenías. Cero basura añadida.');
       } else {
         setAiGenerationStatus('No se ha gastado otra llamada útil: el proveedor está en cooldown/no disponible o no había semillas suficientes.');
       }
+    } catch {
+      setAiGenerationStatus('No se pudieron generar escenarios ahora. Tus puzzles existentes siguen intactos; inténtalo más tarde.');
     } finally {
+      aiGenerationInFlightRef.current = false;
       setAiGenerating(false);
     }
   }
 
   function handleSquareClick(square) {
-    if (!canInteractWithPuzzle({ status, busy, rushEnded })) return;
+    if (!localChess || pendingPromotion || !canInteractWithPuzzle({ status, busy, rushEnded }) || replyTimeout.current || rushNextTimeout.current) return;
 
     if (!selected) {
       const piece = localChess.get(square);
@@ -181,15 +198,26 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       else setSelected(null);
       return;
     }
+    if (move.promotion) {
+      setPendingPromotion({ from: selected, to: square });
+      return;
+    }
     attemptMove(selected, square);
   }
 
-  function attemptMove(from, to) {
-    const attempt = new Chess();
-    attempt.load(fen);
+  function attemptMove(from, to, promotion = null) {
+    if (replyTimeout.current || rushNextTimeout.current) return;
+    const attempt = chessFromFen(fen);
+    if (!attempt) {
+      setBusy(false);
+      setSelected(null);
+      setFeedback('Este ejercicio contiene una posición inválida. Pasa al siguiente; no cuenta como fallo.');
+      setStatus('revealed');
+      return;
+    }
     let move;
     try {
-      move = attempt.move({ from, to, promotion: 'q' });
+      move = attempt.move({ from, to, promotion: promotion || 'q' });
     } catch (e) {
       move = null;
     }
@@ -203,7 +231,14 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
         setFeedback('Incorrecta. Siguiente caso: el reloj no negocia.');
         if (source === 'personal') recordPersonalPuzzleResult(puzzle.id, { solved: false, clean: false });
         setWrongThisPuzzle(true);
-        rushNextTimeout.current = setTimeout(() => { setPuzzle(choosePuzzle(source, puzzle.id)); setFeedback(null); }, 450);
+        setBusy(true);
+        const generation = puzzleGenerationRef.current;
+        rushNextTimeout.current = setTimeout(() => {
+          rushNextTimeout.current = null;
+          if (puzzleGenerationRef.current !== generation) return;
+          setPuzzle(choosePuzzle(source, puzzle.id));
+          setFeedback(null);
+        }, 450);
         return;
       }
       // Primer fallo de este intento, con una racha real para proteger —
@@ -254,7 +289,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       }
       playSuccessSound();
       if (rushMode) {
-        rushNextTimeout.current = setTimeout(() => setPuzzle(choosePuzzle(source, puzzle.id)), 350);
+        const generation = puzzleGenerationRef.current;
+        rushNextTimeout.current = setTimeout(() => {
+          rushNextTimeout.current = null;
+          if (puzzleGenerationRef.current === generation) setPuzzle(choosePuzzle(source, puzzle.id));
+        }, 350);
       }
       return;
     }
@@ -262,9 +301,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     // Hay una respuesta forzada del rival antes de que vuelva a ser tu turno.
     setBusy(true);
     const replySan = puzzle.solution[nextIndex];
+    const generation = puzzleGenerationRef.current;
     replyTimeout.current = setTimeout(() => {
-      const reply = applyPuzzleSolutionMove(newFen, replySan);
       replyTimeout.current = null;
+      if (puzzleGenerationRef.current !== generation) return;
+      const reply = applyPuzzleSolutionMove(newFen, replySan);
       if (!reply) {
         // Un puzzle histórico/corrupto no puede secuestrar la pantalla dejando
         // `busy` activado para siempre. Lo degradamos a revelado y permitimos
@@ -282,6 +323,13 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       setStepIndex(nextIndex + 1);
       setBusy(false);
     }, REPLY_DELAY_MS);
+  }
+
+  function choosePromotion(code) {
+    if (!pendingPromotion) return;
+    const { from, to } = pendingPromotion;
+    setPendingPromotion(null);
+    attemptMove(from, to, code);
   }
 
   function payToProtectStreak() {
@@ -305,6 +353,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       setPersonalPuzzles(loadPersonalPuzzles());
     }
     if (replyTimeout.current) clearTimeout(replyTimeout.current);
+    replyTimeout.current = null;
+    if (rushNextTimeout.current) clearTimeout(rushNextTimeout.current);
+    rushNextTimeout.current = null;
+    puzzleGenerationRef.current += 1;
     // Mismo lenguaje que Replay/Autopsia: posición tras la jugada realizada,
     // origen y destino rojos (con pieza fantasma en origen), y alternativa
     // del motor encuadrada en azul sobre esas mismas coordenadas.
@@ -330,6 +382,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
         <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
       </div>}
       {rushMode && <div className={`puzzle-rush-banner ${rushSeconds <= 30 ? 'danger' : ''}`}><b>PUZZLE RUSH PERSONAL</b><span>{Math.floor((rushSeconds || 0) / 60)}:{String((rushSeconds || 0) % 60).padStart(2, '0')} · {solvedCount} aciertos</span></div>}
+      {!localChess && <p className="error-text">Este ejercicio no contiene una posición legal. Puedes pasar al siguiente sin penalización.</p>}
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         <div className="board-column">
           <div className={`status-line ${status === 'solved' ? 'success' : ''}`}>
@@ -338,7 +391,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
             {status === 'playing' && (rushEnded ? `Tiempo. ${solvedCount} aciertos.` : busy ? 'El rival responde…' : 'Tu turno')}
           </div>
           <Board
-            fen={fen}
+            fen={localChess ? fen : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
             onSquareClick={handleSquareClick}
             selectedSquare={selected}
             legalTargets={legalTargets}
@@ -457,6 +510,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           </details>
         </div>
       </div>
+      {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
     </div>
   );
 }

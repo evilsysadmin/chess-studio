@@ -6,12 +6,13 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46zda',
-    title: 'Combat conserva mejor sus batallas',
+    release: 'v16.6dm46ze',
+    title: 'Más ajedrez, menos pantallas tiesas',
     highlights: [
-      'Las batallas suspendidas usan posiciones de ajedrez válidas al comprobar su recuperación, manteniendo intacta la protección contra datos corruptos.',
-      'Una campaña y un combate libre pueden quedar suspendidos en la misma pestaña sin pisarse entre sí.',
-      'Si el almacenamiento de la pestaña queda ilegible, una batalla viva puede seguir recuperándose desde su respaldo en memoria.',
+      'Partida rápida, Torneo, Práctica, Laboratorio, Rival Fantasma, Puzzles, Combat, Espectador y tablero 3D refuerzan sus comprobaciones de jaque, mate y movimientos legales.',
+      'Las respuestas tardías, dobles pulsaciones y turnos diferidos se aíslan mejor para que una acción vieja no pueda bloquear o alterar la partida actual.',
+      'Una partida guardada dañada o una posición imposible se detiene de forma segura en vez de tirar la pantalla o inventar una continuación.',
+      'Feedback, inicio de sesión, copias de seguridad y pantallas de estado evitan operaciones duplicadas mientras una petición sigue en curso.',
     ],
   },
   {

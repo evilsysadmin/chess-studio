@@ -1,5 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { historyMoverColor } from './historyTimeline.js';
 
 const ANALYSIS_KEY = 'chess-study-analysis-archive';
 const MAX_ANALYSES = 160;
@@ -138,7 +139,7 @@ export function materialDonated(history = []) {
   for (const record of history) {
     const human = record.humanColor || 'w';
     for (let i = 0; i < (record.moves || []).length; i += 1) {
-      const mover = i % 2 === 0 ? 'w' : 'b';
+      const mover = historyMoverColor(i, record.initialFen);
       const m = record.moves[i];
       if (mover === human || !m?.captured) continue;
       points += PIECE_VALUE[m.captured] || 0;

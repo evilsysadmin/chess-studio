@@ -1,3 +1,11 @@
+### v16.6dm46ze · Auditoría de estabilidad, concurrencia y reglas
+
+- Endurece los flujos asíncronos de juego y administración con exclusión mutua inmediata, cancelación de requests obsoletos, watchdogs y protección frente a respuestas tardías. Login, Feedback, feedback post-partida, Admin, Observabilidad, Puzzles y operaciones de backup no pueden solaparse accidentalmente desde la UI.
+- El backend valida FEN estructuralmente legales —no sólo sintaxis parseable— antes de crear o analizar posiciones. Una partida persistida corrupta devuelve un conflicto recuperable en lugar de escalar a un 500.
+- Añade un contrato común de reglas con cobertura dirigida para piezas clavadas, seguridad del rey, enroque, captura al paso, cuatro promociones, repetición, 50/75 movimientos, material insuficiente, jaque, mate y ahogado, además de fuzz determinista en frontend y backend.
+- La matriz crítica de navegador cubre Partida rápida, Torneo, Práctica, Serie, Laboratorio, Rival Fantasma, Puzzles, Combat libre/campaña, Espectador y tablero 3D, incluyendo jaque y mate donde aplica.
+- El preflight incorpora gates permanentes de reglas, resiliencia async y módulos productivos inalcanzables para frenar regresiones y cadáveres de iteraciones futuras antes de publicar.
+
 ### v16.6dm46zd · Hardening de estabilidad, feedback bidireccional y Tempo verificable
 
 - Las peticiones HTTP del frontend tienen watchdog central (15 s; 8 s para análisis), evitando `busy/loading` eternos cuando red, proxy o backend dejan una conexión pendiente.

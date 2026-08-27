@@ -48,14 +48,20 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     (async () => {
       try {
-        const result = await analyzeGame(history, humanColor, api);
+        const result = await analyzeGame(history, humanColor, api, { signal: controller.signal, initialFen: meta.initialFen || null });
         if (!cancelled) { setReport(result); setStatus('done'); }
-      } catch { if (!cancelled) setStatus('error'); }
+      } catch (error) {
+        if (!cancelled && error?.name !== 'AbortError' && error?.cause?.name !== 'AbortError') setStatus('error');
+      }
     })();
-    return () => { cancelled = true; };
-  }, [history, humanColor]);
+    return () => {
+      cancelled = true;
+      controller.abort(new DOMException('Autopsy closed', 'AbortError'));
+    };
+  }, [history, humanColor, meta.initialFen]);
 
   useEffect(() => {
     if (status !== 'done' || !report || archivedRef.current) return;
@@ -75,15 +81,17 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     }
     let active = true;
     setAiAutopsyStatus('loading');
-    void requestRemoteNarrative(dossier, { token, timeoutMs: 8000 }).then((text) => {
-      if (!active) return;
-      if (text) {
-        setAiAutopsy(text);
-        setAiAutopsyStatus('done');
-      } else {
-        setAiAutopsyStatus('unavailable');
-      }
-    });
+    void requestRemoteNarrative(dossier, { token, timeoutMs: 8000 })
+      .then((text) => {
+        if (!active) return;
+        if (text) {
+          setAiAutopsy(text);
+          setAiAutopsyStatus('done');
+        } else {
+          setAiAutopsyStatus('unavailable');
+        }
+      })
+      .catch(() => { if (active) setAiAutopsyStatus('unavailable'); });
     return () => { active = false; };
   }, [status, report, meta.gameId]);
 

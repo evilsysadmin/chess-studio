@@ -440,3 +440,21 @@ describe('passTurnFen', () => {
     expect(parts[5]).toBe('4');
   });
 });
+
+
+describe('Combat fail-closed ante posiciones dañadas', () => {
+  it('resolveCombatMove rechaza un FEN corrupto sin lanzar ni inventar estado', () => {
+    expect(() => resolveCombatMove({
+      fen: 'esto-no-es-un-fen',
+      registry: {},
+      from: 'e2',
+      to: 'e4',
+    })).not.toThrow();
+    expect(resolveCombatMove({
+      fen: 'esto-no-es-un-fen',
+      registry: {},
+      from: 'e2',
+      to: 'e4',
+    })).toBeNull();
+  });
+});

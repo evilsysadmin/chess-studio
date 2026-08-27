@@ -422,7 +422,11 @@ async def flush_pending() -> bool:
 async def _scheduled_flush() -> None:
     global _FLUSH_SCHEDULED
     try:
+        # Es best-effort y corre como task desacoplada: jamás debe terminar en
+        # "Task exception was never retrieved" por una caída transitoria de DB.
         await flush_pending()
+    except Exception:
+        pass
     finally:
         with _SCHEDULE_LOCK:
             _FLUSH_SCHEDULED = False

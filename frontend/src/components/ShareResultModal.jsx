@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { buildShareText, buildShareUrl, normalizeShareRecord } from '../shareResult.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import { withTimeout } from '../asyncControl.js';
 
 const OUTCOME = { win: 'Victoria', loss: 'Derrota', draw: 'Tablas' };
 
@@ -28,7 +29,13 @@ export default function ShareResultModal({ record, onClose }) {
     else if(data.opening){ctx.font='28px serif';ctx.fillText(data.opening.slice(0,62),74,365);}
     if(data.series&&!data.incident){ctx.font='26px sans-serif';ctx.fillText(`Serie: Tú ${data.series.humanWins} · CPU ${data.series.cpuWins}${data.series.draws?` · tablas ${data.series.draws}`:''}`,74,420);}
     ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(74,470,1050,2);ctx.fillStyle='#9d9583';ctx.font='24px sans-serif';ctx.fillText(data.incident?'Aquí fue donde la dignidad abandonó la posición.':'Pruebas documentales. Para chulear o solicitar apoyo emocional.',74,525);ctx.font='96px serif';ctx.fillStyle='#d8c08b';ctx.fillText('♟',1010,125);
-    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob){setFeedback('No se pudo generar la tarjeta.');return;}const href=URL.createObjectURL(blob);const a=document.createElement('a');a.href=href;a.download=`chess-studio-${data.incident?'crimen':data.outcome}-${new Date().toISOString().slice(0,10)}.png`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(href);setFeedback('Tarjeta PNG generada. Munición social preparada.');
+    try {
+      const blob = await withTimeout(new Promise(resolve => canvas.toBlob(resolve, 'image/png')), 7000, { message: 'Canvas export timeout' });
+      if (!blob) { setFeedback('No se pudo generar la tarjeta.'); return; }
+      const href=URL.createObjectURL(blob);const a=document.createElement('a');a.href=href;a.download=`chess-studio-${data.incident?'crimen':data.outcome}-${new Date().toISOString().slice(0,10)}.png`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(href);setFeedback('Tarjeta PNG generada. Munición social preparada.');
+    } catch {
+      setFeedback('La tarjeta tardó demasiado en generarse. Prueba otra vez.');
+    }
   }
 
   async function nativeShare(){if(!navigator.share){await copy(`${text}\n\n${url}`,'Resumen y enlace copiados.');return;}try{await navigator.share({title:data.incident?'Chess Studio · Cámara del crimen':'Chess Studio · Resultado',text,url});setFeedback('Compartido. Que empiece la chulería o el velatorio.');}catch(error){if(error?.name!=='AbortError')setFeedback('No se pudo abrir el diálogo de compartir.');}}

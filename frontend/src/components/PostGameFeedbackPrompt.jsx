@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { submitFeedback } from '../feedback.js';
 import { completePostGameFeedback, snoozePostGameFeedback } from '../postGameFeedback.js';
 import FeedbackModal from './FeedbackModal.jsx';
@@ -15,19 +15,36 @@ export default function PostGameFeedbackPrompt({ onDone }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
+  const sendInFlightRef = useRef(false);
+  const sendAbortRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    sendAbortRef.current?.abort('Post-game feedback closed');
+    sendAbortRef.current = null;
+    sendInFlightRef.current = false;
+  }, []);
 
   async function rate(message) {
-    if (sending) return;
+    if (sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
+    const controller = new AbortController();
+    sendAbortRef.current?.abort('Nuevo feedback post-partida');
+    sendAbortRef.current = controller;
     setSending(true);
     setError(null);
     try {
-      await submitFeedback({ category: 'other', message, context: 'Post-partida' });
+      await submitFeedback({ category: 'other', message, context: 'Post-partida', signal: controller.signal });
+      if (controller.signal.aborted || !mountedRef.current) return;
       completePostGameFeedback();
       setSent(true);
     } catch (err) {
-      setError(userFacingError(err, 'No se pudo enviar ahora.'));
+      if (!controller.signal.aborted && mountedRef.current) setError(userFacingError(err, 'No se pudo enviar ahora.'));
     } finally {
-      setSending(false);
+      if (sendAbortRef.current === controller) sendAbortRef.current = null;
+      sendInFlightRef.current = false;
+      if (mountedRef.current) setSending(false);
     }
   }
 

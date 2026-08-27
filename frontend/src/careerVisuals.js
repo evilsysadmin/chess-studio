@@ -1,3 +1,5 @@
+import { historyMoverColor } from './historyTimeline.js';
+
 // careerVisuals.js — visualizaciones derivadas exclusivamente de datos ya
 // registrados en el historial/autopsias. No inventa evaluaciones ausentes.
 
@@ -6,7 +8,7 @@ const RANKS = ['1','2','3','4','5','6','7','8'];
 const BOARD_SQUARES = RANKS.flatMap((rank) => FILES.map((file) => `${file}${rank}`));
 
 function humanMover(record, index) {
-  const mover = index % 2 === 0 ? 'w' : 'b';
+  const mover = historyMoverColor(index, record?.initialFen);
   return mover === (record?.humanColor === 'b' ? 'b' : 'w');
 }
 

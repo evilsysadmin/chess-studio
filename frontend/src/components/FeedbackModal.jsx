@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchMyFeedback, submitFeedback } from '../feedback.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { userFacingError } from '../userFacingError.js';
@@ -20,27 +20,49 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
   const [sent, setSent] = useState(false);
   const [images, setImages] = useState([]);
   const [history, setHistory] = useState([]);
+  const mountedRef = useRef(true);
+  const submitInFlightRef = useRef(false);
+  const submitAbortRef = useRef(null);
 
   useEffect(() => {
-    let mounted = true;
-    fetchMyFeedback().then((payload) => { if (mounted) setHistory(payload.feedback || []); }).catch(() => {});
-    return () => { mounted = false; };
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      submitAbortRef.current?.abort('Feedback cerrado');
+      submitAbortRef.current = null;
+      submitInFlightRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMyFeedback({ signal: controller.signal })
+      .then((payload) => { if (!controller.signal.aborted && mountedRef.current) setHistory(payload.feedback || []); })
+      .catch(() => {});
+    return () => controller.abort('Historial de feedback reemplazado');
   }, [sent]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     const text = message.trim();
-    if (text.length < 3 || sending) return;
+    if (text.length < 3 || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+    const controller = new AbortController();
+    submitAbortRef.current?.abort('Nuevo envío de feedback');
+    submitAbortRef.current = controller;
     setSending(true);
     setError(null);
     try {
       const attachments = await prepareFeedbackAttachments(images);
-      await submitFeedback({ category, message: text, context, attachments });
-      setSent(true);
+      if (controller.signal.aborted || !mountedRef.current) return;
+      await submitFeedback({ category, message: text, context, attachments, signal: controller.signal });
+      if (!controller.signal.aborted && mountedRef.current) setSent(true);
     } catch (err) {
-      setError(userFacingError(err, 'No se pudo enviar el feedback.'));
+      if (!controller.signal.aborted && mountedRef.current) setError(userFacingError(err, 'No se pudo enviar el feedback.'));
     } finally {
-      setSending(false);
+      if (submitAbortRef.current === controller) submitAbortRef.current = null;
+      submitInFlightRef.current = false;
+      if (mountedRef.current) setSending(false);
     }
   }
 

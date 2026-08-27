@@ -37,6 +37,14 @@ describe('register/login', () => {
     expect(getUsername()).toBe('nuevo');
   });
 
+
+
+  it('propaga AbortSignal a las peticiones de autenticación', async () => {
+    mockFetchOnce(200, { token: 'abortable-token', username: 'abortable' });
+    const controller = new AbortController();
+    await login('abortable', 'clave123456', { signal: controller.signal });
+    expect(global.fetch.mock.calls[0][1].signal).toBe(controller.signal);
+  });
   it('cada login inicializa un tema musical para esa sesión', async () => {
     mockFetchOnce(200, { token: 'music-token', username: 'melomano' });
     await login('melomano', 'clave123456');

@@ -369,9 +369,13 @@ export function passTurnFen(fen) {
 // dirigieron contra este mismo objetivo (lo calcula quien llama, según su
 // propio seguimiento de "a quién le vengo pegando").
 export function resolveCombatMove({ fen, registry, from, to, promotion, focusStreak = 0, randomFn = Math.random, forceMatingCaptures = true, protectMissTurnLegality = true }) {
-  const chess = new Chess();
-  chess.load(fen);
-  const attacker = registry[from];
+  let chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return null;
+  }
+  const attacker = registry?.[from];
   // Si quien mueve ya estaba en jaque, esta jugada tiene que resolverlo sí o
   // sí — nunca puede "fallar" (ver nota al principio del archivo).
   const mustSucceed = chess.inCheck();

@@ -4,6 +4,10 @@ import * as THREE from 'three';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { api } from '../api.js';
 import { difficultyLabel } from '../difficulty.js';
+import { checkedKingSquare } from '../boardState.js';
+import { isAbortError } from '../asyncControl.js';
+import { applySuggestedOrLegalFallback, standardChessStatus } from '../chessRules.js';
+import PromotionModal from './PromotionModal.jsx';
 
 const COLOR_LIGHT_SQUARE = 0xede6d6;
 const COLOR_DARK_SQUARE = 0x5b4032;
@@ -98,6 +102,8 @@ export default function Board3DExperiment({ onExit }) {
   const [status, setStatus] = useState('playing');
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState(null);
+  const [checkSquare, setCheckSquare] = useState(null);
+  const [pendingPromotion, setPendingPromotion] = useState(null);
 
   const sceneRef = useRef(null);
   const chessRef = useRef(new Chess());
@@ -108,11 +114,17 @@ export default function Board3DExperiment({ onExit }) {
   const legalTargetsRef = useRef([]);
   const gameOverRef = useRef(false);
   const thinkingRef = useRef(false);
+  const generationRef = useRef(0);
+  const analysisAbortRef = useRef(null);
+  const promotionCommitRef = useRef(null);
 
   useEffect(() => {
     if (phase !== 'playing') return;
     const container = containerRef.current;
     if (!container) return;
+
+    let active = true;
+    let cpuTurnTimer = null;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x161b26);
@@ -280,7 +292,7 @@ export default function Board3DExperiment({ onExit }) {
 
     // Aplica un movimiento YA VALIDADO por chess.js a la escena 3D —
     // maneja captura normal, al paso, enroque (mueve la torre también), y
-    // coronación (cambia la malla del peón por una de dama).
+    // Coronación: sustituye la malla del peón por la pieza elegida (Q/R/B/N).
     function applyMoveToScene(moveObj) {
       if (moveObj.flags.includes('e')) {
         const capturedSquare = moveObj.to[0] + moveObj.from[1];
@@ -304,41 +316,91 @@ export default function Board3DExperiment({ onExit }) {
     }
 
     function statusAfterMove() {
-      const chess = chessRef.current;
-      if (chess.isCheckmate()) return 'checkmate';
-      if (chess.isStalemate()) return 'stalemate';
-      if (chess.isDraw()) return 'draw';
-      return 'playing';
+      const current = standardChessStatus(chessRef.current);
+      // El jaque se representa aparte con `checkSquare`; no es terminal.
+      return current === 'check' ? 'playing' : current;
     }
 
     async function runCpuTurn() {
+      if (!active || gameOverRef.current || thinkingRef.current) return;
+      const generation = generationRef.current;
+      const requestedFen = chessRef.current.fen();
+      const controller = new AbortController();
+      analysisAbortRef.current?.abort(new DOMException('Superseded CPU analysis', 'AbortError'));
+      analysisAbortRef.current = controller;
       thinkingRef.current = true;
       setThinking(true);
-      let suggestion;
+      let suggestion = null;
       try {
-        suggestion = await api.analyzePosition(chessRef.current.fen(), difficulty);
-      } catch (e) {
-        setError(e.message);
-        thinkingRef.current = false;
-        setThinking(false);
-        return;
-      }
-      thinkingRef.current = false;
-      setThinking(false);
-      if (!suggestion) return;
+        try {
+          suggestion = await api.analyzePosition(requestedFen, difficulty, { signal: controller.signal });
+        } catch (e) {
+          if (isAbortError(e)) return;
+          // El motor remoto es asesor, no autoridad. Una caída/timeout no puede
+          // congelar el experimento: continuamos con una jugada legal local.
+          suggestion = null;
+        }
+        if (!active || controller.signal.aborted || gameOverRef.current || generationRef.current !== generation) return;
+        // Una respuesta que pertenece a otra posición ya no tiene permiso para
+        // actuar, aunque haya llegado antes del timeout.
+        if (chessRef.current.fen() !== requestedFen) return;
 
-      const moveObj = chessRef.current.move({ from: suggestion.from, to: suggestion.to, promotion: 'q' });
-      if (!moveObj) return;
+        const { move: moveObj, usedFallback } = applySuggestedOrLegalFallback(chessRef.current, suggestion);
+        if (!moveObj) {
+          const terminal = standardChessStatus(chessRef.current);
+          if (terminal !== 'playing' && terminal !== 'check') {
+            setStatus(terminal);
+            gameOverRef.current = true;
+          } else {
+            setError('No se pudo obtener ninguna jugada legal para la CPU.');
+          }
+          return;
+        }
+        if (usedFallback) setError(null);
+        applyMoveToScene(moveObj);
+        refreshHighlights({ from: moveObj.from, to: moveObj.to });
+        setCheckSquare(checkedKingSquare(chessRef.current.fen()));
+
+        const next = statusAfterMove();
+        setStatus(next);
+        gameOverRef.current = next !== 'playing';
+      } catch (e) {
+        if (active && generationRef.current === generation && !isAbortError(e)) setError(e?.message || 'El turno de la CPU falló.');
+      } finally {
+        if (analysisAbortRef.current === controller) analysisAbortRef.current = null;
+        if (active && generationRef.current === generation) {
+          thinkingRef.current = false;
+          setThinking(false);
+        }
+      }
+    }
+
+    function commitHumanMove(from, to, promotion = undefined) {
+      if (!active || gameOverRef.current || thinkingRef.current) return false;
+      const chess = chessRef.current;
+      let moveObj = null;
+      try { moveObj = chess.move({ from, to, promotion }); } catch { moveObj = null; }
+      if (!moveObj) {
+        refreshHighlights(null);
+        setError('Esa jugada ya no es legal en la posición actual.');
+        return false;
+      }
+      setError(null);
       applyMoveToScene(moveObj);
       refreshHighlights({ from: moveObj.from, to: moveObj.to });
-
+      setCheckSquare(checkedKingSquare(chess.fen()));
       const next = statusAfterMove();
       setStatus(next);
       gameOverRef.current = next !== 'playing';
+      if (next === 'playing') {
+        if (cpuTurnTimer) clearTimeout(cpuTurnTimer);
+        cpuTurnTimer = setTimeout(runCpuTurn, 500);
+      }
+      return true;
     }
 
     function handleSquareClick(square) {
-      if (gameOverRef.current || thinkingRef.current) return;
+      if (gameOverRef.current || thinkingRef.current || promotionCommitRef.current) return;
       const chess = chessRef.current;
       if (chess.turn() !== HUMAN_COLOR) return;
 
@@ -352,20 +414,21 @@ export default function Board3DExperiment({ onExit }) {
       }
 
       if (selectedRef.current) {
-        const target = legalTargetsRef.current.find((t) => t.to === square);
-        if (target) {
-          const moveObj = chess.move({ from: selectedRef.current, to: square, promotion: 'q' });
+        const targetMoves = legalTargetsRef.current.filter((t) => t.to === square);
+        if (targetMoves.length) {
+          const from = selectedRef.current;
           selectedRef.current = null;
           legalTargetsRef.current = [];
-          if (moveObj) {
-            applyMoveToScene(moveObj);
-            refreshHighlights({ from: moveObj.from, to: moveObj.to });
-            const next = statusAfterMove();
-            setStatus(next);
-            gameOverRef.current = next !== 'playing';
-            if (next === 'playing') setTimeout(runCpuTurn, 500);
+          refreshHighlights(null);
+          if (targetMoves.some((target) => !!target.promotion)) {
+            const generation = generationRef.current;
+            promotionCommitRef.current = (promotion) => {
+              if (!active || generationRef.current !== generation) return false;
+              return commitHumanMove(from, square, promotion);
+            };
+            setPendingPromotion({ from, to: square });
           } else {
-            refreshHighlights(null);
+            commitHumanMove(from, square);
           }
           return;
         }
@@ -373,7 +436,7 @@ export default function Board3DExperiment({ onExit }) {
 
       if (piece && piece.color === HUMAN_COLOR) {
         selectedRef.current = square;
-        legalTargetsRef.current = chess.moves({ square, verbose: true }).map((m) => ({ to: m.to, captured: !!m.captured }));
+        legalTargetsRef.current = chess.moves({ square, verbose: true }).map((m) => ({ to: m.to, captured: !!m.captured, promotion: m.promotion || null }));
         refreshHighlights(null);
       } else {
         selectedRef.current = null;
@@ -419,6 +482,13 @@ export default function Board3DExperiment({ onExit }) {
     sceneRef.current = { rebuildPiecesFromChess, refreshHighlights, rotateCamera };
 
     return () => {
+      active = false;
+      generationRef.current += 1;
+      thinkingRef.current = false;
+      analysisAbortRef.current?.abort(new DOMException('3D board unmounted', 'AbortError'));
+      analysisAbortRef.current = null;
+      promotionCommitRef.current = null;
+      if (cpuTurnTimer) clearTimeout(cpuTurnTimer);
       cancelAnimationFrame(frameId);
       window.removeEventListener('resize', handleResize);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
@@ -436,23 +506,46 @@ export default function Board3DExperiment({ onExit }) {
   }, [phase]);
 
   function startGame() {
+    generationRef.current += 1;
+    analysisAbortRef.current?.abort(new DOMException('New 3D game', 'AbortError'));
+    analysisAbortRef.current = null;
+    thinkingRef.current = false;
+    setThinking(false);
     chessRef.current = new Chess();
     selectedRef.current = null;
     legalTargetsRef.current = [];
     gameOverRef.current = false;
     setStatus('playing');
     setError(null);
+    setCheckSquare(null);
+    promotionCommitRef.current = null;
+    setPendingPromotion(null);
     setPhase('playing');
   }
 
   function playAgain() {
+    generationRef.current += 1;
+    analysisAbortRef.current?.abort(new DOMException('3D game reset', 'AbortError'));
+    analysisAbortRef.current = null;
+    thinkingRef.current = false;
+    setThinking(false);
     chessRef.current = new Chess();
     selectedRef.current = null;
     legalTargetsRef.current = [];
     gameOverRef.current = false;
     setStatus('playing');
+    setCheckSquare(null);
+    promotionCommitRef.current = null;
+    setPendingPromotion(null);
     sceneRef.current?.rebuildPiecesFromChess();
     sceneRef.current?.refreshHighlights(null);
+  }
+
+  function choosePromotion(promotion) {
+    const commit = promotionCommitRef.current;
+    promotionCommitRef.current = null;
+    setPendingPromotion(null);
+    if (typeof commit === 'function') commit(promotion);
   }
 
   if (phase === 'setup') {
@@ -465,7 +558,7 @@ export default function Board3DExperiment({ onExit }) {
           <h2>Jugable de verdad</h2>
           <p className="hero-scope-note">
             Juegas siempre con blancas, sin elegir color ni girar el tablero — eso queda para otra vuelta.
-            Coronación automática a dama. El resto es ajedrez real: clic para elegir una pieza, clic en una
+            La coronación permite elegir dama, torre, alfil o caballo. El resto es ajedrez real: clic para elegir una pieza, clic en una
             casilla resaltada para mover, la CPU responde de verdad.
           </p>
           <div className="difficulty-slider-row">
@@ -498,10 +591,12 @@ export default function Board3DExperiment({ onExit }) {
           = jugada legal, rojo = captura, dorado = seleccionada / última jugada.
           {thinking && ' La CPU está pensando…'}
         </p>
+        {checkSquare && status === 'playing' && <p className="status-line" role="status" aria-label="Estado del tablero 3D">Jaque</p>}
         {error && <p className="error-text">{error}</p>}
       </div>
 
       <div ref={containerRef} className="board3d-canvas" />
+      {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
 
       <div className="board3d-camera-controls">
         <button type="button" className="secondary-btn" onClick={() => sceneRef.current?.rotateCamera(-Math.PI / 8)}>

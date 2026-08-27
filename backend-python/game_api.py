@@ -18,7 +18,7 @@ from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameR
 from chess_ai import analyze_move as ai_analyze_move
 from shadow_evaluation import maybe_schedule_move_shadow
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
-from chess_core import apply_handicap, board_sans, load_board, resolve_move, serialize_game
+from chess_core import apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
 
 HINT_STRENGTH = 95
 MATE_SCORE_SENTINEL = 100000.0
@@ -50,6 +50,22 @@ async def get_owned_game(game_id: str, username: str) -> dict:
     return entry
 
 
+def load_stored_game_board(entry: dict) -> chess.Board:
+    """Reconstruye una partida persistida sin convertir corrupción en un 500.
+
+    Los movimientos nuevos siempre pasan por ``board.legal_moves``; esta guarda
+    existe para snapshots/históricos antiguos o dañados. Un estado corrupto es
+    recuperable para la aplicación y se comunica como conflicto, no como crash.
+    """
+    try:
+        board = load_board(entry)
+    except ValueError as exc:
+        raise HTTPException(409, "La partida guardada está dañada y no puede continuar. Inicia una nueva partida.") from exc
+    if not board.is_valid():
+        raise HTTPException(409, "La partida guardada contiene una posición imposible. Inicia una nueva partida.")
+    return board
+
+
 def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_valid_api_key, api_key_bucket) -> APIRouter:
     router = APIRouter()
     @router.post("/api/games", status_code=201)
@@ -69,10 +85,10 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
 
         if body.starting_fen:
             try:
-                board = chess.Board(body.starting_fen)
+                board = board_from_valid_fen(body.starting_fen)
                 initial_fen = board.fen()
             except ValueError:
-                raise HTTPException(400, "FEN inicial inválido.")
+                raise HTTPException(400, "FEN inicial inválido o posición imposible.")
             if board.is_game_over(claim_draw=True):
                 raise HTTPException(400, "La posición inicial ya está terminada.")
         else:
@@ -93,6 +109,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
                     "by": "cpu",
                     "captured": opening["captured"],
                     "piece": opening["piece"],
+                    "promotion": opening.get("promotion"),
                 }
 
         entry = {
@@ -112,13 +129,13 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
     @router.get("/api/games/{game_id}")
     async def get_game(game_id: str, username: str = Depends(auth_dependency)):
         entry = await get_owned_game(game_id, username)
-        return serialize_game(game_id, entry, load_board(entry))
+        return serialize_game(game_id, entry, load_stored_game_board(entry))
 
 
     @router.get("/api/games/{game_id}/hint")
     async def hint(game_id: str, username: str = Depends(auth_dependency)):
         entry = await get_owned_game(game_id, username)
-        board = load_board(entry)
+        board = load_stored_game_board(entry)
 
         if board.is_game_over(claim_draw=True):
             raise HTTPException(400, "La partida ya terminó.")
@@ -135,7 +152,8 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
     @router.post("/api/games/{game_id}/undo")
     async def undo(game_id: str, username: str = Depends(auth_dependency)):
         entry = await get_owned_game(game_id, username)
-        board = load_board(entry)
+        expected_moves = list(entry.get('moves') or [])
+        board = load_stored_game_board(entry)
 
         if len(board.move_stack) == 0:
             raise HTTPException(400, "No hay jugadas para deshacer.")
@@ -156,7 +174,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             # color por paridad; eso era incorrecto para posiciones de laboratorio
             # que empiezan con negras o para partidas con hándicap.
             last_mv = board.move_stack[-1]
-            mover_before = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
+            mover_before = board_from_valid_fen(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
             if not entry.get("initialFen"):
                 human_color = entry.get("humanColor", "w")
                 cpu_color = "b" if human_color == "w" else "w"
@@ -172,10 +190,12 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
                 "by": "human" if side_that_moved == entry["humanColor"] else "cpu",
                 "captured": captured,
                 "piece": chess.piece_symbol(piece.piece_type) if piece else None,
+                "promotion": chess.piece_symbol(last_mv.promotion) if last_mv.promotion else None,
             }
 
         entry["moves"] = remaining_sans
-        await store.update_game(game_id, entry)
+        if not await store.update_game_if_moves(game_id, entry, expected_moves):
+            raise HTTPException(409, "La partida cambió mientras deshacías. Recarga el estado y vuelve a intentarlo.")
         return serialize_game(game_id, entry, board)
 
 
@@ -184,9 +204,9 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
     @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
     async def analyze(request: Request, body: AnalyzeRequest, _actor: str = Depends(compute_auth_dependency)):
         try:
-            board = chess.Board(body.fen)
+            board = board_from_valid_fen(body.fen)
         except ValueError:
-            raise HTTPException(400, "FEN inválido.")
+            raise HTTPException(400, "FEN inválido o posición imposible.")
         if board.is_game_over(claim_draw=True):
             raise HTTPException(400, "Esa posición ya está terminada.")
 
@@ -223,9 +243,9 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
     @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
     async def analyze_move_endpoint(request: Request, body: AnalyzeMoveRequest, _actor: str = Depends(compute_auth_dependency)):
         try:
-            board = chess.Board(body.fen)
+            board = board_from_valid_fen(body.fen)
         except ValueError:
-            raise HTTPException(400, "FEN inválido.")
+            raise HTTPException(400, "FEN inválido o posición imposible.")
         if board.is_game_over(claim_draw=True):
             raise HTTPException(400, "Esa posición ya está terminada.")
 
@@ -241,7 +261,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         eval_after_played = None
         if body.from_square and body.to:
             try:
-                played = chess.Board(body.fen)
+                played = board.copy(stack=False)
                 move = resolve_move(played, body.from_square, body.to, body.promotion)
                 if move is None:
                     raise ValueError("Movimiento inválido.")
@@ -256,6 +276,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
                 "to": analyzed["move"]["to"],
                 "san": analyzed["move"]["san"],
                 "piece": analyzed["move"]["piece"],
+                "promotion": analyzed["move"].get("promotion"),
             },
             "evalAfterSuggested": sanitize_eval(analyzed["score"]),
             "evalAfterPlayed": eval_after_played,
@@ -265,7 +286,8 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
     @router.post("/api/games/{game_id}/move")
     async def play_move(game_id: str, body: MoveRequest, username: str = Depends(auth_dependency)):
         entry = await get_owned_game(game_id, username)
-        board = load_board(entry)
+        expected_moves = list(entry.get('moves') or [])
+        board = load_stored_game_board(entry)
 
         if board.is_game_over(claim_draw=True):
             raise HTTPException(400, "La partida ya terminó.")
@@ -290,6 +312,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             "by": "human",
             "captured": human_move["captured"],
             "piece": human_move["piece"],
+            "promotion": human_move.get("promotion"),
         }
 
         if not board.is_game_over(claim_draw=True):
@@ -302,11 +325,13 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
                     "by": "cpu",
                     "captured": cpu_move["captured"],
                     "piece": cpu_move["piece"],
+                    "promotion": cpu_move.get("promotion"),
                 }
 
         cpu_color_for_move = "b" if entry["humanColor"] == "w" else "w"
         entry["moves"] = board_sans(board, entry.get("handicap"), cpu_color_for_move, entry.get("initialFen"))
-        await store.update_game(game_id, entry)
+        if not await store.update_game_if_moves(game_id, entry, expected_moves):
+            raise HTTPException(409, "La partida cambió mientras se procesaba la jugada. Recarga el estado antes de mover otra vez.")
         return serialize_game(game_id, entry, board)
 
 

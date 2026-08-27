@@ -3,6 +3,7 @@
 // y arma un resumen con la peor jugada y una valoración general.
 
 import { Chess } from 'chess.js';
+import { abortableDelay, isAbortError } from './asyncControl.js';
 
 const PIECE_VALUE_FOR_CONTEXT = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 99 });
 
@@ -118,11 +119,12 @@ const ANALYZE_MOVE_MIN_GAP_MS = 400; // el límite del servidor subió a 180/min
 // con margen real bajo el tope nuevo, sin ir tan rápido como el límite permitiría (un hosting gratuito
 // puede sostener menos de lo que el contador de requests autoriza en el papel)
 
-async function throttledAnalyzeMove(api, fen, from, to, promotion, level, gapMs = ANALYZE_MOVE_MIN_GAP_MS) {
+async function throttledAnalyzeMove(api, fen, from, to, promotion, level, gapMs = ANALYZE_MOVE_MIN_GAP_MS, signal = undefined) {
   const wait = Math.max(0, lastAnalyzeMoveCallAt + gapMs - Date.now());
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  if (wait > 0) await abortableDelay(wait, signal);
+  if (signal?.aborted) throw signal.reason || new DOMException('Aborted', 'AbortError');
   lastAnalyzeMoveCallAt = Date.now();
-  return api.analyzeMove(fen, from, to, promotion, level);
+  return api.analyzeMove(fen, from, to, promotion, level, { signal });
 }
 
 // Analiza el historial completo de una partida terminada, llamando al
@@ -130,12 +132,19 @@ async function throttledAnalyzeMove(api, fen, from, to, promotion, level, gapMs 
 // hacer esperar una eternidad en partidas largas — se queda con las
 // últimas, que suelen ser las más relevantes para revisar).
 export async function analyzeGame(history, humanColor, api, options = {}) {
-  const { level = 45, maxMoves = 24, throttleMs = ANALYZE_MOVE_MIN_GAP_MS } = options;
-  const chess = new Chess();
+  const { level = 45, maxMoves = 24, throttleMs = ANALYZE_MOVE_MIN_GAP_MS, signal, initialFen = null } = options;
+  let chess;
+  try {
+    chess = initialFen ? new Chess(initialFen) : new Chess();
+  } catch {
+    return { analyzedCount: 0, averageLoss: 0, worst: null, topMistakes: [], label: 'No se pudo reconstruir la posición inicial.', moveReports: [], incompleteHistory: true };
+  }
+  const startingColor = chess.turn();
+  const moverColorAt = (index) => (index % 2 === 0 ? startingColor : (startingColor === 'w' ? 'b' : 'w'));
 
   const humanMoveIndices = [];
   for (let i = 0; i < history.length; i++) {
-    const moverColor = i % 2 === 0 ? 'w' : 'b';
+    const moverColor = moverColorAt(i);
     if (moverColor === humanColor) humanMoveIndices.push(i);
   }
   const toAnalyze = new Set(humanMoveIndices.slice(-maxMoves));
@@ -144,11 +153,11 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
   for (let i = 0; i < history.length; i++) {
     const entry = history[i];
     const fenBefore = chess.fen();
-    const moverColor = i % 2 === 0 ? 'w' : 'b';
+    const moverColor = moverColorAt(i);
 
     if (moverColor === humanColor && toAnalyze.has(i)) {
       try {
-        const result = await throttledAnalyzeMove(api, fenBefore, entry.from, entry.to, undefined, level, throttleMs);
+        const result = await throttledAnalyzeMove(api, fenBefore, entry.from, entry.to, entry.promotion, level, throttleMs, signal);
         const loss = moveLoss(humanColor, result.evalAfterSuggested, result.evalAfterPlayed);
         const context = buildMoveContext(fenBefore, entry, result.suggested, history[i + 1]);
         moveReports.push({
@@ -157,10 +166,12 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
           played: entry.san,
           playedFrom: entry.from,
           playedTo: entry.to,
+          playedPromotion: entry.promotion || null,
           playedPiece: entry.piece || context?.played?.piece,
           suggested: result.suggested.san,
           suggestedFrom: result.suggested.from,
           suggestedTo: result.suggested.to,
+          suggestedPromotion: result.suggested.promotion || null,
           suggestedPiece: result.suggested.piece || context?.suggested?.piece,
           context,
           loss,
@@ -171,11 +182,19 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
           playedPerspectiveEval: Number.isFinite(result.evalAfterPlayed) ? (humanColor === 'w' ? result.evalAfterPlayed : -result.evalAfterPlayed) : null,
         });
       } catch (e) {
+        if (isAbortError(e) || signal?.aborted) throw e;
         // si falla el análisis de una jugada puntual, seguimos con el resto
       }
     }
 
-    chess.move(entry.san);
+    try {
+      const applied = entry?.from && entry?.to
+        ? chess.move({ from: entry.from, to: entry.to, promotion: entry.promotion || 'q' })
+        : chess.move(entry.san);
+      if (!applied) break;
+    } catch {
+      break;
+    }
   }
 
   const withLoss = moveReports.filter((m) => m.loss !== null);
@@ -199,7 +218,7 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
 // CombatScreen.jsx sobre por qué). Se usa `fenBefore` + `from`/`to` de cada
 // entrada directamente, en vez de reproducir el registro con chess.js.
 export async function analyzeCombatLog(log, humanColor, api, options = {}) {
-  const { level = 45, maxMoves = 24, throttleMs = ANALYZE_MOVE_MIN_GAP_MS } = options;
+  const { level = 45, maxMoves = 24, throttleMs = ANALYZE_MOVE_MIN_GAP_MS, signal } = options;
 
   const humanIndices = [];
   for (let i = 0; i < log.length; i++) {
@@ -212,7 +231,7 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
     const entry = log[i];
     if (entry.by !== 'human' || !toAnalyze.has(i)) continue;
     try {
-      const result = await throttledAnalyzeMove(api, entry.fenBefore, entry.from, entry.to, undefined, level, throttleMs);
+      const result = await throttledAnalyzeMove(api, entry.fenBefore, entry.from, entry.to, entry.promotion, level, throttleMs, signal);
       const loss = moveLoss(humanColor, result.evalAfterSuggested, result.evalAfterPlayed);
       const context = buildMoveContext(entry.fenBefore, entry, result.suggested, log[i + 1]);
       moveReports.push({
@@ -220,10 +239,12 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
         played: entry.san,
         playedFrom: entry.from,
         playedTo: entry.to,
+        playedPromotion: entry.promotion || null,
         playedPiece: entry.piece || context?.played?.piece,
         suggested: result.suggested.san,
         suggestedFrom: result.suggested.from,
         suggestedTo: result.suggested.to,
+        suggestedPromotion: result.suggested.promotion || null,
         suggestedPiece: result.suggested.piece || context?.suggested?.piece,
         context,
         loss,
@@ -234,6 +255,7 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
         playedPerspectiveEval: Number.isFinite(result.evalAfterPlayed) ? (humanColor === 'w' ? result.evalAfterPlayed : -result.evalAfterPlayed) : null,
       });
     } catch (e) {
+      if (isAbortError(e) || signal?.aborted) throw e;
       // si falla el análisis de una jugada puntual, seguimos con el resto
     }
   }
@@ -269,7 +291,7 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
 // se cancela a mitad de camino. `shouldStop()` se consulta entre cada
 // partida para poder cortar limpio.
 export async function findWorstMoveEver(gameHistory, combatHistory, api, onProgress, shouldStop, options = {}) {
-  const { throttleMs = ANALYZE_MOVE_MIN_GAP_MS, cache = {} } = options;
+  const { throttleMs = ANALYZE_MOVE_MIN_GAP_MS, cache = {}, signal } = options;
   const records = [
     ...gameHistory.map((r) => ({ record: r, kind: 'game' })),
     ...combatHistory.map((r) => ({ record: r, kind: 'combat' })),
@@ -288,7 +310,7 @@ export async function findWorstMoveEver(gameHistory, combatHistory, api, onProgr
   const total = records.length;
 
   for (let i = 0; i < total; i++) {
-    if (shouldStop && shouldStop()) break;
+    if (signal?.aborted || (shouldStop && shouldStop())) break;
     const { record, kind } = records[i];
 
     try {
@@ -301,8 +323,8 @@ export async function findWorstMoveEver(gameHistory, combatHistory, api, onProgr
         worst = updatedCache[record.id].worst;
       } else {
         const report = kind === 'combat'
-          ? await analyzeCombatLog(record.log, record.humanColor, api, { throttleMs })
-          : await analyzeGame(record.moves, record.humanColor, api, { throttleMs });
+          ? await analyzeCombatLog(record.log, record.humanColor, api, { throttleMs, signal })
+          : await analyzeGame(record.moves, record.humanColor, api, { throttleMs, signal, initialFen: record.initialFen });
         worst = report.worst || null;
         updatedCache[record.id] = { worst, analyzedAt: new Date().toISOString() };
       }
@@ -311,6 +333,7 @@ export async function findWorstMoveEver(gameHistory, combatHistory, api, onProgr
         best = { record, kind, moveReport: worst };
       }
     } catch (e) {
+      if (isAbortError(e) || signal?.aborted) break;
       // si falla el análisis de una partida puntual, seguimos con las demás
     }
 

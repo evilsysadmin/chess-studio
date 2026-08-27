@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { burnRateForSlo, errorBudgetForSlo, evaluateProductSlos, evaluateReleaseHealth, fetchAdminObservability, observabilityRangeForPreset, runObservabilityProbe, runTempoTraceProbe, summarizeObservabilityHealth } from '../observability.js';
 import { APP_RELEASE } from '../release.js';
 
@@ -43,15 +43,32 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
   const [signalProbe, setSignalProbe] = useState(null);
   const [tempoProbeBusy, setTempoProbeBusy] = useState(false);
   const [signalProbeBusy, setSignalProbeBusy] = useState(false);
+  const mountedRef = useRef(true);
+  const tempoProbeInFlightRef = useRef(false);
+  const signalProbeInFlightRef = useRef(false);
+  const tempoProbeAbortRef = useRef(null);
+  const signalProbeAbortRef = useRef(null);
 
   useEffect(() => {
-    let active = true;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      tempoProbeAbortRef.current?.abort('Observabilidad cerrada');
+      signalProbeAbortRef.current?.abort('Observabilidad cerrada');
+      tempoProbeInFlightRef.current = false;
+      signalProbeInFlightRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
     const range = observabilityRangeForPreset('24h');
-    fetchAdminObservability({ token, from: range.from, to: range.to })
-      .then((payload) => { if (active) setRuntime(payload); })
-      .catch(() => { if (active) setRuntime(null); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    setLoading(true);
+    fetchAdminObservability({ token, from: range.from, to: range.to, signal: controller.signal })
+      .then((payload) => { if (!controller.signal.aborted && mountedRef.current) setRuntime(payload); })
+      .catch(() => { if (!controller.signal.aborted && mountedRef.current) setRuntime(null); })
+      .finally(() => { if (!controller.signal.aborted && mountedRef.current) setLoading(false); });
+    return () => controller.abort('Resumen de observabilidad reemplazado');
   }, [token]);
 
   const summary = useMemo(() => summarizeObservabilityHealth(runtime, users, currentAdmin), [runtime, users, currentAdmin]);
@@ -67,19 +84,41 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
   const tracing = runtime?.tracing || null;
 
   async function handleTempoProbe() {
-    if (tempoProbeBusy) return;
+    if (tempoProbeInFlightRef.current) return;
+    tempoProbeInFlightRef.current = true;
+    const controller = new AbortController();
+    tempoProbeAbortRef.current?.abort('Nueva comprobación de trazas');
+    tempoProbeAbortRef.current = controller;
     setTempoProbeBusy(true);
-    const result = await runTempoTraceProbe({ token });
-    setTempoProbe(result);
-    setTempoProbeBusy(false);
+    try {
+      const result = await runTempoTraceProbe({ token, signal: controller.signal });
+      if (!controller.signal.aborted && mountedRef.current) setTempoProbe(result);
+    } catch (error) {
+      if (!controller.signal.aborted && mountedRef.current) setTempoProbe({ ok: false, reason: error?.message || 'La comprobación de trazas falló.' });
+    } finally {
+      if (tempoProbeAbortRef.current === controller) tempoProbeAbortRef.current = null;
+      tempoProbeInFlightRef.current = false;
+      if (mountedRef.current) setTempoProbeBusy(false);
+    }
   }
 
   async function handleSignalProbe() {
-    if (signalProbeBusy) return;
+    if (signalProbeInFlightRef.current) return;
+    signalProbeInFlightRef.current = true;
+    const controller = new AbortController();
+    signalProbeAbortRef.current?.abort('Nueva comprobación de señales');
+    signalProbeAbortRef.current = controller;
     setSignalProbeBusy(true);
-    const result = await runObservabilityProbe({ token });
-    setSignalProbe(result);
-    setSignalProbeBusy(false);
+    try {
+      const result = await runObservabilityProbe({ token, signal: controller.signal });
+      if (!controller.signal.aborted && mountedRef.current) setSignalProbe(result);
+    } catch (error) {
+      if (!controller.signal.aborted && mountedRef.current) setSignalProbe({ ok: false, reason: error?.message || 'La comprobación de señales falló.', signals: {} });
+    } finally {
+      if (signalProbeAbortRef.current === controller) signalProbeAbortRef.current = null;
+      signalProbeInFlightRef.current = false;
+      if (mountedRef.current) setSignalProbeBusy(false);
+    }
   }
 
   return (

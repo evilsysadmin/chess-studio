@@ -2,10 +2,12 @@ import { useRef, useState } from 'react';
 import { downloadProfile, exportProfile, importProfile, pushProfileToServer } from '../profileBackup.js';
 import { resetAllProgress } from '../resetProgress.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { withTimeout } from '../asyncControl.js';
 
 export default function ProfileBackupModal({ onClose }) {
   useEscapeToClose(onClose);
   const fileInputRef = useRef(null);
+  const operationInFlightRef = useRef(false);
   const [importMessage, setImportMessage] = useState(null); // { text, tone }
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
@@ -17,6 +19,8 @@ export default function ProfileBackupModal({ onClose }) {
   }
 
   async function handleResetConfirmed() {
+    if (operationInFlightRef.current) return;
+    operationInFlightRef.current = true;
     const previous = exportProfile();
     setBusy(true);
     setResetMessage(null);
@@ -31,6 +35,7 @@ export default function ProfileBackupModal({ onClose }) {
       importProfile(previous, { replace: true, markDirty: true });
       setResetMessage('No se pudo guardar el reinicio en el servidor. No se ha borrado tu progreso; inténtalo de nuevo.');
     } finally {
+      operationInFlightRef.current = false;
       setBusy(false);
     }
   }
@@ -39,37 +44,48 @@ export default function ProfileBackupModal({ onClose }) {
     fileInputRef.current?.click();
   }
 
-  function handleFileChange(e) {
+  async function handleFileChange(e) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const previous = exportProfile();
-      setBusy(true);
-      setImportMessage(null);
-      try {
-        // replace=true evita mezclar un backup parcial con restos del perfil
-        // actual. Después esperamos confirmación de Mongo antes de decir OK.
-        const restored = importProfile(reader.result, { replace: true, markDirty: true });
-        await pushProfileToServer({ throwOnError: true });
-        setImportMessage({
-          text: `Listo — se restauraron ${restored} sección${restored === 1 ? '' : 'es'} y el perfil quedó guardado en MongoDB. Recarga la página para verlo reflejado en todos lados.`,
-          tone: 'good',
-        });
-      } catch (err) {
-        importProfile(previous, { replace: true, markDirty: true });
-        setImportMessage({
-          text: err?.message?.startsWith('El archivo')
-            ? err.message
-            : 'No se pudo guardar el perfil importado en el servidor. Se ha conservado tu progreso anterior.',
-          tone: 'bad',
-        });
-      } finally {
-        setBusy(false);
-      }
-    };
-    reader.readAsText(file);
     e.target.value = ''; // permite volver a elegir el mismo archivo si hace falta
+    if (!file || operationInFlightRef.current) return;
+    operationInFlightRef.current = true;
+
+    const reader = new FileReader();
+    const readPromise = new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('No se pudo leer el archivo.'));
+      reader.onabort = () => reject(new DOMException('Lectura cancelada', 'AbortError'));
+      reader.readAsText(file);
+    });
+
+    const previous = exportProfile();
+    setBusy(true);
+    setImportMessage(null);
+    try {
+      const text = await withTimeout(readPromise, 10000, { message: 'La lectura del backup tardó demasiado.' });
+      // replace=true evita mezclar un backup parcial con restos del perfil
+      // actual. Después esperamos confirmación de Mongo antes de decir OK.
+      const restored = importProfile(text, { replace: true, markDirty: true });
+      await pushProfileToServer({ throwOnError: true });
+      setImportMessage({
+        text: `Listo — se restauraron ${restored} sección${restored === 1 ? '' : 'es'} y el perfil quedó guardado en MongoDB. Recarga la página para verlo reflejado en todos lados.`,
+        tone: 'good',
+      });
+    } catch (err) {
+      try { if (reader.readyState === FileReader.LOADING) reader.abort(); } catch { /* best effort */ }
+      importProfile(previous, { replace: true, markDirty: true });
+      setImportMessage({
+        text: err?.message?.startsWith('El archivo')
+          ? err.message
+          : err?.name === 'TimeoutError'
+            ? 'El navegador tardó demasiado en leer el backup. Tu progreso anterior sigue intacto.'
+            : 'No se pudo guardar el perfil importado en el servidor. Se ha conservado tu progreso anterior.',
+        tone: 'bad',
+      });
+    } finally {
+      operationInFlightRef.current = false;
+      setBusy(false);
+    }
   }
 
   return (

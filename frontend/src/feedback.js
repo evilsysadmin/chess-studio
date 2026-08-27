@@ -3,16 +3,17 @@ import { request, requestJson } from './http.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-export function submitFeedback({ category = 'other', message, context = 'Home', attachments = [] }) {
+export function submitFeedback({ category = 'other', message, context = 'Home', attachments = [], signal } = {}) {
   return requestJson(`${BASE_URL}/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({ category, message, context, attachments }),
+    signal,
   });
 }
 
-export function fetchMyFeedback() {
-  return requestJson(`${BASE_URL}/feedback/mine`, { headers: { ...authHeader() } });
+export function fetchMyFeedback({ signal } = {}) {
+  return requestJson(`${BASE_URL}/feedback/mine`, { headers: { ...authHeader() }, signal });
 }
 
 export function fetchAdminFeedback() {
@@ -35,9 +36,10 @@ export function replyAdminFeedback(feedbackId, message, resolve = true) {
   });
 }
 
-export async function fetchAdminFeedbackAttachment(feedbackId, attachmentIndex) {
+export async function fetchAdminFeedbackAttachment(feedbackId, attachmentIndex, { signal } = {}) {
   const response = await request(`${BASE_URL}/admin/feedback/${encodeURIComponent(feedbackId)}/attachments/${Number(attachmentIndex)}`, {
     headers: { ...authHeader() },
+    signal,
   });
   if (!response.ok) {
     let detail = `HTTP ${response.status}`;

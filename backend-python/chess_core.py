@@ -32,9 +32,25 @@ def apply_handicap(board: chess.Board, handicap: Optional[str], cpu_color: str) 
     board.remove_piece_at(square)
 
 
+def board_from_valid_fen(fen: str) -> chess.Board:
+    """Carga un FEN únicamente si describe una posición estructuralmente legal.
+
+    ``python-chess`` puede parsear algunos FEN sintácticamente correctos que
+    representan posiciones imposibles (por ejemplo, sin uno de los reyes).
+    Ningún modo estándar debe dejar que ese estado avance hasta el motor.
+    """
+    try:
+        board = chess.Board(fen)
+    except ValueError as exc:
+        raise ValueError("FEN inválido") from exc
+    if not board.is_valid():
+        raise ValueError("posición de ajedrez imposible")
+    return board
+
+
 def load_board(entry: dict) -> chess.Board:
     """Reconstruye una partida desde su origen real y su historial SAN."""
-    board = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
+    board = board_from_valid_fen(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
     human_color = entry.get("humanColor", "w")
     cpu_color = "b" if human_color == "w" else "w"
     if not entry.get("initialFen"):
@@ -57,7 +73,7 @@ def board_sans(
     reaplicarse o una jugada puede volverse ambigua/ilegal al serializarla.
     """
     sans = []
-    temp = chess.Board(initial_fen) if initial_fen else chess.Board()
+    temp = board_from_valid_fen(initial_fen) if initial_fen else chess.Board()
     if not initial_fen:
         apply_handicap(temp, handicap, cpu_color)
     for move in board.move_stack:
@@ -72,9 +88,9 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
         status = "checkmate"
     elif board.is_stalemate():
         status = "stalemate"
-    elif board.can_claim_threefold_repetition():
+    elif board.is_fivefold_repetition() or board.can_claim_threefold_repetition():
         status = "repetition"
-    elif board.is_insufficient_material() or board.can_claim_fifty_moves():
+    elif board.is_insufficient_material() or board.is_seventyfive_moves() or board.can_claim_fifty_moves():
         status = "draw"
     elif board.is_check():
         status = "check"
@@ -82,7 +98,7 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
         status = "playing"
 
     history = []
-    temp = chess.Board(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
+    temp = board_from_valid_fen(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
     if not entry.get("initialFen"):
         human_color = entry.get("humanColor", "w")
         cpu_color = "b" if human_color == "w" else "w"
@@ -105,6 +121,7 @@ def serialize_game(game_id: str, entry: dict, board: chess.Board) -> dict:
                 "from": chess.square_name(move.from_square),
                 "to": chess.square_name(move.to_square),
                 "piece": chess.piece_symbol(mover.piece_type) if mover else None,
+                "promotion": chess.piece_symbol(move.promotion) if move.promotion else None,
                 "captured": captured,
                 "capturedPiece": captured_piece,
             }
@@ -156,6 +173,10 @@ def resolve_move(
     except ValueError:
         return None
 
+    normalized_promotion = str(promotion).lower() if promotion is not None else None
+    if normalized_promotion is not None and normalized_promotion not in _PROMOTION_PIECES:
+        return None
+
     candidates = [
         move
         for move in board.legal_moves
@@ -163,12 +184,17 @@ def resolve_move(
     ]
     if not candidates:
         return None
-    if len(candidates) == 1:
-        return candidates[0]
 
-    # Varias candidatas solo aparecen al promocionar: dama por defecto.
-    wanted = _PROMOTION_PIECES.get((promotion or "q").lower(), chess.QUEEN)
-    for move in candidates:
+    promotion_candidates = [move for move in candidates if move.promotion is not None]
+    if not promotion_candidates:
+        # Un cliente obsoleto/corrupto no puede colar `promotion=q` en e2-e4.
+        return candidates[0] if normalized_promotion is None else None
+
+    # En promoción hay cuatro jugadas legales con el mismo from/to. Sin código
+    # conservamos la UX histórica (dama); con código elegimos exactamente la
+    # pieza solicitada y nunca reinterpretamos valores inválidos.
+    wanted = _PROMOTION_PIECES.get(normalized_promotion or "q", chess.QUEEN)
+    for move in promotion_candidates:
         if move.promotion == wanted:
             return move
-    return candidates[0]
+    return None

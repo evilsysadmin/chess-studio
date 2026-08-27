@@ -357,6 +357,37 @@ def test_promotion_move_via_analyze():
     assert body["evalAfterPlayed"] == 0
 
 
+def test_analyze_move_rejects_invalid_explicit_promotion_code():
+    fen = "8/P6k/8/8/8/8/7K/8 w - - 0 1"
+    r = client.post(
+        "/api/analyze-move",
+        json={"fen": fen, "from": "a7", "to": "a8", "promotion": "x", "level": 10},
+    )
+    # La jugada a analizar es inválida; el endpoint sigue pudiendo sugerir una
+    # alternativa, pero nunca evalúa 'x' silenciosamente como dama.
+    assert r.status_code == 200
+    assert r.json()["evalAfterPlayed"] is None
+
+
+def test_game_history_and_last_move_preserve_human_underpromotion():
+    fen = "8/P6k/8/8/8/8/7K/8 w - - 0 1"
+    created = client.post(
+        "/api/games",
+        json={"difficulty": 0, "color": "w", "startingFen": fen},
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+    response = client.post(
+        f"/api/games/{game_id}/move",
+        json={"from": "a7", "to": "a8", "promotion": "n"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["history"][0]["promotion"] == "n"
+    assert body["lastMove"]["promotion"] == "n"
+    assert body["isGameOver"] is True
+
+
 def test_castling_move_via_analyze():
     fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
     r = client.post(
@@ -418,6 +449,35 @@ def test_analyze_endpoint():
     body = r.json()
     assert "from" in body and "to" in body and "san" in body
 
+
+
+def test_analyze_rejects_parseable_but_impossible_fen():
+    fen = "8/8/8/8/8/8/8/4K3 w - - 0 1"  # falta el rey negro
+    assert chess.Board(fen).is_valid() is False
+    r = client.post("/api/analyze", json={"fen": fen, "level": 30})
+    assert r.status_code == 400
+    assert "imposible" in r.json()["detail"].lower()
+
+
+def test_analyze_move_rejects_parseable_but_impossible_fen():
+    fen = "8/8/8/8/8/8/8/4K3 w - - 0 1"
+    r = client.post("/api/analyze-move", json={"fen": fen, "level": 30})
+    assert r.status_code == 400
+    assert "imposible" in r.json()["detail"].lower()
+
+
+def test_corrupt_persisted_game_returns_conflict_not_server_crash():
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    asyncio.run(store.update_game(created["id"], {
+        "owner": "testuser",
+        "moves": ["e4", "e5", "Qa9"],
+        "difficulty": 20,
+        "humanColor": "w",
+        "lastMove": None,
+    }))
+    r = client.get(f"/api/games/{created['id']}")
+    assert r.status_code == 409
+    assert "dañada" in r.json()["detail"].lower()
 
 def test_analyze_rejects_finished_position():
     fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"  # fool's mate consumado
@@ -1742,3 +1802,48 @@ def test_admin_can_force_player_portrait_without_exposing_target_name_to_ai(monk
 
 def test_admin_player_portrait_rejects_anonymous():
     assert raw_client.post("/api/admin/player-portrait", json={"username": "x", "facts": {}}).status_code == 401
+
+
+def test_play_move_rejects_stale_concurrent_write(monkeypatch):
+    import game_api
+
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+
+    async def conflict(*_args, **_kwargs):
+        return False
+
+    monkeypatch.setattr(game_api.store, "update_game_if_moves", conflict)
+    response = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"})
+    assert response.status_code == 409
+    assert "cambió" in response.json()["detail"]
+
+
+def test_undo_rejects_stale_concurrent_write(monkeypatch):
+    import game_api
+
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    game_id = created["id"]
+    assert client.post(f"/api/games/{game_id}/move", json={"from": "e2", "to": "e4"}).status_code == 200
+
+    async def conflict(*_args, **_kwargs):
+        return False
+
+    monkeypatch.setattr(game_api.store, "update_game_if_moves", conflict)
+    response = client.post(f"/api/games/{game_id}/undo")
+    assert response.status_code == 409
+    assert "cambió" in response.json()["detail"]
+
+
+def test_move_after_checkmate_is_rejected_without_mutating_game():
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    game_id = created["id"]
+    _seed(game_id, ["f3", "e5", "g4", "Qh4#"], human_color="w")
+
+    before = client.get(f"/api/games/{game_id}").json()
+    response = client.post(f"/api/games/{game_id}/move", json={"from": "a2", "to": "a3"})
+    after = client.get(f"/api/games/{game_id}").json()
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "La partida ya terminó."
+    assert after["fen"] == before["fen"]
+    assert after["history"] == before["history"]

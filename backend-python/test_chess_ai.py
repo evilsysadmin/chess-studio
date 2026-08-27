@@ -86,6 +86,14 @@ def test_move_to_dict_reports_capture():
     assert d["piece"] == "p"
 
 
+def test_move_to_dict_preserves_underpromotion():
+    board = chess.Board("4k3/P7/8/8/8/8/8/4K3 w - - 0 1")
+    move = chess.Move.from_uci("a7a8n")
+    d = move_to_dict(board, move)
+    assert d["promotion"] == "n"
+    assert d["san"].startswith("a8=N")
+
+
 def test_intermediate_and_above_disable_intentional_random_blunders():
     # Desde Intermedio los errores deben venir de la fuerza real de búsqueda,
     # no de una ruleta que pueda escoger cualquier legal después de pensar.

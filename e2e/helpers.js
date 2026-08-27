@@ -1,20 +1,106 @@
 import { expect } from '@playwright/test';
 
-export async function mockApi(page, { isAdmin = false, gameGetFailures = 0 } = {}) {
-  // These E2E specs exercise navigation/gameplay, not tutorial onboarding.
-  // Seed Combat tutorials as already seen so modal overlays cannot intercept
-  // unrelated clicks and burn Playwright's 30 s action timeout.
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const CHECK_START_FEN = '7k/8/8/8/8/8/4Q3/7K w - - 0 1';
+const CHECK_END_FEN = '4Q2k/8/8/8/8/8/8/7K b - - 1 1';
+const MATE_START_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
+const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
+const OPENING_END_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
+
+function scenarioInitialFen(scenario) {
+  if (scenario === 'check') return CHECK_START_FEN;
+  if (scenario === 'mate') return MATE_START_FEN;
+  return START_FEN;
+}
+
+function scenarioMoveResult(game, payload, scenario) {
+  if (scenario === 'check') {
+    if (payload.from !== 'e2' || payload.to !== 'e8') throw new Error(`E2E check esperaba e2-e8, recibió ${payload.from}-${payload.to}`);
+    return {
+      ...game,
+      fen: CHECK_END_FEN,
+      turn: 'b',
+      status: 'check',
+      isGameOver: false,
+      history: [{ from: 'e2', to: 'e8', san: 'Qe8+', piece: 'q', by: 'human' }],
+      lastMove: { from: 'e2', to: 'e8', san: 'Qe8+', piece: 'q', by: 'human' },
+    };
+  }
+  if (scenario === 'mate') {
+    if (payload.from !== 'g6' || payload.to !== 'g7') throw new Error(`E2E mate esperaba g6-g7, recibió ${payload.from}-${payload.to}`);
+    return {
+      ...game,
+      fen: MATE_END_FEN,
+      turn: 'b',
+      status: 'checkmate',
+      isGameOver: true,
+      history: [{ from: 'g6', to: 'g7', san: 'Qg7#', piece: 'q', by: 'human' }],
+      lastMove: { from: 'g6', to: 'g7', san: 'Qg7#', piece: 'q', by: 'human' },
+    };
+  }
+
+  if (payload.from === 'e2' && payload.to === 'e4') {
+    return {
+      ...game,
+      fen: OPENING_END_FEN,
+      turn: 'w',
+      status: 'playing',
+      isGameOver: false,
+      history: [
+        { from: 'e2', to: 'e4', san: 'e4', piece: 'p', by: 'human' },
+        { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' },
+      ],
+      lastMove: { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' },
+    };
+  }
+
+  throw new Error(`E2E route de jugada no simulada: ${payload.from}-${payload.to}`);
+}
+
+export async function mockApi(page, {
+  isAdmin = false,
+  gameGetFailures = 0,
+  gameScenario = 'opening',
+  profileSeed = {},
+  initialFeedback = [],
+  analysisMoves = [],
+} = {}) {
+  // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
     'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+      'combat-basics': { seen: true },
       'combat-campaign': { seen: true },
       'combat-intelligence': { seen: true },
       'combat-deployment': { seen: true },
+      'quick-match-rules': { seen: true },
+      tournament: { seen: true },
+      practice: { seen: true },
+      puzzles: { seen: true },
+      spectator: { seen: true },
+      lab: { seen: true },
+      'rival-ghost': { seen: true },
     }),
+    ...profileSeed,
   };
   let profileRevisions = {};
   let nextGameId = 1;
+  let nextFeedbackId = 1;
   let remainingGameGetFailures = Math.max(0, Number(gameGetFailures || 0));
+  let analysisIndex = 0;
   const games = new Map();
+  let feedback = initialFeedback.map((item, index) => ({
+    id: item.id || `e2e-feedback-${index + 1}`,
+    username: item.username || 'e2e',
+    category: item.category || 'bug',
+    message: item.message || 'Bug E2E',
+    context: item.context || 'Home',
+    status: item.status || 'new',
+    attachments: item.attachments || [],
+    admin_reply: item.admin_reply || null,
+    admin_replied_at: item.admin_replied_at || null,
+    created_at: item.created_at || '2026-08-27T19:00:00Z',
+  }));
+
   await page.route('http://localhost:4000/api/**', async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -22,7 +108,7 @@ export async function mockApi(page, { isAdmin = false, gameGetFailures = 0 } = {
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
     if (path.endsWith('/auth/login') && method === 'POST') return json({ token: 'e2e-token', username: 'e2e' });
-    if (path.endsWith('/auth/me')) return json({ username: 'e2e', isAdmin });
+    if (path.endsWith('/auth/me')) return json({ username: 'e2e', isAdmin, email: 'e2e@example.test' });
     if (path.endsWith('/profile') && method === 'GET') {
       return json({ app: 'estudio-de-ajedrez', version: 2, data: profileData, revisions: profileRevisions });
     }
@@ -67,19 +153,59 @@ export async function mockApi(page, { isAdmin = false, gameGetFailures = 0 } = {
       profileData = nextData;
       return json({ app: 'estudio-de-ajedrez', version: 2, data: profileData, revisions: profileRevisions });
     }
+
+    if (path.endsWith('/feedback') && method === 'POST') {
+      const payload = route.request().postDataJSON?.() ?? {};
+      const created = {
+        id: `e2e-feedback-created-${nextFeedbackId++}`,
+        username: 'e2e', category: payload.category || 'other', message: payload.message || '', context: payload.context || 'Home',
+        status: 'new', attachments: (payload.attachments || []).map((attachment, index) => ({ index, name: attachment.name || `captura-${index + 1}.png`, mime: attachment.mime || 'image/png', size: attachment.size || 1 })),
+        admin_reply: null, admin_replied_at: null, created_at: '2026-08-27T19:00:00Z',
+      };
+      feedback = [created, ...feedback];
+      return json({ feedback: created }, 201);
+    }
+    if (path.endsWith('/feedback/mine') && method === 'GET') return json({ feedback: feedback.filter((item) => item.username === 'e2e') });
+    if (path.endsWith('/admin/feedback') && method === 'GET') return json({ feedback });
+    const feedbackStatusMatch = path.match(/\/admin\/feedback\/([^/]+)\/status$/);
+    if (feedbackStatusMatch && method === 'POST') {
+      const payload = route.request().postDataJSON?.() ?? {};
+      const index = feedback.findIndex((item) => item.id === decodeURIComponent(feedbackStatusMatch[1]));
+      if (index < 0) return json({ detail: 'Feedback no encontrado' }, 404);
+      feedback[index] = { ...feedback[index], status: payload.status || 'read' };
+      return json({ feedback: feedback[index] });
+    }
+    const feedbackReplyMatch = path.match(/\/admin\/feedback\/([^/]+)\/reply$/);
+    if (feedbackReplyMatch && method === 'POST') {
+      const payload = route.request().postDataJSON?.() ?? {};
+      const index = feedback.findIndex((item) => item.id === decodeURIComponent(feedbackReplyMatch[1]));
+      if (index < 0) return json({ detail: 'Feedback no encontrado' }, 404);
+      feedback[index] = {
+        ...feedback[index],
+        admin_reply: payload.message || '',
+        admin_replied_at: '2026-08-27T19:05:00Z',
+        status: payload.resolve === false ? 'read' : 'resolved',
+      };
+      return json({ feedback: feedback[index] });
+    }
+
     if (path.endsWith('/admin/users')) return json({ users: [] });
-    if (path.endsWith('/feedback') && method === 'POST') return json({ feedback: { id: 'e2e-feedback', status: 'new' } }, 201);
-    if (path.endsWith('/admin/feedback')) return json({ feedback: [] });
     if (path.endsWith('/admin/ai-metrics')) return json({ samples: 0, enabled: true, circuit: { open: false } });
     if (path.endsWith('/status')) return json({ onlineUsers: 2, presenceAvailable: true });
     if (path.endsWith('/auth/activity')) return json({ ok: true });
     if (path.endsWith('/health')) return json({ ok: true });
+    if (path.endsWith('/features')) return json({});
+    if (path.endsWith('/analyze') && method === 'POST') {
+      const move = analysisMoves[analysisIndex++];
+      return move ? json(move) : json({ detail: 'E2E sin jugada de análisis preparada' }, 503);
+    }
     if (path.endsWith('/games') && method === 'POST') {
       const payload = route.request().postDataJSON?.() ?? {};
       const id = `e2e-game-${nextGameId++}`;
+      const forcedFen = scenarioInitialFen(gameScenario);
       const game = {
         id,
-        fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        fen: forcedFen,
         turn: 'w',
         humanColor: payload.color === 'b' ? 'b' : 'w',
         difficulty: Math.round(Number(payload.difficulty ?? 50)),
@@ -88,11 +214,24 @@ export async function mockApi(page, { isAdmin = false, gameGetFailures = 0 } = {
         isGameOver: false,
         history: [],
         lastMove: null,
-        initialFen: payload.startingFen || null,
+        initialFen: gameScenario === 'opening' ? (payload.startingFen || null) : forcedFen,
         ghostStyle: payload.ghostStyle || null,
       };
       games.set(id, game);
       return json(game, 201);
+    }
+    const moveMatch = path.match(/\/games\/([^/]+)\/move$/);
+    if (moveMatch && method === 'POST') {
+      const id = moveMatch[1];
+      const game = games.get(id);
+      if (!game) return json({ detail: 'Partida no encontrada' }, 404);
+      try {
+        const updated = scenarioMoveResult(game, route.request().postDataJSON?.() ?? {}, gameScenario);
+        games.set(id, updated);
+        return json(updated);
+      } catch (error) {
+        return json({ detail: error.message }, 400);
+      }
     }
     const gameMatch = path.match(/\/games\/([^/]+)$/);
     if (gameMatch && method === 'GET') {
@@ -231,4 +370,184 @@ export async function loginAndOpenDeployment(page) {
   await login(page);
   await openCampaignBriefing(page);
   return openDeployment(page);
+}
+
+export async function clickBoardMove(page, from, to, scope = page) {
+  const fromSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${from},`) });
+  const toSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${to},`) });
+  await expect(fromSquare).toBeVisible();
+  await fromSquare.click();
+  await expect(toSquare).toBeVisible();
+  await toSquare.click();
+}
+
+export async function startQuickGame(page) {
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameStatus(page)).toBeVisible();
+}
+
+export async function startTournamentGame(page) {
+  await buttonWithHeading(page, 'Torneo').click();
+  await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Jugar siguiente partida', exact: true }).click();
+  await expect(gameStatus(page)).toBeVisible();
+}
+
+export async function startPracticeGame(page) {
+  await buttonWithHeading(page, 'Partida de práctica').click();
+  await expect(gameStatus(page)).toBeVisible();
+}
+
+export async function openMoreGameModes(page) {
+  const details = page.locator('details.home-more-modes');
+  await expect(details).toBeVisible();
+  if (!(await details.evaluate((node) => node.open))) await details.locator('summary').click();
+  return details;
+}
+
+export async function openFreeCombat(page) {
+  const details = await openMoreGameModes(page);
+  await buttonWithHeading(details, 'Combat Chess · Batalla libre').click();
+}
+
+export async function seedCombatBattleSnapshot(page, {
+  sessionId = 'free',
+  fen,
+  humanColor = 'w',
+} = {}) {
+  if (!fen) throw new Error('seedCombatBattleSnapshot requiere FEN');
+  await page.evaluate(({ sessionId, fen, humanColor }) => {
+    const files = 'abcdefgh';
+    const [boardPart] = fen.split(' ');
+    const ranks = boardPart.split('/');
+    const registry = {};
+    for (let rankIndex = 0; rankIndex < 8; rankIndex += 1) {
+      let fileIndex = 0;
+      for (const token of ranks[rankIndex]) {
+        if (/\d/.test(token)) {
+          fileIndex += Number(token);
+          continue;
+        }
+        const square = `${files[fileIndex]}${8 - rankIndex}`;
+        const type = token.toLowerCase();
+        const color = token === token.toUpperCase() ? 'w' : 'b';
+        registry[square] = {
+          id: `${color}-${type}-${square}`,
+          type,
+          color,
+          square,
+          strengthPoints: 0,
+          speedPoints: 0,
+          bankedXp: 0,
+        };
+        fileIndex += 1;
+      }
+    }
+    const snapshot = {
+      version: 1,
+      sessionId,
+      savedAt: new Date().toISOString(),
+      phase: 'battle',
+      fen,
+      registry,
+      humanColor,
+      combatLog: [],
+      uiLog: [],
+      autoLevelUpEnabled: true,
+      focus: { w: null, b: null },
+      positionCounts: [],
+      bossHp: null,
+      bossPhase: 1,
+      battleStartRoster: null,
+      battleParticipants: [],
+      unitBattleStats: { killsByIdentity: {}, bossDamageByIdentity: {}, bossFinisherIdentityId: null, underdogCredits: 0, tacticalCredits: 0 },
+      activityGameId: 'e2e-combat-game',
+    };
+    sessionStorage.setItem('chess-study-active-combat-session-v1', JSON.stringify({ version: 2, sessions: { [sessionId]: snapshot } }));
+  }, { sessionId, fen, humanColor });
+}
+
+export async function startLabGame(page) {
+  const details = await openMoreGameModes(page);
+  await buttonWithHeading(details, 'Laboratorio').click();
+  await expect(page.getByRole('button', { name: 'Jugar esta posición', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Jugar esta posición', exact: true }).click();
+  await expect(gameStatus(page)).toBeVisible();
+}
+
+export async function startGhostGame(page) {
+  const details = await openMoreGameModes(page);
+  await buttonWithHeading(details, 'Rival Fantasma').click();
+  const dialog = page.getByRole('dialog', { name: 'Rival fantasma' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Jugar contra mi fantasma', exact: true }).click();
+  await expect(gameStatus(page)).toBeVisible();
+}
+
+export async function openSpectator(page) {
+  const details = await openMoreGameModes(page);
+  await buttonWithHeading(details, 'Espectador').click();
+  await expect(page.getByRole('button', { name: 'Empezar partida', exact: true })).toBeVisible();
+}
+
+export async function openBoard3D(page) {
+  await page.getByRole('button', { name: 'Abrir menú de cuenta' }).click();
+  await page.getByRole('menuitem').filter({ hasText: 'Personalizar' }).click();
+  const settings = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(settings).toBeVisible();
+  await settings.getByRole('button', { name: 'Abrir', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Empezar', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Empezar', exact: true }).click();
+  await expect(page.locator('.board3d-canvas canvas')).toBeVisible();
+}
+
+export async function clickBoard3DSquare(page, square) {
+  const canvas = page.locator('.board3d-canvas canvas');
+  await expect(canvas).toBeVisible();
+  await canvas.evaluate((node, targetSquare) => {
+    const rect = node.getBoundingClientRect();
+    const fileIndex = targetSquare.charCodeAt(0) - 97;
+    const rank = Number(targetSquare[1]);
+    const point = [fileIndex - 3.5, 0.03, 4.5 - rank];
+    const camera = [0, 7.5, 7];
+    const forwardRaw = [0, -7.5, -7];
+    const norm = (v) => {
+      const length = Math.hypot(...v);
+      return v.map((value) => value / length);
+    };
+    const cross = (a, b) => [
+      a[1] * b[2] - a[2] * b[1],
+      a[2] * b[0] - a[0] * b[2],
+      a[0] * b[1] - a[1] * b[0],
+    ];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const forward = norm(forwardRaw);
+    const right = norm(cross(forward, [0, 1, 0]));
+    const up = cross(right, forward);
+    const relative = point.map((value, index) => value - camera[index]);
+    const depth = dot(relative, forward);
+    const tanHalfFov = Math.tan((45 * Math.PI / 180) / 2);
+    const aspect = rect.width / rect.height;
+    const ndcX = dot(relative, right) / (depth * tanHalfFov * aspect);
+    const ndcY = dot(relative, up) / (depth * tanHalfFov);
+    const clientX = rect.left + ((ndcX + 1) / 2) * rect.width;
+    const clientY = rect.top + ((1 - ndcY) / 2) * rect.height;
+    node.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      clientX,
+      clientY,
+      button: 0,
+      buttons: 1,
+    }));
+  }, square);
+}
+
+export async function clickBoard3DMove(page, from, to) {
+  await clickBoard3DSquare(page, from);
+  await clickBoard3DSquare(page, to);
 }

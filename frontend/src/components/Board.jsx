@@ -146,19 +146,27 @@ const PIECE_NAMES = {
 
 // Convierte un FEN (solo la parte de piezas) en una matriz [rank][file] de símbolos ("" si vacío).
 function parseFen(fen) {
-  const placement = fen.split(' ')[0];
+  const empty = () => Array.from({ length: 8 }, () => Array(8).fill(''));
+  if (typeof fen !== 'string') return empty();
+  const placement = fen.trim().split(/\s+/)[0] || '';
   const rows = placement.split('/');
-  return rows.map((row) => {
+  if (rows.length !== 8) return empty();
+  const grid = [];
+  for (const row of rows) {
     const cells = [];
     for (const ch of row) {
-      if (/\d/.test(ch)) {
-        for (let i = 0; i < parseInt(ch, 10); i++) cells.push('');
-      } else {
+      if (/^[1-8]$/.test(ch)) {
+        for (let i = 0; i < Number(ch); i += 1) cells.push('');
+      } else if (/^[prnbqkPRNBQK]$/.test(ch)) {
         cells.push(ch);
+      } else {
+        return empty();
       }
     }
-    return cells;
-  });
+    if (cells.length !== 8) return empty();
+    grid.push(cells);
+  }
+  return grid;
 }
 
 /**

@@ -31,6 +31,14 @@ describe('feedback API client', () => {
     expect(JSON.parse(options.body)).toEqual({ category: 'ux', message: 'Demasiadas cosas.', context: 'Home', attachments: [] });
   });
 
+
+
+  it('propaga AbortSignal para poder cancelar un envío al cerrar el modal', async () => {
+    global.fetch.mockResolvedValue(response(201, { feedback: { id: 'f2', status: 'new' } }));
+    const controller = new AbortController();
+    await submitFeedback({ category: 'bug', message: 'Se ha quedado tieso.', context: 'Partida', signal: controller.signal });
+    expect(global.fetch.mock.calls[0][1].signal).toBe(controller.signal);
+  });
   it('lee feedback admin y actualiza estado', async () => {
     global.fetch
       .mockResolvedValueOnce(response(200, { feedback: [{ id: 'f1', status: 'new' }], newCount: 1 }))

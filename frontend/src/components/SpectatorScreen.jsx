@@ -8,6 +8,9 @@ import { identifyOpening } from '../openings.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import { checkedKingSquare } from '../boardState.js';
+import { abortableDelay, isAbortError } from '../asyncControl.js';
+import { applySuggestedOrLegalFallback, standardChessStatus } from '../chessRules.js';
 
 const PACE_OPTIONS = [
   { id: 'slow', label: 'Lenta (4s)', ms: 4000 },
@@ -20,12 +23,7 @@ function randomLevel() {
 }
 
 function statusOf(chess) {
-  if (chess.isCheckmate()) return 'checkmate';
-  if (chess.isStalemate()) return 'stalemate';
-  if (chess.isThreefoldRepetition()) return 'repetition';
-  if (chess.isDraw()) return 'draw';
-  if (chess.isCheck()) return 'check';
-  return 'playing';
+  return standardChessStatus(chess);
 }
 
 export default function SpectatorScreen({ onExit }) {
@@ -48,6 +46,8 @@ export default function SpectatorScreen({ onExit }) {
   const chessRef = useRef(new Chess());
   const pausedRef = useRef(false);
   const stopRef = useRef(false);
+  const generationRef = useRef(0);
+  const loopAbortRef = useRef(null);
 
   // Mismo patrón que en Combate: en pleno partido ESC no hace nada (para no
   // cortar de golpe algo que se está mirando), pero en configuración o al
@@ -61,7 +61,12 @@ export default function SpectatorScreen({ onExit }) {
   }, [paused]);
 
   useEffect(() => {
-    return () => { stopRef.current = true; }; // si se desmonta, corta el loop en el próximo tick
+    return () => {
+      stopRef.current = true;
+      generationRef.current += 1;
+      loopAbortRef.current?.abort(new DOMException('Spectator unmounted', 'AbortError'));
+      loopAbortRef.current = null;
+    };
   }, []);
 
   function startMatch() {
@@ -76,80 +81,99 @@ export default function SpectatorScreen({ onExit }) {
     setLastMove(null);
     setPaused(false);
     setError(null);
+    stopRef.current = true;
+    loopAbortRef.current?.abort(new DOMException('New spectator match', 'AbortError'));
+    const controller = new AbortController();
+    loopAbortRef.current = controller;
+    const generation = generationRef.current + 1;
+    generationRef.current = generation;
     stopRef.current = false;
     setPhase('watching');
 
-    runMatchLoop(wLevel, bLevel);
+    void runMatchLoop(wLevel, bLevel, generation, controller);
   }
 
-  async function runMatchLoop(wLevel, bLevel) {
+  async function runMatchLoop(wLevel, bLevel, generation, controller) {
     const pace = PACE_OPTIONS.find((p) => p.id === paceId) || PACE_OPTIONS[1];
+    const signal = controller.signal;
+    const stale = () => stopRef.current || signal.aborted || generationRef.current !== generation;
 
-    while (!stopRef.current) {
-      const chess = chessRef.current;
-      if (chess.isGameOver()) {
-        setPhase('over');
-        return;
-      }
+    try {
+      while (!stale()) {
+        const chess = chessRef.current;
+        if (chess.isGameOver()) {
+          if (!stale()) setPhase('over');
+          return;
+        }
 
-      // Pausado: esperamos en cuotas cortas en vez de dormir todo de una,
-      // para poder reaccionar apenas se reanude en vez de quedar "colgados"
-      // hasta el final de una espera larga ya empezada.
-      while (pausedRef.current && !stopRef.current) {
-        await new Promise((r) => setTimeout(r, 150));
-      }
-      if (stopRef.current) return;
+        while (pausedRef.current && !stale()) {
+          await abortableDelay(150, signal);
+        }
+        if (stale()) return;
 
-      const turn = chess.turn(); // 'w' | 'b'
-      const level = turn === 'w' ? wLevel : bLevel;
-
-      setThinking(true);
-      let suggestion;
-      try {
-        suggestion = await api.analyzePosition(chess.fen(), level);
-      } catch (e) {
-        setError(e.message);
+        const turn = chess.turn();
+        const level = turn === 'w' ? wLevel : bLevel;
+        const requestedFen = chess.fen();
+        setThinking(true);
+        let suggestion = null;
+        try {
+          suggestion = await api.analyzePosition(requestedFen, level, { signal });
+        } catch (e) {
+          if (isAbortError(e) || stale()) return;
+          // El loop no depende de que el analizador remoto esté sano.
+          suggestion = null;
+        }
+        if (stale() || chessRef.current !== chess || chess.fen() !== requestedFen) return;
         setThinking(false);
+
+        const { move: applied } = applySuggestedOrLegalFallback(chess, suggestion);
+        if (!applied) {
+          if (chess.isGameOver()) setPhase('over');
+          else {
+            setError('No se encontró ninguna jugada legal para continuar.');
+            setPhase('setup');
+          }
+          return;
+        }
+
+        setFen(chess.fen());
+        setLastMove({ from: applied.from, to: applied.to });
+        setMoves((prev) => [...prev, { san: applied.san, from: applied.from, to: applied.to, captured: !!applied.captured, by: turn }]);
+
+        if (applied.captured) playCaptureSound();
+        else playMoveSound();
+
+        if (chess.isGameOver()) {
+          if (chess.isCheckmate()) playSuccessSound();
+          setPhase('over');
+          return;
+        }
+
+        await abortableDelay(pace.ms, signal);
+      }
+    } catch (e) {
+      if (!isAbortError(e) && !stale()) {
+        setError(e?.message || 'La partida espectador se interrumpió.');
         setPhase('setup');
-        return;
       }
-      setThinking(false);
-      if (stopRef.current) return;
-      if (!suggestion) {
-        setPhase('over');
-        return;
+    } finally {
+      if (generationRef.current === generation) {
+        setThinking(false);
+        if (loopAbortRef.current === controller) loopAbortRef.current = null;
       }
-
-      const applied = chess.move({ from: suggestion.from, to: suggestion.to, promotion: 'q' });
-      if (!applied) {
-        setError('El motor sugirió una jugada inválida — se cortó la partida ahí.');
-        setPhase('over');
-        return;
-      }
-
-      setFen(chess.fen());
-      setLastMove({ from: applied.from, to: applied.to });
-      setMoves((prev) => [...prev, { san: applied.san, from: applied.from, to: applied.to, captured: !!applied.captured, by: turn }]);
-
-      if (applied.captured) playCaptureSound();
-      else playMoveSound();
-
-      if (chess.isGameOver()) {
-        if (chess.isCheckmate()) playSuccessSound(); // el desenlace más dramático, suena sin importar quién ganó
-        setPhase('over');
-        return;
-      }
-
-      await new Promise((r) => setTimeout(r, pace.ms));
     }
   }
 
   function stopAndExit() {
     stopRef.current = true;
+    generationRef.current += 1;
+    loopAbortRef.current?.abort(new DOMException('Spectator stopped', 'AbortError'));
+    loopAbortRef.current = null;
     onExit();
   }
 
   const status = statusOf(chessRef.current);
+  const checkSquare = checkedKingSquare(fen);
   const opening = identifyOpening(moves.map((m) => m.san));
   const resultText = {
     checkmate: `Jaque mate — ganaron las ${chessRef.current.turn() === 'w' ? 'negras' : 'blancas'}.`,
@@ -230,7 +254,8 @@ export default function SpectatorScreen({ onExit }) {
 
       <div className="game-layout">
         <div className="board-column">
-          <Board fen={fen} lastMove={lastMove} orientation="white" />
+          <Board fen={fen} lastMove={lastMove} orientation="white" checkSquare={checkSquare} />
+          {phase === 'watching' && status === 'check' && <p className="status-line" role="status" aria-label="Estado de la partida espectador">Jaque</p>}
 
           {phase === 'watching' && (
             <div className="game-controls">

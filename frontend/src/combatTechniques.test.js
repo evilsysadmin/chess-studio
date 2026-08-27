@@ -78,4 +78,14 @@ describe('técnicas especiales de Combate', () => {
     };
     expect(techniqueTargetsFor(fen, registry, 'a2')).toEqual([]);
   });
+
+  it('una posición corrupta no ofrece técnicas ni lanza excepciones', () => {
+    const registry = {
+      a2: { id: 'w-p-a2', type: 'p', color: 'w', square: 'a2', unlockedTechniques: ['line_fire'], equippedTechnique: 'line_fire', techniqueUsed: false },
+    };
+    expect(() => techniqueTargetsFor('fen-roto', registry, 'a2')).not.toThrow();
+    expect(techniqueTargetsFor('fen-roto', registry, 'a2')).toEqual([]);
+    expect(resolveTechniqueAttack({ fen: 'fen-roto', registry, from: 'a2', to: 'a4' })).toBeNull();
+  });
+
 });

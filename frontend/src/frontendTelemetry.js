@@ -1,9 +1,11 @@
 import { authHeader } from './auth.js';
 import { APP_RELEASE } from './release.js';
 import { withRequestId } from './requestId.js';
+import { fetchWithTimeout } from './asyncControl.js';
 
 const BASE_URL = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 const ALLOWED_VITALS = new Set(['FCP', 'LCP', 'CLS', 'TTFB', 'INP']);
+const TELEMETRY_TIMEOUT_MS = 5000;
 let currentContext = 'App';
 let started = false;
 
@@ -36,12 +38,12 @@ export function sendFrontendTelemetry(eventType, details = {}, fetchImpl = globa
   const payload = frontendTelemetryPayload(eventType, details);
   if (eventType === 'web_vital' && (!payload.metricName || payload.value == null)) return;
   try {
-    void fetchImpl(`${BASE_URL}/client-telemetry`, {
+    void fetchWithTimeout(fetchImpl, `${BASE_URL}/client-telemetry`, {
       method: 'POST',
       headers: withRequestId({ 'Content-Type': 'application/json', ...authHeader() }),
       body: JSON.stringify(payload),
       keepalive: true,
-    }).catch?.(() => {});
+    }, TELEMETRY_TIMEOUT_MS).catch(() => {});
   } catch {
     // Observability must never become an application dependency.
   }

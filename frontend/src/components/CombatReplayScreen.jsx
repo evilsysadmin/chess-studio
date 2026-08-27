@@ -8,8 +8,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
-
-const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+import { buildCombatReplayPositions } from '../combatReplay.js';
 
 // A diferencia de ReplayScreen, acá NO se reconstruyen las posiciones
 // jugando el registro con chess.js — el `log` de una batalla ya trae el FEN
@@ -22,7 +21,8 @@ const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // por eso se indexa el FEN guardado directamente, en vez de rejugar nada.
 export default function CombatReplayScreen({ record, initialStep, pinnedReport, onExit }) {
   useEscapeToClose(onExit);
-  const positions = useMemo(() => [STARTING_FEN, ...record.log.map((e) => e.fenAfter)], [record]);
+  const replay = useMemo(() => buildCombatReplayPositions(record.log), [record]);
+  const positions = replay.positions;
   const [step, setStep] = useState(initialStep ?? positions.length - 1);
   const [report, setReport] = useState(null);
   const [analyzing, setAnalyzing] = useState(true);
@@ -30,14 +30,18 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     setReport(null);
     setAnalyzeError(null);
     setAnalyzing(true);
-    analyzeCombatLog(record.log, record.humanColor, api)
+    analyzeCombatLog(record.log, record.humanColor, api, { signal: controller.signal })
       .then((result) => { if (!cancelled) setReport(result); })
-      .catch((e) => { if (!cancelled) setAnalyzeError(e.message); })
+      .catch((e) => { if (!cancelled && e?.name !== 'AbortError') setAnalyzeError(e.message); })
       .finally(() => { if (!cancelled) setAnalyzing(false); });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort(new DOMException('Replay analysis closed', 'AbortError'));
+    };
   }, [record]);
 
   const reportByIndex = useMemo(() => {
@@ -88,6 +92,11 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
       {analyzeError && (
         <p className="error-text replay-analyzing-banner">
           No se pudo analizar la batalla (¿está corriendo el backend?). Igual puedes recorrerla a mano.
+        </p>
+      )}
+      {replay.invalidIndices.length > 0 && (
+        <p className="hint-text replay-analyzing-banner" role="status">
+          El histórico contiene {replay.invalidIndices.length} {replay.invalidIndices.length === 1 ? 'posición dañada' : 'posiciones dañadas'}. Se muestra la última posición válida en esos pasos.
         </p>
       )}
       {report && (

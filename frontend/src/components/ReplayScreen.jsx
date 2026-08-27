@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import { api } from '../api.js';
 import { formatLongMove } from '../notation.js';
@@ -11,37 +10,29 @@ import { useArrowKeyNav } from '../useArrowKeyNav.js';
 import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import { replayFenPositions } from '../chessRules.js';
+import { historyMoveNumber, historyMoverColor } from '../historyTimeline.js';
 
 // Reconstruye el FEN en cada punto de la partida a partir de la lista de
 // jugadas guardada. positions[0] es la posición inicial; positions[i] es la
 // posición después de la jugada i-1 de la lista.
-function buildPositions(moves, initialFen = null) {
-  const c = initialFen ? new Chess(initialFen) : new Chess();
-  const positions = [c.fen()];
-  for (const m of moves) {
-    try {
-      c.move({ from: m.from, to: m.to, promotion: 'q' });
-    } catch {
-      // Si por algo la reconstrucción falla, cortamos ahí en vez de romper la pantalla.
-      break;
-    }
-    positions.push(c.fen());
-  }
-  return positions;
-}
-
 // Agrupa el historial en pares [blancas, negras] por turno, conservando el
 // índice real de cada jugada dentro de `moves` (lo necesita el semáforo de
 // severidad para saber a cuál jugada corresponde cada análisis).
-function toPairs(moves) {
+function toPairs(moves, initialFen = null) {
   const pairs = [];
-  for (let i = 0; i < moves.length; i += 2) {
-    pairs.push({
-      num: i / 2 + 1,
-      white: { move: moves[i], index: i },
-      black: moves[i + 1] ? { move: moves[i + 1], index: i + 1 } : null,
-    });
-  }
+  const byNumber = new Map();
+  (Array.isArray(moves) ? moves : []).forEach((move, index) => {
+    const num = historyMoveNumber(index, initialFen);
+    const color = historyMoverColor(index, initialFen);
+    let pair = byNumber.get(num);
+    if (!pair) {
+      pair = { num, white: null, black: null };
+      byNumber.set(num, pair);
+      pairs.push(pair);
+    }
+    pair[color === 'w' ? 'white' : 'black'] = { move, index };
+  });
   return pairs;
 }
 
@@ -56,8 +47,9 @@ function outcomeToPgnResult(outcome, humanColor) {
 
 export default function ReplayScreen({ record, initialStep, pinnedReport, crimeMode = false, movieMode = false, onPlayFromHere, onExit }) {
   useEscapeToClose(onExit);
-  const positions = useMemo(() => buildPositions(record.moves, record.initialFen), [record]);
-  const pairs = useMemo(() => toPairs(record.moves), [record]);
+  const replay = useMemo(() => replayFenPositions(record.moves, record.initialFen), [record]);
+  const positions = replay.positions;
+  const pairs = useMemo(() => toPairs(record.moves, record.initialFen), [record]);
   const [step, setStep] = useState(initialStep ?? positions.length - 1);
   const [report, setReport] = useState(null);
   const [analyzing, setAnalyzing] = useState(true);
@@ -70,14 +62,18 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
   // un vistazo dónde estuvieron los errores, en vez de ir pinchando de a uno.
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     setReport(null);
     setAnalyzeError(null);
     setAnalyzing(true);
-    analyzeGame(record.moves, record.humanColor, api)
+    analyzeGame(record.moves, record.humanColor, api, { signal: controller.signal, initialFen: record.initialFen })
       .then((result) => { if (!cancelled) setReport(result); })
-      .catch((e) => { if (!cancelled) setAnalyzeError(e.message); })
+      .catch((e) => { if (!cancelled && e?.name !== 'AbortError') setAnalyzeError(e.message); })
       .finally(() => { if (!cancelled) setAnalyzing(false); });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort(new DOMException('Replay analysis closed', 'AbortError'));
+    };
   }, [record]);
 
   useEffect(() => {
@@ -140,7 +136,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
   const opening = identifyOpening(record.moves.slice(0, step).map((m) => m.san));
   const moveAtStep = step > 0 ? record.moves[step - 1] : null;
   const moveIndexAtStep = step > 0 ? step - 1 : null;
-  const moverColor = step > 0 ? ((step - 1) % 2 === 0 ? 'w' : 'b') : null;
+  const moverColor = step > 0 ? historyMoverColor(step - 1, record.initialFen) : null;
   const wasHumanMove = moveAtStep && moverColor === record.humanColor;
   const moveReportAtStep = moveIndexAtStep !== null ? reportByIndex.get(moveIndexAtStep) : null;
 
@@ -189,6 +185,11 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
       {analyzeError && (
         <p className="error-text replay-analyzing-banner">
           No se pudo analizar la partida (¿está corriendo el backend?). Igual puedes recorrerla a mano.
+        </p>
+      )}
+      {!replay.complete && (
+        <p className="error-text replay-analyzing-banner">
+          Este historial contiene una posición antigua o dañada. Se muestra sólo la parte que pudo reconstruirse con reglas legales.
         </p>
       )}
       {report && (
@@ -282,19 +283,21 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
             <div className="notation-list">
               {pairs.length === 0 && <p className="notation-empty">Esta partida no tiene jugadas.</p>}
               {pairs.map((p) => {
-                const whiteReport = reportByIndex.get(p.white.index);
+                const whiteReport = p.white ? reportByIndex.get(p.white.index) : null;
                 const blackReport = p.black ? reportByIndex.get(p.black.index) : null;
                 return (
                   <div className="notation-row" key={p.num}>
-                    <span className="num">{p.num}.</span>
-                    <button
-                      type="button"
-                      className={`move-chip ${whiteReport ? `sev-${whiteReport.severity}` : ''} ${step === p.white.index + 1 ? 'active' : ''}`}
-                      onClick={() => goTo(p.white.index + 1)}
-                      title={whiteReport ? `${SEVERITY_LABEL[whiteReport.severity]} (-${whiteReport.loss})` : undefined}
-                    >
-                      {formatLongMove(p.white.move)}
-                    </button>
+                    <span className="num">{p.num}{!p.white && p.black ? '…' : '.'}</span>
+                    {p.white ? (
+                      <button
+                        type="button"
+                        className={`move-chip ${whiteReport ? `sev-${whiteReport.severity}` : ''} ${step === p.white.index + 1 ? 'active' : ''}`}
+                        onClick={() => goTo(p.white.index + 1)}
+                        title={whiteReport ? `${SEVERITY_LABEL[whiteReport.severity]} (-${whiteReport.loss})` : undefined}
+                      >
+                        {formatLongMove(p.white.move)}
+                      </button>
+                    ) : <span className="move-chip replay-move-placeholder" aria-hidden="true">—</span>}
                     {p.black && (
                       <button
                         type="button"

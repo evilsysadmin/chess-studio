@@ -54,11 +54,10 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
     }
     let active = true;
     setAiDebriefLoading(true);
-    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 }).then((text) => {
-      if (!active) return;
-      setAiDebrief(text || null);
-      setAiDebriefLoading(false);
-    });
+    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 })
+      .then((text) => { if (active) setAiDebrief(text || null); })
+      .catch(() => { if (active) setAiDebrief(null); })
+      .finally(() => { if (active) setAiDebriefLoading(false); });
     return () => { active = false; };
   }, [aiFactsKey]);
 

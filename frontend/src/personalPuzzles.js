@@ -55,7 +55,7 @@ export function isPersonalPuzzleMastered(puzzle) {
 function detectIncidentKeys(fenBefore, moveReport) {
   const keys = [];
   const played = moveReport?.playedFrom && moveReport?.playedTo
-    ? { from: moveReport.playedFrom, to: moveReport.playedTo }
+    ? { from: moveReport.playedFrom, to: moveReport.playedTo, promotion: moveReport.playedPromotion || undefined }
     : (() => {
         if (!fenBefore || !moveReport?.played) return null;
         try {
@@ -100,9 +100,16 @@ function stableId(fen, suggested) {
 function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
   if (!moveReport || !Array.isArray(history) || !moveReport.suggested || moveReport.loss < 80) return null;
   if (moveReport.played && moveReport.suggested === moveReport.played) return null;
-  const chess = new Chess();
+  let chess;
   try {
-    for (let i = 0; i < moveReport.index; i++) chess.move(history[i].san);
+    chess = meta.initialFen ? new Chess(meta.initialFen) : new Chess();
+    for (let i = 0; i < moveReport.index; i++) {
+      const entry = history[i];
+      const applied = entry?.from && entry?.to
+        ? chess.move({ from: entry.from, to: entry.to, promotion: entry.promotion || 'q' })
+        : chess.move(entry.san);
+      if (!applied) return null;
+    }
   } catch {
     return null;
   }
@@ -206,7 +213,10 @@ export function saveGeneratedPersonalPuzzles(puzzles = []) {
       source: 'workers-ai-validated',
       createdAt: puzzle.createdAt || new Date().toISOString(),
       incidentKeys: Array.isArray(puzzle.incidentKeys) ? puzzle.incidentKeys : [],
-    }));
+    }))
+    // Defensa en profundidad: aunque un caller futuro se salte el validador
+    // de Workers AI, nunca persistimos una línea/FEN imposible en la cola.
+    .filter(isPlayablePersonalPuzzle);
   if (!candidates.length) return { added: 0, total: loadPersonalPuzzles().length, saved: [] };
 
   const current = loadPersonalPuzzles();

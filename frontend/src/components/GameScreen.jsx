@@ -33,17 +33,12 @@ import { humanMoveCount } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
 import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
 import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
+import { gameStatusView } from '../gameStatusView.js';
+import { abortableDelay, isAbortError } from '../asyncControl.js';
+import { chessFromFen, safeChessMove } from '../chessRules.js';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
-const STATUS_LABELS = {
-  playing: '',
-  check: 'Jaque',
-  checkmate: 'Jaque mate',
-  stalemate: 'Tablas por ahogado',
-  draw: 'Tablas',
-  repetition: 'Tablas por repetición',
-};
 
 const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una torre', q: 'la dama' };
 
@@ -52,6 +47,10 @@ const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una 
 // la respuesta puede llegar tan rápido que la animación del jugador ni
 // alcanza a verse antes de que se dispare la de la CPU encima.
 const MIN_CPU_THINK_MS = 350;
+// El control táctico es una pausa pedagógica, no un semáforo crítico. Si el
+// usuario no pulsa el CTA (por ejemplo porque quedó fuera del viewport), la
+// partida continúa sola y nunca aparenta haberse congelado.
+const CONTROL_PROMPT_MAX_MS = 15000;
 
 const HUMAN_SERIOUS_INCIDENTS = new Set(['MISSED_MATE','STALEMATE_BLUNDER','ALLOWED_MATE','QUEEN_EN_PRISE_TO_PAWN','QUEEN_SACRIFICE_OFFER','ROOK_SACRIFICE_OFFER']);
 function isSeriousHumanIncident(comment) { return !!comment?.event?.type && HUMAN_SERIOUS_INCIDENTS.has(comment.event.type); }
@@ -137,9 +136,13 @@ export default function GameScreen({
   const [suddenLives, setSuddenLives] = useState(3);
   const [controlPrompt, setControlPrompt] = useState(null);
   const controlResolveRef = useRef(null);
+  const sessionGenerationRef = useRef(0);
+  const mutationRef = useRef(null); // { token, controller, session } · move/undo excluyentes
+  const hintRequestRef = useRef(null);
   const pressureMovesRef = useRef(0);
   const pressureIncidentsRef = useRef(0);
   const illegalKingSafetyCommentShownRef = useRef(false);
+  const lastValidBoardFenRef = useRef(chessFromFen(game.fen) ? game.fen : new Chess().fen());
 
   // Estado visual del tablero: se actualiza en dos pasos (jugada propia,
   // después jugada de la CPU) para poder animar cada una por separado, en
@@ -164,6 +167,7 @@ export default function GameScreen({
   const openingMemoryShownRef = useRef(false);
   const resultMemoryTimeout = useRef(null);
   const startMemoryTimeout = useRef(null);
+  const openingMemoryTimeout = useRef(null);
 
   // Pista: sugerencia del motor para la jugada del humano.
   const [hint, setHint] = useState(null); // { from, to, san }
@@ -178,6 +182,19 @@ export default function GameScreen({
 
   // Si cambia la partida (nueva / continuar), resincronizamos el estado visual.
   useEffect(() => {
+    // Nueva partida = nueva generación async. Cualquier respuesta, prompt o
+    // request de la partida anterior deja de tener permiso para tocar estado.
+    sessionGenerationRef.current += 1;
+    mutationRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
+    mutationRef.current = null;
+    hintRequestRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
+    hintRequestRef.current = null;
+    if (controlResolveRef.current) {
+      controlResolveRef.current();
+      controlResolveRef.current = null;
+    }
+    setBusy(false);
+    setHintLoading(false);
     setBoardFen(game.fen);
     setLastMoveSquares(game.lastMove);
     setSelected(null);
@@ -193,6 +210,7 @@ export default function GameScreen({
     openingMemoryShownRef.current = false;
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
+    if (openingMemoryTimeout.current) clearTimeout(openingMemoryTimeout.current);
     setSuddenLives(3);
     setForcedOutcome(null);
     setControlPrompt(null);
@@ -222,6 +240,25 @@ export default function GameScreen({
       if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
     };
   }, [game.id]);
+
+  // La bandera es terminal para la UI. Si cae mientras una jugada/hint está
+  // en vuelo, esa respuesta ya no tiene permiso para conceder incrementos,
+  // puntos ni sobrescribir el tablero después del resultado por tiempo.
+  useEffect(() => {
+    if (!flagFallen) return;
+    sessionGenerationRef.current += 1;
+    mutationRef.current?.controller?.abort(new DOMException('Clock flag fell', 'AbortError'));
+    mutationRef.current = null;
+    hintRequestRef.current?.controller?.abort(new DOMException('Clock flag fell', 'AbortError'));
+    hintRequestRef.current = null;
+    if (controlResolveRef.current) {
+      controlResolveRef.current();
+      controlResolveRef.current = null;
+    }
+    setBusy(false);
+    setHintLoading(false);
+    setControlPrompt(null);
+  }, [flagFallen]);
 
   // Avisa el resultado por bandera caída, igual que el efecto de jaque mate
   // de más abajo — comparten `reportedResultRef` para no informar dos veces.
@@ -374,7 +411,12 @@ export default function GameScreen({
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
+    if (openingMemoryTimeout.current) clearTimeout(openingMemoryTimeout.current);
     stopCpuSpeech();
+    mutationRef.current?.controller?.abort(new DOMException('Screen unmounted', 'AbortError'));
+    mutationRef.current = null;
+    hintRequestRef.current?.controller?.abort(new DOMException('Screen unmounted', 'AbortError'));
+    hintRequestRef.current = null;
     // Si el usuario abandona/cambia de vista mientras está abierto el control
     // táctico, no dejamos colgada la promesa que estaba pausando el flujo.
     if (controlResolveRef.current) {
@@ -385,15 +427,18 @@ export default function GameScreen({
 
   // Instancia local de chess.js sólo para calcular jugadas legales y resaltarlas,
   // basada en lo que se ve ahora mismo en el tablero (no en el estado del servidor).
-  const localChess = useMemo(() => {
-    const c = new Chess();
-    c.load(boardFen);
-    return c;
-  }, [boardFen]);
+  const localChess = useMemo(() => chessFromFen(boardFen), [boardFen]);
+  if (localChess) lastValidBoardFenRef.current = boardFen;
+  const visibleBoardFen = localChess ? boardFen : lastValidBoardFenRef.current;
+
+  useEffect(() => {
+    if (localChess) return;
+    onError?.('La posición recibida no es un FEN válido. Se conserva el último tablero válido y se bloquean movimientos para evitar corromper la partida.');
+  }, [localChess, boardFen, onError]);
 
   const prediction = useMemo(() => preGamePrediction(loadRivalry(), { difficulty: game.difficulty, timeControlId: timeControl?.id || 'none' }), [game.id, game.difficulty, timeControl?.id]);
 
-  const legalTargets = selected
+  const legalTargets = selected && localChess
     ? localChess.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }))
     : [];
   // La regla sigue siendo responsabilidad del motor; el tablero recibe sólo
@@ -402,7 +447,7 @@ export default function GameScreen({
   const boardTurnState = !game.isGameOver && !flagFallen && !forcedOutcome
     ? ((busy || game.turn !== humanColor) ? 'cpu' : 'human')
     : null;
-  const selectionNotice = selected && legalTargets.length === 0
+  const selectionNotice = selected && localChess && legalTargets.length === 0
     ? immobilityReason(localChess, selected, humanColor)
     : null;
 
@@ -411,19 +456,25 @@ export default function GameScreen({
 
     // 1) Aplicamos y animamos la jugada propia de inmediato, sin esperar al servidor.
     const beforeHumanFen = boardFen;
-    const optimistic = new Chess();
-    optimistic.load(beforeHumanFen);
-    let humanMove;
-    try {
-      humanMove = optimistic.move({ from, to, promotion: promotion || 'q' });
-    } catch (e) {
-      humanMove = null;
+    const optimistic = chessFromFen(beforeHumanFen);
+    if (!optimistic) {
+      onError?.('La posición actual no se puede reconstruir. Recarga la partida antes de mover.');
+      setSelected(null);
+      return;
     }
+    const humanMove = safeChessMove(optimistic, { from, to, promotion: promotion || 'q' });
     if (!humanMove) {
       onError?.('Movimiento ilegal.');
       setSelected(null);
       return;
     }
+    // `busy` tarda un render en propagarse. Este ref cierra la pequeña ventana
+    // donde dos clics/eventos síncronos podían disparar dos mutaciones iguales.
+    if (mutationRef.current) return;
+    const session = sessionGenerationRef.current;
+    const controller = new AbortController();
+    const operation = { token: Symbol('game-mutation'), controller, session };
+    mutationRef.current = operation;
 
     setBoardFen(optimistic.fen());
     setLastMoveSquares({ from, to });
@@ -448,6 +499,8 @@ export default function GameScreen({
       if (nextLives <= 0) {
         const forcedGame = { ...game, history: [...(game.history || []), humanMove], fen: optimistic.fen(), isGameOver: true, status: 'sudden-death' };
         setGame(forcedGame); setForcedOutcome('loss'); setBusy(false);
+        if (mutationRef.current === operation) mutationRef.current = null;
+        controller.abort(new DOMException('Game finished', 'AbortError'));
         showNoteworthy(humanComment, 'human', { allowRemote: false });
         if (!reportedResultRef.current) {
           reportedResultRef.current = true;
@@ -459,41 +512,51 @@ export default function GameScreen({
     }
 
     if (memoryContext.threatCheck && isSeriousHumanIncident(humanComment)) {
-      await new Promise((resolve) => {
-        controlResolveRef.current = resolve;
-        setControlPrompt('¿Qué amenaza tiene ahora el rival? No deshagas la jugada: mira el tablero y nombra mentalmente jaques, capturas y amenazas antes de continuar.');
-      });
-      controlResolveRef.current = null;
-      setControlPrompt(null);
-    }
-
-    // Incremento tipo Fischer: se suma al terminar la jugada, antes de que
-    // arranque a correr el reloj del rival.
-    addIncrement(humanColor);
-
-    // Si capturamos algo y estamos en el torneo, sumamos puntos ya mismo
-    // (no hace falta esperar al servidor: el valor sale del propio
-    // movimiento que acabamos de calcular en local).
-    if (onCapturePoints && humanMove.captured) {
-      captureStreakRef.current += 1;
-      const streak = captureStreakRef.current;
-      const base = capturePoints(humanMove.piece, humanMove.captured, tournamentLevel);
-      const bonus = streakBonus(streak, tournamentLevel);
-      const gained = base + bonus;
-      if (gained > 0) {
-        onCapturePoints(gained);
-        const pieceName = PIECE_NAMES_ES[humanMove.captured] || 'una pieza';
-        const streakText = streak >= 2 ? ` · racha x${streak} (+${bonus})` : '';
-        setCaptureFeedback(`+${gained} puntos · capturaste ${pieceName}${streakText}`);
-        if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
-        captureFeedbackTimeout.current = setTimeout(() => setCaptureFeedback(null), 2400);
+      try {
+        await Promise.race([
+          new Promise((resolve) => {
+            controlResolveRef.current = resolve;
+            setControlPrompt('¿Qué amenaza tiene ahora el rival? No deshagas la jugada: mira el tablero y nombra mentalmente jaques, capturas y amenazas antes de continuar.');
+          }),
+          abortableDelay(CONTROL_PROMPT_MAX_MS, controller.signal),
+        ]);
+      } catch (error) {
+        if (isAbortError(error)) return;
+        throw error;
+      } finally {
+        controlResolveRef.current = null;
+        setControlPrompt(null);
       }
+      if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
     }
 
-    const minThink = new Promise((resolve) => setTimeout(resolve, MIN_CPU_THINK_MS));
+    const minThink = abortableDelay(MIN_CPU_THINK_MS, controller.signal);
 
     try {
-      const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion), minThink]);
+      const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion, { signal: controller.signal }), minThink]);
+      if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
+
+      // Sólo una jugada confirmada por el backend puede conceder incremento o
+      // puntos de torneo. Antes estos efectos se aplicaban al tablero optimista:
+      // un 409/timeout podía regalar tiempo o puntuación aunque la jugada fuera
+      // rechazada.
+      addIncrement(humanColor);
+      if (onCapturePoints && humanMove.captured) {
+        captureStreakRef.current += 1;
+        const streak = captureStreakRef.current;
+        const base = capturePoints(humanMove.piece, humanMove.captured, tournamentLevel);
+        const bonus = streakBonus(streak, tournamentLevel);
+        const gained = base + bonus;
+        if (gained > 0) {
+          onCapturePoints(gained);
+          const pieceName = PIECE_NAMES_ES[humanMove.captured] || 'una pieza';
+          const streakText = streak >= 2 ? ` · racha x${streak} (+${bonus})` : '';
+          setCaptureFeedback(`+${gained} puntos · capturaste ${pieceName}${streakText}`);
+          if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
+          captureFeedbackTimeout.current = setTimeout(() => setCaptureFeedback(null), 2400);
+        }
+      }
+
       setGame(updated);
       // App marcará 'saved' cuando el snapshot local de esta respuesta también
       // quede escrito; aquí sólo sabemos que el backend ya confirmó la jugada.
@@ -524,22 +587,30 @@ export default function GameScreen({
         const memory = openingMemoryComment(updated.history, loadRivalry());
         if (memory) {
           openingMemoryShownRef.current = true;
-          setTimeout(() => showCpuComment({ text: memory }), 550);
+          if (openingMemoryTimeout.current) clearTimeout(openingMemoryTimeout.current);
+          openingMemoryTimeout.current = setTimeout(() => showCpuComment({ text: memory }), 550);
         }
       }
     } catch (e) {
-      onPersistenceState?.('error');
-      onError?.(e.message);
-      // Revertimos al último estado confirmado por el servidor.
-      setBoardFen(game.fen);
-      setLastMoveSquares(game.lastMove);
+      const stillCurrent = mutationRef.current === operation && sessionGenerationRef.current === session;
+      if (stillCurrent && !isAbortError(e)) {
+        onPersistenceState?.('error');
+        onError?.(e.message);
+        // Revertimos a la foto confirmada desde la que salió esta operación;
+        // nunca a `game` si entretanto ya cambió de partida.
+        setBoardFen(beforeHumanFen);
+        setLastMoveSquares(game.lastMove);
+      }
     } finally {
-      setBusy(false);
+      if (mutationRef.current === operation) {
+        mutationRef.current = null;
+        setBusy(false);
+      }
     }
   }
 
   function handleSquareClick(square) {
-    if (busy || game.isGameOver || flagFallen || forcedOutcome || game.turn !== humanColor) return;
+    if (!localChess || busy || game.isGameOver || flagFallen || forcedOutcome || game.turn !== humanColor) return;
 
     if (!selected) {
       const piece = localChess.get(square);
@@ -580,6 +651,7 @@ export default function GameScreen({
   }
 
   function choosePromotion(code) {
+    if (!pendingPromotion) return;
     const { from, to } = pendingPromotion;
     setPendingPromotion(null);
     sendMove(from, to, code);
@@ -591,10 +663,15 @@ export default function GameScreen({
     && !hintLoading && canAffordHint;
 
   async function handleHint() {
-    if (!canHint) return;
+    if (!canHint || hintRequestRef.current) return;
+    const session = sessionGenerationRef.current;
+    const controller = new AbortController();
+    const requestToken = { token: Symbol('hint'), controller, session };
+    hintRequestRef.current = requestToken;
     setHintLoading(true);
     try {
-      const suggestion = await api.getHint(game.id);
+      const suggestion = await api.getHint(game.id, { signal: controller.signal });
+      if (hintRequestRef.current !== requestToken || sessionGenerationRef.current !== session) return;
       setHint(suggestion);
       setSelected(suggestion.from);
       if (hintMode === 'paid') {
@@ -602,37 +679,55 @@ export default function GameScreen({
         setHintsUsedThisGame((n) => n + 1);
       }
     } catch (e) {
-      onError?.(e.message);
+      if (hintRequestRef.current === requestToken && sessionGenerationRef.current === session && !isAbortError(e)) onError?.(e.message);
     } finally {
-      setHintLoading(false);
+      if (hintRequestRef.current === requestToken) {
+        hintRequestRef.current = null;
+        setHintLoading(false);
+      }
     }
   }
 
   async function handleUndo() {
-    if (busy || flagFallen || game.history.length === 0) return;
+    if (busy || flagFallen || game.history.length === 0 || mutationRef.current) return;
+    const session = sessionGenerationRef.current;
+    const controller = new AbortController();
+    const operation = { token: Symbol('undo'), controller, session };
+    mutationRef.current = operation;
     setBusy(true);
     onPersistenceState?.('saving');
     setHint(null);
     setTurnBanner(null);
     setCpuComment(null);
     try {
-      const updated = await api.undoMove(game.id);
+      const updated = await api.undoMove(game.id, { signal: controller.signal });
+      if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
       setGame(updated);
       setBoardFen(updated.fen);
       setLastMoveSquares(updated.lastMove);
       setSelected(null);
       setPendingAnim(null); // el deshacer salta directo, no se anima
+      onPersistenceState?.('saving');
     } catch (e) {
-      onPersistenceState?.('error');
-      onError?.(e.message);
+      if (mutationRef.current === operation && sessionGenerationRef.current === session && !isAbortError(e)) {
+        onPersistenceState?.('error');
+        onError?.(e.message);
+      }
     } finally {
-      setBusy(false);
+      if (mutationRef.current === operation) {
+        mutationRef.current = null;
+        setBusy(false);
+      }
     }
   }
 
-  async function handleAbandon() {
-    await api.deleteGame(game.id).catch(() => {});
+  function handleAbandon() {
+    const gameId = game.id;
+    // Salir de una pantalla nunca debe depender de la salud de red/backend.
+    // La limpieza remota es best-effort; App ya limpia de forma síncrona el
+    // snapshot local, reloj y navegación.
     onExit();
+    void api.deleteGame(gameId).catch(() => {});
   }
 
   function handleDownloadPGN() {
@@ -646,29 +741,19 @@ export default function GameScreen({
     downloadPGN(pgn, `partida-${game.id.slice(0, 8)}.pgn`);
   }
 
-  const statusLabel = STATUS_LABELS[game.status];
-  const statusClass = game.status === 'checkmate' || game.status === 'stalemate' || game.status === 'draw' || game.status === 'repetition'
-    ? 'danger'
-    : game.status === 'check'
-    ? 'success'
-    : '';
-
   const flagFinalOutcome = flagFallen ? flagOutcome(flagFallen, humanColor, game.insufficientMatingMaterial) : null;
-  const finalOutcome = forcedOutcome || (flagFallen
-    ? flagFinalOutcome
-    : game.status === 'checkmate'
-      ? (game.turn === humanColor ? 'loss' : 'win')
-      : 'draw');
+  const { statusLabel, statusClass, finalOutcome, statusText } = gameStatusView({
+    status: game.status,
+    turn: game.turn,
+    humanColor,
+    busy,
+    zenMode,
+    turnBanner,
+    flagFallen,
+    flagFinalOutcome,
+    forcedOutcome,
+  });
   const nextAction = nextBestAction({ outcome: finalOutcome, moveCount: game.history.length, hasReport: game.history.length > 0 });
-
-  let statusText;
-  if (forcedOutcome) statusText = 'Sudden Death · tres vidas agotadas';
-  else if (flagFallen) statusText = flagFinalOutcome === 'draw'
-    ? 'Tiempo agotado · tablas por material insuficiente'
-    : `Se acabó el tiempo (${flagFallen === 'w' ? 'blancas' : 'negras'})`;
-  else if (busy) statusText = 'La CPU está pensando…';
-  else if (!zenMode && turnBanner) statusText = turnBanner;
-  else statusText = statusLabel || (game.turn === humanColor ? 'Tu turno' : 'Turno de la CPU');
 
   let hintButtonLabel = 'Pista';
   if (hintLoading) hintButtonLabel = 'Pensando…';
@@ -739,7 +824,7 @@ export default function GameScreen({
             <div className="game-board-stack">
               {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
               <Board
-                fen={boardFen}
+                fen={visibleBoardFen}
                 onSquareClick={handleSquareClick}
                 selectedSquare={selected}
                 legalTargets={zenMode ? [] : legalTargets}
@@ -903,7 +988,7 @@ export default function GameScreen({
           history={game.history}
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
-          meta={{ gameId: game.id, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: memoryContext.nemesisOpening || identifyOpening((game.history || []).map((m) => m.san).filter(Boolean)), timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.nemesis ? 'nemesis-training' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
+          meta={{ gameId: game.id, initialFen: game.initialFen || null, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: memoryContext.nemesisOpening || identifyOpening((game.history || []).map((m) => m.san).filter(Boolean)), timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.nemesis ? 'nemesis-training' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
           onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
         />

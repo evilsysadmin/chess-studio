@@ -1,6 +1,8 @@
 import { APP_RELEASE } from './release.js';
+import { fetchWithTimeout } from './asyncControl.js';
 
 export const RELEASE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+export const RELEASE_CHECK_TIMEOUT_MS = 7000;
 const RELEASE_PATTERN = /^v[0-9A-Za-z][0-9A-Za-z._-]{0,30}$/;
 
 export function releaseManifestUrl(baseUrl = '/', now = Date.now()) {
@@ -23,13 +25,15 @@ export async function fetchLatestRelease({
   fetchImpl = fetch,
   baseUrl = import.meta.env?.BASE_URL || '/',
   now = Date.now(),
+  signal,
 } = {}) {
   try {
-    const response = await fetchImpl(releaseManifestUrl(baseUrl, now), {
+    const response = await fetchWithTimeout(fetchImpl, releaseManifestUrl(baseUrl, now), {
       method: 'GET',
       cache: 'no-store',
       headers: { accept: 'application/json' },
-    });
+      signal,
+    }, RELEASE_CHECK_TIMEOUT_MS);
     if (!response?.ok) return null;
     return normalizeLatestRelease(await response.json());
   } catch {

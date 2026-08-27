@@ -33,11 +33,10 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
     }
     let active = true;
     setAiBriefingLoading(true);
-    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 }).then((text) => {
-      if (!active) return;
-      setAiBriefing(text || null);
-      setAiBriefingLoading(false);
-    });
+    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 })
+      .then((text) => { if (active) setAiBriefing(text || null); })
+      .catch(() => { if (active) setAiBriefing(null); })
+      .finally(() => { if (active) setAiBriefingLoading(false); });
     return () => { active = false; };
   }, [aiFactsKey]);
 

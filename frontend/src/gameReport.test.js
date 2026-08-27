@@ -97,6 +97,29 @@ describe('analyzeGame', () => {
     await analyzeGame(history, 'w', mockApi, { maxMoves: 5, throttleMs: 1 });
     expect(callCount).toBe(5);
   });
+
+  it('respeta el turno inicial y la subpromoción en posiciones de laboratorio', async () => {
+    const initialFen = '4k3/8/8/8/8/8/p7/4K3 b - - 0 1';
+    const history = [{ san: 'a1=N', from: 'a2', to: 'a1', promotion: 'n', piece: 'p' }];
+    const calls = [];
+    const mockApi = {
+      analyzeMove: async (fen, from, to, promotion) => {
+        calls.push({ fen, from, to, promotion });
+        return {
+          suggested: { san: 'a1=N', from: 'a2', to: 'a1', promotion: 'n', piece: 'p' },
+          evalAfterSuggested: 0,
+          evalAfterPlayed: 0,
+        };
+      },
+    };
+    const report = await analyzeGame(history, 'b', mockApi, { throttleMs: 1, initialFen });
+    expect(report.analyzedCount).toBe(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ from: 'a2', to: 'a1', promotion: 'n' });
+    expect(calls[0].fen).toBe(initialFen);
+    expect(report.moveReports[0].playedPromotion).toBe('n');
+    expect(report.moveReports[0].suggestedPromotion).toBe('n');
+  });
 });
 
 

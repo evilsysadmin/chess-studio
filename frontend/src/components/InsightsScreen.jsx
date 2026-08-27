@@ -37,6 +37,7 @@ import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
 import CareerScreen from './CareerScreen.jsx';
 import { GAME_MODE_LABELS, gameModeLabel } from '../gameModes.js';
+import { isAbortError } from '../asyncControl.js';
 
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
@@ -112,6 +113,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     return best;
   });
   const stopRef = useRef(false);
+  const searchAbortRef = useRef(null);
   const rivalry = useMemo(() => loadRivalry(), []);
   const seriesHistory = useMemo(() => loadSeriesHistory(), []);
   const seriesStats = useMemo(() => seriesHistoryStats(seriesHistory), [seriesHistory]);
@@ -323,7 +325,10 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   }
 
   async function startSearch() {
+    if (searchAbortRef.current) return;
     const searchOwner = getUsername();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     stopRef.current = false;
     setSearchStatus('running');
     // Conserva visible el mejor resultado cacheado mientras revisa lo nuevo.
@@ -335,30 +340,52 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     // (local + sincronizado a Mongo vía el perfil) aunque la búsqueda se
     // cancele a mitad de camino, para no perder el trabajo ya hecho.
     const cache = loadWorstMoveCache();
-    const { best, cache: updatedCache } = await findWorstMoveEver(
-      gameHistory,
-      combatHistory,
-      api,
-      (done, total, best) => {
-        setSearchProgress({ done, total });
-        if (best) setSearchResult(best); // resultado parcial, se ve mientras sigue buscando
-      },
-      () => stopRef.current,
-      { cache }
-    );
+    try {
+      const { best, cache: updatedCache } = await findWorstMoveEver(
+        gameHistory,
+        combatHistory,
+        api,
+        (done, total, best) => {
+          if (searchAbortRef.current !== controller || controller.signal.aborted) return;
+          setSearchProgress({ done, total });
+          if (best) setSearchResult(best); // resultado parcial, se ve mientras sigue buscando
+        },
+        () => stopRef.current,
+        { cache, signal: controller.signal }
+      );
 
-    // El análisis puede durar bastante. Si durante ese tiempo cambió la
-    // cuenta, el resultado pertenece al dueño que inició la búsqueda y se
-    // descarta en esta pestaña en vez de contaminar al usuario nuevo.
-    if (getUsername() !== searchOwner) return;
-    saveWorstMoveCache(updatedCache);
-    setSearchResult(best);
-    setSearchStatus('done');
+      // El análisis puede durar bastante. Si durante ese tiempo cambió la
+      // cuenta, el resultado pertenece al dueño que inició la búsqueda y se
+      // descarta en esta pestaña en vez de contaminar al usuario nuevo.
+      if (searchAbortRef.current !== controller || controller.signal.aborted || getUsername() !== searchOwner) return;
+      saveWorstMoveCache(updatedCache);
+      setSearchResult(best);
+    } catch (error) {
+      if (!isAbortError(error) && searchAbortRef.current === controller) {
+        // Fallar el análisis nunca puede secuestrar el botón en "running".
+        // Conservamos cualquier resultado parcial/cacheado y permitimos reintentar.
+        setSearchResult((current) => current);
+      }
+    } finally {
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null;
+        setSearchStatus('done');
+      }
+    }
   }
 
   function cancelSearch() {
     stopRef.current = true;
+    searchAbortRef.current?.abort(new DOMException('Worst-move search cancelled', 'AbortError'));
+    searchAbortRef.current = null;
+    setSearchStatus('done');
   }
+
+  useEffect(() => () => {
+    stopRef.current = true;
+    searchAbortRef.current?.abort(new DOMException('Insights closed', 'AbortError'));
+    searchAbortRef.current = null;
+  }, []);
 
   if (section === 'career') {
     return (

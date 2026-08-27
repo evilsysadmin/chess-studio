@@ -21,12 +21,24 @@ export function validateFeedbackFiles(files) {
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('No se pudo leer una de las imágenes.'));
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+    const timer = setTimeout(() => {
+      try { reader.abort(); } catch { /* best effort */ }
+      finish(reject, new Error('La lectura de una imagen tardó demasiado. Inténtalo de nuevo.'));
+    }, 10000);
+    reader.onerror = () => finish(reject, new Error('No se pudo leer una de las imágenes.'));
+    reader.onabort = () => finish(reject, new Error('Se canceló la lectura de una de las imágenes.'));
     reader.onload = () => {
       const value = String(reader.result || '');
       const comma = value.indexOf(',');
-      if (comma < 0) reject(new Error('No se pudo preparar una de las imágenes.'));
-      else resolve(value.slice(comma + 1));
+      if (comma < 0) finish(reject, new Error('No se pudo preparar una de las imágenes.'));
+      else finish(resolve, value.slice(comma + 1));
     };
     reader.readAsDataURL(file);
   });

@@ -21,10 +21,12 @@ export function usePlayerPortraitRefresh(insights) {
       requestKind: 'portrait_auto',
       tone: 'friendly_sarcastic',
       facts,
-    }, { token, timeoutMs: 7000 }).then((text) => {
-      if (!active || !text) return;
-      saveCachedPlayerPortrait(generationKey, text, identityScope);
-    });
+    }, { token, timeoutMs: 7000 })
+      .then((text) => {
+        if (!active || !text) return;
+        saveCachedPlayerPortrait(generationKey, text, identityScope);
+      })
+      .catch(() => {});
     return () => { active = false; };
   }, [insights]);
 }

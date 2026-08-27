@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { APP_RELEASE } from '../release.js';
 import { fetchLatestRelease, isReleaseUpdateAvailable, RELEASE_CHECK_INTERVAL_MS } from '../releaseUpdate.js';
 import { STORAGE_SESSION, getStorageItem, setStorageItem } from '../safeStorage.js';
@@ -13,6 +13,7 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
   const [latestRelease, setLatestRelease] = useState(null);
   const [dismissed, setDismissed] = useState(false);
   const [boardSnoozed, setBoardSnoozed] = useState(false);
+  const checkInFlightRef = useRef(null);
 
   useEffect(() => {
     setBoardSnoozed(false);
@@ -20,12 +21,20 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function check() {
-      const latest = await fetchLatestRelease();
-      if (!active || !latest) return;
-      setLatestRelease(latest);
-      setDismissed(getStorageItem(STORAGE_SESSION, dismissedKey(latest)) === '1');
+      if (checkInFlightRef.current) return checkInFlightRef.current;
+      const pending = (async () => {
+        const latest = await fetchLatestRelease({ signal: controller.signal });
+        if (!active || controller.signal.aborted || !latest) return;
+        setLatestRelease(latest);
+        setDismissed(getStorageItem(STORAGE_SESSION, dismissedKey(latest)) === '1');
+      })().finally(() => {
+        if (checkInFlightRef.current === pending) checkInFlightRef.current = null;
+      });
+      checkInFlightRef.current = pending;
+      return pending;
     }
 
     void check();
@@ -36,6 +45,8 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       active = false;
+      controller.abort();
+      checkInFlightRef.current = null;
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
