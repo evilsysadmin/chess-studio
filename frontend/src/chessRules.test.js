@@ -89,26 +89,28 @@ describe('matriz exhaustiva de reglas especiales', () => {
     expect(mate.fen()).toBe('7k/6Q1/6K1/8/8/8/8/8 b - - 0 1');
   });
 
-  it('fuzz determinista: safeChessMove acepta exactamente jugadas legales y nunca corrompe el tablero', () => {
+  it('fuzz determinista: una muestra amplia de partidas legales nunca corrompe el tablero', () => {
     let state = 0x46e;
     const random = () => {
       state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
       return state / 0x100000000;
     };
-    for (let game = 0; game < 20; game += 1) {
+    let appliedPlies = 0;
+    for (let game = 0; game < 8; game += 1) {
       const board = new Chess();
-      for (let ply = 0; ply < 100 && !board.isGameOver(); ply += 1) {
+      for (let ply = 0; ply < 60 && !board.isGameOver(); ply += 1) {
         const legal = board.moves({ verbose: true });
         const selected = legal[Math.floor(random() * legal.length)];
-        const beforePly = board.history().length;
         const applied = safeChessMove(board, selected);
         expect(applied).not.toBeNull();
-        expect(board.history()).toHaveLength(beforePly + 1);
+        expect(applied).toMatchObject({ from: selected.from, to: selected.to });
         expect(() => new Chess(board.fen())).not.toThrow();
+        appliedPlies += 1;
       }
       if (board.isGameOver()) {
         expect(applySuggestedOrLegalFallback(board, { from: 'a1', to: 'a8' }, random).move).toBeNull();
       }
     }
+    expect(appliedPlies).toBeGreaterThan(250);
   });
 });

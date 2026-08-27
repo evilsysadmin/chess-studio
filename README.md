@@ -1,3 +1,12 @@
+### v16.6dm46zeg · Hotfix de la suite de estabilidad
+
+- Corrige cuatro falsos negativos de la suite introducidos por el hardening de `dm46ze/dm46zef`, sin relajar los contratos de producción.
+- Los tests de persistencia Combat usan FEN legales reales; los placeholders inválidos chocaban correctamente con la nueva validación de snapshots.
+- Feedback verifica cancelación observable del request, no identidad de objeto entre `AbortSignal` compuesto y externo.
+- El watchdog async registra el handler de rechazo antes de avanzar fake timers, evitando una `Unhandled Rejection` artificial de Vitest.
+- El fuzz de reglas elimina llamadas cuadráticas a `board.history()` en cada ply y conserva una muestra determinista amplia de posiciones legales.
+- No hay cambios intencionados en reglas, economía, IA ni persistencia de producción.
+
 ### v16.6dm46zef · Hotfix del contrato de autenticación
 
 - La cancelación externa de login/registro se compone correctamente con el watchdog HTTP: cancelar el formulario cancela la petición real sin renunciar al límite de tiempo de seguridad.

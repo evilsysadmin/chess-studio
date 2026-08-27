@@ -33,11 +33,17 @@ describe('feedback API client', () => {
 
 
 
-  it('propaga AbortSignal para poder cancelar un envío al cerrar el modal', async () => {
-    global.fetch.mockResolvedValue(response(201, { feedback: { id: 'f2', status: 'new' } }));
+  it('propaga la cancelación del AbortSignal al envío de feedback', async () => {
+    let fetchSignal = null;
+    global.fetch = vi.fn().mockImplementation((_url, options = {}) => new Promise((_resolve, reject) => {
+      fetchSignal = options.signal;
+      options.signal?.addEventListener('abort', () => reject(options.signal.reason || new DOMException('Aborted', 'AbortError')), { once: true });
+    }));
     const controller = new AbortController();
-    await submitFeedback({ category: 'bug', message: 'Se ha quedado tieso.', context: 'Partida', signal: controller.signal });
-    expect(global.fetch.mock.calls[0][1].signal).toBe(controller.signal);
+    const pending = submitFeedback({ category: 'bug', message: 'Se ha quedado tieso.', context: 'Partida', signal: controller.signal });
+    controller.abort(new DOMException('Modal closed', 'AbortError'));
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchSignal?.aborted).toBe(true);
   });
   it('lee feedback admin y actualiza estado', async () => {
     global.fetch

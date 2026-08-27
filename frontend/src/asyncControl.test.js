@@ -18,8 +18,9 @@ describe('asyncControl', () => {
       options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true });
     }));
     const pending = fetchWithTimeout(fetchImpl, '/slow', {}, 50);
+    const rejection = expect(pending).rejects.toMatchObject({ name: 'AbortError', timeout: true, timeoutMs: 50 });
     await vi.advanceTimersByTimeAsync(51);
-    await expect(pending).rejects.toMatchObject({ name: 'AbortError', timeout: true, timeoutMs: 50 });
+    await rejection;
     vi.useRealTimers();
   });
 
