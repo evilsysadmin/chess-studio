@@ -22,16 +22,6 @@ export function emptyUnitBattleStats() {
   return { killsByIdentity: {}, bossDamageByIdentity: {}, bossFinisherIdentityId: null };
 }
 
-// La comprobación normal ocurre justo después de cada movimiento. Esto queda
-// separado para poder recuperar una pestaña que hubiera guardado un FEN ya
-// terminal entre el movimiento y el cierre visual de la batalla.
-export function terminalCombatOutcome({ chess, humanColor, reachedRepetition = false } = {}) {
-  if (reachedRepetition) return 'draw';
-  if (!chess?.isGameOver?.()) return null;
-  if (!chess.isCheckmate()) return 'draw';
-  return chess.turn() !== humanColor ? 'win' : 'loss';
-}
-
 export function incrementIdentityCounter(bucket, identityId, amount = 1) {
   if (!identityId || !Number.isFinite(Number(amount)) || Number(amount) <= 0) return bucket;
   return { ...bucket, [identityId]: (bucket[identityId] || 0) + Number(amount) };

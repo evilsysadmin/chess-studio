@@ -1,4 +1,5 @@
 import Board from './Board.jsx';
+import MusicPlayer from './MusicPlayer.jsx';
 import PromotionModal from './PromotionModal.jsx';
 import PieceInfoModal from './PieceInfoModal.jsx';
 import AttackConfirmModal from './AttackConfirmModal.jsx';
@@ -29,6 +30,10 @@ export default function CombatBattleView({
           )}
 
           <div className="board-live-row combat-board-live-row">
+            <aside className="game-music-rail" aria-label="Música de la batalla">
+              <MusicPlayer forceExpanded />
+            </aside>
+
             <div className="game-board-stack">
               <Board
                 fen={fen}

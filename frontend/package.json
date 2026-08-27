@@ -13,23 +13,16 @@
     "test:contract": "node ../scripts/run_frontend_test_group.mjs contract",
     "test:all": "node ../scripts/run_frontend_test_group.mjs all",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "build:android": "VITE_PUBLIC_BASE=/ VITE_API_URL=https://api.chess-studio.shadowops.dpdns.org/api vite build",
-    "android:sync": "npm run build:android && npx cap sync android",
-    "android:open": "npx cap open android"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.0",
-    "@capacitor/core": "^8.5.0",
     "chess.js": "^1.0.0-beta.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.5.0",
     "@vitejs/plugin-react": "^4.7.0",
-    "typescript": "^5.9.3",
     "vite": "^6.4.3",
     "vitest": "^4.1.10"
   }

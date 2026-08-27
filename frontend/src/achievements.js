@@ -16,7 +16,6 @@ import { dailyChallengeStats, loadDailyChallenge } from './dailyChallenge.js';
 import { loadRivalry } from './rivalry.js';
 
 const KEY = 'chess-study-achievements';
-const SELECTED_DISTINCTION_KEY = 'chess-study-selected-distinction';
 
 export const ACHIEVEMENTS = [
   { id: 'first_game', name: 'Primer movimiento', description: 'Jugaste tu primera partida contra la CPU.' },
@@ -54,69 +53,6 @@ export const ACHIEVEMENTS = [
   { id: 'feat_promotion', name: 'Ascenso meteórico', description: 'Coronaste un peón.', kind: 'glory' },
   { id: 'feat_skewer', name: 'Brocheta real', description: 'Ejecutaste un ensartado sobre el rey.', kind: 'glory' },
 ];
-
-const DISTINCTION_META = {
-  first_game: { collection: 'Carrera', rarity: 'común' },
-  ten_games: { collection: 'Carrera', rarity: 'común' },
-  fifty_games: { collection: 'Carrera', rarity: 'raro' },
-  tournament_wins_5: { collection: 'Carrera', rarity: 'raro' },
-  tournament_level_5: { collection: 'Carrera', rarity: 'raro' },
-  tournament_level_10: { collection: 'Carrera', rarity: 'épico' },
-  rating_intermediate: { collection: 'Carrera', rarity: 'raro' },
-  rating_advanced: { collection: 'Carrera', rarity: 'épico' },
-  rating_master: { collection: 'Carrera', rarity: 'legendario' },
-  combat_gold_piece: { collection: 'Servicio', rarity: 'épico' },
-  combat_reviver: { collection: 'Servicio', rarity: 'raro' },
-  combat_flawless: { collection: 'Servicio', rarity: 'legendario' },
-  puzzles_10: { collection: 'Disciplina', rarity: 'común' },
-  puzzles_50: { collection: 'Disciplina', rarity: 'raro' },
-  daily_streak_3: { collection: 'Disciplina', rarity: 'común' },
-  daily_streak_7: { collection: 'Disciplina', rarity: 'raro' },
-  daily_streak_30: { collection: 'Disciplina', rarity: 'legendario' },
-  daily_challenges_10: { collection: 'Disciplina', rarity: 'raro' },
-  daily_full_first: { collection: 'Disciplina', rarity: 'raro' },
-  daily_full_7: { collection: 'Disciplina', rarity: 'épico' },
-  daily_clean_full_3: { collection: 'Disciplina', rarity: 'épico' },
-  rivalry_25: { collection: 'Rivalidad', rarity: 'raro' },
-  rivalry_streak_3: { collection: 'Rivalidad', rarity: 'épico' },
-  rivalry_hard_75: { collection: 'Rivalidad', rarity: 'legendario' },
-};
-
-export function distinctionMeta(achievement) {
-  if (!achievement) return { collection: 'Archivo', rarity: 'común' };
-  if (DISTINCTION_META[achievement.id]) return DISTINCTION_META[achievement.id];
-  if (achievement.kind === 'shame') return { collection: 'Incidentes', rarity: 'confidencial' };
-  if (achievement.kind === 'glory') return { collection: 'Hazañas', rarity: 'épico' };
-  return { collection: 'Archivo', rarity: 'común' };
-}
-
-export function collectionEntries(unlocked = loadUnlocked()) {
-  const set = unlocked instanceof Set ? unlocked : new Set(unlocked || []);
-  return ACHIEVEMENTS.map((achievement) => ({
-    ...achievement,
-    ...distinctionMeta(achievement),
-    unlocked: set.has(achievement.id),
-  }));
-}
-
-export function loadSelectedDistinction() {
-  const id = getStorageItem(STORAGE_LOCAL, SELECTED_DISTINCTION_KEY);
-  return ACHIEVEMENTS.some((achievement) => achievement.id === id) ? id : null;
-}
-
-export function selectDistinction(id, unlocked = loadUnlocked()) {
-  const set = unlocked instanceof Set ? unlocked : new Set(unlocked || []);
-  const safeId = ACHIEVEMENTS.some((achievement) => achievement.id === id) && set.has(id) ? id : null;
-  setProfileStorageItem(SELECTED_DISTINCTION_KEY, safeId || '');
-  return safeId;
-}
-
-export function selectedDistinction(unlocked = loadUnlocked()) {
-  const id = loadSelectedDistinction();
-  const set = unlocked instanceof Set ? unlocked : new Set(unlocked || []);
-  const achievement = ACHIEVEMENTS.find((item) => item.id === id && set.has(item.id));
-  return achievement ? { ...achievement, ...distinctionMeta(achievement) } : null;
-}
 
 function emptySet() {
   return new Set();

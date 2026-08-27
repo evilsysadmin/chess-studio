@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { aiNarrativeStatus, fetchAiNarrativeMetrics, formatAiMetric } from '../aiMetrics.js';
 import {
-  burnRateForSlo,
-  errorBudgetForSlo,
-  evaluateReleaseHealth,
   fetchAdminObservability,
   formatDuration,
   observabilityRangeForPreset,
@@ -17,7 +14,6 @@ import {
   OBSERVABILITY_AUTO_REFRESH_OPTIONS,
 } from '../observabilityRefresh.js';
 import { OBSERVABILITY_LATENCY_VIEWS, observabilityLatencyTitle } from '../observabilityLatency.js';
-import { APP_RELEASE } from '../release.js';
 
 const EVENT_LABELS = {
   player_portrait: 'Así te ve la CPU',
@@ -121,7 +117,7 @@ function niceCeiling(value) {
   return nice * magnitude;
 }
 
-function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = '', resolution = 'hour', ceiling = null, referenceLines = [], annotations = [] }) {
+function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = '', resolution = 'hour', ceiling = null, referenceLines = [] }) {
   const definitions = (valueKeys || [{ key: valueKey, label: null }]).filter((item) => item?.key);
   const prepared = definitions.map((definition) => ({
     ...definition,
@@ -155,17 +151,6 @@ function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = ''
   }));
   const first = preparedCoords[0]?.coords[0];
   const last = preparedCoords[0]?.coords.at(-1);
-  const annotationMarks = (annotations || []).map((annotation) => {
-    const atMs = new Date(annotation?.at).getTime();
-    if (!Number.isFinite(atMs) || !preparedCoords[0]?.coords?.length) return null;
-    const nearest = preparedCoords[0].coords.reduce((best, point) => {
-      const pointMs = new Date(point.at).getTime();
-      if (!Number.isFinite(pointMs)) return best;
-      const distance = Math.abs(pointMs - atMs);
-      return !best || distance < best.distance ? { point, distance } : best;
-    }, null);
-    return nearest ? { ...annotation, x: nearest.point.x } : null;
-  }).filter(Boolean);
 
   return (
     <div className="admin-observability-chart">
@@ -183,11 +168,6 @@ function LineChart({ series = [], valueKey, valueKeys = null, title, suffix = ''
           const y = padTop + (index / tickCount) * (height - padTop - padBottom);
           return <g key={tick}><line x1={padLeft} x2={width - padRight} y1={y} y2={y} className="chart-grid-line" /><text x={padLeft - 7} y={y + 3} textAnchor="end" className="chart-y-label">{compactAxisMetric(tick, suffix)}</text></g>;
         })}
-        {annotationMarks.map((annotation) => (
-          <line key={`deploy-${annotation.deploymentId || annotation.at}`} x1={annotation.x} x2={annotation.x} y1={padTop} y2={height - padBottom} className="chart-deployment-line">
-            <title>{`Deploy ${annotation.release || ''} · ${annotation.at || ''}`}</title>
-          </line>
-        ))}
         {referenceLines.map((reference) => {
           const value = Number(reference?.value);
           if (!Number.isFinite(value) || value < minValue || value > maxValue) return null;
@@ -234,7 +214,7 @@ function latencyDefinitions(prefix, view) {
   return view === 'all' ? all : all.filter((item) => item.label === view);
 }
 
-function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latencyView, deployments = [] }) {
+function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latencyView }) {
   const series = history?.series || [];
   const resolution = historyRange?.resolution || 'hour';
   const httpQuality = observabilitySampleQuality(historyHttp.samples, 20);
@@ -246,7 +226,7 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
     const presence = history?.presence || {};
     return (
       <div className="admin-observability-dashboard-grid">
-        <LineChart series={series} valueKeys={[{ key: 'online_average', label: 'Media' }, { key: 'online_peak', label: 'Pico' }]} title="Usuarios conectados" resolution={resolution} annotations={deployments} />
+        <LineChart series={series} valueKeys={[{ key: 'online_average', label: 'Media' }, { key: 'online_peak', label: 'Pico' }]} title="Usuarios conectados" resolution={resolution} />
         <div className="admin-observability-dashboard-kpis">
           <div><span>Media del rango</span><strong>{metric(presence.average_online)}</strong></div>
           <div><span>Pico del rango</span><strong>{metric(presence.peak_online)}</strong></div>
@@ -260,9 +240,9 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
     return (
       <div className="admin-observability-dashboard-grid">
         {qualityNotice}
-        <LineChart series={series} valueKeys={latencyDefinitions('ai', latencyView)} title={observabilityLatencyTitle('Latencia Workers AI', latencyView)} suffix=" ms" resolution={resolution} annotations={deployments} />
-        <LineChart series={series} valueKey="ai_cloudflare_percent" title="Respuestas Cloudflare" suffix="%" resolution={resolution} ceiling={100} annotations={deployments} />
-        <BarChart series={series} valueKey="ai_samples" title="Llamadas AI" resolution={resolution} annotations={deployments} />
+        <LineChart series={series} valueKeys={latencyDefinitions('ai', latencyView)} title={observabilityLatencyTitle('Latencia Workers AI', latencyView)} suffix=" ms" resolution={resolution} />
+        <LineChart series={series} valueKey="ai_cloudflare_percent" title="Respuestas Cloudflare" suffix="%" resolution={resolution} ceiling={100} />
+        <BarChart series={series} valueKey="ai_samples" title="Llamadas AI" resolution={resolution} />
         <div className="admin-observability-dashboard-kpis">
           <div><span>Cloudflare</span><strong>{formatAiMetric(historyAi.cloudflare_percent, '%')}</strong></div>
           <div><span>Fallback</span><strong>{formatAiMetric(historyAi.fallback_percent, '%')}</strong></div>
@@ -277,9 +257,9 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
     return (
       <div className="admin-observability-dashboard-grid">
         {qualityNotice}
-        <BarChart series={series} valueKey="http_requests" title="Requests" resolution={resolution} annotations={deployments} />
-        <LineChart series={series} valueKey="http_5xx" title="Errores 5xx" resolution={resolution} annotations={deployments} />
-        <LineChart series={series} valueKey="http_4xx" title="Errores 4xx" resolution={resolution} annotations={deployments} />
+        <BarChart series={series} valueKey="http_requests" title="Requests" resolution={resolution} />
+        <LineChart series={series} valueKey="http_5xx" title="Errores 5xx" resolution={resolution} />
+        <LineChart series={series} valueKey="http_4xx" title="Errores 4xx" resolution={resolution} />
         <div className="admin-observability-dashboard-kpis">
           <div><span>Req/min</span><strong>{metric(historyHttp.requests_per_minute)}</strong></div>
           <div><span>Requests</span><strong>{metric(historyHttp.samples)}</strong></div>
@@ -293,9 +273,9 @@ function Dashboard({ tab, history, historyHttp, historyAi, historyRange, latency
   return (
     <div className="admin-observability-dashboard-grid">
       {qualityNotice}
-      <LineChart series={series} valueKeys={latencyDefinitions('http', latencyView)} title={observabilityLatencyTitle('Latencia API', latencyView)} suffix=" ms" resolution={resolution} referenceLines={[{ value: 300, label: 'sano · 300 ms' }, { value: 750, label: 'vigilar · 750 ms' }]} annotations={deployments} />
-      <LineChart series={series} valueKey="http_p99_ms" title="Cola alta · p99" suffix=" ms" resolution={resolution} referenceLines={[{ value: 300, label: 'sano · 300 ms' }, { value: 750, label: 'vigilar · 750 ms' }]} annotations={deployments} />
-      <BarChart series={series} valueKey="http_requests" title="Carga HTTP" resolution={resolution} annotations={deployments} />
+      <LineChart series={series} valueKeys={latencyDefinitions('http', latencyView)} title={observabilityLatencyTitle('Latencia API', latencyView)} suffix=" ms" resolution={resolution} referenceLines={[{ value: 300, label: 'sano · 300 ms' }, { value: 750, label: 'vigilar · 750 ms' }]} />
+      <LineChart series={series} valueKey="http_p99_ms" title="Cola alta · p99" suffix=" ms" resolution={resolution} referenceLines={[{ value: 300, label: 'sano · 300 ms' }, { value: 750, label: 'vigilar · 750 ms' }]} />
+      <BarChart series={series} valueKey="http_requests" title="Carga HTTP" resolution={resolution} />
       <div className="admin-observability-dashboard-kpis">
         <div><span>p50</span><strong>{metric(historyHttp.p50_ms, ' ms')}</strong></div>
         <div><span>p95</span><strong>{metric(historyHttp.p95_ms, ' ms')}</strong></div>
@@ -402,9 +382,6 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
   const historyHttp = history?.http || {};
   const historyAi = history?.ai || {};
   const historyPresence = history?.presence || {};
-  const errorBudget = errorBudgetForSlo(runtime);
-  const burnRate = burnRateForSlo(runtime);
-  const releaseHealth = evaluateReleaseHealth(runtime, APP_RELEASE);
   const historyRange = history?.range || {};
   const aiStatus = aiNarrativeStatus(ai);
   const rangeLabel = RANGE_LABELS[rangePreset] || 'rango';
@@ -452,10 +429,6 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
         <div><span>Persistencia</span><strong>{databaseLabel(database)}</strong></div>
         <div><span>Pico online · {rangeLabel}</span><strong>{metric(historyPresence.peak_online)}</strong></div>
         <div><span>Workers AI · {rangeLabel}</span><strong>{historyAi.samples ? `${formatAiMetric(historyAi.cloudflare_percent, '%')} CF` : '—'}</strong></div>
-        <div><span>Error budget</span><strong>{errorBudget.consumedPercent == null ? '—' : `${metric(errorBudget.consumedPercent, '%')} usado`}</strong></div>
-        <div><span>Burn rate</span><strong>{burnRate.statusLabel}</strong></div>
-        <div><span>Release {APP_RELEASE}</span><strong>{releaseHealth.statusLabel}</strong></div>
-        <div><span>Presión</span><strong>{runtime?.resilience?.level || '—'}</strong></div>
       </div>
 
       <div className="admin-observability-dashboard" aria-label="Dashboards de observabilidad">
@@ -467,7 +440,7 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
           </div>
           {dashboardTab !== 'traffic' ? <div className="admin-observability-percentile-picker" aria-label="Percentil de latencia">{OBSERVABILITY_LATENCY_VIEWS.map((view) => <button key={view} type="button" className={latencyView === view ? 'active' : ''} onClick={() => setLatencyView(view)}>{view === 'all' ? 'Todas' : view}</button>)}</div> : null}
         </div>
-        <Dashboard tab={dashboardTab} history={history} historyHttp={historyHttp} historyAi={historyAi} historyRange={historyRange} latencyView={latencyView} deployments={runtime?.deployments || []} />
+        <Dashboard tab={dashboardTab} history={history} historyHttp={historyHttp} historyAi={historyAi} historyRange={historyRange} latencyView={latencyView} />
       </div>
 
       <details className="friendly-disclosure admin-observability-details">
@@ -522,48 +495,6 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
             </article>
 
             <article>
-              <h4>Resiliencia · ahora</h4>
-              <dl>
-                <div><dt>Nivel</dt><dd>{runtime?.resilience?.level || '—'}</dd></div>
-                <div><dt>Requests en vuelo</dt><dd>{metric(runtime?.resilience?.inflight)}</dd></div>
-                <div><dt>Load shedding · 5 min</dt><dd>{metric(runtime?.resilience?.shed_last_5m)}</dd></div>
-                <div><dt>Bulkhead rejects · 5 min</dt><dd>{metric(runtime?.resilience?.bulkhead_rejections_last_5m)}</dd></div>
-                <div><dt>Burn 15 min / 1 h</dt><dd>{burnRate.short.burnRate == null ? '—' : `${burnRate.short.burnRate}×`} / {burnRate.long.burnRate == null ? '—' : `${burnRate.long.burnRate}×`}</dd></div>
-              </dl>
-              <small>Las funciones secundarias ceden capacidad antes que movimiento, login y persistencia.</small>
-            </article>
-
-            <article>
-              <h4>Dependencias · ahora</h4>
-              {(runtime?.dependencies || []).length ? <ul className="admin-observability-list">{runtime.dependencies.map((row) => (
-                <li key={row.id}><span>{row.label}{row.critical ? ' · crítica' : ' · degradable'}</span><strong>{row.status}{row.latencyMs == null ? '' : ` · ${metric(row.latencyMs, ' ms')}`}</strong></li>
-              ))}</ul> : <p className="hint-text">Sin estado de dependencias.</p>}
-            </article>
-
-            <article>
-              <h4>Frontend · ahora</h4>
-              <dl>
-                <div><dt>Señales</dt><dd>{metric(runtime?.frontend?.samples)}</dd></div>
-                <div><dt>Errores JS</dt><dd>{metric(runtime?.frontend?.errors)}</dd></div>
-                <div><dt>LCP p75</dt><dd>{metric(runtime?.frontend?.vitals_p75?.LCP, ' ms')}</dd></div>
-                <div><dt>CLS p75</dt><dd>{metric(runtime?.frontend?.vitals_p75?.CLS)}</dd></div>
-                <div><dt>INP p75</dt><dd>{metric(runtime?.frontend?.vitals_p75?.INP, ' ms')}</dd></div>
-              </dl>
-              <small>Señales mínimas y sin stack, contenido de partida ni inputs. Preparado para exportarse después a Grafana Cloud/Faro.</small>
-            </article>
-
-            <article>
-              <h4>Shadow evaluation</h4>
-              <dl>
-                <div><dt>Estado</dt><dd>{runtime?.shadow?.enabled ? `ON · ${metric(runtime.shadow.sample_percent, '%')}` : 'OFF'}</dd></div>
-                <div><dt>Muestras</dt><dd>{metric(runtime?.shadow?.samples)}</dd></div>
-                <div><dt>Misma jugada</dt><dd>{metric(runtime?.shadow?.same_move_percent, '%')}</dd></div>
-                <div><dt>p95 sombra</dt><dd>{metric(runtime?.shadow?.p95_ms, ' ms')}</dd></div>
-              </dl>
-              <small>La sombra nunca decide la jugada ni la respuesta. En Render Free queda apagada por defecto.</small>
-            </article>
-
-            <article>
               <h4>Workers AI · {rangeLabel}</h4>
               <dl>
                 <div><dt>Estado ahora</dt><dd>{aiStatus}</dd></div>
@@ -597,26 +528,6 @@ export default function ObservabilityPanel({ token, users = [], currentAdmin = n
                 ))}
               </ul>
             </article>
-            <article>
-              <h4>Salud por release · {rangeLabel}</h4>
-              {(historyHttp.releases || []).length ? (
-                <ul className="admin-observability-list">
-                  {(historyHttp.releases || []).map((row) => (
-                    <li key={row.release}>
-                      <span><code>{row.release}</code>{row.release === APP_RELEASE ? ' · actual' : ''}</span>
-                      <strong>{metric(row.requests)} req · {metric(row.error_5xx_percent, '%')} 5xx · p95 {metric(row.p95_ms, ' ms')}</strong>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="hint-text">Las releases empezarán a aparecer cuando lleguen requests con el cliente actualizado.</p>}
-            </article>
-            <article>
-              <h4>Deployments</h4>
-              {(runtime?.deployments || []).length ? <ul className="admin-observability-list">{runtime.deployments.slice(0, 8).map((row) => (
-                <li key={`${row.deploymentId}-${row.at}`}><span><code>{row.release}</code> · {row.provider}</span><strong>{row.at ? new Date(row.at).toLocaleString('es-ES') : '—'}</strong></li>
-              ))}</ul> : <p className="hint-text">Aún no hay anotaciones persistidas.</p>}
-            </article>
-            <article><h4>Errores frontend por clase</h4><KeyValueList values={runtime?.frontend?.error_names} /></article>
             <article><h4>Releases en uso · ahora</h4><KeyValueList values={userSummary.releases} /></article>
             <article><h4>Modelos AI · {rangeLabel}</h4><KeyValueList values={historyAi.models} /></article>
           </div>

@@ -393,16 +393,6 @@ export function markCampaignBattleStarted(state) {
   return saveCampaign({ ...state, phase: 'fighting' });
 }
 
-export function recoverCampaignBattleSetup(state) {
-  // Si un navegador perdió el snapshot de la pelea antes de poder restaurarlo,
-  // conservamos exactamente la ruta, recursos y selección del sector. No
-  // inventamos bajas, recompensas ni una derrota: devolvemos el sector a su
-  // preparación explícita para que el jugador pueda decidir el despliegue.
-  const node = campaignNode(state);
-  if (!state?.active || state.phase !== 'fighting' || !node || !['battle', 'elite', 'boss'].includes(node.type)) return state;
-  return saveCampaign({ ...state, phase: 'battle' });
-}
-
 function markNodeCleared(state, extras = {}) {
   const node = campaignNode(state);
   if (!node) return state;

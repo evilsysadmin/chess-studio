@@ -10,7 +10,6 @@ import {
   settleMercenaryContracts,
 } from './combatEconomy.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
-import { buyStatPoint } from './combat.js';
 
 afterEach(() => setAdminPreviewAccess(false));
 
@@ -66,18 +65,5 @@ describe('economía de Combat', () => {
     expect(settleMercenaryContracts(hired, []).roster).toBe(hired);
     const one = settleMercenaryContracts(hired, [key]).roster;
     expect(one.pieces[key].mercenary.battlesRemaining).toBe(2);
-  });
-
-  it('vende especialistas temporales, no reclutas con otro nombre ni veteranos instantáneos', () => {
-    const offer = mercenaryMarketOffers({ merit: 0, rotationKey: '2026-08-26' })[0];
-    expect(offer.level).toBeGreaterThanOrEqual(2);
-    expect(offer.perk).toMatchObject({ id: expect.any(String), label: expect.any(String), description: expect.any(String) });
-    expect(offer.prices).toEqual(expect.objectContaining({ one: expect.any(Number), three: expect.any(Number), five: expect.any(Number) }));
-    expect(offer.prices.permanent).toBeUndefined();
-
-    const hired = hireMercenary({ credits: 999, pieces: {}, identities: {}, unitRecords: {} }, offer, 'five', 1000);
-    const key = Object.keys(hired.pieces)[0];
-    expect(hired.pieces[key]).toMatchObject({ bankedXp: 0, mercenary: { battlesRemaining: 5, perk: offer.perk } });
-    expect(buyStatPoint({ type: offer.type, ...hired.pieces[key], bankedXp: 99 }, 'strength')).toBeNull();
   });
 });

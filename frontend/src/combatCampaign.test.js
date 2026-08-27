@@ -6,7 +6,6 @@ import {
   selectCampaignNode,
   markCampaignBriefingAccepted,
   markCampaignBattleStarted,
-  recoverCampaignBattleSetup,
   markCampaignBattleWon,
   campaignRewardOptions,
   chooseCampaignReward,
@@ -59,15 +58,6 @@ describe('Combat Chess campaign map', () => {
     run = chooseCampaignReward(run, perk.id);
     expect(run.phase).toBe('map');
     expect(run.perks).toContain(perk.id);
-  });
-
-  it('una sesión de tablero perdida vuelve a preparación sin perder la campaña', () => {
-    let run = startCampaign('recover-battle');
-    const first = availableCampaignNodes(run)[0];
-    run = markCampaignBattleStarted(markCampaignBriefingAccepted(selectCampaignNode(run, first.id)));
-    const recovered = recoverCampaignBattleSetup(run);
-    expect(recovered).toMatchObject({ active: true, phase: 'battle', seed: run.seed, selectedNodeId: first.id });
-    expect(recovered.operationalCredits).toBe(run.operationalCredits);
   });
 
   it('evento recon acumula inteligencia y la aplica a la siguiente batalla', () => {

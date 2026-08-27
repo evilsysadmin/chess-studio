@@ -28,13 +28,8 @@ from api_models import (
 )
 from observability import get_database_metrics, get_http_metrics
 from observability_history import get_history as get_observability_history
-from narrative_cloudflare import generate_narrative, get_ai_dependency_health
+from narrative_cloudflare import generate_narrative
 from ip_geolocation import network_location_status, resolve_country_code
-from resilience import pressure_state
-from client_telemetry import get_client_telemetry
-from deployment_annotations import ensure_current_deployment_annotation, list_deployment_annotations
-from shadow_evaluation import get_shadow_metrics
-from release_info import backend_release
 
 
 def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRouter:
@@ -42,8 +37,8 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
     @router.post("/api/feedback", status_code=201)
     @limiter.limit("10/hour")
     async def submit_feedback(request: Request, body: FeedbackRequest, username: str = Depends(auth_dependency)):
-        category = (body.category or "general").strip().lower()
-        allowed_categories = {"general", "bug", "idea", "other"}
+        category = (body.category or "other").strip().lower()
+        allowed_categories = {"bug", "idea", "ux", "other"}
         if category not in allowed_categories:
             raise HTTPException(400, "Categoría de feedback inválida.")
         message = (body.message or "").strip()
@@ -69,37 +64,10 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             history = await get_observability_history(from_time, to_time)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
-        database = await get_database_metrics()
-        ai_dependency = get_ai_dependency_health()
-        resilience = pressure_state()
-        await ensure_current_deployment_annotation()
-        dependencies = [
-            {
-                "id": "mongo",
-                "label": "MongoDB",
-                "status": "ok" if database.get("status") in {"ok", "memory"} else "down",
-                "critical": True,
-                "latencyMs": database.get("latency_ms"),
-            },
-            {
-                "id": "workers_ai",
-                "label": "Workers AI",
-                "status": ai_dependency.get("status"),
-                "critical": False,
-                "circuitOpen": ai_dependency.get("circuitOpen", False),
-            },
-        ]
         return {
             "http": get_http_metrics(),
-            "database": database,
+            "database": await get_database_metrics(),
             "history": history,
-            "dependencies": dependencies,
-            "aiDependency": ai_dependency,
-            "resilience": resilience,
-            "frontend": get_client_telemetry(),
-            "deployments": await list_deployment_annotations(),
-            "shadow": get_shadow_metrics(),
-            "backendRelease": backend_release(),
         }
 
 

@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Chess Studio</string>
-    <string name="title_activity_main">Chess Studio</string>
-    <string name="package_name">org.dpdns.shadowops.chessstudio</string>
-    <string name="custom_url_scheme">org.dpdns.shadowops.chessstudio</string>
-</resources>

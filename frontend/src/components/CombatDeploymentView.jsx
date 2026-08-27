@@ -640,7 +640,7 @@ export default function CombatDeploymentView({
     const unitKey = roster.deployment?.[slot.key];
     if (unitKey && roster.pieces?.[unitKey]?.mercenary) {
       const remaining = roster.pieces[unitKey].mercenary.battlesRemaining;
-      return <span className="deployment-mercenary-badge" title={`Mercenario · ${remaining || 0} batalla${remaining === 1 ? '' : 's'} restante${remaining === 1 ? '' : 's'}`}>M</span>;
+      return <span className="deployment-mercenary-badge" title={`Mercenario · ${remaining == null ? 'contrato permanente' : `${remaining} batalla${remaining === 1 ? '' : 's'} restante${remaining === 1 ? '' : 's'}`}`}>M</span>;
     }
     return <span className="deployment-slot-badge" title={`Slot exclusivo: ${TYPE_NAME[slot.type]}`}>{TYPE_SYMBOL[slot.type]}</span>;
   }

@@ -36,7 +36,6 @@ export const PROFILE_PROGRESS_KEYS = Object.freeze([
   'chess-study-player-rating',
   'chess-study-rating-history',
   'chess-study-achievements',
-  'chess-study-selected-distinction',
   'chess-study-puzzles-solved',
   'chess-study-puzzle-streak',
   'chess-study-puzzle-best-streak',
@@ -74,9 +73,7 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-voice-enabled',
   'chess-study-mechanic-tutorial-progress-v1',
   'chess-study-home-guide-dismissed-v1',
-  'chess-study-onboarding-insights-seen-v1',
   'chess-study-feedback-assistant-v1',
-  'chess-study-post-game-feedback-v1',
   'chess-study-zen-mode',
   'chess-study-default-time-control',
   'chess-study-ui-language',
@@ -103,7 +100,6 @@ export const SESSION_STATE_KEYS = [
   'chess-study-active-series',
   'chess-study-active-game-chat',
   'chess-study-active-game-session-v1',
-  'chess-study-active-combat-session-v1',
 ];
 
 function emitProfileChanged() {

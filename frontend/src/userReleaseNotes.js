@@ -6,56 +6,12 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46t',
-    title: 'Salud del servicio más visible',
-    highlights: [
-      'Chess Studio puede conectar su API con un panel privado de salud para detectar errores y lentitud antes de que afecten a una partida.',
-      'La monitorización usa datos técnicos agregados: nunca envía tus partidas, posiciones, mensajes ni datos de cuenta.',
-    ],
-  },
-  {
-    release: 'v16.6dm46m',
-    title: 'Combat más claro y radio con más alma',
-    highlights: [
-      'Los mercenarios ya no se confunden con reclutas: llegan con una especialización útil desde la primera batalla, cuestan créditos y trabajan sólo por contrato. No acumulan XP ni se convierten en veteranos.',
-      'La radio suma seis ambientes originales: blues del desierto nocturno, manouche oscuro, post-rock minimalista, flamenco-jazz nocturno, psicodelia anatolia instrumental y surf noir.',
-      'Las guitarras actuales tienen frases más largas, melodías que se responden y cambios de sección para que la sesión respire en vez de girar sobre un loop corto.',
-      'En Combate el tablero recupera protagonismo: el reproductor no invade la mesa. Feedback vuelve a llevar su peón de apoyo, abre sin romper la pantalla y empieza en “Comentario general”.',
-    ],
-  },
-  {
-    release: 'v16.6dm46k',
-    title: 'Partidas más seguras y feedback más accesible',
-    highlights: [
-      'En momentos de mucha actividad, Chess Studio protege antes que nada el movimiento, el acceso y el guardado de tu partida.',
-      'Los errores de una función secundaria no interrumpen una partida en curso ni borran tu progreso.',
-      'Feedback pasó a la cabecera, junto a Cuenta, para que esté disponible desde cualquier pantalla.',
-    ],
-  },
-  {
-    release: 'v16.6dm46j',
-    title: 'Conexión más fácil de recuperar',
-    highlights: [
-      'Cuando algo falla, Chess Studio explica qué puedes hacer y conserva una referencia segura para soporte.',
-      'La conexión y el acceso se revisan continuamente para detectar problemas antes de que afecten a una sesión.',
-    ],
-  },
-  {
-    release: 'v16.6dm46i',
-    title: 'Primer minuto más claro',
-    highlights: [
-      'La bienvenida guía por una partida, un puzzle y Así juegas con progreso real, sin obligarte a aprender todos los modos.',
-      'Los fallos técnicos se convierten en mensajes recuperables y el equipo conserva una referencia segura cuando hace falta diagnosticar.',
-      'Las funciones opcionales pueden apartarse temporalmente para que sigas jugando con normalidad.',
-    ],
-  },
-  {
     release: 'v16.6dm46h',
-    title: 'Puzzles que ya muerden + feedback visible',
+    title: 'Partidas más fáciles de leer',
     highlights: [
-      'El banco clásico sube a 30 posiciones y añade mates en 2/3, sacrificios y combinaciones largas con dificultad visible.',
-      'La rotación evita repetir tipo y dificultad para que los ejercicios fáciles no monopolicen la sesión.',
-      'Feedback aparece antes en Home, conserva su nombre en móvil y puede pedir un pulso post-partida de forma ocasional y no invasiva.',
+      'Bajo el tablero ves de un vistazo turno, última jugada y estado de guardado.',
+      'El cierre de partida presenta el impacto de rating como una tarjeta breve y clara.',
+      'Las herramientas de aprendizaje quedan visibles al llegar a esa parte de Home.',
     ],
   },
   {

@@ -1,3 +1,4 @@
+/* dm45k · El tablero ocupa el foco; contexto, música y notación viven al lado. */
 .board-live-row {
   grid-template-columns: max-content minmax(270px, 310px);
   grid-template-areas: 'board chat';

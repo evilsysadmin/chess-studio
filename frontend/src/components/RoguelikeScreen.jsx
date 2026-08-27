@@ -45,7 +45,6 @@ import {
   campaignIntelBriefing,
   markCampaignBriefingAccepted,
   purchaseCampaignIntel,
-  recoverCampaignBattleSetup,
   endCampaign,
   loadCampaignBestStage,
   campaignRelicDetails,
@@ -441,16 +440,13 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       <div className="menu">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section roguelike-interrupted">
-          <span className="section-label">{COMBAT_CHESS_NAME} · recuperación de campaña</span>
-          <h2>No pudimos reabrir ese tablero</h2>
+          <span className="section-label">{COMBAT_CHESS_NAME} · integridad de campaña</span>
+          <h2>La batalla quedó interrumpida</h2>
           <p className="hero-scope-note">
-            La campaña conserva su ruta, suministros y ejército, pero falta el tablero exacto de esta pelea. No vamos a convertirlo en una derrota automática.
+            El nodo ya había entrado en combate. Repetirlo desde cero permitiría rerollear bajas y ataques: la campaña lo trata como operación perdida.
           </p>
-          <button type="button" className="primary-btn" style={{ width: '100%', marginTop: '0.8rem' }} onClick={() => setCampaign((current) => recoverCampaignBattleSetup(current))}>
-            Volver a preparar este sector
-          </button>
-          <button type="button" className="secondary-btn" style={{ width: '100%', marginTop: '0.6rem' }} onClick={() => finishCampaign('retired')}>
-            Retirar la operación
+          <button type="button" className="primary-btn" style={{ width: '100%', marginTop: '0.8rem' }} onClick={() => finishCampaign('interrupted')}>
+            Cerrar la operación interrumpida
           </button>
         </div>
       </div>

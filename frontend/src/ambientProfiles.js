@@ -219,7 +219,7 @@ const STRUCTURED_FEELS = Object.freeze({
   rookGarage: Object.freeze({
     family: 'garage-rock-riff', preserveSectionOrder: true, harmonyPath: [0,0,3,5,0], swing: 0.02, warmth: 0.66, releaseScale: 0.88, space: 0.045, delayMs: 85,
     chordInstrument: 'guitar2', bassInstrument: 'bass', chordHoldSteps: 8, bassHoldSteps: 3,
-    counterInstrument: 'tremolo', layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.82, counter: 0.28, bass: 1.05, chord: 0.42 },
+    layers: { lead: true, counter: false, chords: true, bass: true, drums: true, signature: false }, mix: { lead: 0.82, counter: 0, bass: 1.05, chord: 0.42 },
     percussion: { period: 12, kit: 'legacy', punch: 1.26, pattern: {0:'K',3:'H',6:'S',9:'H'} },
   }),
   desertDriveRock: Object.freeze({
@@ -489,42 +489,6 @@ const V166BT_STRUCTURED_FEELS = Object.freeze({
     percussion:{period:40,kit:'none',punch:0,pattern:{}},
     signature:{instrument:'felt',sections:[0,1,2],everyCycles:2,repeatPeriod:80,durationSteps:8,volume:.14,motif:{16:64,56:62}},
   }),
-  tuaregMoon: Object.freeze({
-    family:'tuareg-desert-blues-nocturne', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,3,0], swing:.06, warmth:.88, releaseScale:1.16, space:.17, delayMs:185,
-    leadInstrument:'guitar2', counterInstrument:'oudJazz', chordInstrument:'tremolo', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:4.5,
-    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.70,counter:.36,bass:.94,chord:.34},
-    percussion:{period:16,kit:'maghreb-hand',punch:.76,pattern:{0:'K',8:'B',12:'H'}},
-  }),
-  manoucheBlack: Object.freeze({
-    family:'dark-manouche-swing', preserveSectionOrder:true, harmonyPath:[0,-2,0,5,0,-2], swing:.19, warmth:.74, releaseScale:.92, space:.07, delayMs:105,
-    leadInstrument:'guitar2', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass', chordHoldSteps:12, bassHoldSteps:3.2,
-    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.78,counter:.48,bass:1.0,chord:.42},
-    percussion:{period:18,kit:'brush-jazz',punch:.92,pattern:{0:'B',6:'H',12:'B',15:'H'}},
-  }),
-  postRockStill: Object.freeze({
-    family:'minimal-post-rock-crescendo', preserveSectionOrder:true, harmonyPath:[0,0,-2,0,5,0], swing:0, warmth:.82, releaseScale:1.42, space:.26, delayMs:280,
-    leadInstrument:'tremolo', counterInstrument:'cello', chordInstrument:'pad', bassInstrument:'bass', chordHoldSteps:28, bassHoldSteps:8,
-    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.60,counter:.32,bass:.78,chord:.40},
-    percussion:{period:32,kit:'brush-jazz',punch:.48,pattern:{0:'B',16:'S'}},
-  }),
-  flamencoAfter: Object.freeze({
-    family:'flamenco-jazz-after-hours', preserveSectionOrder:true, harmonyPath:[0,0,5,0,-2,0], swing:.11, warmth:.94, releaseScale:1.12, space:.12, delayMs:145,
-    leadInstrument:'guitar2', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass', chordHoldSteps:16, bassHoldSteps:4,
-    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.72,counter:.42,bass:.92,chord:.48},
-    percussion:{period:12,kit:'andalus-hand',punch:.88,pattern:{0:'K',3:'H',6:'B',9:'H'}},
-  }),
-  anatolianGlass: Object.freeze({
-    family:'anatolian-psych-instrumental', preserveSectionOrder:true, harmonyPath:[0,1,0,-2,0,3], swing:.03, warmth:.72, releaseScale:1.08, space:.19, delayMs:205,
-    leadInstrument:'tremolo', counterInstrument:'ney', chordInstrument:'pad', bassInstrument:'bass', chordHoldSteps:22, bassHoldSteps:4.8,
-    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.68,counter:.36,bass:.96,chord:.34},
-    percussion:{period:18,kit:'istanbul-frame',punch:1.02,pattern:{0:'K',4:'B',8:'H',12:'K',16:'B'}},
-  }),
-  surfNoir: Object.freeze({
-    family:'noir-surf-guitar', preserveSectionOrder:true, harmonyPath:[0,0,3,0,-2,0], swing:.02, warmth:.68, releaseScale:.86, space:.09, delayMs:92,
-    leadInstrument:'tremolo', counterInstrument:'clarinet', chordInstrument:'guitar2', bassInstrument:'bass', chordHoldSteps:10, bassHoldSteps:3,
-    layers:{lead:true,counter:true,chords:true,bass:true,drums:true,signature:false}, mix:{lead:.80,counter:.42,bass:1.04,chord:.36},
-    percussion:{period:16,kit:'legacy',punch:1.08,pattern:{0:'K',4:'H',8:'S',12:'H'}},
-  }),
 });
 
 const STRUCTURED_FEEL_BY_THEME = Object.freeze({
@@ -558,8 +522,6 @@ const V166BT_STRUCTURED_FEEL_BY_THEME = Object.freeze({
   neonSiege:'neonSiege', overclockedKnight:'overclockedKnight', reactorGambit:'reactorGambit',
   concreteRain:'concreteRain', velvetStatic:'velvetStatic', abyssalArchive:'abyssalArchive', redVault:'redVault',
   queenBossa:'queenBossa', havana205:'havana205', fourSquares:'fourSquares', verticalRainPiano:'verticalRainPiano',
-  tuaregMoon:'tuaregMoon', manoucheBlack:'manoucheBlack', postRockStill:'postRockStill', flamencoAfter:'flamencoAfter',
-  anatolianGlass:'anatolianGlass', surfNoir:'surfNoir',
 });
 
 export function structuredFeel(theme) {

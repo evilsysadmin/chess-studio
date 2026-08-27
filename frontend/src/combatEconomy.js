@@ -15,14 +15,9 @@ export const COMBAT_EQUIPMENT = Object.freeze([
 ]);
 
 const UNIT_VALUE = Object.freeze({ p: 16, n: 24, b: 24, r: 32, q: 48 });
-const CONTRACT_MULTIPLIER = Object.freeze({ one: 1, three: 2.35, five: 3.65 });
-const CONTRACT_BATTLES = Object.freeze({ one: 1, three: 3, five: 5 });
+const CONTRACT_MULTIPLIER = Object.freeze({ one: 1, three: 2.35, permanent: 7 });
+const CONTRACT_BATTLES = Object.freeze({ one: 1, three: 3, permanent: null });
 const MERCENARY_NAMES = Object.freeze(['Ámbar', 'Boreal', 'Cobra', 'Delta', 'Eco', 'Faro', 'Galia', 'Halcón', 'Ícaro', 'Jade', 'Kilo', 'Lince']);
-const MERCENARY_PERKS = Object.freeze([
-  { id: 'vanguardia', label: 'Vanguardia', description: '+1 fuerza inmediata para abrir líneas.', strength: 1, speed: 0 },
-  { id: 'explorador', label: 'Explorador', description: '+1 velocidad inmediata para escapar del contacto.', strength: 0, speed: 1 },
-  { id: 'duelista', label: 'Duelista', description: '+1 fuerza y +1 velocidad inmediata; contrato caro.', strength: 1, speed: 1 },
-]);
 
 function int(value, fallback = 0) {
   const number = Number(value);
@@ -112,10 +107,7 @@ export function marketRotationKey(now = new Date()) {
 }
 
 export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationKey() } = {}) {
-  // Un mercenario nunca es un recluta con otro nombre: llega con un oficio y
-  // al menos un punto real ya aplicado. La unidad del cuartel sigue siendo la
-  // apuesta de largo plazo; ésta compra potencia para una ventana corta.
-  const baseLevel = Math.max(2, Math.min(7, 2 + Math.floor(int(merit) / 45)));
+  const baseLevel = Math.max(1, Math.min(7, 1 + Math.floor(int(merit) / 45)));
   const types = ['p', 'n', 'b', 'r'];
   const typeOffset = Math.floor(seeded(rotationKey, 'type-offset') * types.length) % types.length;
   const nameOffset = Math.floor(seeded(rotationKey, 'name-offset') * MERCENARY_NAMES.length) % MERCENARY_NAMES.length;
@@ -124,12 +116,10 @@ export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationK
     const rare = index === 2 && roll > 0.82;
     const type = rare && baseLevel >= 5 ? 'q' : types[(typeOffset + index) % types.length];
     const level = Math.min(9, baseLevel + (rare ? 1 : 0));
-    const perk = MERCENARY_PERKS[(index + Math.floor(seeded(rotationKey, `perk:${index}`) * MERCENARY_PERKS.length)) % MERCENARY_PERKS.length];
-    const points = Math.max(1, level - 1);
-    const remainingPoints = Math.max(0, points - perk.strength - perk.speed);
-    const strengthPoints = perk.strength + Math.ceil(remainingPoints / 2);
-    const speedPoints = perk.speed + Math.floor(remainingPoints / 2);
-    const baseCost = Math.round((UNIT_VALUE[type] + points * 5 + (perk.strength + perk.speed) * 4) * (rare ? 1.45 : 1));
+    const points = Math.max(0, level - 1);
+    const strengthPoints = Math.ceil(points / 2);
+    const speedPoints = Math.floor(points / 2);
+    const baseCost = Math.round((UNIT_VALUE[type] + points * 5) * (rare ? 1.45 : 1));
     const id = `${rotationKey}-${index}-${type}-${level}`;
     return {
       id,
@@ -139,7 +129,6 @@ export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationK
       speedPoints,
       rarity: rare ? 'veterano' : 'regular',
       alias: `${MERCENARY_NAMES[(nameOffset + index * 5) % MERCENARY_NAMES.length]}-${index + 1}`,
-      perk: { id: perk.id, label: perk.label, description: perk.description },
       prices: Object.fromEntries(Object.entries(CONTRACT_MULTIPLIER).map(([contract, multiplier]) => [contract, Math.ceil(baseCost * multiplier)])),
     };
   });
@@ -171,9 +160,7 @@ export function hireMercenary(rosterState, offer, contract = 'one', now = Date.n
       [key]: {
         strengthPoints: int(offer.strengthPoints), speedPoints: int(offer.speedPoints), bankedXp: 0, alive: true,
         deploymentType: null, unlockedTechniques: [], equippedTechnique: null, equipmentId: null,
-        // Los mercenarios llegan hechos: el perk se refleja ya en sus stats,
-        // pero no guardan XP ni pueden convertirse en una unidad veterana.
-        mercenary: { offerId: offer.id, contract, battlesRemaining: CONTRACT_BATTLES[contract], rarity: offer.rarity || 'regular', perk: offer.perk || null, hiredAt: new Date(now).toISOString() },
+        mercenary: { offerId: offer.id, contract, battlesRemaining: CONTRACT_BATTLES[contract], rarity: offer.rarity || 'regular', hiredAt: new Date(now).toISOString() },
       },
     },
   });

@@ -209,7 +209,6 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
   const legacy = isKing ? null : veteranLegacy(unitRecord);
   const identity = roster?.identities?.[key] || {};
   const equipment = equipmentById(saved?.equipmentId);
-  const isMercenary = Boolean(saved?.mercenary);
 
   useEffect(() => {
     if (identity.bioStatus === 'unrequested') onRequestBio?.(key);
@@ -266,13 +265,6 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
               <div><span>Estado</span><b className={isDead ? 'danger-text' : ''}>{isDead ? 'Caído' : 'En pie'}</b></div>
             </div>
 
-            {isMercenary && (
-              <div className="army-command-note mercenary-service-note">
-                <strong>Mercenario · {saved.mercenary?.perk?.label || 'especialista'}</strong>
-                <span>{saved.mercenary?.perk?.description || 'Potencia inmediata por contrato.'} Le quedan {saved.mercenary?.battlesRemaining || 0} batallas; no gana XP, técnicas, rango ni metamorfosis.</span>
-              </div>
-            )}
-
             <div className={`army-unit-equipment ${equipment ? 'equipped' : 'empty'}`}>
               <div><span className="army-memorial-kicker">OBJETO EQUIPADO · 1 HUECO</span><strong>{equipment ? `${equipment.icon} ${equipment.label}` : 'Sin objeto'}</strong></div>
               <small>{equipment ? `${equipment.description} Bonus aplicado sólo mientras lo lleva esta unidad.` : 'Compra y asigna armas o utilidades desde el Mercado.'}</small>
@@ -315,23 +307,19 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
               </div>
             ) : (
               <>
-                {isMercenary ? (
-                  <div className="army-dossier-actions"><strong>Contrato cerrado</strong><p className="hint-text">Esta unidad aporta su especialización desde la primera batalla. La progresión se reserva para el ejército propio.</p></div>
-                ) : (
-                  <div className="army-dossier-actions">
-                    <strong>Mejoras</strong>
-                    <div className="army-dossier-button-grid">
-                      <button type="button" className="secondary-btn" disabled={piece.bankedXp < strCost} onClick={() => onBuy(key, 'strength')}>
-                        + Fuerza ({strCost} XP) <small>→ {(stats.strength + STRENGTH_POINT_VALUE).toFixed(1)}</small>
-                      </button>
-                      <button type="button" className="secondary-btn" disabled={piece.bankedXp < spdCost} onClick={() => onBuy(key, 'speed')}>
-                        + Velocidad ({spdCost} XP) <small>→ {(stats.speed + SPEED_POINT_VALUE).toFixed(1)}</small>
-                      </button>
-                    </div>
+                <div className="army-dossier-actions">
+                  <strong>Mejoras</strong>
+                  <div className="army-dossier-button-grid">
+                    <button type="button" className="secondary-btn" disabled={piece.bankedXp < strCost} onClick={() => onBuy(key, 'strength')}>
+                      + Fuerza ({strCost} XP) <small>→ {(stats.strength + STRENGTH_POINT_VALUE).toFixed(1)}</small>
+                    </button>
+                    <button type="button" className="secondary-btn" disabled={piece.bankedXp < spdCost} onClick={() => onBuy(key, 'speed')}>
+                      + Velocidad ({spdCost} XP) <small>→ {(stats.speed + SPEED_POINT_VALUE).toFixed(1)}</small>
+                    </button>
                   </div>
-                )}
+                </div>
 
-                {!isMercenary && (deploymentChoices.length > 1 || nextLockedMetamorphosis) && (
+                {(deploymentChoices.length > 1 || nextLockedMetamorphosis) && (
                   <div className="army-dossier-actions">
                     <div className="combat-heading-row">
                       <strong>Metamorfosis de despliegue</strong>
@@ -360,7 +348,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
                   </div>
                 )}
 
-                {!isMercenary && (unlockableTechniques.length > 0 || unlockedTechniques.length > 0) && (
+                {(unlockableTechniques.length > 0 || unlockedTechniques.length > 0) && (
                   <div className="army-dossier-actions">
                     <strong>Técnica especial · 1 uso por batalla</strong>
                     {unlockableTechniques.map((technique) => (

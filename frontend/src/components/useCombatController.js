@@ -36,7 +36,7 @@ import { bossDamageAfterHumanMove, bossPhaseForHp } from '../roguelikeBoss.js';
 import { balancedCombatDifficulty } from '../combatBalance.js';
 import { canReturnCombatToSetup } from '../combatSession.js';
 import { buildCombatDebrief } from '../combatDebrief.js';
-import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry, terminalCombatOutcome } from '../combatControllerSupport.js';
+import { STATUS_LABELS, CPU_DELAY_MS, resolveHumanColor, emptyUnitBattleStats, incrementIdentityCounter, buildCombatLogEntry } from '../combatControllerSupport.js';
 import { createCombatRosterActions } from '../combatRosterActions.js';
 import { awardCombatCredits, battleCreditReward, buyEquipment, hireMercenary, settleMercenaryContracts } from '../combatEconomy.js';
 import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
@@ -120,9 +120,6 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const battleStartRosterRef = useRef(restoredSession?.battleStartRoster || null);
   const battleParticipantsRef = useRef(restoredSession?.battleParticipants || []);
   const unitBattleStatsRef = useRef(restoredSession?.unitBattleStats || emptyUnitBattleStats());
-  // Impide que la jugada terminal y el guardián de recuperación cierren dos
-  // veces la misma batalla (dos recompensas, dos registros, etc.).
-  const finalizationStartedRef = useRef(false);
 
   const localChess = useMemo(() => {
     const c = new Chess();
@@ -295,7 +292,6 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         slotKey: rosterKeyFor(piece),
       }));
     unitBattleStatsRef.current = emptyUnitBattleStats();
-    finalizationStartedRef.current = false;
     if (bossConfig) {
       bossHpRef.current = bossConfig.maxHp;
       setBossHp(bossConfig.maxHp);
@@ -382,8 +378,6 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function finalizeBattle(outcome, finalRegistry, updatedLog, currentHumanColor) {
-    if (finalizationStartedRef.current) return;
-    finalizationStartedRef.current = true;
     const isWin = outcome === 'win';
     if (isWin) playSuccessSound();
 
@@ -511,23 +505,6 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     activityGameIdRef.current = null;
     setPhase('over');
   }
-
-  // Defensa de recuperación: una recarga, cierre de pestaña o un deploy puede
-  // reabrir un snapshot guardado justo cuando el FEN ya era mate/tablas. Sin
-  // este guardián la UI quedaba en "battle" y sólo ofrecía salir o retirarse.
-  // Nunca inventa un resultado: deriva el desenlace del FEN persistido y usa
-  // el mismo cierre que la jugada viva, con bajas, XP y debrief.
-  useEffect(() => {
-    if (phase !== 'battle' || finalizationStartedRef.current) return;
-    // En un boss, un mate intermedio se convierte en fase nueva mientras aún
-    // quede vida. La ruta normal ya lo resuelve al producirse la jugada; aquí
-    // evitamos archivarlo erróneamente si se restaura entre ambos pasos.
-    if (bossConfig && (bossHpRef.current || 0) > 0) return;
-    const outcome = terminalCombatOutcome({ chess: localChess, humanColor, reachedRepetition: repetitionDraw });
-    if (outcome) finalizeBattle(outcome, registry, combatLog, humanColor);
-    // `finalizeBattle` usa el estado de este render y el ref corta duplicados.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, fen, registry, combatLog, humanColor, repetitionDraw, bossConfig]);
 
   function resetBossPhase(currentHumanColor, survivorRegistry) {
     const chess = new Chess();
@@ -741,9 +718,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       }
     }
 
-    const outcome = terminalCombatOutcome({ chess: chessAfter, humanColor: currentHumanColor, reachedRepetition });
-    if (outcome) {
+    if (chessAfter.isGameOver() || reachedRepetition) {
+      const isWin = chessAfter.isCheckmate() && chessAfter.turn() !== currentHumanColor;
+      const isLoss = chessAfter.isCheckmate() && chessAfter.turn() === currentHumanColor;
       // En boss, un mate humano que no bajó HP a cero ya se interceptó arriba.
+      const outcome = isWin ? 'win' : isLoss ? 'loss' : 'draw';
       finalizeBattle(outcome, finalRegistry, updatedLog, currentHumanColor);
       return;
     }
@@ -934,7 +913,6 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
   function retireBattle() {
     if (phase !== 'battle') return;
-    finalizationStartedRef.current = true;
 
     // En Roguelike, "Salir del combate" no puede ser un reset gratuito del
     // piso. Conservamos el progreso/bajas que existen en ESTE estado, pero no

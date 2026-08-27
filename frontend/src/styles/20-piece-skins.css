@@ -1,3 +1,4 @@
+/* dm45k · Misma caja visual; rasterizado adecuado para cada familia. */
 .square .piece { width: 88%; height: 88%; object-fit: contain; }
 .board-appearance-tab { position: absolute; top: 10px; left: -49px; z-index: 8; display: grid; width: 42px; min-height: 76px; place-items: center; align-content: center; gap: .18rem; padding: .35rem .2rem; border: 1px solid color-mix(in srgb,var(--brass-dim) 62%,var(--ink-3)); border-radius: 8px 0 0 8px; background: color-mix(in srgb,var(--ink-2) 94%,transparent); color: var(--parchment-dim); box-shadow: -6px 8px 20px rgba(0,0,0,.18); }
 .board-appearance-tab span { color: var(--brass); font-size: 1rem; }

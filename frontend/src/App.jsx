@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Menu from './components/Menu.jsx';
 const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
@@ -39,8 +39,6 @@ import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
-const FeedbackModal = React.lazy(() => import('./components/FeedbackModal.jsx'));
-const UserReleaseNotesModal = React.lazy(() => import('./components/UserReleaseNotesModal.jsx'));
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
@@ -59,9 +57,6 @@ import { useGameReconnect } from './useGameReconnect.js';
 import { useViewNavigation } from './useViewNavigation.js';
 import { LEARNING_STORAGE_KEY, useActiveSessionRestore } from './useActiveSessionRestore.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
-import { setProfileStorageItem } from './profileKeys.js';
-import { APP_RELEASE } from './release.js';
-import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { useAuthenticatedApp } from './useAuthenticatedApp.js';
 import { useAuthenticatedAudio } from './useAuthenticatedAudio.js';
 import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
@@ -70,18 +65,12 @@ import { useReplayLibrary } from './useReplayLibrary.js';
 import { logout } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
-import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
-import { userFacingError } from './userFacingError.js';
-import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
-import { IconPawn } from './components/Icons.jsx';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
   useEffect(() => {
     setAdminPreviewAccess(isAdminUser);
   }, [isAdminUser]);
-
-  useEffect(() => startFrontendTelemetry(), []);
 
   const {
     view,
@@ -94,7 +83,6 @@ function AppInner({ isAdminUser }) {
     initialView: () => loadActiveGameSession()?.route || null,
   });
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
-  const [combatRecoveryVersion, setCombatRecoveryVersion] = useState(0);
   const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');
 
   usePresenceHeartbeat(view);
@@ -181,32 +169,14 @@ function AppInner({ isAdminUser }) {
   const [showCombatSummary, setShowCombatSummary] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalAccount, setShowGlobalAccount] = useState(false);
-  const [showGlobalFeedback, setShowGlobalFeedback] = useState(false);
-  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
-  const [seenReleaseNotes, setSeenReleaseNotes] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === APP_RELEASE);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
   const accountMenuButtonRef = useRef(null);
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(null);
-  const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
-
-  function openReleaseNotes() {
-    setProfileStorageItem(USER_RELEASE_NOTES_KEY, APP_RELEASE);
-    setSeenReleaseNotes(true);
-    setShowReleaseNotes(true);
-  }
 
   useProfileSyncLifecycle(view);
-
-  useEffect(() => {
-    let active = true;
-    api.getFeatures()
-      .then((payload) => { if (active) setFeatureFlags(normalizeFeatureFlags(payload)); })
-      .catch(() => { /* defaults mantienen el producto operativo con backend antiguo/offline */ });
-    return () => { active = false; };
-  }, []);
 
   useEffect(() => {
     if (!showAccountMenu) return undefined;
@@ -292,15 +262,6 @@ function AppInner({ isAdminUser }) {
   // Restauración de F5/deploy, Continuar partida y recovery del ErrorBoundary.
   // El hook concentra la rehidratación de contrato/run/serie/reloj sin hacer
   // que App conozca otra vez todos los detalles de persistencia.
-  const recoverCombatFromBoundary = useCallback(() => {
-    // El snapshot de Combat vive en storage local. Forzar un montaje nuevo
-    // vuelve a pasar por el controlador, que rehidrata esa foto sin tirar la
-    // batalla ni enviar al usuario al menú.
-    setCombatBattleUiActive(false);
-    setCombatRecoveryVersion((version) => version + 1);
-    return true;
-  }, []);
-
   const { continueActiveSession, recoverSessionFromBoundary } = useActiveSessionRestore({
     currentView: view,
     game,
@@ -321,7 +282,6 @@ function AppInner({ isAdminUser }) {
     setGameSaveState,
     setLoading,
     setError,
-    recoverCombat: recoverCombatFromBoundary,
   });
 
 
@@ -372,7 +332,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(userFacingError(e, 'No se pudo iniciar la partida.'));
+      setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
     } finally {
       setLoading(false);
     }
@@ -531,7 +491,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(userFacingError(e, 'No se pudo crear la siguiente partida de la serie.'));
+      setError(e?.requestId ? e.message : 'No se pudo crear la siguiente partida de la serie.');
     } finally {
       setLoading(false);
     }
@@ -580,7 +540,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(userFacingError(e, 'No se pudo arrancar la posición del laboratorio.'));
+      setError(e?.requestId ? e.message : 'No se pudo arrancar la posición del laboratorio.');
     } finally { setLoading(false); }
   }
 
@@ -613,7 +573,7 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      setError(userFacingError(e, 'No se pudo iniciar el desafío.'));
+      setError(e?.requestId ? e.message : 'No se pudo iniciar el desafío.');
     } finally { setLoading(false); }
   }
 
@@ -639,7 +599,7 @@ function AppInner({ isAdminUser }) {
       setTournamentGame(created);
       navigateTo('tournamentGame');
     } catch (e) {
-      setError(userFacingError(e, 'No se pudo iniciar la partida.'));
+      setError(e?.requestId ? e.message : 'No se pudo conectar con el servidor. ¿Está corriendo el backend?');
     } finally {
       setLoading(false);
     }
@@ -747,15 +707,10 @@ function AppInner({ isAdminUser }) {
     setLastResult(null);
   }
 
-  useEffect(() => {
-    setFrontendTelemetryContext(view);
-  }, [view]);
-
   const isBoardGameView = view === 'game' || view === 'tournamentGame' || combatBattleUiActive;
 
   return (
     <>
-      <a className="skip-link" href="#main-content">Saltar al contenido</a>
       {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
       <ReleaseUpdateNotice deferReload={isBoardGameView} />
       <ErrorBoundary
@@ -764,7 +719,7 @@ function AppInner({ isAdminUser }) {
         onRecover={recoverSessionFromBoundary}
         canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
       >
-      <div className="app-shell" id="main-content" tabIndex={-1}>
+      <div className="app-shell">
         <div className={`masthead ${isBoardGameView ? 'masthead-game-compact' : ''}`}>
           <div className="masthead-top-row">
             <div className="masthead-text">
@@ -775,16 +730,6 @@ function AppInner({ isAdminUser }) {
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
                 <SaveStatusBadge state={gameSaveState} />
               )}
-              <button
-                type="button"
-                className="masthead-feedback-trigger"
-                onClick={() => setShowGlobalFeedback(true)}
-                aria-label="Enviar feedback"
-                title="Enviar feedback"
-              >
-                <IconPawn aria-hidden="true" />
-                <span>Feedback</span>
-              </button>
               <div className="masthead-account-menu" ref={accountMenuRef}>
                 <button
                   ref={accountMenuButtonRef}
@@ -803,9 +748,6 @@ function AppInner({ isAdminUser }) {
                   <div className="masthead-account-popover" role="menu" aria-label="Cuenta">
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
                       <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); openReleaseNotes(); }}>
-                      <span aria-hidden="true">✦</span><span><b>{seenReleaseNotes ? 'Novedades' : 'Novedades · nuevo'}</b><small>Mejoras recientes para jugar</small></span>
                     </button>
                     {isAdminUser && (
                       <button type="button" role="menuitem" className="masthead-account-menu-admin" onClick={() => { setShowAccountMenu(false); navigateTo('admin'); }}>
@@ -862,16 +804,6 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
-        {showGlobalFeedback && (
-          <React.Suspense fallback={null}>
-            <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />
-          </React.Suspense>
-        )}
-        {showReleaseNotes && (
-          <React.Suspense fallback={null}>
-            <UserReleaseNotesModal onClose={() => setShowReleaseNotes(false)} />
-          </React.Suspense>
-        )}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         {((view === 'game' && !game) || (view === 'tournamentGame' && !tournamentGame)) && (
@@ -914,7 +846,6 @@ function AppInner({ isAdminUser }) {
             rating={rating}
             combatProgress={combatOverview}
             suppressHomeNudge={showSettings}
-            features={featureFlags}
           />
         )}
 
@@ -942,7 +873,6 @@ function AppInner({ isAdminUser }) {
             onNextRunGame={() => handleContinueRun(specialRun)}
             memoryContext={gameContext}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
-            postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
         )}
 
@@ -967,7 +897,6 @@ function AppInner({ isAdminUser }) {
 
         {view === 'combat' && (
           <CombatScreen
-            key={`combat-recovery-${combatRecoveryVersion}`}
             onExit={goBack}
             onError={setError}
             onHistory={() => navigateTo('history')}
@@ -993,7 +922,6 @@ function AppInner({ isAdminUser }) {
 
         {view === 'roguelike' && (
           <RoguelikeScreen
-            key={`roguelike-recovery-${combatRecoveryVersion}`}
             onExit={goBack}
             onError={setError}
             onHistory={() => navigateTo('history')}
@@ -1077,7 +1005,6 @@ function AppInner({ isAdminUser }) {
             onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null))}
             onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
             onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(tournamentGame, moveReport, 'tournament', meta?.outcome)}
-            postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
         )}
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
-import { PUZZLES, PUZZLE_DIFFICULTY_LABELS, randomPuzzle } from '../puzzles.js';
+import { PUZZLES, randomPuzzle } from '../puzzles.js';
 import { loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
 import { dailyChallengeBrief, dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
@@ -15,7 +15,7 @@ import { checkAchievements } from '../achievements.js';
 import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
 import { buildPuzzleReveal } from '../puzzleReveal.js';
 
-const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Tu crimen' };
+const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', material: 'Gana material', personal: 'Tu crimen' };
 const RECENT_CURATED_LIMIT = 5;
 
 // Tiempo (ms) que se espera antes de aplicar la respuesta forzada del
@@ -111,7 +111,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     if (nextSource === 'personal') return randomPersonalPuzzle(excludeId, initialFilter) || randomPuzzle(excludeId);
     if (nextSource === 'daily') return dailyPuzzle(PUZZLES, new Date(), dailySlot);
     const recent = [...recentCuratedIds, excludeId].filter(Boolean);
-    return randomPuzzle(recent, puzzle?.kind, puzzle?.difficulty);
+    return randomPuzzle(recent, puzzle?.kind);
   }
 
   function changeSource(nextSource) {
@@ -337,11 +337,10 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
         </div>
 
         <div className="tutorial-text puzzle-friendly-info">
-          <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'}{puzzle.difficulty ? ` · ${PUZZLE_DIFFICULTY_LABELS[puzzle.difficulty] || puzzle.difficulty}` : ''}</span>
+          <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
-          {source === 'curated' && <p className="hint-text friendly-inline-note">Rotamos dificultad y motivos: remates, cálculo largo, sacrificios, horquillas, redes multipieza y combinaciones históricas. Los ejercicios fáciles ya no monopolizan la sesión.</p>}
-          {source === 'curated' && puzzle.technique && <p className="hint-text friendly-inline-note">Motivo principal: <b>{puzzle.technique}</b>.</p>}
+          {source === 'curated' && <p className="hint-text friendly-inline-note">Rotamos entre remates, horquillas, diagonales, columnas y promociones para que el entrenamiento no se convierta en repetir la misma posición.</p>}
           <p className="hint-text friendly-inline-note">Juegas con <b>{humanColor === 'w' ? 'blancas' : 'negras'}</b>. Elige pieza y destino; si fallas puedes volver a intentarlo.</p>
 
           {source === 'daily' && (

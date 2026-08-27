@@ -10,7 +10,6 @@ import uuid
 import hmac
 import re
 import ipaddress
-from contextlib import asynccontextmanager
 from typing import Optional
 from urllib.parse import quote, urlsplit
 
@@ -39,53 +38,27 @@ from narrative_api import build_narrative_router
 from game_api import build_game_router
 from admin_api import build_admin_router
 from system_api import build_system_router
-from observability import record_http_request, sanitize_client_release
-from structured_logging import emit_http_event
+from observability import record_http_request
 from observability_history import schedule_history_flush
-from resilience import request_enter, request_exit, should_shed, record_shed
-from release_info import backend_release
-from grafana_telemetry import annotate_http_span, configure as configure_grafana_telemetry, shutdown as shutdown_grafana_telemetry, start_http_span
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 EXPOSE_API_DOCS = os.environ.get("EXPOSE_API_DOCS", "false").strip().lower() in {"1", "true", "yes", "on"}
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower() in {"1", "true", "yes", "on"}
 INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
-# En Render puede existir un servicio creado antes del Blueprint: en ese caso
-# una RESEND_API_KEY válida no debe quedar inutilizada porque faltase el flag
-# redundante. El flag explícito sigue mandando (sirve para apagar el flujo).
-_email_recovery_flag = os.environ.get("ENABLE_EMAIL_RECOVERY", "").strip().lower()
-ENABLE_EMAIL_RECOVERY = (
-    _email_recovery_flag in {"1", "true", "yes", "on"}
-    if _email_recovery_flag
-    else bool(os.environ.get("RESEND_API_KEY", "").strip())
-)
-
-
-@asynccontextmanager
-async def app_lifespan(_app: FastAPI):
-    configure_grafana_telemetry(
-        service_name="chess-studio-api",
-        service_version=backend_release(),
-        environment=ENVIRONMENT,
-    )
-    try:
-        yield
-    finally:
-        shutdown_grafana_telemetry()
-
+ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 app = FastAPI(
     title="Estudio de Ajedrez API",
     docs_url="/docs" if EXPOSE_API_DOCS else None,
     redoc_url="/redoc" if EXPOSE_API_DOCS else None,
     openapi_url="/openapi.json" if EXPOSE_API_DOCS else None,
-    lifespan=app_lifespan,
 )
 
-# Logger operativo estructurado. Incluye username autenticado para poder ver uso
-# e investigar incidencias, pero nunca IP, bodies, FEN, contraseñas ni tokens.
-# El username NO se usa como label de métricas para evitar alta cardinalidad.
+# Logger de acceso propio. Uvicorn mantiene sus access logs normales, pero
+# esta línea añade el dato que más nos interesa al depurar una partida:
+# quién generó la petición. Usamos el logger ya configurado por Uvicorn para
+# que funcione igual en Docker, local y Render sin inventar otra configuración.
 access_logger = logging.getLogger("uvicorn.error")
 
 
@@ -100,10 +73,6 @@ def _request_id(request: Request) -> str:
         value = uuid.uuid4().hex[:12]
     request.state.request_id = value
     return value
-
-
-def _client_release(request: Request) -> str | None:
-    return sanitize_client_release(request.headers.get("x-client-release"))
 
 
 def _request_username(request: Request) -> str:
@@ -163,26 +132,10 @@ def rate_limit_key(request: Request) -> str:
 async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
     request_id = _request_id(request)
-    client_release = _client_release(request)
-    inflight = request_enter()
+    username_before = _request_username(request)
     status_code = 500
     raised = False
-    span_context = start_http_span(request.method)
-    span = span_context.__enter__()
     try:
-        if should_shed(request.url.path, inflight):
-            status_code = 503
-            record_shed()
-            request.state.route_label = request.url.path
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "detail": "Servicio ocupado; la función secundaria se ha aplazado para proteger las partidas.",
-                    "requestId": request_id,
-                    "degraded": True,
-                },
-                headers={"X-Request-ID": request_id, "Retry-After": "5"},
-            )
         response = await call_next(request)
         status_code = response.status_code
         response.headers["X-Request-ID"] = request_id
@@ -190,21 +143,19 @@ async def log_request_with_user(request: Request, call_next):
     except Exception:
         raised = True
         elapsed_ms = (time.perf_counter() - started) * 1000
-        route_obj = request.scope.get("route")
-        route_pattern = getattr(request.state, "route_label", None) or getattr(route_obj, "path", None) or "unmatched"
-        emit_http_event(
-            access_logger,
-            request_id=request_id,
-            method=request.method,
-            route=route_pattern,
-            status_code=500,
-            duration_ms=elapsed_ms,
-            client_release=client_release,
-            username=_request_username(request),
-            exception=True,
+        username = _request_username(request)
+        if username == "-":
+            username = username_before
+        access_logger.exception(
+            "request request_id=%s user=%s method=%s path=%s status=500 duration_ms=%.1f",
+            request_id,
+            username,
+            request.method,
+            request.url.path,
+            elapsed_ms,
         )
-        # El detalle técnico completo queda en el traceback del servidor; al
-        # cliente sólo vuelve una referencia segura para correlacionarlo.
+        # El detalle técnico completo queda en el traceback de Render; al
+        # navegador sólo vuelve una referencia segura para correlacionarlo.
         return JSONResponse(
             status_code=500,
             content={"detail": "Error interno del servidor.", "requestId": request_id},
@@ -212,40 +163,23 @@ async def log_request_with_user(request: Request, call_next):
         )
     finally:
         elapsed_ms = (time.perf_counter() - started) * 1000
-        request_exit()
         route_obj = request.scope.get("route")
-        route_pattern = getattr(request.state, "route_label", None) or getattr(route_obj, "path", None) or "unmatched"
-        record_http_request(
-            request.method,
-            route_pattern,
-            status_code,
-            elapsed_ms,
-            client_release=client_release,
-        )
-        annotate_http_span(
-            span,
-            method=request.method,
-            route=route_pattern,
-            status_code=status_code,
-        )
-        # El evento OTLP se emite mientras el span sigue activo. Así Grafana
-        # puede correlacionar el log seguro de Loki con la traza de Tempo.
-        if not raised:
-            emit_http_event(
-                access_logger,
-                request_id=request_id,
-                method=request.method,
-                route=route_pattern,
-                status_code=status_code,
-                duration_ms=elapsed_ms,
-                client_release=client_release,
-                username=_request_username(request),
-            )
-        try:
-            span_context.__exit__(None, None, None)
-        except Exception:
-            pass
+        route_pattern = getattr(route_obj, "path", None) or "unmatched"
+        record_http_request(request.method, route_pattern, status_code, elapsed_ms)
         schedule_history_flush()
+        if not raised:
+            username = _request_username(request)
+            if username == "-":
+                username = username_before
+            access_logger.info(
+                "request request_id=%s user=%s method=%s path=%s status=%s duration_ms=%.1f",
+                request_id,
+                username,
+                request.method,
+                request.url.path,
+                status_code,
+                elapsed_ms,
+            )
 
 
 @app.exception_handler(PersistentStorageUnavailable)
@@ -380,7 +314,7 @@ app.add_middleware(
     # de que el PATCH llegue a FastAPI. Incógnito suele ocultar el problema
     # porque no trae la marca local dirty y sólo necesita el GET inicial.
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-ID", "X-Client-Release"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Request-ID"],
     expose_headers=["X-Request-ID"],
     max_age=600,
 )

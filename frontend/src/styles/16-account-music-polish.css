@@ -1,3 +1,4 @@
+/* dm45f · Cuenta útil y música por intención, con detalle avanzado opcional. */
 .account-center { width: min(92vw, 520px); max-width: 520px; }
 .account-center-identity { display: grid; grid-template-columns: 46px minmax(0,1fr); align-items: center; gap: .7rem; margin: .75rem 0 1rem; }
 .account-center-avatar { display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid var(--brass-dim); border-radius: 50%; color: var(--brass); background: rgba(201,162,39,.08); font: 800 1rem var(--font-display); }

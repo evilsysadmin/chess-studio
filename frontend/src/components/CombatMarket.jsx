@@ -7,7 +7,7 @@ import { hasAdminPreviewAccess } from '../adminPreview.js';
 const CONTRACTS = Object.freeze([
   { id: 'one', label: '1 batalla' },
   { id: 'three', label: '3 batallas' },
-  { id: 'five', label: '5 batallas' },
+  { id: 'permanent', label: 'Permanente' },
 ]);
 
 function eligibleUnits(roster, item, bypassLevel = false) {
@@ -40,7 +40,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
       <section className="army-card combat-market" role="dialog" aria-modal="true" aria-labelledby="combat-market-title" onMouseDown={(event) => event.stopPropagation()}>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label="Cerrar mercado">×</button>
         <header className="combat-market-heading">
-          <div><span className="section-label">COMBAT CHESS · ABASTECIMIENTO</span><h2 id="combat-market-title">Mercado</h2><p>{adminPreview ? 'Modo admin: catálogo y compras de prueba abiertos.' : 'Potencia inmediata por contrato; el cuartel construye veteranos.'}</p></div>
+          <div><span className="section-label">COMBAT CHESS · ABASTECIMIENTO</span><h2 id="combat-market-title">Mercado</h2><p>{adminPreview ? 'Modo admin: catálogo y compras de prueba abiertos.' : 'Opciones tácticas, nunca requisitos para ganar.'}</p></div>
           <div className="combat-market-wallet"><small>{adminPreview ? 'PRUEBA ADMIN' : 'SALDO'}</small><strong>{credits}</strong><span>{adminPreview ? 'sin coste' : 'créditos'}</span></div>
         </header>
 
@@ -55,13 +55,14 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
           <div className="combat-market-grid">
             {offers.map((offer) => {
               const pieceName = BASE_STATS[offer.type]?.name || 'Unidad';
-              const training = `${offer.strengthPoints} fuerza / ${offer.speedPoints} velocidad`;
+              const training = offer.strengthPoints || offer.speedPoints
+                ? `${offer.strengthPoints} fuerza / ${offer.speedPoints} velocidad`
+                : 'sin mejoras';
               return (
                 <article className={`combat-market-card ${offer.rarity}`} key={offer.id}>
                   <div className="combat-market-card-top"><span aria-hidden="true">{offer.type === 'p' ? '♟' : offer.type === 'n' ? '♞' : offer.type === 'b' ? '♝' : offer.type === 'r' ? '♜' : '♛'}</span><i>{offer.rarity === 'veterano' ? 'OFERTA RARA' : 'DISPONIBLE HOY'}</i></div>
                   <h3>{offer.alias}</h3>
                   <p>{pieceName} · nivel {offer.level} · {training}</p>
-                  <p className="combat-market-perk"><b>{offer.perk.label}</b> · {offer.perk.description}</p>
                   <div className="combat-market-contracts">
                     {CONTRACTS.map((contract) => {
                       const price = offer.prices[contract.id];
@@ -95,7 +96,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
           </div>
         )}
 
-        <footer className="combat-market-balance-note"><strong>Dos caminos</strong><span>El mercenario llega mejorado, pero sólo dura su contrato y no acumula XP, técnicas ni rango. Un recluta empieza en nivel 1, crece batalla a batalla y puede convertirse en veterano.</span></footer>
+        <footer className="combat-market-balance-note"><strong>Equilibrio limpio</strong><span>Los créditos se ganan jugando. El ejército base puede completar toda la campaña; cada unidad sólo admite un objeto y sus bonus están limitados.</span></footer>
       </section>
     </div>
   );

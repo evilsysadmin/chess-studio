@@ -83,7 +83,7 @@ export function setRosterDeploymentType(rosterState, key, targetType) {
   const saved = rosterState?.pieces?.[key];
   const original = String(key || '').split('-')[0];
   const unitRecord = unitRecordForKey(rosterState, key);
-  if (!saved || saved.mercenary || !canChooseDeploymentType(key, saved, targetType, unitRecord)) return rosterState;
+  if (!saved || !canChooseDeploymentType(key, saved, targetType, unitRecord)) return rosterState;
   const deploymentType = targetType === original ? null : targetType;
   return {
     ...rosterState,

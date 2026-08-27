@@ -49,19 +49,9 @@ class AdminInsightsRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    category: str = Field(default="general", max_length=24)
+    category: str = Field(default="other", max_length=24)
     message: str = Field(max_length=2000)
     context: Optional[str] = Field(default="Home", max_length=80)
-
-
-class ClientTelemetryRequest(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-    event_type: str = Field(alias="eventType", max_length=32)
-    metric_name: Optional[str] = Field(default=None, alias="metricName", max_length=16)
-    value: Optional[float] = None
-    error_name: Optional[str] = Field(default=None, alias="errorName", max_length=80)
-    context: Optional[str] = Field(default=None, max_length=48)
-    release: Optional[str] = Field(default=None, max_length=40)
 
 
 class AdminFeedbackStatusRequest(BaseModel):
@@ -116,3 +106,4 @@ class AnalyzeMoveRequest(BaseModel):
     to: Optional[str] = Field(default=None, min_length=2, max_length=2)
     promotion: Optional[str] = Field(default=None, max_length=1)
     level: float = 45
+

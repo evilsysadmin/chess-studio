@@ -82,7 +82,7 @@ export function statsFor(piece) {
 // Gasta XP bancado en un punto de fuerza o de velocidad para esta pieza.
 // Devuelve la pieza actualizada, o null si no alcanza el XP.
 export function buyStatPoint(piece, stat) {
-  if (piece.type === 'k' || piece.mercenary) return null; // un mercenario llega especializado, pero no progresa como veterano
+  if (piece.type === 'k') return null; // el rey nunca gasta XP: no tiene, y no debería poder aunque la tuviera
   const key = stat === 'strength' ? 'strengthPoints' : 'speedPoints';
   const current = piece[key] || 0;
   const cost = costForNextPoint(current);
@@ -96,7 +96,7 @@ export function buyStatPoint(piece, stat) {
 // Sigue comprando mientras alcance para los dos a la vez; el resto queda
 // bancado por si en algún momento se apaga el modo automático.
 export function autoLevelUp(piece) {
-  if (piece.type === 'k' || piece.mercenary) return piece; // el contrato compra presente, no progreso permanente
+  if (piece.type === 'k') return piece; // el rey nunca sube de nivel, ni siquiera automático
   let current = piece;
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -288,7 +288,7 @@ export function applyMoveToRegistry(registry, applied) {
     updated = { ...updated, type: promotion };
   }
 
-  if (capturedPiece && updated.type !== 'k' && !updated.mercenary) {
+  if (capturedPiece && updated.type !== 'k') {
     // El rey nunca banca XP: sigue las reglas normales de ajedrez, jaque y
     // jaque mate estándar, sin subir de nivel ni comprar stats. Cualquier
     // otra pieza sí banca lo que corresponda por la captura.
@@ -317,7 +317,7 @@ export function applyMoveToRegistry(registry, applied) {
 // sobrevivir a un ataque esquivándolo) sin moverla de casilla.
 function applySurvivalXp(registry, square, gained) {
   const piece = registry[square];
-  if (!piece || gained <= 0 || piece.type === 'k' || piece.mercenary) return { registry }; // el rey y el mercenario nunca bancan XP
+  if (!piece || gained <= 0 || piece.type === 'k') return { registry }; // el rey nunca banca XP, ni siquiera por sobrevivir
   const next = { ...registry, [square]: { ...piece, bankedXp: (piece.bankedXp || 0) + gained } };
   return { registry: next };
 }

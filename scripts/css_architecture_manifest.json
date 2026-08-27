@@ -22,13 +22,9 @@
     "20-piece-skins.css",
     "21-home-command.css",
     "22-progression-gamification.css",
-    "23-learning-combat-economy.css",
-    "24-product-hardening.css",
-    "25-game-workspace.css",
-    "26-experience-polish.css",
-    "27-distinction-archive.css"
+    "23-learning-combat-economy.css"
   ],
-  "combinedSha256": "3fc4f8254add5274e65bc15aa3807ab5996707d36fbed00c1cfc387cad2a511b",
-  "combinedBytes": 403851,
-  "combinedLines": 11928
+  "combinedSha256": "720b3b017d5e5ea761e5d6d1beaf9cd5812ee04bd34498d8c8a666e4c46d63b3",
+  "combinedBytes": 389106,
+  "combinedLines": 11523
 }

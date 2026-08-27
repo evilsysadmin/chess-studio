@@ -15,8 +15,8 @@ def _pending_bucket():
 
 def test_history_aggregates_http_without_identity_or_payload():
     at = 1_800_000_000.0
-    history.record_http_event("GET", "/api/games/{game_id}", 200, 12.0, client_release="v16.6dm46j", timestamp=at)
-    history.record_http_event("GET", "/api/games/{game_id}", 500, 700.0, client_release="v16.6dm46j", timestamp=at + 2)
+    history.record_http_event("GET", "/api/games/{game_id}", 200, 12.0, timestamp=at)
+    history.record_http_event("GET", "/api/games/{game_id}", 500, 700.0, timestamp=at + 2)
     history.record_http_event("POST", "/api/narrative", 429, 40.0, timestamp=at + 4)
 
     payload = _pending_bucket()["http"]
@@ -26,9 +26,6 @@ def test_history_aggregates_http_without_identity_or_payload():
     assert summary["status_5xx"] == 1
     assert summary["p95_ms"] == 1000.0
     assert summary["top_routes"][0]["route"] == "GET /api/games/{game_id}"
-    assert summary["releases"][0]["release"] == "v16.6dm46j"
-    assert summary["releases"][0]["requests"] == 2
-    assert summary["releases"][0]["errors_5xx"] == 1
     serialized = str(payload).lower()
     assert "username" not in serialized
     assert "fen" not in serialized
@@ -136,20 +133,3 @@ def test_presence_history_is_aggregate_and_exposes_average_and_peak():
     bucket = history._PENDING[history._bucket_start(1_800_000_000)]
     summary = history._summarize_presence(bucket["presence"])
     assert summary == {"samples": 2, "average_online": 4.0, "peak_online": 6}
-
-
-def test_presence_recovers_a_partial_pending_bucket_left_by_incremental_flush():
-    at = 1_800_000_000
-    bucket_key = history._bucket_start(at)
-    with history._PENDING_LOCK:
-        # Simula un delta HTTP nuevo que llegó durante el flush: el resto de
-        # secciones ya se vaciaron y no deben provocar un KeyError posterior.
-        history._PENDING[bucket_key] = {"http": {"samples": 1}}
-
-    history.record_presence_snapshot(3, timestamp=at)
-    history.record_http_event("GET", "/api/status", 200, 10, timestamp=at)
-
-    bucket = history._PENDING[bucket_key]
-    assert bucket["presence"]["samples"] == 1
-    assert bucket["presence"]["online_max"] == 3
-    assert bucket["http"]["samples"] == 2

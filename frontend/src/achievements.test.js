@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { achievementProgress, checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS, collectionEntries, distinctionMeta, featuredAchievements, loadSelectedDistinction, selectDistinction, selectedDistinction } from './achievements.js';
+import { achievementProgress, checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS, featuredAchievements } from './achievements.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -131,22 +131,6 @@ describe('checkAchievements', () => {
     const unlocked = new Set(['ten_games', 'crime_missed_mate', 'rivalry_hard_75']);
     const featured = featuredAchievements(unlocked, 2);
     expect(featured.map((item) => item.id)).toEqual(['rivalry_hard_75', 'crime_missed_mate']);
-  });
-
-  it('clasifica el archivo con colecciones y rarezas estables', () => {
-    expect(distinctionMeta(ACHIEVEMENTS.find((item) => item.id === 'combat_flawless'))).toEqual({ collection: 'Servicio', rarity: 'legendario' });
-    expect(distinctionMeta(ACHIEVEMENTS.find((item) => item.id === 'crime_missed_mate'))).toEqual({ collection: 'Incidentes', rarity: 'confidencial' });
-    const entries = collectionEntries(new Set(['combat_flawless']));
-    expect(entries.find((item) => item.id === 'combat_flawless')).toMatchObject({ unlocked: true, collection: 'Servicio' });
-    expect(entries.find((item) => item.id === 'rating_master')).toMatchObject({ unlocked: false, rarity: 'legendario' });
-  });
-
-  it('sólo permite exhibir un distintivo realmente desbloqueado', () => {
-    const unlocked = new Set(['rivalry_hard_75']);
-    expect(selectDistinction('rating_master', unlocked)).toBeNull();
-    expect(loadSelectedDistinction()).toBeNull();
-    expect(selectDistinction('rivalry_hard_75', unlocked)).toBe('rivalry_hard_75');
-    expect(selectedDistinction(unlocked)).toMatchObject({ id: 'rivalry_hard_75', collection: 'Rivalidad', rarity: 'legendario' });
   });
 
   it('persiste entre llamadas (usa loadUnlocked)', () => {

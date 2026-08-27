@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { submitFeedback } from '../feedback.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { userFacingError } from '../userFacingError.js';
 
 const CATEGORIES = [
-  ['general', 'Comentario general'],
+  ['ux', 'Me he liado / UX'],
   ['bug', 'Algo se ha roto'],
   ['idea', 'Tengo una idea'],
   ['other', 'Otra cosa'],
@@ -12,7 +11,7 @@ const CATEGORIES = [
 
 export default function FeedbackModal({ onClose, context = 'Home' }) {
   useEscapeToClose(onClose);
-  const [category, setCategory] = useState('general');
+  const [category, setCategory] = useState('ux');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
@@ -28,7 +27,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
       await submitFeedback({ category, message: text, context });
       setSent(true);
     } catch (err) {
-      setError(userFacingError(err, 'No se pudo enviar el feedback.'));
+      setError(err?.message || 'No se pudo enviar el feedback.');
     } finally {
       setSending(false);
     }
@@ -49,7 +48,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
           <form onSubmit={handleSubmit}>
             <span className="section-label">Feedback</span>
             <h2 id="feedback-title">Dinos qué mejorar</h2>
-            <p className="hint-text">Dos campos y listo. Si falla el envío, podrás reintentarlo sin perder lo escrito.</p>
+            <p className="hint-text">Dos campos y fuera. Llega directamente al panel de administración.</p>
             <label className="feedback-field">
               <span>Tipo</span>
               <select value={category} onChange={(event) => setCategory(event.target.value)}>

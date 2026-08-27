@@ -50,11 +50,5 @@ services:
       # Si lo configuras, el registro exige este código además de usuario/contraseña.
       - key: INVITE_CODE
         sync: false
-      # Grafana Cloud (OTLP directo). Copia estos dos nombres/valores exactos
-      # de OpenTelemetry; nunca van en GitHub Pages.
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        sync: false
-      - key: OTEL_EXPORTER_OTLP_HEADERS
-        sync: false
       - key: CORS_ORIGINS
         value: https://evilsysadmin.github.io,https://chess-studio.shadowops.dpdns.org

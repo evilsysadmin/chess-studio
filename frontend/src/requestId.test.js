@@ -14,7 +14,6 @@ describe('request IDs', () => {
     expect(withRequestId({ Authorization: 'Bearer x' })).toEqual({
       Authorization: 'Bearer x',
       'X-Request-ID': 'req-fixed-456',
-      'X-Client-Release': expect.any(String),
     });
   });
 

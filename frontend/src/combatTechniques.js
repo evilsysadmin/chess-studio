@@ -69,7 +69,7 @@ export function unlockedTechniquesFor(key, saved) {
 export function unlockRosterTechnique(rosterState, key, techniqueId) {
   const technique = techniqueById(techniqueId);
   const saved = rosterState?.pieces?.[key];
-  if (!technique || !saved || saved.alive === false || saved.mercenary) return rosterState;
+  if (!technique || !saved || saved.alive === false) return rosterState;
   const normalized = normalizeTechniqueState(saved);
   if (!techniquesEligibleToUnlock(key, normalized).some((candidate) => candidate.id === techniqueId)) return rosterState;
   if ((normalized.bankedXp || 0) < technique.unlockCost) return rosterState;
@@ -85,7 +85,7 @@ export function unlockRosterTechnique(rosterState, key, techniqueId) {
 
 export function setRosterEquippedTechnique(rosterState, key, techniqueId) {
   const saved = rosterState?.pieces?.[key];
-  if (!saved || saved.alive === false || saved.mercenary) return rosterState;
+  if (!saved || saved.alive === false) return rosterState;
   const normalized = normalizeTechniqueState(saved);
   if (techniqueId != null && !unlockedTechniquesFor(key, normalized).some((technique) => technique.id === techniqueId)) return rosterState;
   if (normalized.equippedTechnique === (techniqueId || null)) return rosterState;
