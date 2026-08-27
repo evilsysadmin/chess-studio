@@ -19,7 +19,8 @@ describe('Home · Hoy', () => {
   });
 
   it('tolera perfiles nuevos sin historial', () => {
-    expect(buildHomeToday({ todayKey: '2026-08-23' })).toEqual({
+    const summary = buildHomeToday({ todayKey: '2026-08-23' });
+    expect(summary).toMatchObject({
       dailySolved: false,
       dailySolvedCount: 0,
       dailyFull: false,
@@ -29,5 +30,8 @@ describe('Home · Hoy', () => {
       dailyDetail: 'Tres posiciones. Completa al menos una para mantener la racha.',
       lastResult: null,
     });
+    expect(summary.dailySlots.map((slot) => [slot.id, slot.solved])).toEqual([
+      ['tactic', false], ['precision', false], ['finish', false],
+    ]);
   });
 });

@@ -11,7 +11,7 @@ export function campaignNodeStatus(node, campaign, availableIds = new Set()) {
 }
 
 function laneY(lane) { return 96 + Math.max(0, Math.min(2, Number(lane) || 0)) * 112; }
-function stageX(stage) { return 66 + Math.max(0, Number(stage) || 0) * 145; }
+function stageX(stage) { return 185 + Math.max(0, Number(stage) || 0) * 122.5; }
 function laneX(lane) { return 96 + Math.max(0, Math.min(2, Number(lane) || 0)) * 112; }
 function stageY(stage) { return 66 + Math.max(0, Number(stage) || 0) * 145; }
 

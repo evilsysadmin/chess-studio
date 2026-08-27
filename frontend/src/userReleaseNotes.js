@@ -6,6 +6,17 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46s',
+    title: 'Combat vuelve a ocupar la mesa',
+    highlights: [
+      'El tablero y el registro de Combat comparten altura en escritorio; en móvil el tablero usa el ancho disponible y el rail baja debajo.',
+      'Mercado pasa a estar visible durante la campaña y Reiniciar campaña permite empezar una operación nueva sin borrar el ejército persistente.',
+      'La cartografía de campaña muestra de verdad el arte estratégico, manteniendo encima los sectores y rutas reales de cada operación.',
+      'Las guitarras dejan atrás el feedback resonante que podía producir pitidos en algunas pistas, incluida Bossa · dama en la terraza.',
+      'El desafío diario de Home muestra sus tres objetivos en una franja compacta con racha y progreso.',
+    ],
+  },
+  {
     release: 'v16.6dm46r',
     title: 'La telemetría deja de evaporarse',
     highlights: [

@@ -204,6 +204,18 @@ describe('Combat Chess campaign map', () => {
     expect(archive[0]).toMatchObject({ reason:'retired', credits:9, relicIds:['fieldCipher'] });
   });
 
+  it('un reinicio de campaña puede archivarse como reinicio sin borrar el ejército/meta progreso', () => {
+    const run = startCampaign('restart-contract');
+    const result = endCampaign(run, 'restarted');
+    expect(result.reason).toBe('restarted');
+    expect(loadCampaign().active).toBe(false);
+    expect(loadCampaignArchive()[0]?.reason).toBe('restarted');
+    const fresh = startCampaign('restart-fresh');
+    expect(fresh.active).toBe(true);
+    expect(fresh.phase).toBe('map');
+    expect(fresh.seed).toBe('restart-fresh');
+  });
+
   it('reset elimina el intento de campaña', () => {
     startCampaign('reset');
     resetCombatCampaign();

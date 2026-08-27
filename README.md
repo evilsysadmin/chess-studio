@@ -1,3 +1,11 @@
+### v16.6dm46s · Combat ocupa su espacio, campaña operable y guitarras sin pitidos
+
+- La síntesis de guitarra estructurada usa ahora Karplus-Strong en buffer finito: conserva ataque/cuerpo de cuerda pero elimina el feedback de DelayNode que podía convertir algunas notas de `Bossa · dama en la terraza` en pitidos sostenidos.
+- En batalla de Combat, el rail derecho se estira a la altura real del tablero en vez de imponer 620 px. En móvil/tablet el tablero escala con el viewport y el registro/música pasan debajo sin encoger la zona de juego.
+- El arte exacto de la campaña se hace visible de verdad: más presencia, menos velo oscuro y rutas/nodos dinámicos alineados sobre la cartografía. La UI viva sigue siendo la fuente de verdad de cada operación.
+- `Mercado` pasa a ser una acción táctica visible en la cabecera de campaña. Se añade `Reiniciar campaña` con confirmación: reinicia sólo ruta, suministros, intel y ventajas temporales; conserva ejército, rangos, medallas, bajas, créditos e histórico.
+- El desafío diario de Home se compacta en tres objetivos visibles (Táctica, Precisión y Remate), con racha/mejor racha en línea y una sola CTA; desaparece el gran bloque de aire vacío.
+
 ### v16.6dm46r · Telemetría persistente + catálogo musical sin fixtures frágiles
 
 - Las señales coarse del frontend (Web Vitals y clases de error) dejan de depender sólo de memoria del proceso: se agregan en buckets anónimos de 5 minutos y sobreviven a reinicios/deploys del backend.

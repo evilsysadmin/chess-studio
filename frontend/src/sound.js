@@ -940,62 +940,56 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const freq = midiToFreq(midiNote);
   const startDelay = Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
   const start = ctx.currentTime + startDelay;
-  const duration = Math.max(.24, durationOverride || (kind === 'nylonGuitar' ? 1.35 : kind === 'jazzGuitar' ? 1.55 : .92));
+  const duration = Math.max(.28, durationOverride || (kind === 'nylonGuitar' ? 1.28 : kind === 'jazzGuitar' ? 1.45 : .9));
   const output = getAmbientOutput(ctx);
   const body = ctx.createGain();
-  const toneFilter = ctx.createBiquadFilter();
-  const delay = ctx.createDelay(.08);
-  const feedback = ctx.createGain();
-  const damping = ctx.createBiquadFilter();
+  const bodyFilter = ctx.createBiquadFilter();
 
-  const brightness = kind === 'nylonGuitar' ? 2650 : kind === 'jazzGuitar' ? 1900 : kind === 'overdriveGuitar' ? 2450 : 3400;
-  const feedbackAmount = kind === 'nylonGuitar' ? .945 : kind === 'jazzGuitar' ? .952 : .935;
-  const peak = (kind === 'overdriveGuitar' ? .016 : .022) * Math.max(.2, volumeScale);
-  delay.delayTime.setValueAtTime(Math.max(.002, Math.min(.04, 1 / Math.max(30, freq))), start);
-  feedback.gain.value = feedbackAmount;
-  damping.type = 'lowpass';
-  damping.frequency.value = brightness * Math.max(.72, Math.min(1.22, Number(tone?.warmth) || 1));
-  damping.Q.value = .45;
-  toneFilter.type = kind === 'jazzGuitar' ? 'lowpass' : 'bandpass';
-  toneFilter.frequency.value = kind === 'jazzGuitar' ? 2400 : 1700;
-  toneFilter.Q.value = kind === 'jazzGuitar' ? .45 : .8;
+  const brightness = kind === 'nylonGuitar' ? 3000 : kind === 'jazzGuitar' ? 2200 : kind === 'overdriveGuitar' ? 2800 : 3800;
+  const peak = (kind === 'overdriveGuitar' ? .015 : kind === 'nylonGuitar' ? .020 : .019) * Math.max(.2, volumeScale);
+  bodyFilter.type = 'lowpass';
+  bodyFilter.frequency.value = brightness * Math.max(.74, Math.min(1.18, Number(tone?.warmth) || 1));
+  bodyFilter.Q.value = kind === 'jazzGuitar' ? .38 : .52;
 
   body.gain.setValueAtTime(.0001, start);
-  body.gain.linearRampToValueAtTime(peak, start + .006);
-  body.gain.exponentialRampToValueAtTime(Math.max(.0001, peak * .28), start + Math.min(.22, duration * .28));
+  body.gain.linearRampToValueAtTime(peak, start + .005);
+  body.gain.exponentialRampToValueAtTime(Math.max(.0001, peak * .34), start + Math.min(.18, duration * .24));
   body.gain.exponentialRampToValueAtTime(.0001, start + duration);
 
-  // Excitación de ruido muy corta + bucle de delay amortiguado: Karplus-Strong.
-  // A diferencia de un oscilador con preset, la cuerda tiene ataque de púa,
-  // decaimiento y cuerpo resonante; por eso las pistas de guitarra dejan de
-  // sonar como otro synth con un nombre distinto.
-  const burstLength = Math.max(48, Math.floor(ctx.sampleRate * Math.min(.022, 2.4 / Math.max(80, freq))));
-  const burstBuffer = ctx.createBuffer(1, burstLength, ctx.sampleRate);
-  const burst = burstBuffer.getChannelData(0);
-  for (let i = 0; i < burstLength; i += 1) {
-    const fade = 1 - i / burstLength;
-    burst[i] = (Math.random() * 2 - 1) * fade;
+  // Karplus-Strong estable en un buffer finito. La versión anterior usaba un
+  // feedback de DelayNode en vivo: con ciertas notas/agudos (especialmente la
+  // bossa de guitarra de nylon) podía entrar en una resonancia casi sinusoidal
+  // y sonar a "pitido". Aquí la cuerda se calcula una vez, decae siempre y no
+  // existe ningún bucle capaz de auto-oscilar.
+  const sampleRate = Math.max(8000, Number(ctx.sampleRate) || 44100);
+  const sampleCount = Math.max(128, Math.ceil(sampleRate * Math.min(duration, 1.8)));
+  const period = Math.max(2, Math.round(sampleRate / Math.max(45, freq)));
+  const stringBuffer = ctx.createBuffer(1, sampleCount, sampleRate);
+  const data = stringBuffer.getChannelData(0);
+  const pickSoftness = kind === 'nylonGuitar' ? .72 : kind === 'jazzGuitar' ? .66 : .58;
+  const decay = kind === 'nylonGuitar' ? .9970 : kind === 'jazzGuitar' ? .9974 : .9962;
+  for (let i = 0; i < Math.min(period, sampleCount); i += 1) {
+    const edge = Math.sin(Math.PI * Math.min(1, i / Math.max(1, period - 1)));
+    data[i] = (Math.random() * 2 - 1) * (.55 + edge * .45);
   }
-  const source = ctx.createBufferSource();
-  source.buffer = burstBuffer;
-  const pickFilter = ctx.createBiquadFilter();
-  pickFilter.type = 'lowpass';
-  pickFilter.frequency.value = kind === 'nylonGuitar' ? 4200 : kind === 'jazzGuitar' ? 3300 : 6200;
+  for (let i = period; i < sampleCount; i += 1) {
+    const a = data[i - period];
+    const b = data[Math.max(0, i - period + 1)];
+    const averaged = (a * pickSoftness) + (b * (1 - pickSoftness));
+    data[i] = averaged * decay;
+  }
 
-  source.connect(pickFilter);
-  pickFilter.connect(delay);
-  delay.connect(damping);
-  damping.connect(feedback);
-  feedback.connect(delay);
-  delay.connect(toneFilter);
-  toneFilter.connect(body);
+  const source = ctx.createBufferSource();
+  source.buffer = stringBuffer;
+  source.connect(bodyFilter);
+  bodyFilter.connect(body);
 
   if (kind === 'overdriveGuitar' && typeof ctx.createWaveShaper === 'function') {
     const drive = ctx.createWaveShaper();
     const curve = new Float32Array(257);
     for (let i = 0; i < curve.length; i += 1) {
       const x = (i * 2) / (curve.length - 1) - 1;
-      curve[i] = Math.tanh(x * 2.7);
+      curve[i] = Math.tanh(x * 2.35);
     }
     drive.curve = curve;
     drive.oversample = '2x';
@@ -1008,13 +1002,15 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   if ((tone?.space || 0) > 0 && typeof ctx.createDelay === 'function') {
     const echo = ctx.createDelay(.65);
     const wet = ctx.createGain();
-    echo.delayTime.value = Math.min(.52, Math.max(.08, Number(tone?.delayMs || 170) / 1000));
-    wet.gain.value = Math.min(.18, Math.max(0, Number(tone?.space) || 0));
-    body.connect(echo); echo.connect(wet); wet.connect(output);
+    echo.delayTime.value = Math.min(.46, Math.max(.09, Number(tone?.delayMs || 170) / 1000));
+    wet.gain.value = Math.min(.12, Math.max(0, Number(tone?.space) || 0));
+    body.connect(echo);
+    echo.connect(wet);
+    wet.connect(output);
   }
 
   source.start(start);
-  source.stop(start + Math.min(.04, duration));
+  source.stop(start + Math.min(duration, 1.8));
 }
 
 function voicePreset(kind) {

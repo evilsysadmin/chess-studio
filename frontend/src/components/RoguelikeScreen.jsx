@@ -26,7 +26,7 @@ import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE } from '../combatChessBrand.js';
 import { recordGameActivity } from '../gameActivity.js';
-import { hasCombatSession } from '../combatSession.js';
+import { clearCombatSession, hasCombatSession } from '../combatSession.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import {
   loadCampaign,
@@ -224,6 +224,25 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     if (!loadMechanicTutorialProgress()?.['combat-campaign']?.seen) setShowCampaignTutorial(true);
     setCampaignEndResult(null);
     setEndResult(null);
+  }
+
+  function handleRestartCampaign() {
+    const progressed = Math.max(0, (campaign.route || []).length - 1);
+    const confirmed = window.confirm(
+      `¿Reiniciar esta campaña?\n\nSe perderán la ruta, suministros, intel y ventajas temporales de la operación actual${progressed ? ` (sector ${progressed}/7)` : ''}. Tu ejército persistente, rangos, medallas, bajas, créditos y archivos se conservan.`,
+    );
+    if (!confirmed) return;
+
+    if (campaignCombatSessionId) clearCombatSession(campaignCombatSessionId);
+    // Registrar el reinicio mantiene el histórico honesto sin convertirlo en
+    // una derrota. A continuación nace una operación nueva con seed nueva.
+    endCampaign(campaign, 'restarted');
+    setCampaignArchive(loadCampaignArchive());
+    setCombatSessionActive(false);
+    setBattleDebrief(null);
+    setCampaignEndResult(null);
+    setEndResult(null);
+    setCampaign(startCampaign());
   }
 
   function handleCampaignNodeSelect(nodeId) {
@@ -587,7 +606,10 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
                   <span title="Recurso temporal de esta campaña"><b>{campaign.operationalCredits}</b> suministros</span>
                   <span title="Fondos persistentes para mercado y bajas"><b>{roster.credits || 0}</b> créditos</span>
                   {rosterDeployment.fallenCount > 0 && <span className="danger-text"><b>{rosterDeployment.fallenCount}</b> bajas</span>}
-                  <button type="button" className="campaign-market-link" onClick={() => setShowMarket(true)}>Mercado →</button>
+                </div>
+                <div className="campaign-command-actions" aria-label="Acciones de campaña">
+                  <button type="button" className="secondary-btn campaign-market-primary" onClick={() => setShowMarket(true)}>▣ Mercado</button>
+                  <button type="button" className="secondary-btn campaign-restart-action" onClick={handleRestartCampaign}>↻ Reiniciar campaña</button>
                 </div>
                 <div className={`campaign-situation-banner campaign-friendly-next ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
                   <span>QUÉ HACER AHORA</span>
@@ -784,9 +806,9 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
                     <div className="campaign-operation-list">
                       {campaignArchive.slice(0, 6).map((operation) => (
                         <div className="campaign-operation-row" key={operation.id}>
-                          <span className={`campaign-operation-result ${operation.reason}`}>{operation.reason === 'completed' ? '✓' : operation.reason === 'retired' ? '↩' : '×'}</span>
+                          <span className={`campaign-operation-result ${operation.reason}`}>{operation.reason === 'completed' ? '✓' : operation.reason === 'retired' ? '↩' : operation.reason === 'restarted' ? '↻' : '×'}</span>
                           <div>
-                            <strong>{operation.reason === 'completed' ? 'Completada' : operation.reason === 'retired' ? 'Retirada' : operation.reason === 'interrupted' ? 'Interrumpida' : 'Perdida'}</strong>
+                            <strong>{operation.reason === 'completed' ? 'Completada' : operation.reason === 'retired' ? 'Retirada' : operation.reason === 'restarted' ? 'Reiniciada' : operation.reason === 'interrupted' ? 'Interrumpida' : 'Perdida'}</strong>
                             <small>Sector {operation.stage}/7 · {operation.cleared} nodos</small>
                           </div>
                         </div>

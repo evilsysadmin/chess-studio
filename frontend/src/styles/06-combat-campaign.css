@@ -138,7 +138,7 @@
 .combat-campaign-map {
   position: relative;
   width: 100%;
-  min-height: 420px;
+  min-height: clamp(500px, 38vw, 620px);
   border: 1px solid rgba(255,255,255,.055);
   border-radius: 9px;
   overflow: hidden;
@@ -150,14 +150,14 @@
   inset: 0;
   z-index: 0;
   background-image:
-    linear-gradient(90deg, rgba(5,8,6,.88) 0%, rgba(5,8,6,.48) 18%, rgba(5,8,6,.42) 68%, rgba(5,8,6,.78) 100%),
-    linear-gradient(180deg, rgba(5,8,6,.78), rgba(5,8,6,.22) 24%, rgba(5,8,6,.34) 72%, rgba(5,8,6,.82)),
+    linear-gradient(90deg, rgba(5,8,6,.42) 0%, rgba(5,8,6,.16) 18%, rgba(5,8,6,.12) 70%, rgba(5,8,6,.36) 100%),
+    linear-gradient(180deg, rgba(5,8,6,.34), rgba(5,8,6,.06) 24%, rgba(5,8,6,.12) 72%, rgba(5,8,6,.46)),
     var(--campaign-map-art);
   background-size: cover;
   background-position: center 48%;
-  opacity: .38;
-  filter: saturate(.72) contrast(1.08) blur(.35px);
-  transform: scale(1.012);
+  opacity: .78;
+  filter: saturate(.92) contrast(1.06) brightness(.84);
+  transform: scale(1.004);
   pointer-events: none;
 }
 .combat-campaign-map::after {
@@ -173,7 +173,7 @@
 .campaign-map-sector-bands { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .campaign-map-sector-bands span {
   position: absolute;
-  left: calc(5.9% + var(--stage) * 12.95%);
+  left: calc(16.52% + var(--stage) * 10.94%);
   top: 12px;
   transform: translateX(-50%);
   color: rgba(207,196,167,.34);
@@ -191,7 +191,7 @@
 .campaign-map-point {
   --node-size: 56px;
   position: absolute;
-  left: calc(5.9% + var(--stage) * 12.95%);
+  left: calc(16.52% + var(--stage) * 10.94%);
   top: calc(22.85% + var(--lane) * 26.65%);
   width: 118px;
   min-height: 82px;
@@ -243,7 +243,7 @@
   .combat-campaign-map-wrap { padding: .62rem; }
   .campaign-map-toolbar { align-items: flex-start; flex-direction: column; }
   .campaign-map-legend { justify-content: flex-start; }
-  .campaign-map-art { opacity: .18; filter: saturate(.55) brightness(.72) blur(1px); }
+  .campaign-map-art { opacity: .52; filter: saturate(.78) brightness(.68) contrast(1.06); background-position: 53% center; }
   .combat-campaign-map { min-height: 1120px; }
   .campaign-route-lines-desktop { display: none; }
   .campaign-route-lines-mobile { display: block; }

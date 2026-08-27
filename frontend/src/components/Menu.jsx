@@ -162,14 +162,16 @@ export default function Menu({
           <span className="section-label">DESAFÍO DIARIO</span>
           <strong>{today.dailyHeadline}</strong>
           <small>{today.dailyDetail}</small>
-          <div className="home-today-progress" aria-label={`${today.dailySolvedCount || 0} de 3 desafíos completados`}>
-            {[0, 1, 2].map((slot) => <i key={slot} className={slot < (today.dailySolvedCount || 0) ? 'done' : ''} />)}
-            <span>{today.dailySolvedCount || 0}/3 hoy</span>
-          </div>
         </div>
-        <div className="home-today-stats" aria-label="Rachas de desafío diario">
-          <span><small>Racha</small><b>{today.streak || 0}</b><i>días</i></span>
-          <span><small>Mejor</small><b>{today.bestStreak || 0}</b><i>días</i></span>
+        <div className="home-today-missions" aria-label={`${today.dailySolvedCount || 0} de 3 desafíos completados`}>
+          {(today.dailySlots || []).map((slot) => (
+            <span key={slot.id} className={slot.solved ? 'done' : ''}>
+              <i aria-hidden="true">{slot.solved ? '✓' : '·'}</i><b>{slot.label}</b>
+            </span>
+          ))}
+        </div>
+        <div className="home-today-streaks" aria-label="Rachas de desafío diario">
+          <span>Racha <b>{today.streak || 0}</b></span><i>·</i><span>Mejor <b>{today.bestStreak || 0}</b></span>
         </div>
         <div className="home-today-actions">
           <button type="button" className={today.dailySolved ? 'secondary-btn' : 'primary-btn'} onClick={onDailyChallenge}>
