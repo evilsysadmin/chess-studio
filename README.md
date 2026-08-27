@@ -1,3 +1,7 @@
+### v16.6dm46zc · Entrenamiento personal fail-open
+
+Corrige un bloqueo aparente en Puzzles personales: la protección opcional de racha ya no captura la interacción del tablero, y una respuesta histórica/corrupta de un puzzle nunca puede dejar la pantalla esperando indefinidamente. Los puzzles personales guardados se validan antes de entrar en la cola activa.
+
 ### v16.6dm46zb · Hotfix de identidad de despliegue
 
 - Restaura el contrato backend de `deployment_identity()` consumido por las deployment annotations. La identidad prefiere el commit del proveedor y cae a la release empaquetada, por lo que cold starts del mismo deploy no inventan anotaciones nuevas.

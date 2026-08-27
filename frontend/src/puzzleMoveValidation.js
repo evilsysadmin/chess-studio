@@ -23,3 +23,18 @@ export function matchesExpectedPuzzleMove(fen, expectedSan, actualMove) {
     return false;
   }
 }
+
+// Aplica una jugada de la línea canónica sin dejar la UI atrapada si un
+// puzzle antiguo/corrupto contiene una SAN imposible. Los consumidores pueden
+// degradar el ejercicio con seguridad en lugar de quedarse en `busy=true`.
+export function applyPuzzleSolutionMove(fen, expectedSan) {
+  if (!fen || !expectedSan) return null;
+  try {
+    const board = new Chess(fen);
+    const move = board.move(expectedSan);
+    if (!move) return null;
+    return { fen: board.fen(), move };
+  } catch {
+    return null;
+  }
+}

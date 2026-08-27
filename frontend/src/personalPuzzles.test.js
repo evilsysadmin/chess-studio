@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult, saveGeneratedPersonalPuzzles, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
+import { isPersonalPuzzleMastered, isPlayablePersonalPuzzle, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult, saveGeneratedPersonalPuzzles, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
 
 describe('personal puzzles', () => {
   beforeEach(() => localStorage.clear());
@@ -104,6 +104,21 @@ describe('personal puzzles', () => {
     expect(saveGeneratedPersonalPuzzles([generated]).added).toBe(0);
     expect(loadPersonalPuzzles()).toHaveLength(1);
     expect(loadPersonalPuzzles()[0]).toMatchObject({ source: 'workers-ai-validated', title: 'Centro o funeral' });
+  });
+
+
+  it('ignora puzzles personales corruptos para que no puedan congelar el tablero', () => {
+    const start = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    expect(isPlayablePersonalPuzzle({ fen: start, solution: ['e4'] })).toBe(true);
+    expect(isPlayablePersonalPuzzle({ fen: start, solution: ['Qh9??'] })).toBe(false);
+    expect(isPlayablePersonalPuzzle({ fen: 'fen imposible', solution: ['e4'] })).toBe(false);
+
+    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
+      { id: 'ok', kind: 'personal', fen: start, solution: ['e4'] },
+      { id: 'bad-move', kind: 'personal', fen: start, solution: ['Qh9??'] },
+      { id: 'bad-fen', kind: 'personal', fen: 'fen imposible', solution: ['e4'] },
+    ]));
+    expect(loadPersonalPuzzles().map((item) => item.id)).toEqual(['ok']);
   });
 
 });

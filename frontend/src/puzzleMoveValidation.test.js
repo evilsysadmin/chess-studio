@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Chess } from 'chess.js';
-import { matchesExpectedPuzzleMove } from './puzzleMoveValidation.js';
+import { applyPuzzleSolutionMove, matchesExpectedPuzzleMove } from './puzzleMoveValidation.js';
 
 describe('matchesExpectedPuzzleMove', () => {
   it('acepta la horquilla curada de caballo por identidad de movimiento', () => {
@@ -26,4 +26,18 @@ describe('matchesExpectedPuzzleMove', () => {
     const move = board.move({ from: 'b5', to: 'd6' });
     expect(matchesExpectedPuzzleMove(fen, 'Nc7+', move)).toBe(false);
   });
+
+  it('aplica respuestas canónicas de forma segura', () => {
+    const fen = new Chess().fen();
+    const result = applyPuzzleSolutionMove(fen, 'e4');
+    expect(result?.move?.san).toBe('e4');
+    expect(result?.fen).toContain(' b ');
+  });
+
+  it('una respuesta corrupta devuelve null en vez de dejar atrapada la UI', () => {
+    const fen = new Chess().fen();
+    expect(applyPuzzleSolutionMove(fen, 'Qh9??')).toBeNull();
+    expect(applyPuzzleSolutionMove('fen imposible', 'e4')).toBeNull();
+  });
+
 });

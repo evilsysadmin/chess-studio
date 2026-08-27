@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zc',
+    title: 'Tus cagadas ya no congelan el tablero',
+    highlights: [
+      'Al fallar un puzzle personal puedes seguir moviendo aunque aparezca la opción de proteger tu racha; esa decisión ya no bloquea el tablero.',
+      'Si un ejercicio antiguo contiene una respuesta inválida, se detiene con seguridad y permite pasar al siguiente en vez de quedarse esperando para siempre.',
+      'Los puzzles personales guardados se comprueban antes de entrar en la cola para apartar posiciones corruptas o imposibles.',
+    ],
+  },
+  {
     release: 'v16.6dm46zb',
     title: 'El servicio arranca con normalidad',
     highlights: [

@@ -13,7 +13,8 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { recordPuzzleRush } from '../career.js';
 import { lastDailyCells } from '../careerVisuals.js';
 import { checkAchievements } from '../achievements.js';
-import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
+import { applyPuzzleSolutionMove, matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
+import { canInteractWithPuzzle, canProtectPuzzleStreak, wrongPuzzleAttemptState } from '../puzzleAttemptFlow.js';
 import { buildPuzzleReveal } from '../puzzleReveal.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Tu crimen' };
@@ -162,7 +163,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }
 
   function handleSquareClick(square) {
-    if (status !== 'playing' || busy || retryOffer || rushEnded) return;
+    if (!canInteractWithPuzzle({ status, busy, rushEnded })) return;
 
     if (!selected) {
       const piece = localChess.get(square);
@@ -184,7 +185,6 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }
 
   function attemptMove(from, to) {
-    if (retryOffer) return; // hay que responder el prompt antes de seguir jugando
     const attempt = new Chess();
     attempt.load(fen);
     let move;
@@ -208,12 +208,17 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       }
       // Primer fallo de este intento, con una racha real para proteger —
       // se ofrece pagar en vez de romperla directamente.
-      if (!wrongThisPuzzle && streak > 0) {
+      const wrongState = wrongPuzzleAttemptState({ wrongThisPuzzle, streak, rushMode });
+      setWrongThisPuzzle(wrongState.wrongThisPuzzle);
+      if (wrongState.offerProtection) {
+        // La protección de racha es opcional: nunca debe bloquear el tablero.
+        // Si el jugador sigue y resuelve sin pagar, la racha se pierde; si
+        // protege antes, conserva la racha aunque el intento deje de ser limpio.
         setRetryOffer(true);
+        setFeedback('Esa no era. Tu racha está en riesgo: puedes seguir jugando o protegerla abajo.');
         return;
       }
       setFeedback('Esa no era la jugada — ¡prueba de nuevo!');
-      setWrongThisPuzzle(true);
       return;
     }
 
@@ -225,6 +230,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
     const nextIndex = stepIndex + 1;
     if (nextIndex >= puzzle.solution.length) {
+      setRetryOffer(false);
       setStatus('solved');
       setSolvedCount((n) => n + 1);
       incrementPuzzlesSolved();
@@ -257,10 +263,21 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     setBusy(true);
     const replySan = puzzle.solution[nextIndex];
     replyTimeout.current = setTimeout(() => {
-      const withReply = new Chess();
-      withReply.load(newFen);
-      withReply.move(replySan);
-      setFen(withReply.fen());
+      const reply = applyPuzzleSolutionMove(newFen, replySan);
+      replyTimeout.current = null;
+      if (!reply) {
+        // Un puzzle histórico/corrupto no puede secuestrar la pantalla dejando
+        // `busy` activado para siempre. Lo degradamos a revelado y permitimos
+        // pasar al siguiente sin penalizar al jugador.
+        setFen(revealGuide.displayFen || puzzle.fen);
+        setStepIndex(puzzle.solution.length);
+        setStatus('revealed');
+        setFeedback('Este ejercicio tenía una respuesta inválida. Lo hemos detenido sin contarlo como fallo; pasa al siguiente.');
+        setRetryOffer(false);
+        setBusy(false);
+        return;
+      }
+      setFen(reply.fen);
       playMoveSound();
       setStepIndex(nextIndex + 1);
       setBusy(false);
@@ -269,7 +286,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
   function payToProtectStreak() {
     const cost = puzzleRetryCost(streak);
+    if (!canProtectPuzzleStreak({ retryOffer, points, cost })) return;
     onSpendPoints?.(cost);
+    setWrongThisPuzzle(false);
     setRetryOffer(false);
     setFeedback(`Protegido por ${cost} puntos — sigue intentando, la racha sigue en pie.`);
   }
@@ -343,7 +362,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
             <div className="menu-section" style={{ marginTop: '0.6rem', padding: '0.8rem' }}>
               <p className="hint-text" style={{ margin: '0 0 0.5rem' }}>
                 Esa no era la jugada — tienes una racha de {streak}. ¿Pagas {puzzleRetryCost(streak)} puntos
-                para que este fallo no la rompa?
+                para que este fallo no la rompa? Puedes seguir moviendo sin decidir ahora.
               </p>
               <p className="puzzle-protection-balance" role="status">
                 <b>Saldo: {points} puntos</b>

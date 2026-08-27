@@ -10,9 +10,25 @@ export function loadPersonalPuzzles() {
   try {
     const raw = getStorageItem(STORAGE_LOCAL, KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.map(normalizeStoredPuzzle) : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeStoredPuzzle).filter(isPlayablePersonalPuzzle) : [];
   } catch {
     return [];
+  }
+}
+
+
+export function isPlayablePersonalPuzzle(puzzle) {
+  if (!puzzle?.fen || !Array.isArray(puzzle?.solution) || puzzle.solution.length === 0) return false;
+  try {
+    const board = new Chess(puzzle.fen);
+    if (board.isGameOver()) return false;
+    for (const san of puzzle.solution) {
+      const move = board.move(san);
+      if (!move) return false;
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
