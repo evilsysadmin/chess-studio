@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zb',
+    title: 'El servicio arranca con normalidad',
+    highlights: [
+      'Corrige una regresión de la última actualización que podía impedir que el servicio terminara de arrancar.',
+      'Las partidas, perfiles y progreso guardado no cambian: es una corrección de estabilidad del servicio.',
+      'Se añade una comprobación temprana para detectar esta clase de incompatibilidad antes de publicar otra versión.',
+    ],
+  },
+  {
     release: 'v16.6dm46za',
     title: 'Feedback deja de hacer el cafre',
     highlights: [

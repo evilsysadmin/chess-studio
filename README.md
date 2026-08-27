@@ -1,3 +1,9 @@
+### v16.6dm46zb · Hotfix de identidad de despliegue
+
+- Restaura el contrato backend de `deployment_identity()` consumido por las deployment annotations. La identidad prefiere el commit del proveedor y cae a la release empaquetada, por lo que cold starts del mismo deploy no inventan anotaciones nuevas.
+- Añade tests puros para fallback, precedencia y normalización de la identidad, y el release consistency gate comprueba estáticamente que la API siga existiendo antes de ejecutar la suite de integración.
+- No cambia reglas, partidas, perfiles ni persistencia de juego.
+
 ### v16.6dm46za · Hotfix de Feedback y trazas OTLP
 
 - Feedback deja de ser un chunk lazy global: abrirlo tras un deploy ya no puede suspender fuera de `Suspense` ni tirar la pantalla completa. El modal contiene además cualquier error largo sin deformar la cabecera.
