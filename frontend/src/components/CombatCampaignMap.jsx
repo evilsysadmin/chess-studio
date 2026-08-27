@@ -127,6 +127,24 @@ export default function CombatCampaignMap({ map, campaign, availableNodes, onSel
         })}
       </div>
 
+
+      {(availableNodes || []).length > 1 && (
+        <details className="campaign-route-compare">
+          <summary>Comparar rutas disponibles</summary>
+          <div className="campaign-route-compare-grid">
+            {(availableNodes || []).map((node) => {
+              const decision = routeDecision(node);
+              return (
+                <button type="button" key={`compare-${node.id}`} className={`campaign-route-compare-card ${decision.tone}`} onClick={() => onSelect(node.id)}>
+                  <span><b>{node.label}</b><small>{node.typeLabel}</small></span>
+                  <span><b>{decision.label}</b><small>{decision.detail}</small></span>
+                </button>
+              );
+            })}
+          </div>
+        </details>
+      )}
+
       <div className="campaign-map-route-summary">
         <span>⌂ Base de operaciones</span>
         <span>→</span>

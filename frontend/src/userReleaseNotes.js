@@ -6,11 +6,21 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46y',
+    title: 'Combat se siente más sólido y más táctico',
+    highlights: [
+      'El tablero mantiene las 64 casillas con una geometría uniforme y el chat acompaña la altura real de la mesa de juego.',
+      'Los tres reyes finales tienen reglas más distintas y visibles, para que cada boss pida una forma diferente de rematar la operación.',
+      'Mercenarios, mercado y elección de ruta explican mejor qué compras, qué arriesgas y qué ganas antes de comprometerte.',
+      'El debrief prioriza lo ocurrido y la siguiente decisión, con una gramática visual más coherente entre Home, partidas y Combat.',
+    ],
+  },
+  {
     release: 'v16.6dm46x',
     title: 'La campaña pisa terreno de verdad',
     highlights: [
       'El arte de la campaña gana presencia: la cartografía se ve claramente detrás de rutas y sectores sin ocultar la información útil.',
-      'Las batallas de campaña cambian de terreno entre selva, distrito sitiado, desierto y ciudadela final.',
+      'Las partidas de campaña cambian de terreno entre selva, distrito sitiado, desierto y ciudadela final.',
       'Cada terreno cambia el marco y las casillas manteniendo contraste alto para que piezas, jaques y movimientos sigan leyéndose de un vistazo.',
     ],
   },

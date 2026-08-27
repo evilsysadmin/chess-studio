@@ -276,3 +276,44 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Empezar campaña/i })).toHaveCount(0);
 });
+
+test('Partida rápida · las 64 casillas mantienen una geometría uniforme y el chat acompaña la mesa', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const geometry = await page.locator('.game-screen .board-grid > .square').evaluateAll((squares) => squares.map((square) => {
+    const rect = square.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }));
+  expect(geometry).toHaveLength(64);
+  const widths = geometry.map((item) => item.width);
+  const heights = geometry.map((item) => item.height);
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(0.2);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(0.2);
+  expect(Math.abs(widths[0] - heights[0])).toBeLessThan(0.2);
+
+  const boardStack = page.locator('.game-screen .game-board-stack');
+  const chatRail = page.getByRole('complementary', { name: 'Game Chat de la partida' });
+  const [boardBox, chatBox] = await Promise.all([boardStack.boundingBox(), chatRail.boundingBox()]);
+  expect(boardBox).not.toBeNull();
+  expect(chatBox).not.toBeNull();
+  expect(Math.abs(boardBox.height - chatBox.height)).toBeLessThan(2);
+});
+
+test('Home · Feedback, Mi cuenta y Novedades comparten geometría de control', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  const feedback = page.getByRole('button', { name: 'Enviar feedback' });
+  const account = page.getByRole('button', { name: 'Abrir menú de cuenta' });
+  const news = page.getByRole('button', { name: /Abrir novedades/ });
+  const boxes = await Promise.all([feedback.boundingBox(), account.boundingBox(), news.boundingBox()]);
+  expect(boxes.every(Boolean)).toBe(true);
+  const widths = boxes.map((box) => box.width);
+  const heights = boxes.map((box) => box.height);
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+});
+

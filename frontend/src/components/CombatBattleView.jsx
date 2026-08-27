@@ -32,7 +32,7 @@ export default function CombatBattleView({
                 <span className="roguelike-boss-hearts" aria-hidden="true">
                   {Array.from({ length: bossConfig.maxHp }, (_, i) => (i < bossHp ? '♥' : '♡')).join(' ')}
                 </span>
-                <small>{bossHp}/{bossConfig.maxHp} HP · jaque = {bossConfig.checkDamage || 1} · mate = {bossConfig.mateDamage || 2}</small>
+                <small>{bossHp}/{bossConfig.maxHp} HP · {bossConfig.rookShield ? 'torres activas = escudo' : `jaque = ${bossConfig.checkDamage || 1} · mate = ${bossConfig.mateDamage || 2}`}</small>
                 {bossConfig.mechanicLabel && <em><b>{bossConfig.mechanicLabel}</b> · {bossConfig.mechanicDescription}</em>}
               </div>
             </div>

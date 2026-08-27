@@ -93,6 +93,13 @@ export function equipmentBonus(itemId) {
   return item ? { strength: item.strength, speed: item.speed } : { strength: 0, speed: 0 };
 }
 
+export function equipmentMarketOffers({ rotationKey = marketRotationKey(), count = 3 } = {}) {
+  const catalog = [...COMBAT_EQUIPMENT];
+  const offset = Math.floor(seeded(rotationKey, 'equipment-offset') * catalog.length) % catalog.length;
+  const wanted = Math.max(1, Math.min(catalog.length, Math.floor(Number(count) || 3)));
+  return Array.from({ length: wanted }, (_, index) => catalog[(offset + index * 2) % catalog.length]);
+}
+
 export function unitLevel(piece) {
   return 1 + int(piece?.strengthPoints) + int(piece?.speedPoints);
 }
@@ -131,11 +138,15 @@ export function mercenaryMarketOffers({ merit = 0, rotationKey = marketRotationK
     const type = rare && baseLevel >= 5 ? 'q' : types[(typeOffset + index) % types.length];
     const level = Math.min(9, baseLevel + (rare ? 1 : 0));
     const points = Math.max(0, level - 1);
-    const strengthPoints = Math.ceil(points / 2);
-    const speedPoints = Math.floor(points / 2);
+    const specialty = MERCENARY_SPECIALTIES[(typeOffset + index) % MERCENARY_SPECIALTIES.length];
+    const strengthPoints = specialty.id === 'assault'
+      ? Math.ceil(points * 0.75)
+      : specialty.id === 'scout'
+        ? Math.floor(points * 0.25)
+        : Math.ceil(points / 2);
+    const speedPoints = Math.max(0, points - strengthPoints);
     const baseCost = Math.round((UNIT_VALUE[type] + points * 5) * (rare ? 1.45 : 1));
     const id = `${rotationKey}-${index}-${type}-${level}`;
-    const specialty = MERCENARY_SPECIALTIES[(typeOffset + index) % MERCENARY_SPECIALTIES.length];
     const includedEquipment = mercenaryEquipmentFor(level, specialty);
     return {
       id,

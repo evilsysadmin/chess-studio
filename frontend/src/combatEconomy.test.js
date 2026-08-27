@@ -6,6 +6,7 @@ import {
   buyEquipment,
   hireMercenary,
   mercenaryMarketOffers,
+  equipmentMarketOffers,
   normalizeCombatEconomy,
   settleMercenaryContracts,
 } from './combatEconomy.js';
@@ -71,3 +72,22 @@ describe('economía de Combat', () => {
     expect(one.pieces[key].mercenary.battlesRemaining).toBe(2);
   });
 });
+
+describe('mercado táctico rotatorio', () => {
+  it('ofrece un catálogo corto y determinista de equipo', () => {
+    const a = equipmentMarketOffers({ rotationKey: '2026-08-27' });
+    const b = equipmentMarketOffers({ rotationKey: '2026-08-27' });
+    expect(a).toHaveLength(3);
+    expect(a.map((item) => item.id)).toEqual(b.map((item) => item.id));
+    expect(new Set(a.map((item) => item.id)).size).toBe(3);
+  });
+
+  it('las especialidades de mercenario cambian de verdad su reparto de stats', () => {
+    const offers = mercenaryMarketOffers({ merit: 180, rotationKey: '2026-08-27' });
+    const scout = offers.find((offer) => offer.specialtyId === 'scout');
+    const assault = offers.find((offer) => offer.specialtyId === 'assault');
+    if (scout) expect(scout.speedPoints).toBeGreaterThanOrEqual(scout.strengthPoints);
+    if (assault) expect(assault.strengthPoints).toBeGreaterThanOrEqual(assault.speedPoints);
+  });
+});
+

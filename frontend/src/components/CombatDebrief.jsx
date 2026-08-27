@@ -87,7 +87,10 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
       <div className="combat-debrief-overview" aria-label="Resumen accionable del combate">
         <section><small>QUÉ OCURRIÓ</small><strong>{debriefWhatHappened(debrief)}</strong></section>
         <section><small>GANANCIAS</small><strong>{debriefGainLine(debrief)}</strong></section>
-        <section><small>QUÉ HACER AHORA</small><strong>{debriefNextStep(debrief, nextAction)}</strong></section>
+      </div>
+      <div className={`combat-debrief-next-action outcome-${debrief.outcome}`} aria-label="Siguiente decisión recomendada">
+        <small>SIGUIENTE DECISIÓN</small>
+        <strong>{debriefNextStep(debrief, nextAction)}</strong>
       </div>
 
       {(aiDebriefLoading || aiDebrief) && (

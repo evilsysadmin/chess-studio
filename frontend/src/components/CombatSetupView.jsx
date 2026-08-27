@@ -120,7 +120,7 @@ export default function CombatSetupView({
                         : `Intel · CPU ${encounterIntel.exactDifficulty}`}
                   </span>
                 )}
-                {bossConfig && <span title="Cada jaque causa 1 daño; mate causa 2.">Rey jefe · {bossConfig.maxHp} HP</span>}
+                {bossConfig && <span title={bossConfig.mechanicDescription || 'Regla especial visible antes de combatir.'}>Rey jefe · {bossConfig.maxHp} HP · {bossConfig.mechanicLabel}</span>}
               </div>
             </div>
           )}

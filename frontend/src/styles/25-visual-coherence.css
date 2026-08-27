@@ -1,0 +1,302 @@
+/* dm46y · Coherencia visual global.
+   Esta capa no inventa otra skin: normaliza geometría, jerarquía y densidad
+   sobre los componentes existentes. Combat conserva su carácter militar,
+   pero habla el mismo idioma de controles que el resto de Chess Studio. */
+
+:root {
+  --ui-control-h: 42px;
+  --ui-control-radius: 9px;
+  --ui-card-radius: 11px;
+  --ui-panel-gap: .65rem;
+  --ui-border: color-mix(in srgb, var(--brass-dim) 26%, var(--studio-line));
+  --ui-panel: color-mix(in srgb, var(--studio-panel) 94%, transparent);
+  --ui-panel-raised: color-mix(in srgb, var(--studio-panel-raised) 96%, transparent);
+}
+
+/* Controles principales: misma huella y foco. Los controles diminutos que son
+   iconos/contexto mantienen sus reglas locales; sólo normalizamos botones de
+   acción explícitos. */
+:where(.primary-btn, .secondary-btn) {
+  min-height: var(--ui-control-h);
+  border-radius: var(--ui-control-radius);
+}
+:where(.primary-btn, .secondary-btn, .masthead-feedback-trigger, .masthead-account-trigger, .masthead-release-trigger):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brass) 56%, transparent);
+  outline-offset: 2px;
+}
+
+/* Cabecera de cuenta: Feedback, Mi cuenta y Novedades comparten exactamente
+   ancho/alto. Novedades sigue físicamente debajo de Mi cuenta, como acción
+   separada. */
+.masthead:not(.masthead-game-compact) .masthead-actions {
+  grid-template-columns: 136px 136px;
+  grid-template-rows: var(--ui-control-h) var(--ui-control-h);
+  gap: .38rem .5rem;
+}
+.masthead:not(.masthead-game-compact) .masthead-feedback-trigger,
+.masthead:not(.masthead-game-compact) .masthead-account-trigger,
+.masthead:not(.masthead-game-compact) .masthead-release-trigger {
+  width: 136px;
+  min-width: 136px;
+  height: var(--ui-control-h);
+  min-height: var(--ui-control-h);
+  padding: 0 .7rem;
+  border-radius: var(--ui-control-radius);
+  box-sizing: border-box;
+  justify-content: center;
+}
+.masthead:not(.masthead-game-compact) .masthead-feedback-trigger {
+  grid-column: 1;
+  grid-row: 1;
+}
+.masthead:not(.masthead-game-compact) .masthead-account-stack {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 136px;
+  min-width: 136px;
+  gap: .38rem;
+}
+.masthead:not(.masthead-game-compact) .masthead-account-menu,
+.masthead:not(.masthead-game-compact) .masthead-account-trigger,
+.masthead:not(.masthead-game-compact) .masthead-release-trigger { width: 136px; }
+.masthead:not(.masthead-game-compact) .masthead-feedback-trigger,
+.masthead:not(.masthead-game-compact) .masthead-account-trigger {
+  border-color: var(--ui-border);
+  background: rgba(7,10,15,.42);
+}
+.masthead:not(.masthead-game-compact) .masthead-release-trigger {
+  font: 700 .62rem/1 var(--font-body);
+  letter-spacing: .02em;
+}
+
+/* Partida desktop: el tablero aprovecha ancho/alto real y el rail comparte la
+   altura de la mesa (rival + tablero + jugador), con scroll sólo dentro de sus
+   secciones. */
+.game-screen {
+  --game-board-size: min(640px, calc(100vw - 24rem), calc(100dvh - 9.75rem));
+  width: 100%;
+}
+@supports (width: round(down, 16px, 8px)) {
+  .game-screen {
+    /* Múltiplo de 8 px: las ocho columnas rasterizan con la misma anchura en
+       Chromium/Firefox modernos y evitamos el desagradable 73/74/73/74. */
+    --game-board-size: round(down, min(640px, calc(100vw - 24rem), calc(100dvh - 9.75rem)), 8px);
+  }
+}
+.game-screen .game-layout {
+  width: min(100%, 1420px);
+  max-width: 1420px;
+  margin-inline: auto;
+}
+.game-screen .board-live-row {
+  width: auto;
+  max-width: 100%;
+  grid-template-columns: max-content minmax(300px, 350px);
+  grid-template-areas: 'board chat';
+  align-items: stretch;
+  justify-content: center;
+  column-gap: clamp(.75rem, 1.5vw, 1.2rem);
+}
+.game-screen .game-board-stack {
+  width: max-content;
+  max-width: 100%;
+  height: max-content;
+}
+.game-screen .board-wrap {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.game-screen .board-grid {
+  width: var(--game-board-size);
+  height: var(--game-board-size);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+}
+.game-screen .board-grid > .square {
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  height: auto;
+  box-sizing: border-box;
+}
+.game-screen .game-side-column {
+  width: clamp(300px, 28vw, 350px);
+  min-width: 300px;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  align-self: stretch;
+  overflow: hidden;
+}
+.game-screen .game-side-column > * { min-width: 0; }
+.game-screen .game-side-column .game-chat {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.game-screen .game-side-column .game-chat-log {
+  min-height: 0;
+  overflow-y: auto;
+}
+.game-screen .game-notation-disclosure { flex: 0 0 auto; }
+
+/* Combat comparte la misma garantía geométrica: tablero cuadrado, ocho tracks
+   iguales y rail estirado al alto natural de la pila táctica. */
+.combat-battle-screen .board-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+}
+.combat-battle-screen .board-grid > .square { min-width: 0; min-height: 0; box-sizing: border-box; }
+.combat-board-live-row { align-items: stretch; }
+.combat-game-side-column { height: auto; max-height: none; align-self: stretch; }
+
+/* Progressive disclosure de rutas: comparar no ensucia el mapa; vive justo
+   debajo y sólo se abre si el jugador quiere poner las dos opciones lado a lado. */
+.campaign-route-compare {
+  margin-top: .58rem;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  background: rgba(0,0,0,.09);
+}
+.campaign-route-compare > summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 .72rem;
+  cursor: pointer;
+  color: var(--parchment-dim);
+  font: 700 .61rem/1 var(--font-mono);
+  letter-spacing: .04em;
+}
+.campaign-route-compare[open] > summary { color: var(--parchment); border-bottom: 1px solid var(--ui-border); }
+.campaign-route-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: .48rem;
+  padding: .55rem;
+}
+.campaign-route-compare-card {
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: .65rem;
+  padding: .5rem .58rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-panel);
+  color: var(--parchment);
+  text-align: left;
+  cursor: pointer;
+}
+.campaign-route-compare-card > span { display: grid; gap: .12rem; }
+.campaign-route-compare-card > span:last-child { text-align: right; }
+.campaign-route-compare-card b { font-size: .7rem; }
+.campaign-route-compare-card small { color: var(--parchment-dim); font: .53rem/1.25 var(--font-mono); }
+.campaign-route-compare-card.safe { border-color: color-mix(in srgb,var(--success) 42%,var(--ui-border)); }
+.campaign-route-compare-card.intel { border-color: rgba(91,160,211,.44); }
+.campaign-route-compare-card.danger,
+.campaign-route-compare-card.boss { border-color: color-mix(in srgb,var(--danger) 46%,var(--ui-border)); }
+.campaign-route-compare-card:hover,
+.campaign-route-compare-card:focus-visible { translate: 0 -1px; border-color: var(--brass-dim); outline: none; }
+
+/* Mercado: decisiones pequeñas y legibles. El contrato no es sólo precio: se
+   explica por qué existe y los dos horizontes temporales se distinguen. */
+.combat-market-contracts button > span { display: grid; gap: .08rem; text-align: left; }
+.combat-market-contracts button > span small { color: var(--parchment-dim); font: .5rem/1.15 var(--font-mono); }
+.combat-market-card,
+.combat-debrief,
+.campaign-boss-dossier,
+.campaign-route-compare,
+.army-card { border-radius: var(--ui-card-radius); }
+
+/* Debrief: “qué pasó” y “qué gané” arriba; la siguiente decisión recibe su
+   propia banda y deja de competir con el resto de métricas. */
+.combat-debrief-overview { grid-template-columns: 1.25fr .75fr; }
+.combat-debrief-next-action {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: center;
+  gap: .7rem;
+  margin: .58rem 0 .72rem;
+  padding: .68rem .76rem;
+  border: 1px solid color-mix(in srgb,var(--brass) 34%,var(--ui-border));
+  border-radius: var(--ui-control-radius);
+  background: rgba(198,164,93,.055);
+}
+.combat-debrief-next-action small { color: var(--brass); font: 750 .52rem/1 var(--font-mono); letter-spacing: .1em; white-space: nowrap; }
+.combat-debrief-next-action strong { color: var(--parchment); font-size: .74rem; line-height: 1.35; }
+.combat-debrief-next-action.outcome-loss { border-color: color-mix(in srgb,var(--danger) 42%,var(--ui-border)); background: rgba(142,51,45,.06); }
+.combat-debrief-next-action.outcome-retired { border-color: rgba(91,160,211,.38); background: rgba(63,116,156,.055); }
+
+/* Details/modales: mismo radio y resumen con hit target coherente. */
+:where(.game-advanced-tools, .game-notation-disclosure, .campaign-map-legend-details, .combat-debrief-more-units) > summary {
+  border-radius: 7px;
+}
+:where(.modal-backdrop) :where([role='dialog'], .army-card, .endgame-dialog) { border-radius: var(--ui-card-radius); }
+
+@media (max-width: 980px) {
+  .game-screen { --game-board-size: min(640px, calc(100vw - 2rem), calc(100dvh - 9rem)); }
+  @supports (width: round(down, 16px, 8px)) {
+    .game-screen { --game-board-size: round(down, min(640px, calc(100vw - 2rem), calc(100dvh - 9rem)), 8px); }
+  }
+  .game-screen .board-live-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'board' 'chat';
+    justify-items: center;
+  }
+  .game-screen .game-side-column {
+    width: min(100%, calc(var(--game-board-size) + 20px));
+    min-width: 0;
+    height: auto;
+    max-height: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .masthead:not(.masthead-game-compact) .masthead-actions {
+    grid-template-columns: 44px 112px;
+    grid-template-rows: 44px 44px;
+  }
+  .masthead:not(.masthead-game-compact) .masthead-feedback-trigger {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+  .masthead:not(.masthead-game-compact) .masthead-feedback-trigger > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .masthead:not(.masthead-game-compact) .masthead-account-stack,
+  .masthead:not(.masthead-game-compact) .masthead-account-menu,
+  .masthead:not(.masthead-game-compact) .masthead-account-trigger,
+  .masthead:not(.masthead-game-compact) .masthead-release-trigger {
+    width: 112px;
+    min-width: 112px;
+  }
+  .masthead:not(.masthead-game-compact) .masthead-account-trigger,
+  .masthead:not(.masthead-game-compact) .masthead-release-trigger { height: 44px; min-height: 44px; }
+  .game-screen { --game-board-size: min(calc(100vw - 1rem), calc(100dvh - 8rem)); }
+  @supports (width: round(down, 16px, 8px)) {
+    .game-screen { --game-board-size: round(down, min(calc(100vw - 1rem), calc(100dvh - 8rem)), 8px); }
+  }
+  .combat-debrief-overview { grid-template-columns: 1fr; }
+  .combat-debrief-next-action { grid-template-columns: 1fr; gap: .32rem; }
+  .campaign-route-compare-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .game-screen { --game-board-size: calc(100vw - 1rem); }
+  @supports (width: round(down, 16px, 8px)) {
+    .game-screen { --game-board-size: round(down, calc(100vw - 1rem), 8px); }
+  }
+  .game-screen .board-grid { width: var(--game-board-size); height: var(--game-board-size); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campaign-route-compare-card:hover,
+  .campaign-route-compare-card:focus-visible { translate: none; }
+}

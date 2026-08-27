@@ -14,10 +14,19 @@ export const ROGUELIKE_BOSS = {
 // Se llama DESPUÉS de una jugada humana ya aplicada. `chessAfter.turn()` es
 // el bando que debe responder; por tanto sólo hacemos daño si le toca a la
 // CPU y su rey está en jaque.
+function sideHasRook(chess, color) {
+  if (!chess?.board) return false;
+  return chess.board().some((rank) => rank.some((piece) => piece?.color === color && piece?.type === 'r'));
+}
+
 export function bossDamageAfterHumanMove(chessAfter, humanColor, bossConfig = ROGUELIKE_BOSS) {
   if (!chessAfter || chessAfter.turn() === humanColor || !chessAfter.inCheck()) return 0;
   const checkDamage = Math.max(1, Number(bossConfig?.checkDamage) || 1);
   const mateDamage = Math.max(checkDamage, Number(bossConfig?.mateDamage) || 2);
+  if (bossConfig?.rookShield) {
+    const cpuColor = humanColor === 'w' ? 'b' : 'w';
+    if (sideHasRook(chessAfter, cpuColor)) return chessAfter.isCheckmate() ? 1 : 0;
+  }
   return chessAfter.isCheckmate() ? mateDamage : checkDamage;
 }
 

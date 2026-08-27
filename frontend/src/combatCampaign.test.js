@@ -379,3 +379,14 @@ describe('campaña · onboarding y reglas visibles', () => {
     expect(briefing.exactDifficulty).toBeNull();
   });
 });
+
+describe('bosses de campaña con identidad mecánica', () => {
+  it('cada rey final declara una regla visible y un perfil de daño distinto', () => {
+    expect(CAMPAIGN_BOSSES).toHaveLength(3);
+    expect(new Set(CAMPAIGN_BOSSES.map((boss) => boss.mechanicLabel)).size).toBe(3);
+    expect(CAMPAIGN_BOSSES.find((boss) => boss.id === 'iron_king')?.rookShield).toBe(true);
+    expect(CAMPAIGN_BOSSES.find((boss) => boss.id === 'nomad_king')?.mateDamage).toBe(3);
+    expect(CAMPAIGN_BOSSES.find((boss) => boss.id === 'shadow_king')?.checkDamage).toBe(2);
+  });
+});
+

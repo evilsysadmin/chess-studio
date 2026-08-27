@@ -208,6 +208,22 @@ describe('Rey Boss: HP sólo en el jefe', () => {
     expect(bossDamageAfterHumanMove(chess, 'w')).toBe(2);
   });
 
+  it('el Rey de Hierro bloquea jaques normales mientras conserva una torre', () => {
+    const guarded = new Chess('r3k3/8/8/8/8/8/4R3/4K3 b - - 0 1');
+    expect(guarded.inCheck()).toBe(true);
+    expect(guarded.isCheckmate()).toBe(false);
+    expect(bossDamageAfterHumanMove(guarded, 'w', { checkDamage: 1, mateDamage: 2, rookShield: true })).toBe(0);
+
+    const exposed = new Chess('4k3/8/8/8/8/8/4R3/4K3 b - - 0 1');
+    expect(bossDamageAfterHumanMove(exposed, 'w', { checkDamage: 1, mateDamage: 2, rookShield: true })).toBe(1);
+  });
+
+  it('el Rey Sombra puede ser frágil a cualquier jaque sin cambiar las reglas del boss clásico', () => {
+    const chess = new Chess('4k3/8/8/8/8/8/4R3/4K3 b - - 0 1');
+    expect(bossDamageAfterHumanMove(chess, 'w', { checkDamage: 2, mateDamage: 2 })).toBe(2);
+    expect(bossDamageAfterHumanMove(chess, 'w')).toBe(1);
+  });
+
   it('un jaque contra el humano NO daña al boss', () => {
     const chess = new Chess('4k3/4r3/8/8/8/8/8/4K3 w - - 0 1');
     expect(chess.inCheck()).toBe(true);

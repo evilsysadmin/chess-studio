@@ -1,4 +1,4 @@
-### v16.6dm46x · Campaña más visible, biomas de batalla y Grafana least-privilege
+### v16.6dm46y · Combat táctico, tablero sólido y coherencia visual
 
 - La cartografía artística de Combat gana presencia real: se reduce el velo oscuro/blur manteniendo nodos, rutas y estados dinámicos por encima.
 - Las batallas de campaña reciben un bioma determinista por sector (selva, urbano, desierto o ciudadela boss) que ambienta marco y casillas sin cambiar la preferencia global de tablero del usuario.
