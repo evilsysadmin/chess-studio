@@ -216,6 +216,91 @@ describe('Combat Chess campaign map', () => {
     expect(fresh.seed).toBe('restart-fresh');
   });
 
+  it('recorre muchas campañas procedurales completas sin estados muertos ni saltos de sector', () => {
+    for (let seedIndex = 0; seedIndex < 64; seedIndex += 1) {
+      let run = startCampaign(`flow-audit-${seedIndex}`);
+      let guard = 0;
+
+      while (run.phase !== 'completed' && guard < 80) {
+        guard += 1;
+        if (run.phase === 'map') {
+          const available = availableCampaignNodes(run);
+          expect(available.length, `seed ${seedIndex} sin salida desde ${run.currentNodeId}`).toBeGreaterThan(0);
+          run = selectCampaignNode(run, available[seedIndex % available.length].id);
+          continue;
+        }
+        if (run.phase === 'event') {
+          const options = campaignEventOptions(run);
+          expect(options.length, `seed ${seedIndex} evento sin opciones`).toBeGreaterThan(0);
+          run = resolveCampaignEvent(run, options[seedIndex % options.length].id);
+          continue;
+        }
+        if (run.phase === 'camp') {
+          const options = campaignRewardOptions(run);
+          expect(options.length, `seed ${seedIndex} campamento sin recompensa`).toBeGreaterThan(0);
+          run = chooseCampaignReward(run, options[seedIndex % options.length].id);
+          continue;
+        }
+        if (run.phase === 'briefing') {
+          run = markCampaignBriefingAccepted(run);
+          continue;
+        }
+        if (run.phase === 'battle') {
+          run = markCampaignBattleStarted(run);
+          continue;
+        }
+        if (run.phase === 'fighting') {
+          run = markCampaignBattleWon(run);
+          continue;
+        }
+        if (run.phase === 'reward') {
+          const options = campaignRewardOptions(run);
+          expect(options.length, `seed ${seedIndex} victoria sin recompensa`).toBeGreaterThan(0);
+          run = chooseCampaignReward(run, options[seedIndex % options.length].id);
+          continue;
+        }
+        throw new Error(`Fase inesperada ${run.phase} en seed ${seedIndex}`);
+      }
+
+      expect(guard, `seed ${seedIndex} excedió el límite de transiciones`).toBeLessThan(80);
+      expect(run.phase, `seed ${seedIndex} no llegó al boss`).toBe('completed');
+      expect(run.clearedNodeIds).toHaveLength(7);
+      expect(run.route).toHaveLength(8); // base + un sector por etapa
+      const result = endCampaign(run, 'completed');
+      expect(result.reason).toBe('completed');
+      expect(loadCampaign().active).toBe(false);
+    }
+  });
+
+  it('retirada -> briefing -> reintento conserva recursos e inteligencia del mismo sector', () => {
+    let run = startCampaign('retreat-retry-audit');
+    const first = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, first.id);
+    run = purchaseCampaignIntel(run, first.id);
+    const before = {
+      route: [...run.route],
+      credits: run.operationalCredits,
+      intel: { ...run.intelligenceByNode },
+      perks: [...run.perks],
+    };
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    run = markCampaignBattleRetired(run);
+
+    expect(run.phase).toBe('briefing');
+    expect(run.selectedNodeId).toBe(first.id);
+    expect(run.route).toEqual(before.route);
+    expect(run.operationalCredits).toBe(before.credits);
+    expect(run.intelligenceByNode).toEqual(before.intel);
+    expect(run.perks).toEqual(before.perks);
+
+    run = markCampaignBriefingAccepted(run);
+    expect(run.phase).toBe('battle');
+    run = markCampaignBattleStarted(run);
+    expect(run.phase).toBe('fighting');
+    expect(run.selectedNodeId).toBe(first.id);
+  });
+
   it('reset elimina el intento de campaña', () => {
     startCampaign('reset');
     resetCombatCampaign();

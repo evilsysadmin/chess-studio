@@ -1,3 +1,10 @@
+### v16.6dm46t · Mesa adaptable y campaña auditada de extremo a extremo
+
+- Combat usa una única fuente de verdad para el tamaño del tablero: en escritorio se adapta al ancho y alto del viewport y el rail táctico comparte su altura; en tablet/móvil el tablero prioriza el ancho y el rail baja debajo.
+- Se elimina CSS obsoleto de la versión anterior del desafío diario y el contrato arquitectónico valida la estructura actual (`home-today-missions` + rachas) en lugar de markup muerto.
+- La campaña gana una prueba de recorrido completo sobre múltiples seeds: mapa → eventos/campamentos → briefing → combate → recompensa → boss, verificando que no existan estados muertos ni saltos de sector.
+- La regresión retirada → briefing → reintento queda reforzada: mantiene sector, ruta, suministros, inteligencia y ventajas antes de volver a combatir.
+
 ### v16.6dm46s · Combat ocupa su espacio, campaña operable y guitarras sin pitidos
 
 - La síntesis de guitarra estructurada usa ahora Karplus-Strong en buffer finito: conserva ataque/cuerpo de cuerda pero elimina el feedback de DelayNode que podía convertir algunas notas de `Bossa · dama en la terraza` en pitidos sostenidos.

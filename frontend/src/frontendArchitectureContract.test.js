@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const read = (name) => readFileSync(new URL(`./components/${name}`, import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
 const authenticatedAudio = readFileSync(new URL('./useAuthenticatedAudio.js', import.meta.url), 'utf8');
+const productHardeningCss = readFileSync(new URL('./styles/24-product-hardening.css', import.meta.url), 'utf8');
 
 describe('frontend architecture contract', () => {
   it('los modales comunes mantienen semántica de diálogo accesible', () => {
@@ -43,8 +44,13 @@ describe('frontend architecture contract', () => {
     expect(battle).toContain('<MusicPlayer initiallyCollapsed />');
     expect(battle).not.toContain('className="game-music-rail"');
     expect(battle).not.toContain('<MusicPlayer forceExpanded />');
-    expect(menu).toContain('className="home-today-stats"');
-    expect(menu).toContain('<small>Racha</small>');
-    expect(menu).toContain('<small>Mejor</small>');
+    expect(menu).toContain('className="home-today-missions"');
+    expect(menu).toContain('className="home-today-streaks"');
+    expect(menu).toContain('Racha <b>{today.streak || 0}</b>');
+    expect(menu).toContain('Mejor <b>{today.bestStreak || 0}</b>');
+    expect(menu).not.toContain('className="home-today-stats"');
+    expect(productHardeningCss).toContain('--combat-board-size: min(608px, calc(100dvh - 170px), calc(100vw - 420px))');
+    expect(productHardeningCss).toContain('height: var(--combat-board-shell-height)');
+    expect(productHardeningCss).toContain('--combat-board-size: min(608px, calc(100vw - 24px))');
   });
 });

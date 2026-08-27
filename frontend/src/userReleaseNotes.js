@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46t',
+    title: 'Combat encaja en la pantalla y la campaña pasa revista',
+    highlights: [
+      'El tablero de Combat se adapta al viewport en escritorio y comparte altura con el rail táctico; en móvil sigue priorizando el ancho disponible.',
+      'La campaña queda protegida por un recorrido automático completo de múltiples mapas procedurales hasta el boss, además del reintento seguro tras una retirada.',
+      'Se limpia markup/CSS obsoleto del desafío diario que podía romper CI aunque la tarjeta actual fuera correcta.',
+    ],
+  },
+  {
     release: 'v16.6dm46s',
     title: 'Combat vuelve a ocupar la mesa',
     highlights: [
