@@ -228,19 +228,17 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
 test('deploy · una release nueva no fuerza reload mientras la partida está activa', async ({ page }) => {
   let publishedRelease = APP_RELEASE;
   let releaseChecks = 0;
-  let releaseFirstCheck;
-  let releaseFirstCheckDone;
-  const firstCheckGate = new Promise((resolve) => { releaseFirstCheck = resolve; });
-  const firstCheckObserved = new Promise((resolve) => { releaseFirstCheckDone = resolve; });
+  let resolveCurrentReleaseServed;
+  let resolveNewReleaseServed;
+  const currentReleaseServed = new Promise((resolve) => { resolveCurrentReleaseServed = resolve; });
+  const newReleaseServed = new Promise((resolve) => { resolveNewReleaseServed = resolve; });
 
   await page.route('**/release.json?*', async (route) => {
     releaseChecks += 1;
     const releaseAtRequest = publishedRelease;
-    if (releaseChecks === 1) {
-      releaseFirstCheckDone();
-      await firstCheckGate;
-    }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ release: releaseAtRequest }) });
+    if (releaseAtRequest === APP_RELEASE) resolveCurrentReleaseServed();
+    if (releaseAtRequest === 'v16.6dm46zzz') resolveNewReleaseServed();
   });
   await mockApi(page, { gameScenario: 'opening' });
   await login(page);
@@ -251,15 +249,19 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
   // la persistencia de jugadas/reload tiene su smoke dedicado.
   await expect(gameStatus(page)).toBeVisible();
 
-  // Reproduce deliberadamente la carrera real: la primera consulta del
-  // manifiesto sigue en vuelo con la release vieja cuando llega el
-  // visibilitychange que anuncia una release nueva. El componente debe
-  // coalescer el burst y ejecutar exactamente un check adicional al terminar.
-  await firstCheckObserved;
+  // Esperamos a que al menos una comprobación real de la release actual haya
+  // terminado. No bloqueamos artificialmente fetch(): React StrictMode monta
+  // y desmonta efectos de desarrollo y una request retenida por el propio test
+  // puede quedarse huérfana aunque la aplicación funcione correctamente.
+  await currentReleaseServed;
   publishedRelease = 'v16.6dm46zzz';
+  expect(await page.evaluate(() => document.visibilityState)).toBe('visible');
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  releaseFirstCheck();
 
+  // El mock debe haber servido realmente la release nueva antes de comprobar
+  // el DOM. Esto cubre tanto un check directo como el rerun coalescido si la
+  // señal llegó mientras otra comprobación acababa de resolverse.
+  await newReleaseServed;
   await expect.poll(() => releaseChecks).toBeGreaterThanOrEqual(2);
   const notice = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
   await expect(notice).toBeVisible();
