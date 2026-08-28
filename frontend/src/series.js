@@ -1,5 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem, setStorageItem, removeStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { assertSeriesFlowInvariant } from './seriesFlow.js';
 
 const ACTIVE_KEY = 'chess-study-active-series';
 const HISTORY_KEY = 'chess-study-series-history';
@@ -49,11 +50,13 @@ export function validateSeriesState(parsed) {
   if (humanWins > winsNeeded || cpuWins > winsNeeded) return null;
   const winner = humanWins >= winsNeeded ? 'human' : cpuWins >= winsNeeded ? 'cpu' : null;
   if (parsed.winner && parsed.winner !== winner) return null;
-  return {
+  const normalized = {
     ...parsed, bestOf, winsNeeded, humanWins, cpuWins, draws, games,
     nextColor: normalizeColor(parsed.nextColor), winner,
     currentGameId: winner ? null : (parsed.currentGameId || null),
   };
+  try { assertSeriesFlowInvariant(normalized); } catch { return null; }
+  return normalized;
 }
 
 export function loadActiveSeries() {
@@ -104,6 +107,7 @@ function archiveCompletedSeries(series) {
 
 export function recordSeriesGame(series, outcome, meta = {}) {
   if (!series || series.winner) return series;
+  if (series.currentGameId && meta.gameId && series.currentGameId !== meta.gameId) return series;
   if (!['win', 'loss', 'draw'].includes(outcome)) throw new Error(`Resultado de serie inválido: ${outcome}`);
   if (meta.gameId && (series.games || []).some((g) => g.gameId === meta.gameId)) return series;
   const next = {

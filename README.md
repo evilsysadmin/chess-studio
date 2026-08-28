@@ -1,3 +1,11 @@
+### v16.6dm46zer · State & resilience pass
+
+- Formaliza los flujos críticos con máquinas de estado explícitas para restauración/reconexión, Combat, campaña, puzzles y series; las transiciones imposibles se registran como invariantes en vez de convertirse en combinaciones silenciosas de flags.
+- Añade idempotencia real a crear partida, mover y deshacer. Un timeout después de persistir puede reintentarse con la misma operación sin duplicar partidas ni jugadas; creación concurrente usa ID determinista + inserción atómica y move/undo usan CAS + ledger acotado.
+- Introduce un contrato de autoridad por dominio persistente, matriz de fault injection, compatibilidad de saves legacy/futuros, simulación generativa de Combat y un golden journey E2E que cruza onboarding → partida/reload → mate → puzzle → Combat/reload.
+- Reduce deuda CSS sin alterar el look: las tres capas finales de correcciones se consolidan en un único `28-product-resilience.css` con presupuesto de módulos. Añade además presupuestos de tamaño para App, GameScreen, Combat controller y game_api: crecer exige extraer dominio, no seguir engordando orquestadores.
+- Separa los helpers puros de transición de la telemetría, y extrae la política backend de idempotencia de `game_api.py`. El preflight puede ejecutar 10.000 transiciones Combat sin React, storage ni `chess.js`.
+
 ### v16.6dm46zeq · Retos, Tempo y geometría de producto
 
 - Renombra los objetivos opcionales de partida visibles como **Retos** y los explica en onboarding/FAQ; el chat usa `Pronóstico de partida` y `Reto de partida` en lugar de combinaciones de etiquetas raras.

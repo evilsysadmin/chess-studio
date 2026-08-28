@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { loadActiveGameSession } from './activeGameSession.js';
 import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
 import { SAVE_STATUS } from './saveStatus.js';
+import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } from './activeSessionMachine.js';
+import { reportStateInvariant } from './stateMachine.js';
 
 export function shouldAttemptReconnect({ inFlight, reconnectNeeded, saveState }) {
   if (inFlight) return false;
@@ -44,6 +46,18 @@ export function useGameReconnect({
   const reconnectOfflineGeneration = useRef(0);
   const reconnectAbortRef = useRef(null);
   const attemptReconnectRef = useRef(null);
+  const reconnectMachineRef = useRef(ACTIVE_SESSION_STATE.ACTIVE);
+
+  function advanceReconnect(event, target = null) {
+    const current = reconnectMachineRef.current;
+    const result = activeSessionTransition(current, event);
+    if (!result.ok) {
+      reportStateInvariant('game-reconnect', 'invalid-transition', { state: current, event, route: target?.route || routeRef.current });
+      return current;
+    }
+    reconnectMachineRef.current = result.nextState;
+    return result.nextState;
+  }
 
   routeRef.current = route;
   gameRef.current = game;
@@ -72,6 +86,7 @@ export function useGameReconnect({
         return;
       }
 
+      advanceReconnect(ACTIVE_SESSION_EVENT.RECONNECT, target);
       reconnectInFlight.current = true;
       const offlineGenerationAtStart = reconnectOfflineGeneration.current;
       const controller = new AbortController();
@@ -97,6 +112,7 @@ export function useGameReconnect({
       }
 
       if (result.ok) {
+        advanceReconnect(ACTIVE_SESSION_EVENT.RECONNECTED, target);
         if (target.route === 'tournamentGame') callbacksRef.current.onTournamentGame?.(result.game);
         else callbacksRef.current.onGame?.(result.game);
         callbacksRef.current.onError?.(null);
@@ -107,6 +123,7 @@ export function useGameReconnect({
         });
         // El snapshot de sesión activa marca SAVED cuando la respuesta reconciliada queda persistida.
       } else {
+        advanceReconnect(ACTIVE_SESSION_EVENT.TRANSIENT_FAILURE, target);
         callbacksRef.current.onPersistenceState?.(SAVE_STATUS.ERROR);
         callbacksRef.current.onError?.('La conexión volvió, pero todavía no se pudo resincronizar la partida. La última posición confirmada sigue intacta.');
       }

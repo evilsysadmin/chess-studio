@@ -28,6 +28,24 @@ describe('continuidad de partida activa', () => {
     expect(loadActiveGameSession()).toMatchObject({ route: 'tournamentGame', gameId: 't-9' });
   });
 
+
+  it('abre snapshots v1 de releases antiguas y rechaza versiones futuras sin reinterpretarlas', () => {
+    localStorage.setItem(ACTIVE_GAME_SESSION_KEY, JSON.stringify({
+      version: 1,
+      route: 'game',
+      gameId: 'legacy-g1',
+      learningMode: false,
+      gameContext: { runMode: 'streak' },
+      timeControlId: 'none',
+      savedAt: 1700000000000,
+    }));
+    expect(loadActiveGameSession()).toMatchObject({ gameId: 'legacy-g1', route: 'game', gameContext: { runMode: 'streak' } });
+
+    localStorage.setItem(ACTIVE_GAME_SESSION_KEY, JSON.stringify({ version: 999, route: 'game', gameId: 'future-g1' }));
+    expect(loadActiveGameSession()).toBeNull();
+    expect(localStorage.getItem(ACTIVE_GAME_SESSION_KEY)).toContain('future-g1');
+  });
+
   it('se elimina también al cambiar de identidad', () => {
     saveActiveGameSession({ route: 'game', game: { id: 'alice-game', history: [] } });
     clearLocalUserState();

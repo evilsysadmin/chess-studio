@@ -27,7 +27,7 @@ export function frontendTelemetryPayload(eventType, details = {}) {
       payload.value = Math.round(value * 1000) / 1000;
     }
   }
-  if (eventType === 'frontend_error' || eventType === 'unhandled_rejection') {
+  if (eventType === 'frontend_error' || eventType === 'unhandled_rejection' || eventType === 'state_invariant') {
     payload.errorName = String(details.errorName || 'Error').replace(/[^A-Za-z0-9_.:-]/g, '').slice(0, 80) || 'Error';
   }
   return payload;

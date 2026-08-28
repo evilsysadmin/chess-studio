@@ -3,6 +3,19 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 import { perkById, rewardOptionsForFloor } from './roguelikePerks.js';
 import { ROGUELIKE_MODIFIERS, seededUnit } from './roguelikeModifiers.js';
 import { campaignBossForSeed } from './combatBosses.js';
+import { campaignPhaseTransition, assertCampaignInvariant } from './campaignStateMachine.js';
+import { reportStateInvariant } from './stateMachine.js';
+
+
+function nextCampaignPhase(state, event) {
+  const current = state?.phase || 'idle';
+  const result = campaignPhaseTransition(current, event);
+  if (!result.ok) {
+    reportStateInvariant('combat-campaign', 'invalid-transition', { state: current, event, phase: current });
+    return current;
+  }
+  return result.nextState;
+}
 
 // Combat Chess · campaña procedural v3 (mapa estratégico + intel + reliquias operativas).
 //
@@ -145,7 +158,7 @@ export function campaignIntelBriefing(state, node = campaignNode(state)) {
 export function markCampaignBriefingAccepted(state) {
   const node = campaignNode(state);
   if (!state?.active || state.phase !== 'briefing' || !node || !['battle', 'elite', 'boss'].includes(node.type)) return state;
-  return saveCampaign({ ...state, phase: 'battle' });
+  return saveCampaign({ ...state, phase: nextCampaignPhase(state, 'prepare') });
 }
 
 
@@ -395,6 +408,11 @@ function normalizeCampaign(raw) {
 
 function saveCampaign(state) {
   const normalized = normalizeCampaign(state);
+  try {
+    assertCampaignInvariant(normalized, campaignNode(normalized));
+  } catch {
+    reportStateInvariant('combat-campaign', 'broken-invariant', { state: normalized.phase, phase: normalized.phase });
+  }
   setProfileStorageItem(KEY, JSON.stringify(normalized));
   return normalized;
 }
@@ -409,7 +427,8 @@ export function loadCampaign() {
 }
 
 export function startCampaign(seed = makeSeed()) {
-  return saveCampaign({ ...emptyCampaign(), active: true, seed: String(seed), phase: 'map' });
+  const base = { ...emptyCampaign(), active: true, seed: String(seed) };
+  return saveCampaign({ ...base, phase: nextCampaignPhase(base, 'start') });
 }
 
 export function campaignNode(state, nodeId = state?.selectedNodeId) {
@@ -431,7 +450,8 @@ export function selectCampaignNode(state, nodeId) {
   const available = availableCampaignNodes(state);
   const node = available.find((candidate) => candidate.id === nodeId);
   if (!node) return state;
-  const phase = node.type === 'event' ? 'event' : node.type === 'camp' ? 'camp' : 'briefing';
+  const phaseEvent = node.type === 'event' ? 'select_event' : node.type === 'camp' ? 'select_camp' : 'select_battle';
+  const phase = nextCampaignPhase(state, phaseEvent);
   const intelligenceByNode = { ...(state.intelligenceByNode || {}) };
   if (hasRelic(state, 'forwardObserver') && ['battle', 'elite', 'boss'].includes(node.type)) {
     intelligenceByNode[node.id] = Math.max(1, clampIntelLevel(intelligenceByNode[node.id]));
@@ -442,7 +462,7 @@ export function selectCampaignNode(state, nodeId) {
 export function markCampaignBattleStarted(state) {
   const node = campaignNode(state);
   if (!state?.active || state.phase !== 'battle' || !node || !['battle', 'elite', 'boss'].includes(node.type)) return state;
-  return saveCampaign({ ...state, phase: 'fighting' });
+  return saveCampaign({ ...state, phase: nextCampaignPhase(state, 'fight') });
 }
 
 function markNodeCleared(state, extras = {}) {
@@ -471,7 +491,7 @@ export function markCampaignBattleRetired(state) {
   // de verdad suficiente para volver al briefing del mismo sector.
   return saveCampaign({
     ...state,
-    phase: 'briefing',
+    phase: nextCampaignPhase(state, 'retire'),
     eventLog: [
       ...(state.eventLog || []),
       `Retirada táctica en ${node?.label || state.selectedNodeId}: el sector sigue pendiente y puede reintentarse`,
@@ -490,7 +510,7 @@ function resumableCampaignState(state) {
   return normalizeCampaign({
     ...state,
     active: true,
-    phase: canRetrySelectedBattle ? 'briefing' : 'map',
+    phase: canRetrySelectedBattle ? nextCampaignPhase(state, 'recover') : 'map',
     selectedNodeId: canRetrySelectedBattle ? selected.id : null,
     eventLog: [
       ...(state.eventLog || []),
@@ -529,11 +549,11 @@ export function markCampaignBattleWon(state) {
     const bestFloor = Math.max(10, Number.parseInt(getStorageItem(STORAGE_LOCAL, BEST_FLOOR_KEY) || '0', 10) || 0);
     setProfileStorageItem(BEST_FLOOR_KEY, String(bestFloor));
     setProfileStorageItem(BEST_STAGE_KEY, String(CAMPAIGN_BOSS_STAGE));
-    return markNodeCleared(credited, { phase: 'completed', nextDifficultyDelta: 0 });
+    return markNodeCleared(credited, { phase: nextCampaignPhase(state, 'win_boss'), nextDifficultyDelta: 0 });
   }
   const best = Math.max(loadCampaignBestStage(), node.stage);
   setProfileStorageItem(BEST_STAGE_KEY, String(best));
-  return saveCampaign({ ...credited, phase: 'reward', nextDifficultyDelta: 0 });
+  return saveCampaign({ ...credited, phase: nextCampaignPhase(state, 'win'), nextDifficultyDelta: 0 });
 }
 
 export function campaignRewardOptions(state) {
@@ -556,7 +576,7 @@ export function chooseCampaignReward(state, perkId) {
     rewardChosenForNode: node.id,
     operationalCredits: (Number(state.operationalCredits) || 0) + campCredits,
   }, {
-    phase: 'map',
+    phase: nextCampaignPhase(state, 'reward'),
     eventLog: [...(state.eventLog || []), `${label}${campCredits ? ` · +${campCredits} créditos de retaguardia` : ''}`].slice(-30),
   });
 }
@@ -625,7 +645,7 @@ export function resolveCampaignEvent(state, choiceId) {
     relicIds,
     operationalCredits: (Number(state.operationalCredits) || 0) + credits,
   }, {
-    phase: 'map',
+    phase: nextCampaignPhase(state, 'resolve'),
     nextDifficultyDelta: Math.max(-12, Math.min(12, (state.nextDifficultyDelta || 0) + delta)),
     eventLog: [...(state.eventLog || []), rewardBits.join(' · ')].slice(-30),
   });

@@ -46,6 +46,7 @@ import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
 import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
+import { attachSeriesGame } from './seriesFlow.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
 import SharedResultScreen from './components/SharedResultScreen.jsx';
 import { shareRecordFromHash } from './shareResult.js';
@@ -75,6 +76,9 @@ import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendT
 import { APP_RELEASE } from './release.js';
 import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { createOperationId, operationFingerprint } from './operationId.js';
+import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } from './activeSessionMachine.js';
+import { reportStateInvariant } from './stateMachine.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -185,12 +189,21 @@ function AppInner({ isAdminUser }) {
   // Exclusión + identidad para lanzamientos de partida. `loading` cambia
   // tras un render y no basta contra doble clic ni contra una respuesta tardía
   // si el usuario navega mientras POST /games sigue en vuelo.
-  const gameLaunchRef = useRef(null); // { token, controller, originView }
+  const gameLaunchRef = useRef(null); // { token, controller, originView, operationId? }
+  const gameLaunchRetryRef = useRef(null); // conserva Idempotency-Key tras timeout/503 para reintentar sin duplicar partidas
+  const gameLaunchMachineRef = useRef(ACTIVE_SESSION_STATE.IDLE);
   const currentViewRef = useRef(view);
   currentViewRef.current = view;
 
   function beginGameLaunch() {
     if (gameLaunchRef.current) return null;
+    const current = gameLaunchMachineRef.current;
+    const transition = activeSessionTransition(current, ACTIVE_SESSION_EVENT.CREATE);
+    if (!transition.ok) {
+      reportStateInvariant('game-launch', 'invalid-transition', { state: current, event: ACTIVE_SESSION_EVENT.CREATE, route: currentViewRef.current });
+      return null;
+    }
+    gameLaunchMachineRef.current = transition.nextState;
     const launch = { token: Symbol('game-launch'), controller: new AbortController(), originView: currentViewRef.current };
     gameLaunchRef.current = launch;
     return launch;
@@ -200,21 +213,54 @@ function AppInner({ isAdminUser }) {
     return !!launch && gameLaunchRef.current === launch && !launch.controller.signal.aborted && currentViewRef.current === launch.originView;
   }
 
-  function endGameLaunch(launch) {
+  function gameLaunchOperationId(launch, parts) {
+    if (!launch) return null;
+    const fingerprint = operationFingerprint(parts);
+    if (launch.operationId && launch.operationFingerprint === fingerprint) return launch.operationId;
+    const retry = gameLaunchRetryRef.current;
+    const reusable = retry && retry.fingerprint === fingerprint && (Date.now() - retry.failedAt) < 5 * 60_000;
+    const operationId = reusable ? retry.operationId : createOperationId('create');
+    launch.operationId = operationId;
+    launch.operationFingerprint = fingerprint;
+    gameLaunchRetryRef.current = { fingerprint, operationId, failedAt: Date.now() };
+    return operationId;
+  }
+
+  function confirmGameLaunchCreated(launch) {
+    if (launch?.operationId && gameLaunchRetryRef.current?.operationId === launch.operationId) gameLaunchRetryRef.current = null;
+    const result = activeSessionTransition(gameLaunchMachineRef.current, ACTIVE_SESSION_EVENT.CREATED);
+    if (result.ok) gameLaunchMachineRef.current = result.nextState;
+    else reportStateInvariant('game-launch', 'invalid-created-transition', { state: gameLaunchMachineRef.current, event: ACTIVE_SESSION_EVENT.CREATED, route: currentViewRef.current });
+  }
+
+  function endGameLaunch(launch, { cancelled = false } = {}) {
     if (gameLaunchRef.current === launch) gameLaunchRef.current = null;
+    const current = gameLaunchMachineRef.current;
+    if (cancelled && [ACTIVE_SESSION_STATE.CREATING, ACTIVE_SESSION_STATE.ACTIVE].includes(current)) {
+      const result = activeSessionTransition(current, ACTIVE_SESSION_EVENT.CANCEL_CREATE);
+      if (result.ok) gameLaunchMachineRef.current = result.nextState;
+      else reportStateInvariant('game-launch', 'invalid-cancel-transition', { state: current, event: ACTIVE_SESSION_EVENT.CANCEL_CREATE, route: currentViewRef.current });
+      return;
+    }
+    if (!cancelled && current === ACTIVE_SESSION_STATE.CREATING) {
+      const result = activeSessionTransition(current, ACTIVE_SESSION_EVENT.CREATE_FAILURE);
+      if (result.ok) gameLaunchMachineRef.current = result.nextState;
+      else reportStateInvariant('game-launch', 'invalid-failure-transition', { state: current, event: ACTIVE_SESSION_EVENT.CREATE_FAILURE, route: currentViewRef.current });
+    }
   }
 
   useEffect(() => {
     const launch = gameLaunchRef.current;
     if (!launch || launch.originView === view) return;
     launch.controller.abort(new DOMException('Game launch view changed', 'AbortError'));
-    if (gameLaunchRef.current === launch) gameLaunchRef.current = null;
+    endGameLaunch(launch, { cancelled: true });
     setLoading(false);
   }, [view]);
 
   useEffect(() => () => {
-    gameLaunchRef.current?.controller?.abort(new DOMException('App unmounted', 'AbortError'));
-    gameLaunchRef.current = null;
+    const launch = gameLaunchRef.current;
+    launch?.controller?.abort(new DOMException('App unmounted', 'AbortError'));
+    if (launch) endGameLaunch(launch, { cancelled: true });
   }, []);
 
   useProfileSyncLifecycle(view);
@@ -353,8 +399,10 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       const handicap = handicapForGap(rating.rating, difficulty);
-      const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null, { signal: launch.controller.signal });
+      const operationId = gameLaunchOperationId(launch, [difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null]);
+      const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
+      confirmGameLaunchCreated(launch);
       const isLearning = !!opts?.learning;
       const nextContext = { rematch: !!opts?.rematch, adaptiveDifficulty: !!opts?.adaptiveDifficulty, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null };
       setLearningMode(isLearning);
@@ -373,7 +421,7 @@ function AppInner({ isAdminUser }) {
           firstColor: created.humanColor,
           timeControlId: opts?.timeControlId || 'none',
         });
-        const withGame = { ...series, currentGameId: created.id };
+        const withGame = attachSeriesGame(series, created.id);
         saveActiveSeries(withGame);
         setActiveSeries(withGame);
       } else {
@@ -540,10 +588,12 @@ function AppInner({ isAdminUser }) {
       // la siguiente. Si DELETE se atasca, la serie no debe parecer congelada.
       if (game?.id) void api.deleteGame(game.id).catch(() => {});
       const handicap = handicapForGap(rating.rating, activeSeries.difficulty);
-      const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null, { signal: launch.controller.signal });
+      const operationId = gameLaunchOperationId(launch, [activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null]);
+      const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      confirmGameLaunchCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual' });
-      const updatedSeries = { ...activeSeries, currentGameId: created.id };
+      const updatedSeries = attachSeriesGame(activeSeries, created.id);
       saveActiveSeries(updatedSeries);
       setActiveSeries(updatedSeries);
       setLearningMode(false);
@@ -589,8 +639,10 @@ function AppInner({ isAdminUser }) {
     setLoading(true);
     setError(null);
     try {
-      const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen, null, { signal: launch.controller.signal });
+      const operationId = gameLaunchOperationId(launch, [difficulty || 50, humanColor || 'w', null, fen, null]);
+      const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      confirmGameLaunchCreated(launch);
       const nextContext = { lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null };
       recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: true, gameContext: nextContext }) });
       clearActiveSeries();
@@ -625,8 +677,10 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       if (game?.id) void api.deleteGame(game.id).catch(() => {});
-      const created = await api.createGame(run.difficulty, 'random', null, null, null, { signal: launch.controller.signal });
+      const operationId = gameLaunchOperationId(launch, [run.difficulty, 'random', null, null, null]);
+      const created = await api.createGame(run.difficulty, 'random', null, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
+      confirmGameLaunchCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: run.mode || 'streak' });
       clearActiveSeries();
       setActiveSeries(null);
@@ -666,8 +720,10 @@ function AppInner({ isAdminUser }) {
     try {
       const level = levelForPoints(tournament.progressPoints || 0);
       const cpuDifficulty = difficultyForLevel(level);
-      const created = await api.createGame(cpuDifficulty, color, null, null, null, { signal: launch.controller.signal });
+      const operationId = gameLaunchOperationId(launch, [cpuDifficulty, color, null, null, null]);
+      const created = await api.createGame(cpuDifficulty, color, null, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      confirmGameLaunchCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament' });
       setTournamentGame(created);
       navigateTo('tournamentGame');

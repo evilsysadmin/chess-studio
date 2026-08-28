@@ -9,10 +9,10 @@ export const api = {
   getFeatures() {
     return requestJson(`${BASE_URL}/features`, { headers: { ...authHeader() } });
   },
-  createGame(difficulty, color = 'w', handicap = null, startingFen = null, ghostStyle = null, { signal } = {}) {
+  createGame(difficulty, color = 'w', handicap = null, startingFen = null, ghostStyle = null, { signal, operationId = null } = {}) {
     return requestJson(`${BASE_URL}/games`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      headers: { 'Content-Type': 'application/json', ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() },
       body: JSON.stringify({ difficulty, color, handicap, startingFen, ghostStyle }),
       signal,
     }).then((payload) => requireGamePayload(payload));
@@ -24,8 +24,8 @@ export const api = {
   getHint(id, { signal } = {}) {
     return requestJson(`${BASE_URL}/games/${id}/hint`, { headers: { ...authHeader() }, signal });
   },
-  undoMove(id, { signal } = {}) {
-    return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...authHeader() }, signal })
+  undoMove(id, { signal, operationId = null } = {}) {
+    return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() }, signal })
       .then((payload) => requireGamePayload(payload, id));
   },
   analyzePosition(fen, level, { signal } = {}) {
@@ -46,10 +46,10 @@ export const api = {
       signal,
     });
   },
-  playMove(id, from, to, promotion, { signal } = {}) {
+  playMove(id, from, to, promotion, { signal, operationId = null } = {}) {
     return requestJson(`${BASE_URL}/games/${id}/move`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      headers: { 'Content-Type': 'application/json', ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() },
       body: JSON.stringify({ from, to, promotion }),
       signal,
     }).then((payload) => requireGamePayload(payload, id));

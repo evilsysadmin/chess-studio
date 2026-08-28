@@ -17,6 +17,8 @@ import { canInteractWithPuzzle, canProtectPuzzleStreak, wrongPuzzleAttemptState 
 import { buildPuzzleReveal } from '../puzzleReveal.js';
 import { chessFromFen } from '../chessRules.js';
 import PromotionModal from './PromotionModal.jsx';
+import { PUZZLE_STATE, puzzleTransition } from '../puzzleStateMachine.js';
+import { reportStateInvariant } from '../stateMachine.js';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Tu crimen' };
 const RECENT_CURATED_LIMIT = 5;
@@ -40,6 +42,18 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const [stepIndex, setStepIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [status, setStatus] = useState('playing'); // 'playing' | 'solved' | 'revealed'
+  const puzzleMachineRef = useRef(PUZZLE_STATE.SOLVING);
+
+  function advancePuzzleState(event) {
+    const current = puzzleMachineRef.current;
+    const result = puzzleTransition(current, event);
+    if (!result.ok) {
+      reportStateInvariant('puzzle-flow', 'invalid-transition', { state: current, event });
+      return current;
+    }
+    puzzleMachineRef.current = result.nextState;
+    return result.nextState;
+  }
   const [feedback, setFeedback] = useState(null);
   const [solvedCount, setSolvedCount] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -72,6 +86,8 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
   useEffect(() => {
     puzzleGenerationRef.current += 1;
+    puzzleMachineRef.current = PUZZLE_STATE.LOADING;
+    advancePuzzleState('ready');
     if (replyTimeout.current) { clearTimeout(replyTimeout.current); replyTimeout.current = null; }
     if (rushNextTimeout.current) { clearTimeout(rushNextTimeout.current); rushNextTimeout.current = null; }
     setFen(puzzle.fen);
@@ -213,6 +229,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       setBusy(false);
       setSelected(null);
       setFeedback('Este ejercicio contiene una posición inválida. Pasa al siguiente; no cuenta como fallo.');
+      advancePuzzleState('load_error');
       setStatus('revealed');
       return;
     }
@@ -227,6 +244,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
     const expected = puzzle.solution[stepIndex];
     if (!matchesExpectedPuzzleMove(fen, expected, move)) {
+      advancePuzzleState('wrong');
       setPersonalHadError(true);
       if (rushMode) {
         setFeedback('Incorrecta. Siguiente caso: el reloj no negocia.');
@@ -266,6 +284,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
 
     const nextIndex = stepIndex + 1;
     if (nextIndex >= puzzle.solution.length) {
+      advancePuzzleState('correct_done');
       setRetryOffer(false);
       setStatus('solved');
       setSolvedCount((n) => n + 1);
@@ -300,6 +319,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     }
 
     // Hay una respuesta forzada del rival antes de que vuelva a ser tu turno.
+    advancePuzzleState('correct_continue');
     setBusy(true);
     const replySan = puzzle.solution[nextIndex];
     const generation = puzzleGenerationRef.current;
@@ -313,12 +333,14 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
         // pasar al siguiente sin penalizar al jugador.
         setFen(revealGuide.displayFen || puzzle.fen);
         setStepIndex(puzzle.solution.length);
+        advancePuzzleState('reply_error');
         setStatus('revealed');
         setFeedback('Este ejercicio tenía una respuesta inválida. Lo hemos detenido sin contarlo como fallo; pasa al siguiente.');
         setRetryOffer(false);
         setBusy(false);
         return;
       }
+      advancePuzzleState('replied');
       setFen(reply.fen);
       playMoveSound();
       setStepIndex(nextIndex + 1);
@@ -361,6 +383,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
     // Mismo lenguaje que Replay/Autopsia: posición tras la jugada realizada,
     // origen y destino rojos (con pieza fantasma en origen), y alternativa
     // del motor encuadrada en azul sobre esas mismas coordenadas.
+    advancePuzzleState('reveal');
     setFen(revealGuide.displayFen);
     setStepIndex(puzzle.solution.length);
     setStatus('revealed');

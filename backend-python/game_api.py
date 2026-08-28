@@ -8,7 +8,6 @@ from __future__ import annotations
 import math
 import logging
 import random
-import uuid
 from typing import Optional
 
 import chess
@@ -20,6 +19,15 @@ from chess_ai import analyze_move as ai_analyze_move
 from shadow_evaluation import maybe_schedule_move_shadow
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 from chess_core import HANDICAP_SQUARES, apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
+
+from operation_idempotency import (
+    deterministic_game_id,
+    idempotency_key,
+    model_fingerprint,
+    operation_fingerprint,
+    operation_replay,
+    remember_operation,
+)
 
 HINT_STRENGTH = 95
 MATE_SCORE_SENTINEL = 100000.0
@@ -105,7 +113,7 @@ def compute_engine_move_or_fallback(board: chess.Board, difficulty: float, ghost
 def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_valid_api_key, api_key_bucket) -> APIRouter:
     router = APIRouter()
     @router.post("/api/games", status_code=201)
-    async def create_game(body: NewGameRequest, username: str = Depends(auth_dependency)):
+    async def create_game(request: Request, body: NewGameRequest, username: str = Depends(auth_dependency)):
         if not is_valid_difficulty(body.difficulty):
             raise HTTPException(400, "Dificultad inválida. Tiene que ser un número entre 0 y 100.")
         if body.color not in ("w", "b", "random"):
@@ -113,7 +121,17 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         if body.handicap is not None and body.handicap not in HANDICAP_SQUARES:
             raise HTTPException(400, "Hándicap inválido.")
 
-        game_id = str(uuid.uuid4())
+        op_key = idempotency_key(request)
+        create_fingerprint = model_fingerprint(body)
+        game_id = deterministic_game_id(username, op_key) if op_key else str(uuid.uuid4())
+        if op_key:
+            existing = await store.get_game(game_id)
+            if existing is not None:
+                marker = existing.get("createOperation") or {}
+                if marker.get("key") != op_key or marker.get("fingerprint") != create_fingerprint:
+                    raise HTTPException(409, "La operación de creación ya existe con otros parámetros.")
+                return serialize_game(game_id, existing, load_stored_game_board(existing))
+
         human_color = resolve_human_color(body.color)
         cpu_color = "b" if human_color == "w" else "w"
         rounded_difficulty = round(float(body.difficulty))
@@ -160,8 +178,17 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             "initialFen": initial_fen,
             "lastMove": last_move,
             "ghostStyle": ghost_style,
+            "createOperation": {"key": op_key, "fingerprint": create_fingerprint} if op_key else None,
         }
-        await store.create_game(game_id, entry)
+        if op_key:
+            persisted, created = await store.create_game_once(game_id, entry)
+            if not created:
+                marker = persisted.get("createOperation") or {}
+                if marker.get("key") != op_key or marker.get("fingerprint") != create_fingerprint:
+                    raise HTTPException(409, "La operación de creación ya existe con otros parámetros.")
+                return serialize_game(game_id, persisted, load_stored_game_board(persisted))
+        else:
+            await store.create_game(game_id, entry)
         return serialize_game(game_id, entry, board)
 
 
@@ -189,8 +216,12 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
 
 
     @router.post("/api/games/{game_id}/undo")
-    async def undo(game_id: str, username: str = Depends(auth_dependency)):
+    async def undo(game_id: str, request: Request, username: str = Depends(auth_dependency)):
         entry = await get_owned_game(game_id, username)
+        op_key = idempotency_key(request)
+        op_fingerprint = operation_fingerprint({"gameId": game_id, "kind": "undo"})
+        if operation_replay(entry, op_key, op_fingerprint, "undo"):
+            return serialize_game(game_id, entry, load_stored_game_board(entry))
         expected_moves = list(entry.get('moves') or [])
         board = load_stored_game_board(entry)
 
@@ -233,7 +264,11 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             }
 
         entry["moves"] = remaining_sans
+        remember_operation(entry, op_key, op_fingerprint, "undo")
         if not await store.update_game_if_moves(game_id, entry, expected_moves):
+            latest = await get_owned_game(game_id, username)
+            if operation_replay(latest, op_key, op_fingerprint, "undo"):
+                return serialize_game(game_id, latest, load_stored_game_board(latest))
             raise HTTPException(409, "La partida cambió mientras deshacías. Recarga el estado y vuelve a intentarlo.")
         return serialize_game(game_id, entry, board)
 
@@ -323,8 +358,12 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
 
 
     @router.post("/api/games/{game_id}/move")
-    async def play_move(game_id: str, body: MoveRequest, username: str = Depends(auth_dependency)):
+    async def play_move(game_id: str, request: Request, body: MoveRequest, username: str = Depends(auth_dependency)):
         entry = await get_owned_game(game_id, username)
+        op_key = idempotency_key(request)
+        op_fingerprint = model_fingerprint(body)
+        if operation_replay(entry, op_key, op_fingerprint, "move"):
+            return serialize_game(game_id, entry, load_stored_game_board(entry))
         expected_moves = list(entry.get('moves') or [])
         board = load_stored_game_board(entry)
 
@@ -370,7 +409,11 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
 
         cpu_color_for_move = "b" if entry["humanColor"] == "w" else "w"
         entry["moves"] = board_sans(board, entry.get("handicap"), cpu_color_for_move, entry.get("initialFen"))
+        remember_operation(entry, op_key, op_fingerprint, "move")
         if not await store.update_game_if_moves(game_id, entry, expected_moves):
+            latest = await get_owned_game(game_id, username)
+            if operation_replay(latest, op_key, op_fingerprint, "move"):
+                return serialize_game(game_id, latest, load_stored_game_board(latest))
             raise HTTPException(409, "La partida cambió mientras se procesaba la jugada. Recarga el estado antes de mover otra vez.")
         return serialize_game(game_id, entry, board)
 

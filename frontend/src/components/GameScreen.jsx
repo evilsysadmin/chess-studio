@@ -36,6 +36,7 @@ import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 import { gameStatusView } from '../gameStatusView.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { chessFromFen, safeChessMove } from '../chessRules.js';
+import { createOperationId, operationFingerprint } from '../operationId.js';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -138,6 +139,20 @@ export default function GameScreen({
   const controlResolveRef = useRef(null);
   const sessionGenerationRef = useRef(0);
   const mutationRef = useRef(null); // { token, controller, session } · move/undo excluyentes
+  const mutationRetryRef = useRef(null); // conserva Idempotency-Key tras timeout para que reintentar no duplique la mutación
+
+  function mutationOperationId(kind, parts) {
+    const fingerprint = operationFingerprint([kind, ...parts]);
+    const retry = mutationRetryRef.current;
+    if (retry && retry.fingerprint === fingerprint && (Date.now() - retry.failedAt) < 5 * 60_000) return retry.operationId;
+    const operationId = createOperationId(kind);
+    mutationRetryRef.current = { fingerprint, operationId, failedAt: Date.now() };
+    return operationId;
+  }
+
+  function confirmMutation(operationId) {
+    if (operationId && mutationRetryRef.current?.operationId === operationId) mutationRetryRef.current = null;
+  }
   const hintRequestRef = useRef(null);
   const pressureMovesRef = useRef(0);
   const pressureIncidentsRef = useRef(0);
@@ -187,6 +202,7 @@ export default function GameScreen({
     sessionGenerationRef.current += 1;
     mutationRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
     mutationRef.current = null;
+    mutationRetryRef.current = null;
     hintRequestRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
     hintRequestRef.current = null;
     if (controlResolveRef.current) {
@@ -533,7 +549,10 @@ export default function GameScreen({
     const minThink = abortableDelay(MIN_CPU_THINK_MS, controller.signal);
 
     try {
-      const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion, { signal: controller.signal }), minThink]);
+      const operationId = mutationOperationId('move', [game.id, from, to, promotion || 'q']);
+      operation.operationId = operationId;
+      const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion, { signal: controller.signal, operationId }), minThink]);
+      confirmMutation(operationId);
       if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
 
       // Sólo una jugada confirmada por el backend puede conceder incremento o
@@ -700,7 +719,10 @@ export default function GameScreen({
     setTurnBanner(null);
     setCpuComment(null);
     try {
-      const updated = await api.undoMove(game.id, { signal: controller.signal });
+      const operationId = mutationOperationId('undo', [game.id, game.history.length]);
+      operation.operationId = operationId;
+      const updated = await api.undoMove(game.id, { signal: controller.signal, operationId });
+      confirmMutation(operationId);
       if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
       setGame(updated);
       setBoardFen(updated.fen);

@@ -61,10 +61,13 @@ export async function mockApi(page, {
   isAdmin = false,
   gameGetFailures = 0,
   gameCreateFailures = 0,
+  gameCreateCommitThenFailures = 0,
+  moveCommitThenFailures = 0,
   gameScenario = 'opening',
   profileSeed = {},
   initialFeedback = [],
   analysisMoves = [],
+  requestLog = [],
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -88,8 +91,12 @@ export async function mockApi(page, {
   let nextFeedbackId = 1;
   let remainingGameGetFailures = Math.max(0, Number(gameGetFailures || 0));
   let remainingGameCreateFailures = Math.max(0, Number(gameCreateFailures || 0));
+  let remainingGameCreateCommitThenFailures = Math.max(0, Number(gameCreateCommitThenFailures || 0));
+  let remainingMoveCommitThenFailures = Math.max(0, Number(moveCommitThenFailures || 0));
   let analysisIndex = 0;
   const games = new Map();
+  const idempotentCreates = new Map();
+  const idempotentMoves = new Map();
   let feedback = initialFeedback.map((item, index) => ({
     id: item.id || `e2e-feedback-${index + 1}`,
     username: item.username || 'e2e',
@@ -107,6 +114,8 @@ export async function mockApi(page, {
     const url = new URL(route.request().url());
     const path = url.pathname;
     const method = route.request().method();
+    const headers = route.request().headers();
+    requestLog.push({ method, path, idempotencyKey: headers['idempotency-key'] || null });
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
     if (path.endsWith('/auth/login') && method === 'POST') return json({ token: 'e2e-token', username: 'e2e' });
@@ -210,6 +219,8 @@ export async function mockApi(page, {
       return move ? json(move) : json({ detail: 'E2E sin jugada de análisis preparada' }, 503);
     }
     if (path.endsWith('/games') && method === 'POST') {
+      const operationKey = headers['idempotency-key'] || null;
+      if (operationKey && idempotentCreates.has(operationKey)) return json(idempotentCreates.get(operationKey), 201);
       if (remainingGameCreateFailures > 0) {
         remainingGameCreateFailures -= 1;
         return json({ detail: 'Servicio temporalmente no disponible' }, 503);
@@ -232,16 +243,29 @@ export async function mockApi(page, {
         ghostStyle: payload.ghostStyle || null,
       };
       games.set(id, game);
+      if (operationKey) idempotentCreates.set(operationKey, game);
+      if (remainingGameCreateCommitThenFailures > 0) {
+        remainingGameCreateCommitThenFailures -= 1;
+        return json({ detail: 'Respuesta perdida tras persistir la partida' }, 503);
+      }
       return json(game, 201);
     }
     const moveMatch = path.match(/\/games\/([^/]+)\/move$/);
     if (moveMatch && method === 'POST') {
       const id = moveMatch[1];
+      const operationKey = headers['idempotency-key'] || null;
+      const replayKey = operationKey ? `${id}:${operationKey}` : null;
+      if (replayKey && idempotentMoves.has(replayKey)) return json(idempotentMoves.get(replayKey));
       const game = games.get(id);
       if (!game) return json({ detail: 'Partida no encontrada' }, 404);
       try {
         const updated = scenarioMoveResult(game, route.request().postDataJSON?.() ?? {}, gameScenario);
         games.set(id, updated);
+        if (replayKey) idempotentMoves.set(replayKey, updated);
+        if (remainingMoveCommitThenFailures > 0) {
+          remainingMoveCommitThenFailures -= 1;
+          return json({ detail: 'Respuesta perdida tras persistir la jugada' }, 503);
+        }
         return json(updated);
       } catch (error) {
         return json({ detail: error.message }, 400);

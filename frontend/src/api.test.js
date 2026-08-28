@@ -87,4 +87,21 @@ describe('trazabilidad de usuario en llamadas de juego', () => {
     global.fetch.mockImplementationOnce(() => ok({ id: 'g1', fen: 'fen-roto' }));
     await expect(api.getGame('g1')).rejects.toMatchObject({ name: 'GamePayloadError' });
   });
+  it('envía Idempotency-Key en create/move/undo cuando la operación lo declara', async () => {
+    await api.createGame(50, 'w', null, null, null, { operationId: 'create-op-000001' });
+    await api.playMove('g1', 'e2', 'e4', null, { operationId: 'move-op-0000001' });
+    await api.undoMove('g1', { operationId: 'undo-op-0000001' });
+
+    expect(global.fetch.mock.calls[0][1].headers['Idempotency-Key']).toBe('create-op-000001');
+    expect(global.fetch.mock.calls[1][1].headers['Idempotency-Key']).toBe('move-op-0000001');
+    expect(global.fetch.mock.calls[2][1].headers['Idempotency-Key']).toBe('undo-op-0000001');
+  });
+
+  it('no inventa Idempotency-Key en lecturas ni operaciones legacy sin operationId', async () => {
+    await api.getGame('g1');
+    await api.createGame(50, 'w');
+    expect(global.fetch.mock.calls[0][1].headers['Idempotency-Key']).toBeUndefined();
+    expect(global.fetch.mock.calls[1][1].headers['Idempotency-Key']).toBeUndefined();
+  });
+
 });

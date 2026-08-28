@@ -44,12 +44,28 @@ import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCo
 import { useCombatDeploymentGate } from '../useCombatDeploymentGate.js';
 import { isAbortError } from '../asyncControl.js';
 import { chessFromFen } from '../chessRules.js';
+import { COMBAT_FLOW_EVENT, combatFlowTransition } from '../combatFlowMachine.js';
+import { reportStateInvariant } from '../stateMachine.js';
 
 
 
 export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, encounterTier = 'normal', runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
   const { restoredSession, missingSession, activityGameIdRef } = useCombatSessionBootstrap(combatSessionId);
   const [phase, setPhase] = useState(restoredSession ? 'battle' : 'setup'); // 'setup' | 'battle' | 'over'
+  const phaseRef = useRef(restoredSession ? 'battle' : 'setup');
+  phaseRef.current = phase;
+
+  function advanceCombatPhase(event) {
+    const current = phaseRef.current;
+    const result = combatFlowTransition(current, event);
+    if (!result.ok) {
+      reportStateInvariant('combat-flow', 'invalid-transition', { state: current, event, phase: current });
+      return false;
+    }
+    phaseRef.current = result.nextState;
+    setPhase(result.nextState);
+    return true;
+  }
   const [sessionRecoveryLost, setSessionRecoveryLost] = useState(missingSession);
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
@@ -419,7 +435,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       unitBattleStats: unitBattleStatsRef.current,
       activityGameId,
     });
-    setPhase('battle');
+    advanceCombatPhase(COMBAT_FLOW_EVENT.START);
     onBattleStart?.({
       gameId: activityGameId,
       modeRecord: { variant: combatVariant || 'combat', roguelikeMode: combatVariant === 'roguelike' ? (roguelikeMode || 'tower') : null },
@@ -603,7 +619,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       battleRecord,
     });
     activityGameIdRef.current = null;
-    setPhase('over');
+    advanceCombatPhase(COMBAT_FLOW_EVENT.FINISH);
   }
 
   function resetBossPhase(currentHumanColor, survivorRegistry) {
@@ -1183,7 +1199,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       battleRecord,
     });
     activityGameIdRef.current = null;
-    setPhase('over');
+    advanceCombatPhase(COMBAT_FLOW_EVENT.RETIRE);
   }
 
   function backToSetup() {
@@ -1195,7 +1211,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     invalidateCombatAsync('Combat returned to setup');
     setBusy(false);
     clearBattleSession();
-    setPhase('setup');
+    advanceCombatPhase(COMBAT_FLOW_EVENT.RESET);
   }
 
   const rosterActions = createCombatRosterActions({ setRoster, requireDeploymentConfirmation, setDeploymentConfirmed });

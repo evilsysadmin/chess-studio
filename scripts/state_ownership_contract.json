@@ -1,0 +1,62 @@
+{
+  "activeGame": {
+    "authority": "backend:/api/games/:id",
+    "recovery": "localStorage:active-game-session"
+  },
+  "tournamentGame": {
+    "authority": "backend:/api/games/:id",
+    "recovery": "localStorage:active-game-session"
+  },
+  "activeSeries": {
+    "authority": "localStorage:active-series",
+    "recovery": "activeGameSession:gameId"
+  },
+  "activeClock": {
+    "authority": "localStorage:clock-snapshot",
+    "recovery": null
+  },
+  "combatCampaign": {
+    "authority": "profileStorage:combat-campaign",
+    "recovery": null
+  },
+  "combatRoster": {
+    "authority": "profileStorage:combat-roster",
+    "recovery": null
+  },
+  "combatBattle": {
+    "authority": "sessionStorage:combat-session",
+    "recovery": "campaign:phase/fighting"
+  },
+  "onboarding": {
+    "authority": "profileStorage:onboarding-progress",
+    "recovery": null
+  },
+  "personalPuzzles": {
+    "authority": "profileStorage:personal-puzzles",
+    "recovery": null
+  },
+  "curatedPuzzles": {
+    "authority": "bundled:puzzle-catalog",
+    "recovery": null
+  },
+  "specialRun": {
+    "authority": "localStorage:special-run",
+    "recovery": "activeGameSession:gameContext"
+  },
+  "gameHistory": {
+    "authority": "profileStorage:game-history",
+    "recovery": null
+  },
+  "rating": {
+    "authority": "profileStorage:rating",
+    "recovery": null
+  },
+  "feedback": {
+    "authority": "backend:/api/feedback",
+    "recovery": null
+  },
+  "featureFlags": {
+    "authority": "backend:/api/features",
+    "recovery": "frontend:defaults"
+  }
+}

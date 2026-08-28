@@ -10,6 +10,8 @@ import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from
 import { loadCampaign } from './combatCampaign.js';
 import { loadRun } from './roguelikeRun.js';
 import { hasCombatSession } from './combatSession.js';
+import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition, assertActiveSessionInvariant } from './activeSessionMachine.js';
+import { reportStateInvariant } from './stateMachine.js';
 
 export const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 
@@ -114,6 +116,27 @@ export function useActiveSessionRestore({
 }) {
   const startupRestoreAttempted = useRef(false);
   const restoreRequestRef = useRef(null);
+  const sessionMachineRef = useRef(ACTIVE_SESSION_STATE.IDLE);
+
+  function advanceSessionMachine(event, saved = null) {
+    const current = sessionMachineRef.current;
+    const result = activeSessionTransition(current, event);
+    if (!result.ok) {
+      reportStateInvariant('active-session', 'invalid-transition', { state: current, event, route: saved?.route || null });
+      return current;
+    }
+    sessionMachineRef.current = result.nextState;
+    try {
+      assertActiveSessionInvariant({
+        state: result.nextState,
+        savedSession: saved,
+        gameId: saved?.gameId || null,
+      });
+    } catch {
+      reportStateInvariant('active-session', 'broken-invariant', { state: result.nextState, event, route: saved?.route || null });
+    }
+    return result.nextState;
+  }
 
   const restoreActiveSession = useCallback((saved = loadActiveGameSession()) => {
     if (!saved?.gameId) return Promise.resolve(false);
@@ -127,6 +150,7 @@ export function useActiveSessionRestore({
     const isCurrent = () => restoreRequestRef.current === request && !controller.signal.aborted;
 
     const promise = (async () => {
+      advanceSessionMachine(ACTIVE_SESSION_EVENT.RESTORE, saved);
       setLoading(true);
       setError(null);
       setGameSaveState(SAVE_STATUS.SAVING);
@@ -137,6 +161,7 @@ export function useActiveSessionRestore({
         setTournamentGame(found);
         replaceView('tournamentGame');
         setHasSavedGame(true);
+        advanceSessionMachine(ACTIVE_SESSION_EVENT.RESTORED, saved);
         return true;
       }
 
@@ -166,6 +191,7 @@ export function useActiveSessionRestore({
       setStorageItem(STORAGE_LOCAL, STORAGE_KEY, found.id);
       setHasSavedGame(true);
       replaceView('game');
+      advanceSessionMachine(ACTIVE_SESSION_EVENT.RESTORED, saved);
       return true;
       } catch (error) {
         if (!isCurrent()) return false;
@@ -173,15 +199,21 @@ export function useActiveSessionRestore({
       // activa. Red/5xx conserva la pantalla de partida y el snapshot para que
       // el usuario pueda reintentar sin sufrir un salto involuntario a Home.
       if (shouldLeaveActiveRouteAfterRestoreFailure(error)) {
+        advanceSessionMachine(ACTIVE_SESSION_EVENT.STALE, saved);
         clearActiveGameSession();
         removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);
         setHasSavedGame(false);
         setError('La partida guardada ya no existe en el servidor.');
         replaceView('menu');
       } else {
+        const failure = classifyRestoreFailure(error);
+        advanceSessionMachine(
+          failure === 'irrecoverable' ? ACTIVE_SESSION_EVENT.IRRECOVERABLE_FAILURE : ACTIVE_SESSION_EVENT.TRANSIENT_FAILURE,
+          saved,
+        );
         setHasSavedGame(true);
         setGameSaveState(SAVE_STATUS.ERROR);
-        setError(classifyRestoreFailure(error) === 'irrecoverable'
+        setError(failure === 'irrecoverable'
           ? 'La partida guardada está dañada y no puede reanudarse. Puedes descartarla sin registrar derrota.'
           : 'No se pudo recuperar la partida en curso. Tu sesión sigue guardada; reintenta cuando vuelva el servidor.');
       }
@@ -232,6 +264,7 @@ export function useActiveSessionRestore({
   }, [restoreActiveSession]);
 
   const discardActiveSession = useCallback(() => {
+    advanceSessionMachine(ACTIVE_SESSION_EVENT.DISCARD, loadActiveGameSession());
     const savedGameId = loadActiveGameSession()?.gameId || getStorageItem(STORAGE_LOCAL, STORAGE_KEY) || null;
     restoreRequestRef.current?.controller?.abort(new DOMException('Active session discarded', 'AbortError'));
     restoreRequestRef.current = null;

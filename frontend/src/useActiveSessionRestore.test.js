@@ -49,13 +49,22 @@ describe('active session restore helpers', () => {
     expect(selectBoundaryRecovery({ currentView: 'menu' })).toEqual({ type: 'none' });
   });
 
-  it('sólo 403/404 invalidan definitivamente el save; red/5xx conservan reintento', () => {
-    expect(classifyRestoreFailure({ status: 404 })).toBe('stale-session');
-    expect(classifyRestoreFailure({ status: 403 })).toBe('stale-session');
-    expect(classifyRestoreFailure({ status: 401 })).toBe('transient');
-    expect(classifyRestoreFailure({ status: 503 })).toBe('transient');
-    expect(classifyRestoreFailure({ status: 409 })).toBe('irrecoverable');
+  it('clasifica la matriz de fallos sin destruir un save por errores temporales', () => {
+    const cases = [
+      [400, 'transient'],
+      [401, 'transient'],
+      [403, 'stale-session'],
+      [404, 'stale-session'],
+      [409, 'irrecoverable'],
+      [429, 'transient'],
+      [500, 'transient'],
+      [502, 'transient'],
+      [503, 'transient'],
+      [504, 'transient'],
+    ];
+    for (const [status, expected] of cases) expect(classifyRestoreFailure({ status })).toBe(expected);
     expect(classifyRestoreFailure(new TypeError('Failed to fetch'))).toBe('transient');
+    expect(classifyRestoreFailure(Object.assign(new Error('timeout'), { name: 'AbortError' }))).toBe('transient');
   });
 
   it('sólo anuncia recuperación de Combat cuando existe estado real', () => {

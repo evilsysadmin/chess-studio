@@ -503,3 +503,93 @@ test('Home · un 503 al iniciar partida deja un error visible junto a la acción
   await expect(alert).toContainText('Chess Studio ha tenido un problema');
   await expect(dialog.getByRole('button', { name: 'Empezar partida', exact: true })).toBeEnabled();
 });
+
+
+test('resiliencia · un 503 después de persistir create reusa Idempotency-Key y no duplica partida', async ({ page }) => {
+  const requests = [];
+  await mockApi(page, { gameCreateCommitThenFailures: 1, requestLog: requests });
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const creates = requests.filter((item) => item.method === 'POST' && item.path.endsWith('/api/games'));
+  expect(creates).toHaveLength(2);
+  expect(creates[0].idempotencyKey).toBeTruthy();
+  expect(creates[1].idempotencyKey).toBe(creates[0].idempotencyKey);
+});
+
+
+test('golden journey · onboarding → partida/reload → mate → puzzle → Combat/reload', async ({ page }) => {
+  await page.addInitScript(() => { Math.random = () => 0; });
+  await mockApi(page, { gameScenario: 'mate' });
+  await login(page);
+
+  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+  await expect(buttonWithHeading(page, 'Torneo')).toHaveClass(/home-onboarding-target/);
+  await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('dialog', { name: 'Configurar partida rápida' })
+    .getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+  await page.reload();
+  await expect(gameTurn(page)).toBeVisible();
+
+  await clickBoardMove(page, 'g6', 'g7');
+  const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
+  await expect(endgame).toBeVisible();
+  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+
+  const learningMore = page.locator('details.home-learning-more');
+  if (!(await learningMore.evaluate((node) => node.open))) await learningMore.locator('summary').click();
+  await learningMore.getByRole('button').filter({ has: learningMore.getByRole('heading', { name: 'Puzzles', exact: true }) }).click();
+  await expect(page.getByText('Mate en 1', { exact: true }).first()).toBeVisible();
+  await clickBoardMove(page, 'a1', 'a8');
+  await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  await expect(quick).toBeVisible();
+  await quick.click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
+
+
+test('resiliencia · jugada persistida con respuesta perdida se reintenta sin doble movimiento', async ({ page }) => {
+  const requests = [];
+  await mockApi(page, { gameScenario: 'opening', moveCommitThenFailures: 1, requestLog: requests });
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('dialog', { name: 'Configurar partida rápida' })
+    .getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.getByRole('button', { name: /^Casilla e2, peón blanco/i })).toBeVisible();
+
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toBeVisible();
+
+  const moves = requests.filter((item) => item.method === 'POST' && /\/api\/games\/[^/]+\/move$/.test(item.path));
+  expect(moves).toHaveLength(2);
+  expect(moves[0].idempotencyKey).toBeTruthy();
+  expect(moves[1].idempotencyKey).toBe(moves[0].idempotencyKey);
+});

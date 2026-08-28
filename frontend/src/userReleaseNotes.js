@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zer',
+    title: 'Las partidas aguantan mejor los golpes',
+    highlights: [
+      'Reintentar una creación o jugada tras un fallo de red ya no puede duplicar la operación si el servidor llegó a guardarla antes de perder la respuesta.',
+      'Partidas, series, puzzles y Combat tienen transiciones de estado más estrictas para evitar pantallas atrapadas o recuperaciones contradictorias.',
+      'La recuperación de partidas y campañas conserva una única fuente de verdad y trata errores temporales, saves antiguos y estados incompletos de forma explícita.',
+    ],
+  },
+  {
     release: 'v16.6dm46zeq',
     title: 'Retos claros, mapa firme y controles en formación',
     highlights: [

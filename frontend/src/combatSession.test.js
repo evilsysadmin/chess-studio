@@ -39,6 +39,17 @@ describe('Combat Chess active session snapshot', () => {
     consoleError.mockRestore();
   });
 
+
+  it('migra perezosamente el snapshot unitario legacy anterior al bucket v2', () => {
+    const legacy = { version: 1, sessionId: 'legacy-campaign', savedAt: '2026-08-28T09:00:00.000Z', ...validSnapshot() };
+    sessionStorage.setItem('chess-study-active-combat-session-v1', JSON.stringify(legacy));
+    expect(loadCombatSession('legacy-campaign')).toMatchObject({ sessionId: 'legacy-campaign', phase: 'battle', fen: VALID_FEN });
+    expect(saveCombatSession('legacy-campaign', validSnapshot())).toBe(true);
+    const durable = JSON.parse(sessionStorage.getItem('chess-study-active-combat-session-v1'));
+    expect(durable.version).toBe(2);
+    expect(durable.sessions['legacy-campaign']).toBeTruthy();
+  });
+
   it('se elimina al cerrar la batalla', () => {
     saveCombatSession('free', validSnapshot());
     expect(hasCombatSessionMarker('free')).toBe(true);

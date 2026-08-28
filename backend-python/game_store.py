@@ -11,7 +11,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Optional
 
-from pymongo.errors import PyMongoError
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
@@ -39,6 +39,37 @@ async def create_game(game_id: str, data: dict) -> dict:
     else:
         _memory_store[game_id] = deepcopy(doc)
     return deepcopy(doc)
+
+
+async def create_game_once(game_id: str, data: dict) -> tuple[dict, bool]:
+    """Create a game exactly once for an idempotent client operation.
+
+    Returns ``(document, created)``. Concurrent retries use the same deterministic
+    game id; the loser of the insert race reads the winner instead of creating a
+    second savegame.
+    """
+    doc = {"_id": game_id, **data, "updatedAt": datetime.now(timezone.utc)}
+    col = await _get_collection()
+    if col is not None:
+        try:
+            await col.insert_one(doc)
+            return deepcopy(doc), True
+        except DuplicateKeyError:
+            try:
+                existing = await col.find_one({"_id": game_id})
+            except PyMongoError as exc:
+                raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
+            if existing is not None:
+                return deepcopy(existing), False
+            raise PersistentStorageUnavailable("La creación idempotente no pudo recuperar la partida concurrente.")
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para partidas.") from exc
+
+    existing = _memory_store.get(game_id)
+    if existing is not None:
+        return deepcopy(existing), False
+    _memory_store[game_id] = deepcopy(doc)
+    return deepcopy(doc), True
 
 
 async def get_game(game_id: str) -> Optional[dict]:

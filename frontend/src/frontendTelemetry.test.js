@@ -16,3 +16,13 @@ describe('frontend telemetry privacy contract', () => {
     expect(frontendTelemetryPayload('web_vital', { metricName: 'PASSWORD', value: 1 }).metricName).toBeUndefined();
   });
 });
+
+describe('state invariant telemetry', () => {
+  it('serializa sólo un identificador técnico sin contenido de partida', () => {
+    const payload = frontendTelemetryPayload('state_invariant', { errorName: 'combat:invalid_transition', fen: 'secret', moves: ['e4'] });
+    expect(payload.eventType).toBe('state_invariant');
+    expect(payload.errorName).toBe('combat:invalid_transition');
+    expect(payload.fen).toBeUndefined();
+    expect(payload.moves).toBeUndefined();
+  });
+});

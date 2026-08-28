@@ -95,6 +95,29 @@ describe('Combat Chess campaign map', () => {
     expect(availableCampaignNodes(recovered)).toHaveLength(2);
   });
 
+
+  it('migra campañas v1/v2 antiguas a v3 sin perder la ruta ni fabricar deuda', () => {
+    for (const version of [1, 2]) {
+      localStorage.clear();
+      const base = startCampaign(`legacy-v${version}`);
+      const first = availableCampaignNodes(base)[0];
+      const selected = selectCampaignNode(base, first.id);
+      localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify({
+        ...selected,
+        version,
+        operationalCredits: version === 1 ? undefined : 4,
+        intelligenceByNode: version === 1 ? undefined : { [first.id]: 1 },
+        relicIds: version === 1 ? undefined : ['fieldCipher'],
+      }));
+      const migrated = loadCampaign();
+      expect(migrated.version).toBe(3);
+      expect(migrated.phase).toBe('briefing');
+      expect(migrated.selectedNodeId).toBe(first.id);
+      expect(migrated.operationalCredits).toBeGreaterThanOrEqual(0);
+      expect(migrated.route[0]).toBe('start');
+    }
+  });
+
   it('una batalla exige start -> fighting -> reward y el botín élite duplica stack', () => {
     let run = startCampaign('elite');
     const first = availableCampaignNodes(run)[0];

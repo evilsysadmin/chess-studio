@@ -6,10 +6,11 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
 const entry = read('frontend/src/styles.css').trim().split(/\r?\n/);
-const contractImport = "@import './styles/30-product-polish.css';";
-const viewportCss = read('frontend/src/styles/28-viewport-action-coherence.css');
-const onboardingCss = read('frontend/src/styles/29-onboarding-game-actions.css');
-const finalCss = read('frontend/src/styles/30-product-polish.css');
+const contractImport = "@import './styles/28-product-resilience.css';";
+const contractCss = read('frontend/src/styles/28-product-resilience.css');
+const viewportCss = contractCss;
+const onboardingCss = contractCss;
+const finalCss = contractCss;
 const game = read('frontend/src/components/GameScreen.jsx');
 const smoke = read('e2e/smoke.spec.js');
 
