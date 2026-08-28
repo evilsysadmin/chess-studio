@@ -200,6 +200,9 @@ if (checkCiWiring) {
     'Combat Chess · Campaña permite jugar con defaults',
     'Combat Chess · salir al menú conserva campaña',
     'deploy · una release nueva no fuerza reload',
+    'Home · el avatar residente de Matthias abre Así juegas',
+    'Matthias · el briefing persistente aparece antes de una partida rápida',
+    'Matthias · banco de personalidad Admin usa sólo datos sintéticos',
   ]) {
     if (!workflowSource.includes(browserCriticalPattern)) fail(`Browser smoke crítico no ejecuta: ${browserCriticalPattern}`);
   }

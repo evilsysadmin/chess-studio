@@ -489,3 +489,17 @@ def test_comment_channel_has_hard_two_second_budget_and_fast_circuit(monkeypatch
     assert provider._timeout_seconds("comments") == 2.0
     assert provider._circuit_failure_threshold_for("comments") == 3
     assert provider._circuit_reset_seconds_for("comments") == 60.0
+
+
+def test_event_metrics_can_slice_matthias_today_without_exposing_text(monkeypatch):
+    monkeypatch.delenv("CF_AI_WORKER_URL", raising=False)
+    monkeypatch.delenv("CHESS_AI_SHARED_SECRET", raising=False)
+    asyncio.run(provider.generate_narrative("matthias_daily", {"total_games": 8, "question_kind": "improve"}))
+    asyncio.run(provider.generate_narrative("blunder", {"san": "Qd4"}))
+
+    metrics = provider.get_ai_event_metrics("matthias_daily", since_epoch=0)
+    assert metrics["calls"] == 1
+    assert metrics["localFallback"] == 1
+    assert metrics["fallbackPercent"] == 100.0
+    assert metrics["cloudflarePercent"] == 0.0
+    assert "text" not in str(metrics).lower()

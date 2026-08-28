@@ -33,6 +33,8 @@ const EVENT_LABELS = {
   combat_debrief: 'Debriefings Combat',
   observability_summary: 'Diagnóstico SRE',
   training_plan: 'Planes de entrenamiento',
+  matthias_daily: 'Consultas Matthias',
+  matthias_position: 'Posiciones con Matthias',
   generic: 'Otros',
 };
 
@@ -46,6 +48,7 @@ const REQUEST_KIND_LABELS = {
   observability_summary: 'Diagnósticos SRE',
   training_plan: 'Plan automático',
   training_plan_manual: 'Plan manual',
+  matthias_position: 'Posición concreta',
   default: 'Comentarios de partida',
 };
 

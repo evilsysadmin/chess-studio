@@ -13,6 +13,7 @@ describe('spectator reactions', () => {
       mode: 'audience',
       cpu: false,
       audience: true,
+      matthiasSilence: false,
       text: 'Un par de palmas. Nadie discute el mate.',
     });
     expect(noteworthyPresentation(event,'human',20)).toEqual(presentation);
@@ -30,4 +31,14 @@ describe('spectator reactions', () => {
     for(let ply=0;ply<100;ply+=1) if(noteworthyPresentation({type:'KNIGHT_FORK',priority:70},'human',ply).mode==='silence') silences+=1;
     expect(silences).toBeGreaterThan(20);
   });
+  it('puede responder a una catástrofe humana con silencio deliberado de Matthias', () => {
+    let found = null;
+    for (let ply = 0; ply < 200; ply += 1) {
+      const row = noteworthyPresentation({ type: 'MISSED_MATE', priority: 95 }, 'human', ply);
+      if (row.matthiasSilence) { found = row; break; }
+    }
+    expect(found).toBeTruthy();
+    expect(found).toMatchObject({ mode: 'silence', cpu: false, audience: false, matthiasSilence: true, text: null });
+  });
+
 });

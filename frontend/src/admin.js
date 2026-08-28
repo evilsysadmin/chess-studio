@@ -9,11 +9,41 @@ export async function fetchAdminUsers() {
   return body.users;
 }
 
+
+export function fetchAdminMatthiasStatus() {
+  return requestJson(`${BASE_URL}/admin/matthias-status`, { headers: { ...authHeader() } });
+}
+
 export function fetchAdminUserInsights(username) {
   return requestJson(`${BASE_URL}/admin/user-insights`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({ username }),
+  });
+}
+
+
+export function fetchAdminMatthiasMemory(username) {
+  return requestJson(`${BASE_URL}/admin/matthias/memory`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ username }),
+  });
+}
+
+export function resetAdminMatthiasMemory(username) {
+  return requestJson(`${BASE_URL}/admin/matthias/reset-memory`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ username }),
+  });
+}
+
+export function previewAdminMatthiasPersonality(preset) {
+  return requestJson(`${BASE_URL}/admin/matthias/personality-preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ preset }),
   });
 }
 

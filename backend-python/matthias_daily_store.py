@@ -132,3 +132,15 @@ async def commit(username: str, reservation: str, question_kind: str, text: str)
                 raise PersistentStorageUnavailable("La reserva diaria de Matthias dejó de ser válida antes de guardar la respuesta.")
             row.update(update)
     return {"day": day, "used": True, "pending": False, "questionKind": question_kind, "text": update["text"]}
+
+async def delete_user_daily(username: str) -> None:
+    """Erase the per-user audience ledger when the account is deleted."""
+    col = await _collection()
+    if col is not None:
+        try:
+            await col.delete_one({"_id": username})
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("No se pudo borrar la audiencia diaria de Matthias.") from exc
+    else:
+        async with _memory_lock:
+            _memory.pop(username, None)

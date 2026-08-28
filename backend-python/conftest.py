@@ -74,3 +74,11 @@ def no_real_mongo(monkeypatch, request):
 
     monkeypatch.setattr("feedback_store.get_db", fake_get_db)
     monkeypatch.setattr("feedback_store._memory_feedback", {})
+
+    try:
+        monkeypatch.setattr("matthias_memory_store.get_db", fake_get_db)
+        monkeypatch.setattr("matthias_memory_store._memory", {})
+        monkeypatch.setattr("matthias_daily_store.get_db", fake_get_db)
+        monkeypatch.setattr("matthias_daily_store._memory", {})
+    except Exception:
+        pass

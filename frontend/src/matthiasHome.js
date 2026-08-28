@@ -97,7 +97,7 @@ export function buildMatthiasIntroVisit() {
   };
 }
 
-export function buildMatthiasHomeVisit({ rivalry = {}, hasSavedGame = false } = {}) {
+export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGame = false } = {}) {
   if (hasSavedGame) {
     return {
       kind: 'continue',
@@ -106,21 +106,101 @@ export function buildMatthiasHomeVisit({ rivalry = {}, hasSavedGame = false } = 
       actionLabel: 'Continuar partida',
     };
   }
-  return incidentVisit(rivalry)
+  const goal = memory?.currentObsession || (Array.isArray(memory?.activeGoals) ? memory.activeGoals[0] : null);
+  const challenge = memory?.activeChallenge || null;
+  const debt = memory?.openDebt || null;
+  const reunion = memory?.returnContext || null;
+  const milestones = Array.isArray(memory?.recentMilestones) ? memory.recentMilestones : [];
+  const milestone = milestones.at(-1) || null;
+  const nemesis = memory?.nemesisOpening;
+  const respectTier = memory?.respect?.tier || 'recruit';
+
+  if (Number(reunion?.days || 0) >= 14) {
+    return {
+      kind: 'reunion',
+      text: nemesis?.name
+        ? `Has vuelto después de ${Number(reunion.days)} días. ${nemesis.name} seguía aquí esperándote. Qué detalle por su parte.`
+        : `Has vuelto después de ${Number(reunion.days)} días. El expediente sigue aquí; sorprendentemente, no se ha quemado solo.`,
+      action: 'insights',
+      actionLabel: 'Reabrir expediente',
+    };
+  }
+  if (challenge?.label) {
+    const remaining = Math.max(0, Number(challenge.baseline_games || 0) + Number(challenge.target_games || 3) - Number(challenge.current_games || 0));
+    return {
+      kind: 'challenge',
+      text: `${challenge.label}. ${remaining > 0 ? `Quedan ${remaining} partida${remaining === 1 ? '' : 's'} limpia${remaining === 1 ? '' : 's'}.` : 'La revisión está pendiente.'} ${Number(challenge.setbacks || 0) > 0 ? 'Sí, he visto las reincidencias.' : 'No pienso olvidarlo por educación.'}`,
+      action: 'insights',
+      actionLabel: 'Ver el reto',
+    };
+  }
+  if (debt && ['struggling', 'mixed'].includes(debt.status)) {
+    return {
+      kind: 'debt',
+      text: 'Mi consejo anterior sigue oficialmente abierto. Los datos nuevos todavía no me permiten retirar la acusación.',
+      action: 'insights',
+      actionLabel: 'Ver asunto pendiente',
+    };
+  }
+  if (milestone?.kind === 'goal_completed' || milestone?.kind === 'challenge_completed') {
+    return {
+      kind: 'earned-respect',
+      text: `${milestone.label}. Eso ha sido bueno. Muy bueno. No te acostumbres a oírlo.`,
+      action: 'insights',
+      actionLabel: 'Abrir expediente',
+    };
+  }
+  const memoryVisit = goal ? {
+    kind: 'goal',
+    text: `Mi obsesión actual: ${goal.label}. Sí, sigo acordándome. Qué desgracia para ti.`,
+    action: 'insights',
+    actionLabel: 'Ver objetivo',
+  } : milestone?.label ? {
+    kind: milestone.polarity === 'shame' ? 'memory-shame' : 'memory-fame',
+    text: milestone.polarity === 'shame'
+      ? `El archivo criminal conserva: ${milestone.label}.`
+      : `${milestone.label}. ${['respected', 'formidable'].includes(respectTier) ? 'Te concedo el punto.' : 'Tengo apuntado que, ocasionalmente, haces cosas bien.'}`,
+    action: 'insights',
+    actionLabel: 'Abrir expediente',
+  } : nemesis?.name && Number(nemesis.games || 0) >= 3 ? {
+    kind: 'opening-memory',
+    text: `${nemesis.name}: ${Math.round(Number(nemesis.win_pct || 0))}% de victorias en ${Number(nemesis.games || 0)} partidas. Esa apertura y tú aún tenéis asuntos pendientes.`,
+    action: 'insights',
+    actionLabel: 'Ver aperturas',
+  } : null;
+  return memoryVisit
+    || incidentVisit(rivalry)
     || rivalryVisit(rivalry)
     || {
       kind: 'generic',
-      text: 'Tengo una partida libre y una confianza francamente injustificada. ¿La ponemos a prueba?',
+      text: ['respected', 'formidable'].includes(respectTier)
+        ? 'Tengo una partida libre. A estas alturas ya sabes que no pienso regalarte ni el saludo.'
+        : 'Tengo una partida libre y una confianza francamente injustificada. ¿La ponemos a prueba?',
       action: 'play',
       actionLabel: 'Jugar una rápida',
     };
 }
 
-export function shouldShowMatthiasHome({ hasOpenOverlay = false, sessionSeen = false, lastShownAt = null, now = Date.now(), randomValue = Math.random() } = {}) {
-  if (hasOpenOverlay || sessionSeen) return false;
+
+export function shouldShowMatthiasHome({ hasOpenOverlay = false, hasPriorityAction = false, sessionSeen = false, lastShownAt = null, now = Date.now(), randomValue = Math.random(), relationshipTier = 'newcomer', visitKind = 'generic' } = {}) {
+  // Matthias puede estar presente como avatar, pero se calla cuando Home ya
+  // tiene una acción prioritaria (especialmente Continuar partida) o un overlay.
+  if (hasOpenOverlay || hasPriorityAction || sessionSeen) return false;
   const last = Number(lastShownAt || 0);
   if (last > 0 && now - last < MATTHIAS_HOME_COOLDOWN_MS) return false;
-  return Number(randomValue) < 0.45;
+
+  // A medida que conoce al jugador deja de interrumpir por banalidades. Los
+  // objetivos/hitos reales conservan algo más de margen porque sí aportan
+  // continuidad; la charla genérica se vuelve deliberadamente más escasa.
+  const meaningful = visitKind !== 'generic';
+  const genericThreshold = {
+    newcomer: 0.40,
+    acquainted: 0.32,
+    regular: 0.24,
+    veteran: 0.18,
+  }[relationshipTier] ?? 0.30;
+  const threshold = meaningful ? 0.42 : genericThreshold;
+  return Number(randomValue) < threshold;
 }
 
 export function matthiasHomeSessionSeen() {

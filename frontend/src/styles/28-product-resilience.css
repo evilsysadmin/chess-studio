@@ -888,3 +888,107 @@
 .admin-confirm-dialog h2, .admin-confirm-dialog p { margin: 0; }
 .admin-confirm-actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
 .admin-confirm-actions .danger-btn { border-color: color-mix(in srgb, #b64a4a 68%, var(--ui-border)); background: color-mix(in srgb, #7a2020 32%, var(--ui-panel-raised)); }
+
+/* Matthias admin status: real persistent memory, compact and inspectable. */
+.admin-matthias-status {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--line-soft));
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--panel) 92%, var(--brass) 8%);
+}
+.admin-matthias-status-heading { display: flex; gap: .8rem; align-items: center; margin-bottom: .8rem; }
+.admin-matthias-status-heading img { width: 54px; height: 54px; border-radius: 10px; object-fit: cover; object-position: 50% 36%; border: 1px solid color-mix(in srgb, var(--brass) 52%, var(--ink-3)); }
+.admin-matthias-status-heading h3 { margin: .12rem 0 0; }
+.admin-matthias-status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; }
+.admin-matthias-status-grid > div { display: grid; gap: .12rem; padding: .65rem .7rem; border: 1px solid var(--line-soft); border-radius: var(--radius-control); background: rgba(0,0,0,.12); }
+.admin-matthias-status-grid strong { font-size: 1.05rem; color: var(--parchment); overflow-wrap: anywhere; }
+.admin-matthias-status-grid span { color: var(--parchment-dim); font-size: .68rem; }
+.admin-matthias-advice { margin-top: .65rem; padding: .72rem .8rem; border-left: 3px solid color-mix(in srgb, var(--brass) 70%, transparent); background: rgba(0,0,0,.1); }
+.admin-matthias-advice p { margin: .28rem 0 .2rem; }
+.admin-matthias-advice small, .admin-matthias-privacy { color: var(--parchment-dim); }
+.admin-matthias-privacy { display: block; margin-top: .55rem; font-size: .67rem; }
+@media (max-width: 760px) { .admin-matthias-status-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 430px) { .admin-matthias-status-grid { grid-template-columns: 1fr; } }
+
+/* Matthias remains a quiet resident on Home. The avatar is always a direct
+   route to Así juegas; the speech strip only appears under the existing sparse
+   visit policy. */
+.matthias-home-resident { width: min(100%, 980px); margin: .15rem auto 0; display: flex; justify-content: flex-end; }
+.matthias-home-avatar-button {
+  width: 58px;
+  padding: .18rem .14rem .22rem;
+  display: grid;
+  justify-items: center;
+  gap: .12rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--parchment-dim);
+  cursor: pointer;
+}
+.matthias-home-avatar-button:hover,
+.matthias-home-avatar-button:focus-visible { border-color: color-mix(in srgb, var(--brass) 44%, var(--ui-border)); background: rgba(198,164,93,.055); color: var(--parchment); outline: none; }
+.matthias-home-avatar-button span { font-size: .56rem; letter-spacing: .06em; text-transform: uppercase; }
+.matthias-home-visit { grid-template-columns: 58px minmax(0, 1fr) auto; }
+@media (max-width: 720px) {
+  .matthias-home-visit { grid-template-columns: 52px minmax(0, 1fr); }
+  .matthias-home-avatar-button { width: 52px; }
+}
+
+/* Matthias · persistent coach surfaces */
+.matthias-quick-briefing {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: .65rem;
+  align-items: center;
+  margin: .55rem 0 .75rem;
+  padding: .65rem .72rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 30%, var(--ui-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--brass) 4%, var(--ui-panel));
+}
+.matthias-quick-briefing img { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; object-position: 50% 35%; border: 1px solid color-mix(in srgb, var(--brass) 48%, transparent); }
+.matthias-quick-briefing span { display: block; margin-bottom: .18rem; color: var(--brass); font-size: .61rem; letter-spacing: .08em; font-weight: 800; }
+.matthias-quick-briefing p { margin: 0; color: var(--parchment-dim); font-size: .77rem; line-height: 1.45; }
+
+.matthias-memory-card { border-top: 1px solid color-mix(in srgb, var(--brass) 20%, transparent); padding-top: .55rem; }
+.matthias-memory-card > summary { cursor: pointer; color: var(--parchment); font-weight: 700; }
+.matthias-memory-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .45rem; margin-top: .65rem; }
+.matthias-memory-grid > div { min-width: 0; padding: .5rem .55rem; border: 1px solid var(--ui-border); border-radius: var(--radius-sm); background: rgba(255,255,255,.018); }
+.matthias-memory-grid span { display: block; color: var(--parchment-dim); font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; }
+.matthias-memory-grid b { display: block; margin-top: .14rem; color: var(--parchment); font-size: .78rem; overflow-wrap: anywhere; }
+.matthias-memory-section, .matthias-memory-halls { margin-top: .6rem; color: var(--parchment-dim); }
+.matthias-memory-section ul, .matthias-memory-halls ul, .admin-matthias-memory-body ul { margin: .35rem 0 0; padding-left: 1.1rem; }
+.matthias-memory-halls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+
+.matthias-inline-answer { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: .65rem; align-items: start; }
+.matthias-inline-answer img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; object-position: 50% 35%; border: 1px solid color-mix(in srgb, var(--brass) 42%, transparent); }
+.matthias-inline-answer p { margin: 0; }
+.matthias-position-btn { margin-top: .55rem; }
+
+.admin-matthias-memory-inspector { margin: .75rem 0; padding: .65rem .75rem; border: 1px solid color-mix(in srgb, var(--brass) 22%, var(--ui-border)); border-radius: var(--radius-md); background: rgba(255,255,255,.014); }
+.admin-matthias-memory-inspector > summary { cursor: pointer; font-weight: 700; color: var(--parchment); }
+.admin-matthias-memory-body { display: grid; gap: .7rem; margin-top: .7rem; }
+
+@media (max-width: 720px) {
+  .matthias-memory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .matthias-memory-halls { grid-template-columns: 1fr; }
+}
+
+/* Matthias memorable: profundidad sin convertirlo en una radio parlante. */
+.admin-matthias-preview { margin-top: .72rem; display: grid; gap: .55rem; padding: .75rem .8rem; border: 1px solid color-mix(in srgb, var(--brass) 24%, var(--ui-border)); border-radius: var(--radius-md); background: rgba(0,0,0,.1); }
+.admin-matthias-preview p { margin: .18rem 0 0; }
+.admin-matthias-preview-controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.admin-matthias-preview-controls select { min-height: 38px; max-width: 240px; }
+.admin-matthias-preview-answer { display: grid; grid-template-columns: 42px minmax(0,1fr); gap: .6rem; align-items: start; padding: .6rem; border-left: 3px solid color-mix(in srgb, var(--brass) 72%, transparent); background: rgba(0,0,0,.12); }
+.admin-matthias-preview-answer img { width: 42px; height: 42px; border-radius: 9px; object-fit: cover; object-position: 50% 36%; }
+.admin-matthias-preview-answer p { margin: 0; }
+.admin-matthias-preview-answer small { grid-column: 2; color: var(--parchment-dim); }
+.matthias-memory-section.is-obsession { border-left: 3px solid color-mix(in srgb, var(--brass) 72%, transparent); padding-left: .7rem; }
+.matthias-memory-section.is-challenge { border-left: 3px solid color-mix(in srgb, var(--danger) 42%, var(--brass)); padding-left: .7rem; }
+.matthias-silent-beat { display: inline-grid; grid-template-columns: 34px auto auto; align-items: center; gap: .45rem; margin: .45rem 0; padding: .35rem .55rem; border: 1px solid color-mix(in srgb, var(--brass) 28%, var(--ui-border)); border-radius: 999px; background: rgba(0,0,0,.28); color: var(--parchment-dim); }
+.matthias-silent-beat img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 36%; filter: saturate(.86); }
+.matthias-silent-beat span { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
+.matthias-silent-beat b { color: var(--parchment); font-size: 1.15rem; letter-spacing: .15em; }
+@media (max-width: 520px) { .admin-matthias-preview-controls { align-items: stretch; } .admin-matthias-preview-controls select, .admin-matthias-preview-controls button { width: 100%; max-width: none; } }

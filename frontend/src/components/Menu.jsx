@@ -27,6 +27,7 @@ import { loadRivalry } from '../rivalry.js';
 import { buildMatthiasHomeVisit, buildMatthiasIntroVisit, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasIntroPlacement, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -74,13 +75,14 @@ export default function Menu({
   const [footerPanel, setFooterPanel] = useState(null);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const [matthiasVisit, setMatthiasVisit] = useState(null);
+  const [matthiasMemory, setMatthiasMemory] = useState(null);
   const [matthiasGuidesInitialWelcome] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1' && !matthiasOnboarded());
   const matthiasRollRef = useRef(Math.random());
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
   const matthiasIntroPending = !matthiasOnboarded();
-  const matthiasIntroBlocked = suppressHomeNudge || showQuickMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
+  const matthiasIntroBlocked = suppressHomeNudge || hasSavedGame || showQuickMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
   const blockingHomeOverlay = matthiasIntroBlocked || showHomeGuide;
   const hasOpenOverlay = blockingHomeOverlay || Boolean(matthiasVisit);
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
@@ -92,13 +94,22 @@ export default function Menu({
   }), []);
   const nextAction = useMemo(() => homeNextBestAction(activity), [activity]);
   const rivalry = useMemo(() => loadRivalry(), []);
-  const matthiasCandidate = useMemo(() => buildMatthiasHomeVisit({ rivalry, hasSavedGame }), [rivalry, hasSavedGame]);
+  const matthiasCandidate = useMemo(() => buildMatthiasHomeVisit({ rivalry, memory: matthiasMemory, hasSavedGame }), [rivalry, matthiasMemory, hasSavedGame]);
   const freshAccount = useMemo(() => isFreshAccount({ activity, tournament }), [activity, tournament]);
   const onboarding = useMemo(() => buildHomeOnboarding({
     activity,
     puzzlesSolved: loadPuzzlesSolved(),
     insightsSeen: onboardingInsightsSeen(),
   }), [activity]);
+
+  useEffect(() => {
+    let active = true;
+    if (!matthiasOnboarded()) return () => { active = false; };
+    void fetchMatthiasDailyStatus()
+      .then((status) => { if (active) setMatthiasMemory(status?.memory || null); })
+      .catch(() => { if (active) setMatthiasMemory(null); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (matthiasVisit) return;
@@ -119,14 +130,17 @@ export default function Menu({
     if (blockingHomeOverlay) return;
     const show = shouldShowMatthiasHome({
       hasOpenOverlay: blockingHomeOverlay,
+      hasPriorityAction: hasSavedGame,
       sessionSeen: matthiasHomeSessionSeen(),
       lastShownAt: matthiasHomeLastShownAt(),
       randomValue: matthiasRollRef.current,
+      relationshipTier: matthiasMemory?.relationship?.tier || 'newcomer',
+      visitKind: matthiasCandidate?.kind || 'generic',
     });
     if (!show) return;
     markMatthiasHomeShown();
     setMatthiasVisit(matthiasCandidate);
-  }, [blockingHomeOverlay, features.homeGuide, matthiasCandidate, matthiasIntroBlocked, matthiasIntroPending, matthiasVisit, showHomeGuide]);
+  }, [blockingHomeOverlay, features.homeGuide, hasSavedGame, matthiasCandidate, matthiasIntroBlocked, matthiasIntroPending, matthiasVisit, showHomeGuide]);
 
   useEffect(() => {
     if (matthiasOnboarded()) return;
@@ -192,6 +206,7 @@ export default function Menu({
     setMatthiasVisit(null);
     if (action === 'continue') { onContinue(); return; }
     if (action === 'train') { onTrainPersonal(); return; }
+    if (action === 'insights') { onInsights(); return; }
     setShowQuickMatch(true);
   }
 
@@ -256,11 +271,12 @@ export default function Menu({
 
       {error && !showQuickMatch && !showMirrorMode && <div className="home-error-banner" role="alert"><b>No se pudo completar la acción.</b><span>{error}</span></div>}
 
-      {matthiasVisit && (
+      {!showHomeGuide && !matthiasIntroBlocked && (
         <MatthiasHomeVisit
           visit={matthiasVisit}
           onAction={handleMatthiasAction}
           onDismiss={() => setMatthiasVisit(null)}
+          onOpenInsights={onInsights}
         />
       )}
 

@@ -228,8 +228,42 @@ export async function mockApi(page, {
       return json({ feedback: feedback[index] });
     }
 
+    const matthiasMemory = {
+      schemaVersion: 4,
+      consultations: 4,
+      relationship: { tier: 'regular', label: 'Habitual del despacho', games_seen: 18 },
+      respect: { tier: 'respected', label: 'Respeto ganado', score: 46 },
+      mood: 'observant',
+      activeGoals: [{ id: 'opening:Siciliana', topic: 'openings', label: 'Domar la Siciliana', current_games: 5 }],
+      currentObsession: { id: 'opening:Siciliana', topic: 'openings', label: 'Domar la Siciliana' },
+      activeChallenge: { id: 'clean-run:human:MISSED_MATE', label: '3 partidas sin repetir: Ver mates antes de que sea demasiado tarde', baseline_games: 17, current_games: 18, target_games: 3, setbacks: 1 },
+      openingMemory: [{ name: 'Siciliana', games: 5, wins: 1, draws: 1, losses: 3, win_pct: 20 }],
+      nemesisOpening: { name: 'Siciliana', games: 5, wins: 1, draws: 1, losses: 3, win_pct: 20 },
+      rivalry: { games: 8, wins: 3, draws: 1, losses: 4, best_human_streak: 2, best_cpu_streak: 2 },
+      hallOfFame: [{ fingerprint: 'first-win', kind: 'first_win', polarity: 'fame', label: 'Primera victoria registrada' }],
+      hallOfShame: [],
+      recentMilestones: [{ fingerprint: 'first-win', kind: 'first_win', polarity: 'fame', label: 'Primera victoria registrada' }],
+      emblematicPositions: [{ fingerprint: 'pos-1', label: 'Posición emblemática: Qh5, error grave de 430 cp', fen: '8/8/8/8/8/8/4K3/4k3 w - - 0 1', loss_cp: 430 }],
+      openDebt: { topic: 'decision_process', advice: 'Compara dos candidatas antes de mover.', status: 'mixed', games_since: 3 },
+      mainAdvice: { text: 'Compara dos candidatas antes de mover.', questionKind: 'improve', topic: 'decision_process' },
+    };
+    if (path.endsWith('/matthias/daily') && method === 'GET') return json({ used: false, pending: false, memory: matthiasMemory });
+    if (path.endsWith('/matthias/daily') && method === 'POST') return json({ used: true, text: 'Has jugado 18 partidas. Compara dos candidatas antes de mover.', provider: 'cloudflare', memory: matthiasMemory });
+    if (path.endsWith('/matthias/briefing') && method === 'GET') return json({ text: 'Achtung. Mi obsesión actual sigue siendo: Domar la Siciliana. Hoy no hace falta inventar otro problema.', memory: matthiasMemory });
+    if (path.endsWith('/matthias/reset-memory') && method === 'POST') return json({ ok: true });
+    if (path.endsWith('/narrative') && method === 'POST') {
+      const payload = route.request().postDataJSON?.() ?? {};
+      if (payload.eventType === 'matthias_position') return json({ text: 'La evaluación castiga tu jugada; compara la candidata sugerida antes de comprometer la pieza.', provider: 'cloudflare', latencyMs: 35 });
+      return json({ text: 'Matthias ha revisado los hechos disponibles.', provider: 'cloudflare', latencyMs: 35 });
+    }
     if (path.endsWith('/admin/users')) return json({ users: Array.isArray(adminUsers) ? adminUsers : [] });
     if (path.endsWith('/admin/ai-metrics')) return json({ samples: 0, enabled: true, circuit: { open: false } });
+    if (path.endsWith('/admin/matthias/memory') && method === 'POST') return json({ username: 'e2e', memory: matthiasMemory });
+    if (path.endsWith('/admin/matthias/personality-preview') && method === 'POST') {
+      const payload = route.request().postDataJSON?.() ?? {};
+      return json({ preset: payload.preset || 'veteran', text: 'Eso ha sido bueno. Muy bueno. Ahora no estropees el expediente.', provider: 'cloudflare', latencyMs: 31, synthetic: true });
+    }
+    if (path.endsWith('/admin/matthias-status')) return json({ ok: true, storage: 'mongo', memorySchemaVersion: 4, recentAdviceCap: 12, activeGoalCap: 3, milestoneCap: 10, openingMemoryCap: 6, emblematicPositionCap: 8, consultations: 3, usersWithMemory: 2, topQuestionKind: 'improve', questionCounts: { improve: 2, tactics: 1 }, activeGoalCounts: { openings: 2 }, topActiveGoal: { topic: 'openings', label: 'Aperturas recurrentes', users: 2 }, relationshipCounts: { regular: 2 }, respectCounts: { respected: 2 }, milestonesRemembered: 3, activeChallenges: 1, emblematicPositions: 2, dominantAdvice: { topic: 'decision_process', label: 'Proceso de decisión antes de mover', consultations: 2, usersAffected: 2 }, aiToday: { calls: 2, cloudflarePercent: 100, fallbackPercent: 0, p50Ms: 35, p95Ms: 42, timeouts: 0, errors: 0 } });
     if (path.endsWith('/status')) return json({ onlineUsers: 2, presenceAvailable: true });
     if (path.endsWith('/auth/logout') && method === 'POST') return route.fulfill({ status: 204, body: '' });
     if (path.endsWith('/auth/activity')) return json({ ok: true });

@@ -30,9 +30,24 @@ export function fetchMatthiasDailyStatus() {
   return request('/matthias/daily');
 }
 
-export function askMatthiasDaily(questionKind, facts) {
+export function fetchMatthiasBriefing() {
+  return request('/matthias/briefing');
+}
+
+export function createMatthiasConsultationId() {
+  try {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  } catch { /* fallback below */ }
+  return `matthias-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function askMatthiasDaily(questionKind, facts, { id = createMatthiasConsultationId() } = {}) {
   return request('/matthias/daily', {
     method: 'POST',
-    body: JSON.stringify({ questionKind, facts: facts || {} }),
+    body: JSON.stringify({ questionKind, facts: facts || {}, consultationId: id }),
   });
+}
+
+export function resetOwnMatthiasMemory() {
+  return request('/matthias/reset-memory', { method: 'POST' });
 }

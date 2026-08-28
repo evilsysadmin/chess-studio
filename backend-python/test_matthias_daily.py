@@ -4,6 +4,8 @@ import pytest
 from fastapi import HTTPException
 
 import matthias_daily_store as store
+import matthias_memory_store as memory_store
+import matthias_daily_api as daily_api
 from matthias_daily_api import _safe_facts
 from narrative_cloudflare import validate_matthias_daily_contract
 
@@ -11,13 +13,19 @@ from narrative_cloudflare import validate_matthias_daily_contract
 @pytest.fixture(autouse=True)
 def reset_memory(monkeypatch):
     store._memory.clear()
+    memory_store._memory.clear()
 
-    async def no_collection():
+    async def no_daily_collection():
         return None
 
-    monkeypatch.setattr(store, "_collection", no_collection)
+    async def no_memory_collection():
+        return None
+
+    monkeypatch.setattr(store, "_collection", no_daily_collection)
+    monkeypatch.setattr(memory_store, "_collection", no_memory_collection)
     yield
     store._memory.clear()
+    memory_store._memory.clear()
 
 
 def test_daily_question_is_closed_and_fact_payload_is_whitelisted():
@@ -73,9 +81,115 @@ def test_daily_response_requires_real_evidence_anchor():
     assert validate_matthias_daily_contract(bad, facts)[0] is False
 
 
-def test_admin_daily_audience_bypass_is_explicit_in_router_contract():
-    import inspect
-    from matthias_daily_api import build_matthias_daily_router
-    signature = inspect.signature(build_matthias_daily_router)
-    assert 'is_admin_check' in signature.parameters
+def _client(monkeypatch, *, cloud=True):
+    from fastapi import FastAPI, Header, HTTPException
+    from fastapi.testclient import TestClient
 
+    async def auth(authorization: str | None = Header(default=None)):
+        return "admin" if authorization == "Bearer admin" else "player"
+
+    async def admin(authorization: str | None = Header(default=None)):
+        if authorization != "Bearer admin":
+            raise HTTPException(403, "Admin only")
+        return "admin"
+
+    calls = []
+
+    async def generated(event_type, facts, **kwargs):
+        calls.append((event_type, facts, kwargs))
+        if cloud:
+            return {"text": f"Has jugado {facts['total_games']} partidas. Compara dos candidatas antes de mover.", "provider": "cloudflare", "latencyMs": 42}
+        return {"text": "fallback", "provider": "local", "latencyMs": 5000}
+
+    monkeypatch.setattr(daily_api, "generate_narrative", generated)
+    app = FastAPI()
+    app.include_router(daily_api.build_matthias_daily_router(auth_dependency=auth, admin_dependency=admin, is_admin_check=lambda name: name == "admin"))
+    return TestClient(app), calls
+
+
+def test_admin_has_unlimited_daily_consultations_but_replayed_id_does_not_double_memory(monkeypatch):
+    client, calls = _client(monkeypatch)
+    headers = {"Authorization": "Bearer admin"}
+    payload = {"questionKind": "tactics", "facts": {"total_games": 8}, "consultationId": "admin-query-1"}
+
+    first = client.post("/api/matthias/daily", headers=headers, json=payload)
+    second = client.post("/api/matthias/daily", headers=headers, json=payload)
+    third = client.post("/api/matthias/daily", headers=headers, json={**payload, "consultationId": "admin-query-2"})
+
+    assert [first.status_code, second.status_code, third.status_code] == [200, 200, 200]
+    assert all(response.json()["unlimited"] is True for response in (first, second, third))
+    # The replayed id returns the persisted answer without spending Workers AI.
+    assert len(calls) == 2
+    assert second.json()["replayed"] is True
+    summary = asyncio.run(memory_store.user_summary("admin"))
+    assert summary["consultations"] == 2
+
+
+def test_fallback_does_not_consume_daily_or_write_memory(monkeypatch):
+    client, _ = _client(monkeypatch, cloud=False)
+    response = client.post(
+        "/api/matthias/daily",
+        headers={"Authorization": "Bearer player"},
+        json={"questionKind": "improve", "facts": {"total_games": 5}, "consultationId": "retry-me"},
+    )
+    assert response.status_code == 200
+    assert response.json()["retryable"] is True
+    assert asyncio.run(memory_store.user_summary("player"))["consultations"] == 0
+    assert asyncio.run(store.status("player"))["used"] is False
+
+
+def test_user_can_reset_matthias_memory_without_resetting_daily_quota(monkeypatch):
+    client, _ = _client(monkeypatch)
+    headers = {"Authorization": "Bearer player"}
+    ask = client.post(
+        "/api/matthias/daily", headers=headers,
+        json={"questionKind": "action", "facts": {"total_games": 6}, "consultationId": "first"},
+    )
+    assert ask.status_code == 200
+    assert asyncio.run(memory_store.user_summary("player"))["consultations"] == 1
+    assert asyncio.run(store.status("player"))["used"] is True
+
+    reset = client.post("/api/matthias/reset-memory", headers=headers)
+    assert reset.status_code == 200
+    assert asyncio.run(memory_store.user_summary("player"))["consultations"] == 0
+    # No back door around the one-a-day audience.
+    assert asyncio.run(store.status("player"))["used"] is True
+
+
+def test_admin_can_read_aggregate_matthias_status_and_players_cannot(monkeypatch):
+    client, _ = _client(monkeypatch)
+    asyncio.run(memory_store.record_consultation(
+        "player", "tactics", "Compara dos candidatas.",
+        {"total_games": 5, "noteworthy_incidents": [{"key": "cpu:KNIGHT_FORK", "count": 2}]},
+        consultation_id="p-1",
+    ))
+
+    denied = client.get("/api/admin/matthias-status", headers={"Authorization": "Bearer player"})
+    assert denied.status_code == 403
+    allowed = client.get("/api/admin/matthias-status", headers={"Authorization": "Bearer admin"})
+    assert allowed.status_code == 200
+    body = allowed.json()
+    assert body["consultations"] == 1
+    assert body["usersWithMemory"] == 1
+    assert body["dominantAdvice"]["topic"] == "forks"
+    assert "Compara dos candidatas" not in str(body)
+    assert "aiToday" in body
+
+
+def test_briefing_uses_persistent_grounded_memory_without_spending_ai(monkeypatch):
+    client, calls = _client(monkeypatch)
+    asyncio.run(memory_store.observe_facts("player", {
+        "total_games": 9,
+        "record": {"wins": 3, "losses": 5, "draws": 1},
+        "openings": [{"name": "Siciliana", "games": 5, "wins": 1, "draws": 1, "losses": 3, "win_pct": 20}],
+        "noteworthy_incidents": [{"key": "cpu:KNIGHT_FORK", "count": 3}],
+    }))
+
+    response = client.get("/api/matthias/briefing", headers={"Authorization": "Bearer player"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["text"]
+    assert body["memory"]["schemaVersion"] == memory_store.MEMORY_SCHEMA_VERSION
+    assert body["memory"]["activeGoals"]
+    assert len(calls) == 0

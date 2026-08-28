@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from narrative_cloudflare import RICH_ANALYSIS_EVENT_TYPES, generate_narrative, get_ai_metrics
+import matthias_memory_store as matthias_memory_store
 
 narrative_logger = logging.getLogger("uvicorn.error")
 
@@ -163,7 +164,7 @@ def build_narrative_router(
         identity_name = _identity_name(identity)
         admin_bypass = bool(is_admin_check and identity_name and is_admin_check(identity_name))
         request_kind = (body.requestKind or "default").strip().lower()
-        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "unit_bio", "observability_summary", "training_plan", "training_plan_manual", "personal_puzzle_batch"}
+        allowed_request_kinds = {"default", "portrait_auto", "portrait_manual", "post_game", "combat_briefing", "combat_debrief", "unit_bio", "observability_summary", "training_plan", "training_plan_manual", "personal_puzzle_batch", "matthias_position"}
         if request_kind not in allowed_request_kinds:
             request_kind = "default"
         is_portrait = body.eventType == "player_portrait"
@@ -190,14 +191,28 @@ def build_narrative_router(
                     (exc.headers or {}).get("Retry-After", "-"),
                 )
             raise
+        effective_facts = body.facts
+        if identity_name and body.eventType in {"player_portrait", "training_plan", "post_game_autopsy", "matthias_position"}:
+            try:
+                if body.eventType == "player_portrait":
+                    await matthias_memory_store.observe_facts(identity_name, body.facts)
+                memory_context = await matthias_memory_store.context(identity_name, body.facts)
+                effective_facts = {**body.facts, "matthias_memory": memory_context}
+            except Exception as exc:
+                narrative_logger.warning("matthias_memory_context_failed event_type=%s error=%s", body.eventType, type(exc).__name__)
         result = await generate_narrative(
             body.eventType,
-            body.facts,
+            effective_facts,
             tone=body.tone,
             locale=body.locale,
             request_kind=request_kind,
             request_id=request_id,
         )
+        if identity_name and body.eventType == "matthias_position" and str(result.get("text") or "").strip():
+            try:
+                await matthias_memory_store.record_emblematic_position(identity_name, body.facts)
+            except Exception as exc:
+                narrative_logger.warning("matthias_position_memory_failed error=%s", type(exc).__name__)
         # Sólo una lectura AI real consume la ventana manual de seis horas. Si
         # Cloudflare falla y usamos fallback, el usuario puede reintentar cuando
         # vuelva el proveedor sin quedar castigado por un fallo ajeno.

@@ -3,6 +3,8 @@ import { downloadProfile, exportProfile, importProfile, pushProfileToServer } fr
 import { resetAllProgress } from '../resetProgress.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { withTimeout } from '../asyncControl.js';
+import { resetOwnMatthiasMemory } from '../matthiasDaily.js';
+import { runProgressResetLifecycle } from '../progressResetLifecycle.js';
 
 export default function ProfileBackupModal({ onClose }) {
   useEscapeToClose(onClose);
@@ -25,15 +27,17 @@ export default function ProfileBackupModal({ onClose }) {
     setBusy(true);
     setResetMessage(null);
     try {
-      resetAllProgress();
-      await pushProfileToServer({ throwOnError: true });
+      await runProgressResetLifecycle({
+        snapshot: previous,
+        resetLocal: resetAllProgress,
+        saveProfile: () => pushProfileToServer({ throwOnError: true }),
+        resetMatthias: resetOwnMatthiasMemory,
+        restoreLocal: (snapshot) => importProfile(snapshot, { replace: true, markDirty: true }),
+      });
       setConfirmingReset(false);
       setResetDone(true);
     } catch {
-      // Mongo no confirmó el reset: devolvemos también la caché local a su
-      // estado anterior para que cliente y servidor no queden divergentes.
-      importProfile(previous, { replace: true, markDirty: true });
-      setResetMessage('No se pudo guardar el reinicio en el servidor. No se ha borrado tu progreso; inténtalo de nuevo.');
+      setResetMessage('No se pudo completar el reinicio en el servidor. Hemos restaurado tu progreso cuando ha sido posible; inténtalo de nuevo.');
     } finally {
       operationInFlightRef.current = false;
       setBusy(false);
@@ -130,7 +134,7 @@ export default function ProfileBackupModal({ onClose }) {
         <div className="menu-section">
           <h2>Empezar de cero</h2>
           <p className="hint-text">
-            Borra tu progreso (torneo, rating, logros, historial, ejército de Combat Chess, títulos y skins elegidos) y guarda el perfil vacío en MongoDB.
+            Borra tu progreso (torneo, rating, logros, historial, ejército de Combat Chess, títulos y skins elegidos), guarda el perfil vacío en MongoDB y hace que Matthias olvide tu expediente de entrenamiento.
             <b> Esto no se puede deshacer.</b> No cierra tu sesión ni cambia tus preferencias de sonido/voz.
           </p>
           {!confirmingReset && !resetDone && (
@@ -159,7 +163,7 @@ export default function ProfileBackupModal({ onClose }) {
           )}
           {resetDone && (
             <p className="hint-text import-success" style={{ marginTop: '0.6rem' }}>
-              Listo — tu progreso volvió a cero y el cambio quedó guardado en MongoDB. Recarga para refrescar todos los contadores visibles.
+              Listo — tu progreso volvió a cero, Matthias olvidó tu expediente y el cambio quedó guardado en MongoDB. Recarga para refrescar todos los contadores visibles.
             </p>
           )}
         </div>

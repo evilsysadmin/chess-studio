@@ -5,6 +5,22 @@ from fastapi.testclient import TestClient
 import narrative_api
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def isolate_matthias_memory(monkeypatch):
+    async def empty_context(_username, _facts):
+        return {
+            "consultation_count": 0,
+            "question_counts": {},
+            "prior_advice": [],
+            "progress_since_last": {},
+        }
+
+    monkeypatch.setattr(narrative_api.matthias_memory_store, "context", empty_context)
+
+
 def auth(authorization: str | None = Header(default=None)):
     if authorization == "Bearer ok":
         return "test-user"
@@ -44,6 +60,42 @@ def test_authenticated_narrative_has_nonfatal_local_fallback(monkeypatch):
     assert r.status_code == 200
     assert r.json()["provider"] == "local"
 
+
+
+def test_portrait_receives_server_side_matthias_memory(monkeypatch):
+    captured = {}
+
+    async def remembered_context(username, facts):
+        assert username == "test-user"
+        assert facts["total_games"] == 8
+        return {
+            "consultation_count": 3,
+            "question_counts": {"priority": 2},
+            "prior_advice": [{"question_kind": "priority", "text": "No regales la dama.", "at": "2026-08-28T12:00:00+00:00"}],
+            "progress_since_last": {"total_games": 2},
+        }
+
+    async def capture_narrative(event_type, facts, **kwargs):
+        captured["event_type"] = event_type
+        captured["facts"] = facts
+        return {"text": "Te sigo teniendo calado.", "provider": "cloudflare", "latencyMs": 5.0}
+
+    monkeypatch.setattr(narrative_api.matthias_memory_store, "context", remembered_context)
+    monkeypatch.setattr(narrative_api, "generate_narrative", capture_narrative)
+
+    response = build_client().post(
+        "/api/narrative",
+        headers={"Authorization": "Bearer ok"},
+        json={"eventType": "player_portrait", "requestKind": "portrait_auto", "facts": {"total_games": 8}},
+    )
+
+    assert response.status_code == 200
+    assert captured["event_type"] == "player_portrait"
+    memory = captured["facts"]["matthias_memory"]
+    assert memory["consultation_count"] == 3
+    assert memory["progress_since_last"] == {"total_games": 2}
+    assert "username" not in memory
+    assert captured["facts"]["total_games"] == 8
 
 def test_metrics_are_admin_only():
     client = build_client()

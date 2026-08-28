@@ -6,6 +6,42 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfk',
+    title: 'Matthias empieza a guardar rencor con fundamento',
+    highlights: [
+      'Matthias gana respeto sólo cuando lo justifican tus resultados, mantiene una obsesión de entrenamiento y puede proponerte retos persistentes que no da por cerrados hasta ver partidas limpias de verdad.',
+      'Reencuentros tras una ausencia, asuntos pendientes, hitos de relación, posiciones emblemáticas y silencios deliberados hacen que recuerde la historia compartida sin inventarse recuerdos ni repetir la misma pulla cada cinco minutos.',
+      'La tarjeta del rival muestra el historial de vuestro duelo y Administración incorpora un banco de personalidad con perfiles sintéticos para probar la voz de Matthias sin tocar memoria, estadísticas ni cuota de jugadores reales.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfj',
+    title: 'Matthias ya lleva expediente',
+    highlights: [
+      'Matthias mantiene objetivos de entrenamiento, aperturas-némesis, hitos de Hall of Fame/Shame y una relación que evoluciona sólo con datos reales de tus partidas.',
+      'Partida rápida incorpora un briefing persistente sin gastar una llamada de IA, y la autopsia/replay permiten preguntarle por una posición concreta usando FEN y evaluación real como ancla.',
+      'Administración gana un inspector acotado de la memoria de Matthias; en Home habla menos por banalidades cuanto más veterano eres, pero conserva prioridad para objetivos e hitos que sí importan.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfi',
+    title: 'Matthias aprende sin inventarse tu vida',
+    highlights: [
+      'La memoria de Matthias pasa a schema versionado y acotado: recuerda consultas y consejos recientes, pero la mejora o reincidencia sólo se deriva de estadísticas reales calculadas por Chess Studio.',
+      'Los reintentos usan un identificador idempotente para no duplicar consejos ni gastar Workers AI dos veces; Admin mantiene consultas sin cooldown y gana métricas de uso, fallback, latencia y timeouts.',
+      'Empezar de cero borra también el expediente de Matthias, mientras Administración puede hacer que olvide sólo a un jugador sin tocar sus partidas, rating ni progreso.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfh',
+    title: 'Matthias empieza a recordar',
+    highlights: [
+      'Matthias conserva una memoria estructurada y acotada de tus consultas y progreso para no empezar de cero cada vez y poder ajustar sus consejos a lo que realmente mejora o se repite.',
+      'Su avatar queda disponible en Home de forma discreta y, cuando tiene algo que decir, abre la boca sin invadir la pantalla; tocarlo lleva directamente a Así juegas.',
+      'Administración incorpora el estado de Matthias con consultas recordadas, jugadores atendidos, tema más frecuente y consejo reciente, mientras su identidad y personalidad quedan fijadas también en Workers AI.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfg',
     title: 'Salir significa salir',
     highlights: [

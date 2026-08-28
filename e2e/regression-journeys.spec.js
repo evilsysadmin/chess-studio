@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { APP_RELEASE } from '../frontend/src/release.js';
 import {
   buttonWithHeading,
   buttonWithVisibleText,
@@ -120,8 +121,10 @@ test('recuperación · serie mejor de 3 conserva contexto y posición tras F5', 
   await modal.locator('details.quick-match-settings summary').click();
   await modal.getByLabel('Formato de serie').selectOption('3');
   await modal.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const moveCommitted = page.waitForResponse((response) => response.url().includes('/games/') && response.url().endsWith('/move') && response.ok());
   await clickBoardMove(page, 'e2', 'e4');
-  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
+  await moveCommitted;
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible({ timeout: 6000 });
 
   await page.reload();
   await expect(gameStatus(page)).toBeVisible();
@@ -223,7 +226,7 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
 });
 
 test('deploy · una release nueva no fuerza reload mientras la partida está activa', async ({ page }) => {
-  let publishedRelease = 'v16.6dm46zff';
+  let publishedRelease = APP_RELEASE;
   await page.route('**/release.json?*', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ release: publishedRelease }) });
   });
@@ -231,8 +234,10 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
   await login(page);
   await dismissHomeGuide(page);
   await startQuickGame(page);
+  const moveCommitted = page.waitForResponse((response) => response.url().includes('/games/') && response.url().endsWith('/move') && response.ok());
   await clickBoardMove(page, 'e2', 'e4');
-  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
+  await moveCommitted;
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible({ timeout: 6000 });
 
   publishedRelease = 'v16.6dm46zzz';
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
@@ -277,4 +282,55 @@ test('admin · presencia distingue primer plano, segundo plano, idle y offline',
   await expect(idle.getByText('Inactivo', { exact: true })).toBeVisible();
   await expect(offline.getByText('Offline', { exact: true })).toBeVisible();
   await expect(offline.getByText(/Segundo plano/)).toHaveCount(0);
+});
+
+test('Matthias · el briefing persistente aparece antes de una partida rápida', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await dismissHomeGuide(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const briefing = page.getByRole('complementary', { name: 'Briefing de Matthias' });
+  await expect(briefing).toBeVisible();
+  await expect(briefing.getByText('MATTHIAS // BRIEFING', { exact: true })).toBeVisible();
+  await expect(briefing.getByText(/Mi obsesión actual sigue siendo: Domar la Siciliana/i)).toBeVisible();
+});
+
+test('Home · el avatar residente de Matthias abre Así juegas', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await dismissHomeGuide(page);
+  const matthias = page.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
+  await expect(matthias).toBeVisible();
+  await matthias.click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+});
+
+test('Matthias · banco de personalidad Admin usa sólo datos sintéticos', async ({ page }) => {
+  await mockApi(page, { isAdmin: true, adminUsers: [] });
+  await login(page);
+  await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Usuarios registrados', exact: true })).toBeVisible();
+  const section = page.getByRole('region', { name: 'Estado de Matthias' });
+  await expect(section).toBeVisible();
+  await section.getByRole('combobox', { name: 'Perfil sintético de Matthias' }).selectOption('improving');
+  await section.getByRole('button', { name: 'Probar a Matthias', exact: true }).click();
+  await expect(section.getByText(/Eso ha sido bueno\. Muy bueno\./)).toBeVisible();
+  await expect(section.getByText(/sandbox sintético/i)).toBeVisible();
+});
+
+test('Matthias · la tarjeta de rival muestra el historial específico del duelo', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await dismissHomeGuide(page);
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-cpu-rivalry', JSON.stringify({
+      version: 3,
+      totalGames: 8,
+      record: { games: 8, wins: 3, draws: 1, losses: 4, currentStreak: -1, bestHumanStreak: 2, bestCpuStreak: 2, incidents: {}, recentGames: [], milestones: {}, byTimeControl: {}, byOpening: {}, memories: [] },
+      incidents: {},
+    }));
+  });
+  await startQuickGame(page);
+  const matthiasRail = page.getByLabel(/Matthias, CPU/);
+  await expect(matthiasRail).toContainText(/duelo 3V 1T 4D/i);
 });

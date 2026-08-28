@@ -94,6 +94,7 @@ export default function GameScreen({
   postGameFeedbackEnabled = true,
 }) {
   const humanColor = game.humanColor || 'w';
+  const rivalryRecord = useMemo(() => loadRivalry().record || {}, [game.id, game.status]);
   const [selected, setSelected] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
   const [busy, setBusy] = useState(false);
@@ -171,12 +172,14 @@ export default function GameScreen({
   const [turnBanner, setTurnBanner] = useState(null);
   const turnBannerTimeout = useRef(null);
   const [audienceReaction, setAudienceReaction] = useState(null);
+  const [matthiasSilentBeat, setMatthiasSilentBeat] = useState(false);
   const [gameChat, setGameChat] = useState(() => loadActiveGameChat(game.id));
   const remoteNarrativeGateRef = useRef(null);
   if (!remoteNarrativeGateRef.current) {
     remoteNarrativeGateRef.current = createNarrativeCooldownGate({ minPlyGap: 2, minIntervalMs: 2500 });
   }
   const audienceReactionTimeout = useRef(null);
+  const matthiasSilentBeatTimeout = useRef(null);
   const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
   const openingMemoryShownRef = useRef(false);
@@ -357,6 +360,8 @@ export default function GameScreen({
     if (!text || zenModeRef.current) return;
     setAudienceReaction(text);
     if (audienceReactionTimeout.current) clearTimeout(audienceReactionTimeout.current);
+    if (matthiasSilentBeatTimeout.current) clearTimeout(matthiasSilentBeatTimeout.current);
+    setMatthiasSilentBeat(false);
     audienceReactionTimeout.current = setTimeout(() => setAudienceReaction(null), 4200);
   }
 
@@ -374,7 +379,14 @@ export default function GameScreen({
       difficulty: game.difficulty,
       rematch: !!memoryContext.rematch,
     });
+    // A deliberate Matthias silence is actually silent: the visual beat is the
+    // reaction. Do not undermine it with the noteworthy sting.
     if (!zenModeRef.current && (presentation.cpu || presentation.audience)) playNoteworthySound(comment.event, actor);
+    if (!zenModeRef.current && presentation.matthiasSilence) {
+      setMatthiasSilentBeat(true);
+      if (matthiasSilentBeatTimeout.current) clearTimeout(matthiasSilentBeatTimeout.current);
+      matthiasSilentBeatTimeout.current = setTimeout(() => setMatthiasSilentBeat(false), 2600);
+    }
     if (presentation.cpu) {
       const localSuffix = `${recurrenceSuffix(comment.event, actor, recurrenceCount)}${noteworthyMemorySuffix(memory, comment.event, actor)}`;
       const meta = { actor, event: comment.event?.type, ply };
@@ -424,6 +436,7 @@ export default function GameScreen({
     if (turnBannerTimeout.current) clearTimeout(turnBannerTimeout.current);
     if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
     if (audienceReactionTimeout.current) clearTimeout(audienceReactionTimeout.current);
+    if (matthiasSilentBeatTimeout.current) clearTimeout(matthiasSilentBeatTimeout.current);
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
@@ -795,7 +808,10 @@ export default function GameScreen({
         <span className={`game-player-avatar${cpu ? ' has-portrait' : ''}`} aria-hidden="true">{cpu ? <img src={CPU_IDENTITY.avatar} alt="" /> : '♙'}</span>
         <span className="game-player-identity">
           <strong>{cpu ? CPU_IDENTITY.name : (getUsername() || 'Tú')}</strong>
-          <small>{cpu ? `${CPU_IDENTITY.role} · nivel ${game.difficulty}` : `${color === 'w' ? 'Blancas' : 'Negras'}${active ? ' · Tu turno' : ''}`}</small>
+          <small>{cpu
+            ? `${CPU_IDENTITY.role} · nivel ${game.difficulty}${Number(rivalryRecord.games || 0) > 0 ? ` · duelo ${Number(rivalryRecord.wins || 0)}V ${Number(rivalryRecord.draws || 0)}T ${Number(rivalryRecord.losses || 0)}D` : ''}`
+            : `${color === 'w' ? 'Blancas' : 'Negras'}${active ? ' · Tu turno' : ''}`}
+          </small>
         </span>
         {hasClock ? (
           <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`}>{formatClock(seconds ?? 0)}</span>
@@ -814,6 +830,7 @@ export default function GameScreen({
             {statusText}
           </div>
           {!zenMode && audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{audienceReaction}</b></div>}
+          {!zenMode && matthiasSilentBeat && <div className="matthias-silent-beat" role="status" aria-label="Matthias observa en silencio"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><span>Matthias</span><b>…</b></div>}
           {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
           {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
           {!zenMode && memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin afectar al rating</div>}

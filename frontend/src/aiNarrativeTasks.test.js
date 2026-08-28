@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCombatBriefingDossier,
   buildCombatDebriefDossier,
+  buildMatthiasPositionDossier,
   buildObservabilitySummaryDossier,
   buildPostGameAutopsyDossier,
   buildTrainingPlanDossier,
@@ -20,6 +21,17 @@ describe('AI narrative task dossiers', () => {
     expect(dossier.facts.worst_move).toEqual({ move_number: 18, played: 'Qh5', suggested: 'Re1', loss_cp: 430, severity: 'blunder', played_piece: 'q', suggested_piece: 'r' });
     expect(JSON.stringify(dossier)).not.toContain('SECRET_FEN');
     expect(JSON.stringify(dossier)).not.toContain('context');
+  });
+
+  it('Matthias position sends engine-grounded move facts and bounded FEN', () => {
+    const dossier = buildMatthiasPositionDossier({
+      moveNumber: 17, played: 'Qh5', suggested: 'Re1', loss: 430, severity: 'blunder',
+      playedPiece: 'q', suggestedPiece: 'r', playedPerspectiveEval: -3.2, suggestedPerspectiveEval: 1.1,
+      context: { fenBefore: '8/8/8/8/8/8/4K3/4k3 w - - 0 1', punisher: 'peón ataca dama' },
+    }, { opening: 'Apertura Réti' });
+    expect(dossier).toMatchObject({ eventType: 'matthias_position', requestKind: 'matthias_position' });
+    expect(dossier.facts).toMatchObject({ played: 'Qh5', suggested: 'Re1', loss_cp: 430, opening: 'Apertura Réti' });
+    expect(JSON.stringify(dossier)).not.toMatch(/username|email|token/i);
   });
 
   it('combat briefing carries only known intel and deployment counts', () => {

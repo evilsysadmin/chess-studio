@@ -23,6 +23,8 @@ from slowapi.util import get_remote_address
 
 import profile_store as pstore
 import users_store as ustore
+import matthias_daily_store
+import matthias_memory_store
 from db import PersistentStorageUnavailable
 from auth import (
     hash_password, verify_password, create_token, verify_token,
@@ -479,7 +481,7 @@ async def require_admin(username: str = Depends(get_current_user)) -> str:
 
 # LLM narrative transport: facts stay authoritative in Chess Studio.
 app.include_router(build_narrative_router(auth_dependency=get_current_user, admin_dependency=require_admin, is_admin_check=is_admin))
-app.include_router(build_matthias_daily_router(auth_dependency=get_current_user, is_admin_check=is_admin))
+app.include_router(build_matthias_daily_router(auth_dependency=get_current_user, admin_dependency=require_admin, is_admin_check=is_admin))
 app.include_router(build_admin_router(auth_dependency=get_current_user, admin_dependency=require_admin, limiter=limiter))
 app.include_router(build_system_router(auth_dependency=get_current_user, is_admin_check=is_admin, limiter=limiter, admin_usernames_getter=lambda: _ADMIN_USERNAMES))
 
@@ -544,6 +546,8 @@ async def register(body: RegisterRequest, request: Request):
         # username, debe desaparecer antes del primer login: un alta nueva es
         # siempre vanilla y jamás hereda datos de una identidad anterior.
         await pstore.delete_profile(username)
+        await matthias_daily_store.delete_user_daily(username)
+        await matthias_memory_store.delete_user_memory(username)
     except PersistentStorageUnavailable as exc:
         # No entregamos una cuenta cuyo estado inicial no podemos garantizar.
         # El rollback deja el username disponible para reintentar el alta.

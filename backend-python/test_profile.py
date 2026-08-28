@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 
 from main import app
 import profile_store
+import matthias_daily_store
+import matthias_memory_store
 
 client = TestClient(app)
 
@@ -30,6 +32,15 @@ def test_profile_requires_auth():
     assert client.patch("/api/profile", json={"data": {}, "revisions": {}}).status_code == 401
 
 
+def test_profile_patch_rejects_oversized_key_sets():
+    headers = _auth_headers()
+    changes = {f"k{i}": str(i) for i in range(129)}
+    revisions = {key: 0 for key in changes}
+    response = client.patch("/api/profile", json={"data": changes, "revisions": revisions}, headers=headers)
+    assert response.status_code == 413
+    assert response.json()["detail"] == "PATCH de perfil demasiado grande."
+
+
 def test_profile_starts_empty():
     headers = _auth_headers()
     r = client.get("/api/profile", headers=headers)
@@ -51,6 +62,13 @@ def test_new_registration_removes_orphan_profile_for_reused_username():
         {key: 1 for key in orphan["data"]},
         1,
     )
+    matthias_memory_store._memory[username] = {
+        "_id": username,
+        "consultation_count": 9,
+        "question_counts": {"improve": 9},
+        "recent_advice": [{"text": "memoria huérfana", "question_kind": "improve"}],
+    }
+    matthias_daily_store._memory[username] = {"date": "2026-08-28", "state": "used"}
 
     registered = client.post(
         "/api/auth/register",
@@ -60,6 +78,8 @@ def test_new_registration_removes_orphan_profile_for_reused_username():
     assert registered.status_code == 201
     headers = {"Authorization": f"Bearer {registered.json()['token']}"}
     assert client.get("/api/profile", headers=headers).json() == {}
+    assert username not in matthias_memory_store._memory
+    assert username not in matthias_daily_store._memory
 
 
 def test_save_and_retrieve_profile():

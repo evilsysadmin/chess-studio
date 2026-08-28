@@ -90,6 +90,10 @@ class AdminPlayerPortraitRequest(BaseModel):
     facts: dict[str, Any] = Field(default_factory=dict)
 
 
+class AdminMatthiasPreviewRequest(BaseModel):
+    preset: str = Field(default="veteran", max_length=32)
+
+
 class GhostStyle(BaseModel):
     # Sesgos derivados de partidas reales del usuario. El rango estrecho
     # evita que un cliente manipulado convierta el desempate de estilo en una

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import ColorSelector from './ColorSelector.jsx';
 import { TIME_CONTROLS } from '../clock.js';
@@ -6,6 +7,8 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { handicapForGap } from '../handicap.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { difficultyForRating } from '../playerRating.js';
+import { fetchMatthiasBriefing } from '../matthiasDaily.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 function colorLabel(color) {
   if (color === 'w' || color === 'white') return 'Blancas';
@@ -39,6 +42,15 @@ export default function QuickMatchModal({
   const adaptiveLevel = difficultyForRating(rating?.rating ?? 400);
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
+  const [matthiasBriefing, setMatthiasBriefing] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetchMatthiasBriefing()
+      .then((result) => { if (active && result?.text) setMatthiasBriefing(result.text); })
+      .catch(() => { if (active) setMatthiasBriefing(null); });
+    return () => { active = false; };
+  }, []);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -47,6 +59,13 @@ export default function QuickMatchModal({
         <span className="eyebrow">Partida rápida</span>
         <div className="combat-heading-row"><h3>Elige dificultad y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
         <p className="hint-text friendly-lead">Puedes dejar todo lo demás en automático.</p>
+
+        {matthiasBriefing && (
+          <aside className="matthias-quick-briefing" aria-label="Briefing de Matthias">
+            <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+            <div><span>MATTHIAS // BRIEFING</span><p>{matthiasBriefing}</p></div>
+          </aside>
+        )}
 
         <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
           <span aria-hidden="true">◎</span><span><b>Encuentra mi nivel</b><small>Ajusta la CPU a tu rating actual · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>

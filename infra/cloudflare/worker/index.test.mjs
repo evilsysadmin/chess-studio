@@ -309,6 +309,7 @@ test('matthias_daily usa audiencia guiada, hechos saneados y routing de análisi
         question_kind: 'improve',
         total_games: 8,
         record: { wins: 3, losses: 5 },
+        matthias_memory: { consultation_count: 2, prior_advice: [{ question_kind: 'tactics', text: 'Compara dos candidatas.' }], progress_since_last: { total_games: 3 } },
         password: 'NO-DEBE-SALIR',
       },
     }),
@@ -321,7 +322,48 @@ test('matthias_daily usa audiencia guiada, hechos saneados y routing de análisi
   assert.match(prompt, /TIPO_DE_EVENTO: matthias_daily/);
   assert.match(prompt, /"question_kind":"improve"/);
   assert.match(prompt, /"total_games":8/);
+  assert.match(prompt, /"matthias_memory"/);
+  assert.match(prompt, /"consultation_count":2/);
+  assert.match(prompt, /"text":"Compara dos candidatas\."/);
   const fullPrompt = fake.calls.ai[0].options.messages.map((message) => message.content).join('\n');
+  assert.match(fullPrompt, /Eres Matthias, la identidad fija/);
+  assert.match(fullPrompt, /prior_advice son[\s\S]*NO son hechos/i);
+  assert.match(fullPrompt, /progress_since_last[\s\S]*HECHOS actuales[\s\S]*medir[\s\S]*evolución/i);
+  assert.match(fullPrompt, /prior_advice[\s\S]*recordar/i);
+  assert.match(fullPrompt, /no[\s\S]{0,80}repet/i);
   assert.match(fullPrompt, /Achtung|bitte|sehr gut|germánica/i);
   assert.doesNotMatch(prompt, /NO-DEBE-SALIR|password/);
+});
+
+test('matthias_position usa routing de análisis y conserva grounding de motor', async () => {
+  const fake = fakeEnv({
+    aiResult: {
+      choices: [{ message: { content: 'Qh5 pierde 430 puntos de evaluación frente a Re1. Compara la amenaza antes de sacar la dama otra vez.' } }],
+      usage: { prompt_tokens: 80, completion_tokens: 24 },
+    },
+  });
+  const response = await worker.fetch(
+    await narrativeRequest({
+      event_type: 'matthias_position',
+      facts: {
+        fen: '8/8/8/8/8/8/4K3/4k3 w - - 0 1',
+        played: 'Qh5', suggested: 'Re1', loss_cp: 430,
+        matthias_memory: {
+          relationship: { tier: 'regular' },
+          active_goals: [{ label: 'Seguridad de la dama' }],
+          remembered_position: { fen: '8/8/8/8/8/8/4K3/4k3 w - - 0 1', label: 'Posición emblemática: Qh5' },
+        },
+      },
+    }),
+    fake.env,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(fake.calls.rates.at(-1), { key: 'render-analysis' });
+  assert.equal(fake.calls.ai.at(-1).model, ANALYSIS_MODEL);
+  const prompt = fake.calls.ai.at(-1).options.messages.map((message) => message.content).join('\n');
+  assert.match(prompt, /TIPO_DE_EVENTO: matthias_position/);
+  assert.match(prompt, /"loss_cp":430/);
+  assert.match(prompt, /"remembered_position"/);
+  assert.match(prompt, /FEN coincide exactamente|no hace reconocimiento difuso/i);
+  assert.match(prompt, /No inventes variantes ni tácticas no presentes|no asegures por qué una jugada falla/i);
 });

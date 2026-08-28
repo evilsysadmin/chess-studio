@@ -475,7 +475,7 @@ cf-ai-preflight:
 
 ai-contract: ai-security cf-ai-preflight
 	cd backend-python && python -m pytest -q test_narrative_cloudflare.py test_narrative_api.py test_narrative_main_contract.py
-	cd frontend && npx vitest run src/narrativeRemote.test.js src/narrativeWiring.test.js src/aiMetrics.test.js src/narrativeProvider.test.js
+	cd frontend && npx vitest run src/narrativeRemote.test.js src/aiMetrics.test.js src/narrativeProvider.test.js
 	$(MAKE) --no-print-directory worker-test
 	node --check infra/cloudflare/worker/index.js
 # END chess-studio-ai-contract

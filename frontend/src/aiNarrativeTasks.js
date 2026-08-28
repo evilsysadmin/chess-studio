@@ -44,6 +44,29 @@ export function buildPostGameAutopsyDossier(report, meta = {}) {
   };
 }
 
+export function buildMatthiasPositionDossier(moveReport, { fen = null, opening = null, move = null } = {}) {
+  if (!moveReport) return null;
+  return {
+    eventType: 'matthias_position',
+    requestKind: 'matthias_position',
+    tone: 'friendly_sarcastic',
+    facts: {
+      fen: cleanText(fen || moveReport?.context?.fenBefore, 120),
+      opening: cleanText(opening, 100),
+      move_number: finiteNumber(moveReport.moveNumber),
+      played: cleanText(moveReport.played || move?.san, 24),
+      suggested: cleanText(moveReport.suggested, 24),
+      loss_cp: finiteNumber(moveReport.loss, 0),
+      severity: cleanText(moveReport.severity, 24),
+      played_piece: cleanText(moveReport.playedPiece || move?.piece, 8),
+      suggested_piece: cleanText(moveReport.suggestedPiece, 8),
+      played_eval: finiteNumber(moveReport.playedPerspectiveEval),
+      suggested_eval: finiteNumber(moveReport.suggestedPerspectiveEval),
+      punisher: cleanText(moveReport?.context?.punisher, 120),
+    },
+  };
+}
+
 export function buildCombatBriefingDossier({ campaign, node, intel, armySummary } = {}) {
   if (!node || !intel) return null;
   return {

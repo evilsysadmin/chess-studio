@@ -1005,6 +1005,12 @@ def test_admin_can_delete_user_and_cascade_profile_and_games(monkeypatch):
     )
     assert game.status_code == 201
     game_id = game.json()["id"]
+    import matthias_memory_store as mmstore
+    import matthias_daily_store as mdstore
+    asyncio.run(mmstore.record_consultation("victima_delete", "action", "Consejo persistente", {"total_games": 1}))
+    asyncio.run(mdstore.reserve("victima_delete"))
+    assert "victima_delete" in mmstore._memory
+    assert "victima_delete" in mdstore._memory
 
     deleted = raw_client.post(
         "/api/admin/delete-user",
@@ -1018,6 +1024,8 @@ def test_admin_can_delete_user_and_cascade_profile_and_games(monkeypatch):
     assert asyncio.run(ustore.get_user("victima_delete")) is None
     assert asyncio.run(pstore.get_profile("victima_delete")) is None
     assert asyncio.run(gstore.get_game(game_id)) is None
+    assert "victima_delete" not in mmstore._memory
+    assert "victima_delete" not in mdstore._memory
     assert raw_client.get("/api/auth/me", headers={"Authorization": f"Bearer {victim_token}"}).status_code == 401
 
     relogin = raw_client.post("/api/auth/login", json={"username": "victima_delete", "password": "clave123456"})
@@ -2162,3 +2170,64 @@ def test_move_rejects_reused_idempotency_key_with_different_payload():
     assert first.status_code == 200
     conflict = client.post(f"/api/games/{game_id}/move", json={"from": "d2", "to": "d4"}, headers=headers)
     assert conflict.status_code == 409
+
+
+def test_admin_can_reset_only_matthias_memory_without_deleting_player_progress(monkeypatch):
+    import main as main_module
+    import matthias_memory_store as memory_store
+    import profile_store as pstore
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    ustore._memory_users["memory_target"] = {
+        "username": "memory_target",
+        "password_hash": "fixture-only",
+        "created_at": "2026-08-28T00:00:00+00:00",
+    }
+    asyncio.run(pstore.save_profile("memory_target", {"rating": 1337, "games": [{"id": "kept"}]}))
+    asyncio.run(memory_store.record_consultation(
+        "memory_target", "tactics", "Consejo que debe olvidarse.", {"total_games": 9}, consultation_id="admin-reset-target",
+    ))
+    assert asyncio.run(memory_store.user_summary("memory_target"))["consultations"] == 1
+
+    response = client.post("/api/admin/matthias/reset-memory", json={"username": "memory_target"})
+    assert response.status_code == 200
+    assert response.json() == {"reset": True, "username": "memory_target"}
+    assert asyncio.run(memory_store.user_summary("memory_target"))["consultations"] == 0
+    assert asyncio.run(pstore.get_profile("memory_target"))["rating"] == 1337
+    assert asyncio.run(ustore.get_user("memory_target")) is not None
+
+
+def test_admin_matthias_personality_preview_is_synthetic_and_does_not_touch_player_memory(monkeypatch):
+    import admin_api
+    import main as main_module
+    import matthias_memory_store as memory_store
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    asyncio.run(memory_store.record_consultation(
+        "testuser", "improve", "Consejo real que no debe tocar el sandbox.", {"total_games": 12}, consultation_id="real-before-preview",
+    ))
+    before = asyncio.run(memory_store.user_summary("testuser"))
+    captured = {}
+
+    async def fake_generate(event_type, facts, **kwargs):
+        captured.update({"event_type": event_type, "facts": facts, **kwargs})
+        return {"text": "Eso ha sido bueno. Muy bueno. No te emociones.", "provider": "cloudflare", "latencyMs": 7.0}
+
+    monkeypatch.setattr(admin_api, "generate_narrative", fake_generate)
+    response = client.post("/api/admin/matthias/personality-preview", json={"preset": "improving"})
+    assert response.status_code == 200
+    assert response.json()["synthetic"] is True
+    assert captured["event_type"] == "matthias_daily"
+    assert captured["facts"]["preview_synthetic"] is True
+    assert captured["request_kind"] == "matthias_preview_improving"
+
+    after = asyncio.run(memory_store.user_summary("testuser"))
+    assert after["consultations"] == before["consultations"]
+    assert after["mainAdvice"] == before["mainAdvice"]
+
+
+def test_admin_matthias_personality_preview_rejects_unknown_preset(monkeypatch):
+    import main as main_module
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", {"testuser"})
+    response = client.post("/api/admin/matthias/personality-preview", json={"preset": "inventado"})
+    assert response.status_code == 400

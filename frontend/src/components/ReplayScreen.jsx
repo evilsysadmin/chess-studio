@@ -13,6 +13,9 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import { replayFenPositions } from '../chessRules.js';
 import { historyMoveNumber, historyMoverColor } from '../historyTimeline.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { getToken } from '../auth.js';
+import { requestRemoteNarrative } from '../narrativeRemote.js';
+import { buildMatthiasPositionDossier } from '../aiNarrativeTasks.js';
 
 // Reconstruye el FEN en cada punto de la partida a partir de la lista de
 // jugadas guardada. positions[0] es la posición inicial; positions[i] es la
@@ -57,6 +60,8 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
   const [analyzeError, setAnalyzeError] = useState(null);
   const [moviePlaying, setMoviePlaying] = useState(false);
   const [movieSpeed, setMovieSpeed] = useState(1);
+  const [matthiasPosition, setMatthiasPosition] = useState(null);
+  const [matthiasPositionStatus, setMatthiasPositionStatus] = useState('idle');
 
   // Analiza la partida ENTERA una sola vez al entrar — no hace falta pedirlo
   // jugada por jugada, así se puede recorrer el cuaderno de jugadas y ver de
@@ -125,6 +130,11 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
 
   useArrowKeyNav(() => goTo(step - 1), () => goTo(step + 1));
 
+  useEffect(() => {
+    setMatthiasPosition(null);
+    setMatthiasPositionStatus('idle');
+  }, [step]);
+
   function handleDownloadPGN() {
     const result = outcomeToPgnResult(record.outcome, record.humanColor);
     const white = record.humanColor === 'w' ? 'Jugador' : `${CPU_IDENTITY.name} (CPU, nivel ${record.difficulty})`;
@@ -155,6 +165,18 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
         piece: moverColor === 'w' ? moveAtStep.piece.toUpperCase() : moveAtStep.piece.toLowerCase(),
       }
     : null;
+
+  async function askMatthiasAboutCurrent() {
+    if (!wasHumanMove || !moveReportAtStep || matthiasPositionStatus === 'loading') return;
+    const token = getToken();
+    const dossier = buildMatthiasPositionDossier(moveReportAtStep, { opening: opening?.name, move: moveAtStep });
+    if (!token || !dossier) return;
+    setMatthiasPositionStatus('loading');
+    setMatthiasPosition(null);
+    const text = await requestRemoteNarrative(dossier, { token, timeoutMs: 8000 }).catch(() => null);
+    setMatthiasPosition(text || null);
+    setMatthiasPositionStatus(text ? 'done' : 'unavailable');
+  }
 
   return (
     <div className="tutorial-shell">
@@ -271,6 +293,13 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
             {wasHumanMove && !moveReportAtStep && !analyzing && report && (
               <p className="hint-text">Esta jugada quedó fuera de la ventana analizada.</p>
             )}
+            {wasHumanMove && moveReportAtStep && (
+              <button type="button" className="secondary-btn matthias-position-btn" disabled={matthiasPositionStatus === 'loading'} onClick={() => void askMatthiasAboutCurrent()}>
+                {matthiasPositionStatus === 'loading' ? 'Matthias está mirando…' : '♟ Preguntar a Matthias por esta posición'}
+              </button>
+            )}
+            {matthiasPosition && <div className="ai-task-card matthias-position-answer"><small>MATTHIAS // ESTA POSICIÓN</small><div className="matthias-inline-answer"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><p>{matthiasPosition}</p></div></div>}
+            {matthiasPositionStatus === 'unavailable' && <p className="hint-text">Sin respuesta de Matthias. La evaluación del motor permanece arriba.</p>}
           </div>
         </div>
 

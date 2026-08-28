@@ -64,6 +64,10 @@ export function noteworthyPresentation(event, actor = 'human', ply = 0) {
     mode,
     cpu: mode === 'cpu' || mode === 'both',
     audience: mode === 'audience' || mode === 'both',
+    // En una catástrofe humana, el silencio ocasional de Matthias es una
+    // reacción deliberada, no ausencia de detección. La UI puede mostrar
+    // únicamente su mirada y un «…», sin convertirlo en otra frase de chat.
+    matthiasSilence: actor === 'human' && priority >= 90 && mode === 'silence',
     text: mode === 'audience' || mode === 'both' ? choose(REACTIONS[event.type], `${event.type}|${actor}|${ply}|line`) : null,
   };
 }

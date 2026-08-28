@@ -20,6 +20,7 @@ beforeEach(() => {
   localStorage.setItem('chess-study-auth-username', 'tester');
 });
 
+
 describe('Matthias en Home', () => {
   it('repara perfiles legacy marcados prematuramente con onboarding v1', () => {
     localStorage.setItem(MATTHIAS_ONBOARDED_KEY, '1');
@@ -59,6 +60,15 @@ describe('Matthias en Home', () => {
     expect(remembered.text).toMatch(/2 mates ignorados/i);
   });
 
+  it('puede hablar desde memoria persistente sin inventar otro incidente', () => {
+    const visit = buildMatthiasHomeVisit({
+      rivalry: { record: { incidents: {} } },
+      memory: { activeGoals: [{ id: 'g1', label: 'Levantar la Siciliana' }] },
+    });
+    expect(visit).toMatchObject({ kind: 'goal', action: 'insights' });
+    expect(visit.text).toContain('Levantar la Siciliana');
+  });
+
   it('prioriza continuar una partida activa sobre sacar una pulla histórica', () => {
     const visit = buildMatthiasHomeVisit({
       hasSavedGame: true,
@@ -72,9 +82,12 @@ describe('Matthias en Home', () => {
     expect(shouldShowMatthiasHome({ now, randomValue: 0.2 })).toBe(true);
     expect(shouldShowMatthiasHome({ now, randomValue: 0.9 })).toBe(false);
     expect(shouldShowMatthiasHome({ now, randomValue: 0.2, hasOpenOverlay: true })).toBe(false);
+    expect(shouldShowMatthiasHome({ now, randomValue: 0.2, hasPriorityAction: true })).toBe(false);
     expect(shouldShowMatthiasHome({ now, randomValue: 0.2, sessionSeen: true })).toBe(false);
     expect(shouldShowMatthiasHome({ now, randomValue: 0.2, lastShownAt: now - MATTHIAS_HOME_COOLDOWN_MS + 1 })).toBe(false);
     expect(shouldShowMatthiasHome({ now, randomValue: 0.2, lastShownAt: now - MATTHIAS_HOME_COOLDOWN_MS - 1 })).toBe(true);
+    expect(shouldShowMatthiasHome({ now, randomValue: 0.30, relationshipTier: 'veteran', visitKind: 'generic' })).toBe(false);
+    expect(shouldShowMatthiasHome({ now, randomValue: 0.30, relationshipTier: 'veteran', visitKind: 'goal' })).toBe(true);
   });
 
   it('marca sesión y cooldown usando el almacenamiento seguro', () => {
@@ -90,6 +103,32 @@ describe('Matthias en Home', () => {
     markMatthiasOnboarded();
     expect(localStorage.getItem(MATTHIAS_ONBOARDED_KEY)).toBe(MATTHIAS_ONBOARDED_VERSION);
     expect(matthiasOnboarded()).toBe(true);
+  });
+
+  it('recibe al veterano que vuelve sin inventar recuerdos nuevos', () => {
+    const visit = buildMatthiasHomeVisit({
+      memory: { returnContext: { days: 23 }, nemesisOpening: { name: 'Francesa', games: 6, win_pct: 33 } },
+    });
+    expect(visit).toMatchObject({ kind: 'reunion', action: 'insights' });
+    expect(visit.text).toMatch(/23 días.*Francesa/s);
+  });
+
+  it('mantiene un reto pendiente y reconoce explícitamente cuando se cierra', () => {
+    const pending = buildMatthiasHomeVisit({ memory: { activeChallenge: {
+      id: 'clean-run:x', label: '3 partidas sin repetir: Horquillas', baseline_games: 10, current_games: 11, target_games: 3, setbacks: 1,
+    } } });
+    expect(pending).toMatchObject({ kind: 'challenge', action: 'insights' });
+    expect(pending.text).toMatch(/Quedan 2 partidas.*reincidencias/s);
+
+    const closed = buildMatthiasHomeVisit({ memory: { recentMilestones: [{ fingerprint: 'done', kind: 'challenge_completed', polarity: 'fame', label: 'Expediente cerrado: Horquillas' }] } });
+    expect(closed).toMatchObject({ kind: 'earned-respect' });
+    expect(closed.text).toMatch(/Eso ha sido bueno\. Muy bueno/);
+  });
+
+  it('el respeto ganado cambia el tono genérico sin convertirlo en halago automático', () => {
+    const visit = buildMatthiasHomeVisit({ memory: { respect: { tier: 'formidable', label: 'Rival respetado', score: 80 } } });
+    expect(visit.kind).toBe('generic');
+    expect(visit.text).toMatch(/no pienso regalarte/i);
   });
 
 });

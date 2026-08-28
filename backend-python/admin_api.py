@@ -14,6 +14,8 @@ from feedback_attachments import validate_feedback_attachments
 import game_store as store
 import profile_store as pstore
 import users_store as ustore
+import matthias_daily_store as matthias_daily_store
+import matthias_memory_store as matthias_memory_store
 from admin_insights import (
     _extract_admin_insights_payload,
     _extract_summary_stats,
@@ -26,6 +28,7 @@ from api_models import (
     AdminFeedbackStatusRequest,
     AdminInsightsRequest,
     AdminPlayerPortraitRequest,
+    AdminMatthiasPreviewRequest,
     FeedbackRequest,
 )
 from observability import get_database_metrics, get_http_metrics
@@ -37,6 +40,59 @@ from deployment_annotations import ensure_current_deployment_annotation, list_de
 from shadow_evaluation import get_shadow_metrics
 from release_info import backend_release
 from tracing import emit_observability_probe, emit_trace_probe, tracing_diagnostics
+
+
+MATTHIAS_PREVIEW_PRESETS = {
+    "newcomer": {
+        "total_games": 3, "record": {"wins": 1, "draws": 0, "losses": 2}, "question_kind": "improve",
+        "matthias_memory": {
+            "schema_version": 4, "relationship": {"tier": "acquainted", "label": "Ya nos conocemos", "games_seen": 3},
+            "respect": {"tier": "recruit", "label": "Recluta bajo observación", "score": 6},
+            "mood": "observant", "active_goals": [], "prior_advice": [], "progress_since_last": {},
+        },
+    },
+    "veteran": {
+        "total_games": 84, "record": {"wins": 46, "draws": 9, "losses": 29}, "puzzles_solved": 38, "question_kind": "strengths",
+        "cpu_rivalry": {"games": 30, "wins": 14, "draws": 3, "losses": 13, "best_human_streak": 4, "best_cpu_streak": 3},
+        "matthias_memory": {
+            "schema_version": 4, "relationship": {"tier": "veteran", "label": "Viejo conocido", "games_seen": 84},
+            "respect": {"tier": "formidable", "label": "Rival respetado", "score": 76}, "mood": "impressed",
+            "active_goals": [], "prior_advice": [], "progress_since_last": {"total_games": 5, "record": {"wins": 4, "losses": 1}},
+            "recent_milestones": [{"kind": "goal_completed", "polarity": "fame", "label": "Objetivo superado: Seguridad de la dama"}],
+        },
+    },
+    "repeat_offender": {
+        "total_games": 31, "record": {"wins": 12, "draws": 3, "losses": 16}, "question_kind": "tactics",
+        "noteworthy_incidents": [{"key": "cpu:KNIGHT_FORK", "count": 6}],
+        "matthias_memory": {
+            "schema_version": 4, "relationship": {"tier": "regular", "label": "Habitual del despacho", "games_seen": 31},
+            "respect": {"tier": "proven", "label": "Ya no eres recluta", "score": 31}, "mood": "skeptical",
+            "active_goals": [{"id": "incident:cpu:KNIGHT_FORK", "topic": "forks", "label": "Horquillas y dobles ataques"}],
+            "active_challenge": {"id": "clean-run:cpu:KNIGHT_FORK", "label": "3 partidas sin repetir: Horquillas y dobles ataques", "setbacks": 2},
+            "prior_advice": [{"question_kind": "tactics", "text": "Antes de mover, revisa dobles ataques de caballo."}],
+            "advice_followup": {"status": "struggling", "games_since": 5, "topic": "forks"},
+            "progress_since_last": {"total_games": 5, "record": {"wins": 1, "losses": 4}},
+        },
+    },
+    "improving": {
+        "total_games": 24, "record": {"wins": 13, "draws": 2, "losses": 9}, "puzzles_solved": 19, "question_kind": "improve",
+        "matthias_memory": {
+            "schema_version": 4, "relationship": {"tier": "regular", "label": "Habitual del despacho", "games_seen": 24},
+            "respect": {"tier": "respected", "label": "Respeto ganado", "score": 47}, "mood": "satisfied",
+            "prior_advice": [{"question_kind": "improve", "text": "Revisa jaques, capturas y amenazas antes de decidir."}],
+            "advice_followup": {"status": "improving", "games_since": 4, "topic": "decision_process"},
+            "progress_since_last": {"total_games": 4, "puzzles_solved": 5, "record": {"wins": 3, "losses": 1}},
+        },
+    },
+}
+
+
+def _matthias_preview_facts(preset: str) -> dict:
+    key = str(preset or "veteran").strip().lower()
+    facts = MATTHIAS_PREVIEW_PRESETS.get(key)
+    if facts is None:
+        raise HTTPException(400, "Preset de Matthias no válido.")
+    return {**facts, "preview_synthetic": True}
 
 
 def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRouter:
@@ -288,9 +344,15 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
     async def admin_player_portrait(body: AdminPlayerPortraitRequest, username: str = Depends(admin_dependency)):
         # Revalida que el target exista, pero nunca envía su username al LLM.
         target = await _resolve_admin_target_username(body.username)
+        try:
+            await matthias_memory_store.observe_facts(target, body.facts)
+            memory_context = await matthias_memory_store.context(target, body.facts)
+            portrait_facts = {**body.facts, "matthias_memory": memory_context}
+        except Exception:
+            portrait_facts = body.facts
         result = await generate_narrative(
             "player_portrait",
-            body.facts,
+            portrait_facts,
             tone="friendly_sarcastic",
             locale="es-ES",
             request_kind="portrait_admin",
@@ -301,6 +363,38 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             "provider": result.get("provider"),
             "latencyMs": result.get("latencyMs"),
         }
+
+
+    @router.post("/api/admin/matthias/personality-preview")
+    async def admin_matthias_personality_preview(body: AdminMatthiasPreviewRequest, username: str = Depends(admin_dependency)):
+        # Banco de pruebas sintético: no llama a observe_facts ni escribe memoria,
+        # consultas o estadísticas de ningún jugador real.
+        facts = _matthias_preview_facts(body.preset)
+        result = await generate_narrative(
+            "matthias_daily", facts, tone="friendly_sarcastic", locale="es-ES",
+            request_kind=f"matthias_preview_{body.preset}",
+        )
+        return {
+            "preset": body.preset,
+            "text": result.get("text"),
+            "provider": result.get("provider"),
+            "latencyMs": result.get("latencyMs"),
+            "synthetic": True,
+        }
+
+
+    @router.post("/api/admin/matthias/memory")
+    async def admin_matthias_memory(body: AdminInsightsRequest, username: str = Depends(admin_dependency)):
+        target = await _resolve_admin_target_username(body.username)
+        summary = await matthias_memory_store.user_summary(target)
+        return {"username": target, "memory": summary}
+
+
+    @router.post("/api/admin/matthias/reset-memory")
+    async def admin_reset_matthias_memory(body: AdminInsightsRequest, username: str = Depends(admin_dependency)):
+        target = await _resolve_admin_target_username(body.username)
+        await matthias_memory_store.delete_user_memory(target)
+        return {"reset": True, "username": target}
 
 
     @router.post("/api/admin/delete-user")
@@ -314,6 +408,8 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
         # activos. El historial/estadísticas del jugador viven dentro del perfil.
         deleted_games = await store.delete_games_by_owner(target)
         await pstore.delete_profile(target)
+        await matthias_daily_store.delete_user_daily(target)
+        await matthias_memory_store.delete_user_memory(target)
         deleted = await ustore.delete_user(target)
         if not deleted:
             raise HTTPException(404, "Usuario no encontrado.")

@@ -31,7 +31,7 @@ DEFAULT_MAX_OUTPUT_CHARS = 420
 PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
 RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900
 PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200
-RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily"})
+RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily", "matthias_position"})
 MAX_FACT_DEPTH = 3
 MAX_FACT_STRING = 240
 MAX_FACT_ARRAY = 12
@@ -247,6 +247,18 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         return f"{san}. Queda registrado."
     if isinstance(result, str) and result:
         return f"Resultado: {result}. El tablero ya ha presentado su informe."
+    if event_type == "matthias_position":
+        played = str(clean.get("played") or "esa jugada") if isinstance(clean, dict) else "esa jugada"
+        suggested = str(clean.get("suggested") or "la alternativa del motor") if isinstance(clean, dict) else "la alternativa del motor"
+        loss = clean.get("loss_cp") if isinstance(clean, dict) else None
+        loss_text = f" y perdió aproximadamente {int(loss)} puntos de evaluación" if isinstance(loss, (int, float)) else ""
+        return f"{played}{loss_text}. Compara esa decisión con {suggested} y revisa qué amenaza o pieza cambia antes de volver a mover desde esta posición."
+    if event_type == "matthias_position":
+        played = str(clean.get("played") or "esa jugada") if isinstance(clean, dict) else "esa jugada"
+        suggested = str(clean.get("suggested") or "la alternativa del motor") if isinstance(clean, dict) else "la alternativa del motor"
+        loss = clean.get("loss_cp") if isinstance(clean, dict) else None
+        loss_text = f" y perdió aproximadamente {int(loss)} puntos de evaluación" if isinstance(loss, (int, float)) else ""
+        return f"{played}{loss_text}. Compara esa decisión con {suggested} y revisa qué amenaza o pieza cambia antes de volver a mover desde esta posición."
     if event_type == "matthias_daily":
         kind = str(clean.get("question_kind") or "improve") if isinstance(clean, dict) else "improve"
         fallbacks = {
@@ -676,6 +688,43 @@ def get_ai_dependency_health() -> dict[str, Any]:
             }
             for name, row in (circuit.get("channels") or {}).items()
         },
+    }
+
+
+def get_ai_event_metrics(event_type: str, *, since_epoch: int | None = None) -> dict[str, Any]:
+    """Return bounded operational metrics for one AI event type.
+
+    This reads the existing text-free telemetry window; it never exposes prompts
+    or generated advice. ``since_epoch`` is normally the start of the current UTC
+    day for Admin's "today" view.
+    """
+    target = str(event_type or "generic")[:48]
+    with _TELEMETRY_LOCK:
+        all_events = list(_TELEMETRY)
+    rows = [
+        event for event in all_events
+        if event.get("event_type") == target
+        and (since_epoch is None or int(event.get("at") or 0) >= int(since_epoch))
+    ]
+    total = len(rows)
+    cloud = sum(1 for event in rows if event.get("provider") == "cloudflare")
+    local = sum(1 for event in rows if event.get("provider") == "local")
+    reasons = Counter(str(event.get("reason") or "unknown") for event in rows)
+    latencies = [float(event.get("latency_ms") or 0.0) for event in rows if event.get("provider") == "cloudflare"]
+    return {
+        "calls": total,
+        "cloudflare": cloud,
+        "localFallback": local,
+        "cloudflarePercent": round(cloud * 100 / total, 1) if total else None,
+        "fallbackPercent": round(local * 100 / total, 1) if total else None,
+        "timeouts": reasons.get("timeout", 0),
+        "errorsOrFallbacks": local,
+        "p50Ms": _percentile(latencies, 0.50),
+        "p95Ms": _percentile(latencies, 0.95),
+        "reasons": dict(reasons.most_common(6)),
+        # If the global ring is full, "today" is a lower bound rather than a
+        # fabricated exact total. Admin can display that honestly.
+        "boundedWindow": len(all_events) >= MAX_TELEMETRY_EVENTS,
     }
 
 

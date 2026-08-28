@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { APP_RELEASE } from '../release.js';
-import { deleteAdminUser, fetchAdminUsers, fetchAdminUserInsights, reanalyzeAdminUser } from '../admin.js';
+import { deleteAdminUser, fetchAdminMatthiasMemory, fetchAdminMatthiasStatus, fetchAdminUsers, fetchAdminUserInsights, previewAdminMatthiasPersonality, reanalyzeAdminUser, resetAdminMatthiasMemory } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { computeInsights, generateRoast, generateCoaching } from '../insights.js';
 import { ACHIEVEMENTS } from '../achievements.js';
 import { getToken, getUsername } from '../auth.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { formatLongMove } from '../notation.js';
 import { buildWorstMoveAutopsy } from '../adminWorstMove.js';
 import Board from './Board.jsx';
@@ -17,6 +18,7 @@ import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 import { ADMIN_REFRESH_MS, shouldRefreshAdminPresence } from '../presenceCadence.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
+const MATTHIAS_MOOD_LABELS = Object.freeze({ observant: 'Observador', impressed: 'Impresionado', skeptical: 'Escéptico', satisfied: 'Satisfecho' });
 
 function FeedbackAttachmentPreview({ feedbackId, attachment }) {
   const [src, setSrc] = useState(null);
@@ -251,6 +253,16 @@ export default function AdminScreen({ onExit }) {
   const adminRefreshInFlightRef = useRef(null);
   const [lastAdminRefreshAt, setLastAdminRefreshAt] = useState(null);
   const [adminNow, setAdminNow] = useState(() => Date.now());
+  const [matthiasStatus, setMatthiasStatus] = useState(null);
+  const [matthiasStatusError, setMatthiasStatusError] = useState(null);
+  const [matthiasResettingUser, setMatthiasResettingUser] = useState(null);
+  const [matthiasResetError, setMatthiasResetError] = useState(null);
+  const [matthiasMemoryByUser, setMatthiasMemoryByUser] = useState({});
+  const [matthiasMemoryLoading, setMatthiasMemoryLoading] = useState({});
+  const [matthiasPreviewPreset, setMatthiasPreviewPreset] = useState('veteran');
+  const [matthiasPreview, setMatthiasPreview] = useState(null);
+  const [matthiasPreviewLoading, setMatthiasPreviewLoading] = useState(false);
+  const [matthiasPreviewError, setMatthiasPreviewError] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -258,10 +270,10 @@ export default function AdminScreen({ onExit }) {
       if (adminRefreshInFlightRef.current) return adminRefreshInFlightRef.current.pending;
       const epoch = adminDataEpochRef.current;
       const requestToken = Symbol('admin-refresh');
-      const pending = Promise.allSettled([fetchAdminUsers(), fetchAdminFeedback()]);
+      const pending = Promise.allSettled([fetchAdminUsers(), fetchAdminFeedback(), fetchAdminMatthiasStatus()]);
       adminRefreshInFlightRef.current = { requestToken, pending };
       try {
-        const [usersResult, feedbackResult] = await pending;
+        const [usersResult, feedbackResult, matthiasResult] = await pending;
         if (!mounted || adminDataEpochRef.current !== epoch || adminRefreshInFlightRef.current?.requestToken !== requestToken) return;
         if (usersResult.status === 'fulfilled') {
           setUsers(usersResult.value);
@@ -276,6 +288,12 @@ export default function AdminScreen({ onExit }) {
           setFeedbackError(null);
         } else if (!silent) {
           setFeedbackError(feedbackResult.reason?.message || 'No se pudo cargar el feedback.');
+        }
+        if (matthiasResult.status === 'fulfilled') {
+          setMatthiasStatus(matthiasResult.value || null);
+          setMatthiasStatusError(null);
+        } else if (!silent) {
+          setMatthiasStatusError(matthiasResult.reason?.message || 'No se pudo cargar el estado de Matthias.');
         }
       } finally {
         if (adminRefreshInFlightRef.current?.requestToken === requestToken) adminRefreshInFlightRef.current = null;
@@ -418,6 +436,50 @@ export default function AdminScreen({ onExit }) {
       });
   }, [expanded, insightsByUser, insightsLoading, insightsErrors]);
 
+  useEffect(() => {
+    if (!expanded || matthiasMemoryByUser[expanded] || matthiasMemoryLoading[expanded]) return;
+    setMatthiasMemoryLoading((prev) => ({ ...prev, [expanded]: true }));
+    fetchAdminMatthiasMemory(expanded)
+      .then((payload) => setMatthiasMemoryByUser((prev) => ({ ...prev, [expanded]: payload?.memory || null })))
+      .catch(() => setMatthiasMemoryByUser((prev) => ({ ...prev, [expanded]: null })))
+      .finally(() => setMatthiasMemoryLoading((prev) => ({ ...prev, [expanded]: false })));
+  }, [expanded, matthiasMemoryByUser, matthiasMemoryLoading]);
+
+  async function handleResetMatthiasMemory(username) {
+    if (matthiasResettingUser) return;
+    const confirmed = window.confirm(
+      `¿Borrar sólo la memoria de Matthias para “${username}”?\n\nNo se borrarán partidas, rating, puzzles ni progreso. Matthias olvidará sus consultas y consejos previos para ese usuario.`,
+    );
+    if (!confirmed) return;
+    setMatthiasResettingUser(username);
+    setMatthiasResetError(null);
+    try {
+      await resetAdminMatthiasMemory(username);
+      const status = await fetchAdminMatthiasStatus();
+      setMatthiasStatus(status || null);
+      setMatthiasStatusError(null);
+      setMatthiasMemoryByUser((current) => ({ ...current, [username]: null }));
+    } catch (error) {
+      setMatthiasResetError(error?.message || 'No se pudo borrar la memoria de Matthias.');
+    } finally {
+      setMatthiasResettingUser(null);
+    }
+  }
+
+  async function handlePreviewMatthias() {
+    if (matthiasPreviewLoading) return;
+    setMatthiasPreviewLoading(true);
+    setMatthiasPreviewError(null);
+    try {
+      const result = await previewAdminMatthiasPersonality(matthiasPreviewPreset);
+      setMatthiasPreview(result || null);
+    } catch (error) {
+      setMatthiasPreviewError(error?.message || 'No se pudo probar la personalidad de Matthias.');
+    } finally {
+      setMatthiasPreviewLoading(false);
+    }
+  }
+
   async function handleReanalyzePlayer(username) {
     const dossier = insightsByUser[username];
     const facts = dossier?.portraitFacts;
@@ -540,6 +602,57 @@ export default function AdminScreen({ onExit }) {
           currentAdmin={currentAdmin}
           onOpen={() => setAdminView('observability')}
         />
+
+        <section className="admin-matthias-status" aria-label="Estado de Matthias">
+          <div className="admin-matthias-status-heading">
+            <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+            <div><span className="section-label">Matthias · memoria persistente</span><h3>Estado del entrenador residente</h3></div>
+          </div>
+          {matthiasStatusError && <p className="error-text">{matthiasStatusError}</p>}
+          {!matthiasStatusError && !matthiasStatus && <p className="hint-text">Leyendo la memoria de Matthias…</p>}
+          {matthiasStatus && (
+            <>
+              <div className="admin-matthias-status-grid">
+                <div><strong>{matthiasStatus.consultations ?? 0}</strong><span>consultas útiles recordadas</span></div>
+                <div><strong>{matthiasStatus.usersWithMemory ?? 0}</strong><span>jugadores con memoria</span></div>
+                <div><strong>{matthiasStatus.aiToday?.calls ?? 0}{matthiasStatus.aiToday?.boundedWindow ? '+' : ''}</strong><span>llamadas hoy</span></div>
+                <div><strong>{matthiasStatus.storage === 'mongo' ? 'MongoDB' : 'Memoria local'}</strong><span>almacenamiento activo</span></div>
+                <div><strong>{matthiasStatus.aiToday?.cloudflarePercent == null ? '—' : `${matthiasStatus.aiToday.cloudflarePercent}%`}</strong><span>Workers AI hoy</span></div>
+                <div><strong>{matthiasStatus.aiToday?.fallbackPercent == null ? '—' : `${matthiasStatus.aiToday.fallbackPercent}%`}</strong><span>fallback local hoy</span></div>
+                <div><strong>{matthiasStatus.aiToday?.p50Ms == null ? '—' : `${Math.round(matthiasStatus.aiToday.p50Ms)} ms`}</strong><span>latencia p50 Workers</span></div>
+                <div><strong>{matthiasStatus.aiToday?.timeouts ?? 0}</strong><span>timeouts hoy</span></div>
+                <div><strong>{matthiasStatus.milestonesRemembered ?? 0}</strong><span>hitos persistentes</span></div>
+                <div><strong>{matthiasStatus.activeChallenges ?? 0}</strong><span>retos personales activos</span></div>
+                <div><strong>{matthiasStatus.emblematicPositions ?? 0}</strong><span>posiciones emblemáticas</span></div>
+                <div><strong>{matthiasStatus.topActiveGoal?.label || '—'}</strong><span>obsesión activa más común</span></div>
+              </div>
+              <div className="admin-matthias-advice">
+                <span className="section-label">Consejo dominante · agregado y anónimo</span>
+                {matthiasStatus.dominantAdvice?.label ? (
+                  <>
+                    <p>{matthiasStatus.dominantAdvice.label}</p>
+                    <small>{matthiasStatus.dominantAdvice.consultations ?? 0} consultas · {matthiasStatus.dominantAdvice.usersAffected ?? 0} jugador{matthiasStatus.dominantAdvice.usersAffected === 1 ? '' : 'es'} afectado{matthiasStatus.dominantAdvice.usersAffected === 1 ? '' : 's'}</small>
+                  </>
+                ) : <p className="hint-text">Todavía no hay señal suficiente para un consejo dominante.</p>}
+              </div>
+              <div className="admin-matthias-preview">
+                <div><span className="section-label">Banco de personalidad · datos sintéticos</span><p>Prueba cómo habla Matthias sin tocar memoria, estadísticas ni cuota de ningún jugador.</p></div>
+                <div className="admin-matthias-preview-controls">
+                  <select value={matthiasPreviewPreset} onChange={(event) => { setMatthiasPreviewPreset(event.target.value); setMatthiasPreview(null); }} aria-label="Perfil sintético de Matthias">
+                    <option value="newcomer">Recluta nuevo</option>
+                    <option value="veteran">Veterano respetado</option>
+                    <option value="repeat_offender">Reincidente táctico</option>
+                    <option value="improving">Jugador mejorando</option>
+                  </select>
+                  <button type="button" className="secondary-btn" disabled={matthiasPreviewLoading} onClick={() => void handlePreviewMatthias()}>{matthiasPreviewLoading ? 'Interrogando…' : 'Probar a Matthias'}</button>
+                </div>
+                {matthiasPreview?.text && <div className="admin-matthias-preview-answer"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><p>{matthiasPreview.text}</p><small>{matthiasPreview.provider === 'cloudflare' ? 'Workers AI' : 'Fallback local'} · sandbox sintético</small></div>}
+                {matthiasPreviewError && <p className="error-text">{matthiasPreviewError}</p>}
+              </div>
+              <small className="admin-matthias-privacy">Memoria schema v{matthiasStatus.memorySchemaVersion ?? '—'} · hasta {matthiasStatus.recentAdviceCap ?? '—'} consejos, {matthiasStatus.activeGoalCap ?? '—'} objetivos, {matthiasStatus.milestoneCap ?? '—'} hitos, {matthiasStatus.openingMemoryCap ?? '—'} aperturas y {matthiasStatus.emblematicPositionCap ?? '—'} posiciones emblemáticas por jugador. El panel agrega temas: no expone conversaciones privadas ni convierte consejos del LLM en hechos del jugador.</small>
+            </>
+          )}
+        </section>
 
         {/* La voz del usuario es señal operativa: vive arriba, junto a salud y observabilidad, no enterrada tras la tabla. */}
         <section className="admin-feedback-section" aria-label="Feedback de usuarios">
@@ -766,11 +879,39 @@ export default function AdminScreen({ onExit }) {
 
                               {insightsByUser[u.username]?.insights.totalGames > 0 && (
                                 <>
+                                  <details className="admin-matthias-memory-inspector" open={false}>
+                                    <summary>Inspector de memoria de Matthias</summary>
+                                    {matthiasMemoryLoading[u.username] ? <p className="hint-text">Abriendo el expediente…</p> : (() => {
+                                      const memory = matthiasMemoryByUser[u.username];
+                                      if (!memory) return <p className="hint-text">Matthias todavía no tiene memoria estructurada de este jugador.</p>;
+                                      return <div className="admin-matthias-memory-body">
+                                        <div className="admin-insights-facts">
+                                          <div><span>Relación</span><strong>{memory.relationship?.label || 'Recién llegado'}</strong></div>
+                                          <div><span>Respeto</span><strong>{memory.respect?.label || 'Recluta bajo observación'} · {memory.respect?.score ?? 0}/100</strong></div>
+                                          <div><span>Consultas</span><strong>{memory.consultations ?? 0}</strong></div>
+                                          <div><span>Estado narrativo</span><strong>{MATTHIAS_MOOD_LABELS[memory.mood] || 'Observador'}</strong></div>
+                                          <div><span>Rivalidad</span><strong>{memory.rivalry?.games ? `${memory.rivalry.wins}-${memory.rivalry.losses}-${memory.rivalry.draws}` : 'Sin historial suficiente'}</strong></div>
+                                          <div><span>Schema</span><strong>v{memory.schemaVersion ?? '—'}</strong></div>
+                                        </div>
+                                        {memory.currentObsession?.label && <p><b>Obsesión actual:</b> {memory.currentObsession.label}</p>}
+                                        {memory.activeChallenge?.label && <p><b>Reto personal:</b> {memory.activeChallenge.label} · setbacks {memory.activeChallenge.setbacks ?? 0}</p>}
+                                        {memory.openDebt?.status && <p><b>Consejo pendiente:</b> {memory.openDebt.status === 'struggling' ? 'sigue fallando' : memory.openDebt.status === 'waiting' ? 'aún sin muestra' : 'veredicto mixto'}.</p>}
+                                        {memory.activeGoals?.length > 0 && <div><h4>Objetivos activos</h4><ul>{memory.activeGoals.map((goal) => <li key={goal.id}><b>{goal.label}</b> · {goal.current_games ?? 0} partidas observadas</li>)}</ul></div>}
+                                        {memory.nemesisOpening?.name && <p><b>Apertura-némesis:</b> {memory.nemesisOpening.name} · {Math.round(memory.nemesisOpening.win_pct || 0)}% en {memory.nemesisOpening.games || 0} partidas.</p>}
+                                        {memory.recentMilestones?.length > 0 && <div><h4>Hitos recordados</h4><ul>{memory.recentMilestones.map((item) => <li key={item.fingerprint}>{item.polarity === 'shame' ? '☠' : '✦'} {item.label}</li>)}</ul></div>}
+                                        {memory.emblematicPositions?.length > 0 && <div><h4>Posiciones emblemáticas</h4><ul>{memory.emblematicPositions.slice(-4).map((item) => <li key={item.fingerprint}>{item.label}{item.opening ? ` · ${item.opening}` : ''}</li>)}</ul></div>}
+                                        {memory.mainAdvice?.text && <div className="ai-task-card"><small>ÚLTIMO CONSEJO RECORDADO</small><p>{memory.mainAdvice.text}</p></div>}
+                                      </div>;
+                                    })()}
+                                  </details>
+
                                   <div className="admin-insights-ai-actions">
                                     <button type="button" className="secondary-btn" disabled={aiPortraitLoading[u.username]} onClick={() => void handleReanalyzePlayer(u.username)}>{aiPortraitLoading[u.username] ? 'Reanalizando…' : '↻ Reanalizar jugador'}</button>
-                                    <small>Fuerza una lectura nueva con Workers AI; no consume el cooldown del jugador.</small>
+                                    <button type="button" className="secondary-btn danger-btn" disabled={matthiasResettingUser === u.username} onClick={() => void handleResetMatthiasMemory(u.username)}>{matthiasResettingUser === u.username ? 'Borrando memoria…' : 'Olvidar sólo en Matthias'}</button>
+                                    <small>Admin puede consultar/reanalizar sin cooldown. El reset borra sólo la memoria de Matthias, no el progreso del jugador.</small>
                                   </div>
                                   {aiPortraitError[u.username] && <p className="error-text">{aiPortraitError[u.username]}</p>}
+                                  {matthiasResetError && expanded === u.username && <p className="error-text">{matthiasResetError}</p>}
                                   {aiPortraitByUser[u.username] && <div className="ai-task-card admin-player-ai-portrait"><small>CPU // {aiPortraitByUser[u.username].provider === 'cloudflare' ? 'WORKERS AI' : 'FALLBACK LOCAL'}</small><p>{aiPortraitByUser[u.username].text}</p></div>}
 
                                   <div className="admin-insights-facts">

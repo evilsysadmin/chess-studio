@@ -9,7 +9,8 @@ import { glossaryEntry } from '../chessGlossary.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
-import { buildPostGameAutopsyDossier } from '../aiNarrativeTasks.js';
+import { buildMatthiasPositionDossier, buildPostGameAutopsyDossier } from '../aiNarrativeTasks.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 const CP_GLOSSARY = glossaryEntry('cp');
 const CCT_GLOSSARY = glossaryEntry('CCT');
@@ -44,6 +45,8 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const [personalPuzzleInfo, setPersonalPuzzleInfo] = useState(null);
   const [aiAutopsy, setAiAutopsy] = useState(null);
   const [aiAutopsyStatus, setAiAutopsyStatus] = useState('idle');
+  const [matthiasPosition, setMatthiasPosition] = useState(null);
+  const [matthiasPositionStatus, setMatthiasPositionStatus] = useState('idle');
   const archivedRef = useRef(false);
 
   useEffect(() => {
@@ -95,6 +98,18 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     return () => { active = false; };
   }, [status, report, meta.gameId]);
 
+  async function askMatthiasAboutWorst() {
+    if (!report?.worst || matthiasPositionStatus === 'loading') return;
+    const token = getToken();
+    const dossier = buildMatthiasPositionDossier(report.worst, { fen: report.worst?.context?.fenBefore, opening: meta.opening });
+    if (!token || !dossier) return;
+    setMatthiasPositionStatus('loading');
+    setMatthiasPosition(null);
+    const text = await requestRemoteNarrative(dossier, { token, timeoutMs: 8000 }).catch(() => null);
+    setMatthiasPosition(text || null);
+    setMatthiasPositionStatus(text ? 'done' : 'unavailable');
+  }
+
   const incidents = report?.topMistakes?.filter((m) => m.loss > 15) || [];
   const accuracy = report ? accuracyScore(report) : null;
   const best = report ? bestMoveOfReport(report) : null;
@@ -127,15 +142,18 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               ))}
             </div>
 
-            {aiAutopsyStatus === 'loading' && <div className="ai-task-card is-loading"><small>CPU // AUTOPSIA AI</small><p>Revisando las pruebas sin inventarme cadáveres adicionales…</p></div>}
-            {aiAutopsy && <div className="ai-task-card"><small>CONSEJOS // ANÁLISIS DE PARTIDA</small><p>{aiAutopsy}</p></div>}
+            {aiAutopsyStatus === 'loading' && <div className="ai-task-card is-loading"><small>MATTHIAS // DEBRIEF</small><p>Revisando las pruebas sin inventarme cadáveres adicionales…</p></div>}
+            {aiAutopsy && <div className="ai-task-card"><small>MATTHIAS // DEBRIEF</small><p>{aiAutopsy}</p></div>}
 
             {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
 
             <div className="autopsy-actions">
               {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver el peor momento · jugada {report.worst.moveNumber}</button>}
               {report.worst && onShareIncident && <button className="secondary-btn" onClick={() => onShareIncident(report.worst, report)}>📤 Compartir</button>}
+              {report.worst && <button className="secondary-btn" disabled={matthiasPositionStatus === 'loading'} onClick={() => void askMatthiasAboutWorst()}>{matthiasPositionStatus === 'loading' ? 'Matthias está mirando…' : '♟ Preguntar a Matthias'}</button>}
             </div>
+            {matthiasPosition && <div className="ai-task-card matthias-position-answer"><small>MATTHIAS // ESTA POSICIÓN</small><div className="matthias-inline-answer"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><p>{matthiasPosition}</p></div></div>}
+            {matthiasPositionStatus === 'unavailable' && <p className="hint-text">Matthias no ha podido revisar esta posición ahora mismo. El análisis del motor de arriba sigue siendo válido.</p>}
 
             <details className="autopsy-full-details">
               <summary>Abrir autopsia completa</summary>
