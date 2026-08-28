@@ -3,6 +3,7 @@ import {
   MATTHIAS_HOME_COOLDOWN_MS,
   MATTHIAS_ONBOARDED_KEY,
   MATTHIAS_ONBOARDED_VERSION,
+  buildMatthiasHomeCardModel,
   buildMatthiasHomeVisit,
   buildMatthiasIntroVisit,
   markMatthiasHomeShown,
@@ -123,6 +124,29 @@ describe('Matthias en Home', () => {
     const closed = buildMatthiasHomeVisit({ memory: { recentMilestones: [{ fingerprint: 'done', kind: 'challenge_completed', polarity: 'fame', label: 'Expediente cerrado: Horquillas' }] } });
     expect(closed).toMatchObject({ kind: 'earned-respect' });
     expect(closed.text).toMatch(/Eso ha sido bueno\. Muy bueno/);
+  });
+
+  it('da a Matthias un rincón silencioso estable sin obligarlo a hablar', () => {
+    const model = buildMatthiasHomeCardModel({ memory: { relationship: { label: 'Viejo conocido' } } });
+    expect(model).toMatchObject({
+      variant: 'quiet',
+      eyebrow: 'MATTHIAS · EN OBSERVACIÓN',
+      text: '…',
+      action: 'insights',
+      actionLabel: 'Ver Así juegas',
+      meta: 'Viejo conocido',
+    });
+  });
+
+  it('convierte retos e hitos en mensajes importantes dentro del mismo bocadillo', () => {
+    const visit = buildMatthiasHomeVisit({ memory: { activeChallenge: {
+      id: 'clean-run:x', label: '3 partidas sin repetir: Horquillas', baseline_games: 10, current_games: 11, target_games: 3,
+    } } });
+    const model = buildMatthiasHomeCardModel({ visit, memory: { activeChallenge: {
+      id: 'clean-run:x', label: '3 partidas sin repetir: Horquillas', baseline_games: 10, current_games: 11, target_games: 3,
+    } } });
+    expect(model).toMatchObject({ variant: 'important', eyebrow: 'MATTHIAS · RETO ACTIVO', action: 'insights', meta: 'Reto activo · 1/3' });
+    expect(model.text).toContain('3 partidas sin repetir: Horquillas');
   });
 
   it('el respeto ganado cambia el tono genérico sin convertirlo en halago automático', () => {

@@ -182,6 +182,62 @@ export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGa
 }
 
 
+const MATTHIAS_HOME_IMPORTANT_KINDS = new Set(['intro', 'reunion', 'challenge', 'earned-respect']);
+
+function matthiasHomeMeta(memory = null) {
+  const challenge = memory?.activeChallenge || null;
+  if (challenge?.label) {
+    const target = Math.max(1, Number(challenge.target_games || 3));
+    const baseline = Number(challenge.baseline_games || 0);
+    const current = Number(challenge.current_games || baseline);
+    const progress = Math.max(0, Math.min(target, current - baseline));
+    return `Reto activo · ${progress}/${target}`;
+  }
+  const goal = memory?.currentObsession || (Array.isArray(memory?.activeGoals) ? memory.activeGoals[0] : null);
+  if (goal?.label) return `Obsesión actual · ${goal.label}`;
+  const nemesis = memory?.nemesisOpening;
+  if (nemesis?.name && Number(nemesis.games || 0) >= 3) return `Némesis · ${nemesis.name}`;
+  return memory?.relationship?.label || memory?.respect?.label || null;
+}
+
+export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {}) {
+  const meta = matthiasHomeMeta(memory);
+  if (!visit) {
+    return {
+      variant: 'quiet',
+      eyebrow: 'MATTHIAS · EN OBSERVACIÓN',
+      text: '…',
+      meta,
+      action: 'insights',
+      actionLabel: 'Ver Así juegas',
+    };
+  }
+
+  const labels = {
+    intro: 'MATTHIAS · PRESENTACIÓN',
+    reunion: 'MATTHIAS · REENCUENTRO',
+    challenge: 'MATTHIAS · RETO ACTIVO',
+    debt: 'MATTHIAS · ASUNTO PENDIENTE',
+    'earned-respect': 'MATTHIAS · EXPEDIENTE',
+    goal: 'MATTHIAS · OBSESIÓN ACTUAL',
+    incident: 'MATTHIAS · DEL EXPEDIENTE',
+    rivalry: 'MATTHIAS · RIVAL RESIDENTE',
+    'memory-shame': 'MATTHIAS · HALL OF SHAME',
+    'memory-fame': 'MATTHIAS · HALL OF FAME',
+    'opening-memory': 'MATTHIAS · APERTURA NÉMESIS',
+    generic: 'MATTHIAS DICE',
+  };
+  return {
+    variant: MATTHIAS_HOME_IMPORTANT_KINDS.has(visit.kind) ? 'important' : 'comment',
+    eyebrow: labels[visit.kind] || 'MATTHIAS DICE',
+    text: visit.text || '…',
+    meta,
+    action: visit.action || 'insights',
+    actionLabel: visit.actionLabel || 'Ver Así juegas',
+  };
+}
+
+
 export function shouldShowMatthiasHome({ hasOpenOverlay = false, hasPriorityAction = false, sessionSeen = false, lastShownAt = null, now = Date.now(), randomValue = Math.random(), relationshipTier = 'newcomer', visitKind = 'generic' } = {}) {
   // Matthias puede estar presente como avatar, pero se calla cuando Home ya
   // tiene una acción prioritaria (especialmente Continuar partida) o un overlay.

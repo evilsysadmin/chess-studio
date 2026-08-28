@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfm',
+    title: 'Matthias encuentra su rincón',
+    highlights: [
+      'Home sustituye el avatar flotante de Matthias por un rincón integrado con bocadillo propio, justo antes de elegir la próxima partida.',
+      'Cuando no tiene nada importante que decir, Matthias permanece en silencio con un simple “…”; cuando habla, usa el mismo espacio para mostrar el comentario real, su contexto y una única acción útil.',
+      'Tocar el bocadillo o el avatar abre Así juegas, mientras el diseño se adapta a móvil sin competir con la guía, una partida pendiente u otras prioridades de Home.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfl',
     title: 'Las actualizaciones esperan su turno',
     highlights: [

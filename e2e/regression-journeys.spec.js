@@ -317,7 +317,9 @@ test('Home · el avatar residente de Matthias abre Así juegas', async ({ page }
   await mockApi(page);
   await login(page);
   await dismissHomeGuide(page);
-  const matthias = page.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(corner).toBeVisible();
+  const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
   await expect(matthias).toBeVisible();
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();

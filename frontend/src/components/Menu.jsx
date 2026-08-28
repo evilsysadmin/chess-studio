@@ -24,7 +24,7 @@ import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboar
 import { loadPuzzlesSolved } from '../puzzleStats.js';
 import { APP_RELEASE } from '../release.js';
 import { loadRivalry } from '../rivalry.js';
-import { buildMatthiasHomeVisit, buildMatthiasIntroVisit, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasIntroPlacement, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
+import { buildMatthiasHomeCardModel, buildMatthiasHomeVisit, buildMatthiasIntroVisit, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasIntroPlacement, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
@@ -95,6 +95,7 @@ export default function Menu({
   const nextAction = useMemo(() => homeNextBestAction(activity), [activity]);
   const rivalry = useMemo(() => loadRivalry(), []);
   const matthiasCandidate = useMemo(() => buildMatthiasHomeVisit({ rivalry, memory: matthiasMemory, hasSavedGame }), [rivalry, matthiasMemory, hasSavedGame]);
+  const matthiasCardModel = useMemo(() => buildMatthiasHomeCardModel({ visit: matthiasVisit, memory: matthiasMemory }), [matthiasMemory, matthiasVisit]);
   const freshAccount = useMemo(() => isFreshAccount({ activity, tournament }), [activity, tournament]);
   const onboarding = useMemo(() => buildHomeOnboarding({
     activity,
@@ -202,7 +203,7 @@ export default function Menu({
   }
 
   function handleMatthiasAction() {
-    const action = matthiasVisit?.action;
+    const action = matthiasVisit?.action || 'insights';
     setMatthiasVisit(null);
     if (action === 'continue') { onContinue(); return; }
     if (action === 'train') { onTrainPersonal(); return; }
@@ -271,15 +272,6 @@ export default function Menu({
 
       {error && !showQuickMatch && !showMirrorMode && <div className="home-error-banner" role="alert"><b>No se pudo completar la acción.</b><span>{error}</span></div>}
 
-      {!showHomeGuide && !matthiasIntroBlocked && (
-        <MatthiasHomeVisit
-          visit={matthiasVisit}
-          onAction={handleMatthiasAction}
-          onDismiss={() => setMatthiasVisit(null)}
-          onOpenInsights={onInsights}
-        />
-      )}
-
       <section className={`home-today-card ${today.dailyFull ? 'is-complete' : today.dailySolved ? 'is-active' : ''}`} aria-label="Hoy en Chess Studio">
         <div className="home-today-emblem" aria-hidden="true">♞</div>
         <div className="home-today-copy">
@@ -322,6 +314,16 @@ export default function Menu({
             else setShowQuickMatch(true);
           }}>{nextAction.label} →</button>
         </section>
+      )}
+
+      {!showHomeGuide && !matthiasIntroBlocked && (
+        <MatthiasHomeVisit
+          model={matthiasCardModel}
+          speaking={Boolean(matthiasVisit)}
+          onAction={handleMatthiasAction}
+          onDismiss={() => setMatthiasVisit(null)}
+          onOpenInsights={onInsights}
+        />
       )}
 
       <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
