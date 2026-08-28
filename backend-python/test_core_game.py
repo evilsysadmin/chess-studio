@@ -7,7 +7,7 @@ rompen, significan que el tablero deja de jugar ajedrez correctamente.
 import chess
 import random
 
-from chess_core import board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
+from chess_core import board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game, validate_stored_game_entry
 
 
 def _entry(*, moves=None, initial_fen=None, human_color="w", handicap=None):
@@ -37,6 +37,19 @@ def test_load_board_rejects_corrupt_persisted_history_instead_of_inventing_state
     with __import__("pytest").raises(ValueError):
         load_board(_entry(moves=["e4", "e5", "Qa9"]))
 
+
+def test_stored_game_shape_rejects_types_that_would_crash_recovery():
+    bad_entries = [
+        {**_entry(), "moves": 42},
+        {**_entry(), "moves": ["e4", None]},
+        {**_entry(), "humanColor": "purple"},
+        {**_entry(), "difficulty": float("nan")},
+        {**_entry(), "lastMove": "e4"},
+    ]
+    for entry in bad_entries:
+        with __import__("pytest").raises(ValueError):
+            validate_stored_game_entry(entry)
+
 def test_resolve_move_covers_castling_en_passant_and_promotion():
     castle = chess.Board("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
     assert resolve_move(castle, "e1", "g1", None) == chess.Move.from_uci("e1g1")
@@ -53,6 +66,8 @@ def test_resolve_move_covers_castling_en_passant_and_promotion():
 
     normal = chess.Board()
     assert resolve_move(normal, "e2", "e4", "q") is None
+    assert resolve_move(normal, None, "e4", None) is None
+    assert resolve_move(normal, "e2", None, None) is None
 
 
 def test_custom_starting_fen_roundtrips_san_and_load_board():

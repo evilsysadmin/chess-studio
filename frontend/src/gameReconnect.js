@@ -10,10 +10,10 @@ export function reconnectTarget({ route, game = null, tournamentGame = null, sav
   return null;
 }
 
-export async function fetchReconnectGame(gameId, getGame) {
+export async function fetchReconnectGame(gameId, getGame, { signal } = {}) {
   if (!gameId || typeof getGame !== 'function') return { ok: false, reason: 'invalid-target', game: null, error: null };
   try {
-    const game = await getGame(gameId);
+    const game = signal ? await getGame(gameId, { signal }) : await getGame(gameId);
     if (!game || game.id !== gameId) {
       return { ok: false, reason: 'invalid-response', game: null, error: null };
     }

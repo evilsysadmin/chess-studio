@@ -1,9 +1,20 @@
 import { useEffect, useRef } from 'react';
-import { clearCombatSession, hasCombatSession, loadCombatSession, saveCombatSession } from './combatSession.js';
+import { clearCombatSession, hasCombatSession, hasCombatSessionMarker, loadCombatSession, saveCombatSession } from './combatSession.js';
 import { CPU_DELAY_MS, buildCombatSessionSnapshot } from './combatControllerSupport.js';
 
 export function loadCombatSessionBootstrap(combatSessionId, loader = loadCombatSession) {
   return loader(combatSessionId) || null;
+}
+
+export function combatSessionRecoveryState(combatSessionId, {
+  loader = loadCombatSession,
+  markerLoader = hasCombatSessionMarker,
+} = {}) {
+  const restoredSession = loadCombatSessionBootstrap(combatSessionId, loader);
+  return {
+    restoredSession,
+    missingSession: !restoredSession && markerLoader(combatSessionId),
+  };
 }
 
 export function shouldPersistCombatSession({ phase, hasSnapshot }) {
@@ -17,11 +28,11 @@ export function shouldResumeCombatCpu({ restoredSession, phase, turn, humanColor
 export function useCombatSessionBootstrap(combatSessionId) {
   const restoredSessionRef = useRef(undefined);
   if (restoredSessionRef.current === undefined) {
-    restoredSessionRef.current = loadCombatSessionBootstrap(combatSessionId);
+    restoredSessionRef.current = combatSessionRecoveryState(combatSessionId);
   }
-  const restoredSession = restoredSessionRef.current;
+  const { restoredSession, missingSession } = restoredSessionRef.current;
   const activityGameIdRef = useRef(restoredSession?.activityGameId || null);
-  return { restoredSession, activityGameIdRef };
+  return { restoredSession, missingSession, activityGameIdRef };
 }
 
 export function useCombatSessionPersistence({

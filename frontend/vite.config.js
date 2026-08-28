@@ -72,6 +72,7 @@ export default defineConfig({
         'src/aiNarrativeTasks.js',
         'src/activeGameSession.js',
         'src/gameReconnect.js',
+        'src/gamePayload.js',
         'src/saveStatus.js',
         'src/viewState.js',
         'src/useViewNavigation.js',

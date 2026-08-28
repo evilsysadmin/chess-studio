@@ -1,3 +1,31 @@
+### v16.6dm46zek · Continuidad de juego sin derrotas fantasma
+
+- La Torre recupera una pelea cuyo snapshot desapareció en el mismo piso, con la misma semilla, modo y perks; un fallo técnico deja de cerrar el intento o alterar la mejor marca.
+- Campañas antiguas o dañadas con una fase incompatible vuelven a un nodo jugable del mapa en vez de quedar atrapadas en una pantalla sin acciones.
+- Salir de un torneo con negras antes de mover ya no cuenta la apertura automática de la CPU como participación ni como rendición.
+- Una partida normal declarada irrecuperable por el servidor puede descartarse explícitamente sin derrota, limpiando también su reloj, serie, contrato y run asociados.
+- Combat libre avisa si existía una batalla pero su snapshot quedó incompleto; no inventa bajas y permite descartar sólo esa batalla.
+- Los ErrorBoundary sólo ofrecen recuperación cuando existe estado real de partida, campaña, Torre o Combat, y usan mensajes válidos para todos los modos.
+- La victoria de la Torre vuelve a mostrar al jefe clásico correcto: El Rey Viejo.
+
+### v16.6dm46zej · Hotfix de recuperación de campaña Combat
+
+- Una campaña en fase de combate cuyo snapshot efímero desaparezca vuelve al briefing del mismo sector; deja de convertirse forzosamente en una operación perdida.
+- La recuperación mantiene roster, bajas persistidas, semilla, ruta, perks, inteligencia, reliquias y suministros. No concede la batalla pendiente ni revierte bajas ya guardadas.
+- Las operaciones ya archivadas como interrumpidas pueden reanudarse. Los archivos nuevos conservan el estado completo y los archivos anteriores se reconstruyen de forma conservadora desde semilla, ruta, reliquias y saldo.
+- La pantalla de interrupción y el resumen final ofrecen Recuperar campaña en lugar de forzar Nueva campaña. Tras una recarga, la última operación interrumpida aparece como acción principal recuperable.
+
+### v16.6dm46zei · Integridad de jugadas y recuperación automática
+
+- Valida las respuestas de crear, cargar, jugar y deshacer antes de incorporarlas al estado frontend: identidad, FEN, turno, historial, dificultad y resultado deben ser coherentes.
+- Una partida normal se reconcilia automáticamente con el backend tras un timeout o conflicto de guardado aunque el navegador nunca haya emitido un ciclo offline/online; las peticiones obsoletas se cancelan.
+- Combat exige coherencia exacta entre FEN y registro de unidades al restaurar y antes/después de resolver una jugada. El resultado se valida antes de mutar XP, estadísticas o UI, manteniendo la batalla atómica ante estados imposibles.
+- Las promociones propuestas por la CPU de Combat sólo aceptan piezas legales y distinguen jugadas normales, coronación a dama y subpromociones.
+- El backend valida íntegramente cada partida persistida y convierte corrupción recuperable en \`409\`. Handicaps desconocidos se rechazan al crear la partida.
+- Si el motor normal falla o propone una jugada ilegal, el backend elige determinísticamente una jugada legal; el turno no queda bloqueado y los logs no filtran la posición ni el error interno.
+- Corrige \`material_rook_file\`: el rey blanco protege g7, por lo que \`Rxg7+\` gana el caballo y \`Kxg7\` es ilegal. El gate táctico vuelve a pasar sin relajarse.
+- Activa la cobertura frontend que ya estaba configurada pero carecía de su proveedor; el fuzz legal conserva toda su muestra también bajo instrumentación.
+
 ### v16.6dm46zeh · Sistema visual, Retro Player y calidad táctica de puzzles
 
 - Unifica la gramática visual de Home, formularios, modales, partidas, Combat y Admin con tokens comunes de espaciado, superficies, bordes, controles, foco y responsive; el objetivo es reducir ruido sin reescribir gameplay.

@@ -15,7 +15,7 @@ export default function CombatSetupView({
   setAutoLevelUpEnabled, roster, rosterCount, deadCount, deadRosterEntries,
   handleStartBattleClick, handleQuickStartBattle,
   showArmy, setShowArmy, showMarket, setShowMarket, showDeployment, setShowDeployment, requireDeploymentConfirmation, deploymentConfirmed, handleConfirmDeployment, handleBuyRosterStat, handleReviveRosterPiece, handleReplaceRosterPiece, handleRenameRosterPiece, handleMetamorphoseRosterPiece, handleDeployRosterUnit, handleRemoveDeployedUnit, handleResetDeployment, handleAutofillDeployment, handleApplyDeploymentPreset, handleUnlockRosterTechnique, handleEquipRosterTechnique, handleHireMercenary, handleBuyEquipment,
-  handleResetRoster, onHistory, serviceSummary,
+  handleResetRoster, onHistory, serviceSummary, sessionRecoveryLost, dismissInterruptedSession,
 }) {
   const deploy = deploymentSummary(roster);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-basics']?.seen);
@@ -102,6 +102,16 @@ export default function CombatSetupView({
           >
             {combatVariant === 'roguelike' ? 'Elige ruta, prepara el ejército y combate.' : 'Prepara el ejército y entra en combate.'}
           </p>
+
+          {sessionRecoveryLost && combatVariant !== 'roguelike' && (
+            <div className="active-session-recovery" role="alert">
+              <strong>No se pudo recuperar la batalla anterior.</strong>
+              <span>El snapshot quedó incompleto. No se registra derrota ni se inventan bajas.</span>
+              <button type="button" className="secondary-btn" onClick={dismissInterruptedSession}>
+                Descartar batalla incompleta
+              </button>
+            </div>
+          )}
 
           {encounterLabel && (
             <div className="combat-encounter-card compact" title={encounterDescription || undefined}>

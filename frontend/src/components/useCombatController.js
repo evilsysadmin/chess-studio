@@ -15,6 +15,7 @@ import {
   autoLevelUp,
   repetitionKey,
   rosterKeyFor,
+  combatPositionIssues,
 } from '../combat.js';
 import { loadRoster, saveRoster, applyRosterToRegistry, saveSurvivorsToRoster, expireDeadPieces } from '../combatRoster.js';
 import { saveCombatBattle } from '../combatHistory.js';
@@ -47,8 +48,9 @@ import { chessFromFen } from '../chessRules.js';
 
 
 export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
-  const { restoredSession, activityGameIdRef } = useCombatSessionBootstrap(combatSessionId);
+  const { restoredSession, missingSession, activityGameIdRef } = useCombatSessionBootstrap(combatSessionId);
   const [phase, setPhase] = useState(restoredSession ? 'battle' : 'setup'); // 'setup' | 'battle' | 'over'
+  const [sessionRecoveryLost, setSessionRecoveryLost] = useState(missingSession);
   // Registro jugada-a-jugada de ESTA batalla, para la "pista inversa" y el
   // historial de Combate. No es un historial SAN normal (los fallos/esquives
   // NO mueven la pieza, solo pasan el turno — eso rompe el supuesto de
@@ -223,6 +225,11 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setBusy,
     runCpuTurn,
   });
+
+  function dismissInterruptedSession() {
+    clearBattleSession();
+    setSessionRecoveryLost(false);
+  }
 
   const techniqueTargets = activeTechnique
     ? techniqueTargetsFor(fen, registry, activeTechnique.from)
@@ -690,6 +697,9 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   // daría un valor viejo, sin la jugada que se acaba de agregar, y cada
   // jugada de la CPU terminaría PISANDO el registro en vez de sumarle.
   function performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, from, to, promotion, techniqueId = null) {
+    if (combatPositionIssues(currentFen, currentRegistry).length) {
+      throw new Error('El tablero y el registro de Combat no coinciden. Se conserva la última batalla guardada para recuperarla.');
+    }
     const attackerBefore = currentRegistry[from];
     let defenderBefore = currentRegistry[to];
     if (!defenderBefore) {
@@ -709,6 +719,12 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     if (!result) {
       throw new Error('La jugada de Combat no pudo resolverse legalmente. La posición se conserva sin cambios.');
     }
+    const resultIssues = combatPositionIssues(result.fen, result.registry);
+    if (resultIssues.length) {
+      throw new Error('Combat produjo un estado incoherente. La jugada se rechaza antes de cambiar la batalla.');
+    }
+    const chessAfter = chessFromFen(result.fen);
+    if (!chessAfter) throw new Error('Combat produjo una posición inválida. La jugada se rechaza y la batalla se conserva.');
 
     if (attackerBefore?.color === currentHumanColor) {
       const creditSignal = combatCreditSignalForAttempt({
@@ -781,9 +797,6 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     else playMoveSound();
 
     pushLog(buildCombatLogEntry(result, currentHumanColor));
-
-    const chessAfter = chessFromFen(result.fen);
-    if (!chessAfter) throw new Error('Combat produjo una posición inválida. La jugada se rechaza y la batalla se conserva.');
 
     // chess.js pierde su historial interno porque Combate reconstruye desde
     // FEN tras cada turno (y nuestros fallos son turnos nulos). Por eso la
@@ -1256,7 +1269,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     : statusLabel || (localChess.turn() === humanColor ? 'Tu turno' : 'Turno de la CPU');
 
   return {
-    phase, combatLog, battleRecap, ratingInfo, difficulty, difficultyBalance, colorChoice, setColorChoice,
+    phase, sessionRecoveryLost, dismissInterruptedSession, combatLog, battleRecap, ratingInfo, difficulty, difficultyBalance, colorChoice, setColorChoice,
     pieceVeteranMarks,
     autoLevelUpEnabled, setAutoLevelUpEnabled, humanColor, fen, registry, selected,
     pendingPromotion, pendingAttack, infoSquare, activeTechnique, busy, cpuRetryNeeded, retryCpuTurn, pendingAnim, log, roster,

@@ -3,6 +3,7 @@ import { SAVE_STATUS } from './saveStatus.js';
 import {
   reconnectStillNeeded,
   sameReconnectTarget,
+  shouldAutoReconnect,
   shouldAttemptReconnect,
 } from './useGameReconnect.js';
 
@@ -15,6 +16,13 @@ describe('reconexión de partida · política defensiva', () => {
   it('un estado ERROR fuerza intento aunque no se haya observado offline explícito', () => {
     expect(shouldAttemptReconnect({ inFlight: false, reconnectNeeded: false, saveState: SAVE_STATUS.ERROR })).toBe(true);
     expect(shouldAttemptReconnect({ inFlight: false, reconnectNeeded: false, saveState: SAVE_STATUS.SAVED })).toBe(false);
+  });
+
+  it('reconcilia automáticamente un error online sólo si existe una partida activa', () => {
+    expect(shouldAutoReconnect({ saveState: SAVE_STATUS.ERROR, online: true, target: { route: 'game', gameId: 'g-1' } })).toBe(true);
+    expect(shouldAutoReconnect({ saveState: SAVE_STATUS.ERROR, online: false, target: { route: 'game', gameId: 'g-1' } })).toBe(false);
+    expect(shouldAutoReconnect({ saveState: SAVE_STATUS.SAVED, online: true, target: { route: 'game', gameId: 'g-1' } })).toBe(false);
+    expect(shouldAutoReconnect({ saveState: SAVE_STATUS.ERROR, online: true, target: null })).toBe(false);
   });
 
   it('una respuesta tardía no puede aplicarse si el usuario cambió de partida o de modo', () => {

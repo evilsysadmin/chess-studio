@@ -38,6 +38,8 @@ import {
   selectCampaignNode,
   markCampaignBattleStarted,
   markCampaignBattleRetired,
+  recoverInterruptedCampaign,
+  resumeInterruptedCampaign,
   markCampaignBattleWon,
   campaignRewardOptions,
   chooseCampaignReward,
@@ -57,6 +59,7 @@ import {
   loadRun,
   startNewRun,
   markBattleStarted,
+  recoverInterruptedRun,
   markFloorCleared,
   chooseRunReward,
   advanceFloor,
@@ -267,6 +270,18 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setCampaign((current) => markCampaignBattleStarted(current));
   }
 
+  function handleRecoverInterruptedCampaign(entry = null) {
+    const recovered = entry
+      ? resumeInterruptedCampaign(entry)
+      : recoverInterruptedCampaign(campaign);
+    if (!recovered?.active) return;
+    setCombatSessionActive(false);
+    setBattleDebrief(null);
+    setCampaign(recovered);
+    setCampaignEndResult(null);
+    setCampaignArchive(loadCampaignArchive());
+  }
+
   function finishCampaign(reason, campaignToFinish = campaign) {
     const result = endCampaign(campaignToFinish, reason);
     setCampaignBestStage(loadCampaignBestStage());
@@ -419,6 +434,13 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setRun((current) => markBattleStarted(current));
   }
 
+  function handleRecoverInterruptedRun() {
+    setCombatSessionActive(false);
+    setBattleDebrief(null);
+    setEndResult(null);
+    setRun((current) => recoverInterruptedRun(current));
+  }
+
   function handleBattleResult(outcome, debrief = null, meta = {}) {
     setBattleDebrief(debrief);
     setCombatSessionActive(false);
@@ -472,10 +494,12 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <span className="section-label">{COMBAT_CHESS_NAME} · integridad de campaña</span>
           <h2>La batalla quedó interrumpida</h2>
           <p className="hero-scope-note">
-            El nodo ya había entrado en combate. Repetirlo desde cero permitiría rerollear bajas y ataques: la campaña lo trata como operación perdida.
+            La sesión efímera de la batalla ya no está disponible. La campaña,
+            el ejército y sus bajas siguen guardados: puedes volver al briefing
+            del mismo sector y preparar el reintento.
           </p>
-          <button type="button" className="primary-btn" style={{ width: '100%', marginTop: '0.8rem' }} onClick={() => finishCampaign('interrupted')}>
-            Cerrar la operación interrumpida
+          <button type="button" className="primary-btn" style={{ width: '100%', marginTop: '0.8rem' }} onClick={() => handleRecoverInterruptedCampaign()}>
+            Recuperar campaña
           </button>
         </div>
       </div>
@@ -526,18 +550,17 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       <div className="menu">
         <button className="back-link" onClick={onExit}>← Volver al menú</button>
         <div className="menu-section roguelike-interrupted">
-          <span className="section-label">{COMBAT_CHESS_NAME} · integridad del intento</span>
+          <span className="section-label">{COMBAT_CHESS_NAME} · recuperación segura</span>
           <h2>La pelea quedó interrumpida</h2>
           <p className="hero-scope-note">
-            Este piso ya había empezado y la sesión desapareció antes de resolverlo. Reiniciarlo desde cero
-            permitiría repetir tiradas y posiciones hasta que saliera una buena: save-scum de manual.
+            La sesión de batalla desapareció antes de resolver el piso. Puedes repetir este mismo encuentro
+            conservando el piso, la semilla y todas las mejoras del intento.
           </p>
           <p className="hint-text">
-            El intento se considera perdido. Tu ejército guardado conserva el último estado que llegó a persistirse;
-            no se inventan bajas que el juego no llegó a registrar.
+            No se registra derrota ni se inventan bajas por un fallo técnico.
           </p>
-          <button type="button" className="primary-btn" style={{ width: '100%', marginTop: '0.8rem' }} onClick={() => finishRun('interrupted')}>
-            Cerrar el intento interrumpido
+          <button type="button" className="primary-btn" style={{ width: '100%', marginTop: '0.8rem' }} onClick={handleRecoverInterruptedRun}>
+            Recuperar el intento
           </button>
         </div>
       </div>
@@ -753,11 +776,23 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
             {!campaignEndResult && (
               <div className="campaign-home-action friendly">
-                <strong>¿Listo para empezar?</strong>
-                <p className="hint-text">La primera batalla es sencilla. El juego te irá diciendo qué hacer después.</p>
-                <button type="button" className="primary-btn campaign-home-primary" onClick={handleStartCampaign}>
-                  Empezar campaña →
-                </button>
+                {campaignArchive[0]?.reason === 'interrupted' ? (
+                  <>
+                    <strong>Tu última operación puede recuperarse</strong>
+                    <p className="hint-text">Se restaurarán su ruta, suministros y progreso sin inventar bajas.</p>
+                    <button type="button" className="primary-btn campaign-home-primary" onClick={() => handleRecoverInterruptedCampaign(campaignArchive[0])}>
+                      Recuperar campaña →
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <strong>¿Listo para empezar?</strong>
+                    <p className="hint-text">La primera batalla es sencilla. El juego te irá diciendo qué hacer después.</p>
+                    <button type="button" className="primary-btn campaign-home-primary" onClick={handleStartCampaign}>
+                      Empezar campaña →
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -835,7 +870,11 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <div className="tournament-result" style={{ marginTop: '0.8rem' }}>
             <h3>{campaignEndResult.reason === 'completed' ? 'Operación completada.' : campaignEndResult.reason === 'retired' ? 'Retirada ordenada.' : campaignEndResult.reason === 'interrupted' ? 'Operación interrumpida.' : 'Operación perdida.'}</h3>
             <p className="hint-text">Sector alcanzado: <b>{campaignEndResult.stage}/7</b>. El ejército persistente conserva sus expedientes y bajas.</p>
-            <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={handleStartCampaign}>Nueva campaña</button>
+            {campaignEndResult.reason === 'interrupted' && campaignEndResult.archiveEntry ? (
+              <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={() => handleRecoverInterruptedCampaign(campaignEndResult.archiveEntry)}>Recuperar campaña</button>
+            ) : (
+              <button type="button" className="primary-btn" style={{ width: '100%' }} onClick={handleStartCampaign}>Nueva campaña</button>
+            )}
           </div>
         )}
 
@@ -878,7 +917,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         {run.inRun && run.phase === 'completed' && (
           <div className="tournament-result roguelike-boss-victory" style={{ marginTop: '0.8rem' }}>
             <span className="section-label">OBJETIVO CUMPLIDO</span>
-            <h3>{campaignBossForSeed(campaign.seed).label} ha caído.</h3>
+            <h3>{ROGUELIKE_BOSS.label} ha caído.</h3>
             <p className="hero-scope-note">Diez pisos. Cinco puntos de vida. Ninguna necesidad de fingir que esto era una partida normal.</p>
             <div className="game-controls">
               <button type="button" className="primary-btn" onClick={handleContinueEndless}>Seguir en modo infinito → piso 11</button>

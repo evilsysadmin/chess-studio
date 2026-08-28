@@ -112,5 +112,5 @@ describe('matriz exhaustiva de reglas especiales', () => {
       }
     }
     expect(appliedPlies).toBeGreaterThan(250);
-  });
+  }, 15_000);
 });

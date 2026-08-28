@@ -6,6 +6,35 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zek',
+    title: 'Los fallos técnicos ya no inventan derrotas',
+    highlights: [
+      'La Torre y la campaña vuelven a un punto jugable si desaparece una batalla guardada, conservando el progreso real sin fabricar bajas ni derrotas.',
+      'Salir del torneo con negras antes de tu primer movimiento ya no convierte la apertura automática de la CPU en una rendición.',
+      'Una partida dañada puede descartarse sin derrota, y Combat libre avisa claramente cuando una batalla anterior no se pudo reconstruir.',
+      'Las pantallas de recuperación sólo aparecen cuando existe una sesión real que recuperar.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zej',
+    title: 'La campaña interrumpida vuelve al frente',
+    highlights: [
+      'Si desaparece la sesión temporal de una batalla, Combat vuelve al briefing del mismo sector en vez de obligarte a perder toda la campaña.',
+      'Una operación que ya quedó archivada como interrumpida puede recuperarse con su ruta, suministros, reliquias y progreso disponibles.',
+      'La recuperación conserva el ejército y las bajas realmente guardadas, sin inventar pérdidas ni marcar como ganado el combate pendiente.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zei',
+    title: 'Jugadas más sólidas y partidas que se recuperan',
+    highlights: [
+      'Las partidas normales comprueban cada respuesta antes de mostrarla y recuperan el estado correcto si una jugada se guardó pero la conexión falló al responder.',
+      'La CPU siempre confirma que su propuesta es legal y, si su análisis falla, continúa con una alternativa válida en vez de dejar el turno bloqueado.',
+      'Combat valida tablero y unidades como un único estado antes de aplicar una jugada, evitando bajas, experiencia o estadísticas parciales ante una posición imposible.',
+      'Corrige el puzzle de la torre en la columna g: la solución gana material de verdad y el rey rival ya no puede capturar gratis la pieza clave.',
+    ],
+  },
+  {
     release: 'v16.6dm46zeh',
     title: 'Más claro, más consistente y menos trampas raras',
     highlights: [

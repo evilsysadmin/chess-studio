@@ -192,7 +192,7 @@ export function startSpecialRun(mode='streak') {
 }
 export function loadSpecialRun(){try{return JSON.parse(getStorageItem(STORAGE_LOCAL, RUN_KEY)||'null');}catch{return null;}}
 export function saveSpecialRun(run){ if(run) setProfileStorageItem(RUN_KEY,JSON.stringify(run)); return run; }
-function clearSpecialRun(){ removeProfileStorageItem(RUN_KEY); return null; }
+export function clearSpecialRun(){ removeProfileStorageItem(RUN_KEY); return null; }
 function persistRun(run){ if(run?.active)saveSpecialRun(run); else clearSpecialRun(); return run; }
 export function recordSpecialRunResult(run,outcome){
   if(!run?.active)return run;

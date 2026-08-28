@@ -33,7 +33,15 @@ export function isLegalCombatCpuSuggestion(fen, suggestion) {
   if (!fen || !suggestion?.from || !suggestion?.to) return false;
   try {
     const chess = new Chess(fen);
-    return chess.moves({ square: suggestion.from, verbose: true }).some((move) => move.to === suggestion.to);
+    const promotion = suggestion.promotion == null ? null : String(suggestion.promotion).toLowerCase();
+    if (promotion != null && !['q', 'r', 'b', 'n'].includes(promotion)) return false;
+    return chess.moves({ square: suggestion.from, verbose: true }).some((move) => {
+      if (move.to !== suggestion.to) return false;
+      if (!move.promotion) return promotion == null;
+      // La API histórica puede omitir promoción: el motor de Combat conserva
+      // entonces la coronación a dama. Si viene explícita, debe coincidir.
+      return (promotion || 'q') === move.promotion;
+    });
   } catch {
     return false;
   }

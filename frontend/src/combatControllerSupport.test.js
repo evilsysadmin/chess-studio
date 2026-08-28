@@ -23,6 +23,13 @@ describe('combat controller support', () => {
     expect(isLegalCombatCpuSuggestion(start, { from: 'e2', to: 'e5' })).toBe(false);
     expect(isLegalCombatCpuSuggestion(start, { nope: true })).toBe(false);
     expect(isLegalCombatCpuSuggestion('fen-roto', { from: 'e2', to: 'e4' })).toBe(false);
+    expect(isLegalCombatCpuSuggestion(start, { from: 'e2', to: 'e4', promotion: 'k' })).toBe(false);
+
+    const promotion = '7k/P7/8/8/8/8/8/7K w - - 0 1';
+    expect(isLegalCombatCpuSuggestion(promotion, { from: 'a7', to: 'a8' })).toBe(true);
+    expect(isLegalCombatCpuSuggestion(promotion, { from: 'a7', to: 'a8', promotion: 'n' })).toBe(true);
+    expect(isLegalCombatCpuSuggestion(promotion, { from: 'a7', to: 'a8', promotion: 'k' })).toBe(false);
+    expect(isLegalCombatCpuSuggestion(start, { from: 'e2', to: 'e4', promotion: 'q' })).toBe(false);
   });
 
   it('si cae el análisis remoto puede elegir una jugada legal local y no secuestra la batalla', async () => {

@@ -105,7 +105,7 @@ class NewGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     difficulty: float = 50
     color: str = "w"
-    handicap: Optional[str] = None  # None | "pawn" | "knight" | "rook" | "queen" — ver HANDICAP_SQUARES
+    handicap: Optional[str] = Field(default=None, max_length=16)  # None | "pawn" | "knight" | "rook" | "queen"
     starting_fen: Optional[str] = Field(default=None, alias="startingFen", max_length=128)
     ghost_style: Optional[GhostStyle] = Field(default=None, alias="ghostStyle")
 
@@ -129,4 +129,3 @@ class AnalyzeMoveRequest(BaseModel):
     to: Optional[str] = Field(default=None, min_length=2, max_length=2)
     promotion: Optional[str] = Field(default=None, max_length=1)
     level: float = 45
-

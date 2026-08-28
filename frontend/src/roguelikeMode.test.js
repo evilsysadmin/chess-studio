@@ -12,6 +12,7 @@ import {
   loadRun,
   startNewRun,
   markBattleStarted,
+  recoverInterruptedRun,
   markFloorCleared,
   chooseRunReward,
   advanceFloor,
@@ -131,6 +132,23 @@ describe('máquina de estados del intento', () => {
   it('no permite battle -> cleared sin haber empezado', () => {
     const run = startNewRun('sin-atajos');
     expect(markFloorCleared(run)).toEqual(run);
+  });
+
+  it('recupera una pelea interrumpida sin perder piso, seed, modo ni perks', () => {
+    let run = startNewRun('snapshot-caido');
+    run = markBattleStarted({ ...run, floor: 6, mode: 'endless', perks: ['steel_pulse'] });
+
+    const recovered = recoverInterruptedRun(run);
+
+    expect(recovered).toMatchObject({
+      inRun: true,
+      phase: 'battle',
+      floor: 6,
+      seed: 'snapshot-caido',
+      mode: 'endless',
+      perks: ['steel_pulse'],
+    });
+    expect(loadBestFloor()).toBe(0);
   });
 
   it('fighting -> cleared exige elegir recompensa antes de subir', () => {

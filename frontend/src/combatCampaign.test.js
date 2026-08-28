@@ -8,6 +8,8 @@ import {
   markCampaignBriefingAccepted,
   markCampaignBattleStarted,
   markCampaignBattleRetired,
+  recoverInterruptedCampaign,
+  resumeInterruptedCampaign,
   markCampaignBattleWon,
   campaignRewardOptions,
   chooseCampaignReward,
@@ -79,6 +81,20 @@ describe('Combat Chess campaign map', () => {
     expect(selectCampaignNode(run, illegal.id)).toEqual(run);
   });
 
+  it('un save con fase que exige nodo pero sin selección vuelve a un mapa jugable', () => {
+    const run = startCampaign('briefing-roto');
+    localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify({
+      ...run,
+      phase: 'briefing',
+      selectedNodeId: 'nodo-que-no-existe',
+    }));
+
+    const recovered = loadCampaign();
+    expect(recovered).toMatchObject({ active: true, phase: 'map', currentNodeId: 'start', selectedNodeId: null });
+    expect(recovered.route).toEqual(['start']);
+    expect(availableCampaignNodes(recovered)).toHaveLength(2);
+  });
+
   it('una batalla exige start -> fighting -> reward y el botín élite duplica stack', () => {
     let run = startCampaign('elite');
     const first = availableCampaignNodes(run)[0];
@@ -125,6 +141,31 @@ describe('Combat Chess campaign map', () => {
     expect(retired.active).toBe(true);
     expect(retired.phase).toBe('briefing');
     expect(retired.selectedNodeId).toBe(first.id);
+  });
+
+  it('recupera una batalla sin snapshot al briefing del mismo sector sin perder progreso', () => {
+    let run = startCampaign('snapshot-perdido');
+    const first = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, first.id);
+    run = purchaseCampaignIntel(run, first.id);
+    run = { ...run, perks: ['firstStrike'], relicIds: ['fieldCipher'] };
+    localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(run));
+    run = markCampaignBriefingAccepted(loadCampaign());
+    run = markCampaignBattleStarted(run);
+
+    const recovered = recoverInterruptedCampaign(run);
+
+    expect(recovered).toMatchObject({
+      active: true,
+      phase: 'briefing',
+      selectedNodeId: first.id,
+      operationalCredits: run.operationalCredits,
+      intelligenceByNode: run.intelligenceByNode,
+      perks: run.perks,
+      relicIds: run.relicIds,
+    });
+    expect(recovered.clearedNodeIds).not.toContain(first.id);
+    expect(loadCampaign()).toEqual(recovered);
   });
 
   it('evento recon acumula inteligencia y la aplica a la siguiente batalla', () => {
@@ -237,6 +278,51 @@ describe('Combat Chess campaign map', () => {
     const archive = loadCampaignArchive();
     expect(archive).toHaveLength(1);
     expect(archive[0]).toMatchObject({ reason:'retired', credits:9, relicIds:['fieldCipher'], bossId: campaignBossForSeed('archive').id });
+  });
+
+  it('una operación ya archivada como interrumpida puede reanudarse y sale del archivo', () => {
+    let run = startCampaign('archive-recovery');
+    const first = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, first.id);
+    run = purchaseCampaignIntel(run, first.id);
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    const result = endCampaign(run, 'interrupted');
+
+    expect(loadCampaign().active).toBe(false);
+    const recovered = resumeInterruptedCampaign(result.archiveEntry);
+
+    expect(recovered).toMatchObject({
+      active: true,
+      phase: 'briefing',
+      seed: run.seed,
+      selectedNodeId: first.id,
+      operationalCredits: run.operationalCredits,
+      intelligenceByNode: run.intelligenceByNode,
+    });
+    expect(loadCampaignArchive().some((entry) => entry.id === result.archiveEntry.id)).toBe(false);
+  });
+
+  it('recupera archivos interrumpidos antiguos en el último nodo resuelto sin regalar el combate pendiente', () => {
+    let run = startCampaign('legacy-interrupted');
+    const first = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, first.id);
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    const result = endCampaign(run, 'interrupted');
+    const legacyEntry = { ...result.archiveEntry };
+    delete legacyEntry.resumeState;
+
+    const recovered = resumeInterruptedCampaign(legacyEntry);
+
+    expect(recovered).toMatchObject({
+      active: true,
+      phase: 'map',
+      seed: run.seed,
+      currentNodeId: 'start',
+      operationalCredits: run.operationalCredits,
+    });
+    expect(recovered.clearedNodeIds).toEqual([]);
   });
 
   it('un reinicio de campaña puede archivarse como reinicio sin borrar el ejército/meta progreso', () => {
@@ -389,4 +475,3 @@ describe('bosses de campaña con identidad mecánica', () => {
     expect(CAMPAIGN_BOSSES.find((boss) => boss.id === 'shadow_king')?.checkDamage).toBe(2);
   });
 });
-

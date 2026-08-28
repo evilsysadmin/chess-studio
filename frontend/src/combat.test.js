@@ -14,6 +14,8 @@ import {
   passTurnFen,
   repetitionKey,
   resolveCombatMove,
+  combatPositionIssues,
+  createInitialRegistry,
   rosterKeyFor,
 } from './combat.js';
 
@@ -456,5 +458,21 @@ describe('Combat fail-closed ante posiciones dañadas', () => {
       from: 'e2',
       to: 'e4',
     })).toBeNull();
+  });
+
+  it('detecta piezas ausentes, fantasmas y tipos desincronizados entre FEN y registro', () => {
+    const chess = new Chess();
+    const coherent = createInitialRegistry(chess);
+    expect(combatPositionIssues(chess.fen(), coherent)).toEqual([]);
+
+    const missing = { ...coherent };
+    delete missing.e2;
+    expect(combatPositionIssues(chess.fen(), missing)).toContain('missing:e2');
+
+    const wrongType = { ...coherent, e2: { ...coherent.e2, type: 'q' } };
+    expect(combatPositionIssues(chess.fen(), wrongType)).toContain('type:e2');
+
+    const ghost = { ...coherent, e4: { ...coherent.e2, square: 'e4' } };
+    expect(combatPositionIssues(chess.fen(), ghost)).toContain('ghost:e4');
   });
 });

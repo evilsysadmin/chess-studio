@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
+import { isCombatPositionCoherent } from './combat.js';
 
 // Snapshots efímeros de batallas Combat Chess.
 // sessionStorage sobrevive a reload/remount en la misma pestaña, pero no se
@@ -7,14 +8,38 @@ import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage }
 // frente a recargas accidentales sin convertir una pelea activa en un save
 // portable/farmeable.
 const KEY = 'chess-study-active-combat-session-v1';
+const MARKER_KEY = 'chess-study-active-combat-markers-v1';
 const SNAPSHOT_VERSION = 1;
 const BUCKET_VERSION = 2;
+const MARKER_VERSION = 1;
 
 // Segunda línea de defensa contra remounts de React/HMR dentro de la misma
 // carga de página. También permite conservar más de una batalla suspendida
 // dentro de la pestaña (por ejemplo campaña + combate libre) sin que una pise
 // a la otra antes de que sessionStorage llegue a intervenir.
 const memorySnapshots = new Map();
+
+function readMarkers() {
+  const parsed = readJsonStorage(STORAGE_SESSION, MARKER_KEY, { fallback: null, removeMalformed: true });
+  if (parsed?.version !== MARKER_VERSION || !Array.isArray(parsed.sessionIds)) return new Set();
+  return new Set(parsed.sessionIds.filter((id) => typeof id === 'string' && id.trim()));
+}
+
+function setCombatSessionMarker(sessionId, active) {
+  const id = combatSessionId(sessionId);
+  const markers = readMarkers();
+  if (active) markers.add(id);
+  else markers.delete(id);
+  if (markers.size === 0) return removeStorageItem(STORAGE_SESSION, MARKER_KEY);
+  return writeJsonStorage(STORAGE_SESSION, MARKER_KEY, {
+    version: MARKER_VERSION,
+    sessionIds: [...markers],
+  });
+}
+
+export function hasCombatSessionMarker(sessionId) {
+  return readMarkers().has(combatSessionId(sessionId));
+}
 
 export function combatSessionId(value = 'free') {
   const id = String(value || 'free').trim();
@@ -40,7 +65,14 @@ function validSnapshot(parsed, id) {
     validFen(parsed.fen) &&
     parsed.registry &&
     typeof parsed.registry === 'object' &&
-    !Array.isArray(parsed.registry)
+    !Array.isArray(parsed.registry) &&
+    isCombatPositionCoherent(parsed.fen, parsed.registry) &&
+    (parsed.humanColor === 'w' || parsed.humanColor === 'b') &&
+    (parsed.combatLog == null || Array.isArray(parsed.combatLog)) &&
+    (parsed.uiLog == null || Array.isArray(parsed.uiLog)) &&
+    (parsed.positionCounts == null || Array.isArray(parsed.positionCounts)) &&
+    (parsed.battleParticipants == null || Array.isArray(parsed.battleParticipants)) &&
+    (parsed.unitBattleStats == null || (typeof parsed.unitBattleStats === 'object' && !Array.isArray(parsed.unitBattleStats)))
   );
 }
 
@@ -89,6 +121,7 @@ export function saveCombatSession(sessionId, snapshot) {
   // La copia en memoria se actualiza primero. Así incluso un setItem que falle
   // por el entorno del navegador no puede convertir un remount React en Setup.
   memorySnapshots.set(id, payload);
+  setCombatSessionMarker(id, true);
 
   const sessions = readSnapshotBucket();
   sessions[id] = payload;
@@ -129,11 +162,13 @@ export function clearCombatSession(sessionId = null) {
   if (sessionId == null) {
     memorySnapshots.clear();
     removeStorageItem(STORAGE_SESSION, KEY);
+    removeStorageItem(STORAGE_SESSION, MARKER_KEY);
     return;
   }
 
   const id = combatSessionId(sessionId);
   memorySnapshots.delete(id);
+  setCombatSessionMarker(id, false);
   const sessions = readSnapshotBucket();
   delete sessions[id];
   writeSnapshotBucket(sessions);

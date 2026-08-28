@@ -70,13 +70,13 @@ export default class ErrorBoundary extends React.Component {
           <span className="eyebrow">Incidencia recuperable</span>
           <h2>La pantalla ha tropezado</h2>
           <p className="hint-text">
-            Algo falló en la interfaz. Tu progreso guardado sigue intacto y no vamos a borrar la partida por este error.
+            Algo falló en la interfaz. Tu progreso guardado sigue intacto y no vamos a borrarlo por este error.
           </p>
 
           {canRecover && (
             <div className="error-boundary-recovery">
-              <strong>Hay una partida en curso.</strong>
-              <span>Podemos reconstruir el tablero desde la sesión guardada y el estado del servidor.</span>
+              <strong>Hay una sesión en curso.</strong>
+              <span>Podemos reconstruir la pantalla desde el último estado recuperable.</span>
               {this.state.recoveryError && <span className="error-boundary-recovery-error">{this.state.recoveryError}</span>}
               <button
                 type="button"
@@ -84,13 +84,13 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleRecover}
                 disabled={this.state.recovering}
               >
-                {this.state.recovering ? 'Recuperando partida…' : 'Recuperar partida'}
+                {this.state.recovering ? 'Recuperando sesión…' : 'Recuperar sesión'}
               </button>
             </div>
           )}
 
           {!canRecover && (
-            <p className="hint-text">No hay una partida activa recuperable en esta sesión.</p>
+            <p className="hint-text">No hay progreso activo recuperable en esta sesión.</p>
           )}
 
           <div className="error-boundary-actions">

@@ -241,10 +241,10 @@ def test_create_game_with_handicap_survives_after_move():
     assert white_rank1.count("R") == 1  # empezaba con 2 torres blancas, el hándicap sacó una
 
 
-def test_create_game_invalid_handicap_is_ignored_silently():
-    r = client.post("/api/games", json={"difficulty": 50, "color": "w", "handicap": "algo-que-no-existe"})
-    assert r.status_code == 201
-    assert r.json()["fen"].split(" ")[0] == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"  # posición estándar, sin romper nada
+def test_create_game_rejects_invalid_handicap_instead_of_silently_changing_rules():
+    r = client.post("/api/games", json={"difficulty": 50, "color": "w", "handicap": "dragon"})
+    assert r.status_code == 400
+    assert "hándicap" in r.json()["detail"].lower()
 
 
 def test_get_game_not_found():
@@ -312,6 +312,38 @@ def test_play_legal_move():
     assert body["history"][0]["san"] == "e4"
     assert len(body["history"]) == 2
     assert body["lastMove"]["by"] == "cpu"
+
+
+@pytest.mark.parametrize("broken_suggestion", [None, {"from": "e7", "to": "e4"}, {"promotion": "king"}])
+def test_play_move_uses_legal_fallback_if_engine_breaks_its_contract(monkeypatch, broken_suggestion):
+    import game_api
+
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda *_args, **_kwargs: broken_suggestion)
+
+    response = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["history"]) == 2
+    assert payload["lastMove"]["by"] == "cpu"
+    assert chess.Board(payload["fen"]).is_valid()
+    assert payload["turn"] == "w"
+
+
+def test_play_move_uses_legal_fallback_if_engine_raises(monkeypatch, caplog):
+    import game_api
+
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("engine boom")))
+    caplog.set_level(logging.WARNING, logger="chess.game")
+
+    response = client.post(f"/api/games/{created['id']}/move", json={"from": "e2", "to": "e4"})
+
+    assert response.status_code == 200
+    assert response.json()["turn"] == "w"
+    assert any("cpu_move_failed_using_legal_fallback" in record.getMessage() for record in caplog.records)
+    assert all("engine boom" not in record.getMessage() for record in caplog.records)
 
 
 def test_play_illegal_move_rejected():
@@ -478,6 +510,29 @@ def test_corrupt_persisted_game_returns_conflict_not_server_crash():
     r = client.get(f"/api/games/{created['id']}")
     assert r.status_code == 409
     assert "dañada" in r.json()["detail"].lower()
+
+
+@pytest.mark.parametrize("corrupt_field,corrupt_value", [
+    ("moves", 17),
+    ("humanColor", "purple"),
+    ("difficulty", "muchísima"),
+    ("lastMove", "e4"),
+])
+def test_corrupt_persisted_game_shape_is_always_a_recoverable_conflict(corrupt_field, corrupt_value):
+    created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
+    entry = {
+        "owner": "testuser",
+        "moves": [],
+        "difficulty": 20,
+        "humanColor": "w",
+        "lastMove": None,
+    }
+    entry[corrupt_field] = corrupt_value
+    asyncio.run(store.update_game(created["id"], entry))
+
+    response = client.get(f"/api/games/{created['id']}")
+    assert response.status_code == 409
+    assert "dañada" in response.json()["detail"].lower()
 
 def test_analyze_rejects_finished_position():
     fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"  # fool's mate consumado
@@ -697,7 +752,11 @@ def test_access_log_is_structured_and_includes_authenticated_username(caplog):
 def test_access_log_includes_sanitized_peer_and_x_forwarded_for(caplog):
     caplog.set_level(logging.INFO, logger="uvicorn.error")
     caplog.clear()
-    response = client.get(
+    # El TestClient global usa el hostname sintético "testclient", que se
+    # descarta correctamente porque no es una IP. Este cliente reproduce un
+    # peer ASGI real para validar el contrato de producción.
+    peer_client = TestClient(app, client=("127.0.0.1", 50000))
+    response = peer_client.get(
         "/api/health",
         headers={"X-Forwarded-For": "203.0.113.10, 198.51.100.4, not-an-ip"},
     )

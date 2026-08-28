@@ -217,6 +217,45 @@ export function createInitialRegistry(chess) {
   return registry;
 }
 
+// El FEN y el registro de Combat son dos representaciones del mismo tablero.
+// Si divergen, las reglas de ajedrez pueden mover una pieza mientras XP, bajas
+// o identidad se aplican a otra. Esta comprobación es deliberadamente pura para
+// usarla tanto antes de comprometer un turno como al restaurar un snapshot.
+export function combatPositionIssues(fen, registry) {
+  let chess;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    return ['fen-invalid'];
+  }
+  if (!registry || typeof registry !== 'object' || Array.isArray(registry)) return ['registry-invalid'];
+
+  const issues = [];
+  const boardRegistry = createInitialRegistry(chess);
+  const boardSquares = Object.keys(boardRegistry).sort();
+  const registrySquares = Object.keys(registry).sort();
+
+  for (const square of boardSquares) {
+    const expected = boardRegistry[square];
+    const actual = registry[square];
+    if (!actual || typeof actual !== 'object' || Array.isArray(actual)) {
+      issues.push(`missing:${square}`);
+      continue;
+    }
+    if (actual.color !== expected.color) issues.push(`color:${square}`);
+    if (actual.type !== expected.type) issues.push(`type:${square}`);
+    if (actual.square !== square) issues.push(`square:${square}`);
+  }
+  for (const square of registrySquares) {
+    if (!boardRegistry[square]) issues.push(`ghost:${square}`);
+  }
+  return issues;
+}
+
+export function isCombatPositionCoherent(fen, registry) {
+  return combatPositionIssues(fen, registry).length === 0;
+}
+
 // Identidad de una pieza para el progreso ENTRE partidas, sin depender del
 // color: "tu caballo de dama" tiene que ser el mismo concepto sea que hoy
 // juegues blancas o negras. Se arma con el tipo y la columna de su casilla

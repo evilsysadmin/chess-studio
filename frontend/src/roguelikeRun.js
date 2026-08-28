@@ -76,6 +76,11 @@ export function markBattleStarted(run) {
   return saveRun({ ...run, phase: 'fighting' });
 }
 
+export function recoverInterruptedRun(run) {
+  if (!run?.inRun || run.phase !== 'fighting') return run;
+  return saveRun({ ...run, phase: 'battle' });
+}
+
 export function markFloorCleared(run) {
   if (!run?.inRun || run.phase === 'cleared' || run.phase === 'completed') return run;
   if (run.phase !== 'fighting') return run;

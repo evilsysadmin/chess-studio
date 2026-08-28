@@ -9,10 +9,19 @@ function ok(body = {}) {
   });
 }
 
+function gamePayload(id = 'g1') {
+  return {
+    id,
+    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    turn: 'w', humanColor: 'w', difficulty: 50, status: 'playing', isGameOver: false,
+    history: [], lastMove: null,
+  };
+}
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('chess-study-auth-token', 'token-de-prueba');
-  global.fetch = vi.fn(() => ok({ id: 'g1' }));
+  global.fetch = vi.fn(() => ok(gamePayload()));
 });
 
 describe('trazabilidad de usuario en llamadas de juego', () => {
@@ -72,5 +81,10 @@ describe('trazabilidad de usuario en llamadas de juego', () => {
     for (const [, options] of global.fetch.mock.calls) {
       expect(options.headers.Authorization).toBe('Bearer token-de-prueba');
     }
+  });
+
+  it('rechaza un 200 con partida malformada antes de entregarlo a la UI', async () => {
+    global.fetch.mockImplementationOnce(() => ok({ id: 'g1', fen: 'fen-roto' }));
+    await expect(api.getGame('g1')).rejects.toMatchObject({ name: 'GamePayloadError' });
   });
 });

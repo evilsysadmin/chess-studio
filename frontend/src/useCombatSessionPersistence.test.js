@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  combatSessionRecoveryState,
   loadCombatSessionBootstrap,
   shouldPersistCombatSession,
   shouldResumeCombatCpu,
@@ -10,6 +11,17 @@ describe('Combat session persistence', () => {
     const loader = vi.fn(() => undefined);
     expect(loadCombatSessionBootstrap('campaign:3', loader)).toBeNull();
     expect(loader).toHaveBeenCalledWith('campaign:3');
+  });
+
+  it('distingue una batalla nunca iniciada de un snapshot esperado que desapareció', () => {
+    expect(combatSessionRecoveryState('free', {
+      loader: () => null,
+      markerLoader: () => false,
+    })).toEqual({ restoredSession: null, missingSession: false });
+    expect(combatSessionRecoveryState('free', {
+      loader: () => null,
+      markerLoader: () => true,
+    })).toEqual({ restoredSession: null, missingSession: true });
   });
 
   it('watchdog sólo repone snapshot en batalla viva cuando realmente falta', () => {

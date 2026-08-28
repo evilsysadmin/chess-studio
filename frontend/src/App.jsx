@@ -23,7 +23,7 @@ import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
-import { humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, gameExitDisposition } from './gameOutcome.js';
+import { chessGameExitDisposition, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
@@ -57,7 +57,7 @@ import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';
 import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
 import { useGameReconnect } from './useGameReconnect.js';
 import { useViewNavigation } from './useViewNavigation.js';
-import { LEARNING_STORAGE_KEY, useActiveSessionRestore } from './useActiveSessionRestore.js';
+import { LEARNING_STORAGE_KEY, hasRecoverableCombatState, useActiveSessionRestore } from './useActiveSessionRestore.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 import { useAuthenticatedApp } from './useAuthenticatedApp.js';
 import { useAuthenticatedAudio } from './useAuthenticatedAudio.js';
@@ -312,7 +312,7 @@ function AppInner({ isAdminUser }) {
   // Restauración de F5/deploy, Continuar partida y recovery del ErrorBoundary.
   // El hook concentra la rehidratación de contrato/run/serie/reloj sin hacer
   // que App conozca otra vez todos los detalles de persistencia.
-  const { continueActiveSession, recoverSessionFromBoundary } = useActiveSessionRestore({
+  const { continueActiveSession, discardActiveSession, recoverSessionFromBoundary } = useActiveSessionRestore({
     currentView: view,
     game,
     tournamentGame,
@@ -399,7 +399,7 @@ function AppInner({ isAdminUser }) {
         setExitNotice(casualResult);
       } else {
       const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-      const exitDisposition = gameExitDisposition({ moveCount: humanMoveCount(game.history?.length || 0, game.humanColor), isGameOver: !!game.isGameOver, learningMode, trainingPosition, explicitAction: true });
+      const exitDisposition = chessGameExitDisposition(game, { learningMode, trainingPosition, explicitAction: true });
       if (exitDisposition === 'forfeit') {
         const summary = handleCasualGameEnd('loss', game, { endReason: 'resignation' });
         setExitNotice(summary);
@@ -764,7 +764,7 @@ function AppInner({ isAdminUser }) {
 
   function handleExitTournamentGame() {
     if (tournamentGame?.id) {
-      const exitDisposition = gameExitDisposition({ moveCount: tournamentGame.history?.length || 0, isGameOver: !!tournamentGame.isGameOver, explicitAction: true });
+      const exitDisposition = chessGameExitDisposition(tournamentGame, { explicitAction: true });
       if (exitDisposition === 'forfeit') handleTournamentGameEnd('loss', tournamentGame, { endReason: 'resignation' });
       else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament' });
     }
@@ -796,7 +796,7 @@ function AppInner({ isAdminUser }) {
         view={view}
         onReset={resetNavigation}
         onRecover={recoverSessionFromBoundary}
-        canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || view === 'combat' || view === 'roguelike')}
+        canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || hasRecoverableCombatState(view))}
       >
       <div className={`app-shell ${isBoardGameView ? 'app-shell-board-game' : ''}`} id="main-content" tabIndex={-1}>
         <div className={`masthead ${isBoardGameView ? 'masthead-game-compact' : ''}`}>
@@ -919,6 +919,7 @@ function AppInner({ isAdminUser }) {
                     {loading ? 'Reintentando…' : 'Reintentar recuperación'}
                   </button>
                   <button type="button" className="secondary-btn" onClick={resetNavigation}>Volver al menú</button>
+                  <button type="button" className="secondary-btn" onClick={discardActiveSession}>Descartar sesión sin derrota</button>
                 </div>
               </>
             ) : 'Restaurando partida en curso…'}

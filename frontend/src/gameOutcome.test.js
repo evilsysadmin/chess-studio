@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gameExitDisposition, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
+import { chessGameExitDisposition, gameExitDisposition, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
 
 describe('completed game outcomes', () => {
   it('solo considera completadas victoria, tablas y derrota', () => {
@@ -37,5 +37,11 @@ describe('completed game outcomes', () => {
     expect(gameExitDisposition({ moveCount: humanMoveCount(1, 'b'), explicitAction: true })).toBe('cancel');
     expect(humanMoveCount(2, 'b')).toBe(1);
     expect(gameExitDisposition({ moveCount: humanMoveCount(2, 'b'), explicitAction: true })).toBe('forfeit');
+  });
+
+  it('centraliza el conteo humano para que torneo y partida normal no diverjan', () => {
+    expect(chessGameExitDisposition({ humanColor: 'b', history: [{ san: 'e4' }] }, { explicitAction: true })).toBe('cancel');
+    expect(chessGameExitDisposition({ humanColor: 'b', history: [{ san: 'e4' }, { san: 'c5' }] }, { explicitAction: true })).toBe('forfeit');
+    expect(chessGameExitDisposition({ humanColor: 'w', history: [{ san: 'e4' }] }, { explicitAction: true })).toBe('forfeit');
   });
 });

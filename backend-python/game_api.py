@@ -6,6 +6,7 @@ authentication and router wiring.
 from __future__ import annotations
 
 import math
+import logging
 import random
 import uuid
 from typing import Optional
@@ -18,10 +19,11 @@ from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameR
 from chess_ai import analyze_move as ai_analyze_move
 from shadow_evaluation import maybe_schedule_move_shadow
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
-from chess_core import apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
+from chess_core import HANDICAP_SQUARES, apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
 
 HINT_STRENGTH = 95
 MATE_SCORE_SENTINEL = 100000.0
+logger = logging.getLogger("chess.game")
 
 
 def is_valid_difficulty(value) -> bool:
@@ -59,11 +61,45 @@ def load_stored_game_board(entry: dict) -> chess.Board:
     """
     try:
         board = load_board(entry)
-    except ValueError as exc:
+    except (ValueError, TypeError, KeyError) as exc:
         raise HTTPException(409, "La partida guardada está dañada y no puede continuar. Inicia una nueva partida.") from exc
     if not board.is_valid():
         raise HTTPException(409, "La partida guardada contiene una posición imposible. Inicia una nueva partida.")
     return board
+
+
+def resolve_engine_move_or_fallback(board: chess.Board, suggestion: Optional[dict]) -> tuple[chess.Move, dict] | None:
+    """Convierte la salida del motor en una jugada legal o usa una legal estable.
+
+    El motor normalmente sólo devuelve jugadas legales. Esta frontera evita que
+    un `None`, una promoción corrupta o una regresión futura deje la partida en
+    turno de la CPU para siempre. El fallback sólo se usa cuando la salida del
+    motor viola el contrato; no altera la selección normal por dificultad.
+    """
+    move = None
+    if isinstance(suggestion, dict):
+        move = resolve_move(
+            board,
+            suggestion.get("from"),
+            suggestion.get("to"),
+            suggestion.get("promotion"),
+        )
+    if move is None:
+        legal = sorted(board.legal_moves, key=lambda candidate: candidate.uci())
+        move = legal[0] if legal else None
+    if move is None:
+        return None
+    return move, move_to_dict(board, move)
+
+
+def compute_engine_move_or_fallback(board: chess.Board, difficulty: float, ghost_style: Optional[dict] = None) -> tuple[chess.Move, dict] | None:
+    try:
+        suggestion = get_cpu_move(board, difficulty, ghost_style)
+    except Exception as exc:
+        # No incluimos FEN ni contenido de la partida en logs operativos.
+        logger.warning("cpu_move_failed_using_legal_fallback error_type=%s", type(exc).__name__)
+        suggestion = None
+    return resolve_engine_move_or_fallback(board, suggestion)
 
 
 def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_valid_api_key, api_key_bucket) -> APIRouter:
@@ -74,6 +110,8 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Dificultad inválida. Tiene que ser un número entre 0 y 100.")
         if body.color not in ("w", "b", "random"):
             raise HTTPException(400, "Color inválido. Usa 'w', 'b' o 'random'.")
+        if body.handicap is not None and body.handicap not in HANDICAP_SQUARES:
+            raise HTTPException(400, "Hándicap inválido.")
 
         game_id = str(uuid.uuid4())
         human_color = resolve_human_color(body.color)
@@ -100,9 +138,10 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         # comportamiento clásico de CPU abriendo cuando el humano lleva negras.
         cpu_to_move = (board.turn == chess.WHITE and cpu_color == "w") or (board.turn == chess.BLACK and cpu_color == "b")
         if cpu_to_move:
-            opening = get_cpu_move(board, rounded_difficulty, ghost_style)
-            if opening:
-                board.push_san(opening["san"])
+            resolved_opening = compute_engine_move_or_fallback(board, rounded_difficulty, ghost_style)
+            if resolved_opening:
+                opening_move, opening = resolved_opening
+                board.push(opening_move)
                 last_move = {
                     "from": opening["from"],
                     "to": opening["to"],
@@ -316,9 +355,10 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         }
 
         if not board.is_game_over(claim_draw=True):
-            cpu_move = get_cpu_move(board, entry["difficulty"], entry.get("ghostStyle"))
-            if cpu_move:
-                board.push_san(cpu_move["san"])
+            resolved_cpu = compute_engine_move_or_fallback(board, entry["difficulty"], entry.get("ghostStyle"))
+            if resolved_cpu:
+                cpu_move_obj, cpu_move = resolved_cpu
+                board.push(cpu_move_obj)
                 entry["lastMove"] = {
                     "from": cpu_move["from"],
                     "to": cpu_move["to"],

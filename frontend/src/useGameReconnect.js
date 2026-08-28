@@ -8,6 +8,10 @@ export function shouldAttemptReconnect({ inFlight, reconnectNeeded, saveState })
   return reconnectNeeded || saveState === SAVE_STATUS.ERROR;
 }
 
+export function shouldAutoReconnect({ saveState, online = true, target = null }) {
+  return online !== false && saveState === SAVE_STATUS.ERROR && !!target?.gameId;
+}
+
 export function sameReconnectTarget(expected, current) {
   return !!expected
     && !!current
@@ -38,6 +42,8 @@ export function useGameReconnect({
   const reconnectInFlight = useRef(false);
   const reconnectNeeded = useRef(typeof navigator !== 'undefined' && navigator.onLine === false);
   const reconnectOfflineGeneration = useRef(0);
+  const reconnectAbortRef = useRef(null);
+  const attemptReconnectRef = useRef(null);
 
   routeRef.current = route;
   gameRef.current = game;
@@ -48,7 +54,7 @@ export function useGameReconnect({
   useEffect(() => {
     let disposed = false;
 
-    async function handleOnline() {
+    async function attemptReconnect({ announceSaving = true } = {}) {
       if (!shouldAttemptReconnect({
         inFlight: reconnectInFlight.current,
         reconnectNeeded: reconnectNeeded.current,
@@ -68,9 +74,15 @@ export function useGameReconnect({
 
       reconnectInFlight.current = true;
       const offlineGenerationAtStart = reconnectOfflineGeneration.current;
-      callbacksRef.current.onPersistenceState?.(SAVE_STATUS.SAVING);
-      const result = await fetchReconnectGame(target.gameId, callbacksRef.current.getGame);
-      if (disposed) return;
+      const controller = new AbortController();
+      reconnectAbortRef.current?.abort(new DOMException('Superseded reconnect', 'AbortError'));
+      reconnectAbortRef.current = controller;
+      if (announceSaving) callbacksRef.current.onPersistenceState?.(SAVE_STATUS.SAVING);
+      const result = await fetchReconnectGame(target.gameId, callbacksRef.current.getGame, { signal: controller.signal });
+      if (disposed || controller.signal.aborted) {
+        reconnectInFlight.current = false;
+        return;
+      }
 
       // Una respuesta tardía nunca debe resucitar una partida que el usuario ya abandonó.
       const currentTarget = reconnectTarget({
@@ -98,8 +110,12 @@ export function useGameReconnect({
         callbacksRef.current.onPersistenceState?.(SAVE_STATUS.ERROR);
         callbacksRef.current.onError?.('La conexión volvió, pero todavía no se pudo resincronizar la partida. La última posición confirmada sigue intacta.');
       }
+      if (reconnectAbortRef.current === controller) reconnectAbortRef.current = null;
       reconnectInFlight.current = false;
     }
+
+    attemptReconnectRef.current = attemptReconnect;
+    const handleOnline = () => { void attemptReconnect({ announceSaving: true }); };
 
     const handleOffline = () => {
       reconnectOfflineGeneration.current += 1;
@@ -110,8 +126,28 @@ export function useGameReconnect({
     window.addEventListener('online', handleOnline);
     return () => {
       disposed = true;
+      attemptReconnectRef.current = null;
+      reconnectAbortRef.current?.abort(new DOMException('Reconnect unmounted', 'AbortError'));
+      reconnectAbortRef.current = null;
+      reconnectInFlight.current = false;
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
   }, []);
+
+  // Un timeout o un 409 puede ocurrir sin que el navegador emita `offline`.
+  // En ese caso consultamos inmediatamente la foto autoritativa de Mongo una
+  // sola vez por transición a ERROR. No anunciamos SAVING para que un fallo de
+  // esta propia consulta no cree un bucle ERROR -> SAVING -> ERROR.
+  useEffect(() => {
+    const target = reconnectTarget({
+      route,
+      game,
+      tournamentGame,
+      savedSession: loadActiveGameSession(),
+    });
+    const online = typeof navigator === 'undefined' ? true : navigator.onLine;
+    if (!shouldAutoReconnect({ saveState, online, target })) return;
+    void attemptReconnectRef.current?.({ announceSaving: false });
+  }, [saveState, route, game?.id, tournamentGame?.id]);
 }

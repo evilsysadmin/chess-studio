@@ -344,21 +344,43 @@ function emptyCampaign() {
 function normalizeCampaign(raw) {
   const base = emptyCampaign();
   if (!raw || typeof raw !== 'object' || ![1, 2, CAMPAIGN_VERSION].includes(raw.version)) return base;
-  const seed = raw.active ? String(raw.seed || 'legacy-campaign') : null;
+  const active = raw.active === true;
+  const seed = active ? String(raw.seed || 'legacy-campaign') : null;
   const map = seed ? campaignMap(seed) : null;
   const validIds = new Set(map?.nodes.map((node) => node.id) || ['start']);
   const phases = new Set(['map', 'briefing', 'battle', 'fighting', 'reward', 'event', 'camp', 'completed']);
-  const currentNodeId = validIds.has(raw.currentNodeId) ? raw.currentNodeId : 'start';
-  const selectedNodeId = validIds.has(raw.selectedNodeId) ? raw.selectedNodeId : null;
+  const route = Array.isArray(raw.route)
+    ? ['start', ...raw.route.filter((id) => id !== 'start' && validIds.has(id))]
+    : ['start'];
+  const currentNodeId = validIds.has(raw.currentNodeId) && route.includes(raw.currentNodeId)
+    ? raw.currentNodeId
+    : (route.at(-1) || 'start');
+  const candidateSelectedId = validIds.has(raw.selectedNodeId) ? raw.selectedNodeId : null;
+  const selectedNode = map?.nodes.find((node) => node.id === candidateSelectedId) || null;
+  let phase = active && phases.has(raw.phase) ? raw.phase : 'idle';
+  let selectedNodeId = candidateSelectedId;
+  const battleNode = selectedNode && ['battle', 'elite', 'boss'].includes(selectedNode.type);
+  const phaseSelectionIsCoherent = phase === 'map'
+    || phase === 'completed'
+    || (['briefing', 'battle', 'fighting'].includes(phase) && battleNode)
+    || (phase === 'reward' && selectedNode && ['battle', 'elite'].includes(selectedNode.type))
+    || (phase === 'event' && selectedNode?.type === 'event')
+    || (phase === 'camp' && selectedNode?.type === 'camp');
+  if (active && !phaseSelectionIsCoherent) {
+    phase = 'map';
+    selectedNodeId = null;
+  } else if (phase === 'map' || phase === 'completed' || phase === 'idle') {
+    selectedNodeId = null;
+  }
   return {
     version: CAMPAIGN_VERSION,
-    active: raw.active === true,
+    active,
     seed,
-    phase: raw.active === true && phases.has(raw.phase) ? raw.phase : 'idle',
+    phase,
     currentNodeId,
     selectedNodeId,
     clearedNodeIds: Array.isArray(raw.clearedNodeIds) ? [...new Set(raw.clearedNodeIds.filter((id) => validIds.has(id)))] : [],
-    route: Array.isArray(raw.route) ? raw.route.filter((id) => validIds.has(id)) : ['start'],
+    route,
     perks: Array.isArray(raw.perks) ? raw.perks.filter((id) => perkById(id)) : [],
     rewardChosenForNode: typeof raw.rewardChosenForNode === 'string' ? raw.rewardChosenForNode : null,
     nextDifficultyDelta: Math.max(-12, Math.min(12, Number(raw.nextDifficultyDelta) || 0)),
@@ -455,6 +477,36 @@ export function markCampaignBattleRetired(state) {
       `Retirada táctica en ${node?.label || state.selectedNodeId}: el sector sigue pendiente y puede reintentarse`,
     ].slice(-30),
   });
+}
+
+function resumableCampaignState(state) {
+  if (!state?.active || !state.seed) return null;
+  const selected = campaignNode(state);
+  const canRetrySelectedBattle = (
+    selected &&
+    ['battle', 'elite', 'boss'].includes(selected.type) &&
+    ['briefing', 'battle', 'fighting'].includes(state.phase)
+  );
+  return normalizeCampaign({
+    ...state,
+    active: true,
+    phase: canRetrySelectedBattle ? 'briefing' : 'map',
+    selectedNodeId: canRetrySelectedBattle ? selected.id : null,
+    eventLog: [
+      ...(state.eventLog || []),
+      canRetrySelectedBattle
+        ? 'Batalla recuperada en ' + selected.label + ': vuelve al briefing sin inventar bajas'
+        : 'Operación recuperada en la mesa de guerra',
+    ].slice(-30),
+  });
+}
+
+// Perder el snapshot efímero de una batalla nunca debe secuestrar la campaña.
+// Volvemos al briefing del mismo sector: el roster ya persistido sigue siendo
+// autoritativo y no se inventan ni se revierten bajas.
+export function recoverInterruptedCampaign(state) {
+  const recovered = resumableCampaignState(state);
+  return recovered ? saveCampaign(recovered) : state;
 }
 
 export function markCampaignBattleWon(state) {
@@ -613,6 +665,9 @@ function archiveCampaignOperation(state, reason, stage) {
     bossLabel: campaignBossForSeed(state.seed).label,
     credits: Math.max(0, Number(state.operationalCredits) || 0),
     cleared: (state.clearedNodeIds || []).length,
+    // Una interrupción técnica es recuperable. Guardamos el estado completo
+    // además del resumen para no perder perks, intel ni el sector seleccionado.
+    resumeState: reason === 'interrupted' ? resumableCampaignState(state) : undefined,
   };
   const next = [entry, ...loadCampaignArchive()].slice(0, 12);
   setProfileStorageItem(OPERATION_ARCHIVE_KEY, JSON.stringify(next));
@@ -627,6 +682,37 @@ export function endCampaign(state, reason = 'retired') {
   const result = { reason, stage, route: [...(state?.route || ['start'])], archiveEntry };
   saveCampaign(emptyCampaign());
   return result;
+}
+
+export function resumeInterruptedCampaign(entry) {
+  if (!entry || entry.reason !== 'interrupted' || !entry.id || !entry.seed) return loadCampaign();
+
+  let recovered = entry.resumeState ? resumableCampaignState(entry.resumeState) : null;
+  if (!recovered) {
+    // Compatibilidad con operaciones archivadas antes de guardar resumeState.
+    // La ruta contiene sólo nodos ya resueltos, así que restaurarla en fase
+    // mapa es conservador: no concede botín ni marca como ganado el combate
+    // que quedó a medias.
+    const route = Array.isArray(entry.route) && entry.route.length ? entry.route : ['start'];
+    recovered = normalizeCampaign({
+      ...emptyCampaign(),
+      active: true,
+      seed: String(entry.seed),
+      phase: 'map',
+      currentNodeId: route.at(-1) || 'start',
+      selectedNodeId: null,
+      route,
+      clearedNodeIds: route.filter((id) => id !== 'start'),
+      relicIds: Array.isArray(entry.relicIds) ? entry.relicIds : [],
+      operationalCredits: Math.max(0, Number(entry.credits) || 0),
+      eventLog: ['Operación interrumpida recuperada desde el archivo'],
+    });
+  }
+
+  if (!recovered?.active) return loadCampaign();
+  const archive = loadCampaignArchive().filter((item) => item?.id !== entry.id);
+  setProfileStorageItem(OPERATION_ARCHIVE_KEY, JSON.stringify(archive));
+  return saveCampaign(recovered);
 }
 
 export function loadCampaignBestStage() {

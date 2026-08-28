@@ -23,6 +23,40 @@ HANDICAP_SQUARES = {
 }
 
 
+def validate_stored_game_entry(entry: dict) -> None:
+    """Rechaza savegames con forma incoherente antes de reconstruirlos.
+
+    Mongo es la autoridad, pero datos legacy, escrituras parciales o una
+    restauración manual pueden dejar tipos inesperados. Esos casos deben ser un
+    409 recuperable, nunca un TypeError/KeyError que derribe el request.
+    """
+    if not isinstance(entry, dict):
+        raise ValueError("partida persistida inválida")
+    if entry.get("humanColor") not in {"w", "b"}:
+        raise ValueError("color humano persistido inválido")
+    difficulty = entry.get("difficulty")
+    if isinstance(difficulty, bool):
+        raise ValueError("dificultad persistida inválida")
+    try:
+        normalized_difficulty = float(difficulty)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("dificultad persistida inválida") from exc
+    if not 0 <= normalized_difficulty <= 100:
+        raise ValueError("dificultad persistida inválida")
+    moves = entry.get("moves", [])
+    if not isinstance(moves, list) or any(not isinstance(san, str) or not san.strip() for san in moves):
+        raise ValueError("historial persistido inválido")
+    initial_fen = entry.get("initialFen")
+    if initial_fen is not None and not isinstance(initial_fen, str):
+        raise ValueError("FEN inicial persistido inválido")
+    handicap = entry.get("handicap")
+    if handicap is not None and handicap not in HANDICAP_SQUARES:
+        raise ValueError("hándicap persistido inválido")
+    last_move = entry.get("lastMove")
+    if last_move is not None and not isinstance(last_move, dict):
+        raise ValueError("última jugada persistida inválida")
+
+
 def apply_handicap(board: chess.Board, handicap: Optional[str], cpu_color: str) -> None:
     """Retira la pieza indicada únicamente del lado de la CPU."""
     if not handicap or handicap not in HANDICAP_SQUARES:
@@ -50,6 +84,7 @@ def board_from_valid_fen(fen: str) -> chess.Board:
 
 def load_board(entry: dict) -> chess.Board:
     """Reconstruye una partida desde su origen real y su historial SAN."""
+    validate_stored_game_entry(entry)
     board = board_from_valid_fen(entry.get("initialFen")) if entry.get("initialFen") else chess.Board()
     human_color = entry.get("humanColor", "w")
     cpu_color = "b" if human_color == "w" else "w"
@@ -170,7 +205,7 @@ def resolve_move(
     try:
         from_square = chess.parse_square(from_sq)
         to_square = chess.parse_square(to_sq)
-    except ValueError:
+    except (TypeError, ValueError):
         return None
 
     normalized_promotion = str(promotion).lower() if promotion is not None else None

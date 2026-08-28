@@ -69,6 +69,8 @@ export default function CombatScreen(props) {
         handleResetRoster={controller.handleResetRoster}
         onHistory={props.onHistory}
         serviceSummary={controller.serviceSummary}
+        sessionRecoveryLost={controller.sessionRecoveryLost}
+        dismissInterruptedSession={controller.dismissInterruptedSession}
       />
     );
   }

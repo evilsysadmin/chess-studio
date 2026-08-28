@@ -3,10 +3,14 @@ import { loadActiveGameSession } from '../activeGameSession.js';
 import { STORAGE_KEY } from '../api.js';
 import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
 import { buildClientDiagnostic, copyDiagnosticText } from '../clientDiagnostics.js';
+import { loadCampaign } from '../combatCampaign.js';
+import { loadRun } from '../roguelikeRun.js';
+import { hasCombatSession } from '../combatSession.js';
 
 function hasRecoverableGame() {
   if (loadActiveGameSession()) return true;
-  return Boolean(getStorageItem(STORAGE_LOCAL, STORAGE_KEY));
+  if (getStorageItem(STORAGE_LOCAL, STORAGE_KEY)) return true;
+  return loadCampaign().active || loadRun().inRun || hasCombatSession('free');
 }
 
 // Último fusible, montado por encima de <App /> en main.jsx. El boundary
@@ -51,13 +55,13 @@ export default class AppRootErrorBoundary extends React.Component {
         </p>
         {canRecover && (
           <p className="error-boundary-recovery">
-            <strong>Hay una partida guardada.</strong>
-            <span>Al recargar, la continuidad de sesión intentará devolverla al tablero.</span>
+            <strong>Hay una sesión guardada.</strong>
+            <span>Al recargar, la continuidad de sesión intentará reconstruirla.</span>
           </p>
         )}
         <div className="error-boundary-actions">
           <button type="button" className="primary-btn" onClick={this.handleReload}>
-            {canRecover ? 'Recargar y recuperar partida' : 'Recargar interfaz'}
+            {canRecover ? 'Recargar y recuperar sesión' : 'Recargar interfaz'}
           </button>
           <button type="button" className="secondary-btn" onClick={this.handleCopyDiagnostic}>
             {this.state.diagnosticCopied ? 'Diagnóstico copiado ✓' : 'Copiar diagnóstico'}

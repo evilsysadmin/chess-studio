@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { api, STORAGE_KEY } from './api.js';
 import { clearActiveGameSession, loadActiveGameSession } from './activeGameSession.js';
-import { loadClockSnapshot } from './clockPersistence.js';
+import { clearClockSnapshot, loadClockSnapshot } from './clockPersistence.js';
 import { timeControlById } from './clock.js';
-import { loadActiveContract, loadSpecialRun } from './career.js';
+import { clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRun } from './career.js';
 import { clearActiveSeries, loadActiveSeries } from './series.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { loadCampaign } from './combatCampaign.js';
+import { loadRun } from './roguelikeRun.js';
+import { hasCombatSession } from './combatSession.js';
 
 export const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
 
 export function classifyRestoreFailure(error) {
-  return error?.status === 404 || error?.status === 403 ? 'stale-session' : 'transient';
+  if (error?.status === 404 || error?.status === 403) return 'stale-session';
+  if (error?.status === 409) return 'irrecoverable';
+  return 'transient';
 }
 
 export function shouldLeaveActiveRouteAfterRestoreFailure(error) {
@@ -44,6 +49,7 @@ export function selectBoundaryRecovery({
   gameContext = {},
   timeControlId = null,
   currentView,
+  combatRecoverable = false,
 } = {}) {
   if (saved?.gameId) return { type: 'session', session: saved };
   if (tournamentGame?.id) {
@@ -61,8 +67,28 @@ export function selectBoundaryRecovery({
       },
     };
   }
-  if (currentView === 'combat' || currentView === 'roguelike') return { type: 'combat' };
+  if ((currentView === 'combat' || currentView === 'roguelike') && combatRecoverable) return { type: 'combat' };
   return { type: 'none' };
+}
+
+export function hasRecoverableCombatState(currentView, {
+  campaign = loadCampaign(),
+  run = loadRun(),
+  freeSession = hasCombatSession('free'),
+} = {}) {
+  if (currentView === 'roguelike') return campaign?.active === true || run?.inRun === true;
+  if (currentView === 'combat') return freeSession === true;
+  return false;
+}
+
+export function discardActiveSessionStorage(gameId = null) {
+  if (gameId) clearClockSnapshot(gameId);
+  clearActiveGameSession();
+  clearActiveSeries();
+  clearActiveContract();
+  clearSpecialRun();
+  removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);
+  removeStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY);
 }
 
 export function useActiveSessionRestore({
@@ -155,7 +181,9 @@ export function useActiveSessionRestore({
       } else {
         setHasSavedGame(true);
         setGameSaveState(SAVE_STATUS.ERROR);
-        setError('No se pudo recuperar la partida en curso. Tu sesión sigue guardada; reintenta cuando vuelva el servidor.');
+        setError(classifyRestoreFailure(error) === 'irrecoverable'
+          ? 'La partida guardada está dañada y no puede reanudarse. Puedes descartarla sin registrar derrota.'
+          : 'No se pudo recuperar la partida en curso. Tu sesión sigue guardada; reintenta cuando vuelva el servidor.');
       }
       return false;
       } finally {
@@ -203,6 +231,40 @@ export function useActiveSessionRestore({
     return restoreActiveSession(legacy);
   }, [restoreActiveSession]);
 
+  const discardActiveSession = useCallback(() => {
+    const savedGameId = loadActiveGameSession()?.gameId || getStorageItem(STORAGE_LOCAL, STORAGE_KEY) || null;
+    restoreRequestRef.current?.controller?.abort(new DOMException('Active session discarded', 'AbortError'));
+    restoreRequestRef.current = null;
+    discardActiveSessionStorage(savedGameId);
+    setGame(null);
+    setTournamentGame(null);
+    setLearningMode(false);
+    setActiveContract(null);
+    setSpecialRun(null);
+    setGameContext({});
+    setActiveSeries(null);
+    setActiveTimeControl(null);
+    setHasSavedGame(false);
+    setGameSaveState(SAVE_STATUS.SAVED);
+    setLoading(false);
+    setError(null);
+    replaceView('menu');
+  }, [
+    replaceView,
+    setActiveContract,
+    setActiveSeries,
+    setActiveTimeControl,
+    setError,
+    setGame,
+    setGameContext,
+    setGameSaveState,
+    setHasSavedGame,
+    setLearningMode,
+    setLoading,
+    setSpecialRun,
+    setTournamentGame,
+  ]);
+
   const recoverSessionFromBoundary = useCallback(async () => {
     const candidate = selectBoundaryRecovery({
       saved: loadActiveGameSession(),
@@ -212,6 +274,7 @@ export function useActiveSessionRestore({
       gameContext,
       timeControlId: activeTimeControl?.id || null,
       currentView,
+      combatRecoverable: hasRecoverableCombatState(currentView),
     });
     if (candidate.type === 'combat') return true;
     if (candidate.type === 'session') return restoreActiveSession(candidate.session);
@@ -236,6 +299,7 @@ export function useActiveSessionRestore({
   return {
     restoreActiveSession,
     continueActiveSession,
+    discardActiveSession,
     recoverSessionFromBoundary,
   };
 }

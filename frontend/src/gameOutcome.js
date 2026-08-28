@@ -31,3 +31,11 @@ export function gameExitDisposition({
   if (explicitAction && shouldTreatExitAsForfeit({ moveCount, isGameOver, learningMode, trainingPosition })) return 'forfeit';
   return 'cancel';
 }
+
+export function chessGameExitDisposition(game, options = {}) {
+  return gameExitDisposition({
+    moveCount: humanMoveCount(game?.history?.length || 0, game?.humanColor),
+    isGameOver: !!game?.isGameOver,
+    ...options,
+  });
+}

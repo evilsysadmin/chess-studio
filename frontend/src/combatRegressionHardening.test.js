@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { Chess } from 'chess.js';
 
 import { canReturnCombatToSetup, clearCombatSession, hasCombatSession, loadCombatSession, saveCombatSession } from './combatSession.js';
+import { createInitialRegistry } from './combat.js';
 import { ensureCombatIdentities } from './combatIdentity.js';
 import { expireDeadPieces, loadRoster } from './combatRoster.js';
 import {
@@ -14,6 +16,9 @@ import {
 
 const AFTER_E4_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
 const AFTER_D4_FEN = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1';
+const snapshotFor = (fen, humanColor) => ({
+  phase: 'battle', fen, registry: createInitialRegistry(new Chess(fen)), humanColor,
+});
 
 beforeEach(() => {
   localStorage.clear();
@@ -31,7 +36,7 @@ describe('REGRESSION · una batalla Combat viva jamás cae silenciosamente a Set
 
   it('una sesión activa sobrevive a storage corrupto durante un remount', () => {
     const id = 'campaign:regression:n3';
-    saveCombatSession(id, { phase: 'battle', fen: AFTER_E4_FEN, registry: { e4: { type: 'p' } }, humanColor: 'w' });
+    saveCombatSession(id, snapshotFor(AFTER_E4_FEN, 'w'));
     sessionStorage.setItem('chess-study-active-combat-session-v1', '{roto');
     expect(hasCombatSession(id)).toBe(true);
     expect(loadCombatSession(id)).toMatchObject({ phase: 'battle', fen: AFTER_E4_FEN, humanColor: 'w' });
@@ -39,8 +44,8 @@ describe('REGRESSION · una batalla Combat viva jamás cae silenciosamente a Set
   it('campaña y combate libre pueden quedar suspendidos sin pisarse entre sí', () => {
     const campaignId = 'campaign:seed:s3-battle';
     const freeId = 'free';
-    saveCombatSession(campaignId, { phase: 'battle', fen: AFTER_E4_FEN, registry: { e4: { type: 'p' } }, humanColor: 'w' });
-    saveCombatSession(freeId, { phase: 'battle', fen: AFTER_D4_FEN, registry: { d4: { type: 'p' } }, humanColor: 'b' });
+    saveCombatSession(campaignId, snapshotFor(AFTER_E4_FEN, 'w'));
+    saveCombatSession(freeId, snapshotFor(AFTER_D4_FEN, 'b'));
 
     expect(loadCombatSession(campaignId)).toMatchObject({ fen: AFTER_E4_FEN, humanColor: 'w' });
     expect(loadCombatSession(freeId)).toMatchObject({ fen: AFTER_D4_FEN, humanColor: 'b' });

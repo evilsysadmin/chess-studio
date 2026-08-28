@@ -92,7 +92,9 @@ export const PUZZLES = [
     id: 'material_rook_file', kind: 'material', difficulty: 'easy', technique: 'columna abierta',
     title: 'Torre en séptima',
     description: 'La columna está despejada. Calcula hasta dónde puede viajar tu torre.',
-    fen: '6k1/6n1/8/8/8/8/8/K5R1 w - - 0 1', solution: ['Rxg7+'],
+    // El rey en f6 protege g7: Rxg7+ gana el caballo sin permitir Kxg7.
+    // La versión anterior dejaba la torre colgada y enseñaba una pérdida neta.
+    fen: '6k1/6n1/5K2/8/8/8/8/6R1 w - - 0 1', solution: ['Rxg7+'],
   },
   {
     id: 'material_queen_file', kind: 'material', difficulty: 'easy', technique: 'columna abierta',
