@@ -1,3 +1,11 @@
+### v16.6dm46zeo · Feedback arriba y detalles abajo
+
+- Mueve Feedback de usuarios a la zona superior del Admin, justo después del resumen de observabilidad: la voz del usuario pasa a tratarse como señal operativa prioritaria y deja de quedar enterrada tras la tabla de usuarios.
+- Conserva feedback pendiente visible y los resueltos detrás de disclosure, sin aumentar frecuencia de telemetría ni llamadas al backend.
+- Añade un footer deliberadamente discreto en Home con FAQ, atajos, privacidad/datos y Acerca de Chess Studio. El contenido sólo se despliega si el usuario baja hasta allí y lo pide.
+- Privacidad explica de forma explícita el uso de progreso/partidas y los datos técnicos operativos (IP, release, presencia aproximada y errores), además de dejar claro que la presencia no usa telemetría de clics, ratón o teclado.
+- Añade un contrato estático de jerarquía para impedir que Feedback vuelva a caer detrás de Usuarios o que desaparezcan los enlaces informativos del footer.
+
 ### v16.6dm46zen · Auditoría visual de viewport y acciones
 
 - Corrige la vista de partida en desktop: el tamaño del tablero reserva explícitamente espacio para cabecera, estado, rival, jugador y barra de acciones, evitando que el tramo inferior quede fuera de `100dvh`.

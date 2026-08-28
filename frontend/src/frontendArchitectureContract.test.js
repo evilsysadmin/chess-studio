@@ -66,4 +66,13 @@ describe('frontend architecture contract', () => {
     expect(releaseNotes).not.toMatch(/\bE2E\b|Playwright|Grafana|\bTempo\b|Terraform|telemetr[ií]a|pipeline|CI\/CD|quality gate/i);
   });
 
+  it('prioriza feedback operativo en Admin y reserva el footer de Home para ayuda secundaria', () => {
+    const admin = read('AdminScreen.jsx');
+    const menu = read('Menu.jsx');
+    expect(admin).toMatch(/aria-label="Feedback de usuarios"[\s\S]*aria-label="Presencia de usuarios"[\s\S]*className="admin-users-heading"/);
+    expect(menu).toContain('className="home-footer"');
+    for (const label of ['FAQ', 'Atajos', 'Privacidad y datos', 'Acerca de']) expect(menu).toContain(label);
+    expect(menu).toContain('No se recopila telemetría de clics, movimiento de ratón, pulsaciones de teclado');
+  });
+
 });

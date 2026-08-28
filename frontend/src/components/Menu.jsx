@@ -22,6 +22,7 @@ import combatCardArt from '../assets/home-modes/combat.webp';
 import quickCardArt from '../assets/home-modes/quick.webp';
 import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboardingInsightsSeen } from '../homeOnboarding.js';
 import { loadPuzzlesSolved } from '../puzzleStats.js';
+import { APP_RELEASE } from '../release.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -66,6 +67,7 @@ export default function Menu({
   const [threatCheck, setThreatCheck] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
+  const [footerPanel, setFooterPanel] = useState(null);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
@@ -304,6 +306,77 @@ export default function Menu({
       </div>
 
       {error && <p className="error-text">{error}</p>}
+
+      <footer className="home-footer" aria-label="Información de Chess Studio">
+        <div className="home-footer-bar">
+          <nav className="home-footer-links" aria-label="Ayuda y detalles">
+            {[
+              ['faq', 'FAQ'],
+              ['shortcuts', 'Atajos'],
+              ['privacy', 'Privacidad y datos'],
+              ['about', 'Acerca de'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={footerPanel === id ? 'is-active' : ''}
+                aria-expanded={footerPanel === id}
+                aria-controls="home-footer-detail"
+                onClick={() => setFooterPanel((current) => current === id ? null : id)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          <span className="home-footer-release">{APP_RELEASE}</span>
+        </div>
+
+        {footerPanel && (
+          <section id="home-footer-detail" className="home-footer-detail" aria-label={footerPanel === 'faq' ? 'Preguntas frecuentes' : footerPanel === 'shortcuts' ? 'Atajos' : footerPanel === 'privacy' ? 'Privacidad y datos' : 'Acerca de Chess Studio'}>
+            <button type="button" className="home-footer-close" onClick={() => setFooterPanel(null)} aria-label="Cerrar detalle">×</button>
+            {footerPanel === 'faq' && (
+              <>
+                <span className="section-label">FAQ</span>
+                <h3>Preguntas frecuentes</h3>
+                <dl className="home-footer-faq">
+                  <div><dt>¿Por dónde empiezo?</dt><dd>Partida rápida va al grano; Torneo añade progresión; Combat Chess es la campaña táctica persistente.</dd></div>
+                  <div><dt>¿La práctica cambia mi rating?</dt><dd>No. La partida de práctica está pensada para probar ideas y usar pistas sin tocar el rating.</dd></div>
+                  <div><dt>¿Qué son los puzzles personales?</dt><dd>Posiciones nacidas de errores reales de tus partidas para volver a entrenar justo lo que más se repite.</dd></div>
+                  <div><dt>¿Se guarda una partida en curso?</dt><dd>Chess Studio intenta conservar la sesión activa y muestra el estado de guardado durante la partida. Si una recuperación falla, ofrece reintento antes de descartar nada.</dd></div>
+                </dl>
+              </>
+            )}
+            {footerPanel === 'shortcuts' && (
+              <>
+                <span className="section-label">Controles</span>
+                <h3>Atajos útiles</h3>
+                <div className="home-footer-shortcuts">
+                  <span><kbd>Esc</kbd><b>Volver o cerrar</b></span>
+                  <span><kbd>Clic derecho</kbd><b>Volver o cerrar</b></span>
+                  <span><kbd>← / →</kbd><b>Avanzar o retroceder en replays</b></span>
+                  <span><kbd>Media keys</kbd><b>Controlar Retro Player</b></span>
+                </div>
+              </>
+            )}
+            {footerPanel === 'privacy' && (
+              <>
+                <span className="section-label">Privacidad</span>
+                <h3>Datos que usa Chess Studio</h3>
+                <p>El juego guarda progreso, preferencias, partidas y estadísticas necesarias para sus funciones. Para operación y seguridad el servicio puede registrar datos técnicos como IP de cliente, release, presencia aproximada y errores.</p>
+                <p>No se recopila telemetría de clics, movimiento de ratón, pulsaciones de teclado ni contenido privado de la partida como señal de presencia.</p>
+              </>
+            )}
+            {footerPanel === 'about' && (
+              <>
+                <span className="section-label">Chess Studio</span>
+                <h3>Juega, aprende, compite.</h3>
+                <p>Un estudio de ajedrez con partida clásica, entrenamiento basado en tu juego real y Combat Chess para cuando ocho peones normales ya te parecen demasiado civilizados.</p>
+                <small>Release {APP_RELEASE}</small>
+              </>
+            )}
+          </section>
+        )}
+      </footer>
 
       <HomePlayNudge
         enabled={homePlayNudgeEnabled}

@@ -263,3 +263,143 @@ body {
   .home-mode-card:not(:disabled):hover,
   .home-mode-card:not(:disabled):focus-visible { transform: none; }
 }
+
+/* ---------- Information hierarchy · admin + Home footer ---------- */
+/* Feedback es señal operativa. Cuando aparece al principio del Admin debe
+   leerse como bandeja prioritaria, sin competir con Observabilidad. */
+.admin-screen > .menu-section > .admin-feedback-section {
+  margin-top: .8rem;
+  margin-bottom: 1rem;
+  border-color: color-mix(in srgb, var(--brass) 26%, rgba(255,255,255,.08));
+  background: linear-gradient(180deg, rgba(201,162,39,.035), rgba(255,255,255,.012));
+}
+.admin-screen > .menu-section > .admin-feedback-section .admin-feedback-heading {
+  margin-bottom: .65rem;
+}
+.admin-screen > .menu-section > .admin-feedback-section .admin-feedback-badge {
+  background: rgba(201,162,39,.045);
+}
+
+/* El pie de Home es deliberadamente discreto: información para quien decide
+   bajar hasta el final, no otra fila de llamadas a la acción. */
+.home-footer {
+  margin-top: .45rem;
+  padding: 1.05rem .1rem .2rem;
+  border-top: 1px solid rgba(255,255,255,.065);
+  color: var(--parchment-dim);
+}
+.home-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem 1rem;
+  flex-wrap: wrap;
+}
+.home-footer-links {
+  display: flex;
+  align-items: center;
+  gap: .25rem .85rem;
+  flex-wrap: wrap;
+}
+.home-footer-links button {
+  min-height: 30px;
+  padding: .15rem 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--parchment-dim) 86%, var(--brass));
+  font: 600 .66rem var(--font-mono);
+  letter-spacing: .035em;
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease;
+}
+.home-footer-links button:hover,
+.home-footer-links button:focus-visible,
+.home-footer-links button.is-active {
+  color: var(--parchment);
+  border-bottom-color: color-mix(in srgb, var(--brass) 55%, transparent);
+}
+.home-footer-links button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brass) 58%, transparent);
+  outline-offset: 3px;
+}
+.home-footer-release {
+  opacity: .48;
+  font: 500 .58rem var(--font-mono);
+  letter-spacing: .035em;
+}
+.home-footer-detail {
+  position: relative;
+  display: grid;
+  gap: .55rem;
+  margin-top: .75rem;
+  padding: .9rem 2.35rem .95rem .95rem;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 7px;
+  background: rgba(6,9,13,.42);
+}
+.home-footer-detail h3 { margin: 0; font-size: 1rem; }
+.home-footer-detail p { margin: 0; max-width: 82ch; font-size: .76rem; line-height: 1.55; }
+.home-footer-detail > small { opacity: .5; font-family: var(--font-mono); }
+.home-footer-close {
+  position: absolute;
+  top: .45rem;
+  right: .5rem;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--parchment-dim);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.home-footer-close:hover,
+.home-footer-close:focus-visible { background: rgba(255,255,255,.055); color: var(--parchment); }
+.home-footer-faq {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem 1rem;
+  margin: .1rem 0 0;
+}
+.home-footer-faq > div {
+  min-width: 0;
+  padding-top: .55rem;
+  border-top: 1px solid rgba(255,255,255,.055);
+}
+.home-footer-faq dt { color: var(--parchment); font-size: .73rem; font-weight: 700; }
+.home-footer-faq dd { margin: .22rem 0 0; font-size: .7rem; line-height: 1.5; }
+.home-footer-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem .8rem;
+}
+.home-footer-shortcuts span {
+  display: grid;
+  grid-template-columns: minmax(78px, auto) 1fr;
+  align-items: center;
+  gap: .55rem;
+  padding: .45rem 0;
+  border-top: 1px solid rgba(255,255,255,.055);
+  font-size: .7rem;
+}
+.home-footer-shortcuts kbd {
+  justify-self: start;
+  padding: .18rem .38rem;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 4px;
+  background: rgba(255,255,255,.025);
+  color: color-mix(in srgb, var(--parchment) 82%, var(--brass));
+  font: 600 .62rem var(--font-mono);
+}
+.home-footer-shortcuts b { font-weight: 500; }
+
+@media (max-width: 640px) {
+  .home-footer { padding-top: .85rem; }
+  .home-footer-bar { align-items: flex-start; }
+  .home-footer-release { width: 100%; }
+  .home-footer-faq,
+  .home-footer-shortcuts { grid-template-columns: 1fr; }
+  .home-footer-detail { padding-left: .75rem; }
+}

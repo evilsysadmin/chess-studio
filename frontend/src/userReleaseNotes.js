@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zeo',
+    title: 'La voz del usuario sube; los detalles bajan',
+    highlights: [
+      'Administración muestra el feedback de usuarios junto al estado del servicio, antes de la tabla de usuarios, para que los avisos importantes no queden enterrados.',
+      'La Home incorpora al final enlaces discretos a FAQ, atajos, privacidad y datos, y Acerca de Chess Studio; sólo despliegan contenido cuando lo pides.',
+      'Privacidad aclara qué datos de juego y operación se usan y deja explícito que la presencia no rastrea clics, ratón ni teclado.',
+    ],
+  },
+  {
     release: 'v16.6dm46zen',
     title: 'La mesa vuelve a caber entera',
     highlights: [
