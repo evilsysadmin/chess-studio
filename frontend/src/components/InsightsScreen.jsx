@@ -38,6 +38,7 @@ import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series
 import CareerScreen from './CareerScreen.jsx';
 import { GAME_MODE_LABELS, gameModeLabel } from '../gameModes.js';
 import { isAbortError } from '../asyncControl.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
@@ -430,43 +431,54 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         <div className="menu-section ai-player-portrait">
           <div className="ai-player-portrait-heading">
             <div>
-              <span className="section-label">Retrato dinámico</span>
+              <span className="section-label">Matthias // veredicto</span>
               <h2>Así te ve la CPU</h2>
             </div>
             <span className={`ai-player-portrait-source source-${portraitStatus}`}>
-              {portraitStatus === 'loading' ? 'Preparando consejos…' : 'Consejos'}
+              {portraitStatus === 'loading' ? 'Pensando…' : CPU_IDENTITY.name}
             </span>
           </div>
-          <p className="ai-player-portrait-text">{portraitText || localPortrait}</p>
-          <div className="ai-player-portrait-actions ai-player-portrait-actions-visible">
-            {portraitRemoteEligible ? (
-              <>
-                <button
-                  type="button"
-                  className="primary-btn ai-player-portrait-refresh-btn"
-                  disabled={portraitStatus === 'loading' || !portraitManualState.allowed}
-                  onClick={requestFreshPortrait}
-                >
-                  {portraitStatus === 'loading' ? 'Pensando…' : portraitManualState.allowed ? '↻ Analizarme de nuevo' : 'Lectura reciente'}
-                </button>
-                <small>
-                  {isAdminUser
-                    ? 'Admin · sin cooldown · automática tras cada partida.'
-                    : portraitManualState.allowed
-                      ? 'Una lectura extra cada 6 h · automática tras cada partida.'
-                      : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
-                </small>
-              </>
-            ) : (
-              <small>Los consejos se activan cuando haya al menos 3 partidas reales que comentar.</small>
-            )}
-          </div>
-          <details className="friendly-disclosure ai-player-portrait-details">
-            <summary>Ver en qué se basa</summary>
-            <div className="friendly-disclosure-body">
-              <p className="hint-text">Usa sólo tus estadísticas e incidentes guardados: resultados, tendencia de rating, aperturas, rachas, rivalidad y errores realmente registrados. La IA pone la voz; los hechos los pone Chess Studio.</p>
+          <div className="ai-player-portrait-layout">
+            <aside className="ai-player-portrait-character" aria-label={`${CPU_IDENTITY.name}, analista de Chess Studio`}>
+              <img src={CPU_IDENTITY.avatar} alt={`${CPU_IDENTITY.name}, la CPU de Chess Studio`} />
+              <div>
+                <strong>{CPU_IDENTITY.name}</strong>
+                <small>CPU · analista residente</small>
+              </div>
+            </aside>
+            <div className="ai-player-portrait-commentary">
+              <p className="ai-player-portrait-text">{portraitText || localPortrait}</p>
+              <div className="ai-player-portrait-actions ai-player-portrait-actions-visible">
+                {portraitRemoteEligible ? (
+                  <>
+                    <button
+                      type="button"
+                      className="primary-btn ai-player-portrait-refresh-btn"
+                      disabled={portraitStatus === 'loading' || !portraitManualState.allowed}
+                      onClick={requestFreshPortrait}
+                    >
+                      {portraitStatus === 'loading' ? 'Pensando…' : portraitManualState.allowed ? '↻ Que Matthias me juzgue otra vez' : 'Lectura reciente'}
+                    </button>
+                    <small>
+                      {isAdminUser
+                        ? 'Admin · sin cooldown · automática tras cada partida.'
+                        : portraitManualState.allowed
+                          ? 'Una lectura extra cada 6 h · automática tras cada partida.'
+                          : `Otra lectura disponible en ${formatPlayerPortraitCooldown(portraitManualState.retryAfterMs)}.`}
+                    </small>
+                  </>
+                ) : (
+                  <small>Matthias empieza a sacar conclusiones cuando haya al menos 3 partidas reales que comentar.</small>
+                )}
+              </div>
+              <details className="friendly-disclosure ai-player-portrait-details">
+                <summary>Ver en qué se basa Matthias</summary>
+                <div className="friendly-disclosure-body">
+                  <p className="hint-text">Usa sólo tus estadísticas e incidentes guardados: resultados, tendencia de rating, aperturas, rachas, rivalidad y errores realmente registrados. Matthias pone la voz; los hechos los pone Chess Studio.</p>
+                </div>
+              </details>
             </div>
-          </details>
+          </div>
         </div>
       )}
 

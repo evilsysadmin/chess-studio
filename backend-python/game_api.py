@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 import logging
 import random
+import uuid
 from typing import Optional
 
 import chess

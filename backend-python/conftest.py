@@ -11,9 +11,24 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def no_real_mongo(monkeypatch, request):
+    # Resiliencia/observabilidad son estado global in-memory de proceso. Una
+    # prueba que genera 5xx deliberados no puede dejar el siguiente test en
+    # presión crítica y provocar 503/adaptive_shed espurios. Cada test empieza
+    # con estas señales operativas limpias; los tests que prueban presión las
+    # construyen dentro de su propio caso.
+    try:
+        from resilience import reset_resilience_state
+        reset_resilience_state()
+    except Exception:
+        pass
+    try:
+        from observability import reset_http_metrics
+        reset_http_metrics()
+    except Exception:
+        pass
     # Motor + reglas puras y el middleware de límites forman gates deliberadamente
     # independientes de FastAPI/Mongo/auth. Así `make gate-core` solo necesita pytest + python-chess.
-    if request.path.name in {"test_chess_ai.py", "test_core_game.py", "test_request_limits.py", "test_feedback_attachments.py", "test_narrative_cloudflare.py", "test_narrative_api.py"}:
+    if request.path.name in {"test_chess_ai.py", "test_core_game.py", "test_request_limits.py", "test_feedback_attachments.py", "test_narrative_cloudflare.py", "test_narrative_api.py", "test_resilience.py"}:
         return
 
     # Los límites reales se prueban de forma dirigida; no queremos que una

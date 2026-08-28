@@ -17,6 +17,7 @@ const app = read('frontend/src/App.jsx');
 const adminInbox = read('frontend/src/useAdminFeedbackInbox.js');
 const chat = read('frontend/src/components/GameChat.jsx');
 const menu = read('frontend/src/components/Menu.jsx');
+const insights = read('frontend/src/components/InsightsScreen.jsx');
 const feedbackE2e = read('e2e/feedback-critical.spec.js');
 const smoke = read('e2e/smoke.spec.js');
 
@@ -48,6 +49,7 @@ const checks = [
   [/CPU_IDENTITY/.test(game) && /game-player-avatar\$\{cpu \? ' has-portrait'/.test(game) && /matthias-cpu\.webp/.test(read('frontend/src/cpuIdentity.js')), 'Matthias debe ocupar el hueco de identidad existente en la tarjeta rival'],
   [/CPU_IDENTITY\.name\.toUpperCase\(\)/.test(chat) && /game-chat-matthias-avatar/.test(finalCss), 'el chat debe firmar como Matthias con presencia compacta'],
   [/MatthiasHomeVisit/.test(menu) && /matthias-home-visit/.test(finalCss), 'Home debe poder mostrar la visita ocasional de Matthias sin una nueva capa flotante'],
+  [/CPU_IDENTITY/.test(insights) && /ai-player-portrait-character/.test(insights) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias sin invadir el diagnóstico'],
   [/resuelto mantiene Reabrir y Borrar feedback visibles/.test(feedbackE2e), 'falta E2E de borrado visible en feedback resuelto'],
   [/admin ve un sobre en Home cuando hay mensajes nuevos/.test(feedbackE2e), 'falta E2E del inbox admin de feedback'],
 ];
@@ -58,4 +60,4 @@ if (failed.length) {
   for (const message of failed) console.error(` - ${message}`);
   process.exit(1);
 }
-console.log('visual-ux-contract OK · viewport + mesa de mando + mapa artístico + acciones + onboarding + Matthias + coach de replay + inbox admin protegidos');
+console.log('visual-ux-contract OK · viewport + mesa de mando + mapa artístico + acciones + onboarding + Matthias rival/home/veredicto + coach de replay + inbox admin protegidos');

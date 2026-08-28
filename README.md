@@ -1,3 +1,12 @@
+### v16.6dm46zev · Matthias firma el veredicto y hotfix backend
+
+- Integra a **Matthias** en `Así te ve la CPU`: retrato visible, identidad de analista residente y el diagnóstico a su derecha, sin convertir la sección en un banner ni repetir un avatar gigante. El modelo mantiene tres frases basadas en datos reales, una sola pulla breve y una acción concreta.
+- Corrige la causa raíz de la cascada backend detectada por la suite completa: `game_api.py` usaba `uuid.uuid4()` sin importar `uuid`, provocando `500` al crear partidas no idempotentes.
+- Aísla por test las señales globales de resiliencia y métricas HTTP. Los `5xx` deliberados de un caso ya no pueden activar presión crítica y provocar `503/adaptive_shed` falsos en análisis o Workers AI posteriores.
+- Corrige los seis tests nuevos de idempotencia que declaraban por error un fixture `client` inexistente; vuelven a usar el cliente autenticado compartido por `test_main.py`.
+- Ajusta el test de borrado de feedback para parchear la configuración admin ya cargada (`_ADMIN_USERNAMES`) en vez de modificar una variable de entorno después del arranque.
+- Amplía `state-resilience-check` para proteger estas causas raíz: import de UUID, aislamiento de presión global y contrato del cliente de integración.
+
 ### v16.6dm46zeu · Matthias entra en escena
 
 - Da una identidad fija y visible a la CPU: **Matthias**, un peón sabihondo con avatar propio, ocupa el hueco existente del rival y firma el chat sin añadir paneles flotantes ni robar espacio al tablero.

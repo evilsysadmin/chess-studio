@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zev',
+    title: 'Matthias firma el veredicto',
+    highlights: [
+      'Así te ve la CPU incorpora a Matthias como analista residente: su retrato acompaña el diagnóstico y deja claro quién firma la pulla y el consejo.',
+      'Corrige una regresión que podía impedir iniciar una partida nueva en determinadas rutas de creación.',
+      'Un fallo previo ya no arrastra las siguientes peticiones y deja análisis o consejos temporalmente fuera de servicio durante la misma sesión.',
+    ],
+  },
+  {
     release: 'v16.6dm46zeu',
     title: 'Matthias entra en escena',
     highlights: [

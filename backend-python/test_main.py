@@ -1772,7 +1772,8 @@ def test_feedback_accepts_only_real_png_jpg_gif_and_admin_can_open_attachment(mo
 
 
 def test_admin_can_delete_feedback(monkeypatch):
-    monkeypatch.setenv('ADMIN_USERNAMES', '*')
+    import main as main_module
+    monkeypatch.setattr(main_module, '_ADMIN_USERNAMES', {'testuser'})
     created = client.post('/api/feedback', json={'category': 'general', 'message': 'Mensaje temporal de prueba.'})
     assert created.status_code == 201
     feedback_id = created.json()['feedback']['id']
@@ -1989,7 +1990,7 @@ def test_move_after_checkmate_is_rejected_without_mutating_game():
     assert after["history"] == before["history"]
 
 
-def test_create_game_is_idempotent_with_header(client):
+def test_create_game_is_idempotent_with_header():
     headers = {"Idempotency-Key": "create-test-0001"}
     body = {"difficulty": 20, "color": "w"}
     first = client.post("/api/games", json=body, headers=headers)
@@ -1999,14 +2000,14 @@ def test_create_game_is_idempotent_with_header(client):
     assert first.json()["id"] == second.json()["id"]
 
 
-def test_create_game_rejects_reused_idempotency_key_with_different_payload(client):
+def test_create_game_rejects_reused_idempotency_key_with_different_payload():
     headers = {"Idempotency-Key": "create-test-0002"}
     assert client.post("/api/games", json={"difficulty": 20, "color": "w"}, headers=headers).status_code == 201
     conflict = client.post("/api/games", json={"difficulty": 60, "color": "w"}, headers=headers)
     assert conflict.status_code == 409
 
 
-def test_move_retry_with_same_idempotency_key_does_not_move_twice(client):
+def test_move_retry_with_same_idempotency_key_does_not_move_twice():
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
     game_id = created["id"]
     headers = {"Idempotency-Key": "move-test-0000001"}
@@ -2017,7 +2018,7 @@ def test_move_retry_with_same_idempotency_key_does_not_move_twice(client):
     assert second.json()["history"] == first.json()["history"]
 
 
-def test_undo_retry_with_same_idempotency_key_is_replayed(client):
+def test_undo_retry_with_same_idempotency_key_is_replayed():
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
     game_id = created["id"]
     assert client.post(f"/api/games/{game_id}/move", json={"from": "e2", "to": "e4"}).status_code == 200
@@ -2029,7 +2030,7 @@ def test_undo_retry_with_same_idempotency_key_is_replayed(client):
     assert second.json()["history"] == first.json()["history"]
 
 
-def test_idempotency_key_rejects_malformed_values(client):
+def test_idempotency_key_rejects_malformed_values():
     response = client.post(
         "/api/games",
         json={"difficulty": 20, "color": "w"},
@@ -2039,7 +2040,7 @@ def test_idempotency_key_rejects_malformed_values(client):
     assert "Idempotency-Key" in response.json()["detail"]
 
 
-def test_move_rejects_reused_idempotency_key_with_different_payload(client):
+def test_move_rejects_reused_idempotency_key_with_different_payload():
     created = client.post("/api/games", json={"difficulty": 20, "color": "w"}).json()
     game_id = created["id"]
     headers = {"Idempotency-Key": "move-conflict-0001"}

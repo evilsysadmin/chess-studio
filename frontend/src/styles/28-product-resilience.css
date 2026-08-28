@@ -840,3 +840,50 @@
   .matthias-home-avatar { width: 42px; height: 42px; }
   .matthias-home-actions { grid-column: 1 / -1; justify-content: flex-end; }
 }
+
+
+/* Matthias firma el diagnóstico de Así juegas sin convertir el retrato en un
+   banner: personaje a la izquierda, lectura útil a la derecha. */
+.ai-player-portrait-layout {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  margin-top: .8rem;
+}
+.ai-player-portrait-character {
+  display: grid;
+  gap: .52rem;
+  align-content: start;
+  justify-items: center;
+  padding: .55rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 32%, var(--ui-border));
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(210,174,88,.07), rgba(12,17,24,.22));
+}
+.ai-player-portrait-character img {
+  width: 94px;
+  aspect-ratio: 1;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 42%;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--ui-border));
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+.ai-player-portrait-character div { display: grid; gap: .08rem; text-align: center; }
+.ai-player-portrait-character strong { color: var(--parchment); font-family: var(--font-display); font-size: 1rem; }
+.ai-player-portrait-character small { color: var(--parchment-dim); font-size: .67rem; line-height: 1.25; }
+.ai-player-portrait-commentary { min-width: 0; }
+.ai-player-portrait-commentary .ai-player-portrait-text { margin-top: .05rem; }
+
+@media (max-width: 680px) {
+  .ai-player-portrait-layout { grid-template-columns: 1fr; }
+  .ai-player-portrait-character {
+    grid-template-columns: 58px minmax(0, 1fr);
+    justify-items: start;
+    align-items: center;
+  }
+  .ai-player-portrait-character img { width: 58px; }
+  .ai-player-portrait-character div { text-align: left; }
+}
