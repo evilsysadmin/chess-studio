@@ -66,6 +66,13 @@ describe('ciclo de presencia por pestaña', () => {
     // Incluso si un scheduler de test conserva la referencia, el contrato
     // observable antes de pagehide no ha emitido otro heartbeat.
     expect(typeof pendingTimeout).toBe('function');
+    // Un pageshow mientras el documento sigue oculto no debe resucitar la
+    // presencia como foreground. En una restauración bfcache real el
+    // documento vuelve a visible antes (o junto) al pageshow relevante.
+    win.fire('pageshow');
+    expect(touch).toHaveBeenCalledTimes(1);
+
+    doc.visibilityState = 'visible';
     win.fire('pageshow');
     expect(touch).toHaveBeenCalledTimes(2);
     expect(touch).toHaveBeenLastCalledWith('Home', true);
