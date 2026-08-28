@@ -13,7 +13,81 @@ _memory_users: dict[str, dict] = {}
 _last_activity_write_monotonic: dict[str, float] = {}
 _ACTIVITY_WRITE_INTERVAL_S = 30.0
 _USER_EXISTENCE_CACHE_TTL_S = 30.0
+_PRESENCE_SESSION_TTL_S = 150
+_PRESENCE_SESSION_RETENTION_S = 15 * 60
+_PRESENCE_PRUNE_INTERVAL_S = 10 * 60
 _user_existence_cache: dict[str, tuple[float, bool]] = {}
+_last_presence_prune_monotonic: dict[str, float] = {}
+
+
+
+
+def _parse_presence_time(raw):
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def _latest_live_presence_session(sessions, *, now=None, ttl_seconds: int = _PRESENCE_SESSION_TTL_S):
+    """Devuelve la sesión de presencia viva más reciente, si existe."""
+    if not isinstance(sessions, dict):
+        return None
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=max(1, int(ttl_seconds)))
+    candidates = []
+    for session_id, row in sessions.items():
+        if not isinstance(row, dict):
+            continue
+        parsed = _parse_presence_time(row.get("last_activity"))
+        if parsed is None or parsed < cutoff:
+            continue
+        candidates.append((parsed, str(session_id), row))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    parsed, session_id, row = candidates[0]
+    return session_id, parsed, row
+
+
+def _stale_presence_sessions(sessions, *, now=None, retention_seconds: int = _PRESENCE_SESSION_RETENTION_S):
+    """Devuelve ids+timestamps de sesiones claramente caducadas.
+
+    Separamos retención de presencia (15 min) del TTL de online (150 s): una
+    pestaña que dejó de reportar deja de contar enseguida, pero damos margen
+    antes de borrar su registro para tolerar suspensiones/cierres bruscos. El
+    timestamp devuelto permite hacer un `$unset` condicional y no borrar una
+    sesión que haya revivido entre la lectura y la limpieza.
+    """
+    if not isinstance(sessions, dict):
+        return []
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=max(_PRESENCE_SESSION_TTL_S + 1, int(retention_seconds)))
+    stale = []
+    for session_id, row in sessions.items():
+        if not isinstance(row, dict):
+            stale.append((str(session_id), None))
+            continue
+        raw = row.get("last_activity")
+        parsed = _parse_presence_time(raw)
+        if parsed is None or parsed < cutoff:
+            stale.append((str(session_id), raw))
+    return stale
+
+
+def _prune_memory_presence_sessions(user: dict, *, now=None) -> None:
+    sessions = user.get("presence_sessions")
+    if not isinstance(sessions, dict):
+        return
+    for session_id, _raw in _stale_presence_sessions(sessions, now=now):
+        sessions.pop(session_id, None)
+    if not sessions:
+        user.pop("presence_sessions", None)
 
 
 class UserAlreadyExists(RuntimeError):
@@ -271,33 +345,69 @@ async def count_online_users(
     return count
 
 
-async def mark_logged_out(username: str) -> str:
-    """Cierra la presencia de una sesión de forma explícita.
+async def mark_logged_out(username: str, *, session_id: str | None = None) -> str:
+    """Cierra la presencia del contexto que hace logout.
 
-    El JWT sigue siendo stateless; este estado sólo corrige la semántica de
-    presencia para que Admin/status no tengan que esperar al TTL después de un
-    logout real. Cualquier login/heartbeat posterior vuelve a marcar online.
+    Con una ``session_id`` sólo retiramos esa sesión de navegador. Si el mismo
+    usuario sigue vivo en otro dispositivo/contexto, permanece online. Clientes
+    legacy sin id conservan el comportamiento histórico de logout global.
     """
     value = datetime.now(timezone.utc).isoformat()
     col = await _get_collection()
     if col is not None:
         try:
-            await col.update_one(
-                {"_id": username},
-                {"$set": {
-                    "presence_online": False,
-                    "is_foreground": False,
-                    "foreground_updated_at": value,
-                }},
-            )
+            if session_id:
+                await col.update_one({"_id": username}, {"$unset": {f"presence_sessions.{session_id}": ""}})
+                doc = await col.find_one({"_id": username}, {"presence_sessions": 1}) or {}
+                latest = _latest_live_presence_session(doc.get("presence_sessions"))
+                if latest:
+                    _, parsed, row = latest
+                    fields = {
+                        "presence_online": True,
+                        "last_activity": parsed.isoformat(),
+                        "is_foreground": bool(row.get("foreground")),
+                        "foreground_updated_at": row.get("foreground_updated_at") or parsed.isoformat(),
+                    }
+                    if row.get("activity"):
+                        fields["current_activity"] = row.get("activity")
+                    if row.get("release"):
+                        fields["client_release"] = row.get("release")
+                else:
+                    fields = {"presence_online": False, "is_foreground": False, "foreground_updated_at": value}
+                await col.update_one({"_id": username}, {"$set": fields})
+            else:
+                await col.update_one(
+                    {"_id": username},
+                    {"$set": {"presence_online": False, "is_foreground": False, "foreground_updated_at": value}},
+                )
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
     else:
         user = _memory_users.get(username)
         if user is not None:
-            user["presence_online"] = False
-            user["is_foreground"] = False
-            user["foreground_updated_at"] = value
+            if session_id:
+                sessions = user.get("presence_sessions")
+                if isinstance(sessions, dict):
+                    sessions.pop(session_id, None)
+                latest = _latest_live_presence_session(sessions)
+                if latest:
+                    _, parsed, row = latest
+                    user["presence_online"] = True
+                    user["last_activity"] = parsed.isoformat()
+                    user["is_foreground"] = bool(row.get("foreground"))
+                    user["foreground_updated_at"] = row.get("foreground_updated_at") or parsed.isoformat()
+                    if row.get("activity"):
+                        user["current_activity"] = row.get("activity")
+                    if row.get("release"):
+                        user["client_release"] = row.get("release")
+                else:
+                    user["presence_online"] = False
+                    user["is_foreground"] = False
+                    user["foreground_updated_at"] = value
+            else:
+                user["presence_online"] = False
+                user["is_foreground"] = False
+                user["foreground_updated_at"] = value
     _last_activity_write_monotonic.pop(username, None)
     return value
 
@@ -311,6 +421,7 @@ async def touch_last_activity(
     release: str | None = None,
     client_ip: str | None = None,
     client_country: str | None = None,
+    session_id: str | None = None,
 ) -> str:
     """Actualiza la última actividad con coalescing para no martillear Mongo.
 
@@ -340,6 +451,16 @@ async def touch_last_activity(
                 fields["last_client_ip"] = str(client_ip)[:64]
             if client_country:
                 fields["last_client_country"] = str(client_country)[:2].upper()
+            if session_id:
+                prefix = f"presence_sessions.{session_id}"
+                fields[f"{prefix}.last_activity"] = value
+                if activity:
+                    fields[f"{prefix}.activity"] = activity
+                if foreground is not None:
+                    fields[f"{prefix}.foreground"] = bool(foreground)
+                    fields[f"{prefix}.foreground_updated_at"] = value
+                if release:
+                    fields[f"{prefix}.release"] = release
             # `force=True` se usa en login (y tras reset, que también entrega
             # sesión nueva). Guardamos un ancla de último acceso además del
             # heartbeat para que cuentas legacy nunca vuelvan a quedar como
@@ -352,6 +473,31 @@ async def touch_last_activity(
         # Tokens válidos de cuentas borradas no deberían recrear usuarios.
         if result.matched_count == 0:
             return value
+
+        # Un cierre de pestaña puede ser asesinado por el navegador antes de
+        # que llegue `/auth/logout`. Esas ids ya no cuentan como online por el
+        # TTL, pero sin limpieza acabarían creciendo para siempre en el doc de
+        # usuario. Podamos como máximo cada 10 min/proceso y con CAS sobre el
+        # timestamp observado para no borrar una pestaña que haya revivido
+        # entre la lectura y el `$unset`.
+        prune_previous = _last_presence_prune_monotonic.get(username)
+        if session_id and (prune_previous is None or now_mono - prune_previous >= _PRESENCE_PRUNE_INTERVAL_S):
+            try:
+                doc = await col.find_one({"_id": username}, {"presence_sessions": 1}) or {}
+                for stale_id, stale_raw in _stale_presence_sessions(doc.get("presence_sessions")):
+                    path = f"presence_sessions.{stale_id}"
+                    if stale_raw is None:
+                        guard = {f"{path}.last_activity": {"$exists": False}}
+                    else:
+                        guard = {f"{path}.last_activity": stale_raw}
+                    await col.update_one({"_id": username, **guard}, {"$unset": {path: ""}})
+            except PyMongoError:
+                # La escritura de presencia principal ya salió bien. La poda
+                # es mantenimiento best-effort y no debe convertir un
+                # heartbeat sano en un 503.
+                pass
+            finally:
+                _last_presence_prune_monotonic[username] = now_mono
     else:
         user = _memory_users.get(username)
         if user is not None:
@@ -368,6 +514,18 @@ async def touch_last_activity(
                 user["last_client_ip"] = str(client_ip)[:64]
             if client_country:
                 user["last_client_country"] = str(client_country)[:2].upper()
+            if session_id:
+                sessions = user.setdefault("presence_sessions", {})
+                row = sessions.setdefault(session_id, {})
+                row["last_activity"] = value
+                if activity:
+                    row["activity"] = activity
+                if foreground is not None:
+                    row["foreground"] = bool(foreground)
+                    row["foreground_updated_at"] = value
+                if release:
+                    row["release"] = release
+                _prune_memory_presence_sessions(user)
             if force:
                 user["last_login"] = value
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PROFILE_BOOTSTRAP_RETRY_DELAYS_MS, resolveAuthenticatedBootstrap } from './useAuthenticatedApp.js';
+import { ADMIN_IDENTITY_RETRY_DELAYS_MS, PROFILE_BOOTSTRAP_RETRY_DELAYS_MS, resolveAuthenticatedBootstrap } from './useAuthenticatedApp.js';
 import { sortUnifiedHistory } from './useReplayLibrary.js';
 
 describe('App lifecycle extraction', () => {
@@ -19,6 +19,11 @@ describe('App lifecycle extraction', () => {
   it('reintenta bootstrap transitorio durante aproximadamente un minuto antes de rendirse', () => {
     expect(PROFILE_BOOTSTRAP_RETRY_DELAYS_MS).toEqual([1000, 2000, 4000, 8000, 15000, 30000]);
     expect(PROFILE_BOOTSTRAP_RETRY_DELAYS_MS.reduce((sum, value) => sum + value, 0)).toBe(60000);
+  });
+
+  it('recupera identidad admin en segundo plano sin bloquear el perfil ya cargado', () => {
+    expect(ADMIN_IDENTITY_RETRY_DELAYS_MS).toEqual([2000, 5000, 15000, 30000]);
+    expect(resolveAuthenticatedBootstrap({ status: 'loaded' }, null)).toMatchObject({ action: 'ready', ready: true, isAdminUser: false });
   });
 
   it('historial unificado conserva orden descendente sin distinguir normal/Combat', () => {

@@ -61,6 +61,20 @@ describe('personal puzzles', () => {
     expect(personalTrainingSummary()).toMatchObject({ attempts: 2, solves: 1, cleanSolves: 1, cleanRate: 50 });
   });
 
+  it('un fallo seguido de solución cuenta un único intento no limpio y no duplica el puzzle', () => {
+    const history = [{ san: 'e4' }, { san: 'e5' }, { san: 'Nf3' }];
+    savePersonalPuzzlesFromReport(history, 'w', { topMistakes: [{ index: 2, played: 'Nf3', suggested: 'Bc4', loss: 150 }] });
+    const puzzle = loadPersonalPuzzles()[0];
+
+    // PuzzleScreen registra el intento cuando termina: los fallos intermedios
+    // sólo degradan `clean`; no deben crear intentos fantasma ni copias.
+    recordPersonalPuzzleResult(puzzle.id, { solved: true, clean: false });
+    const stored = loadPersonalPuzzles();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ attempts: 1, solves: 1, cleanSolves: 0 });
+    expect(personalTrainingSummary()).toMatchObject({ total: 1, active: 0, mastered: 1, attempts: 1, solves: 1, cleanSolves: 0, cleanRate: 0 });
+  });
+
   it('saca de la cola activa los puzzles ya superados pero los conserva revisables', () => {
     const history = [{ san: 'e4' }, { san: 'e5' }, { san: 'Nf3' }];
     savePersonalPuzzlesFromReport(history, 'w', { topMistakes: [{ index: 2, played: 'Nf3', suggested: 'Bc4', loss: 150 }] });

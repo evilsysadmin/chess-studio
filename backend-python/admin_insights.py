@@ -554,8 +554,12 @@ def _foreground_summary(user_doc: dict, *, freshness_seconds: int = 150) -> dict
         age = max(0, int((datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()))
     except (TypeError, ValueError):
         return {"foreground": None, "foregroundAgeSeconds": None}
-    active = bool(reported) and age <= max(1, int(freshness_seconds))
-    return {"foreground": active, "foregroundAgeSeconds": age}
+    if age > max(1, int(freshness_seconds)):
+        # Pasado el TTL ya no sabemos si esa pestaña sigue abierta, fue
+        # suspendida por el móvil o murió sin poder emitir pagehide. No
+        # convertimos "desconocido" en un falso "segundo plano".
+        return {"foreground": None, "foregroundAgeSeconds": age}
+    return {"foreground": bool(reported), "foregroundAgeSeconds": age}
 
 
 def _presence_summary(last_activity, presence_online=None) -> dict:

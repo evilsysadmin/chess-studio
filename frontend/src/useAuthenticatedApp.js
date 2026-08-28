@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { fetchMe, isLoggedIn, logout, watchSessionIdentity } from './auth.js';
+import { fetchMeStatus, isLoggedIn, logout, watchSessionIdentity } from './auth.js';
 import { pullProfileFromServer } from './profileBackup.js';
 
 export const PROFILE_BOOTSTRAP_RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 15000, 30000];
+export const ADMIN_IDENTITY_RETRY_DELAYS_MS = [2000, 5000, 15000, 30000];
 
 function profileSyncError(profile) {
   const detail = String(profile?.detail || '');
@@ -31,6 +32,7 @@ export function useAuthenticatedApp() {
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
+  const [adminIdentityUnknown, setAdminIdentityUnknown] = useState(false);
 
   useEffect(() => watchSessionIdentity(() => window.location.reload()), [loggedIn]);
 
@@ -46,8 +48,14 @@ export function useAuthenticatedApp() {
 
     const runBootstrap = async () => {
       try {
-        const [profile, me] = await Promise.all([pullProfileFromServer(), fetchMe()]);
+        const [profile, meStatus] = await Promise.all([pullProfileFromServer(), fetchMeStatus()]);
         if (cancelled) return;
+
+        if (profile?.status === 'unauthorized' || meStatus?.status === 'unauthorized') {
+          logout();
+          setLoggedIn(false);
+          return;
+        }
 
         if (profile?.status === 'offline' && retryIndex < PROFILE_BOOTSTRAP_RETRY_DELAYS_MS.length) {
           const delay = PROFILE_BOOTSTRAP_RETRY_DELAYS_MS[retryIndex];
@@ -57,7 +65,7 @@ export function useAuthenticatedApp() {
           return;
         }
 
-        const resolved = resolveAuthenticatedBootstrap(profile, me);
+        const resolved = resolveAuthenticatedBootstrap(profile, meStatus?.user);
         if (resolved.action === 'logout') {
           logout();
           setLoggedIn(false);
@@ -65,6 +73,7 @@ export function useAuthenticatedApp() {
         }
         setSyncError(resolved.syncError);
         setIsAdminUser(resolved.isAdminUser);
+        setAdminIdentityUnknown(resolved.ready && meStatus?.status === 'unavailable');
         setReady(resolved.ready);
       } catch {
         if (cancelled) return;
@@ -87,6 +96,40 @@ export function useAuthenticatedApp() {
       if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
   }, [loggedIn, bootstrapAttempt]);
+
+  useEffect(() => {
+    if (!loggedIn || !ready || !adminIdentityUnknown) return undefined;
+    let cancelled = false;
+    let timer = null;
+    let attempt = 0;
+
+    const retryIdentity = async () => {
+      const result = await fetchMeStatus();
+      if (cancelled) return;
+      if (result?.status === 'unauthorized') {
+        logout();
+        setLoggedIn(false);
+        return;
+      }
+      if (result?.status === 'ok') {
+        setIsAdminUser(!!result.user?.isAdmin);
+        setAdminIdentityUnknown(false);
+        return;
+      }
+      if (attempt < ADMIN_IDENTITY_RETRY_DELAYS_MS.length) {
+        const delay = ADMIN_IDENTITY_RETRY_DELAYS_MS[attempt];
+        attempt += 1;
+        timer = window.setTimeout(retryIdentity, delay);
+      }
+    };
+
+    timer = window.setTimeout(retryIdentity, ADMIN_IDENTITY_RETRY_DELAYS_MS[0]);
+    attempt = 1;
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [loggedIn, ready, adminIdentityUnknown]);
 
   function retryBootstrap() {
     setSyncError(null);

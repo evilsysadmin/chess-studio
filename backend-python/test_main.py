@@ -119,13 +119,91 @@ def test_logout_presence_removes_user_from_online_count_immediately(monkeypatch)
 
     monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", set())
     asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True))
-    assert client.get("/api/status").json()["onlineUsers"] == 1
+    assert asyncio.run(ustore.count_online_users()) == 1
 
     response = client.post("/api/auth/logout")
     assert response.status_code == 204
     assert ustore._memory_users["testuser"]["presence_online"] is False
     assert ustore._memory_users["testuser"]["is_foreground"] is False
-    assert client.get("/api/status").json()["onlineUsers"] == 0
+    # No reutilizamos el JWT después del logout: cualquier request autenticada
+    # válida representa actividad nueva y, correctamente, volvería a marcar online.
+    assert asyncio.run(ustore.count_online_users()) == 0
+
+
+def test_logout_presence_only_closes_this_browser_session(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", set())
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=False, activity="Partida", session_id="browser_alpha_123"))
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True, activity="Combat Chess", session_id="browser_beta_456"))
+
+    first = client.post("/api/auth/logout", headers={"X-Presence-Session": "browser_alpha_123"})
+    assert first.status_code == 204
+    stored = ustore._memory_users["testuser"]
+    assert stored["presence_online"] is True
+    assert "browser_alpha_123" not in stored.get("presence_sessions", {})
+    assert "browser_beta_456" in stored.get("presence_sessions", {})
+    assert asyncio.run(ustore.count_online_users()) == 1
+
+    second = client.post("/api/auth/logout", headers={"X-Presence-Session": "browser_beta_456"})
+    assert second.status_code == 204
+    assert stored["presence_online"] is False
+    assert asyncio.run(ustore.count_online_users()) == 0
+
+
+def test_closed_tab_then_relogin_logout_does_not_leave_ghost_presence(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", set())
+    # Primera pestaña: anuncia presencia y luego pagehide la retira best-effort.
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True, session_id="tab_old_123"))
+    first_leave = client.post("/api/auth/logout", headers={"X-Presence-Session": "tab_old_123"})
+    assert first_leave.status_code == 204
+    assert ustore._memory_users["testuser"]["presence_online"] is False
+
+    # Nuevo tab/login del mismo usuario crea otra identidad de presencia.
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True, session_id="tab_new_456"))
+    assert ustore._memory_users["testuser"]["presence_online"] is True
+    final_logout = client.post("/api/auth/logout", headers={"X-Presence-Session": "tab_new_456"})
+    assert final_logout.status_code == 204
+
+    stored = ustore._memory_users["testuser"]
+    assert stored["presence_online"] is False
+    assert not stored.get("presence_sessions")
+    assert asyncio.run(ustore.count_online_users()) == 0
+
+
+def test_presence_prunes_stale_or_malformed_session_rows_without_touching_live_tabs():
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True, session_id="live_tab_123"))
+    stored = ustore._memory_users["testuser"]
+    stored.setdefault("presence_sessions", {})["ancient_tab_456"] = {
+        "last_activity": "2020-01-01T00:00:00+00:00",
+        "foreground": False,
+    }
+    stored["presence_sessions"]["broken_tab_789"] = {"foreground": True}
+
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=False, session_id="current_tab_999"))
+
+    sessions = stored.get("presence_sessions", {})
+    assert "live_tab_123" in sessions
+    assert "current_tab_999" in sessions
+    assert "ancient_tab_456" not in sessions
+    assert "broken_tab_789" not in sessions
+
+
+def test_legacy_client_logout_does_not_hide_a_modern_session(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", set())
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=False, session_id="legacy_client"))
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True, session_id="browser_modern_789"))
+
+    response = client.post("/api/auth/logout")
+    assert response.status_code == 204
+    stored = ustore._memory_users["testuser"]
+    assert stored["presence_online"] is True
+    assert "legacy_client" not in stored.get("presence_sessions", {})
+    assert "browser_modern_789" in stored.get("presence_sessions", {})
 
 
 def test_status_counts_recent_background_session_as_online(monkeypatch):
@@ -1901,7 +1979,7 @@ def test_foreground_summary_expires_stale_visible_tabs():
     }
 
     assert _foreground_summary(fresh)["foreground"] is True
-    assert _foreground_summary(stale)["foreground"] is False
+    assert _foreground_summary(stale)["foreground"] is None
     assert _foreground_summary(hidden)["foreground"] is False
     assert _foreground_summary({}) == {"foreground": None, "foregroundAgeSeconds": None}
 

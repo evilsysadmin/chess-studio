@@ -188,8 +188,8 @@ jobs:
       - name: Critical browser smoke
         working-directory: e2e
         run: >-
-          ./node_modules/.bin/playwright test smoke.spec.js
-          --grep "login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña"
+          ./node_modules/.bin/playwright test smoke.spec.js regression-journeys.spec.js
+          --grep "login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue"
           --workers=2 --retries=0
 
       - name: Upload Playwright diagnostics on failure

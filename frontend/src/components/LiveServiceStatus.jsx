@@ -8,19 +8,34 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
 
   useEffect(() => {
     let active = true;
-    let timer;
+    let timer = null;
 
+    const clearTimer = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = null;
+    };
+    const schedule = () => {
+      clearTimer();
+      if (active && document.visibilityState === 'visible') timer = window.setTimeout(refresh, POLL_MS);
+    };
     const refresh = async () => {
+      if (!active || document.visibilityState === 'hidden') return;
       const next = await fetchLiveStatus();
       if (!active) return;
       setStatus(next);
-      timer = window.setTimeout(refresh, POLL_MS);
+      schedule();
+    };
+    const onVisibility = () => {
+      clearTimer();
+      if (document.visibilityState === 'visible') void refresh();
     };
 
-    refresh();
+    void refresh();
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       active = false;
-      if (timer) window.clearTimeout(timer);
+      clearTimer();
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 

@@ -23,6 +23,7 @@ import {
   stopAmbientMusic,
 } from '../sound.js';
 import { requestPlaybackAudioSession, syncMediaSessionState } from '../mediaControls.js';
+import { getAudioContextState, resumeAudioContext } from '../audioContext.js';
 
 function formatTime(ms) {
   const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
@@ -110,6 +111,7 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   // siguiente.
   const playing = state.status === 'playing' || state.status === 'gap';
   const paused = state.status === 'paused';
+  const audioBlocked = playing && getAudioContextState() === 'suspended';
 
   function chooseTheme(event) {
     setAmbientTheme(event.target.value);
@@ -224,7 +226,7 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
           <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />
           <span aria-hidden="true">♫</span>
           <span className="music-deck-collapsed-track">{current?.label || 'Música'}</span>
-          <span className="music-deck-collapsed-hint">abrir</span>
+          <span className="music-deck-collapsed-hint">{audioBlocked ? 'toca para audio' : 'abrir'}</span>
         </button>
         <button
           type="button"
@@ -252,6 +254,11 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
             {formatTime(displayedPositionMs)} / {totalLabel}
           </span>
         </div>
+        {audioBlocked && (
+          <button type="button" className="music-deck-audio-blocked" onClick={() => { void resumeAudioContext(); }}>
+            Audio pausado por el navegador · reanudar
+          </button>
+        )}
         <input
           className="music-deck-progress music-deck-seek"
           type="range"

@@ -6,7 +6,52 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46zfa',
+    release: 'v16.6dm46zfg',
+    title: 'Salir significa salir',
+    highlights: [
+      'Cerrar sesión retira tu presencia inmediatamente mientras se guarda el perfil; si el guardado falla y sigues dentro, Chess Studio te vuelve a anunciar online sin esperar al siguiente heartbeat.',
+      'Los permisos de administrador se recuperan solos si la comprobación de cuenta falla de forma transitoria, sin bloquear al jugador ni exigir recargar la página.',
+      'Mi cuenta deja de quedarse cargando eternamente cuando el backend no responde, y los indicadores administrativos conservan el último dato confirmado durante una caída breve.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zff',
+    title: 'Cada pestaña, la suya',
+    highlights: [
+      'Una pestaña abierta desde otra ya no puede heredar por accidente su identidad de presencia: cada tablero mantiene su propia sesión aunque el navegador copie sessionStorage.',
+      'Administración deja de fingir que una ventana antigua sigue en segundo plano cuando esa señal ya ha caducado; presencia y visibilidad vuelven a decir exactamente lo que sabemos.',
+      'La comprobación de nuevas versiones se pausa mientras la pestaña está oculta y se retoma al volver, sin consultas inútiles en segundo plano.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfe',
+    title: 'Deploy sin patadas en el tablero',
+    highlights: [
+      'Si aparece una versión nueva mientras juegas, Chess Studio la aplaza y conserva la partida; un refresh de actualización vuelve al tablero y a la posición confirmada.',
+      'La presencia queda cubierta también entre navegadores independientes: cerrar sesión en uno no expulsa por error al mismo usuario que sigue jugando en otro.',
+      'Administración verifica visualmente primer plano, segundo plano, inactividad y offline, y el entrenamiento personal conserva estadísticas sin duplicar intentos o puzzles.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfd',
+    title: 'F5 sin fantasmas',
+    highlights: [
+      'Cada pestaña lleva su propia presencia y, al recargar o cerrar, Chess Studio retira la identidad vieja antes de anunciar la nueva para evitar usuarios fantasma o F5 que te apaguen por error.',
+      'Los puzzles personales ya dominados no vuelven al pulsar Siguiente: salen de la cola normal y quedan disponibles únicamente en el histórico para revisarlos cuando tú quieras.',
+      'La recuperación de partida, torneo, series, puzzles, desafío diario y Combat conserva el contexto al recargar, sin convertir un refresh en abandono.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfc',
+    title: 'Presencia sin fantasmas',
+    highlights: [
+      'Cerrar sesión apaga de inmediato ese navegador sin marcarte offline por error si sigues conectado desde otro dispositivo.',
+      'Administración refresca presencia cada 30 segundos sólo cuando está visible, actualiza al volver a la pestaña y distingue correctamente online de segundo plano.',
+      'Retro Player avisa si el navegador mantiene Web Audio suspendido tras un refresh y ofrece reanudarlo con un toque.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfb',
     title: 'Matthias recibe a los reclutas',
     highlights: [
       'Matthias se presenta dentro de la propia guía inicial y la lidera, en vez de competir con ella por el espacio de Home.',

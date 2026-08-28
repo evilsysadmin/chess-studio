@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchMe, updateRecoveryEmail } from '../auth.js';
+import { fetchMeStatus, updateRecoveryEmail } from '../auth.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { getUiLanguage, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import ProfileBackupModal from './ProfileBackupModal.jsx';
@@ -24,12 +24,14 @@ export default function AccountModal({ onClose, onLogout, loggingOut = false, ra
 
   useEffect(() => {
     let live = true;
-    fetchMe().then((value) => {
+    void fetchMeStatus().then((result) => {
       if (!live) return;
-      setMe(value);
-      setEmail(value?.email || '');
-    }).catch(() => {
-      if (live) setError('No se pudo cargar la cuenta.');
+      if (result?.status !== 'ok' || !result.user) {
+        setError(result?.status === 'unauthorized' ? 'La sesión ha caducado. Cierra sesión y vuelve a entrar.' : 'No se pudo cargar la cuenta. Reabre esta ventana cuando vuelva la conexión.');
+        return;
+      }
+      setMe(result.user);
+      setEmail(result.user?.email || '');
     });
     return () => { live = false; };
   }, []);

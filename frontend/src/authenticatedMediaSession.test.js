@@ -43,16 +43,8 @@ describe('media session autenticada', () => {
     expect(nav.mediaSession.setActionHandler).toHaveBeenCalledWith('nexttrack', null);
   });
   it('reanuda Web Audio en el primer gesto tras F5 si el transporte seguía reproduciendo', () => {
-    const listeners = new Map();
-    const win = {
-      addEventListener: (name, fn) => listeners.set(name, fn),
-      removeEventListener: () => {},
-    };
-    const doc = {
-      visibilityState: 'visible',
-      addEventListener: (name, fn) => listeners.set(name, fn),
-      removeEventListener: () => {},
-    };
+    const win = eventTarget();
+    const doc = eventTarget();
     const audio = {
       getAmbientPlaybackState: () => ({ status: 'playing' }),
       startAmbientMusic: vi.fn(), pauseAmbientMusic: vi.fn(), stopAmbientMusic: vi.fn(),
@@ -60,9 +52,43 @@ describe('media session autenticada', () => {
     };
     const resumeAudio = vi.fn(() => Promise.resolve(true));
     const release = bindAuthenticatedMediaSession(audio, { win, doc, nav: {}, resumeAudio });
-    listeners.get('pointerdown')?.({});
+    win.fire('pointerdown');
+    expect(resumeAudio).toHaveBeenCalledTimes(1);
+    expect(audio.startAmbientMusic).not.toHaveBeenCalled();
+    expect(audio.stopAmbientMusic).not.toHaveBeenCalled();
+    release();
+  });
+
+  it('no intenta despertar audio si está pausado o la pestaña sigue oculta', () => {
+    const win = eventTarget();
+    const doc = eventTarget();
+    let status = 'paused';
+    const audio = { getAmbientPlaybackState: () => ({ status }), startAmbientMusic: vi.fn(), pauseAmbientMusic: vi.fn(), stopAmbientMusic: vi.fn() };
+    const resumeAudio = vi.fn(() => Promise.resolve(true));
+    const release = bindAuthenticatedMediaSession(audio, { win, doc, nav: {}, resumeAudio });
+    win.fire('focus');
+    expect(resumeAudio).not.toHaveBeenCalled();
+
+    status = 'playing';
+    doc.visibilityState = 'hidden';
+    doc.fire('visibilitychange');
+    expect(resumeAudio).not.toHaveBeenCalled();
+    doc.visibilityState = 'visible';
+    doc.fire('visibilitychange');
     expect(resumeAudio).toHaveBeenCalledTimes(1);
     release();
+  });
+
+  it('libera todos los listeners al cerrar la sesión autenticada', () => {
+    const win = eventTarget();
+    const doc = eventTarget();
+    const audio = { getAmbientPlaybackState: () => ({ status: 'paused' }) };
+    const release = bindAuthenticatedMediaSession(audio, { win, doc, nav: {} });
+    release();
+    expect(win.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
+    expect(win.removeEventListener).toHaveBeenCalledWith('focus', expect.any(Function));
+    expect(win.removeEventListener).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(doc.removeEventListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
   });
 
 });

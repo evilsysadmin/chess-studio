@@ -22,7 +22,10 @@ export function useAdminFeedbackInbox({ enabled = false, view = 'menu' } = {}) {
         const summary = await fetchAdminFeedbackSummary({ signal: controller.signal });
         if (active) setNewCount(Math.max(0, Number(summary?.newCount) || 0));
       } catch (error) {
-        if (error?.name !== 'AbortError' && active) setNewCount(0);
+        // Un fallo transitorio no significa que el inbox esté vacío. Conserva
+        // el último recuento confirmado para no hacer desaparecer feedback
+        // pendiente por una simple caída de red.
+        if (error?.name === 'AbortError' || !active) return;
       }
     };
 

@@ -36,6 +36,19 @@ describe('Matthias en Home', () => {
     expect(matthiasIntroPlacement({ onboarded: true, guideEnabled: true, guideVisible: true, blocked: false })).toBe('none');
   });
 
+  it('cubre la matriz de entrada: nuevo con guía, nuevo sin guía, legacy v1 y ya presentado', () => {
+    expect(matthiasIntroPlacement({ onboarded: false, guideEnabled: true, guideVisible: true, blocked: false })).toBe('guide');
+    expect(matthiasIntroPlacement({ onboarded: false, guideEnabled: false, guideVisible: false, blocked: false })).toBe('visit');
+
+    localStorage.setItem(MATTHIAS_ONBOARDED_KEY, '1');
+    expect(matthiasOnboarded()).toBe(false);
+    expect(matthiasIntroPlacement({ onboarded: matthiasOnboarded(), guideEnabled: true, guideVisible: true, blocked: false })).toBe('guide');
+
+    localStorage.setItem(MATTHIAS_ONBOARDED_KEY, MATTHIAS_ONBOARDED_VERSION);
+    expect(matthiasOnboarded()).toBe(true);
+    expect(matthiasIntroPlacement({ onboarded: true, guideEnabled: true, guideVisible: true, blocked: false })).toBe('none');
+  });
+
   it('sólo recuerda cagadas que existen realmente en el expediente', () => {
     const generic = buildMatthiasHomeVisit({ rivalry: { record: { incidents: {} } } });
     expect(generic.kind).toBe('generic');

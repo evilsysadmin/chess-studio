@@ -38,10 +38,11 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
     }
 
     void check();
-    const timer = window.setInterval(() => { void check(); }, RELEASE_CHECK_INTERVAL_MS);
-    const onVisibility = () => {
+    const checkIfVisible = () => {
       if (document.visibilityState === 'visible') void check();
     };
+    const timer = window.setInterval(checkIfVisible, RELEASE_CHECK_INTERVAL_MS);
+    const onVisibility = checkIfVisible;
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       active = false;

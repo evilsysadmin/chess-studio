@@ -153,7 +153,20 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }
 
   function newPuzzle() {
-    setPersonalPuzzles(loadPersonalPuzzles());
+    const refreshedPersonal = loadPersonalPuzzles();
+    setPersonalPuzzles(refreshedPersonal);
+    if (source === 'personal') {
+      const nextActive = randomPersonalPuzzle(puzzle.id, initialFilter);
+      if (nextActive) {
+        setAiGenerationStatus(null);
+        setPuzzle(nextActive);
+      } else {
+        // Un caso superado sólo reaparece cuando el usuario lo elige desde el
+        // histórico. "Siguiente" nunca convierte el archivo en una noria.
+        setAiGenerationStatus('No quedan errores pendientes en esta selección. Los casos superados siguen disponibles en el histórico de abajo.');
+      }
+      return;
+    }
     setPuzzle(choosePuzzle(source, puzzle.id));
   }
 

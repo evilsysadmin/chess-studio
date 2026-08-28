@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminActivityTypeLabel, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from './adminFormatting.js';
+import { adminActivityTypeLabel, adminClientReleaseState, adminPresenceDisplayStatus, filterAdminUsers, formatAdminDate, formatAdminRefreshAge, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases, summarizeAdminPresence } from './adminFormatting.js';
 
 describe('formato temporal del panel admin', () => {
   it('usa español y reloj de 24 horas sin AM/PM', () => {
@@ -32,6 +32,8 @@ describe('formato temporal del panel admin', () => {
     expect(adminClientReleaseState('v16.6dm19', 'v16.6dm21')).toMatchObject({ id: 'outdated', label: 'Antigua' });
     expect(adminClientReleaseState('v16.6dm22', 'v16.6dm21')).toMatchObject({ id: 'newer', label: 'Más nueva' });
     expect(adminClientReleaseState(null, 'v16.6dm21')).toMatchObject({ id: 'unknown', label: 'Sin dato' });
+    expect(adminClientReleaseState('v16.6dm46zfa', 'v16.6dm46zfb')).toMatchObject({ id: 'outdated', label: 'Antigua' });
+    expect(adminClientReleaseState('v16.6dm46zfc', 'v16.6dm46zfb')).toMatchObject({ id: 'newer', label: 'Más nueva' });
   });
 
   it('filtra rápidamente por presencia y por actividad gruesa', () => {
@@ -48,6 +50,39 @@ describe('formato temporal del panel admin', () => {
     expect(filterAdminUsers(users, 'combat').map((u) => u.username)).toEqual(['bea']);
     expect(filterAdminUsers(users, 'tournament').map((u) => u.username)).toEqual(['cora']);
     expect(filterAdminUsers(users, 'insights').map((u) => u.username)).toEqual(['dani']);
+  });
+
+
+
+  it('presenta segundo plano como online y reserva idle para una sesión realmente inactiva', () => {
+    expect(adminPresenceDisplayStatus({ presence: 'online', foreground: false })).toBe('online');
+    expect(adminPresenceDisplayStatus({ presence: 'idle', foreground: false })).toBe('idle');
+    expect(adminPresenceDisplayStatus({ foreground: false })).toBe('never');
+  });
+
+  it('un usuario online en segundo plano sigue sumando en línea pero no en primer plano', () => {
+    expect(summarizeAdminPresence([
+      { username: 'admin', presence: 'online', foreground: true },
+      { username: 'tab-background', presence: 'online', foreground: false },
+    ], 'admin')).toEqual({ foreground: 0, online: 1, idle: 0 });
+  });
+
+  it('resume presencia sin confundir segundo plano con offline o inactividad', () => {
+    expect(summarizeAdminPresence([
+      { username: 'admin', presence: 'online', foreground: true },
+      { username: 'ana', presence: 'online', foreground: true },
+      { username: 'bea', presence: 'online', foreground: false },
+      { username: 'cora', presence: 'idle', foreground: false },
+      { username: 'dani', presence: 'offline', foreground: false },
+    ], 'admin')).toEqual({ foreground: 1, online: 2, idle: 1 });
+  });
+
+  it('explica cuándo se refrescó Admin con una edad compacta', () => {
+    const now = 1_000_000;
+    expect(formatAdminRefreshAge(null, now)).toBe('sin actualizar');
+    expect(formatAdminRefreshAge(now - 2_000, now)).toBe('ahora');
+    expect(formatAdminRefreshAge(now - 18_000, now)).toBe('hace 18 s');
+    expect(formatAdminRefreshAge(now - 125_000, now)).toBe('hace 2 min');
   });
 
 

@@ -56,7 +56,7 @@ const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { chooseContract, clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
 import { clearActiveGameSession, loadActiveGameSession } from './activeGameSession.js';
-import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';
+import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';
 import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
 import { useGameReconnect } from './useGameReconnect.js';
 import { useViewNavigation } from './useViewNavigation.js';
@@ -68,7 +68,7 @@ import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
 import { buildGameCrimeReplayRecord } from './crimeReplay.js';
 import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
-import { logout, reportLogoutPresence } from './auth.js';
+import { logout, reportLogoutPresence, touchActivity } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
 import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
@@ -79,6 +79,7 @@ import { APP_RELEASE } from './release.js';
 import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
+import { runLogoutLifecycle } from './logoutLifecycle.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -222,16 +223,14 @@ function AppInner({ isAdminUser }) {
     setLogoutError(null);
     setLoggingOut(true);
     try {
-      await pushProfileToServer({ throwOnError: true });
-      await reportLogoutPresence();
-      logout();
+      await runLogoutLifecycle({
+        saveProfile: () => pushProfileToServer({ throwOnError: true }),
+        closePresence: () => reportLogoutPresence(),
+        restorePresence: () => touchActivity(activityForView(view), document.visibilityState === 'visible'),
+        clearSession: logout,
+      });
       window.location.reload();
-    } catch (error) {
-      if (error?.status === 401) {
-        logout();
-        window.location.reload();
-        return;
-      }
+    } catch {
       setLogoutError('No se pudo guardar tu progreso. Reintenta cuando vuelva la conexión.');
       setLoggingOut(false);
     }

@@ -6,14 +6,32 @@ const CHECK_END_FEN = '4Q2k/8/8/8/8/8/8/7K b - - 1 1';
 const MATE_START_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
 const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
 const OPENING_END_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
+const LOSS_CAPTURE_START_FEN = 'k3r3/8/8/8/4P3/8/8/4K1N1 w - - 0 1';
+const LOSS_CAPTURE_END_FEN = 'k7/8/8/8/4r3/5N2/8/4K3 w - - 0 2';
 
 function scenarioInitialFen(scenario) {
   if (scenario === 'check') return CHECK_START_FEN;
   if (scenario === 'mate') return MATE_START_FEN;
+  if (scenario === 'lossCapture') return LOSS_CAPTURE_START_FEN;
   return START_FEN;
 }
 
 function scenarioMoveResult(game, payload, scenario) {
+  if (scenario === 'lossCapture') {
+    if (payload.from !== 'g1' || payload.to !== 'f3') throw new Error(`E2E lossCapture esperaba g1-f3, recibió ${payload.from}-${payload.to}`);
+    return {
+      ...game,
+      fen: LOSS_CAPTURE_END_FEN,
+      turn: 'w',
+      status: 'check',
+      isGameOver: false,
+      history: [
+        { from: 'g1', to: 'f3', san: 'Nf3', piece: 'n', by: 'human' },
+        { from: 'e8', to: 'e4', san: 'Rxe4+', piece: 'r', captured: 'p', by: 'cpu' },
+      ],
+      lastMove: { from: 'e8', to: 'e4', san: 'Rxe4+', piece: 'r', captured: 'p', by: 'cpu' },
+    };
+  }
   if (scenario === 'check') {
     if (payload.from !== 'e2' || payload.to !== 'e8') throw new Error(`E2E check esperaba e2-e8, recibió ${payload.from}-${payload.to}`);
     return {
@@ -67,6 +85,7 @@ export async function mockApi(page, {
   profileSeed = {},
   initialFeedback = [],
   analysisMoves = [],
+  adminUsers = [],
   requestLog = [],
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
@@ -115,7 +134,7 @@ export async function mockApi(page, {
     const path = url.pathname;
     const method = route.request().method();
     const headers = route.request().headers();
-    requestLog.push({ method, path, idempotencyKey: headers['idempotency-key'] || null });
+    requestLog.push({ method, path, idempotencyKey: headers['idempotency-key'] || null, presenceSession: headers['x-presence-session'] || null });
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
     if (path.endsWith('/auth/login') && method === 'POST') return json({ token: 'e2e-token', username: 'e2e' });
@@ -209,9 +228,10 @@ export async function mockApi(page, {
       return json({ feedback: feedback[index] });
     }
 
-    if (path.endsWith('/admin/users')) return json({ users: [] });
+    if (path.endsWith('/admin/users')) return json({ users: Array.isArray(adminUsers) ? adminUsers : [] });
     if (path.endsWith('/admin/ai-metrics')) return json({ samples: 0, enabled: true, circuit: { open: false } });
     if (path.endsWith('/status')) return json({ onlineUsers: 2, presenceAvailable: true });
+    if (path.endsWith('/auth/logout') && method === 'POST') return route.fulfill({ status: 204, body: '' });
     if (path.endsWith('/auth/activity')) return json({ ok: true });
     if (path.endsWith('/health')) return json({ ok: true });
     if (path.endsWith('/features')) return json({});

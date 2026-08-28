@@ -58,6 +58,13 @@ function matchesAdminUserFilter(user, filter = 'all') {
   return true;
 }
 
+export function adminPresenceDisplayStatus(user) {
+  // `presence` expresa frescura de sesión; `foreground` expresa visibilidad.
+  // Una pestaña reciente en segundo plano sigue online y debe mostrarse como
+  // tal, con su indicador de ventana separado, no degradarse visualmente a idle.
+  return user?.presence || 'never';
+}
+
 export function filterAdminUsers(users = [], filter = 'all') {
   return users.filter((user) => matchesAdminUserFilter(user, filter));
 }
@@ -83,7 +90,7 @@ export function sortAdminUsers(users = []) {
 
 
 function parseDmRelease(value) {
-  const match = /^v(\d+)\.(\d+)dm(\d+)([a-z]?)$/i.exec(String(value || '').trim());
+  const match = /^v(\d+)\.(\d+)dm(\d+)([a-z]*)$/i.exec(String(value || '').trim());
   if (!match) return null;
   return { major: Number(match[1]), minor: Number(match[2]), dm: Number(match[3]), suffix: match[4].toLowerCase() };
 }
@@ -117,6 +124,26 @@ export function summarizeAdminClientReleases(users = [], currentAdmin = null, cu
   }
   return counts;
 }
+
+export function summarizeAdminPresence(users = [], currentAdmin = null) {
+  const otherUsers = (users || []).filter((user) => user?.username !== currentAdmin);
+  return {
+    foreground: otherUsers.filter((user) => user?.foreground === true).length,
+    online: otherUsers.filter((user) => user?.presence === 'online').length,
+    idle: otherUsers.filter((user) => user?.presence === 'idle').length,
+  };
+}
+
+export function formatAdminRefreshAge(lastRefreshAt, now = Date.now()) {
+  const stamp = Number(lastRefreshAt || 0);
+  if (!stamp) return 'sin actualizar';
+  const seconds = Math.max(0, Math.floor((Number(now) - stamp) / 1000));
+  if (seconds < 5) return 'ahora';
+  if (seconds < 60) return `hace ${seconds} s`;
+  const minutes = Math.floor(seconds / 60);
+  return `hace ${minutes} min`;
+}
+
 
 
 const ADMIN_ACTIVITY_TYPE_LABELS = Object.freeze({

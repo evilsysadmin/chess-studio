@@ -17,6 +17,7 @@ const app = read('frontend/src/App.jsx');
 const outcome = read('frontend/src/gameOutcome.js');
 const combat = read('frontend/src/components/useCombatController.js');
 const smoke = read('e2e/smoke.spec.js');
+const regression = read('e2e/regression-journeys.spec.js');
 const ci = read('.github/workflows/cicd.yml');
 
 requireText(restore, "return classifyRestoreFailure(error) === 'stale-session';", 'restauración debe distinguir sesión obsoleta de fallo transitorio');
@@ -61,11 +62,14 @@ for (const scenario of [
 ]) {
   if (!smoke.includes(scenario)) failures.push(`falta regresión E2E de continuidad: ${scenario}`);
 }
+requireText(regression, 'deploy · una release nueva no fuerza reload mientras la partida está activa', 'falta regresión E2E de aviso de release durante tablero activo');
+
 for (const ciPattern of [
   'Partida rápida · una partida activa',
   'Torneo · una partida activa',
   'Partida rápida · un 503 al restaurar',
   'Combat Chess · salir al menú conserva campaña',
+  'deploy · una release nueva no fuerza reload',
 ]) {
   if (!ci.includes(ciPattern)) failures.push(`CI crítico no ejecuta la regresión de continuidad: ${ciPattern}`);
 }

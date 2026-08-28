@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getToken, getUsername, isLoggedIn, logout, reportLogoutPresence, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
+import { PRESENCE_DOCUMENT_OWNER_KEY, PRESENCE_SESSION_KEY, getPresenceSessionId, getToken, getUsername, isLoggedIn, logout, reportLogoutPresence, reportPageLeavePresence, register, login, authHeader, wakeBackend, fetchMe, fetchMeStatus, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
 import { APP_RELEASE } from './release.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
@@ -35,6 +35,9 @@ describe('register/login', () => {
     await register('nuevo', 'clave123456', 'nuevo@example.com');
     expect(getToken()).toBe('un-token-jwt');
     expect(getUsername()).toBe('nuevo');
+    expect(getPresenceSessionId()).toBeTruthy();
+    expect(sessionStorage.getItem(PRESENCE_SESSION_KEY)).toBeTruthy();
+    expect(localStorage.getItem(PRESENCE_SESSION_KEY)).toBeNull();
   });
 
 
@@ -125,6 +128,48 @@ describe('register/login', () => {
   });
 });
 
+describe('presence session identity', () => {
+  it('repara una id de presencia corrupta antes de enviarla al backend', () => {
+    localStorage.setItem('chess-study-auth-token', 'legacy-token');
+    sessionStorage.setItem(PRESENCE_SESSION_KEY, 'valor.con.puntos$no-valido');
+    const repaired = getPresenceSessionId();
+    expect(repaired).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    expect(repaired).not.toBe('valor.con.puntos$no-valido');
+  });
+  it('la id de presencia vive en sessionStorage pero queda ligada al documento actual', () => {
+    localStorage.setItem('chess-study-auth-token', 'tab-token');
+    const id = getPresenceSessionId();
+    expect(id).toBeTruthy();
+    expect(sessionStorage.getItem(PRESENCE_SESSION_KEY)).toBe(id);
+    expect(sessionStorage.getItem(PRESENCE_DOCUMENT_OWNER_KEY)).toBeTruthy();
+    expect(localStorage.getItem(PRESENCE_SESSION_KEY)).toBeNull();
+  });
+
+  it('no adopta una id clonada desde otra pestaña/opener', () => {
+    localStorage.setItem('chess-study-auth-token', 'clone-token');
+    sessionStorage.setItem(PRESENCE_DOCUMENT_OWNER_KEY, 'owner-de-otra-pestana');
+    sessionStorage.setItem(PRESENCE_SESSION_KEY, 'copied_session_12345');
+    const id = getPresenceSessionId();
+    expect(id).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    expect(id).not.toBe('copied_session_12345');
+    expect(sessionStorage.getItem(PRESENCE_SESSION_KEY)).toBe(id);
+    expect(sessionStorage.getItem(PRESENCE_DOCUMENT_OWNER_KEY)).not.toBe('owner-de-otra-pestana');
+  });
+
+  it('mantiene una id de presencia estable durante el mismo login y la rota al volver a autenticarse', async () => {
+    mockFetchOnce(200, { token: 'first-token', username: 'ana' });
+    await login('ana', 'clave123456');
+    const first = getPresenceSessionId();
+    expect(first).toBeTruthy();
+    expect(getPresenceSessionId()).toBe(first);
+
+    mockFetchOnce(200, { token: 'second-token', username: 'ana' });
+    await login('ana', 'clave123456');
+    expect(getPresenceSessionId()).toBeTruthy();
+    expect(getPresenceSessionId()).not.toBe(first);
+  });
+});
+
 describe('logout presence', () => {
   it('avisa al backend antes de borrar la sesión local', async () => {
     localStorage.setItem('chess-study-auth-token', 'logout-token');
@@ -134,9 +179,23 @@ describe('logout presence', () => {
       expect.stringContaining('/auth/logout'),
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer logout-token' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer logout-token', 'X-Presence-Session': expect.any(String) }),
         keepalive: true,
       }),
+    );
+  });
+
+
+  it('pagehide cierra la id vieja y rota antes de que un reload vuelva a anunciar presencia', async () => {
+    localStorage.setItem('chess-study-auth-token', 'reload-token');
+    const before = getPresenceSessionId();
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+    await expect(reportPageLeavePresence()).resolves.toBe(true);
+    const after = getPresenceSessionId();
+    expect(after).not.toBe(before);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/logout'),
+      expect.objectContaining({ headers: expect.objectContaining({ 'X-Presence-Session': before }) }),
     );
   });
 });
@@ -161,6 +220,8 @@ describe('logout', () => {
     expect(localStorage.getItem('chess-study-active-game')).toBeNull();
     expect(localStorage.getItem('chess-study-active-game-session-v1')).toBeNull();
     expect(localStorage.getItem('chess-study-clock:game')).toBeNull();
+    expect(sessionStorage.getItem(PRESENCE_SESSION_KEY)).toBeNull();
+    expect(sessionStorage.getItem(PRESENCE_DOCUMENT_OWNER_KEY)).toBeNull();
   });
 });
 
@@ -170,18 +231,21 @@ describe('fetchMe/authHeader/wakeBackend', () => {
     expect(await fetchMe()).toEqual({ username: 'stan', isAdmin: true });
   });
 
-  it('fetchMe devuelve null ante 401 o fallo de red', async () => {
+  it('fetchMe mantiene compatibilidad y fetchMeStatus distingue 401 de indisponibilidad', async () => {
     mockFetchOnce(401, { detail: 'no autorizado' });
     expect(await fetchMe()).toBeNull();
 
+    mockFetchOnce(401, { detail: 'no autorizado' });
+    expect(await fetchMeStatus()).toMatchObject({ status: 'unauthorized', user: null });
+
     global.fetch = vi.fn().mockRejectedValue(new Error('network error'));
-    expect(await fetchMe()).toBeNull();
+    expect(await fetchMeStatus()).toMatchObject({ status: 'unavailable', user: null });
   });
 
   it('authHeader manda Bearer tras login', async () => {
     mockFetchOnce(200, { token: 'mi-token', username: 'ana' });
     await login('ana', 'clave123456');
-    expect(authHeader()).toEqual({ Authorization: 'Bearer mi-token' });
+    expect(authHeader()).toEqual(expect.objectContaining({ Authorization: 'Bearer mi-token', 'X-Presence-Session': expect.any(String) }));
   });
 
   it('wakeBackend pega a /api/health sin propagar errores', () => {
@@ -226,7 +290,7 @@ describe('fetchMe/authHeader/wakeBackend', () => {
       expect.stringContaining('/auth/activity'),
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ Authorization: 'Bearer heartbeat-token' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer heartbeat-token', 'X-Presence-Session': expect.any(String) }),
       }),
     );
 

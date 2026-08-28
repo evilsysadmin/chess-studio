@@ -273,7 +273,8 @@ test('cuenta nueva · Login y bienvenida inicial son claros y no desbordan en m�
   await page.getByRole('button', { name: 'Entrar' }).click();
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();
-  await expect(guide.getByRole('heading', { name: 'Tres pasos y ya sabes dónde está todo.', exact: true })).toBeVisible();
+  await expect(guide.getByRole('heading', { name: 'Guten Morgen. Soy Matthias.', exact: true })).toBeVisible();
+  await expect(guide.getByText(/mayor cabronazo ajedrecista.*Tajo/i)).toBeVisible();
   await expect(buttonWithHeading(page, 'Torneo')).toHaveClass(/home-onboarding-target/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 

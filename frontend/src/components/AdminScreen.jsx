@@ -11,10 +11,10 @@ import Board from './Board.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
-import { ADMIN_USER_FILTERS, adminActivityTypeLabel, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
+import { ADMIN_USER_FILTERS, adminActivityTypeLabel, adminClientReleaseState, adminPresenceDisplayStatus, filterAdminUsers, formatAdminDate, formatAdminRefreshAge, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases, summarizeAdminPresence } from '../adminFormatting.js';
 import { deleteAdminFeedback, fetchAdminFeedback, fetchAdminFeedbackAttachment, replyAdminFeedback, submitFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
-import { ADMIN_REFRESH_MS } from '../presenceCadence.js';
+import { ADMIN_REFRESH_MS, shouldRefreshAdminPresence } from '../presenceCadence.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
 
@@ -80,10 +80,9 @@ function formatPresenceAge(seconds) {
 }
 
 function Presence({ user, compact = false }) {
-  // Un heartbeat reciente significa sesión válida, no necesariamente una
-  // ventana abierta. La señal explícita de segundo plano/cierre tiene prioridad.
-  const rawStatus = user?.presence || 'never';
-  const status = rawStatus === 'online' && user?.foreground === false ? 'idle' : rawStatus;
+  // Presencia (frescura de sesión) y visibilidad de ventana son señales
+  // distintas. Segundo plano sigue siendo online mientras el heartbeat esté vivo.
+  const status = adminPresenceDisplayStatus(user);
   const label = status === 'online'
     ? 'En línea'
     : status === 'recent'
@@ -94,14 +93,15 @@ function Presence({ user, compact = false }) {
         ? (formatPresenceAge(user.presenceAgeSeconds) || 'Offline')
         : 'Sin actividad';
   const exact = user?.lastActivity ? formatAdminTimestamp(user.lastActivity) : 'Sin actividad registrada';
+  const windowStateIsMeaningful = ['online', 'idle', 'recent'].includes(status);
   return (
     <span className={`admin-presence admin-presence-${status}`} title={exact}>
       <span className="admin-presence-dot" aria-hidden="true" />
       <span className="admin-presence-copy">
         <span>{label}</span>
         {status === 'online' && user?.currentActivity && <small>{user.currentActivity}</small>}
-        {user?.foreground === true && <small className="admin-foreground-state is-foreground">● Primer plano</small>}
-        {user?.foreground === false && <small className="admin-foreground-state">○ Segundo plano / cerrada</small>}
+        {windowStateIsMeaningful && user?.foreground === true && <small className="admin-foreground-state is-foreground">● Primer plano</small>}
+        {windowStateIsMeaningful && user?.foreground === false && <small className="admin-foreground-state">○ Segundo plano</small>}
         {!compact && user?.lastActivity && <small>{formatAdminTimestamp(user.lastActivity)}</small>}
       </span>
     </span>
@@ -249,6 +249,8 @@ export default function AdminScreen({ onExit }) {
   const [aiPortraitError, setAiPortraitError] = useState({});
   const adminDataEpochRef = useRef(0);
   const adminRefreshInFlightRef = useRef(null);
+  const [lastAdminRefreshAt, setLastAdminRefreshAt] = useState(null);
+  const [adminNow, setAdminNow] = useState(() => Date.now());
 
   useEffect(() => {
     let mounted = true;
@@ -263,6 +265,8 @@ export default function AdminScreen({ onExit }) {
         if (!mounted || adminDataEpochRef.current !== epoch || adminRefreshInFlightRef.current?.requestToken !== requestToken) return;
         if (usersResult.status === 'fulfilled') {
           setUsers(usersResult.value);
+          setLastAdminRefreshAt(Date.now());
+          setAdminNow(Date.now());
           setError(null);
         } else if (!silent) {
           setError(usersResult.reason?.message || 'No se pudieron cargar los usuarios.');
@@ -278,10 +282,22 @@ export default function AdminScreen({ onExit }) {
       }
     }
     refreshAdminData();
-    const timer = window.setInterval(() => refreshAdminData(true), ADMIN_REFRESH_MS);
+    const refreshIfVisible = () => {
+      if (shouldRefreshAdminPresence(document.visibilityState)) refreshAdminData(true);
+    };
+    const handleVisibility = () => {
+      if (shouldRefreshAdminPresence(document.visibilityState)) refreshAdminData(true);
+    };
+    const timer = window.setInterval(refreshIfVisible, ADMIN_REFRESH_MS);
+    const ageTimer = window.setInterval(() => {
+      if (shouldRefreshAdminPresence(document.visibilityState)) setAdminNow(Date.now());
+    }, 5000);
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       mounted = false;
       window.clearInterval(timer);
+      window.clearInterval(ageTimer);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -424,10 +440,10 @@ export default function AdminScreen({ onExit }) {
   }
 
   const currentAdmin = getUsername();
-  const otherUsers = (users || []).filter((user) => user.username !== currentAdmin);
-  const foregroundCount = otherUsers.filter((user) => user.foreground === true).length;
-  const onlineCount = otherUsers.filter((user) => user.presence === 'online' && user.foreground === true).length;
-  const idleCount = otherUsers.filter((user) => user.presence === 'idle' || (user.presence === 'online' && user.foreground === false)).length;
+  const presenceCounts = summarizeAdminPresence(users || [], currentAdmin);
+  const foregroundCount = presenceCounts.foreground;
+  const onlineCount = presenceCounts.online;
+  const idleCount = presenceCounts.idle;
   const filteredUsers = filterAdminUsers(users || [], activityFilter);
   const releaseSummary = summarizeAdminClientReleases(users || [], currentAdmin, APP_RELEASE);
   const activeFeedback = (feedback || []).filter((item) => item.status !== 'resolved');
@@ -564,7 +580,7 @@ export default function AdminScreen({ onExit }) {
         </section>
         {users && (
           <section className="admin-presence-block" aria-label="Presencia de usuarios">
-            <div className="admin-presence-block-heading"><div><span className="section-label">Presencia</span><h3>Ahora mismo</h3></div><small>Vista admin · refresco 30 s · heartbeat 2 min</small></div>
+            <div className="admin-presence-block-heading"><div><span className="section-label">Presencia</span><h3>Ahora mismo</h3></div><small>Vista admin · refresco 30 s con foco · actualizado {formatAdminRefreshAge(lastAdminRefreshAt, adminNow)}</small></div>
             <div className="admin-presence-summary">
               <div><strong>{foregroundCount}</strong><span>en primer plano</span></div>
               <div><strong>{onlineCount}</strong><span>en línea</span></div>

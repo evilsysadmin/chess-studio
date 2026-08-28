@@ -366,7 +366,7 @@ app.add_middleware(
     # de que el PATCH llegue a FastAPI. Incógnito suele ocultar el problema
     # porque no trae la marca local dirty y sólo necesita el GET inicial.
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-API-Key", "X-Request-ID", "X-Client-Release"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-API-Key", "X-Request-ID", "X-Client-Release", "X-Presence-Session"],
     expose_headers=["X-Request-ID"],
     max_age=600,
 )
@@ -418,6 +418,23 @@ def _password_reset_link(token: str) -> str:
 # necesariamente son públicas.
 
 
+
+_PRESENCE_SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+def _presence_session_id(request: Request | None) -> str | None:
+    if request is None:
+        return None
+    raw = (request.headers.get("x-presence-session") or "").strip()
+    if raw and _PRESENCE_SESSION_RE.fullmatch(raw):
+        return raw
+    # Compatibilidad durante despliegues escalonados: un frontend anterior no
+    # manda la cabecera, pero sigue siendo una sesión real. La agrupamos bajo
+    # una identidad legacy para que el logout de otro dispositivo moderno no la
+    # apague por error. Requests sin Bearer (login/registro) no crean sesión.
+    authorization = (request.headers.get("authorization") or "").strip()
+    return "legacy_client" if authorization.startswith("Bearer ") else None
+
 async def _touch_activity_best_effort(username: str, *, force: bool = False, request: Request | None = None) -> None:
     """La presencia es telemetría útil, nunca una dependencia del juego.
 
@@ -428,7 +445,7 @@ async def _touch_activity_best_effort(username: str, *, force: bool = False, req
     """
     try:
         client_ip, client_country = _client_network(request) if request else (None, None)
-        await ustore.touch_last_activity(username, force=force, client_ip=client_ip, client_country=client_country)
+        await ustore.touch_last_activity(username, force=force, client_ip=client_ip, client_country=client_country, session_id=_presence_session_id(request))
     except PersistentStorageUnavailable:
         access_logger.warning("No se pudo actualizar last_activity para user=%s", username)
 
@@ -642,18 +659,18 @@ async def activity_heartbeat(request: Request, payload: Optional[ActivityHeartbe
     client_ip, client_country = _client_network(request)
     await ustore.touch_last_activity(
         username, force=True, activity=activity, foreground=foreground, release=release,
-        client_ip=client_ip, client_country=client_country,
+        client_ip=client_ip, client_country=client_country, session_id=_presence_session_id(request),
     )
     return None
 
 
 @app.post("/api/auth/logout", status_code=204)
 @limiter.limit("30/minute")
-async def logout_presence(_request: Request, username: str = Depends(get_current_user)):
+async def logout_presence(request: Request, username: str = Depends(get_current_user)):
     # El token es stateless; esta ruta no pretende revocarlo. Sólo registra un
     # cierre explícito para que presencia/admin no esperen al TTL de heartbeat.
     try:
-        await ustore.mark_logged_out(username)
+        await ustore.mark_logged_out(username, session_id=_presence_session_id(request))
     except PersistentStorageUnavailable:
         access_logger.warning("No se pudo cerrar presencia para user=%s", username)
     return None

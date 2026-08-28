@@ -64,4 +64,21 @@ describe('completed game outcomes', () => {
       { san: 'e4', captured: false }, { san: 'c5', captured: false }, { san: 'Bxc5', captured: true },
     ] }, { explicitAction: true })).toBe('forfeit');
   });
+
+  it('capturar tú una pieza rival no activa la penalización; sólo perder material propio', () => {
+    const humanCaptures = { humanColor: 'w', history: [
+      { san: 'e4' }, { san: 'd5' }, { san: 'exd5', captured: 'p' },
+    ] };
+    expect(humanHasLostPiece(humanCaptures)).toBe(false);
+    expect(chessGameExitDisposition(humanCaptures, { explicitAction: true })).toBe('cancel');
+  });
+
+  it('respeta el turno inicial del FEN al decidir quién hizo una captura', () => {
+    const blackToMove = { humanColor: 'w', initialFen: '8/8/8/8/8/8/8/K6k b - - 0 1', history: [
+      { san: 'Kxa1', captured: 'r' },
+    ] };
+    expect(humanHasLostPiece(blackToMove)).toBe(true);
+    expect(chessGameExitDisposition(blackToMove, { explicitAction: true })).toBe('forfeit');
+  });
+
 });

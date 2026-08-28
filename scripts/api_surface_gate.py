@@ -79,6 +79,14 @@ def has_rate_limit(fn):
     return False
 
 
+def request_argument_names(fn):
+    # slowapi resolves the incoming request by the literal parameter name, not
+    # merely by a FastAPI Request annotation. A renamed `_request` therefore
+    # breaks application import during route decoration/pytest collection.
+    args = [*fn.args.posonlyargs, *fn.args.args, *fn.args.kwonlyargs]
+    return {arg.arg for arg in args}
+
+
 def production_sources():
     for path in sorted(BACKEND.glob("*.py")):
         if path.name.startswith("test_") or path.name == "conftest.py":
@@ -197,6 +205,13 @@ for source in production_sources():
         if not routes:
             continue
         deps = dependencies(node)
+        rate_limited = has_rate_limit(node)
+        if rate_limited and not ({"request", "websocket"} & request_argument_names(node)):
+            route_labels = ", ".join(f"{method} {path}" for method, path in routes)
+            failures.append(
+                f"{route_labels}: @limiter.limit exige argumento literal request/websocket "
+                f"({source.name}:{node.name})"
+            )
         for method, path in routes:
             count += 1
             route_count += 1
@@ -205,10 +220,10 @@ for source in production_sources():
                 failures.append(f"{method} {path}: ruta duplicada detectada ({source.name}:{node.name})")
             seen.add(key)
             if key in PUBLIC:
-                if key in RATE_LIMITED_PUBLIC and not has_rate_limit(node):
+                if key in RATE_LIMITED_PUBLIC and not rate_limited:
                     failures.append(f"{method} {path}: endpoint público sensible sin @limiter.limit ({source.name}:{node.name})")
                 continue
-            if key in RATE_LIMITED_PRIVATE and not has_rate_limit(node):
+            if key in RATE_LIMITED_PRIVATE and not rate_limited:
                 failures.append(f"{method} {path}: endpoint privado sensible sin @limiter.limit ({source.name}:{node.name})")
             if not (deps & AUTH_DEPS):
                 failures.append(f"{method} {path}: sin dependencia de autenticación ({source.name}:{node.name})")

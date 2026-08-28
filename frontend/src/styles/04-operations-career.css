@@ -1217,3 +1217,17 @@
 @media (max-width: 760px) { .personal-training-spotlight { align-items:stretch; flex-direction:column; } .personal-training-spotlight-actions { justify-content:flex-start; } }
 
 /* ---------- Laboratorio: FEN comprensible ---------- */
+
+.music-deck-audio-blocked {
+  margin-top: .28rem;
+  padding: .18rem .32rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--brass);
+  font: inherit;
+  font-size: .58rem;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+.music-deck-audio-blocked:hover { border-color: var(--brass); color: var(--parchment); }

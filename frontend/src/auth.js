@@ -11,11 +11,13 @@ import { clearAllClockSnapshots } from './clockPersistence.js';
 import { clearCombatSession } from './combatSession.js';
 import { clearHomePlayNudgeSession } from './homePlayNudge.js';
 import { APP_RELEASE } from './release.js';
-import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 import { setUiLanguage } from './userPreferences.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 const USERNAME_KEY = 'chess-study-auth-username';
+export const PRESENCE_SESSION_KEY = 'chess-study-presence-session-v1';
+export const PRESENCE_DOCUMENT_OWNER_KEY = 'chess-study-presence-owner-v1';
 
 const AUTH_STORAGE_KEYS = Object.freeze([TOKEN_KEY, USERNAME_KEY]);
 
@@ -23,6 +25,8 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 const AUTH_REQUEST_TIMEOUT_MS = 65000; // deja margen al cold-start de Render, pero nunca bloquea para siempre
 const BACKGROUND_REQUEST_TIMEOUT_MS = 7000;
+const PRESENCE_SESSION_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+const PRESENCE_DOCUMENT_OWNER = createPresenceSessionId();
 
 
 export function getToken() {
@@ -35,6 +39,43 @@ export function getUsername() {
 
 export function isLoggedIn() {
   return !!getToken();
+}
+
+function createPresenceSessionId() {
+  try {
+    const value = globalThis.crypto?.randomUUID?.();
+    if (value) return value.replace(/-/g, '');
+  } catch { /* fallback sin bloquear login */ }
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`.replace(/[^a-z0-9_-]/gi, '').slice(0, 48);
+}
+
+export function getPresenceSessionId() {
+  if (!getToken()) return null;
+  // zfc guardaba esta id en localStorage (compartida por pestañas). La
+  // retiramos perezosamente para que un deploy nuevo no reutilice una
+  // identidad compartida antigua y cada pestaña tenga la suya.
+  removeStorageItem(STORAGE_LOCAL, PRESENCE_SESSION_KEY);
+  // sessionStorage es por pestaña, pero los navegadores pueden COPIAR su
+  // contenido al abrir una nueva pestaña desde otra con `window.open`/opener.
+  // El owner vive sólo en memoria del documento: si el storage fue clonado o
+  // venimos de un reload, la nueva instancia no adopta jamás la id ajena.
+  const owner = getStorageItem(STORAGE_SESSION, PRESENCE_DOCUMENT_OWNER_KEY);
+  if (owner !== PRESENCE_DOCUMENT_OWNER) {
+    removeStorageItem(STORAGE_SESSION, PRESENCE_SESSION_KEY);
+    setStorageItem(STORAGE_SESSION, PRESENCE_DOCUMENT_OWNER_KEY, PRESENCE_DOCUMENT_OWNER);
+  }
+  let value = getStorageItem(STORAGE_SESSION, PRESENCE_SESSION_KEY);
+  if (value && PRESENCE_SESSION_ID_RE.test(value)) return value;
+  value = createPresenceSessionId();
+  setStorageItem(STORAGE_SESSION, PRESENCE_SESSION_KEY, value);
+  return value;
+}
+
+export function rotatePresenceSessionId() {
+  const value = createPresenceSessionId();
+  setStorageItem(STORAGE_SESSION, PRESENCE_DOCUMENT_OWNER_KEY, PRESENCE_DOCUMENT_OWNER);
+  setStorageItem(STORAGE_SESSION, PRESENCE_SESSION_KEY, value);
+  return value;
 }
 
 // localStorage se comparte entre pestañas. Si una pestaña cambia de cuenta,
@@ -78,6 +119,7 @@ function saveSession(token, username) {
   clearCombatSession();
   setStorageItem(STORAGE_LOCAL, TOKEN_KEY, token);
   setStorageItem(STORAGE_LOCAL, USERNAME_KEY, username);
+  rotatePresenceSessionId();
   bindProfileStorageIdentity(username);
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
   // puede cambiar el tema después y se conservará hasta logout/nuevo login.
@@ -86,13 +128,14 @@ function saveSession(token, username) {
   clearHomePlayNudgeSession();
 }
 
-export async function reportLogoutPresence() {
+export async function reportLogoutPresence(sessionId = null) {
   const token = getToken();
   if (!token) return false;
+  const closingSessionId = sessionId || getPresenceSessionId();
   try {
     const response = await request(`${BASE_URL}/auth/logout`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...(closingSessionId ? { 'X-Presence-Session': closingSessionId } : {}) },
       keepalive: true,
       timeoutMs: 1500,
     });
@@ -104,6 +147,16 @@ export async function reportLogoutPresence() {
   }
 }
 
+// pagehide/F5 necesita una identidad nueva para el documento siguiente. Si
+// reutilizásemos la misma id, una request de logout retrasada del documento
+// viejo podría llegar DESPUÉS del heartbeat del documento nuevo y apagarlo.
+export function reportPageLeavePresence() {
+  const closingSessionId = getPresenceSessionId();
+  if (!closingSessionId) return Promise.resolve(false);
+  rotatePresenceSessionId();
+  return reportLogoutPresence(closingSessionId);
+}
+
 export function logout() {
   clearAmbientThemeSessionStorage();
   clearSessionView();
@@ -113,6 +166,8 @@ export function logout() {
   clearHomePlayNudgeSession();
   removeStorageItem(STORAGE_LOCAL, TOKEN_KEY);
   removeStorageItem(STORAGE_LOCAL, USERNAME_KEY);
+  removeStorageItem(STORAGE_SESSION, PRESENCE_SESSION_KEY);
+  removeStorageItem(STORAGE_SESSION, PRESENCE_DOCUMENT_OWNER_KEY);
   bindProfileStorageIdentity(null);
 }
 
@@ -178,7 +233,12 @@ export async function updateRecoveryEmail(email, password) {
 // null en cada lugar que lo usa.
 export function authHeader() {
   const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (!token) return {};
+  const sessionId = getPresenceSessionId();
+  return {
+    Authorization: `Bearer ${token}`,
+    ...(sessionId ? { 'X-Presence-Session': sessionId } : {}),
+  };
 }
 
 // "Despertar" el backend antes de que haga falta de verdad — el free tier
@@ -192,13 +252,19 @@ export function authHeader() {
 // hace falta más que eso para despertar el contenedor. "Fire and
 // forget" a propósito: si falla o tarda, no debe bloquear ni mostrar
 // error — el login en sí sigue funcionando igual, solo que más lento.
-export async function fetchMe() {
+export async function fetchMeStatus() {
   try {
-    return await requestJson(`${BASE_URL}/auth/me`, { headers: { ...authHeader() }, timeoutMs: BACKGROUND_REQUEST_TIMEOUT_MS });
-  } catch (e) {
-    // sin backend disponible -> seguimos sin saber si es admin, no bloquea el arranque
-    return null;
+    const user = await requestJson(`${BASE_URL}/auth/me`, { headers: { ...authHeader() }, timeoutMs: BACKGROUND_REQUEST_TIMEOUT_MS });
+    return { status: 'ok', user };
+  } catch (error) {
+    if (error?.status === 401) return { status: 'unauthorized', user: null, error };
+    return { status: 'unavailable', user: null, error };
   }
+}
+
+export async function fetchMe() {
+  const result = await fetchMeStatus();
+  return result.user;
 }
 
 export function wakeBackend() {

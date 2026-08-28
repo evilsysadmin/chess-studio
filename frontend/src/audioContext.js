@@ -15,3 +15,7 @@ export function getAudioContext() {
   }
   return audioContext;
 }
+
+export function getAudioContextState() {
+  return audioContext?.state || 'uninitialized';
+}
