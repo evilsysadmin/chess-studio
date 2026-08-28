@@ -226,54 +226,51 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
 });
 
 test('deploy · una release nueva no fuerza reload mientras la partida está activa', async ({ page }) => {
+  test.setTimeout(30_000);
   let publishedRelease = APP_RELEASE;
-  let releaseChecks = 0;
-  let resolveCurrentReleaseServed;
-  let resolveNewReleaseServed;
-  const currentReleaseServed = new Promise((resolve) => { resolveCurrentReleaseServed = resolve; });
-  const newReleaseServed = new Promise((resolve) => { resolveNewReleaseServed = resolve; });
+  const servedReleases = [];
 
-  await page.route('**/release.json?*', async (route) => {
-    releaseChecks += 1;
+  // Interceptamos el manifest con una regex real. Así el test no depende de la
+  // semántica de glob para el '?' del cache-busting (?ts=...).
+  await page.route(/\/release\.json(?:\?.*)?$/, async (route) => {
     const releaseAtRequest = publishedRelease;
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ release: releaseAtRequest }) });
-    if (releaseAtRequest === APP_RELEASE) resolveCurrentReleaseServed();
-    if (releaseAtRequest === 'v16.6dm46zzz') resolveNewReleaseServed();
+    servedReleases.push(releaseAtRequest);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ release: releaseAtRequest }),
+    });
   });
+
   await mockApi(page, { gameScenario: 'opening' });
   await login(page);
   await dismissHomeGuide(page);
   await startQuickGame(page);
-  // Este journey protege el contrato de release mientras YA existe una partida
-  // activa. No depende de una jugada ni del aria-label concreto de una pieza:
-  // la persistencia de jugadas/reload tiene su smoke dedicado.
   await expect(gameStatus(page)).toBeVisible();
 
-  // Esperamos a que al menos una comprobación real de la release actual haya
-  // terminado. No bloqueamos artificialmente fetch(): React StrictMode monta
-  // y desmonta efectos de desarrollo y una request retenida por el propio test
-  // puede quedarse huérfana aunque la aplicación funcione correctamente.
-  await currentReleaseServed;
+  // Toda espera tiene timeout propio. Nunca dejamos Promises manuales vivas
+  // hasta que salte el timeout global del test.
+  await expect.poll(() => servedReleases.filter((release) => release === APP_RELEASE).length, {
+    message: 'ReleaseUpdateNotice debe consultar la release actual',
+    timeout: 5_000,
+  }).toBeGreaterThanOrEqual(1);
+
   publishedRelease = 'v16.6dm46zzz';
-  expect(await page.evaluate(() => document.visibilityState)).toBe('visible');
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 
-  // El mock debe haber servido realmente la release nueva antes de comprobar
-  // el DOM. Esto cubre tanto un check directo como el rerun coalescido si la
-  // señal llegó mientras otra comprobación acababa de resolverse.
-  await newReleaseServed;
-  await expect.poll(() => releaseChecks).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => servedReleases.includes('v16.6dm46zzz'), {
+    message: 'visibilitychange debe consultar la release recién publicada',
+    timeout: 5_000,
+  }).toBe(true);
+
   const notice = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
-  await expect(notice).toBeVisible();
+  await expect(notice).toBeVisible({ timeout: 5_000 });
   await expect(notice.getByText(/Tu partida sigue intacta; actualiza al terminar/i)).toBeVisible();
   await expect(notice.getByRole('button', { name: 'Actualizar', exact: true })).toHaveCount(0);
   await expect(notice.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
 
-  // Simula el reload que puede provocar un chunk viejo tras un deploy. La
-  // sesión activa debe volver del backend, nunca convertirse en abandono ni
-  // mandar al usuario a Home. La posición tras jugadas se prueba por separado.
-  await page.reload();
-  await expect(gameStatus(page)).toBeVisible();
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 10_000 });
+  await expect(gameStatus(page)).toBeVisible({ timeout: 5_000 });
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
 });
 
