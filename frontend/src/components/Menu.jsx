@@ -98,12 +98,10 @@ export default function Menu({
 
   useEffect(() => {
     if (matthiasVisit || blockingHomeOverlay) return;
-    // Presentación persistente: se muestra una sola vez por perfil. Marcarla
-    // al pintarla evita que reload/navegación la conviertan en un vendedor
-    // ambulante. Los comentarios ocasionales mantienen su cooldown separado.
+    // Presentación persistente: un perfil antiguo sin la versión confirmada
+    // recibe una única presentación real. No marcamos el flag hasta que React
+    // haya montado el nudge; así un render abortado no cuenta como 'visto'.
     if (!matthiasOnboarded()) {
-      markMatthiasOnboarded();
-      markMatthiasHomeShown();
       setMatthiasVisit(buildMatthiasIntroVisit());
       return;
     }
@@ -117,6 +115,14 @@ export default function Menu({
     markMatthiasHomeShown();
     setMatthiasVisit(matthiasCandidate);
   }, [blockingHomeOverlay, matthiasCandidate, matthiasVisit]);
+
+  useEffect(() => {
+    if (matthiasVisit?.kind !== 'intro' || matthiasOnboarded()) return;
+    // Este efecto corre después del commit visual: a partir de aquí la
+    // presentación sí ha existido en Home y no debe repetirse para el perfil.
+    markMatthiasOnboarded();
+    markMatthiasHomeShown();
+  }, [matthiasVisit]);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());

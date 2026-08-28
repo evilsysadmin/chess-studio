@@ -6,7 +6,7 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
-    release: 'v16.6dm46zey',
+    release: 'v16.6dm46zez',
     title: 'Matthias abre despacho',
     highlights: [
       'Matthias se presenta una sola vez a quienes todavía no lo conocen y conserva después sus apariciones ocasionales sin convertirse en un pesado.',

@@ -31,17 +31,23 @@ def _safe_facts(kind: str, facts: dict[str, Any]) -> dict[str, Any]:
     return clean
 
 
-def build_matthias_daily_router(*, auth_dependency: Callable[..., Any]) -> APIRouter:
+def build_matthias_daily_router(*, auth_dependency: Callable[..., Any], is_admin_check: Callable[[str], bool] | None = None) -> APIRouter:
     router = APIRouter()
+
+    def _is_admin(username: str) -> bool:
+        return bool(is_admin_check and is_admin_check(username))
 
     @router.get("/api/matthias/daily")
     async def daily_status(username: str = Depends(auth_dependency)):
+        if _is_admin(username):
+            return {"used": False, "pending": False, "unlimited": True}
         return await store.status(username)
 
     @router.post("/api/matthias/daily")
     async def daily_ask(request: Request, body: MatthiasDailyRequest, username: str = Depends(auth_dependency)):
         facts = _safe_facts(body.questionKind, body.facts)
-        claim = await store.reserve(username)
+        admin_unlimited = _is_admin(username)
+        claim = {"claimed": True, "reservation": "admin-unlimited"} if admin_unlimited else await store.reserve(username)
         if not claim.get("claimed"):
             if claim.get("used"):
                 raise HTTPException(429, "Matthias ya ha concedido su audiencia de hoy.")
@@ -57,12 +63,16 @@ def build_matthias_daily_router(*, auth_dependency: Callable[..., Any]) -> APIRo
             # Sólo una respuesta real de Workers AI consume la audiencia. Un fallback
             # por caída del proveedor libera la reserva y permite reintentar hoy.
             if result.get("provider") != "cloudflare" or not text:
-                await store.release(username, reservation)
-                return {"used": False, "pending": False, "provider": result.get("provider") or "local", "text": text or None, "retryable": True}
+                if not admin_unlimited:
+                    await store.release(username, reservation)
+                return {"used": False, "pending": False, "unlimited": admin_unlimited, "provider": result.get("provider") or "local", "text": text or None, "retryable": True}
+            if admin_unlimited:
+                return {"used": False, "pending": False, "unlimited": True, "questionKind": body.questionKind, "text": text, "provider": "cloudflare", "retryable": False}
             committed = await store.commit(username, reservation, body.questionKind, text)
-            return {**committed, "provider": "cloudflare", "retryable": False}
+            return {**committed, "unlimited": False, "provider": "cloudflare", "retryable": False}
         except Exception:
-            await store.release(username, reservation)
+            if not admin_unlimited:
+                await store.release(username, reservation)
             raise
 
     return router

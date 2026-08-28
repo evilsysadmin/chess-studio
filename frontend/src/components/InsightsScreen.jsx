@@ -435,9 +435,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
               <span className="section-label">Matthias // veredicto</span>
               <h2>Así te ve la CPU</h2>
             </div>
-            <span className={`ai-player-portrait-source source-${portraitStatus}`}>
-              {portraitStatus === 'loading' ? 'Pensando…' : CPU_IDENTITY.name}
-            </span>
+            {portraitStatus === 'loading' ? <span className="ai-player-portrait-source">Pensando…</span> : null}
           </div>
           <div className="ai-player-portrait-layout">
             <aside className="ai-player-portrait-character" aria-label={`${CPU_IDENTITY.name}, analista de Chess Studio`}>
@@ -483,7 +481,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
         </div>
       )}
 
-      <MatthiasDailyConsult facts={portraitFacts} />
+      <MatthiasDailyConsult facts={portraitFacts} isAdminUser={isAdminUser} />
 
       <div className="menu-section worst-move-spotlight">
         <div className="worst-move-spotlight-heading">

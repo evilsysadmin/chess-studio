@@ -738,7 +738,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
-  object-position: 50% 42%;
+  object-position: 50% 36%;
 }
 .game-player-rail.is-active .game-player-avatar.has-portrait {
   border-color: color-mix(in srgb, var(--brass) 72%, var(--studio-line));
@@ -759,7 +759,7 @@
   height: 30px;
   display: block;
   object-fit: cover;
-  object-position: 50% 42%;
+  object-position: 50% 36%;
   border: 1px solid color-mix(in srgb, var(--brass) 42%, #344038);
   border-radius: 7px;
   background: #111822;
@@ -789,7 +789,7 @@
   width: 48px;
   height: 48px;
   object-fit: cover;
-  object-position: 50% 42%;
+  object-position: 50% 36%;
   border: 1px solid color-mix(in srgb, var(--brass) 48%, var(--ui-border));
   border-radius: 9px;
   background: #111822;
@@ -840,11 +840,11 @@
   background: linear-gradient(180deg, rgba(210,174,88,.07), rgba(12,17,24,.22));
 }
 .ai-player-portrait-character img {
-  width: 94px;
+  width: 104px;
   aspect-ratio: 1;
   display: block;
   object-fit: cover;
-  object-position: 50% 42%;
+  object-position: 50% 36%;
   border-radius: 9px;
   border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--ui-border));
   box-shadow: 0 8px 24px rgba(0,0,0,.2);
@@ -874,7 +874,7 @@
 /* Matthias · audiencia diaria guiada. Una función útil, no otro chatbot. */
 .matthias-daily { margin: .7rem 0 1rem; padding: .85rem 1rem; border: 1px solid color-mix(in srgb, var(--brass) 32%, var(--ui-border)); border-radius: var(--radius-lg); background: linear-gradient(135deg, color-mix(in srgb, var(--brass) 5%, var(--ui-panel)), var(--ui-panel)); display: grid; gap: .7rem; }
 .matthias-daily-heading { display: flex; align-items: center; gap: .7rem; }
-.matthias-daily-heading img { width: 50px; height: 50px; border-radius: 12px; object-fit: cover; object-position: 50% 28%; border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent); }
+.matthias-daily-heading img { width: 54px; height: 54px; border-radius: 12px; object-fit: cover; object-position: 50% 36%; border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent); }
 .matthias-daily-heading h3 { margin: .08rem 0 0; font-family: var(--font-display); font-size: 1rem; color: var(--parchment); }
 .matthias-daily-options { display: flex; flex-wrap: wrap; gap: .45rem; }
 .matthias-daily-options .secondary-btn { min-height: 36px; }

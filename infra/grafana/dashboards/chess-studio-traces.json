@@ -34,7 +34,7 @@
     {
       "id": 1,
       "title": "Tempo · trazas recientes",
-      "type": "traces",
+      "type": "table",
       "datasource": {
         "type": "tempo",
         "uid": "${traces_datasource_uid}"
@@ -51,22 +51,36 @@
             "type": "tempo",
             "uid": "${traces_datasource_uid}"
           },
-          "query": "{ resource.service.name = \"chess-studio-backend\" }",
+          "query": "{ }",
           "queryType": "traceql",
           "refId": "A",
-          "limit": 100
+          "limit": 100,
+          "spanLimit": 3,
+          "tableType": "traces"
         }
       ],
       "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "description": "Resultados de búsqueda TraceQL de Tempo. Haz clic en un trace ID para abrir el detalle."
     },
     {
       "id": 2,
       "title": "Trazas lentas · >500 ms",
-      "type": "traces",
+      "type": "table",
       "datasource": {
         "type": "tempo",
         "uid": "${traces_datasource_uid}"
@@ -86,19 +100,33 @@
           "query": "{ resource.service.name = \"chess-studio-backend\" && trace:duration > 500ms }",
           "queryType": "traceql",
           "refId": "A",
-          "limit": 100
+          "limit": 100,
+          "spanLimit": 3,
+          "tableType": "traces"
         }
       ],
       "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "description": "Resultados de búsqueda TraceQL de Tempo. Haz clic en un trace ID para abrir el detalle."
     },
     {
       "id": 3,
       "title": "Trazas con error",
-      "type": "traces",
+      "type": "table",
       "datasource": {
         "type": "tempo",
         "uid": "${traces_datasource_uid}"
@@ -118,14 +146,28 @@
           "query": "{ resource.service.name = \"chess-studio-backend\" && status = error }",
           "queryType": "traceql",
           "refId": "A",
-          "limit": 100
+          "limit": 100,
+          "spanLimit": 3,
+          "tableType": "traces"
         }
       ],
       "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
-      "options": {}
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "description": "Resultados de búsqueda TraceQL de Tempo. Haz clic en un trace ID para abrir el detalle."
     },
     {
       "id": 4,

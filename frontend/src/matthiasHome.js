@@ -5,6 +5,7 @@ export const MATTHIAS_HOME_SESSION_KEY = 'chess-study-matthias-home-seen-v1';
 export const MATTHIAS_HOME_LAST_SHOWN_KEY = 'chess-study-matthias-home-last-shown-v1';
 export const MATTHIAS_HOME_COOLDOWN_MS = 8 * 60 * 60 * 1000;
 export const MATTHIAS_ONBOARDED_KEY = 'matthias.onboarded';
+export const MATTHIAS_ONBOARDED_VERSION = '2';
 
 const INCIDENT_COPY = Object.freeze({
   'human:MISSED_MATE': (count) => count > 1
@@ -67,11 +68,14 @@ function rivalryVisit(rivalry) {
 }
 
 export function matthiasOnboarded() {
-  return getStorageItem(STORAGE_LOCAL, MATTHIAS_ONBOARDED_KEY) === '1';
+  // v1 se marcaba antes de que React llegase a pintar el nudge. Algunos perfiles
+  // antiguos quedaron como 'onboarded' sin haber visto realmente a Matthias.
+  // v2 conserva la misma clave de perfil, pero exige una presentación confirmada.
+  return getStorageItem(STORAGE_LOCAL, MATTHIAS_ONBOARDED_KEY) === MATTHIAS_ONBOARDED_VERSION;
 }
 
 export function markMatthiasOnboarded() {
-  setProfileStorageItem(MATTHIAS_ONBOARDED_KEY, '1');
+  setProfileStorageItem(MATTHIAS_ONBOARDED_KEY, MATTHIAS_ONBOARDED_VERSION);
 }
 
 export function buildMatthiasIntroVisit() {

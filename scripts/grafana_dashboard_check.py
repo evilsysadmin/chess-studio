@@ -92,8 +92,16 @@ def main() -> int:
     render_yaml = (ROOT / 'render.yaml').read_text(encoding='utf-8')
     if 'OTEL_TRACES_SAMPLER_ARG' not in render_yaml or 'value: "1.0"' not in render_yaml:
         fail('producción debe mantener sampling 100% mientras se diagnostica Tempo')
+    if '"query": "{ }"' not in trace_dash:
+        fail('dashboard Tempo debe conservar una búsqueda reciente sin filtros para no ocultar trazas válidas')
     if 'resource.service.name' not in trace_dash or 'trace:duration > 500ms' not in trace_dash:
-        fail('dashboard Tempo perdió el filtro TraceQL de recurso/duración')
+        fail('dashboard Tempo perdió los paneles diagnósticos filtrados por recurso/duración')
+    if trace_dash.count('"tableType": "traces"') < 3 or trace_dash.count('"spanLimit": 3') < 3:
+        fail('paneles Tempo deben fijar formato de tabla de trazas y límite de spans')
+    trace_data = load_json(INFRA / 'dashboards' / 'chess-studio-traces.json')
+    trace_search_panels = [row for row in trace_data.get('panels') or [] if row.get('id') in (1, 2, 3)]
+    if len(trace_search_panels) != 3 or any(row.get('type') != 'table' for row in trace_search_panels):
+        fail('búsquedas TraceQL deben renderizarse como tabla; el panel Traces es para el detalle de un único trace ID')
     if 'opentelemetry-exporter-otlp-proto-http' not in requirements:
         fail("falta dependencia OTLP HTTP")
     if 'payload["trace_id"]' not in structured:

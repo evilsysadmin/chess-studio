@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   MATTHIAS_HOME_COOLDOWN_MS,
   MATTHIAS_ONBOARDED_KEY,
+  MATTHIAS_ONBOARDED_VERSION,
   buildMatthiasHomeVisit,
   buildMatthiasIntroVisit,
   markMatthiasHomeShown,
@@ -16,6 +17,13 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   localStorage.setItem('chess-study-auth-username', 'tester');
+  it('repara perfiles legacy marcados prematuramente con onboarding v1', () => {
+    localStorage.setItem(MATTHIAS_ONBOARDED_KEY, '1');
+    expect(matthiasOnboarded()).toBe(false);
+    markMatthiasOnboarded();
+    expect(matthiasOnboarded()).toBe(true);
+  });
+
 });
 
 describe('Matthias en Home', () => {
@@ -58,7 +66,7 @@ describe('Matthias en Home', () => {
     expect(intro).toMatchObject({ kind: 'intro', action: 'play', actionLabel: 'Jugar con Matthias' });
     expect(intro.text).toMatch(/Guten Morgen.*Matthias.*Tajo.*Tschüss/s);
     markMatthiasOnboarded();
-    expect(localStorage.getItem(MATTHIAS_ONBOARDED_KEY)).toBe('1');
+    expect(localStorage.getItem(MATTHIAS_ONBOARDED_KEY)).toBe(MATTHIAS_ONBOARDED_VERSION);
     expect(matthiasOnboarded()).toBe(true);
   });
 

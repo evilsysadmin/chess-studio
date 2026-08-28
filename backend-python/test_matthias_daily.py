@@ -71,3 +71,11 @@ def test_daily_response_requires_real_evidence_anchor():
     bad = "Achtung, estás jugando fatal últimamente. Trabaja más duro y quizá algún día dejes de regalar posiciones sin saber por qué."
     assert validate_matthias_daily_contract(good, facts)[0] is True
     assert validate_matthias_daily_contract(bad, facts)[0] is False
+
+
+def test_admin_daily_audience_bypass_is_explicit_in_router_contract():
+    import inspect
+    from matthias_daily_api import build_matthias_daily_router
+    signature = inspect.signature(build_matthias_daily_router)
+    assert 'is_admin_check' in signature.parameters
+

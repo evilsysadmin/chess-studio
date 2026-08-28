@@ -62,4 +62,10 @@ for (let i = 0; i < 10_000; i += 1) {
   must(['setup', 'battle', 'over'].includes(state), `generated Combat state escaped domain: ${state}`);
 }
 
+
+const mainPy = read('backend-python/main.py');
+const matthiasDailyApi = read('backend-python/matthias_daily_api.py');
+must(mainPy.includes('build_matthias_daily_router(auth_dependency=get_current_user, is_admin_check=is_admin)'), 'Matthias daily must receive admin policy from main');
+must(matthiasDailyApi.includes('admin_unlimited = _is_admin(username)'), 'Matthias daily admin bypass must remain explicit and server-side');
+
 console.log('state-resilience-check OK · machines + runtime invariants + ownership + idempotency + fault injection + golden journey');
