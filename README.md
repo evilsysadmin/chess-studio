@@ -1,3 +1,11 @@
+### v16.6dm46zem · Club de ajedrez nocturno
+
+- Corrige la dirección artística de la Home tras el overhaul: menos dashboard/SaaS y más club de ajedrez nocturno con tono de videojuego táctico.
+- Desafío diario y recomendación se convierten visualmente en información secundaria; Torneo, Combat Chess y Partida rápida recuperan el protagonismo.
+- Las tarjetas principales usan imágenes más presentes, superficies más oscuras, bordes más discretos y acentos laterales por modo; los iconos dejan de parecer tiles de aplicación.
+- La cabecera reduce cajas y brillo en Feedback, Cuenta y Novedades para competir menos con el contenido de juego.
+- La nueva capa visual vive aislada en `27-night-club-tactical.css`, facilitando ajustar o revertir esta dirección sin reabrir el sistema visual base.
+
 ### v16.6dm46zel · Cierre de Combat y puzzles objetivos
 
 - Corrige la liquidación post-batalla de Combat: `encounterTier` forma parte explícita del controller y conserva el tier real (`normal`, `elite`, `boss`) al calcular créditos, debrief y persistencia final.

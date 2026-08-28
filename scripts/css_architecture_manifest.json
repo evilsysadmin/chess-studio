@@ -24,9 +24,10 @@
     "23-learning-combat-economy.css",
     "24-product-hardening.css",
     "25-visual-coherence.css",
-    "26-visual-system-overhaul.css"
+    "26-visual-system-overhaul.css",
+    "27-night-club-tactical.css"
   ],
-  "combinedSha256": "a883af01bf7f13c8b5caa056daaf77321be34a49d2f318c8d9d6ab6826fcda0b",
-  "combinedBytes": 453481,
-  "combinedLines": 12918
+  "combinedSha256": "0803b054ebbbadcb40de433db55b6623da21d0e74e4211b4e1b7194646a4b40f",
+  "combinedBytes": 462106,
+  "combinedLines": 13183
 }

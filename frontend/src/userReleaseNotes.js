@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zem',
+    title: 'Más club de ajedrez, menos dashboard',
+    highlights: [
+      'La Home rebaja el aspecto de panel corporativo y refuerza una dirección de club de ajedrez nocturno con tacto de videojuego táctico.',
+      'Desafío diario y recomendación pasan a segundo plano visual para que Torneo, Combat Chess y Partida rápida vuelvan a ser el centro de la pantalla.',
+      'Las tarjetas principales ganan atmósfera e imagen, con menos cajas, bordes e iconos tipo aplicación; cabecera y acciones secundarias también reducen ruido.',
+    ],
+  },
+  {
     release: 'v16.6dm46zel',
     title: 'Combat liquida bien y los puzzles dejan de hacer trampas',
     highlights: [

@@ -1,0 +1,265 @@
+/* v16.6dm46zem · Home art direction
+   Norte visual: club de ajedrez nocturno + videojuego táctico.
+   Menos dashboard/SaaS, más mesa de juego, atmósfera y jerarquía. */
+
+:root {
+  --club-panel: color-mix(in srgb, var(--ink-2) 97%, #090b10 3%);
+  --club-line: color-mix(in srgb, var(--parchment-dim) 12%, transparent);
+  --club-line-strong: color-mix(in srgb, var(--brass) 34%, var(--club-line));
+  --club-shadow: 0 22px 60px rgba(0,0,0,.22);
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 50% -18%, rgba(201,162,39,.075), transparent 30rem),
+    radial-gradient(ellipse at 15% 40%, rgba(44,58,78,.06), transparent 34rem),
+    linear-gradient(180deg, #171a20 0%, var(--ink) 42%, #0d1015 100%);
+}
+
+/* La Home deja de parecer un gran widget con widgets dentro. */
+.menu.home-friendly {
+  border-color: rgba(255,255,255,.045);
+  border-radius: 18px;
+  background-color: rgba(15,18,24,.78);
+  background-image:
+    linear-gradient(90deg, rgba(201,162,39,.018), transparent 24%, transparent 76%, rgba(201,162,39,.012)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.018), transparent 22rem);
+  box-shadow: var(--club-shadow);
+}
+.menu.home-friendly::before { opacity: .36; background: #101319; }
+
+.home-friendly .section-label {
+  color: color-mix(in srgb, var(--brass) 76%, var(--parchment-dim));
+  letter-spacing: .19em;
+}
+
+/* Daily = tira de misión, no tarjeta protagonista. */
+.home-friendly .home-today-card {
+  border: 0;
+  border-top: 1px solid var(--club-line-strong);
+  border-bottom: 1px solid var(--club-line);
+  border-radius: 3px;
+  padding: .72rem .18rem;
+  background:
+    linear-gradient(90deg, rgba(201,162,39,.045), transparent 30%, rgba(0,0,0,.08));
+  box-shadow: none;
+}
+.home-today-emblem {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 1.08rem;
+}
+.home-today-copy strong { font-size: .92rem; }
+.home-today-missions > button,
+.home-today-missions > span {
+  border-color: transparent;
+  border-radius: 3px;
+  background: rgba(0,0,0,.12);
+}
+.home-today-missions > button:hover,
+.home-today-missions > button:focus-visible {
+  border-color: color-mix(in srgb, var(--brass) 30%, transparent);
+  background: rgba(201,162,39,.04);
+}
+.home-today-actions .primary-btn,
+.home-today-actions .secondary-btn {
+  min-height: 36px;
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+/* Recomendación = nota del club, no segundo banner comercial. */
+.home-next-action {
+  margin-top: -.08rem;
+  padding: .64rem .15rem .64rem .72rem;
+  border: 0;
+  border-left: 2px solid color-mix(in srgb, var(--brass) 48%, transparent);
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(201,162,39,.035), transparent 46%);
+}
+.home-next-action .section-label { margin-bottom: .12rem; font-size: .59rem; }
+.home-next-action strong { font-family: var(--font-display); font-size: 1rem; font-style: italic; }
+.home-next-action small { opacity: .82; }
+.home-next-action .secondary-btn {
+  min-height: 34px;
+  border-color: transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: color-mix(in srgb, var(--brass) 78%, var(--parchment));
+  box-shadow: none;
+}
+.home-next-action .secondary-btn:hover,
+.home-next-action .secondary-btn:focus-visible {
+  border-color: var(--club-line-strong);
+  background: rgba(201,162,39,.035);
+  transform: none;
+}
+
+/* Aquí sí empieza la sala principal. */
+.home-modes-section { margin-top: .28rem; }
+.home-group-heading {
+  padding-bottom: .35rem;
+  border-bottom: 1px solid var(--club-line);
+}
+.home-group-heading h2 {
+  margin-top: .18rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 2.4vw, 2rem);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+.home-heading-actions p {
+  max-width: 34ch;
+  color: color-mix(in srgb, var(--parchment-dim) 88%, transparent);
+  font-size: .78rem;
+}
+.home-context-guide {
+  border-color: var(--club-line);
+  background: transparent;
+  opacity: .78;
+}
+
+.home-primary-grid { gap: 1rem; }
+.home-mode-card {
+  min-height: 208px;
+  padding: 1.15rem 1.08rem 1rem;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 8px;
+  background: #151922;
+  box-shadow: 0 12px 28px rgba(0,0,0,.16);
+  transform: none;
+}
+.home-mode-card::before {
+  width: 14rem;
+  height: 14rem;
+  top: -9rem;
+  left: -6rem;
+  opacity: .10;
+  filter: blur(44px);
+}
+.home-mode-card::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent 26%),
+    linear-gradient(90deg, rgba(7,10,15,.86) 0%, rgba(7,10,15,.54) 48%, rgba(7,10,15,.26) 100%);
+}
+.home-mode-card > *:not(.home-mode-art) { z-index: 2; }
+.home-mode-art {
+  opacity: .36;
+  filter: saturate(.72) contrast(1.08) brightness(.78);
+  mix-blend-mode: normal;
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.48) 32%, #000 100%);
+}
+.home-mode-featured .home-mode-art,
+.home-mode-campaign .home-mode-art,
+.home-mode-quick .home-mode-art { opacity: .39; mix-blend-mode: normal; }
+
+.home-mode-featured {
+  border-color: color-mix(in srgb, var(--brass) 44%, rgba(255,255,255,.08));
+  box-shadow: inset 2px 0 0 rgba(201,162,39,.62), 0 14px 34px rgba(0,0,0,.2);
+  background: #171a20;
+}
+.home-mode-campaign {
+  border-color: color-mix(in srgb, var(--danger) 28%, rgba(255,255,255,.08));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--danger) 55%, transparent), 0 14px 34px rgba(0,0,0,.2);
+  background: #16191f;
+}
+.home-mode-quick {
+  border-color: color-mix(in srgb, var(--hint) 24%, rgba(255,255,255,.08));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--hint) 48%, transparent), 0 14px 34px rgba(0,0,0,.2);
+  background: #151920;
+}
+.home-mode-card:not(:disabled):hover,
+.home-mode-card:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--brass) 42%, rgba(255,255,255,.12));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brass) 68%, transparent), 0 20px 42px rgba(0,0,0,.28);
+  transform: translateY(-2px);
+}
+
+/* Los iconos dejan de ser “app tiles”. */
+.home-mode-icon {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+}
+.home-mode-icon .menu-card-icon { width: 24px; height: 24px; }
+.home-mode-kicker { font-size: .56rem; letter-spacing: .095em; opacity: .76; }
+.home-mode-card h3 {
+  margin-top: .04rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.18rem, 1.35vw, 1.38rem);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+.home-mode-description { max-width: 27ch; font-size: .78rem; line-height: 1.5; }
+.home-mode-progress > span { height: 3px; background: rgba(255,255,255,.07); }
+.home-mode-card .menu-card-cta {
+  padding-top: .64rem;
+  border-top-color: rgba(255,255,255,.07);
+  color: color-mix(in srgb, var(--parchment) 78%, var(--brass));
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+/* El resto de modos permanece en segundo plano de verdad. */
+.home-more-modes { margin-top: .28rem; border-top-color: var(--club-line); }
+.compact-mode-grid .menu-card {
+  border-color: rgba(255,255,255,.055);
+  background: rgba(12,15,20,.42);
+  box-shadow: none;
+}
+
+/* Header: menos “cuatro tarjetas de SaaS” y más instrumentación discreta. */
+.masthead:not(.masthead-game-compact) .masthead-feedback-trigger,
+.masthead:not(.masthead-game-compact) .masthead-account-trigger {
+  border-color: rgba(255,255,255,.10);
+  background: rgba(8,11,16,.20);
+  box-shadow: none;
+}
+.masthead:not(.masthead-game-compact) .masthead-release-trigger {
+  min-height: 28px;
+  height: 28px;
+  border-color: transparent;
+  border-radius: 3px;
+  background: transparent;
+  box-shadow: none;
+  opacity: .82;
+}
+.masthead:not(.masthead-game-compact) .masthead-release-trigger.is-new {
+  border-color: transparent;
+  background: linear-gradient(90deg, rgba(201,162,39,.045), transparent);
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .menu.home-friendly { border-radius: 12px; }
+  .home-group-heading { align-items: flex-start; }
+  .home-heading-actions { align-items: flex-start; }
+  .home-mode-card { min-height: 0; border-radius: 7px; }
+}
+
+@media (max-width: 640px) {
+  .home-friendly .home-today-card { padding-inline: 0; }
+  .home-next-action { padding-left: .6rem; }
+  .home-mode-card::after { background: linear-gradient(90deg, rgba(7,10,15,.88), rgba(7,10,15,.55)); }
+  .home-mode-icon { width: 30px; height: 30px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-mode-card:not(:disabled):hover,
+  .home-mode-card:not(:disabled):focus-visible { transform: none; }
+}
