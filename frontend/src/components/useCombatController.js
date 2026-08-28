@@ -47,7 +47,7 @@ import { chessFromFen } from '../chessRules.js';
 
 
 
-export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, encounterTier = 'normal', runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
   const { restoredSession, missingSession, activityGameIdRef } = useCombatSessionBootstrap(combatSessionId);
   const [phase, setPhase] = useState(restoredSession ? 'battle' : 'setup'); // 'setup' | 'battle' | 'over'
   const [sessionRecoveryLost, setSessionRecoveryLost] = useState(missingSession);

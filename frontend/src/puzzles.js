@@ -165,35 +165,10 @@ export const PUZZLES = [
     fen: 'k7/6B1/8/Kp5p/1p2N1R1/Q6p/8/8 w - - 0 1', solution: ['Kb6+', 'Kb8', 'Qa6', 'h2', 'Be5#'],
   },
 
-  // Combinaciones históricas: entrenan cálculo largo, sacrificios y cebos.
-  {
-    id: 'combo_legal_trap', kind: 'combination', difficulty: 'hard', technique: 'sacrificio de dama',
-    title: 'Combinación Légal · deja caer la dama',
-    description: 'Cinco medias jugadas. La dama parece en prise, pero el rey negro es el verdadero objetivo.',
-    fen: 'r2qkbnr/ppp2ppp/2np4/4p2b/2B1P3/2N2N1P/PPPP1PP1/R1BQK2R w KQkq - 0 6',
-    solution: ['Nxe5', 'Bxd1', 'Bxf7+', 'Ke7', 'Nd5#'],
-  },
-  {
-    id: 'combo_englund_trap', kind: 'combination', difficulty: 'brutal', technique: 'señuelo y mate',
-    title: 'Trampa Englund · siete medias jugadas',
-    description: 'La dama se mete hasta la cocina. Calcula el cebo completo antes de tocar una pieza.',
-    fen: 'r1b1kbnr/pppp1ppp/2n5/4P3/1q6/5N2/PPPBPPPP/RN1QKB1R b KQkq - 0 5',
-    solution: ['Qxb2', 'Bc3', 'Bb4', 'Qd2', 'Bxc3', 'Qxc3', 'Qc1#'],
-  },
-  {
-    id: 'combo_kieninger_trap', kind: 'combination', difficulty: 'hard', technique: 'desviación y mate',
-    title: 'Budapest · el alfil es el cebo',
-    description: 'Una pieza queda ofrecida. Mira qué casilla abandona el peón cuando acepta el regalo.',
-    fen: 'r1b1k2r/ppppqppp/2n5/4P3/1bP2Bn1/P4N2/1P1NPPPP/R2QKB1R b KQkq - 0 7',
-    solution: ['Ngxe5', 'axb4', 'Nd3#'],
-  },
-  {
-    id: 'combo_blackburne_shilling', kind: 'combination', difficulty: 'brutal', technique: 'ataque a la dama y mate',
-    title: 'Blackburne Shilling · la dama entra',
-    description: 'No cobres material demasiado pronto. La secuencia de dama y caballo termina en una red de mate.',
-    fen: 'r1b1kbnr/pppp1Npp/8/6q1/2BnP3/8/PPPP1PPP/RNBQK2R b KQkq - 0 5',
-    solution: ['Qxg2', 'Rf1', 'Qxe4+', 'Be2', 'Nf3#'],
-  },
+  // Sólo mantenemos combinaciones forzadas contra defensa óptima. Las trampas
+  // históricas Légal/Englund/Budapest/Blackburne se retiraron del banco normal:
+  // dependen de que el rival acepte un cebo inferior y PuzzleScreen reproduce
+  // literalmente la respuesta almacenada, así que no eran ejercicios objetivos.
   {
     id: 'combo_opera_finale', kind: 'combination', difficulty: 'hard', technique: 'sacrificio de dama y mate de torre',
     title: 'Final de la Ópera · dama por mate',

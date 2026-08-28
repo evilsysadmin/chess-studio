@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zel',
+    title: 'Combat liquida bien y los puzzles dejan de hacer trampas',
+    highlights: [
+      'Combat Chess conserva el nivel real del encuentro al cerrar una batalla, así la recompensa de créditos y el debrief ya no pueden romperse al terminar.',
+      'Los puzzles curados retiran cuatro trampas históricas que dependían de que el rival aceptase voluntariamente una mala defensa; una combinación activa debe sobrevivir a defensa óptima.',
+      'La recuperación tras un 503 sigue pudiendo reintentarse manualmente y su prueba ya no compite con la reconciliación automática de la propia app.',
+    ],
+  },
+  {
     release: 'v16.6dm46zek',
     title: 'Los fallos técnicos ya no inventan derrotas',
     highlights: [

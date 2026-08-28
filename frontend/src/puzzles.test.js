@@ -86,7 +86,7 @@ describe('banco de puzzles curados', () => {
   });
 
   it('tiene variedad real de dificultad, técnica y profundidad', () => {
-    expect(PUZZLES.length).toBeGreaterThanOrEqual(30);
+    expect(PUZZLES.length).toBeGreaterThanOrEqual(25);
     expect(new Set(PUZZLES.map((puzzle) => puzzle.kind))).toEqual(new Set(['mate1', 'mate2', 'mate3', 'material', 'combination']));
     expect(new Set(PUZZLES.map((puzzle) => puzzle.difficulty))).toEqual(new Set(['easy', 'medium', 'hard', 'brutal']));
     expect(new Set(PUZZLES.map((puzzle) => puzzle.technique)).size).toBeGreaterThanOrEqual(12);
@@ -94,8 +94,8 @@ describe('banco de puzzles curados', () => {
 
     const multiMove = PUZZLES.filter((puzzle) => Math.ceil(puzzle.solution.length / 2) >= 2);
     const deep = PUZZLES.filter((puzzle) => Math.ceil(puzzle.solution.length / 2) >= 3);
-    expect(multiMove.length, 'debe haber suficientes puzzles que exijan calcular más de una jugada propia').toBeGreaterThanOrEqual(13);
-    expect(deep.length, 'debe existir un núcleo serio de cálculo a tres o más jugadas propias').toBeGreaterThanOrEqual(6);
+    expect(multiMove.length, 'debe haber suficientes puzzles que exijan calcular más de una jugada propia').toBeGreaterThanOrEqual(9);
+    expect(deep.length, 'debe existir un núcleo serio de cálculo a tres o más jugadas propias').toBeGreaterThanOrEqual(3);
   });
 
   it('la selección evita recientes y no repite tipo/dificultad cuando hay alternativa', () => {
@@ -144,6 +144,11 @@ describe('banco de puzzles curados', () => {
       expect(puzzle.solution).toHaveLength(5);
       expect(matingMoves(new Chess(puzzle.fen)), `${puzzle.id} no puede ser ya mate en 1`).toHaveLength(0);
       expect(keyForcesMate(puzzle, 3), `${puzzle.id}: la clave debe forzar mate en 3 contra cualquier defensa`).toBe(true);
+    }
+
+    if (puzzle.kind === 'combination') {
+      const humanMoves = Math.ceil(puzzle.solution.length / 2);
+      expect(keyForcesMate(puzzle, humanMoves), `${puzzle.id}: la combinación no puede depender de que el rival acepte una trampa inferior`).toBe(true);
     }
 
     const played = [];

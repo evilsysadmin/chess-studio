@@ -1,3 +1,11 @@
+### v16.6dm46zel · Cierre de Combat y puzzles objetivos
+
+- Corrige la liquidación post-batalla de Combat: `encounterTier` forma parte explícita del controller y conserva el tier real (`normal`, `elite`, `boss`) al calcular créditos, debrief y persistencia final.
+- Endurece el E2E de recuperación `503`: fuerza también el intento de reconciliación automática a fallar antes de probar el botón manual, eliminando una carrera en la que el tablero podía recuperarse correctamente antes del clic de Playwright.
+- Retira del banco normal Légal, Englund, Budapest/Kieninger y Blackburne Shilling: eran trampas históricas que dependían de una respuesta inferior concreta del rival, mientras PuzzleScreen reproduce la línea almacenada como si fuese forzada.
+- Las combinaciones curadas activas deben forzar su desenlace contra cualquier defensa dentro de la profundidad declarada; se prioriza calidad táctica sobre inflar el número de ejercicios.
+- `npm ci --package-lock-only --offline` vuelve a validar el lockfile sin cambios adicionales de dependencias.
+
 ### v16.6dm46zek · Continuidad de juego sin derrotas fantasma
 
 - La Torre recupera una pelea cuyo snapshot desapareció en el mismo piso, con la misma semilla, modo y perks; un fallo técnico deja de cerrar el intento o alterar la mejor marca.
