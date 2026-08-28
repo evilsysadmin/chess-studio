@@ -65,7 +65,7 @@
 ### v16.6dm46zep · Onboarding contextual y estados de entrada
 
 - Convierte la guía de Home en un recorrido contextual de tres pasos: el siguiente objetivo real recibe un cue discreto sobre la propia tarjeta en lugar de depender sólo de un bloque explicativo.
-- Seguir el recorrido oculta la guía sólo durante la navegación; no la marca como descartada. Al volver a Home reaparece en el siguiente paso que el usuario haya ganado de verdad. `Ahora no`, cerrar y `Listo` sí persisten el descarte.
+- Seguir el recorrido oculta la guía sólo durante la navegación; no la marca como descartada. Al volver a Home reaparece en el siguiente paso que el usuario haya ganado de verdad. `Ahora no` y cerrar sólo la posponen: Home conserva un acceso `Retomar guía · X/3` mientras queden pasos.
 - Si hay una partida activa y el primer paso aún no terminó, `Continuar partida` tiene prioridad sobre abrir otro rival. El nudge de inactividad se suprime mientras la guía, Quick Match, Rival Fantasma o un panel informativo están abiertos.
 - El paso de puzzles abre temporalmente su disclosure para que el cue no señale una opción escondida. Entrar a entrenamiento personal sin posiciones explica el fallback a puzzles clásicos en vez de cambiar de fuente en silencio.
 - Partida rápida y Rival Fantasma mantienen su modal/configuración ante un error de creación y muestran el fallo dentro del propio diálogo para poder reintentar. Los errores generales de Home se muestran arriba, no junto al footer.

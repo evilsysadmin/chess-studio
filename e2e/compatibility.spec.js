@@ -55,7 +55,7 @@ for (const width of [360, 390, 430]) {
     await mockApi(page);
     await login(page);
     const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
-    await guide.getByRole('button', { name: 'Explorar Home', exact: true }).click();
+    await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
     await page.getByRole('button', { name: 'Ver mi progreso →', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: 'Mi progreso', exact: true })).toBeVisible();
@@ -73,14 +73,14 @@ test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse'
 
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();
-  await guide.getByRole('button', { name: 'Explorar Home', exact: true }).click();
+  await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
   await expect(guide).toHaveCount(0);
 
   await page.reload();
   await expect(guide).toHaveCount(0);
-  await page.getByRole('button', { name: /Juega primero/ }).click();
+  await page.getByRole('button', { name: /Retomar guía/ }).click();
   await expect(guide).toBeVisible();
-  await expect(guide.getByRole('button', { name: 'Ver rival', exact: true })).toBeVisible();
+  await expect(guide.getByRole('button', { name: /^Juega una partida\./ })).toBeVisible();
 });
 
 test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page }) => {
@@ -92,7 +92,7 @@ test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page
   await expect(page.getByRole('menuitem', { name: /Mi cuenta/ })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /Personalizar/ })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /Cerrar sesión/ })).toBeVisible();
-  await page.getByRole('region', { name: 'Guía rápida de Chess Studio' }).getByRole('button', { name: 'Explorar Home', exact: true }).click();
+  await page.getByRole('region', { name: 'Guía rápida de Chess Studio' }).getByRole('button', { name: 'Ahora no', exact: true }).click();
   await page.getByRole('button', { name: 'Abrir asistente de feedback' }).click();
   const assistant = page.getByRole('complementary', { name: 'Asistente de feedback' });
   await expect(assistant).toBeVisible();

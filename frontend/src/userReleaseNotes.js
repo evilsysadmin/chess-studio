@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfn',
+    title: 'Matthias guía con tres puertas claras',
+    highlights: [
+      'La bienvenida de Matthias conserva su presentación, pero elimina el botón duplicado de acción: las tres tarjetas de la guía son ahora enlaces completos y clicables.',
+      'Jugar una partida, resolver un puzzle y abrir Así juegas se pueden elegir directamente desde la tarjeta correspondiente, con foco de teclado, hover y una señal visual clara del siguiente paso.',
+      'Ahora no sólo pospone la guía: mientras queden pasos aparece Retomar guía · X/3 en Home, y al abrirla continúa desde el progreso real sin obligarte a empezar de cero.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfm',
     title: 'Matthias encuentra su rincón',
     highlights: [

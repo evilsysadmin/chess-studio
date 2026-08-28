@@ -323,7 +323,7 @@
 .home-start-guide {
   border-color: color-mix(in srgb, var(--brass) 24%, var(--line-soft));
 }
-.home-start-guide-path > span.is-next {
+.home-start-guide-path > button.is-next {
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brass) 66%, transparent);
 }
 

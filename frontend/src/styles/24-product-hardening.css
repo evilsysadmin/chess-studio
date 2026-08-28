@@ -15,8 +15,8 @@
 }
 .skip-link:focus { transform: translateY(0); }
 
-.home-start-guide-path > span { position: relative; grid-template-columns: 26px minmax(0, 1fr); align-items: center; column-gap: .5rem; }
-.home-start-guide-path > span > i {
+.home-start-guide-path > button { position: relative; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; column-gap: .5rem; }
+.home-start-guide-path > button > i {
   display: grid;
   width: 24px;
   height: 24px;
@@ -28,12 +28,12 @@
   font: 800 .65rem/1 var(--font-mono);
   font-style: normal;
 }
-.home-start-guide-path > span > b,
-.home-start-guide-path > span > small { grid-column: 2; }
-.home-start-guide-path > span.is-next { border-color: color-mix(in srgb, var(--brass) 58%, var(--line-soft)); background: color-mix(in srgb, var(--brass) 7%, rgba(0,0,0,.12)); }
-.home-start-guide-path > span.is-next > i { border-color: var(--brass); color: var(--brass); }
-.home-start-guide-path > span.is-done { opacity: .82; }
-.home-start-guide-path > span.is-done > i { border-color: color-mix(in srgb, var(--success) 65%, var(--ink-3)); color: var(--success); }
+.home-start-guide-path > button > b,
+.home-start-guide-path > button > small { grid-column: 2; }
+.home-start-guide-path > button.is-next { border-color: color-mix(in srgb, var(--brass) 58%, var(--line-soft)); background: color-mix(in srgb, var(--brass) 7%, rgba(0,0,0,.12)); }
+.home-start-guide-path > button.is-next > i { border-color: var(--brass); color: var(--brass); }
+.home-start-guide-path > button.is-done { opacity: .82; }
+.home-start-guide-path > button.is-done > i { border-color: color-mix(in srgb, var(--success) 65%, var(--ink-3)); color: var(--success); }
 
 .admin-observability-launcher-kpis > .admin-slo-kpi { grid-column: span 2; align-content: start; }
 .admin-slo-kpi small { display: block; margin-top: .2rem; color: var(--parchment-dim); font-size: .6rem; line-height: 1.35; }
@@ -50,7 +50,7 @@
 
 @media (forced-colors: active) {
   .skip-link,
-  .home-start-guide-path > span.is-next,
+  .home-start-guide-path > button.is-next,
   .admin-slo-kpi.is-warn { border: 2px solid CanvasText; }
   :where(button, a, input, select, textarea, summary):focus-visible { outline: 3px solid Highlight; }
 }

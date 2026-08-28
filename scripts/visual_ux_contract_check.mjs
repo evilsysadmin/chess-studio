@@ -41,7 +41,7 @@ const checks = [
   [/desktop 1440x900 · Combat mantiene mesa y acciones coherentes/.test(smoke), 'falta regresión desktop de Combat'],
   [/Combat Chess · mapa conserva art y todos los nodos dentro del lienzo/.test(smoke), 'falta regresión visual del mapa de campaña'],
   [/Math\.max\(\.\.\.heights\) - Math\.min\(\.\.\.heights\)/.test(smoke), 'los E2E deben comprobar geometría coherente de botones'],
-  [/Onboarding Home · el siguiente paso se señala/.test(smoke), 'falta E2E del recorrido visual de onboarding'],
+  [/Onboarding Home · Matthias presenta tres tarjetas clicables/.test(smoke), 'falta E2E del recorrido visual de onboarding clicable'],
   [/puzzle-training-workspace/.test(puzzle) && /puzzle-coach-panel/.test(puzzle) && /\.puzzle-training-workspace[\s\S]*grid-template-columns/.test(finalCss), 'Entrena tus errores debe usar tablero + coach lateral'],
   [/REPLAY \/\/ ANÁLISIS/.test(puzzle) && /puzzle-coach-solution/.test(puzzle), 'la explicación del replay debe vivir en el panel coach'],
   [/AdminFeedbackInboxButton/.test(app) && /fetchAdminFeedbackSummary/.test(adminInbox), 'Home admin debe avisar de feedback nuevo sin esconderlo en Mi cuenta'],

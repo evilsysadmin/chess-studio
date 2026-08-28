@@ -179,9 +179,15 @@ export default function Menu({
   }
 
   function dismissHomeGuide() {
+    // "Ahora no" y la X posponen la guía; nunca destruyen el progreso.
+    // Si quedan pasos, Home mantiene un acceso explícito para retomarla.
     setProfileStorageItem(HOME_GUIDE_KEY, '1');
     setShowHomeGuide(false);
   }
+
+  const homeGuideResumeLabel = onboarding.complete
+    ? 'Guía rápida'
+    : `Retomar guía · ${onboarding.completed}/3`;
 
   function hideHomeGuideForStep() {
     // Seguir el recorrido no equivale a descartarlo. Al volver a Home, el
@@ -195,11 +201,10 @@ export default function Menu({
     onInsights();
   }
 
-  function runOnboardingNext() {
-    if (onboarding.next === 'game') { hideHomeGuideForStep(); if (hasSavedGame) onContinue(); else onTournament(); return; }
-    if (onboarding.next === 'puzzle') { hideHomeGuideForStep(); onPuzzle(); return; }
-    if (onboarding.next === 'insights') { openOnboardingInsights(); return; }
-    dismissHomeGuide();
+  function openOnboardingStep(stepId) {
+    if (stepId === 'game') { hideHomeGuideForStep(); if (hasSavedGame) onContinue(); else onTournament(); return; }
+    if (stepId === 'puzzle') { hideHomeGuideForStep(); onPuzzle(); return; }
+    if (stepId === 'insights') { openOnboardingInsights(); }
   }
 
   function handleMatthiasAction() {
@@ -253,20 +258,28 @@ export default function Menu({
           </div>
           <div className="home-start-guide-path" aria-label="Primeros pasos de Chess Studio">
             {onboarding.steps.map((step, index) => (
-              <span key={step.id} className={`${step.done ? 'is-done' : ''} ${onboarding.next === step.id ? 'is-next' : ''}`}>
-                <i aria-hidden="true">{step.done ? '✓' : index + 1}</i><b>{step.label}</b><small>{step.detail}</small>
-              </span>
+              <button
+                type="button"
+                key={step.id}
+                className={`${step.done ? 'is-done' : ''} ${onboarding.next === step.id ? 'is-next' : ''}`.trim()}
+                onClick={() => openOnboardingStep(step.id)}
+                aria-label={`${step.label}. ${step.detail}`}
+              >
+                <i aria-hidden="true">{step.done ? '✓' : index + 1}</i>
+                <b>{step.label}</b>
+                <small>{step.detail}</small>
+                <em className="home-start-guide-link-arrow" aria-hidden="true">→</em>
+              </button>
             ))}
           </div>
           {onboarding.next === 'game' && (
             <p className="home-onboarding-tip"><b>Reto de partida:</b> a veces Torneo te propone un objetivo extra para esa partida. Es opcional, no cambia las reglas ni el rating y sirve como meta concreta de progreso.</p>
           )}
-          <div className="home-start-guide-actions">
-            <button type="button" className="primary-btn" onClick={runOnboardingNext}>
-              {onboarding.next === 'game' ? (hasSavedGame ? 'Continuar partida' : 'Jugar primer rival') : onboarding.next === 'puzzle' ? 'Resolver un puzzle' : onboarding.next === 'insights' ? 'Abrir Así juegas' : 'Listo'}
-            </button>
-            {!onboarding.complete && <button type="button" className="secondary-btn" onClick={dismissHomeGuide}>Ahora no</button>}
-          </div>
+          {!onboarding.complete && (
+            <div className="home-start-guide-actions">
+              <button type="button" className="secondary-btn" onClick={dismissHomeGuide}>Ahora no</button>
+            </div>
+          )}
         </section>
       )}
 
@@ -329,7 +342,7 @@ export default function Menu({
       <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
         <div className="home-group-heading">
           <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
-          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && <button type="button" className="home-context-guide" onClick={reopenHomeGuide}><span>?</span> Juega primero</button>}</div>
+          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && !showHomeGuide && <button type="button" className="home-context-guide" onClick={reopenHomeGuide} aria-label={onboarding.complete ? 'Abrir guía rápida' : `Retomar guía, ${onboarding.completed} de 3 pasos completados`}><span>?</span> {homeGuideResumeLabel}</button>}</div>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
           <TutorialModeCard tutorialId="tournament" className={`menu-card accent-brass home-primary-card home-mode-card home-mode-featured${hasSavedGame ? '' : onboardingTargetClass('game')}`} onClick={onTournament}>

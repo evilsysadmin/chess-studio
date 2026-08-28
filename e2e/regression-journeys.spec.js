@@ -104,9 +104,12 @@ test('Matthias · se presenta una vez, lidera la guía y al reabrirla no repite 
   await expect.poll(() => page.evaluate(() => localStorage.getItem('matthias.onboarded'))).toBe('2');
 
   await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Retomar guía/ })).toContainText('0/3');
   await page.reload();
   await expect(page.getByRole('region', { name: 'Guía rápida de Chess Studio' })).toHaveCount(0);
-  await page.getByRole('button', { name: /Juega primero/ }).click();
+  const resumeGuide = page.getByRole('button', { name: /Retomar guía/ });
+  await expect(resumeGuide).toContainText('0/3');
+  await resumeGuide.click();
   const reopened = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(reopened).toBeVisible();
   await expect(reopened.getByRole('heading', { name: 'Guten Morgen. Soy Matthias.', exact: true })).toHaveCount(0);

@@ -278,7 +278,7 @@ test('cuenta nueva · Login y bienvenida inicial son claros y no desbordan en m�
   await expect(buttonWithHeading(page, 'Torneo')).toHaveClass(/home-onboarding-target/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
-  await guide.getByRole('button', { name: 'Jugar primer rival', exact: true }).click();
+  await guide.getByRole('button', { name: /^Juega una partida\./ }).click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
 });
 
@@ -475,23 +475,41 @@ test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del 
 });
 
 
-test('Onboarding Home · el siguiente paso se señala y navegar no descarta la guía', async ({ page }) => {
+test('Onboarding Home · Matthias presenta tres tarjetas clicables y navegar no descarta la guía', async ({ page }) => {
   await mockApi(page);
   await login(page);
 
-  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  let guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();
-  await expect(guide.getByText(/PRIMEROS 60 SEGUNDOS/)).toBeVisible();
+  await expect(guide.getByText(/MATTHIAS · GUÍA DE CAMPO/i)).toBeVisible();
+
+  const gameStep = guide.getByRole('button', { name: /^Juega una partida\./ });
+  const puzzleStep = guide.getByRole('button', { name: /^Resuelve un puzzle\./ });
+  const insightsStep = guide.getByRole('button', { name: 'Mira Así juegas. Convierte tus partidas en una siguiente acción.', exact: true });
+  await expect(gameStep).toBeEnabled();
+  await expect(puzzleStep).toBeEnabled();
+  await expect(insightsStep).toBeEnabled();
 
   const tournament = buttonWithHeading(page, 'Torneo');
   await expect(tournament).toHaveClass(/home-onboarding-target/);
   await expect(tournament.getByText('PASO 1/3 · SIGUIENTE', { exact: true })).toBeVisible();
 
-  await guide.getByRole('button', { name: 'Jugar primer rival', exact: true }).click();
+  await gameStep.click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
 
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('region', { name: 'Guía rápida de Chess Studio' })).toBeVisible();
+  guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+
+  await guide.getByRole('button', { name: /^Resuelve un puzzle\./ }).click();
+  await expect(page.locator('.puzzle-screen')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+
+  await guide.getByRole('button', { name: 'Mira Así juegas. Convierte tus partidas en una siguiente acción.', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 });
 
 
