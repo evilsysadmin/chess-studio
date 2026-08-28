@@ -20,7 +20,7 @@ import PromotionModal from './PromotionModal.jsx';
 import { PUZZLE_STATE, puzzleTransition } from '../puzzleStateMachine.js';
 import { reportStateInvariant } from '../stateMachine.js';
 
-const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Tu crimen' };
+const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Error de tu partida' };
 const RECENT_CURATED_LIMIT = 5;
 
 // Tiempo (ms) que se espera antes de aplicar la respuesta forzada del
@@ -396,12 +396,12 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   }
 
   return (
-    <div className="tutorial-shell">
+    <div className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}>
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>Puzzles clásicos</button>
         <button className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalTotalCount === 0} onClick={() => changeSource('personal')}>
-          {initialFilter?.label ? `Personales · ${initialFilter.label} (${filteredPersonalActiveCount} pendientes)` : initialFilter?.opening ? `Personales · ${initialFilter.opening} (${filteredPersonalActiveCount} pendientes)` : `Puzzles personales (${filteredPersonalActiveCount} pendientes)`}
+          {initialFilter?.label ? `Tus errores · ${initialFilter.label} (${filteredPersonalActiveCount} pendientes)` : initialFilter?.opening ? `Tus errores · ${initialFilter.opening} (${filteredPersonalActiveCount} pendientes)` : `Tus errores (${filteredPersonalActiveCount} pendientes)`}
         </button>
         <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
       </div>}
@@ -412,8 +412,8 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       )}
       {rushMode && <div className={`puzzle-rush-banner ${rushSeconds <= 30 ? 'danger' : ''}`}><b>PUZZLE RUSH PERSONAL</b><span>{Math.floor((rushSeconds || 0) / 60)}:{String((rushSeconds || 0) % 60).padStart(2, '0')} · {solvedCount} aciertos</span></div>}
       {!localChess && <p className="error-text">Este ejercicio no contiene una posición legal. Puedes pasar al siguiente sin penalización.</p>}
-      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-        <div className="board-column">
+      <div className="puzzle-training-workspace">
+        <div className="board-column puzzle-board-column">
           <div className={`status-line ${status === 'solved' ? 'success' : ''}`}>
             {status === 'solved' && '¡Resuelto!'}
             {status === 'revealed' && 'Esta era la solución'}
@@ -428,17 +428,6 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
             mistakeMove={status === 'revealed' ? revealGuide.played : null}
             hintMove={status === 'revealed' ? revealGuide.preferred : null}
           />
-          {status === 'revealed' && (
-            <div className="puzzle-solution-guide" role="status" aria-live="polite">
-              {revealGuide.played && (
-                <span className="puzzle-solution-move is-played"><i aria-hidden="true" />Tu jugada <b>{revealGuide.played.san}</b><small>{revealGuide.played.from} → {revealGuide.played.to}</small></span>
-              )}
-              {revealGuide.preferred && (
-                <span className="puzzle-solution-move is-preferred"><i aria-hidden="true" />Mejor jugada <b>{revealGuide.preferred.san}</b><small>{revealGuide.preferred.from} → {revealGuide.preferred.to}</small></span>
-              )}
-              {revealGuide.line.length > 1 && <span className="puzzle-solution-line">Línea: <b>{revealGuide.line.join(' · ')}</b></span>}
-            </div>
-          )}
           {feedback && <p className="error-text" style={{ marginTop: '0.5rem' }}>{feedback}</p>}
           {retryOffer && (
             <div className="menu-section" style={{ marginTop: '0.6rem', padding: '0.8rem' }}>
@@ -473,10 +462,25 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           </div>
         </div>
 
-        <div className="tutorial-text puzzle-friendly-info">
-          <span className="eyebrow">{KIND_LABELS[puzzle.kind] || 'Puzzle'}{puzzle.difficulty ? ` · ${PUZZLE_DIFFICULTY_LABELS[puzzle.difficulty] || puzzle.difficulty}` : ''}</span>
+        <aside className="tutorial-text puzzle-friendly-info puzzle-coach-panel" aria-label={source === 'personal' ? 'Análisis del replay' : 'Guía del puzzle'}>
+          <div className="puzzle-coach-chrome">
+            <span className="eyebrow">{source === 'personal' ? 'REPLAY // ANÁLISIS' : source === 'daily' ? 'DESAFÍO // ANÁLISIS' : 'TÁCTICA // ANÁLISIS'}</span>
+            <span className={`puzzle-coach-state ${status === 'solved' ? 'is-success' : status === 'revealed' ? 'is-revealed' : ''}`}>{status === 'solved' ? 'RESUELTO' : status === 'revealed' ? 'REVISIÓN' : 'EN CURSO'}</span>
+          </div>
+          <span className="eyebrow puzzle-coach-kind">{KIND_LABELS[puzzle.kind] || 'Puzzle'}{puzzle.difficulty ? ` · ${PUZZLE_DIFFICULTY_LABELS[puzzle.difficulty] || puzzle.difficulty}` : ''}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
+          {status === 'revealed' && (
+            <div className="puzzle-solution-guide puzzle-coach-solution" role="status" aria-live="polite">
+              {revealGuide.played && (
+                <span className="puzzle-solution-move is-played"><i aria-hidden="true" />Tu jugada <b>{revealGuide.played.san}</b><small>{revealGuide.played.from} → {revealGuide.played.to}</small></span>
+              )}
+              {revealGuide.preferred && (
+                <span className="puzzle-solution-move is-preferred"><i aria-hidden="true" />Mejor jugada <b>{revealGuide.preferred.san}</b><small>{revealGuide.preferred.from} → {revealGuide.preferred.to}</small></span>
+              )}
+              {revealGuide.line.length > 1 && <span className="puzzle-solution-line">Línea recomendada: <b>{revealGuide.line.join(' · ')}</b></span>}
+            </div>
+          )}
           {source === 'curated' && <p className="hint-text friendly-inline-note">Rotamos dificultad y motivos: remates, cálculo largo, sacrificios, horquillas, redes multipieza y combinaciones históricas. Los ejercicios fáciles ya no monopolizan la sesión.</p>}
           {source === 'curated' && puzzle.technique && <p className="hint-text friendly-inline-note">Motivo principal: <b>{puzzle.technique}</b>.</p>}
           <p className="hint-text friendly-inline-note">Juegas con <b>{humanColor === 'w' ? 'blancas' : 'negras'}</b>. Elige pieza y destino; si fallas puedes volver a intentarlo.</p>
@@ -493,7 +497,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           )}
           {source === 'personal' && (
             <div className="personal-puzzle-training-panel">
-              <p className="hint-text personal-puzzle-note">☠ {puzzle.source === 'workers-ai-validated' ? 'Escenario nuevo inspirado en tus errores y confirmado por el motor táctico.' : 'Posición nacida de una de tus propias autopsias.'}{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
+              <p className="hint-text personal-puzzle-note">{puzzle.source === 'workers-ai-validated' ? 'Escenario inspirado en tus errores y validado tácticamente antes de entrar en tu cola.' : 'Caso reconstruido desde una de tus partidas.'}{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
               {currentPersonalMastered && <p className="hint-text friendly-inline-note">✓ Este caso ya está superado y vive en tu histórico. Lo estás revisando a propósito; no vuelve a la cola normal.</p>}
               {!currentPersonalMastered && filteredPersonalActiveCount > 0 && <p className="hint-text friendly-inline-note"><b>{filteredPersonalActiveCount}</b> error{filteredPersonalActiveCount === 1 ? '' : 'es'} pendiente{filteredPersonalActiveCount === 1 ? '' : 's'} de entrenar.</p>}
               {offerAiGeneration && (
@@ -537,7 +541,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
               )}
             </div>
           </details>
-        </div>
+        </aside>
       </div>
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
     </div>

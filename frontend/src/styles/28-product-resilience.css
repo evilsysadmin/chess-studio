@@ -587,3 +587,163 @@
   background: color-mix(in srgb, var(--danger) 6%, var(--ui-panel));
   color: var(--parchment);
 }
+
+/* Admin feedback: los mensajes resueltos pueden bajar de tono, pero sus acciones nunca desaparecen. */
+.admin-feedback-card.status-resolved { opacity: 1; }
+.admin-feedback-card.status-resolved > :where(.admin-feedback-meta, p, .admin-feedback-reply-sent, .admin-feedback-reply) { opacity: .72; }
+.admin-feedback-card.status-resolved .admin-feedback-actions { opacity: 1; }
+.admin-feedback-actions { min-height: 38px; }
+.admin-feedback-actions .admin-feedback-delete { margin-left: 0; }
+.admin-feedback-actions .admin-feedback-status { margin-left: auto; }
+
+/* Inbox operativo: sólo admins y sólo cuando existe feedback realmente nuevo. */
+.masthead-admin-feedback-inbox {
+  position: relative;
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--brass) 48%, var(--ui-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-panel-raised) 74%, var(--ink) 26%);
+  color: var(--parchment);
+  box-shadow: 0 0 0 1px rgba(198,164,93,.025), 0 0 18px rgba(198,164,93,.06);
+  cursor: pointer;
+}
+.masthead-admin-feedback-envelope { font-size: 1rem; line-height: 1; color: var(--brass); transform: translateY(-1px); }
+.masthead-admin-feedback-count {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--brass);
+  color: var(--ink);
+  font: 850 .58rem/1 var(--font-mono);
+}
+.masthead-admin-feedback-inbox:hover,
+.masthead-admin-feedback-inbox:focus-visible { border-color: var(--brass); background: color-mix(in srgb, var(--brass) 8%, var(--ui-panel-raised)); outline: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .masthead-admin-feedback-inbox { animation: adminInboxArrival .7s ease-out 1; }
+  @keyframes adminInboxArrival { 0% { transform: scale(.9); box-shadow: 0 0 0 0 rgba(198,164,93,.18); } 70% { transform: scale(1.035); box-shadow: 0 0 0 8px rgba(198,164,93,0); } 100% { transform: scale(1); } }
+}
+
+/* Puzzles: tablero + coach comparten el lenguaje de partida/replay, no el de una ficha técnica. */
+.tutorial-shell.puzzle-screen {
+  max-width: 1180px;
+  align-items: start;
+  gap: .85rem;
+}
+.puzzle-screen > .back-link,
+.puzzle-screen > .puzzle-source-picker,
+.puzzle-screen > .personal-puzzle-empty-notice,
+.puzzle-screen > .puzzle-rush-banner,
+.puzzle-screen > .error-text { flex: 1 0 100%; }
+.puzzle-screen .puzzle-source-picker.friendly-tabs {
+  width: min(100%, 930px);
+  margin: 0 auto .25rem;
+  padding: .28rem;
+  gap: .25rem;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 82%, transparent);
+  border-radius: 10px;
+  background: rgba(0,0,0,.13);
+}
+.puzzle-screen .puzzle-source-picker > button {
+  flex: 1 1 180px;
+  min-height: 38px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+.puzzle-screen .puzzle-source-picker > .primary-btn {
+  background: color-mix(in srgb, var(--brass) 10%, var(--ui-panel-raised));
+  border-color: color-mix(in srgb, var(--brass) 55%, var(--ui-border));
+  color: var(--parchment);
+}
+.puzzle-training-workspace {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(500px, 1fr) minmax(320px, 390px);
+  align-items: start;
+  justify-content: center;
+  gap: clamp(.8rem, 1.5vw, 1.25rem);
+}
+.puzzle-board-column { min-width: 0; width: 100%; gap: .55rem; }
+.puzzle-board-column .game-controls {
+  width: min(100%, 540px);
+  margin-inline: auto;
+  display: flex;
+  justify-content: center;
+  gap: .45rem;
+}
+.puzzle-board-column .game-controls > button { min-height: 38px; }
+.puzzle-coach-panel {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  max-height: min(690px, calc(100dvh - 10rem));
+  overflow: auto;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 88%, transparent);
+  background: color-mix(in srgb, var(--ui-panel) 92%, var(--ink) 8%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.015);
+}
+.puzzle-coach-panel > :not(.puzzle-coach-chrome) { margin-left: .95rem; margin-right: .95rem; }
+.puzzle-coach-panel > :last-child { margin-bottom: .95rem; }
+.puzzle-coach-chrome {
+  min-height: 48px;
+  padding: .72rem .9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 78%, transparent);
+  background: rgba(0,0,0,.12);
+}
+.puzzle-coach-chrome .eyebrow { margin: 0; color: color-mix(in srgb, var(--brass) 72%, var(--parchment-dim)); }
+.puzzle-coach-state {
+  flex: 0 0 auto;
+  padding: .2rem .42rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--parchment-dim);
+  font: 760 .55rem/1 var(--font-mono);
+  letter-spacing: .06em;
+}
+.puzzle-coach-state.is-success { color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, var(--ui-border)); }
+.puzzle-coach-state.is-revealed { color: var(--brass); border-color: color-mix(in srgb, var(--brass) 45%, var(--ui-border)); }
+.puzzle-coach-kind { display: block; margin-top: .9rem !important; margin-bottom: .15rem; }
+.puzzle-coach-panel h2 { margin: .25rem 0 .4rem; font-size: clamp(1.35rem, 2vw, 1.7rem); }
+.puzzle-coach-panel > p { margin-top: .35rem; line-height: 1.5; }
+.puzzle-coach-solution {
+  margin-top: .8rem;
+  margin-bottom: .25rem;
+  grid-template-columns: 1fr;
+  border-top: 1px solid color-mix(in srgb, var(--ui-border) 65%, transparent);
+  padding-top: .75rem;
+}
+.puzzle-screen-personal .personal-puzzle-note {
+  border-left-width: 2px;
+  border-color: color-mix(in srgb, var(--brass) 58%, transparent);
+  background: rgba(198,164,93,.035);
+}
+.puzzle-screen-personal .personal-puzzle-training-panel { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid color-mix(in srgb, var(--ui-border) 62%, transparent); }
+.puzzle-screen-personal .personal-puzzle-ai-action { background: rgba(0,0,0,.12); border-color: color-mix(in srgb, var(--ui-border) 88%, transparent); }
+.puzzle-screen-personal .personal-puzzle-history-row { background: rgba(255,255,255,.018); }
+
+@media (max-width: 920px) {
+  .puzzle-training-workspace { grid-template-columns: 1fr; max-width: 650px; margin-inline: auto; }
+  .puzzle-coach-panel { max-height: none; }
+}
+@media (max-width: 620px) {
+  .puzzle-screen .puzzle-source-picker.friendly-tabs { display: grid; grid-template-columns: 1fr; }
+  .puzzle-board-column .game-controls { display: grid; grid-template-columns: 1fr; width: 100%; }
+}

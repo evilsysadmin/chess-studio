@@ -139,6 +139,11 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
         }
 
 
+    @router.get("/api/admin/feedback/summary")
+    async def admin_feedback_summary(username: str = Depends(admin_dependency)):
+        return await fstore.feedback_summary()
+
+
     @router.get("/api/admin/feedback/{feedback_id}/attachments/{attachment_index}")
     async def admin_feedback_attachment(
         feedback_id: str,

@@ -73,3 +73,34 @@ test('Feedback · admin puede borrar un mensaje de prueba', async ({ page }) => 
   await feedbackSection.getByRole('button', { name: 'Borrar feedback', exact: true }).click();
   await expect(feedbackSection.getByText('Mensaje de prueba para borrar.', { exact: true })).toHaveCount(0);
 });
+
+test('Feedback · resuelto mantiene Reabrir y Borrar feedback visibles', async ({ page }) => {
+  await mockApi(page, {
+    isAdmin: true,
+    initialFeedback: [{ id: 'resolved-delete-1', category: 'general', message: 'Mensaje resuelto de prueba.', status: 'resolved' }],
+  });
+  await login(page);
+  await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
+  const feedbackSection = page.getByRole('region', { name: 'Feedback de usuarios' });
+  const resolved = feedbackSection.locator('details.admin-feedback-resolved');
+  await resolved.locator('summary').click();
+  await expect(resolved.getByRole('button', { name: 'Reabrir', exact: true })).toBeVisible();
+  await expect(resolved.getByRole('button', { name: 'Borrar feedback', exact: true })).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await resolved.getByRole('button', { name: 'Borrar feedback', exact: true }).click();
+  await expect(resolved.getByText('Mensaje resuelto de prueba.', { exact: true })).toHaveCount(0);
+});
+
+test('Feedback · admin ve un sobre en Home cuando hay mensajes nuevos', async ({ page }) => {
+  await mockApi(page, {
+    isAdmin: true,
+    initialFeedback: [{ id: 'inbox-1', category: 'ux', message: 'Feedback recién llegado.', status: 'new' }],
+  });
+  await login(page);
+  const inbox = page.getByRole('button', { name: '1 feedback nuevo', exact: true });
+  await expect(inbox).toBeVisible();
+  await inbox.click();
+  const feedbackSection = page.getByRole('region', { name: 'Feedback de usuarios' });
+  await expect(feedbackSection).toBeVisible();
+  await expect(feedbackSection.getByText('Feedback recién llegado.', { exact: true })).toBeVisible();
+});

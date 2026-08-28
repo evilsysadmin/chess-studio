@@ -1,3 +1,18 @@
+### v16.6dm46zet · Feedback visible y entrenamiento con coach de replay
+
+- Añade un inbox discreto para administradores en Home: cuando existe feedback realmente nuevo aparece un sobre con contador y acceso directo a Feedback de usuarios; usa un resumen ligero y refresco cada 2 minutos sólo mientras Home está visible.
+- Corrige la regresión visual de feedback resuelto: `Reabrir` y `Borrar feedback` permanecen visibles y la atenuación afecta al contenido, no a las acciones.
+- Recompone Puzzles personales / Entrena tus errores como una experiencia de replay: tablero a la izquierda y panel de coach a la derecha con contexto, explicación, jugada realizada, mejor jugada, línea recomendada, histórico y generación validada. En pantallas estrechas el coach cae debajo sin perder contenido.
+- Mantiene la deuda acotada: el polling del inbox vive en `useAdminFeedbackInbox`, el control visual en `AdminFeedbackInboxButton`, y se elimina `useModalFocusManager.js`, detectado por el gate como módulo productivo huérfano.
+- Añade regresiones E2E para borrar feedback ya resuelto y para el sobre admin, y amplía el contrato visual para proteger la geometría tablero + coach.
+
+### v16.6dm46zes · Hotfix del quality gate idempotente
+
+- Separa los primitives de idempotencia en `operation_idempotency_core.py`, un módulo puro de Python stdlib que no carga FastAPI ni el backend completo.
+- `scripts/idempotency_smoke.py` vuelve a ser realmente ejecutable desde un pre-push limpio: valida keys, fingerprints, conflicto por reutilización, ledger acotado e IDs deterministas sin depender del venv.
+- El adaptador HTTP conserva el contrato existente (`400` para key inválida y `409` para reutilización conflictiva), mientras `game_api.py` mantiene la misma API.
+- El gate de resiliencia comprueba ahora la política idempotente en su propietario puro en vez de acoplarse al adaptador FastAPI.
+
 ### v16.6dm46zer · State & resilience pass
 
 - Formaliza los flujos críticos con máquinas de estado explícitas para restauración/reconexión, Combat, campaña, puzzles y series; las transiciones imposibles se registran como invariantes en vez de convertirse en combinaciones silenciosas de flags.

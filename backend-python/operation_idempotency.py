@@ -1,62 +1,52 @@
-"""Bounded idempotency helpers for retry-safe game mutations.
+"""HTTP adapter for dependency-free idempotency primitives.
 
-No HTTP route owns this policy. Routes provide the request/model and the game
-entry; this module validates operation keys, fingerprints payloads and keeps a
-small replay ledger in the savegame document.
+The mutation policy lives in ``operation_idempotency_core`` so it can be tested
+without importing FastAPI. This module only translates core validation errors
+into the HTTP contract consumed by game routes.
 """
 from __future__ import annotations
 
-import hashlib
-import json
-import re
-import uuid
 from typing import Optional
 
 from fastapi import HTTPException, Request
 
-IDEMPOTENCY_NAMESPACE = uuid.UUID("9d10b931-a0b6-4a59-bd1c-816b8797e474")
-IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9._:-]{8,96}$")
-MAX_OPERATION_LEDGER = 16
+from operation_idempotency_core import (
+    IDEMPOTENCY_KEY_RE,
+    IDEMPOTENCY_NAMESPACE,
+    MAX_OPERATION_LEDGER,
+    IdempotencyConflict,
+    InvalidIdempotencyKey,
+    deterministic_game_id,
+    model_fingerprint,
+    normalize_idempotency_key,
+    operation_fingerprint,
+    operation_replay as _operation_replay,
+    remember_operation,
+)
 
 
 def idempotency_key(request: Request) -> Optional[str]:
-    raw = request.headers.get("Idempotency-Key")
-    if raw is None:
-        return None
-    key = raw.strip()
-    if not IDEMPOTENCY_KEY_RE.fullmatch(key):
-        raise HTTPException(400, "Idempotency-Key inválida.")
-    return key
-
-
-def operation_fingerprint(payload: dict) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
-def model_fingerprint(model) -> str:
-    return operation_fingerprint(model.model_dump(by_alias=True, exclude_none=False))
+    try:
+        return normalize_idempotency_key(request.headers.get("Idempotency-Key"))
+    except InvalidIdempotencyKey as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 def operation_replay(entry: dict, key: Optional[str], fingerprint: str, kind: str) -> bool:
-    if not key:
-        return False
-    for op in reversed(entry.get("operationLedger") or []):
-        if op.get("key") != key:
-            continue
-        if op.get("kind") != kind or op.get("fingerprint") != fingerprint:
-            raise HTTPException(409, "La misma operación idempotente se reutilizó con datos distintos.")
-        return True
-    return False
+    try:
+        return _operation_replay(entry, key, fingerprint, kind)
+    except IdempotencyConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
-def remember_operation(entry: dict, key: Optional[str], fingerprint: str, kind: str) -> None:
-    if not key:
-        return
-    ledger = [op for op in (entry.get("operationLedger") or []) if op.get("key") != key]
-    ledger.append({"key": key, "kind": kind, "fingerprint": fingerprint})
-    entry["operationLedger"] = ledger[-MAX_OPERATION_LEDGER:]
-
-
-def deterministic_game_id(username: str, key: str) -> str:
-    return str(uuid.uuid5(IDEMPOTENCY_NAMESPACE, f"{username}:{key}"))
+__all__ = [
+    "IDEMPOTENCY_KEY_RE",
+    "IDEMPOTENCY_NAMESPACE",
+    "MAX_OPERATION_LEDGER",
+    "deterministic_game_id",
+    "idempotency_key",
+    "model_fingerprint",
+    "operation_fingerprint",
+    "operation_replay",
+    "remember_operation",
+]

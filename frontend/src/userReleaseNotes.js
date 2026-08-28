@@ -6,6 +6,22 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zet',
+    title: 'Tus errores se entrenan como un replay',
+    highlights: [
+      'Entrena tus errores coloca el tablero y la explicación lado a lado: el panel de coach reúne contexto, jugada realizada, mejor jugada, línea recomendada e histórico sin empujar el análisis debajo del tablero.',
+      'Los administradores ven un sobre discreto en Home cuando hay feedback nuevo y pueden saltar directamente a la bandeja.',
+      'El feedback resuelto mantiene visibles Reabrir y Borrar feedback para poder limpiar mensajes de prueba sin rebuscar.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zes',
+    title: 'Hotfix de estabilidad del despliegue',
+    highlights: [
+      'No cambia el juego ni la interfaz: corrige el quality gate local de idempotencia para que el pre-push pueda validarse sin cargar dependencias del backend.',
+    ],
+  },
+  {
     release: 'v16.6dm46zer',
     title: 'Las partidas aguantan mejor los golpes',
     highlights: [

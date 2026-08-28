@@ -81,6 +81,29 @@ async def list_feedback(*, limit: int = 100) -> list[dict]:
     return [_public_feedback(row) for row in sorted(_memory_feedback.values(), key=lambda row: row.get("created_at", ""), reverse=True)[:safe_limit]]
 
 
+async def feedback_summary() -> dict[str, int]:
+    col = await _get_collection()
+    if col is not None:
+        try:
+            new_count = int(await col.count_documents({"status": "new"}))
+            pending_count = int(await col.count_documents({"status": {"$ne": "resolved"}}))
+            return {"newCount": new_count, "pendingCount": pending_count}
+        except (AttributeError, TypeError):
+            # Dobles de colección mínimos en tests pueden no implementar count_documents.
+            rows = await list_feedback(limit=250)
+            return {
+                "newCount": sum(1 for row in rows if row.get("status") == "new"),
+                "pendingCount": sum(1 for row in rows if row.get("status") != "resolved"),
+            }
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para resumir feedback.") from exc
+    rows = list(_memory_feedback.values())
+    return {
+        "newCount": sum(1 for row in rows if row.get("status") == "new"),
+        "pendingCount": sum(1 for row in rows if row.get("status") != "resolved"),
+    }
+
+
 async def list_feedback_for_user(username: str, *, limit: int = 20) -> list[dict]:
     safe_limit = max(1, min(int(limit), 50))
     col = await _get_collection()

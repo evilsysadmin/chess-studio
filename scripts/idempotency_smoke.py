@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
+"""Dependency-free smoke test for the retry/idempotency domain contract."""
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend-python"))
 
-from operation_idempotency import (  # noqa: E402
+from operation_idempotency_core import (  # noqa: E402
     MAX_OPERATION_LEDGER,
+    IdempotencyConflict,
+    InvalidIdempotencyKey,
     deterministic_game_id,
+    normalize_idempotency_key,
     operation_fingerprint,
     operation_replay,
     remember_operation,
@@ -16,11 +20,33 @@ from operation_idempotency import (  # noqa: E402
 first = operation_fingerprint({"from": "e2", "to": "e4"})
 assert first == operation_fingerprint({"to": "e4", "from": "e2"})
 assert first != operation_fingerprint({"from": "d2", "to": "d4"})
+
 entry = {}
 for index in range(MAX_OPERATION_LEDGER + 7):
     remember_operation(entry, f"move-{index:08d}", f"fp-{index}", "move")
 assert len(entry["operationLedger"]) == MAX_OPERATION_LEDGER
 assert entry["operationLedger"][0]["key"] == "move-00000007"
 assert operation_replay(entry, "move-00000022", "fp-22", "move") is True
+
+try:
+    operation_replay(entry, "move-00000022", "different-fingerprint", "move")
+except IdempotencyConflict:
+    pass
+else:
+    raise AssertionError("reused operation key with different payload must conflict")
+
+assert normalize_idempotency_key(" create-0001 ") == "create-0001"
+try:
+    normalize_idempotency_key("bad key")
+except InvalidIdempotencyKey:
+    pass
+else:
+    raise AssertionError("malformed Idempotency-Key must be rejected")
+
+assert deterministic_game_id("alice", "create-0001") == deterministic_game_id("alice", "create-0001")
 assert deterministic_game_id("alice", "create-0001") != deterministic_game_id("bob", "create-0001")
-print("idempotency-smoke OK · fingerprint + bounded replay ledger + per-user deterministic game IDs")
+
+print(
+    "idempotency-smoke OK · stdlib-only · validation + fingerprint + conflict + "
+    "bounded replay ledger + per-user deterministic game IDs"
+)

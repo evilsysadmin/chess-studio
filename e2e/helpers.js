@@ -177,6 +177,7 @@ export async function mockApi(page, {
       return json({ feedback: created }, 201);
     }
     if (path.endsWith('/feedback/mine') && method === 'GET') return json({ feedback: feedback.filter((item) => item.username === 'e2e') });
+    if (path.endsWith('/admin/feedback/summary') && method === 'GET') return json({ newCount: feedback.filter((item) => item.status === 'new').length, pendingCount: feedback.filter((item) => item.status !== 'resolved').length });
     if (path.endsWith('/admin/feedback') && method === 'GET') return json({ feedback });
     const feedbackDeleteMatch = path.match(/\/admin\/feedback\/([^/]+)$/);
     if (feedbackDeleteMatch && method === 'DELETE') {

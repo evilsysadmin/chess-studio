@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOKEN_KEY } from './auth.js';
-import { deleteAdminFeedback, fetchAdminFeedback, submitFeedback, updateAdminFeedbackStatus } from './feedback.js';
+import { deleteAdminFeedback, fetchAdminFeedback, fetchAdminFeedbackSummary, submitFeedback, updateAdminFeedbackStatus } from './feedback.js';
 
 function response(status, body) {
   return {
@@ -65,6 +65,13 @@ describe('feedback API client', () => {
     expect(global.fetch.mock.calls[1][0]).toContain('/admin/feedback/f1/status');
     expect(JSON.parse(global.fetch.mock.calls[1][1].body)).toEqual({ status: 'resolved' });
   });
+  it('lee un resumen ligero para el sobre de feedback admin', async () => {
+    global.fetch.mockResolvedValueOnce(response(200, { newCount: 3, pendingCount: 4 }));
+    const summary = await fetchAdminFeedbackSummary();
+    expect(summary).toEqual({ newCount: 3, pendingCount: 4 });
+    expect(global.fetch.mock.calls[0][0]).toContain('/admin/feedback/summary');
+  });
+
   it('borra feedback admin con DELETE explícito', async () => {
     global.fetch.mockResolvedValueOnce({ ok: true, status: 204, json: async () => ({}) });
     await expect(deleteAdminFeedback('f-test')).resolves.toBe(true);

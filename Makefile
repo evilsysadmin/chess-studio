@@ -326,7 +326,7 @@ state-resilience-check:
 	node scripts/state_resilience_check.mjs
 
 idempotency-check:
-	python3 scripts/idempotency_smoke.py
+	python3 -S scripts/idempotency_smoke.py
 
 architecture-debt-check:
 	python3 scripts/architecture_debt_budget.py

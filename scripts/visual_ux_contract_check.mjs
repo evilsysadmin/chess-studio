@@ -12,6 +12,10 @@ const viewportCss = contractCss;
 const onboardingCss = contractCss;
 const finalCss = contractCss;
 const game = read('frontend/src/components/GameScreen.jsx');
+const puzzle = read('frontend/src/components/PuzzleScreen.jsx');
+const app = read('frontend/src/App.jsx');
+const adminInbox = read('frontend/src/useAdminFeedbackInbox.js');
+const feedbackE2e = read('e2e/feedback-critical.spec.js');
 const smoke = read('e2e/smoke.spec.js');
 
 const checks = [
@@ -35,6 +39,12 @@ const checks = [
   [/Combat Chess · mapa conserva art y todos los nodos dentro del lienzo/.test(smoke), 'falta regresión visual del mapa de campaña'],
   [/Math\.max\(\.\.\.heights\) - Math\.min\(\.\.\.heights\)/.test(smoke), 'los E2E deben comprobar geometría coherente de botones'],
   [/Onboarding Home · el siguiente paso se señala/.test(smoke), 'falta E2E del recorrido visual de onboarding'],
+  [/puzzle-training-workspace/.test(puzzle) && /puzzle-coach-panel/.test(puzzle) && /\.puzzle-training-workspace[\s\S]*grid-template-columns/.test(finalCss), 'Entrena tus errores debe usar tablero + coach lateral'],
+  [/REPLAY \/\/ ANÁLISIS/.test(puzzle) && /puzzle-coach-solution/.test(puzzle), 'la explicación del replay debe vivir en el panel coach'],
+  [/AdminFeedbackInboxButton/.test(app) && /fetchAdminFeedbackSummary/.test(adminInbox), 'Home admin debe avisar de feedback nuevo sin esconderlo en Mi cuenta'],
+  [/\.admin-feedback-card\.status-resolved \{ opacity: 1; \}/.test(finalCss) && /admin-feedback-delete/.test(finalCss), 'las acciones de feedback resuelto deben seguir visibles'],
+  [/resuelto mantiene Reabrir y Borrar feedback visibles/.test(feedbackE2e), 'falta E2E de borrado visible en feedback resuelto'],
+  [/admin ve un sobre en Home cuando hay mensajes nuevos/.test(feedbackE2e), 'falta E2E del inbox admin de feedback'],
 ];
 
 const failed = checks.filter(([ok]) => !ok).map(([, message]) => message);
@@ -43,4 +53,4 @@ if (failed.length) {
   for (const message of failed) console.error(` - ${message}`);
   process.exit(1);
 }
-console.log('visual-ux-contract OK · viewport + mesa de mando + mapa artístico + acciones + onboarding protegidos');
+console.log('visual-ux-contract OK · viewport + mesa de mando + mapa artístico + acciones + onboarding + coach de replay + inbox admin protegidos');

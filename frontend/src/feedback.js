@@ -20,6 +20,10 @@ export function fetchAdminFeedback() {
   return requestJson(`${BASE_URL}/admin/feedback`, { headers: { ...authHeader() } });
 }
 
+export function fetchAdminFeedbackSummary({ signal } = {}) {
+  return requestJson(`${BASE_URL}/admin/feedback/summary`, { headers: { ...authHeader() }, signal });
+}
+
 export function updateAdminFeedbackStatus(feedbackId, status) {
   return requestJson(`${BASE_URL}/admin/feedback/${encodeURIComponent(feedbackId)}/status`, {
     method: 'POST',

@@ -41,6 +41,8 @@ import UserSettingsPanel from './components/UserSettingsPanel.jsx';
 import AccountModal from './components/AccountModal.jsx';
 import UserReleaseNotesModal from './components/UserReleaseNotesModal.jsx';
 import FeedbackModal from './components/FeedbackModal.jsx';
+import AdminFeedbackInboxButton from './components/AdminFeedbackInboxButton.jsx';
+import { useAdminFeedbackInbox } from './useAdminFeedbackInbox.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
@@ -103,6 +105,7 @@ function AppInner({ isAdminUser }) {
 
   usePresenceHeartbeat(view);
 
+  const adminFeedbackNewCount = useAdminFeedbackInbox({ enabled: isAdminUser, view });
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -877,6 +880,7 @@ function AppInner({ isAdminUser }) {
                 <span aria-hidden="true">✦</span>
                 <span>Feedback</span>
               </button>
+              {isAdminUser && view === 'menu' && <AdminFeedbackInboxButton count={adminFeedbackNewCount} onOpen={() => navigateTo('admin')} />}
               <div className="masthead-account-stack">
                 <div className="masthead-account-menu" ref={accountMenuRef}>
                   <button

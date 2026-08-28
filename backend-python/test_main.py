@@ -1682,6 +1682,26 @@ def test_authenticated_user_can_submit_feedback_and_admin_can_read_it(monkeypatc
     assert body['feedback'][0]['message'] == 'La home de campaña me satura un poco.'
 
 
+
+def test_admin_feedback_summary_is_lightweight_and_counts_new(monkeypatch):
+    import main as main_module
+
+    created = client.post('/api/feedback', json={'category': 'general', 'message': 'Aviso nuevo para el admin.'})
+    assert created.status_code == 201
+    feedback_id = created.json()['feedback']['id']
+    monkeypatch.setattr(main_module, '_ADMIN_USERNAMES', {'testuser'})
+
+    summary = client.get('/api/admin/feedback/summary')
+    assert summary.status_code == 200
+    assert summary.json()['newCount'] == 1
+    assert summary.json()['pendingCount'] == 1
+
+    client.post(f'/api/admin/feedback/{feedback_id}/status', json={'status': 'resolved'})
+    after = client.get('/api/admin/feedback/summary').json()
+    assert after['newCount'] == 0
+    assert after['pendingCount'] == 0
+
+
 def test_feedback_accepts_only_real_png_jpg_gif_and_admin_can_open_attachment(monkeypatch):
     import base64
     import main as main_module
