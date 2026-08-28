@@ -558,7 +558,7 @@ def _foreground_summary(user_doc: dict, *, freshness_seconds: int = 150) -> dict
     return {"foreground": active, "foregroundAgeSeconds": age}
 
 
-def _presence_summary(last_activity) -> dict:
+def _presence_summary(last_activity, presence_online=None) -> dict:
     if not last_activity:
         return {"lastActivity": None, "presence": "never", "presenceAgeSeconds": None}
     try:
@@ -569,7 +569,9 @@ def _presence_summary(last_activity) -> dict:
     except (TypeError, ValueError):
         return {"lastActivity": str(last_activity), "presence": "offline", "presenceAgeSeconds": None}
 
-    if age <= 150:
+    if presence_online is False:
+        presence = "offline"
+    elif age <= 150:
         presence = "online"
     elif age <= 5 * 60:
         presence = "idle"

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getToken, getUsername, isLoggedIn, logout, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
+import { getToken, getUsername, isLoggedIn, logout, reportLogoutPresence, register, login, authHeader, wakeBackend, fetchMe, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
 import { APP_RELEASE } from './release.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
@@ -122,6 +122,22 @@ describe('register/login', () => {
 
     expect(setProfileStorageItem('chess-study-tournament', '{"points":999}')).toBe(false);
     expect(localStorage.getItem('chess-study-tournament')).toBe('{"points":42}');
+  });
+});
+
+describe('logout presence', () => {
+  it('avisa al backend antes de borrar la sesión local', async () => {
+    localStorage.setItem('chess-study-auth-token', 'logout-token');
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+    await expect(reportLogoutPresence()).resolves.toBe(true);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/logout'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer logout-token' }),
+        keepalive: true,
+      }),
+    );
   });
 });
 

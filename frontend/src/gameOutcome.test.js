@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chessGameExitDisposition, gameExitDisposition, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
+import { chessGameExitDisposition, gameExitDisposition, humanHasLostPiece, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
 
 describe('completed game outcomes', () => {
   it('solo considera completadas victoria, tablas y derrota', () => {
@@ -39,9 +39,29 @@ describe('completed game outcomes', () => {
     expect(gameExitDisposition({ moveCount: humanMoveCount(2, 'b'), explicitAction: true })).toBe('forfeit');
   });
 
-  it('centraliza el conteo humano para que torneo y partida normal no diverjan', () => {
-    expect(chessGameExitDisposition({ humanColor: 'b', history: [{ san: 'e4' }] }, { explicitAction: true })).toBe('cancel');
-    expect(chessGameExitDisposition({ humanColor: 'b', history: [{ san: 'e4' }, { san: 'c5' }] }, { explicitAction: true })).toBe('forfeit');
-    expect(chessGameExitDisposition({ humanColor: 'w', history: [{ san: 'e4' }] }, { explicitAction: true })).toBe('forfeit');
+  it('no penaliza hasta que el humano haya perdido realmente una pieza', () => {
+    const whiteUntouched = { humanColor: 'w', history: [
+      { san: 'e4', captured: false },
+      { san: 'e5', captured: false },
+      { san: 'Qh5', captured: false },
+      { san: 'Nc6', captured: false },
+    ] };
+    expect(humanHasLostPiece(whiteUntouched)).toBe(false);
+    expect(chessGameExitDisposition(whiteUntouched, { explicitAction: true })).toBe('cancel');
+
+    const whiteLostPawn = { ...whiteUntouched, history: [...whiteUntouched.history,
+      { san: 'Bc4', captured: false },
+      { san: 'Qxh4', captured: true },
+    ] };
+    expect(humanHasLostPiece(whiteLostPawn)).toBe(true);
+    expect(chessGameExitDisposition(whiteLostPawn, { explicitAction: true })).toBe('forfeit');
+  });
+
+  it('centraliza el criterio para blancas y negras sin penalizar la apertura automática', () => {
+    expect(chessGameExitDisposition({ humanColor: 'b', history: [{ san: 'e4', captured: false }] }, { explicitAction: true })).toBe('cancel');
+    expect(chessGameExitDisposition({ humanColor: 'b', history: [{ san: 'e4', captured: false }, { san: 'c5', captured: false }] }, { explicitAction: true })).toBe('cancel');
+    expect(chessGameExitDisposition({ humanColor: 'b', history: [
+      { san: 'e4', captured: false }, { san: 'c5', captured: false }, { san: 'Bxc5', captured: true },
+    ] }, { explicitAction: true })).toBe('forfeit');
   });
 });

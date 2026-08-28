@@ -24,8 +24,9 @@ import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboar
 import { loadPuzzlesSolved } from '../puzzleStats.js';
 import { APP_RELEASE } from '../release.js';
 import { loadRivalry } from '../rivalry.js';
-import { buildMatthiasHomeVisit, buildMatthiasIntroVisit, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
+import { buildMatthiasHomeVisit, buildMatthiasIntroVisit, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasIntroPlacement, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -73,11 +74,14 @@ export default function Menu({
   const [footerPanel, setFooterPanel] = useState(null);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const [matthiasVisit, setMatthiasVisit] = useState(null);
+  const [matthiasGuidesInitialWelcome] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1' && !matthiasOnboarded());
   const matthiasRollRef = useRef(Math.random());
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
-  const blockingHomeOverlay = suppressHomeNudge || showQuickMatch || showMirrorMode || showHomeGuide || Boolean(footerPanel) || Boolean(error);
+  const matthiasIntroPending = !matthiasOnboarded();
+  const matthiasIntroBlocked = suppressHomeNudge || showQuickMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
+  const blockingHomeOverlay = matthiasIntroBlocked || showHomeGuide;
   const hasOpenOverlay = blockingHomeOverlay || Boolean(matthiasVisit);
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const activity = useMemo(() => loadGameActivity(), []);
@@ -97,14 +101,22 @@ export default function Menu({
   }), [activity]);
 
   useEffect(() => {
-    if (matthiasVisit || blockingHomeOverlay) return;
-    // Presentación persistente: un perfil antiguo sin la versión confirmada
-    // recibe una única presentación real. No marcamos el flag hasta que React
-    // haya montado el nudge; así un render abortado no cuenta como 'visto'.
-    if (!matthiasOnboarded()) {
+    if (matthiasVisit) return;
+    // En una cuenta nueva Matthias no compite con la guía: la propia guía es
+    // su presentación. Si la guía no está disponible, conserva el nudge
+    // independiente como fallback para perfiles que aún no lo conocen.
+    if (matthiasIntroPending) {
+      const introPlacement = matthiasIntroPlacement({
+        onboarded: false,
+        guideEnabled: features.homeGuide !== false,
+        guideVisible: showHomeGuide,
+        blocked: matthiasIntroBlocked,
+      });
+      if (introPlacement !== 'visit') return;
       setMatthiasVisit(buildMatthiasIntroVisit());
       return;
     }
+    if (blockingHomeOverlay) return;
     const show = shouldShowMatthiasHome({
       hasOpenOverlay: blockingHomeOverlay,
       sessionSeen: matthiasHomeSessionSeen(),
@@ -114,15 +126,22 @@ export default function Menu({
     if (!show) return;
     markMatthiasHomeShown();
     setMatthiasVisit(matthiasCandidate);
-  }, [blockingHomeOverlay, matthiasCandidate, matthiasVisit]);
+  }, [blockingHomeOverlay, features.homeGuide, matthiasCandidate, matthiasIntroBlocked, matthiasIntroPending, matthiasVisit, showHomeGuide]);
 
   useEffect(() => {
-    if (matthiasVisit?.kind !== 'intro' || matthiasOnboarded()) return;
-    // Este efecto corre después del commit visual: a partir de aquí la
-    // presentación sí ha existido en Home y no debe repetirse para el perfil.
+    if (matthiasOnboarded()) return;
+    const standaloneIntroVisible = matthiasVisit?.kind === 'intro';
+    const guideIntroVisible = matthiasGuidesInitialWelcome
+      && features.homeGuide !== false
+      && showHomeGuide
+      && !matthiasIntroBlocked;
+    if (!standaloneIntroVisible && !guideIntroVisible) return;
+    // Se marca sólo después de que React haya pintado una presentación real.
+    // `matthiasGuidesInitialWelcome` es un snapshot de esta primera visita, de
+    // modo que el texto no desaparece al persistir la marca de onboarding.
     markMatthiasOnboarded();
     markMatthiasHomeShown();
-  }, [matthiasVisit]);
+  }, [features.homeGuide, matthiasGuidesInitialWelcome, matthiasIntroBlocked, matthiasVisit, showHomeGuide]);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());
@@ -206,10 +225,15 @@ export default function Menu({
       {features.homeGuide !== false && showHomeGuide && (
         <section className="home-start-guide" aria-label="Guía rápida de Chess Studio">
           <button type="button" className="home-start-guide-close" onClick={dismissHomeGuide} aria-label="Cerrar guía rápida">×</button>
-          <div className="home-start-guide-copy">
-            <span className="section-label">PRIMEROS 60 SEGUNDOS · {onboarding.completed}/3</span>
-            <h2>{onboarding.complete ? 'Ya conoces el circuito básico.' : freshAccount ? 'Tres pasos y ya sabes dónde está todo.' : 'Sigue desde el siguiente paso útil.'}</h2>
-            <p>{onboarding.complete ? 'Juega, entrena y revisa tu diagnóstico cuando te apetezca. El resto de modos queda detrás de un clic.' : 'No necesitas aprender todos los modos ahora. El resplandor dorado marca tu siguiente paso; vuelve a Home y la guía continuará donde toca.'}</p>
+          <div className="home-start-guide-copy home-start-guide-matthias">
+            <img className="home-start-guide-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+            <div className="home-start-guide-copy-body">
+              <span className="section-label">{CPU_IDENTITY.name} · GUÍA DE CAMPO · {onboarding.completed}/3</span>
+              <h2>{matthiasGuidesInitialWelcome ? 'Guten Morgen. Soy Matthias.' : onboarding.complete ? 'Ya conoces el circuito básico.' : freshAccount ? 'Tres pasos y ya sabes dónde está todo.' : 'Sigue desde el siguiente paso útil.'}</h2>
+              <p>{matthiasGuidesInitialWelcome
+                ? 'El mayor cabronazo ajedrecista a este lado del Tajo. Te ayudaré a triunfar o fracasar; lo que tú decidas. Primero te enseño las tres cosas que realmente necesitas.'
+                : onboarding.complete ? 'Bien. Ya sabes moverte por aquí. Juega, entrena y revisa tu diagnóstico cuando te apetezca.' : 'No necesitas aprender todos los modos ahora. El resplandor dorado marca tu siguiente paso; vuelve a Home y yo seguiré desde donde toca.'}</p>
+            </div>
           </div>
           <div className="home-start-guide-path" aria-label="Primeros pasos de Chess Studio">
             {onboarding.steps.map((step, index) => (

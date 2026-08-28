@@ -234,7 +234,7 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
                 "lastClientIp": client_ip,
                 "lastClientCountry": client_country,
                 "networkLocationStatus": "resolved" if client_country else network_location_status(client_ip),
-                **_presence_summary(activity_anchor),
+                **_presence_summary(activity_anchor, user_doc.get("presence_online")),
                 **_foreground_summary(user_doc),
                 **_extract_summary_stats(profile),
             })

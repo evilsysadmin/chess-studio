@@ -28,7 +28,7 @@ import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../
 import { useGameClock } from '../useGameClock.js';
 import { nextBestAction } from '../nextBestAction.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import { humanMoveCount } from '../gameOutcome.js';
+import { humanHasLostPiece } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
 import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
 import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
@@ -971,8 +971,8 @@ export default function GameScreen({
           <div className="army-card abandon-confirm-card" role="dialog" aria-modal="true" aria-labelledby="abandon-confirm-title">
             <span className="eyebrow">Antes de salir</span>
             <h3 id="abandon-confirm-title">¿Abandonar la partida?</h3>
-            {humanMoveCount(game.history.length, humanColor) === 0 ? (
-              <p>La partida se cancelará sin resultado. <strong>Tu rating no cambiará.</strong></p>
+            {!humanHasLostPiece(game) ? (
+              <p>La partida se cancelará sin resultado porque todavía no has perdido ninguna pieza. <strong>Tu rating no cambiará.</strong></p>
             ) : abandonRatingPreview ? (
               <p>Se registrará como derrota. <strong>Rating estimado {abandonRatingPreview.delta >= 0 ? '+' : ''}{abandonRatingPreview.delta} · {abandonRatingPreview.before} → {abandonRatingPreview.after}.</strong></p>
             ) : (
@@ -980,7 +980,7 @@ export default function GameScreen({
             )}
             <div className="abandon-confirm-actions">
               <button type="button" className="secondary-btn" autoFocus onClick={() => setShowAbandonConfirm(false)}>Seguir jugando</button>
-              <button type="button" className="danger-btn" onClick={handleAbandon}>{humanMoveCount(game.history.length, humanColor) === 0 ? 'Cancelar partida' : 'Abandonar y asumir resultado'}</button>
+              <button type="button" className="danger-btn" onClick={handleAbandon}>{!humanHasLostPiece(game) ? 'Cancelar sin penalización' : 'Abandonar y asumir resultado'}</button>
             </div>
           </div>
         </div>

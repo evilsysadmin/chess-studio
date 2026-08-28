@@ -23,7 +23,7 @@ import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
-import { chessGameExitDisposition, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
+import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
@@ -68,7 +68,7 @@ import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
 import { buildGameCrimeReplayRecord } from './crimeReplay.js';
 import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
-import { logout } from './auth.js';
+import { logout, reportLogoutPresence } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
 import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
@@ -223,6 +223,7 @@ function AppInner({ isAdminUser }) {
     setLoggingOut(true);
     try {
       await pushProfileToServer({ throwOnError: true });
+      await reportLogoutPresence();
       logout();
       window.location.reload();
     } catch (error) {
@@ -382,7 +383,7 @@ function AppInner({ isAdminUser }) {
         setExitNotice(summary);
       } else {
         recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }), difficulty: game.difficulty });
-        setExitNotice({ outcome: 'cancelled', title: 'Partida cancelada', detail: 'No hiciste ninguna jugada. Tu rating no cambia.', ratingApplied: false });
+        setExitNotice({ outcome: 'cancelled', title: 'Partida cancelada', detail: 'No habías perdido ninguna pieza. Tu rating no cambia.', ratingApplied: false });
       }
       }
     }

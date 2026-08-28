@@ -647,6 +647,16 @@ async def activity_heartbeat(request: Request, payload: Optional[ActivityHeartbe
     return None
 
 
+@app.post("/api/auth/logout", status_code=204)
+@limiter.limit("30/minute")
+async def logout_presence(_request: Request, username: str = Depends(get_current_user)):
+    # El token es stateless; esta ruta no pretende revocarlo. Sólo registra un
+    # cierre explícito para que presencia/admin no esperen al TTL de heartbeat.
+    try:
+        await ustore.mark_logged_out(username)
+    except PersistentStorageUnavailable:
+        access_logger.warning("No se pudo cerrar presencia para user=%s", username)
+    return None
 
 
 # Feedback/admin routes live in admin_api.py.

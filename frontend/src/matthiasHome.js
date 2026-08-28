@@ -78,6 +78,16 @@ export function markMatthiasOnboarded() {
   setProfileStorageItem(MATTHIAS_ONBOARDED_KEY, MATTHIAS_ONBOARDED_VERSION);
 }
 
+export function matthiasIntroPlacement({
+  onboarded = false,
+  guideEnabled = true,
+  guideVisible = false,
+  blocked = false,
+} = {}) {
+  if (onboarded || blocked) return 'none';
+  return guideEnabled && guideVisible ? 'guide' : 'visit';
+}
+
 export function buildMatthiasIntroVisit() {
   return {
     kind: 'intro',

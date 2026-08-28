@@ -114,6 +114,20 @@ def test_status_hides_authenticated_admin_from_public_presence(monkeypatch):
     assert r.json() == {"ok": True, "onlineUsers": 0, "presenceAvailable": True}
 
 
+def test_logout_presence_removes_user_from_online_count_immediately(monkeypatch):
+    import main as main_module
+
+    monkeypatch.setattr(main_module, "_ADMIN_USERNAMES", set())
+    asyncio.run(ustore.touch_last_activity("testuser", force=True, foreground=True))
+    assert client.get("/api/status").json()["onlineUsers"] == 1
+
+    response = client.post("/api/auth/logout")
+    assert response.status_code == 204
+    assert ustore._memory_users["testuser"]["presence_online"] is False
+    assert ustore._memory_users["testuser"]["is_foreground"] is False
+    assert client.get("/api/status").json()["onlineUsers"] == 0
+
+
 def test_status_counts_recent_background_session_as_online(monkeypatch):
     import main as main_module
 
@@ -1303,6 +1317,7 @@ def test_presence_summary_classifies_online_idle_recent_offline_and_never():
 
     now = datetime.now(timezone.utc)
     assert _presence_summary(now.isoformat())["presence"] == "online"
+    assert _presence_summary(now.isoformat(), False)["presence"] == "offline"
     assert _presence_summary((now - timedelta(minutes=4)).isoformat())["presence"] == "idle"
     assert _presence_summary((now - timedelta(minutes=10)).isoformat())["presence"] == "recent"
     assert _presence_summary((now - timedelta(hours=2)).isoformat())["presence"] == "offline"

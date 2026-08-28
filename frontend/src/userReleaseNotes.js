@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfa',
+    title: 'Matthias recibe a los reclutas',
+    highlights: [
+      'Matthias se presenta dentro de la propia guía inicial y la lidera, en vez de competir con ella por el espacio de Home.',
+      'Cerrar sesión te quita de la presencia online de inmediato y Administración actualiza automáticamente quién sigue conectado cada 30 segundos.',
+      'Abandonar antes de haber perdido una pieza cancela sin penalización, y Retro Player recupera el audio al primer gesto tras un refresh si el navegador dejó Web Audio suspendido.',
+    ],
+  },
+  {
     release: 'v16.6dm46zez',
     title: 'Matthias abre despacho',
     highlights: [

@@ -243,7 +243,7 @@ async def count_online_users(
     cutoff_iso = cutoff.isoformat()
     col = await _get_collection()
     if col is not None:
-        query: dict = {"last_activity": {"$gte": cutoff_iso}}
+        query: dict = {"last_activity": {"$gte": cutoff_iso}, "presence_online": {"$ne": False}}
         if excluded:
             query["_id"] = {"$nin": sorted(excluded)}
         try:
@@ -254,6 +254,8 @@ async def count_online_users(
     count = 0
     for username, user in _memory_users.items():
         if str(username).lower() in excluded:
+            continue
+        if user.get("presence_online") is False:
             continue
         raw = user.get("last_activity")
         if not raw:
@@ -267,6 +269,37 @@ async def count_online_users(
         except (TypeError, ValueError):
             continue
     return count
+
+
+async def mark_logged_out(username: str) -> str:
+    """Cierra la presencia de una sesión de forma explícita.
+
+    El JWT sigue siendo stateless; este estado sólo corrige la semántica de
+    presencia para que Admin/status no tengan que esperar al TTL después de un
+    logout real. Cualquier login/heartbeat posterior vuelve a marcar online.
+    """
+    value = datetime.now(timezone.utc).isoformat()
+    col = await _get_collection()
+    if col is not None:
+        try:
+            await col.update_one(
+                {"_id": username},
+                {"$set": {
+                    "presence_online": False,
+                    "is_foreground": False,
+                    "foreground_updated_at": value,
+                }},
+            )
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
+    else:
+        user = _memory_users.get(username)
+        if user is not None:
+            user["presence_online"] = False
+            user["is_foreground"] = False
+            user["foreground_updated_at"] = value
+    _last_activity_write_monotonic.pop(username, None)
+    return value
 
 
 async def touch_last_activity(
@@ -295,7 +328,7 @@ async def touch_last_activity(
     col = await _get_collection()
     if col is not None:
         try:
-            fields = {"last_activity": value}
+            fields = {"last_activity": value, "presence_online": True}
             if activity:
                 fields["current_activity"] = activity
             if foreground is not None:
@@ -323,6 +356,7 @@ async def touch_last_activity(
         user = _memory_users.get(username)
         if user is not None:
             user["last_activity"] = value
+            user["presence_online"] = True
             if activity:
                 user["current_activity"] = activity
             if foreground is not None:

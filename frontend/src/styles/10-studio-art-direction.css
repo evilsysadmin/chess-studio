@@ -23,15 +23,15 @@ body {
   margin-bottom: clamp(.85rem, 1.8vw, 1.35rem);
   gap: .58rem;
 }
-.masthead-top-row { min-height: 2.8rem; }
+.masthead-top-row { min-height: 3.25rem; }
 .masthead-text { display: grid; justify-items: center; gap: .05rem; }
 .masthead-kicker {
   color: var(--brass-dim);
-  font: 700 .56rem/1.2 var(--font-mono);
+  font: 700 .64rem/1.2 var(--font-mono);
   letter-spacing: .2em;
 }
 .masthead h1 {
-  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  font-size: clamp(1.95rem, 3.5vw, 2.85rem);
   font-style: normal;
   letter-spacing: -.025em;
   line-height: 1.05;

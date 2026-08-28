@@ -7,6 +7,7 @@ import {
   buildMatthiasIntroVisit,
   markMatthiasHomeShown,
   markMatthiasOnboarded,
+  matthiasIntroPlacement,
   matthiasOnboarded,
   matthiasHomeLastShownAt,
   matthiasHomeSessionSeen,
@@ -25,6 +26,14 @@ describe('Matthias en Home', () => {
     expect(matthiasOnboarded()).toBe(false);
     markMatthiasOnboarded();
     expect(matthiasOnboarded()).toBe(true);
+  });
+
+  it('deja que Matthias lidere la guía inicial sin apilar otra presentación', () => {
+    expect(matthiasIntroPlacement({ onboarded: false, guideEnabled: true, guideVisible: true, blocked: false })).toBe('guide');
+    expect(matthiasIntroPlacement({ onboarded: false, guideEnabled: false, guideVisible: true, blocked: false })).toBe('visit');
+    expect(matthiasIntroPlacement({ onboarded: false, guideEnabled: true, guideVisible: false, blocked: false })).toBe('visit');
+    expect(matthiasIntroPlacement({ onboarded: false, guideEnabled: true, guideVisible: true, blocked: true })).toBe('none');
+    expect(matthiasIntroPlacement({ onboarded: true, guideEnabled: true, guideVisible: true, blocked: false })).toBe('none');
   });
 
   it('sólo recuerda cagadas que existen realmente en el expediente', () => {

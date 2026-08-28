@@ -1,4 +1,5 @@
 import { claimMediaSessionHandlers, requestPlaybackAudioSession } from './mediaControls.js';
+import { resumeAudioContext } from './audioContext.js';
 
 // Mantiene los controles multimedia ligados a la sesión autenticada y no a
 // una pantalla concreta. El reproductor visual puede montarse/desmontarse al
@@ -7,6 +8,7 @@ export function bindAuthenticatedMediaSession(audio, {
   nav = globalThis.navigator,
   win = globalThis.window,
   doc = globalThis.document,
+  resumeAudio = resumeAudioContext,
 } = {}) {
   if (!audio) return () => {};
 
@@ -48,6 +50,11 @@ export function bindAuthenticatedMediaSession(audio, {
   let release = claim();
   const reclaim = () => {
     if (doc?.visibilityState === 'hidden') return;
+    const live = snapshot();
+    // Tras F5 algunos navegadores restauran el transporte como 'playing' pero
+    // dejan Web Audio suspendido por autoplay. El primer gesto/foco visible
+    // reanuda ese mismo contexto sin obligar a hacer Stop + Play.
+    if (live.status === 'playing' || live.status === 'gap') Promise.resolve(resumeAudio?.()).catch(() => {});
     release?.();
     release = claim();
   };

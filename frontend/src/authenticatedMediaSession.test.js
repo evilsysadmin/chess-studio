@@ -42,4 +42,27 @@ describe('media session autenticada', () => {
     release();
     expect(nav.mediaSession.setActionHandler).toHaveBeenCalledWith('nexttrack', null);
   });
+  it('reanuda Web Audio en el primer gesto tras F5 si el transporte seguía reproduciendo', () => {
+    const listeners = new Map();
+    const win = {
+      addEventListener: (name, fn) => listeners.set(name, fn),
+      removeEventListener: () => {},
+    };
+    const doc = {
+      visibilityState: 'visible',
+      addEventListener: (name, fn) => listeners.set(name, fn),
+      removeEventListener: () => {},
+    };
+    const audio = {
+      getAmbientPlaybackState: () => ({ status: 'playing' }),
+      startAmbientMusic: vi.fn(), pauseAmbientMusic: vi.fn(), stopAmbientMusic: vi.fn(),
+      selectRelativeAmbientTheme: vi.fn(), seekAmbientMusic: vi.fn(),
+    };
+    const resumeAudio = vi.fn(() => Promise.resolve(true));
+    const release = bindAuthenticatedMediaSession(audio, { win, doc, nav: {}, resumeAudio });
+    listeners.get('pointerdown')?.({});
+    expect(resumeAudio).toHaveBeenCalledTimes(1);
+    release();
+  });
+
 });

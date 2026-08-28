@@ -564,7 +564,7 @@ export default function AdminScreen({ onExit }) {
         </section>
         {users && (
           <section className="admin-presence-block" aria-label="Presencia de usuarios">
-            <div className="admin-presence-block-heading"><div><span className="section-label">Presencia</span><h3>Ahora mismo</h3></div><small>Sin telemetría nueva · heartbeat existente</small></div>
+            <div className="admin-presence-block-heading"><div><span className="section-label">Presencia</span><h3>Ahora mismo</h3></div><small>Vista admin · refresco 30 s · heartbeat 2 min</small></div>
             <div className="admin-presence-summary">
               <div><strong>{foregroundCount}</strong><span>en primer plano</span></div>
               <div><strong>{onlineCount}</strong><span>en línea</span></div>

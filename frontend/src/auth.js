@@ -86,6 +86,24 @@ function saveSession(token, username) {
   clearHomePlayNudgeSession();
 }
 
+export async function reportLogoutPresence() {
+  const token = getToken();
+  if (!token) return false;
+  try {
+    const response = await request(`${BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      keepalive: true,
+      timeoutMs: 1500,
+    });
+    return !!response?.ok;
+  } catch {
+    // Presencia es auxiliar: nunca impedimos que el usuario cierre sesión si
+    // el backend no responde. El TTL existente seguirá siendo el fallback.
+    return false;
+  }
+}
+
 export function logout() {
   clearAmbientThemeSessionStorage();
   clearSessionView();

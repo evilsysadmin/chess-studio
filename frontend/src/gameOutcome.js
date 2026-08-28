@@ -13,12 +13,24 @@ export function humanMoveCount(moveCount = 0, humanColor = 'w') {
   return humanColor === 'b' ? Math.floor(plies / 2) : Math.ceil(plies / 2);
 }
 
-export function shouldTreatExitAsForfeit({ moveCount = 0, isGameOver = false, learningMode = false, trainingPosition = false } = {}) {
-  return Number(moveCount || 0) > 0 && !isGameOver && !learningMode && !trainingPosition;
+export function humanHasLostPiece(game = {}) {
+  const history = Array.isArray(game?.history) ? game.history : [];
+  const humanColor = game?.humanColor === 'b' ? 'b' : 'w';
+  const initialTurn = String(game?.initialFen || '').split(/\s+/)[1] === 'b' ? 'b' : 'w';
+  return history.some((move, index) => {
+    if (!move?.captured) return false;
+    const moverColor = index % 2 === 0 ? initialTurn : (initialTurn === 'w' ? 'b' : 'w');
+    return moverColor !== humanColor;
+  });
+}
+
+export function shouldTreatExitAsForfeit({ moveCount = 0, humanPieceLost = true, isGameOver = false, learningMode = false, trainingPosition = false } = {}) {
+  return Number(moveCount || 0) > 0 && humanPieceLost && !isGameOver && !learningMode && !trainingPosition;
 }
 
 export function gameExitDisposition({
   moveCount = 0,
+  humanPieceLost = true,
   isGameOver = false,
   learningMode = false,
   trainingPosition = false,
@@ -27,14 +39,17 @@ export function gameExitDisposition({
 } = {}) {
   // Un cierre/recarga con snapshot recuperable no es una rendición. Sólo una
   // acción explícita del usuario puede convertir una partida viva en forfeit.
+  // Además damos salida limpia mientras el jugador todavía no haya perdido
+  // material: salir pronto no ensucia rating ni estadísticas.
   if (!explicitAction && recoverableSession) return 'resume';
-  if (explicitAction && shouldTreatExitAsForfeit({ moveCount, isGameOver, learningMode, trainingPosition })) return 'forfeit';
+  if (explicitAction && shouldTreatExitAsForfeit({ moveCount, humanPieceLost, isGameOver, learningMode, trainingPosition })) return 'forfeit';
   return 'cancel';
 }
 
 export function chessGameExitDisposition(game, options = {}) {
   return gameExitDisposition({
     moveCount: humanMoveCount(game?.history?.length || 0, game?.humanColor),
+    humanPieceLost: humanHasLostPiece(game),
     isGameOver: !!game?.isGameOver,
     ...options,
   });
