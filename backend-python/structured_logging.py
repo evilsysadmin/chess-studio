@@ -89,12 +89,16 @@ def emit_http_event(
     if client_release:
         payload["client_release"] = str(client_release)[:40]
     try:
-        from tracing import current_trace_id
+        from tracing import current_trace_id, current_trace_sampled
         trace_id = current_trace_id()
+        trace_sampled = current_trace_sampled()
     except Exception:
         trace_id = None
+        trace_sampled = None
     if trace_id:
         payload["trace_id"] = trace_id
+        if trace_sampled is not None:
+            payload["trace_sampled"] = bool(trace_sampled)
     if exception:
         payload["exception"] = True
     clean_path = normalize_unmatched_path(request_path)

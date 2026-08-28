@@ -1723,6 +1723,20 @@ def test_feedback_accepts_only_real_png_jpg_gif_and_admin_can_open_attachment(mo
     assert disguised.status_code == 400
 
 
+def test_admin_can_delete_feedback(monkeypatch):
+    monkeypatch.setenv('ADMIN_USERNAMES', '*')
+    created = client.post('/api/feedback', json={'category': 'general', 'message': 'Mensaje temporal de prueba.'})
+    assert created.status_code == 201
+    feedback_id = created.json()['feedback']['id']
+
+    deleted = client.delete(f'/api/admin/feedback/{feedback_id}')
+    assert deleted.status_code == 204
+    listed = client.get('/api/admin/feedback')
+    assert listed.status_code == 200
+    assert all(item['id'] != feedback_id for item in listed.json()['feedback'])
+    assert client.delete(f'/api/admin/feedback/{feedback_id}').status_code == 404
+
+
 def test_non_admin_cannot_read_feedback():
     response = client.get('/api/admin/feedback')
     assert response.status_code == 403

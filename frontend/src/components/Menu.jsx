@@ -174,6 +174,9 @@ export default function Menu({
               </span>
             ))}
           </div>
+          {onboarding.next === 'game' && (
+            <p className="home-onboarding-tip"><b>Reto de partida:</b> a veces Torneo te propone un objetivo extra para esa partida. Es opcional, no cambia las reglas ni el rating y sirve como meta concreta de progreso.</p>
+          )}
           <div className="home-start-guide-actions">
             <button type="button" className="primary-btn" onClick={runOnboardingNext}>
               {onboarding.next === 'game' ? (hasSavedGame ? 'Continuar partida' : 'Jugar primer rival') : onboarding.next === 'puzzle' ? 'Resolver un puzzle' : onboarding.next === 'insights' ? 'Abrir Así juegas' : 'Listo'}
@@ -369,6 +372,7 @@ export default function Menu({
                 <dl className="home-footer-faq">
                   <div><dt>¿Por dónde empiezo?</dt><dd>Partida rápida va al grano; Torneo añade progresión; Combat Chess es la campaña táctica persistente.</dd></div>
                   <div><dt>¿La práctica cambia mi rating?</dt><dd>No. La partida de práctica está pensada para probar ideas y usar pistas sin tocar el rating.</dd></div>
+                  <div><dt>¿Qué es un Reto de partida?</dt><dd>Un objetivo opcional para esa partida —por ejemplo ganar sin pistas o llegar a cierto movimiento—. No cambia las reglas ni el rating; sí puede contar para progreso y logros.</dd></div>
                   <div><dt>¿Qué son los puzzles personales?</dt><dd>Posiciones nacidas de errores reales de tus partidas para volver a entrenar justo lo que más se repite.</dd></div>
                   <div><dt>¿Se guarda una partida en curso?</dt><dd>Chess Studio intenta conservar la sesión activa y muestra el estado de guardado durante la partida. Si una recuperación falla, ofrece reintento antes de descartar nada.</dd></div>
                 </dl>

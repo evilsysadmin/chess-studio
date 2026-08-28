@@ -25,4 +25,12 @@ describe('campaign map visual model', () => {
     expect(campaignNodePoint(node, 'desktop').x).toBeGreaterThan(campaignNodePoint(node, 'desktop').y);
     expect(campaignNodePoint(node, 'mobile').y).toBeGreaterThan(campaignNodePoint(node, 'mobile').x);
   });
+  it('mantiene BASE y boss lejos de los bordes en desktop', () => {
+    const base = campaignNodePoint({ stage:0, lane:1 }, 'desktop');
+    const boss = campaignNodePoint({ stage:7, lane:1 }, 'desktop');
+    expect(base.x).toBeGreaterThanOrEqual(100);
+    expect(boss.x).toBeLessThanOrEqual(1020);
+    expect(boss.x - base.x).toBeGreaterThan(850);
+  });
+
 });

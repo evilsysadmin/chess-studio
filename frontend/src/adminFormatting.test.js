@@ -62,8 +62,8 @@ describe('formato temporal del panel admin', () => {
 
 
   it('no enseña slugs internos en Actividad reciente', () => {
-    expect(adminActivityTypeLabel({ type: 'contract-loss' })).toBe('Contrato fallido');
-    expect(adminActivityTypeLabel({ type: 'contract-win' })).toBe('Contrato cumplido');
+    expect(adminActivityTypeLabel({ type: 'contract-loss' })).toBe('Reto fallido');
+    expect(adminActivityTypeLabel({ type: 'contract-win' })).toBe('Reto cumplido');
     expect(adminActivityTypeLabel({ type: 'weird-old-event' })).toBe('Weird old event');
     expect(adminActivityTypeLabel({ type: 'contract-loss', modeLabel: 'Ejecución sumaria' })).toBe('Ejecución sumaria');
   });

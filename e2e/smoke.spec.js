@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithHeading, buttonWithVisibleText, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
+import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
@@ -98,6 +98,39 @@ test('Combat Chess · Campaña abre el mapa estratégico y mantiene la intel ocu
 });
 
 
+test('Combat Chess · mapa conserva art y todos los nodos dentro del lienzo', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+
+  const mapRegion = await openCampaignMap(page);
+  const canvas = mapRegion.locator('.combat-campaign-map');
+  const art = canvas.locator('.campaign-map-art');
+  await expect(canvas).toBeVisible();
+  await expect(art).toBeVisible();
+
+  const background = await art.evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(background).not.toBe('none');
+
+  const geometry = await canvas.evaluate((element) => {
+    const outer = element.getBoundingClientRect();
+    const box = (node) => {
+      const rect = node.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    };
+    const nodes = [...element.querySelectorAll('.campaign-map-point')].map(box);
+    const decisions = [...element.querySelectorAll('.campaign-route-decision')].map(box);
+    return { outer: { left: outer.left, right: outer.right, top: outer.top, bottom: outer.bottom }, nodes, decisions };
+  });
+  expect(geometry.nodes.length).toBeGreaterThan(8);
+  for (const item of [...geometry.nodes, ...geometry.decisions]) {
+    expect(item.left).toBeGreaterThanOrEqual(geometry.outer.left - 1);
+    expect(item.right).toBeLessThanOrEqual(geometry.outer.right + 1);
+    expect(item.top).toBeGreaterThanOrEqual(geometry.outer.top - 1);
+    expect(item.bottom).toBeLessThanOrEqual(geometry.outer.bottom + 1);
+  }
+});
+
 test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el despliegue manual opcional', async ({ page }) => {
   await mockApi(page);
   await login(page);
@@ -188,7 +221,7 @@ test('Combat Chess · la batalla usa el rail derecho como Registro de batalla', 
   const rail = page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' });
   await expect(rail).toBeVisible();
   await expect(rail.getByRole('heading', { name: 'Registro de batalla', exact: true })).toBeVisible();
-  await expect(page.getByText(/Game Chat/i)).toHaveCount(0);
+  await expect(page.getByText(/Chat de partida/i)).toHaveCount(0);
 });
 
 
@@ -301,7 +334,7 @@ test('Partida rápida · las 64 casillas mantienen una geometría uniforme y el 
   expect(Math.abs(widths[0] - heights[0])).toBeLessThan(0.2);
 
   const boardStack = page.locator('.game-screen .game-board-stack');
-  const chatRail = page.getByRole('complementary', { name: 'Game Chat de la partida' });
+  const chatRail = page.getByRole('complementary', { name: 'Chat de partida' });
   const [boardBox, chatBox] = await Promise.all([boardStack.boundingBox(), chatRail.boundingBox()]);
   expect(boardBox).not.toBeNull();
   expect(chatBox).not.toBeNull();
@@ -352,11 +385,14 @@ test('desktop 1440x900 · Partida completa cabe en viewport y la botonera compar
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toBeVisible();
 
   const fit = await page.evaluate(() => {
     const shell = document.querySelector('.app-shell-board-game');
     const board = document.querySelector('.game-screen .game-board-stack');
-    const controls = document.querySelector('.game-screen .game-controls');
+    const controls = document.querySelector('.game-screen .game-command-deck');
     const side = document.querySelector('.game-screen .game-side-column');
     if (!shell || !board || !controls || !side) return null;
     const boardRect = board.getBoundingClientRect();
@@ -389,9 +425,12 @@ test('desktop 1366x768 · Partida compacta conserva tablero, jugador y acciones 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toBeVisible();
 
   const bottomRail = page.locator('.game-screen .game-player-rail.is-human');
-  const controls = page.locator('.game-screen .game-controls');
+  const controls = page.locator('.game-screen .game-command-deck');
   await expect(bottomRail).toBeVisible();
   await expect(controls).toBeVisible();
   let [railBox, controlsBox] = await Promise.all([bottomRail.boundingBox(), controls.boundingBox()]);

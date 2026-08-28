@@ -8,7 +8,7 @@ function timeLabel(iso) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function GameChat({ messages = [], contextMessages = [], compact = false, title = 'Game Chat' }) {
+export default function GameChat({ messages = [], contextMessages = [], compact = false, title = 'Chat de partida' }) {
   const scrollRef = useRef(null);
   const visibleMessages = [...contextMessages, ...messages];
 
@@ -21,7 +21,7 @@ export default function GameChat({ messages = [], contextMessages = [], compact 
     <aside className={`game-chat${compact ? ' compact' : ''}`} aria-label="Chat de la partida">
       <div className="game-chat-heading">
         <div className="game-chat-title-block">
-          <span className="game-chat-kicker">CPU // LIVE LOG</span>
+          <span className="game-chat-kicker">CPU // EN DIRECTO</span>
           <h3>{title}</h3>
         </div>
         <div className="game-chat-tools">
@@ -35,8 +35,8 @@ export default function GameChat({ messages = [], contextMessages = [], compact 
         ) : visibleMessages.map((message) => (
           <div className={`game-chat-message${message.by === 'system' ? ' is-system' : ''}`} key={message.id || `${message.at}-${message.text}`}>
             <div className="game-chat-meta">
-              <span className="game-chat-author">{message.by === 'system' ? 'PARTIDA' : 'CPU'}</span>
-              {message.event && <span className="game-chat-event">{String(message.event).replaceAll('_', ' ')}</span>}
+              <span className="game-chat-author">{message.by === 'system' && message.event ? String(message.event).replaceAll('_', ' ') : message.by === 'system' ? 'PARTIDA' : 'CPU'}</span>
+              {message.by !== 'system' && message.event && <span className="game-chat-event">{String(message.event).replaceAll('_', ' ')}</span>}
               {message.at && <time dateTime={message.at}>{timeLabel(message.at)}</time>}
             </div>
             <p>{message.text}</p>

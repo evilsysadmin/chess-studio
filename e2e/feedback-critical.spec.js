@@ -58,3 +58,18 @@ test('Feedback · adjunta PNG y envía sin deformar ni romper la cabecera', asyn
   expect(Math.abs(after.height - before.height)).toBeLessThan(1);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
+
+
+test('Feedback · admin puede borrar un mensaje de prueba', async ({ page }) => {
+  await mockApi(page, {
+    isAdmin: true,
+    initialFeedback: [{ id: 'test-delete-1', category: 'general', message: 'Mensaje de prueba para borrar.', status: 'new' }],
+  });
+  await login(page);
+  await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
+  const feedbackSection = page.getByRole('region', { name: 'Feedback de usuarios' });
+  await expect(feedbackSection.getByText('Mensaje de prueba para borrar.', { exact: true })).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await feedbackSection.getByRole('button', { name: 'Borrar feedback', exact: true }).click();
+  await expect(feedbackSection.getByText('Mensaje de prueba para borrar.', { exact: true })).toHaveCount(0);
+});

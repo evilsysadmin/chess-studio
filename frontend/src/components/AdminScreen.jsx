@@ -12,7 +12,7 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import { ADMIN_USER_FILTERS, adminActivityTypeLabel, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
-import { fetchAdminFeedback, fetchAdminFeedbackAttachment, replyAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
+import { deleteAdminFeedback, fetchAdminFeedback, fetchAdminFeedbackAttachment, replyAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 import { ADMIN_REFRESH_MS } from '../presenceCadence.js';
 
@@ -314,6 +314,28 @@ export default function AdminScreen({ onExit }) {
     }
   }
 
+  async function handleFeedbackDelete(feedbackId) {
+    if (feedbackUpdating) return;
+    const confirmed = window.confirm('¿Borrar este feedback definitivamente?\n\nÚtil para limpiar mensajes de prueba. Esta acción no se puede deshacer.');
+    if (!confirmed) return;
+    adminDataEpochRef.current += 1;
+    setFeedbackUpdating(feedbackId);
+    setFeedbackError(null);
+    try {
+      await deleteAdminFeedback(feedbackId);
+      setFeedback((current) => (current || []).filter((item) => item.id !== feedbackId));
+      setFeedbackReplies((current) => {
+        const next = { ...current };
+        delete next[feedbackId];
+        return next;
+      });
+    } catch (e) {
+      setFeedbackError(e?.message || 'No se pudo borrar el feedback.');
+    } finally {
+      setFeedbackUpdating(null);
+    }
+  }
+
   async function handleDeleteUser(targetUsername) {
     const confirmed = window.confirm(
       `Eliminar definitivamente la cuenta “${targetUsername}”?\n\nSe borrarán también su perfil y sus partidas activas. Esta acción no se puede deshacer.`,
@@ -427,6 +449,7 @@ export default function AdminScreen({ onExit }) {
           ) : (
             <button type="button" className="secondary-btn" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackStatus(item.id, 'read')}>Reabrir</button>
           )}
+          <button type="button" className="secondary-btn admin-feedback-delete" disabled={feedbackUpdating === item.id} onClick={() => handleFeedbackDelete(item.id)}>Borrar feedback</button>
           <span className="admin-feedback-status">{item.status === 'resolved' ? 'Resuelto' : item.status === 'read' ? 'Leído' : 'Nuevo'}</span>
         </div>
       </article>
@@ -647,7 +670,7 @@ export default function AdminScreen({ onExit }) {
                               <div><span>Ventajas no convertidas</span><strong>{u.missedConversions ?? 0}</strong></div>
                               <div><span>Defensas desesperadas</span><strong>{u.desperateSaves ?? 0}</strong></div>
                               <div><span>Material donado</span><strong>{u.materialDonated ?? 0} pts</strong></div>
-                              <div><span>Contratos</span><strong>{u.contractsCompleted ?? 0}/{u.contractsOffered ?? 0}</strong></div>
+                              <div><span>Retos</span><strong>{u.contractsCompleted ?? 0}/{u.contractsOffered ?? 0}</strong></div>
                               <div><span>Temporada actual</span><strong>{u.currentSeason ? `#${u.currentSeason.number} · ${u.currentSeason.games}/${u.currentSeason.target}` : '—'}</strong></div>
                               <div><span>Pecado más repetido</span><strong>{u.mostCommonSin ? `${u.mostCommonSin.label} ×${u.mostCommonSin.count}` : '—'}</strong></div>
                               <div><span>Logros</span><strong>{u.achievements ?? 0}</strong></div>

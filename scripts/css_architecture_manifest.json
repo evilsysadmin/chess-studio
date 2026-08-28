@@ -27,9 +27,10 @@
     "26-visual-system-overhaul.css",
     "27-night-club-tactical.css",
     "28-viewport-action-coherence.css",
-    "29-onboarding-game-actions.css"
+    "29-onboarding-game-actions.css",
+    "30-product-polish.css"
   ],
-  "combinedSha256": "a359b8947ddf5f998d42adf78501f2ab361328fd7be0e71218392d77498ef142",
-  "combinedBytes": 480592,
-  "combinedLines": 13725
+  "combinedSha256": "582701457c98064cbaf11c5a999f295022e236c6cd0157efa0148d953a689cb9",
+  "combinedBytes": 488529,
+  "combinedLines": 13904
 }

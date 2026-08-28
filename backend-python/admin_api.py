@@ -190,6 +190,17 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
         return {"feedback": updated}
 
 
+    @router.delete("/api/admin/feedback/{feedback_id}", status_code=204)
+    async def admin_delete_feedback(
+        feedback_id: str,
+        username: str = Depends(admin_dependency),
+    ):
+        deleted = await fstore.delete_feedback(feedback_id)
+        if not deleted:
+            raise HTTPException(404, "Feedback no encontrado.")
+        return Response(status_code=204)
+
+
     @router.get("/api/admin/users")
     async def admin_list_users(username: str = Depends(admin_dependency)):
 

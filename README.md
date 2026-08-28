@@ -1,3 +1,12 @@
+### v16.6dm46zeq · Retos, Tempo y geometría de producto
+
+- Renombra los objetivos opcionales de partida visibles como **Retos** y los explica en onboarding/FAQ; el chat usa `Pronóstico de partida` y `Reto de partida` en lugar de combinaciones de etiquetas raras.
+- Recompone la barra inferior del tablero en estado + grupo de acciones y absorbe `Opciones avanzadas` en el mismo lenguaje visual.
+- Corrige la cartografía de Combat con márgenes seguros para BASE/BOSS, nodos más compactos y el fondo artístico de campaña nuevamente visible.
+- Añade borrado definitivo de feedback desde Admin, con confirmación y soporte backend/Mongo/memoria.
+- Centra y espacia los enlaces del footer de Home.
+- Endurece OTLP/Tempo: cada señal recibe un endpoint HTTP completo normalizado (`/v1/traces`, `/v1/metrics`, `/v1/logs`), el backend expone sólo la ruta sanitizada en diagnóstico y los logs estructurados indican si el `trace_id` fue realmente muestreado.
+
 ### v16.6dm46zep · Onboarding contextual y estados de entrada
 
 - Convierte la guía de Home en un recorrido contextual de tres pasos: el siguiente objetivo real recibe un cue discreto sobre la propia tarjeta en lugar de depender sólo de un bloque explicativo.

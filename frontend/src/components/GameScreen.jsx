@@ -761,8 +761,8 @@ export default function GameScreen({
 
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
   const gameContextMessages = [
-    !zenMode && prediction ? { id: 'game-prediction', by: 'system', event: 'PRONÓSTICO', text: prediction.text.replace(/^Pronóstico:\s*/i, '') } : null,
-    activeContract ? { id: 'game-contract', by: 'system', event: 'CONTRATO', text: `${activeContract.label} · ${activeContract.text}` } : null,
+    !zenMode && prediction ? { id: 'game-prediction', by: 'system', event: 'PRONÓSTICO DE PARTIDA', text: prediction.text.replace(/^Pronóstico:\s*/i, '') } : null,
+    activeContract ? { id: 'game-contract', by: 'system', event: 'RETO DE PARTIDA', text: `${activeContract.label} · ${activeContract.text} Es opcional: no cambia las reglas ni el rating.` } : null,
   ].filter(Boolean);
 
   const lastCpuComment = [...gameChat].reverse().find((message) => message?.by !== 'system' && message?.text)?.text || null;
@@ -845,7 +845,7 @@ export default function GameScreen({
               )}
               {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
             </div>
-            {!zenMode && <aside className="game-side-column" aria-label="Game Chat de la partida">
+            {!zenMode && <aside className="game-side-column" aria-label="Chat de partida">
               <div className="game-side-music" aria-label="Música de la partida">
                 <MusicPlayer initiallyCollapsed />
               </div>
@@ -863,41 +863,45 @@ export default function GameScreen({
           {!zenMode && hintMode === 'paid' && (
             <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
           )}
-          <div className="game-controls" aria-label="Controles principales de la partida">
-            <span className={`game-controls-status ${game.turn === humanColor && !game.isGameOver ? 'is-active' : ''}`}>{statusText}</span>
-            {!zenMode && hintMode !== 'off' && (
-              <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
-                {hintButtonLabel}
-              </button>
-            )}
-            {!zenMode && hintMode === 'free' && (
-              <button className="secondary-btn" disabled={busy || game.history.length === 0} onClick={handleUndo}>
-                Deshacer jugada
-              </button>
-            )}
-            <button
-              type="button"
-              className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
-              aria-pressed={zenMode}
-              title={zenModeSummary(zenMode)}
-              onClick={() => setZenMode((current) => saveZenMode(!current))}
-            >
-              {zenMode ? 'Zen: ON' : 'Zen: OFF'}
-            </button>
-            <button className="secondary-btn game-abandon-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
-          </div>
-          {game.history.length > 0 && (
-            <details className="game-advanced-tools">
-              <summary>Opciones avanzadas</summary>
-              <div className="game-advanced-tools-body">
-                <div>
-                  <b>Exportar partida</b>
-                  <small>Descarga un archivo estándar para analizarlo en otras aplicaciones de ajedrez.</small>
-                </div>
-                <button className="secondary-btn" onClick={handleDownloadPGN}>Exportar archivo .pgn</button>
+          <div className="game-command-deck" aria-label="Mesa de controles de la partida">
+            <div className="game-controls" aria-label="Controles principales de la partida">
+              <span className={`game-controls-status ${game.turn === humanColor && !game.isGameOver ? 'is-active' : ''}`}><i aria-hidden="true" />{statusText}</span>
+              <div className="game-controls-actions">
+                {!zenMode && hintMode !== 'off' && (
+                  <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
+                    {hintButtonLabel}
+                  </button>
+                )}
+                {!zenMode && hintMode === 'free' && (
+                  <button className="secondary-btn" disabled={busy || game.history.length === 0} onClick={handleUndo}>
+                    Deshacer jugada
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
+                  aria-pressed={zenMode}
+                  title={zenModeSummary(zenMode)}
+                  onClick={() => setZenMode((current) => saveZenMode(!current))}
+                >
+                  {zenMode ? 'Zen · ON' : 'Zen · OFF'}
+                </button>
+                <button className="secondary-btn game-abandon-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
               </div>
-            </details>
-          )}
+            </div>
+            {game.history.length > 0 && (
+              <details className="game-advanced-tools">
+                <summary>Opciones avanzadas</summary>
+                <div className="game-advanced-tools-body">
+                  <div>
+                    <b>Exportar partida</b>
+                    <small>Descarga un archivo estándar para analizarlo en otras aplicaciones de ajedrez.</small>
+                  </div>
+                  <button className="secondary-btn" onClick={handleDownloadPGN}>Exportar archivo .pgn</button>
+                </div>
+              </details>
+            )}
+          </div>
         </div>
       </div>
 

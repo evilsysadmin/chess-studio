@@ -168,6 +168,17 @@ async def update_feedback_status(feedback_id: str, status: str) -> dict | None:
     return _public_feedback(row)
 
 
+async def delete_feedback(feedback_id: str) -> bool:
+    col = await _get_collection()
+    if col is not None:
+        try:
+            result = await col.delete_one({"_id": feedback_id})
+            return bool(getattr(result, "deleted_count", 0))
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para borrar feedback.") from exc
+    return _memory_feedback.pop(feedback_id, None) is not None
+
+
 async def get_feedback_attachment(feedback_id: str, index: int) -> dict | None:
     if index < 0:
         return None

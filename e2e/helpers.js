@@ -169,6 +169,14 @@ export async function mockApi(page, {
     }
     if (path.endsWith('/feedback/mine') && method === 'GET') return json({ feedback: feedback.filter((item) => item.username === 'e2e') });
     if (path.endsWith('/admin/feedback') && method === 'GET') return json({ feedback });
+    const feedbackDeleteMatch = path.match(/\/admin\/feedback\/([^/]+)$/);
+    if (feedbackDeleteMatch && method === 'DELETE') {
+      const id = decodeURIComponent(feedbackDeleteMatch[1]);
+      const before = feedback.length;
+      feedback = feedback.filter((item) => item.id !== id);
+      if (feedback.length === before) return json({ detail: 'Feedback no encontrado' }, 404);
+      return route.fulfill({ status: 204, body: '' });
+    }
     const feedbackStatusMatch = path.match(/\/admin\/feedback\/([^/]+)\/status$/);
     if (feedbackStatusMatch && method === 'POST') {
       const payload = route.request().postDataJSON?.() ?? {};

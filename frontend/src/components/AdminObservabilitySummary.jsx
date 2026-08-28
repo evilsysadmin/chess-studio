@@ -82,6 +82,9 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
   const grafanaLogsUrl = String(import.meta.env.VITE_GRAFANA_LOGS_DASHBOARD_URL || '').trim();
   const grafanaTracesUrl = String(import.meta.env.VITE_GRAFANA_TRACES_DASHBOARD_URL || '').trim();
   const tracing = runtime?.tracing || null;
+  const traceSignal = tracing?.signals?.traces || null;
+  const traceExporter = tracing?.traceExporter || null;
+  const traceEndpointPath = traceSignal?.endpointPath || null;
 
   async function handleTempoProbe() {
     if (tempoProbeInFlightRef.current) return;
@@ -164,9 +167,13 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
               : tempoProbe
                 ? `No confirmada · ${tempoProbeFailure(tempoProbe)}`
                 : tracing?.configured
-                  ? `OTLP activo · ${tracing.serviceName || 'backend'}`
+                  ? traceExporter?.lastResult === 'SUCCESS'
+                    ? `OTLP activo · ${traceEndpointPath || 'trazas'} · última entrega OK`
+                    : traceExporter?.lastResult
+                      ? `OTLP activo · ${traceEndpointPath || 'trazas'} · ${tempoProbeFailure({ httpStatus: traceExporter.lastHttpStatus, exportError: traceExporter.lastError, exportResult: traceExporter.lastResult })}`
+                      : `OTLP activo · ${traceEndpointPath || 'trazas'} · aún sin entrega confirmada`
                   : tracing?.enabled
-                    ? `OTLP configurado, pero no inicializado${tracing.initializationError ? ` · ${tracing.initializationError}` : ''}`
+                    ? `OTLP configurado${traceEndpointPath ? ` · ${traceEndpointPath}` : ''}, pero no inicializado${tracing.initializationError ? ` · ${tracing.initializationError}` : ''}`
                     : 'OTLP/Tempo sin configurar'}
           </small>
           {tempoProbe?.ok && grafanaTracesUrl ? <a href={grafanaTracesUrl} target="_blank" rel="noreferrer">Buscar en trazas ↗</a> : null}

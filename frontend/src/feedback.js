@@ -28,6 +28,19 @@ export function updateAdminFeedbackStatus(feedbackId, status) {
   });
 }
 
+export async function deleteAdminFeedback(feedbackId) {
+  const response = await request(`${BASE_URL}/admin/feedback/${encodeURIComponent(feedbackId)}`, {
+    method: 'DELETE',
+    headers: { ...authHeader() },
+  });
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`;
+    try { detail = (await response.json())?.detail || detail; } catch { /* 204/binary-safe */ }
+    throw new Error(detail);
+  }
+  return true;
+}
+
 export function replyAdminFeedback(feedbackId, message, resolve = true) {
   return requestJson(`${BASE_URL}/admin/feedback/${encodeURIComponent(feedbackId)}/reply`, {
     method: 'POST',

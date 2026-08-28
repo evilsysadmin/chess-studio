@@ -3,36 +3,36 @@
    familia visual para acciones normales/destructivas en el tablero. */
 
 /* ---------- Barra de partida: misma familia, distinta intención ---------- */
-.game-screen .game-controls > .zen-mode-toggle,
-.game-screen .game-controls > .game-abandon-btn {
+.game-screen .game-controls-actions > .zen-mode-toggle,
+.game-screen .game-controls-actions > .game-abandon-btn {
   border: 1px solid color-mix(in srgb, var(--ui-border) 92%, transparent);
   background: color-mix(in srgb, var(--ui-panel-raised) 72%, var(--ink) 28%);
   color: var(--parchment-dim);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
 }
 
-.game-screen .game-controls > .zen-mode-toggle:hover,
-.game-screen .game-controls > .zen-mode-toggle:focus-visible,
-.game-screen .game-controls > .game-abandon-btn:hover,
-.game-screen .game-controls > .game-abandon-btn:focus-visible {
+.game-screen .game-controls-actions > .zen-mode-toggle:hover,
+.game-screen .game-controls-actions > .zen-mode-toggle:focus-visible,
+.game-screen .game-controls-actions > .game-abandon-btn:hover,
+.game-screen .game-controls-actions > .game-abandon-btn:focus-visible {
   transform: none;
   background: color-mix(in srgb, var(--ui-panel-raised) 88%, var(--ink) 12%);
   color: var(--parchment);
 }
 
-.game-screen .game-controls > .zen-mode-toggle:hover,
-.game-screen .game-controls > .zen-mode-toggle:focus-visible {
+.game-screen .game-controls-actions > .zen-mode-toggle:hover,
+.game-screen .game-controls-actions > .zen-mode-toggle:focus-visible {
   border-color: color-mix(in srgb, var(--brass) 46%, var(--ui-border));
 }
 
-.game-screen .game-controls > .zen-mode-toggle.active {
+.game-screen .game-controls-actions > .zen-mode-toggle.active {
   border-color: color-mix(in srgb, var(--brass) 58%, var(--ui-border));
   background: color-mix(in srgb, var(--brass) 8%, var(--ui-panel-raised));
   color: color-mix(in srgb, var(--brass) 72%, var(--parchment));
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brass) 72%, transparent);
 }
 
-.game-screen .game-controls > .game-abandon-btn {
+.game-screen .game-controls-actions > .game-abandon-btn {
   /* Destructivo, pero no otra especie de botón. El peligro aparece en el
      acento y se intensifica al interactuar, no en una pastilla roja. */
   border-color: color-mix(in srgb, var(--danger) 26%, var(--ui-border));
@@ -40,8 +40,8 @@
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--danger) 42%, transparent);
 }
 
-.game-screen .game-controls > .game-abandon-btn:hover,
-.game-screen .game-controls > .game-abandon-btn:focus-visible {
+.game-screen .game-controls-actions > .game-abandon-btn:hover,
+.game-screen .game-controls-actions > .game-abandon-btn:focus-visible {
   border-color: color-mix(in srgb, var(--danger) 52%, var(--ui-border));
   background: color-mix(in srgb, var(--danger) 6%, var(--ui-panel-raised));
   color: color-mix(in srgb, var(--danger) 62%, var(--parchment));
@@ -131,8 +131,8 @@
 @media (forced-colors: active) {
   .home-onboarding-target.is-next,
   .home-onboarding-cue,
-  .game-screen .game-controls > .zen-mode-toggle,
-  .game-screen .game-controls > .game-abandon-btn {
+  .game-screen .game-controls-actions > .zen-mode-toggle,
+  .game-screen .game-controls-actions > .game-abandon-btn {
     border: 2px solid CanvasText;
   }
 }

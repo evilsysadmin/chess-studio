@@ -79,3 +79,15 @@ def test_structured_http_log_sanitizes_network_origin_fields(caplog):
     assert payload["client_ip"] == "203.0.113.42"
     assert payload["peer_ip"] == "10.0.0.7"
     assert payload["x_forwarded_for"] == ["203.0.113.42", "198.51.100.3"]
+
+
+def test_structured_http_log_reports_whether_trace_was_sampled(monkeypatch, caplog):
+    import tracing
+    monkeypatch.setattr(tracing, "current_trace_id", lambda: "a" * 32)
+    monkeypatch.setattr(tracing, "current_trace_sampled", lambda: True)
+    logger = logging.getLogger("test.chess.structured.trace")
+    caplog.set_level(logging.INFO, logger=logger.name)
+    emit_http_event(logger, request_id="req-trace", method="GET", route="/api/health", status_code=200, duration_ms=1.0)
+    payload = json.loads(caplog.records[-1].getMessage())
+    assert payload["trace_id"] == "a" * 32
+    assert payload["trace_sampled"] is True

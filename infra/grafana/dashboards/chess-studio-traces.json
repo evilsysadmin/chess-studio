@@ -129,7 +129,7 @@
     },
     {
       "id": 4,
-      "title": "Logs correlacionables por trace_id",
+      "title": "Logs con traza muestreada · trace_id",
       "type": "logs",
       "datasource": {
         "type": "loki",
@@ -147,7 +147,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "{service_name=\"chess-studio-backend\"} | json | trace_id != \"\" | line_format \"trace={{.trace_id}} · {{.status}} {{.method}} {{.route}} · req={{.request_id}}\"",
+          "expr": "{service_name=\"chess-studio-backend\"} | json | trace_id != \"\" | trace_sampled = \"true\" | line_format \"trace={{.trace_id}} · sampled={{.trace_sampled}} · {{.status}} {{.method}} {{.route}} · req={{.request_id}}\"",
           "refId": "A",
           "queryType": "range"
         }

@@ -10,6 +10,7 @@ describe('home onboarding', () => {
 
   it('propone un recorrido corto y avanza sólo con progreso demostrado', () => {
     expect(buildHomeOnboarding().next).toBe('game');
+    expect(buildHomeOnboarding().steps[0].detail).toMatch(/Reto opcional/);
     expect(buildHomeOnboarding({ activity: [{ state: 'finished' }] }).next).toBe('puzzle');
     expect(buildHomeOnboarding({ activity: [{ state: 'finished' }], puzzlesSolved: 2 }).next).toBe('insights');
     expect(buildHomeOnboarding({ activity: [{ state: 'finished' }], puzzlesSolved: 2, insightsSeen: true })).toMatchObject({ complete: true, completed: 3, next: null });

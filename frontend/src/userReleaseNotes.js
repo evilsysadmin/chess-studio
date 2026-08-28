@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zeq',
+    title: 'Retos claros, mapa firme y controles en formación',
+    highlights: [
+      'Los objetivos opcionales de partida pasan a llamarse Retos y se explican en el onboarding y la FAQ; el pronóstico también adopta una etiqueta natural.',
+      'La barra inferior de partida separa estado y acciones, alinea Zen/Abandonar y convierte Opciones avanzadas en una pieza integrada en vez de un control huérfano.',
+      'Combat Chess recupera la cartografía artística con nodos dentro de márgenes seguros, y Administración permite borrar feedback de prueba.',
+      'El footer centra y espacia sus enlaces, y el diagnóstico OTLP normaliza los endpoints por señal para que Tempo no dependa de una URL ambigua.',
+    ],
+  },
+  {
     release: 'v16.6dm46zep',
     title: 'La primera partida ya tiene guía de verdad',
     highlights: [

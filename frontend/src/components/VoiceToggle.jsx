@@ -23,12 +23,12 @@ export default function VoiceToggle() {
       onClick={toggle}
       disabled={!supported}
       aria-pressed={enabled}
-      aria-label={enabled ? 'Desactivar voz del Game Chat' : 'Activar voz del Game Chat'}
+      aria-label={enabled ? 'Desactivar voz del chat de partida' : 'Activar voz del chat de partida'}
       title={supported
-        ? (enabled ? 'VOICE ON · pulsar para silenciar la CPU' : 'VOICE OFF · pulsar para oír a la CPU')
+        ? (enabled ? 'VOZ ON · pulsar para silenciar la CPU' : 'VOZ OFF · pulsar para oír a la CPU')
         : 'La síntesis de voz no está disponible en este navegador'}
     >
-      <span className="game-chat-voice-label">VOICE</span>
+      <span className="game-chat-voice-label">VOZ</span>
       <span className="game-chat-voice-state">{supported ? (enabled ? 'ON' : 'OFF') : 'N/A'}</span>
     </button>
   );

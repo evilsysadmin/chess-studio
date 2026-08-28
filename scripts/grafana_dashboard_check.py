@@ -53,7 +53,7 @@ def main() -> int:
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
     trace_dash = (INFRA / "dashboards" / "chess-studio-traces.json").read_text(encoding="utf-8")
-    for token in ('traceql', 'chess-studio-backend', '${traces_datasource_uid}', 'trace_id'):
+    for token in ('traceql', 'chess-studio-backend', '${traces_datasource_uid}', 'trace_id', 'trace_sampled'):
         if token not in trace_dash:
             fail(f"dashboard Tempo no cubre {token}")
 

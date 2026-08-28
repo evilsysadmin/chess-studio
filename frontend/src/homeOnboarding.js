@@ -27,7 +27,7 @@ export function buildHomeOnboarding({ activity = [], puzzlesSolved = 0, insights
   const solvedPuzzle = Number(puzzlesSolved) > 0;
   const reviewedInsights = Boolean(insightsSeen);
   const steps = [
-    { id: 'game', label: 'Juega una partida', detail: 'Torneo elige un rival adecuado.', done: finishedGame },
+    { id: 'game', label: 'Juega una partida', detail: 'Torneo elige rival y puede proponerte un Reto opcional.', done: finishedGame },
     { id: 'puzzle', label: 'Resuelve un puzzle', detail: 'Prueba una táctica corta.', done: solvedPuzzle },
     { id: 'insights', label: 'Mira Así juegas', detail: 'Convierte tus partidas en una siguiente acción.', done: reviewedInsights },
   ];

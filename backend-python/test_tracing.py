@@ -5,6 +5,9 @@ def test_tracing_auto_enables_only_with_otlp_endpoint():
     assert tracing_settings({})["enabled"] is False
     cfg = tracing_settings({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://tempo.example/otlp"})
     assert cfg["enabled"] is True
+    assert cfg["endpoint"] == "https://tempo.example/otlp/v1/traces"
+    assert cfg["metrics_endpoint"] == "https://tempo.example/otlp/v1/metrics"
+    assert cfg["logs_endpoint"] == "https://tempo.example/otlp/v1/logs"
     assert cfg["service_name"] == "chess-studio-backend"
 
 
@@ -116,3 +119,22 @@ def test_trace_export_diagnostics_exposes_counts_not_secrets(monkeypatch):
     assert diagnostics["traceExporter"]["successCount"] == 2
     assert diagnostics["traceExporter"]["lastHttpStatus"] == 401
     assert "secret.example" not in str(diagnostics)
+
+
+def test_generic_signal_url_is_normalized_back_to_shared_otlp_base():
+    cfg = tracing_settings({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp.example/otlp/v1/traces"})
+    assert cfg["trace_endpoint"] == "https://otlp.example/otlp/v1/traces"
+    assert cfg["metrics_endpoint"] == "https://otlp.example/otlp/v1/metrics"
+    assert cfg["logs_endpoint"] == "https://otlp.example/otlp/v1/logs"
+
+
+def test_diagnostics_exposes_only_safe_signal_paths(monkeypatch):
+    import tracing
+    monkeypatch.setattr(tracing, "_TRACE_PROVIDER", object())
+    monkeypatch.setattr(tracing, "_METER_PROVIDER", object())
+    monkeypatch.setattr(tracing, "_LOGGER_PROVIDER", object())
+    d = tracing.tracing_diagnostics({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://secret.example/otlp"})
+    assert d["signals"]["traces"]["endpointPath"] == "/otlp/v1/traces"
+    assert d["signals"]["metrics"]["endpointPath"] == "/otlp/v1/metrics"
+    assert d["signals"]["logs"]["endpointPath"] == "/otlp/v1/logs"
+    assert "secret.example" not in str(d)

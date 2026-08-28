@@ -274,7 +274,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
         </div>
 
         <div className="game-side-column">
-          {record.gameChat?.length > 0 && <GameChat messages={record.gameChat} compact title="Game Chat · archivo" />}
+          {record.gameChat?.length > 0 && <GameChat messages={record.gameChat} compact title="Chat · archivo" />}
           <aside className="notation-panel">
             <WorstMovesPanel report={report} onJump={goTo} />
 

@@ -13,6 +13,7 @@ import secrets
 import threading
 from collections import deque
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 LOGGER = logging.getLogger("uvicorn.error")
 _CONFIGURED = False
@@ -39,6 +40,49 @@ _TRACE_EXPORT_LOCK = threading.Lock()
 _TRACE_RECENT_SUCCESS_IDS: deque[str] = deque(maxlen=128)
 
 
+
+_SIGNAL_SUFFIX = {"traces": "/v1/traces", "metrics": "/v1/metrics", "logs": "/v1/logs"}
+
+def _resolved_signal_endpoint(env: dict[str, str], signal: str) -> str:
+    """Return a full OTLP/HTTP signal URL without exposing or guessing secrets.
+
+    Grafana Cloud documents a generic gateway base (usually ending in /otlp),
+    while the Python HTTP exporters send to /v1/<signal>. Normalising here makes
+    the transport deterministic and also recovers safely if the generic variable
+    was accidentally populated with one signal-specific suffix. Explicit
+    per-signal variables remain authoritative and are used verbatim.
+    """
+    signal = str(signal or "").strip().lower()
+    suffix = _SIGNAL_SUFFIX.get(signal)
+    if not suffix:
+        return ""
+    explicit_key = f"OTEL_EXPORTER_OTLP_{signal.upper()}_ENDPOINT"
+    explicit = str(env.get(explicit_key) or "").strip()
+    if explicit:
+        return explicit
+    generic = str(env.get("OTEL_EXPORTER_OTLP_ENDPOINT") or "").strip()
+    if not generic:
+        return ""
+    try:
+        parts = urlsplit(generic)
+        path = (parts.path or "").rstrip("/")
+        for known_suffix in _SIGNAL_SUFFIX.values():
+            if path.endswith(known_suffix):
+                path = path[:-len(known_suffix)].rstrip("/")
+                break
+        path = f"{path}{suffix}" if path else suffix
+        return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
+    except Exception:
+        return generic.rstrip("/") + suffix
+
+def _safe_endpoint_path(endpoint: str) -> str | None:
+    if not endpoint:
+        return None
+    try:
+        return urlsplit(endpoint).path or "/"
+    except Exception:
+        return None
+
 def _truthy(value: str | None) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -55,12 +99,15 @@ def _enabled(explicit: str | None, endpoint: str) -> bool:
 def tracing_settings(environ: dict[str, str] | None = None) -> dict[str, Any]:
     env = os.environ if environ is None else environ
     generic = str(env.get("OTEL_EXPORTER_OTLP_ENDPOINT") or "").strip()
-    traces_endpoint = str(env.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or "").strip() or generic
-    metrics_endpoint = str(env.get("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT") or "").strip() or generic
-    logs_endpoint = str(env.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT") or "").strip() or generic
+    traces_endpoint = _resolved_signal_endpoint(env, "traces")
+    metrics_endpoint = _resolved_signal_endpoint(env, "metrics")
+    logs_endpoint = _resolved_signal_endpoint(env, "logs")
     return {
         "enabled": _enabled(env.get("OTEL_TRACES_ENABLED"), traces_endpoint),
         "endpoint": traces_endpoint,
+        "trace_endpoint": traces_endpoint,
+        "metrics_endpoint": metrics_endpoint,
+        "logs_endpoint": logs_endpoint,
         "traces_enabled": _enabled(env.get("OTEL_TRACES_ENABLED"), traces_endpoint),
         "metrics_enabled": _enabled(env.get("OTEL_METRICS_ENABLED"), metrics_endpoint),
         "logs_enabled": _enabled(env.get("OTEL_LOGS_ENABLED"), logs_endpoint),
@@ -84,18 +131,21 @@ def tracing_diagnostics(environ: dict[str, str] | None = None) -> dict[str, Any]
             "enabled": bool(settings["traces_enabled"]),
             "endpointConfigured": bool(settings["traces_endpoint_configured"]),
             "configured": _TRACE_PROVIDER is not None,
+            "endpointPath": _safe_endpoint_path(settings["trace_endpoint"]),
             "error": _SIGNAL_ERRORS["traces"],
         },
         "metrics": {
             "enabled": bool(settings["metrics_enabled"]),
             "endpointConfigured": bool(settings["metrics_endpoint_configured"]),
             "configured": _METER_PROVIDER is not None,
+            "endpointPath": _safe_endpoint_path(settings["metrics_endpoint"]),
             "error": _SIGNAL_ERRORS["metrics"],
         },
         "logs": {
             "enabled": bool(settings["logs_enabled"]),
             "endpointConfigured": bool(settings["logs_endpoint_configured"]),
             "configured": _LOGGER_PROVIDER is not None,
+            "endpointPath": _safe_endpoint_path(settings["logs_endpoint"]),
             "error": _SIGNAL_ERRORS["logs"],
         },
     }
@@ -137,6 +187,18 @@ def current_trace_id() -> str | None:
         context = span.get_span_context()
         if context and context.is_valid:
             return f"{context.trace_id:032x}"
+    except Exception:
+        pass
+    return None
+
+
+def current_trace_sampled() -> bool | None:
+    try:
+        from opentelemetry import trace
+        from opentelemetry.trace import TraceFlags
+        context = trace.get_current_span().get_span_context()
+        if context and context.is_valid:
+            return bool(context.trace_flags & TraceFlags.SAMPLED)
     except Exception:
         pass
     return None
@@ -386,7 +448,7 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
                             _TRACE_EXPORT_STATE["lastError"] = _trace_export_error(status, result_name) if status else (existing_error or "export_failed")
                     return result
 
-            provider.add_span_processor(BatchSpanProcessor(TrackingOTLPSpanExporter()))
+            provider.add_span_processor(BatchSpanProcessor(TrackingOTLPSpanExporter(endpoint=settings["trace_endpoint"])))
             # Bind instrumentation explicitly to Chess Studio's provider.  A hosting
             # layer or another library may already have installed a global provider;
             # trace.set_tracer_provider() deliberately refuses to replace it.  Without
@@ -408,7 +470,7 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
             from opentelemetry.sdk.metrics import MeterProvider
             from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-            reader = PeriodicExportingMetricReader(OTLPMetricExporter(), export_interval_millis=30000)
+            reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=settings["metrics_endpoint"]), export_interval_millis=30000)
             meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
             metrics.set_meter_provider(meter_provider)
             meter = metrics.get_meter("chess-studio.backend")
@@ -431,7 +493,7 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
             from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
             logger_provider = LoggerProvider(resource=resource)
-            logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+            logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=settings["logs_endpoint"])))
             set_logger_provider(logger_provider)
             handler = LoggingHandler(level=logging.INFO, logger_provider=logger_provider)
             handler._chess_studio_otel = True  # type: ignore[attr-defined]
@@ -448,8 +510,9 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
     _CONFIGURED = any((_TRACE_PROVIDER is not None, _METER_PROVIDER is not None, _LOGGER_PROVIDER is not None))
     _LAST_INIT_ERROR = None if _CONFIGURED else next((error for error in _SIGNAL_ERRORS.values() if error), "not_configured")
     LOGGER.info(
-        "OpenTelemetry signals: traces=%s metrics=%s logs=%s service=%s env=%s trace_provider=explicit protocol=%s.",
+        "OpenTelemetry signals: traces=%s metrics=%s logs=%s service=%s env=%s trace_provider=explicit protocol=%s paths=%s/%s/%s.",
         _TRACE_PROVIDER is not None, _METER_PROVIDER is not None, _LOGGER_PROVIDER is not None,
         settings["service_name"], settings["environment"], settings["protocol"],
+        _safe_endpoint_path(settings["trace_endpoint"]), _safe_endpoint_path(settings["metrics_endpoint"]), _safe_endpoint_path(settings["logs_endpoint"]),
     )
     return _CONFIGURED

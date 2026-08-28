@@ -115,11 +115,11 @@
 
 @media (min-width: 981px) and (max-height: 780px) {
   .game-screen {
-    --game-board-size: min(512px, calc(100vw - 24rem), calc(100dvh - 14.25rem));
+    --game-board-size: min(480px, calc(100vw - 24rem), calc(100dvh - 17.5rem));
   }
   @supports (width: round(down, 16px, 8px)) {
     .game-screen {
-      --game-board-size: round(down, min(512px, calc(100vw - 24rem), calc(100dvh - 14.25rem)), 8px);
+      --game-board-size: round(down, min(480px, calc(100vw - 24rem), calc(100dvh - 17.5rem)), 8px);
     }
   }
   .game-screen .game-player-rail { min-height: 40px; padding-block: .26rem; }
