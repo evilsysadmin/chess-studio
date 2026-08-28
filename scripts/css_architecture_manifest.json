@@ -25,9 +25,10 @@
     "24-product-hardening.css",
     "25-visual-coherence.css",
     "26-visual-system-overhaul.css",
-    "27-night-club-tactical.css"
+    "27-night-club-tactical.css",
+    "28-viewport-action-coherence.css"
   ],
-  "combinedSha256": "0803b054ebbbadcb40de433db55b6623da21d0e74e4211b4e1b7194646a4b40f",
-  "combinedBytes": 462106,
-  "combinedLines": 13183
+  "combinedSha256": "4a69103c3830e497a57c7b445e7de5eca0f527686c6c06f67d43cb51a326a168",
+  "combinedBytes": 469866,
+  "combinedLines": 13403
 }

@@ -1,3 +1,12 @@
+### v16.6dm46zen · Auditoría visual de viewport y acciones
+
+- Corrige la vista de partida en desktop: el tamaño del tablero reserva explícitamente espacio para cabecera, estado, rival, jugador y barra de acciones, evitando que el tramo inferior quede fuera de `100dvh`.
+- A 1440×900 y 1366×768 la geometría se compacta antes de provocar scroll global; el tablero conserva sus ocho filas/columnas uniformes y el rail derecho acompaña la mesa.
+- La barra inferior deja de flotar con `sticky` en desktop y pasa a formar parte del layout. Sus botones comparten altura, padding, radio y tipografía; `Abandonar partida` mantiene una jerarquía destructiva contenida.
+- Combat Chess recibe el mismo presupuesto vertical y una escala coherente para sus acciones de batalla.
+- Los diálogos limitan su altura al viewport y desplazan internamente el contenido antes de perder sus acciones por debajo de la pantalla.
+- Añade E2E de viewport/geométrica para partida a 1440×900 y 1366×768 y Combat a 1440×900, más `visual-ux-contract` integrado en `static-preflight` para impedir que futuras capas CSS vuelvan a romper este contrato.
+
 ### v16.6dm46zem · Club de ajedrez nocturno
 
 - Corrige la dirección artística de la Home tras el overhaul: menos dashboard/SaaS y más club de ajedrez nocturno con tono de videojuego táctico.

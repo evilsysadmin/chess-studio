@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zen',
+    title: 'La mesa vuelve a caber entera',
+    highlights: [
+      'Las partidas de escritorio reservan espacio real para rival, tablero, jugador y acciones, evitando que la parte inferior quede fuera de pantalla en portátiles y monitores de 900 px de alto.',
+      'La botonera de partida vuelve a formar una sola barra coherente: misma altura y escala, con Zen como acción secundaria y abandonar distinguido sin convertirse en un botón estridente.',
+      'Combat Chess aplica la misma disciplina de viewport y acciones; las ventanas mantienen sus controles accesibles aunque el contenido crezca.',
+    ],
+  },
+  {
     release: 'v16.6dm46zem',
     title: 'Más club de ajedrez, menos dashboard',
     highlights: [

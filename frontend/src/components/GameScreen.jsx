@@ -884,7 +884,7 @@ export default function GameScreen({
             >
               {zenMode ? 'Zen: ON' : 'Zen: OFF'}
             </button>
-            <button className="secondary-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
+            <button className="secondary-btn game-abandon-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
           </div>
           {game.history.length > 0 && (
             <details className="game-advanced-tools">

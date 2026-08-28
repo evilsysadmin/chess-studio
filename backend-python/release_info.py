@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import re
 
-APP_RELEASE = "v16.6dm46zem"
+APP_RELEASE = "v16.6dm46zen"
 
 _COMMIT_ENV_KEYS = (
     "RENDER_GIT_COMMIT",

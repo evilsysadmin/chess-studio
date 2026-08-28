@@ -342,3 +342,82 @@ test('Home · Feedback, Mi cuenta y Novedades comparten geometría de control', 
   expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
 });
 
+
+test('desktop 1440x900 · Partida completa cabe en viewport y la botonera comparte geometría', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const fit = await page.evaluate(() => {
+    const shell = document.querySelector('.app-shell-board-game');
+    const board = document.querySelector('.game-screen .game-board-stack');
+    const controls = document.querySelector('.game-screen .game-controls');
+    const side = document.querySelector('.game-screen .game-side-column');
+    if (!shell || !board || !controls || !side) return null;
+    const boardRect = board.getBoundingClientRect();
+    const controlsRect = controls.getBoundingClientRect();
+    const sideRect = side.getBoundingClientRect();
+    return {
+      pageFits: document.documentElement.scrollHeight <= window.innerHeight + 2,
+      boardBottom: boardRect.bottom,
+      controlsBottom: controlsRect.bottom,
+      sideBottom: sideRect.bottom,
+      viewport: window.innerHeight,
+    };
+  });
+  expect(fit).not.toBeNull();
+  expect(fit.pageFits).toBe(true);
+  expect(fit.boardBottom).toBeLessThanOrEqual(fit.viewport + 1);
+  expect(fit.controlsBottom).toBeLessThanOrEqual(fit.viewport + 1);
+  expect(fit.sideBottom).toBeLessThanOrEqual(fit.viewport + 1);
+
+  const buttons = page.locator('.game-screen .game-controls button:visible');
+  const heights = await buttons.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThanOrEqual(2);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+});
+
+test('desktop 1366x768 · Partida compacta conserva tablero, jugador y acciones dentro del viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await mockApi(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const bottomRail = page.locator('.game-screen .game-player-rail.is-human');
+  const controls = page.locator('.game-screen .game-controls');
+  await expect(bottomRail).toBeVisible();
+  await expect(controls).toBeVisible();
+  const [railBox, controlsBox] = await Promise.all([bottomRail.boundingBox(), controls.boundingBox()]);
+  expect(railBox.bottom).toBeLessThanOrEqual(769);
+  expect(controlsBox.bottom).toBeLessThanOrEqual(769);
+});
+
+test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  await expect(quick).toBeVisible();
+  await quick.click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+
+  const board = page.locator('.combat-battle-screen .game-board-stack');
+  const controls = page.locator('.combat-game-controls');
+  const [boardBox, controlsBox] = await Promise.all([board.boundingBox(), controls.boundingBox()]);
+  expect(boardBox).not.toBeNull();
+  expect(controlsBox).not.toBeNull();
+  expect(boardBox.bottom).toBeLessThanOrEqual(901);
+  expect(controlsBox.bottom).toBeLessThanOrEqual(901);
+
+  const heights = await controls.locator('button:visible').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThanOrEqual(2);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+});
