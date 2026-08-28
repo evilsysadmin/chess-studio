@@ -17,6 +17,9 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   localStorage.setItem('chess-study-auth-username', 'tester');
+});
+
+describe('Matthias en Home', () => {
   it('repara perfiles legacy marcados prematuramente con onboarding v1', () => {
     localStorage.setItem(MATTHIAS_ONBOARDED_KEY, '1');
     expect(matthiasOnboarded()).toBe(false);
@@ -24,9 +27,6 @@ beforeEach(() => {
     expect(matthiasOnboarded()).toBe(true);
   });
 
-});
-
-describe('Matthias en Home', () => {
   it('sólo recuerda cagadas que existen realmente en el expediente', () => {
     const generic = buildMatthiasHomeVisit({ rivalry: { record: { incidents: {} } } });
     expect(generic.kind).toBe('generic');
