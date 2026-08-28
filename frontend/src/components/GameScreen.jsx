@@ -855,6 +855,33 @@ export default function GameScreen({
                 </div>
               )}
               {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
+              <div className="game-command-deck" aria-label="Mesa de controles de la partida">
+                <div className="game-controls" aria-label="Controles principales de la partida">
+                  <span className={`game-controls-status ${game.turn === humanColor && !game.isGameOver ? 'is-active' : ''}`}><i aria-hidden="true" />{statusText}</span>
+                  <div className="game-controls-actions">
+                    {!zenMode && hintMode !== 'off' && (
+                      <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
+                        {hintButtonLabel}
+                      </button>
+                    )}
+                    {!zenMode && hintMode === 'free' && (
+                      <button className="secondary-btn" disabled={busy || game.history.length === 0} onClick={handleUndo}>
+                        Deshacer jugada
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
+                      aria-pressed={zenMode}
+                      title={zenModeSummary(zenMode)}
+                      onClick={() => setZenMode((current) => saveZenMode(!current))}
+                    >
+                      {zenMode ? 'Zen · ON' : 'Zen · OFF'}
+                    </button>
+                    <button className="secondary-btn game-abandon-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
+                  </div>
+                </div>
+              </div>
             </div>
             {!zenMode && <aside className="game-side-column" aria-label="Chat de partida">
               <div className="game-side-music" aria-label="Música de la partida">
@@ -874,33 +901,6 @@ export default function GameScreen({
           {!zenMode && hintMode === 'paid' && (
             <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
           )}
-          <div className="game-command-deck" aria-label="Mesa de controles de la partida">
-            <div className="game-controls" aria-label="Controles principales de la partida">
-              <span className={`game-controls-status ${game.turn === humanColor && !game.isGameOver ? 'is-active' : ''}`}><i aria-hidden="true" />{statusText}</span>
-              <div className="game-controls-actions">
-                {!zenMode && hintMode !== 'off' && (
-                  <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
-                    {hintButtonLabel}
-                  </button>
-                )}
-                {!zenMode && hintMode === 'free' && (
-                  <button className="secondary-btn" disabled={busy || game.history.length === 0} onClick={handleUndo}>
-                    Deshacer jugada
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
-                  aria-pressed={zenMode}
-                  title={zenModeSummary(zenMode)}
-                  onClick={() => setZenMode((current) => saveZenMode(!current))}
-                >
-                  {zenMode ? 'Zen · ON' : 'Zen · OFF'}
-                </button>
-                <button className="secondary-btn game-abandon-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

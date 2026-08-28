@@ -1220,6 +1220,27 @@ def test_github_pages_login_preflight_is_allowed():
     assert r.headers.get("access-control-allow-origin") == "https://evilsysadmin.github.io"
 
 
+def test_custom_domain_game_preflight_allows_idempotency_header():
+    """Crear/mover/deshacer usa Idempotency-Key y debe cruzar CORS.
+
+    Regresión del fallo donde el frontend parecía perder el backend: el
+    navegador bloqueaba el POST en OPTIONS porque Idempotency-Key no estaba
+    en allow_headers, así que la petición nunca alcanzaba FastAPI.
+    """
+    r = raw_client.options(
+        "/api/games",
+        headers={
+            "Origin": "https://chess-studio.shadowops.dpdns.org",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type,idempotency-key,x-client-release,x-request-id",
+        },
+    )
+    assert r.status_code == 200
+    assert r.headers.get("access-control-allow-origin") == "https://chess-studio.shadowops.dpdns.org"
+    allowed = {header.strip().lower() for header in r.headers.get("access-control-allow-headers", "").split(",")}
+    assert "idempotency-key" in allowed
+
+
 def test_github_pages_profile_patch_preflight_is_allowed():
     """El recovery de perfil dirty necesita PATCH desde GitHub Pages.
 

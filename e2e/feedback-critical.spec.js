@@ -104,3 +104,16 @@ test('Feedback · admin ve un sobre en Home cuando hay mensajes nuevos', async (
   await expect(feedbackSection).toBeVisible();
   await expect(feedbackSection.getByText('Feedback recién llegado.', { exact: true })).toBeVisible();
 });
+
+
+test('Feedback · admin puede crear una prueba real y borrarla desde la misma bandeja', async ({ page }) => {
+  await mockApi(page, { isAdmin: true, initialFeedback: [] });
+  await login(page);
+  await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
+  const feedbackSection = page.getByRole('region', { name: 'Feedback de usuarios' });
+  await feedbackSection.getByRole('button', { name: 'Crear feedback de prueba', exact: true }).click();
+  await expect(feedbackSection.getByText('Feedback de prueba generado desde Admin.', { exact: true })).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await feedbackSection.getByRole('button', { name: 'Borrar feedback', exact: true }).click();
+  await expect(feedbackSection.getByText('Feedback de prueba generado desde Admin.', { exact: true })).toHaveCount(0);
+});

@@ -148,6 +148,37 @@ def cors_allowed_methods(main_tree):
     return None
 
 
+def cors_allowed_headers(main_tree):
+    """Return explicit CORSMiddleware allow_headers from main.py.
+
+    Browser-only failures are especially nasty here: adding a custom request
+    header in the frontend silently creates a preflight requirement. Keep the
+    critical headers in the static API contract so Idempotency-Key (and future
+    auth/correlation headers) cannot drift away from CORS again.
+    """
+    if main_tree is None:
+        return None
+    for node in ast.walk(main_tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr != "add_middleware" or not node.args:
+            continue
+        if name_of(node.args[0]) != "CORSMiddleware":
+            continue
+        for kw in node.keywords:
+            if kw.arg != "allow_headers":
+                continue
+            if not isinstance(kw.value, (ast.List, ast.Tuple, ast.Set)):
+                return None
+            headers = set()
+            for item in kw.value.elts:
+                if not isinstance(item, ast.Constant) or not isinstance(item.value, str):
+                    return None
+                headers.add(item.value.lower())
+            return headers
+    return None
+
+
 failures = []
 seen = set()
 route_count = 0
@@ -216,6 +247,25 @@ else:
         failures.append(
             "CORSMiddleware no permite métodos expuestos por la API: "
             + ", ".join(sorted(missing_cors_methods))
+        )
+
+cors_headers = cors_allowed_headers(main_tree)
+required_cors_headers = {
+    "authorization",
+    "content-type",
+    "idempotency-key",
+    "x-api-key",
+    "x-request-id",
+    "x-client-release",
+}
+if cors_headers is None:
+    failures.append("CORSMiddleware debe declarar allow_headers explícitamente en main.py")
+else:
+    missing_cors_headers = required_cors_headers - cors_headers
+    if missing_cors_headers:
+        failures.append(
+            "CORSMiddleware no permite cabeceras requeridas por clientes: "
+            + ", ".join(sorted(missing_cors_headers))
         )
 
 print("== Chess Studio · API surface gate ==")

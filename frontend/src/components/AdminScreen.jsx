@@ -12,7 +12,7 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import { ADMIN_USER_FILTERS, adminActivityTypeLabel, adminClientReleaseState, filterAdminUsers, formatAdminDate, formatAdminTimestamp, sortAdminUsers, summarizeAdminClientReleases } from '../adminFormatting.js';
-import { deleteAdminFeedback, fetchAdminFeedback, fetchAdminFeedbackAttachment, replyAdminFeedback, updateAdminFeedbackStatus } from '../feedback.js';
+import { deleteAdminFeedback, fetchAdminFeedback, fetchAdminFeedbackAttachment, replyAdminFeedback, submitFeedback, updateAdminFeedbackStatus } from '../feedback.js';
 import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 import { ADMIN_REFRESH_MS } from '../presenceCadence.js';
 
@@ -239,6 +239,7 @@ export default function AdminScreen({ onExit }) {
   const [feedback, setFeedback] = useState(null);
   const [feedbackError, setFeedbackError] = useState(null);
   const [feedbackUpdating, setFeedbackUpdating] = useState(null);
+  const [feedbackTestCreating, setFeedbackTestCreating] = useState(false);
   const [feedbackReplies, setFeedbackReplies] = useState({});
   const [activityFilter, setActivityFilter] = useState('all');
   const [adminView, setAdminView] = useState('overview');
@@ -311,6 +312,24 @@ export default function AdminScreen({ onExit }) {
       setFeedbackError(e?.message || 'No se pudo responder al feedback.');
     } finally {
       setFeedbackUpdating(null);
+    }
+  }
+
+  async function handleCreateTestFeedback() {
+    if (feedbackTestCreating) return;
+    setFeedbackTestCreating(true);
+    setFeedbackError(null);
+    try {
+      const result = await submitFeedback({
+        category: 'general',
+        message: 'Feedback de prueba generado desde Admin.',
+        context: 'Admin · prueba',
+      });
+      if (result?.feedback) setFeedback((current) => [result.feedback, ...(current || [])]);
+    } catch (e) {
+      setFeedbackError(e?.message || 'No se pudo crear el feedback de prueba.');
+    } finally {
+      setFeedbackTestCreating(false);
     }
   }
 
@@ -494,7 +513,12 @@ export default function AdminScreen({ onExit }) {
               <span className="section-label">Feedback</span>
               <h3>Lo que están diciendo los usuarios</h3>
             </div>
-            <span className="admin-feedback-badge">{(feedback || []).filter((item) => item.status === 'new').length} nuevos</span>
+            <div className="admin-feedback-heading-actions">
+              <button type="button" className="secondary-btn" disabled={feedbackTestCreating} onClick={handleCreateTestFeedback}>
+                {feedbackTestCreating ? 'Creando…' : 'Crear feedback de prueba'}
+              </button>
+              <span className="admin-feedback-badge">{(feedback || []).filter((item) => item.status === 'new').length} nuevos</span>
+            </div>
           </div>
           {feedbackError && <p className="error-text">{feedbackError}</p>}
           {!feedbackError && feedback === null && <p className="hint-text">Cargando feedback…</p>}

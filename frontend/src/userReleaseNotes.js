@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zex',
+    title: 'El tablero vuelve a hablar con el backend',
+    highlights: [
+      'Corrige una regresión del navegador que podía bloquear crear, mover o deshacer una partida antes de que la petición llegara al servidor.',
+      'La mesa de controles pasa a formar parte del mismo bloque que rival, tablero y jugador para mantenerse alineada con el ancho real del tablero.',
+      'Administración permite crear un feedback de prueba real y borrarlo desde la misma bandeja para comprobar el circuito completo.',
+    ],
+  },
+  {
     release: 'v16.6dm46zew',
     title: 'La mesa de juego respira mejor',
     highlights: [

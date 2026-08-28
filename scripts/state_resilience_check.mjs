@@ -14,6 +14,7 @@ const checks = [
   [/attachSeriesGame/.test(read('frontend/src/App.jsx')) && /assertSeriesFlowInvariant/.test(read('frontend/src/series.js')), 'BO3/BO5 series must enforce explicit flow ownership'],
   [/puzzleTransition/.test(read('frontend/src/components/PuzzleScreen.jsx')), 'PuzzleScreen must use puzzle state machine'],
   [/Idempotency-Key/.test(read('frontend/src/api.js')), 'frontend game mutations must support Idempotency-Key'],
+  [/Idempotency-Key/.test(read('backend-python/main.py')), 'backend CORS must allow the frontend Idempotency-Key header'],
   [/operationLedger/.test(read('backend-python/operation_idempotency_core.py')), 'backend move/undo must persist bounded operation ledger'],
   [/operation_idempotency_core/.test(read('scripts/idempotency_smoke.py')) && !/from operation_idempotency import/.test(read('scripts/idempotency_smoke.py')), 'idempotency smoke must remain dependency-free and import the core policy directly'],
   [/create_game_once/.test(read('backend-python/game_api.py')) && /DuplicateKeyError/.test(read('backend-python/game_store.py')), 'game creation must be atomic/idempotent under concurrent retries'],

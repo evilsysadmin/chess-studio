@@ -1,3 +1,11 @@
+### v16.6dm46zex · hotfix CORS de idempotencia + controles y feedback verificables
+
+- Corrige una regresión crítica de CORS: el frontend envía `Idempotency-Key` en crear/mover/deshacer, pero FastAPI no permitía esa cabecera en el preflight. El navegador bloqueaba el `POST` antes de alcanzar el backend.
+- Añade regresión de preflight desde el dominio público y un gate estático que exige métodos y cabeceras CORS críticas, incluido `Idempotency-Key`.
+- La mesa de controles se integra dentro del stack rival + tablero + jugador, usando exactamente el mismo ancho en vez de quedar como bloque externo.
+- Admin incorpora `Crear feedback de prueba`, que usa el endpoint real de feedback y permite comprobar crear → listar → borrar desde la propia bandeja.
+- Añade E2E del circuito de feedback de prueba y mantiene el borrado de resueltos.
+
 ### v16.6dm46zew · mesa de juego simplificada y quality gate tolerante a caídas de npm
 
 - Game Screen elimina la franja de Opciones avanzadas/PGN: estado y acciones viven en una sola barra alineada.
