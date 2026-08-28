@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "==> Chess Studio pre-push quality gate: make tests"
+if ! make tests; then
+  echo >&2 ""
+  echo >&2 "Push cancelado: el quality gate local ha fallado."
+  echo >&2 "Corrige los tests o, solo si sabes exactamente por qué, usa: git push --no-verify"
+  exit 1
+fi
+
+echo "==> Quality gate local OK. Push permitido."
