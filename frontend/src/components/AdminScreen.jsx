@@ -240,6 +240,7 @@ export default function AdminScreen({ onExit }) {
   const [feedbackError, setFeedbackError] = useState(null);
   const [feedbackUpdating, setFeedbackUpdating] = useState(null);
   const [feedbackTestCreating, setFeedbackTestCreating] = useState(false);
+  const [feedbackDeleteCandidate, setFeedbackDeleteCandidate] = useState(null);
   const [feedbackReplies, setFeedbackReplies] = useState({});
   const [activityFilter, setActivityFilter] = useState('all');
   const [adminView, setAdminView] = useState('overview');
@@ -333,10 +334,15 @@ export default function AdminScreen({ onExit }) {
     }
   }
 
-  async function handleFeedbackDelete(feedbackId) {
+  function handleFeedbackDelete(feedbackId) {
     if (feedbackUpdating) return;
-    const confirmed = window.confirm('¿Borrar este feedback definitivamente?\n\nÚtil para limpiar mensajes de prueba. Esta acción no se puede deshacer.');
-    if (!confirmed) return;
+    setFeedbackDeleteCandidate(feedbackId);
+  }
+
+  async function confirmFeedbackDelete() {
+    const feedbackId = feedbackDeleteCandidate;
+    if (!feedbackId || feedbackUpdating) return;
+    setFeedbackDeleteCandidate(null);
     adminDataEpochRef.current += 1;
     setFeedbackUpdating(feedbackId);
     setFeedbackError(null);
@@ -493,6 +499,19 @@ export default function AdminScreen({ onExit }) {
 
   return (
     <div className="menu admin-screen">
+      {feedbackDeleteCandidate && (
+        <div className="modal-backdrop admin-confirm-backdrop" role="presentation" onMouseDown={() => setFeedbackDeleteCandidate(null)}>
+          <section className="army-card admin-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-delete-title" onMouseDown={(event) => event.stopPropagation()}>
+            <span className="section-label">Feedback · acción irreversible</span>
+            <h2 id="feedback-delete-title">¿Borrar este feedback?</h2>
+            <p>Útil para limpiar mensajes de prueba. Esta acción no se puede deshacer.</p>
+            <div className="admin-confirm-actions">
+              <button type="button" className="secondary-btn" onClick={() => setFeedbackDeleteCandidate(null)}>Cancelar</button>
+              <button type="button" className="primary-btn danger-btn" onClick={() => void confirmFeedbackDelete()}>Borrar definitivamente</button>
+            </div>
+          </section>
+        </div>
+      )}
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section">
         <span className="section-label">Admin</span>

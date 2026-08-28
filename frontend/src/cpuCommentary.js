@@ -303,6 +303,7 @@ const LINES = {
       'Acabas de perdonar un mate en una. Ni la Cruz Roja reparte tanta misericordia.',
       'Tenías al rey rival listo para el entierro y has pedido que le devuelvan las constantes vitales. Magnífico.',
       'La posición gritaba «MATE» y tú has contestado «ahora no, gracias». Una gestión impecable del desastre.',
+      'Achtung: tenías mate en una. Uno. Bitte, no conviertas una ejecución en una excursión turística.',
     ],
     STALEMATE_BLUNDER: [
       'Ibas ganando y has fabricado un ahogado. Convertir oro en serrín también es una habilidad.',
@@ -369,6 +370,7 @@ const LINES = {
       'Ese caballo acaba de abrir dos expedientes disciplinarios a la vez. Eficiencia obscena.',
       'Dos objetivos, un caballo y cero paciencia. Bonita extorsión geométrica.',
       'Horquilla. El caballo ha entrado en la sala y de pronto nadie encuentra una salida digna.',
+      'Sehr gut. Esa horquilla tiene la desagradable precisión de un formulario alemán bien rellenado.',
     ],
     PAWN_FORK: [
       'Horquilla de peón. Una unidad de presupuesto amenazando media junta directiva. Capitalismo táctico perfecto.',
@@ -381,6 +383,7 @@ const LINES = {
       'Has dejado la dama a tiro de peón. No es valentía; es poner un Ferrari delante de una trituradora y dejar las llaves puestas.',
       'Ese peón puede comerse tu dama. Te lo digo porque aparentemente alguien tiene que ejercer de adulto aquí.',
       'Tu dama está oliendo el aliento de un peón enemigo. Si sobrevive será por misericordia, no por planificación.',
+      'Achtung, mein Freund: esa dama está a una diagonal de convertirse en estadística de peón.',
       'Dama en prise por peón. Hay formas más discretas de pedir una derrota, pero ninguna tan eficiente.',
     ],
     PAWN_TAKES_ROOK: [
@@ -396,6 +399,7 @@ const LINES = {
       'Se acabó. Tu rey ya no necesita estrategia; necesita servicios funerarios.',
       'Jaque mate. He cerrado la posición como un notario: sello, firma y fuera.',
       'Mate ejecutado. La buena noticia es que ya no puedes empeorar esta partida.',
+      'Achtung. Jaque mate. Te prometo que el formulario de reclamaciones está en algún lugar de Berlín.',
       'Jaque mate. Gracias por traer un rey a esta demostración práctica de vulnerabilidad.',
     ],
     MISSED_MATE: [
@@ -428,6 +432,7 @@ const LINES = {
       'Dama abatida por peón. Tu aristocracia acaba de ser nacionalizada por la infantería.',
       'Tu dama valía nueve. Mi peón, uno. Gracias por patrocinar este máster gratuito de economía aplicada.',
       'Un peón acaba de llevarse tu dama. Hay humillaciones que deberían venir con música de ascensor.',
+      'Ach... tu dama acaba de perder contra un peón. Bitte, concede un minuto de silencio a la aristocracia.',
       'Peón mata dama. Ni siquiera voy a presumir demasiado; la posición ya se está riendo por mí.',
       'Tu dama acaba de perder una pelea contra alguien que sólo sabe caminar hacia delante. Procesa eso con calma.',
     ],

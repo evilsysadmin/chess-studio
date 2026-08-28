@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zey',
+    title: 'Matthias abre despacho',
+    highlights: [
+      'Matthias se presenta una sola vez a quienes todavía no lo conocen y conserva después sus apariciones ocasionales sin convertirse en un pesado.',
+      'Así juegas estrena una audiencia diaria guiada con Matthias: eliges qué quieres mejorar y recibes un único consejo diario basado en tu juego real.',
+      'La radio suma cinco escenas nuevas, desde jazz nocturno y piano con lluvia hasta oud táctico y una marcha con bastante aroma a Matthias.',
+    ],
+  },
+  {
     release: 'v16.6dm46zex',
     title: 'El tablero vuelve a hablar con el backend',
     highlights: [

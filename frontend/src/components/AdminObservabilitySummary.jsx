@@ -176,6 +176,7 @@ export default function AdminObservabilitySummary({ token, users = [], currentAd
                     ? `OTLP configurado${traceEndpointPath ? ` · ${traceEndpointPath}` : ''}, pero no inicializado${tracing.initializationError ? ` · ${tracing.initializationError}` : ''}`
                     : 'OTLP/Tempo sin configurar'}
           </small>
+          {!tempoProbe?.traceId && tracing?.startupTraceId ? <code title="Traza de arranque del backend">{tracing.startupTraceId}</code> : null}
           {tempoProbe?.ok && grafanaTracesUrl ? <a href={grafanaTracesUrl} target="_blank" rel="noreferrer">Buscar en trazas ↗</a> : null}
         </div>
         <details className="admin-legacy-observability">

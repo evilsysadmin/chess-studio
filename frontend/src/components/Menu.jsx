@@ -24,7 +24,7 @@ import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboar
 import { loadPuzzlesSolved } from '../puzzleStats.js';
 import { APP_RELEASE } from '../release.js';
 import { loadRivalry } from '../rivalry.js';
-import { buildMatthiasHomeVisit, markMatthiasHomeShown, matthiasHomeLastShownAt, matthiasHomeSessionSeen, shouldShowMatthiasHome } from '../matthiasHome.js';
+import { buildMatthiasHomeVisit, buildMatthiasIntroVisit, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
@@ -98,6 +98,15 @@ export default function Menu({
 
   useEffect(() => {
     if (matthiasVisit || blockingHomeOverlay) return;
+    // Presentación persistente: se muestra una sola vez por perfil. Marcarla
+    // al pintarla evita que reload/navegación la conviertan en un vendedor
+    // ambulante. Los comentarios ocasionales mantienen su cooldown separado.
+    if (!matthiasOnboarded()) {
+      markMatthiasOnboarded();
+      markMatthiasHomeShown();
+      setMatthiasVisit(buildMatthiasIntroVisit());
+      return;
+    }
     const show = shouldShowMatthiasHome({
       hasOpenOverlay: blockingHomeOverlay,
       sessionSeen: matthiasHomeSessionSeen(),

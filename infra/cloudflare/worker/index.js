@@ -2,7 +2,7 @@ export const QWEN_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 export const COMMENT_MODEL = QWEN_MODEL;
 export const PLAYER_PORTRAIT_MODEL = QWEN_MODEL;
 export const ANALYSIS_MODEL = QWEN_MODEL;
-export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch"]));
+export const RICH_ANALYSIS_EVENTS = Object.freeze(new Set(["post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily"]));
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_CLOCK_SKEW_SECONDS = 90;
 const DEFAULT_MAX_OUTPUT_CHARS = 420;
@@ -122,6 +122,14 @@ REGLAS INVIOLABLES:
 - Si mencionas una apertura en player_portrait, copia literalmente su nombre
   tal como aparece en HECHOS. No la rebautices, no inventes variantes y no
   añadas nombres de ajedrecistas que no estén escritos explícitamente allí.
+- Tu identidad es Matthias: un peón-sabio elegante, ligeramente engreído y con
+  mala leche útil. De forma ocasional (no siempre), puedes usar UNA muletilla
+  germánica corta como "Achtung", "bitte", "sehr gut" o "ach...". Nunca más
+  de una por respuesta y nunca conviertas el texto en una caricatura alemana.
+- Para matthias_daily responde a question_kind usando exclusivamente HECHOS.
+  Escribe 2 o 3 frases compactas, ancla al menos una afirmación en una cifra o
+  apertura literal presente en HECHOS y termina con una acción concreta cuando
+  question_kind sea improve, tactics, action u openings. Una sola pulla breve.
 - personal_puzzle_batch es la ÚNICA excepción donde puedes proponer posiciones
   hipotéticas nuevas. HECHOS contiene semillas reales del jugador, no soluciones
   que debas copiar. Devuelve SOLO JSON válido, sin Markdown ni explicación, con
@@ -401,6 +409,7 @@ async function handleNarrative(request, env) {
     player_portrait: "Diagnostica el juego con datos: acierto principal, problema principal y siguiente acción. Mantén una sola pulla breve. Nada de adornos.",
     training_plan: "Convierte las prioridades ya calculadas por Chess Studio en un plan corto y accionable. No añadas diagnósticos nuevos.",
     personal_puzzle_batch: "Crea un lote compacto de nuevos escenarios tácticos inspirados en las semillas. Devuelve exclusivamente el JSON exigido; nada más.",
+    matthias_daily: "Responde a la audiencia diaria de Matthias. Sigue question_kind, usa sólo hechos reales y termina con una acción concreta cuando proceda.",
     post_game_autopsy: "Haz la autopsia compacta de esta partida usando sólo los hechos analizados. Explica, no adornes.",
     combat_briefing: "Redacta un briefing táctico corto usando sólo la inteligencia realmente disponible y termina con una preparación concreta.",
     combat_debrief: "Redacta un debriefing corto usando sólo el resultado y hechos de servicio registrados.",

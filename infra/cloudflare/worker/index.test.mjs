@@ -294,3 +294,34 @@ test('rechaza content-type incorrecto y rutas desconocidas sin tocar bindings', 
   assert.equal(fake.calls.rates.length, 0);
   assert.equal(fake.calls.ai.length, 0);
 });
+
+test('matthias_daily usa audiencia guiada, hechos saneados y routing de análisis', async () => {
+  const fake = fakeEnv({
+    aiResult: {
+      choices: [{ message: { content: 'Achtung: has jugado 8 partidas y ahí está la pista. En la próxima compara dos candidatas antes de cada decisión crítica.' } }],
+      usage: { prompt_tokens: 90, completion_tokens: 30 },
+    },
+  });
+  const response = await worker.fetch(
+    await narrativeRequest({
+      event_type: 'matthias_daily',
+      facts: {
+        question_kind: 'improve',
+        total_games: 8,
+        record: { wins: 3, losses: 5 },
+        password: 'NO-DEBE-SALIR',
+      },
+    }),
+    fake.env,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(fake.calls.rates, [{ key: 'render-analysis' }]);
+  assert.equal(fake.calls.ai[0].model, ANALYSIS_MODEL);
+  const prompt = fake.calls.ai[0].options.messages.at(-1).content;
+  assert.match(prompt, /TIPO_DE_EVENTO: matthias_daily/);
+  assert.match(prompt, /"question_kind":"improve"/);
+  assert.match(prompt, /"total_games":8/);
+  const fullPrompt = fake.calls.ai[0].options.messages.map((message) => message.content).join('\n');
+  assert.match(fullPrompt, /Achtung|bitte|sehr gut|germánica/i);
+  assert.doesNotMatch(prompt, /NO-DEBE-SALIR|password/);
+});

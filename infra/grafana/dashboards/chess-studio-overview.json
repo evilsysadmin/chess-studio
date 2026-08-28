@@ -42,7 +42,10 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Estado a primera vista.** Si algo sale mal, abre **Chess Studio · Logs accionables** para 404/5xx/request_id y **Chess Studio · Trazas** para seguir latencia extremo a extremo. Deploy `${commit_sha}`."
+        "content": "**Estado a primera vista.** Un `0` significa que la consulta respondió correctamente pero no hubo eventos en esa ventana; `No data` queda reservado para paneles donde la ausencia es semántica (logs/trazas) o para una señal que necesita diagnóstico. Si algo sale mal, abre **Chess Studio · Logs accionables** para 404/5xx/request_id y **Chess Studio · Trazas** para seguir latencia extremo a extremo. Deploy `${commit_sha}`."
+      },
+      "fieldConfig": {
+        "defaults": {}
       }
     },
     {
@@ -62,16 +65,17 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "${logs_datasource_uid}"
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum(increase(chess_studio_http_server_requests_total{http_response_status_class=\"5xx\"}[15m]))",
+          "expr": "sum(increase(chess_studio_http_server_requests_total{http_response_status_class=\"5xx\"}[15m])) or vector(0)",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
@@ -111,7 +115,8 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
@@ -141,16 +146,17 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "${logs_datasource_uid}"
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
           },
-          "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket[15m])))",
+          "expr": "(1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket[15m])))) or vector(0)",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "ms"
+          "unit": "ms",
+          "noValue": "0"
         },
         "overrides": []
       },
@@ -180,16 +186,17 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "${logs_datasource_uid}"
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum(increase(chess_studio_http_server_requests_total[15m]))",
+          "expr": "sum(increase(chess_studio_http_server_requests_total[15m])) or vector(0)",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "noValue": "0"
         },
         "overrides": []
       },
@@ -219,15 +226,17 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "${logs_datasource_uid}"
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum by (http_response_status_class) (rate(chess_studio_http_server_requests_total[$__rate_interval]))",
+          "expr": "sum by (http_response_status_class) (rate(chess_studio_http_server_requests_total[$__rate_interval])) or vector(0)",
           "refId": "A"
         }
       ],
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "noValue": "0"
+        },
         "overrides": []
       },
       "options": {
@@ -257,16 +266,17 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "${logs_datasource_uid}"
+            "type": "prometheus",
+            "uid": "${metrics_datasource_uid}"
           },
-          "expr": "topk(8, 1000 * histogram_quantile(0.95, sum by (le, http_route) (rate(chess_studio_http_server_duration_seconds_bucket[$__rate_interval]))))",
+          "expr": "topk(8, 1000 * histogram_quantile(0.95, sum by (le, http_route) (rate(chess_studio_http_server_duration_seconds_bucket[$__rate_interval])))) or vector(0)",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "ms"
+          "unit": "ms",
+          "noValue": "0"
         },
         "overrides": []
       },

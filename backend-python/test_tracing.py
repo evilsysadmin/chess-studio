@@ -138,3 +138,14 @@ def test_diagnostics_exposes_only_safe_signal_paths(monkeypatch):
     assert d["signals"]["metrics"]["endpointPath"] == "/otlp/v1/metrics"
     assert d["signals"]["logs"]["endpointPath"] == "/otlp/v1/logs"
     assert "secret.example" not in str(d)
+
+
+def test_otlp_headers_are_parsed_explicitly_without_losing_encoded_spaces():
+    import tracing
+    headers = tracing._parse_otlp_headers("Authorization=Basic%20abc123,X-Scope-OrgID=42")
+    assert headers == {"Authorization": "Basic abc123", "X-Scope-OrgID": "42"}
+
+
+def test_otlp_header_parser_ignores_malformed_chunks():
+    import tracing
+    assert tracing._parse_otlp_headers("broken,=empty,Valid=yes") == {"Valid": "yes"}

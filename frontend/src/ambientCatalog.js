@@ -1881,6 +1881,58 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
+
+
+// dm46zey · pequeño pack de escenas nuevas: rellenan huecos del catálogo sin
+// cargar samples externos. Siguen siendo composiciones originales WebAudio.
+Object.assign(AMBIENT_THEMES, {
+  pawnMarshal: {
+    id:'pawnMarshal', genre:'Ecléctica', engine:'structured', label:'Marcha del peón ilustrado',
+    description:'Caja seca, metales contenidos y piano marcial con una ceja levantada. Muy Matthias.',
+    stepMs:132, stepsPerSection:64, longFormMs:410000, leadInstrument:'brass', counterInstrument:'felt', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:55,8:58,16:62,24:60,32:55,40:63,48:62,56:58},counter:{4:67,20:65,36:70,52:67},chords:{0:[43,50,55],16:[46,53,58],32:[41,48,53],48:[43,50,55]},bass:{0:31,8:38,16:34,24:41,32:29,40:36,48:31,56:38},drums:{0:'K',8:'S',16:'K',24:'S',32:'K',40:'S',48:'K',56:'S'}},
+      {lead:{0:58,8:62,16:65,24:63,32:60,40:67,48:65,56:62},counter:{12:70,28:67,44:72,60:70},chords:{0:[46,53,58],16:[48,55,60],32:[43,50,55],48:[46,53,58]},bass:{0:34,8:41,16:36,24:43,32:31,40:38,48:34,56:41},drums:{0:'K',8:'S',16:'K',20:'H',24:'S',32:'K',40:'S',48:'K',52:'H',56:'S'}}
+    ],
+  },
+  cafeGambit213: {
+    id:'cafeGambit213', genre:'Smooth Jazz', engine:'structured', label:'Café Gambito · 2:13',
+    description:'Rhodes, contrabajo y saxo apagado en un club pequeño cuando ya han recogido media sala.',
+    stepMs:166, stepsPerSection:64, longFormMs:435000, leadInstrument:'mutedHorn', counterInstrument:'jazzGuitar', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{6:67,14:70,22:72,30:69,38:65,46:67,54:64,62:62},counter:{10:57,26:60,42:55,58:57},chords:{0:[48,55,58,64],16:[53,57,60,64],32:[50,57,60,65],48:[55,59,62,65]},bass:{0:36,8:43,16:41,24:45,32:38,40:45,48:43,56:47},drums:{0:'B',8:'H',16:'B',24:'S',32:'B',40:'H',48:'B',56:'S'}},
+      {lead:{4:70,12:74,20:77,28:74,36:72,44:69,52:67,60:64},counter:{8:60,24:62,40:59,56:57},chords:{0:[50,57,60,65],16:[48,55,58,64],32:[53,57,60,64],48:[55,59,62,65]},bass:{0:38,8:45,16:36,24:43,32:41,40:48,48:43,56:50},drums:{0:'B',12:'H',16:'S',32:'B',44:'H',48:'S'}}
+    ],
+  },
+  rainOnE4: {
+    id:'rainOnE4', genre:'Piano / Minimal', engine:'structured', label:'Lluvia sobre e4',
+    description:'Piano de fieltro, cello muy atrás y silencios largos para calcular sin prisa.',
+    stepMs:218, stepsPerSection:64, longFormMs:455000, leadInstrument:'felt', counterInstrument:'cello', chordInstrument:'felt', bassInstrument:'cello',
+    sections:[
+      {lead:{0:64,8:67,16:69,24:72,32:71,40:67,48:64,56:62},counter:{12:52,44:50},chords:{0:[52,55,59],24:[50,53,57],48:[48,52,55]},bass:{0:40,24:38,48:36}},
+      {lead:{4:62,12:65,20:67,28:64,36:60,44:62,52:59,60:57},counter:{16:50,48:48},chords:{0:[50,53,57],32:[48,52,55]},bass:{0:38,32:36}}
+    ],
+  },
+  knightAlleyNoir: {
+    id:'knightAlleyNoir', genre:'Trip-Hop / Downtempo', engine:'structured', label:'Caballo en callejón mojado',
+    description:'Vibráfono, Rhodes oscuro y batería lenta de cine negro; detective sin gabardina obligatoria.',
+    stepMs:184, stepsPerSection:64, longFormMs:425000, leadInstrument:'vibes', counterInstrument:'mutedHorn', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{4:62,12:65,20:69,28:67,36:64,44:62,52:60,60:57},counter:{10:74,26:72,42:69,58:67},chords:{0:[50,53,57,62],16:[48,52,55,60],32:[45,50,53,57],48:[47,50,54,59]},bass:{0:38,8:38,16:36,24:36,32:33,40:33,48:35,56:35},drums:{0:'K',12:'H',16:'S',32:'K',44:'H',48:'S'}},
+      {lead:{6:65,18:68,30:70,42:67,54:63},counter:{14:77,38:74,62:72},chords:{0:[53,56,60,65],24:[50,55,58,63],48:[48,53,56,60]},bass:{0:41,16:38,32:36,48:34},drums:{0:'K',16:'S',32:'K',48:'S'}}
+    ],
+  },
+  oudTrench: {
+    id:'oudTrench', genre:'Jazz / Mediterráneo', engine:'structured', label:'Oud en la trinchera',
+    description:'Oud seco, piano cálido y contrabajo: tensión táctica sin convertir la sala en una película épica.',
+    stepMs:152, stepsPerSection:64, longFormMs:440000, leadInstrument:'oudJazz', counterInstrument:'felt', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    sections:[
+      {lead:{0:64,6:65,12:68,18:67,24:64,30:62,36:61,42:64,48:67,54:65,60:64},counter:{9:72,27:70,45:68,63:67},chords:{0:[52,55,59,64],16:[49,53,56,61],32:[50,55,58,62],48:[47,52,55,59]},bass:{0:40,8:47,16:37,24:44,32:38,40:45,48:35,56:42},drums:{0:'K',8:'B',16:'S',24:'H',32:'K',40:'B',48:'S',56:'H'}},
+      {lead:{2:67,10:68,18:72,26:70,34:67,42:65,50:64,58:61},counter:{14:76,30:72,46:70,62:68},chords:{0:[55,59,62,67],16:[52,56,59,64],32:[50,55,58,62],48:[49,53,56,61]},bass:{0:43,8:50,16:40,24:47,32:38,40:45,48:37,56:44},drums:{0:'K',12:'H',16:'S',32:'K',44:'H',48:'S'}}
+    ],
+  },
+});
+
 export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Energía', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
   'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',

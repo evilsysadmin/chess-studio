@@ -13,7 +13,7 @@ import secrets
 import threading
 from collections import deque
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 LOGGER = logging.getLogger("uvicorn.error")
 _CONFIGURED = False
@@ -25,6 +25,7 @@ _HTTP_LATENCY: Any | None = None
 _FRONTEND_COUNTER: Any | None = None
 _FRONTEND_VITAL: Any | None = None
 _LAST_INIT_ERROR: str | None = None
+_STARTUP_TRACE_ID: str | None = None
 _SIGNAL_ERRORS: dict[str, str | None] = {"traces": None, "metrics": None, "logs": None}
 _OTEL_LOG_HANDLER: Any | None = None
 _TRACE_EXPORT_STATE: dict[str, Any] = {
@@ -82,6 +83,25 @@ def _safe_endpoint_path(endpoint: str) -> str | None:
         return urlsplit(endpoint).path or "/"
     except Exception:
         return None
+
+def _parse_otlp_headers(value: str | None) -> dict[str, str]:
+    """Parse OTEL_EXPORTER_OTLP_HEADERS once and pass it explicitly to exporters.
+
+    Values may be percent-encoded per the OTLP environment-variable format.
+    Diagnostics expose only whether headers exist, never their values.
+    """
+    headers: dict[str, str] = {}
+    for chunk in str(value or "").split(","):
+        chunk = chunk.strip()
+        if not chunk or "=" not in chunk:
+            continue
+        key, raw = chunk.split("=", 1)
+        key = unquote(key.strip())
+        if not key:
+            continue
+        headers[key] = unquote(raw.strip())
+    return headers
+
 
 def _truthy(value: str | None) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
@@ -162,6 +182,7 @@ def tracing_diagnostics(environ: dict[str, str] | None = None) -> dict[str, Any]
         "providerBinding": "explicit" if _TRACE_PROVIDER is not None else "none",
         "exporter": "otlp-http",
         "traceExporter": _trace_export_snapshot(),
+        "startupTraceId": _STARTUP_TRACE_ID,
         "initializationError": _LAST_INIT_ERROR,
         "signals": signals,
     }
@@ -357,11 +378,12 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
     """Configure OTLP traces, metrics and logs once; fail-open per signal."""
     global _CONFIGURED, _TRACE_PROVIDER, _METER_PROVIDER, _LOGGER_PROVIDER
     global _HTTP_COUNTER, _HTTP_LATENCY, _FRONTEND_COUNTER, _FRONTEND_VITAL
-    global _LAST_INIT_ERROR, _OTEL_LOG_HANDLER
+    global _LAST_INIT_ERROR, _OTEL_LOG_HANDLER, _STARTUP_TRACE_ID
     if _CONFIGURED:
         return True
 
     settings = tracing_settings()
+    exporter_headers = _parse_otlp_headers(os.environ.get("OTEL_EXPORTER_OTLP_HEADERS"))
     if not any((settings["traces_enabled"], settings["metrics_enabled"], settings["logs_enabled"])):
         _LAST_INIT_ERROR = None
         LOGGER.info("OpenTelemetry disabled: no OTLP endpoint configured.")
@@ -448,7 +470,7 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
                             _TRACE_EXPORT_STATE["lastError"] = _trace_export_error(status, result_name) if status else (existing_error or "export_failed")
                     return result
 
-            provider.add_span_processor(BatchSpanProcessor(TrackingOTLPSpanExporter(endpoint=settings["trace_endpoint"])))
+            provider.add_span_processor(BatchSpanProcessor(TrackingOTLPSpanExporter(endpoint=settings["trace_endpoint"], headers=exporter_headers or None)))
             # Bind instrumentation explicitly to Chess Studio's provider.  A hosting
             # layer or another library may already have installed a global provider;
             # trace.set_tracer_provider() deliberately refuses to replace it.  Without
@@ -458,6 +480,15 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
             HTTPXClientInstrumentor().instrument(tracer_provider=provider)
             _TRACE_PROVIDER = provider
+            # One non-blocking span per process gives Tempo a deterministic proof
+            # of life after every deploy. BatchSpanProcessor exports it normally;
+            # startup never waits on the network.
+            startup_tracer = provider.get_tracer("chess-studio.startup")
+            with startup_tracer.start_as_current_span("chess-studio.startup") as startup_span:
+                startup_span.set_attribute("chess_studio.startup", True)
+                context = startup_span.get_span_context()
+                if context and context.is_valid:
+                    _STARTUP_TRACE_ID = f"{context.trace_id:032x}"
             _SIGNAL_ERRORS["traces"] = None
         except Exception as exc:
             _SIGNAL_ERRORS["traces"] = type(exc).__name__
@@ -470,7 +501,7 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
             from opentelemetry.sdk.metrics import MeterProvider
             from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-            reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=settings["metrics_endpoint"]), export_interval_millis=30000)
+            reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=settings["metrics_endpoint"], headers=exporter_headers or None), export_interval_millis=30000)
             meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
             metrics.set_meter_provider(meter_provider)
             meter = metrics.get_meter("chess-studio.backend")
@@ -493,7 +524,7 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
             from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
             logger_provider = LoggerProvider(resource=resource)
-            logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=settings["logs_endpoint"])))
+            logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=settings["logs_endpoint"], headers=exporter_headers or None)))
             set_logger_provider(logger_provider)
             handler = LoggingHandler(level=logging.INFO, logger_provider=logger_provider)
             handler._chess_studio_otel = True  # type: ignore[attr-defined]

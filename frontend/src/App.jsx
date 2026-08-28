@@ -78,9 +78,7 @@ import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendT
 import { APP_RELEASE } from './release.js';
 import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
-import { createOperationId, operationFingerprint } from './operationId.js';
-import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } from './activeSessionMachine.js';
-import { reportStateInvariant } from './stateMachine.js';
+import { useGameLaunchController } from './useGameLaunchController.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -189,82 +187,8 @@ function AppInner({ isAdminUser }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
-  // Exclusión + identidad para lanzamientos de partida. `loading` cambia
-  // tras un render y no basta contra doble clic ni contra una respuesta tardía
-  // si el usuario navega mientras POST /games sigue en vuelo.
-  const gameLaunchRef = useRef(null); // { token, controller, originView, operationId? }
-  const gameLaunchRetryRef = useRef(null); // conserva Idempotency-Key tras timeout/503 para reintentar sin duplicar partidas
-  const gameLaunchMachineRef = useRef(ACTIVE_SESSION_STATE.IDLE);
-  const currentViewRef = useRef(view);
-  currentViewRef.current = view;
+  const gameLaunch = useGameLaunchController(view, { onCancelled: () => setLoading(false) });
 
-  function beginGameLaunch() {
-    if (gameLaunchRef.current) return null;
-    const current = gameLaunchMachineRef.current;
-    const transition = activeSessionTransition(current, ACTIVE_SESSION_EVENT.CREATE);
-    if (!transition.ok) {
-      reportStateInvariant('game-launch', 'invalid-transition', { state: current, event: ACTIVE_SESSION_EVENT.CREATE, route: currentViewRef.current });
-      return null;
-    }
-    gameLaunchMachineRef.current = transition.nextState;
-    const launch = { token: Symbol('game-launch'), controller: new AbortController(), originView: currentViewRef.current };
-    gameLaunchRef.current = launch;
-    return launch;
-  }
-
-  function gameLaunchIsCurrent(launch) {
-    return !!launch && gameLaunchRef.current === launch && !launch.controller.signal.aborted && currentViewRef.current === launch.originView;
-  }
-
-  function gameLaunchOperationId(launch, parts) {
-    if (!launch) return null;
-    const fingerprint = operationFingerprint(parts);
-    if (launch.operationId && launch.operationFingerprint === fingerprint) return launch.operationId;
-    const retry = gameLaunchRetryRef.current;
-    const reusable = retry && retry.fingerprint === fingerprint && (Date.now() - retry.failedAt) < 5 * 60_000;
-    const operationId = reusable ? retry.operationId : createOperationId('create');
-    launch.operationId = operationId;
-    launch.operationFingerprint = fingerprint;
-    gameLaunchRetryRef.current = { fingerprint, operationId, failedAt: Date.now() };
-    return operationId;
-  }
-
-  function confirmGameLaunchCreated(launch) {
-    if (launch?.operationId && gameLaunchRetryRef.current?.operationId === launch.operationId) gameLaunchRetryRef.current = null;
-    const result = activeSessionTransition(gameLaunchMachineRef.current, ACTIVE_SESSION_EVENT.CREATED);
-    if (result.ok) gameLaunchMachineRef.current = result.nextState;
-    else reportStateInvariant('game-launch', 'invalid-created-transition', { state: gameLaunchMachineRef.current, event: ACTIVE_SESSION_EVENT.CREATED, route: currentViewRef.current });
-  }
-
-  function endGameLaunch(launch, { cancelled = false } = {}) {
-    if (gameLaunchRef.current === launch) gameLaunchRef.current = null;
-    const current = gameLaunchMachineRef.current;
-    if (cancelled && [ACTIVE_SESSION_STATE.CREATING, ACTIVE_SESSION_STATE.ACTIVE].includes(current)) {
-      const result = activeSessionTransition(current, ACTIVE_SESSION_EVENT.CANCEL_CREATE);
-      if (result.ok) gameLaunchMachineRef.current = result.nextState;
-      else reportStateInvariant('game-launch', 'invalid-cancel-transition', { state: current, event: ACTIVE_SESSION_EVENT.CANCEL_CREATE, route: currentViewRef.current });
-      return;
-    }
-    if (!cancelled && current === ACTIVE_SESSION_STATE.CREATING) {
-      const result = activeSessionTransition(current, ACTIVE_SESSION_EVENT.CREATE_FAILURE);
-      if (result.ok) gameLaunchMachineRef.current = result.nextState;
-      else reportStateInvariant('game-launch', 'invalid-failure-transition', { state: current, event: ACTIVE_SESSION_EVENT.CREATE_FAILURE, route: currentViewRef.current });
-    }
-  }
-
-  useEffect(() => {
-    const launch = gameLaunchRef.current;
-    if (!launch || launch.originView === view) return;
-    launch.controller.abort(new DOMException('Game launch view changed', 'AbortError'));
-    endGameLaunch(launch, { cancelled: true });
-    setLoading(false);
-  }, [view]);
-
-  useEffect(() => () => {
-    const launch = gameLaunchRef.current;
-    launch?.controller?.abort(new DOMException('App unmounted', 'AbortError'));
-    if (launch) endGameLaunch(launch, { cancelled: true });
-  }, []);
 
   useProfileSyncLifecycle(view);
 
@@ -394,7 +318,7 @@ function AppInner({ isAdminUser }) {
   }, [view]);
 
   async function handleNewGame(difficulty, color, opts) {
-    const launch = beginGameLaunch();
+    const launch = gameLaunch.begin();
     if (!launch) return false;
     setExitNotice(null);
     setCasualResult(null);
@@ -402,10 +326,10 @@ function AppInner({ isAdminUser }) {
     setError(null);
     try {
       const handicap = handicapForGap(rating.rating, difficulty);
-      const operationId = gameLaunchOperationId(launch, [difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null]);
+      const operationId = gameLaunch.operationId(launch, [difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null]);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null, { signal: launch.controller.signal, operationId });
-      if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
-      confirmGameLaunchCreated(launch);
+      if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
+      gameLaunch.confirmCreated(launch);
       const isLearning = !!opts?.learning;
       const nextContext = { rematch: !!opts?.rematch, adaptiveDifficulty: !!opts?.adaptiveDifficulty, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null };
       setLearningMode(isLearning);
@@ -437,11 +361,11 @@ function AppInner({ isAdminUser }) {
       navigateTo('game');
       return true;
     } catch (e) {
-      if (gameLaunchIsCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));
+      if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));
       return false;
     } finally {
-      if (gameLaunchRef.current === launch) setLoading(false);
-      endGameLaunch(launch);
+      if (gameLaunch.owns(launch)) setLoading(false);
+      gameLaunch.end(launch);
     }
   }
 
@@ -581,7 +505,7 @@ function AppInner({ isAdminUser }) {
 
   async function handleNextSeriesGame() {
     if (!activeSeries || activeSeries.winner) return;
-    const launch = beginGameLaunch();
+    const launch = gameLaunch.begin();
     if (!launch) return;
     if (game?.id) clearClockSnapshot(game.id);
     setLoading(true);
@@ -591,10 +515,10 @@ function AppInner({ isAdminUser }) {
       // la siguiente. Si DELETE se atasca, la serie no debe parecer congelada.
       if (game?.id) void api.deleteGame(game.id).catch(() => {});
       const handicap = handicapForGap(rating.rating, activeSeries.difficulty);
-      const operationId = gameLaunchOperationId(launch, [activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null]);
+      const operationId = gameLaunch.operationId(launch, [activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null]);
       const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null, { signal: launch.controller.signal, operationId });
-      if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
-      confirmGameLaunchCreated(launch);
+      if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual', difficulty: created.difficulty });
       const updatedSeries = attachSeriesGame(activeSeries, created.id);
       saveActiveSeries(updatedSeries);
@@ -605,10 +529,10 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      if (gameLaunchIsCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo crear la siguiente partida de la serie.'));
+      if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo crear la siguiente partida de la serie.'));
     } finally {
-      if (gameLaunchRef.current === launch) setLoading(false);
-      endGameLaunch(launch);
+      if (gameLaunch.owns(launch)) setLoading(false);
+      gameLaunch.end(launch);
     }
   }
 
@@ -637,15 +561,15 @@ function AppInner({ isAdminUser }) {
   }
 
   async function handlePlayFromHere(fen, humanColor, difficulty, meta = {}) {
-    const launch = beginGameLaunch();
+    const launch = gameLaunch.begin();
     if (!launch) return;
     setLoading(true);
     setError(null);
     try {
-      const operationId = gameLaunchOperationId(launch, [difficulty || 50, humanColor || 'w', null, fen, null]);
+      const operationId = gameLaunch.operationId(launch, [difficulty || 50, humanColor || 'w', null, fen, null]);
       const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen, null, { signal: launch.controller.signal, operationId });
-      if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
-      confirmGameLaunchCreated(launch);
+      if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      gameLaunch.confirmCreated(launch);
       const nextContext = { lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null };
       recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: true, gameContext: nextContext }), difficulty: created.difficulty });
       clearActiveSeries();
@@ -660,8 +584,8 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      if (gameLaunchIsCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo arrancar la posición del laboratorio.'));
-    } finally { if (gameLaunchRef.current === launch) setLoading(false); endGameLaunch(launch); }
+      if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo arrancar la posición del laboratorio.'));
+    } finally { if (gameLaunch.owns(launch)) setLoading(false); gameLaunch.end(launch); }
   }
 
   function openPuzzleMode(source = 'curated', rush = false, filter = null, dailySlot = 'tactic') {
@@ -674,16 +598,16 @@ function AppInner({ isAdminUser }) {
   }
 
   async function launchRun(run) {
-    const launch = beginGameLaunch();
+    const launch = gameLaunch.begin();
     if (!launch) return false;
     setLoading(true);
     setError(null);
     try {
       if (game?.id) void api.deleteGame(game.id).catch(() => {});
-      const operationId = gameLaunchOperationId(launch, [run.difficulty, 'random', null, null, null]);
+      const operationId = gameLaunch.operationId(launch, [run.difficulty, 'random', null, null, null]);
       const created = await api.createGame(run.difficulty, 'random', null, null, null, { signal: launch.controller.signal, operationId });
-      if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
-      confirmGameLaunchCreated(launch);
+      if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
+      gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: run.mode || 'streak', difficulty: created.difficulty });
       clearActiveSeries();
       setActiveSeries(null);
@@ -698,43 +622,43 @@ function AppInner({ isAdminUser }) {
       setHasSavedGame(true);
       navigateTo('game');
     } catch (e) {
-      if (gameLaunchIsCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar el desafío.'));
-    } finally { if (gameLaunchRef.current === launch) setLoading(false); endGameLaunch(launch); }
+      if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar el desafío.'));
+    } finally { if (gameLaunch.owns(launch)) setLoading(false); gameLaunch.end(launch); }
     return true;
   }
 
   function handleStartRun(mode) {
-    if (gameLaunchRef.current) return;
+    if (gameLaunch.busy()) return;
     const run = startSpecialRun(mode);
     void launchRun(run);
   }
 
   function handleContinueRun(run = specialRun) {
-    if (run?.active && !gameLaunchRef.current) void launchRun(run);
+    if (run?.active && !gameLaunch.busy()) void launchRun(run);
   }
 
   // --- Modo torneo ---
 
   async function handlePlayTournament(color) {
-    const launch = beginGameLaunch();
+    const launch = gameLaunch.begin();
     if (!launch) return;
     setLoading(true);
     setError(null);
     try {
       const level = levelForPoints(tournament.progressPoints || 0);
       const cpuDifficulty = difficultyForLevel(level);
-      const operationId = gameLaunchOperationId(launch, [cpuDifficulty, color, null, null, null]);
+      const operationId = gameLaunch.operationId(launch, [cpuDifficulty, color, null, null, null]);
       const created = await api.createGame(cpuDifficulty, color, null, null, null, { signal: launch.controller.signal, operationId });
-      if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
-      confirmGameLaunchCreated(launch);
+      if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      gameLaunch.confirmCreated(launch);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });
       setTournamentGame(created);
       navigateTo('tournamentGame');
     } catch (e) {
-      if (gameLaunchIsCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));
+      if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));
     } finally {
-      if (gameLaunchRef.current === launch) setLoading(false);
-      endGameLaunch(launch);
+      if (gameLaunch.owns(launch)) setLoading(false);
+      gameLaunch.end(launch);
     }
   }
 

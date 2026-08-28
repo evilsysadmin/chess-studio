@@ -4,6 +4,7 @@ import { setProfileStorageItem } from './profileKeys.js';
 export const MATTHIAS_HOME_SESSION_KEY = 'chess-study-matthias-home-seen-v1';
 export const MATTHIAS_HOME_LAST_SHOWN_KEY = 'chess-study-matthias-home-last-shown-v1';
 export const MATTHIAS_HOME_COOLDOWN_MS = 8 * 60 * 60 * 1000;
+export const MATTHIAS_ONBOARDED_KEY = 'matthias.onboarded';
 
 const INCIDENT_COPY = Object.freeze({
   'human:MISSED_MATE': (count) => count > 1
@@ -63,6 +64,23 @@ function rivalryVisit(rivalry) {
   if (streak <= -2) return { kind: 'rivalry', text: `Llevo ${Math.abs(streak)} seguidas. Empiezo a sospechar que te gusta financiar mi autoestima.`, action: 'play', actionLabel: 'Romper la racha' };
   if (streak >= 2) return { kind: 'rivalry', text: `Llevas ${streak} victorias seguidas contra mí. Esto empieza a resultar administrativamente incómodo.`, action: 'play', actionLabel: 'Seguir tentando' };
   return null;
+}
+
+export function matthiasOnboarded() {
+  return getStorageItem(STORAGE_LOCAL, MATTHIAS_ONBOARDED_KEY) === '1';
+}
+
+export function markMatthiasOnboarded() {
+  setProfileStorageItem(MATTHIAS_ONBOARDED_KEY, '1');
+}
+
+export function buildMatthiasIntroVisit() {
+  return {
+    kind: 'intro',
+    text: 'Guten Morgen. Soy Matthias, el mayor cabronazo ajedrecista a este lado del Tajo. Te ayudaré a triunfar o fracasar; lo que tú decidas. Tschüss.',
+    action: 'play',
+    actionLabel: 'Jugar con Matthias',
+  };
 }
 
 export function buildMatthiasHomeVisit({ rivalry = {}, hasSavedGame = false } = {}) {

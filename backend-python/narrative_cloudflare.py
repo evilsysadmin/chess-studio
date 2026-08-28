@@ -31,7 +31,7 @@ DEFAULT_MAX_OUTPUT_CHARS = 420
 PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
 RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900
 PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200
-RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch"})
+RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily"})
 MAX_FACT_DEPTH = 3
 MAX_FACT_STRING = 240
 MAX_FACT_ARRAY = 12
@@ -247,6 +247,16 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         return f"{san}. Queda registrado."
     if isinstance(result, str) and result:
         return f"Resultado: {result}. El tablero ya ha presentado su informe."
+    if event_type == "matthias_daily":
+        kind = str(clean.get("question_kind") or "improve") if isinstance(clean, dict) else "improve"
+        fallbacks = {
+            "tactics": "Achtung: hoy no consigo audiencia con Workers AI. Revisa tus últimos errores tácticos y, antes de mover, enumera jaques, capturas y amenazas; vuelve a preguntarme luego.",
+            "strengths": "Hoy el enlace con mi despacho está caído. Quédate con lo medible: revisa tus últimas victorias y conserva el patrón que más se repita; luego vuelve a pedirme el veredicto.",
+            "action": "Bitte, una sola tarea mientras vuelve la línea: en tu próxima partida haz una pausa de diez segundos antes de cada jugada crítica y compara dos candidatas.",
+            "openings": "Sin Workers AI no voy a inventarme teoría. Revisa la apertura que más has jugado y localiza el primer punto donde tus resultados empiezan a torcerse; luego vuelve a preguntarme.",
+            "improve": "Achtung: hoy la línea con Workers AI está de huelga. Revisa tu error recurrente más frecuente y entrena una posición relacionada antes de volver a jugar.",
+        }
+        return fallbacks.get(kind, fallbacks["improve"])
     if event_type == "player_portrait":
         overall = clean.get("overall", {}) if isinstance(clean, dict) else {}
         losses = overall.get("losses", 0) if isinstance(overall, dict) else 0
@@ -433,6 +443,31 @@ def validate_player_portrait_contract(text: str, facts: dict[str, Any]) -> tuple
 
     if not any(term in sentences[-1].lower() for term in _PORTRAIT_ACTION_TERMS):
         return False, "missing_action"
+    return True, None
+
+
+def validate_matthias_daily_contract(text: str, facts: dict[str, Any]) -> tuple[bool, str | None]:
+    clean = " ".join(str(text or "").split()).strip()
+    if len(clean) < 70 or len(clean) > RICH_ANALYSIS_MAX_OUTPUT_CHARS:
+        return False, "length"
+    if clean.startswith(("-", "*", "#")) or "```" in clean:
+        return False, "format"
+    sentences = _sentence_parts(clean)
+    if len(sentences) not in {2, 3}:
+        return False, "sentence_count"
+    numbers = _numeric_facts(facts)
+    output_numbers = set(re.findall(r"(?<![\w])\d+(?:[.,]\d+)?", clean))
+    normalized = set()
+    for token in output_numbers:
+        try:
+            number = float(token.replace(",", "."))
+            normalized.add(str(int(number)) if number.is_integer() else str(number).rstrip("0").rstrip("."))
+        except ValueError:
+            pass
+    has_number_anchor = any(number in normalized for number in numbers)
+    has_opening_anchor = any(name.lower() in clean.lower() for name in _opening_names(facts))
+    if not (has_number_anchor or has_opening_anchor):
+        return False, "missing_evidence_anchor"
     return True, None
 
 
@@ -799,6 +834,14 @@ async def request_cloud_narrative(
             if not valid_portrait:
                 return _provider_failure(
                     f"portrait_contract_rejected:{portrait_reason or 'unknown'}",
+                    elapsed,
+                    channel=channel,
+                )
+        if event_type == "matthias_daily":
+            valid_daily, daily_reason = validate_matthias_daily_contract(text, facts)
+            if not valid_daily:
+                return _provider_failure(
+                    f"matthias_daily_contract_rejected:{daily_reason or 'unknown'}",
                     elapsed,
                     channel=channel,
                 )

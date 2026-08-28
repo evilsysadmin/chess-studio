@@ -870,3 +870,21 @@
 .admin-feedback-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: .45rem; flex-wrap: wrap; }
 .admin-feedback-heading-actions > .secondary-btn { min-height: 34px; padding: .4rem .62rem; }
 @media (max-width: 680px) { .admin-feedback-heading-actions { justify-content: flex-start; } }
+
+/* Matthias · audiencia diaria guiada. Una función útil, no otro chatbot. */
+.matthias-daily { margin: .7rem 0 1rem; padding: .85rem 1rem; border: 1px solid color-mix(in srgb, var(--brass) 32%, var(--ui-border)); border-radius: var(--radius-lg); background: linear-gradient(135deg, color-mix(in srgb, var(--brass) 5%, var(--ui-panel)), var(--ui-panel)); display: grid; gap: .7rem; }
+.matthias-daily-heading { display: flex; align-items: center; gap: .7rem; }
+.matthias-daily-heading img { width: 50px; height: 50px; border-radius: 12px; object-fit: cover; object-position: 50% 28%; border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent); }
+.matthias-daily-heading h3 { margin: .08rem 0 0; font-family: var(--font-display); font-size: 1rem; color: var(--parchment); }
+.matthias-daily-options { display: flex; flex-wrap: wrap; gap: .45rem; }
+.matthias-daily-options .secondary-btn { min-height: 36px; }
+.matthias-daily > small, .matthias-daily-answer small { color: var(--parchment-dim); line-height: 1.4; }
+.matthias-daily-answer { display: grid; gap: .4rem; }
+.matthias-daily-answer p { margin: 0; color: var(--parchment); line-height: 1.55; }
+
+/* Confirmación propia: no usa window.confirm(), así WebAudio no se pausa. */
+.admin-confirm-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 1rem; background: rgba(3, 5, 8, .72); backdrop-filter: blur(4px); }
+.admin-confirm-dialog { width: min(460px, 100%); display: grid; gap: .65rem; }
+.admin-confirm-dialog h2, .admin-confirm-dialog p { margin: 0; }
+.admin-confirm-actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
+.admin-confirm-actions .danger-btn { border-color: color-mix(in srgb, #b64a4a 68%, var(--ui-border)); background: color-mix(in srgb, #7a2020 32%, var(--ui-panel-raised)); }

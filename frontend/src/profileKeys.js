@@ -74,6 +74,7 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-mechanic-tutorial-progress-v1',
   'chess-study-home-guide-dismissed-v1',
   'chess-study-matthias-home-last-shown-v1',
+  'matthias.onboarded',
   'chess-study-onboarding-insights-seen-v1',
   'chess-study-feedback-assistant-v1',
   'chess-study-post-game-feedback-v1',

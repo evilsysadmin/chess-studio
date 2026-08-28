@@ -549,6 +549,60 @@ const EXTRA_STRUCTURED_FEEL_BY_THEME = Object.freeze({
 });
 
 
+
+const DM46ZEY_STRUCTURED_FEELS = Object.freeze({
+  pawnMarshal: Object.freeze({
+    family: 'matthias-pawn-marshal', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 3, 0, -2, 0], swing: 0.02, warmth: 0.82, releaseScale: 0.9, space: 0.08, delayMs: 96,
+    leadInstrument: 'brass', counterInstrument: 'felt', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 12, bassHoldSteps: 3.2,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false },
+    mix: { lead: 0.58, counter: 0.38, bass: 0.82, chord: 0.42 },
+    percussion: { period: 16, kit: 'legacy', punch: 0.88, pattern: { 0:'K', 8:'S' } },
+  }),
+  cafeGambit213: Object.freeze({
+    family: 'late-cafe-small-combo', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 5, 0, -2, 0], swing: 0.18, warmth: 0.98, releaseScale: 1.24, space: 0.13, delayMs: 150,
+    leadInstrument: 'mutedHorn', counterInstrument: 'jazzGuitar', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 14, bassHoldSteps: 3.8,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false },
+    mix: { lead: 0.48, counter: 0.31, bass: 0.84, chord: 0.45 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.62, pattern: { 0:'B', 8:'H', 12:'S' } },
+  }),
+  rainOnE4: Object.freeze({
+    family: 'rain-felt-cello', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, 0, 3, 0], swing: 0, warmth: 1.02, releaseScale: 1.72, space: 0.34, delayMs: 360,
+    leadInstrument: 'felt', counterInstrument: 'cello', chordInstrument: 'felt', bassInstrument: 'cello',
+    chordHoldSteps: 24, bassHoldSteps: 18, drumMode: 'none',
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: false, signature: false },
+    mix: { lead: 0.48, counter: 0.24, bass: 0.28, chord: 0.30 },
+    percussion: { period: 32, kit: 'none', punch: 0, pattern: {} },
+  }),
+  knightAlleyNoir: Object.freeze({
+    family: 'wet-alley-noir', preserveSectionOrder: true,
+    harmonyPath: [0, -2, 0, 0, -5, 0], swing: 0.08, warmth: 0.66, releaseScale: 1.28, space: 0.18, delayMs: 210,
+    leadInstrument: 'vibes', counterInstrument: 'mutedHorn', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 18, bassHoldSteps: 5.2,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false },
+    mix: { lead: 0.45, counter: 0.29, bass: 0.78, chord: 0.42 },
+    percussion: { period: 16, kit: 'brush-jazz', punch: 0.58, pattern: { 0:'K', 8:'S', 12:'H' } },
+  }),
+  oudTrench: Object.freeze({
+    family: 'oud-tactical-jazz', preserveSectionOrder: true,
+    harmonyPath: [0, 0, -2, 5, 0, -2], swing: 0.09, warmth: 0.84, releaseScale: 1.06, space: 0.12, delayMs: 140,
+    leadInstrument: 'oudJazz', counterInstrument: 'felt', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
+    chordHoldSteps: 12, bassHoldSteps: 3.6,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: false },
+    mix: { lead: 0.62, counter: 0.33, bass: 0.84, chord: 0.38 },
+    percussion: { period: 16, kit: 'cairo-hand', punch: 0.74, pattern: { 0:'K', 8:'B', 12:'H' } },
+  }),
+});
+
+const DM46ZEY_STRUCTURED_FEEL_BY_THEME = Object.freeze({
+  pawnMarshal: 'pawnMarshal', cafeGambit213: 'cafeGambit213', rainOnE4: 'rainOnE4',
+  knightAlleyNoir: 'knightAlleyNoir', oudTrench: 'oudTrench',
+});
+
 const V166BT_STRUCTURED_FEEL_BY_THEME = Object.freeze({
   neonSiege:'neonSiege', overclockedKnight:'overclockedKnight', reactorGambit:'reactorGambit',
   concreteRain:'concreteRain', velvetStatic:'velvetStatic', abyssalArchive:'abyssalArchive', redVault:'redVault',
@@ -557,6 +611,6 @@ const V166BT_STRUCTURED_FEEL_BY_THEME = Object.freeze({
 });
 
 export function structuredFeel(theme) {
-  const key = STRUCTURED_FEEL_BY_THEME[theme?.id] || EXTRA_STRUCTURED_FEEL_BY_THEME[theme?.id] || V166BT_STRUCTURED_FEEL_BY_THEME[theme?.id];
-  return (key && (STRUCTURED_FEELS[key] || EXTRA_STRUCTURED_FEELS[key] || V166BT_STRUCTURED_FEELS[key])) || null;
+  const key = STRUCTURED_FEEL_BY_THEME[theme?.id] || EXTRA_STRUCTURED_FEEL_BY_THEME[theme?.id] || V166BT_STRUCTURED_FEEL_BY_THEME[theme?.id] || DM46ZEY_STRUCTURED_FEEL_BY_THEME[theme?.id];
+  return (key && (STRUCTURED_FEELS[key] || EXTRA_STRUCTURED_FEELS[key] || V166BT_STRUCTURED_FEELS[key] || DM46ZEY_STRUCTURED_FEELS[key])) || null;
 }

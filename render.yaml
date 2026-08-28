@@ -46,7 +46,7 @@ services:
       - key: OTEL_TRACES_SAMPLER
         value: parentbased_traceidratio
       - key: OTEL_TRACES_SAMPLER_ARG
-        value: "0.20"
+        value: "1.0"
       - key: OTEL_METRICS_ENABLED
         value: "true"
       - key: OTEL_LOGS_ENABLED

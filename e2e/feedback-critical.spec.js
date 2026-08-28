@@ -69,8 +69,10 @@ test('Feedback · admin puede borrar un mensaje de prueba', async ({ page }) => 
   await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
   const feedbackSection = page.getByRole('region', { name: 'Feedback de usuarios' });
   await expect(feedbackSection.getByText('Mensaje de prueba para borrar.', { exact: true })).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
   await feedbackSection.getByRole('button', { name: 'Borrar feedback', exact: true }).click();
+  const deleteDialog = page.getByRole('dialog', { name: '¿Borrar este feedback?' });
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Borrar definitivamente', exact: true }).click();
   await expect(feedbackSection.getByText('Mensaje de prueba para borrar.', { exact: true })).toHaveCount(0);
 });
 
@@ -86,8 +88,10 @@ test('Feedback · resuelto mantiene Reabrir y Borrar feedback visibles', async (
   await resolved.locator('summary').click();
   await expect(resolved.getByRole('button', { name: 'Reabrir', exact: true })).toBeVisible();
   await expect(resolved.getByRole('button', { name: 'Borrar feedback', exact: true })).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
   await resolved.getByRole('button', { name: 'Borrar feedback', exact: true }).click();
+  const deleteDialog = page.getByRole('dialog', { name: '¿Borrar este feedback?' });
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Borrar definitivamente', exact: true }).click();
   await expect(resolved.getByText('Mensaje resuelto de prueba.', { exact: true })).toHaveCount(0);
 });
 
@@ -113,7 +117,9 @@ test('Feedback · admin puede crear una prueba real y borrarla desde la misma ba
   const feedbackSection = page.getByRole('region', { name: 'Feedback de usuarios' });
   await feedbackSection.getByRole('button', { name: 'Crear feedback de prueba', exact: true }).click();
   await expect(feedbackSection.getByText('Feedback de prueba generado desde Admin.', { exact: true })).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
   await feedbackSection.getByRole('button', { name: 'Borrar feedback', exact: true }).click();
+  const deleteDialog = page.getByRole('dialog', { name: '¿Borrar este feedback?' });
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Borrar definitivamente', exact: true }).click();
   await expect(feedbackSection.getByText('Feedback de prueba generado desde Admin.', { exact: true })).toHaveCount(0);
 });

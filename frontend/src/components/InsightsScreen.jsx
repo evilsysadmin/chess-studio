@@ -33,6 +33,7 @@ import { loadPuzzlesSolved } from '../puzzleStats.js';
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { loadWorstMoveCache, saveWorstMoveCache } from '../worstMoveCache.js';
 import RatingChart from './RatingChart.jsx';
+import MatthiasDailyConsult from './MatthiasDailyConsult.jsx';
 import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
 import CareerScreen from './CareerScreen.jsx';
@@ -481,6 +482,8 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
           </div>
         </div>
       )}
+
+      <MatthiasDailyConsult facts={portraitFacts} />
 
       <div className="menu-section worst-move-spotlight">
         <div className="worst-move-spotlight-heading">

@@ -84,19 +84,38 @@ def main() -> int:
     for token in ('FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)', 'HTTPXClientInstrumentor().instrument(tracer_provider=provider)', '_TRACE_PROVIDER.get_tracer("chess-studio.admin-probe")'):
         if token not in tracing:
             fail(f"Tempo puede volver a usar un provider global sin exporter: {token}")
-    for token in ('TrackingOTLPSpanExporter', 'lastHttpStatus', 'successCount', 'exportedSpanCount'):
+    for token in ('TrackingOTLPSpanExporter', 'lastHttpStatus', 'successCount', 'exportedSpanCount', 'chess-studio.startup', 'startupTraceId'):
         if token not in tracing:
             fail(f"Tempo perdió diagnóstico real de entrega OTLP: {token}")
+    if tracing.count('headers=exporter_headers or None') < 3:
+        fail('OTLP debe pasar las cabeceras explícitamente a traces, metrics y logs')
+    render_yaml = (ROOT / 'render.yaml').read_text(encoding='utf-8')
+    if 'OTEL_TRACES_SAMPLER_ARG' not in render_yaml or 'value: "1.0"' not in render_yaml:
+        fail('producción debe mantener sampling 100% mientras se diagnostica Tempo')
     if 'resource.service.name' not in trace_dash or 'trace:duration > 500ms' not in trace_dash:
         fail('dashboard Tempo perdió el filtro TraceQL de recurso/duración')
     if 'opentelemetry-exporter-otlp-proto-http' not in requirements:
         fail("falta dependencia OTLP HTTP")
     if 'payload["trace_id"]' not in structured:
         fail("los logs no correlacionan trace_id")
-    overview = (INFRA / "dashboards" / "chess-studio-overview.json").read_text(encoding="utf-8")
-    for token in ('${metrics_datasource_uid}', 'chess_studio_http_server_requests_total', 'chess_studio_http_server_duration_seconds_bucket', 'service_name=\\"chess-studio-backend\\"'):
+    overview_path = INFRA / "dashboards" / "chess-studio-overview.json"
+    overview = overview_path.read_text(encoding="utf-8")
+    overview_data = load_json(overview_path)
+    for token in ('${metrics_datasource_uid}', 'chess_studio_http_server_requests_total', 'chess_studio_http_server_duration_seconds_bucket', 'chess-studio-backend'):
         if token not in overview:
             fail(f"overview no usa señal real: {token}")
+    for panel in overview_data.get("panels") or []:
+        panel_ds = (panel.get("datasource") or {}).get("type")
+        if panel_ds == "prometheus":
+            for target in panel.get("targets") or []:
+                target_ds = (target.get("datasource") or {}).get("type")
+                if target_ds and target_ds != "prometheus":
+                    fail(f"{panel.get('title')}: panel Prometheus conserva target {target_ds}")
+    for panel_id in (2, 4, 5):
+        panel = next((row for row in overview_data.get("panels") or [] if row.get("id") == panel_id), None)
+        if not panel or "vector(0)" not in str((panel.get("targets") or [{}])[0].get("expr") or ""):
+            fail(f"panel métrico {panel_id} debe representar ausencia de muestras como cero")
+
     infra_logs = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")

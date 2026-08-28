@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   MATTHIAS_HOME_COOLDOWN_MS,
+  MATTHIAS_ONBOARDED_KEY,
   buildMatthiasHomeVisit,
+  buildMatthiasIntroVisit,
   markMatthiasHomeShown,
+  markMatthiasOnboarded,
+  matthiasOnboarded,
   matthiasHomeLastShownAt,
   matthiasHomeSessionSeen,
   shouldShowMatthiasHome,
@@ -48,4 +52,14 @@ describe('Matthias en Home', () => {
     expect(matthiasHomeSessionSeen()).toBe(true);
     expect(matthiasHomeLastShownAt()).toBe(123456);
   });
+  it('presenta a Matthias una sola vez por perfil con matthias.onboarded', () => {
+    expect(matthiasOnboarded()).toBe(false);
+    const intro = buildMatthiasIntroVisit();
+    expect(intro).toMatchObject({ kind: 'intro', action: 'play', actionLabel: 'Jugar con Matthias' });
+    expect(intro.text).toMatch(/Guten Morgen.*Matthias.*Tajo.*Tschüss/s);
+    markMatthiasOnboarded();
+    expect(localStorage.getItem(MATTHIAS_ONBOARDED_KEY)).toBe('1');
+    expect(matthiasOnboarded()).toBe(true);
+  });
+
 });
