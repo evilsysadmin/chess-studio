@@ -694,6 +694,19 @@ def test_access_log_is_structured_and_includes_authenticated_username(caplog):
     assert any('"username":"usuario_logs"' in message for message in messages)
 
 
+def test_access_log_includes_sanitized_peer_and_x_forwarded_for(caplog):
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    caplog.clear()
+    response = client.get(
+        "/api/health",
+        headers={"X-Forwarded-For": "203.0.113.10, 198.51.100.4, not-an-ip"},
+    )
+    assert response.status_code == 200
+    messages = [record.getMessage() for record in caplog.records if '"event":"http_request"' in record.getMessage()]
+    assert any('"x_forwarded_for":["203.0.113.10","198.51.100.4"]' in message for message in messages)
+    assert any('"peer_ip":' in message for message in messages)
+
+
 def test_request_id_is_echoed_and_logged(caplog):
     caplog.set_level(logging.INFO, logger="uvicorn.error")
     request_id = "web-test-abc123"
@@ -1575,6 +1588,12 @@ def test_password_reset_rejects_garbage_token(email_recovery_enabled):
     assert response.status_code == 400
 
 # ---------- V16.6dj: feedback operativo ----------
+
+def test_feedback_defaults_to_general_category():
+    created = client.post('/api/feedback', json={'message': 'Comentario general sin clasificar.'})
+    assert created.status_code == 201
+    assert created.json()['feedback']['category'] == 'general'
+
 
 def test_feedback_requires_auth():
     response = raw_client.post('/api/feedback', json={'category': 'ux', 'message': 'Demasiada información junta.'})

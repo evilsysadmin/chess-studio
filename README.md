@@ -1,3 +1,12 @@
+### v16.6dm46zeh · Sistema visual, Retro Player y calidad táctica de puzzles
+
+- Unifica la gramática visual de Home, formularios, modales, partidas, Combat y Admin con tokens comunes de espaciado, superficies, bordes, controles, foco y responsive; el objetivo es reducir ruido sin reescribir gameplay.
+- Feedback usa `General` por defecto y sustituye el input nativo de archivos por un flujo integrado de adjuntos con drag/drop, previsualización y eliminación, manteniendo PNG/JPG/JPEG/GIF y los límites existentes.
+- Los controles multimedia dejan de depender del montaje del Retro Player visual: la sesión autenticada conserva Media Session y media keys también dentro de partidas y reclama el control al recuperar foco/visibilidad.
+- El banco de puzzles añade una auditoría táctica además de legalidad/FEN; los ejercicios de material detectan claves superficialmente válidas pero triviales o materialmente peores, y los puzzles personales de Workers AI sólo se aceptan si su jugada coincide con el análisis determinista.
+- El logging estructurado añade `client_ip`, `peer_ip` y `x_forwarded_for` saneados para diagnóstico; XFF sigue siendo observabilidad y no una identidad confiable para auth/rate limiting.
+- Ajusta el copy de entrenamiento a `Entrena tus mayores errores`.
+
 ### v16.6dm46zeg · Hotfix de la suite de estabilidad
 
 - Corrige cuatro falsos negativos de la suite introducidos por el hardening de `dm46ze/dm46zef`, sin relajar los contratos de producción.
@@ -29,7 +38,7 @@
 - El probe de trazas ya no confunde `force_flush()` con una exportación correcta: registra el resultado real del `OTLPSpanExporter` y sólo declara éxito cuando el exporter devuelve `SUCCESS`. `enabled=true` sin endpoint deja de anunciar tracing activo.
 - Feedback es bidireccional: Admin puede responder y resolver en una sola acción, y cada usuario sólo puede consultar sus propios feedback y las respuestas asociadas.
 
-### v16.6dm46zd · Entrenamiento personal fail-open
+### v16.6dm46zc · Entrenamiento personal fail-open
 
 Corrige un bloqueo aparente en Puzzles personales: la protección opcional de racha ya no captura la interacción del tablero, y una respuesta histórica/corrupta de un puzzle nunca puede dejar la pantalla esperando indefinidamente. Los puzzles personales guardados se validan antes de entrar en la cola activa.
 

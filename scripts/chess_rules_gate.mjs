@@ -29,6 +29,10 @@ requireText('frontend/src/components/Board3DExperiment.jsx', 'applySuggestedOrLe
 requireText('frontend/src/components/Board3DExperiment.jsx', 'standardChessStatus', '3D debe detectar terminales con el contrato común');
 requireText('frontend/src/components/PuzzleScreen.jsx', 'matchesExpectedPuzzleMove', 'Puzzles debe comparar la solución sobre una jugada legal real');
 requireText('frontend/src/components/PuzzleScreen.jsx', 'localChess.moves', 'Puzzles sólo debe ofrecer movimientos legales');
+requireText('frontend/src/puzzleTacticalQuality.js', 'isObviouslyUnsoundSingleMovePuzzle', 'Puzzles personales deben rechazar claves trivialmente refutables');
+requireText('frontend/src/puzzles.test.js', 'tiene sentido táctico, no sólo un FEN válido', 'el banco curado debe auditar sentido táctico además de legalidad');
+requireText('frontend/src/puzzleTacticalQuality.test.js', 'caballo se come un peón inmediatamente', 'debe existir regresión para el jaque suicida refutable por peón');
+requireText('frontend/src/aiPersonalPuzzles.js', 'api.analyzeMove', 'los puzzles generados deben validarse contra análisis determinista de la jugada');
 requireText('frontend/src/components/LabScreen.jsx', 'assertLegalLabPosition', 'Laboratorio debe validar la posición antes de comenzar');
 requireText('frontend/src/components/useCombatController.js', 'resolveCombatMove', 'Combat debe resolver cada movimiento mediante su contrato de variante');
 requireText('frontend/src/components/useCombatController.js', 'localChess.moves', 'Combat sólo debe ofrecer movimientos legales del tablero actual');

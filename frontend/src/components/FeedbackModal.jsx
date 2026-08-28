@@ -5,24 +5,34 @@ import { userFacingError } from '../userFacingError.js';
 import { MAX_FEEDBACK_IMAGES, prepareFeedbackAttachments, validateFeedbackFiles } from '../feedbackAttachments.js';
 
 const CATEGORIES = [
+  ['general', 'General'],
   ['ux', 'Me he liado / UX'],
   ['bug', 'Algo se ha roto'],
   ['idea', 'Tengo una idea'],
   ['other', 'Otra cosa'],
 ];
 
+function formatBytes(bytes) {
+  const value = Math.max(0, Number(bytes) || 0);
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KiB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
 export default function FeedbackModal({ onClose, context = 'Home' }) {
   useEscapeToClose(onClose);
-  const [category, setCategory] = useState('ux');
+  const [category, setCategory] = useState('general');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
   const [images, setImages] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [history, setHistory] = useState([]);
   const mountedRef = useRef(true);
   const submitInFlightRef = useRef(false);
   const submitAbortRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -33,6 +43,12 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
       submitInFlightRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    const next = images.map((file) => ({ file, url: URL.createObjectURL(file) }));
+    setPreviews(next);
+    return () => next.forEach((item) => URL.revokeObjectURL(item.url));
+  }, [images]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -66,16 +82,27 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
     }
   }
 
-  function handleImages(event) {
-    const selected = Array.from(event.target.files || []);
+  function acceptImages(selected) {
     const validation = validateFeedbackFiles(selected);
     if (validation) {
       setError(validation);
-      event.target.value = '';
-      return;
+      return false;
     }
     setError(null);
     setImages(selected);
+    return true;
+  }
+
+  function handleImages(event) {
+    const selected = Array.from(event.target.files || []);
+    acceptImages(selected);
+    event.target.value = '';
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    const selected = Array.from(event.dataTransfer?.files || []);
+    if (selected.length) acceptImages(selected);
   }
 
   return (
@@ -86,14 +113,16 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
           <div className="feedback-sent">
             <span className="section-label">Recibido</span>
             <h2 id="feedback-title">Feedback enviado. Gracias.</h2>
-            <p className="hint-text">Los admins lo verán en su panel.</p>
+            <p className="hint-text">Los admins lo verán en su panel. Si te responden, la contestación aparecerá aquí.</p>
             <button type="button" className="primary-btn" onClick={onClose}>Cerrar</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <span className="section-label">Feedback</span>
-            <h2 id="feedback-title">Dinos qué mejorar</h2>
-            <p className="hint-text">Mensaje corto y, si ayuda, una captura. Llega directamente al panel de administración.</p>
+            <header className="feedback-modal-heading">
+              <span className="section-label">Feedback</span>
+              <h2 id="feedback-title">Dinos qué mejorar</h2>
+              <p className="hint-text">Cuéntanos lo importante. Si es un bug, una captura suele ahorrar bastante arqueología.</p>
+            </header>
             <label className="feedback-field">
               <span>Tipo</span>
               <select value={category} onChange={(event) => setCategory(event.target.value)}>
@@ -108,28 +137,46 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
                 maxLength={2000}
                 rows={4}
                 autoFocus
-                placeholder="Ej.: En Combat Chess no entendí por qué el rival tenía una pieza extra…"
+                placeholder="Ej.: En Combat Chess la CPU se quedó pensando y no pude continuar…"
               />
               <small>{message.length}/2000</small>
             </label>
-            <label className="feedback-field feedback-image-field">
+            <div className="feedback-field feedback-image-field">
               <span>Capturas opcionales</span>
               <input
+                ref={fileInputRef}
+                className="feedback-native-file-input"
                 type="file"
                 accept=".png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif"
                 multiple
                 onChange={handleImages}
+                tabIndex={-1}
+                aria-hidden="true"
               />
-              <small>PNG, JPG/JPEG o GIF · hasta {MAX_FEEDBACK_IMAGES} imágenes · 3 MiB cada una · 6 MiB total.</small>
-              {images.length > 0 && (
-                <div className="feedback-image-selection" aria-label="Imágenes seleccionadas">
-                  {images.map((file, index) => (
-                    <span key={`${file.name}-${file.size}-${index}`}><b>{file.name}</b><button type="button" onClick={() => setImages((current) => current.filter((_, i) => i !== index))} aria-label={`Quitar ${file.name}`}>×</button></span>
+              <div
+                className="feedback-dropzone"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <button type="button" className="secondary-btn feedback-attach-button" onClick={() => fileInputRef.current?.click()}>
+                  Adjuntar capturas
+                </button>
+                <span>o arrástralas aquí</span>
+                <small>PNG, JPG/JPEG o GIF · hasta {MAX_FEEDBACK_IMAGES} · 3 MiB cada una · 6 MiB total</small>
+              </div>
+              {previews.length > 0 && (
+                <div className="feedback-image-preview-grid" aria-label="Imágenes seleccionadas">
+                  {previews.map(({ file, url }, index) => (
+                    <figure key={`${file.name}-${file.size}-${index}`} className="feedback-image-preview">
+                      <img src={url} alt="" />
+                      <figcaption><b>{file.name}</b><small>{formatBytes(file.size)}</small></figcaption>
+                      <button type="button" onClick={() => setImages((current) => current.filter((_, i) => i !== index))} aria-label={`Quitar ${file.name}`}>×</button>
+                    </figure>
                   ))}
                 </div>
               )}
-            </label>
-            {error && <p className="error-text">{error}</p>}
+            </div>
+            {error && <p className="error-text" role="alert">{error}</p>}
             {history.some((item) => item.admin_reply) && (
               <details className="feedback-thread-history">
                 <summary>Respuestas de los admins</summary>
@@ -143,12 +190,12 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
                 </div>
               </details>
             )}
-            <div className="game-controls">
+            <footer className="feedback-modal-actions">
               <button type="button" className="secondary-btn" onClick={onClose}>Cancelar</button>
               <button type="submit" className="primary-btn" disabled={sending || message.trim().length < 3}>
                 {sending ? 'Enviando…' : 'Enviar feedback'}
               </button>
-            </div>
+            </footer>
           </form>
         )}
       </section>

@@ -50,7 +50,7 @@ function uciParts(value) {
   return match ? { from: match[1], to: match[2], promotion: match[3] || undefined } : null;
 }
 
-export async function validateAiPersonalPuzzleCandidate(candidate, { analyzePosition = api.analyzePosition } = {}) {
+export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove = api.analyzeMove } = {}) {
   const fen = cleanText(candidate?.fen, 120);
   const intended = uciParts(candidate?.best_uci);
   if (!fen || !intended) return null;
@@ -67,9 +67,10 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzePosi
   }
 
   let engine;
-  try { engine = await analyzePosition(fen, ENGINE_LEVEL); } catch { return null; }
-  if (!engine || engine.from !== intended.from || engine.to !== intended.to) return null;
-  if (intended.promotion && !String(engine.san || '').toLowerCase().includes(`=${intended.promotion.toUpperCase()}`.toLowerCase())) return null;
+  try { engine = await analyzeMove(fen, intended.from, intended.to, intended.promotion, ENGINE_LEVEL); } catch { return null; }
+  const suggested = engine?.suggested;
+  if (!suggested || suggested.from !== intended.from || suggested.to !== intended.to) return null;
+  if ((suggested.promotion || undefined) !== (intended.promotion || undefined)) return null;
 
   const sourceIncidents = Array.isArray(candidate?.incident_keys)
     ? candidate.incident_keys.slice(0, 4).map((value) => cleanText(value, 48)).filter(Boolean)
@@ -85,6 +86,8 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzePosi
     incidentKeys: sourceIncidents,
     source: 'workers-ai-validated',
     aiValidatedLevel: ENGINE_LEVEL,
+    aiQualityVersion: 2,
+    tacticalBestMoveChecked: true,
     generatedAt: new Date().toISOString(),
   };
 }

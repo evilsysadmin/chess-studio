@@ -1,0 +1,325 @@
+/* v16.6dm46zeh · Visual System / UX Polish
+   Una sola gramática visual para Home, juego, Combat, modales y Admin.
+   No cambia reglas ni flujos; reduce ruido, unifica controles y mejora foco. */
+
+:root {
+  --ui-space-1: .25rem;
+  --ui-space-2: .5rem;
+  --ui-space-3: .75rem;
+  --ui-space-4: 1rem;
+  --ui-space-5: 1.35rem;
+  --ui-space-6: 1.8rem;
+  --ui-control-h: 42px;
+  --ui-control-h-compact: 34px;
+  --ui-control-radius: 10px;
+  --ui-card-radius: 14px;
+  --ui-panel: color-mix(in srgb, var(--ink-2) 94%, #fff 6%);
+  --ui-panel-raised: color-mix(in srgb, var(--ink-2) 88%, #fff 12%);
+  --ui-panel-soft: color-mix(in srgb, var(--ink-2) 96%, #fff 4%);
+  --ui-border: color-mix(in srgb, var(--ink-3) 78%, var(--parchment-dim) 22%);
+  --ui-border-strong: color-mix(in srgb, var(--ink-3) 58%, var(--parchment-dim) 42%);
+  --ui-shadow-soft: 0 12px 30px rgba(0,0,0,.16);
+  --ui-shadow-modal: 0 24px 70px rgba(0,0,0,.38);
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% -20%, rgba(201,162,39,.055), transparent 36rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--ink) 96%, #fff 4%), var(--ink));
+}
+
+/* ---------- Primitives ---------- */
+:where(.primary-btn, .secondary-btn) {
+  min-height: var(--ui-control-h);
+  border-radius: var(--ui-control-radius);
+  padding: .62rem .9rem;
+  font-weight: 700;
+  line-height: 1.1;
+  transition: border-color .16s ease, background-color .16s ease, transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+}
+
+.primary-btn {
+  border: 1px solid color-mix(in srgb, var(--brass) 72%, #fff 10%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brass) 92%, #fff 8%), color-mix(in srgb, var(--brass) 82%, #000 18%));
+  color: var(--ink);
+  box-shadow: 0 5px 14px rgba(0,0,0,.12);
+}
+.primary-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+
+.secondary-btn {
+  border: 1px solid var(--ui-border);
+  background: color-mix(in srgb, var(--ui-panel-raised) 84%, transparent);
+  color: var(--parchment);
+}
+.secondary-btn:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--brass) 52%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-panel-raised) 94%, var(--brass) 6%);
+  transform: translateY(-1px);
+}
+:where(.primary-btn, .secondary-btn):disabled { opacity: .48; cursor: not-allowed; filter: saturate(.72); transform: none; box-shadow: none; }
+
+:where(input, select, textarea) {
+  accent-color: var(--brass);
+}
+:where(select, textarea, input[type='text'], input[type='email'], input[type='password'], input[type='number']) {
+  min-height: var(--ui-control-h);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--ink) 72%, var(--ui-panel) 28%);
+  color: var(--parchment);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+:where(select, textarea, input[type='text'], input[type='email'], input[type='password'], input[type='number']):focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brass) 76%, var(--ui-border));
+  box-shadow: 0 0 0 3px rgba(201,162,39,.11);
+  background: color-mix(in srgb, var(--ink) 66%, var(--ui-panel-raised) 34%);
+}
+
+.section-label,
+.eyebrow {
+  letter-spacing: .16em;
+}
+
+/* ---------- Surfaces ---------- */
+.menu,
+.army-card,
+.tutorial-text,
+.notation-panel,
+.admin-feedback-section,
+.admin-presence-block,
+.admin-insights-panel,
+.admin-observability-chart {
+  border-color: var(--ui-border);
+}
+
+.menu {
+  border-radius: calc(var(--ui-card-radius) + 2px);
+  box-shadow: var(--ui-shadow-soft);
+}
+
+.menu-section,
+.army-card,
+.tutorial-text,
+.notation-panel {
+  border-radius: var(--ui-card-radius);
+}
+
+/* ---------- Home ---------- */
+.home-friendly {
+  background-image:
+    radial-gradient(circle at 14% 0%, rgba(201,162,39,.045), transparent 26rem),
+    linear-gradient(180deg, rgba(255,255,255,.012), transparent 18rem);
+}
+
+.home-section-heading,
+.home-learning-heading {
+  align-items: end;
+  gap: var(--ui-space-4);
+}
+
+.home-primary-group,
+.home-learning-grid,
+.compact-mode-grid {
+  gap: .85rem;
+}
+
+.home-mode-card,
+.menu-card {
+  border: 1px solid var(--ui-border);
+  border-left-width: 1px;
+  border-radius: var(--ui-card-radius);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ui-panel-raised) 92%, transparent), color-mix(in srgb, var(--ui-panel) 96%, transparent));
+  box-shadow: 0 6px 18px rgba(0,0,0,.08);
+}
+
+.menu-card:not(:disabled):hover,
+.menu-card:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--brass) 42%, var(--ui-border));
+  box-shadow: 0 12px 26px rgba(0,0,0,.14);
+  transform: translateY(-2px);
+}
+
+.home-mode-icon {
+  border-radius: 11px;
+  background: rgba(255,255,255,.018);
+}
+
+.home-mode-kicker { opacity: .88; }
+.home-mode-description { color: color-mix(in srgb, var(--parchment-dim) 94%, var(--parchment) 6%); line-height: 1.5; }
+.home-mode-card .menu-card-cta { border-top-color: color-mix(in srgb, var(--ui-border) 72%, transparent); }
+
+/* ---------- Feedback ---------- */
+.feedback-modal {
+  width: min(680px, calc(100vw - 1rem));
+  max-width: 680px;
+  max-height: min(860px, calc(100vh - 1rem));
+  padding: clamp(1rem, 2.2vw, 1.4rem);
+  border: 1px solid color-mix(in srgb, var(--brass-dim) 42%, var(--ui-border));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-panel-raised) 96%, #000 4%), var(--ui-panel));
+  box-shadow: var(--ui-shadow-modal);
+}
+
+.feedback-modal form,
+.feedback-sent { gap: 1rem; }
+.feedback-modal-heading { display: grid; gap: .32rem; padding-right: 2.2rem; }
+.feedback-modal-heading h2 { margin: .15rem 0 .1rem; font-size: clamp(1.55rem, 3vw, 2rem); }
+.feedback-modal-heading p { margin: 0; max-width: 58ch; }
+.feedback-field { gap: .45rem; }
+.feedback-field > span { color: color-mix(in srgb, var(--parchment) 90%, var(--brass) 10%); }
+.feedback-field select,
+.feedback-field textarea { padding: .72rem .8rem; }
+.feedback-field textarea { min-height: 132px; line-height: 1.5; }
+.feedback-field small { color: var(--parchment-dim); opacity: .72; }
+
+.feedback-native-file-input { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.feedback-dropzone {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .35rem;
+  padding: .8rem;
+  border: 1px dashed color-mix(in srgb, var(--ui-border-strong) 82%, var(--brass) 18%);
+  border-radius: var(--ui-control-radius);
+  background: color-mix(in srgb, var(--ink) 72%, transparent);
+  text-align: center;
+}
+.feedback-dropzone > span { color: var(--parchment-dim); font-size: .75rem; }
+.feedback-dropzone > small { justify-self: center; max-width: 48ch; font-size: .64rem; line-height: 1.45; }
+.feedback-attach-button { min-height: var(--ui-control-h-compact); padding: .45rem .72rem; }
+
+.feedback-image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: .55rem;
+}
+.feedback-image-preview {
+  position: relative;
+  display: grid;
+  grid-template-rows: 92px auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 70%, var(--ui-panel) 30%);
+}
+.feedback-image-preview img { width: 100%; height: 92px; object-fit: cover; background: var(--ink); }
+.feedback-image-preview figcaption { min-width: 0; display: grid; gap: .08rem; padding: .42rem .5rem; }
+.feedback-image-preview figcaption b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; }
+.feedback-image-preview figcaption small { justify-self: start; font-size: .58rem; }
+.feedback-image-preview > button {
+  position: absolute;
+  top: .28rem;
+  right: .28rem;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 999px;
+  background: rgba(13,17,24,.82);
+  color: var(--parchment);
+  font-size: 1rem;
+}
+.feedback-modal-actions { display: grid; grid-template-columns: minmax(120px,.7fr) minmax(180px,1fr); gap: .65rem; padding-top: .15rem; }
+.feedback-modal-actions > button { width: 100%; }
+.feedback-thread-history { border-top: 1px solid var(--ui-border); padding-top: .75rem; }
+
+/* ---------- Game table ---------- */
+.game-board-stack,
+.game-side-column { min-width: 0; }
+.game-side-column {
+  border-radius: var(--ui-card-radius);
+}
+.game-side-music,
+.game-notation-disclosure,
+.game-chat,
+.combat-tactical-panel {
+  border-radius: 11px;
+}
+.game-controls {
+  gap: .55rem;
+}
+.game-controls > :where(.primary-btn, .secondary-btn) { min-height: var(--ui-control-h); }
+.game-player-rail {
+  border-color: var(--ui-border);
+  background: color-mix(in srgb, var(--ui-panel) 90%, transparent);
+}
+.game-player-rail.is-active {
+  border-color: color-mix(in srgb, var(--brass) 56%, var(--ui-border));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brass) 72%, transparent);
+}
+
+/* ---------- Combat ---------- */
+.campaign-command-card,
+.combat-tactical-panel,
+.army-roster-card,
+.market-card,
+.campaign-debrief-card {
+  box-shadow: 0 8px 22px rgba(0,0,0,.10);
+}
+.combat-panel-section-title,
+.campaign-command-section-title {
+  letter-spacing: .09em;
+}
+
+/* ---------- Admin ---------- */
+.admin-screen { background-image: none; }
+.admin-presence-block,
+.admin-feedback-section,
+.admin-insights-panel,
+.admin-observability-chart {
+  border-radius: var(--ui-card-radius);
+  background: color-mix(in srgb, var(--ui-panel) 92%, transparent);
+  box-shadow: 0 5px 16px rgba(0,0,0,.07);
+}
+.admin-users-table { border-collapse: separate; border-spacing: 0; }
+.admin-users-table thead th { background: color-mix(in srgb, var(--ink) 76%, var(--ui-panel) 24%); }
+.admin-users-table tbody tr { transition: background-color .14s ease; }
+.admin-users-table tbody tr:not(.admin-detail-row):hover { background: rgba(255,255,255,.018); }
+.admin-filter-chip { min-height: var(--ui-control-h-compact); border-radius: 999px; }
+.admin-filter-chip.is-active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brass) 52%, transparent); }
+.admin-feedback-card { border-radius: 11px; }
+.admin-feedback-card.status-new { border-left-width: 2px; }
+.admin-feedback-reply textarea { border-radius: var(--ui-control-radius); }
+
+/* ---------- Modal consistency ---------- */
+.modal-backdrop {
+  backdrop-filter: blur(5px);
+  background: rgba(7,10,15,.68);
+}
+.modal-backdrop :where([role='dialog'], .army-card, .endgame-dialog) {
+  box-shadow: var(--ui-shadow-modal);
+}
+.piece-info-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+}
+
+/* ---------- Mobile / reduced motion ---------- */
+@media (max-width: 700px) {
+  :root { --ui-control-h: 44px; }
+  .app-shell { padding-inline: .65rem; }
+  .menu { border-radius: 12px; }
+  .home-primary-group,
+  .home-learning-grid,
+  .compact-mode-grid { gap: .65rem; }
+  .feedback-modal { width: calc(100vw - .7rem); max-height: calc(100vh - .7rem); padding: .9rem; }
+  .feedback-modal-actions { grid-template-columns: 1fr; }
+  .feedback-image-preview-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 430px) {
+  .feedback-image-preview-grid { grid-template-columns: 1fr; }
+  .home-mode-card { padding: .82rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.primary-btn, .secondary-btn, .menu-card, .admin-users-table tbody tr) { transition: none !important; }
+  :where(.primary-btn, .secondary-btn, .menu-card):hover { transform: none !important; }
+}

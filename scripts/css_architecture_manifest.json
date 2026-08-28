@@ -23,9 +23,10 @@
     "22-progression-gamification.css",
     "23-learning-combat-economy.css",
     "24-product-hardening.css",
-    "25-visual-coherence.css"
+    "25-visual-coherence.css",
+    "26-visual-system-overhaul.css"
   ],
-  "combinedSha256": "7ed68df6843324dd45a2b7c068f6715d278e9b8e286aaa666b0d9d07599c386e",
-  "combinedBytes": 441990,
-  "combinedLines": 12593
+  "combinedSha256": "a883af01bf7f13c8b5caa056daaf77321be34a49d2f318c8d9d6ab6826fcda0b",
+  "combinedBytes": 453481,
+  "combinedLines": 12918
 }

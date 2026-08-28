@@ -3,7 +3,7 @@ import { request, requestJson } from './http.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-export function submitFeedback({ category = 'other', message, context = 'Home', attachments = [], signal } = {}) {
+export function submitFeedback({ category = 'general', message, context = 'Home', attachments = [], signal } = {}) {
   return requestJson(`${BASE_URL}/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader() },

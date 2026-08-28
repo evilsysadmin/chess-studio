@@ -35,7 +35,7 @@ export default function PostGameFeedbackPrompt({ onDone }) {
     setSending(true);
     setError(null);
     try {
-      await submitFeedback({ category: 'other', message, context: 'Post-partida', signal: controller.signal });
+      await submitFeedback({ category: 'general', message, context: 'Post-partida', signal: controller.signal });
       if (controller.signal.aborted || !mountedRef.current) return;
       completePostGameFeedback();
       setSent(true);

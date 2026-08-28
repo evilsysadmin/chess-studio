@@ -1,11 +1,12 @@
 """Structured operational HTTP logs for Chess Studio.
 
 Logs may include the authenticated username for operational usage/debugging,
-but never IPs, request bodies, FENs, passwords or tokens. Username is kept out
+and sanitized network origin fields for debugging, but never request bodies, FENs, passwords or tokens. Username and IPs are kept out
 of metrics labels so observability series remain low-cardinality.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import re
@@ -15,6 +16,33 @@ from typing import Any
 _UUIDISH_SEGMENT = re.compile(r"^[0-9a-fA-F]{8,}(?:-[0-9a-fA-F]{4,}){2,}$")
 _LONG_TOKEN_SEGMENT = re.compile(r"^[A-Za-z0-9_-]{24,}$")
 _LONG_NUMBER_SEGMENT = re.compile(r"^\d{4,}$")
+
+
+def sanitize_ip(value: str | None) -> str | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        return str(ipaddress.ip_address(raw))
+    except ValueError:
+        return None
+
+
+def sanitize_forwarded_for(value: str | None, *, max_entries: int = 8) -> list[str]:
+    """Return only syntactically valid IPs from X-Forwarded-For.
+
+    This field is observability-only. It is intentionally not a trusted auth or
+    rate-limit identity because arbitrary clients can spoof XFF unless a known
+    proxy strips/rebuilds it.
+    """
+    result: list[str] = []
+    for part in str(value or "").split(","):
+        clean = sanitize_ip(part)
+        if clean:
+            result.append(clean)
+        if len(result) >= max(1, int(max_entries)):
+            break
+    return result
 
 
 def normalize_unmatched_path(value: str | None) -> str | None:
@@ -46,6 +74,9 @@ def emit_http_event(
     username: str | None = None,
     request_path: str | None = None,
     exception: bool = False,
+    client_ip: str | None = None,
+    peer_ip: str | None = None,
+    x_forwarded_for: list[str] | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "event": "http_request",
@@ -72,6 +103,15 @@ def emit_http_event(
     clean_username = str(username or "").strip()[:64]
     if clean_username and clean_username != "-":
         payload["username"] = clean_username
+    clean_client_ip = sanitize_ip(client_ip)
+    clean_peer_ip = sanitize_ip(peer_ip)
+    clean_xff = [clean for ip in (x_forwarded_for or []) if (clean := sanitize_ip(ip))]
+    if clean_client_ip:
+        payload["client_ip"] = clean_client_ip
+    if clean_peer_ip:
+        payload["peer_ip"] = clean_peer_ip
+    if clean_xff:
+        payload["x_forwarded_for"] = clean_xff[:8]
     message = json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
     if exception:
         logger.exception(message)

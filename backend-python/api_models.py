@@ -56,7 +56,7 @@ class FeedbackAttachmentRequest(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    category: str = Field(default="other", max_length=24)
+    category: str = Field(default="general", max_length=24)
     message: str = Field(max_length=2000)
     context: Optional[str] = Field(default="Home", max_length=80)
     attachments: list[FeedbackAttachmentRequest] = Field(default_factory=list, max_length=3)

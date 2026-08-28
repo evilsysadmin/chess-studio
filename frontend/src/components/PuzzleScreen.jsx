@@ -158,7 +158,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
       const refreshed = loadPersonalPuzzles();
       setPersonalPuzzles(refreshed);
       if (result.added > 0) {
-        setAiGenerationStatus(`Añadidos ${result.added} escenarios nuevos. Los candidatos que no convencieron al minimax han ido directos al contenedor amarillo.`);
+        setAiGenerationStatus(`Añadidos ${result.added} escenarios nuevos. Los candidatos que no pasaron la validación táctica se han descartado.`);
         // Generar material no puede secuestrar el ejercicio que el usuario
         // abrió mientras Workers AI estaba pensando. Sólo saltamos al nuevo
         // puzzle si seguimos exactamente en la misma generación de pantalla.
@@ -167,7 +167,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           if (next) setPuzzle(next);
         }
       } else if (result.reason === 'all-rejected-or-duplicate') {
-        setAiGenerationStatus('Workers AI trajo material, pero el minimax no lo validó o ya lo tenías. Cero basura añadida.');
+        setAiGenerationStatus('Se propusieron nuevas posiciones, pero no pasaron la validación táctica o ya las tenías. Cero basura añadida.');
       } else {
         setAiGenerationStatus('No se ha gastado otra llamada útil: el proveedor está en cooldown/no disponible o no había semillas suficientes.');
       }
@@ -464,13 +464,13 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           )}
           {source === 'personal' && (
             <div className="personal-puzzle-training-panel">
-              <p className="hint-text personal-puzzle-note">☠ {puzzle.source === 'workers-ai-validated' ? 'Escenario nuevo inspirado en tus errores y confirmado por el minimax local.' : 'Posición nacida de una de tus propias autopsias.'}{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
+              <p className="hint-text personal-puzzle-note">☠ {puzzle.source === 'workers-ai-validated' ? 'Escenario nuevo inspirado en tus errores y confirmado por el motor táctico.' : 'Posición nacida de una de tus propias autopsias.'}{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
               {currentPersonalMastered && <p className="hint-text friendly-inline-note">✓ Este caso ya está superado y vive en tu histórico. Lo estás revisando a propósito; no vuelve a la cola normal.</p>}
-              {!currentPersonalMastered && filteredPersonalActiveCount > 0 && <p className="hint-text friendly-inline-note"><b>{filteredPersonalActiveCount}</b> cagada{filteredPersonalActiveCount === 1 ? '' : 's'} pendiente{filteredPersonalActiveCount === 1 ? '' : 's'} de domesticar.</p>}
+              {!currentPersonalMastered && filteredPersonalActiveCount > 0 && <p className="hint-text friendly-inline-note"><b>{filteredPersonalActiveCount}</b> error{filteredPersonalActiveCount === 1 ? '' : 'es'} pendiente{filteredPersonalActiveCount === 1 ? '' : 's'} de entrenar.</p>}
               {offerAiGeneration && (
                 <div className="personal-puzzle-ai-action">
-                  <button type="button" className="secondary-btn" disabled={aiGenerating} onClick={generateAiPersonalVariants}>{aiGenerating ? 'Validando propuestas…' : 'Generar variantes desde mis cagadas'}</button>
-                  <small>Una llamada por lote; después `chess.js` + minimax local validan cada candidato. El backend aplica cooldown para no freír Workers AI.</small>
+                  <button type="button" className="secondary-btn" disabled={aiGenerating} onClick={generateAiPersonalVariants}>{aiGenerating ? 'Validando propuestas…' : 'Generar variantes desde mis errores'}</button>
+                  <small>Las variantes se generan por lotes y cada candidato debe superar validación legal y táctica antes de entrar en tu cola.</small>
                 </div>
               )}
               {aiGenerationStatus && <p className="hint-text" role="status">{aiGenerationStatus}</p>}

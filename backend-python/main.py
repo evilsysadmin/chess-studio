@@ -39,7 +39,7 @@ from game_api import build_game_router
 from admin_api import build_admin_router
 from system_api import build_system_router
 from observability import record_http_request, sanitize_client_release
-from structured_logging import emit_http_event
+from structured_logging import emit_http_event, sanitize_forwarded_for, sanitize_ip
 from observability_history import schedule_history_flush
 from resilience import request_enter, request_exit, should_shed, record_shed
 from tracing import configure_tracing
@@ -121,6 +121,13 @@ def _client_network(request: Request) -> tuple[str | None, str | None]:
     return client_ip, country
 
 
+def _request_network_log_fields(request: Request) -> tuple[str | None, str | None, list[str]]:
+    client_ip, _ = _client_network(request)
+    peer_ip = sanitize_ip(str(request.client.host or "")) if request.client else None
+    xff = sanitize_forwarded_for(request.headers.get("x-forwarded-for"))
+    return client_ip, peer_ip, xff
+
+
 def rate_limit_key(request: Request) -> str:
     """Clave estable y justa para límites de API.
 
@@ -140,6 +147,7 @@ async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
     request_id = _request_id(request)
     client_release = _client_release(request)
+    client_ip, peer_ip, x_forwarded_for = _request_network_log_fields(request)
     inflight = request_enter()
     status_code = 500
     raised = False
@@ -177,6 +185,9 @@ async def log_request_with_user(request: Request, call_next):
             username=_request_username(request),
             request_path=request.url.path if route_pattern == "unmatched" else None,
             exception=True,
+            client_ip=client_ip,
+            peer_ip=peer_ip,
+            x_forwarded_for=x_forwarded_for,
         )
         # El detalle técnico completo queda en el traceback del servidor; al
         # cliente sólo vuelve una referencia segura para correlacionarlo.
@@ -209,6 +220,9 @@ async def log_request_with_user(request: Request, call_next):
                 client_release=client_release,
                 username=_request_username(request),
                 request_path=request.url.path if status_code == 404 or route_pattern == "unmatched" else None,
+                client_ip=client_ip,
+                peer_ip=peer_ip,
+                x_forwarded_for=x_forwarded_for,
             )
 
 

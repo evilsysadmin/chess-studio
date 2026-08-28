@@ -40,12 +40,12 @@ describe('AI personal puzzle batches', () => {
   it('acepta sólo una jugada legal que coincida con el minimax local', async () => {
     const candidate = { fen: START, best_uci: 'e2e4', title: 'Centro', description: 'Empuja el centro.' };
     const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzePosition: async () => ({ from: 'e2', to: 'e4', san: 'e4' }),
+      analyzeMove: async () => ({ suggested: { from: 'e2', to: 'e4', san: 'e4' } }),
     });
-    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92 });
+    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92, aiQualityVersion: 2, tacticalBestMoveChecked: true });
 
     const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzePosition: async () => ({ from: 'd2', to: 'd4', san: 'd4' }),
+      analyzeMove: async () => ({ suggested: { from: 'd2', to: 'd4', san: 'd4' } }),
     });
     expect(rejected).toBeNull();
   });

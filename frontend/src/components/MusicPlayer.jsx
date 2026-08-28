@@ -22,7 +22,7 @@ import {
   startAmbientMusic,
   stopAmbientMusic,
 } from '../sound.js';
-import { claimMediaSessionHandlers, requestPlaybackAudioSession, syncMediaSessionState } from '../mediaControls.js';
+import { requestPlaybackAudioSession, syncMediaSessionState } from '../mediaControls.js';
 
 function formatTime(ms) {
   const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
@@ -45,7 +45,7 @@ function saveDeckExpanded(value) {
   try { setStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
 }
 
-export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false, ownsMediaSession = false } = {}) {
+export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false } = {}) {
   const [state, setState] = useState(() => snapshot());
   const [expanded, setExpanded] = useState(() => forceExpanded || (!initiallyCollapsed && loadDeckExpanded()));
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
@@ -78,66 +78,6 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   useEffect(() => () => {
     if (seekCommitTimer.current) window.clearTimeout(seekCommitTimer.current);
   }, []);
-
-  useEffect(() => {
-    if (!ownsMediaSession) return undefined;
-    // No existe una prioridad absoluta entre pestañas: el navegador arbitra.
-    // Reclamamos la sesión al montar y cada vez que Chess Studio recupera
-    // foco/visibilidad; además declaramos AudioSession=playback si existe.
-    const handleMediaKey = (event) => {
-      if (event.key === 'MediaTrackPrevious') {
-        event.preventDefault();
-        previous();
-      } else if (event.key === 'MediaTrackNext') {
-        event.preventDefault();
-        next();
-      } else if (event.key === 'MediaPlayPause') {
-        event.preventDefault();
-        playPause();
-      }
-    };
-    const claim = () => {
-      const live = snapshot();
-      if (live.status === 'playing' || live.status === 'gap' || live.status === 'paused') requestPlaybackAudioSession();
-      return claimMediaSessionHandlers({
-        previous,
-        next,
-        play: () => { startAmbientMusic(); setState(snapshot()); requestPlaybackAudioSession(); },
-        pause: () => { pauseAmbientMusic(); setState(snapshot()); },
-        stop: () => { stopAmbientMusic(); setState(snapshot()); },
-        seekTo: (seconds) => { seekAmbientMusic(Number(seconds || 0) * 1000); setState(snapshot()); requestPlaybackAudioSession(); },
-        seekBackward: (seconds = 10) => {
-          const live = snapshot();
-          seekAmbientMusic(Math.max(0, live.cyclePositionMs - Number(seconds || 10) * 1000));
-          setState(snapshot());
-        },
-        seekForward: (seconds = 10) => {
-          const live = snapshot();
-          seekAmbientMusic(Math.min(live.durationMs || Infinity, live.cyclePositionMs + Number(seconds || 10) * 1000));
-          setState(snapshot());
-        },
-      });
-    };
-    window.addEventListener('keydown', handleMediaKey);
-    let release = claim();
-    const reclaim = () => {
-      if (document.visibilityState === 'hidden') return;
-      release();
-      release = claim();
-      setState(snapshot());
-    };
-    window.addEventListener('focus', reclaim);
-    document.addEventListener('visibilitychange', reclaim);
-    window.addEventListener('pointerdown', reclaim, { passive: true });
-
-    return () => {
-      window.removeEventListener('keydown', handleMediaKey);
-      window.removeEventListener('focus', reclaim);
-      document.removeEventListener('visibilitychange', reclaim);
-      window.removeEventListener('pointerdown', reclaim);
-      release();
-    };
-  }, [ownsMediaSession]);
 
   const themeId = state.themeId || getAmbientThemeId();
   const current = useMemo(

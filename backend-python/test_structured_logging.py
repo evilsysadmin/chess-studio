@@ -59,3 +59,23 @@ def test_exception_http_log_is_explicitly_filterable(caplog):
     payload = json.loads(caplog.records[-1].getMessage())
     assert payload["exception"] is True
     assert "internal detail" not in payload
+
+
+def test_structured_http_log_sanitizes_network_origin_fields(caplog):
+    logger = logging.getLogger("test.chess.structured.network")
+    caplog.set_level(logging.INFO, logger=logger.name)
+    emit_http_event(
+        logger,
+        request_id="req-net",
+        method="GET",
+        route="/api/health",
+        status_code=200,
+        duration_ms=1.2,
+        client_ip="203.0.113.42",
+        peer_ip="10.0.0.7",
+        x_forwarded_for=["203.0.113.42", "198.51.100.3", "basura"],
+    )
+    payload = json.loads(caplog.records[-1].getMessage())
+    assert payload["client_ip"] == "203.0.113.42"
+    assert payload["peer_ip"] == "10.0.0.7"
+    assert payload["x_forwarded_for"] == ["203.0.113.42", "198.51.100.3"]

@@ -19,6 +19,13 @@ describe('feedback API client', () => {
     global.fetch = vi.fn();
   });
 
+  it('usa General por defecto para reducir fricción', async () => {
+    global.fetch.mockResolvedValue(response(201, { feedback: { id: 'f0', status: 'new' } }));
+    await submitFeedback({ message: 'Comentario sin clasificar.', context: 'Home' });
+    const [, options] = global.fetch.mock.calls[0];
+    expect(JSON.parse(options.body).category).toBe('general');
+  });
+
   it('envía feedback autenticado con categoría y contexto', async () => {
     global.fetch.mockResolvedValue(response(201, { feedback: { id: 'f1', status: 'new' } }));
     await submitFeedback({ category: 'ux', message: 'Demasiadas cosas.', context: 'Home' });

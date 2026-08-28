@@ -2,6 +2,7 @@ import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { Chess } from 'chess.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { detectNoteworthyMove } from './cpuCommentary.js';
+import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
 
 const KEY = 'chess-study-personal-puzzles';
 const MAX_PUZZLES = 40;
@@ -26,6 +27,7 @@ export function isPlayablePersonalPuzzle(puzzle) {
       const move = board.move(san);
       if (!move) return false;
     }
+    if (puzzle.source === 'workers-ai-validated' && isObviouslyUnsoundSingleMovePuzzle(puzzle)) return false;
     return true;
   } catch {
     return false;

@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zeh',
+    title: 'Más claro, más consistente y menos trampas raras',
+    highlights: [
+      'Home, formularios, modales, partidas, Combat y administración comparten una jerarquía visual más limpia y controles más consistentes.',
+      'Feedback empieza en General y estrena un selector de capturas más cómodo, con previsualización y eliminación antes de enviar.',
+      'Los controles multimedia siguen manejando Retro Player al entrar en una partida, aunque el reproductor visual cambie de sitio.',
+      'Los puzzles refuerzan su control táctico: una solución no vale sólo por ser legal o dar jaque; los ejercicios personales nuevos deben coincidir con la mejor jugada validada antes de entrar en tu entrenamiento.',
+    ],
+  },
+  {
     release: 'v16.6dm46zeg',
     title: 'Más estabilidad sin cambiarte la partida',
     highlights: [

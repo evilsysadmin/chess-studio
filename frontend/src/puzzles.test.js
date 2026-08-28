@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Chess } from 'chess.js';
 import { PUZZLES, randomPuzzle } from './puzzles.js';
 import { validateLabPosition } from './labPosition.js';
+import { curatedPuzzleTacticalIssues } from './puzzleTacticalQuality.js';
 
 const FILES = 'abcdefgh';
 const PIECE_VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
@@ -103,6 +104,10 @@ describe('banco de puzzles curados', () => {
     expect(recent).not.toContain(next.id);
     expect(next.kind).not.toBe('material');
     expect(next.difficulty).not.toBe('easy');
+  });
+
+  it.each(PUZZLES)('$id tiene sentido táctico, no sólo un FEN válido', (puzzle) => {
+    expect(curatedPuzzleTacticalIssues(puzzle), `${puzzle.id}: solución tácticamente dudosa`).toEqual([]);
   });
 
   it.each(PUZZLES)('$id pasa el gate completo de integridad', (puzzle) => {
