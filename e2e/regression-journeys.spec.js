@@ -227,8 +227,20 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
 
 test('deploy · una release nueva no fuerza reload mientras la partida está activa', async ({ page }) => {
   let publishedRelease = APP_RELEASE;
+  let releaseChecks = 0;
+  let releaseFirstCheck;
+  let releaseFirstCheckDone;
+  const firstCheckGate = new Promise((resolve) => { releaseFirstCheck = resolve; });
+  const firstCheckObserved = new Promise((resolve) => { releaseFirstCheckDone = resolve; });
+
   await page.route('**/release.json?*', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ release: publishedRelease }) });
+    releaseChecks += 1;
+    const releaseAtRequest = publishedRelease;
+    if (releaseChecks === 1) {
+      releaseFirstCheckDone();
+      await firstCheckGate;
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ release: releaseAtRequest }) });
   });
   await mockApi(page, { gameScenario: 'opening' });
   await login(page);
@@ -236,12 +248,19 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
   await startQuickGame(page);
   // Este journey protege el contrato de release mientras YA existe una partida
   // activa. No depende de una jugada ni del aria-label concreto de una pieza:
-  // la persistencia de jugadas/reload tiene su smoke dedicado. Mezclar ambos
-  // contratos hacía este test innecesariamente frágil ante timing/DOM del tablero.
+  // la persistencia de jugadas/reload tiene su smoke dedicado.
   await expect(gameStatus(page)).toBeVisible();
 
+  // Reproduce deliberadamente la carrera real: la primera consulta del
+  // manifiesto sigue en vuelo con la release vieja cuando llega el
+  // visibilitychange que anuncia una release nueva. El componente debe
+  // coalescer el burst y ejecutar exactamente un check adicional al terminar.
+  await firstCheckObserved;
   publishedRelease = 'v16.6dm46zzz';
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  releaseFirstCheck();
+
+  await expect.poll(() => releaseChecks).toBeGreaterThanOrEqual(2);
   const notice = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
   await expect(notice).toBeVisible();
   await expect(notice.getByText(/Tu partida sigue intacta; actualiza al terminar/i)).toBeVisible();

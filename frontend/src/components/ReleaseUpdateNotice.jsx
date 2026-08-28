@@ -21,20 +21,38 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
 
   useEffect(() => {
     let active = true;
+    let rerunRequested = false;
     const controller = new AbortController();
 
     async function check() {
-      if (checkInFlightRef.current) return checkInFlightRef.current;
+      if (checkInFlightRef.current) {
+        // Coalesce bursts, but do not lose a meaningful refresh signal that
+        // arrives while the previous manifest request is still in flight.
+        // Exactly one follow-up check is queued, so visibility/focus churn
+        // cannot turn into a request storm.
+        rerunRequested = true;
+        return checkInFlightRef.current;
+      }
+
       const pending = (async () => {
         const latest = await fetchLatestRelease({ signal: controller.signal });
         if (!active || controller.signal.aborted || !latest) return;
         setLatestRelease(latest);
         setDismissed(getStorageItem(STORAGE_SESSION, dismissedKey(latest)) === '1');
-      })().finally(() => {
-        if (checkInFlightRef.current === pending) checkInFlightRef.current = null;
-      });
+      })();
       checkInFlightRef.current = pending;
-      return pending;
+
+      try {
+        await pending;
+      } finally {
+        if (checkInFlightRef.current === pending) checkInFlightRef.current = null;
+      }
+
+      if (active && !controller.signal.aborted && rerunRequested) {
+        rerunRequested = false;
+        return check();
+      }
+      return undefined;
     }
 
     void check();
