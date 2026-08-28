@@ -3,7 +3,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
-export default function MirrorModeModal({ onStart, onClose }) {
+export default function MirrorModeModal({ onStart, onClose, loading = false, error = null }) {
   useEscapeToClose(onClose);
   const profile = computeMirrorProfile();
 
@@ -27,8 +27,9 @@ export default function MirrorModeModal({ onStart, onClose }) {
             <p className="hint-text friendly-lead">
               Fantasma listo · nivel <b>{profile.difficulty}</b> · confianza <b>{profile.confidence}</b>.
             </p>
-            <button type="button" className="primary-btn friendly-main-cta" onClick={() => onStart(profile)}>
-              Jugar contra mi fantasma
+            {error && <p className="quick-match-error" role="alert">{error}</p>}
+            <button type="button" className="primary-btn friendly-main-cta" disabled={loading} onClick={() => onStart(profile)}>
+              {loading ? 'Creando rival…' : 'Jugar contra mi fantasma'}
             </button>
 
             <details className="friendly-disclosure mirror-profile-details">

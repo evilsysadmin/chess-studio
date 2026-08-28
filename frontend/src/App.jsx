@@ -346,7 +346,7 @@ function AppInner({ isAdminUser }) {
 
   async function handleNewGame(difficulty, color, opts) {
     const launch = beginGameLaunch();
-    if (!launch) return;
+    if (!launch) return false;
     setExitNotice(null);
     setCasualResult(null);
     setLoading(true);
@@ -354,7 +354,7 @@ function AppInner({ isAdminUser }) {
     try {
       const handicap = handicapForGap(rating.rating, difficulty);
       const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, opts?.ghostStyle || null, { signal: launch.controller.signal });
-      if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
       const isLearning = !!opts?.learning;
       const nextContext = { rematch: !!opts?.rematch, adaptiveDifficulty: !!opts?.adaptiveDifficulty, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck, ghost: !!opts?.ghost, ghostStyle: opts?.ghostStyle || null };
       setLearningMode(isLearning);
@@ -384,8 +384,10 @@ function AppInner({ isAdminUser }) {
       setGame(created);
       setHasSavedGame(true);
       navigateTo('game');
+      return true;
     } catch (e) {
       if (gameLaunchIsCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));
+      return false;
     } finally {
       if (gameLaunchRef.current === launch) setLoading(false);
       endGameLaunch(launch);

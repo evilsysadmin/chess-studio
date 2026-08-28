@@ -234,11 +234,13 @@ test('cuenta nueva · Login y bienvenida inicial son claros y no desbordan en m�
   await page.getByLabel('Usuario').fill('e2e');
   await page.getByLabel('Contraseña').fill('clave123456');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('heading', { name: 'Tu cuenta está lista. Empieza por tu primer rival.', exact: true })).toBeVisible();
-  await expect(page.getByText('Empiezas desde cero: este progreso es solo tuyo.', { exact: false })).toBeVisible();
+  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+  await expect(guide.getByRole('heading', { name: 'Tres pasos y ya sabes dónde está todo.', exact: true })).toBeVisible();
+  await expect(buttonWithHeading(page, 'Torneo')).toHaveClass(/home-onboarding-target/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
-  await page.getByRole('button', { name: 'Ver rival', exact: true }).click();
+  await guide.getByRole('button', { name: 'Jugar primer rival', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
 });
 
@@ -392,9 +394,15 @@ test('desktop 1366x768 · Partida compacta conserva tablero, jugador y acciones 
   const controls = page.locator('.game-screen .game-controls');
   await expect(bottomRail).toBeVisible();
   await expect(controls).toBeVisible();
-  const [railBox, controlsBox] = await Promise.all([bottomRail.boundingBox(), controls.boundingBox()]);
+  let [railBox, controlsBox] = await Promise.all([bottomRail.boundingBox(), controls.boundingBox()]);
   expect(railBox.bottom).toBeLessThanOrEqual(769);
   expect(controlsBox.bottom).toBeLessThanOrEqual(769);
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  [railBox, controlsBox] = await Promise.all([bottomRail.boundingBox(), controls.boundingBox()]);
+  expect(railBox.bottom).toBeLessThanOrEqual(721);
+  expect(controlsBox.bottom).toBeLessThanOrEqual(721);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 2)).toBe(true);
 });
 
 test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del viewport', async ({ page }) => {
@@ -420,4 +428,39 @@ test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del 
   const heights = await controls.locator('button:visible').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
   expect(heights.length).toBeGreaterThanOrEqual(2);
   expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+});
+
+
+test('Onboarding Home · el siguiente paso se señala y navegar no descarta la guía', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+  await expect(guide.getByText(/PRIMEROS 60 SEGUNDOS/)).toBeVisible();
+
+  const tournament = buttonWithHeading(page, 'Torneo');
+  await expect(tournament).toHaveClass(/home-onboarding-target/);
+  await expect(tournament.getByText('PASO 1/3 · SIGUIENTE', { exact: true })).toBeVisible();
+
+  await guide.getByRole('button', { name: 'Jugar primer rival', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('region', { name: 'Guía rápida de Chess Studio' })).toBeVisible();
+});
+
+
+test('Home · un 503 al iniciar partida deja un error visible junto a la acción, no en el footer', async ({ page }) => {
+  await mockApi(page, { gameCreateFailures: 1 });
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(dialog).toBeVisible();
+  const alert = dialog.getByRole('alert');
+  await expect(alert).toContainText('Chess Studio ha tenido un problema');
+  await expect(dialog.getByRole('button', { name: 'Empezar partida', exact: true })).toBeEnabled();
 });

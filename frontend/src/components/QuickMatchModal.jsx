@@ -29,6 +29,7 @@ export default function QuickMatchModal({
   threatCheck,
   setThreatCheck,
   loading,
+  error = null,
   rating,
   onStart,
   onClose,
@@ -75,6 +76,8 @@ export default function QuickMatchModal({
             Ajuste recomendado: <b>{handicap.label.toLowerCase()}</b> para compensar la diferencia de rating.
           </p>
         )}
+
+        {error && <p className="quick-match-error" role="alert">{error}</p>}
 
         <button
           type="button"

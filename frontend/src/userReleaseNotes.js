@@ -6,6 +6,17 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zep',
+    title: 'La primera partida ya tiene guía de verdad',
+    highlights: [
+      'El onboarding marca dentro de la propia Home el siguiente paso real: primero rival, después puzzle y finalmente Así juegas, sin overlays que bloqueen la pantalla.',
+      'Seguir un paso ya no descarta la guía. Sólo Ahora no, cerrar o terminar el recorrido la apartan; al volver a Home continúa desde el progreso realmente conseguido.',
+      'Si existe una partida activa, el recorrido prioriza Continuar partida en vez de intentar abrir otra, y el aviso de inactividad se calla mientras hay una guía o panel de ayuda abierto.',
+      'Zen y Abandonar partida comparten la misma familia visual; el peligro se expresa con un acento discreto en lugar de una pastilla roja ajena al resto del tablero.',
+      'Los fallos al crear Partida rápida o Rival Fantasma conservan el modal y su configuración para reintentar, y entrar a puzzles personales sin material explica claramente el fallback a un ejercicio clásico.',
+    ],
+  },
+  {
     release: 'v16.6dm46zeo',
     title: 'La voz del usuario sube; los detalles bajan',
     highlights: [

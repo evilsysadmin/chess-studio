@@ -60,6 +60,7 @@ function scenarioMoveResult(game, payload, scenario) {
 export async function mockApi(page, {
   isAdmin = false,
   gameGetFailures = 0,
+  gameCreateFailures = 0,
   gameScenario = 'opening',
   profileSeed = {},
   initialFeedback = [],
@@ -86,6 +87,7 @@ export async function mockApi(page, {
   let nextGameId = 1;
   let nextFeedbackId = 1;
   let remainingGameGetFailures = Math.max(0, Number(gameGetFailures || 0));
+  let remainingGameCreateFailures = Math.max(0, Number(gameCreateFailures || 0));
   let analysisIndex = 0;
   const games = new Map();
   let feedback = initialFeedback.map((item, index) => ({
@@ -200,6 +202,10 @@ export async function mockApi(page, {
       return move ? json(move) : json({ detail: 'E2E sin jugada de análisis preparada' }, 503);
     }
     if (path.endsWith('/games') && method === 'POST') {
+      if (remainingGameCreateFailures > 0) {
+        remainingGameCreateFailures -= 1;
+        return json({ detail: 'Servicio temporalmente no disponible' }, 503);
+      }
       const payload = route.request().postDataJSON?.() ?? {};
       const id = `e2e-game-${nextGameId++}`;
       const forcedFen = scenarioInitialFen(gameScenario);

@@ -13,7 +13,7 @@ import { buildHomeToday, dailyMissionActionProps } from '../homeToday.js';
 import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { shouldEnableHomePlayNudge } from '../homePlayNudgePolicy.js';
 import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
-import { setProfileStorageItem } from '../profileKeys.js';
+import { removeProfileStorageItem, setProfileStorageItem } from '../profileKeys.js';
 import { homeNextBestAction } from '../nextBestAction.js';
 import { difficultyForRating } from '../playerRating.js';
 import { HOME_GUIDE_KEY, HOME_GUIDE_OPEN_EVENT } from '../homeGuide.js';
@@ -72,7 +72,7 @@ export default function Menu({
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
-  const hasOpenOverlay = showQuickMatch || showMirrorMode;
+  const hasOpenOverlay = showQuickMatch || showMirrorMode || showHomeGuide || Boolean(footerPanel);
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const activity = useMemo(() => loadGameActivity(), []);
   const today = useMemo(() => buildHomeToday({
@@ -95,34 +95,59 @@ export default function Menu({
   }, []);
 
   useEffect(() => {
-    const reopenGuide = () => setShowHomeGuide(true);
+    const reopenGuide = () => {
+      removeProfileStorageItem(HOME_GUIDE_KEY);
+      setShowHomeGuide(true);
+    };
     window.addEventListener(HOME_GUIDE_OPEN_EVENT, reopenGuide);
     return () => window.removeEventListener(HOME_GUIDE_OPEN_EVENT, reopenGuide);
   }, []);
 
-  function closeHomeGuide() {
+  function reopenHomeGuide() {
+    removeProfileStorageItem(HOME_GUIDE_KEY);
+    setShowHomeGuide(true);
+  }
+
+  function dismissHomeGuide() {
     setProfileStorageItem(HOME_GUIDE_KEY, '1');
+    setShowHomeGuide(false);
+  }
+
+  function hideHomeGuideForStep() {
+    // Seguir el recorrido no equivale a descartarlo. Al volver a Home, el
+    // siguiente paso real debe reaparecer hasta que el usuario lo cierre.
     setShowHomeGuide(false);
   }
 
   function openOnboardingInsights() {
     markOnboardingInsightsSeen();
-    closeHomeGuide();
+    hideHomeGuideForStep();
     onInsights();
   }
 
   function runOnboardingNext() {
-    if (onboarding.next === 'game') { closeHomeGuide(); onTournament(); return; }
-    if (onboarding.next === 'puzzle') { closeHomeGuide(); onPuzzle(); return; }
+    if (onboarding.next === 'game') { hideHomeGuideForStep(); if (hasSavedGame) onContinue(); else onTournament(); return; }
+    if (onboarding.next === 'puzzle') { hideHomeGuideForStep(); onPuzzle(); return; }
     if (onboarding.next === 'insights') { openOnboardingInsights(); return; }
-    closeHomeGuide();
+    dismissHomeGuide();
+  }
+
+  function onboardingCue(stepId) {
+    if (!showHomeGuide || onboarding.next !== stepId) return null;
+    const index = onboarding.steps.findIndex((step) => step.id === stepId);
+    return <span className="home-onboarding-cue" aria-hidden="true">PASO {index + 1}/3 · SIGUIENTE</span>;
+  }
+
+  function onboardingTargetClass(stepId) {
+    return showHomeGuide && onboarding.next === stepId ? ' home-onboarding-target is-next' : '';
   }
 
   return (
     <div className="menu home-friendly">
       {hasSavedGame && (
         <div className="menu-group home-continue-group">
-          <button type="button" className="home-continue-card" disabled={loading} onClick={onContinue}>
+          <button type="button" className={`home-continue-card${showHomeGuide && onboarding.next === 'game' ? ' home-onboarding-target is-next' : ''}`} disabled={loading} onClick={onContinue}>
+            {showHomeGuide && onboarding.next === 'game' ? onboardingCue('game') : null}
             <span className="home-continue-icon" aria-hidden="true"><IconBookmark /></span>
             <span className="home-continue-copy">
               <span className="section-label">Partida en curso</span>
@@ -136,11 +161,11 @@ export default function Menu({
 
       {features.homeGuide !== false && showHomeGuide && (
         <section className="home-start-guide" aria-label="Guía rápida de Chess Studio">
-          <button type="button" className="home-start-guide-close" onClick={closeHomeGuide} aria-label="Cerrar guía rápida">×</button>
+          <button type="button" className="home-start-guide-close" onClick={dismissHomeGuide} aria-label="Cerrar guía rápida">×</button>
           <div className="home-start-guide-copy">
             <span className="section-label">PRIMEROS 60 SEGUNDOS · {onboarding.completed}/3</span>
             <h2>{onboarding.complete ? 'Ya conoces el circuito básico.' : freshAccount ? 'Tres pasos y ya sabes dónde está todo.' : 'Sigue desde el siguiente paso útil.'}</h2>
-            <p>{onboarding.complete ? 'Juega, entrena y revisa tu diagnóstico cuando te apetezca. El resto de modos queda detrás de un clic.' : 'No necesitas aprender todos los modos ahora. Completa este recorrido corto y luego explora a tu ritmo.'}</p>
+            <p>{onboarding.complete ? 'Juega, entrena y revisa tu diagnóstico cuando te apetezca. El resto de modos queda detrás de un clic.' : 'No necesitas aprender todos los modos ahora. El resplandor dorado marca tu siguiente paso; vuelve a Home y la guía continuará donde toca.'}</p>
           </div>
           <div className="home-start-guide-path" aria-label="Primeros pasos de Chess Studio">
             {onboarding.steps.map((step, index) => (
@@ -151,12 +176,14 @@ export default function Menu({
           </div>
           <div className="home-start-guide-actions">
             <button type="button" className="primary-btn" onClick={runOnboardingNext}>
-              {onboarding.next === 'game' ? 'Jugar primer rival' : onboarding.next === 'puzzle' ? 'Resolver un puzzle' : onboarding.next === 'insights' ? 'Abrir Así juegas' : 'Listo'}
+              {onboarding.next === 'game' ? (hasSavedGame ? 'Continuar partida' : 'Jugar primer rival') : onboarding.next === 'puzzle' ? 'Resolver un puzzle' : onboarding.next === 'insights' ? 'Abrir Así juegas' : 'Listo'}
             </button>
-            {!onboarding.complete && <button type="button" className="secondary-btn" onClick={closeHomeGuide}>Ahora no</button>}
+            {!onboarding.complete && <button type="button" className="secondary-btn" onClick={dismissHomeGuide}>Ahora no</button>}
           </div>
         </section>
       )}
+
+      {error && !showQuickMatch && !showMirrorMode && <div className="home-error-banner" role="alert"><b>No se pudo completar la acción.</b><span>{error}</span></div>}
 
       <section className={`home-today-card ${today.dailyFull ? 'is-complete' : today.dailySolved ? 'is-active' : ''}`} aria-label="Hoy en Chess Studio">
         <div className="home-today-emblem" aria-hidden="true">♞</div>
@@ -205,10 +232,11 @@ export default function Menu({
       <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
         <div className="home-group-heading">
           <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
-          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && <button type="button" className="home-context-guide" onClick={() => setShowHomeGuide(true)}><span>?</span> Juega primero</button>}</div>
+          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && <button type="button" className="home-context-guide" onClick={reopenHomeGuide}><span>?</span> Juega primero</button>}</div>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
-          <TutorialModeCard tutorialId="tournament" className="menu-card accent-brass home-primary-card home-mode-card home-mode-featured" onClick={onTournament}>
+          <TutorialModeCard tutorialId="tournament" className={`menu-card accent-brass home-primary-card home-mode-card home-mode-featured${hasSavedGame ? '' : onboardingTargetClass('game')}`} onClick={onTournament}>
+            {hasSavedGame ? null : onboardingCue('game')}
             <img className="home-mode-art" src={tournamentCardArt} alt="" aria-hidden="true" />
             <span className="home-mode-icon" aria-hidden="true"><IconTrophy className="menu-card-icon" /></span>
             <span className="home-mode-copy">
@@ -273,7 +301,8 @@ export default function Menu({
           <div className="home-heading-actions"><p>Analiza, entrena y vuelve al tablero con una idea clara.</p><div><button type="button" className="home-context-guide" onClick={onTutorial}><span>?</span> Aprende a jugar</button><button type="button" className="home-progress-link" onClick={onProgress}>Ver mi progreso →</button></div></div>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid home-learning-grid">
-          <TutorialModeCard tutorialId="insights" className="menu-card accent-hint home-primary-card home-mode-card home-learning-card" onClick={() => { markOnboardingInsightsSeen(); onInsights(); }}>
+          <TutorialModeCard tutorialId="insights" className={`menu-card accent-hint home-primary-card home-mode-card home-learning-card${onboardingTargetClass('insights')}`} onClick={() => { markOnboardingInsightsSeen(); onInsights(); }}>
+            {onboardingCue('insights')}
             <span className="home-mode-icon" aria-hidden="true"><IconEye className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Diagnóstico</b><i>Tu juego real</i></span><h3>Así juegas</h3><span className="home-mode-description">Tu prioridad actual y una acción concreta para mejorar.</span></span><span className="menu-card-cta">Ver diagnóstico <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
@@ -286,10 +315,11 @@ export default function Menu({
           </TutorialModeCard>
         </div>
 
-        <details className="friendly-disclosure home-learning-more">
+        <details className="friendly-disclosure home-learning-more" open={showHomeGuide && onboarding.next === 'puzzle' ? true : undefined}>
           <summary>Más aprendizaje y herramientas</summary>
           <div className="friendly-disclosure-body menu-grid compact-mode-grid home-tools-grid">
-            <TutorialModeCard tutorialId="puzzles" className="menu-card accent-hint home-mode-card home-tool-card" onClick={onPuzzle}>
+            <TutorialModeCard tutorialId="puzzles" className={`menu-card accent-hint home-mode-card home-tool-card${onboardingTargetClass('puzzle')}`} onClick={onPuzzle}>
+              {onboardingCue('puzzle')}
               <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Táctica</b><i>Diario</i></span><h3>Puzzles</h3><span className="home-mode-description">Casos clásicos y un reto nuevo cada día.</span></span><span className="menu-card-cta">Resolver <b aria-hidden="true">→</b></span>
             </TutorialModeCard>
             <button type="button" className="menu-card accent-success home-mode-card home-tool-card" onClick={onTutorial}>
@@ -304,8 +334,6 @@ export default function Menu({
           </div>
         </details>
       </div>
-
-      {error && <p className="error-text">{error}</p>}
 
       <footer className="home-footer" aria-label="Información de Chess Studio">
         <div className="home-footer-bar">
@@ -402,16 +430,22 @@ export default function Menu({
           threatCheck={threatCheck}
           setThreatCheck={setThreatCheck}
           loading={loading}
+          error={error}
           rating={rating}
-          onStart={() => { onNewGame(autoDifficulty ? difficultyForRating(rating?.rating ?? 400) : difficulty, color, { timeControlId, seriesBestOf, suddenDeath, threatCheck, adaptiveDifficulty: autoDifficulty }); setShowQuickMatch(false); }}
+          onStart={async () => {
+            const started = await onNewGame(autoDifficulty ? difficultyForRating(rating?.rating ?? 400) : difficulty, color, { timeControlId, seriesBestOf, suddenDeath, threatCheck, adaptiveDifficulty: autoDifficulty });
+            if (started) setShowQuickMatch(false);
+          }}
           onClose={() => setShowQuickMatch(false)}
         />
       )}
       {showMirrorMode && (
         <MirrorModeModal
-          onStart={(profile) => {
-            onNewGame(profile.difficulty, 'random', { ghost: true, ghostStyle: profile.style });
-            setShowMirrorMode(false);
+          loading={loading}
+          error={error}
+          onStart={async (profile) => {
+            const started = await onNewGame(profile.difficulty, 'random', { ghost: true, ghostStyle: profile.style });
+            if (started) setShowMirrorMode(false);
           }}
           onClose={() => setShowMirrorMode(false)}
         />

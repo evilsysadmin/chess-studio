@@ -29,7 +29,8 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
-  const resolvedInitialSource = initialSource === 'personal' && filteredInitialPersonalTotal === 0 ? 'curated' : initialSource;
+  const personalSourceFallback = initialSource === 'personal' && filteredInitialPersonalTotal === 0;
+  const resolvedInitialSource = personalSourceFallback ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
   const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter, { fallbackToMastered: true }) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle());
   const [recentCuratedIds, setRecentCuratedIds] = useState([]);
@@ -381,6 +382,11 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
         </button>
         <button className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>Desafío diario</button>
       </div>}
+      {personalSourceFallback && (
+        <p className="personal-puzzle-empty-notice friendly-inline-note" role="status">
+          Aún no tienes puzzles personales guardados. Juega alguna partida y Chess Studio convertirá errores reales en entrenamiento; mientras tanto te dejamos un puzzle clásico para no mandarte a una sala vacía.
+        </p>
+      )}
       {rushMode && <div className={`puzzle-rush-banner ${rushSeconds <= 30 ? 'danger' : ''}`}><b>PUZZLE RUSH PERSONAL</b><span>{Math.floor((rushSeconds || 0) / 60)}:{String((rushSeconds || 0) % 60).padStart(2, '0')} · {solvedCount} aciertos</span></div>}
       {!localChess && <p className="error-text">Este ejercicio no contiene una posición legal. Puedes pasar al siguiente sin penalización.</p>}
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
