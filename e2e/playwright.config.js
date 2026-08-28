@@ -20,6 +20,11 @@ export default defineConfig({
   ],
   use: {
     baseURL: 'http://127.0.0.1:4173/chess-studio/',
+    // Los journeys E2E mockean red con page.route(). Un Service Worker activo
+    // puede interceptar esas peticiones antes que Playwright y volver invisibles
+    // mocks como release.json. Las pruebas específicas de PWA deben vivir en una
+    // suite separada con serviceWorkers habilitado.
+    serviceWorkers: 'block',
     actionTimeout: 5_000,
     navigationTimeout: 10_000,
     headless: true,
