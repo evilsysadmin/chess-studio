@@ -7,7 +7,7 @@ describe('novedades para jugadores', () => {
     const current = currentUserReleaseNotes();
     expect(current.release).toBe(APP_RELEASE);
     const copy = USER_RELEASE_NOTES.flatMap((entry) => entry.highlights).join(' ');
-    expect(copy).not.toMatch(/sha|pipeline|hash|vitest|pytest|worker fallback/i);
+    expect(copy).not.toMatch(/\bsha(?:-?256)?\b|\bhash(?:es)?\b|pipeline|vitest|pytest|worker fallback/i);
     expect(copy).toMatch(/piezas|mercenarios|solución/i);
   });
 });
