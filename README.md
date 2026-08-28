@@ -1,4 +1,11 @@
-### v16.6dm46zev · Matthias firma el veredicto y hotfix backend
+### v16.6dm46zew · mesa de juego simplificada y quality gate tolerante a caídas de npm
+
+- Game Screen elimina la franja de Opciones avanzadas/PGN: estado y acciones viven en una sola barra alineada.
+- El tablero recupera margen vertical en portátiles al no reservar espacio para una segunda franja de controles.
+- npm audit distingue vulnerabilidades reales de una caída del endpoint remoto; una auditoría inconclusa no bloquea porque Trivy mantiene el gate CRITICAL.
+- El parser de npm audit tiene smoke stdlib propio y CI/local comparten el mismo comportamiento.
+- El aviso bruto de Vite se ajusta al chunk 3D deliberadamente lazy; bundle_size_report sigue vigilando gzip inicial y total.
+
 
 - Integra a **Matthias** en `Así te ve la CPU`: retrato visible, identidad de analista residente y el diagnóstico a su derecha, sin convertir la sección en un banner ni repetir un avatar gigante. El modelo mantiene tres frases basadas en datos reales, una sola pulla breve y una acción concreta.
 - Corrige la causa raíz de la cascada backend detectada por la suite completa: `game_api.py` usaba `uuid.uuid4()` sin importar `uuid`, provocando `500` al crear partidas no idempotentes.

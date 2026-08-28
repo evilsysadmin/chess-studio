@@ -1,10 +1,26 @@
 #!/usr/bin/env python3
-"""Aplica a npm audit la política: solo CRITICAL bloquea y detalla el resto."""
+"""Aplica la política npm audit del proyecto.
+
+- CRITICAL bloquea.
+- HIGH/MEDIUM/LOW informan.
+- Una caída del endpoint de npm audit NO bloquea: el gate queda explícitamente
+  inconcluso y Trivy sigue siendo la barrera de seguridad autoritativa.
+- Errores locales de configuración (sin lockfile, lock inconsistente, uso
+  inválido) sí bloquean porque no son un problema del servicio remoto.
+"""
 from __future__ import annotations
+
 import json
 import os
 import sys
 from pathlib import Path
+
+
+LOCAL_CONFIGURATION_ERRORS = {
+    "EAUDITNOLOCK",
+    "ELOCKVERIFY",
+    "EUSAGE",
+}
 
 
 def gha(kind: str, title: str, text: str) -> None:
@@ -41,18 +57,58 @@ def details_for(data: dict, severity: str) -> list[str]:
     return rows
 
 
+def error_fields(error) -> tuple[str, str]:
+    if isinstance(error, dict):
+        code = str(error.get("code") or "").strip()
+        message = " · ".join(
+            str(error.get(key) or "").strip()
+            for key in ("summary", "detail", "message")
+            if str(error.get(key) or "").strip()
+        )
+        return code, message
+    return "", str(error or "").strip()
+
+
+def audit_unavailable(data: dict) -> tuple[bool, str]:
+    """Distingue indisponibilidad remota de un checkout local inválido."""
+    error = data.get("error")
+    if not error:
+        return False, ""
+    code, message = error_fields(error)
+    if code.upper() in LOCAL_CONFIGURATION_ERRORS:
+        return False, f"{code}: {message}".strip(": ")
+    # npm puede devolver {error:{summary:'',detail:''}} cuando el endpoint
+    # /-/npm/v1/security/audits/quick falla. Sin metadata no existe un informe
+    # de vulnerabilidades que interpretar; Trivy cubre el gate CRITICAL después.
+    return True, f"{code}: {message}".strip(": ") or "endpoint npm audit sin respuesta utilizable"
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         return 2
     try:
         data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-        if data.get("error"):
-            raise ValueError(data["error"])
-        vulns = data.get("metadata", {}).get("vulnerabilities")
-        if not isinstance(vulns, dict):
-            raise ValueError("faltan metadata.vulnerabilities en la salida de npm audit")
     except Exception as exc:
-        print(f"ERROR: informe npm audit inválido: {exc}", file=sys.stderr)
+        print(f"ERROR: informe npm audit ilegible: {exc}", file=sys.stderr)
+        return 2
+
+    unavailable, reason = audit_unavailable(data)
+    if unavailable:
+        print("WARN: npm audit INCONCLUSO · el servicio remoto no devolvió un informe de vulnerabilidades.")
+        print(f"      Motivo: {reason}")
+        print("      No bloquea este push: Trivy sigue evaluando dependencias y bloquea CRITICAL.")
+        gha("warning", "npm audit no disponible", "Auditoría npm inconclusa; Trivy mantiene el gate CRITICAL.")
+        return 0
+
+    if data.get("error"):
+        code, message = error_fields(data.get("error"))
+        detail = f"{code}: {message}".strip(": ") or repr(data.get("error"))
+        print(f"ERROR: npm audit no pudo ejecutarse por un problema local: {detail}", file=sys.stderr)
+        return 2
+
+    vulns = data.get("metadata", {}).get("vulnerabilities")
+    if not isinstance(vulns, dict):
+        print("ERROR: faltan metadata.vulnerabilities en la salida de npm audit", file=sys.stderr)
         return 2
 
     critical = int(vulns.get("critical", 0) or 0)

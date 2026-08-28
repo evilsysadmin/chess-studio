@@ -391,7 +391,7 @@ test('desktop 1440x900 · Partida completa cabe en viewport y la botonera compar
   await expect(gameTurn(page)).toBeVisible();
   await clickBoardMove(page, 'e2', 'e4');
   await expect(gameTurn(page)).toBeVisible();
-  await expect(page.getByText('Opciones avanzadas', { exact: true })).toBeVisible();
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
 
   const fit = await page.evaluate(() => {
     const shell = document.querySelector('.app-shell-board-game');
@@ -431,7 +431,7 @@ test('desktop 1366x768 · Partida compacta conserva tablero, jugador y acciones 
   await expect(gameTurn(page)).toBeVisible();
   await clickBoardMove(page, 'e2', 'e4');
   await expect(gameTurn(page)).toBeVisible();
-  await expect(page.getByText('Opciones avanzadas', { exact: true })).toBeVisible();
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
 
   const bottomRail = page.locator('.game-screen .game-player-rail.is-human');
   const controls = page.locator('.game-screen .game-command-deck');

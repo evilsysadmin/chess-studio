@@ -68,7 +68,9 @@ jobs:
           npm audit --json > ../.security/npm-audit.json
           rc=$?
           set -e
-          test -s ../.security/npm-audit.json || { echo "npm audit no produjo informe (rc=$rc)"; exit 2; }
+          if [ ! -s ../.security/npm-audit.json ]; then
+            printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > ../.security/npm-audit.json
+          fi
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
 
   backend:

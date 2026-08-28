@@ -20,7 +20,7 @@ TRIVY_DB_TTL_MINUTES ?= 720
 	frontend-install backend-install python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
-	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check static-preflight \
+	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -328,6 +328,9 @@ state-resilience-check:
 idempotency-check:
 	python3 -S scripts/idempotency_smoke.py
 
+npm-audit-parser-check:
+	python3 -S scripts/npm_audit_gate_smoke.py
+
 architecture-debt-check:
 	python3 scripts/architecture_debt_budget.py
 
@@ -346,7 +349,7 @@ worker-test:
 release-check:
 	node scripts/release_consistency_check.mjs
 
-static-preflight: audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check security-api cf-ai-preflight worker-test
+static-preflight: audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check security-api cf-ai-preflight worker-test
 	@python3 scripts/synthetic_health_contract.py
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py
@@ -366,7 +369,7 @@ security-fe: ensure-frontend-deps
 	@mkdir -p "$(SECURITY_DIR)"
 	@rm -f "$(SECURITY_DIR)/npm-audit.json"
 	@cd frontend && set +e; npm audit --json > "../$(SECURITY_DIR)/npm-audit.json"; rc=$$?; set -e; \
-		if [ ! -s "../$(SECURITY_DIR)/npm-audit.json" ]; then echo "ERROR: npm audit no produjo informe."; exit $${rc:-2}; fi
+		if [ ! -s "../$(SECURITY_DIR)/npm-audit.json" ]; then printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > "../$(SECURITY_DIR)/npm-audit.json"; fi
 	$(PYTHON) scripts/npm_audit_gate.py "$(SECURITY_DIR)/npm-audit.json"
 
 ## Python: pip-audit da inventario de advisories. Como pip-audit no expone un

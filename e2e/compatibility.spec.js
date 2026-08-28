@@ -123,7 +123,7 @@ test('Registro · permite elegir inglés y localiza el acceso', async ({ page })
   await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeVisible();
 });
 
-test('Partida · PGN permanece oculto dentro de opciones avanzadas', async ({ page }) => {
+test('Partida · la mesa principal no expone PGN ni una franja avanzada', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();

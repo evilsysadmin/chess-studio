@@ -24,12 +24,12 @@ const smoke = read('e2e/smoke.spec.js');
 const checks = [
   [entry.at(-1) === contractImport, 'el contrato de producto debe ser el último CSS importado'],
   [/calc\(100dvh - 15\.6rem\)/.test(viewportCss), 'partida desktop debe reservar chrome vertical real'],
-  [/calc\(100dvh - 17\.5rem\)/.test(viewportCss), 'portátiles de 720–780px deben reservar también Opciones avanzadas tras la primera jugada'],
+  [/calc\(100dvh - 15\.25rem\)/.test(viewportCss), 'portátiles de 720–780px deben reservar la barra única sin sacrificar tablero'],
   [/\.game-screen \.game-controls\s*\{[\s\S]*?position:\s*static;/.test(viewportCss), 'controles desktop no deben flotar sobre el tablero'],
-  [/game-command-deck/.test(game) && /\.game-screen \.game-command-deck/.test(finalCss), 'estado, acciones y opciones avanzadas deben compartir una mesa de mando'],
+  [/game-command-deck/.test(game) && /\.game-screen \.game-command-deck/.test(finalCss), 'estado y acciones deben compartir una única mesa de mando'],
   [/game-controls-actions/.test(game) && /\.game-screen \.game-controls-actions/.test(finalCss), 'la botonera debe tener un contenedor geométrico explícito'],
   [/\.game-screen \.game-controls-actions > \.zen-mode-toggle/.test(onboardingCss) && /\.game-screen \.game-controls-actions > \.game-abandon-btn/.test(onboardingCss), 'Zen y abandonar deben conservar la misma familia visual tras el wrapper'],
-  [/game-advanced-tools[\s\S]*border-top/.test(finalCss), 'Opciones avanzadas debe integrarse con la mesa de mando'],
+  [!/game-advanced-tools/.test(game) && !/Exportar archivo \.pgn/.test(game), 'Game Screen no debe añadir una segunda franja de Opciones avanzadas/PGN'],
   [/home-onboarding-target/.test(onboardingCss) && /home-onboarding-cue/.test(onboardingCss), 'el onboarding debe señalar visualmente el siguiente objetivo'],
   [/home-onboarding-tip/.test(finalCss), 'el onboarding debe poder explicar Retos sin modal extra'],
   [/\.combat-battle-screen[\s\S]*?calc\(100dvh - 14\.5rem\)/.test(viewportCss), 'Combat debe presupuestar HUD y controles en altura'],
@@ -60,4 +60,4 @@ if (failed.length) {
   for (const message of failed) console.error(` - ${message}`);
   process.exit(1);
 }
-console.log('visual-ux-contract OK · viewport + mesa de mando + mapa artístico + acciones + onboarding + Matthias rival/home/veredicto + coach de replay + inbox admin protegidos');
+console.log('visual-ux-contract OK · viewport + barra única de mando + mapa artístico + acciones + onboarding + Matthias rival/home/veredicto + coach de replay + inbox admin protegidos');

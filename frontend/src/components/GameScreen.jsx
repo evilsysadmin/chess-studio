@@ -10,8 +10,7 @@ import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playIllegalMoveSound } from '../sound.js';
 import { speakCpuComment, stopCpuSpeech } from '../voiceCommentary.js';
 import { formatLongMove } from '../notation.js';
-import { toPGN, pgnResult, downloadPGN } from '../pgn.js';
-import { flagOutcome, flagPgnResult, formatClock } from '../clock.js';
+import { flagOutcome, formatClock } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
@@ -753,17 +752,6 @@ export default function GameScreen({
     void api.deleteGame(gameId).catch(() => {});
   }
 
-  function handleDownloadPGN() {
-    const result = flagFallen
-      ? flagPgnResult(flagFallen, game.insufficientMatingMaterial)
-      : pgnResult(game.status, game.turn, humanColor);
-    const cpuName = `${CPU_IDENTITY.name} (CPU, nivel ${game.difficulty})`;
-    const white = humanColor === 'w' ? 'Jugador' : cpuName;
-    const black = humanColor === 'b' ? 'Jugador' : cpuName;
-    const pgn = toPGN(game.history, { white, black, result });
-    downloadPGN(pgn, `partida-${game.id.slice(0, 8)}.pgn`);
-  }
-
   const flagFinalOutcome = flagFallen ? flagOutcome(flagFallen, humanColor, game.insufficientMatingMaterial) : null;
   const { statusLabel, statusClass, finalOutcome, statusText } = gameStatusView({
     status: game.status,
@@ -912,18 +900,6 @@ export default function GameScreen({
                 <button className="secondary-btn game-abandon-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
               </div>
             </div>
-            {game.history.length > 0 && (
-              <details className="game-advanced-tools">
-                <summary>Opciones avanzadas</summary>
-                <div className="game-advanced-tools-body">
-                  <div>
-                    <b>Exportar partida</b>
-                    <small>Descarga un archivo estándar para analizarlo en otras aplicaciones de ajedrez.</small>
-                  </div>
-                  <button className="secondary-btn" onClick={handleDownloadPGN}>Exportar archivo .pgn</button>
-                </div>
-              </details>
-            )}
           </div>
         </div>
       </div>

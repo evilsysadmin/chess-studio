@@ -16,8 +16,10 @@ export default defineConfig({
   build: {
     // Board3D ya se carga de forma lazy. Separamos además las librerías gordas
     // para que el bundle principal no arrastre React, chess.js y Three juntos.
-    // Three puede rondar ~500 kB minificado, pero sólo se descarga al abrir 3D.
-    chunkSizeWarningLimit: 560,
+    // Three es un chunk deliberadamente lazy del tablero 3D. El warning raw de
+    // Vite no distingue inicial de lazy; el bundle_size_report sí controla gzip
+    // inicial/total. Evitamos por tanto un aviso ruidoso sin relajar ese informe.
+    chunkSizeWarningLimit: 750,
     rollupOptions: {
       output: {
         manualChunks(id) {

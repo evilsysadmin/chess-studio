@@ -407,7 +407,6 @@
 }
 .game-controls-status { margin-right:auto; padding:.35rem .48rem; border-radius:7px; color:var(--parchment-dim); font:750 .58rem/1 var(--font-mono); letter-spacing:.055em; }
 .game-controls-status.is-active { color:var(--brass); background:rgba(198,164,93,.07); }
-.game-screen .game-advanced-tools { margin-top:.15rem; }
 
 .endgame-modal-backdrop { z-index:120; align-items:center; padding:clamp(.65rem,2vw,1.4rem); }
 .endgame-dialog {

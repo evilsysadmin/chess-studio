@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zew',
+    title: 'La mesa de juego respira mejor',
+    highlights: [
+      'La barra inferior de partida se reduce a lo importante: estado, Zen, abandonar y las acciones que realmente uses durante la partida.',
+      'Opciones avanzadas desaparece de la mesa de juego para recuperar espacio vertical y mantener todos los controles alineados.',
+      'En portátiles el tablero aprovecha mejor la altura disponible sin empujar la zona de acciones fuera de la pantalla.',
+    ],
+  },
+  {
     release: 'v16.6dm46zev',
     title: 'Matthias firma el veredicto',
     highlights: [
@@ -53,7 +62,7 @@ export const USER_RELEASE_NOTES = Object.freeze([
     title: 'Retos claros, mapa firme y controles en formación',
     highlights: [
       'Los objetivos opcionales de partida pasan a llamarse Retos y se explican en el onboarding y la FAQ; el pronóstico también adopta una etiqueta natural.',
-      'La barra inferior de partida separa estado y acciones, alinea Zen/Abandonar y convierte Opciones avanzadas en una pieza integrada en vez de un control huérfano.',
+      'La barra inferior de partida separa estado y acciones y alinea Zen/Abandonar dentro de una misma familia visual.',
       'Combat Chess recupera la cartografía artística con nodos dentro de márgenes seguros, y Administración permite borrar feedback de prueba.',
       'El footer centra y espacia sus enlaces para que FAQ, atajos, privacidad y Acerca de queden más fáciles de localizar.',
     ],

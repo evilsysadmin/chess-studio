@@ -55,7 +55,7 @@ console.log('== Chess Studio · bundle size (informativo) ==');
 console.log(`JS inicial: ${fmt(initialTotal)} en ${initialRows.length} chunk(s)`);
 console.log(`JS total:   ${fmt(total)} en ${rows.length} chunk(s)`);
 console.log('Chunks mayores (gzip):');
-for (const row of largest) console.log(`  ${fmt(row.gzip).padStart(11)}  ${row.name}${initialNames.has(row.name) ? '  [inicial]' : ''}`);
+for (const row of largest) console.log(`  ${fmt(row.gzip).padStart(11)}  ${row.name}${initialNames.has(row.name) ? '  [inicial]' : '  [lazy]'}`);
 if (warnings.length) {
   console.log('\nWARN: presupuesto blando superado:');
   for (const warning of warnings) console.log(`  - ${warning}`);
