@@ -1,0 +1,129 @@
+name: Grafana dashboards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/grafana/**"
+      - ".github/workflows/grafana-dashboards.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grafana-dashboards-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish dashboards
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/grafana/terraform
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
+      TF_VAR_metrics_datasource_uid: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
+      TF_VAR_logs_datasource_uid: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-logs' }}
+      TF_VAR_traces_datasource_uid: ${{ vars.GRAFANA_TRACES_DATASOURCE_UID || 'grafanacloud-humbletoucan355-traces' }}
+      TF_VAR_commit_sha: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+
+      - name: Check Grafana credentials exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$GRAFANA_URL" ]] || { echo "::error::Falta el secret GRAFANA_URL."; exit 1; }
+          [[ -n "$GRAFANA_AUTH" ]] || { echo "::error::Falta el secret GRAFANA_AUTH."; exit 1; }
+
+      - name: Validate Grafana datasources
+        shell: bash
+        run: |
+          set -euo pipefail
+          for item in \
+            "metrics:$TF_VAR_metrics_datasource_uid" \
+            "logs:$TF_VAR_logs_datasource_uid" \
+            "traces:$TF_VAR_traces_datasource_uid"; do
+            kind="${item%%:*}"
+            uid="${item#*:}"
+            body="$RUNNER_TEMP/grafana-datasource-${kind}.json"
+            code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+              --header "Authorization: Bearer $GRAFANA_AUTH" \
+              "${GRAFANA_URL%/}/api/datasources/uid/$uid")"
+            case "$code" in
+              200)
+                echo "Datasource $kind OK · $uid"
+                ;;
+              403)
+                # El token de publicación puede ser deliberadamente de mínimo
+                # privilegio y no incluir datasources:read. No ampliamos permisos
+                # sólo para un preflight auxiliar: Terraform/Grafana validarán las
+                # referencias reales durante la publicación del dashboard.
+                echo "::warning::No se puede leer el datasource Grafana $kind ($uid): HTTP 403 · el token no tiene datasources:read. Se continúa con Terraform."
+                ;;
+              404)
+                echo "::error::Datasource Grafana $kind ($uid) no existe: HTTP 404"
+                sed -n '1,20p' "$body" || true
+                exit 1
+                ;;
+              *)
+                echo "::error::No se pudo validar el datasource Grafana $kind ($uid): HTTP $code"
+                sed -n '1,20p' "$body" || true
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Terraform format and init
+        run: |
+          terraform fmt -check -recursive
+          terraform init -input=false
+          terraform validate
+
+      - name: Adopt existing Grafana resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing_folder_uid="$(
+            curl --fail --silent --show-error \
+              --header "Authorization: Bearer $GRAFANA_AUTH" \
+              "${GRAFANA_URL%/}/api/folders?limit=1000" \
+              | jq -r '.[] | select(.title == "Chess Studio") | .uid' \
+              | head -n 1
+          )"
+
+          if [[ -n "$existing_folder_uid" && "$existing_folder_uid" != "null" ]]; then
+            terraform import grafana_folder.chess_studio "$existing_folder_uid"
+          fi
+
+          terraform import grafana_dashboard.chess_studio_overview chess-studio-api-overview || true
+          terraform import grafana_dashboard.chess_studio_logs chess-studio-logs || true
+          terraform import grafana_dashboard.chess_studio_traces chess-studio-traces || true
+
+      - name: Plan and apply
+        run: |
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+
+      - name: Verify published dashboards
+        shell: bash
+        run: |
+          set -euo pipefail
+          for uid in chess-studio-api-overview chess-studio-logs chess-studio-traces; do
+            curl --fail --silent --show-error \
+              --header "Authorization: Bearer $GRAFANA_AUTH" \
+              "${GRAFANA_URL%/}/api/dashboards/uid/$uid" >/dev/null
+            echo "Dashboard publicado OK · $uid"
+          done
