@@ -411,7 +411,7 @@ function AppInner({ isAdminUser }) {
       setLearningMode(isLearning);
       setActiveTimeControl(timeControlById(opts?.timeControlId));
       setGameContext(nextContext);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: isLearning, gameContext: nextContext }), detail: nextContext.adaptiveDifficulty ? 'adaptive-difficulty' : null });
+      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: isLearning, gameContext: nextContext }), difficulty: created.difficulty, detail: nextContext.adaptiveDifficulty ? 'adaptive-difficulty' : null });
       const shouldOfferContract = !isLearning && !opts?.runMode && !opts?.lab && !opts?.rescue && Number(opts?.seriesBestOf || 1) <= 1;
       const contract = shouldOfferContract ? chooseContract({ gameCount: statisticalHistoryList.length, incidents: loadRivalry().incidents }) : null;
       if (contract) saveActiveContract(contract); else clearActiveContract();
@@ -457,7 +457,7 @@ function AppInner({ isAdminUser }) {
         const summary = handleCasualGameEnd('loss', game, { endReason: 'resignation' });
         setExitNotice(summary);
       } else {
-        recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }) });
+        recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }), difficulty: game.difficulty });
         setExitNotice({ outcome: 'cancelled', title: 'Partida cancelada', detail: 'No hiciste ninguna jugada. Tu rating no cambia.', ratingApplied: false });
       }
       }
@@ -560,7 +560,7 @@ function AppInner({ isAdminUser }) {
       } : null,
     };
     setHistoryList(saveGameRecord(record));
-    recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome });
+    recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
@@ -595,7 +595,7 @@ function AppInner({ isAdminUser }) {
       const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       confirmGameLaunchCreated(launch);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual' });
+      recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual', difficulty: created.difficulty });
       const updatedSeries = attachSeriesGame(activeSeries, created.id);
       saveActiveSeries(updatedSeries);
       setActiveSeries(updatedSeries);
@@ -647,7 +647,7 @@ function AppInner({ isAdminUser }) {
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       confirmGameLaunchCreated(launch);
       const nextContext = { lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null };
-      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: true, gameContext: nextContext }) });
+      recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: true, gameContext: nextContext }), difficulty: created.difficulty });
       clearActiveSeries();
       setActiveSeries(null);
       clearActiveContract();
@@ -684,7 +684,7 @@ function AppInner({ isAdminUser }) {
       const created = await api.createGame(run.difficulty, 'random', null, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }
       confirmGameLaunchCreated(launch);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: run.mode || 'streak' });
+      recordGameActivity({ gameId: created.id, state: 'started', mode: run.mode || 'streak', difficulty: created.difficulty });
       clearActiveSeries();
       setActiveSeries(null);
       clearActiveContract();
@@ -727,7 +727,7 @@ function AppInner({ isAdminUser }) {
       const created = await api.createGame(cpuDifficulty, color, null, null, null, { signal: launch.controller.signal, operationId });
       if (!gameLaunchIsCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
       confirmGameLaunchCreated(launch);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament' });
+      recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });
       setTournamentGame(created);
       navigateTo('tournamentGame');
     } catch (e) {
@@ -792,7 +792,7 @@ function AppInner({ isAdminUser }) {
         series: null,
         };
       setHistoryList(saveGameRecord(record));
-      recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome });
+      recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome, difficulty: finishedGame.difficulty });
       recordCareerGame(record, {});
     }
   }
@@ -827,7 +827,7 @@ function AppInner({ isAdminUser }) {
     if (tournamentGame?.id) {
       const exitDisposition = chessGameExitDisposition(tournamentGame, { explicitAction: true });
       if (exitDisposition === 'forfeit') handleTournamentGameEnd('loss', tournamentGame, { endReason: 'resignation' });
-      else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament' });
+      else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament', difficulty: tournamentGame.difficulty });
     }
     clearActiveGameSession();
     setHasSavedGame(!!getStorageItem(STORAGE_LOCAL, STORAGE_KEY));
@@ -1073,7 +1073,7 @@ function AppInner({ isAdminUser }) {
             onPersistenceState={setGameSaveState}
             onCustomize={() => setShowSettings(true)}
             onBattleStart={(meta = {}) => {
-              if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord });
+              if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord, difficulty: meta.difficulty });
             }}
             onBattleResult={(outcome, _debrief, meta = {}) => {
               if (meta.gameId) recordGameActivity({
@@ -1081,7 +1081,7 @@ function AppInner({ isAdminUser }) {
                 state: outcome === 'retired' ? 'cancelled' : 'finished',
                 mode: 'combat',
                 modeRecord: meta.battleRecord || { variant: 'combat' },
-                outcome: outcome === 'retired' ? null : outcome,
+                outcome: outcome === 'retired' ? null : outcome, difficulty: meta.difficulty ?? meta.battleRecord?.difficulty,
               });
             }}
           />

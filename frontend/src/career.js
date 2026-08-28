@@ -15,6 +15,21 @@ export const BOARD_THEMES = [
   { id: 'forensic', label: 'Laboratorio', unlock: (career) => Number(career?.records?.puzzleRushBest || 0) >= 8 },
 ];
 
+
+function normalizeLegacyMilestoneText(text) {
+  const value = String(text || '');
+  return value
+    .replace(/^Contrato cumplido:\s*/i, 'Reto superado · ')
+    .replace(/^Contrato fallido:\s*/i, 'Reto fallido · ')
+    .replace(/^Reto cumplido:\s*/i, 'Reto superado · ')
+    .replace(/^Reto cumplido\s*·\s*/i, 'Reto superado · ')
+    .replace(/^Reto fallido:\s*/i, 'Reto fallido · ');
+}
+
+function normalizeMilestones(rows) {
+  return Array.isArray(rows) ? rows.map((row) => row && typeof row === 'object' ? { ...row, text: normalizeLegacyMilestoneText(row.text) } : row) : [];
+}
+
 function monthId(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; }
 function blank() {
   return {
@@ -41,7 +56,7 @@ export function loadCareer() {
       contracts: { ...blank().contracts, ...(parsed?.contracts || {}) },
       pressure: { ...blank().pressure, ...(parsed?.pressure || {}) },
       byTimeControl: { ...(parsed?.byTimeControl || {}) },
-      milestones: Array.isArray(parsed?.milestones) ? parsed.milestones : [],
+      milestones: normalizeMilestones(parsed?.milestones),
       runHistory: Array.isArray(parsed?.runHistory) ? parsed.runHistory : [],
     };
   } catch { return blank(); }
@@ -106,7 +121,7 @@ export function recordCareerGame(record, meta={}) {
   const rhythm=record.timeControl?.id||'none'; const by={...(state.byTimeControl||{})}; const row={games:0,wins:0,draws:0,losses:0,...(by[rhythm]||{})}; row.games++; row[record.outcome==='win'?'wins':record.outcome==='loss'?'losses':'draws']++; by[rhythm]=row; state.byTimeControl=by;
   state.pressure = { moves: Number(state.pressure?.moves||0)+Number(meta.pressureMoves||0), incidents: Number(state.pressure?.incidents||0)+Number(meta.pressureIncidents||0) };
   const cr=contractResult(meta.contract,record,meta);
-  if(cr){state.contracts={...state.contracts,offered:(state.contracts?.offered||0)+1,completed:(state.contracts?.completed||0)+(cr.success?1:0),failed:(state.contracts?.failed||0)+(cr.success?0:1)};state=milestone(state,`${cr.success?'Reto cumplido':'Reto fallido'}: ${cr.label}.`,cr.success?'contract-win':'contract-loss');}
+  if(cr){state.contracts={...state.contracts,offered:(state.contracts?.offered||0)+1,completed:(state.contracts?.completed||0)+(cr.success?1:0),failed:(state.contracts?.failed||0)+(cr.success?0:1)};state=milestone(state,`${cr.success?'Reto superado':'Reto fallido'} · ${cr.label}.`,cr.success?'contract-win':'contract-loss');}
   return saveCareer(state);
 }
 

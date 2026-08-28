@@ -33,6 +33,32 @@ def _profile_json(data: dict, key: str, default):
     return value
 
 
+def _normalize_career_activity_text(text) -> str | None:
+    if not isinstance(text, str):
+        return None
+    value = text.strip()
+    replacements = (
+        ("Contrato cumplido:", "Reto superado ·"),
+        ("Contrato fallido:", "Reto fallido ·"),
+        ("Reto cumplido:", "Reto superado ·"),
+        ("Reto cumplido ·", "Reto superado ·"),
+        ("Reto fallido:", "Reto fallido ·"),
+    )
+    lower = value.lower()
+    for prefix, replacement in replacements:
+        if lower.startswith(prefix.lower()):
+            return f"{replacement} {value[len(prefix):].strip()}"
+    return value
+
+
+def _difficulty_label(value) -> str | None:
+    try:
+        number = int(round(float(value)))
+    except (TypeError, ValueError):
+        return None
+    return f"CPU · nivel {number}"
+
+
 def _longest_win_streak(records: list[dict]) -> int:
     ordered = sorted(
         (r for r in records if isinstance(r, dict)),
@@ -262,7 +288,7 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         labels = {
             "tournament": "Torneo",
             "practice": "Partida de práctica",
-            "ghost": "Rival Ghost",
+            "ghost": "Rival fantasma",
             "nemesis-training": "Némesis",
             "sudden": "Muerte súbita",
             "casual": "Rápida",
@@ -271,6 +297,13 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
 
     recent = sorted(all_records, key=lambda r: str(r.get("date") or ""), reverse=True)[:5]
     recent_game_activity = []
+    history_by_game_id = {}
+    for record in game_history:
+        if not isinstance(record, dict):
+            continue
+        source_id = record.get("sourceGameId") or record.get("gameId")
+        if source_id:
+            history_by_game_id[str(source_id)] = record
 
     # Builds nuevas guardan el ciclo de vida explícito de cada partida. Si
     # existe ese journal, es la fuente preferida para Admin porque permite
@@ -296,10 +329,21 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         else:
             result = {"win": "Victoria", "loss": "Derrota", "draw": "Tablas"}.get(outcome)
             text = f"Partida finalizada · {result}" if result else "Partida finalizada"
+        matched_record = history_by_game_id.get(str(row.get("gameId") or ""), {})
+        detail_parts = []
+        level_detail = _difficulty_label(row.get("difficulty") if row.get("difficulty") is not None else matched_record.get("difficulty"))
+        if level_detail:
+            detail_parts.append(level_detail)
+        tc = matched_record.get("timeControl") if isinstance(matched_record, dict) and isinstance(matched_record.get("timeControl"), dict) else {}
+        if tc.get("label"):
+            detail_parts.append(str(tc.get("label")))
+        raw_detail = row.get("detail")
+        if isinstance(raw_detail, str) and raw_detail.strip() and raw_detail != "adaptive-difficulty":
+            detail_parts.append(raw_detail.strip())
         recent_game_activity.append({
             "date": row.get("date"),
             "text": text,
-            "detail": row.get("detail") if isinstance(row.get("detail"), str) else None,
+            "detail": " · ".join(detail_parts) or None,
             "type": activity_type,
             "modeLabel": mode_label,
         })
@@ -311,7 +355,9 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
             mode_label, activity_type = recent_mode_label(row)
             details = []
             if row.get("difficulty") is not None:
-                details.append(f"CPU {row.get('difficulty')}")
+                level_detail = _difficulty_label(row.get("difficulty"))
+                if level_detail:
+                    details.append(level_detail)
             tc = row.get("timeControl") if isinstance(row.get("timeControl"), dict) else {}
             if tc.get("label"):
                 details.append(str(tc.get("label")))
@@ -410,7 +456,7 @@ def _extract_summary_stats(profile: Optional[dict]) -> dict:
         "recentActivity": sorted([
             *recent_game_activity,
             *[
-                {"date": row.get("date"), "text": row.get("text"), "detail": row.get("detail"), "type": row.get("type")}
+                {"date": row.get("date"), "text": _normalize_career_activity_text(row.get("text")), "detail": row.get("detail"), "type": row.get("type")}
                 for row in career_activity[:8] if isinstance(row, dict)
             ],
         ], key=lambda row: str(row.get("date") or ""), reverse=True)[:8],

@@ -121,7 +121,7 @@ export function summarizeAdminClientReleases(users = [], currentAdmin = null, cu
 
 const ADMIN_ACTIVITY_TYPE_LABELS = Object.freeze({
   'contract-loss': 'Reto fallido',
-  'contract-win': 'Reto cumplido',
+  'contract-win': 'Reto superado',
   combat: 'Combat Chess',
   tournament: 'Torneo',
   practice: 'Práctica',

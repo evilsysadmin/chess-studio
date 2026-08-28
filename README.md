@@ -1,3 +1,11 @@
+### v16.6dm46zeu · Matthias entra en escena
+
+- Da una identidad fija y visible a la CPU: **Matthias**, un peón sabihondo con avatar propio, ocupa el hueco existente del rival y firma el chat sin añadir paneles flotantes ni robar espacio al tablero.
+- Matthias puede aparecer ocasionalmente en Home con una invitación breve. Las pullas sobre errores sólo se construyen a partir de incidentes realmente guardados; onboarding, modales, errores y otros nudges tienen prioridad y lo silencian.
+- Actividad reciente conserva el nivel de CPU en el ciclo de vida de nuevas partidas y lo recupera del historial cuando el evento es antiguo. Los hitos legacy `Contrato cumplido` se normalizan a **Reto superado** sin reescribir ni inventar progreso.
+- Limpia copy visible adicional (`CPU · nivel`, `Rival fantasma`, precisión) y vuelve a dejar `Novedades` libre de jerga interna.
+- Añade pruebas del policy de aparición de Matthias, memoria factual, prioridad de partida activa, cooldown, dificultad en actividad y normalización legacy; el smoke de partida verifica además que el retrato real carga en la tarjeta rival.
+
 ### v16.6dm46zet · Feedback visible y entrenamiento con coach de replay
 
 - Añade un inbox discreto para administradores en Home: cuando existe feedback realmente nuevo aparece un sobre con contador y acceso directo a Feedback de usuarios; usa un resumen ligero y refresco cada 2 minutos sólo mientras Home está visible.

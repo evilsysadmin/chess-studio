@@ -37,6 +37,7 @@ import { gameStatusView } from '../gameStatusView.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { chessFromFen, safeChessMove } from '../chessRules.js';
 import { createOperationId, operationFingerprint } from '../operationId.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
@@ -756,7 +757,7 @@ export default function GameScreen({
     const result = flagFallen
       ? flagPgnResult(flagFallen, game.insufficientMatingMaterial)
       : pgnResult(game.status, game.turn, humanColor);
-    const cpuName = `CPU (nivel ${game.difficulty})`;
+    const cpuName = `${CPU_IDENTITY.name} (CPU, nivel ${game.difficulty})`;
     const white = humanColor === 'w' ? 'Jugador' : cpuName;
     const black = humanColor === 'b' ? 'Jugador' : cpuName;
     const pgn = toPGN(game.history, { white, black, result });
@@ -802,11 +803,11 @@ export default function GameScreen({
     const isTicking = tickingColor === color;
     const active = game.turn === color && !game.isGameOver && !flagFallen && !forcedOutcome;
     return (
-      <div className={`game-player-rail ${cpu ? 'is-cpu' : 'is-human'} ${active ? 'is-active' : ''}`} aria-label={`${cpu ? 'CPU' : 'Jugador'} ${active ? 'en turno' : 'esperando'}`}>
-        <span className="game-player-avatar" aria-hidden="true">{cpu ? '♞' : '♙'}</span>
+      <div className={`game-player-rail ${cpu ? 'is-cpu' : 'is-human'} ${active ? 'is-active' : ''}`} aria-label={`${cpu ? `${CPU_IDENTITY.name}, CPU` : 'Jugador'} ${active ? 'en turno' : 'esperando'}`}>
+        <span className={`game-player-avatar${cpu ? ' has-portrait' : ''}`} aria-hidden="true">{cpu ? <img src={CPU_IDENTITY.avatar} alt="" /> : '♙'}</span>
         <span className="game-player-identity">
-          <strong>{cpu ? 'CPU' : (getUsername() || 'Tú')}</strong>
-          <small>{cpu ? `Nivel ${game.difficulty}` : `${color === 'w' ? 'Blancas' : 'Negras'}${active ? ' · Tu turno' : ''}`}</small>
+          <strong>{cpu ? CPU_IDENTITY.name : (getUsername() || 'Tú')}</strong>
+          <small>{cpu ? `${CPU_IDENTITY.role} · nivel ${game.difficulty}` : `${color === 'w' ? 'Blancas' : 'Negras'}${active ? ' · Tu turno' : ''}`}</small>
         </span>
         {hasClock ? (
           <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`}>{formatClock(seconds ?? 0)}</span>
@@ -937,7 +938,7 @@ export default function GameScreen({
             {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al rating.' : flagFallen
               ? (flagFinalOutcome === 'draw' ? 'Cayó una bandera, pero el rival no tenía material suficiente para dar mate.' : flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
               : game.status === 'checkmate'
-              ? game.turn === humanColor ? 'Ganó la CPU.' : '¡Ganaste la partida!'
+              ? game.turn === humanColor ? `Ganó ${CPU_IDENTITY.name}.` : '¡Ganaste la partida!'
               : 'La partida terminó en tablas.'}
           </p>
           {resultSummary && (
@@ -948,7 +949,7 @@ export default function GameScreen({
           )}
           {lastCpuComment && (
             <blockquote className="endgame-cpu-verdict">
-              <span>CPU</span>
+              <span>{CPU_IDENTITY.name}</span>
               <p>{lastCpuComment}</p>
             </blockquote>
           )}

@@ -438,6 +438,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     advanceCombatPhase(COMBAT_FLOW_EVENT.START);
     onBattleStart?.({
       gameId: activityGameId,
+      difficulty,
       modeRecord: { variant: combatVariant || 'combat', roguelikeMode: combatVariant === 'roguelike' ? (roguelikeMode || 'tower') : null },
     });
 
@@ -616,6 +617,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     onBattleResult?.(outcome, debrief, {
       gameId: activityGameIdRef.current || battleRecord.id,
+      difficulty: battleRecord.difficulty ?? difficulty,
       battleRecord,
     });
     activityGameIdRef.current = null;
@@ -1196,6 +1198,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     clearBattleSession();
     onBattleResult?.('retired', debrief, {
       gameId: activityGameIdRef.current || battleRecord.id,
+      difficulty: battleRecord.difficulty ?? difficulty,
       battleRecord,
     });
     activityGameIdRef.current = null;

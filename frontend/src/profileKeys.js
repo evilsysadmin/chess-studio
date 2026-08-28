@@ -73,6 +73,7 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-voice-enabled',
   'chess-study-mechanic-tutorial-progress-v1',
   'chess-study-home-guide-dismissed-v1',
+  'chess-study-matthias-home-last-shown-v1',
   'chess-study-onboarding-insights-seen-v1',
   'chess-study-feedback-assistant-v1',
   'chess-study-post-game-feedback-v1',
@@ -101,6 +102,7 @@ export const SESSION_STATE_KEYS = [
   'chess-study-active-game-learning',
   'chess-study-active-series',
   'chess-study-active-game-chat',
+  'chess-study-matthias-home-seen-v1',
   'chess-study-active-game-session-v1',
 ];
 

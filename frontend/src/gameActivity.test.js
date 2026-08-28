@@ -11,10 +11,10 @@ describe('game activity lifecycle', () => {
   it('stores started / finished once per game and preserves the mode label', () => {
     recordGameActivity({ gameId: 'g-1', state: 'started', mode: 'sudden' });
     recordGameActivity({ gameId: 'g-1', state: 'started', mode: 'sudden' });
-    recordGameActivity({ gameId: 'g-1', state: 'finished', mode: 'sudden', outcome: 'win' });
+    recordGameActivity({ gameId: 'g-1', state: 'finished', mode: 'sudden', outcome: 'win', difficulty: 72 });
     const rows = loadGameActivity();
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ gameId: 'g-1', state: 'finished', modeLabel: 'Muerte súbita', outcome: 'win' });
+    expect(rows[0]).toMatchObject({ gameId: 'g-1', state: 'finished', modeLabel: 'Muerte súbita', outcome: 'win', difficulty: 72 });
     expect(rows[1]).toMatchObject({ gameId: 'g-1', state: 'started', modeLabel: 'Muerte súbita' });
   });
 

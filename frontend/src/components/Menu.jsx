@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints, pointsIntoLevel, POINTS_PER_LEVEL } from '../tournament.js';
 import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn } from './Icons.jsx';
@@ -23,6 +23,9 @@ import quickCardArt from '../assets/home-modes/quick.webp';
 import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboardingInsightsSeen } from '../homeOnboarding.js';
 import { loadPuzzlesSolved } from '../puzzleStats.js';
 import { APP_RELEASE } from '../release.js';
+import { loadRivalry } from '../rivalry.js';
+import { buildMatthiasHomeVisit, markMatthiasHomeShown, matthiasHomeLastShownAt, matthiasHomeSessionSeen, shouldShowMatthiasHome } from '../matthiasHome.js';
+import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -69,10 +72,13 @@ export default function Menu({
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [footerPanel, setFooterPanel] = useState(null);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
+  const [matthiasVisit, setMatthiasVisit] = useState(null);
+  const matthiasRollRef = useRef(Math.random());
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
-  const hasOpenOverlay = showQuickMatch || showMirrorMode || showHomeGuide || Boolean(footerPanel);
+  const blockingHomeOverlay = suppressHomeNudge || showQuickMatch || showMirrorMode || showHomeGuide || Boolean(footerPanel) || Boolean(error);
+  const hasOpenOverlay = blockingHomeOverlay || Boolean(matthiasVisit);
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
   const activity = useMemo(() => loadGameActivity(), []);
   const today = useMemo(() => buildHomeToday({
@@ -81,12 +87,27 @@ export default function Menu({
     activity,
   }), []);
   const nextAction = useMemo(() => homeNextBestAction(activity), [activity]);
+  const rivalry = useMemo(() => loadRivalry(), []);
+  const matthiasCandidate = useMemo(() => buildMatthiasHomeVisit({ rivalry, hasSavedGame }), [rivalry, hasSavedGame]);
   const freshAccount = useMemo(() => isFreshAccount({ activity, tournament }), [activity, tournament]);
   const onboarding = useMemo(() => buildHomeOnboarding({
     activity,
     puzzlesSolved: loadPuzzlesSolved(),
     insightsSeen: onboardingInsightsSeen(),
   }), [activity]);
+
+  useEffect(() => {
+    if (matthiasVisit || blockingHomeOverlay) return;
+    const show = shouldShowMatthiasHome({
+      hasOpenOverlay: blockingHomeOverlay,
+      sessionSeen: matthiasHomeSessionSeen(),
+      lastShownAt: matthiasHomeLastShownAt(),
+      randomValue: matthiasRollRef.current,
+    });
+    if (!show) return;
+    markMatthiasHomeShown();
+    setMatthiasVisit(matthiasCandidate);
+  }, [blockingHomeOverlay, matthiasCandidate, matthiasVisit]);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());
@@ -130,6 +151,14 @@ export default function Menu({
     if (onboarding.next === 'puzzle') { hideHomeGuideForStep(); onPuzzle(); return; }
     if (onboarding.next === 'insights') { openOnboardingInsights(); return; }
     dismissHomeGuide();
+  }
+
+  function handleMatthiasAction() {
+    const action = matthiasVisit?.action;
+    setMatthiasVisit(null);
+    if (action === 'continue') { onContinue(); return; }
+    if (action === 'train') { onTrainPersonal(); return; }
+    setShowQuickMatch(true);
   }
 
   function onboardingCue(stepId) {
@@ -187,6 +216,14 @@ export default function Menu({
       )}
 
       {error && !showQuickMatch && !showMirrorMode && <div className="home-error-banner" role="alert"><b>No se pudo completar la acción.</b><span>{error}</span></div>}
+
+      {matthiasVisit && (
+        <MatthiasHomeVisit
+          visit={matthiasVisit}
+          onAction={handleMatthiasAction}
+          onDismiss={() => setMatthiasVisit(null)}
+        />
+      )}
 
       <section className={`home-today-card ${today.dailyFull ? 'is-complete' : today.dailySolved ? 'is-active' : ''}`} aria-label="Hoy en Chess Studio">
         <div className="home-today-emblem" aria-hidden="true">♞</div>

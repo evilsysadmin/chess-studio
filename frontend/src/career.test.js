@@ -69,6 +69,20 @@ describe('career persistente', () => {
     expect(state.contracts).toEqual({ offered: 1, completed: 1, failed: 0 });
   });
 
+  it('normaliza hitos legacy de Contrato al vocabulario de Retos', () => {
+    localStorage.setItem('chess-study-career', JSON.stringify({
+      version: 2,
+      milestones: [
+        { id: 'old-1', text: 'Contrato cumplido: Sin ruedines.' },
+        { id: 'old-2', text: 'Reto cumplido: Haz el trabajo.' },
+      ],
+    }));
+    expect(loadCareer().milestones.map((row) => row.text)).toEqual([
+      'Reto superado · Sin ruedines.',
+      'Reto superado · Haz el trabajo.',
+    ]);
+  });
+
   it('una derrota corta la racha y puede fallar un contrato', () => {
     recordCareerGame(game());
     const contract = CONTRACTS.find((item) => item.id === 'win');

@@ -266,7 +266,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleCampaignBattleStarted(meta = {}) {
     setBattleDebrief(null);
     setCombatSessionActive(true);
-    if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: 'campaign' } });
+    if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: 'campaign' }, difficulty: meta.difficulty });
     setCampaign((current) => markCampaignBattleStarted(current));
   }
 
@@ -301,6 +301,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       mode: 'combat',
       modeRecord: meta.battleRecord || { variant: 'roguelike', roguelikeMode: 'campaign' },
       outcome: outcome === 'retired' ? null : outcome,
+      difficulty: meta.difficulty ?? meta.battleRecord?.difficulty,
     });
     setServiceRecord(loadCombatService());
     setRoster(loadRoster());
@@ -430,7 +431,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   function handleBattleStarted(meta = {}) {
     setBattleDebrief(null);
     setCombatSessionActive(true);
-    if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: run.mode } });
+    if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: run.mode }, difficulty: meta.difficulty });
     setRun((current) => markBattleStarted(current));
   }
 
@@ -450,6 +451,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       mode: 'combat',
       modeRecord: meta.battleRecord || { variant: 'roguelike', roguelikeMode: run.mode },
       outcome: outcome === 'retired' ? null : outcome,
+      difficulty: meta.difficulty ?? meta.battleRecord?.difficulty,
     });
     setServiceRecord(loadCombatService());
     setRoster(loadRoster());

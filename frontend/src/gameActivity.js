@@ -15,7 +15,7 @@ export function loadGameActivity() {
   }
 }
 
-export function recordGameActivity({ gameId, state, mode = 'casual', modeRecord = null, outcome = null, detail = null, date = null } = {}) {
+export function recordGameActivity({ gameId, state, mode = 'casual', modeRecord = null, outcome = null, difficulty = null, detail = null, date = null } = {}) {
   if (!gameId || !STATES.has(state)) return loadGameActivity();
   const list = loadGameActivity();
   const dedupeKey = `${gameId}:${state}`;
@@ -34,6 +34,7 @@ export function recordGameActivity({ gameId, state, mode = 'casual', modeRecord 
     mode,
     modeLabel: gameModeLabel(record),
     outcome: outcome || null,
+    difficulty: Number.isFinite(Number(difficulty)) ? Number(difficulty) : null,
     detail: detail || null,
   };
   const next = [event, ...list].slice(0, MAX_EVENTS);

@@ -12,6 +12,7 @@ import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { replayFenPositions } from '../chessRules.js';
 import { historyMoveNumber, historyMoverColor } from '../historyTimeline.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 // Reconstruye el FEN en cada punto de la partida a partir de la lista de
 // jugadas guardada. positions[0] es la posición inicial; positions[i] es la
@@ -126,8 +127,8 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
 
   function handleDownloadPGN() {
     const result = outcomeToPgnResult(record.outcome, record.humanColor);
-    const white = record.humanColor === 'w' ? 'Jugador' : `CPU (nivel ${record.difficulty})`;
-    const black = record.humanColor === 'b' ? 'Jugador' : `CPU (nivel ${record.difficulty})`;
+    const white = record.humanColor === 'w' ? 'Jugador' : `${CPU_IDENTITY.name} (CPU, nivel ${record.difficulty})`;
+    const black = record.humanColor === 'b' ? 'Jugador' : `${CPU_IDENTITY.name} (CPU, nivel ${record.difficulty})`;
     const pgn = toPGN(record.moves, { white, black, result, date: record.date });
     downloadPGN(pgn, `partida-${record.date.slice(0, 10)}.pgn`);
   }

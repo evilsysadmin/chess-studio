@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { buildRivalryDossier } from '../rivalryDossier.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 function OpeningFact({ label, row }) {
   if (!row) return <span><b>—</b><small>{label} · faltan 3 muestras</small></span>;
@@ -14,7 +15,7 @@ export default function RivalryDossier({ rivalry }) {
     <section className="menu-section rivalry-dossier" aria-label="Expediente de rivalidad contra la CPU">
       <div className="rivalry-dossier-heading">
         <div>
-          <span className="section-label">UNA CPU · UN HISTORIAL</span>
+          <span className="section-label">{CPU_IDENTITY.name.toUpperCase()} · UN HISTORIAL</span>
           <h2>♟ Expediente de rivalidad</h2>
         </div>
         <span className={`rivalry-dossier-lead lead-${dossier.leader.owner}`}>{dossier.leader.label}</span>
@@ -31,7 +32,7 @@ export default function RivalryDossier({ rivalry }) {
         <div className="friendly-disclosure-body">
           <div className="career-mini-grid">
             <OpeningFact label="tu mejor apertura medida" row={dossier.strongestOpening} />
-            <OpeningFact label="donde la CPU más aprieta" row={dossier.toughestOpening} />
+            <OpeningFact label={`donde ${CPU_IDENTITY.name} más aprieta`} row={dossier.toughestOpening} />
             <span><b>{dossier.bestHumanStreak || 0} / {dossier.bestCpuStreak || 0}</b><small>mejor racha tú / CPU</small></span>
             <span><b>{dossier.highestDifficultyWin ?? '—'}</b><small>nivel más alto derrotado</small></span>
           </div>

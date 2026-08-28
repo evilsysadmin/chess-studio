@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zeu',
+    title: 'Matthias entra en escena',
+    highlights: [
+      'La CPU tiene una identidad visible: Matthias aparece en la tarjeta del rival y firma sus comentarios en el chat sin ocupar espacio extra del tablero.',
+      'De vez en cuando Matthias se asoma a Home con una invitación breve; si recuerda una cagada concreta, sale únicamente de incidentes reales guardados en tu historial.',
+      'Actividad reciente muestra el nivel de CPU de cada partida cuando está disponible, y los objetivos guardados por versiones antiguas se presentan ya como Retos.',
+    ],
+  },
+  {
     release: 'v16.6dm46zet',
     title: 'Tus errores se entrenan como un replay',
     highlights: [
@@ -18,7 +27,7 @@ export const USER_RELEASE_NOTES = Object.freeze([
     release: 'v16.6dm46zes',
     title: 'Hotfix de estabilidad del despliegue',
     highlights: [
-      'No cambia el juego ni la interfaz: corrige el quality gate local de idempotencia para que el pre-push pueda validarse sin cargar dependencias del backend.',
+      'Una comprobación interna de estabilidad deja de bloquear actualizaciones correctas en instalaciones locales.',
     ],
   },
   {
@@ -37,7 +46,7 @@ export const USER_RELEASE_NOTES = Object.freeze([
       'Los objetivos opcionales de partida pasan a llamarse Retos y se explican en el onboarding y la FAQ; el pronóstico también adopta una etiqueta natural.',
       'La barra inferior de partida separa estado y acciones, alinea Zen/Abandonar y convierte Opciones avanzadas en una pieza integrada en vez de un control huérfano.',
       'Combat Chess recupera la cartografía artística con nodos dentro de márgenes seguros, y Administración permite borrar feedback de prueba.',
-      'El footer centra y espacia sus enlaces, y el diagnóstico OTLP normaliza los endpoints por señal para que Tempo no dependa de una URL ambigua.',
+      'El footer centra y espacia sus enlaces para que FAQ, atajos, privacidad y Acerca de queden más fáciles de localizar.',
     ],
   },
   {

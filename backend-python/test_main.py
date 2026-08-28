@@ -1349,6 +1349,7 @@ def test_admin_recent_activity_labels_game_mode_and_combat_type():
     assert any(row["text"] == "Derrota" and row["modeLabel"] == "Torneo" for row in rows)
     quick = next(row for row in rows if row["text"] == "Victoria" and row["modeLabel"] == "Rápida")
     assert quick["modeLabel"] == "Rápida"
+    assert "CPU · nivel 40" in quick["detail"]
     assert "5+0" in quick["detail"]
 
 
@@ -1364,16 +1365,43 @@ def test_admin_recent_activity_prefers_explicit_game_lifecycle():
             "chess-study-game-activity": json.dumps([
                 {"gameId": "g1", "state": "started", "date": "2026-08-23T10:00:00+00:00", "mode": "sudden", "modeLabel": "Muerte súbita"},
                 {"gameId": "g1", "state": "cancelled", "date": "2026-08-23T10:05:00+00:00", "mode": "sudden", "modeLabel": "Muerte súbita"},
-                {"gameId": "c1", "state": "finished", "date": "2026-08-23T10:10:00+00:00", "mode": "combat", "modeLabel": "Combat Chess · Torre", "outcome": "loss"},
+                {"gameId": "c1", "state": "finished", "date": "2026-08-23T10:10:00+00:00", "mode": "combat", "modeLabel": "Combat Chess · Torre", "outcome": "loss", "difficulty": 66},
             ]),
         }
     }
     rows = _extract_summary_stats(profile)["recentActivity"]
     assert rows[0]["modeLabel"] == "Combat Chess · Torre"
     assert rows[0]["text"] == "Partida finalizada · Derrota"
+    assert rows[0]["detail"] == "CPU · nivel 66"
     assert any(row["modeLabel"] == "Muerte súbita" and row["text"] == "Partida iniciada" for row in rows)
     assert any(row["modeLabel"] == "Muerte súbita" and row["text"] == "Partida cancelada" for row in rows)
     assert not any(row.get("text") == "Victoria" for row in rows)
+
+
+def test_admin_recent_activity_normalizes_legacy_contract_copy_and_enriches_level_from_history():
+    import json
+    from admin_insights import _extract_summary_stats
+
+    profile = {
+        "data": {
+            "chess-study-game-history": json.dumps([
+                {"id": "archive-1", "sourceGameId": "g-level", "date": "2026-08-28T10:00:00+00:00", "outcome": "win", "difficulty": 29, "mode": "casual"},
+            ]),
+            "chess-study-game-activity": json.dumps([
+                {"gameId": "g-level", "state": "finished", "date": "2026-08-28T10:00:00+00:00", "mode": "casual", "modeLabel": "Rápida", "outcome": "win"},
+            ]),
+            "chess-study-career": json.dumps({
+                "milestones": [
+                    {"date": "2026-08-28T10:01:00+00:00", "text": "Contrato cumplido: Sin ruedines.", "type": "contract-win"},
+                ]
+            }),
+        }
+    }
+    rows = _extract_summary_stats(profile)["recentActivity"]
+    challenge = next(row for row in rows if row.get("type") == "contract-win")
+    game = next(row for row in rows if row.get("modeLabel") == "Rápida")
+    assert challenge["text"] == "Reto superado · Sin ruedines."
+    assert game["detail"] == "CPU · nivel 29"
 
 
 def test_admin_summary_exposes_anonymous_game_completion_funnel():
