@@ -22,8 +22,8 @@ jobs:
       CHESS_SYNTHETIC_USERNAME: ${{ secrets.CHESS_SYNTHETIC_USERNAME }}
       CHESS_SYNTHETIC_PASSWORD: ${{ secrets.CHESS_SYNTHETIC_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
       - name: Probe production
