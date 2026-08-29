@@ -121,11 +121,11 @@ jobs:
           entry = dedent('''\
             {
               release: 'v16.6dm46zfrp',
-              title: 'Backend más ágil bajo presión',
+              title: 'Más ágil cuando algo falla',
               highlights: [
-                'Las ráfagas de peticiones ya comparten un único intento de reconexión cuando la base de datos no responde, evitando esperas repetidas y picos inútiles.',
-                'La telemetría del servicio reduce trabajo interno por petición sin perder los históricos ni la recuperación tras cada volcado.',
-                'El comportamiento funcional del juego no cambia: esta iteración recorta trabajo del servidor y mejora su degradación ante fallos de MongoDB.',
+                'Las ráfagas de peticiones comparten mejor el trabajo cuando la conexión de datos sufre un corte, evitando esperas repetidas.',
+                'El servicio hace menos trabajo interno durante el uso normal sin perder el historial necesario para diagnosticar problemas.',
+                'No cambia ninguna regla ni modo de juego: es una mejora de fluidez y resistencia ante fallos temporales.',
               ],
             },
 
