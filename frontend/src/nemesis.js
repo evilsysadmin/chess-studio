@@ -28,7 +28,29 @@ function confidenceForGames(games) {
   return { key: 'initial', label: 'inicial' };
 }
 
-export function openingNemeses(history = [], { minGames = 4, maxScorePct = 45 } = {}) {
+export function openingNemesisTrend(rows = [], overallScorePct = scorePct(rows)) {
+  const recent = [...rows]
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+    .slice(0, 5);
+  const recentScorePct = scorePct(recent);
+  const recentLosses = recent.filter((r) => r.outcome === 'loss').length;
+  const enoughRecentEvidence = recent.length >= 4;
+  const recovered = enoughRecentEvidence && recentScorePct >= 60 && recentLosses <= 1;
+  const improving = !recovered
+    && enoughRecentEvidence
+    && recentScorePct >= 50
+    && recentScorePct - overallScorePct >= 20;
+  return {
+    recent,
+    recentScorePct,
+    recentLosses,
+    recovered,
+    improving,
+    status: recovered ? 'recovered' : improving ? 'improving' : 'active',
+  };
+}
+
+export function openingNemeses(history = [], { minGames = 4, maxScorePct = 45, includeRecovered = false } = {}) {
   const groups = new Map();
   for (const record of history) {
     if (!isCompetitiveHistoryRecord(record)) continue;
@@ -52,13 +74,16 @@ export function openingNemeses(history = [], { minGames = 4, maxScorePct = 45 } 
     const opening = rows[0].opening;
     const humanColor = normalizedColor(rows[0].humanColor);
     const avgDifficulty = Math.round(rows.reduce((s, r) => s + Number(r.difficulty || 0), 0) / rows.length);
-    const recent = [...rows]
-      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-      .slice(0, 5);
-    const latestLoss = recent.find((r) => r.outcome === 'loss') || [...rows]
+    const trend = openingNemesisTrend(rows, pct);
+    if (trend.recovered && !includeRecovered) continue;
+    const latestLoss = trend.recent.find((r) => r.outcome === 'loss') || [...rows]
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
       .find((r) => r.outcome === 'loss') || null;
-    const urgency = (50 - pct) * 2 + Math.min(24, rows.length * 2) + losses * 3;
+    const urgency = (50 - pct) * 2
+      + Math.min(24, rows.length * 2)
+      + losses * 3
+      - (trend.improving ? 18 : 0)
+      - (trend.recovered ? 1000 : 0);
     candidates.push({
       opening,
       humanColor,
@@ -67,7 +92,12 @@ export function openingNemeses(history = [], { minGames = 4, maxScorePct = 45 } 
       draws,
       losses,
       scorePct: pct,
-      recentScorePct: scorePct(recent),
+      recentScorePct: trend.recentScorePct,
+      recentGames: trend.recent.length,
+      recentLosses: trend.recentLosses,
+      status: trend.status,
+      improving: trend.improving,
+      recovered: trend.recovered,
       avgDifficulty,
       urgency,
       confidence: confidenceForGames(rows.length),
@@ -119,8 +149,11 @@ export function nemesisTrainingPosition(record, preferredPlies = 10) {
 }
 
 export function buildNemesisDossier(history = [], rivalry = {}) {
-  const opening = openingNemeses(history)[0] || null;
+  const activeOpenings = openingNemeses(history);
+  const allHistoricalOpenings = openingNemeses(history, { includeRecovered: true });
+  const opening = activeOpenings[0] || null;
+  const recoveredOpening = allHistoricalOpenings.find((row) => row.recovered) || null;
   const tactic = tacticalNemesis(rivalry);
   const training = opening?.latestLoss ? nemesisTrainingPosition(opening.latestLoss) : null;
-  return { opening, tactic, training };
+  return { opening, recoveredOpening, tactic, training };
 }
