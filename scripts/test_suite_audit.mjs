@@ -204,6 +204,7 @@ if (checkCiWiring) {
     'Home · el avatar residente de Matthias abre Así juegas',
     'Matthias · el briefing persistente aparece antes de una partida rápida',
     'Matthias · banco de personalidad Admin usa sólo datos sintéticos',
+    'Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5',
   ]) {
     if (!workflowSource.includes(browserCriticalPattern)) fail(`Browser smoke crítico no ejecuta: ${browserCriticalPattern}`);
   }

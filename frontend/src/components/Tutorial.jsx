@@ -3,153 +3,54 @@ import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import GlossaryTerm from './GlossaryTerm.jsx';
 import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
+import {
+  MATTHIAS_SCHOOL_LESSONS,
+  incrementMatthiasSchoolAttempt,
+  loadMatthiasSchoolProgress,
+  markMatthiasSchoolLessonComplete,
+  matthiasSchoolSummary,
+} from '../matthiasSchool.js';
 
-const LESSONS = [
-  {
-    key: 'objetivo',
-    eyebrow: 'Lección 1',
-    title: 'El objetivo del juego',
-    fen: new Chess().fen(),
-    text: [
-      'Dos jugadores mueven piezas por turnos sobre un tablero de 64 casillas. Empiezan siempre las blancas.',
-      'Ganas la partida cuando dejas al rey rival en jaque mate: amenazado de captura y sin ninguna jugada legal para escapar de esa amenaza.',
-      'Toca cualquier pieza para ver sus movimientos posibles y explora la posición inicial.',
-    ],
-  },
-  {
-    key: 'peon',
-    eyebrow: 'Lección 2',
-    title: 'El peón',
-    fen: 'k7/8/8/8/8/5n2/4P3/K7 w - - 0 1',
-    text: [
-      'Avanza una casilla hacia adelante, o dos si todavía no se movió desde su posición inicial. Nunca retrocede.',
-      'Para capturar lo hace distinto: en diagonal, una casilla, y solo si hay una pieza rival ahí. Nunca captura de frente.',
-      'Toca el peón blanco: puede avanzar a e3 o e4, y capturar al caballo negro en f3.',
-      'Curiosidad: si un peón llega a la última fila, se corona — se convierte en la pieza que el jugador elija (casi siempre dama).',
-    ],
-  },
-  {
-    key: 'torre',
-    eyebrow: 'Lección 3',
-    title: 'La torre',
-    fen: '7k/3p4/8/8/3R2n1/8/8/K7 w - - 0 1',
-    text: [
-      'Se mueve en línea recta, tantas casillas como quiera, en horizontal o en vertical.',
-      'No puede saltar piezas: se frena antes de una propia, o captura y se detiene si es rival.',
-      'Toca la torre blanca: en la columna "d" puede avanzar y capturar el peón en d7; en la fila 4 puede capturar al caballo en g4.',
-    ],
-  },
-  {
-    key: 'alfil',
-    eyebrow: 'Lección 4',
-    title: 'El alfil',
-    fen: 'k7/8/1n6/8/3B4/8/8/7K w - - 0 1',
-    text: [
-      'Se mueve en diagonal, tantas casillas como quiera. Por eso cada alfil queda toda la partida en casillas del mismo color en el que empezó.',
-      'Cada bando tiene dos: uno de casillas claras y otro de casillas oscuras.',
-      'Toca el alfil blanco y mira cómo se desliza por sus diagonales, incluida la captura del caballo en b6.',
-    ],
-  },
-  {
-    key: 'caballo',
-    eyebrow: 'Lección 5',
-    title: 'El caballo',
-    fen: 'k7/8/8/5p2/3N4/8/8/7K w - - 0 1',
-    text: [
-      'Se mueve en forma de "L": dos casillas en una dirección y después una perpendicular.',
-      'Es la única pieza que salta por encima de las demás — no le importa qué haya en el camino.',
-      'Toca el caballo blanco: tiene hasta 8 destinos posibles, incluida la captura del peón en f5.',
-    ],
-  },
-  {
-    key: 'dama',
-    eyebrow: 'Lección 6',
-    title: 'La dama',
-    fen: '1k6/3p4/8/3Q4/8/8/8/1K6 w - - 0 1',
-    text: [
-      'Combina los poderes de la torre y el alfil: se mueve en línea recta o en diagonal, tantas casillas como quiera.',
-      'Es la pieza más poderosa del tablero — perderla suele ser un golpe muy duro.',
-      'Toca la dama blanca y fíjate cuántas casillas controla desde el centro.',
-    ],
-  },
-  {
-    key: 'rey',
-    eyebrow: 'Lección 7',
-    title: 'El rey',
-    fen: 'k7/8/8/8/3K4/8/8/8 w - - 0 1',
-    text: [
-      'Se mueve una sola casilla, en cualquier dirección: horizontal, vertical o diagonal.',
-      'Es la pieza más importante — si queda en jaque mate, la partida termina.',
-      'Nunca puede moverse a una casilla donde quedaría capturado, ni acercarse demasiado al rey rival.',
-    ],
-  },
-  {
-    key: 'enroque',
-    eyebrow: 'Lección 8',
-    title: 'El enroque',
-    fen: '4k3/8/8/8/8/8/8/4K2R w K - 0 1',
-    text: [
-      'Es la única jugada donde se mueven dos piezas a la vez: el rey y una torre.',
-      'El rey se corre dos casillas hacia la torre elegida, y esa torre salta al otro lado del rey.',
-      'Solo se puede hacer si ninguna de las dos piezas se movió antes, no hay piezas entre medio, y el rey no está en jaque ni pasa por una casilla atacada.',
-      'Toca el rey blanco: una de sus opciones es enrocarse corto, hacia g1.',
-    ],
-  },
-  {
-    key: 'jaque',
-    eyebrow: 'Lección 9',
-    title: 'Jaque y jaque mate',
-    fen: 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3',
-    text: [
-      'El rey está en jaque cuando una pieza rival lo amenaza directamente. Hay que resolverlo enseguida: moviendo el rey, bloqueando el ataque, o capturando a la pieza que amenaza.',
-      'Si no existe ninguna forma de salir del jaque, es jaque mate y la partida termina ahí mismo.',
-      'Esta posición es un jaque mate real — de hecho, el más rápido posible en una partida (se llama "mate del loco"). Las blancas no tienen ningún movimiento legal.',
-    ],
-  },
-  {
-    key: 'cierre',
-    eyebrow: 'Última lección',
-    title: 'Ya sabes lo esencial',
-    fen: new Chess().fen(),
-    text: [
-      'Con esto alcanza para jugar una partida completa: cómo se mueve cada pieza, qué es el enroque, y qué significa jaque mate.',
-      'El resto — aperturas, táctica, finales — se aprende jugando y mirando tus propias partidas. Las aperturas famosas tienen su propia sección en el menú, con recorrido paso a paso.',
-      'Vuelve al menú y prueba una partida contra la CPU en modo fácil para practicar.',
-    ],
-  },
-];
-
-// Reemplaza el campo "turno" de un FEN por el color indicado, para poder
-// consultar jugadas legales de cualquier pieza en el sandbox del tutorial
-// sin importar a quién le tocaría jugar en una partida real.
+// Permite consultar movimientos legales de la pieza seleccionada aunque el FEN
+// de entrenamiento tenga otro turno. La Escuela no es una partida competitiva.
 function withTurn(fen, color) {
   const parts = fen.split(' ');
   parts[1] = color;
   return parts.join(' ');
 }
 
+function initialCoachText(lesson) {
+  return `Objetivo: ${lesson.objective} Hazlo en el tablero. Si sale mal, sobrevivo; tú probablemente también.`;
+}
+
 export default function Tutorial({ onExit }) {
-  const [section, setSection] = useState('lessons');
+  const [section, setSection] = useState('school');
   const [index, setIndex] = useState(0);
-  const [practiceFen, setPracticeFen] = useState(LESSONS[0].fen);
+  const lesson = MATTHIAS_SCHOOL_LESSONS[index];
+  const [practiceFen, setPracticeFen] = useState(lesson.fen);
   const [selected, setSelected] = useState(null);
+  const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(lesson) }));
+  const [schoolProgress, setSchoolProgress] = useState(() => loadMatthiasSchoolProgress());
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
   const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
 
-  useEscapeToClose(section === 'lessons' ? onExit : () => setSection('lessons'));
+  useEscapeToClose(section === 'school' ? onExit : () => setSection('school'));
 
-  const lesson = LESSONS[index];
   const mechanic = MECHANIC_TUTORIALS.find((item) => item.id === mechanicId) || MECHANIC_TUTORIALS[0];
   const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
+  const schoolSummary = useMemo(() => matthiasSchoolSummary(schoolProgress), [schoolProgress]);
+  const lessonComplete = schoolProgress?.[lesson.id]?.completed === true;
 
   function goTo(newIndex) {
-    const clamped = Math.max(0, Math.min(LESSONS.length - 1, newIndex));
+    const clamped = Math.max(0, Math.min(MATTHIAS_SCHOOL_LESSONS.length - 1, newIndex));
+    const next = MATTHIAS_SCHOOL_LESSONS[clamped];
     setIndex(clamped);
-    setPracticeFen(LESSONS[clamped].fen);
+    setPracticeFen(next.fen);
     setSelected(null);
+    setCoach({ tone: 'neutral', text: initialCoachText(next) });
   }
 
   const legalTargets = useMemo(() => {
@@ -160,34 +61,78 @@ export default function Tutorial({ onExit }) {
     return temp.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }));
   }, [selected, practiceFen]);
 
+  function recordMiss(text) {
+    setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
+    setCoach({ tone: 'retry', text });
+  }
+
+  function resetLesson({ keepCoach = false } = {}) {
+    setPracticeFen(lesson.fen);
+    setSelected(null);
+    if (!keepCoach) setCoach({ tone: 'neutral', text: initialCoachText(lesson) });
+  }
+
   function handleSquareClick(square) {
+    if (lessonComplete) return;
     const board = new Chess(practiceFen);
     const piece = board.get(square);
 
-    if (selected) {
-      const move = legalTargets.find((m) => m.to === square);
-      if (move) {
-        const selectedPiece = board.get(selected);
-        const temp = new Chess(withTurn(practiceFen, selectedPiece.color));
-        temp.move({ from: selected, to: square, promotion: 'q' });
-        setPracticeFen(temp.fen());
-        setSelected(null);
+    if (!selected) {
+      if (!piece) {
+        recordMiss(`Has seleccionado ${square}, una magnífica casilla vacía. Prueba con el ${lesson.piece} que te he señalado.`);
         return;
       }
+      if (square !== lesson.from) {
+        recordMiss(`Esa pieza existe, sí. Bien observado. Pero hoy entrenamos el ${lesson.piece} de ${lesson.from}.`);
+        return;
+      }
+      setSelected(square);
+      setCoach({ tone: 'neutral', text: `Bien. ${lesson.from} seleccionado. Ahora ejecuta el objetivo sin convertirlo en una tesis doctoral.` });
+      return;
     }
 
-    if (piece) setSelected(square);
-    else setSelected(null);
+    if (square === selected) {
+      setSelected(null);
+      setCoach({ tone: 'neutral', text: 'Selección cancelada. Dramático, pero recuperable.' });
+      return;
+    }
+
+    const target = legalTargets.find((move) => move.to === square);
+    if (!target) {
+      if (piece && square === lesson.from) return;
+      recordMiss(`El ${lesson.piece} no puede ir de ${selected} a ${square}. Las reglas siguen siendo bastante inflexibles, incluso contigo.`);
+      setSelected(null);
+      return;
+    }
+
+    if (selected !== lesson.from || square !== lesson.to) {
+      recordMiss(`Legal, sí. Lo que te he pedido, no. Objetivo: ${lesson.objective} Paciencia; todavía no llamo a la policía del ajedrez.`);
+      setSelected(null);
+      return;
+    }
+
+    const selectedPiece = board.get(selected);
+    const temp = new Chess(withTurn(practiceFen, selectedPiece.color));
+    const move = temp.move({ from: selected, to: square, promotion: 'q' });
+    if (!move) {
+      recordMiss('Esa jugada parecía legal y luego dejó de serlo. Reiniciamos antes de acusar a la física.');
+      resetLesson({ keepCoach: true });
+      return;
+    }
+    setPracticeFen(temp.fen());
+    setSelected(null);
+    setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
+    setCoach({ tone: 'success', text: lesson.success });
   }
 
   return (
-    <div className="tutorial-shell">
-      <button className="back-link" onClick={section === 'lessons' ? onExit : () => setSection('lessons')}>
-        ← {section === 'lessons' ? 'Volver al menú' : 'Volver a las lecciones'}
+    <div className="tutorial-shell matthias-school-shell">
+      <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
+        ← {section === 'school' ? 'Volver al menú' : 'Volver a la Escuela'}
       </button>
 
       <nav className="tutorial-section-tabs" aria-label="Aprendizaje">
-        <button type="button" className={section === 'lessons' ? 'active' : ''} onClick={() => setSection('lessons')}>Lecciones</button>
+        <button type="button" className={section === 'school' ? 'active' : ''} onClick={() => setSection('school')}>Escuela de Matthias</button>
         <button type="button" className={section === 'glossary' ? 'active' : ''} onClick={() => setSection('glossary')}>Glosario</button>
         <button type="button" className={section === 'mechanics' ? 'active' : ''} onClick={() => setSection('mechanics')}>Modos especiales</button>
       </nav>
@@ -230,38 +175,80 @@ export default function Tutorial({ onExit }) {
           )}
         </div>
       ) : (
-        <div className="tutorial-main">
-          <div className="board-column">
-            <Board
-              fen={practiceFen}
-              onSquareClick={handleSquareClick}
-              selectedSquare={selected}
-              legalTargets={legalTargets}
-            />
-            <button className="secondary-btn" onClick={() => { setPracticeFen(lesson.fen); setSelected(null); }}>
-              Reiniciar posición
-            </button>
-          </div>
+        <>
+          <header className="matthias-school-hero">
+            <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+            <div>
+              <span className="section-label">ESCUELA DE MATTHIAS · HANDS-ON</span>
+              <h1>Aprende moviendo piezas, no leyendo un prospecto.</h1>
+              <p>Yo pongo una posición, tú haces la jugada. Si fallas, te explico por qué y volvemos a intentarlo. Con paciencia. No necesariamente con dulzura.</p>
+            </div>
+            <div className="matthias-school-progress" aria-label={`${schoolSummary.completed} de ${schoolSummary.total} lecciones completadas`}>
+              <strong>{schoolSummary.completed}/{schoolSummary.total}</strong>
+              <span>{schoolSummary.complete ? 'Curso básico completado' : 'Fundamentos dominados'}</span>
+              <i><b style={{ width: `${schoolSummary.total ? (schoolSummary.completed / schoolSummary.total) * 100 : 0}%` }} /></i>
+            </div>
+          </header>
 
-          <div className="tutorial-text">
-            <span className="eyebrow">{lesson.eyebrow}</span>
-            <h2>{lesson.title}</h2>
-            {lesson.text.map((p, i) => <p key={i}>{p}</p>)}
-            <p className="tutorial-context-help">¿Ves un término punteado? Pasa el ratón o tócala: <GlossaryTerm term="CCT">CCT</GlossaryTerm>, <GlossaryTerm term="cp">cp</GlossaryTerm>, etc. La definición larga sigue en Glosario.</p>
+          <div className="matthias-school-layout">
+            <aside className="matthias-school-lessons" aria-label="Lecciones de la Escuela de Matthias">
+              {MATTHIAS_SCHOOL_LESSONS.map((item, lessonIndex) => {
+                const complete = schoolProgress?.[item.id]?.completed === true;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={`${lessonIndex === index ? 'active' : ''}${complete ? ' complete' : ''}`}
+                    onClick={() => goTo(lessonIndex)}
+                  >
+                    <span>{complete ? '✓' : lessonIndex + 1}</span>
+                    <div><small>{item.eyebrow}</small><strong>{item.title}</strong></div>
+                  </button>
+                );
+              })}
+            </aside>
 
-            <div className="tutorial-nav">
-              <button className="secondary-btn" onClick={() => goTo(index - 1)} disabled={index === 0}>
-                Anterior
-              </button>
-              <span className="tutorial-progress">Lección {index + 1} de {LESSONS.length}</span>
-              {index < LESSONS.length - 1 ? (
-                <button className="primary-btn" onClick={() => goTo(index + 1)}>Siguiente</button>
-              ) : (
-                <button className="primary-btn" onClick={onExit}>Ir a jugar</button>
-              )}
+            <div className="matthias-school-stage">
+              <div className="board-column matthias-school-board">
+                <Board
+                  fen={practiceFen}
+                  onSquareClick={handleSquareClick}
+                  selectedSquare={selected}
+                  legalTargets={legalTargets}
+                />
+                <div className="matthias-school-board-actions">
+                  <button className="secondary-btn" onClick={() => resetLesson()}>Reiniciar</button>
+                  <button className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>
+                </div>
+              </div>
+
+              <article className="matthias-school-coach">
+                <div className="matthias-school-coach-heading">
+                  <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+                  <div><span className="section-label">{lesson.eyebrow}</span><h2>{lesson.title}</h2></div>
+                  {lessonComplete && <span className="matthias-school-complete-badge">✓ dominado</span>}
+                </div>
+                <div className="matthias-school-objective"><b>Tu misión</b><p>{lesson.objective}</p></div>
+                <div className={`matthias-school-feedback is-${coach.tone}`} role="status" aria-live="polite">
+                  <b>Matthias</b><p>{coach.text}</p>
+                </div>
+                <details className="friendly-disclosure matthias-school-explanation">
+                  <summary>Por qué funciona</summary>
+                  <p>{lesson.explanation}</p>
+                </details>
+                <div className="tutorial-nav matthias-school-nav">
+                  <button className="secondary-btn" onClick={() => goTo(index - 1)} disabled={index === 0}>Anterior</button>
+                  <span className="tutorial-progress">{index + 1} de {MATTHIAS_SCHOOL_LESSONS.length}</span>
+                  {index < MATTHIAS_SCHOOL_LESSONS.length - 1 ? (
+                    <button className="primary-btn" onClick={() => goTo(index + 1)} disabled={!lessonComplete}>Siguiente lección</button>
+                  ) : (
+                    <button className="primary-btn" onClick={onExit} disabled={!lessonComplete}>Ir a jugar</button>
+                  )}
+                </div>
+              </article>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

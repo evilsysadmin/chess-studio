@@ -30,6 +30,7 @@ import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 import { matthiasSessionContext } from '../matthiasSessionContext.js';
+import { loadMatthiasSchoolProgress, matthiasSchoolSummary } from '../matthiasSchool.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -98,6 +99,7 @@ export default function Menu({
   const rivalry = useMemo(() => loadRivalry(), []);
   const matthiasCandidate = useMemo(() => buildMatthiasHomeVisit({ rivalry, memory: matthiasMemory, hasSavedGame }), [rivalry, matthiasMemory, hasSavedGame]);
   const matthiasSession = useMemo(() => matthiasSessionContext(), [activity]);
+  const schoolSummary = useMemo(() => matthiasSchoolSummary(loadMatthiasSchoolProgress()), []);
   const matthiasCardModel = useMemo(() => buildMatthiasHomeCardModel({ visit: matthiasVisit, memory: matthiasMemory, sessionContext: matthiasSession }), [matthiasMemory, matthiasSession, matthiasVisit]);
   const freshAccount = useMemo(() => isFreshAccount({ activity, tournament }), [activity, tournament]);
   const onboarding = useMemo(() => buildHomeOnboarding({
@@ -438,9 +440,9 @@ export default function Menu({
             <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Puzzles personales</b><i>Desde tus partidas</i></span><h3>Entrena tus mayores errores</h3><span className="home-mode-description">Tus errores reales se convierten en posiciones para que no vuelvas a pisar el mismo rastrillo.</span></span><span className="menu-card-cta">Entrenar pendientes <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
-          <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-primary-card home-mode-card home-learning-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
-            <span className="home-mode-icon" aria-hidden="true"><IconBulb className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Sin presión</b><i>No afecta al rating</i></span><h3>Partida de práctica</h3><span className="home-mode-description">Juega con pistas gratuitas y aplica lo aprendido.</span></span><span className="menu-card-cta">Empezar práctica <b aria-hidden="true">→</b></span>
-          </TutorialModeCard>
+          <button type="button" className="menu-card accent-success home-primary-card home-mode-card home-learning-card" onClick={onTutorial}>
+            <span className="home-mode-icon" aria-hidden="true"><IconBook className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Fundamentos</b><i>{schoolSummary.completed}/{schoolSummary.total} dominadas</i></span><h3>Escuela de Matthias</h3><span className="home-mode-description">Aprende movimientos y reglas directamente sobre el tablero. Matthias explica, corrige y juzga.</span></span><span className="menu-card-cta">Entrar en clase <b aria-hidden="true">→</b></span>
+          </button>
         </div>
 
         <details className="friendly-disclosure home-learning-more" open={showHomeGuide && onboarding.next === 'puzzle' ? true : undefined}>
@@ -450,9 +452,9 @@ export default function Menu({
               {onboardingCue('puzzle')}
               <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Táctica</b><i>Diario</i></span><h3>Puzzles</h3><span className="home-mode-description">Casos clásicos y un reto nuevo cada día.</span></span><span className="menu-card-cta">Resolver <b aria-hidden="true">→</b></span>
             </TutorialModeCard>
-            <button type="button" className="menu-card accent-success home-mode-card home-tool-card" onClick={onTutorial}>
-              <span className="home-mode-icon" aria-hidden="true"><IconBook className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Fundamentos</b><i>Guía</i></span><h3>Aprendizaje</h3><span className="home-mode-description">Lecciones breves, glosario y reglas esenciales.</span></span><span className="menu-card-cta">Abrir <b aria-hidden="true">→</b></span>
-            </button>
+            <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-mode-card home-tool-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
+              <span className="home-mode-icon" aria-hidden="true"><IconBulb className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Sin presión</b><i>No afecta al rating</i></span><h3>Partida de práctica</h3><span className="home-mode-description">Juega con pistas gratuitas y aplica lo aprendido.</span></span><span className="menu-card-cta">Empezar práctica <b aria-hidden="true">→</b></span>
+            </TutorialModeCard>
             <TutorialModeCard tutorialId="openings" className="menu-card accent-success home-mode-card home-tool-card" onClick={onOpenings}>
               <span className="home-mode-icon" aria-hidden="true"><IconBookmark className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Repertorio</b><i>Paso a paso</i></span><h3>Aperturas</h3><span className="home-mode-description">Ensaya líneas útiles con contexto y repetición.</span></span><span className="menu-card-cta">Practicar <b aria-hidden="true">→</b></span>
             </TutorialModeCard>

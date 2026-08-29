@@ -163,3 +163,99 @@
   .personal-puzzle-history-row { align-items: flex-start; }
   .personal-puzzle-history-row small { white-space: normal; }
 }
+
+/* ---------- Escuela de Matthias · práctica guiada sobre tablero ---------- */
+.matthias-school-shell { max-width: 1180px; align-items: flex-start; }
+.matthias-school-hero {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) minmax(150px, 190px);
+  gap: 1rem;
+  align-items: center;
+  padding: .95rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ui-border));
+  border-radius: var(--radius-card);
+  background: radial-gradient(circle at 8% 20%, rgba(198,164,93,.12), transparent 24%), color-mix(in srgb, var(--ui-panel) 94%, var(--ink) 6%);
+}
+.matthias-school-hero > img {
+  width: 84px;
+  height: 104px;
+  object-fit: contain;
+  object-position: center bottom;
+  border: 1px solid color-mix(in srgb, var(--brass) 52%, var(--ui-border));
+  border-radius: 10px;
+  background: rgba(4,7,10,.35);
+}
+.matthias-school-hero h1 { margin: .2rem 0 .35rem; font: 700 1.35rem var(--font-display); font-style: italic; color: var(--parchment); }
+.matthias-school-hero p { margin: 0; max-width: 72ch; color: var(--parchment-dim); font-size: .82rem; line-height: 1.55; }
+.matthias-school-progress { display: grid; gap: .18rem; justify-items: end; text-align: right; }
+.matthias-school-progress strong { color: var(--brass); font: 800 1.3rem var(--font-mono); }
+.matthias-school-progress span { color: var(--parchment-dim); font-size: .66rem; }
+.matthias-school-progress i { width: 100%; height: 5px; overflow: hidden; border-radius: 999px; background: var(--ink-3); }
+.matthias-school-progress i b { display: block; height: 100%; border-radius: inherit; background: var(--brass); transition: width .2s ease; }
+
+.matthias-school-layout { width: 100%; display: grid; grid-template-columns: minmax(190px, 225px) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.matthias-school-lessons { display: grid; gap: .35rem; position: sticky; top: .8rem; }
+.matthias-school-lessons button {
+  width: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: .55rem; align-items: center;
+  padding: .58rem .62rem; border: 1px solid var(--ui-border); border-radius: 8px;
+  background: color-mix(in srgb, var(--ui-panel) 92%, var(--ink) 8%); color: var(--parchment-dim); text-align: left; cursor: pointer;
+}
+.matthias-school-lessons button > span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--ink-3); border-radius: 50%; color: var(--parchment-dim); font: 800 .65rem var(--font-mono); }
+.matthias-school-lessons button div { min-width: 0; display: grid; gap: .08rem; }
+.matthias-school-lessons button small { overflow: hidden; color: var(--parchment-dim); font: 700 .54rem var(--font-mono); letter-spacing: .05em; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; }
+.matthias-school-lessons button strong { color: var(--parchment); font-size: .73rem; }
+.matthias-school-lessons button:hover,
+.matthias-school-lessons button:focus-visible { border-color: color-mix(in srgb, var(--brass) 45%, var(--ui-border)); outline: none; }
+.matthias-school-lessons button.active { border-color: var(--brass-dim); background: color-mix(in srgb, var(--brass) 8%, var(--ui-panel)); }
+.matthias-school-lessons button.active > span { border-color: var(--brass); color: var(--brass); }
+.matthias-school-lessons button.complete:not(.active) > span { border-color: color-mix(in srgb, var(--success, #69a978) 68%, var(--ui-border)); color: var(--success, #8fcb9d); }
+
+.matthias-school-stage { min-width: 0; display: grid; grid-template-columns: minmax(330px, .95fr) minmax(310px, .8fr); gap: 1rem; align-items: start; }
+.matthias-school-board { min-width: 0; display: grid; gap: .6rem; }
+.matthias-school-board-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.matthias-school-coach {
+  min-width: 0; display: grid; gap: .72rem; padding: .9rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 28%, var(--ui-border)); border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--ui-panel) 94%, var(--ink) 6%);
+}
+.matthias-school-coach-heading { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: .65rem; align-items: center; }
+.matthias-school-coach-heading img { width: 60px; height: 74px; object-fit: contain; object-position: center bottom; border-radius: 8px; background: rgba(0,0,0,.18); }
+.matthias-school-coach-heading h2 { margin: .12rem 0 0; font: 700 1.05rem var(--font-display); font-style: italic; }
+.matthias-school-complete-badge { align-self: start; padding: .23rem .4rem; border: 1px solid color-mix(in srgb, var(--success, #69a978) 50%, var(--ui-border)); border-radius: 999px; color: var(--success, #8fcb9d); font: 800 .56rem var(--font-mono); text-transform: uppercase; }
+.matthias-school-objective { padding: .7rem .75rem; border-left: 2px solid var(--brass); background: rgba(198,164,93,.055); }
+.matthias-school-objective b { color: var(--brass); font: 800 .62rem var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.matthias-school-objective p { margin: .18rem 0 0; color: var(--parchment); line-height: 1.45; font-size: .82rem; }
+.matthias-school-feedback { padding: .72rem .78rem; border: 1px solid var(--ui-border); border-radius: 9px; background: rgba(0,0,0,.16); }
+.matthias-school-feedback b { color: var(--brass-dim); font: 800 .6rem var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.matthias-school-feedback p { margin: .22rem 0 0; color: var(--parchment-dim); font-size: .8rem; line-height: 1.5; }
+.matthias-school-feedback.is-success { border-color: color-mix(in srgb, var(--success, #69a978) 48%, var(--ui-border)); background: color-mix(in srgb, var(--success, #69a978) 6%, transparent); }
+.matthias-school-feedback.is-success b { color: var(--success, #8fcb9d); }
+.matthias-school-feedback.is-retry { border-color: color-mix(in srgb, var(--danger, #b75b52) 36%, var(--ui-border)); }
+.matthias-school-feedback.is-hint { border-color: color-mix(in srgb, var(--brass) 50%, var(--ui-border)); }
+.matthias-school-explanation { margin: 0; }
+.matthias-school-explanation p { margin: .55rem 0 0; color: var(--parchment-dim); font-size: .78rem; line-height: 1.52; }
+.matthias-school-nav { margin-top: .15rem; }
+
+@media (max-width: 940px) {
+  .matthias-school-layout { grid-template-columns: 1fr; }
+  .matthias-school-lessons { position: static; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .matthias-school-stage { grid-template-columns: minmax(300px, .9fr) minmax(280px, .8fr); }
+}
+@media (max-width: 720px) {
+  .matthias-school-hero { grid-template-columns: 70px minmax(0, 1fr); }
+  .matthias-school-hero > img { width: 66px; height: 82px; }
+  .matthias-school-progress { grid-column: 1 / -1; justify-items: stretch; text-align: left; }
+  .matthias-school-stage { grid-template-columns: 1fr; }
+  .matthias-school-lessons { grid-template-columns: 1fr 1fr; }
+  .matthias-school-coach { order: -1; }
+}
+@media (max-width: 430px) {
+  .matthias-school-lessons { grid-template-columns: 1fr; }
+  .matthias-school-coach-heading { grid-template-columns: 54px minmax(0, 1fr); }
+  .matthias-school-coach-heading img { width: 52px; height: 64px; }
+  .matthias-school-complete-badge { grid-column: 1 / -1; justify-self: start; }
+  .matthias-school-nav { align-items: stretch; flex-wrap: wrap; }
+  .matthias-school-nav .tutorial-progress { width: 100%; order: -1; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) { .matthias-school-progress i b { transition: none; } }

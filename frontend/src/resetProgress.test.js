@@ -41,6 +41,7 @@ describe('resetAllProgress', () => {
     expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-game-activity');
     expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-meta-progress');
     expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-career-meta');
+    expect(PROFILE_PROGRESS_KEYS).toContain('chess-study-matthias-school-v1');
   });
 
   it('no revienta si se llama sin que haya nada guardado todavía', () => {

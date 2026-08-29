@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrf',
+    title: 'La Escuela de Matthias abre el tablero',
+    highlights: [
+      'Escuela de Matthias convierte los fundamentos en ejercicios hands-on: eliges la pieza y haces la jugada directamente sobre el tablero en vez de tragarte una pared de texto.',
+      'Matthias corrige movimientos equivocados con paciencia y mala leche, ofrece pistas cuando las pides y sólo desbloquea la siguiente lección cuando demuestras el movimiento correcto.',
+      'El progreso de la Escuela queda guardado en tu perfil y el recorrido crítico comprueba que la primera lección sigue completada después de recargar la aplicación.',
+      'La entrada de Aprendizaje pasa a llamarse Escuela de Matthias y explica claramente que allí se entrenan movimientos y reglas básicas sobre el tablero.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfre',
     title: 'El despacho de Matthias empieza a contar vuestra historia',
     highlights: [

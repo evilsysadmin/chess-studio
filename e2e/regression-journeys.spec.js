@@ -445,3 +445,23 @@ test('Matthias · vuelve a saludar tras logout y re-login explícito, pero no po
   corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toHaveCount(0);
 });
+
+test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await dismissHomeGuide(page);
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+
+  await expect(page.getByRole('heading', { name: 'Aprende moviendo piezas, no leyendo un prospecto.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
+  await expect(page.getByText('Lleva el peón blanco de e2 a e4.', { exact: true })).toBeVisible();
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.getByText(/Dos casillas y ningún tratado internacional roto/i)).toBeVisible();
+  await expect(page.getByText('✓ dominado', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Siguiente lección', exact: true })).toBeEnabled();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Aprende moviendo piezas, no leyendo un prospecto.', exact: true })).toBeVisible();
+  await expect(page.getByLabel(/1 de 9 lecciones completadas/i)).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']?.completed)).toBe(true);
+});
