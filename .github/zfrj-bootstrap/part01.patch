@@ -1,0 +1,168 @@
+(missionResult.earned) || 0);
+   const dossierEarned = node.type === 'elite' && node.stage >= 5 && !hasRelic(state, 'kingDossier');
+   const completedLabels = missionResult.completed.map((order) => order.label);
+@@ -563,7 +564,7 @@ export function markCampaignBattleWon(state, battleRecord = null) {
+       nodeId: missionResult.nodeId,
+       verified: missionResult.verified,
+       earned: missionEarned,
+-      results: missionResult.results.map(({ id, label, reward, completed, earned: orderEarned }) => ({ id, label, reward, completed, earned: orderEarned })),
++      results: missionResult.results.map(({ id, label, reward, completed, earned: orderEarned, classified }) => ({ id, label, reward, completed, earned: orderEarned, classified: classified === true })),
+     },
+     eventLog: [
+       ...(state.eventLog || []),
+diff --git a/frontend/src/combatCampaign.test.js b/frontend/src/combatCampaign.test.js
+index 401ca78..4039b9c 100644
+--- a/frontend/src/combatCampaign.test.js
++++ b/frontend/src/combatCampaign.test.js
+@@ -97,8 +97,8 @@ describe('Combat Chess campaign map', () => {
+   });
+ 
+ 
+-  it('migra campañas v1/v2/v3 antiguas a v4 sin perder la ruta ni fabricar deuda', () => {
+-    for (const version of [1, 2, 3]) {
++  it('migra campañas v1/v2/v3/v4 antiguas a v5 sin perder la ruta ni fabricar deuda', () => {
++    for (const version of [1, 2, 3, 4]) {
+       localStorage.clear();
+       const base = startCampaign(`legacy-v${version}`);
+       const first = availableCampaignNodes(base)[0];
+@@ -111,7 +111,7 @@ describe('Combat Chess campaign map', () => {
+         relicIds: version === 1 ? undefined : ['fieldCipher'],
+       }));
+       const migrated = loadCampaign();
+-      expect(migrated.version).toBe(4);
++      expect(migrated.version).toBe(5);
+       expect(migrated.phase).toBe('briefing');
+       expect(migrated.selectedNodeId).toBe(first.id);
+       expect(migrated.operationalCredits).toBeGreaterThanOrEqual(0);
+@@ -156,6 +156,27 @@ describe('Combat Chess campaign map', () => {
+     expect(run.lastMissionResult.results.every((order) => order.completed)).toBe(true);
+   });
+ 
++
++
++  it('Intel de Evaluación activa la orden clasificada y la recompensa sólo con métricas verificables', () => {
++    let run = startCampaign('classified-orders');
++    const node = availableCampaignNodes(run)[0];
++    run = selectCampaignNode(run, node.id);
++    run = { ...run, operationalCredits: 40 };
++    run = purchaseCampaignIntel(run, node.id);
++    run = purchaseCampaignIntel(run, node.id);
++    expect(campaignIntelBriefing(run, node).level).toBe(2);
++    run = markCampaignBriefingAccepted(run);
++    run = markCampaignBattleStarted(run);
++    const before = run.operationalCredits;
++    const won = markCampaignBattleWon(run, {
++      combatMetrics: { casualties: 0, captures: 12, tacticalCredits: 12, underdogCredits: 12 },
++    });
++    expect(won.lastMissionResult.results).toHaveLength(3);
++    expect(won.lastMissionResult.results.some((order) => order.classified)).toBe(true);
++    expect(won.operationalCredits).toBeGreaterThan(before);
++  });
++
+   it('una retirada táctica conserva la campaña y devuelve el mismo sector al briefing', () => {
+     let run = startCampaign('retirada-tactica');
+     const first = availableCampaignNodes(run)[0];
+@@ -308,7 +329,7 @@ describe('Combat Chess campaign map', () => {
+     delete v2.relicIds;
+     localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(v2));
+     const migrated = loadCampaign();
+-    expect(migrated.version).toBe(4);
++    expect(migrated.version).toBe(5);
+     expect(migrated.relicIds).toEqual([]);
+   });
+ 
+diff --git a/frontend/src/combatMissionOrders.js b/frontend/src/combatMissionOrders.js
+index a132bee..fdc5895 100644
+--- a/frontend/src/combatMissionOrders.js
++++ b/frontend/src/combatMissionOrders.js
+@@ -29,6 +29,37 @@ const ORDER_DEFINITIONS = Object.freeze([
+   },
+ ]);
+ 
++const CLASSIFIED_DEFINITIONS = Object.freeze([
++  {
++    id: 'classified-surgical',
++    label: 'Golpe quirúrgico',
++    description: 'Confirma al menos 4 capturas sufriendo como máximo 1 baja.',
++    reward: 6,
++    test: (metrics) => metrics.captures >= 4 && metrics.casualties <= 1,
++  },
++  {
++    id: 'classified-underdog',
++    label: 'Caza mayor',
++    description: 'Genera al menos 4 puntos por acciones contra material superior.',
++    reward: 6,
++    test: (metrics) => metrics.underdogCredits >= 4,
++  },
++  {
++    id: 'classified-tactical',
++    label: 'Superioridad demostrable',
++    description: 'Genera al menos 5 puntos de mérito táctico durante la batalla.',
++    reward: 5,
++    test: (metrics) => metrics.tacticalCredits >= 5,
++  },
++  {
++    id: 'classified-pressure',
++    label: 'Barrido controlado',
++    description: 'Confirma al menos 6 capturas sin superar 3 bajas propias.',
++    reward: 5,
++    test: (metrics) => metrics.captures >= 6 && metrics.casualties <= 3,
++  },
++]);
++
+ function safeInt(value) {
+   const number = Number(value);
+   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
+@@ -52,6 +83,11 @@ function normalizeMetrics(raw = {}) {
+   };
+ }
+ 
++function publicOrder(definition, extra = {}) {
++  const { test, ...order } = definition;
++  return { ...order, ...extra };
++}
++
+ export function campaignMissionOrders(seed, node) {
+   if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return [];
+   const pool = [...ORDER_DEFINITIONS];
+@@ -59,15 +95,26 @@ export function campaignMissionOrders(seed, node) {
+   const first = pool.splice(firstIndex, 1)[0];
+   const secondIndex = hash(`${seed}:${node.id}:orders:second`) % pool.length;
+   const second = pool[secondIndex];
+-  return [first, second].map(({ test, ...order }) => ({ ...order }));
++  return [publicOrder(first), publicOrder(second)];
++}
++
++// La oportunidad clasificada existe de forma determinista desde que se genera
++// el sector, pero sólo se revela con Intel de nivel 2 (Evaluación) o superior.
++// Intel no cambia el objetivo ni hace reroll: únicamente permite conocerlo.
++export function classifiedCampaignMission(seed, node, intelLevel = 0) {
++  if (!node || !['battle', 'elite', 'boss'].includes(node.type) || Number(intelLevel || 0) < 2) return null;
++  const definition = CLASSIFIED_DEFINITIONS[hash(`${seed}:${node.id}:classified`) % CLASSIFIED_DEFINITIONS.length];
++  return publicOrder(definition, { classified: true });
+ }
+ 
+-export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null) {
++export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null, { intelLevel = 0 } = {}) {
+   const requiredMetrics = ['casualties', 'captures', 'tacticalCredits', 'underdogCredits'];
+   const verified = Boolean(rawMetrics && typeof rawMetrics === 'object' && requiredMetrics.every((key) => Number.isFinite(Number(rawMetrics[key]))));
+   const metrics = normalizeMetrics(rawMetrics || {});
+-  const active = campaignMissionOrders(seed, node);
+-  const definitions = new Map(ORDER_DEFINITIONS.map((order) => [order.id, order]));
++  const standard = campaignMissionOrders(seed, node);
++  const classified = classifiedCampaignMission(seed, node, intelLevel);
++  const active = classified ? [...standard, classified] : standard;
++  const definitions = new Map([...ORDER_DEFINITIONS, ...CLASSIFIED_DEFINITIONS].map((order) => [order.id, order]));
+   const results = active.map((order) => {
+     const definition = definitions.get(order.id);
+     const completed = verified && Boolean(definition?.test(metrics));
+@@ -81,5 +128,6 @@ export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null) {
+     completed: results.filter((entry) => entry.completed),
+     missed: results.filter((entry) => !entry.completed),
+     earned: results.reduce((sum, entry) => sum + entry.earned, 0),
++    classifiedRevealed: Boolean(classified),
+   };
+ }
+diff --git a/frontend/src/combatMissionOrders.test.js b/frontend/src/combatMissionOrders.test.js
+index 1c46c4a..048a22c 100644
+--- a/frontend/src/combatMissionOrders.test.
