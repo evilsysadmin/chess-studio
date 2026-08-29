@@ -1,3 +1,9 @@
+### v16.6dm46zfrm · Repetición fiable en la Escuela de Matthias
+
+- Las lecciones ya dominadas vuelven a ser jugables: el progreso histórico ya no congela el tablero al repetir desde el principio.
+- El ejercicio de enroque explica de forma explícita que se mueve el rey e1→g1 y que la torre se recoloca automáticamente.
+- La suite cubre de forma específica el enroque corto y verifica la posición final de rey y torre.
+
 ### v16.6dm46zfrl · Doctrinas enemigas ligadas a Intel
 
 - Cada sector de batalla tiene una doctrina determinista que sesga de verdad el motor entre jugadas casi equivalentes sin degradar decisiones tácticas forzadas.

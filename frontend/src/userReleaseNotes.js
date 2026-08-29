@@ -6,6 +6,14 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrm',
+    title: 'La Escuela de Matthias deja repetir de verdad',
+    highlights: [
+      'Las lecciones que ya habías dominado vuelven a ser interactivas al repetirlas: el progreso guardado ya no bloquea el tablero.',
+      'El enroque corto indica expresamente rey e1→g1 y recuerda que la torre se mueve sola, para que practicar no dependa de adivinar la interacción.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrl',
     title: 'La Intel identifica cómo combate el rival',
     highlights: [

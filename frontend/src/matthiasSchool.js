@@ -76,9 +76,9 @@ export const MATTHIAS_SCHOOL_LESSONS = Object.freeze([
   {
     id: 'castle-short', courseId: 'basic', eyebrow: 'Básico · 8', title: 'Enroque corto', piece: 'rey',
     fen: '4k3/8/8/8/8/8/8/4K2R w K - 0 1', line: [human('e1', 'g1')],
-    objective: 'Enrócate corto: mueve el rey de e1 a g1.',
+    objective: 'Enrócate corto: haz clic en el rey de e1 y después en g1. No muevas la torre: se recoloca sola.',
     explanation: 'En el enroque se mueven rey y torre en una sola jugada. Hace falta que no se hayan movido, que el camino esté libre y que el rey no atraviese jaque.',
-    hint: 'Selecciona el rey de e1. g1 aparece como destino legal; Chess Studio moverá también la torre.',
+    hint: 'Haz clic en el rey de e1 y luego en g1. El movimiento es del rey; Chess Studio llevará automáticamente la torre de h1 a f1.',
     success: 'Correcto. Rey a cubierto, torre activada. Por una vez dos piezas han hecho su trabajo a la vez.',
   },
   {
@@ -114,7 +114,7 @@ export const MATTHIAS_SCHOOL_LESSONS = Object.freeze([
     line: [human('f1', 'b5'), reply('a7', 'a6'), human('b5', 'a4'), reply('g8', 'f6'), human('e1', 'g1')],
     objective: 'Desarrolla el alfil, conserva la pieza cuando la ataquen y termina enrocando.',
     explanation: 'Desarrollo y seguridad del rey suelen ir juntos. El enroque no es decoración: conecta el plan de apertura con el medio juego.',
-    hint: 'Alfil f1-b5, retíralo a a4 tras ...a6 y después enrócate cuando ...Nf6 deje el turno en tus manos.',
+    hint: 'Alfil f1-b5, retíralo a a4 tras ...a6 y, después de ...Nf6, haz clic en el rey e1 y en g1. La torre se moverá sola.',
     success: 'Correcto. Has desarrollado, reaccionado a una amenaza y terminado con el rey seguro. Ya empieza a parecer ajedrez.',
   },
   {
