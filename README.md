@@ -1,3 +1,10 @@
+### v16.6dm46zfrj · Intel clasificada, convalecencia y temporadas personales
+
+- Combat Chess añade operaciones clasificadas: Intel de nivel Evaluación o superior revela un tercer objetivo opcional, determinista y más exigente, siempre basado en métricas reales del combate.
+- Revivir un veterano conserva su identidad, rango, técnicas y loadout, pero su siguiente batalla desplegada es de convalecencia: gana el 50% de XP, redondeado hacia arriba; dejarlo en reserva no consume la recuperación.
+- Mi progreso incorpora temporadas personales de 20 partidas competitivas con balance, puntuación, mejor apertura, mejor victoria, rating cuando hay checkpoints suficientes y peor blunder sólo si existe una autopsia real.
+- La campaña migra de forma compatible de v1–v4 a v5; las operaciones clasificadas no existen en nodos seguros y no conceden recompensas sin métricas verificables.
+
 ### v16.6dm46zfri · Órdenes opcionales de misión en Combat Chess
 
 - Cada sector de batalla, élite o boss genera dos órdenes opcionales deterministas basadas en la seed y el nodo; no hay reroll ni objetivo inventado por IA.

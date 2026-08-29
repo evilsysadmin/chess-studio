@@ -10,6 +10,7 @@ import { buildNemesisDossier } from '../nemesis.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { buildCareerHeatmaps, deriveRpgProfile, summarizeRpgProfile } from '../careerVisuals.js';
 import RivalryDossier from './RivalryDossier.jsx';
+import { buildPersonalSeasons } from '../personalSeasons.js';
 
 const TIME_LABEL = { none:'Sin reloj','1+0':'1+0 Bullet','3+2':'3+2 Blitz','5+0':'5+0','10+0':'10+0','15+10':'15+10' };
 function TreeRows({ node, depth=0 }) { const rows=Object.values(node?.children||{}).sort((a,b)=>b.count-a.count).slice(0,depth===0?5:2);return <ul className={`career-tree-level depth-${depth}`}>{rows.map(r=><li key={`${depth}-${r.move}-${r.count}`}><div className="career-tree-row"><span>{r.move}</span><b>{r.count}×</b><small>{Math.round((r.wins||0)/Math.max(1,r.count)*100)}% victorias</small></div>{depth<2&&<TreeRows node={r} depth={depth+1}/>}</li>)}</ul>; }
@@ -37,6 +38,9 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
   const heatmaps=useMemo(()=>buildCareerHeatmaps(history),[history]);
   const rpg=useMemo(()=>deriveRpgProfile(history,archive,career),[history,archive,career]);
   const rpgSummary=useMemo(()=>summarizeRpgProfile(rpg),[rpg]);
+  const personalSeasons=useMemo(()=>buildPersonalSeasons(history,ratingHistory,archive),[history,ratingHistory,archive]);
+  const personalSeason=personalSeasons.at(-1);
+  const lastCompletedPersonalSeason=[...personalSeasons].reverse().find((row)=>row.complete&&row.number!==personalSeason.number)||null;
 
   return <div className={embedded ? 'career-screen insights-embedded-page' : 'menu tournament-panel career-screen'}>
     {!embedded && (<>
@@ -45,7 +49,7 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
     </>)}
 
     <div className="career-hero-grid">
-      <article className="career-card"><span className="eyebrow">Temporada {season.id}</span><h3>{season.wins||0}V · {season.draws||0}T · {season.losses||0}D</h3><p>{season.games||0} partidas este mes.</p></article>
+      <article className="career-card"><span className="eyebrow">Temporada personal #{personalSeason.number}</span><h3>{personalSeason.wins}V · {personalSeason.draws}T · {personalSeason.losses}D</h3><p>{personalSeason.games}/{personalSeason.target} partidas{personalSeason.rating ? ` · rating ${personalSeason.rating.delta>=0?'+':''}${personalSeason.rating.delta}` : ''}. <small>Mes {season.id}: {season.games||0} partidas.</small></p></article>
       <article className="career-card"><span className="eyebrow">Rivalidad competitiva</span><h3>{rivalry.record?.wins||0}–{rivalry.record?.losses||0}</h3><p>{rivalry.record?.draws||0} tablas · racha {rivalry.record?.currentStreak||0}.</p></article>
       <article className="career-card"><span className="eyebrow"><GlossaryTerm term="Accuracy">Accuracy</GlossaryTerm> propia</span><h3>{pct(avgAccuracy)}</h3><p>{analyses.length} autopsias archivadas.</p></article>
       <article className="career-card"><span className="eyebrow">Índice de reincidencia</span><h3>{recurrence.score}/100</h3><p>{recurrence.repeated} repeticiones de errores ya conocidos.</p></article>
@@ -57,6 +61,18 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
 
     {careerSection==='summary'&&<>
     <RivalryDossier rivalry={rivalry} />
+
+    <div className="menu-section career-personal-season">
+      <div className="career-section-heading"><div><span className="section-label">CICLOS DE 20 PARTIDAS</span><h2>Temporada personal #{personalSeason.number}</h2></div><small>{personalSeason.games}/{personalSeason.target} · {personalSeason.scorePct}% puntuación</small></div>
+      <div className="career-mini-grid">
+        <span><b>{personalSeason.wins}V · {personalSeason.draws}T · {personalSeason.losses}D</b><small>balance competitivo</small></span>
+        <span><b>{personalSeason.rating ? `${personalSeason.rating.delta>=0?'+':''}${personalSeason.rating.delta}` : '—'}</b><small>rating {personalSeason.rating?.exactBaseline===false ? 'desde primer checkpoint' : 'en el ciclo'}</small></span>
+        <span><b>{personalSeason.bestOpening?.opening || '—'}</b><small>{personalSeason.bestOpening ? `${personalSeason.bestOpening.scorePct}% · ${personalSeason.bestOpening.games} partidas` : 'faltan 2 muestras de una apertura'}</small></span>
+        <span><b>{personalSeason.bestWin ? `CPU ${personalSeason.bestWin.difficulty}` : '—'}</b><small>mejor victoria del ciclo</small></span>
+      </div>
+      {personalSeason.worstBlunder && <p className="hint-text">Peor blunder analizado del ciclo: <b>−{personalSeason.worstBlunder.loss} cp</b>{personalSeason.worstBlunder.opening ? ` · ${personalSeason.worstBlunder.opening}` : ''}. Sólo aparece si existe autopsia real.</p>}
+      {lastCompletedPersonalSeason && <details className="friendly-disclosure"><summary>Ver informe de la temporada #{lastCompletedPersonalSeason.number}</summary><div className="friendly-disclosure-body"><p><b>{lastCompletedPersonalSeason.wins}V · {lastCompletedPersonalSeason.draws}T · {lastCompletedPersonalSeason.losses}D</b> · {lastCompletedPersonalSeason.scorePct}% de puntuación{lastCompletedPersonalSeason.rating ? ` · rating ${lastCompletedPersonalSeason.rating.delta>=0?'+':''}${lastCompletedPersonalSeason.rating.delta}` : ''}.</p><p>Mejor apertura: <b>{lastCompletedPersonalSeason.bestOpening?.opening || 'sin muestra suficiente'}</b>{lastCompletedPersonalSeason.bestWin ? ` · mejor victoria contra CPU ${lastCompletedPersonalSeason.bestWin.difficulty}` : ''}{lastCompletedPersonalSeason.worstBlunder ? ` · peor blunder analizado −${lastCompletedPersonalSeason.worstBlunder.loss} cp` : ''}.</p></div></details>}
+    </div>
 
     <div className="menu-section"><h2>📅 Informe semanal</h2><div className="career-mini-grid"><span><b>{weekly.current.games}</b><small>partidas últimos 7 días</small></span><span><b>{weekly.current.winPct}%</b><small>victorias · {weekly.winDelta===null?'sin comparación':`${weekly.winDelta>=0?'+':''}${weekly.winDelta} pts vs semana anterior`}</small></span><span><b>{pct(weekly.current.accuracy)}</b><small><GlossaryTerm term="Accuracy">accuracy</GlossaryTerm> media {weekly.accuracyDelta===null?'':`· ${weekly.accuracyDelta>=0?'+':''}${weekly.accuracyDelta} vs anterior`}</small></span><span><b>{topIncident?`${topIncident.count}×`:'—'}</b><small>{topIncident?.label||'sin pecado dominante registrado'}</small></span></div><p className="hint-text">{weekly.current.games===0?'Semana sospechosamente silenciosa. El tablero no puede juzgar lo que no ve.':weekly.winDelta!==null&&weekly.winDelta>10?'Mejora clara. Molesto para el departamento de sarcasmo; excelente para ti.':weekly.winDelta!==null&&weekly.winDelta<-10?'La semana ha venido con pendientes. Conviene revisar autopsias antes de convertir la tendencia en tradición.':'Semana estable. Sigue acumulando datos antes de declarar una revolución ajedrecística.'}</p></div>
 

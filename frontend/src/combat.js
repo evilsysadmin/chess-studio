@@ -315,6 +315,12 @@ export function capturedSquareFor(applied) {
 //    entrada del registro queda "fantasma" en su casilla vieja.
 //  - Coronación: la pieza pasa a ser del tipo promovido para el combate,
 //    conservando los puntos/XP que ya se habían acumulado.
+function xpGainForPiece(piece, gained) {
+  const amount = Math.max(0, Number(gained) || 0);
+  if (amount <= 0) return 0;
+  return Number(piece?.recoveryBattlesRemaining || 0) > 0 ? Math.ceil(amount / 2) : amount;
+}
+
 export function applyMoveToRegistry(registry, applied) {
   const { from, to, flags, color, promotion } = applied;
   const next = { ...registry };
@@ -338,7 +344,7 @@ export function applyMoveToRegistry(registry, applied) {
     // El rey nunca banca XP: sigue las reglas normales de ajedrez, jaque y
     // jaque mate estándar, sin subir de nivel ni comprar stats. Cualquier
     // otra pieza sí banca lo que corresponda por la captura.
-    const gained = PIECE_XP_VALUE[capturedPiece.type] || 0;
+    const gained = xpGainForPiece(updated, PIECE_XP_VALUE[capturedPiece.type] || 0);
     updated = { ...updated, bankedXp: (updated.bankedXp || 0) + gained };
   }
 
@@ -364,7 +370,8 @@ export function applyMoveToRegistry(registry, applied) {
 function applySurvivalXp(registry, square, gained) {
   const piece = registry[square];
   if (!piece || gained <= 0 || piece.type === 'k') return { registry }; // el rey nunca banca XP, ni siquiera por sobrevivir
-  const next = { ...registry, [square]: { ...piece, bankedXp: (piece.bankedXp || 0) + gained } };
+  const effectiveGain = xpGainForPiece(piece, gained);
+  const next = { ...registry, [square]: { ...piece, bankedXp: (piece.bankedXp || 0) + effectiveGain } };
   return { registry: next };
 }
 

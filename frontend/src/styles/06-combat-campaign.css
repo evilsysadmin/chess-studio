@@ -1338,3 +1338,22 @@
   .campaign-mission-orders-heading > small { text-align: left; }
   .campaign-mission-order-grid { grid-template-columns: 1fr; }
 }
+
+/* Intel de nivel 2+ puede descubrir una tercera orden de alto riesgo. Se
+   diferencia de las órdenes normales sin ocupar otro panel del briefing. */
+.campaign-classified-order {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.8rem;
+  padding:.7rem .78rem;
+  border:1px dashed color-mix(in srgb,var(--brass) 58%,transparent);
+  border-radius:.65rem;
+  background:color-mix(in srgb,var(--brass) 7%,rgba(0,0,0,.12));
+}
+.campaign-classified-order > div { display:grid; gap:.14rem; min-width:0; }
+.campaign-classified-order small { font-size:.64rem; letter-spacing:.1em; color:var(--brass); font-weight:800; }
+.campaign-classified-order strong { font-size:.88rem; }
+.campaign-classified-order span { font-size:.76rem; opacity:.8; }
+.campaign-classified-order > b { flex:0 0 auto; color:var(--brass); }
+.campaign-classified-teaser { margin:0; font-size:.76rem; opacity:.76; }

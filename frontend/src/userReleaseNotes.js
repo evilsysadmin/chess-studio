@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrj',
+    title: 'Combat abre operaciones clasificadas',
+    highlights: [
+      'Comprar Intel hasta Evaluación puede descubrir una tercera orden opcional de alto riesgo. El objetivo queda fijado por el sector: la Intel lo revela, no lo cambia ni hace reroll.',
+      'Los veteranos revividos vuelven con una batalla de convalecencia: mantienen rango, técnicas y estadísticas, pero ganan XP al 50% durante su siguiente despliegue.',
+      'Mi progreso estrena temporadas personales de 20 partidas competitivas, con balance, mejor apertura, mejor victoria, rating cuando hay datos suficientes y el peor blunder sólo si existe una autopsia real.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfri',
     title: 'Combat recibe órdenes de misión',
     highlights: [

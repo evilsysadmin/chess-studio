@@ -29,6 +29,37 @@ const ORDER_DEFINITIONS = Object.freeze([
   },
 ]);
 
+const CLASSIFIED_DEFINITIONS = Object.freeze([
+  {
+    id: 'classified-surgical',
+    label: 'Golpe quirúrgico',
+    description: 'Confirma al menos 4 capturas sufriendo como máximo 1 baja.',
+    reward: 6,
+    test: (metrics) => metrics.captures >= 4 && metrics.casualties <= 1,
+  },
+  {
+    id: 'classified-underdog',
+    label: 'Caza mayor',
+    description: 'Genera al menos 4 puntos por acciones contra material superior.',
+    reward: 6,
+    test: (metrics) => metrics.underdogCredits >= 4,
+  },
+  {
+    id: 'classified-tactical',
+    label: 'Superioridad demostrable',
+    description: 'Genera al menos 5 puntos de mérito táctico durante la batalla.',
+    reward: 5,
+    test: (metrics) => metrics.tacticalCredits >= 5,
+  },
+  {
+    id: 'classified-pressure',
+    label: 'Barrido controlado',
+    description: 'Confirma al menos 6 capturas sin superar 3 bajas propias.',
+    reward: 5,
+    test: (metrics) => metrics.captures >= 6 && metrics.casualties <= 3,
+  },
+]);
+
 function safeInt(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
@@ -52,6 +83,11 @@ function normalizeMetrics(raw = {}) {
   };
 }
 
+function publicOrder(definition, extra = {}) {
+  const { test, ...order } = definition;
+  return { ...order, ...extra };
+}
+
 export function campaignMissionOrders(seed, node) {
   if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return [];
   const pool = [...ORDER_DEFINITIONS];
@@ -59,15 +95,26 @@ export function campaignMissionOrders(seed, node) {
   const first = pool.splice(firstIndex, 1)[0];
   const secondIndex = hash(`${seed}:${node.id}:orders:second`) % pool.length;
   const second = pool[secondIndex];
-  return [first, second].map(({ test, ...order }) => ({ ...order }));
+  return [publicOrder(first), publicOrder(second)];
 }
 
-export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null) {
+// La oportunidad clasificada existe de forma determinista desde que se genera
+// el sector, pero sólo se revela con Intel de nivel 2 (Evaluación) o superior.
+// Intel no cambia el objetivo ni hace reroll: únicamente permite conocerlo.
+export function classifiedCampaignMission(seed, node, intelLevel = 0) {
+  if (!node || !['battle', 'elite', 'boss'].includes(node.type) || Number(intelLevel || 0) < 2) return null;
+  const definition = CLASSIFIED_DEFINITIONS[hash(`${seed}:${node.id}:classified`) % CLASSIFIED_DEFINITIONS.length];
+  return publicOrder(definition, { classified: true });
+}
+
+export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null, { intelLevel = 0 } = {}) {
   const requiredMetrics = ['casualties', 'captures', 'tacticalCredits', 'underdogCredits'];
   const verified = Boolean(rawMetrics && typeof rawMetrics === 'object' && requiredMetrics.every((key) => Number.isFinite(Number(rawMetrics[key]))));
   const metrics = normalizeMetrics(rawMetrics || {});
-  const active = campaignMissionOrders(seed, node);
-  const definitions = new Map(ORDER_DEFINITIONS.map((order) => [order.id, order]));
+  const standard = campaignMissionOrders(seed, node);
+  const classified = classifiedCampaignMission(seed, node, intelLevel);
+  const active = classified ? [...standard, classified] : standard;
+  const definitions = new Map([...ORDER_DEFINITIONS, ...CLASSIFIED_DEFINITIONS].map((order) => [order.id, order]));
   const results = active.map((order) => {
     const definition = definitions.get(order.id);
     const completed = verified && Boolean(definition?.test(metrics));
@@ -81,5 +128,6 @@ export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null) {
     completed: results.filter((entry) => entry.completed),
     missed: results.filter((entry) => !entry.completed),
     earned: results.reduce((sum, entry) => sum + entry.earned, 0),
+    classifiedRevealed: Boolean(classified),
   };
 }

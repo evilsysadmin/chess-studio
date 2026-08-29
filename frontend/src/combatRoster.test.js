@@ -161,6 +161,7 @@ describe('revivePiece', () => {
     expect(revived.pieces['q-d'].strengthPoints).toBe(3);
     expect(revived.pieces['q-d'].speedPoints).toBe(2);
     expect(revived.pieces['q-d'].alive).toBe(true);
+    expect(revived.pieces['q-d'].recoveryBattlesRemaining).toBe(1);
   });
 
   it('al revivir conserva identidad y técnicas desbloqueadas', () => {
@@ -175,6 +176,24 @@ describe('revivePiece', () => {
     expect(revived.pieces['p-a'].unlockedTechniques).toEqual(['line_fire']);
     expect(revived.pieces['p-a'].equippedTechnique).toBe('line_fire');
     expect(revived.unitRecords['unit-starky'].stats.revives).toBe(1);
+  });
+
+
+
+  it('la convalecencia sólo se consume cuando la unidad revivida se despliega', () => {
+    const roster = {
+      pieces: {
+        'p-a': { strengthPoints: 2, speedPoints: 2, bankedXp: 0, alive: true, recoveryBattlesRemaining: 1 },
+        'p-b': { strengthPoints: 1, speedPoints: 1, bankedXp: 0, alive: true, recoveryBattlesRemaining: 1 },
+      },
+      identities: {}, combatXp: 0,
+    };
+    const registry = {
+      a4: { id: 'w-p-a2', type: 'p', color: 'w', square: 'a4', strengthPoints: 2, speedPoints: 2, bankedXp: 3, recoveryBattlesRemaining: 1 },
+    };
+    const saved = saveSurvivorsToRoster(registry, roster, 'w', 'win', ['p-a']);
+    expect(saved.pieces['p-a'].recoveryBattlesRemaining).toBe(0);
+    expect(saved.pieces['p-b'].recoveryBattlesRemaining).toBe(1);
   });
 
   it('no revive si no alcanza los créditos de campaña', () => {

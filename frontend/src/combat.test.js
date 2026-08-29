@@ -362,6 +362,16 @@ describe('resolveCombatMove — reglas de integridad del ajedrez', () => {
     }
   });
 
+  it('una unidad convaleciente gana sólo la mitad de XP, redondeando hacia arriba', () => {
+    const registry = {
+      d4: { id: 'w-q-d1', type: 'q', color: 'w', square: 'd4', strengthPoints: 2, speedPoints: 2, bankedXp: 0, recoveryBattlesRemaining: 1 },
+      d7: { id: 'b-q-d8', type: 'q', color: 'b', square: 'd7', strengthPoints: 0, speedPoints: 0, bankedXp: 0 },
+    };
+    const applied = { from: 'd4', to: 'd7', color: 'w', flags: 'c', promotion: null };
+    const { registry: next } = applyMoveToRegistry(registry, applied);
+    expect(next.d7.bankedXp).toBe(5); // dama = 9 XP → 5 durante recuperación
+  });
+
   it('un esquive banca XP de supervivencia en el defensor y no mueve nada', () => {
     const chess = new Chess();
     chess.move('e4'); chess.move('d5');

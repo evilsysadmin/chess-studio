@@ -140,6 +140,7 @@ export function applyRosterToRegistry(registry, rosterState, humanColor) {
       unlockedTechniques: Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques] : [],
       equippedTechnique: saved.equippedTechnique || null,
       techniqueUsed: false,
+      recoveryBattlesRemaining: Math.max(0, Number(saved.recoveryBattlesRemaining || 0)),
       ...identity,
     };
   }
@@ -163,6 +164,7 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
     if (piece.color !== humanColor || piece.type === 'k') continue; // el rey no participa del roster
     const key = rosterKeyFor(piece);
     survivingKeys.add(key);
+    const previousRecovery = Math.max(0, Number(rosterState.pieces?.[key]?.recoveryBattlesRemaining || 0));
     pieces[key] = {
       strengthPoints: Math.max(0, (piece.strengthPoints || 0) - (piece.equipmentStrengthBonus || 0)),
       speedPoints: Math.max(0, (piece.speedPoints || 0) - (piece.equipmentSpeedBonus || 0)),
@@ -173,6 +175,7 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
       deploymentType: piece.deploymentType || null,
       unlockedTechniques: Array.isArray(piece.unlockedTechniques) ? [...piece.unlockedTechniques] : [],
       equippedTechnique: piece.equippedTechnique || null,
+      recoveryBattlesRemaining: Math.max(0, previousRecovery - 1),
     };
   }
 
@@ -199,6 +202,7 @@ export function saveSurvivorsToRoster(registry, rosterState, humanColor, outcome
         equippedTechnique: prev?.equippedTechnique || null,
         equipmentId: prev?.equipmentId || null,
         mercenary: prev?.mercenary || null,
+        recoveryBattlesRemaining: 0,
       };
     }
   }
@@ -228,6 +232,7 @@ export function revivePiece(rosterState, key, type) {
     equippedTechnique: dead.equippedTechnique || null,
     equipmentId: dead.equipmentId || null,
     mercenary: dead.mercenary || null,
+    recoveryBattlesRemaining: 1,
   };
 
   return recordUnitRevive({

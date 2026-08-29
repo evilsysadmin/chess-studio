@@ -3,7 +3,7 @@ import {
   campaignIntelBriefing,
   nextCampaignIntelTier,
 } from '../combatCampaign.js';
-import { campaignMissionOrders } from '../combatMissionOrders.js';
+import { campaignMissionOrders, classifiedCampaignMission } from '../combatMissionOrders.js';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
@@ -21,6 +21,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
   const nextTier = useMemo(() => nextCampaignIntelTier(campaign, node?.id), [campaign, node]);
   const missionOrders = useMemo(() => campaignMissionOrders(campaign?.seed, node), [campaign?.seed, node]);
+  const classifiedMission = useMemo(() => classifiedCampaignMission(campaign?.seed, node, intel?.level), [campaign?.seed, intel?.level, node]);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
   const [aiBriefing, setAiBriefing] = useState(null);
   const [aiBriefingLoading, setAiBriefingLoading] = useState(false);
@@ -104,6 +105,14 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
               </article>
             ))}
           </div>
+          {classifiedMission ? (
+            <article className="campaign-classified-order" aria-label="Operación clasificada revelada">
+              <div><small>INTEL CLASIFICADA</small><strong>{classifiedMission.label}</strong><span>{classifiedMission.description}</span></div>
+              <b>+{classifiedMission.reward}</b>
+            </article>
+          ) : intel.level === 1 ? (
+            <p className="campaign-classified-teaser">⌖ Se detecta una oportunidad clasificada. Intel de Evaluación revelará el objetivo exacto.</p>
+          ) : null}
         </section>
       )}
 

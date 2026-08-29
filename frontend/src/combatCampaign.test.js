@@ -97,8 +97,8 @@ describe('Combat Chess campaign map', () => {
   });
 
 
-  it('migra campañas v1/v2/v3 antiguas a v4 sin perder la ruta ni fabricar deuda', () => {
-    for (const version of [1, 2, 3]) {
+  it('migra campañas v1/v2/v3/v4 antiguas a v5 sin perder la ruta ni fabricar deuda', () => {
+    for (const version of [1, 2, 3, 4]) {
       localStorage.clear();
       const base = startCampaign(`legacy-v${version}`);
       const first = availableCampaignNodes(base)[0];
@@ -111,7 +111,7 @@ describe('Combat Chess campaign map', () => {
         relicIds: version === 1 ? undefined : ['fieldCipher'],
       }));
       const migrated = loadCampaign();
-      expect(migrated.version).toBe(4);
+      expect(migrated.version).toBe(5);
       expect(migrated.phase).toBe('briefing');
       expect(migrated.selectedNodeId).toBe(first.id);
       expect(migrated.operationalCredits).toBeGreaterThanOrEqual(0);
@@ -154,6 +154,27 @@ describe('Combat Chess campaign map', () => {
     expect(run.operationalCredits).toBe(before + baseReward + missionReward);
     expect(run.lastMissionResult).toMatchObject({ nodeId: node.id, earned: missionReward });
     expect(run.lastMissionResult.results.every((order) => order.completed)).toBe(true);
+  });
+
+
+
+  it('Intel de Evaluación activa la orden clasificada y la recompensa sólo con métricas verificables', () => {
+    let run = startCampaign('classified-orders');
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    run = { ...run, operationalCredits: 40 };
+    run = purchaseCampaignIntel(run, node.id);
+    run = purchaseCampaignIntel(run, node.id);
+    expect(campaignIntelBriefing(run, node).level).toBe(2);
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    const before = run.operationalCredits;
+    const won = markCampaignBattleWon(run, {
+      combatMetrics: { casualties: 0, captures: 12, tacticalCredits: 12, underdogCredits: 12 },
+    });
+    expect(won.lastMissionResult.results).toHaveLength(3);
+    expect(won.lastMissionResult.results.some((order) => order.classified)).toBe(true);
+    expect(won.operationalCredits).toBeGreaterThan(before);
   });
 
   it('una retirada táctica conserva la campaña y devuelve el mismo sector al briefing', () => {
@@ -308,7 +329,7 @@ describe('Combat Chess campaign map', () => {
     delete v2.relicIds;
     localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(v2));
     const migrated = loadCampaign();
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.relicIds).toEqual([]);
   });
 

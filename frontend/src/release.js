@@ -1,1 +1,1 @@
-export const APP_RELEASE = 'v16.6dm46zfri';
+export const APP_RELEASE = 'v16.6dm46zfrj';

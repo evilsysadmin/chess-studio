@@ -92,6 +92,7 @@ function UnitRosterCard({ roster, slot, onOpen, deployedSlotKey = null }) {
   const saved = roster?.pieces?.[key];
   const isKing = slot.type === 'k';
   const isDead = !isKing && saved?.alive === false;
+  const isRecovering = !isKing && !isDead && Number(saved?.recoveryBattlesRemaining || 0) > 0;
   const unitRecord = unitRecordForKey(roster, key);
   const level = isKing ? null : 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
   const rank = isKing ? null : pieceRankForLevel(level);
@@ -104,15 +105,15 @@ function UnitRosterCard({ roster, slot, onOpen, deployedSlotKey = null }) {
   return (
     <button
       type="button"
-      className={`army-unit-tile ${isDead ? 'dead' : ''} ${isKing ? 'command' : ''}`}
+      className={`army-unit-tile ${isDead ? 'dead' : ''} ${isRecovering ? 'recovering' : ''} ${isKing ? 'command' : ''}`}
       onClick={() => onOpen(key)}
       aria-label={`Abrir expediente de ${alias}`}
       title={`Abrir expediente de ${alias}`}
     >
       <span className="army-unit-tile-top">
         <span className="army-unit-glyph" aria-hidden="true">{PIECE_GLYPH[activeType] || '♟'}</span>
-        <span className={`army-unit-state ${isDead ? 'dead' : activeType !== slot.type ? 'mutant' : ''}`}>
-          {isKing ? 'MANDO' : isDead ? 'CAÍDO' : activeType !== slot.type ? METAMORPHOSIS_LABELS[activeType] : 'EN PIE'}
+        <span className={`army-unit-state ${isDead ? 'dead' : isRecovering ? 'recovering' : activeType !== slot.type ? 'mutant' : ''}`}>
+          {isKing ? 'MANDO' : isDead ? 'CAÍDO' : isRecovering ? 'RECUP.' : activeType !== slot.type ? METAMORPHOSIS_LABELS[activeType] : 'EN PIE'}
         </span>
       </span>
       <strong className="army-unit-alias" title={alias}>{alias}</strong>
@@ -141,6 +142,7 @@ function ReserveRosterCard({ roster, unitKey, onOpen, deployedSlotKey = null }) 
   const alias = unitAlias(roster, unitKey);
   const saved = roster?.pieces?.[unitKey];
   const isDead = saved?.alive === false;
+  const isRecovering = !isDead && Number(saved?.recoveryBattlesRemaining || 0) > 0;
   const unitRecord = unitRecordForKey(roster, unitKey);
   const level = 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
   const rank = pieceRankForLevel(level);
@@ -153,15 +155,15 @@ function ReserveRosterCard({ roster, unitKey, onOpen, deployedSlotKey = null }) 
   return (
     <button
       type="button"
-      className={`army-unit-tile army-reserve-unit ${isDead ? 'dead' : ''}`}
+      className={`army-unit-tile army-reserve-unit ${isDead ? 'dead' : ''} ${isRecovering ? 'recovering' : ''}`}
       onClick={() => onOpen(unitKey)}
       aria-label={`Abrir expediente de ${alias}`}
       title={`Abrir expediente de ${alias}`}
     >
       <span className="army-unit-tile-top">
         <span className="army-unit-glyph" aria-hidden="true">{PIECE_GLYPH[activeType] || '♟'}</span>
-        <span className={`army-unit-state ${isDead ? 'dead' : activeType !== originType ? 'mutant' : ''}`}>
-          {isDead ? 'CAÍDO' : activeType !== originType ? METAMORPHOSIS_LABELS[activeType] : 'RESERVA'}
+        <span className={`army-unit-state ${isDead ? 'dead' : isRecovering ? 'recovering' : activeType !== originType ? 'mutant' : ''}`}>
+          {isDead ? 'CAÍDO' : isRecovering ? 'RECUP.' : activeType !== originType ? METAMORPHOSIS_LABELS[activeType] : 'RESERVA'}
         </span>
       </span>
       <strong className="army-unit-alias" title={alias}>{alias}</strong>
@@ -185,6 +187,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
   const saved = roster?.pieces?.[key];
   const isKing = originType === 'k';
   const isDead = !isKing && saved?.alive === false;
+  const isRecovering = !isKing && !isDead && Number(saved?.recoveryBattlesRemaining || 0) > 0;
   const unitRecord = unitRecordForKey(roster, key);
   const medals = unitDecorations(unitRecord);
   const rawLevel = isKing ? 1 : 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
@@ -262,8 +265,15 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
               <div><span>Fuerza</span><b>{stats.strength.toFixed(1)}</b></div>
               <div><span>Velocidad</span><b>{stats.speed.toFixed(1)}</b></div>
               <div><span>XP pieza</span><b>{piece.bankedXp || 0}</b></div>
-              <div><span>Estado</span><b className={isDead ? 'danger-text' : ''}>{isDead ? 'Caído' : 'En pie'}</b></div>
+              <div><span>Estado</span><b className={isDead ? 'danger-text' : ''}>{isDead ? 'Caído' : isRecovering ? 'Convaleciente' : 'En pie'}</b></div>
             </div>
+
+            {isRecovering && (
+              <div className="army-command-note army-recovery-note">
+                <strong>Convalecencia · 1 batalla desplegada</strong>
+                <span>Tras la reanimación gana el 50% de XP, redondeado hacia arriba. No pierde fuerza, velocidad, técnicas ni opciones de despliegue.</span>
+              </div>
+            )}
 
             <div className={`army-unit-equipment ${equipment ? 'equipped' : 'empty'}`}>
               <div><span className="army-memorial-kicker">OBJETO EQUIPADO · 1 HUECO</span><strong>{equipment ? `${equipment.icon} ${equipment.label}` : 'Sin objeto'}</strong></div>
@@ -296,7 +306,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
                 <strong>{canRevive ? 'Ventana de recuperación abierta' : 'Baja definitiva de recluta'}</strong>
                 <p className="hint-text">
                   {canRevive
-                    ? 'Si empiezas otra batalla sin revivir esta identidad, pasará al Memorial y el puesto recibirá un recluta nuevo.'
+                    ? 'Si empiezas otra batalla sin revivir esta identidad, pasará al Memorial y el puesto recibirá un recluta nuevo. Si la recuperas, tendrá una batalla desplegada de convalecencia con XP al 50%.'
                     : 'No hay progreso invertido que recuperar. Al iniciar otra batalla pasará al Memorial y será reemplazado.'}
                 </p>
                 {canRevive && (
