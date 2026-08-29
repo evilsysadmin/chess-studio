@@ -636,39 +636,47 @@ export function campaignEventOptions(state) {
   if (!node || state.phase !== 'event') return [];
   const archetype = campaignEventArchetype(node);
   const supplyPerk = rewardOptionsForFloor(state.seed, node.floor + 37)[0];
-  if (archetype === 'radio') return [
-    { id:'decrypt', label:'Descifrar el tráfico', description:'Obtienes el Cifrador de campaña. Si ya lo tienes, recuperas 4 créditos.', ...relicChoice(state, 'fieldCipher', 4) },
-    { id:'jam', label:'Interferir la red', description:'Silencias coordinación enemiga: −5 de dificultad en el próximo combate.', difficultyDelta:-5 },
+  const available = Math.max(0, Number(state.operationalCredits) || 0);
+  const withCost = (option) => {
+    const creditCost = Math.max(0, Number(option.creditCost) || 0);
+    const disabled = creditCost > available;
+    const costText = creditCost
+      ? ` Coste: ${creditCost} suministros${disabled ? ' (saldo insuficiente).' : '.'}`
+      : '';
+    return { ...option, creditCost, disabled, description: `${option.description}${costText}` };
+  };
+  const choices = archetype === 'radio' ? [
+    { id:'decrypt', label:'Descifrar el tráfico', description:'Obtienes el Cifrador de campaña. Si ya lo tienes, recuperas 4 suministros.', creditCost:2, ...relicChoice(state, 'fieldCipher', 4) },
+    { id:'jam', label:'Interferir la red', description:'Silencias coordinación enemiga: −5 de dificultad en el próximo combate.', creditCost:3, difficultyDelta:-5 },
     { id:'trace', label:'Rastrear al operador', description:'Obtienes Óptica del observador, pero la búsqueda genera ruido: +2 al próximo combate.', difficultyDelta:2, ...relicChoice(state, 'forwardObserver', 4) },
-  ];
-  if (archetype === 'depot') return [
-    { id:'inventory', label:'Inventariar y marcharse', description:'Trabajo aburrido, resultado excelente: +6 créditos sin alterar la amenaza.', credits:6 },
+  ] : archetype === 'depot' ? [
+    { id:'inventory', label:'Inventariar bajo presión', description:'Recuperas 6 suministros, pero el registro del depósito deja +4 de amenaza.', credits:6, difficultyDelta:4 },
     { id:'salvage', label:`Vaciar el depósito · ${supplyPerk.label}`, description:'Obtienes una ventaja temporal, pero haces ruido: +4 al próximo combate.', difficultyDelta:4, perkId:supplyPerk.id },
-    { id:'ledger', label:'Recuperar libro logístico', description:'Obtienes Libro de retaguardia. Si ya lo tienes, +4 créditos.', ...relicChoice(state, 'campLedger', 4) },
-  ];
-  if (archetype === 'scouts') return [
-    { id:'shadow', label:'Seguirlos sin contacto', description:'Aprendes la ruta enemiga: −6 de dificultad en el próximo combate.', difficultyDelta:-6 },
+    { id:'ledger', label:'Recuperar libro logístico', description:'Obtienes Libro de retaguardia. Si ya lo tienes, recuperas 4 suministros.', creditCost:2, ...relicChoice(state, 'campLedger', 4) },
+  ] : archetype === 'scouts' ? [
+    { id:'shadow', label:'Seguirlos sin contacto', description:'Aprendes la ruta enemiga: −6 de dificultad en el próximo combate.', creditCost:3, difficultyDelta:-6 },
     { id:'seizeMaps', label:'Confiscar sus mapas', description:'Obtienes Equipo de infiltración, pero el forcejeo deja +3 de ruido.', difficultyDelta:3, ...relicChoice(state, 'silentBoots', 4) },
-    { id:'trade', label:'Intercambiar información', description:'Sin bajas ni heroicidades: +4 créditos operativos.', credits:4 },
-  ];
-  return [
-    { id:'recon', label:'Reconocimiento silencioso', description:'Rodeas el convoy sin tocarlo: −6 de dificultad en el próximo combate.', difficultyDelta:-6 },
+    { id:'trade', label:'Intercambiar información', description:'Recuperas 4 suministros, pero la negociación expone tu ruta: +3 de amenaza.', credits:4, difficultyDelta:3 },
+  ] : [
+    { id:'recon', label:'Reconocimiento silencioso', description:'Rodeas el convoy sin tocarlo: −6 de dificultad en el próximo combate.', creditCost:3, difficultyDelta:-6 },
     { id:'salvage', label:`Saquear suministros · ${supplyPerk.label}`, description:'Ganas una ventaja temporal, pero haces ruido: +4 al próximo combate.', difficultyDelta:4, perkId:supplyPerk.id },
-    { id:'manifest', label:'Recuperar el manifiesto', description:'Obtienes Sello de intendencia. Si ya lo tienes, +4 créditos.', ...relicChoice(state, 'quartermasterSeal', 4) },
+    { id:'manifest', label:'Recuperar el manifiesto', description:'Obtienes Sello de intendencia. Si ya lo tienes, recuperas 4 suministros.', creditCost:2, ...relicChoice(state, 'quartermasterSeal', 4) },
   ];
+  return choices.map(withCost);
 }
-
 export function resolveCampaignEvent(state, choiceId) {
   const node = campaignNode(state);
   if (!node || state.phase !== 'event') return state;
   const option = campaignEventOptions(state).find((item) => item.id === choiceId);
-  if (!option) return state;
+  if (!option || option.disabled) return state;
+  const creditCost = Math.max(0, Number(option.creditCost) || 0);
   const perks = option.perkId ? [...(state.perks || []), option.perkId] : [...(state.perks || [])];
   const relicIds = option.relicId ? [...new Set([...(state.relicIds || []), option.relicId])] : [...(state.relicIds || [])];
   const rawDelta = Number(option.difficultyDelta) || 0;
   const delta = rawDelta > 0 && hasRelic(state, 'silentBoots') ? Math.max(0, rawDelta - 2) : rawDelta;
   const credits = Math.max(0, Number(option.credits) || 0);
   const rewardBits = [option.label];
+  if (creditCost) rewardBits.push(`−${creditCost} suministros`);
   if (option.relicId) rewardBits.push(`reliquia: ${CAMPAIGN_RELIC_BY_ID[option.relicId]?.label}`);
   if (option.duplicateRelic) rewardBits.push(`duplicada → +${credits} créditos`);
   else if (credits) rewardBits.push(`+${credits} créditos`);
@@ -678,7 +686,7 @@ export function resolveCampaignEvent(state, choiceId) {
     ...state,
     perks,
     relicIds,
-    operationalCredits: (Number(state.operationalCredits) || 0) + credits,
+    operationalCredits: Math.max(0, (Number(state.operationalCredits) || 0) - creditCost + credits),
   }, {
     phase: nextCampaignPhase(state, 'resolve'),
     nextDifficultyDelta: Math.max(-12, Math.min(12, (state.nextDifficultyDelta || 0) + delta)),

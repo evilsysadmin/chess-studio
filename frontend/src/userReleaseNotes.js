@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfro',
+    title: 'Las decisiones de campaña ya tienen dientes',
+    highlights: [
+      'Los eventos de Combat Chess dejan de regalar suministros o reducciones de amenaza sin contrapartida: las ventajas cómodas cuestan recursos y el botín fácil genera riesgo.',
+      'Siempre queda al menos una salida sin coste para que una campaña con pocos suministros nunca quede bloqueada.',
+      'Las opciones que no puedes pagar se muestran como no disponibles y la campaña rechaza también intentos programáticos de ejecutarlas.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrn',
     title: 'Tu Némesis aprende cuándo dejarte en paz',
     highlights: [

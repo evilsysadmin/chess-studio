@@ -748,7 +748,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
               <p className="combat-operational-hint" title="Cada respuesta tiene un coste o beneficio estratégico. Revisa el texto de cada opción antes de decidir.">Elige respuesta.</p>
               <div className="campaign-event-options">
                 {eventOptions.map((option) => (
-                  <button type="button" key={option.id} className="roguelike-reward-card" onClick={() => handleCampaignEvent(option.id)}>
+                  <button type="button" key={option.id} className="roguelike-reward-card" disabled={option.disabled} aria-disabled={option.disabled} onClick={() => handleCampaignEvent(option.id)}>
                     <strong>{option.label}</strong><span>{option.description}</span>
                   </button>
                 ))}
