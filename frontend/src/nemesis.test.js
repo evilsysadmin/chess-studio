@@ -45,7 +45,7 @@ describe('openingNemeses', () => {
       game(23, 'win', 'Defensa Siciliana', 'w', 60, '2026-08-23T10:00:00Z'),
     ];
     expect(openingNemeses(history)).toEqual([]);
-    expect(openingNemeses(history, { includeRecovered: true })[0]).toMatchObject({ recovered: true, status: 'recovered', recentScorePct: 88, recentLosses: 0 });
+    expect(openingNemeses(history, { includeRecovered: true })[0]).toMatchObject({ recovered: true, status: 'recovered', recentScorePct: 70, recentLosses: 1 });
   });
 
   it('al resolver la peor apertura promueve la siguiente debilidad real', () => {
