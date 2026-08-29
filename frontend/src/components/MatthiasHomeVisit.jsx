@@ -1,43 +1,71 @@
+import { useEffect, useMemo, useState } from 'react';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
-import { matthiasTimeVisual } from '../matthiasVisuals.js';
+import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
+import './MatthiasHomeResident.css';
+
+const AMBIENT_SCENE_MS = 58_000;
+
+function reducedMotionPreferred() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
+  const hour = useMemo(() => new Date().getHours(), []);
+  const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
+  const [ambientBeat, setAmbientBeat] = useState(0);
+
+  useEffect(() => {
+    setAmbientBeat(0);
+    if (speaking || ambientVisuals.length < 2 || reducedMotionPreferred()) return undefined;
+    const timer = window.setInterval(() => {
+      setAmbientBeat((current) => (current + 1) % ambientVisuals.length);
+    }, AMBIENT_SCENE_MS);
+    return () => window.clearInterval(timer);
+  }, [ambientVisuals.length, speaking]);
+
   if (!model) return null;
-  const timeVisual = matthiasTimeVisual();
+
+  const speakingVisual = matthiasTimeVisual(hour);
+  const visual = speaking ? speakingVisual : (ambientVisuals[ambientBeat] || speakingVisual);
+  const mood = model.moodLabel || 'Observador';
+
   return (
-    <aside className={`matthias-home-card matthias-home-card--${model.variant} matthias-home-card--mood-${model.moodCue || 'observant'}${speaking ? ' is-speaking' : ''}`} aria-label={`Rincón de Matthias · ${model.moodLabel || 'Observador'} · ${timeVisual.label}`}>
-      <button
-        type="button"
-        className="matthias-home-card__main"
-        onClick={onOpenInsights}
-        aria-label="Abrir Así juegas con Matthias"
-        aria-describedby="matthias-home-message"
-        title="Matthias · abrir Así juegas"
-      >
-        <div className="matthias-home-card__speech">
-          <span className="section-label">{model.eyebrow}</span>
-          <p id="matthias-home-message">{model.text}</p>
-          {model.meta ? <small>{model.meta}</small> : null}
-        </div>
-        <div className="matthias-home-card__character" aria-hidden="true">
-          <img src={timeVisual.avatar} alt="" />
-          <span>{CPU_IDENTITY.name}</span>
-          <small>{model.moodLabel || 'Observador'} · {timeVisual.label}</small>
-          {model.sessionLabel ? <em className="matthias-home-card__session">{model.sessionLabel}</em> : null}
-          {model.deskArtifacts?.length ? (
-            <div className="matthias-home-card__desk" aria-label="Objetos del expediente de Matthias">
-              {model.deskArtifacts.map((item) => (
-                <i key={item.id} title={`${item.label}: ${item.title}`} aria-label={`${item.label}: ${item.title}`}>
-                  <b aria-hidden="true">{item.glyph}</b><span>{item.label}</span>
-                </i>
-              ))}
+    <aside
+      className={`matthias-resident matthias-resident--${model.variant || 'quiet'} matthias-resident--mood-${model.moodCue || 'observant'}${speaking ? ' is-speaking' : ' is-quiet'}`}
+      aria-label="Rincón de Matthias"
+    >
+      <div className="matthias-resident__stage">
+        {speaking ? (
+          <section className="matthias-resident__bubble" aria-live="polite" aria-label="Mensaje de Matthias">
+            <span className="section-label">{model.eyebrow}</span>
+            <p id="matthias-home-message">{model.text}</p>
+            {model.meta ? <small>{model.meta}</small> : null}
+            <div className="matthias-resident__bubble-actions">
+              <button type="button" className="matthias-resident__cta" onClick={onAction}>
+                {model.actionLabel} <span aria-hidden="true">→</span>
+              </button>
+              <button type="button" className="matthias-resident__dismiss" onClick={onDismiss} aria-label="Cerrar comentario de Matthias">×</button>
             </div>
-          ) : null}
-        </div>
-      </button>
-      <div className="matthias-home-card__actions">
-        <button type="button" className="matthias-home-card__cta" onClick={onAction}>{model.actionLabel} <span aria-hidden="true">→</span></button>
-        {speaking ? <button type="button" className="matthias-home-card__dismiss" onClick={onDismiss} aria-label="Cerrar comentario de Matthias">×</button> : null}
+          </section>
+        ) : null}
+
+        <button
+          type="button"
+          className="matthias-resident__character"
+          onClick={onOpenInsights}
+          aria-label="Abrir Así juegas con Matthias"
+          aria-describedby={speaking ? 'matthias-home-message' : undefined}
+          title="Matthias · abrir Así juegas"
+        >
+          <span className="matthias-resident__portrait-shell" aria-hidden="true">
+            <img key={visual.key || visual.avatar} src={visual.avatar} alt="" />
+          </span>
+          <strong>{CPU_IDENTITY.name}</strong>
+          <small>{speaking ? mood : visual.label}</small>
+          {speaking && model.sessionLabel ? <em>{model.sessionLabel}</em> : null}
+        </button>
       </div>
     </aside>
   );
