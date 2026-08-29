@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchAdminUsers } from '../admin.js';
 import { getToken, getUsername } from '../auth.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import AdminLegacyScreen from './AdminLegacyScreen.jsx';
+import AdminDashboardContent from './AdminDashboardContent.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import './AdminWorkspace.css';
 
@@ -117,12 +117,12 @@ export default function AdminScreen({ onExit }) {
         <AdminObservabilityWorkspace onExit={onExit} />
       ) : (
         <div
-          className="admin-workspace-legacy-slot"
+          className="admin-workspace-content-slot"
           id={`admin-panel-${section}`}
           role="tabpanel"
           aria-labelledby={`admin-tab-${section}`}
         >
-          <AdminLegacyScreen onExit={onExit} />
+          <AdminDashboardContent onExit={onExit} />
         </div>
       )}
     </div>
