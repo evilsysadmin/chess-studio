@@ -8,6 +8,7 @@ import { conversionStats, hallOfFameAndShame, loadAnalysisArchive, materialDonat
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { buildNemesisDossier } from '../nemesis.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { buildCareerHeatmaps, deriveRpgProfile, summarizeRpgProfile } from '../careerVisuals.js';
 import RivalryDossier from './RivalryDossier.jsx';
 import { buildPersonalSeasons } from '../personalSeasons.js';
@@ -32,6 +33,8 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
   const cemetery=useMemo(()=>buildCemetery(history).slice(0,8),[history]); const tree=useMemo(()=>buildOpeningTree(history,8),[history]); const profile=useMemo(()=>deriveChessProfile(history),[history]); const evolution=useMemo(()=>evolutionBuckets(history,10),[history]);
   const archive=useMemo(()=>loadAnalysisArchive(),[history]); const weekly=useMemo(()=>weeklyReport(history,archive),[history,archive]); const hall=useMemo(()=>hallOfFameAndShame(history,archive),[history,archive]); const conversion=useMemo(()=>conversionStats(archive),[archive]); const pressure=useMemo(()=>{const moves=Number(career.pressure?.moves||0),incidents=Number(career.pressure?.incidents||0);return{moves,incidents,rate:moves?Math.round(incidents/moves*100):null};},[career]); const donations=useMemo(()=>materialDonated(history),[history]); const recurrence=useMemo(()=>recurrenceIndex(rivalry),[rivalry]); const openings=useMemo(()=>openingRivalry(history),[history]); const clinic=useMemo(()=>openingClinic(history),[history]);
   const run=loadSpecialRun(); const rec=career.records||{}; const season=career.season||{}; const themes=unlockedBoardThemes(career); const analyses=Object.values(archive); const avgAccuracy=analyses.length?Math.round(analyses.map(a=>a.accuracy).filter(Number.isFinite).reduce((s,n)=>s+n,0)/Math.max(1,analyses.filter(a=>Number.isFinite(a.accuracy)).length)):null;
+  const survivalRun=run?.mode==='streak'?run:null;
+  const conflictingRun=Boolean(run?.active&&run.mode!=='streak');
   const nemesis=useMemo(()=>buildNemesisDossier(history,rivalry),[history,rivalry]);
   const topIncident=nemesis.tactic;
   const nemesisPersonalCount=useMemo(()=>nemesis.opening ? personal.filter((p)=>p.opening===nemesis.opening.opening).length : 0,[personal,nemesis.opening]);
@@ -61,6 +64,20 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
 
     {careerSection==='summary'&&<>
     <RivalryDossier rivalry={rivalry} />
+
+    <div className="menu-section survival-run-card">
+      <div className="career-section-heading"><div><span className="section-label">MODO DE PRESIÓN</span><h2>🔥 Supervivencia</h2></div><MechanicTutorialHelp tutorialId="survival" /></div>
+      <p>Empiezas contra CPU 30. Cada victoria sube 7 puntos la dificultad. Una derrota o unas tablas terminan la expedición.</p>
+      <div className="career-mini-grid">
+        <span><b>{rec.bestStreakRun||0}</b><small>récord de victorias consecutivas</small></span>
+        <span><b>{survivalRun?.active?survivalRun.wins||0:0}</b><small>victorias en la expedición actual</small></span>
+        <span><b>CPU {survivalRun?.active?survivalRun.difficulty:30}</b><small>{survivalRun?.active?'siguiente rival':'dificultad inicial'}</small></span>
+      </div>
+      <div className="coaching-action" style={{marginTop:'.8rem'}}>
+        <button className="primary-btn" disabled={conflictingRun} onClick={()=>survivalRun?.active?onContinueRun(survivalRun):onStartRun('streak')}>{survivalRun?.active?'Continuar supervivencia →':'Empezar supervivencia →'}</button>
+        {conflictingRun?<span>Ya tienes una {run.mode==='boss'?'Boss Run':'Copa'} activa. Termínala antes de abrir otra expedición.</span>:<span>{survivalRun?.active?'Tu próxima partida continúa exactamente la run guardada.':'No hay vidas extra ni tablas salvadoras. Ganas o vuelves al cuartel.'}</span>}
+      </div>
+    </div>
 
     <div className="menu-section career-personal-season">
       <div className="career-section-heading"><div><span className="section-label">CICLOS DE 20 PARTIDAS</span><h2>Temporada personal #{personalSeason.number}</h2></div><small>{personalSeason.games}/{personalSeason.target} · {personalSeason.scorePct}% puntuación</small></div>
@@ -118,13 +135,12 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
 
     <div className="menu-section"><h2>🏅 Hall of Fame</h2><div className="museum-grid"><div className="museum-card"><span>👑</span><strong>{hall.hardestWin?`CPU · nivel ${hall.hardestWin.difficulty}`:'—'}</strong><small>victoria de mayor dificultad</small></div><div className="museum-card"><span>⚡</span><strong>{hall.fastestWin?`${Math.ceil((hall.fastestWin.moves?.length||0)/2)} mov.`:'—'}</strong><small>victoria más rápida</small></div><div className="museum-card"><span>💎</span><strong>{hall.bestAccuracy?`${hall.bestAccuracy.accuracy}%`:'—'}</strong><small>mejor precisión archivada</small></div><div className="museum-card"><span>🛡</span><strong>{hall.desperateSave?`${(hall.desperateSave.troughPerspectiveEval/100).toFixed(1)}`:'—'}</strong><small>peor posición que lograste salvar</small></div></div></div>
     <div className="menu-section"><h2>☠ Hall of Shame</h2><div className="museum-grid"><div className="museum-card"><span>💥</span><strong>{hall.worst?<>{`−${hall.worst.worst.loss} `}<GlossaryTerm term="cp">cp</GlossaryTerm></>:'—'}</strong><small>peor <GlossaryTerm term="Blunder">blunder</GlossaryTerm> analizado</small></div><div className="museum-card"><span>📉</span><strong>{hall.missedConversion?`+${(hall.missedConversion.peakPerspectiveEval/100).toFixed(1)}`:'—'}</strong><small>mayor ventaja no convertida</small></div><div className="museum-card"><span>🏚</span><strong>{donations.queens}</strong><small>damas entregadas a la contabilidad rival</small></div><div className="museum-card"><span>🧾</span><strong>{recurrence.repeated}</strong><small>errores reincidentes</small></div></div></div>
-
     {evolution.length>0&&<div className="menu-section"><h2>Evolución</h2><div className="career-evolution">{evolution.map(b=><div className="career-evolution-row" key={b.label}><span>{b.label}</span><div><i style={{width:`${b.winPct}%`}}/></div><b>{b.winPct}%</b><small>CPU · nivel medio {b.avgDifficulty}</small></div>)}</div>{ratingHistory?.length>1&&<p className="hint-text">Rating: {ratingHistory[0]?.rating??ratingHistory[0]} → {ratingHistory.at(-1)?.rating??ratingHistory.at(-1)}.</p>}</div>}
     {profile.length>0&&<details className="friendly-disclosure career-profile-details"><summary>Ver perfil ajedrecístico automático</summary><div className="friendly-disclosure-body"><ul className="roast-list">{profile.map((x,i)=><li key={i}>{x}</li>)}</ul></div></details>}
     </>}
 
     {careerSection==='archive'&&<>
-    <div className="menu-section"><h2>Modos de presión y campeonatos</h2><div className="career-action-grid"><button className="career-action danger" onClick={()=>onStartRun('streak')}><b>🔥 Modo racha</b><span>Ganas: +7 dificultad. Pierdes: se acabó.</span></button><button className="career-action danger" onClick={()=>onStartRun('boss')}><b>👑 Boss Run</b><span>Seis fases: 35 → 95.</span></button><button className="career-action" onClick={()=>onStartRun('cup')}><b>🏆 Copa personal de 8</b><span>8 partidas contra CPU · nivel 55. 1 punto victoria, ½ tablas. 4½ para levantar la copa.</span></button>{run?.active&&<button className="career-action active" onClick={()=>onContinueRun(run)}><b>▶ Continuar {run.mode==='boss'?'Boss Run':run.mode==='cup'?'Copa':'racha'}</b><span>CPU · nivel {run.difficulty} · {run.mode==='cup'?`${run.completedStages||0}/8 · ${run.points||0} pts`:`${run.wins||0} victorias`}.</span></button>}</div></div>
+    <div className="menu-section"><h2>Modos de presión y campeonatos</h2><div className="career-action-grid"><button className="career-action danger" onClick={()=>onStartRun('streak')}><b>🔥 Supervivencia</b><span>Ganas: +7 dificultad. Tablas o derrota: se acabó.</span></button><button className="career-action danger" onClick={()=>onStartRun('boss')}><b>👑 Boss Run</b><span>Seis fases: 35 → 95.</span></button><button className="career-action" onClick={()=>onStartRun('cup')}><b>🏆 Copa personal de 8</b><span>8 partidas contra CPU · nivel 55. 1 punto victoria, ½ tablas. 4½ para levantar la copa.</span></button>{run?.active&&<button className="career-action active" onClick={()=>onContinueRun(run)}><b>▶ Continuar {run.mode==='boss'?'Boss Run':run.mode==='cup'?'Copa':'Supervivencia'}</b><span>CPU · nivel {run.difficulty} · {run.mode==='cup'?`${run.completedStages||0}/8 · ${run.points||0} pts`:`${run.wins||0} victorias`}.</span></button>}</div></div>
 
     {Object.keys(career.byTimeControl||{}).length>0&&<div className="menu-section"><h2>Rivalidad por ritmo</h2><div className="career-rhythm-grid">{Object.entries(career.byTimeControl).map(([id,row])=><div className="career-rhythm" key={id}><b>{TIME_LABEL[id]||id}</b><span>{row.wins}V · {row.draws}T · {row.losses}D</span><small>{row.games} partidas</small></div>)}</div></div>}
     </>}
