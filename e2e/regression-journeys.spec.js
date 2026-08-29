@@ -330,7 +330,8 @@ test('Matthias · saluda una vez tras login y no repite el saludo con F5', async
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
   const restoredCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(restoredCorner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toHaveCount(0);
-  await expect(restoredCorner.getByText('…', { exact: true })).toBeVisible();
+  await expect(restoredCorner.getByText('…', { exact: true })).toHaveCount(0);
+  await expect(restoredCorner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true })).toBeVisible();
 });
 
 test('Home · el avatar residente de Matthias abre Así juegas', async ({ page }) => {
@@ -374,7 +375,6 @@ test('Matthias · la tarjeta de rival muestra el historial específico del duelo
   const matthiasRail = page.getByLabel(/Matthias, CPU/);
   await expect(matthiasRail).toContainText(/duelo 3V 1T 4D/i);
 });
-
 
 
 test('Matthias · la sesión real aparece en Home, el retrato tiene presencia y re-login limpia el contexto', async ({ page }) => {
