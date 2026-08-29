@@ -64,12 +64,18 @@ jobs:
               raise SystemExit('pending bucket implementation not found')
           text = text.replace(old, new, 1)
 
-          marker = 'bucket = _pending_bucket(bucket_key)'
-          sections = ['http', 'ai', 'presence', 'frontend']
-          if text.count(marker) != len(sections):
-              raise SystemExit(f'unexpected pending bucket call count: {text.count(marker)}')
-          for section in sections:
-              text = text.replace(marker, f'bucket = _pending_bucket(bucket_key, "{section}")', 1)
+          replacements = [
+              ('bucket = _pending_bucket(bucket_key)', 'bucket = _pending_bucket(bucket_key, "http")'),
+              ('bucket = _pending_bucket(bucket_key)', 'bucket = _pending_bucket(bucket_key, "ai")'),
+              ('presence = _pending_bucket(bucket_key)["presence"]', 'presence = _pending_bucket(bucket_key, "presence")["presence"]'),
+              ('frontend = _pending_bucket(bucket_key)["frontend"]', 'frontend = _pending_bucket(bucket_key, "frontend")["frontend"]'),
+          ]
+          for source, target in replacements:
+              if source not in text:
+                  raise SystemExit(f'expected telemetry hot-path call not found: {source}')
+              text = text.replace(source, target, 1)
+          if '_pending_bucket(bucket_key)' in text:
+              raise SystemExit('unexpected unscoped telemetry pending-bucket call remains')
           path.write_text(text, encoding='utf-8')
 
           tests = Path('backend-python/test_observability_history.py')
