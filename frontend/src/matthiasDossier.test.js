@@ -11,7 +11,16 @@ describe('Matthias dossier presentation', () => {
     });
     expect(artifacts).toHaveLength(3);
     expect(artifacts.map((item) => item.id)).toEqual(['challenge', 'fame', 'shame']);
+    expect(artifacts.map((item) => item.label)).toEqual(['Orden', 'Medalla', 'Expediente']);
     expect(artifacts[1].title).toMatch(/Primera victoria/);
+  });
+
+  it('mantiene etiquetas compactas para que el escritorio no se trunque en móvil', () => {
+    const formidable = buildMatthiasDeskArtifacts({ respect: { tier: 'formidable', label: 'Rival respetado' } });
+    const veteran = buildMatthiasDeskArtifacts({ relationship: { tier: 'veteran', games_seen: 42 } });
+    expect(formidable[0]).toMatchObject({ label: 'Rival', title: 'Rival respetado' });
+    expect(veteran[0]).toMatchObject({ label: 'Veterano', title: '42 partidas observadas' });
+    expect([...formidable, ...veteran].every((item) => item.label.length <= 10)).toBe(true);
   });
 
   it('no inventa decoración para un expediente vacío', () => {
