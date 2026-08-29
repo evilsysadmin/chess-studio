@@ -1,3 +1,9 @@
+### v16.6dm46zfrl · Doctrinas enemigas ligadas a Intel
+
+- Cada sector de batalla tiene una doctrina determinista que sesga de verdad el motor entre jugadas casi equivalentes sin degradar decisiones tácticas forzadas.
+- Contacto revela la doctrina; Evaluación describe su tendencia y Dossier aporta una contramedida general sin filtrar movimientos del motor.
+- `/api/analyze` acepta el mismo estilo validado y acotado que ya usa el motor para fantasmas.
+
 ### v16.6dm46zfrk · Gate de economía Combat Chess
 
 - Las órdenes opcionales comparten un tope de +9 suministros por sector para evitar que una batalla perfecta financie por sí sola un Dossier completo de Intel.

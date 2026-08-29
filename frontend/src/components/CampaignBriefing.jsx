@@ -134,6 +134,9 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
               <div><dt>Nivel rival</dt><dd>Nv. {intel.opponentLevelRange} · confianza {intel.opponentLevelConfidence.toLowerCase()}</dd></div>
               <div><dt>Amenaza</dt><dd>{intel.level >= 1 ? `${intel.threatBand} · CPU ${intel.threatRange}` : `${intel.threatBand} · estimación básica`}</dd></div>
               {intel.exactDifficulty != null && <div><dt>CPU exacta</dt><dd>{intel.exactDifficulty} · nivel {intel.exactOpponentLevel}</dd></div>}
+              {intel.doctrineLabel && <div><dt>Doctrina</dt><dd>{intel.doctrineLabel}</dd></div>}
+              {intel.doctrineSummary && <div><dt>Tendencia</dt><dd>{intel.doctrineSummary}</dd></div>}
+              {intel.doctrineCounter && <div><dt>Preparación</dt><dd>{intel.doctrineCounter}</dd></div>}
               {boss && <div><dt>Jefe</dt><dd>{boss.label}{intel.bossHp != null ? ` · ${intel.bossHp} HP` : ' · HP exacto requiere Dossier'}</dd></div>}
             </dl>
           </section>

@@ -286,7 +286,8 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Esa posición ya está terminada.")
 
         level = body.level if is_valid_difficulty(body.level) else HINT_STRENGTH
-        suggestion = get_cpu_move(board, level)
+        ghost_style = body.ghost_style.model_dump() if body.ghost_style is not None else None
+        suggestion = get_cpu_move(board, level, ghost_style)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
         return suggestion

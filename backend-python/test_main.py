@@ -574,6 +574,28 @@ def test_analyze_endpoint():
     assert "from" in body and "to" in body and "san" in body
 
 
+def test_analyze_endpoint_passes_validated_doctrine_style_to_engine(monkeypatch):
+    import game_api
+
+    seen = {}
+    def fake_cpu(board, level, style=None):
+        seen.update(style or {})
+        return game_api.move_to_dict(board, next(iter(board.legal_moves)))
+
+    monkeypatch.setattr(game_api, "get_cpu_move", fake_cpu)
+    r = client.post(
+        "/api/analyze",
+        json={
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "level": 30,
+            "ghostStyle": {"capture": 0.9, "pawn": 0.1, "queen": 0.2, "check": 0.8, "castle": -0.3},
+        },
+    )
+    assert r.status_code == 200
+    assert seen["capture"] == 0.9
+    assert seen["check"] == 0.8
+
+
 
 def test_analyze_rejects_parseable_but_impossible_fen():
     fen = "8/8/8/8/8/8/8/4K3 w - - 0 1"  # falta el rey negro

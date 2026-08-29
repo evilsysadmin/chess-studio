@@ -49,7 +49,7 @@ import { reportStateInvariant } from '../stateMachine.js';
 
 
 
-export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, encounterTier = 'normal', runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false }) {
+export function useCombatController({ onExit, onError, onHistory, onViewBattle, onPersistenceState, initialFen, onBattleStart, onBattleResult, difficultyOverride, forcedHumanColor, combatVariant, encounterTier = 'normal', runPerks = [], bossConfig = null, roguelikeFloor = null, roguelikeMode = null, combatSessionId = 'free', requireDeploymentConfirmation = false, cpuDoctrine = null }) {
   const { restoredSession, missingSession, activityGameIdRef } = useCombatSessionBootstrap(combatSessionId);
   const [phase, setPhase] = useState(restoredSession ? 'battle' : 'setup'); // 'setup' | 'battle' | 'over'
   const phaseRef = useRef(restoredSession ? 'battle' : 'setup');
@@ -908,7 +908,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       const resolved = await resolveCombatCpuTurnSuggestion({
         fen: currentFen,
         difficulty,
-        analyzePosition: (positionFen, level) => api.analyzePosition(positionFen, level, { signal: controller.signal }),
+        analyzePosition: (positionFen, level) => api.analyzePosition(positionFen, level, { signal: controller.signal }, cpuDoctrine?.style || null),
       });
       if (!mountedRef.current || controller.signal.aborted || battleGenerationRef.current !== generation) return;
       suggestion = resolved.suggestion;
