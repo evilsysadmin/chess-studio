@@ -278,6 +278,21 @@ describe('Combat Chess campaign map', () => {
     expect(exactLevel).toBeLessThanOrEqual(contactMax);
   });
 
+  it('la Intel revela doctrina enemiga progresivamente y siempre desde la semilla real', () => {
+    let run = startCampaign('doctrine-intel');
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    expect(campaignIntelBriefing(run, node).doctrineLabel).toBeNull();
+    run = { ...run, operationalCredits: 40 };
+    run = purchaseCampaignIntel(run, node.id);
+    expect(campaignIntelBriefing(run, node).doctrineLabel).toBeTruthy();
+    expect(campaignIntelBriefing(run, node).doctrineSummary).toBeNull();
+    run = purchaseCampaignIntel(run, node.id);
+    expect(campaignIntelBriefing(run, node).doctrineSummary).toBeTruthy();
+    run = purchaseCampaignIntel(run, node.id);
+    expect(campaignIntelBriefing(run, node).doctrineCounter).toBeTruthy();
+  });
+
   it('compra intel por niveles y nunca gasta más créditos de los disponibles', () => {
     let run = startCampaign('intel');
     const node = availableCampaignNodes(run)[0];

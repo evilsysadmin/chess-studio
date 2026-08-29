@@ -6,6 +6,14 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrl',
+    title: 'La Intel identifica cómo combate el rival',
+    highlights: [
+      'Cada sector de Combat Chess recibe una doctrina enemiga determinista que influye de verdad en los desempates del motor entre jugadas casi equivalentes, sin sacrificar mates ni ventajas claras.',
+      'Contacto revela el nombre de la doctrina, Evaluación explica la tendencia y Dossier añade una preparación práctica; nunca se revelan movimientos exactos.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrk',
     title: 'Combat ajusta su economía',
     highlights: [

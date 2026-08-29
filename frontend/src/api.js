@@ -28,11 +28,11 @@ export const api = {
     return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() }, signal })
       .then((payload) => requireGamePayload(payload, id));
   },
-  analyzePosition(fen, level, { signal } = {}) {
+  analyzePosition(fen, level, { signal } = {}, ghostStyle = null) {
     return requestJson(`${BASE_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ fen, level }),
+      body: JSON.stringify({ fen, level, ...(ghostStyle ? { ghostStyle } : {}) }),
       timeoutMs: 8000,
       signal,
     });

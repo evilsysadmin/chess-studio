@@ -24,6 +24,7 @@ import { unlockRosterTechnique, setRosterEquippedTechnique } from '../combatTech
 import { rewardOptionsForFloor, perkById } from '../roguelikePerks.js';
 import { ROGUELIKE_BOSS, ROGUELIKE_BOSS_FLOOR } from '../roguelikeBoss.js';
 import { campaignBossForSeed } from '../combatBosses.js';
+import { enemyDoctrineForNode } from '../combatEnemyDoctrine.js';
 import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE } from '../combatChessBrand.js';
 import { recordGameActivity } from '../gameActivity.js';
@@ -563,6 +564,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         encounterDescription={node?.description}
         encounterTier={node?.tier}
         encounterIntel={encounterIntel}
+        cpuDoctrine={enemyDoctrineForNode(campaign.seed, node)}
         combatVariant="roguelike"
         battleTheme={campaignBiomeForNode(campaign.seed, node)?.boardTheme}
         battleThemeLabel={campaignBiomeForNode(campaign.seed, node)?.label}

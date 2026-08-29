@@ -122,8 +122,10 @@ class MoveRequest(BaseModel):
 
 
 class AnalyzeRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     fen: str = Field(max_length=128)
     level: float = HINT_STRENGTH
+    ghost_style: Optional[GhostStyle] = Field(default=None, alias="ghostStyle")
 
 
 class AnalyzeMoveRequest(BaseModel):

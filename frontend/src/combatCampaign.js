@@ -7,6 +7,7 @@ import { campaignPhaseTransition, assertCampaignInvariant } from './campaignStat
 import { reportStateInvariant } from './stateMachine.js';
 import { evaluateCampaignMissionOrders } from './combatMissionOrders.js';
 import { BATTLE_CREDIT_REWARD, CAMPAIGN_INTEL_BASE_COSTS, CAMPAIGN_STARTING_CREDITS } from './combatEconomyBalance.js';
+import { doctrineIntelView, enemyDoctrineForNode } from './combatEnemyDoctrine.js';
 
 
 function nextCampaignPhase(state, event) {
@@ -124,6 +125,7 @@ export function campaignIntelBriefing(state, node = campaignNode(state)) {
   const modifier = MODIFIER_META[node.modifierId] || MODIFIER_META.none;
   const difficulty = campaignDifficulty(state, node);
   const opponentLevel = estimatedOpponentLevel(difficulty, level);
+  const doctrine = doctrineIntelView(enemyDoctrineForNode(state?.seed, node), level);
   const result = {
     level,
     levelLabel: CAMPAIGN_INTEL_TIERS[level]?.label || 'Sin reconocimiento',
@@ -132,6 +134,9 @@ export function campaignIntelBriefing(state, node = campaignNode(state)) {
     opponentLevelConfidence: opponentLevel.confidence,
     exactOpponentLevel: level >= 2 ? opponentLevel.exact : null,
     exactDifficulty: null,
+    doctrineLabel: doctrine.label,
+    doctrineSummary: doctrine.summary,
+    doctrineCounter: doctrine.counter,
     // Las reglas visibles del tablero nunca se ocultan detrás de intel.
     // La intel compra precisión estratégica, no evita sorpresas injustas.
     modifierLabel: modifier?.label || 'Material estándar',
