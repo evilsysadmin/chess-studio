@@ -1,0 +1,141 @@
+name: zfrp finalize
+
+on:
+  push:
+    branches:
+      - feat/zfrp-backend-performance
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Optimize telemetry hot path and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          path = Path('backend-python/observability_history.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''def _pending_bucket(bucket_key: int) -> dict[str, Any]:
+              bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
+              return _restore_missing_schema(bucket, _fresh_bucket())
+          '''
+          old = '\n'.join(line[10:] if line.startswith('          ') else line for line in old.splitlines())
+          new = '''_BUCKET_TEMPLATE = _fresh_bucket()
+
+
+          def _pending_bucket(bucket_key: int, section: str | None = None) -> dict[str, Any]:
+              """Return a pending bucket while hydrating only the branch in use.
+
+              A successful flush intentionally prunes zeroed branches. The old hot path
+              rebuilt and recursively walked the complete schema for every telemetry
+              event, even when only HTTP or presence was being updated. Keep one
+              immutable template and restore only the section touched by this sample.
+              """
+              bucket = _PENDING.get(bucket_key)
+              if bucket is None:
+                  bucket = copy.deepcopy(_BUCKET_TEMPLATE)
+                  _PENDING[bucket_key] = bucket
+                  return bucket
+              if section:
+                  template = _BUCKET_TEMPLATE[section]
+                  current = bucket.get(section)
+                  if not isinstance(current, dict):
+                      bucket[section] = copy.deepcopy(template)
+                  else:
+                      _restore_missing_schema(current, template)
+              return bucket
+          '''
+          new = '\n'.join(line[10:] if line.startswith('          ') else line for line in new.splitlines())
+          if old not in text:
+              raise SystemExit('pending bucket implementation not found')
+          text = text.replace(old, new, 1)
+
+          marker = 'bucket = _pending_bucket(bucket_key)'
+          sections = ['http', 'ai', 'presence', 'frontend']
+          if text.count(marker) != len(sections):
+              raise SystemExit(f'unexpected pending bucket call count: {text.count(marker)}')
+          for section in sections:
+              text = text.replace(marker, f'bucket = _pending_bucket(bucket_key, "{section}")', 1)
+          path.write_text(text, encoding='utf-8')
+
+          tests = Path('backend-python/test_observability_history.py')
+          text = tests.read_text(encoding='utf-8')
+          addition = '''
+
+          def test_hot_path_does_not_rebuild_the_full_bucket_schema(monkeypatch):
+              at = 1_800_000_000.0
+
+              def unexpected_fresh_bucket():
+                  raise AssertionError("the telemetry hot path rebuilt the full bucket schema")
+
+              monkeypatch.setattr(history, "_fresh_bucket", unexpected_fresh_bucket)
+              history.record_http_event("GET", "/api/status", 200, 8.0, timestamp=at)
+              history.record_http_event("GET", "/api/status", 200, 9.0, timestamp=at + 1)
+              history.record_presence_snapshot(2, timestamp=at + 2)
+              history.record_frontend_event("web_vital", metric_name="LCP", value=700, timestamp=at + 3)
+              history.record_ai_event({"at": at + 4, "provider": "local", "event_type": "generic"})
+              bucket = _pending_bucket()
+              assert bucket["http"]["samples"] == 2
+              assert bucket["presence"]["samples"] == 1
+              assert bucket["frontend"]["samples"] == 1
+              assert bucket["ai"]["samples"] == 1
+          '''
+          addition = '\n'.join(line[10:] if line.startswith('          ') else line for line in addition.splitlines())
+          if 'test_hot_path_does_not_rebuild_the_full_bucket_schema' not in text:
+              tests.write_text(text.rstrip() + addition + '\n', encoding='utf-8')
+
+          old_release = 'v16.6dm46zfro'
+          new_release = 'v16.6dm46zfrp'
+          Path('RELEASE.txt').write_text(new_release + '\n', encoding='utf-8')
+          for filename in ['frontend/src/release.js', 'backend-python/release_info.py']:
+              p = Path(filename)
+              body = p.read_text(encoding='utf-8')
+              if old_release not in body:
+                  raise SystemExit(f'old release marker not found in {filename}')
+              p.write_text(body.replace(old_release, new_release, 1), encoding='utf-8')
+          Path('frontend/public/release.json').write_text(json.dumps({'release': new_release}, indent=2) + '\n', encoding='utf-8')
+
+          notes = Path('frontend/src/userReleaseNotes.js')
+          text = notes.read_text(encoding='utf-8')
+          anchor = 'export const USER_RELEASE_NOTES = Object.freeze([\n'
+          entry = '''  {
+              release: 'v16.6dm46zfrp',
+              title: 'Backend más ágil bajo presión',
+              highlights: [
+                'Las ráfagas de peticiones ya comparten un único intento de reconexión cuando la base de datos no responde, evitando esperas repetidas y picos inútiles.',
+                'La telemetría del servicio reduce trabajo interno por petición sin perder los históricos ni la recuperación tras cada volcado.',
+                'El comportamiento funcional del juego no cambia: esta iteración recorta trabajo del servidor y mejora su degradación ante fallos de MongoDB.',
+              ],
+            },
+
+          '''
+          entry = '\n'.join(line[10:] if line.startswith('          ') else line for line in entry.splitlines())
+          if anchor not in text:
+              raise SystemExit('release notes anchor not found')
+          notes.write_text(text.replace(anchor, anchor + entry, 1), encoding='utf-8')
+          PY
+          python -m pip install -q -r backend-python/requirements-dev.txt
+          cd backend-python
+          python -m pytest -q test_db.py test_observability_history.py
+          cd ..
+          git rm .github/workflows/zfrp-finalize.yml
+          make static-preflight
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'v16.6dm46zfrp · Backend performance hardening'
+          git push origin HEAD:feat/zfrp-backend-performance
