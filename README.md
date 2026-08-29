@@ -1,3 +1,11 @@
+### v16.6dm46zfrg · Escuela por cursos + test runner reproducible
+
+- Escuela de Matthias pasa a cinco cursos: Básico, Básico-medio, Medio, Medio-avanzado y Avanzado. Cada bloque mezcla práctica guiada y secuencias de varias jugadas y termina en un examen de promoción obligatorio.
+- Los exámenes no ofrecen pistas, tienen un margen de error explícito y son el contrato real de desbloqueo del siguiente curso; el examen Avanzado exige una línea limpia.
+- Home y onboarding colocan Escuela de Matthias como primera puerta de aprendizaje y enseñan curso/progreso sin convertirlo en un sistema RPG de niveles decorativos.
+- El flujo de tests queda reproducible con `make bootstrap-test`, `make test-all-local` y `make test-in-docker`; CI delega en los mismos targets y `test_entrypoint_parity.py` bloquea divergencias.
+- El runner Docker conserva el wiring de `.github`, usa Playwright 1.62.1 y reserva memoria compartida para Chromium. El asset del bocata de Matthias usa un recorte existente con una sola manita visible.
+
 ### v16.6dm46zex · hotfix CORS de idempotencia + controles y feedback verificables
 
 - Corrige una regresión crítica de CORS: el frontend envía `Idempotency-Key` en crear/mover/deshacer, pero FastAPI no permitía esa cabecera en el preflight. El navegador bloqueaba el `POST` antes de alcanzar el backend.
@@ -726,7 +734,7 @@ Corrige un bloqueo aparente en Puzzles personales: la protección opcional de ra
 
 ## Estado actual
 
-La versión canónica está en `RELEASE.txt`. Desarrollo local: Node 22 y Python 3.13. La estrategia de tests vive en `docs/TESTING.md`; el README conserva debajo el historial de cambios para contexto.
+La versión canónica está en `RELEASE.txt`. Desarrollo local: Node 22 y Python 3.13. Los entrypoints reproducibles de tests están documentados en la sección **Tests** de este README y protegidos por un gate de paridad con CI.
 
 ### v16.6dm22 · Workers AI con voz común + retrato del jugador
 
@@ -1343,7 +1351,7 @@ Para bajar todo: `docker compose down`.
 
 ### Local, sin Docker
 
-Requiere Python 3.13+ y Node.js 18+. Son dos procesos separados.
+Requiere Python 3.13+ y Node.js 20+. Son dos procesos separados.
 
 ```bash
 # Backend
@@ -1366,20 +1374,24 @@ defecto usa `mongodb://localhost:27017`).
 
 ### Tests
 
-```bash
-# Backend
-cd backend-python
-pip install -r requirements-dev.txt
-pytest -v
+El camino recomendado es reproducible desde un checkout limpio:
 
-# Frontend
-cd frontend
-npm test           # corre toda la suite una vez
-npm run test:watch # modo watch
+```bash
+# 1) Instala exactamente lo fijado por los lockfiles/requirements,
+#    crea .venv y prepara Chromium de Playwright.
+make bootstrap-test
+
+# 2) Ejecuta el mismo núcleo funcional que protege CI:
+#    preflight + frontend + backend + journeys críticos de navegador.
+make test-all-local
+
+# 3) Si la distro local mete ruido, usa el runner hermético opcional.
+make test-in-docker
 ```
 
-Hay suites de backend y frontend para motor de IA, endpoints, combate, rating, torneo, análisis de partidas, autenticación y el resto de módulos. `.github/workflows/cicd.yml` ejecuta el pipeline principal en cada push y pull request; en `main` encadena `Tests → Cloudflare Worker · Terraform → GitHub Pages`. Los workflows auxiliares de coverage/E2E completo son informativos/manuales o programados; el deploy de producción no vive en ellos.
-frontend antes de publicar — si algo falla, el deploy no arranca.
+Los comandos específicos siguen disponibles (`make test-frontend`, `make test-backend-smoke`, `make test-backend-integration`, `make e2e-critical`, `make e2e`). `make release-gate` conserva la pasada pesada con seguridad, imágenes Docker, coverage y smoke del stack real. El gate `test_entrypoint_parity.py` impide que GitHub Actions y los entrypoints locales vuelvan a ejecutar familias distintas por accidente.
+
+`.github/workflows/cicd.yml` consume esos mismos targets de Make en cada push y pull request; en `main` el despliegue sólo continúa después de que el commit probado haya superado sus gates.
 
 ## Modos de juego
 
@@ -1406,8 +1418,7 @@ frontend antes de publicar — si algo falla, el deploy no arranca.
   capturas, peones, dama, jaques y enroques. El estilo sólo desempata variantes
   casi equivalentes del minimax; no convierte tus manías en blunders artificiales.
 - **Espectador** — dos CPU jugando entre sí, con pausas configurables.
-- **Aprendizaje** — diez lecciones interactivas, una por pieza más
-  enroque y jaque mate.
+- **Escuela de Matthias** — cinco cursos progresivos (Básico → Avanzado) con práctica hands-on sobre tablero, secuencias de varias jugadas y un examen obligatorio para promocionar de curso.
 - **Aperturas famosas** — dieciocho aperturas clásicas, reintentos
   jugada por jugada con explicación en cada una.
 - **Puzzle** — posiciones cortas para resolver (mate en 1, mate en 2,

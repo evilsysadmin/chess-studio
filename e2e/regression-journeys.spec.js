@@ -104,11 +104,11 @@ test('Matthias · se presenta una vez, lidera la guía y al reabrirla no repite 
   await expect.poll(() => page.evaluate(() => localStorage.getItem('matthias.onboarded'))).toBe('2');
 
   await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Retomar guía/ })).toContainText('0/3');
+  await expect(page.getByRole('button', { name: /Retomar guía/ })).toContainText('0/4');
   await page.reload();
   await expect(page.getByRole('region', { name: 'Guía rápida de Chess Studio' })).toHaveCount(0);
   const resumeGuide = page.getByRole('button', { name: /Retomar guía/ });
-  await expect(resumeGuide).toContainText('0/3');
+  await expect(resumeGuide).toContainText('0/4');
   await resumeGuide.click();
   const reopened = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(reopened).toBeVisible();
@@ -452,7 +452,7 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
   await dismissHomeGuide(page);
   await buttonWithHeading(page, 'Escuela de Matthias').click();
 
-  await expect(page.getByRole('heading', { name: 'Aprende moviendo piezas, no leyendo un prospecto.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Aprende jugando. Aprueba demostrando.', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
   await expect(page.getByText('Lleva el peón blanco de e2 a e4.', { exact: true })).toBeVisible();
   await clickBoardMove(page, 'e2', 'e4');
@@ -461,7 +461,36 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
   await expect(page.getByRole('button', { name: 'Siguiente lección', exact: true })).toBeEnabled();
 
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Aprende moviendo piezas, no leyendo un prospecto.', exact: true })).toBeVisible();
-  await expect(page.getByLabel(/1 de 9 lecciones completadas/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Aprende jugando. Aprueba demostrando.', exact: true })).toBeVisible();
+  await expect(page.getByLabel(/0 de 5 cursos aprobados; 1 de .* lecciones completadas/i)).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']?.completed)).toBe(true);
+});
+
+test('Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar', async ({ page }) => {
+  const basicCourseProgress = JSON.stringify({
+    'pawn-double-step': { completed: true },
+    'pawn-capture': { completed: true },
+    'rook-lines': { completed: true },
+    'bishop-diagonal': { completed: true },
+    'knight-jump': { completed: true },
+    'queen-power': { completed: true },
+    'king-step': { completed: true },
+    'castle-short': { completed: true },
+  });
+  await mockApi(page, { profileSeed: {
+    'chess-study-matthias-school-v1': basicCourseProgress,
+  } });
+  await login(page);
+  await dismissHomeGuide(page);
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+
+  await expect(page.getByRole('heading', { name: 'Examen básico · mate en una', exact: true })).toBeVisible();
+  const basicMedium = page.getByRole('button', { name: /Básico-medio.*Bloqueado/i });
+  await expect(basicMedium).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Dame una pista', exact: true })).toHaveCount(0);
+
+  await clickBoardMove(page, 'f7', 'g7');
+  await expect(page.getByText('✓ aprobado', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Básico-medio.*0\/4/i })).toBeEnabled();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['mate-one']?.completed)).toBe(true);
 });

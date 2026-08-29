@@ -1,0 +1,32 @@
+# Runner reproducible para la suite funcional de Chess Studio.
+# La imagen oficial de Playwright fija Node + Chromium; Python vive en una
+# venv creada por el mismo Makefile que usan local y CI.
+FROM mcr.microsoft.com/playwright:v1.62.1-noble
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    CI=true \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends make python3 python3-venv python3-pip ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Dependencias en capas estables: cambiar una lección o un componente no obliga
+# a reinstalar npm/pip al reconstruir el runner.
+COPY Makefile .python-version ./
+COPY scripts/check_python.py scripts/check_python.py
+COPY frontend/package.json frontend/package-lock.json frontend/
+COPY backend-python/requirements.txt backend-python/requirements-dev.txt backend-python/
+COPY e2e/package.json e2e/package-lock.json e2e/
+RUN make frontend-install \
+    && make backend-install \
+    && cd e2e && npm ci
+
+# El .dockerignore excluye artefactos locales para que no pisen las capas
+# instaladas dentro de la imagen ni inflen el contexto de build.
+COPY . .
+
+CMD ["make", "test-all-local"]

@@ -6,33 +6,48 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import {
+  MATTHIAS_SCHOOL_COURSES,
   MATTHIAS_SCHOOL_LESSONS,
   incrementMatthiasSchoolAttempt,
+  isSchoolLessonUnlocked,
   loadMatthiasSchoolProgress,
   markMatthiasSchoolLessonComplete,
+  matthiasSchoolCourseSummary,
   matthiasSchoolSummary,
+  nextHumanSchoolStep,
+  schoolLineForLesson,
+  schoolLessonsForCourse,
 } from '../matthiasSchool.js';
 
-// Permite consultar movimientos legales de la pieza seleccionada aunque el FEN
-// de entrenamiento tenga otro turno. La Escuela no es una partida competitiva.
-function withTurn(fen, color) {
-  const parts = fen.split(' ');
-  parts[1] = color;
-  return parts.join(' ');
+function initialCoachText(lesson) {
+  if (lesson.exam) {
+    const margin = Number(lesson.maxMistakes || 0);
+    return `Examen de promoción. ${lesson.objective} ${margin > 0 ? `Tienes margen para ${margin} error${margin === 1 ? '' : 'es'}.` : 'Sin margen de error.'} Y no, no hay pista.`;
+  }
+  return `Objetivo: ${lesson.objective} Hazlo en el tablero. Si sale mal, sobrevivo; tú probablemente también.`;
 }
 
-function initialCoachText(lesson) {
-  return `Objetivo: ${lesson.objective} Hazlo en el tablero. Si sale mal, sobrevivo; tú probablemente también.`;
+function firstSchoolIndex(progress) {
+  const summary = matthiasSchoolSummary(progress);
+  const index = MATTHIAS_SCHOOL_LESSONS.findIndex((lesson) => lesson.id === summary.nextLessonId);
+  return index >= 0 ? index : 0;
+}
+
+function humanMoveCount(lesson) {
+  return schoolLineForLesson(lesson).filter((step) => !step.auto).length;
 }
 
 export default function Tutorial({ onExit }) {
   const [section, setSection] = useState('school');
-  const [index, setIndex] = useState(0);
-  const lesson = MATTHIAS_SCHOOL_LESSONS[index];
-  const [practiceFen, setPracticeFen] = useState(lesson.fen);
-  const [selected, setSelected] = useState(null);
-  const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(lesson) }));
   const [schoolProgress, setSchoolProgress] = useState(() => loadMatthiasSchoolProgress());
+  const [index, setIndex] = useState(() => firstSchoolIndex(loadMatthiasSchoolProgress()));
+  const lesson = MATTHIAS_SCHOOL_LESSONS[index];
+  const [practiceFen, setPracticeFen] = useState(() => MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())]?.fen || MATTHIAS_SCHOOL_LESSONS[0].fen);
+  const [selected, setSelected] = useState(null);
+  const [lineIndex, setLineIndex] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
+  const [examFailed, setExamFailed] = useState(false);
+  const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
   const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
@@ -43,51 +58,128 @@ export default function Tutorial({ onExit }) {
   const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
   const schoolSummary = useMemo(() => matthiasSchoolSummary(schoolProgress), [schoolProgress]);
   const lessonComplete = schoolProgress?.[lesson.id]?.completed === true;
+  const lessonUnlocked = isSchoolLessonUnlocked(schoolProgress, lesson.id) || lessonComplete;
+  const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
+  const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
+  const completedHumanMoves = line.slice(0, lineIndex).filter((step) => !step.auto).length;
+  const totalHumanMoves = humanMoveCount(lesson);
 
   function goTo(newIndex) {
     const clamped = Math.max(0, Math.min(MATTHIAS_SCHOOL_LESSONS.length - 1, newIndex));
     const next = MATTHIAS_SCHOOL_LESSONS[clamped];
+    const unlocked = isSchoolLessonUnlocked(schoolProgress, next.id) || schoolProgress?.[next.id]?.completed === true;
+    if (!unlocked) return;
     setIndex(clamped);
     setPracticeFen(next.fen);
     setSelected(null);
+    setLineIndex(0);
+    setMistakes(0);
+    setExamFailed(false);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
   }
 
   const legalTargets = useMemo(() => {
-    if (!selected) return [];
-    const piece = new Chess(practiceFen).get(selected);
-    if (!piece) return [];
-    const temp = new Chess(withTurn(practiceFen, piece.color));
-    return temp.moves({ square: selected, verbose: true }).map((m) => ({ to: m.to, san: m.san }));
-  }, [selected, practiceFen]);
+    if (!selected || examFailed || lessonComplete) return [];
+    try {
+      const board = new Chess(practiceFen);
+      const piece = board.get(selected);
+      if (!piece || piece.color !== board.turn()) return [];
+      return board.moves({ square: selected, verbose: true }).map((move) => ({ to: move.to, san: move.san }));
+    } catch {
+      return [];
+    }
+  }, [selected, practiceFen, examFailed, lessonComplete]);
 
   function recordMiss(text) {
     setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
+    const nextMistakes = mistakes + 1;
+    setMistakes(nextMistakes);
+    setSelected(null);
+    if (lesson.exam && nextMistakes > Number(lesson.maxMistakes || 0)) {
+      setExamFailed(true);
+      setCoach({ tone: 'retry', text: `Suspendido. ${text} Has agotado el margen del examen. Repite cuando quieras; prefiero eso a promocionarte por lástima.` });
+      return;
+    }
     setCoach({ tone: 'retry', text });
   }
 
-  function resetLesson({ keepCoach = false } = {}) {
+  function resetLesson({ keepCoach = false, clearFailure = true } = {}) {
     setPracticeFen(lesson.fen);
     setSelected(null);
+    setLineIndex(0);
+    if (clearFailure) {
+      setMistakes(0);
+      setExamFailed(false);
+    }
     if (!keepCoach) setCoach({ tone: 'neutral', text: initialCoachText(lesson) });
   }
 
+  function finishLesson(finalFen) {
+    setPracticeFen(finalFen);
+    setSelected(null);
+    setLineIndex(line.length);
+    setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
+    setCoach({ tone: 'success', text: lesson.success });
+  }
+
+  function applyCorrectHumanMove(from, to) {
+    let board;
+    try {
+      board = new Chess(practiceFen);
+      const move = board.move({ from, to, promotion: 'q' });
+      if (!move) throw new Error('illegal');
+    } catch {
+      recordMiss('La jugada dejó de ser legal al aplicarla. Reiniciamos antes de acusar al continuo espacio-tiempo.');
+      resetLesson({ keepCoach: true, clearFailure: false });
+      return;
+    }
+
+    let cursor = lineIndex + 1;
+    let autoReplies = 0;
+    while (cursor < line.length && line[cursor].auto) {
+      const response = line[cursor];
+      const replyMove = board.move({ from: response.from, to: response.to, promotion: 'q' });
+      if (!replyMove) {
+        setCoach({ tone: 'retry', text: 'La respuesta programada de la lección ya no es legal. He parado el ejercicio para no enseñarte basura.' });
+        return;
+      }
+      cursor += 1;
+      autoReplies += 1;
+    }
+
+    if (cursor >= line.length) {
+      finishLesson(board.fen());
+      return;
+    }
+
+    setPracticeFen(board.fen());
+    setLineIndex(cursor);
+    setSelected(null);
+    const next = nextHumanSchoolStep(lesson, cursor);
+    const done = line.slice(0, cursor).filter((step) => !step.auto).length;
+    setCoach({
+      tone: 'neutral',
+      text: `${autoReplies ? 'Bien. El rival ha respondido. ' : 'Bien. '}${next?.note || `Sigue con la secuencia: movimiento ${done + 1} de ${totalHumanMoves}.`} No improvises una ópera todavía.`,
+    });
+  }
+
   function handleSquareClick(square) {
-    if (lessonComplete) return;
-    const board = new Chess(practiceFen);
+    if (lessonComplete || examFailed || !lessonUnlocked || !expected) return;
+    let board;
+    try { board = new Chess(practiceFen); } catch { return; }
     const piece = board.get(square);
 
     if (!selected) {
       if (!piece) {
-        recordMiss(`Has seleccionado ${square}, una magnífica casilla vacía. Prueba con el ${lesson.piece} que te he señalado.`);
+        recordMiss(`Has seleccionado ${square}, una magnífica casilla vacía. Busca la pieza que debe iniciar este paso.`);
         return;
       }
-      if (square !== lesson.from) {
-        recordMiss(`Esa pieza existe, sí. Bien observado. Pero hoy entrenamos el ${lesson.piece} de ${lesson.from}.`);
+      if (square !== expected.from) {
+        recordMiss(`Esa pieza existe, sí. Pero la secuencia pide empezar este paso desde ${expected.from}. Mira la posición, no mi paciencia.`);
         return;
       }
       setSelected(square);
-      setCoach({ tone: 'neutral', text: `Bien. ${lesson.from} seleccionado. Ahora ejecuta el objetivo sin convertirlo en una tesis doctoral.` });
+      setCoach({ tone: 'neutral', text: `${square} seleccionado. Ejecuta el paso ${completedHumanMoves + 1} de ${totalHumanMoves}.` });
       return;
     }
 
@@ -99,31 +191,22 @@ export default function Tutorial({ onExit }) {
 
     const target = legalTargets.find((move) => move.to === square);
     if (!target) {
-      if (piece && square === lesson.from) return;
-      recordMiss(`El ${lesson.piece} no puede ir de ${selected} a ${square}. Las reglas siguen siendo bastante inflexibles, incluso contigo.`);
-      setSelected(null);
+      recordMiss(`La pieza no puede ir de ${selected} a ${square}. Las reglas siguen siendo bastante inflexibles, incluso contigo.`);
       return;
     }
 
-    if (selected !== lesson.from || square !== lesson.to) {
+    if (selected !== expected.from || square !== expected.to) {
       recordMiss(`Legal, sí. Lo que te he pedido, no. Objetivo: ${lesson.objective} Paciencia; todavía no llamo a la policía del ajedrez.`);
-      setSelected(null);
       return;
     }
 
-    const selectedPiece = board.get(selected);
-    const temp = new Chess(withTurn(practiceFen, selectedPiece.color));
-    const move = temp.move({ from: selected, to: square, promotion: 'q' });
-    if (!move) {
-      recordMiss('Esa jugada parecía legal y luego dejó de serlo. Reiniciamos antes de acusar a la física.');
-      resetLesson({ keepCoach: true });
-      return;
-    }
-    setPracticeFen(temp.fen());
-    setSelected(null);
-    setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
-    setCoach({ tone: 'success', text: lesson.success });
+    applyCorrectHumanMove(selected, square);
   }
+
+  const nextIndex = index + 1;
+  const nextLesson = MATTHIAS_SCHOOL_LESSONS[nextIndex] || null;
+  const nextUnlocked = nextLesson ? isSchoolLessonUnlocked(schoolProgress, nextLesson.id) || schoolProgress?.[nextLesson.id]?.completed === true : false;
+  const courseSummary = matthiasSchoolCourseSummary(lesson.courseId, schoolProgress);
 
   return (
     <div className="tutorial-shell matthias-school-shell">
@@ -143,12 +226,7 @@ export default function Tutorial({ onExit }) {
         <div className="mechanic-library">
           <aside className="mechanic-library-list">
             {MECHANIC_TUTORIALS.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                className={item.id === mechanic?.id ? 'active' : ''}
-                onClick={() => { setMechanicId(item.id); setMechanicStep(0); }}
-              >
+              <button type="button" key={item.id} className={item.id === mechanic?.id ? 'active' : ''} onClick={() => { setMechanicId(item.id); setMechanicStep(0); }}>
                 <span>{item.group}</span><strong>{item.title}</strong><small>{mechanicProgress[item.id]?.seen ? '✓ visto' : 'nuevo'}</small>
               </button>
             ))}
@@ -160,8 +238,7 @@ export default function Tutorial({ onExit }) {
               <p className="hero-scope-note">{mechanic.summary}</p>
               <div className="mechanic-tutorial-step">
                 <span className="mechanic-tutorial-counter">{mechanicStep + 1}/{mechanic.steps.length}</span>
-                <h3>{mechanicCurrentStep.title}</h3>
-                <p>{mechanicCurrentStep.text}</p>
+                <h3>{mechanicCurrentStep.title}</h3><p>{mechanicCurrentStep.text}</p>
               </div>
               <div className="mechanic-tutorial-actions">
                 <button type="button" className="secondary-btn" disabled={mechanicStep === 0} onClick={() => setMechanicStep((i) => Math.max(0, i - 1))}>Anterior</button>
@@ -179,30 +256,58 @@ export default function Tutorial({ onExit }) {
           <header className="matthias-school-hero">
             <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
             <div>
-              <span className="section-label">ESCUELA DE MATTHIAS · HANDS-ON</span>
-              <h1>Aprende moviendo piezas, no leyendo un prospecto.</h1>
-              <p>Yo pongo una posición, tú haces la jugada. Si fallas, te explico por qué y volvemos a intentarlo. Con paciencia. No necesariamente con dulzura.</p>
+              <span className="section-label">ESCUELA DE MATTHIAS · 5 CURSOS · HANDS-ON</span>
+              <h1>Aprende jugando. Aprueba demostrando.</h1>
+              <p>Básico, Básico-medio, Medio, Medio-avanzado y Avanzado. Cada curso termina en un examen práctico: sin aprobarlo, no asciendes. Yo pongo la posición; tú haces el trabajo.</p>
             </div>
-            <div className="matthias-school-progress" aria-label={`${schoolSummary.completed} de ${schoolSummary.total} lecciones completadas`}>
-              <strong>{schoolSummary.completed}/{schoolSummary.total}</strong>
-              <span>{schoolSummary.complete ? 'Curso básico completado' : 'Fundamentos dominados'}</span>
+            <div className="matthias-school-progress" aria-label={`${schoolSummary.passedCourses} de ${schoolSummary.totalCourses} cursos aprobados; ${schoolSummary.completed} de ${schoolSummary.total} lecciones completadas`}>
+              <strong>{schoolSummary.passedCourses}/{schoolSummary.totalCourses}</strong>
+              <span>{schoolSummary.complete ? 'Escuela completada' : `Curso actual · ${schoolSummary.currentCourseLabel}`}</span>
               <i><b style={{ width: `${schoolSummary.total ? (schoolSummary.completed / schoolSummary.total) * 100 : 0}%` }} /></i>
             </div>
           </header>
 
+          <div className="matthias-school-course-strip" aria-label="Cursos de la Escuela de Matthias">
+            {MATTHIAS_SCHOOL_COURSES.map((course) => {
+              const summary = matthiasSchoolCourseSummary(course.id, schoolProgress);
+              return (
+                <button
+                  type="button"
+                  key={course.id}
+                  className={`${course.id === lesson.courseId ? 'active' : ''}${summary.passed ? ' passed' : ''}`}
+                  disabled={!summary.unlocked}
+                  onClick={() => {
+                    const first = schoolLessonsForCourse(course.id).find((item) => isSchoolLessonUnlocked(schoolProgress, item.id) && schoolProgress?.[item.id]?.completed !== true)
+                      || schoolLessonsForCourse(course.id)[0];
+                    goTo(MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === first.id));
+                  }}
+                >
+                  <span>{summary.passed ? '✓' : course.rank}</span><div><b>{course.label}</b><small>{summary.unlocked ? `${summary.completed}/${summary.total}` : 'Bloqueado · aprueba el anterior'}</small></div>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="matthias-school-layout">
-            <aside className="matthias-school-lessons" aria-label="Lecciones de la Escuela de Matthias">
-              {MATTHIAS_SCHOOL_LESSONS.map((item, lessonIndex) => {
+            <aside className="matthias-school-lessons" aria-label={`Lecciones del curso ${courseSummary.course?.label || ''}`}>
+              <div className="matthias-school-course-intro">
+                <span className="section-label">CURSO {courseSummary.course?.rank} · {courseSummary.course?.label}</span>
+                <p>{courseSummary.course?.description}</p>
+              </div>
+              {schoolLessonsForCourse(lesson.courseId).map((item) => {
+                const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((candidate) => candidate.id === item.id);
                 const complete = schoolProgress?.[item.id]?.completed === true;
+                const unlocked = isSchoolLessonUnlocked(schoolProgress, item.id) || complete;
                 return (
                   <button
                     type="button"
                     key={item.id}
-                    className={`${lessonIndex === index ? 'active' : ''}${complete ? ' complete' : ''}`}
+                    className={`${lessonIndex === index ? 'active' : ''}${complete ? ' complete' : ''}${item.exam ? ' exam' : ''}`}
+                    disabled={!unlocked}
                     onClick={() => goTo(lessonIndex)}
                   >
-                    <span>{complete ? '✓' : lessonIndex + 1}</span>
-                    <div><small>{item.eyebrow}</small><strong>{item.title}</strong></div>
+                    <span>{complete ? '✓' : item.exam ? 'E' : schoolLessonsForCourse(lesson.courseId).findIndex((row) => row.id === item.id) + 1}</span>
+                    <div><small>{item.exam ? 'EXAMEN DE PROMOCIÓN' : item.eyebrow}</small><strong>{item.title}</strong></div>
                   </button>
                 );
               })}
@@ -210,39 +315,37 @@ export default function Tutorial({ onExit }) {
 
             <div className="matthias-school-stage">
               <div className="board-column matthias-school-board">
-                <Board
-                  fen={practiceFen}
-                  onSquareClick={handleSquareClick}
-                  selectedSquare={selected}
-                  legalTargets={legalTargets}
-                />
+                <Board fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} />
                 <div className="matthias-school-board-actions">
-                  <button className="secondary-btn" onClick={() => resetLesson()}>Reiniciar</button>
-                  <button className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>
+                  <button className="secondary-btn" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : 'Reiniciar'}</button>
+                  {!lesson.exam && <button className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>}
                 </div>
               </div>
 
-              <article className="matthias-school-coach">
+              <article className={`matthias-school-coach${lesson.exam ? ' is-exam' : ''}`}>
                 <div className="matthias-school-coach-heading">
                   <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
                   <div><span className="section-label">{lesson.eyebrow}</span><h2>{lesson.title}</h2></div>
-                  {lessonComplete && <span className="matthias-school-complete-badge">✓ dominado</span>}
+                  {lessonComplete && <span className="matthias-school-complete-badge">✓ {lesson.exam ? 'aprobado' : 'dominado'}</span>}
                 </div>
-                <div className="matthias-school-objective"><b>Tu misión</b><p>{lesson.objective}</p></div>
-                <div className={`matthias-school-feedback is-${coach.tone}`} role="status" aria-live="polite">
-                  <b>Matthias</b><p>{coach.text}</p>
+                <div className="matthias-school-objective"><b>{lesson.exam ? 'Examen' : 'Tu misión'}</b><p>{lesson.objective}</p></div>
+                <div className="matthias-school-sequence-status" aria-label={`Secuencia ${Math.min(completedHumanMoves + (lessonComplete ? 0 : 1), totalHumanMoves)} de ${totalHumanMoves}`}>
+                  <span>Secuencia</span><b>{lessonComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</b>
+                  {lesson.exam && <em>{Number(lesson.maxMistakes || 0) > 0 ? `Errores ${mistakes}/${lesson.maxMistakes}` : mistakes > 0 ? 'Suspendido' : 'Sin margen de error'}</em>}
                 </div>
-                <details className="friendly-disclosure matthias-school-explanation">
-                  <summary>Por qué funciona</summary>
-                  <p>{lesson.explanation}</p>
-                </details>
+                <div className={`matthias-school-feedback is-${coach.tone}`} role="status" aria-live="polite"><b>Matthias</b><p>{coach.text}</p></div>
+                {(!lesson.exam || lessonComplete) && (
+                  <details className="friendly-disclosure matthias-school-explanation">
+                    <summary>Por qué funciona</summary><p>{lesson.explanation}</p>
+                  </details>
+                )}
                 <div className="tutorial-nav matthias-school-nav">
                   <button className="secondary-btn" onClick={() => goTo(index - 1)} disabled={index === 0}>Anterior</button>
-                  <span className="tutorial-progress">{index + 1} de {MATTHIAS_SCHOOL_LESSONS.length}</span>
-                  {index < MATTHIAS_SCHOOL_LESSONS.length - 1 ? (
-                    <button className="primary-btn" onClick={() => goTo(index + 1)} disabled={!lessonComplete}>Siguiente lección</button>
+                  <span className="tutorial-progress">{courseSummary.course?.label} · {courseSummary.completed}/{courseSummary.total}</span>
+                  {nextLesson ? (
+                    <button className="primary-btn" onClick={() => goTo(nextIndex)} disabled={!lessonComplete || !nextUnlocked}>{nextLesson.courseId !== lesson.courseId ? `Entrar en ${schoolSummary.courses.find((item) => item.course?.id === nextLesson.courseId)?.course?.label || 'siguiente curso'}` : nextLesson.exam ? 'Ir al examen' : 'Siguiente lección'}</button>
                   ) : (
-                    <button className="primary-btn" onClick={onExit} disabled={!lessonComplete}>Ir a jugar</button>
+                    <button className="primary-btn" onClick={onExit} disabled={!lessonComplete}>Graduarme y jugar</button>
                   )}
                 </div>
               </article>

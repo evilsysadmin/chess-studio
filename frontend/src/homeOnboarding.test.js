@@ -8,11 +8,13 @@ describe('home onboarding', () => {
     expect(isFreshAccount({ activity: [], tournament: { progressPoints: 15 } })).toBe(false);
   });
 
-  it('propone un recorrido corto y avanza sólo con progreso demostrado', () => {
-    expect(buildHomeOnboarding().next).toBe('game');
-    expect(buildHomeOnboarding().steps[0].detail).toMatch(/Reto opcional/);
-    expect(buildHomeOnboarding({ activity: [{ state: 'finished' }] }).next).toBe('puzzle');
-    expect(buildHomeOnboarding({ activity: [{ state: 'finished' }], puzzlesSolved: 2 }).next).toBe('insights');
-    expect(buildHomeOnboarding({ activity: [{ state: 'finished' }], puzzlesSolved: 2, insightsSeen: true })).toMatchObject({ complete: true, completed: 3, next: null });
+  it('presenta primero la Escuela y avanza sólo con progreso demostrado', () => {
+    expect(buildHomeOnboarding().next).toBe('school');
+    expect(buildHomeOnboarding().steps[0]).toMatchObject({ id: 'school', done: false });
+    expect(buildHomeOnboarding({ schoolStarted: true }).next).toBe('game');
+    expect(buildHomeOnboarding({ schoolStarted: true }).steps[1].detail).toMatch(/Reto opcional/);
+    expect(buildHomeOnboarding({ schoolStarted: true, activity: [{ state: 'finished' }] }).next).toBe('puzzle');
+    expect(buildHomeOnboarding({ schoolStarted: true, activity: [{ state: 'finished' }], puzzlesSolved: 2 }).next).toBe('insights');
+    expect(buildHomeOnboarding({ schoolStarted: true, activity: [{ state: 'finished' }], puzzlesSolved: 2, insightsSeen: true })).toMatchObject({ complete: true, completed: 4, next: null });
   });
 });

@@ -475,7 +475,7 @@ test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del 
 });
 
 
-test('Onboarding Home · Matthias presenta tres tarjetas clicables y navegar no descarta la guía', async ({ page }) => {
+test('Onboarding Home · Matthias presenta cuatro pasos y Escuela va primero', async ({ page }) => {
   await mockApi(page);
   await login(page);
 
@@ -483,27 +483,33 @@ test('Onboarding Home · Matthias presenta tres tarjetas clicables y navegar no 
   await expect(guide).toBeVisible();
   await expect(guide.getByText(/MATTHIAS · GUÍA DE CAMPO/i)).toBeVisible();
 
+  const schoolStep = guide.getByRole('button', { name: /^Entra en la Escuela de Matthias\./ });
   const gameStep = guide.getByRole('button', { name: /^Juega una partida\./ });
   const puzzleStep = guide.getByRole('button', { name: /^Resuelve un puzzle\./ });
   const insightsStep = guide.getByRole('button', { name: 'Mira Así juegas. Convierte tus partidas en una siguiente acción.', exact: true });
+  await expect(schoolStep).toBeEnabled();
   await expect(gameStep).toBeEnabled();
   await expect(puzzleStep).toBeEnabled();
   await expect(insightsStep).toBeEnabled();
 
-  const tournament = buttonWithHeading(page, 'Torneo');
-  await expect(tournament).toHaveClass(/home-onboarding-target/);
-  await expect(tournament.getByText('PASO 1/3 · SIGUIENTE', { exact: true })).toBeVisible();
+  const schoolCard = buttonWithHeading(page, 'Escuela de Matthias');
+  await expect(schoolCard).toHaveClass(/home-onboarding-target/);
+  await expect(schoolCard.getByText('PASO 1/4 · SIGUIENTE', { exact: true })).toBeVisible();
 
-  await gameStep.click();
+  await schoolStep.click();
+  await expect(page.getByRole('heading', { name: 'Aprende jugando. Aprueba demostrando.', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+
+  await guide.getByRole('button', { name: /^Juega una partida\./ }).click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
-
   await page.keyboard.press('Escape');
   guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();
 
   await guide.getByRole('button', { name: /^Resuelve un puzzle\./ }).click();
   await expect(page.locator('.puzzle-screen')).toBeVisible();
-
   await page.keyboard.press('Escape');
   guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();

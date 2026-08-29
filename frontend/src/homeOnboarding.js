@@ -22,11 +22,12 @@ export function markOnboardingInsightsSeen() {
   setProfileStorageItem(ONBOARDING_INSIGHTS_KEY, '1');
 }
 
-export function buildHomeOnboarding({ activity = [], puzzlesSolved = 0, insightsSeen = false } = {}) {
+export function buildHomeOnboarding({ activity = [], puzzlesSolved = 0, insightsSeen = false, schoolStarted = false } = {}) {
   const finishedGame = Array.isArray(activity) && activity.some((event) => event?.state === 'finished');
   const solvedPuzzle = Number(puzzlesSolved) > 0;
   const reviewedInsights = Boolean(insightsSeen);
   const steps = [
+    { id: 'school', label: 'Entra en la Escuela de Matthias', detail: 'Haz una lección hands-on en tablero y aprende cómo funciona el curso.', done: Boolean(schoolStarted) },
     { id: 'game', label: 'Juega una partida', detail: 'Torneo elige rival y puede proponerte un Reto opcional.', done: finishedGame },
     { id: 'puzzle', label: 'Resuelve un puzzle', detail: 'Prueba una táctica corta.', done: solvedPuzzle },
     { id: 'insights', label: 'Mira Así juegas', detail: 'Convierte tus partidas en una siguiente acción.', done: reviewedInsights },

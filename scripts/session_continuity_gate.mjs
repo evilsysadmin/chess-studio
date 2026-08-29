@@ -19,6 +19,7 @@ const combat = read('frontend/src/components/useCombatController.js');
 const smoke = read('e2e/smoke.spec.js');
 const regression = read('e2e/regression-journeys.spec.js');
 const ci = read('.github/workflows/cicd.yml');
+const makefile = read('Makefile');
 
 requireText(restore, "return classifyRestoreFailure(error) === 'stale-session';", 'restauración debe distinguir sesión obsoleta de fallo transitorio');
 requireText(restore, "Tu sesión sigue guardada; reintenta cuando vuelva el servidor.", 'fallo transitorio debe conservar snapshot y ofrecer reintento');
@@ -64,6 +65,8 @@ for (const scenario of [
 }
 requireText(regression, 'deploy · una release nueva no fuerza reload mientras la partida está activa', 'falta regresión E2E de aviso de release durante tablero activo');
 
+const ciRunsCriticalTarget = ci.includes('make e2e-critical');
+if (!ciRunsCriticalTarget) failures.push('CI crítico debe delegar los journeys de continuidad en make e2e-critical');
 for (const ciPattern of [
   'Partida rápida · una partida activa',
   'Torneo · una partida activa',
@@ -71,7 +74,7 @@ for (const ciPattern of [
   'Combat Chess · salir al menú conserva campaña',
   'deploy · una release nueva no fuerza reload',
 ]) {
-  if (!ci.includes(ciPattern)) failures.push(`CI crítico no ejecuta la regresión de continuidad: ${ciPattern}`);
+  if (!(ciRunsCriticalTarget && makefile.includes(ciPattern))) failures.push(`CI crítico no ejecuta la regresión de continuidad: ${ciPattern}`);
 }
 
 if (failures.length) {

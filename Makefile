@@ -15,13 +15,15 @@ else
 TRIVY_CACHE ?= $(HOME)/.cache/trivy
 endif
 TRIVY_DB_TTL_MINUTES ?= 720
+NODE_CHECK_JOBS ?= 8
+CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical test-parity-check
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
 doctor:
@@ -76,6 +78,26 @@ clean: ungame
 ## Frontend queda en node_modules; backend queda aislado en .venv.
 install: frontend-install backend-install install-hooks
 
+
+
+## Entorno reproducible de tests para un checkout limpio. Este es el punto de
+## entrada recomendado tanto para humanos como para agentes: lockfiles primero,
+## venv aislada y Chromium fijado por el package-lock de e2e.
+bootstrap-test: frontend-install backend-install e2e-install
+	@echo "==> Bootstrap de tests listo: frontend + backend + Playwright."
+
+## Mismo núcleo funcional que CI, ejecutado en una sola orden local. Security
+## con DB/red queda fuera a propósito; `make security` y `make release-gate`
+## siguen disponibles para la pasada pesada.
+test-all-local: static-preflight test-frontend test-backend-smoke test-backend-integration backend-check e2e-critical
+	@echo "==> Test local reproducible OK: contratos + frontend + backend + navegador crítico."
+
+## Sandbox hermético opcional. Útil cuando la distro local cambia Node/Python o
+## cuando queremos reproducir un fallo sin contaminar el host.
+test-in-docker:
+	@command -v docker >/dev/null || { echo "ERROR: Docker no está instalado."; exit 2; }
+	docker build -f Dockerfile.test -t chess-studio-test:local .
+	docker run --rm --shm-size=1g chess-studio-test:local
 
 ## Regenera el hook si el directorio oculto .githooks no llegó al copiar/descomprimir
 ## el proyecto. De este modo `make tests` se autocura incluso sin dotfiles.
@@ -247,12 +269,24 @@ coverage: coverage-fe coverage-be
 
 e2e-install: ensure-frontend-deps
 	cd e2e && npm ci
-	cd e2e && ./node_modules/.bin/playwright install chromium
+	@cd e2e && if [ "$${CI:-}" = "true" ]; then ./node_modules/.bin/playwright install --with-deps chromium; else ./node_modules/.bin/playwright install chromium; fi
 
-e2e: e2e-install frontend-build
+ensure-e2e-deps: ensure-frontend-deps
+	@if [ ! -x "e2e/node_modules/.bin/playwright" ]; then \
+		echo "==> Faltan dependencias E2E; ejecutando npm ci + Chromium..."; \
+		$(MAKE) --no-print-directory e2e-install; \
+	fi
+
+e2e-critical: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
+	cd e2e && ./node_modules/.bin/playwright test smoke.spec.js regression-journeys.spec.js --grep "$(CRITICAL_E2E_GREP)" --workers=2 --retries=0
+
+e2e: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
 	cd e2e && ./node_modules/.bin/playwright test
 
-e2e-combat-dom: e2e-install frontend-build
+e2e-combat-dom: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
 	cd e2e && ./node_modules/.bin/playwright test combat-dom.spec.js
 
 ## Smoke de integración REAL: nginx frontend + FastAPI + Mongo + auth/perfil.
@@ -354,9 +388,12 @@ release-check:
 test-flake-check:
 	node scripts/test_flake_gate.mjs
 
-static-preflight: test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check security-api cf-ai-preflight worker-test
+test-parity-check:
+	python3 scripts/test_entrypoint_parity.py
+
+static-preflight: test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check security-api cf-ai-preflight worker-test
 	@python3 scripts/synthetic_health_contract.py
-	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -P $(NODE_CHECK_JOBS) -n1 node --check
 	@python3 scripts/python_syntax_check.py
 	@echo "==> Static preflight OK (sin npm, Docker ni red)."
 
@@ -428,6 +465,9 @@ help:
 	@echo "  make build          - construye imágenes Docker"
 	@echo "  make clean          - borra contenedores/imágenes/volúmenes locales"
 	@echo "  make install        - instala frontend + backend (.venv) y activa pre-push"
+	@echo "  make bootstrap-test - prepara desde cero frontend + backend + Playwright"
+	@echo "  make test-all-local - ejecuta en una orden el mismo núcleo funcional de CI"
+	@echo "  make test-in-docker - ejecuta test-all-local en una imagen reproducible"
 	@echo "  make install-hooks  - activa/regenera .githooks/pre-push (alias: make hooks)"
 	@echo "  make test-frontend-smoke    - smoke frontend fail-fast (10 ficheros)"
 	@echo "  make test-frontend-unit     - lógica/comportamiento frontend"
@@ -443,7 +483,8 @@ help:
 	@echo "  make test           - alias histórico de make tests"
 	@echo "  make frontend-build - compila el frontend fuera de Docker"
 	@echo "  make bundle-report  - resume chunks/gzip y avisa de engordes (informativo)"
-	@echo "  make e2e            - smoke E2E con Playwright/Chromium (pesado)"
+	@echo "  make e2e-critical   - journeys críticos de CI con Chromium"
+	@echo "  make e2e            - suite E2E completa con Playwright/Chromium (pesado)"
 	@echo "  make compose-smoke  - stack real Docker: frontend + FastAPI + Mongo + auth/perfil"
 	@echo "  make coverage       - coverage informativo frontend V8 + backend pytest-cov (no bloquea)"
 	@echo "  make e2e-combat-dom - regresiones DOM de Mesa de Guerra en Chromium"

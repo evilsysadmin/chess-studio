@@ -106,7 +106,8 @@ export default function Menu({
     activity,
     puzzlesSolved: loadPuzzlesSolved(),
     insightsSeen: onboardingInsightsSeen(),
-  }), [activity]);
+    schoolStarted: schoolSummary.completed > 0,
+  }), [activity, schoolSummary.completed]);
 
   useEffect(() => {
     let active = true;
@@ -207,7 +208,7 @@ export default function Menu({
 
   const homeGuideResumeLabel = onboarding.complete
     ? 'Guía rápida'
-    : `Retomar guía · ${onboarding.completed}/3`;
+    : `Retomar guía · ${onboarding.completed}/${onboarding.steps.length}`;
 
   function hideHomeGuideForStep() {
     // Seguir el recorrido no equivale a descartarlo. Al volver a Home, el
@@ -222,6 +223,7 @@ export default function Menu({
   }
 
   function openOnboardingStep(stepId) {
+    if (stepId === 'school') { hideHomeGuideForStep(); onTutorial(); return; }
     if (stepId === 'game') { hideHomeGuideForStep(); if (hasSavedGame) onContinue(); else onTournament(); return; }
     if (stepId === 'puzzle') { hideHomeGuideForStep(); onPuzzle(); return; }
     if (stepId === 'insights') { openOnboardingInsights(); }
@@ -239,7 +241,7 @@ export default function Menu({
   function onboardingCue(stepId) {
     if (!showHomeGuide || onboarding.next !== stepId) return null;
     const index = onboarding.steps.findIndex((step) => step.id === stepId);
-    return <span className="home-onboarding-cue" aria-hidden="true">PASO {index + 1}/3 · SIGUIENTE</span>;
+    return <span className="home-onboarding-cue" aria-hidden="true">PASO {index + 1}/{onboarding.steps.length} · SIGUIENTE</span>;
   }
 
   function onboardingTargetClass(stepId) {
@@ -269,10 +271,10 @@ export default function Menu({
           <div className="home-start-guide-copy home-start-guide-matthias">
             <img className="home-start-guide-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
             <div className="home-start-guide-copy-body">
-              <span className="section-label">{CPU_IDENTITY.name} · GUÍA DE CAMPO · {onboarding.completed}/3</span>
-              <h2>{matthiasGuidesInitialWelcome ? 'Guten Morgen. Soy Matthias.' : onboarding.complete ? 'Ya conoces el circuito básico.' : freshAccount ? 'Tres pasos y ya sabes dónde está todo.' : 'Sigue desde el siguiente paso útil.'}</h2>
+              <span className="section-label">{CPU_IDENTITY.name} · GUÍA DE CAMPO · {onboarding.completed}/{onboarding.steps.length}</span>
+              <h2>{matthiasGuidesInitialWelcome ? 'Guten Morgen. Soy Matthias.' : onboarding.complete ? 'Ya conoces el circuito básico.' : freshAccount ? 'Cuatro pasos y ya sabes dónde está todo.' : 'Sigue desde el siguiente paso útil.'}</h2>
               <p>{matthiasGuidesInitialWelcome
-                ? 'El mayor cabronazo ajedrecista a este lado del Tajo. Te ayudaré a triunfar o fracasar; lo que tú decidas. Primero te enseño las tres cosas que realmente necesitas.'
+                ? 'El mayor cabronazo ajedrecista a este lado del Tajo. Te ayudaré a triunfar o fracasar; lo que tú decidas. Empezamos en mi Escuela: tablero, cinco cursos y exámenes de promoción. Después ya te suelto por Chess Studio.'
                 : onboarding.complete ? 'Bien. Ya sabes moverte por aquí. Juega, entrena y revisa tu diagnóstico cuando te apetezca.' : 'No necesitas aprender todos los modos ahora. El resplandor dorado marca tu siguiente paso; vuelve a Home y yo seguiré desde donde toca.'}</p>
             </div>
           </div>
@@ -362,7 +364,7 @@ export default function Menu({
       <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
         <div className="home-group-heading">
           <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
-          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && !showHomeGuide && <button type="button" className="home-context-guide" onClick={reopenHomeGuide} aria-label={onboarding.complete ? 'Abrir guía rápida' : `Retomar guía, ${onboarding.completed} de 3 pasos completados`}><span>?</span> {homeGuideResumeLabel}</button>}</div>
+          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && !showHomeGuide && <button type="button" className="home-context-guide" onClick={reopenHomeGuide} aria-label={onboarding.complete ? 'Abrir guía rápida' : `Retomar guía, ${onboarding.completed} de ${onboarding.steps.length} pasos completados`}><span>?</span> {homeGuideResumeLabel}</button>}</div>
         </div>
         <div className="menu-grid menu-grid-3 home-primary-grid">
           <TutorialModeCard tutorialId="tournament" className={`menu-card accent-brass home-primary-card home-mode-card home-mode-featured${hasSavedGame ? '' : onboardingTargetClass('game')}`} onClick={onTournament}>
@@ -440,8 +442,9 @@ export default function Menu({
             <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Puzzles personales</b><i>Desde tus partidas</i></span><h3>Entrena tus mayores errores</h3><span className="home-mode-description">Tus errores reales se convierten en posiciones para que no vuelvas a pisar el mismo rastrillo.</span></span><span className="menu-card-cta">Entrenar pendientes <b aria-hidden="true">→</b></span>
           </TutorialModeCard>
 
-          <button type="button" className="menu-card accent-success home-primary-card home-mode-card home-learning-card" onClick={onTutorial}>
-            <span className="home-mode-icon" aria-hidden="true"><IconBook className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Fundamentos</b><i>{schoolSummary.completed}/{schoolSummary.total} dominadas</i></span><h3>Escuela de Matthias</h3><span className="home-mode-description">Aprende movimientos y reglas directamente sobre el tablero. Matthias explica, corrige y juzga.</span></span><span className="menu-card-cta">Entrar en clase <b aria-hidden="true">→</b></span>
+          <button type="button" className={`menu-card accent-success home-primary-card home-mode-card home-learning-card home-school-card${onboardingTargetClass('school')}`} onClick={onTutorial}>
+            {onboardingCue('school')}
+            <span className="home-mode-icon" aria-hidden="true"><IconBook className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>5 cursos · con examen</b><i>{schoolSummary.complete ? 'Graduado' : `${schoolSummary.currentCourseLabel} · ${schoolSummary.currentCourseCompleted}/${schoolSummary.currentCourseTotal}`}</i></span><h3>Escuela de Matthias</h3><span className="home-mode-description">Del movimiento básico al cálculo avanzado, siempre hands-on sobre el tablero. Aprueba cada examen para desbloquear el siguiente curso.</span></span><span className="menu-card-cta">{schoolSummary.completed > 0 ? 'Continuar formación' : 'Empezar por aquí'} <b aria-hidden="true">→</b></span>
           </button>
         </div>
 

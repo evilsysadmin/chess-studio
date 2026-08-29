@@ -24,7 +24,7 @@ test('desafíos diarios · sección propia no desborda en móvil', async ({ page
   await login(page);
   await page.getByRole('button', { name: /Abrir desafíos|Ver desafíos/ }).click();
   await expect(page.getByRole('heading', { name: 'Desafíos diarios', exact: true })).toBeVisible();
-  await expect(page.getByText('0/3', { exact: true })).toBeVisible();
+  await expect(page.getByText('0/4', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
 
@@ -80,7 +80,7 @@ test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse'
   await expect(guide).toHaveCount(0);
   await page.getByRole('button', { name: /Retomar guía/ }).click();
   await expect(guide).toBeVisible();
-  await expect(guide.getByRole('button', { name: /^Juega una partida\./ })).toBeVisible();
+  await expect(guide.getByRole('button', { name: /^Entra en la Escuela de Matthias\./ })).toBeVisible();
 });
 
 test('Home · cuenta y cierre de sesión son acciones accesibles', async ({ page }) => {

@@ -191,7 +191,7 @@ if (checkCiWiring) {
   if (workflowSource.includes('npm install --no-save') && workflowSource.includes('@vitest/coverage-v8')) fail('CI no debe mutar node_modules con un segundo npm install para coverage');
   if (!workflowSource.includes('--cov-branch')) fail('CI backend no mide branch coverage');
   if (!workflowSource.includes('Coverage frontend (informativo)') || !workflowSource.includes('Coverage backend (informativo)')) fail('CI debe etiquetar coverage como informativo');
-  if (!workflowSource.includes('scripts/bundle_size_report.mjs') || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
+  if ((!workflowSource.includes('scripts/bundle_size_report.mjs') && !workflowSource.includes('make bundle-report')) || !makefile.includes('bundle-report:')) fail('CI/Makefile deben conservar el informe informativo de tamaño de bundle');
   for (const browserCriticalPattern of [
     'login → menú',
     'Partida rápida · una partida activa',
@@ -205,8 +205,9 @@ if (checkCiWiring) {
     'Matthias · el briefing persistente aparece antes de una partida rápida',
     'Matthias · banco de personalidad Admin usa sólo datos sintéticos',
     'Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5',
+    'Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar',
   ]) {
-    if (!workflowSource.includes(browserCriticalPattern)) fail(`Browser smoke crítico no ejecuta: ${browserCriticalPattern}`);
+    if (!workflowSource.includes(browserCriticalPattern) && !makefile.includes(browserCriticalPattern)) fail(`Browser smoke crítico no ejecuta: ${browserCriticalPattern}`);
   }
   const informationalCoverageSteps = (coverageWorkflowSource.match(/continue-on-error:\s*true/g) || []).length;
   if (informationalCoverageSteps < 2) fail('Coverage frontend/backend debe ser no bloqueante con continue-on-error');

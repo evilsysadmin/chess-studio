@@ -259,3 +259,92 @@
   .matthias-school-nav .tutorial-progress { width: 100%; order: -1; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) { .matthias-school-progress i b { transition: none; } }
+
+/* dm46zfrg · Escuela por cursos. La progresión se ve, pero no se convierte
+   en un RPG: aprobar el examen del curso anterior es el único candado. */
+.matthias-school-course-strip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .45rem;
+}
+.matthias-school-course-strip button {
+  min-width: 0;
+  min-height: 54px;
+  padding: .48rem .55rem;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: .48rem;
+  align-items: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ui-panel) 94%, var(--ink) 6%);
+  color: var(--parchment-dim);
+  text-align: left;
+  cursor: pointer;
+}
+.matthias-school-course-strip button > span {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border: 1px solid var(--ink-3); border-radius: 50%;
+  color: var(--brass-dim); font: 800 .62rem var(--font-mono);
+}
+.matthias-school-course-strip button div { min-width: 0; display: grid; gap: .08rem; }
+.matthias-school-course-strip button b { overflow: hidden; color: var(--parchment); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.matthias-school-course-strip button small { overflow: hidden; color: var(--parchment-dim); font-size: .55rem; text-overflow: ellipsis; white-space: nowrap; }
+.matthias-school-course-strip button.active { border-color: color-mix(in srgb, var(--brass) 58%, var(--ui-border)); background: color-mix(in srgb, var(--brass) 8%, var(--ui-panel)); }
+.matthias-school-course-strip button.passed > span { border-color: color-mix(in srgb, var(--success, #69a978) 70%, var(--ui-border)); color: var(--success, #8fcb9d); }
+.matthias-school-course-strip button:disabled { opacity: .44; cursor: not-allowed; }
+
+.matthias-school-course-intro {
+  padding: .58rem .62rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: rgba(0,0,0,.12);
+}
+.matthias-school-course-intro p { margin: .2rem 0 0; color: var(--parchment-dim); font-size: .66rem; line-height: 1.42; }
+.matthias-school-lessons button:disabled { opacity: .42; cursor: not-allowed; }
+.matthias-school-lessons button.exam { border-color: color-mix(in srgb, var(--brass) 42%, var(--ui-border)); background: linear-gradient(90deg, rgba(198,164,93,.06), transparent), var(--ui-panel); }
+.matthias-school-lessons button.exam > span { border-radius: 7px; border-color: var(--brass-dim); color: var(--brass); }
+.matthias-school-coach.is-exam { border-color: color-mix(in srgb, var(--brass) 45%, var(--ui-border)); box-shadow: inset 0 1px rgba(198,164,93,.04); }
+.matthias-school-sequence-status {
+  display: flex;
+  align-items: center;
+  gap: .42rem;
+  min-height: 30px;
+  padding: .35rem .48rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: rgba(0,0,0,.12);
+  color: var(--parchment-dim);
+  font-size: .62rem;
+}
+.matthias-school-sequence-status > span { text-transform: uppercase; letter-spacing: .06em; }
+.matthias-school-sequence-status b { color: var(--brass); font: 800 .7rem var(--font-mono); }
+.matthias-school-sequence-status em { margin-left: auto; color: var(--parchment-dim); font-style: normal; }
+.matthias-school-coach.is-exam .matthias-school-sequence-status em { color: color-mix(in srgb, var(--brass) 80%, var(--parchment-dim)); }
+
+@media (max-width: 980px) {
+  .matthias-school-course-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .matthias-school-course-strip { grid-template-columns: 1fr 1fr; }
+  .matthias-school-course-strip button:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 420px) {
+  .matthias-school-course-strip { grid-template-columns: 1fr; }
+  .matthias-school-course-strip button:last-child { grid-column: auto; }
+}
+
+/* Home: la Escuela no queda como una herramienta secundaria. El borde y el
+   kicker explican de un vistazo que hay un recorrido de cinco cursos. */
+.home-school-card {
+  border-color: color-mix(in srgb, var(--success, #69a978) 42%, var(--ui-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--success, #69a978) 6%, transparent), transparent 45%),
+    var(--ui-panel);
+}
+.home-school-card .home-mode-kicker b { color: color-mix(in srgb, var(--success, #8fcb9d) 82%, var(--parchment)); }
+.home-school-card.home-onboarding-target.is-next {
+  border-color: color-mix(in srgb, var(--brass) 72%, var(--ui-border));
+  box-shadow: 0 0 0 1px rgba(198,164,93,.16), 0 12px 28px rgba(0,0,0,.14);
+}

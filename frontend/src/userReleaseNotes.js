@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrg',
+    title: 'La Escuela de Matthias ya es un curso de verdad',
+    highlights: [
+      'La Escuela se organiza en cinco cursos: Básico, Básico-medio, Medio, Medio-avanzado y Avanzado, con dificultad y objetivos cada vez más serios.',
+      'Las lecciones avanzan desde movimientos elementales hasta secuencias de varias jugadas, desarrollo, tempos, clavadas, redes de mate, sacrificios y cálculo.',
+      'Cada curso termina en un examen práctico sin pistas; aprobarlo desbloquea el siguiente nivel y suspender sólo significa volver a intentarlo con Matthias juzgando en silencio administrativo.',
+      'La guía inicial empieza ahora por la Escuela y Home deja claro el curso actual, el progreso y que hay cinco niveles con examen.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrf',
     title: 'La Escuela de Matthias abre el tablero',
     highlights: [
