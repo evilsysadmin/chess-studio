@@ -78,6 +78,18 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     ],
   },
   {
+    id: 'survival',
+    group: 'Competición',
+    title: 'Supervivencia',
+    summary: 'Una victoria te compra otra partida; cualquier otro resultado termina la expedición.',
+    steps: [
+      { title: 'Empiezas contra CPU 30', text: 'La primera partida arranca a una dificultad moderada y usa un ritmo 5+0 fijo para que la presión sea comparable entre intentos.' },
+      { title: 'Cada victoria endurece el rival', text: 'Ganar suma 7 puntos de dificultad a la siguiente CPU, hasta un máximo de 100. La run continúa con el mismo contador aunque salgas y vuelvas.' },
+      { title: 'No hay tablas salvadoras', text: 'Una derrota o unas tablas terminan inmediatamente la expedición. Supervivencia mide victorias consecutivas, no puntuación acumulada.' },
+      { title: 'El récord sí persiste', text: 'Tu mejor racha queda guardada en Mi progreso. Empezar otra expedición no borra el récord histórico.' },
+    ],
+  },
+  {
     id: 'quick-match-rules',
     group: 'Partida rápida',
     title: 'Partida rápida, sin menús de cabina',
