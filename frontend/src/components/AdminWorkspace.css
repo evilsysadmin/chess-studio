@@ -1,0 +1,331 @@
+.admin-workspace-shell {
+  width: min(100%, 1540px);
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 28px);
+}
+
+.admin-workspace-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 14px;
+}
+
+.admin-workspace-header h1 {
+  margin: 3px 0 4px;
+  font-size: clamp(1.65rem, 2.5vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.admin-workspace-header p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--text-muted, #9ca3af);
+}
+
+.admin-workspace-exit {
+  flex: 0 0 auto;
+}
+
+.admin-workspace-tabs {
+  position: sticky;
+  top: 10px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 16px;
+  padding: 7px;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--border-color, #4b5563) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel-bg, #111827) 92%, transparent);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 16%);
+  backdrop-filter: blur(14px);
+}
+
+.admin-workspace-tab {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-workspace-tab span,
+.admin-workspace-tab small {
+  display: block;
+}
+
+.admin-workspace-tab span {
+  font-weight: 750;
+}
+
+.admin-workspace-tab small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--text-muted, #9ca3af);
+  font-size: .72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-workspace-tab:hover {
+  background: rgb(255 255 255 / 5%);
+}
+
+.admin-workspace-tab.is-active {
+  border-color: color-mix(in srgb, var(--accent, #d2a84a) 60%, transparent);
+  background: color-mix(in srgb, var(--accent, #d2a84a) 13%, transparent);
+}
+
+.admin-workspace-tab:focus-visible {
+  outline: 2px solid var(--accent, #d2a84a);
+  outline-offset: 2px;
+}
+
+.admin-workspace-legacy-slot > .admin-screen,
+.admin-workspace-observability {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.admin-workspace-legacy-slot > .admin-screen {
+  padding: 0;
+}
+
+.admin-workspace-legacy-slot > .admin-screen > .back-link,
+.admin-workspace-legacy-slot > .admin-screen > .menu-section > .section-label,
+.admin-workspace-legacy-slot > .admin-screen > .menu-section > h2,
+.admin-workspace-legacy-slot > .admin-screen > .menu-section > h2 + .hint-text,
+.admin-workspace-legacy-slot .admin-build-id {
+  display: none;
+}
+
+.admin-workspace-legacy-slot > .admin-screen > .menu-section {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Resumen: sólo señales de decisión. Los diagnósticos profundos viven en Observabilidad. */
+.admin-workspace-shell[data-admin-section="overview"] .admin-matthias-status,
+.admin-workspace-shell[data-admin-section="overview"] .admin-feedback-section,
+.admin-workspace-shell[data-admin-section="overview"] .admin-users-heading,
+.admin-workspace-shell[data-admin-section="overview"] .admin-activity-filters,
+.admin-workspace-shell[data-admin-section="overview"] .admin-table-wrap,
+.admin-workspace-shell[data-admin-section="overview"] .admin-users-heading ~ .hint-text,
+.admin-workspace-shell[data-admin-section="overview"] .admin-users-heading ~ .error-text {
+  display: none;
+}
+
+.admin-workspace-shell[data-admin-section="overview"] .admin-screen > .menu-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, .75fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.admin-workspace-shell[data-admin-section="overview"] .admin-operational-status,
+.admin-workspace-shell[data-admin-section="overview"] .admin-presence-block {
+  margin: 0;
+}
+
+.admin-workspace-shell[data-admin-section="overview"] .admin-operational-actions .admin-tempo-check,
+.admin-workspace-shell[data-admin-section="overview"] .admin-operational-actions .admin-legacy-observability {
+  display: none;
+}
+
+/* Usuarios: presencia arriba y el censo en su propio viewport. */
+.admin-workspace-shell[data-admin-section="users"] .admin-operational-status,
+.admin-workspace-shell[data-admin-section="users"] .admin-matthias-status,
+.admin-workspace-shell[data-admin-section="users"] .admin-feedback-section {
+  display: none;
+}
+
+.admin-workspace-shell[data-admin-section="users"] .admin-presence-block {
+  margin-top: 0;
+}
+
+.admin-workspace-shell[data-admin-section="users"] .admin-table-wrap {
+  max-height: min(68vh, 760px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid color-mix(in srgb, var(--border-color, #4b5563) 68%, transparent);
+  border-radius: 12px;
+}
+
+.admin-workspace-shell[data-admin-section="users"] .admin-users-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--panel-bg, #111827);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border-color, #4b5563) 70%, transparent);
+}
+
+/* Feedback: bandeja operativa, no otra página kilométrica. */
+.admin-workspace-shell[data-admin-section="feedback"] .admin-operational-status,
+.admin-workspace-shell[data-admin-section="feedback"] .admin-matthias-status,
+.admin-workspace-shell[data-admin-section="feedback"] .admin-presence-block,
+.admin-workspace-shell[data-admin-section="feedback"] .admin-users-heading,
+.admin-workspace-shell[data-admin-section="feedback"] .admin-activity-filters,
+.admin-workspace-shell[data-admin-section="feedback"] .admin-table-wrap,
+.admin-workspace-shell[data-admin-section="feedback"] .admin-users-heading ~ .hint-text,
+.admin-workspace-shell[data-admin-section="feedback"] .admin-users-heading ~ .error-text {
+  display: none;
+}
+
+.admin-workspace-shell[data-admin-section="feedback"] .admin-feedback-section {
+  margin-top: 0;
+}
+
+.admin-workspace-shell[data-admin-section="feedback"] .admin-feedback-list {
+  max-height: min(67vh, 760px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 5px;
+}
+
+/* Matthias: todas sus tripas juntas, pero contenidas. */
+.admin-workspace-shell[data-admin-section="matthias"] .admin-operational-status,
+.admin-workspace-shell[data-admin-section="matthias"] .admin-feedback-section,
+.admin-workspace-shell[data-admin-section="matthias"] .admin-presence-block,
+.admin-workspace-shell[data-admin-section="matthias"] .admin-users-heading,
+.admin-workspace-shell[data-admin-section="matthias"] .admin-activity-filters,
+.admin-workspace-shell[data-admin-section="matthias"] .admin-table-wrap,
+.admin-workspace-shell[data-admin-section="matthias"] .admin-users-heading ~ .hint-text,
+.admin-workspace-shell[data-admin-section="matthias"] .admin-users-heading ~ .error-text {
+  display: none;
+}
+
+.admin-workspace-shell[data-admin-section="matthias"] .admin-matthias-status {
+  max-height: min(73vh, 820px);
+  margin-top: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-workspace-shell[data-admin-section="matthias"] .admin-matthias-status-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-workspace-observability {
+  padding: 0 0 24px;
+}
+
+.admin-workspace-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 22px;
+  margin: 4px 0 14px;
+}
+
+.admin-workspace-section-heading h2 {
+  margin: 2px 0 0;
+}
+
+.admin-workspace-section-heading p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text-muted, #9ca3af);
+  text-align: right;
+}
+
+@media (max-width: 1050px) {
+  .admin-workspace-shell[data-admin-section="overview"] .admin-screen > .menu-section {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-workspace-shell[data-admin-section="matthias"] .admin-matthias-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-workspace-shell {
+    padding: 12px 10px 22px;
+  }
+
+  .admin-workspace-header {
+    align-items: flex-start;
+    margin-bottom: 11px;
+  }
+
+  .admin-workspace-header p {
+    font-size: .86rem;
+  }
+
+  .admin-workspace-exit {
+    padding-inline: 10px;
+    white-space: nowrap;
+  }
+
+  .admin-workspace-tabs {
+    top: 6px;
+    display: flex;
+    gap: 6px;
+    margin-inline: -2px;
+    padding: 6px;
+    scroll-snap-type: x proximity;
+  }
+
+  .admin-workspace-tab {
+    flex: 0 0 132px;
+    scroll-snap-align: start;
+  }
+
+  .admin-workspace-tab small {
+    display: none;
+  }
+
+  .admin-workspace-shell[data-admin-section="users"] .admin-table-wrap,
+  .admin-workspace-shell[data-admin-section="feedback"] .admin-feedback-list,
+  .admin-workspace-shell[data-admin-section="matthias"] .admin-matthias-status {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .admin-workspace-shell[data-admin-section="users"] .admin-table-wrap {
+    border: 0;
+  }
+
+  .admin-workspace-shell[data-admin-section="matthias"] .admin-matthias-status-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-workspace-section-heading {
+    display: block;
+  }
+
+  .admin-workspace-section-heading p {
+    margin-top: 5px;
+    text-align: left;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-workspace-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .admin-workspace-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .admin-workspace-header p {
+    grid-column: 1 / -1;
+  }
+
+  .admin-workspace-shell[data-admin-section="matthias"] .admin-matthias-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
