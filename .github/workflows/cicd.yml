@@ -100,14 +100,7 @@ jobs:
         run: mkdir -p .security
 
       - name: Python dependency audit
-        shell: bash
-        run: |
-          set +e
-          python -m pip_audit -r backend-python/requirements.txt --format=json --output .security/pip-audit.json
-          rc=$?
-          set -e
-          test -s .security/pip-audit.json || { echo "pip-audit no produjo informe (rc=$rc)"; exit 2; }
-          python scripts/pip_audit_report.py .security/pip-audit.json
+        run: make security-be
 
   security:
     name: Security · Trivy + Docker
@@ -462,7 +455,7 @@ jobs:
             exit 1
           }
 
-          readarray -t domain_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); host=sys.argv[2]; service=sys.argv[3]; items=[x for x in (payload.get("result") or []) if isinstance(x,dict) and x.get("hostname")==host]; len(items)==1 or sys.exit(f"Se esperaba un Custom Domain {host}, encontrados {len(items)}"); item=items[0]; item.get("service")==service or sys.exit(f"Custom Domain apunta a {item.get('"'"'service'"'"')!r}, no a {service!r}"); print(item.get("id") or ""); print(item.get("cert_id") or ""); print(item.get("zone_name") or "")' "$domain_body" "$CUSTOM_DOMAIN" "$WORKER_NAME")
+          readarray -t domain_meta < <(python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); host=sys.argv[2]; service=sys.argv[3]; items=[x for x in (payload.get("result") or []) if isinstance(x,dict) and x.get("hostname")==host]; len(items)==1 or sys.exit(f"Se esperaba un Custom Domain {host}, encontrados {len(items)}"); item=items[0]; item.get("service")==service or sys.exit("Custom Domain apunta a %r, no a %r" % (item.get("service"), service)); print(item.get("id") or ""); print(item.get("cert_id") or ""); print(item.get("zone_name") or "")' "$domain_body" "$CUSTOM_DOMAIN" "$WORKER_NAME")
           domain_id="${domain_meta[0]:-}"
           cert_id="${domain_meta[1]:-}"
           zone_name="${domain_meta[2]:-}"

@@ -104,6 +104,7 @@ if (new Set(grouped).size !== frontendFiles.length || grouped.length !== fronten
 const makefile = read(path.join(root, 'Makefile'));
 if (!/npm\s+test/.test(makefile)) fail('Makefile no ejecuta la suite frontend agrupada con npm test');
 if (!/^tests:.*\bstatic-preflight\b/m.test(makefile)) fail('make tests debe incluir static-preflight para adelantar gates estructurales antes del push');
+if (!/^tests:.*\be2e\b/m.test(makefile)) fail('make tests debe incluir Playwright completo mediante e2e');
 if (!/^static-preflight:.*\bsession-continuity-check\b/m.test(makefile)) fail('static-preflight debe incluir session-continuity-check para impedir saltos involuntarios de partida a Home');
 const prePushHook = read(path.join(root, '.githooks', 'pre-push'));
 if (!/\bmake\s+tests\b/.test(prePushHook)) fail('pre-push debe ejecutar make tests');

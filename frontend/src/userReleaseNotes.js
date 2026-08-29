@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrh',
+    title: 'Matthias deja de pasarse tres horas con el bocata',
+    highlights: [
+      'El rincón de Matthias rota ahora pequeñas escenas según la hora local: prensa, estudio, expedientes, partidas de ajedrez, café, una cervezota ocasional y, por fin, un almuerzo de duración humana.',
+      'Las nuevas escenas conservan el mismo peón militar y sirven sólo como ambientación: no cambian reglas, estadísticas ni recomendaciones.',
+      'La taza de café adopta la marca propia de Matthias: un peón cabreado reconocible, sin símbolos genéricos que puedan confundirse con otra cosa.',
+      'El entorno de pruebas alinea también la auditoría de dependencias Python con el mismo virtualenv que instala el backend, evitando fallos de CI por herramientas de seguridad ausentes en el Python global.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrg',
     title: 'La Escuela de Matthias ya es un curso de verdad',
     highlights: [

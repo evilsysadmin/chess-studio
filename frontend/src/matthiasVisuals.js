@@ -4,6 +4,12 @@ import lunchBocata from './assets/matthias-scenes/lunch-bocata.webp';
 import afternoonOps from './assets/matthias-scenes/afternoon-ops.webp';
 import nightCoffee from './assets/matthias-scenes/night-coffee.webp';
 import lateSleep from './assets/matthias-scenes/late-sleep.webp';
+import breakfastNews from './assets/matthias-scenes/breakfast-news.webp';
+import chessInception from './assets/matthias-scenes/chess-inception.webp';
+import dossier from './assets/matthias-scenes/dossier.webp';
+import beerBreak from './assets/matthias-scenes/beer-break.webp';
+import strategyBook from './assets/matthias-scenes/strategy-book.webp';
+import chessWeekly from './assets/matthias-scenes/chess-weekly.webp';
 import moodAnnoyed from './assets/matthias-scenes/mood-annoyed.webp';
 import moodImpressed from './assets/matthias-scenes/mood-impressed.webp';
 import moodSkeptical from './assets/matthias-scenes/mood-skeptical.webp';
@@ -15,13 +21,16 @@ const TIME_ASSETS = Object.freeze({
   'afternoon-ops': afternoonOps,
   'night-coffee': nightCoffee,
   'late-sleep': lateSleep,
+  'breakfast-news': breakfastNews,
+  'chess-inception': chessInception,
+  dossier,
+  'beer-break': beerBreak,
+  'strategy-book': strategyBook,
+  'chess-weekly': chessWeekly,
 });
 
 const MOOD_ASSETS = Object.freeze({
   observant: baseAvatar,
-  // Matthias concede que está satisfecho sin dejar de parecer que va a
-  // ponerte arrestado por colgar una pieza. Sólo 'impressed' rompe de verdad
-  // la cara de pocos amigos; así la excepción conserva valor.
   satisfied: baseAvatar,
   pleased: baseAvatar,
   skeptical: moodSkeptical,

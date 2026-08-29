@@ -10,9 +10,9 @@ describe('Matthias visual identity', () => {
   });
 
   it('usa las escenas de café completas en mañana y turno nocturno', () => {
-    expect(matthiasTimeVisual(8).key).toBe('morning-coffee');
-    expect(matthiasTimeVisual(22).key).toBe('night-coffee');
-    expect(matthiasTimeVisual(8).avatar).not.toBe(MATTHIAS_BASE_AVATAR);
-    expect(matthiasTimeVisual(22).avatar).not.toBe(MATTHIAS_BASE_AVATAR);
+    expect(matthiasTimeVisual(6).key).toBe('morning-coffee');
+    expect(matthiasTimeVisual(21).key).toBe('night-coffee');
+    expect(matthiasTimeVisual(6).avatar).not.toBe(MATTHIAS_BASE_AVATAR);
+    expect(matthiasTimeVisual(21).avatar).not.toBe(MATTHIAS_BASE_AVATAR);
   });
 });
