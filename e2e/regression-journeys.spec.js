@@ -374,6 +374,39 @@ test('Matthias · la tarjeta de rival muestra el historial específico del duelo
   await expect(matthiasRail).toContainText(/duelo 3V 1T 4D/i);
 });
 
+
+
+test('Matthias · la sesión real aparece en Home, el retrato tiene presencia y re-login limpia el contexto', async ({ page }) => {
+  await mockApi(page, { gameScenario: 'mate', profileSeed: {
+    'matthias.onboarded': '2',
+    'chess-study-home-guide-dismissed-v1': '1',
+  } });
+  await login(page);
+  await startQuickGame(page);
+  await clickBoardMove(page, 'g6', 'g7');
+  const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
+  await expect(endgame).toBeVisible();
+  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
+
+  let corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(corner.getByText('Sesión · 1 partida · 1V · 0T · 0D', { exact: true })).toBeVisible();
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const portrait = page.locator('.ai-player-portrait-character img');
+  await expect(portrait).toBeVisible();
+  const box = await portrait.boundingBox();
+  expect(box?.width || 0).toBeGreaterThanOrEqual(130);
+  expect(box?.height || 0).toBeGreaterThanOrEqual(150);
+
+  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
+  await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
+  await login(page);
+  corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(corner.getByText(/Sesión · 1 partida/)).toHaveCount(0);
+});
+
 test('abandono · después de F5 sigue aplicando la salida sin penalización si no hubo bajas', async ({ page }) => {
   await mockApi(page, { gameScenario: 'opening' });
   await login(page);
@@ -399,16 +432,16 @@ test('Matthias · vuelve a saludar tras logout y re-login explícito, pero no po
   } });
   await login(page);
   let corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-  await expect(corner.getByText(/De vuelta al tablero\./)).toBeVisible();
+  await expect(corner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
   await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
   await login(page);
   corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-  await expect(corner.getByText(/De vuelta al tablero\./)).toBeVisible();
+  await expect(corner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toBeVisible();
 
   await page.reload();
   corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-  await expect(corner.getByText(/De vuelta al tablero\./)).toHaveCount(0);
+  await expect(corner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toHaveCount(0);
 });

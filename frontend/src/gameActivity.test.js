@@ -8,6 +8,7 @@ afterEach(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-08-23T10:00:00Z'));
 });
@@ -21,6 +22,7 @@ describe('game activity lifecycle', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ gameId: 'g-1', state: 'finished', modeLabel: 'Muerte súbita', outcome: 'win', difficulty: 72 });
     expect(rows[1]).toMatchObject({ gameId: 'g-1', state: 'started', modeLabel: 'Muerte súbita' });
+    expect(JSON.parse(sessionStorage.getItem('chess-study-matthias-session-context-v1'))).toMatchObject({ games: 1, wins: 1, losses: 0 });
   });
 
   it('does not record a cancellation after the same game has finished', () => {

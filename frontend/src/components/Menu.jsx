@@ -29,6 +29,7 @@ import { consumeMatthiasLoginGreeting, matthiasLoginGreetingPending } from '../m
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
+import { matthiasSessionContext } from '../matthiasSessionContext.js';
 
 function TutorialModeCard({ tutorialId, className, children, ...buttonProps }) {
   return (
@@ -96,7 +97,8 @@ export default function Menu({
   const nextAction = useMemo(() => homeNextBestAction(activity), [activity]);
   const rivalry = useMemo(() => loadRivalry(), []);
   const matthiasCandidate = useMemo(() => buildMatthiasHomeVisit({ rivalry, memory: matthiasMemory, hasSavedGame }), [rivalry, matthiasMemory, hasSavedGame]);
-  const matthiasCardModel = useMemo(() => buildMatthiasHomeCardModel({ visit: matthiasVisit, memory: matthiasMemory }), [matthiasMemory, matthiasVisit]);
+  const matthiasSession = useMemo(() => matthiasSessionContext(), [activity]);
+  const matthiasCardModel = useMemo(() => buildMatthiasHomeCardModel({ visit: matthiasVisit, memory: matthiasMemory, sessionContext: matthiasSession }), [matthiasMemory, matthiasSession, matthiasVisit]);
   const freshAccount = useMemo(() => isFreshAccount({ activity, tournament }), [activity, tournament]);
   const onboarding = useMemo(() => buildHomeOnboarding({
     activity,

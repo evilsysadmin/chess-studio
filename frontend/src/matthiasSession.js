@@ -1,4 +1,5 @@
 import { STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { clearMatthiasSessionContext } from './matthiasSessionContext.js';
 
 export const MATTHIAS_HOME_SESSION_KEY = 'chess-study-matthias-home-seen-v1';
 export const MATTHIAS_LOGIN_GREETING_PENDING_KEY = 'chess-study-matthias-login-greeting-pending-v1';
@@ -14,6 +15,8 @@ export function markMatthiasHomeSessionSeen() {
 export function queueMatthiasLoginGreeting() {
   // Una autenticación explícita abre una sesión narrativa nueva aunque ocurra
   // en la misma pestaña tras logout/login. El saludo no depende del cooldown.
+  // También reinicia el contexto de esta sesión para que nunca cruce usuarios.
+  clearMatthiasSessionContext();
   removeStorageItem(STORAGE_SESSION, MATTHIAS_HOME_SESSION_KEY);
   setStorageItem(STORAGE_SESSION, MATTHIAS_LOGIN_GREETING_PENDING_KEY, '1');
 }
@@ -30,4 +33,5 @@ export function consumeMatthiasLoginGreeting() {
 export function clearMatthiasSessionSignals() {
   removeStorageItem(STORAGE_SESSION, MATTHIAS_HOME_SESSION_KEY);
   removeStorageItem(STORAGE_SESSION, MATTHIAS_LOGIN_GREETING_PENDING_KEY);
+  clearMatthiasSessionContext();
 }

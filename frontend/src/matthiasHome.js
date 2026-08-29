@@ -2,6 +2,8 @@ import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { markMatthiasHomeSessionSeen, matthiasHomeSessionSeen } from './matthiasSession.js';
 import { matthiasTimeScene } from './matthiasTime.js';
+import { buildMatthiasDeskArtifacts } from './matthiasDossier.js';
+import { matthiasSessionLabel } from './matthiasSessionContext.js';
 
 export const MATTHIAS_HOME_LAST_SHOWN_KEY = 'chess-study-matthias-home-last-shown-v1';
 export const MATTHIAS_HOME_COOLDOWN_MS = 8 * 60 * 60 * 1000;
@@ -227,8 +229,10 @@ export function matthiasMoodPresentation(memory = null) {
   return MATTHIAS_MOOD_PRESENTATION[mood] || MATTHIAS_MOOD_PRESENTATION.observant;
 }
 
-export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {}) {
+export function buildMatthiasHomeCardModel({ visit = null, memory = null, sessionContext = null } = {}) {
   const meta = matthiasHomeMeta(memory);
+  const deskArtifacts = buildMatthiasDeskArtifacts(memory);
+  const sessionLabel = matthiasSessionLabel(sessionContext);
   const mood = matthiasMoodPresentation(memory);
   if (!visit) {
     return {
@@ -240,6 +244,8 @@ export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {})
       actionLabel: 'Ver Así juegas',
       moodCue: mood.cue,
       moodLabel: mood.label,
+      deskArtifacts,
+      sessionLabel,
     };
   }
 
@@ -267,6 +273,8 @@ export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {})
     actionLabel: visit.actionLabel || 'Ver Así juegas',
     moodCue: mood.cue,
     moodLabel: mood.label,
+    deskArtifacts,
+    sessionLabel,
   };
 }
 

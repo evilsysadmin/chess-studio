@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { matthiasMoodAvatar } from '../matthiasVisuals.js';
 import { askMatthiasDaily, createMatthiasConsultationId, fetchMatthiasDailyStatus } from '../matthiasDaily.js';
+import { buildMatthiasDossierEntries, formatMatthiasDossierDate } from '../matthiasDossier.js';
 
 const MOOD_LABELS = Object.freeze({
   observant: 'Observador',
@@ -72,6 +73,7 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
   const fame = Array.isArray(memory?.hallOfFame) ? memory.hallOfFame : [];
   const matthiasAvatar = matthiasMoodAvatar(memory?.mood || 'observant');
   const shame = Array.isArray(memory?.hallOfShame) ? memory.hallOfShame : [];
+  const dossierEntries = buildMatthiasDossierEntries(memory);
 
   return (
     <section className="matthias-daily" aria-label="Consulta diaria con Matthias">
@@ -95,9 +97,12 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
           {goals.length > 0 && <div className="matthias-memory-section"><b>Objetivos activos</b><ul>{goals.map((goal) => <li key={goal.id}>{goal.label}</li>)}</ul></div>}
           {memory.adviceFollowup && <div className="matthias-memory-section"><b>Seguimiento del último consejo</b><p>{memory.adviceFollowup.status === 'waiting' ? `Faltan ${memory.adviceFollowup.games_needed || 0} partida(s) para juzgarlo con algo de fundamento.` : memory.adviceFollowup.status === 'improving' ? 'Los datos posteriores van en buena dirección. Matthias puede empezar a retirar la acusación.' : memory.adviceFollowup.status === 'struggling' ? 'Los datos posteriores siguen torcidos; el consejo continúa oficialmente abierto.' : 'Hay datos nuevos, pero todavía no dan un veredicto limpio.'}</p></div>}
           {memory.emblematicPositions?.length > 0 && <div className="matthias-memory-section"><b>Posiciones que Matthias no piensa olvidar</b><ul>{memory.emblematicPositions.slice(-3).map((item) => <li key={item.fingerprint}>{item.label}</li>)}</ul></div>}
-          {(fame.length > 0 || shame.length > 0) && <div className="matthias-memory-halls">
-            {fame.length > 0 && <div><b>Hall of Fame</b><ul>{fame.slice(-3).map((item) => <li key={item.fingerprint}>✦ {item.label}</li>)}</ul></div>}
-            {shame.length > 0 && <div><b>Hall of Shame</b><ul>{shame.slice(-3).map((item) => <li key={item.fingerprint}>☠ {item.label}</li>)}</ul></div>}
+          {dossierEntries.length > 0 && <div className="matthias-memory-section matthias-dossier-timeline"><b>Expediente reciente</b><ol>{dossierEntries.map((item) => {
+            const date = formatMatthiasDossierDate(item.at);
+            return <li key={item.id} className={`is-${item.polarity}`}><span aria-hidden="true">{item.polarity === 'shame' ? '▣' : '✦'}</span><p>{item.label}{date ? <small>{date}</small> : null}</p></li>;
+          })}</ol></div>}
+          {(fame.length > 0 || shame.length > 0) && <div className="matthias-memory-halls compact">
+            <span>Archivo: <b>{fame.length}</b> méritos · <b>{shame.length}</b> agravios</span>
           </div>}
         </details>
       )}

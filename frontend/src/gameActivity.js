@@ -1,6 +1,7 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { gameModeLabel } from './gameModes.js';
+import { recordMatthiasSessionResult } from './matthiasSessionContext.js';
 
 const KEY = 'chess-study-game-activity';
 const MAX_EVENTS = 160;
@@ -39,5 +40,8 @@ export function recordGameActivity({ gameId, state, mode = 'casual', modeRecord 
   };
   const next = [event, ...list].slice(0, MAX_EVENTS);
   setProfileStorageItem(KEY, JSON.stringify(next));
+  if (state === 'finished' && ['win', 'draw', 'loss'].includes(outcome)) {
+    recordMatthiasSessionResult({ gameId, outcome });
+  }
   return next;
 }

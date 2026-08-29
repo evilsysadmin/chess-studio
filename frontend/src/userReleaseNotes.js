@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfre',
+    title: 'El despacho de Matthias empieza a contar vuestra historia',
+    highlights: [
+      'El rincón de Matthias muestra pequeñas señales ganadas de verdad: retos vigentes, méritos, agravios archivados y respeto acumulado, sin niveles de amistad ni decoración inventada.',
+      'La sesión actual aparece de forma discreta con partidas y resultados de esta pestaña; se reinicia al iniciar sesión para que nunca mezcle jugadores.',
+      'El expediente de Así juegas ordena los hitos recientes como una pequeña cronología, separando méritos y agravios con sus fechas cuando existen.',
+      'Así juegas da más presencia al retrato de Matthias sin robar espacio al diagnóstico, y mantiene completas sus escenas de café, bocata o guardia.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrd',
     title: 'Matthias vuelve a ser un peón con mala leche',
     highlights: [

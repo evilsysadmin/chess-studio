@@ -23,6 +23,16 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
           <img src={timeVisual.avatar} alt="" />
           <span>{CPU_IDENTITY.name}</span>
           <small>{model.moodLabel || 'Observador'} · {timeVisual.label}</small>
+          {model.sessionLabel ? <em className="matthias-home-card__session">{model.sessionLabel}</em> : null}
+          {model.deskArtifacts?.length ? (
+            <div className="matthias-home-card__desk" aria-label="Objetos del expediente de Matthias">
+              {model.deskArtifacts.map((item) => (
+                <i key={item.id} title={`${item.label}: ${item.title}`} aria-label={`${item.label}: ${item.title}`}>
+                  <b aria-hidden="true">{item.glyph}</b><span>{item.label}</span>
+                </i>
+              ))}
+            </div>
+          ) : null}
         </div>
       </button>
       <div className="matthias-home-card__actions">

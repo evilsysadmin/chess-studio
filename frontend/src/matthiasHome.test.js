@@ -184,4 +184,19 @@ describe('Matthias en Home', () => {
     expect(visit.text).toMatch(/no pienso regalarte/i);
   });
 
+  it('convierte expediente y sesión en progreso visible sin inventar nivel RPG', () => {
+    const model = buildMatthiasHomeCardModel({
+      memory: {
+        mood: 'annoyed',
+        activeChallenge: { label: 'Tres partidas sin colgar dama' },
+        hallOfFame: [{ fingerprint: 'f1', label: 'Primera victoria contra Matthias' }],
+        hallOfShame: [{ fingerprint: 's1', label: 'Dama a un peón' }],
+      },
+      sessionContext: { games: 4, wins: 2, draws: 0, losses: 2 },
+    });
+    expect(model.sessionLabel).toBe('Sesión · 4 partidas · 2V · 0T · 2D');
+    expect(model.deskArtifacts.map((item) => item.id)).toEqual(['challenge', 'fame', 'shame']);
+    expect(model.moodLabel).toBe('Cabreado');
+  });
+
 });

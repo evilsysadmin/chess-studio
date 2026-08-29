@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   COMBAT_STARTING_CREDITS,
+  COMBAT_EQUIPMENT,
   awardCombatCredits,
   battleCreditReward,
   combatCreditSignalForAttempt,
@@ -101,6 +102,50 @@ describe('economía de Combat', () => {
     expect(hit.underdogCredits).toBe(3);
     expect(miss.underdogCredits).toBe(0);
     expect(miss.tacticalCredits).toBeGreaterThanOrEqual(2);
+  });
+
+  it('stress de campaña separa juego limpio, juego medio y farmeo de derrotas sin barra libre', () => {
+    const totalEquipmentCost = COMBAT_EQUIPMENT.reduce((sum, item) => sum + item.cost, 0);
+    const project = (rows) => rows.reduce((credits, row, index) => credits + battleCreditReward({
+      floor: index + 1,
+      variant: 'roguelike',
+      encounterTier: index === 6 ? 'boss' : index === 4 ? 'elite' : 'normal',
+      ...row,
+    }).total, COMBAT_STARTING_CREDITS);
+
+    const skilled = project(Array.from({ length: 7 }, (_, index) => ({
+      outcome: 'win',
+      captures: index >= 4 ? 4 : 3,
+      casualties: index < 4 ? 0 : 1,
+      underdogCredits: 1,
+      tacticalCredits: 2,
+    })));
+    const steady = project(Array.from({ length: 7 }, (_, index) => ({
+      outcome: index === 2 ? 'loss' : 'win',
+      captures: 3,
+      casualties: index === 2 ? 5 : 2,
+      tacticalCredits: 1,
+    })));
+    const reckless = project(Array.from({ length: 7 }, (_, index) => ({
+      outcome: [0, 3, 6].includes(index) ? 'win' : 'loss',
+      captures: 6,
+      casualties: 6,
+      underdogCredits: 3,
+      tacticalCredits: 3,
+    })));
+    const lossFarm = project(Array.from({ length: 7 }, () => ({
+      outcome: 'loss', captures: 12, casualties: 15, underdogCredits: 30, tacticalCredits: 30,
+    })));
+
+    expect(skilled).toBeGreaterThan(steady);
+    expect(steady).toBeGreaterThan(reckless);
+    expect(reckless).toBeGreaterThan(lossFarm);
+    // Una campaña casi perfecta puede equipar cinco veteranos distintos al
+    // final, pero ni siquiera deja saldo para duplicar el artículo más barato.
+    expect(skilled).toBeGreaterThanOrEqual(totalEquipmentCost);
+    expect(skilled).toBeLessThan(totalEquipmentCost + Math.min(...COMBAT_EQUIPMENT.map((item) => item.cost)));
+    // Perder a propósito siete veces da algo de recuperación, jamás una economía viable.
+    expect(lossFarm).toBeLessThan(100);
   });
 
   it('la campaña completa deja progreso útil, pero no compra todo el arsenal gratis', () => {
