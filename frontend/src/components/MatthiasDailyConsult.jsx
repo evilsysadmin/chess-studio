@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { matthiasMoodAvatar } from '../matthiasVisuals.js';
 import { askMatthiasDaily, createMatthiasConsultationId, fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 
 const MOOD_LABELS = Object.freeze({
@@ -70,12 +70,13 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
   const memory = status?.memory || null;
   const goals = Array.isArray(memory?.activeGoals) ? memory.activeGoals : [];
   const fame = Array.isArray(memory?.hallOfFame) ? memory.hallOfFame : [];
+  const matthiasAvatar = matthiasMoodAvatar(memory?.mood || 'observant');
   const shame = Array.isArray(memory?.hallOfShame) ? memory.hallOfShame : [];
 
   return (
     <section className="matthias-daily" aria-label="Consulta diaria con Matthias">
       <div className="matthias-daily-heading">
-        <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+        <img src={matthiasAvatar} alt="" aria-hidden="true" />
         <div><span className="section-label">Matthias // consulta del día</span><h3>Una audiencia diaria. Elige bien, bitte.</h3></div>
       </div>
       {memory && (

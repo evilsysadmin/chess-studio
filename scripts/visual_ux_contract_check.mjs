@@ -18,6 +18,8 @@ const adminInbox = read('frontend/src/useAdminFeedbackInbox.js');
 const chat = read('frontend/src/components/GameChat.jsx');
 const menu = read('frontend/src/components/Menu.jsx');
 const insights = read('frontend/src/components/InsightsScreen.jsx');
+const cpuIdentity = read('frontend/src/cpuIdentity.js');
+const matthiasVisuals = read('frontend/src/matthiasVisuals.js');
 const feedbackE2e = read('e2e/feedback-critical.spec.js');
 const smoke = read('e2e/smoke.spec.js');
 
@@ -46,7 +48,7 @@ const checks = [
   [/REPLAY \/\/ ANÁLISIS/.test(puzzle) && /puzzle-coach-solution/.test(puzzle), 'la explicación del replay debe vivir en el panel coach'],
   [/AdminFeedbackInboxButton/.test(app) && /fetchAdminFeedbackSummary/.test(adminInbox), 'Home admin debe avisar de feedback nuevo sin esconderlo en Mi cuenta'],
   [/\.admin-feedback-card\.status-resolved \{ opacity: 1; \}/.test(finalCss) && /admin-feedback-delete/.test(finalCss), 'las acciones de feedback resuelto deben seguir visibles'],
-  [/CPU_IDENTITY/.test(game) && /game-player-avatar\$\{cpu \? ' has-portrait'/.test(game) && /matthias-cpu\.webp/.test(read('frontend/src/cpuIdentity.js')), 'Matthias debe ocupar el hueco de identidad existente en la tarjeta rival'],
+  [/CPU_IDENTITY/.test(game) && /game-player-avatar\$\{cpu \? ' has-portrait'/.test(game) && /MATTHIAS_BASE_AVATAR/.test(cpuIdentity) && /matthias-scenes\/base\.webp/.test(matthiasVisuals), 'Matthias debe ocupar el hueco de identidad existente en la tarjeta rival'],
   [/CPU_IDENTITY\.name\.toUpperCase\(\)/.test(chat) && /game-chat-matthias-avatar/.test(finalCss), 'el chat debe firmar como Matthias con presencia compacta'],
   [/MatthiasHomeVisit/.test(menu) && /matthias-home-card/.test(finalCss), 'Home debe integrar el rincón de Matthias con bocadillo propio sin capa flotante'],
   [/CPU_IDENTITY/.test(insights) && /ai-player-portrait-character/.test(insights) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias sin invadir el diagnóstico'],

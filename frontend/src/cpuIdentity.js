@@ -1,7 +1,7 @@
-import matthiasAvatar from './assets/matthias-cpu.webp';
+import { MATTHIAS_BASE_AVATAR } from './matthiasVisuals.js';
 
 export const CPU_IDENTITY = Object.freeze({
   name: 'Matthias',
   role: 'CPU',
-  avatar: matthiasAvatar,
+  avatar: MATTHIAS_BASE_AVATAR,
 });

@@ -945,6 +945,20 @@
   background: #111822;
   box-shadow: 0 8px 22px rgba(0,0,0,.2);
 }
+
+/* El humor de Matthias se expresa con microseñales, no con un semáforo de
+   emociones. Mantiene el mismo retrato y sólo cambia pose óptica, borde y
+   temperatura del rincón a partir del estado calculado por rendimiento real. */
+.matthias-home-card--mood-pleased .matthias-home-card__character img,
+.matthias-home-card--mood-satisfied .matthias-home-card__character img { transform: translateY(-1px); filter: saturate(1.05) brightness(1.035); }
+.matthias-home-card--mood-impressed .matthias-home-card__character img { transform: translateY(-2px) scale(1.015); filter: contrast(1.035) brightness(1.045); }
+.matthias-home-card--mood-skeptical .matthias-home-card__character img { transform: rotate(-.55deg); filter: saturate(.9) contrast(1.045); }
+.matthias-home-card--mood-annoyed .matthias-home-card__character img { transform: translateY(1px) rotate(.45deg); filter: saturate(.82) contrast(1.09) brightness(.94); }
+.matthias-home-card--mood-annoyed { border-color: color-mix(in srgb, var(--danger, #b75b52) 28%, var(--ui-border)); }
+.matthias-home-card--mood-impressed { border-color: color-mix(in srgb, var(--brass) 58%, var(--ui-border)); }
+@media (prefers-reduced-motion: reduce) {
+  .matthias-home-card__character img { transform: none !important; }
+}
 .matthias-home-card__character span { margin-top: .12rem; font-size: .58rem; letter-spacing: .09em; text-transform: uppercase; }
 .matthias-home-card__character small { font-size: .56rem; opacity: .7; }
 .matthias-home-card__actions { display: flex; justify-content: flex-end; align-items: center; gap: .36rem; }

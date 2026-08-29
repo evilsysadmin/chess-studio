@@ -8,7 +8,7 @@ import { handicapForGap } from '../handicap.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { difficultyForRating } from '../playerRating.js';
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
-import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { matthiasTimeVisual } from '../matthiasVisuals.js';
 
 function colorLabel(color) {
   if (color === 'w' || color === 'white') return 'Blancas';
@@ -43,6 +43,7 @@ export default function QuickMatchModal({
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
+  const matthiasVisual = matthiasTimeVisual();
 
   useEffect(() => {
     let active = true;
@@ -62,8 +63,8 @@ export default function QuickMatchModal({
 
         {matthiasBriefing && (
           <aside className="matthias-quick-briefing" aria-label="Briefing de Matthias">
-            <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
-            <div><span>MATTHIAS // BRIEFING</span><p>{matthiasBriefing}</p></div>
+            <img src={matthiasVisual.avatar} alt="" aria-hidden="true" />
+            <div><span>MATTHIAS // BRIEFING · {matthiasVisual.label}</span><p>{matthiasBriefing}</p></div>
           </aside>
         )}
 

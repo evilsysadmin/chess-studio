@@ -8,6 +8,7 @@ import {
   buildMatthiasIntroVisit,
   buildMatthiasLoginGreeting,
   markMatthiasHomeShown,
+  matthiasMoodPresentation,
   markMatthiasOnboarded,
   matthiasIntroPlacement,
   matthiasOnboarded,
@@ -100,6 +101,10 @@ describe('Matthias en Home', () => {
     const greeting = buildMatthiasLoginGreeting({ hour: 22 });
     expect(greeting).toMatchObject({ kind: 'login-greeting', action: 'insights', actionLabel: 'Ver Así juegas' });
     expect(greeting.text).toMatch(/^Guten Abend\./);
+    expect(greeting.timeScene).toBe('night-coffee');
+    expect(buildMatthiasLoginGreeting({ hour: 12 })).toMatchObject({ timeScene: 'lunch-bocata' });
+    expect(buildMatthiasLoginGreeting({ hour: 3 })).toMatchObject({ timeScene: 'late-sleep' });
+    expect(buildMatthiasLoginGreeting({ hour: 3 }).text).toMatch(/despertado al alto mando/i);
     const model = buildMatthiasHomeCardModel({ visit: greeting });
     expect(model).toMatchObject({ variant: 'comment', eyebrow: 'MATTHIAS · WILLKOMMEN' });
     consumeMatthiasLoginGreeting();
@@ -152,6 +157,14 @@ describe('Matthias en Home', () => {
       actionLabel: 'Ver Así juegas',
       meta: 'Viejo conocido',
     });
+  });
+
+  it('expone el humor real como microseñal visual sin inventar un estado', () => {
+    expect(matthiasMoodPresentation({ mood: 'annoyed' })).toEqual({ label: 'Cabreado', cue: 'annoyed' });
+    expect(matthiasMoodPresentation({ mood: 'impressed' })).toEqual({ label: 'Impresionado', cue: 'impressed' });
+    expect(matthiasMoodPresentation({ mood: 'estado-inventado' })).toEqual({ label: 'Observador', cue: 'observant' });
+    const model = buildMatthiasHomeCardModel({ memory: { mood: 'pleased' } });
+    expect(model).toMatchObject({ moodCue: 'pleased', moodLabel: 'Contento' });
   });
 
   it('convierte retos e hitos en mensajes importantes dentro del mismo bocadillo', () => {

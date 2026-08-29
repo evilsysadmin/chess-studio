@@ -1,9 +1,11 @@
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { matthiasTimeVisual } from '../matthiasVisuals.js';
 
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
   if (!model) return null;
+  const timeVisual = matthiasTimeVisual();
   return (
-    <aside className={`matthias-home-card matthias-home-card--${model.variant}${speaking ? ' is-speaking' : ''}`} aria-label="Rincón de Matthias">
+    <aside className={`matthias-home-card matthias-home-card--${model.variant} matthias-home-card--mood-${model.moodCue || 'observant'}${speaking ? ' is-speaking' : ''}`} aria-label={`Rincón de Matthias · ${model.moodLabel || 'Observador'} · ${timeVisual.label}`}>
       <button
         type="button"
         className="matthias-home-card__main"
@@ -18,9 +20,9 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
           {model.meta ? <small>{model.meta}</small> : null}
         </div>
         <div className="matthias-home-card__character" aria-hidden="true">
-          <img src={CPU_IDENTITY.avatar} alt="" />
+          <img src={timeVisual.avatar} alt="" />
           <span>{CPU_IDENTITY.name}</span>
-          <small>rival residente</small>
+          <small>{model.moodLabel || 'Observador'} · {timeVisual.label}</small>
         </div>
       </button>
       <div className="matthias-home-card__actions">

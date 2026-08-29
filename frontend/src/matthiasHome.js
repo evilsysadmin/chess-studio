@@ -1,6 +1,7 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { markMatthiasHomeSessionSeen, matthiasHomeSessionSeen } from './matthiasSession.js';
+import { matthiasTimeScene } from './matthiasTime.js';
 
 export const MATTHIAS_HOME_LAST_SHOWN_KEY = 'chess-study-matthias-home-last-shown-v1';
 export const MATTHIAS_HOME_COOLDOWN_MS = 8 * 60 * 60 * 1000;
@@ -99,13 +100,13 @@ export function buildMatthiasIntroVisit() {
 
 
 export function buildMatthiasLoginGreeting({ hour = new Date().getHours() } = {}) {
-  const safeHour = Number.isFinite(Number(hour)) ? Number(hour) : 12;
-  const greeting = safeHour < 12 ? 'Guten Morgen' : safeHour < 19 ? 'Guten Tag' : 'Guten Abend';
+  const scene = matthiasTimeScene(hour);
   return {
     kind: 'login-greeting',
-    text: `${greeting}. De vuelta al tablero. Yo sigo aquí, tomando notas.`,
+    text: scene.loginText,
     action: 'insights',
     actionLabel: 'Ver Así juegas',
+    timeScene: scene.key,
   };
 }
 
@@ -212,8 +213,23 @@ function matthiasHomeMeta(memory = null) {
   return memory?.relationship?.label || memory?.respect?.label || null;
 }
 
+const MATTHIAS_MOOD_PRESENTATION = Object.freeze({
+  observant: { label: 'Observador', cue: 'observant' },
+  satisfied: { label: 'Satisfecho', cue: 'satisfied' },
+  pleased: { label: 'Contento', cue: 'pleased' },
+  skeptical: { label: 'Escéptico', cue: 'skeptical' },
+  annoyed: { label: 'Cabreado', cue: 'annoyed' },
+  impressed: { label: 'Impresionado', cue: 'impressed' },
+});
+
+export function matthiasMoodPresentation(memory = null) {
+  const mood = typeof memory?.mood === 'string' ? memory.mood : 'observant';
+  return MATTHIAS_MOOD_PRESENTATION[mood] || MATTHIAS_MOOD_PRESENTATION.observant;
+}
+
 export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {}) {
   const meta = matthiasHomeMeta(memory);
+  const mood = matthiasMoodPresentation(memory);
   if (!visit) {
     return {
       variant: 'quiet',
@@ -222,6 +238,8 @@ export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {})
       meta,
       action: 'insights',
       actionLabel: 'Ver Así juegas',
+      moodCue: mood.cue,
+      moodLabel: mood.label,
     };
   }
 
@@ -247,6 +265,8 @@ export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {})
     meta,
     action: visit.action || 'insights',
     actionLabel: visit.actionLabel || 'Ver Así juegas',
+    moodCue: mood.cue,
+    moodLabel: mood.label,
   };
 }
 

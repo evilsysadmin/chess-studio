@@ -6,6 +6,24 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrd',
+    title: 'Matthias vuelve a ser un peón con mala leche',
+    highlights: [
+      'El retrato humano desaparece: Matthias vuelve a su identidad de peón militar y la mantiene en partida, Home, Así juegas y sus briefings.',
+      'Su escena cambia con tu hora local: café por la mañana, bocata a mediodía, operación por la tarde, café nocturno y modo sobando de madrugada.',
+      'Las consultas siguen reflejando su humor real con poses del mismo personaje; los accesorios son puntuales y Matthias no se convierte en una colección de avatares distintos.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfrc',
+    title: 'Matthias deja ver el humor',
+    highlights: [
+      'El rincón de Matthias refleja con microseñales visuales el humor que ya calcula a partir de tu rendimiento real, sin convertirlo en un muñeco estridente.',
+      'Su estado aparece con una etiqueta breve y el retrato cambia sólo de forma sutil cuando está contento, escéptico, cabreado o impresionado.',
+      'Las señales respetan movimiento reducido y, si llega un estado desconocido, la interfaz vuelve de forma segura a Observador.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrb',
     title: 'Matthias ya tiene humor medible',
     highlights: [

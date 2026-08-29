@@ -40,6 +40,7 @@ import CareerScreen from './CareerScreen.jsx';
 import { GAME_MODE_LABELS, gameModeLabel } from '../gameModes.js';
 import { isAbortError } from '../asyncControl.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { matthiasTimeVisual } from '../matthiasVisuals.js';
 
 
 function InsightsHubHeader({ section, onSectionChange, onExit }) {
@@ -96,6 +97,7 @@ function WinBar({ stats }) {
 export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, isAdminUser = false, initialSection = 'diagnosis' }) {
   useEscapeToClose(onExit);
   const [section, setSection] = useState(initialSection === 'career' ? 'career' : 'diagnosis');
+  const matthiasVisual = matthiasTimeVisual();
 
   const [searchStatus, setSearchStatus] = useState('idle'); // 'idle' | 'running' | 'done'
   const [searchProgress, setSearchProgress] = useState({ done: 0, total: 0 });
@@ -439,7 +441,7 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
           </div>
           <div className="ai-player-portrait-layout">
             <aside className="ai-player-portrait-character" aria-label={`${CPU_IDENTITY.name}, analista de Chess Studio`}>
-              <img src={CPU_IDENTITY.avatar} alt={`${CPU_IDENTITY.name}, la CPU de Chess Studio`} />
+              <img src={matthiasVisual.avatar} alt={`${CPU_IDENTITY.name}, la CPU de Chess Studio`} />
               <div>
                 <strong>{CPU_IDENTITY.name}</strong>
                 <small>CPU · analista residente</small>
