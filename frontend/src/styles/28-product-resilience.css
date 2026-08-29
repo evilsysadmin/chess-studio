@@ -789,10 +789,10 @@
 }
 .ai-player-portrait-character img {
   width: 104px;
-  aspect-ratio: 1;
+  height: 122px;
   display: block;
-  object-fit: cover;
-  object-position: 50% 36%;
+  object-fit: contain;
+  object-position: 50% 100%;
   border-radius: 9px;
   border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--ui-border));
   box-shadow: 0 8px 24px rgba(0,0,0,.2);
@@ -810,7 +810,7 @@
     justify-items: start;
     align-items: center;
   }
-  .ai-player-portrait-character img { width: 58px; }
+  .ai-player-portrait-character img { width: 58px; height: 68px; }
   .ai-player-portrait-character div { text-align: left; }
 }
 
@@ -935,11 +935,11 @@
   color: var(--parchment-dim);
 }
 .matthias-home-card__character img {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 84px;
   display: block;
-  object-fit: cover;
-  object-position: 50% 36%;
+  object-fit: contain;
+  object-position: 50% 100%;
   border: 1px solid color-mix(in srgb, var(--brass) 52%, var(--ui-border));
   border-radius: 10px;
   background: #111822;
@@ -995,7 +995,7 @@
     align-items: center;
     column-gap: .55rem;
   }
-  .matthias-home-card__character img { width: 48px; height: 48px; grid-row: 1 / 3; }
+  .matthias-home-card__character img { width: 58px; height: 68px; grid-row: 1 / 3; object-fit: contain; object-position: 50% 100%; }
   .matthias-home-card__character span { align-self: end; }
   .matthias-home-card__character small { align-self: start; }
   .matthias-home-card__speech { grid-row: 2; min-height: 0; padding: .68rem .75rem; }
@@ -1021,7 +1021,7 @@
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--brass) 4%, var(--ui-panel));
 }
-.matthias-quick-briefing img { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; object-position: 50% 35%; border: 1px solid color-mix(in srgb, var(--brass) 48%, transparent); }
+.matthias-quick-briefing img { width: 48px; height: 58px; border-radius: 10px; object-fit: contain; object-position: 50% 100%; border: 1px solid color-mix(in srgb, var(--brass) 48%, transparent); background: #111822; }
 .matthias-quick-briefing span { display: block; margin-bottom: .18rem; color: var(--brass); font-size: .61rem; letter-spacing: .08em; font-weight: 800; }
 .matthias-quick-briefing p { margin: 0; color: var(--parchment-dim); font-size: .77rem; line-height: 1.45; }
 

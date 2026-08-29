@@ -4,10 +4,8 @@ import lunchBocata from './assets/matthias-scenes/lunch-bocata.webp';
 import afternoonOps from './assets/matthias-scenes/afternoon-ops.webp';
 import nightCoffee from './assets/matthias-scenes/night-coffee.webp';
 import lateSleep from './assets/matthias-scenes/late-sleep.webp';
-import moodPleased from './assets/matthias-scenes/mood-pleased.webp';
 import moodAnnoyed from './assets/matthias-scenes/mood-annoyed.webp';
 import moodImpressed from './assets/matthias-scenes/mood-impressed.webp';
-import moodSatisfied from './assets/matthias-scenes/mood-satisfied.webp';
 import moodSkeptical from './assets/matthias-scenes/mood-skeptical.webp';
 import { matthiasTimeScene } from './matthiasTime.js';
 
@@ -21,8 +19,11 @@ const TIME_ASSETS = Object.freeze({
 
 const MOOD_ASSETS = Object.freeze({
   observant: baseAvatar,
-  satisfied: moodSatisfied,
-  pleased: moodPleased,
+  // Matthias concede que está satisfecho sin dejar de parecer que va a
+  // ponerte arrestado por colgar una pieza. Sólo 'impressed' rompe de verdad
+  // la cara de pocos amigos; así la excepción conserva valor.
+  satisfied: baseAvatar,
+  pleased: baseAvatar,
   skeptical: moodSkeptical,
   annoyed: moodAnnoyed,
   impressed: moodImpressed,
