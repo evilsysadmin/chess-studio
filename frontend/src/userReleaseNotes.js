@@ -5,6 +5,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Changelog de producto: sólo cambios que el jugador ve, entiende o puede usar.
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
+{
+  release: 'v16.6dm46zfrp',
+  title: 'Más ágil cuando algo falla',
+  highlights: [
+    'Las ráfagas de peticiones comparten mejor el trabajo cuando la conexión de datos sufre un corte, evitando esperas repetidas.',
+    'El servicio hace menos trabajo interno durante el uso normal sin perder el historial necesario para diagnosticar problemas.',
+    'No cambia ninguna regla ni modo de juego: es una mejora de fluidez y resistencia ante fallos temporales.',
+  ],
+},
+
   {
     release: 'v16.6dm46zfro',
     title: 'Las decisiones de campaña ya tienen dientes',

@@ -137,9 +137,30 @@ def _restore_missing_schema(target: dict[str, Any], template: dict[str, Any]) ->
     return target
 
 
-def _pending_bucket(bucket_key: int) -> dict[str, Any]:
-    bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
-    return _restore_missing_schema(bucket, _fresh_bucket())
+_BUCKET_TEMPLATE = _fresh_bucket()
+
+
+def _pending_bucket(bucket_key: int, section: str | None = None) -> dict[str, Any]:
+    """Return a pending bucket while hydrating only the branch in use.
+
+    A successful flush intentionally prunes zeroed branches. The old hot path
+    rebuilt and recursively walked the complete schema for every telemetry
+    event, even when only HTTP or presence was being updated. Keep one
+    immutable template and restore only the section touched by this sample.
+    """
+    bucket = _PENDING.get(bucket_key)
+    if bucket is None:
+        bucket = copy.deepcopy(_BUCKET_TEMPLATE)
+        _PENDING[bucket_key] = bucket
+        return bucket
+    if section:
+        template = _BUCKET_TEMPLATE[section]
+        current = bucket.get(section)
+        if not isinstance(current, dict):
+            bucket[section] = copy.deepcopy(template)
+        else:
+            _restore_missing_schema(current, template)
+    return bucket
 
 
 def record_http_event(method: str, route: str, status_code: int, latency_ms: float, *, client_release: str | None = None, timestamp: float | None = None) -> None:
@@ -151,7 +172,7 @@ def record_http_event(method: str, route: str, status_code: int, latency_ms: flo
     status = int(status_code or 0)
 
     with _PENDING_LOCK:
-        bucket = _pending_bucket(bucket_key)
+        bucket = _pending_bucket(bucket_key, "http")
         http = bucket["http"]
         http["samples"] += 1
         family = status // 100 if status > 0 else 0
@@ -203,7 +224,7 @@ def record_ai_event(event: dict[str, Any], *, timestamp: float | None = None) ->
     provider = str(event.get("provider") or "local")[:32]
 
     with _PENDING_LOCK:
-        bucket = _pending_bucket(bucket_key)
+        bucket = _pending_bucket(bucket_key, "ai")
         ai = bucket["ai"]
         ai["samples"] += 1
         ai["cloudflare" if provider == "cloudflare" else "local"] += 1
@@ -248,7 +269,7 @@ def record_presence_snapshot(online_users: int, *, timestamp: float | None = Non
     bucket_key = _bucket_start(at)
     online = max(0, int(online_users or 0))
     with _PENDING_LOCK:
-        presence = _pending_bucket(bucket_key)["presence"]
+        presence = _pending_bucket(bucket_key, "presence")["presence"]
         presence["samples"] += 1
         presence["online_sum"] += online
         presence["online_max"] = max(int(presence.get("online_max") or 0), online)
@@ -278,7 +299,7 @@ def record_frontend_event(
     clean_release = str(release or "unknown")[:40]
 
     with _PENDING_LOCK:
-        frontend = _pending_bucket(bucket_key)["frontend"]
+        frontend = _pending_bucket(bucket_key, "frontend")["frontend"]
         frontend["samples"] += 1
         _inc(frontend["event_types"], _safe_key(clean_event))
         _inc(frontend["contexts"], _safe_key(clean_context))

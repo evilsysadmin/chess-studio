@@ -193,3 +193,22 @@ def test_sparse_pending_bucket_is_rehydrated_after_flush_delta():
     assert bucket["ai"]["channels"][channel_key]["samples"] == 2
     assert bucket["frontend"]["samples"] == 1
     assert history._summarize_frontend(bucket["frontend"])["vital_samples"]["LCP"] == 1
+
+def test_hot_path_does_not_rebuild_the_full_bucket_schema(monkeypatch):
+    at = 1_800_000_000.0
+
+    def unexpected_fresh_bucket():
+        raise AssertionError("the telemetry hot path rebuilt the full bucket schema")
+
+    monkeypatch.setattr(history, "_fresh_bucket", unexpected_fresh_bucket)
+    history.record_http_event("GET", "/api/status", 200, 8.0, timestamp=at)
+    history.record_http_event("GET", "/api/status", 200, 9.0, timestamp=at + 1)
+    history.record_presence_snapshot(2, timestamp=at + 2)
+    history.record_frontend_event("web_vital", metric_name="LCP", value=700, timestamp=at + 3)
+    history.record_ai_event({"at": at + 4, "provider": "local", "event_type": "generic"})
+    bucket = _pending_bucket()
+    assert bucket["http"]["samples"] == 2
+    assert bucket["presence"]["samples"] == 1
+    assert bucket["frontend"]["samples"] == 1
+    assert bucket["ai"]["samples"] == 1
+
