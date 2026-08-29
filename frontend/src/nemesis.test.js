@@ -70,7 +70,7 @@ describe('openingNemeses', () => {
   it('marca mejora sólo cuando la ventana reciente supera claramente el histórico', () => {
     const rows = [
       game(1, 'loss'), game(2, 'loss'), game(3, 'loss'), game(4, 'loss'), game(5, 'loss'),
-      game(6, 'loss'), game(7, 'win'), game(8, 'draw'), game(9, 'draw'), game(10, 'loss'),
+      game(6, 'win'), game(7, 'win'), game(8, 'draw'), game(9, 'loss'), game(10, 'loss'),
     ];
     const trend = openingNemesisTrend(rows, 20);
     expect(trend).toMatchObject({ improving: true, recovered: false, status: 'improving', recentScorePct: 50 });
