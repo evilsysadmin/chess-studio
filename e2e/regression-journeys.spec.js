@@ -291,6 +291,7 @@ test('admin · presencia distingue primer plano, segundo plano, idle y offline',
   });
   await login(page);
   await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
+  await page.getByRole('tab', { name: /Usuarios/ }).click();
   await expect(page.getByRole('heading', { name: 'Usuarios registrados', exact: true })).toBeVisible();
 
   const foreground = page.getByRole('row').filter({ hasText: 'foreground-user' });
@@ -348,7 +349,7 @@ test('Matthias · banco de personalidad Admin usa sólo datos sintéticos', asyn
   await mockApi(page, { isAdmin: true, adminUsers: [] });
   await login(page);
   await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Usuarios registrados', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: /Matthias/ }).click();
   const section = page.getByRole('region', { name: 'Estado de Matthias' });
   await expect(section).toBeVisible();
   await section.getByRole('combobox', { name: 'Perfil sintético de Matthias' }).selectOption('improving');
