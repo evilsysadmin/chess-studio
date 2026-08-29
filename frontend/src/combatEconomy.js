@@ -63,10 +63,13 @@ function seeded(seed, salt) {
 }
 
 export function normalizeCombatEconomy(raw = {}) {
-  const hasCredits = Number.isFinite(Number(raw.credits));
+  const rawCredits = raw.credits;
+  const hasCredits = rawCredits != null
+    && !(typeof rawCredits === 'string' && rawCredits.trim() === '')
+    && Number.isFinite(Number(rawCredits));
   const legacyXp = int(raw.combatXp);
   return {
-    credits: hasCredits ? int(raw.credits) : COMBAT_STARTING_CREDITS + legacyXp * 2,
+    credits: hasCredits ? int(rawCredits) : COMBAT_STARTING_CREDITS + legacyXp * 2,
     combatXp: 0,
     economyVersion: COMBAT_ECONOMY_VERSION,
     processedCreditBattleIds: Array.isArray(raw.processedCreditBattleIds) ? raw.processedCreditBattleIds.slice(-120) : [],
