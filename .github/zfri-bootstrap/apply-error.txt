@@ -1,0 +1,18 @@
+error: repository lacks the necessary blob to perform 3-way merge.
+Falling back to direct application...
+error: patch failed: README.md:1
+error: README.md: patch does not apply
+Applied patch to 'RELEASE.txt' cleanly.
+Applied patch to 'backend-python/release_info.py' cleanly.
+Applied patch to 'frontend/public/release.json' cleanly.
+Applied patch to 'frontend/src/combatCampaign.js' cleanly.
+Applied patch to 'frontend/src/combatCampaign.test.js' cleanly.
+Falling back to direct application...
+Falling back to direct application...
+Applied patch to 'frontend/src/components/CampaignBriefing.jsx' cleanly.
+Applied patch to 'frontend/src/components/RoguelikeScreen.jsx' cleanly.
+Applied patch to 'frontend/src/components/useCombatController.js' cleanly.
+Applied patch to 'frontend/src/release.js' cleanly.
+Applied patch to 'frontend/src/styles/06-combat-campaign.css' cleanly.
+Applied patch to 'frontend/src/userReleaseNotes.js' cleanly.
+Applied patch to 'scripts/css_architecture_manifest.json' cleanly.
