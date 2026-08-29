@@ -42,7 +42,7 @@ describe('AI personal puzzle batches', () => {
     const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({ suggested: { from: 'e2', to: 'e4', san: 'e4' } }),
     });
-    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92, aiQualityVersion: 4, tacticalBestMoveChecked: true, tacticalRefutationChecked: true });
+    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92, aiQualityVersion: 5, tacticalBestMoveChecked: true, tacticalRefutationChecked: true });
 
     const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({ suggested: { from: 'd2', to: 'd4', san: 'd4' } }),
