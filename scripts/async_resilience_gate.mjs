@@ -58,7 +58,7 @@ requirePattern('frontend/src/components/useCombatController.js', /battleGenerati
 requirePattern('frontend/src/components/useCombatController.js', /analyzePosition\([^\n]+\{\s*signal:\s*controller\.signal\s*\}/, 'análisis Combat debe cancelarse');
 requirePattern('frontend/src/components/useCombatController.js', /if\s*\(!result\)\s*\{[\s\S]{0,180}?throw\s+new\s+Error/, 'Combat no puede tratar una resolución nula como jugada completada');
 requirePattern('frontend/src/components/useCombatController.js', /resetBossPhase[\s\S]{0,420}?if\s*\(!chess\)[\s\S]{0,180}?setBusy\(false\)/, 'un reset de boss inválido debe liberar busy');
-requirePattern('frontend/src/components/InsightsScreen.jsx', /async function startSearch\(\)[\s\S]{0,2600}?finally\s*\{[\s\S]{0,350}?setSearchStatus\('done'\)/, 'la búsqueda de peor jugada debe liberar running incluso si falla');
+requirePattern('frontend/src/components/InsightsDashboardContent.jsx', /async function startSearch\(\)[\s\S]{0,2600}?finally\s*\{[\s\S]{0,350}?setSearchStatus\('done'\)/, 'la búsqueda de peor jugada debe liberar running incluso si falla');
 requirePattern('frontend/src/App.jsx', /api\.createGame\([^\n]+\{\s*signal:\s*launch\.controller\.signal[^}]*\}/, 'crear partida debe poder cancelarse al abandonar la pantalla');
 requirePattern('frontend/src/useActiveSessionRestore.js', /restoreRequestRef/, 'restauración debe deduplicar/cancelar respuestas tardías');
 requirePattern('frontend/src/components/FeedbackModal.jsx', /submitInFlightRef\.current/, 'Feedback necesita mutex síncrono para impedir doble submit');

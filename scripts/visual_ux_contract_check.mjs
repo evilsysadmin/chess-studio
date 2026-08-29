@@ -17,7 +17,9 @@ const app = read('frontend/src/App.jsx');
 const adminInbox = read('frontend/src/useAdminFeedbackInbox.js');
 const chat = read('frontend/src/components/GameChat.jsx');
 const menu = read('frontend/src/components/Menu.jsx');
-const insights = read('frontend/src/components/InsightsScreen.jsx');
+const insightsShell = read('frontend/src/components/InsightsScreen.jsx');
+const insightsDashboard = read('frontend/src/components/InsightsDashboardContent.jsx');
+const insightsWorkspaceCss = read('frontend/src/components/InsightsWorkspace.css');
 const cpuIdentity = read('frontend/src/cpuIdentity.js');
 const matthiasVisuals = read('frontend/src/matthiasVisuals.js');
 const feedbackE2e = read('e2e/feedback-critical.spec.js');
@@ -51,7 +53,7 @@ const checks = [
   [/CPU_IDENTITY/.test(game) && /game-player-avatar\$\{cpu \? ' has-portrait'/.test(game) && /MATTHIAS_BASE_AVATAR/.test(cpuIdentity) && /matthias-scenes\/base\.webp/.test(matthiasVisuals), 'Matthias debe ocupar el hueco de identidad existente en la tarjeta rival'],
   [/CPU_IDENTITY\.name\.toUpperCase\(\)/.test(chat) && /game-chat-matthias-avatar/.test(finalCss), 'el chat debe firmar como Matthias con presencia compacta'],
   [/MatthiasHomeVisit/.test(menu) && /matthias-home-card/.test(finalCss), 'Home debe integrar el rincón de Matthias con bocadillo propio sin capa flotante'],
-  [/CPU_IDENTITY/.test(insights) && /ai-player-portrait-character/.test(insights) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias sin invadir el diagnóstico'],
+  [/CPU_IDENTITY/.test(insightsDashboard) && /ai-player-portrait-character/.test(insightsDashboard) && /Ahora/.test(insightsShell) && /Matthias/.test(insightsShell) && /\.insights-workspace-view-now \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias y permanecer fuera del foco Ahora'],
   [/resuelto mantiene Reabrir y Borrar feedback visibles/.test(feedbackE2e), 'falta E2E de borrado visible en feedback resuelto'],
   [/admin ve un sobre en Home cuando hay mensajes nuevos/.test(feedbackE2e), 'falta E2E del inbox admin de feedback'],
 ];

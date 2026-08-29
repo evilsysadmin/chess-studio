@@ -1,0 +1,359 @@
+/* Así juegas · coaching workspace
+ * Progressive disclosure for the diagnosis screen. The underlying diagnosis
+ * logic remains untouched; this layer decides what deserves attention now.
+ */
+.insights-coach-workspace {
+  width: min(100%, var(--surface-max-wide, 1180px));
+  margin: 0 auto;
+  display: grid;
+  gap: .85rem;
+}
+
+.insights-workspace-header {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.1rem 1.05rem;
+  border: 1px solid rgba(198, 164, 93, .26);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(198, 164, 93, .11), transparent 34%),
+    linear-gradient(145deg, rgba(255,255,255,.035), rgba(0,0,0,.13));
+  box-shadow: 0 16px 42px rgba(0,0,0,.14);
+}
+
+.insights-workspace-back {
+  margin-bottom: .7rem;
+}
+
+.insights-workspace-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .8rem;
+}
+
+.insights-workspace-title-row h2 {
+  margin: .12rem 0 0;
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  letter-spacing: -.025em;
+}
+
+.insights-workspace-lead {
+  max-width: 760px;
+  margin: .45rem 0 .85rem;
+  opacity: .78;
+  line-height: 1.5;
+}
+
+.insights-workspace-primary-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  max-width: 670px;
+}
+
+.insights-workspace-primary-tabs > button,
+.insights-workspace-nav > button {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.1);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.insights-workspace-primary-tabs > button {
+  display: grid;
+  gap: .12rem;
+  padding: .67rem .78rem;
+  border-radius: 11px;
+  background: rgba(0,0,0,.13);
+}
+
+.insights-workspace-primary-tabs > button small,
+.insights-workspace-nav > button small {
+  opacity: .62;
+  font-size: .75rem;
+  line-height: 1.25;
+}
+
+.insights-workspace-primary-tabs > button.active {
+  border-color: rgba(198,164,93,.62);
+  background: rgba(198,164,93,.095);
+  box-shadow: inset 0 0 0 1px rgba(198,164,93,.12);
+}
+
+.insights-workspace-nav {
+  position: sticky;
+  top: .65rem;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .45rem;
+  padding: .45rem;
+  border: 1px solid rgba(255,255,255,.085);
+  border-radius: 14px;
+  background: rgba(20, 24, 29, .89);
+  box-shadow: 0 10px 28px rgba(0,0,0,.16);
+  backdrop-filter: blur(14px);
+}
+
+.insights-workspace-nav > button {
+  display: grid;
+  gap: .08rem;
+  padding: .57rem .66rem;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.insights-workspace-nav > button:hover,
+.insights-workspace-primary-tabs > button:hover {
+  border-color: rgba(198,164,93,.42);
+  background: rgba(255,255,255,.035);
+}
+
+.insights-workspace-nav > button.active {
+  border-color: rgba(198,164,93,.62);
+  background: linear-gradient(135deg, rgba(198,164,93,.15), rgba(198,164,93,.055));
+  box-shadow: inset 0 0 0 1px rgba(198,164,93,.11);
+}
+
+.insights-workspace-nav > button.active strong::before {
+  content: '●';
+  margin-right: .38rem;
+  font-size: .57rem;
+  vertical-align: .13rem;
+  opacity: .75;
+}
+
+.insights-workspace-panel {
+  min-width: 0;
+}
+
+/* The original component keeps owning all data/actions; its old duplicated
+ * header is hidden because the workspace header above now owns navigation. */
+.insights-coach-workspace .insights-hub > .back-link,
+.insights-coach-workspace .insights-hub > .insights-hub-hero {
+  display: none !important;
+}
+
+.insights-coach-workspace .insights-hub {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.insights-coach-workspace .insights-hub > .menu-section,
+.insights-coach-workspace .insights-hub > details,
+.insights-coach-workspace .insights-hub > .matthias-daily {
+  margin-top: 0;
+}
+
+/* NOW · one decision, one obvious action. */
+.insights-workspace-view-now .insights-hub > .ai-player-portrait,
+.insights-workspace-view-now .insights-hub > .matthias-daily,
+.insights-workspace-view-now .insights-hub > .worst-move-spotlight,
+.insights-workspace-view-now .insights-hub > .insights-roast-details,
+.insights-workspace-view-now .insights-hub > .insights-full-details {
+  display: none !important;
+}
+
+.insights-workspace-view-now .coaching-grid,
+.insights-workspace-view-now .coaching-ai-plan,
+.insights-workspace-view-now .coaching-ai-status,
+.insights-workspace-view-now .coaching-footnote,
+.insights-workspace-view-now .coaching-count {
+  display: none !important;
+}
+
+.insights-workspace-view-now .coaching-section,
+.insights-workspace-view-now .personal-training-spotlight {
+  min-width: 0;
+}
+
+.insights-workspace-view-now .training-now-card {
+  margin-bottom: 0;
+  border-width: 1px;
+  box-shadow: 0 15px 34px rgba(0,0,0,.12);
+}
+
+.insights-workspace-view-now .personal-training-spotlight {
+  align-content: start;
+}
+
+/* MATTHIAS · character and consultation, without stats screaming underneath. */
+.insights-workspace-view-matthias .insights-hub > .worst-move-spotlight,
+.insights-workspace-view-matthias .insights-hub > .personal-training-spotlight,
+.insights-workspace-view-matthias .insights-hub > .coaching-section,
+.insights-workspace-view-matthias .insights-hub > .insights-full-details {
+  display: none !important;
+}
+
+.insights-workspace-view-matthias .ai-player-portrait,
+.insights-workspace-view-matthias .matthias-daily {
+  min-width: 0;
+  height: max-content;
+}
+
+.insights-workspace-view-matthias .insights-roast-details {
+  grid-column: 1 / -1;
+}
+
+/* ERRORS · forensic work and training material live together. */
+.insights-workspace-view-errors .insights-hub > .ai-player-portrait,
+.insights-workspace-view-errors .insights-hub > .matthias-daily,
+.insights-workspace-view-errors .insights-hub > .insights-roast-details,
+.insights-workspace-view-errors .insights-hub > .insights-full-details {
+  display: none !important;
+}
+
+.insights-workspace-view-errors .worst-move-spotlight,
+.insights-workspace-view-errors .personal-training-spotlight,
+.insights-workspace-view-errors .coaching-section {
+  min-width: 0;
+}
+
+.insights-workspace-view-errors .coaching-section {
+  grid-column: 1 / -1;
+}
+
+/* DOSSIER · opening this view is already the explicit disclosure action. */
+.insights-workspace-view-dossier .insights-hub > .ai-player-portrait,
+.insights-workspace-view-dossier .insights-hub > .matthias-daily,
+.insights-workspace-view-dossier .insights-hub > .worst-move-spotlight,
+.insights-workspace-view-dossier .insights-hub > .personal-training-spotlight,
+.insights-workspace-view-dossier .insights-hub > .insights-roast-details,
+.insights-workspace-view-dossier .insights-hub > .coaching-section {
+  display: none !important;
+}
+
+.insights-workspace-view-dossier .insights-full-details > summary {
+  display: none !important;
+}
+
+.insights-workspace-view-dossier .insights-full-details > .friendly-disclosure-body {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .8rem;
+  padding-top: 0;
+}
+
+.insights-workspace-view-dossier .insights-full-details > .friendly-disclosure-body > .menu-section {
+  min-width: 0;
+  margin: 0;
+}
+
+.insights-workspace-view-dossier .insights-full-details .series-dossier,
+.insights-workspace-view-dossier .insights-full-details > .friendly-disclosure-body > .menu-section:last-child {
+  grid-column: 1 / -1;
+}
+
+.insights-workspace-section-career .insights-hub {
+  margin-top: 0;
+}
+
+/* Desktop bento: scroll is spent on information, not empty vertical rhythm. */
+@media (min-width: 900px) {
+  .insights-workspace-view-now .insights-hub,
+  .insights-workspace-view-matthias .insights-hub,
+  .insights-workspace-view-errors .insights-hub {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .9rem;
+    align-items: start;
+  }
+
+  .insights-workspace-view-now .coaching-section {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .insights-workspace-view-now .personal-training-spotlight {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .insights-workspace-view-matthias .ai-player-portrait {
+    grid-column: 1;
+  }
+
+  .insights-workspace-view-matthias .matthias-daily {
+    grid-column: 2;
+  }
+
+  .insights-workspace-view-errors .worst-move-spotlight {
+    grid-column: 1;
+  }
+
+  .insights-workspace-view-errors .personal-training-spotlight {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .insights-coach-workspace {
+    gap: .65rem;
+  }
+
+  .insights-workspace-header {
+    padding: .85rem;
+    border-radius: 14px;
+  }
+
+  .insights-workspace-lead {
+    margin-bottom: .7rem;
+    font-size: .92rem;
+  }
+
+  .insights-workspace-primary-tabs {
+    gap: .4rem;
+  }
+
+  .insights-workspace-primary-tabs > button {
+    padding: .58rem .62rem;
+  }
+
+  .insights-workspace-nav {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(130px, 44vw);
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+    padding: .38rem;
+  }
+
+  .insights-workspace-nav > button {
+    padding: .54rem .6rem;
+  }
+
+  .insights-workspace-view-dossier .insights-full-details > .friendly-disclosure-body {
+    grid-template-columns: 1fr;
+  }
+
+  .insights-workspace-view-dossier .insights-full-details .series-dossier,
+  .insights-workspace-view-dossier .insights-full-details > .friendly-disclosure-body > .menu-section:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 430px) {
+  .insights-workspace-primary-tabs > button small {
+    display: none;
+  }
+
+  .insights-workspace-nav {
+    grid-auto-columns: minmax(118px, 42vw);
+  }
+
+  .insights-workspace-nav > button small {
+    font-size: .7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insights-workspace-primary-tabs > button,
+  .insights-workspace-nav > button {
+    transition: none;
+  }
+}
