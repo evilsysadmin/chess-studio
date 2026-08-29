@@ -19,7 +19,7 @@ NODE_CHECK_JOBS ?= 8
 CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
-	frontend-install backend-install python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
+	frontend-install backend-install ensure-pip-audit python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check static-preflight \
@@ -86,11 +86,12 @@ install: frontend-install backend-install install-hooks
 bootstrap-test: frontend-install backend-install e2e-install
 	@echo "==> Bootstrap de tests listo: frontend + backend + Playwright."
 
-## Mismo núcleo funcional que CI, ejecutado en una sola orden local. Security
-## con DB/red queda fuera a propósito; `make security` y `make release-gate`
-## siguen disponibles para la pasada pesada.
-test-all-local: static-preflight test-frontend test-backend-smoke test-backend-integration backend-check e2e-critical
-	@echo "==> Test local reproducible OK: contratos + frontend + backend + navegador crítico."
+## Suite funcional reproducible completa. Incluye Playwright entero para que
+## un checkout local o el runner Docker vea las mismas regresiones de navegador
+## antes de entregar una release. Security con imágenes/stack real sigue en
+## `make release-gate`, porque requiere Docker/servicios adicionales.
+test-all-local: static-preflight test-frontend test-backend-smoke test-backend-integration backend-check e2e
+	@echo "==> Test local reproducible OK: contratos + frontend + backend + Playwright completo."
 
 ## Sandbox hermético opcional. Útil cuando la distro local cambia Node/Python o
 ## cuando queremos reproducir un fallo sin contaminar el host.
@@ -196,6 +197,15 @@ ensure-backend-deps:
 		$(MAKE) backend-install; \
 	fi
 
+## pip-audit es tooling de seguridad del repo, no una suposición del runner.
+## Si un cache/venv queda incompleto, este target lo repara en el mismo virtualenv.
+ensure-pip-audit: ensure-backend-deps
+	@if ! "$(VENV_PY)" -c "import pip_audit" >/dev/null 2>&1; then \
+		echo "==> pip-audit ausente en .venv; instalándolo explícitamente..."; \
+		"$(VENV_PY)" -m pip install --upgrade "pip-audit==2.10.1"; \
+	fi
+	@"$(VENV_PY)" -c "import pip_audit; print('pip-audit listo en', pip_audit.__file__)"
+
 ## Capas de tests disjuntas: cada test corre una sola vez en el quality gate.
 ## Los aliases gate-* se conservan para no romper hábitos/scripts antiguos.
 test-backend-smoke: ensure-backend-deps
@@ -221,8 +231,9 @@ combat-smoke: test-frontend-smoke
 gate-critical: test-backend-smoke test-frontend-smoke
 
 ## Quality gate local completo. Frontend enseña smoke → unit → contract;
-## backend enseña smoke → integration. No hay una segunda suite duplicada.
-tests: ensure-hooks static-preflight tests-fe tests-be security
+## backend enseña smoke → integration; Playwright ejecuta todos los journeys.
+## `git push` no sale si falla ninguna de estas capas.
+tests: ensure-hooks static-preflight tests-fe tests-be security e2e
 
 test: tests
 quality-gate: tests
@@ -252,8 +263,8 @@ bundle-report: frontend-build
 	node scripts/bundle_size_report.mjs
 
 
-## E2E real en navegador. No vive en el pre-push para no descargar Chromium
-## ni ralentizar cada push; CI corre sólo un centinela informativo y la suite completa queda manual/nocturna.
+## E2E real en navegador. `make tests`/pre-push ejecuta la suite Chromium completa;
+## `e2e-critical` queda como centinela rápido para jobs selectivos de CI y diagnóstico.
 ## Coverage real. Frontend usa V8 sobre lógica crítica; React/DOM se cubre en Chromium con Playwright.
 coverage-fe: ensure-frontend-deps
 	@cd frontend && if [ ! -d node_modules/@vitest/coverage-v8 ]; then \
@@ -416,7 +427,7 @@ security-fe: ensure-frontend-deps
 
 ## Python: pip-audit da inventario de advisories. Como pip-audit no expone un
 ## umbral de severidad fiable, Trivy decide después qué es CRITICAL y bloquea.
-security-be: ensure-backend-deps
+security-be: ensure-pip-audit
 	@mkdir -p "$(SECURITY_DIR)"
 	@rm -f "$(SECURITY_DIR)/pip-audit.json"
 	@cd backend-python && set +e; $(BACKEND_VENV_PY) -m pip_audit -r requirements.txt --format=json --output "../$(SECURITY_DIR)/pip-audit.json"; rc=$$?; set -e; \
@@ -466,7 +477,7 @@ help:
 	@echo "  make clean          - borra contenedores/imágenes/volúmenes locales"
 	@echo "  make install        - instala frontend + backend (.venv) y activa pre-push"
 	@echo "  make bootstrap-test - prepara desde cero frontend + backend + Playwright"
-	@echo "  make test-all-local - ejecuta en una orden el mismo núcleo funcional de CI"
+	@echo "  make test-all-local - ejecuta frontend + backend + Playwright completo"
 	@echo "  make test-in-docker - ejecuta test-all-local en una imagen reproducible"
 	@echo "  make install-hooks  - activa/regenera .githooks/pre-push (alias: make hooks)"
 	@echo "  make test-frontend-smoke    - smoke frontend fail-fast (10 ficheros)"
@@ -475,7 +486,7 @@ help:
 	@echo "  make test-backend-smoke     - motor + IA"
 	@echo "  make test-backend-integration - API/servicios backend"
 	@echo "  make gate-critical  - alias rápido: smoke backend + frontend"
-	@echo "  make tests          - quality gate completo, capas disjuntas + security"
+	@echo "  make tests          - quality gate completo + security + Playwright completo"
 	@echo "  make tests-fe       - frontend: smoke + unit + contract + build"
 	@echo "  make tests-be       - backend: smoke + integration + pip check"
 	@echo "  make tests/fe       - alias de tests-fe"

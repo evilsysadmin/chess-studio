@@ -35,16 +35,23 @@ local_block = re.search(r'^test-all-local:(.*?)(?=\n[^\t# ].*?:|\Z)', makefile, 
 if not local_block:
     raise SystemExit('No se pudo inspeccionar test-all-local')
 local = local_block.group(0)
-for family in ['static-preflight', 'test-frontend', 'test-backend-smoke', 'test-backend-integration', 'backend-check', 'e2e-critical']:
+for family in ['static-preflight', 'test-frontend', 'test-backend-smoke', 'test-backend-integration', 'backend-check', 'e2e']:
     if family not in local:
         raise SystemExit(f'test-all-local no incluye la familia crítica: {family}')
 
-for command in ['make static-preflight', 'make test-frontend', 'make test-backend-smoke', 'make test-backend-integration', 'make backend-check', 'make e2e-critical']:
+
+tests_block = re.search(r'^tests:(.*?)(?=\n[^\t# ].*?:|\Z)', makefile, re.M | re.S)
+if not tests_block or 'e2e' not in tests_block.group(0):
+    raise SystemExit('make tests debe incluir la suite Playwright completa mediante el target e2e')
+
+for command in ['make static-preflight', 'make test-frontend', 'make test-backend-smoke', 'make test-backend-integration', 'make backend-check', 'make security-be', 'make e2e-critical']:
     if command not in ci:
         raise SystemExit(f'CI se ha desalineado del entrypoint local: falta `{command}`')
 
 if 'CRITICAL_E2E_GREP :=' not in makefile:
     raise SystemExit('El grep E2E crítico debe vivir en Makefile como contrato único')
+if 'python -m pip_audit' in ci:
+    raise SystemExit('CI volvió a ejecutar pip-audit fuera del venv; usa `make security-be`')
 if '--grep "login → menú' in ci:
     raise SystemExit('CI volvió a duplicar el grep E2E en YAML; usa `make e2e-critical`')
 

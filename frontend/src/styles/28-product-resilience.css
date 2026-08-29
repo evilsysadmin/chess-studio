@@ -824,6 +824,8 @@
 .matthias-daily-heading { display: flex; align-items: center; gap: .7rem; }
 .matthias-daily-heading img { width: 54px; height: 54px; border-radius: 12px; object-fit: cover; object-position: 50% 36%; border: 1px solid color-mix(in srgb, var(--brass) 55%, transparent); }
 .matthias-daily-heading h3 { margin: .08rem 0 0; font-family: var(--font-display); font-size: 1rem; color: var(--parchment); }
+.matthias-daily-brandline { display: inline-flex; align-items: center; gap: .34rem; }
+.matthias-daily-heading .matthias-brand-mark { width: 20px; height: 20px; border: 0; border-radius: 4px; object-fit: contain; object-position: center; background: transparent; }
 .matthias-daily-options { display: flex; flex-wrap: wrap; gap: .45rem; }
 .matthias-daily-options .secondary-btn { min-height: 36px; }
 .matthias-daily > small, .matthias-daily-answer small { color: var(--parchment-dim); line-height: 1.4; }

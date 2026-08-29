@@ -101,10 +101,10 @@ describe('Matthias en Home', () => {
     const greeting = buildMatthiasLoginGreeting({ hour: 22 });
     expect(greeting).toMatchObject({ kind: 'login-greeting', action: 'insights', actionLabel: 'Ver Así juegas' });
     expect(greeting.text).toMatch(/^Guten Abend\./);
-    expect(greeting.timeScene).toBe('night-coffee');
+    expect(greeting.timeScene).toBe('chess-inception');
     expect(buildMatthiasLoginGreeting({ hour: 12 })).toMatchObject({ timeScene: 'lunch-bocata' });
     expect(buildMatthiasLoginGreeting({ hour: 3 })).toMatchObject({ timeScene: 'late-sleep' });
-    expect(buildMatthiasLoginGreeting({ hour: 3 }).text).toMatch(/despertado al alto mando/i);
+    expect(buildMatthiasLoginGreeting({ hour: 3 }).text).toMatch(/(crimen horario|despertado|las tres)/i);
     const model = buildMatthiasHomeCardModel({ visit: greeting });
     expect(model).toMatchObject({ variant: 'comment', eyebrow: 'MATTHIAS · WILLKOMMEN' });
     consumeMatthiasLoginGreeting();

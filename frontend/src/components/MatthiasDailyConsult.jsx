@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { matthiasMoodAvatar } from '../matthiasVisuals.js';
+import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { askMatthiasDaily, createMatthiasConsultationId, fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 import { buildMatthiasDossierEntries, formatMatthiasDossierDate } from '../matthiasDossier.js';
 
@@ -79,7 +80,7 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
     <section className="matthias-daily" aria-label="Consulta diaria con Matthias">
       <div className="matthias-daily-heading">
         <img src={matthiasAvatar} alt="" aria-hidden="true" />
-        <div><span className="section-label">Matthias // consulta del día</span><h3>Una audiencia diaria. Elige bien, bitte.</h3></div>
+        <div className="matthias-daily-title-copy"><span className="section-label matthias-daily-brandline"><img className="matthias-brand-mark" src={CPU_IDENTITY.brandMark} alt="" aria-hidden="true" />Matthias // consulta del día</span><h3>Una audiencia diaria. Elige bien, bitte.</h3></div>
       </div>
       {memory && (
         <details className="matthias-memory-card">

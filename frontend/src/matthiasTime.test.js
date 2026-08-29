@@ -1,26 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { matthiasTimeScene } from './matthiasTime.js';
+import { matthiasTimeScene, normalizeMatthiasHour } from './matthiasTime.js';
 
-describe('Matthias · escenas por hora local', () => {
-  it.each([
-    [0, 'night-coffee'],
-    [1, 'late-sleep'],
-    [5, 'late-sleep'],
-    [6, 'morning-coffee'],
-    [10, 'morning-coffee'],
-    [11, 'lunch-bocata'],
-    [14, 'lunch-bocata'],
-    [15, 'afternoon-ops'],
-    [19, 'afternoon-ops'],
-    [20, 'night-coffee'],
-    [23, 'night-coffee'],
-  ])('a las %i usa %s', (hour, key) => {
-    expect(matthiasTimeScene(hour).key).toBe(key);
+describe('Matthias · jornada horaria', () => {
+  it('rota actividades hora a hora y reserva comida para desayuno, comida y cena', () => {
+    const keys = Array.from({ length: 24 }, (_, hour) => matthiasTimeScene(hour).key);
+    expect(keys.slice(1, 6)).toEqual(Array(5).fill('late-sleep'));
+    expect(keys.filter((key) => key === 'lunch-bocata')).toHaveLength(2);
+    expect(keys[7]).toBe('breakfast-news');
+    expect(keys[12]).toBe('lunch-bocata');
+    expect(keys[20]).toBe('lunch-bocata');
+    expect(new Set(keys).size).toBeGreaterThanOrEqual(10);
+    expect(keys[9]).toBe('chess-inception');
+    expect(keys[19]).toBe('beer-break');
+    expect(keys[23]).toBe('strategy-book');
+
+    const solidFoodHours = keys
+      .map((key, hour) => ({ key, hour }))
+      .filter(({ key }) => ['breakfast-news', 'lunch-bocata'].includes(key))
+      .map(({ hour }) => hour);
+    expect(solidFoodHours).toEqual([7, 12, 20]);
+
+    const workingHours = keys.slice(8, 19);
+    expect(workingHours).toContain('dossier');
+    expect(workingHours).toContain('strategy-book');
+    expect(workingHours).toContain('chess-inception');
+    expect(workingHours).toContain('afternoon-ops');
   });
 
-  it('normaliza horas fuera de rango sin inventar otra identidad', () => {
-    expect(matthiasTimeScene(24).key).toBe('night-coffee');
-    expect(matthiasTimeScene(-1).key).toBe('night-coffee');
+  it('normaliza horas fuera de rango sin romper la escena', () => {
+    expect(normalizeMatthiasHour(24)).toBe(0);
+    expect(normalizeMatthiasHour(-1)).toBe(23);
     expect(matthiasTimeScene('basura').key).toBe('lunch-bocata');
   });
 });
