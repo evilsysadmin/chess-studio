@@ -22,7 +22,19 @@ jobs:
         run: |
           set -euo pipefail
           cat .github/zfri-bootstrap/part*.patch > /tmp/zfri.patch
-          git apply --3way --whitespace=nowarn /tmp/zfri.patch
+          set +e
+          git apply --3way --whitespace=nowarn /tmp/zfri.patch > /tmp/zfri-apply.log 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            cp /tmp/zfri-apply.log .github/zfri-bootstrap/apply-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/zfri-bootstrap/apply-error.txt
+            git commit -m "chore: capture zfri patch conflict"
+            git push origin HEAD:feat/zfri-combat-mission-orders
+            exit "$rc"
+          fi
           rm -rf .github/zfri-bootstrap .github/workflows/zfri-bootstrap.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
