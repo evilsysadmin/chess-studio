@@ -2,7 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('./AdminLegacyScreen.jsx', () => ({ default: () => <div data-admin-legacy="true">legacy</div> }));
+vi.mock('./AdminDashboardContent.jsx', () => ({ default: () => <div data-admin-dashboard="true">dashboard</div> }));
 vi.mock('./ObservabilityPanel.jsx', () => ({ default: () => <div data-observability="true">observability</div> }));
 vi.mock('../admin.js', () => ({ fetchAdminUsers: vi.fn(async () => []) }));
 vi.mock('../auth.js', () => ({ getToken: () => 'token', getUsername: () => 'admin' }));
@@ -24,6 +24,6 @@ describe('AdminScreen workspace', () => {
     expect(html).toContain('id="admin-tab-overview"');
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain('id="admin-panel-overview"');
-    expect(html).toContain('data-admin-legacy="true"');
+    expect(html).toContain('data-admin-dashboard="true"');
   });
 });
