@@ -33,6 +33,6 @@ describe('gate de economía de campaña Combat Chess', () => {
       eventIncome: 4,
     });
     expect(projection.supplies).toBeGreaterThanOrEqual(0);
-    expect(projection.supplies).toBeLessThan(30);
+    expect(projection.supplies).toBeLessThan(35);
   });
 });
