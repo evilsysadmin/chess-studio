@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOKEN_KEY } from './auth.js';
-import { deleteAdminFeedback, fetchAdminFeedback, fetchAdminFeedbackSummary, submitFeedback, updateAdminFeedbackStatus } from './feedback.js';
+import { deleteAdminFeedback, deleteMyFeedback, fetchAdminFeedback, fetchAdminFeedbackSummary, submitFeedback, updateAdminFeedbackStatus } from './feedback.js';
 
 function response(status, body) {
   return {
@@ -38,8 +38,6 @@ describe('feedback API client', () => {
     expect(JSON.parse(options.body)).toEqual({ category: 'ux', message: 'Demasiadas cosas.', context: 'Home', attachments: [] });
   });
 
-
-
   it('propaga la cancelación del AbortSignal al envío de feedback', async () => {
     let fetchSignal = null;
     global.fetch = vi.fn().mockImplementation((_url, options = {}) => new Promise((_resolve, reject) => {
@@ -52,6 +50,7 @@ describe('feedback API client', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
     expect(fetchSignal?.aborted).toBe(true);
   });
+
   it('lee feedback admin y actualiza estado', async () => {
     global.fetch
       .mockResolvedValueOnce(response(200, { feedback: [{ id: 'f1', status: 'new' }], newCount: 1 }))
@@ -65,11 +64,21 @@ describe('feedback API client', () => {
     expect(global.fetch.mock.calls[1][0]).toContain('/admin/feedback/f1/status');
     expect(JSON.parse(global.fetch.mock.calls[1][1].body)).toEqual({ status: 'resolved' });
   });
+
   it('lee un resumen ligero para el sobre de feedback admin', async () => {
     global.fetch.mockResolvedValueOnce(response(200, { newCount: 3, pendingCount: 4 }));
     const summary = await fetchAdminFeedbackSummary();
     expect(summary).toEqual({ newCount: 3, pendingCount: 4 });
     expect(global.fetch.mock.calls[0][0]).toContain('/admin/feedback/summary');
+  });
+
+  it('borra el feedback propio con el endpoint de autoservicio', async () => {
+    global.fetch.mockResolvedValueOnce({ ok: true, status: 204, json: async () => ({}) });
+    await expect(deleteMyFeedback('mine-1')).resolves.toBe(true);
+    expect(global.fetch.mock.calls[0][0]).toContain('/feedback/mine-1');
+    expect(global.fetch.mock.calls[0][0]).not.toContain('/admin/');
+    expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+    expect(global.fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer session-token');
   });
 
   it('borra feedback admin con DELETE explícito', async () => {
@@ -78,5 +87,4 @@ describe('feedback API client', () => {
     expect(global.fetch.mock.calls[0][0]).toContain('/admin/feedback/f-test');
     expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
   });
-
 });
