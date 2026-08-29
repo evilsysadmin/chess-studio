@@ -1,0 +1,291 @@
+/* Home · Matthias residente
+ * Presencia ambiental y lateral. Quieto no habla ni ocupa flujo; cuando el
+ * sistema sparse tiene algo real que decir aparece un único bocadillo.
+ */
+.matthias-resident {
+  position: fixed;
+  right: clamp(.65rem, 1.6vw, 1.35rem);
+  bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4.25rem));
+  z-index: 24;
+  width: min(440px, calc(100vw - 1.3rem));
+  pointer-events: none;
+}
+
+.matthias-resident__stage {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: .62rem;
+}
+
+.matthias-resident__character,
+.matthias-resident__bubble {
+  pointer-events: auto;
+}
+
+.matthias-resident__character {
+  flex: 0 0 112px;
+  width: 112px;
+  padding: .28rem .28rem .34rem;
+  display: grid;
+  justify-items: center;
+  gap: .08rem;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(15,19,24,.18), rgba(15,19,24,.78));
+  color: var(--parchment-dim);
+  text-align: center;
+  cursor: pointer;
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,.28));
+}
+
+.matthias-resident__character:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--brass) 78%, white);
+  outline-offset: 3px;
+}
+
+.matthias-resident__portrait-shell {
+  width: 102px;
+  height: 116px;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--brass) 36%, transparent);
+  border-radius: 15px 15px 10px 10px;
+  background:
+    radial-gradient(circle at 50% 72%, rgba(198,164,93,.10), transparent 42%),
+    rgba(8,11,15,.72);
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+}
+
+.matthias-resident__portrait-shell img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 44%;
+  animation:
+    matthias-resident-scene-in .55s ease-out both,
+    matthias-resident-idle 8s ease-in-out .55s infinite;
+}
+
+.matthias-resident__character strong {
+  margin-top: .1rem;
+  color: color-mix(in srgb, var(--parchment) 84%, var(--brass));
+  font-size: .59rem;
+  font-weight: 750;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.matthias-resident__character small,
+.matthias-resident__character em {
+  max-width: 108px;
+  color: color-mix(in srgb, var(--parchment-dim) 82%, transparent);
+  font-size: .54rem;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.matthias-resident__character em {
+  margin-top: .06rem;
+  opacity: .78;
+}
+
+.matthias-resident__bubble {
+  position: relative;
+  flex: 1 1 300px;
+  max-width: 318px;
+  margin-bottom: 29px;
+  padding: .72rem .78rem .62rem;
+  display: grid;
+  gap: .26rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ui-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ui-panel) 95%, black 5%);
+  box-shadow: 0 16px 36px rgba(0,0,0,.28);
+}
+
+.matthias-resident__bubble::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  bottom: 22px;
+  width: 14px;
+  height: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ui-border));
+  border-right: 1px solid color-mix(in srgb, var(--brass) 38%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-panel) 95%, black 5%);
+  transform: rotate(45deg);
+}
+
+.matthias-resident--important .matthias-resident__bubble {
+  border-color: color-mix(in srgb, var(--brass) 64%, var(--ui-border));
+  box-shadow: 0 16px 38px rgba(0,0,0,.30), 0 0 22px rgba(198,164,93,.07);
+}
+
+.matthias-resident__bubble .section-label {
+  color: color-mix(in srgb, var(--brass) 88%, var(--parchment));
+}
+
+.matthias-resident__bubble p {
+  margin: 0;
+  color: var(--parchment);
+  font-size: .78rem;
+  line-height: 1.48;
+}
+
+.matthias-resident__bubble > small {
+  color: var(--parchment-dim);
+  font-size: .62rem;
+}
+
+.matthias-resident__bubble-actions {
+  margin-top: .12rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .35rem;
+}
+
+.matthias-resident__cta,
+.matthias-resident__dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--brass);
+  cursor: pointer;
+}
+
+.matthias-resident__cta {
+  min-height: 30px;
+  padding: .18rem 0;
+  font-size: .69rem;
+  font-weight: 800;
+}
+
+.matthias-resident__dismiss {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--parchment-dim);
+  font-size: 1rem;
+}
+
+.matthias-resident__cta:hover,
+.matthias-resident__cta:focus-visible {
+  color: var(--parchment);
+  text-decoration: underline;
+  text-underline-offset: .2em;
+  outline: none;
+}
+
+.matthias-resident__dismiss:hover,
+.matthias-resident__dismiss:focus-visible {
+  color: var(--parchment);
+  background: rgba(255,255,255,.04);
+  outline: 1px solid var(--ui-border);
+}
+
+.matthias-resident.is-quiet .matthias-resident__character {
+  opacity: .82;
+  transition: opacity .2s ease, filter .2s ease;
+}
+
+.matthias-resident.is-quiet .matthias-resident__character:hover,
+.matthias-resident.is-quiet .matthias-resident__character:focus-visible {
+  opacity: 1;
+}
+
+.matthias-resident--mood-annoyed .matthias-resident__portrait-shell {
+  border-color: color-mix(in srgb, var(--danger, #b75b52) 34%, var(--brass));
+}
+
+.matthias-resident--mood-impressed .matthias-resident__portrait-shell {
+  border-color: color-mix(in srgb, var(--brass) 72%, transparent);
+}
+
+@keyframes matthias-resident-scene-in {
+  from { opacity: .25; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes matthias-resident-idle {
+  0%, 100% { transform: translateY(0); }
+  48% { transform: translateY(-1.5px); }
+  52% { transform: translateY(-1.5px); }
+}
+
+@media (max-width: 760px) {
+  .matthias-resident {
+    right: .45rem;
+    bottom: max(4.35rem, calc(env(safe-area-inset-bottom) + 3.8rem));
+    width: min(338px, calc(100vw - .9rem));
+  }
+
+  .matthias-resident__character {
+    flex-basis: 84px;
+    width: 84px;
+    padding: .2rem;
+  }
+
+  .matthias-resident__portrait-shell {
+    width: 76px;
+    height: 88px;
+    border-radius: 12px 12px 9px 9px;
+  }
+
+  .matthias-resident__character small,
+  .matthias-resident__character em {
+    max-width: 80px;
+    font-size: .49rem;
+  }
+
+  .matthias-resident__bubble {
+    max-width: 238px;
+    margin-bottom: 18px;
+    padding: .62rem .66rem .54rem;
+  }
+
+  .matthias-resident__bubble p {
+    font-size: .73rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .matthias-resident {
+    width: calc(100vw - .7rem);
+    right: .35rem;
+  }
+
+  .matthias-resident__stage {
+    position: relative;
+  }
+
+  .matthias-resident__bubble {
+    position: absolute;
+    right: 0;
+    bottom: 92px;
+    width: min(292px, calc(100vw - 1rem));
+    max-width: none;
+    margin: 0;
+  }
+
+  .matthias-resident__bubble::after {
+    right: 26px;
+    bottom: -8px;
+    transform: rotate(135deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matthias-resident__portrait-shell img {
+    animation: none;
+    transform: none !important;
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__character {
+    transition: none;
+  }
+}
