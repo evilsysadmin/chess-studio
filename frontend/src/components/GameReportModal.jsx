@@ -11,6 +11,7 @@ import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildMatthiasPositionDossier, buildPostGameAutopsyDossier } from '../aiNarrativeTasks.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { downloadGameAutopsyHtml } from '../gameAutopsyHtml.js';
 
 const CP_GLOSSARY = glossaryEntry('cp');
 const CCT_GLOSSARY = glossaryEntry('CCT');
@@ -159,6 +160,13 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <summary>Abrir autopsia completa</summary>
               <div className="autopsy-full-details-body">
                 <p className="hint-text">La precisión estimada es una escala propia de Chess Studio basada en la pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => downloadGameAutopsyHtml({ report, meta, humanColor, accuracy, verdict: forensicVerdict(report), keyMoments })}
+                >
+                  Guardar autopsia HTML
+                </button>
 
                 <details className="autopsy-glossary">
               <summary>Glosario rápido · cp / CCT</summary>
