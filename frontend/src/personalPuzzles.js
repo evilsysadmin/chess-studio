@@ -18,7 +18,6 @@ export function loadPersonalPuzzles() {
   }
 }
 
-
 export function isPlayablePersonalPuzzle(puzzle) {
   if (!puzzle?.fen || !Array.isArray(puzzle?.solution) || puzzle.solution.length === 0) return false;
   try {
@@ -40,7 +39,6 @@ export function isPlayablePersonalPuzzle(puzzle) {
     return false;
   }
 }
-
 
 function normalizeStoredPuzzle(puzzle) {
   if (!puzzle || typeof puzzle !== 'object') return puzzle;
@@ -203,12 +201,93 @@ export function personalPuzzleHistory(filter = null) {
     .sort((a, b) => new Date(b.masteredAt || b.lastSolvedAt || b.createdAt || 0) - new Date(a.masteredAt || a.lastSolvedAt || a.createdAt || 0));
 }
 
-export function randomPersonalPuzzle(excludeId, filter = null, { includeMastered = false, fallbackToMastered = false } = {}) {
-  let eligible = personalPuzzlesForFilter(filter, { includeMastered });
-  if (!eligible.length && fallbackToMastered) eligible = personalPuzzlesForFilter(filter, { masteredOnly: true });
-  const pool = excludeId ? eligible.filter((p) => p.id !== excludeId) : eligible;
-  const list = pool.length ? pool : eligible;
-  return list.length ? list[Math.floor(Math.random() * list.length)] : null;
+function countOccurrences(puzzles, valueForPuzzle) {
+  const counts = new Map();
+  for (const puzzle of puzzles) {
+    for (const value of valueForPuzzle(puzzle)) {
+      if (!value) continue;
+      counts.set(value, (counts.get(value) || 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function sharesIncident(a, b) {
+  const first = new Set(Array.isArray(a?.incidentKeys) ? a.incidentKeys : []);
+  return (Array.isArray(b?.incidentKeys) ? b.incidentKeys : []).some((key) => first.has(key));
+}
+
+function recentErrorBonus(puzzle, now) {
+  const createdAt = Date.parse(puzzle?.createdAt || '');
+  if (!Number.isFinite(createdAt)) return 0;
+  const ageDays = Math.max(0, (now - createdAt) / 86_400_000);
+  return Math.max(0, 10 - (ageDays / 3));
+}
+
+function adaptiveScore(puzzle, context) {
+  const loss = Math.max(0, Number(puzzle?.loss || 0));
+  const attempts = Math.max(0, Number(puzzle?.attempts || 0));
+  const cleanSolves = Math.max(0, Number(puzzle?.cleanSolves || 0));
+  const friction = Math.max(0, attempts - cleanSolves);
+  const incidentFrequency = Math.max(0, ...(puzzle?.incidentKeys || []).map((key) => context.incidentCounts.get(key) || 0));
+  const openingFrequency = puzzle?.opening ? (context.openingCounts.get(puzzle.opening) || 0) : 0;
+
+  let score = 0;
+  score += Math.min(65, loss / 8);                         // gravedad objetiva
+  score += Math.min(56, friction * 14);                   // casos que siguen resistiéndose
+  score += Math.min(36, Math.max(0, incidentFrequency - 1) * 12); // reincidencia táctica
+  score += Math.min(15, Math.max(0, openingFrequency - 1) * 5);    // apertura problemática recurrente
+  score += recentErrorBonus(puzzle, context.now);          // lo nuevo importa, pero no manda solo
+  if (attempts === 0) score += 4;                          // no dejar material nuevo pudriéndose al fondo
+
+  if (context.referencePuzzle) {
+    if (context.hasIncidentAlternative && sharesIncident(context.referencePuzzle, puzzle)) score -= 18;
+    if (context.hasOpeningAlternative && context.referencePuzzle.opening && puzzle.opening === context.referencePuzzle.opening) score -= 6;
+  }
+  return score;
+}
+
+export function rankAdaptivePersonalPuzzles(puzzles = [], { excludeId = null, referencePuzzle = null, now = Date.now() } = {}) {
+  const source = Array.isArray(puzzles) ? puzzles.filter(Boolean) : [];
+  if (!source.length) return [];
+  const reference = referencePuzzle || source.find((puzzle) => puzzle.id === excludeId) || null;
+  const withoutExcluded = excludeId ? source.filter((puzzle) => puzzle.id !== excludeId) : source;
+  // Conservamos el comportamiento histórico si sólo existe un caso: Siguiente
+  // puede mantenerlo en pantalla en vez de devolver un vacío artificial.
+  const candidates = withoutExcluded.length ? withoutExcluded : source;
+  const incidentCounts = countOccurrences(source, (puzzle) => Array.isArray(puzzle.incidentKeys) ? puzzle.incidentKeys : []);
+  const openingCounts = countOccurrences(source, (puzzle) => puzzle.opening ? [puzzle.opening] : []);
+  const hasIncidentAlternative = Boolean(reference) && candidates.some((puzzle) => !sharesIncident(reference, puzzle));
+  const hasOpeningAlternative = Boolean(reference?.opening) && candidates.some((puzzle) => puzzle.opening !== reference.opening);
+  const context = { incidentCounts, openingCounts, referencePuzzle: reference, hasIncidentAlternative, hasOpeningAlternative, now };
+
+  return candidates
+    .map((puzzle) => ({ puzzle, score: adaptiveScore(puzzle, context) }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const lossDelta = Number(b.puzzle.loss || 0) - Number(a.puzzle.loss || 0);
+      if (lossDelta) return lossDelta;
+      const dateDelta = Date.parse(b.puzzle.createdAt || 0) - Date.parse(a.puzzle.createdAt || 0);
+      if (Number.isFinite(dateDelta) && dateDelta) return dateDelta;
+      return String(a.puzzle.id || '').localeCompare(String(b.puzzle.id || ''));
+    })
+    .map(({ puzzle }) => puzzle);
+}
+
+export function adaptivePersonalPuzzle(excludeId, filter = null, { includeMastered = false, fallbackToMastered = false, now = Date.now() } = {}) {
+  const all = loadPersonalPuzzles();
+  let eligible = all.filter((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter) && (includeMastered || !isPersonalPuzzleMastered(puzzle)));
+  if (!eligible.length && fallbackToMastered) {
+    eligible = all.filter((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter) && isPersonalPuzzleMastered(puzzle));
+  }
+  const referencePuzzle = excludeId ? all.find((puzzle) => puzzle.id === excludeId) || null : null;
+  return rankAdaptivePersonalPuzzles(eligible, { excludeId, referencePuzzle, now })[0] || null;
+}
+
+// Fachada compatible con llamadas existentes. La cola dejó de ser aleatoria:
+// ahora elige el ejercicio con mayor valor de entrenamiento demostrado.
+export function randomPersonalPuzzle(excludeId, filter = null, options = {}) {
+  return adaptivePersonalPuzzle(excludeId, filter, options);
 }
 
 export function saveGeneratedPersonalPuzzles(puzzles = []) {
@@ -275,4 +354,3 @@ export function personalTrainingSummary() {
   const active = Math.max(0, all.length - mastered);
   return { total: all.length, active, mastered, attempts, solves, cleanSolves, cleanRate: attempts ? Math.round((cleanSolves / attempts) * 100) : null };
 }
-
