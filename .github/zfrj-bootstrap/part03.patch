@@ -1,0 +1,109 @@
++155,15 @@ function ReserveRosterCard({ roster, unitKey, onOpen, deployedSlotKey = null })
+   return (
+     <button
+       type="button"
+-      className={`army-unit-tile army-reserve-unit ${isDead ? 'dead' : ''}`}
++      className={`army-unit-tile army-reserve-unit ${isDead ? 'dead' : ''} ${isRecovering ? 'recovering' : ''}`}
+       onClick={() => onOpen(unitKey)}
+       aria-label={`Abrir expediente de ${alias}`}
+       title={`Abrir expediente de ${alias}`}
+     >
+       <span className="army-unit-tile-top">
+         <span className="army-unit-glyph" aria-hidden="true">{PIECE_GLYPH[activeType] || '♟'}</span>
+-        <span className={`army-unit-state ${isDead ? 'dead' : activeType !== originType ? 'mutant' : ''}`}>
+-          {isDead ? 'CAÍDO' : activeType !== originType ? METAMORPHOSIS_LABELS[activeType] : 'RESERVA'}
++        <span className={`army-unit-state ${isDead ? 'dead' : isRecovering ? 'recovering' : activeType !== originType ? 'mutant' : ''}`}>
++          {isDead ? 'CAÍDO' : isRecovering ? 'RECUP.' : activeType !== originType ? METAMORPHOSIS_LABELS[activeType] : 'RESERVA'}
+         </span>
+       </span>
+       <strong className="army-unit-alias" title={alias}>{alias}</strong>
+@@ -185,6 +187,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
+   const saved = roster?.pieces?.[key];
+   const isKing = originType === 'k';
+   const isDead = !isKing && saved?.alive === false;
++  const isRecovering = !isKing && !isDead && Number(saved?.recoveryBattlesRemaining || 0) > 0;
+   const unitRecord = unitRecordForKey(roster, key);
+   const medals = unitDecorations(unitRecord);
+   const rawLevel = isKing ? 1 : 1 + (saved?.strengthPoints || 0) + (saved?.speedPoints || 0);
+@@ -262,9 +265,16 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
+               <div><span>Fuerza</span><b>{stats.strength.toFixed(1)}</b></div>
+               <div><span>Velocidad</span><b>{stats.speed.toFixed(1)}</b></div>
+               <div><span>XP pieza</span><b>{piece.bankedXp || 0}</b></div>
+-              <div><span>Estado</span><b className={isDead ? 'danger-text' : ''}>{isDead ? 'Caído' : 'En pie'}</b></div>
++              <div><span>Estado</span><b className={isDead ? 'danger-text' : ''}>{isDead ? 'Caído' : isRecovering ? 'Convaleciente' : 'En pie'}</b></div>
+             </div>
+ 
++            {isRecovering && (
++              <div className="army-command-note army-recovery-note">
++                <strong>Convalecencia · 1 batalla desplegada</strong>
++                <span>Tras la reanimación gana el 50% de XP, redondeado hacia arriba. No pierde fuerza, velocidad, técnicas ni opciones de despliegue.</span>
++              </div>
++            )}
++
+             <div className={`army-unit-equipment ${equipment ? 'equipped' : 'empty'}`}>
+               <div><span className="army-memorial-kicker">OBJETO EQUIPADO · 1 HUECO</span><strong>{equipment ? `${equipment.icon} ${equipment.label}` : 'Sin objeto'}</strong></div>
+               <small>{equipment ? `${equipment.description} Bonus aplicado sólo mientras lo lleva esta unidad.` : 'Compra y asigna armas o utilidades desde el Mercado.'}</small>
+@@ -296,7 +306,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
+                 <strong>{canRevive ? 'Ventana de recuperación abierta' : 'Baja definitiva de recluta'}</strong>
+                 <p className="hint-text">
+                   {canRevive
+-                    ? 'Si empiezas otra batalla sin revivir esta identidad, pasará al Memorial y el puesto recibirá un recluta nuevo.'
++                    ? 'Si empiezas otra batalla sin revivir esta identidad, pasará al Memorial y el puesto recibirá un recluta nuevo. Si la recuperas, tendrá una batalla desplegada de convalecencia con XP al 50%.'
+                     : 'No hay progreso invertido que recuperar. Al iniciar otra batalla pasará al Memorial y será reemplazado.'}
+                 </p>
+                 {canRevive && (
+diff --git a/frontend/src/components/CampaignBriefing.jsx b/frontend/src/components/CampaignBriefing.jsx
+index 0c1aef1..aacdd84 100644
+--- a/frontend/src/components/CampaignBriefing.jsx
++++ b/frontend/src/components/CampaignBriefing.jsx
+@@ -3,7 +3,7 @@ import {
+   campaignIntelBriefing,
+   nextCampaignIntelTier,
+ } from '../combatCampaign.js';
+-import { campaignMissionOrders } from '../combatMissionOrders.js';
++import { campaignMissionOrders, classifiedCampaignMission } from '../combatMissionOrders.js';
+ import MechanicTutorialModal from './MechanicTutorialModal.jsx';
+ import CampaignOperationSteps from './CampaignOperationSteps.jsx';
+ import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
+@@ -21,6 +21,7 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
+   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
+   const nextTier = useMemo(() => nextCampaignIntelTier(campaign, node?.id), [campaign, node]);
+   const missionOrders = useMemo(() => campaignMissionOrders(campaign?.seed, node), [campaign?.seed, node]);
++  const classifiedMission = useMemo(() => classifiedCampaignMission(campaign?.seed, node, intel?.level), [campaign?.seed, intel?.level, node]);
+   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
+   const [aiBriefing, setAiBriefing] = useState(null);
+   const [aiBriefingLoading, setAiBriefingLoading] = useState(false);
+@@ -104,6 +105,14 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
+               </article>
+             ))}
+           </div>
++          {classifiedMission ? (
++            <article className="campaign-classified-order" aria-label="Operación clasificada revelada">
++              <div><small>INTEL CLASIFICADA</small><strong>{classifiedMission.label}</strong><span>{classifiedMission.description}</span></div>
++              <b>+{classifiedMission.reward}</b>
++            </article>
++          ) : intel.level === 1 ? (
++            <p className="campaign-classified-teaser">⌖ Se detecta una oportunidad clasificada. Intel de Evaluación revelará el objetivo exacto.</p>
++          ) : null}
+         </section>
+       )}
+ 
+diff --git a/frontend/src/components/CareerScreen.jsx b/frontend/src/components/CareerScreen.jsx
+index 2a9fdb6..dfce620 100644
+--- a/frontend/src/components/CareerScreen.jsx
++++ b/frontend/src/components/CareerScreen.jsx
+@@ -10,6 +10,7 @@ import { buildNemesisDossier } from '../nemesis.js';
+ import GlossaryTerm from './GlossaryTerm.jsx';
+ import { buildCareerHeatmaps, deriveRpgProfile, summarizeRpgProfile } from '../careerVisuals.js';
+ import RivalryDossier from './RivalryDossier.jsx';
++import { buildPersonalSeasons } from '../personalSeasons.js';
+ 
+ const TIME_LABEL = { none:'Sin reloj','1+0':'1+0 Bullet','3+2':'3+2 Blitz','5+0':'5+0','10+0':'10+0','15+10':'15+10' };
+ function TreeRows({ node, depth=0 }) { const rows=Object.values(node?.children||{}).sort((a,b)=>b.count-a.count).slice(0,depth===0?5:2);return <ul className={`career-tree-level depth-${depth}`}>{rows.map(r=><li key={`${depth}-${r.move}-${r.count}`}><div className="career-tree-row"><span>{r.move}</span><b>{r.count}×</b><small>{Math.round((r.wins||0)/Math.max(1,r.count)*100)}% victorias</small></div>{depth<2&&<TreeRows node={r} depth={depth+1}/>}</li>)}</ul>; }
+@@ -37,6 +38,9 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
+   const heatmaps=useMemo(()=>buildCareerHeatmaps(history),[history]);
+   const rpg=useMemo(()=>deriveRpgProfile(history,archive,career),[history,archive,career]);
+   const rpgSummary=useMemo(()=>summarizeRpgProfile(rpg),[rpg]);
++  const personalSeasons=useMemo(()=>buildPersonalSeasons(history,ratingHistory,archive),[history,ratingHistory,archive]);
++  const personalSeason=personalSeasons.at(-1);
++  const lastCompletedPersonalSeason=[...personalSeasons]
