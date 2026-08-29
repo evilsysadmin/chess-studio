@@ -431,8 +431,8 @@ describe('Combat Chess campaign map', () => {
           continue;
         }
         if (run.phase === 'event') {
-          const options = campaignEventOptions(run);
-          expect(options.length, `seed ${seedIndex} evento sin opciones`).toBeGreaterThan(0);
+          const options = campaignEventOptions(run).filter((option) => !option.disabled);
+          expect(options.length, `seed ${seedIndex} evento sin opciones disponibles`).toBeGreaterThan(0);
           run = resolveCampaignEvent(run, options[seedIndex % options.length].id);
           continue;
         }
