@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrn',
+    title: 'Tu Némesis aprende cuándo dejarte en paz',
+    highlights: [
+      'Una apertura deja de figurar como Némesis cuando al menos cuatro resultados recientes demuestran una recuperación clara; una mala racha antigua ya no te persigue eternamente.',
+      'Si el rendimiento reciente mejora con fuerza pero aún no basta para dar el problema por resuelto, el sistema lo rebaja en prioridad en vez de ignorar la tendencia.',
+      'Cuando una Némesis queda superada, la siguiente debilidad real asciende automáticamente y el entrenamiento sigue usando posiciones auténticas del historial.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrm',
     title: 'La Escuela de Matthias deja repetir de verdad',
     highlights: [
