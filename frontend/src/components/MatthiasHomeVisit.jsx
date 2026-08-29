@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
 import './MatthiasHomeResident.css';
@@ -15,6 +16,11 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const hour = useMemo(() => new Date().getHours(), []);
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
   const [ambientBeat, setAmbientBeat] = useState(0);
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     setAmbientBeat(0);
@@ -31,10 +37,11 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const visual = speaking ? speakingVisual : (ambientVisuals[ambientBeat] || speakingVisual);
   const mood = model.moodLabel || 'Observador';
 
-  return (
+  const resident = (
     <aside
       className={`matthias-resident matthias-resident--${model.variant || 'quiet'} matthias-resident--mood-${model.moodCue || 'observant'}${speaking ? ' is-speaking' : ' is-quiet'}`}
       aria-label="Rincón de Matthias"
+      data-viewport-resident="true"
     >
       <div className="matthias-resident__stage">
         {speaking ? (
@@ -69,4 +76,11 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
       </div>
     </aside>
   );
+
+  // Home usa transforms para su composición visual. Un fixed dentro de un
+  // ancestor transformado deja de estar fijado al viewport y puede acabar en
+  // mitad del lienzo. Tras montar, sacamos al residente a document.body para
+  // que right/bottom sean siempre coordenadas reales de la ventana.
+  if (!portalReady || typeof document === 'undefined' || !document.body) return resident;
+  return createPortal(resident, document.body);
 }
