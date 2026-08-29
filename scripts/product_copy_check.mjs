@@ -10,7 +10,10 @@ const chat = read('frontend/src/components/GameChat.jsx');
 const voice = read('frontend/src/components/VoiceToggle.jsx');
 const notation = read('frontend/src/components/NotationPanel.jsx');
 const menu = read('frontend/src/components/Menu.jsx');
-const admin = read('frontend/src/components/AdminScreen.jsx');
+const admin = [
+  read('frontend/src/components/AdminScreen.jsx'),
+  read('frontend/src/components/AdminDashboardContent.jsx'),
+].join('\n');
 const career = read('frontend/src/career.js');
 const activityFormatting = read('frontend/src/adminFormatting.js');
 const userReleaseNotes = read('frontend/src/userReleaseNotes.js');
