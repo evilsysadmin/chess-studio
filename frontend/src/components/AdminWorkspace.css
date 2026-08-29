@@ -88,26 +88,26 @@
   outline-offset: 2px;
 }
 
-.admin-workspace-legacy-slot > .admin-screen,
+.admin-workspace-content-slot > .admin-screen,
 .admin-workspace-observability {
   width: 100%;
   max-width: none;
   margin: 0;
 }
 
-.admin-workspace-legacy-slot > .admin-screen {
+.admin-workspace-content-slot > .admin-screen {
   padding: 0;
 }
 
-.admin-workspace-legacy-slot > .admin-screen > .back-link,
-.admin-workspace-legacy-slot > .admin-screen > .menu-section > .section-label,
-.admin-workspace-legacy-slot > .admin-screen > .menu-section > h2,
-.admin-workspace-legacy-slot > .admin-screen > .menu-section > h2 + .hint-text,
-.admin-workspace-legacy-slot .admin-build-id {
+.admin-workspace-content-slot > .admin-screen > .back-link,
+.admin-workspace-content-slot > .admin-screen > .menu-section > .section-label,
+.admin-workspace-content-slot > .admin-screen > .menu-section > h2,
+.admin-workspace-content-slot > .admin-screen > .menu-section > h2 + .hint-text,
+.admin-workspace-content-slot .admin-build-id {
   display: none;
 }
 
-.admin-workspace-legacy-slot > .admin-screen > .menu-section {
+.admin-workspace-content-slot > .admin-screen > .menu-section {
   width: 100%;
   max-width: none;
   margin: 0;
