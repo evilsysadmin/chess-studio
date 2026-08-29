@@ -113,6 +113,9 @@ describe('personal puzzles', () => {
       suggested: 'e4',
       title: 'Centro o funeral',
       source: 'workers-ai-validated',
+      aiQualityVersion: 4,
+      tacticalBestMoveChecked: true,
+      tacticalRefutationChecked: true,
     };
     expect(saveGeneratedPersonalPuzzles([generated]).added).toBe(1);
     expect(saveGeneratedPersonalPuzzles([generated]).added).toBe(0);
@@ -139,4 +142,22 @@ describe('personal puzzles', () => {
     expect(loadPersonalPuzzles().map((item) => item.id)).toEqual(['ok']);
   });
 
+});
+
+describe('calidad versionada de puzzles personales IA', () => {
+  it('retira puzzles Workers AI legacy que no prueban los gates actuales', () => {
+    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
+      {
+        id: 'legacy-ai', kind: 'personal', source: 'workers-ai-validated',
+        fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
+        aiQualityVersion: 3, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+      },
+      {
+        id: 'current-ai', kind: 'personal', source: 'workers-ai-validated',
+        fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
+        aiQualityVersion: 4, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+      },
+    ]));
+    expect(loadPersonalPuzzles().map((item) => item.id)).toEqual(['current-ai']);
+  });
 });

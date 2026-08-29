@@ -24,4 +24,13 @@ describe('buildPuzzleReveal', () => {
     expect(reveal.played).toBeNull();
     expect(reveal.displayFen).toBe('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
   });
+
+  it('conserva la explicación táctica curada para mostrarla tras resolver o revelar', () => {
+    const reveal = buildPuzzleReveal({
+      fen: '4k3/8/8/8/8/8/4P3/4K3 w - - 0 1',
+      solution: ['e4'],
+      solutionExplanation: 'La pieza queda protegida por el alfil.',
+    });
+    expect(reveal.explanation).toBe('La pieza queda protegida por el alfil.');
+  });
 });

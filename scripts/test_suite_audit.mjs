@@ -200,6 +200,7 @@ if (checkCiWiring) {
     'Combat Chess · Campaña permite jugar con defaults',
     'Combat Chess · salir al menú conserva campaña',
     'deploy · una release nueva no fuerza reload',
+    'Matthias · saluda una vez tras login y no repite el saludo con F5',
     'Home · el avatar residente de Matthias abre Así juegas',
     'Matthias · el briefing persistente aparece antes de una partida rápida',
     'Matthias · banco de personalidad Admin usa sólo datos sintéticos',

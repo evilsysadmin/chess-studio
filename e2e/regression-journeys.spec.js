@@ -316,6 +316,22 @@ test('Matthias · el briefing persistente aparece antes de una partida rápida',
   await expect(briefing.getByText(/Mi obsesión actual sigue siendo: Domar la Siciliana/i)).toBeVisible();
 });
 
+test('Matthias · saluda una vez tras login y no repite el saludo con F5', async ({ page }) => {
+  await mockApi(page, { profileSeed: {
+    'matthias.onboarded': '2',
+    'chess-study-home-guide-dismissed-v1': '1',
+  } });
+  await login(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(corner.getByText(/Guten (Morgen|Tag|Abend)\. De vuelta al tablero\./)).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  const restoredCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(restoredCorner.getByText(/De vuelta al tablero\./)).toHaveCount(0);
+  await expect(restoredCorner.getByText('…', { exact: true })).toBeVisible();
+});
+
 test('Home · el avatar residente de Matthias abre Así juegas', async ({ page }) => {
   await mockApi(page);
   await login(page);
@@ -356,4 +372,43 @@ test('Matthias · la tarjeta de rival muestra el historial específico del duelo
   await startQuickGame(page);
   const matthiasRail = page.getByLabel(/Matthias, CPU/);
   await expect(matthiasRail).toContainText(/duelo 3V 1T 4D/i);
+});
+
+test('abandono · después de F5 sigue aplicando la salida sin penalización si no hubo bajas', async ({ page }) => {
+  await mockApi(page, { gameScenario: 'opening' });
+  await login(page);
+  await dismissHomeGuide(page);
+  await startQuickGame(page);
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toBeVisible();
+
+  await page.reload();
+  await expect(gameStatus(page)).toBeVisible();
+  await page.getByRole('button', { name: 'Abandonar partida', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
+  await expect(dialog.getByText(/todavía no has perdido ninguna pieza/i)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-game-history') || '[]'))).toHaveLength(0);
+});
+
+test('Matthias · vuelve a saludar tras logout y re-login explícito, pero no por F5', async ({ page }) => {
+  await mockApi(page, { profileSeed: {
+    'matthias.onboarded': '2',
+    'chess-study-home-guide-dismissed-v1': '1',
+  } });
+  await login(page);
+  let corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(corner.getByText(/De vuelta al tablero\./)).toBeVisible();
+
+  await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
+  await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
+  await login(page);
+  corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(corner.getByText(/De vuelta al tablero\./)).toBeVisible();
+
+  await page.reload();
+  corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await expect(corner.getByText(/De vuelta al tablero\./)).toHaveCount(0);
 });

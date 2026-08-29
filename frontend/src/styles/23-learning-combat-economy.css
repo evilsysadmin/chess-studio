@@ -28,6 +28,8 @@
 .puzzle-solution-move.is-preferred i { background: var(--hint); }
 .puzzle-solution-line { grid-column: 1 / -1; padding: .45rem .65rem; color: var(--parchment-dim); font-size: .64rem; }
 .puzzle-solution-line b { color: var(--parchment); font-family: var(--font-mono); }
+.puzzle-solution-explanation { grid-column: 1 / -1; padding: .55rem .65rem; border-left: 2px solid color-mix(in srgb,var(--gold) 58%,transparent); background: rgba(196,154,61,.055); color: var(--parchment-dim); font-size: .66rem; line-height: 1.5; }
+.puzzle-solution-explanation b { color: var(--parchment); }
 
 .campaign-economy-strip {
   display: flex; align-items: stretch; gap: .55rem; margin: .9rem 0;
@@ -101,7 +103,7 @@
 @media (max-width: 760px) {
   .home-tools-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .puzzle-solution-guide { grid-template-columns: 1fr; }
-  .puzzle-solution-line { grid-column: 1; }
+  .puzzle-solution-line, .puzzle-solution-explanation { grid-column: 1; }
   .home-group-heading { align-items: flex-start; }
   .home-heading-actions { align-items: flex-start; justify-content: flex-start; }
   .home-heading-actions > div { justify-content: flex-start; }

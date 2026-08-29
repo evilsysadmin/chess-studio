@@ -6,6 +6,32 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfq',
+    title: 'F5 conserva el parte de batalla',
+    highlights: [
+      'El debrief de Combat Chess sobrevive a un F5 durante recompensa, briefing o piso superado, pero sigue siendo efímero y no cruza un login, logout ni el avance al siguiente encuentro.',
+      'Los puzzles personales generados por Workers AI comparten ahora un contrato de calidad versionado: los ejercicios antiguos que no pueden demostrar los gates tácticos vigentes salen de la cola activa en vez de reaparecer por inercia.',
+      'La continuidad crítica queda reforzada alrededor de re-login, onboarding revisitable, abandono sin penalización y recuperación de Combat sin inventar estados.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfp',
+    title: 'Puzzles con defensa de verdad',
+    highlights: [
+      'El banco de puzzles endurece su auditoría: mates y combinaciones deben funcionar contra la mejor defensa, y los ejercicios de material dejan de aceptar respuestas rivales artificialmente cooperativas.',
+      'Los puzzles generados desde errores personales pasan un segundo filtro contra sacrificios o jaques de humo que dejan la pieza capturable sin compensación táctica.',
+      'El Final de la Ópera conserva su sacrificio correcto y ahora explica por qué el rey no puede capturar la torre final: el alfil de g5 protege d8. Matthias también saluda una vez tras cada login explícito y vuelve luego a su silencio habitual.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfo',
+    title: 'Matthias te recibe al volver',
+    highlights: [
+      'Tras un login explícito, el rincón de Matthias muestra un saludo corto una sola vez y vuelve después a su silencio habitual.',
+      'El saludo es independiente del cooldown de sus comentarios ocasionales, no se repite al refrescar la página y una cuenta nueva lo consume dentro de la presentación inicial para evitar duplicados.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfn',
     title: 'Matthias guía con tres puertas claras',
     highlights: [

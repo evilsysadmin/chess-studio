@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { detectNoteworthyMove } from './cpuCommentary.js';
 import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
+import { provesCurrentPersonalPuzzleQuality } from './personalPuzzleQuality.js';
 
 const KEY = 'chess-study-personal-puzzles';
 const MAX_PUZZLES = 40;
@@ -27,7 +28,13 @@ export function isPlayablePersonalPuzzle(puzzle) {
       const move = board.move(san);
       if (!move) return false;
     }
-    if (puzzle.source === 'workers-ai-validated' && isObviouslyUnsoundSingleMovePuzzle(puzzle)) return false;
+    if (puzzle.source === 'workers-ai-validated') {
+      // Un puzzle de IA persistido antes del contrato actual no vuelve a la
+      // cola por inercia. Si no puede demostrar que pasó los gates vigentes,
+      // se retira silenciosamente y podrá ser regenerado desde semillas reales.
+      if (!provesCurrentPersonalPuzzleQuality(puzzle)) return false;
+      if (isObviouslyUnsoundSingleMovePuzzle(puzzle)) return false;
+    }
     return true;
   } catch {
     return false;

@@ -28,6 +28,7 @@ import { loadCombatService, summarizeCombatService } from '../combatService.js';
 import { COMBAT_CHESS_NAME, COMBAT_CHESS_GENRE } from '../combatChessBrand.js';
 import { recordGameActivity } from '../gameActivity.js';
 import { clearCombatSession, hasCombatSession } from '../combatSession.js';
+import { clearCombatDebriefSession, loadCombatDebriefSession, saveCombatDebriefSession } from '../combatDebriefSession.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import {
   loadCampaign,
@@ -75,6 +76,17 @@ import {
 const HUMAN_COLOR = 'w';
 const CPU_COLOR = 'b';
 
+function campaignDebriefContextId(state) {
+  if (!state?.active || !state.seed || !state.selectedNodeId) return null;
+  if (!['briefing', 'reward'].includes(state.phase)) return null;
+  return `campaign:${state.seed}:${state.selectedNodeId}`;
+}
+
+function runDebriefContextId(state) {
+  if (!state?.inRun || !state.seed || !['cleared', 'completed'].includes(state.phase)) return null;
+  return `run:${state.seed}:${state.floor}`;
+}
+
 export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBattle, onBattleUiActive, onPersistenceState }) {
   const [run, setRun] = useState(() => loadRun());
   const [campaign, setCampaign] = useState(() => loadCampaign());
@@ -95,7 +107,10 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   });
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [roster, setRoster] = useState(() => loadRoster());
-  const [battleDebrief, setBattleDebrief] = useState(null);
+  const [battleDebrief, setBattleDebrief] = useState(() => {
+    const contextId = campaignDebriefContextId(campaign) || runDebriefContextId(run);
+    return contextId ? loadCombatDebriefSession(contextId) : null;
+  });
   const [showCampaignTutorial, setShowCampaignTutorial] = useState(() => campaign.active && !loadMechanicTutorialProgress()?.['combat-campaign']?.seen);
   const [showMarket, setShowMarket] = useState(false);
   const [bioQueueTick, setBioQueueTick] = useState(0);
@@ -223,6 +238,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }, [encounter]);
 
   function handleStartCampaign() {
+    clearCombatDebriefSession();
     setCombatSessionActive(false);
     setBattleDebrief(null);
     setCampaign(startCampaign());
@@ -244,6 +260,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     endCampaign(campaign, 'restarted');
     setCampaignArchive(loadCampaignArchive());
     setCombatSessionActive(false);
+    clearCombatDebriefSession();
     setBattleDebrief(null);
     setCampaignEndResult(null);
     setEndResult(null);
@@ -251,6 +268,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignNodeSelect(nodeId) {
+    clearCombatDebriefSession();
+    setBattleDebrief(null);
     setCombatSessionActive(false);
     setCampaign((current) => selectCampaignNode(current, nodeId));
   }
@@ -264,6 +283,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignBattleStarted(meta = {}) {
+    if (campaignCombatSessionId) clearCombatDebriefSession(campaignCombatSessionId);
     setBattleDebrief(null);
     setCombatSessionActive(true);
     if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: 'campaign' }, difficulty: meta.difficulty });
@@ -276,6 +296,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       : recoverInterruptedCampaign(campaign);
     if (!recovered?.active) return;
     setCombatSessionActive(false);
+    clearCombatDebriefSession();
     setBattleDebrief(null);
     setCampaign(recovered);
     setCampaignEndResult(null);
@@ -283,6 +304,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function finishCampaign(reason, campaignToFinish = campaign) {
+    clearCombatDebriefSession();
     const result = endCampaign(campaignToFinish, reason);
     setCampaignBestStage(loadCampaignBestStage());
     setTowerCompleted(loadTowerCompleted());
@@ -293,6 +315,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignBattleResult(outcome, debrief = null, meta = {}) {
+    if (debrief && campaignCombatSessionId && ['win', 'retired'].includes(outcome)) saveCombatDebriefSession(campaignCombatSessionId, debrief);
     setBattleDebrief(debrief);
     setCombatSessionActive(false);
     if (meta.gameId) recordGameActivity({
@@ -323,6 +346,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignReward(perkId) {
+    if (campaignCombatSessionId) clearCombatDebriefSession(campaignCombatSessionId);
     setBattleDebrief(null);
     const node = selectedCampaignNode;
     if (node && ['camp', 'elite'].includes(node.type)) {
@@ -411,6 +435,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleStartRun() {
+    clearCombatDebriefSession();
     setCombatSessionActive(false);
     setBattleDebrief(null);
     setRun(startNewRun());
@@ -418,6 +443,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function finishRun(type, runToFinish = run) {
+    clearCombatDebriefSession();
     const previousBest = loadBestFloor();
     const reached = endRun(runToFinish);
     const updatedBest = loadBestFloor();
@@ -429,6 +455,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleBattleStarted(meta = {}) {
+    if (runCombatSessionId) clearCombatDebriefSession(runCombatSessionId);
     setBattleDebrief(null);
     setCombatSessionActive(true);
     if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord || { variant: 'roguelike', roguelikeMode: run.mode }, difficulty: meta.difficulty });
@@ -443,6 +470,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleBattleResult(outcome, debrief = null, meta = {}) {
+    if (debrief && runCombatSessionId && outcome === 'win') saveCombatDebriefSession(runCombatSessionId, debrief);
     setBattleDebrief(debrief);
     setCombatSessionActive(false);
     if (meta.gameId) recordGameActivity({
@@ -473,12 +501,16 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleContinue() {
+    if (runCombatSessionId) clearCombatDebriefSession(runCombatSessionId);
+    setBattleDebrief(null);
     setCombatSessionActive(false);
     setRun(advanceFloor(run));
     setEndResult(null);
   }
 
   function handleContinueEndless() {
+    if (runCombatSessionId) clearCombatDebriefSession(runCombatSessionId);
+    setBattleDebrief(null);
     setCombatSessionActive(false);
     setRun(continueIntoEndless(run));
     setEndResult(null);

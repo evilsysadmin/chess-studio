@@ -1,7 +1,7 @@
-import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, setStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { markMatthiasHomeSessionSeen, matthiasHomeSessionSeen } from './matthiasSession.js';
 
-export const MATTHIAS_HOME_SESSION_KEY = 'chess-study-matthias-home-seen-v1';
 export const MATTHIAS_HOME_LAST_SHOWN_KEY = 'chess-study-matthias-home-last-shown-v1';
 export const MATTHIAS_HOME_COOLDOWN_MS = 8 * 60 * 60 * 1000;
 export const MATTHIAS_ONBOARDED_KEY = 'matthias.onboarded';
@@ -94,6 +94,18 @@ export function buildMatthiasIntroVisit() {
     text: 'Guten Morgen. Soy Matthias, el mayor cabronazo ajedrecista a este lado del Tajo. Te ayudaré a triunfar o fracasar; lo que tú decidas. Tschüss.',
     action: 'play',
     actionLabel: 'Jugar con Matthias',
+  };
+}
+
+
+export function buildMatthiasLoginGreeting({ hour = new Date().getHours() } = {}) {
+  const safeHour = Number.isFinite(Number(hour)) ? Number(hour) : 12;
+  const greeting = safeHour < 12 ? 'Guten Morgen' : safeHour < 19 ? 'Guten Tag' : 'Guten Abend';
+  return {
+    kind: 'login-greeting',
+    text: `${greeting}. De vuelta al tablero. Yo sigo aquí, tomando notas.`,
+    action: 'insights',
+    actionLabel: 'Ver Así juegas',
   };
 }
 
@@ -215,6 +227,7 @@ export function buildMatthiasHomeCardModel({ visit = null, memory = null } = {})
 
   const labels = {
     intro: 'MATTHIAS · PRESENTACIÓN',
+    'login-greeting': 'MATTHIAS · WILLKOMMEN',
     reunion: 'MATTHIAS · REENCUENTRO',
     challenge: 'MATTHIAS · RETO ACTIVO',
     debt: 'MATTHIAS · ASUNTO PENDIENTE',
@@ -259,12 +272,10 @@ export function shouldShowMatthiasHome({ hasOpenOverlay = false, hasPriorityActi
   return Number(randomValue) < threshold;
 }
 
-export function matthiasHomeSessionSeen() {
-  return getStorageItem(STORAGE_SESSION, MATTHIAS_HOME_SESSION_KEY) === '1';
-}
+export { matthiasHomeSessionSeen } from './matthiasSession.js';
 
 export function markMatthiasHomeShown(now = Date.now()) {
-  setStorageItem(STORAGE_SESSION, MATTHIAS_HOME_SESSION_KEY, '1');
+  markMatthiasHomeSessionSeen();
   setProfileStorageItem(MATTHIAS_HOME_LAST_SHOWN_KEY, String(now));
 }
 

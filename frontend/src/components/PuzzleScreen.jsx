@@ -483,7 +483,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
           <span className="eyebrow puzzle-coach-kind">{KIND_LABELS[puzzle.kind] || 'Puzzle'}{puzzle.difficulty ? ` · ${PUZZLE_DIFFICULTY_LABELS[puzzle.difficulty] || puzzle.difficulty}` : ''}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
-          {status === 'revealed' && (
+          {status !== 'playing' && (
             <div className="puzzle-solution-guide puzzle-coach-solution" role="status" aria-live="polite">
               {revealGuide.played && (
                 <span className="puzzle-solution-move is-played"><i aria-hidden="true" />Tu jugada <b>{revealGuide.played.san}</b><small>{revealGuide.played.from} → {revealGuide.played.to}</small></span>
@@ -492,6 +492,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
                 <span className="puzzle-solution-move is-preferred"><i aria-hidden="true" />Mejor jugada <b>{revealGuide.preferred.san}</b><small>{revealGuide.preferred.from} → {revealGuide.preferred.to}</small></span>
               )}
               {revealGuide.line.length > 1 && <span className="puzzle-solution-line">Línea recomendada: <b>{revealGuide.line.join(' · ')}</b></span>}
+              {revealGuide.explanation && <span className="puzzle-solution-explanation"><b>Por qué funciona:</b> {revealGuide.explanation}</span>}
             </div>
           )}
           {source === 'curated' && <p className="hint-text friendly-inline-note">Rotamos dificultad y motivos: remates, cálculo largo, sacrificios, horquillas, redes multipieza y combinaciones históricas. Los ejercicios fáciles ya no monopolizan la sesión.</p>}

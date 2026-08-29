@@ -71,10 +71,10 @@ export const PUZZLES = [
     fen: '6k1/8/8/4Q3/8/8/8/r3K3 w - - 0 1', solution: ['Qxa1'],
   },
   {
-    id: 'material_knight_double_attack', kind: 'material', difficulty: 'medium', technique: 'ataque doble',
-    title: 'Horquilla de caballo',
-    description: 'El caballo amenaza dos torres. Calcula la secuencia, no sólo el primer salto.',
-    fen: 'r3r2k/8/8/3N4/8/8/8/6K1 w - - 0 1', solution: ['Nc7', 'Kg8', 'Nxa8'],
+    id: 'material_knight_double_attack', kind: 'material', difficulty: 'medium', technique: 'horquilla rey-dama',
+    title: 'Horquilla de caballo · rey y dama',
+    description: 'El jaque obliga al rey a responder. Aprovecha el tempo para ganar la dama, no dependas de que el rival colabore.',
+    fen: 'q3k3/8/8/1N6/8/8/8/4K3 w - - 0 1', solution: ['Nc7+', 'Kd8', 'Nxa8'],
   },
   {
     id: 'material_bishop_diagonal', kind: 'material', difficulty: 'easy', technique: 'diagonal',
@@ -173,6 +173,7 @@ export const PUZZLES = [
     id: 'combo_opera_finale', kind: 'combination', difficulty: 'hard', technique: 'sacrificio de dama y mate de torre',
     title: 'Final de la Ópera · dama por mate',
     description: 'La dama se sacrifica con jaque para desviar al caballo. Después sólo queda cerrar el telón.',
+    solutionExplanation: 'Tras Qb8+ Nxb8, Rd8# es mate: el rey no puede capturar la torre en d8 porque el alfil blanco de g5 protege esa casilla.',
     fen: '4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w - - 0 16',
     solution: ['Qb8+', 'Nxb8', 'Rd8#'],
   },

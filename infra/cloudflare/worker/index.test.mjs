@@ -175,9 +175,12 @@ test('personal_puzzle_batch usa una sola llamada rica, salida JSON amplia y buck
   assert.deepEqual(fake.calls.rates, [{ key: 'render-analysis' }]);
   assert.equal(fake.calls.ai[0].model, ANALYSIS_MODEL);
   assert.equal(fake.calls.ai[0].options.max_tokens, 900);
-  const prompt = fake.calls.ai[0].options.messages.at(-1).content;
+  const messages = fake.calls.ai[0].options.messages;
+  const prompt = messages.at(-1).content;
+  const fullPrompt = messages.map((message) => message.content).join('\n');
   assert.match(prompt, /TIPO_DE_EVENTO: personal_puzzle_batch/);
   assert.match(prompt, /exclusivamente el JSON/i);
+  assert.match(fullPrompt, /sacrificios[\s\S]*capturable[\s\S]*compensación/i);
 });
 
 test('comentarios de partida conservan memoria contextual factual dentro de HECHOS', async () => {

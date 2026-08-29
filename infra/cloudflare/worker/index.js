@@ -183,9 +183,12 @@ REGLAS INVIOLABLES:
   esta forma exacta: {"candidates":[{"fen":"...","best_uci":"e2e4",
   "title":"...","description":"...","incident_keys":["human:..."]}]}.
   Propón como máximo requested_candidates casos, cada uno con ambos reyes, turno
-  legal y una sola jugada táctica pretendidamente mejor. No incluyas username,
-  ids ni hechos personales. El motor local validará después cada candidato y
-  descartará cualquier posición o jugada incorrecta.
+  legal y una sola jugada táctica pretendidamente mejor. El motivo debe ser concreto
+  y defendible: no propongas sacrificios cuyo único mérito sea dar jaque si la pieza
+  queda capturable sin mate, recuperación material o compensación inmediata. No
+  incluyas username, ids ni hechos personales. El motor local y un gate táctico
+  independiente validarán después cada candidato y descartarán cualquier posición,
+  jugada o sacrificio pedagógicamente absurdo.
 - Para training_plan escribe exactamente 3 frases compactas basadas sólo en las
   prioridades ya calculadas dentro de HECHOS: qué atacar primero, qué atacar después
   si existe una segunda prioridad y una forma concreta de encadenar la práctica.

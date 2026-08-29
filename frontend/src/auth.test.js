@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PRESENCE_DOCUMENT_OWNER_KEY, PRESENCE_SESSION_KEY, getPresenceSessionId, getToken, getUsername, isLoggedIn, logout, reportLogoutPresence, reportPageLeavePresence, register, login, authHeader, wakeBackend, fetchMe, fetchMeStatus, touchActivity, watchSessionIdentity, forgotPassword, resetPassword, updateRecoveryEmail, fetchLiveStatus } from './auth.js';
 import { APP_RELEASE } from './release.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { matthiasLoginGreetingPending } from './matthiasSession.js';
 
 function mockFetchOnce(status, body) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -57,6 +58,7 @@ describe('register/login', () => {
   it('cada login inicializa un tema musical para esa sesión', async () => {
     mockFetchOnce(200, { token: 'music-token', username: 'melomano' });
     await login('melomano', 'clave123456');
+    expect(matthiasLoginGreetingPending()).toBe(true);
     expect(sessionStorage.getItem('chess-study-ambient-theme-session')).toBeTruthy();
   });
 
@@ -211,6 +213,7 @@ describe('logout', () => {
     localStorage.setItem('chess-study-clock:game', '{"version":1}');
 
     logout();
+    expect(matthiasLoginGreetingPending()).toBe(false);
 
     expect(isLoggedIn()).toBe(false);
     expect(getToken()).toBeNull();

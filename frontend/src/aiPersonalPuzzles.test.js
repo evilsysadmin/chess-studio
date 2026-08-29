@@ -42,10 +42,23 @@ describe('AI personal puzzle batches', () => {
     const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({ suggested: { from: 'e2', to: 'e4', san: 'e4' } }),
     });
-    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92, aiQualityVersion: 2, tacticalBestMoveChecked: true });
+    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92, aiQualityVersion: 4, tacticalBestMoveChecked: true, tacticalRefutationChecked: true });
 
     const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({ suggested: { from: 'd2', to: 'd4', san: 'd4' } }),
+    });
+    expect(rejected).toBeNull();
+  });
+
+
+  it('rechaza aunque el mock de motor lo bendiga si la jugada deja la pieza comestible sin compensación', async () => {
+    const candidate = {
+      fen: '3k4/5p2/8/2N5/8/8/8/4K3 w - - 0 1',
+      best_uci: 'c5e6',
+      title: 'Jaque de humo',
+    };
+    const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({ suggested: { from: 'c5', to: 'e6', san: 'Ne6+' } }),
     });
     expect(rejected).toBeNull();
   });

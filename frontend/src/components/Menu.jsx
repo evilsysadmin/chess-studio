@@ -24,7 +24,8 @@ import { buildHomeOnboarding, isFreshAccount, markOnboardingInsightsSeen, onboar
 import { loadPuzzlesSolved } from '../puzzleStats.js';
 import { APP_RELEASE } from '../release.js';
 import { loadRivalry } from '../rivalry.js';
-import { buildMatthiasHomeCardModel, buildMatthiasHomeVisit, buildMatthiasIntroVisit, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasIntroPlacement, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
+import { buildMatthiasHomeCardModel, buildMatthiasHomeVisit, buildMatthiasIntroVisit, buildMatthiasLoginGreeting, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasIntroPlacement, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
+import { consumeMatthiasLoginGreeting, matthiasLoginGreetingPending } from '../matthiasSession.js';
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
@@ -129,6 +130,11 @@ export default function Menu({
       return;
     }
     if (blockingHomeOverlay) return;
+    if (matthiasLoginGreetingPending()) {
+      consumeMatthiasLoginGreeting();
+      setMatthiasVisit(buildMatthiasLoginGreeting());
+      return;
+    }
     const show = shouldShowMatthiasHome({
       hasOpenOverlay: blockingHomeOverlay,
       hasPriorityAction: hasSavedGame,
@@ -155,8 +161,18 @@ export default function Menu({
     // `matthiasGuidesInitialWelcome` es un snapshot de esta primera visita, de
     // modo que el texto no desaparece al persistir la marca de onboarding.
     markMatthiasOnboarded();
+    consumeMatthiasLoginGreeting();
     markMatthiasHomeShown();
   }, [features.homeGuide, matthiasGuidesInitialWelcome, matthiasIntroBlocked, matthiasVisit, showHomeGuide]);
+
+
+  useEffect(() => {
+    if (matthiasVisit?.kind !== 'login-greeting') return undefined;
+    const timer = window.setTimeout(() => {
+      setMatthiasVisit((current) => current?.kind === 'login-greeting' ? null : current);
+    }, 7000);
+    return () => window.clearTimeout(timer);
+  }, [matthiasVisit?.kind]);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());

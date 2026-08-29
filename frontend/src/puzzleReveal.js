@@ -44,5 +44,5 @@ export function buildPuzzleReveal(puzzle) {
     // Un puzzle incompleto no debe romper la pantalla de entrenamiento.
   }
 
-  return { played, preferred, line, displayFen };
+  return { played, preferred, line, displayFen, explanation: puzzle?.solutionExplanation || null };
 }

@@ -9,10 +9,12 @@ import { markAmbientThemeSessionFresh, clearAmbientThemeSessionStorage } from '.
 import { clearSessionView } from './viewState.js';
 import { clearAllClockSnapshots } from './clockPersistence.js';
 import { clearCombatSession } from './combatSession.js';
+import { clearCombatDebriefSession } from './combatDebriefSession.js';
 import { clearHomePlayNudgeSession } from './homePlayNudge.js';
 import { APP_RELEASE } from './release.js';
 import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 import { setUiLanguage } from './userPreferences.js';
+import { clearMatthiasSessionSignals, queueMatthiasLoginGreeting } from './matthiasSession.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 const USERNAME_KEY = 'chess-study-auth-username';
@@ -117,6 +119,7 @@ function saveSession(token, username) {
   clearLocalUserState();
   clearAllClockSnapshots();
   clearCombatSession();
+  clearCombatDebriefSession();
   setStorageItem(STORAGE_LOCAL, TOKEN_KEY, token);
   setStorageItem(STORAGE_LOCAL, USERNAME_KEY, username);
   rotatePresenceSessionId();
@@ -126,6 +129,7 @@ function saveSession(token, username) {
   markAmbientThemeSessionFresh();
   clearSessionView();
   clearHomePlayNudgeSession();
+  queueMatthiasLoginGreeting();
 }
 
 export async function reportLogoutPresence(sessionId = null) {
@@ -163,7 +167,9 @@ export function logout() {
   clearLocalUserState();
   clearAllClockSnapshots();
   clearCombatSession();
+  clearCombatDebriefSession();
   clearHomePlayNudgeSession();
+  clearMatthiasSessionSignals();
   removeStorageItem(STORAGE_LOCAL, TOKEN_KEY);
   removeStorageItem(STORAGE_LOCAL, USERNAME_KEY);
   removeStorageItem(STORAGE_SESSION, PRESENCE_SESSION_KEY);

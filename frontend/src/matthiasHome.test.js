@@ -6,6 +6,7 @@ import {
   buildMatthiasHomeCardModel,
   buildMatthiasHomeVisit,
   buildMatthiasIntroVisit,
+  buildMatthiasLoginGreeting,
   markMatthiasHomeShown,
   markMatthiasOnboarded,
   matthiasIntroPlacement,
@@ -14,6 +15,7 @@ import {
   matthiasHomeSessionSeen,
   shouldShowMatthiasHome,
 } from './matthiasHome.js';
+import { consumeMatthiasLoginGreeting, matthiasLoginGreetingPending, queueMatthiasLoginGreeting } from './matthiasSession.js';
 
 beforeEach(() => {
   localStorage.clear();
@@ -89,6 +91,20 @@ describe('Matthias en Home', () => {
     expect(shouldShowMatthiasHome({ now, randomValue: 0.2, lastShownAt: now - MATTHIAS_HOME_COOLDOWN_MS - 1 })).toBe(true);
     expect(shouldShowMatthiasHome({ now, randomValue: 0.30, relationshipTier: 'veteran', visitKind: 'generic' })).toBe(false);
     expect(shouldShowMatthiasHome({ now, randomValue: 0.30, relationshipTier: 'veteran', visitKind: 'goal' })).toBe(true);
+  });
+
+
+  it('saluda una vez tras cada autenticación explícita sin depender del cooldown', () => {
+    queueMatthiasLoginGreeting();
+    expect(matthiasLoginGreetingPending()).toBe(true);
+    const greeting = buildMatthiasLoginGreeting({ hour: 22 });
+    expect(greeting).toMatchObject({ kind: 'login-greeting', action: 'insights', actionLabel: 'Ver Así juegas' });
+    expect(greeting.text).toMatch(/^Guten Abend\./);
+    const model = buildMatthiasHomeCardModel({ visit: greeting });
+    expect(model).toMatchObject({ variant: 'comment', eyebrow: 'MATTHIAS · WILLKOMMEN' });
+    consumeMatthiasLoginGreeting();
+    expect(matthiasLoginGreetingPending()).toBe(false);
+    expect(matthiasHomeSessionSeen()).toBe(true);
   });
 
   it('marca sesión y cooldown usando el almacenamiento seguro', () => {

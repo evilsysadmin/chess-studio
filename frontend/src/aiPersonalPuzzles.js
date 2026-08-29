@@ -3,6 +3,8 @@ import { api } from './api.js';
 import { getToken } from './auth.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 import { loadPersonalPuzzles, saveGeneratedPersonalPuzzles } from './personalPuzzles.js';
+import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
+import { PERSONAL_PUZZLE_QUALITY_VERSION } from './personalPuzzleQuality.js';
 
 const MAX_SEEDS = 2;
 const MAX_CANDIDATES = 4;
@@ -75,7 +77,7 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove
   const sourceIncidents = Array.isArray(candidate?.incident_keys)
     ? candidate.incident_keys.slice(0, 4).map((value) => cleanText(value, 48)).filter(Boolean)
     : [];
-  return {
+  const validated = {
     kind: 'personal',
     title: cleanText(candidate?.title, 70) || 'Variante de tu crimen',
     description: cleanText(candidate?.description, 180) || 'Escenario nuevo inspirado en uno de tus errores y validado por el motor local.',
@@ -86,10 +88,13 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove
     incidentKeys: sourceIncidents,
     source: 'workers-ai-validated',
     aiValidatedLevel: ENGINE_LEVEL,
-    aiQualityVersion: 2,
+    aiQualityVersion: PERSONAL_PUZZLE_QUALITY_VERSION,
     tacticalBestMoveChecked: true,
+    tacticalRefutationChecked: true,
     generatedAt: new Date().toISOString(),
   };
+  if (isObviouslyUnsoundSingleMovePuzzle(validated)) return null;
+  return validated;
 }
 
 export function shouldOfferAiPersonalPuzzleGeneration(summary) {

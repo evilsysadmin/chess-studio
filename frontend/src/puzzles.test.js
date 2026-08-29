@@ -110,6 +110,17 @@ describe('banco de puzzles curados', () => {
     expect(curatedPuzzleTacticalIssues(puzzle), `${puzzle.id}: solución tácticamente dudosa`).toEqual([]);
   });
 
+  it('Final de la Ópera explica y demuestra por qué Kxd8 es ilegal', () => {
+    const puzzle = PUZZLES.find((item) => item.id === 'combo_opera_finale');
+    expect(puzzle?.solutionExplanation).toMatch(/alfil.*g5.*d8/i);
+    const board = new Chess(puzzle.fen);
+    board.move('Qb8+');
+    board.move('Nxb8');
+    board.move('Rd8#');
+    expect(board.isCheckmate()).toBe(true);
+    expect(board.moves()).not.toContain('Kxd8');
+  });
+
   it.each(PUZZLES)('$id pasa el gate completo de integridad', (puzzle) => {
     expect(() => new Chess(puzzle.fen)).not.toThrow();
     const legalPosition = validateLabPosition(puzzle.fen);
