@@ -4,8 +4,7 @@ import InsightsDashboardContent from './InsightsDashboardContent.jsx';
 import './InsightsWorkspace.css';
 
 const DIAGNOSIS_VIEWS = [
-  { id: 'now', label: 'Ahora', detail: 'Tu foco de hoy' },
-  { id: 'matthias', label: 'Matthias', detail: 'Veredicto y consulta' },
+  { id: 'now', label: 'Ahora', detail: 'Matthias te marca el foco' },
   { id: 'errors', label: 'Errores', detail: 'Cagadas y prioridades' },
   { id: 'dossier', label: 'Expediente', detail: 'Datos y tendencias' },
 ];
@@ -33,8 +32,8 @@ export default function InsightsScreen(props) {
         </div>
         <p className="insights-workspace-lead">
           {isCareer
-            ? 'Tu evolución e historial, separados del ruido del entrenamiento de hoy.'
-            : 'Primero, qué merece tu atención. El resto del expediente sólo cuando quieras abrirlo.'}
+            ? 'Tu evolución e historial, separados del entrenamiento de hoy.'
+            : 'Matthias revisa tus datos, te señala el problema que más merece atención y te manda a trabajar. El expediente completo puede esperar.'}
         </p>
 
         <div className="insights-workspace-primary-tabs" role="tablist" aria-label="Vistas de progreso del jugador">
@@ -46,8 +45,7 @@ export default function InsightsScreen(props) {
             className={!isCareer ? 'active' : ''}
             onClick={() => setSection('diagnosis')}
           >
-            <strong>Así juegas</strong>
-            <small>Diagnóstico y acción</small>
+            Así juegas
           </button>
           <button
             id="insights-section-career"
@@ -57,8 +55,7 @@ export default function InsightsScreen(props) {
             className={isCareer ? 'active' : ''}
             onClick={() => setSection('career')}
           >
-            <strong>Mi progreso</strong>
-            <small>Evolución e historial</small>
+            Mi progreso
           </button>
         </div>
       </header>

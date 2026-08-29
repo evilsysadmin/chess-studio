@@ -1,28 +1,27 @@
-/* Así juegas · coaching workspace
- * Progressive disclosure for the diagnosis screen. The underlying diagnosis
- * logic remains untouched; this layer decides what deserves attention now.
+/* Así juegas · Matthias-led coaching workspace
+ * Progressive disclosure around one question: what should I work on now?
  */
 .insights-coach-workspace {
   width: min(100%, var(--surface-max-wide, 1180px));
   margin: 0 auto;
   display: grid;
-  gap: .85rem;
+  gap: .72rem;
 }
 
 .insights-workspace-header {
   position: relative;
   overflow: hidden;
-  padding: 1rem 1.1rem 1.05rem;
-  border: 1px solid rgba(198, 164, 93, .26);
-  border-radius: 18px;
+  padding: .9rem 1rem .95rem;
+  border: 1px solid rgba(198, 164, 93, .24);
+  border-radius: 16px;
   background:
-    radial-gradient(circle at 88% 12%, rgba(198, 164, 93, .11), transparent 34%),
-    linear-gradient(145deg, rgba(255,255,255,.035), rgba(0,0,0,.13));
-  box-shadow: 0 16px 42px rgba(0,0,0,.14);
+    radial-gradient(circle at 88% 12%, rgba(198, 164, 93, .09), transparent 32%),
+    linear-gradient(145deg, rgba(255,255,255,.03), rgba(0,0,0,.12));
+  box-shadow: 0 14px 36px rgba(0,0,0,.12);
 }
 
 .insights-workspace-back {
-  margin-bottom: .7rem;
+  margin-bottom: .58rem;
 }
 
 .insights-workspace-title-row {
@@ -33,105 +32,108 @@
 }
 
 .insights-workspace-title-row h2 {
-  margin: .12rem 0 0;
-  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  margin: .1rem 0 0;
+  font-size: clamp(1.55rem, 3vw, 2.05rem);
   letter-spacing: -.025em;
 }
 
 .insights-workspace-lead {
-  max-width: 760px;
-  margin: .45rem 0 .85rem;
+  max-width: 860px;
+  margin: .35rem 0 .7rem;
   opacity: .78;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
+/* Top-level switch stays intentionally quiet: it is context, not the task. */
 .insights-workspace-primary-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .55rem;
-  max-width: 670px;
+  display: inline-grid;
+  grid-template-columns: repeat(2, auto);
+  gap: .22rem;
+  padding: .2rem;
+  border: 1px solid rgba(255,255,255,.085);
+  border-radius: 999px;
+  background: rgba(0,0,0,.14);
 }
 
 .insights-workspace-primary-tabs > button,
 .insights-workspace-nav > button {
   min-width: 0;
-  border: 1px solid rgba(255,255,255,.1);
   color: inherit;
-  text-align: left;
   cursor: pointer;
   transition: border-color .16s ease, background .16s ease, transform .16s ease;
 }
 
 .insights-workspace-primary-tabs > button {
-  display: grid;
-  gap: .12rem;
-  padding: .67rem .78rem;
-  border-radius: 11px;
-  background: rgba(0,0,0,.13);
-}
-
-.insights-workspace-primary-tabs > button small,
-.insights-workspace-nav > button small {
-  opacity: .62;
-  font-size: .75rem;
-  line-height: 1.25;
+  border: 0;
+  padding: .42rem .72rem;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  opacity: .64;
 }
 
 .insights-workspace-primary-tabs > button.active {
-  border-color: rgba(198,164,93,.62);
-  background: rgba(198,164,93,.095);
-  box-shadow: inset 0 0 0 1px rgba(198,164,93,.12);
+  background: rgba(198,164,93,.15);
+  color: var(--gold, #e5bf65);
+  opacity: 1;
+  box-shadow: inset 0 0 0 1px rgba(198,164,93,.26);
 }
 
 .insights-workspace-nav {
   position: sticky;
-  top: .65rem;
+  top: .55rem;
   z-index: 8;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: .45rem;
-  padding: .45rem;
-  border: 1px solid rgba(255,255,255,.085);
-  border-radius: 14px;
-  background: rgba(20, 24, 29, .89);
-  box-shadow: 0 10px 28px rgba(0,0,0,.16);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .35rem;
+  padding: .38rem;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 13px;
+  background: rgba(20, 24, 29, .91);
+  box-shadow: 0 9px 24px rgba(0,0,0,.14);
   backdrop-filter: blur(14px);
 }
 
 .insights-workspace-nav > button {
   display: grid;
-  gap: .08rem;
-  padding: .57rem .66rem;
-  border-radius: 10px;
+  gap: .06rem;
+  padding: .52rem .62rem;
+  border: 1px solid transparent;
+  border-radius: 9px;
   background: transparent;
+  text-align: left;
+}
+
+.insights-workspace-nav > button small {
+  opacity: .6;
+  font-size: .72rem;
+  line-height: 1.2;
 }
 
 .insights-workspace-nav > button:hover,
 .insights-workspace-primary-tabs > button:hover {
-  border-color: rgba(198,164,93,.42);
-  background: rgba(255,255,255,.035);
+  background: rgba(255,255,255,.03);
 }
 
 .insights-workspace-nav > button.active {
-  border-color: rgba(198,164,93,.62);
-  background: linear-gradient(135deg, rgba(198,164,93,.15), rgba(198,164,93,.055));
-  box-shadow: inset 0 0 0 1px rgba(198,164,93,.11);
+  border-color: rgba(198,164,93,.48);
+  background: linear-gradient(135deg, rgba(198,164,93,.13), rgba(198,164,93,.045));
 }
 
 .insights-workspace-nav > button.active strong::before {
   content: '●';
-  margin-right: .38rem;
-  font-size: .57rem;
+  margin-right: .36rem;
+  font-size: .55rem;
   vertical-align: .13rem;
-  opacity: .75;
+  opacity: .72;
 }
 
 .insights-workspace-panel {
   min-width: 0;
 }
 
-/* The original component keeps owning all data/actions; its old duplicated
- * header is hidden because the workspace header above now owns navigation. */
+/* The original diagnosis component still owns data/actions. */
 .insights-coach-workspace .insights-hub > .back-link,
 .insights-coach-workspace .insights-hub > .insights-hub-hero {
   display: none !important;
@@ -149,9 +151,7 @@
   margin-top: 0;
 }
 
-/* NOW · one decision, one obvious action. */
-.insights-workspace-view-now .insights-hub > .ai-player-portrait,
-.insights-workspace-view-now .insights-hub > .matthias-daily,
+/* NOW · Matthias speaks first, then one recommended action. */
 .insights-workspace-view-now .insights-hub > .worst-move-spotlight,
 .insights-workspace-view-now .insights-hub > .insights-roast-details,
 .insights-workspace-view-now .insights-hub > .insights-full-details {
@@ -166,37 +166,83 @@
   display: none !important;
 }
 
+.insights-workspace-view-now .ai-player-portrait {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(198,164,93,.38);
+  background:
+    radial-gradient(circle at 9% 42%, rgba(198,164,93,.13), transparent 27%),
+    linear-gradient(120deg, rgba(198,164,93,.07), rgba(255,255,255,.02));
+  box-shadow: 0 16px 38px rgba(0,0,0,.13);
+}
+
+.insights-workspace-view-now .ai-player-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 3px 0 0 rgba(198,164,93,.52);
+}
+
+.insights-workspace-view-now .ai-player-portrait-heading h2 {
+  font-size: clamp(1.25rem, 2.4vw, 1.65rem);
+}
+
+.insights-workspace-view-now .ai-player-portrait-character img {
+  width: clamp(82px, 10vw, 116px);
+  height: clamp(82px, 10vw, 116px);
+  object-fit: contain;
+}
+
+.insights-workspace-view-now .ai-player-portrait-commentary {
+  position: relative;
+}
+
+.insights-workspace-view-now .ai-player-portrait-text {
+  margin-top: 0;
+  font-size: clamp(1rem, 1.8vw, 1.15rem);
+  line-height: 1.52;
+}
+
+.insights-workspace-view-now .ai-player-portrait-text::before {
+  content: '“';
+  margin-right: .12rem;
+  color: rgba(198,164,93,.76);
+  font-size: 1.65em;
+  line-height: .5;
+  vertical-align: -.15em;
+}
+
 .insights-workspace-view-now .coaching-section,
-.insights-workspace-view-now .personal-training-spotlight {
+.insights-workspace-view-now .personal-training-spotlight,
+.insights-workspace-view-now .matthias-daily {
   min-width: 0;
 }
 
 .insights-workspace-view-now .training-now-card {
   margin-bottom: 0;
   border-width: 1px;
-  box-shadow: 0 15px 34px rgba(0,0,0,.12);
+  box-shadow: 0 14px 32px rgba(0,0,0,.11);
 }
 
 .insights-workspace-view-now .personal-training-spotlight {
   align-content: start;
 }
 
-/* MATTHIAS · character and consultation, without stats screaming underneath. */
-.insights-workspace-view-matthias .insights-hub > .worst-move-spotlight,
-.insights-workspace-view-matthias .insights-hub > .personal-training-spotlight,
-.insights-workspace-view-matthias .insights-hub > .coaching-section,
-.insights-workspace-view-matthias .insights-hub > .insights-full-details {
-  display: none !important;
+/* Daily consultation is a secondary conversation, not another hero. */
+.insights-workspace-view-now .matthias-daily {
+  border-color: rgba(198,164,93,.18);
+  background: rgba(255,255,255,.018);
 }
 
-.insights-workspace-view-matthias .ai-player-portrait,
-.insights-workspace-view-matthias .matthias-daily {
-  min-width: 0;
-  height: max-content;
+.insights-workspace-view-now .matthias-daily-heading img {
+  width: 48px;
+  height: 48px;
 }
 
-.insights-workspace-view-matthias .insights-roast-details {
-  grid-column: 1 / -1;
+.insights-workspace-view-now .matthias-daily-heading h3 {
+  font-size: 1rem;
 }
 
 /* ERRORS · forensic work and training material live together. */
@@ -252,79 +298,90 @@
   margin-top: 0;
 }
 
-/* Desktop bento: scroll is spent on information, not empty vertical rhythm. */
+/* Desktop hierarchy: coach first, assignment second, optional conversation last. */
 @media (min-width: 900px) {
   .insights-workspace-view-now .insights-hub,
-  .insights-workspace-view-matthias .insights-hub,
   .insights-workspace-view-errors .insights-hub {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .9rem;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: .85rem;
     align-items: start;
   }
 
-  .insights-workspace-view-now .coaching-section {
-    grid-column: 1;
+  .insights-workspace-view-now .ai-player-portrait {
+    grid-column: 1 / -1;
     grid-row: 1;
+  }
+
+  .insights-workspace-view-now .coaching-section {
+    grid-column: 1 / span 7;
+    grid-row: 2;
   }
 
   .insights-workspace-view-now .personal-training-spotlight {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: 8 / -1;
+    grid-row: 2;
   }
 
-  .insights-workspace-view-matthias .ai-player-portrait {
-    grid-column: 1;
-  }
-
-  .insights-workspace-view-matthias .matthias-daily {
-    grid-column: 2;
+  .insights-workspace-view-now .matthias-daily {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
 
   .insights-workspace-view-errors .worst-move-spotlight {
-    grid-column: 1;
+    grid-column: 1 / span 6;
   }
 
   .insights-workspace-view-errors .personal-training-spotlight {
-    grid-column: 2;
+    grid-column: 7 / -1;
+  }
+
+  .insights-workspace-view-errors .coaching-section {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 760px) {
   .insights-coach-workspace {
-    gap: .65rem;
+    gap: .6rem;
   }
 
   .insights-workspace-header {
-    padding: .85rem;
-    border-radius: 14px;
+    padding: .78rem;
+    border-radius: 13px;
   }
 
   .insights-workspace-lead {
-    margin-bottom: .7rem;
-    font-size: .92rem;
-  }
-
-  .insights-workspace-primary-tabs {
-    gap: .4rem;
+    margin-bottom: .6rem;
+    font-size: .9rem;
   }
 
   .insights-workspace-primary-tabs > button {
-    padding: .58rem .62rem;
+    padding: .38rem .62rem;
+    font-size: .86rem;
   }
 
   .insights-workspace-nav {
     grid-template-columns: none;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(130px, 44vw);
+    grid-auto-columns: minmax(128px, 42vw);
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scrollbar-width: thin;
-    padding: .38rem;
+    padding: .34rem;
   }
 
   .insights-workspace-nav > button {
-    padding: .54rem .6rem;
+    padding: .5rem .56rem;
+  }
+
+  .insights-workspace-view-now .ai-player-portrait-layout {
+    align-items: start;
+  }
+
+  .insights-workspace-view-now .ai-player-portrait-character img {
+    width: 76px;
+    height: 76px;
   }
 
   .insights-workspace-view-dossier .insights-full-details > .friendly-disclosure-body {
@@ -338,16 +395,23 @@
 }
 
 @media (max-width: 430px) {
-  .insights-workspace-primary-tabs > button small {
-    display: none;
-  }
-
   .insights-workspace-nav {
-    grid-auto-columns: minmax(118px, 42vw);
+    grid-auto-columns: minmax(116px, 40vw);
   }
 
   .insights-workspace-nav > button small {
-    font-size: .7rem;
+    font-size: .68rem;
+  }
+
+  .insights-workspace-view-now .ai-player-portrait-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .insights-workspace-view-now .ai-player-portrait-character {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
   }
 }
 
