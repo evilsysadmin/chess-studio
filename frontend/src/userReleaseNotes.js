@@ -6,6 +6,14 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrk',
+    title: 'Combat ajusta su economía',
+    highlights: [
+      'Las órdenes opcionales de un sector tienen ahora un límite conjunto de 9 suministros: siguen premiando jugar bien sin financiar por sí solas toda la inteligencia del siguiente combate.',
+      'La economía de campaña incorpora un gate reproducible que vigila costes de Intel, recompensas y escenarios de gasto para detectar inflación antes de desplegarla.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrj',
     title: 'Combat abre operaciones clasificadas',
     highlights: [
