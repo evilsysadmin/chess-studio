@@ -11,7 +11,7 @@ export const USER_RELEASE_NOTES = Object.freeze([
     highlights: [
       'Matthias adapta su tono a un estado narrativo calculado sólo con rendimiento real: puede estar contento, satisfecho, escéptico, cabreado o impresionado sin inventar causas.',
       'El humor tiene inercia: una sola partida no lo convierte en una veleta, pero varias victorias, derrotas o sesiones de entrenamiento sí cambian cómo te habla.',
-      'Administración muestra telemetría agregada de humor y tipos de consulta, junto a respuestas Workers AI, fallback y latencia, sin exponer prompts ni conversaciones privadas.',
+      'Administración muestra un resumen agregado del humor de Matthias, los tipos de consulta y cómo están respondiendo sus servicios, sin exponer prompts ni conversaciones privadas.',
     ],
   },
   {
