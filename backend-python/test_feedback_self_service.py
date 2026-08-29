@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from auth import create_token
 import feedback_store as fstore
+import users_store as ustore
 from main import app
 
 
@@ -16,6 +17,20 @@ def _auth(username: str) -> dict[str, str]:
 
 def setup_function():
     fstore._memory_feedback.clear()
+    # Auth deliberately fails closed for JWTs whose account no longer exists.
+    # Seed real in-memory accounts so these tests exercise ownership rather
+    # than accidentally testing the deleted-account guard.
+    ustore._memory_users["owner"] = {"username": "owner", "password_hash": "fixture-only"}
+    ustore._memory_users["intruder"] = {"username": "intruder", "password_hash": "fixture-only"}
+    ustore._user_existence_cache.pop("owner", None)
+    ustore._user_existence_cache.pop("intruder", None)
+
+
+def teardown_function():
+    ustore._memory_users.pop("owner", None)
+    ustore._memory_users.pop("intruder", None)
+    ustore._user_existence_cache.pop("owner", None)
+    ustore._user_existence_cache.pop("intruder", None)
 
 
 def _create(username: str = "owner") -> dict:
