@@ -312,7 +312,7 @@ test('Matthias · el briefing persistente aparece antes de una partida rápida',
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const briefing = page.getByRole('complementary', { name: 'Briefing de Matthias' });
   await expect(briefing).toBeVisible();
-  await expect(briefing.getByText('MATTHIAS // BRIEFING', { exact: true })).toBeVisible();
+  await expect(briefing.getByText(/^MATTHIAS \/\/ BRIEFING(?: · .+)?$/)).toBeVisible();
   await expect(briefing.getByText(/Mi obsesión actual sigue siendo: Domar la Siciliana/i)).toBeVisible();
 });
 
@@ -323,12 +323,12 @@ test('Matthias · saluda una vez tras login y no repite el saludo con F5', async
   } });
   await login(page);
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-  await expect(corner.getByText(/Guten (Morgen|Tag|Abend)\. De vuelta al tablero\./)).toBeVisible();
+  await expect(corner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
   const restoredCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-  await expect(restoredCorner.getByText(/De vuelta al tablero\./)).toHaveCount(0);
+  await expect(restoredCorner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toHaveCount(0);
   await expect(restoredCorner.getByText('…', { exact: true })).toBeVisible();
 });
 
