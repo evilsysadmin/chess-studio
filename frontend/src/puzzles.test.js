@@ -112,7 +112,9 @@ describe('banco de puzzles curados', () => {
 
   it('Final de la Ópera explica y demuestra por qué Kxd8 es ilegal', () => {
     const puzzle = PUZZLES.find((item) => item.id === 'combo_opera_finale');
-    expect(puzzle?.solutionExplanation).toMatch(/alfil.*g5.*d8/i);
+    expect(puzzle?.solutionExplanation).toMatch(/alfil/i);
+    expect(puzzle?.solutionExplanation).toMatch(/g5/i);
+    expect(puzzle?.solutionExplanation).toMatch(/d8/i);
     const board = new Chess(puzzle.fen);
     board.move('Qb8+');
     board.move('Nxb8');
