@@ -43,9 +43,12 @@ function keyMomentCards(keyMoments = []) {
     </article>`).join('');
 }
 
-export function buildGameAutopsyHtml({ report, meta = {}, humanColor = 'w', verdict = '', keyMoments = [] } = {}) {
+export function buildGameAutopsyHtml({ report, meta = {}, humanColor = 'w', accuracy: suppliedAccuracy = null, verdict = '', keyMoments = [] } = {}) {
   if (!report) return null;
-  const accuracy = Math.max(0, Math.min(100, Math.round(100 - safeNumber(report.averageLoss))));
+  const fallbackAccuracy = Math.max(0, Math.min(100, Math.round(100 - safeNumber(report.averageLoss))));
+  const accuracy = Number.isFinite(Number(suppliedAccuracy))
+    ? Math.max(0, Math.min(100, Math.round(Number(suppliedAccuracy))))
+    : fallbackAccuracy;
   const titleBits = [meta.opening, meta.mode].filter(Boolean).map(escapeHtml);
   const title = titleBits.length ? titleBits.join(' · ') : 'Partida de Chess Studio';
   const mistakes = incidentRows(report);
