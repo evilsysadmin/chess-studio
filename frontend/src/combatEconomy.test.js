@@ -22,6 +22,14 @@ describe('economía de Combat', () => {
     expect(normalizeCombatEconomy({ credits: 9, combatXp: 99 })).toMatchObject({ credits: 9, combatXp: 0 });
   });
 
+  it('trata créditos vacíos como dato ausente sin confundir un saldo cero real', () => {
+    expect(normalizeCombatEconomy({ credits: null }).credits).toBe(COMBAT_STARTING_CREDITS);
+    expect(normalizeCombatEconomy({ credits: '', combatXp: 4 }).credits).toBe(COMBAT_STARTING_CREDITS + 8);
+    expect(normalizeCombatEconomy({ credits: '   ', combatXp: 4 }).credits).toBe(COMBAT_STARTING_CREDITS + 8);
+    expect(normalizeCombatEconomy({ credits: 0, combatXp: 99 }).credits).toBe(0);
+    expect(normalizeCombatEconomy({ credits: '0', combatXp: 99 }).credits).toBe(0);
+  });
+
   it('premia jugar y capturar sin convertir el mercado en requisito', () => {
     const win = battleCreditReward({ outcome: 'win', captures: 4, floor: 4, variant: 'roguelike' });
     const loss = battleCreditReward({ outcome: 'loss', captures: 1, floor: 4, variant: 'roguelike' });
