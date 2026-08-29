@@ -23,7 +23,10 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
 });
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 function game(overrides = {}) {
   return {

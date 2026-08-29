@@ -124,11 +124,14 @@ export function isObviouslyUnsoundSingleMovePuzzle(puzzle) {
     const board = new Chess(puzzle.fen);
     const perspective = board.turn();
     const before = materialBalance(board, perspective);
-    const best = bestScoreForSideToMove(board, perspective, 2);
     const expected = scoreLegalMove(board, puzzle.solution[0], perspective, 2);
     if (!expected) return true;
     board.move(puzzle.solution[0]);
+    // Fast path importante: un mate legal no necesita comparar toda la
+    // posición contra el resto de jugadas. Evita explorar árboles enormes
+    // (por ejemplo, una posición de apertura) sólo para confirmar lo obvio.
     if (board.isCheckmate()) return false;
+    const best = bestScoreForSideToMove(new Chess(puzzle.fen), perspective, 2);
 
     // Si incluso este minimax local ve que la supuesta clave queda muy por
     // debajo de una alternativa sencilla, no merece entrar como puzzle.

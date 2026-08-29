@@ -1,5 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appendActiveGameChat, clearActiveGameChat, loadActiveGameChat } from './gameChat.js';
+
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 describe('gameChat', () => {
   beforeEach(() => {

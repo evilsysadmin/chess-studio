@@ -349,7 +349,12 @@ worker-test:
 release-check:
 	node scripts/release_consistency_check.mjs
 
-static-preflight: audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check security-api cf-ai-preflight worker-test
+
+.PHONY: test-flake-check
+test-flake-check:
+	node scripts/test_flake_gate.mjs
+
+static-preflight: test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check security-api cf-ai-preflight worker-test
 	@python3 scripts/synthetic_health_contract.py
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 	@python3 scripts/python_syntax_check.py

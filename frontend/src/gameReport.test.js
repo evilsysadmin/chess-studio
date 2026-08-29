@@ -57,7 +57,7 @@ describe('analyzeGame', () => {
         return { suggested: { san: 'algo', from: 'a1', to: 'a2' }, evalAfterSuggested: 20, evalAfterPlayed: 20 };
       },
     };
-    const report = await analyzeGame(history, 'w', mockApi, { throttleMs: 1 });
+    const report = await analyzeGame(history, 'w', mockApi, { throttleMs: 0 });
     expect(callCount).toBe(2); // solo las 2 jugadas de blancas, nunca las de negras
     expect(report.analyzedCount).toBe(2);
     expect(report.worst.played).toBe('Qh5');
@@ -94,7 +94,7 @@ describe('analyzeGame', () => {
         return { suggested: { san: 'x' }, evalAfterSuggested: 0, evalAfterPlayed: 0 };
       },
     };
-    await analyzeGame(history, 'w', mockApi, { maxMoves: 5, throttleMs: 1 });
+    await analyzeGame(history, 'w', mockApi, { maxMoves: 5, throttleMs: 0 });
     expect(callCount).toBe(5);
   });
 
@@ -112,7 +112,7 @@ describe('analyzeGame', () => {
         };
       },
     };
-    const report = await analyzeGame(history, 'b', mockApi, { throttleMs: 1, initialFen });
+    const report = await analyzeGame(history, 'b', mockApi, { throttleMs: 0, initialFen });
     expect(report.analyzedCount).toBe(1);
     expect(calls).toHaveLength(1);
     expect(calls[0]).toMatchObject({ from: 'a2', to: 'a1', promotion: 'n' });
@@ -180,7 +180,7 @@ describe('analyzeCombatLog', () => {
       },
     };
 
-    const report = await analyzeCombatLog(log, 'w', mockApi, { throttleMs: 1 });
+    const report = await analyzeCombatLog(log, 'w', mockApi, { throttleMs: 0 });
     expect(callCount).toBe(2); // solo las 2 jugadas del humano, nunca las de la CPU
     expect(report.worst.played).toBe('Qh5');
     expect(report.worst.loss).toBe(40);
@@ -207,7 +207,7 @@ describe('findWorstMoveEver', () => {
   };
 
   it('encuentra la peor jugada entre partidas normales Y de combate juntas', async () => {
-    const { best } = await findWorstMoveEver(gameHistory, combatHistory, mockApi, () => {}, () => false, { throttleMs: 1 });
+    const { best } = await findWorstMoveEver(gameHistory, combatHistory, mockApi, () => {}, () => false, { throttleMs: 0 });
     expect(best.moveReport.played).toBe('Qh5');
     expect(best.moveReport.loss).toBe(230);
     expect(best.kind).toBe('game');
@@ -218,7 +218,7 @@ describe('findWorstMoveEver', () => {
     const progress = [];
     await findWorstMoveEver(gameHistory, combatHistory, mockApi, (done, total, best) => {
       progress.push({ done, total, bestLoss: best?.moveReport.loss ?? null });
-    }, () => false, { throttleMs: 1 });
+    }, () => false, { throttleMs: 0 });
     expect(progress).toHaveLength(3); // 2 partidas + 1 batalla
     expect(progress[progress.length - 1].bestLoss).toBe(230);
   });
@@ -228,7 +228,7 @@ describe('findWorstMoveEver', () => {
     const { best } = await findWorstMoveEver(gameHistory, combatHistory, mockApi, () => {}, () => {
       calls += 1;
       return calls > 1; // corta después de la primera partida
-    }, { throttleMs: 1 });
+    }, { throttleMs: 0 });
     expect(best.moveReport.played).toBe('Qh5'); // ya la había encontrado en la primera
   });
 
@@ -239,7 +239,7 @@ describe('findWorstMoveEver', () => {
         return { suggested: { san: 'algo', from: 'a1', to: 'a2' }, evalAfterSuggested: 20, evalAfterPlayed: 15 };
       },
     };
-    const { best } = await findWorstMoveEver(gameHistory, [], flakyApi, () => {}, () => false, { throttleMs: 1 });
+    const { best } = await findWorstMoveEver(gameHistory, [], flakyApi, () => {}, () => false, { throttleMs: 0 });
     // Qh5 (índice 2) revienta y se descarta, pero e4 (índice 0, la otra
     // jugada humana de g1) sí se analiza bien — el resultado no queda vacío.
     expect(best.moveReport.played).toBe('e4');
@@ -247,7 +247,7 @@ describe('findWorstMoveEver', () => {
   });
 
   it('devuelve un caché con una entrada por cada partida/batalla analizada', async () => {
-    const { cache } = await findWorstMoveEver(gameHistory, combatHistory, mockApi, () => {}, () => false, { throttleMs: 1 });
+    const { cache } = await findWorstMoveEver(gameHistory, combatHistory, mockApi, () => {}, () => false, { throttleMs: 0 });
     expect(Object.keys(cache).sort()).toEqual(['c1', 'g1', 'g2']);
     expect(cache.g1.worst.played).toBe('Qh5');
     // g2 (d4) sí tiene un loss válido y chico (20-15=5) — no es null, apenas no es "el peor"
@@ -265,12 +265,12 @@ describe('findWorstMoveEver', () => {
       },
     };
     // primera búsqueda: arma el caché desde cero
-    const first = await findWorstMoveEver(gameHistory, [], countingApi, () => {}, () => false, { throttleMs: 1 });
+    const first = await findWorstMoveEver(gameHistory, [], countingApi, () => {}, () => false, { throttleMs: 0 });
     const callsAfterFirst = calls;
     expect(callsAfterFirst).toBeGreaterThan(0);
 
     // segunda búsqueda, mismo historial, pasando el caché de la vez pasada
-    const second = await findWorstMoveEver(gameHistory, [], countingApi, () => {}, () => false, { throttleMs: 1, cache: first.cache });
+    const second = await findWorstMoveEver(gameHistory, [], countingApi, () => {}, () => false, { throttleMs: 0, cache: first.cache });
     expect(calls).toBe(callsAfterFirst); // ni una llamada mas al backend
     expect(second.best.moveReport.played).toBe('Qh5'); // el resultado sigue siendo correcto, servido desde el caché
   });
@@ -280,7 +280,7 @@ describe('findWorstMoveEver', () => {
       g1: { worst: { played: 'algo-viejo', loss: 999 }, analyzedAt: '2020-01-01' },
       'partida-borrada-hace-rato': { worst: { played: 'x', loss: 500 }, analyzedAt: '2019-01-01' },
     };
-    const { cache } = await findWorstMoveEver(gameHistory, combatHistory, mockApi, () => {}, () => false, { throttleMs: 1, cache: staleCache });
+    const { cache } = await findWorstMoveEver(gameHistory, combatHistory, mockApi, () => {}, () => false, { throttleMs: 0, cache: staleCache });
     expect(Object.keys(cache)).not.toContain('partida-borrada-hace-rato');
     // g1 SI seguia en el historial -- se conserva su entrada del cache (no se reanaliza)
     expect(cache.g1.worst.played).toBe('algo-viejo');

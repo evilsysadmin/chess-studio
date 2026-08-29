@@ -1,5 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadGameActivity, recordGameActivity } from './gameActivity.js';
+
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 beforeEach(() => {
   localStorage.clear();

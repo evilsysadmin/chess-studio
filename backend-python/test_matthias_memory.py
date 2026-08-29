@@ -255,3 +255,31 @@ def test_recent_wording_is_bounded_and_exposed_only_as_anti_repetition_guidance(
         assert "recent_response_signatures" not in context
 
     asyncio.run(scenario())
+
+
+def test_matthias_mood_reacts_to_real_performance_with_inertia():
+    async def scenario():
+        await store.observe_facts("mood", {"total_games": 10, "record": {"wins": 4, "losses": 4, "draws": 2}, "puzzles_solved": 2})
+        assert (await store.user_summary("mood"))["mood"] == "observant"
+
+        await store.observe_facts("mood", {"total_games": 12, "record": {"wins": 6, "losses": 4, "draws": 2}, "puzzles_solved": 2})
+        assert (await store.user_summary("mood"))["mood"] == "pleased"
+
+        await store.observe_facts("mood", {"total_games": 15, "record": {"wins": 6, "losses": 7, "draws": 2}, "puzzles_solved": 2})
+        summary = await store.user_summary("mood")
+        assert summary["mood"] == "annoyed"
+        assert "paciencia" in store.briefing_text_from_summary(summary).lower()
+
+    asyncio.run(scenario())
+
+
+def test_admin_status_aggregates_mood_without_exposing_advice_text():
+    async def scenario():
+        await store.observe_facts("happy", {"total_games": 4, "record": {"wins": 2, "losses": 1, "draws": 1}, "puzzles_solved": 0})
+        await store.record_consultation("happy", "tactics", "Texto privado que no debe salir.", {"total_games": 4}, consultation_id="happy-1")
+        status = await store.admin_status()
+        assert sum(status["moodCounts"].values()) >= 1
+        assert status["questionCounts"]["tactics"] >= 1
+        assert "Texto privado" not in str(status)
+
+    asyncio.run(scenario())

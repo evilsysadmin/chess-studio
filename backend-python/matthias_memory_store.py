@@ -21,7 +21,7 @@ from pymongo.errors import DuplicateKeyError, PyMongoError
 from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
 COLLECTION = "matthias_memory"
-MEMORY_SCHEMA_VERSION = 4
+MEMORY_SCHEMA_VERSION = 5
 MAX_RECENT_ADVICE = 12
 MAX_RECENT_CONSULTATION_IDS = MAX_RECENT_ADVICE
 MAX_ACTIVE_GOALS = 3
@@ -485,19 +485,38 @@ def _challenge_completion_milestone(challenge: dict[str, Any] | None, now: str) 
     }
 
 
-def _mood_for(previous: dict[str, Any] | None, facts: dict[str, Any]) -> str:
+def _mood_for(previous: dict[str, Any] | None, facts: dict[str, Any], previous_mood: Any = None) -> str:
+    """Derive Matthias' narrative mood only from measured player performance.
+
+    One noisy game must not make the character manic. Strong signals may move
+    immediately; weaker signals preserve the previous mood for one observation.
+    The LLM receives this state but never gets to choose or justify it itself.
+    """
     current = _snapshot(facts)
     delta = _progress(previous, current)
     record = delta.get("record") if isinstance(delta.get("record"), dict) else {}
     wins = int(record.get("wins") or 0)
     losses = int(record.get("losses") or 0)
-    if wins >= 2 and wins > losses:
+    puzzles = int(delta.get("puzzles_solved") or 0)
+    prior = _bounded_text(previous_mood, 24) or "observant"
+
+    # Strong, repeatable performance signals.
+    if wins >= 3 and wins >= losses + 2:
         return "impressed"
+    if losses >= 3 and losses >= wins + 2:
+        return "annoyed"
+    if puzzles >= 5 or (wins >= 2 and losses == 0):
+        return "pleased"
     if losses >= 2 and losses > wins:
         return "skeptical"
-    if int(delta.get("puzzles_solved") or 0) >= 3:
+    if puzzles >= 3:
         return "satisfied"
-    return "observant"
+
+    if wins > losses and wins > 0 and prior in {"annoyed", "skeptical"}:
+        return "observant"
+    if losses > wins and losses > 0 and prior in {"pleased", "impressed", "satisfied"}:
+        return "observant"
+    return prior if prior in {"observant", "impressed", "skeptical", "satisfied", "pleased", "annoyed"} else "observant"
 
 
 def _candidate_milestones(facts: dict[str, Any], now: str) -> list[dict[str, Any]]:
@@ -646,7 +665,7 @@ async def observe_facts(username: str, facts: dict[str, Any]) -> dict[str, Any]:
                 "schema_version": MEMORY_SCHEMA_VERSION,
                 "relationship": _relationship_for(row, facts),
                 "respect": _respect_for(row, facts, milestones),
-                "mood": _mood_for(row.get("facts_snapshot"), facts),
+                "mood": _mood_for(row.get("facts_snapshot"), facts, row.get("mood")),
                 "active_goals": active_goals,
                 "active_challenge": active_challenge,
                 "opening_memory": _opening_memory_from_facts(facts),
@@ -681,7 +700,7 @@ async def observe_facts(username: str, facts: dict[str, Any]) -> dict[str, Any]:
             "schema_version": MEMORY_SCHEMA_VERSION,
             "relationship": _relationship_for(row, facts),
             "respect": _respect_for(row, facts, milestones),
-            "mood": _mood_for(row.get("facts_snapshot"), facts),
+            "mood": _mood_for(row.get("facts_snapshot"), facts, row.get("mood")),
             "active_goals": active_goals,
             "active_challenge": active_challenge,
             "opening_memory": _opening_memory_from_facts(facts),
@@ -1051,6 +1070,12 @@ def briefing_text_from_summary(summary: dict[str, Any]) -> str:
         return f"Achtung. Mi obsesión actual sigue siendo: {goal.get('label')}. Hoy no hace falta inventar otro problema; con ése ya tienes trabajo."[:420]
     if nemesis and int(nemesis.get("games") or 0) >= 3 and float(nemesis.get("win_pct") or 0) < 50:
         return f"Tu expediente señala {nemesis.get('name')}: {int(round(float(nemesis.get('win_pct') or 0)))}% de victorias en {int(nemesis.get('games') or 0)} partidas. Si aparece, juega despierto, bitte."[:420]
+    if mood == "annoyed":
+        return "Ach. El expediente reciente es bastante feo y mi paciencia estadística también tiene límites. Hoy calcula dos candidatas antes de mover y no me obligues a archivar otra autopsia."
+    if mood == "pleased":
+        return "Sehr gut. Los datos recientes por fin apuntan en la dirección correcta. Disfrútalo cinco segundos y vuelve al trabajo: dos candidatas antes de cada jugada crítica."
+    if mood == "skeptical":
+        return "Te estoy mirando con bastante poca fe estadística. Demuéstrame lo contrario: revisa jaques, capturas y amenazas antes de cada decisión crítica."
     if mood == "impressed":
         return "Vienes mejorando desde la última vez que miré el expediente. Eso ha sido bueno. Muy bueno. No te acostumbres a oírlo: dos candidatas antes de cada jugada crítica."
     if respect.get("tier") in {"respected", "formidable"}:
@@ -1142,6 +1167,7 @@ async def admin_status() -> dict[str, Any]:
                 "relationship": 1,
                 "milestones": 1,
                 "respect": 1,
+                "mood": 1,
                 "active_challenge": 1,
                 "emblematic_positions": 1,
             }).to_list(length=5000)
@@ -1180,6 +1206,7 @@ async def admin_status() -> dict[str, Any]:
     goal_counts: dict[str, int] = {}
     relationship_counts: dict[str, int] = {}
     respect_counts: dict[str, int] = {}
+    mood_counts: dict[str, int] = {}
     milestone_count = 0
     active_challenges = 0
     emblematic_positions = 0
@@ -1191,6 +1218,8 @@ async def admin_status() -> dict[str, Any]:
         relationship_counts[tier] = relationship_counts.get(tier, 0) + 1
         respect_tier = _clean_respect(row.get("respect"))["tier"]
         respect_counts[respect_tier] = respect_counts.get(respect_tier, 0) + 1
+        mood = _bounded_text(row.get("mood"), 24) or "observant"
+        mood_counts[mood] = mood_counts.get(mood, 0) + 1
         milestone_count += len(_clean_milestones(row.get("milestones")))
         if _clean_challenge(row.get("active_challenge")):
             active_challenges += 1
@@ -1216,6 +1245,7 @@ async def admin_status() -> dict[str, Any]:
         "topActiveGoal": {"topic": top_goal, "label": _topic_label(top_goal) or top_goal, "users": goal_counts.get(top_goal, 0)} if top_goal else None,
         "relationshipCounts": relationship_counts,
         "respectCounts": respect_counts,
+        "moodCounts": mood_counts,
         "milestonesRemembered": milestone_count,
         "activeChallenges": active_challenges,
         "emblematicPositions": emblematic_positions,

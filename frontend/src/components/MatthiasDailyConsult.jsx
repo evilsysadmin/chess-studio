@@ -7,6 +7,8 @@ const MOOD_LABELS = Object.freeze({
   impressed: 'Impresionado',
   skeptical: 'Escéptico',
   satisfied: 'Satisfecho',
+  pleased: 'Contento',
+  annoyed: 'Cabreado',
 });
 
 const OPTIONS = Object.freeze([

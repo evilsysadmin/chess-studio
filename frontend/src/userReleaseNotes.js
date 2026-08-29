@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrb',
+    title: 'Matthias ya tiene humor medible',
+    highlights: [
+      'Matthias adapta su tono a un estado narrativo calculado sólo con rendimiento real: puede estar contento, satisfecho, escéptico, cabreado o impresionado sin inventar causas.',
+      'El humor tiene inercia: una sola partida no lo convierte en una veleta, pero varias victorias, derrotas o sesiones de entrenamiento sí cambian cómo te habla.',
+      'Administración muestra telemetría agregada de humor y tipos de consulta, junto a respuestas Workers AI, fallback y latencia, sin exponer prompts ni conversaciones privadas.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfq',
     title: 'F5 conserva el parte de batalla',
     highlights: [

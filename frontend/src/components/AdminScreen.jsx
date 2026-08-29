@@ -18,7 +18,7 @@ import { buildPlayerPortraitFacts } from '../aiPlayerPortrait.js';
 import { ADMIN_REFRESH_MS, shouldRefreshAdminPresence } from '../presenceCadence.js';
 
 const OUTCOME_LABEL = { win: 'V', draw: 'T', loss: 'D' };
-const MATTHIAS_MOOD_LABELS = Object.freeze({ observant: 'Observador', impressed: 'Impresionado', skeptical: 'Escéptico', satisfied: 'Satisfecho' });
+const MATTHIAS_MOOD_LABELS = Object.freeze({ observant: 'Observador', impressed: 'Impresionado', skeptical: 'Escéptico', satisfied: 'Satisfecho', pleased: 'Contento', annoyed: 'Cabreado' });
 
 function FeedbackAttachmentPreview({ feedbackId, attachment }) {
   const [src, setSrc] = useState(null);
@@ -625,6 +625,12 @@ export default function AdminScreen({ onExit }) {
                 <div><strong>{matthiasStatus.activeChallenges ?? 0}</strong><span>retos personales activos</span></div>
                 <div><strong>{matthiasStatus.emblematicPositions ?? 0}</strong><span>posiciones emblemáticas</span></div>
                 <div><strong>{matthiasStatus.topActiveGoal?.label || '—'}</strong><span>obsesión activa más común</span></div>
+              </div>
+              <div className="admin-matthias-advice">
+                <span className="section-label">Telemetría de personalidad · agregada</span>
+                <p><b>Humor actual:</b> {Object.entries(matthiasStatus.moodCounts || {}).length ? Object.entries(matthiasStatus.moodCounts || {}).map(([mood, count]) => `${MATTHIAS_MOOD_LABELS[mood] || mood}: ${count}`).join(' · ') : 'sin señal todavía'}</p>
+                <p><b>Consultas por tipo:</b> {Object.entries(matthiasStatus.questionCounts || {}).length ? Object.entries(matthiasStatus.questionCounts || {}).sort((a, b) => b[1] - a[1]).map(([kind, count]) => `${kind}: ${count}`).join(' · ') : 'ninguna todavía'}</p>
+                <small>No guarda prompts ni respuestas completas en esta telemetría: sólo contadores y estado derivado de rendimiento real.</small>
               </div>
               <div className="admin-matthias-advice">
                 <span className="section-label">Consejo dominante · agregado y anónimo</span>

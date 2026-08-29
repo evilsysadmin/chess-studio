@@ -108,9 +108,9 @@ describe('personal puzzles', () => {
 
   it('guarda sólo escenarios IA ya validados por la capa llamadora y evita duplicados', () => {
     const generated = {
-      fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-      solution: ['e4'],
-      suggested: 'e4',
+      fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1',
+      solution: ['Ra8#'],
+      suggested: 'Ra8#',
       title: 'Centro o funeral',
       source: 'workers-ai-validated',
       aiQualityVersion: 4,

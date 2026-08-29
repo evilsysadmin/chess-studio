@@ -326,6 +326,7 @@ test('matthias_daily usa audiencia guiada, hechos saneados y routing de análisi
   assert.match(prompt, /"question_kind":"improve"/);
   assert.match(prompt, /"total_games":8/);
   assert.match(prompt, /"matthias_memory"/);
+  assert.match(fake.calls.ai[0].options.messages[0].content, /annoyed.*cabreado|cabreado.*annoyed/is);
   assert.match(prompt, /"consultation_count":2/);
   assert.match(prompt, /"text":"Compara dos candidatas\."/);
   const fullPrompt = fake.calls.ai[0].options.messages.map((message) => message.content).join('\n');

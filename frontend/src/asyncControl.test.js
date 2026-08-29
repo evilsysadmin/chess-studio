@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { abortableDelay, fetchWithTimeout, isAbortError } from './asyncControl.js';
+
+afterEach(() => {
+  vi.clearAllTimers();
+  vi.useRealTimers();
+});
 
 describe('asyncControl', () => {
   it('cancela esperas diferidas sin dejar promesas vivas', async () => {
@@ -9,7 +14,6 @@ describe('asyncControl', () => {
     controller.abort(new DOMException('cancelled', 'AbortError'));
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
     expect(isAbortError(new DOMException('cancelled', 'AbortError'))).toBe(true);
-    vi.useRealTimers();
   });
 
   it('aborta fetch inyectable al vencer el watchdog', async () => {
@@ -21,7 +25,6 @@ describe('asyncControl', () => {
     const rejection = expect(pending).rejects.toMatchObject({ name: 'AbortError', timeout: true, timeoutMs: 50 });
     await vi.advanceTimersByTimeAsync(51);
     await rejection;
-    vi.useRealTimers();
   });
 
   it('propaga una cancelación externa antes del timeout', async () => {
