@@ -16,10 +16,77 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply product patch
+      - name: Apply deterministic product edits
+        shell: bash
         run: |
-          git apply --check .github/zfrm.patch
-          git apply .github/zfrm.patch
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text()
+              actual = text.count(old)
+              if actual < count:
+                  raise SystemExit(f'{path}: expected at least {count} occurrence(s), found {actual}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, count))
+
+          # Release markers.
+          replace('RELEASE.txt', 'v16.6dm46zfrl', 'v16.6dm46zfrm')
+          replace('backend-python/release_info.py', 'APP_RELEASE = "v16.6dm46zfrl"', 'APP_RELEASE = "v16.6dm46zfrm"')
+          replace('frontend/public/release.json', '"release": "v16.6dm46zfrl"', '"release": "v16.6dm46zfrm"')
+          replace('frontend/src/release.js', "export const APP_RELEASE = 'v16.6dm46zfrl';", "export const APP_RELEASE = 'v16.6dm46zfrm';")
+
+          readme = Path('README.md')
+          readme.write_text(
+              '### v16.6dm46zfrm · Repetición fiable en la Escuela de Matthias\n\n'
+              '- Las lecciones ya dominadas vuelven a ser jugables: el progreso histórico ya no congela el tablero al repetir desde el principio.\n'
+              '- El ejercicio de enroque explica de forma explícita que se mueve el rey e1→g1 y que la torre se recoloca automáticamente.\n'
+              '- La suite cubre de forma específica el enroque corto y verifica la posición final de rey y torre.\n\n'
+              + readme.read_text()
+          )
+
+          notes_anchor = "export const USER_RELEASE_NOTES = Object.freeze([\n"
+          notes_insert = """export const USER_RELEASE_NOTES = Object.freeze([\n  {\n    release: 'v16.6dm46zfrm',\n    title: 'La Escuela de Matthias deja repetir de verdad',\n    highlights: [\n      'Las lecciones que ya habías dominado vuelven a ser interactivas al repetirlas: el progreso guardado ya no bloquea el tablero.',\n      'El enroque corto indica expresamente rey e1→g1 y recuerda que la torre se mueve sola, para que practicar no dependa de adivinar la interacción.',\n    ],\n  },\n"""
+          replace('frontend/src/userReleaseNotes.js', notes_anchor, notes_insert)
+
+          tutorial = 'frontend/src/components/Tutorial.jsx'
+          replace(tutorial,
+              "  const totalHumanMoves = humanMoveCount(lesson);\n",
+              "  const totalHumanMoves = humanMoveCount(lesson);\n  const runComplete = lineIndex >= line.length;\n")
+          replace(tutorial,
+              "    if (!selected || examFailed || lessonComplete) return [];",
+              "    if (!selected || examFailed || runComplete) return [];")
+          replace(tutorial,
+              "  }, [selected, practiceFen, examFailed, lessonComplete]);",
+              "  }, [selected, practiceFen, examFailed, runComplete]);")
+          replace(tutorial,
+              "    if (lessonComplete || examFailed || !lessonUnlocked || !expected) return;",
+              "    if (runComplete || examFailed || !lessonUnlocked || !expected) return;")
+          replace(tutorial,
+              "<button className=\"secondary-btn\" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : 'Reiniciar'}</button>",
+              "<button className=\"secondary-btn\" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>")
+          replace(tutorial,
+              "Math.min(completedHumanMoves + (lessonComplete ? 0 : 1), totalHumanMoves)",
+              "Math.min(completedHumanMoves + (runComplete ? 0 : 1), totalHumanMoves)")
+          replace(tutorial,
+              "{lessonComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}",
+              "{runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}")
+
+          school = 'frontend/src/matthiasSchool.js'
+          replace(school,
+              "objective: 'Enrócate corto: mueve el rey de e1 a g1.',",
+              "objective: 'Enrócate corto: haz clic en el rey de e1 y después en g1. No muevas la torre: se recoloca sola.',")
+          replace(school,
+              "hint: 'Selecciona el rey de e1. g1 aparece como destino legal; Chess Studio moverá también la torre.',",
+              "hint: 'Haz clic en el rey de e1 y luego en g1. El movimiento es del rey; Chess Studio llevará automáticamente la torre de h1 a f1.',")
+          replace(school,
+              "hint: 'Alfil f1-b5, retíralo a a4 tras ...a6 y después enrócate cuando ...Nf6 deje el turno en tus manos.',",
+              "hint: 'Alfil f1-b5, retíralo a a4 tras ...a6 y, después de ...Nf6, haz clic en el rey e1 y en g1. La torre se moverá sola.',")
+
+          test_anchor = "  it('incluye lecciones de varias jugadas y no se limita a mover una pieza una vez', () => {\n"
+          test_insert = """  it('el enroque corto guiado mueve rey y torre y conserva O-O como jugada legal', () => {\n    const lesson = MATTHIAS_SCHOOL_LESSONS.find((item) => item.id === 'castle-short');\n    const chess = new Chess(lesson.fen);\n    const target = chess.moves({ square: 'e1', verbose: true }).find((move) => move.to === 'g1');\n\n    expect(target?.san).toBe('O-O');\n    const move = chess.move({ from: 'e1', to: 'g1' });\n    expect(move?.san).toBe('O-O');\n    expect(chess.get('g1')).toMatchObject({ type: 'k', color: 'w' });\n    expect(chess.get('f1')).toMatchObject({ type: 'r', color: 'w' });\n    expect(chess.get('e1')).toBeUndefined();\n    expect(chess.get('h1')).toBeUndefined();\n  });\n\n""" + test_anchor
+          replace('frontend/src/matthiasSchool.test.js', test_anchor, test_insert)
+          PY
 
       - name: Static preflight
         run: make static-preflight
