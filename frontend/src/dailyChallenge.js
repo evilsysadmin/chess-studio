@@ -153,7 +153,7 @@ export function dailyChallengeBrief(state = {}, day = dailyChallengeDayKey()) {
   if (!solved || progress.solvedCount === 0) {
     if (streak >= 7) return { solved: false, full: false, solvedCount: 0, headline: `Racha de ${streak} días en juego`, detail: 'Tres retos hoy. Con uno mantienes la racha; 3/3 firma el pleno.' };
     if (streak >= 2) return { solved: false, full: false, solvedCount: 0, headline: `${streak} días seguidos. Falta hoy.`, detail: 'Tres retos disponibles. Uno mantiene la racha; tú decides cuánto sufrir.' };
-    return { solved: false, full: false, solvedCount: 0, headline: 'Desafíos de hoy · 0/3', detail: 'Tres posiciones. Completa al menos una para mantener la racha.' };
+    return { solved: false, full: false, solvedCount: 0, headline: 'Hoy · 0/3', detail: 'Tres posiciones. Completa al menos una para mantener la racha.' };
   }
 
   if (!progress.full) {
@@ -161,7 +161,7 @@ export function dailyChallengeBrief(state = {}, day = dailyChallengeDayKey()) {
       solved: true,
       full: false,
       solvedCount: progress.solvedCount,
-      headline: `Desafíos de hoy · ${progress.solvedCount}/3`,
+      headline: `Hoy · ${progress.solvedCount}/3`,
       detail: `Racha asegurada${streak ? ` (${streak} día${streak === 1 ? '' : 's'})` : ''}. El pleno sigue disponible.`,
     };
   }
