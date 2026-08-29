@@ -63,6 +63,7 @@ export default function Tutorial({ onExit }) {
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
   const completedHumanMoves = line.slice(0, lineIndex).filter((step) => !step.auto).length;
   const totalHumanMoves = humanMoveCount(lesson);
+  const runComplete = lineIndex >= line.length;
 
   function goTo(newIndex) {
     const clamped = Math.max(0, Math.min(MATTHIAS_SCHOOL_LESSONS.length - 1, newIndex));
@@ -79,7 +80,7 @@ export default function Tutorial({ onExit }) {
   }
 
   const legalTargets = useMemo(() => {
-    if (!selected || examFailed || lessonComplete) return [];
+    if (!selected || examFailed || runComplete) return [];
     try {
       const board = new Chess(practiceFen);
       const piece = board.get(selected);
@@ -88,7 +89,7 @@ export default function Tutorial({ onExit }) {
     } catch {
       return [];
     }
-  }, [selected, practiceFen, examFailed, lessonComplete]);
+  }, [selected, practiceFen, examFailed, runComplete]);
 
   function recordMiss(text) {
     setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
@@ -164,7 +165,7 @@ export default function Tutorial({ onExit }) {
   }
 
   function handleSquareClick(square) {
-    if (lessonComplete || examFailed || !lessonUnlocked || !expected) return;
+    if (runComplete || examFailed || !lessonUnlocked || !expected) return;
     let board;
     try { board = new Chess(practiceFen); } catch { return; }
     const piece = board.get(square);
@@ -317,7 +318,7 @@ export default function Tutorial({ onExit }) {
               <div className="board-column matthias-school-board">
                 <Board fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} />
                 <div className="matthias-school-board-actions">
-                  <button className="secondary-btn" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : 'Reiniciar'}</button>
+                  <button className="secondary-btn" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
                   {!lesson.exam && <button className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>}
                 </div>
               </div>
@@ -329,8 +330,8 @@ export default function Tutorial({ onExit }) {
                   {lessonComplete && <span className="matthias-school-complete-badge">✓ {lesson.exam ? 'aprobado' : 'dominado'}</span>}
                 </div>
                 <div className="matthias-school-objective"><b>{lesson.exam ? 'Examen' : 'Tu misión'}</b><p>{lesson.objective}</p></div>
-                <div className="matthias-school-sequence-status" aria-label={`Secuencia ${Math.min(completedHumanMoves + (lessonComplete ? 0 : 1), totalHumanMoves)} de ${totalHumanMoves}`}>
-                  <span>Secuencia</span><b>{lessonComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</b>
+                <div className="matthias-school-sequence-status" aria-label={`Secuencia ${Math.min(completedHumanMoves + (runComplete ? 0 : 1), totalHumanMoves)} de ${totalHumanMoves}`}>
+                  <span>Secuencia</span><b>{runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</b>
                   {lesson.exam && <em>{Number(lesson.maxMistakes || 0) > 0 ? `Errores ${mistakes}/${lesson.maxMistakes}` : mistakes > 0 ? 'Suspendido' : 'Sin margen de error'}</em>}
                 </div>
                 <div className={`matthias-school-feedback is-${coach.tone}`} role="status" aria-live="polite"><b>Matthias</b><p>{coach.text}</p></div>

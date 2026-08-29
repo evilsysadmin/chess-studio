@@ -51,6 +51,20 @@ describe('Escuela de Matthias', () => {
     }
   });
 
+  it('el enroque corto guiado mueve rey y torre y conserva O-O como jugada legal', () => {
+    const lesson = MATTHIAS_SCHOOL_LESSONS.find((item) => item.id === 'castle-short');
+    const chess = new Chess(lesson.fen);
+    const target = chess.moves({ square: 'e1', verbose: true }).find((move) => move.to === 'g1');
+
+    expect(target?.san).toBe('O-O');
+    const move = chess.move({ from: 'e1', to: 'g1' });
+    expect(move?.san).toBe('O-O');
+    expect(chess.get('g1')).toMatchObject({ type: 'k', color: 'w' });
+    expect(chess.get('f1')).toMatchObject({ type: 'r', color: 'w' });
+    expect(chess.get('e1')).toBeUndefined();
+    expect(chess.get('h1')).toBeUndefined();
+  });
+
   it('incluye lecciones de varias jugadas y no se limita a mover una pieza una vez', () => {
     const multiHuman = MATTHIAS_SCHOOL_LESSONS.filter((lesson) => schoolLineForLesson(lesson).filter((step) => !step.auto).length >= 2);
     expect(multiHuman.length).toBeGreaterThanOrEqual(10);
