@@ -1,0 +1,70 @@
+name: zfrn finalize
+
+on:
+  push:
+    branches:
+      - feat/zfrn-dynamic-nemesis
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Finalize release and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          old = 'v16.6dm46zfrm'
+          new = 'v16.6dm46zfrn'
+
+          Path('RELEASE.txt').write_text(new + '\n', encoding='utf-8')
+
+          release_js = Path('frontend/src/release.js')
+          text = release_js.read_text(encoding='utf-8')
+          if old not in text:
+              raise SystemExit('old frontend release marker not found')
+          release_js.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          backend = Path('backend-python/release_info.py')
+          text = backend.read_text(encoding='utf-8')
+          if old not in text:
+              raise SystemExit('old backend release marker not found')
+          backend.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          manifest = Path('frontend/public/release.json')
+          manifest.write_text(json.dumps({'release': new}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          notes = Path('frontend/src/userReleaseNotes.js')
+          text = notes.read_text(encoding='utf-8')
+          anchor = 'export const USER_RELEASE_NOTES = Object.freeze([\n'
+          if anchor not in text:
+              raise SystemExit('release notes anchor not found')
+          entry = """  {
+    release: 'v16.6dm46zfrn',
+    title: 'Tu Némesis aprende cuándo dejarte en paz',
+    highlights: [
+      'Una apertura deja de figurar como Némesis cuando al menos cuatro resultados recientes demuestran una recuperación clara; una mala racha antigua ya no te persigue eternamente.',
+      'Si el rendimiento reciente mejora con fuerza pero aún no basta para dar el problema por resuelto, el sistema lo rebaja en prioridad en vez de ignorar la tendencia.',
+      'Cuando una Némesis queda superada, la siguiente debilidad real asciende automáticamente y el entrenamiento sigue usando posiciones auténticas del historial.',
+    ],
+  },
+"""
+          notes.write_text(text.replace(anchor, anchor + entry, 1), encoding='utf-8')
+          PY
+          git rm .github/workflows/zfrn-finalize.yml
+          make static-preflight
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'v16.6dm46zfrn · Dynamic Nemesis recovery'
+          git push origin HEAD:feat/zfrn-dynamic-nemesis
