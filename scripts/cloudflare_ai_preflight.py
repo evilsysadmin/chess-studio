@@ -151,7 +151,7 @@ def static_check() -> list[str]:
     require(workflow, "git ls-remote --exit-code origin refs/heads/main", "pipeline compares tested SHA with current main", errors)
     require(workflow, 'tested_sha="${{ github.sha }}"', "pipeline stale guard uses tested SHA", errors)
     require(workflow, "VITE_BUILD_SHA: ${{ github.sha }}", "Pages exposes tested SHA", errors)
-    require(workflow, "uses: actions/deploy-pages@v4", "Pages deploy action wired", errors)
+    require(workflow, "uses: actions/deploy-pages@v", "Pages deploy action wired", errors)
 
     for obsolete in (ROOT / ".github/workflows/terraform-cloudflare.yml", ROOT / ".github/workflows/static.yml"):
         if obsolete.exists():
