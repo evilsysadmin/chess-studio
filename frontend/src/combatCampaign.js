@@ -18,7 +18,7 @@ function nextCampaignPhase(state, event) {
   return result.nextState;
 }
 
-// Combat Chess · campaña procedural v3 (mapa estratégico + intel + reliquias operativas).
+// Combat Chess · campaña procedural v5 (mapa estratégico + intel + reliquias operativas).
 //
 // La campaña vive separada del antiguo intento lineal de La Torre para poder
 // migrar sin romper partidas guardadas. El mapa NO se persiste entero: seed +
@@ -30,7 +30,7 @@ const OPERATION_ARCHIVE_KEY = 'chess-study-combat-operation-archive-v1';
 const TOWER_COMPLETED_KEY = 'chess-study-roguelike-tower-completed';
 const BEST_FLOOR_KEY = 'chess-study-roguelike-best-floor';
 
-const CAMPAIGN_VERSION = 4;
+const CAMPAIGN_VERSION = 5;
 const CAMPAIGN_BOSS_STAGE = 7;
 
 const CAMPAIGN_INTEL_TIERS = Object.freeze([
@@ -358,7 +358,7 @@ function emptyCampaign() {
 
 function normalizeCampaign(raw) {
   const base = emptyCampaign();
-  if (!raw || typeof raw !== 'object' || ![1, 2, 3, CAMPAIGN_VERSION].includes(raw.version)) return base;
+  if (!raw || typeof raw !== 'object' || ![1, 2, 3, 4, CAMPAIGN_VERSION].includes(raw.version)) return base;
   const active = raw.active === true;
   const seed = active ? String(raw.seed || 'legacy-campaign') : null;
   const map = seed ? campaignMap(seed) : null;
@@ -410,12 +410,13 @@ function normalizeCampaign(raw) {
           verified: raw.lastMissionResult.verified === true,
           earned: Math.max(0, Math.floor(Number(raw.lastMissionResult.earned) || 0)),
           results: Array.isArray(raw.lastMissionResult.results)
-            ? raw.lastMissionResult.results.slice(0, 2).map((entry) => ({
+            ? raw.lastMissionResult.results.slice(0, 3).map((entry) => ({
                 id: typeof entry?.id === 'string' ? entry.id : '',
                 label: typeof entry?.label === 'string' ? entry.label : 'Orden',
                 reward: Math.max(0, Math.floor(Number(entry?.reward) || 0)),
                 completed: entry?.completed === true,
                 earned: Math.max(0, Math.floor(Number(entry?.earned) || 0)),
+                classified: entry?.classified === true,
               })).filter((entry) => entry.id)
             : [],
         }
@@ -551,7 +552,7 @@ export function markCampaignBattleWon(state, battleRecord = null) {
   const node = campaignNode(state);
   if (!state?.active || state.phase !== 'fighting' || !node) return state;
   const earned = (BATTLE_CREDIT_REWARD[node.type] || 0) + (hasRelic(state, 'quartermasterSeal') ? 2 : 0);
-  const missionResult = evaluateCampaignMissionOrders(state.seed, node, battleRecord?.combatMetrics);
+  const missionResult = evaluateCampaignMissionOrders(state.seed, node, battleRecord?.combatMetrics, { intelLevel: campaignIntelLevel(state, node.id) });
   const missionEarned = Math.max(0, Number(missionResult.earned) || 0);
   const dossierEarned = node.type === 'elite' && node.stage >= 5 && !hasRelic(state, 'kingDossier');
   const completedLabels = missionResult.completed.map((order) => order.label);
@@ -563,7 +564,7 @@ export function markCampaignBattleWon(state, battleRecord = null) {
       nodeId: missionResult.nodeId,
       verified: missionResult.verified,
       earned: missionEarned,
-      results: missionResult.results.map(({ id, label, reward, completed, earned: orderEarned }) => ({ id, label, reward, completed, earned: orderEarned })),
+      results: missionResult.results.map(({ id, label, reward, completed, earned: orderEarned, classified }) => ({ id, label, reward, completed, earned: orderEarned, classified: classified === true })),
     },
     eventLog: [
       ...(state.eventLog || []),

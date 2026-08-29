@@ -2164,3 +2164,9 @@
   .mechanic-library-list { max-height: 280px; }
 }
 
+
+/* Reanimar conserva al veterano, pero la siguiente batalla desplegada es de
+   recuperación. Es una penalización de XP, no una alteración de reglas. */
+.army-unit-tile.recovering { border-color:color-mix(in srgb,var(--brass) 42%,transparent); }
+.army-unit-state.recovering { color:var(--brass); border-color:color-mix(in srgb,var(--brass) 52%,transparent); }
+.army-recovery-note { border-color:color-mix(in srgb,var(--brass) 38%,transparent); }

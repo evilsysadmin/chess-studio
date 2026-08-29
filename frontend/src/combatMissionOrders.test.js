@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { campaignMissionOrders, evaluateCampaignMissionOrders } from './combatMissionOrders.js';
+import { campaignMissionOrders, classifiedCampaignMission, evaluateCampaignMissionOrders } from './combatMissionOrders.js';
 
 describe('órdenes opcionales de Combat Chess', () => {
   const node = { id: 's3-l1-elite', type: 'elite', stage: 3 };
@@ -43,5 +43,23 @@ describe('órdenes opcionales de Combat Chess', () => {
   it('no inventa órdenes en nodos seguros o de evento', () => {
     expect(campaignMissionOrders('x', { id: 'camp', type: 'camp' })).toEqual([]);
     expect(campaignMissionOrders('x', { id: 'event', type: 'event' })).toEqual([]);
+  });
+
+  it('Intel de Evaluación revela una operación clasificada estable sin hacer reroll', () => {
+    expect(classifiedCampaignMission('operacion-rivas', node, 1)).toBeNull();
+    const classified = classifiedCampaignMission('operacion-rivas', node, 2);
+    expect(classified).toMatchObject({ classified: true });
+    expect(classified.reward).toBeGreaterThanOrEqual(5);
+    expect(classified).toEqual(classifiedCampaignMission('operacion-rivas', node, 3));
+
+    const perfect = evaluateCampaignMissionOrders('operacion-rivas', node, {
+      casualties: 0,
+      captures: 12,
+      tacticalCredits: 12,
+      underdogCredits: 12,
+    }, { intelLevel: 2 });
+    expect(perfect.results).toHaveLength(3);
+    expect(perfect.classifiedRevealed).toBe(true);
+    expect(perfect.completed).toHaveLength(3);
   });
 });
