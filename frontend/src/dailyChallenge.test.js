@@ -31,12 +31,17 @@ describe('daily challenge · tres retos', () => {
   it('un reto mantiene la racha y tres forman pleno', () => {
     let state = markDailySolved('2026-08-20', { slot: 'tactic', clean: true });
     expect(dailyChallengeProgress(state, '2026-08-20')).toMatchObject({ solvedCount: 1, full: false, cleanCount: 1 });
-    expect(dailyChallengeBrief(state, '2026-08-20').headline).toBe('Desafíos de hoy · 1/3');
+    expect(dailyChallengeBrief(state, '2026-08-20').headline).toBe('Hoy · 1/3');
 
     state = markDailySolved('2026-08-20', { slot: 'precision', clean: false });
     state = markDailySolved('2026-08-20', { slot: 'finish', clean: true });
     expect(dailyChallengeProgress(state, '2026-08-20')).toMatchObject({ solvedCount: 3, full: true, cleanCount: 2 });
     expect(dailyChallengeBrief(state, '2026-08-20').headline).toBe('Pleno diario · 3/3');
+  });
+
+  it('mantiene corto el titular base porque la tarjeta ya muestra DESAFÍO DIARIO', () => {
+    expect(dailyChallengeBrief({}, '2026-08-20').headline).toBe('Hoy · 0/3');
+    expect(dailyChallengeBrief({}, '2026-08-20').headline.length).toBeLessThanOrEqual(12);
   });
 
   it('migra el formato antiguo de un único desafío como el primer slot', () => {
