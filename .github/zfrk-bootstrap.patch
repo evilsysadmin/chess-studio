@@ -1,0 +1,223 @@
+diff --git a/README.md b/README.md
+index a56c4c10acbb3bf486fdb8f343ee0519acdb6f08..69da7695b928ea55129a2fc7b24d4b9785b5c7e3 100644
+--- a/README.md
++++ b/README.md
+@@ -1,3 +1,8 @@
++### v16.6dm46zfrk · Gate de economía Combat Chess
++
++- Las órdenes opcionales comparten un tope de +9 suministros por sector para evitar que una batalla perfecta financie por sí sola un Dossier completo de Intel.
++- Un simulador/gate reproducible comprueba costes de Intel, recompensas base y escenarios de campaña para detectar inflación de suministros.
++
+ ### v16.6dm46zfrj · Intel clasificada, convalecencia y temporadas personales
+ 
+ - Combat Chess añade operaciones clasificadas: Intel de nivel Evaluación o superior revela un tercer objetivo opcional, determinista y más exigente, siempre basado en métricas reales del combate.
+diff --git a/RELEASE.txt b/RELEASE.txt
+index 4e427fc107c7a04044853837be9508f2a7a93067..b9a7809df8defb68e78cd01e3a6c7cd30cecf7b1 100644
+--- a/RELEASE.txt
++++ b/RELEASE.txt
+@@ -1 +1 @@
+-v16.6dm46zfrj
++v16.6dm46zfrk
+diff --git a/backend-python/release_info.py b/backend-python/release_info.py
+index 1827eb31453126c9cd243f370dcdc79415c18011..f579c1316b97b19ce3822d5e4c5b803241004812 100644
+--- a/backend-python/release_info.py
++++ b/backend-python/release_info.py
+@@ -10,7 +10,7 @@ from __future__ import annotations
+ import os
+ import re
+ 
+-APP_RELEASE = "v16.6dm46zfrj"
++APP_RELEASE = "v16.6dm46zfrk"
+ 
+ _COMMIT_ENV_KEYS = (
+     "RENDER_GIT_COMMIT",
+diff --git a/frontend/public/release.json b/frontend/public/release.json
+index cfbf587c1e596c3b86f3fcf6bdf57a87e279c6bc..508a415eebddcec4c3acdd698f6daff0a1583fcf 100644
+--- a/frontend/public/release.json
++++ b/frontend/public/release.json
+@@ -1,3 +1,3 @@
+ {
+-  "release": "v16.6dm46zfrj"
++  "release": "v16.6dm46zfrk"
+ }
+diff --git a/frontend/src/combatCampaign.js b/frontend/src/combatCampaign.js
+index 880ea7bc6cd10a881160dcd33056590b1a16d975..c8d841f51bd9823cd098d5c41b8c6590d0bfc877 100644
+--- a/frontend/src/combatCampaign.js
++++ b/frontend/src/combatCampaign.js
+@@ -6,6 +6,7 @@ import { campaignBossForSeed } from './combatBosses.js';
+ import { campaignPhaseTransition, assertCampaignInvariant } from './campaignStateMachine.js';
+ import { reportStateInvariant } from './stateMachine.js';
+ import { evaluateCampaignMissionOrders } from './combatMissionOrders.js';
++import { BATTLE_CREDIT_REWARD, CAMPAIGN_INTEL_BASE_COSTS, CAMPAIGN_STARTING_CREDITS } from './combatEconomyBalance.js';
+ 
+ 
+ function nextCampaignPhase(state, event) {
+@@ -40,8 +41,6 @@ const CAMPAIGN_INTEL_TIERS = Object.freeze([
+   { level: 3, label: 'Dossier', cost: 7 },
+ ]);
+ 
+-const CAMPAIGN_STARTING_CREDITS = 6;
+-const BATTLE_CREDIT_REWARD = Object.freeze({ battle: 4, elite: 7, boss: 12 });
+ 
+ const CAMPAIGN_RELICS = Object.freeze([
+   { id: 'fieldCipher', icon: '⌁', label: 'Cifrador de campaña', description: 'La inteligencia cuesta 2 créditos menos (mínimo 1).' },
+diff --git a/frontend/src/combatEconomyBalance.js b/frontend/src/combatEconomyBalance.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..e2ac90dc03ed6a6a5b697e720890c2d8b26698b9
+--- /dev/null
++++ b/frontend/src/combatEconomyBalance.js
+@@ -0,0 +1,46 @@
++export const CAMPAIGN_STARTING_CREDITS = 6;
++export const BATTLE_CREDIT_REWARD = Object.freeze({ battle: 4, elite: 7, boss: 12 });
++export const CAMPAIGN_INTEL_BASE_COSTS = Object.freeze([3, 5, 7]);
++export const CAMPAIGN_MISSION_BONUS_CAP = 9;
++
++export const COMBAT_CAMPAIGN_ECONOMY = Object.freeze({
++  startingSupplies: CAMPAIGN_STARTING_CREDITS,
++  baseRewards: BATTLE_CREDIT_REWARD,
++  intelBaseCosts: CAMPAIGN_INTEL_BASE_COSTS,
++  missionBonusCap: CAMPAIGN_MISSION_BONUS_CAP,
++});
++
++export function fullIntelCost({ cipher = false } = {}) {
++  return CAMPAIGN_INTEL_BASE_COSTS.reduce((sum, cost) => sum + Math.max(1, cost - (cipher ? 2 : 0)), 0);
++}
++
++export function projectedCampaignSupplies({ battleTypes = [], missionBonuses = [], intelPurchases = [], eventIncome = 0, relicIncome = 0 } = {}) {
++  let supplies = CAMPAIGN_STARTING_CREDITS;
++  let earned = 0;
++  let spent = 0;
++  battleTypes.forEach((type, index) => {
++    const base = Number(BATTLE_CREDIT_REWARD[type] || 0);
++    const mission = Math.min(CAMPAIGN_MISSION_BONUS_CAP, Math.max(0, Number(missionBonuses[index] || 0)));
++    supplies += base + mission;
++    earned += base + mission;
++  });
++  for (const purchase of intelPurchases) {
++    const cost = Math.min(supplies, Math.max(0, Number(purchase || 0)));
++    supplies -= cost;
++    spent += cost;
++  }
++  supplies += Math.max(0, Number(eventIncome) || 0) + Math.max(0, Number(relicIncome) || 0);
++  return { supplies, earned, spent };
++}
++
++export function combatEconomyHealth() {
++  const fullIntel = fullIntelCost();
++  const flawlessNormal = BATTLE_CREDIT_REWARD.battle + CAMPAIGN_MISSION_BONUS_CAP;
++  const flawlessElite = BATTLE_CREDIT_REWARD.elite + CAMPAIGN_MISSION_BONUS_CAP;
++  return {
++    fullIntel, flawlessNormal, flawlessElite,
++    normalFundsFullDossier: flawlessNormal >= fullIntel,
++    startingFundsFullDossier: CAMPAIGN_STARTING_CREDITS >= fullIntel,
++    missionCap: CAMPAIGN_MISSION_BONUS_CAP,
++  };
++}
+diff --git a/frontend/src/combatEconomyBalance.test.js b/frontend/src/combatEconomyBalance.test.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..9dd80415ec0dcb0219cebee70e8c2eda9c2570d8
+--- /dev/null
++++ b/frontend/src/combatEconomyBalance.test.js
+@@ -0,0 +1,38 @@
++import { describe, expect, it } from 'vitest';
++import { combatEconomyHealth, fullIntelCost, projectedCampaignSupplies } from './combatEconomyBalance.js';
++import { evaluateCampaignMissionOrders } from './combatMissionOrders.js';
++
++describe('gate de economía de campaña Combat Chess', () => {
++  it('una batalla normal perfecta no compra por sí sola un Dossier completo', () => {
++    const health = combatEconomyHealth();
++    expect(health.fullIntel).toBe(15);
++    expect(health.flawlessNormal).toBe(13);
++    expect(health.normalFundsFullDossier).toBe(false);
++    expect(health.startingFundsFullDossier).toBe(false);
++  });
++
++  it('el Cifrador abarata Intel sin volverlo gratuito', () => {
++    expect(fullIntelCost({ cipher: true })).toBe(9);
++  });
++
++  it('cap de misión limita incluso una operación clasificada perfecta', () => {
++    const node = { id: 's5-l1-elite', type: 'elite', stage: 5 };
++    const result = evaluateCampaignMissionOrders('economy-gate', node, {
++      casualties: 0, captures: 20, tacticalCredits: 20, underdogCredits: 20,
++    }, { intelLevel: 3 });
++    expect(result.results).toHaveLength(3);
++    expect(result.earned).toBeLessThanOrEqual(9);
++    expect(result.capped).toBeGreaterThanOrEqual(0);
++  });
++
++  it('un jugador medio sigue teniendo que elegir entre Intel y acumular suministros', () => {
++    const projection = projectedCampaignSupplies({
++      battleTypes: ['battle', 'battle', 'elite', 'battle', 'boss'],
++      missionBonuses: [2, 3, 4, 3, 5],
++      intelPurchases: [3, 3, 5, 3, 5, 7],
++      eventIncome: 4,
++    });
++    expect(projection.supplies).toBeGreaterThanOrEqual(0);
++    expect(projection.supplies).toBeLessThan(30);
++  });
++});
+diff --git a/frontend/src/combatMissionOrders.js b/frontend/src/combatMissionOrders.js
+index fdc589511d0a34361762b10186d44cf4c56c9422..b4e91b2ce01610544c1cfb1cd3afbd9c499cfb67 100644
+--- a/frontend/src/combatMissionOrders.js
++++ b/frontend/src/combatMissionOrders.js
+@@ -1,3 +1,5 @@
++import { CAMPAIGN_MISSION_BONUS_CAP } from './combatEconomyBalance.js';
++
+ const ORDER_DEFINITIONS = Object.freeze([
+   {
+     id: 'preserve-core',
+@@ -115,11 +117,16 @@ export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null, { i
+   const classified = classifiedCampaignMission(seed, node, intelLevel);
+   const active = classified ? [...standard, classified] : standard;
+   const definitions = new Map([...ORDER_DEFINITIONS, ...CLASSIFIED_DEFINITIONS].map((order) => [order.id, order]));
++  let remainingBonus = CAMPAIGN_MISSION_BONUS_CAP;
+   const results = active.map((order) => {
+     const definition = definitions.get(order.id);
+     const completed = verified && Boolean(definition?.test(metrics));
+-    return { ...order, completed, earned: completed ? order.reward : 0 };
++    const earned = completed ? Math.min(order.reward, remainingBonus) : 0;
++    remainingBonus = Math.max(0, remainingBonus - earned);
++    return { ...order, completed, earned };
+   });
++  const rawEarned = results.reduce((sum, entry) => sum + (entry.completed ? entry.reward : 0), 0);
++  const earned = results.reduce((sum, entry) => sum + entry.earned, 0);
+   return {
+     nodeId: node?.id || null,
+     verified,
+@@ -127,7 +134,8 @@ export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null, { i
+     results,
+     completed: results.filter((entry) => entry.completed),
+     missed: results.filter((entry) => !entry.completed),
+-    earned: results.reduce((sum, entry) => sum + entry.earned, 0),
++    earned,
++    capped: Math.max(0, rawEarned - earned),
+     classifiedRevealed: Boolean(classified),
+   };
+ }
+diff --git a/frontend/src/release.js b/frontend/src/release.js
+index 568f0777a3907a3241c113e744fa4bf2a1c8960e..9d80211952478e0a2fd8c538191ca176a6e16390 100644
+--- a/frontend/src/release.js
++++ b/frontend/src/release.js
+@@ -1 +1 @@
+-export const APP_RELEASE = 'v16.6dm46zfrj';
++export const APP_RELEASE = 'v16.6dm46zfrk';
+diff --git a/frontend/src/userReleaseNotes.js b/frontend/src/userReleaseNotes.js
+index 0bea0809f4473d7751585bb3faca20688230933f..e0554cc18882ef61c81a44690bf1cbbd1b8ec1f5 100644
+--- a/frontend/src/userReleaseNotes.js
++++ b/frontend/src/userReleaseNotes.js
+@@ -5,6 +5,14 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
+ // Changelog de producto: sólo cambios que el jugador ve, entiende o puede usar.
+ // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
+ export const USER_RELEASE_NOTES = Object.freeze([
++  {
++    release: 'v16.6dm46zfrk',
++    title: 'Combat ajusta su economía',
++    highlights: [
++      'Las órdenes opcionales de un sector tienen ahora un límite conjunto de 9 suministros: siguen premiando jugar bien sin financiar por sí solas toda la inteligencia del siguiente combate.',
++      'La economía de campaña incorpora un gate reproducible que vigila costes de Intel, recompensas y escenarios de gasto para detectar inflación antes de desplegarla.',
++    ],
++  },
+   {
+     release: 'v16.6dm46zfrj',
+     title: 'Combat abre operaciones clasificadas',
