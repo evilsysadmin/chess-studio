@@ -40,12 +40,12 @@ describe('temporadas personales', () => {
   it('calcula delta de rating cuando hay checkpoints temporales suficientes', () => {
     const history = [game(1), game(2), game(3)];
     const ratings = [
-      { date: '2026-08-01T00:59:58Z', rating: 400 },
-      { date: '2026-08-01T01:59:58Z', rating: 412 },
-      { date: '2026-08-02T02:59:58Z', rating: 426 },
-      { date: '2026-08-02T03:59:58Z', rating: 419 },
+      { date: '2026-08-01T00:00:00Z', rating: 400 },
+      { date: '2026-08-01T00:59:58Z', rating: 412 },
+      { date: '2026-08-02T01:59:58Z', rating: 426 },
+      { date: '2026-08-02T02:59:58Z', rating: 419 },
     ];
-    expect(buildPersonalSeasons(history, ratings)[0].rating).toMatchObject({ before: 400, after: 419, delta: 19 });
+    expect(buildPersonalSeasons(history, ratings)[0].rating).toMatchObject({ before: 400, after: 419, delta: 19, exactBaseline: true });
   });
 
   it('ignora entrenamiento némesis para no inflar la temporada competitiva', () => {
