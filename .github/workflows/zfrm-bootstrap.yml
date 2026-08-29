@@ -1,0 +1,42 @@
+name: zfrm bootstrap
+
+on:
+  push:
+    branches:
+      - fix/matthias-school-replay-zfrm
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply product patch
+        run: |
+          git apply --check .github/zfrm.patch
+          git apply .github/zfrm.patch
+
+      - name: Static preflight
+        run: make static-preflight
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Matthias school regression tests
+        working-directory: frontend
+        run: npx vitest run src/matthiasSchool.test.js
+
+      - name: Commit verified product and remove bootstrap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/zfrm.patch .github/workflows/zfrm-bootstrap.yml
+          git add -A
+          git commit -m "v16.6dm46zfrm: fix Matthias school replay and castling guidance"
+          git push origin HEAD:fix/matthias-school-replay-zfrm
