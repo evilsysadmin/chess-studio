@@ -25,16 +25,18 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
           import json
 
           path = Path('backend-python/observability_history.py')
           text = path.read_text(encoding='utf-8')
-          old = '''def _pending_bucket(bucket_key: int) -> dict[str, Any]:
+          old = dedent('''\
+          def _pending_bucket(bucket_key: int) -> dict[str, Any]:
               bucket = _PENDING.setdefault(bucket_key, _fresh_bucket())
               return _restore_missing_schema(bucket, _fresh_bucket())
-          '''
-          old = '\n'.join(line[10:] if line.startswith('          ') else line for line in old.splitlines())
-          new = '''_BUCKET_TEMPLATE = _fresh_bucket()
+          ''')
+          new = dedent('''\
+          _BUCKET_TEMPLATE = _fresh_bucket()
 
 
           def _pending_bucket(bucket_key: int, section: str | None = None) -> dict[str, Any]:
@@ -58,8 +60,7 @@ jobs:
                   else:
                       _restore_missing_schema(current, template)
               return bucket
-          '''
-          new = '\n'.join(line[10:] if line.startswith('          ') else line for line in new.splitlines())
+          ''')
           if old not in text:
               raise SystemExit('pending bucket implementation not found')
           text = text.replace(old, new, 1)
@@ -79,8 +80,8 @@ jobs:
           path.write_text(text, encoding='utf-8')
 
           tests = Path('backend-python/test_observability_history.py')
-          text = tests.read_text(encoding='utf-8')
-          addition = '''
+          test_text = tests.read_text(encoding='utf-8')
+          addition = dedent('''
 
           def test_hot_path_does_not_rebuild_the_full_bucket_schema(monkeypatch):
               at = 1_800_000_000.0
@@ -99,10 +100,9 @@ jobs:
               assert bucket["presence"]["samples"] == 1
               assert bucket["frontend"]["samples"] == 1
               assert bucket["ai"]["samples"] == 1
-          '''
-          addition = '\n'.join(line[10:] if line.startswith('          ') else line for line in addition.splitlines())
-          if 'test_hot_path_does_not_rebuild_the_full_bucket_schema' not in text:
-              tests.write_text(text.rstrip() + addition + '\n', encoding='utf-8')
+          ''')
+          if 'test_hot_path_does_not_rebuild_the_full_bucket_schema' not in test_text:
+              tests.write_text(test_text.rstrip() + addition + '\n', encoding='utf-8')
 
           old_release = 'v16.6dm46zfro'
           new_release = 'v16.6dm46zfrp'
@@ -116,9 +116,10 @@ jobs:
           Path('frontend/public/release.json').write_text(json.dumps({'release': new_release}, indent=2) + '\n', encoding='utf-8')
 
           notes = Path('frontend/src/userReleaseNotes.js')
-          text = notes.read_text(encoding='utf-8')
+          notes_text = notes.read_text(encoding='utf-8')
           anchor = 'export const USER_RELEASE_NOTES = Object.freeze([\n'
-          entry = '''  {
+          entry = dedent('''\
+            {
               release: 'v16.6dm46zfrp',
               title: 'Backend más ágil bajo presión',
               highlights: [
@@ -128,11 +129,10 @@ jobs:
               ],
             },
 
-          '''
-          entry = '\n'.join(line[10:] if line.startswith('          ') else line for line in entry.splitlines())
-          if anchor not in text:
+          ''')
+          if anchor not in notes_text:
               raise SystemExit('release notes anchor not found')
-          notes.write_text(text.replace(anchor, anchor + entry, 1), encoding='utf-8')
+          notes.write_text(notes_text.replace(anchor, anchor + entry, 1), encoding='utf-8')
           PY
           python -m pip install -q -r backend-python/requirements-dev.txt
           cd backend-python
