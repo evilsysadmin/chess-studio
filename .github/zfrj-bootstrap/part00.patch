@@ -1,0 +1,154 @@
+diff --git a/README.md b/README.md
+index 74601c7..e2f3446 100644
+--- a/README.md
++++ b/README.md
+@@ -1,3 +1,10 @@
++### v16.6dm46zfrj · Intel clasificada, convalecencia y temporadas personales
++
++- Combat Chess añade operaciones clasificadas: Intel de nivel Evaluación o superior revela un tercer objetivo opcional, determinista y más exigente, siempre basado en métricas reales del combate.
++- Revivir un veterano conserva su identidad, rango, técnicas y loadout, pero su siguiente batalla desplegada es de convalecencia: gana el 50% de XP, redondeado hacia arriba; dejarlo en reserva no consume la recuperación.
++- Mi progreso incorpora temporadas personales de 20 partidas competitivas con balance, puntuación, mejor apertura, mejor victoria, rating cuando hay checkpoints suficientes y peor blunder sólo si existe una autopsia real.
++- La campaña migra de forma compatible de v1–v4 a v5; las operaciones clasificadas no existen en nodos seguros y no conceden recompensas sin métricas verificables.
++
+ ### v16.6dm46zfri · Órdenes opcionales de misión en Combat Chess
+ 
+ - Cada sector de batalla, élite o boss genera dos órdenes opcionales deterministas basadas en la seed y el nodo; no hay reroll ni objetivo inventado por IA.
+diff --git a/RELEASE.txt b/RELEASE.txt
+index 554ad56..4e427fc 100644
+--- a/RELEASE.txt
++++ b/RELEASE.txt
+@@ -1 +1 @@
+-v16.6dm46zfri
++v16.6dm46zfrj
+diff --git a/backend-python/release_info.py b/backend-python/release_info.py
+index 07ab60c..1827eb3 100644
+--- a/backend-python/release_info.py
++++ b/backend-python/release_info.py
+@@ -10,7 +10,7 @@ from __future__ import annotations
+ import os
+ import re
+ 
+-APP_RELEASE = "v16.6dm46zfri"
++APP_RELEASE = "v16.6dm46zfrj"
+ 
+ _COMMIT_ENV_KEYS = (
+     "RENDER_GIT_COMMIT",
+diff --git a/frontend/public/release.json b/frontend/public/release.json
+index 312a201..cfbf587 100644
+--- a/frontend/public/release.json
++++ b/frontend/public/release.json
+@@ -1,3 +1,3 @@
+ {
+-  "release": "v16.6dm46zfri"
++  "release": "v16.6dm46zfrj"
+ }
+diff --git a/frontend/src/combat.js b/frontend/src/combat.js
+index 4ae4855..727716f 100644
+--- a/frontend/src/combat.js
++++ b/frontend/src/combat.js
+@@ -315,6 +315,12 @@ export function capturedSquareFor(applied) {
+ //    entrada del registro queda "fantasma" en su casilla vieja.
+ //  - Coronación: la pieza pasa a ser del tipo promovido para el combate,
+ //    conservando los puntos/XP que ya se habían acumulado.
++function xpGainForPiece(piece, gained) {
++  const amount = Math.max(0, Number(gained) || 0);
++  if (amount <= 0) return 0;
++  return Number(piece?.recoveryBattlesRemaining || 0) > 0 ? Math.ceil(amount / 2) : amount;
++}
++
+ export function applyMoveToRegistry(registry, applied) {
+   const { from, to, flags, color, promotion } = applied;
+   const next = { ...registry };
+@@ -338,7 +344,7 @@ export function applyMoveToRegistry(registry, applied) {
+     // El rey nunca banca XP: sigue las reglas normales de ajedrez, jaque y
+     // jaque mate estándar, sin subir de nivel ni comprar stats. Cualquier
+     // otra pieza sí banca lo que corresponda por la captura.
+-    const gained = PIECE_XP_VALUE[capturedPiece.type] || 0;
++    const gained = xpGainForPiece(updated, PIECE_XP_VALUE[capturedPiece.type] || 0);
+     updated = { ...updated, bankedXp: (updated.bankedXp || 0) + gained };
+   }
+ 
+@@ -364,7 +370,8 @@ export function applyMoveToRegistry(registry, square, gained) {
+ function applySurvivalXp(registry, square, gained) {
+   const piece = registry[square];
+   if (!piece || gained <= 0 || piece.type === 'k') return { registry }; // el rey nunca banca XP, ni siquiera por sobrevivir
+-  const next = { ...registry, [square]: { ...piece, bankedXp: (piece.bankedXp || 0) + gained } };
++  const effectiveGain = xpGainForPiece(piece, gained);
++  const next = { ...registry, [square]: { ...piece, bankedXp: (piece.bankedXp || 0) + effectiveGain } };
+   return { registry: next };
+ }
+ 
+diff --git a/frontend/src/combat.test.js b/frontend/src/combat.test.js
+index 24d43f9..0085f2d 100644
+--- a/frontend/src/combat.test.js
++++ b/frontend/src/combat.test.js
+@@ -362,6 +362,16 @@ describe('resolveCombatMove — reglas de integridad del ajedrez', () => {
+     }
+   });
+ 
++  it('una unidad convaleciente gana sólo la mitad de XP, redondeando hacia arriba', () => {
++    const registry = {
++      d4: { id: 'w-q-d1', type: 'q', color: 'w', square: 'd4', strengthPoints: 2, speedPoints: 2, bankedXp: 0, recoveryBattlesRemaining: 1 },
++      d7: { id: 'b-q-d8', type: 'q', color: 'b', square: 'd7', strengthPoints: 0, speedPoints: 0, bankedXp: 0 },
++    };
++    const applied = { from: 'd4', to: 'd7', color: 'w', flags: 'c', promotion: null };
++    const { registry: next } = applyMoveToRegistry(registry, applied);
++    expect(next.d7.bankedXp).toBe(5); // dama = 9 XP → 5 durante recuperación
++  });
++
+   it('un esquive banca XP de supervivencia en el defensor y no mueve nada', () => {
+     const chess = new Chess();
+     chess.move('e4'); chess.move('d5');
+diff --git a/frontend/src/combatCampaign.js b/frontend/src/combatCampaign.js
+index 6afcf3b..880ea7b 100644
+--- a/frontend/src/combatCampaign.js
++++ b/frontend/src/combatCampaign.js
+@@ -18,7 +18,7 @@ function nextCampaignPhase(state, event) {
+   return result.nextState;
+ }
+ 
+-// Combat Chess · campaña procedural v3 (mapa estratégico + intel + reliquias operativas).
++// Combat Chess · campaña procedural v5 (mapa estratégico + intel + reliquias operativas).
+ //
+ // La campaña vive separada del antiguo intento lineal de La Torre para poder
+ // migrar sin romper partidas guardadas. El mapa NO se persiste entero: seed +
+@@ -30,7 +30,7 @@ const OPERATION_ARCHIVE_KEY = 'chess-study-combat-operation-archive-v1';
+ const TOWER_COMPLETED_KEY = 'chess-study-roguelike-tower-completed';
+ const BEST_FLOOR_KEY = 'chess-study-roguelike-best-floor';
+ 
+-const CAMPAIGN_VERSION = 4;
++const CAMPAIGN_VERSION = 5;
+ const CAMPAIGN_BOSS_STAGE = 7;
+ 
+ const CAMPAIGN_INTEL_TIERS = Object.freeze([
+@@ -358,7 +358,7 @@ function emptyCampaign() {
+ 
+ function normalizeCampaign(raw) {
+   const base = emptyCampaign();
+-  if (!raw || typeof raw !== 'object' || ![1, 2, 3, CAMPAIGN_VERSION].includes(raw.version)) return base;
++  if (!raw || typeof raw !== 'object' || ![1, 2, 3, 4, CAMPAIGN_VERSION].includes(raw.version)) return base;
+   const active = raw.active === true;
+   const seed = active ? String(raw.seed || 'legacy-campaign') : null;
+   const map = seed ? campaignMap(seed) : null;
+@@ -410,12 +410,13 @@ function normalizeCampaign(raw) {
+           verified: raw.lastMissionResult.verified === true,
+           earned: Math.max(0, Math.floor(Number(raw.lastMissionResult.earned) || 0)),
+           results: Array.isArray(raw.lastMissionResult.results)
+-            ? raw.lastMissionResult.results.slice(0, 2).map((entry) => ({
++            ? raw.lastMissionResult.results.slice(0, 3).map((entry) => ({
+                 id: typeof entry?.id === 'string' ? entry.id : '',
+                 label: typeof entry?.label === 'string' ? entry.label : 'Orden',
+                 reward: Math.max(0, Math.floor(Number(entry?.reward) || 0)),
+                 completed: entry?.completed === true,
+                 earned: Math.max(0, Math.floor(Number(entry?.earned) || 0)),
++                classified: entry?.classified === true,
+               })).filter((entry) => entry.id)
+             : [],
+         }
+@@ -551,7 +552,7 @@ export function markCampaignBattleWon(state, battleRecord = null) {
+   const node = campaignNode(state);
+   if (!state?.active || state.phase !== 'fighting' || !node) return state;
+   const earned = (BATTLE_CREDIT_REWARD[node.type] || 0) + (hasRelic(state, 'quartermasterSeal') ? 2 : 0);
+-  const missionResult = evaluateCampaignMissionOrders(state.seed, node, battleRecord?.combatMetrics);
++  const missionResult = evaluateCampaignMissionOrders(state.seed, node, battleRecord?.combatMetrics, { intelLevel: campaignIntelLevel(state, node.id) });
+   const missionEarned = Math.max(0, Number
