@@ -1,0 +1,183 @@
+      loss: Math.max(0, Math.round(loss)),
++      san: analysis?.worst?.played || analysis?.worst?.san || null,
++      opening: row.opening || null,
++      difficulty: Number(row.difficulty || 0),
++      date: row.date || null,
++    });
++  }
++  return candidates.sort((a, b) => b.loss - a.loss)[0] || null;
++}
++
++function ratingRows(history = []) {
++  return (Array.isArray(history) ? history : [])
++    .map((point) => ({ time: validTime(point?.date), rating: Number(point?.rating ?? point) }))
++    .filter((point) => point.time > 0 && Number.isFinite(point.rating))
++    .sort((a, b) => a.time - b.time);
++}
++
++function ratingDeltaForSeason(rows, ratingHistory = []) {
++  if (!rows.length) return null;
++  const points = ratingRows(ratingHistory);
++  if (!points.length) return null;
++  const start = validTime(rows[0].date);
++  const end = validTime(rows.at(-1).date);
++  // recordRatingHistory() se ejecuta instantes antes de guardar el registro de
++  // partida. Damos un margen mínimo para asociar ese checkpoint sin mezclar
++  // sesiones separadas ni fingir un rating que no tenemos.
++  const windowStart = start - 60_000;
++  const windowEnd = end + 60_000;
++  const inWindow = points.filter((point) => point.time >= windowStart && point.time <= windowEnd);
++  if (!inWindow.length) return null;
++  const previous = [...points].reverse().find((point) => point.time < windowStart) || null;
++  const first = inWindow[0];
++  const last = inWindow.at(-1);
++  const baseline = previous || (inWindow.length >= 2 ? first : null);
++  if (!baseline) return null;
++  return {
++    before: baseline.rating,
++    after: last.rating,
++    delta: last.rating - baseline.rating,
++    exactBaseline: Boolean(previous),
++  };
++}
++
++function buildSeason(rows, index, ratingHistory, archive) {
++  const wins = rows.filter((row) => row.outcome === 'win').length;
++  const draws = rows.filter((row) => row.outcome === 'draw').length;
++  const losses = rows.filter((row) => row.outcome === 'loss').length;
++  return {
++    number: index + 1,
++    games: rows.length,
++    target: PERSONAL_SEASON_TARGET,
++    complete: rows.length >= PERSONAL_SEASON_TARGET,
++    wins,
++    draws,
++    losses,
++    scorePct: rows.length ? Math.round(((wins + draws * 0.5) / rows.length) * 100) : 0,
++    startedAt: rows[0]?.date || null,
++    endedAt: rows.at(-1)?.date || null,
++    rating: ratingDeltaForSeason(rows, ratingHistory),
++    bestOpening: openingReport(rows),
++    bestWin: bestWin(rows),
++    worstBlunder: worstBlunder(rows, archive),
++  };
++}
++
++export function buildPersonalSeasons(history = [], ratingHistory = [], archive = {}) {
++  const rows = competitiveRows(history);
++  if (!rows.length) {
++    return [{
++      number: 1, games: 0, target: PERSONAL_SEASON_TARGET, complete: false,
++      wins: 0, draws: 0, losses: 0, scorePct: 0, startedAt: null, endedAt: null,
++      rating: null, bestOpening: null, bestWin: null, worstBlunder: null,
++    }];
++  }
++  const seasons = [];
++  for (let start = 0; start < rows.length; start += PERSONAL_SEASON_TARGET) {
++    seasons.push(buildSeason(rows.slice(start, start + PERSONAL_SEASON_TARGET), seasons.length, ratingHistory, archive));
++  }
++  return seasons;
++}
++
++export function currentPersonalSeason(history = [], ratingHistory = [], archive = {}) {
++  return buildPersonalSeasons(history, ratingHistory, archive).at(-1);
++}
++
++export function latestCompletedPersonalSeason(history = [], ratingHistory = [], archive = {}) {
++  return [...buildPersonalSeasons(history, ratingHistory, archive)].reverse().find((season) => season.complete) || null;
++}
+diff --git a/frontend/src/personalSeasons.test.js b/frontend/src/personalSeasons.test.js
+new file mode 100644
+index 0000000..82bf256
+--- /dev/null
++++ b/frontend/src/personalSeasons.test.js
+@@ -0,0 +1,55 @@
++import { describe, expect, it } from 'vitest';
++import { buildPersonalSeasons, currentPersonalSeason, latestCompletedPersonalSeason } from './personalSeasons.js';
++
++function game(i, outcome = i % 3 === 0 ? 'loss' : 'win', opening = i % 2 ? 'Italiana' : 'Francesa') {
++  return {
++    id: `g-${i}`,
++    sourceGameId: `source-${i}`,
++    date: `2026-08-${String(1 + Math.floor(i / 2)).padStart(2, '0')}T${String(i % 24).padStart(2, '0')}:00:00Z`,
++    outcome,
++    mode: 'casual',
++    opening,
++    difficulty: 30 + i,
++    moves: Array(20 + i).fill({ san: 'e4' }),
++  };
++}
++
++describe('temporadas personales', () => {
++  it('agrupa la carrera competitiva en bloques de 20 partidas, no por calendario', () => {
++    const history = Array.from({ length: 25 }, (_, i) => game(i + 1));
++    const seasons = buildPersonalSeasons(history);
++    expect(seasons).toHaveLength(2);
++    expect(seasons[0]).toMatchObject({ number: 1, games: 20, target: 20, complete: true });
++    expect(seasons[1]).toMatchObject({ number: 2, games: 5, target: 20, complete: false });
++    expect(currentPersonalSeason(history).number).toBe(2);
++    expect(latestCompletedPersonalSeason(history).number).toBe(1);
++  });
++
++  it('resume mejor apertura, mejor victoria y peor blunder sólo con evidencia real', () => {
++    const history = Array.from({ length: 20 }, (_, i) => game(i + 1, i < 15 ? 'win' : 'loss', i < 10 ? 'Italiana' : 'Francesa'));
++    const archive = {
++      'g-6': { worst: { loss: 130, played: 'Qh5?' } },
++      'g-17': { worst: { loss: 420, played: '??' } },
++    };
++    const season = buildPersonalSeasons(history, [], archive)[0];
++    expect(season.bestOpening).toMatchObject({ opening: 'Italiana', games: 10, scorePct: 100 });
++    expect(season.bestWin.difficulty).toBe(45);
++    expect(season.worstBlunder).toMatchObject({ gameId: 'g-17', loss: 420 });
++  });
++
++  it('calcula delta de rating cuando hay checkpoints temporales suficientes', () => {
++    const history = [game(1), game(2), game(3)];
++    const ratings = [
++      { date: '2026-08-01T00:59:58Z', rating: 400 },
++      { date: '2026-08-01T01:59:58Z', rating: 412 },
++      { date: '2026-08-02T02:59:58Z', rating: 426 },
++      { date: '2026-08-02T03:59:58Z', rating: 419 },
++    ];
++    expect(buildPersonalSeasons(history, ratings)[0].rating).toMatchObject({ before: 400, after: 419, delta: 19 });
++  });
++
++  it('ignora entrenamiento némesis para no inflar la temporada competitiva', () => {
++    const history = [game(1), { ...game(2), mode: 'nemesis-training' }];
++    expect(currentPersonalSeason(history).games).toBe(1);
++  });
++});
+diff --git a/frontend/src/release.js b/frontend/src/release.js
+index fa4b13e..568f077 100644
+--- a/frontend/src/release.js
++++ b/frontend/src/release.js
+@@ -1 +1 @@
+-export const APP_RELEASE = 'v16.6dm46zfri';
++export const APP_RELEASE = 'v16.6dm46zfrj';
+diff --git a/frontend/src/styles/05-combat-roster.css b/frontend/src/styles/05-combat-roster.css
+index 04d7c9e..eb5e594 100644
+--- a/frontend/src/styles/05-combat-roster.css
++++ b/frontend/src/styles/05-combat-roster.css
+@@ -2164,3 +2164,9 @@
+   .mechanic-library-list { max-height: 280px; }
+ }
+ 
++
++/* Reanimar conserva al veterano, pero la siguiente batalla desplegada es de
++   recuperación. Es una penalización de XP, no una alteración de reglas. */
++.army-unit-tile.recovering { border-color:color-mix(in srgb,var(--brass) 42%,transparent); }
++.army-unit-state.recovering { color:var(--brass); border-color:color-mix(in srgb,var(--brass) 52%,transparent); }
++.army-recovery-note { border-color:color-mix(in srgb,var(--brass) 38%,transparent); }
+diff --git a/frontend/src/styles/06-combat-campaign.css b/frontend/src/styles/06-combat-campaign.css
+index 36dc3b0..0746653 100644
+--- a/frontend/src/styles/06-combat-campaign.css
++++ b/frontend/src/styles/06-combat-campaign.css
+@@ -1338,3 +1338,22 @@
+   .campaign-mission-orders-heading > small { text-align: left; }
+   .campaign-mission-order-grid { grid-template-columns: 1fr; }
+ }
++
++/* Intel de nivel 2+ puede descubrir una tercera orden de alto riesgo. Se
++   diferencia de las órdenes normales sin ocupar otro panel del briefing. */
++.campaign-classified-order {
++  display
