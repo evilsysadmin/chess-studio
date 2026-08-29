@@ -1,3 +1,11 @@
+### v16.6dm46zfri · Órdenes opcionales de misión en Combat Chess
+
+- Cada sector de batalla, élite o boss genera dos órdenes opcionales deterministas basadas en la seed y el nodo; no hay reroll ni objetivo inventado por IA.
+- Las órdenes usan únicamente métricas reales que Combat ya calcula: bajas propias, capturas, mérito táctico y acciones underdog.
+- Completar órdenes concede suministros temporales de campaña (2–4 por orden), nunca créditos persistentes, para añadir tensión táctica sin abrir una granja económica.
+- El briefing las muestra antes del despliegue y el resultado del sector resume qué órdenes se cumplieron.
+- El battle record conserva un bloque `combatMetrics` mínimo para que campaña, historial y tests compartan la misma fuente factual.
+
 ### v16.6dm46zfrg · Escuela por cursos + test runner reproducible
 
 - Escuela de Matthias pasa a cinco cursos: Básico, Básico-medio, Medio, Medio-avanzado y Avanzado. Cada bloque mezcla práctica guiada y secuencias de varias jugadas y termina en un examen de promoción obligatorio.

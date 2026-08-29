@@ -329,7 +329,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     setServiceRecord(loadCombatService());
     setRoster(loadRoster());
     if (outcome === 'win') {
-      setCampaign((current) => markCampaignBattleWon(current));
+      setCampaign((current) => markCampaignBattleWon(current, meta.battleRecord));
       setTowerCompleted(loadTowerCompleted());
       setBestFloor(loadBestFloor());
       setCampaignBestStage(loadCampaignBestStage());
@@ -707,6 +707,12 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
               <span className="section-label">{selected.type === 'elite' ? 'BOTÍN ÉLITE' : 'SECTOR ASEGURADO'}</span>
               <h3>{selected.label}</h3>
               <p className="combat-operational-hint" title={selected.type === 'elite' ? 'La ventaja elegida entra con dos cargas y recibes un refuerzo permanente.' : 'La ventaja dura hasta terminar la campaña.'}>Elige recompensa.</p>
+              {campaign.lastMissionResult?.nodeId === selected.id && (
+                <div className={`campaign-mission-result ${campaign.lastMissionResult.earned > 0 ? 'success' : 'missed'}`}>
+                  <strong>{campaign.lastMissionResult.earned > 0 ? `Órdenes: +${campaign.lastMissionResult.earned} suministros` : 'Órdenes: sin bonificación'}</strong>
+                  <span>{(campaign.lastMissionResult.results || []).map((order) => `${order.completed ? '✓' : '×'} ${order.label}`).join(' · ')}</span>
+                </div>
+              )}
               <div className="roguelike-reward-grid">
                 {rewardOptions.map((perk) => (
                   <button type="button" key={perk.id} className="roguelike-reward-card" onClick={() => handleCampaignReward(perk.id)}>

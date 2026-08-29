@@ -6,6 +6,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfri',
+    title: 'Combat recibe órdenes de misión',
+    highlights: [
+      'Cada sector de combate ofrece dos órdenes opcionales y deterministas que pueden cambiar cómo planteas la batalla sin bloquear nunca la victoria.',
+      'Las órdenes se evalúan sólo con hechos ya medidos por Combat: bajas propias, capturas, mérito táctico y acciones contra material superior; nada se inventa desde narrativa.',
+      'Cumplirlas entrega suministros temporales de campaña, no créditos persistentes, para que aporten decisiones sin convertir la economía en una granja.',
+      'El briefing muestra las órdenes de forma compacta y el cierre del sector indica cuáles se cumplieron y cuánto aportaron.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrh',
     title: 'Matthias deja de pasarse tres horas con el bocata',
     highlights: [

@@ -3,6 +3,7 @@ import {
   campaignIntelBriefing,
   nextCampaignIntelTier,
 } from '../combatCampaign.js';
+import { campaignMissionOrders } from '../combatMissionOrders.js';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
@@ -19,6 +20,7 @@ const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
 export default function CampaignBriefing({ campaign, node, armySummary, onBuyIntel, onContinue, onRetire }) {
   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
   const nextTier = useMemo(() => nextCampaignIntelTier(campaign, node?.id), [campaign, node]);
+  const missionOrders = useMemo(() => campaignMissionOrders(campaign?.seed, node), [campaign?.seed, node]);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
   const [aiBriefing, setAiBriefing] = useState(null);
   const [aiBriefingLoading, setAiBriefingLoading] = useState(false);
@@ -86,6 +88,23 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
           <small>CONSEJOS // PLAN DE BATALLA</small>
           <p>{aiBriefing || 'Procesando la inteligencia sin añadir tanques imaginarios…'}</p>
         </div>
+      )}
+
+      {missionOrders.length > 0 && (
+        <section className="campaign-mission-orders" aria-label="Órdenes opcionales de misión">
+          <div className="campaign-mission-orders-heading">
+            <span>ÓRDENES OPCIONALES</span>
+            <small>No bloquean la victoria. Cumplirlas da suministros extra.</small>
+          </div>
+          <div className="campaign-mission-order-grid">
+            {missionOrders.map((order) => (
+              <article key={order.id} className="campaign-mission-order">
+                <div><strong>{order.label}</strong><span>{order.description}</span></div>
+                <b>+{order.reward}</b>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
       <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
