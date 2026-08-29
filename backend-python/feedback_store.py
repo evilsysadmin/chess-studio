@@ -191,6 +191,25 @@ async def update_feedback_status(feedback_id: str, status: str) -> dict | None:
     return _public_feedback(row)
 
 
+async def delete_feedback_for_user(feedback_id: str, username: str) -> bool:
+    col = await _get_collection()
+    if col is not None:
+        try:
+            # Propietario e id se validan en la misma operación. Devolver False
+            # tanto para id inexistente como para propietario distinto evita que
+            # este endpoint pueda usarse para enumerar feedback de otra cuenta.
+            result = await col.delete_one({"_id": feedback_id, "username": username})
+            return bool(getattr(result, "deleted_count", 0))
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para borrar tu feedback.") from exc
+
+    row = _memory_feedback.get(feedback_id)
+    if not row or row.get("username") != username:
+        return False
+    _memory_feedback.pop(feedback_id, None)
+    return True
+
+
 async def delete_feedback(feedback_id: str) -> bool:
     col = await _get_collection()
     if col is not None:
