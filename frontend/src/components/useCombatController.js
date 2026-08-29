@@ -567,6 +567,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       roguelikeFloor: combatVariant === 'roguelike' ? roguelikeFloor : null,
       roguelikeMode: combatVariant === 'roguelike' ? (roguelikeMode || 'tower') : null,
       boss: bossConfig ? { id: bossConfig.id, maxHp: bossConfig.maxHp, remainingHp: bossHpRef.current } : null,
+      combatMetrics: {
+        captures: totalCaptures,
+        casualties,
+        deployedUnitCount,
+        underdogCredits: Math.max(0, Number(unitStats.underdogCredits) || 0),
+        tacticalCredits: Math.max(0, Number(unitStats.tacticalCredits) || 0),
+      },
     };
 
     // La hoja de servicio se actualiza ANTES de guardar la batalla en el historial.

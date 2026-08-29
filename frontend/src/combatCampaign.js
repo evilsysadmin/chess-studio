@@ -5,6 +5,7 @@ import { ROGUELIKE_MODIFIERS, seededUnit } from './roguelikeModifiers.js';
 import { campaignBossForSeed } from './combatBosses.js';
 import { campaignPhaseTransition, assertCampaignInvariant } from './campaignStateMachine.js';
 import { reportStateInvariant } from './stateMachine.js';
+import { evaluateCampaignMissionOrders } from './combatMissionOrders.js';
 
 
 function nextCampaignPhase(state, event) {
@@ -29,7 +30,7 @@ const OPERATION_ARCHIVE_KEY = 'chess-study-combat-operation-archive-v1';
 const TOWER_COMPLETED_KEY = 'chess-study-roguelike-tower-completed';
 const BEST_FLOOR_KEY = 'chess-study-roguelike-best-floor';
 
-const CAMPAIGN_VERSION = 3;
+const CAMPAIGN_VERSION = 4;
 const CAMPAIGN_BOSS_STAGE = 7;
 
 const CAMPAIGN_INTEL_TIERS = Object.freeze([
@@ -350,13 +351,14 @@ function emptyCampaign() {
     operationalCredits: CAMPAIGN_STARTING_CREDITS,
     intelligenceByNode: {},
     relicIds: [],
+    lastMissionResult: null,
     eventLog: [],
   };
 }
 
 function normalizeCampaign(raw) {
   const base = emptyCampaign();
-  if (!raw || typeof raw !== 'object' || ![1, 2, CAMPAIGN_VERSION].includes(raw.version)) return base;
+  if (!raw || typeof raw !== 'object' || ![1, 2, 3, CAMPAIGN_VERSION].includes(raw.version)) return base;
   const active = raw.active === true;
   const seed = active ? String(raw.seed || 'legacy-campaign') : null;
   const map = seed ? campaignMap(seed) : null;
@@ -402,6 +404,22 @@ function normalizeCampaign(raw) {
       ? Object.fromEntries(Object.entries(raw.intelligenceByNode).filter(([id]) => validIds.has(id)).map(([id, level]) => [id, clampIntelLevel(level)]))
       : {},
     relicIds: Array.isArray(raw.relicIds) ? [...new Set(raw.relicIds.filter((id) => CAMPAIGN_RELIC_BY_ID[id]))].slice(0, CAMPAIGN_RELICS.length) : [],
+    lastMissionResult: raw.lastMissionResult && typeof raw.lastMissionResult === 'object'
+      ? {
+          nodeId: typeof raw.lastMissionResult.nodeId === 'string' ? raw.lastMissionResult.nodeId : null,
+          verified: raw.lastMissionResult.verified === true,
+          earned: Math.max(0, Math.floor(Number(raw.lastMissionResult.earned) || 0)),
+          results: Array.isArray(raw.lastMissionResult.results)
+            ? raw.lastMissionResult.results.slice(0, 2).map((entry) => ({
+                id: typeof entry?.id === 'string' ? entry.id : '',
+                label: typeof entry?.label === 'string' ? entry.label : 'Orden',
+                reward: Math.max(0, Math.floor(Number(entry?.reward) || 0)),
+                completed: entry?.completed === true,
+                earned: Math.max(0, Math.floor(Number(entry?.earned) || 0)),
+              })).filter((entry) => entry.id)
+            : [],
+        }
+      : null,
     eventLog: Array.isArray(raw.eventLog) ? raw.eventLog.slice(-30) : [],
   };
 }
@@ -456,7 +474,7 @@ export function selectCampaignNode(state, nodeId) {
   if (hasRelic(state, 'forwardObserver') && ['battle', 'elite', 'boss'].includes(node.type)) {
     intelligenceByNode[node.id] = Math.max(1, clampIntelLevel(intelligenceByNode[node.id]));
   }
-  return saveCampaign({ ...state, phase, selectedNodeId: node.id, rewardChosenForNode: null, intelligenceByNode });
+  return saveCampaign({ ...state, phase, selectedNodeId: node.id, rewardChosenForNode: null, intelligenceByNode, lastMissionResult: null });
 }
 
 export function markCampaignBattleStarted(state) {
@@ -529,18 +547,30 @@ export function recoverInterruptedCampaign(state) {
   return recovered ? saveCampaign(recovered) : state;
 }
 
-export function markCampaignBattleWon(state) {
+export function markCampaignBattleWon(state, battleRecord = null) {
   const node = campaignNode(state);
   if (!state?.active || state.phase !== 'fighting' || !node) return state;
   const earned = (BATTLE_CREDIT_REWARD[node.type] || 0) + (hasRelic(state, 'quartermasterSeal') ? 2 : 0);
+  const missionResult = evaluateCampaignMissionOrders(state.seed, node, battleRecord?.combatMetrics);
+  const missionEarned = Math.max(0, Number(missionResult.earned) || 0);
   const dossierEarned = node.type === 'elite' && node.stage >= 5 && !hasRelic(state, 'kingDossier');
+  const completedLabels = missionResult.completed.map((order) => order.label);
   const credited = {
     ...state,
     relicIds: dossierEarned ? [...new Set([...(state.relicIds || []), 'kingDossier'])] : [...(state.relicIds || [])],
-    operationalCredits: Math.max(0, (Number(state.operationalCredits) || 0) + earned),
+    operationalCredits: Math.max(0, (Number(state.operationalCredits) || 0) + earned + missionEarned),
+    lastMissionResult: {
+      nodeId: missionResult.nodeId,
+      verified: missionResult.verified,
+      earned: missionEarned,
+      results: missionResult.results.map(({ id, label, reward, completed, earned: orderEarned }) => ({ id, label, reward, completed, earned: orderEarned })),
+    },
     eventLog: [
       ...(state.eventLog || []),
       ...(earned > 0 ? [`Objetivo cumplido: +${earned} créditos operativos`] : []),
+      ...(missionResult.verified
+        ? (missionEarned > 0 ? [`Órdenes cumplidas: ${completedLabels.join(' + ')} · +${missionEarned} suministros`] : ['Órdenes opcionales: sin bonificación'])
+        : ['Órdenes opcionales: sin métricas verificables; no se concede bonificación']),
       ...(dossierEarned ? ['Intel élite recuperada: Dossier del jefe'] : []),
     ].slice(-30),
   };

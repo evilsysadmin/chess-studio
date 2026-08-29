@@ -27,6 +27,7 @@ import {
   campaignBiomeForNode,
   CAMPAIGN_BIOMES,
 } from './combatCampaign.js';
+import { campaignMissionOrders } from './combatMissionOrders.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -96,8 +97,8 @@ describe('Combat Chess campaign map', () => {
   });
 
 
-  it('migra campañas v1/v2 antiguas a v3 sin perder la ruta ni fabricar deuda', () => {
-    for (const version of [1, 2]) {
+  it('migra campañas v1/v2/v3 antiguas a v4 sin perder la ruta ni fabricar deuda', () => {
+    for (const version of [1, 2, 3]) {
       localStorage.clear();
       const base = startCampaign(`legacy-v${version}`);
       const first = availableCampaignNodes(base)[0];
@@ -110,7 +111,7 @@ describe('Combat Chess campaign map', () => {
         relicIds: version === 1 ? undefined : ['fieldCipher'],
       }));
       const migrated = loadCampaign();
-      expect(migrated.version).toBe(3);
+      expect(migrated.version).toBe(4);
       expect(migrated.phase).toBe('briefing');
       expect(migrated.selectedNodeId).toBe(first.id);
       expect(migrated.operationalCredits).toBeGreaterThanOrEqual(0);
@@ -133,6 +134,26 @@ describe('Combat Chess campaign map', () => {
     run = chooseCampaignReward(run, perk.id);
     expect(run.phase).toBe('map');
     expect(run.perks).toContain(perk.id);
+  });
+
+
+  it('las órdenes opcionales premian rendimiento real sin alterar la condición de victoria', () => {
+    let run = startCampaign('mission-orders');
+    const node = availableCampaignNodes(run)[0];
+    run = selectCampaignNode(run, node.id);
+    const orders = campaignMissionOrders(run.seed, node);
+    expect(orders).toHaveLength(2);
+    run = markCampaignBriefingAccepted(run);
+    run = markCampaignBattleStarted(run);
+    const before = run.operationalCredits;
+    const baseReward = node.type === 'elite' ? 7 : node.type === 'boss' ? 12 : 4;
+    const missionReward = orders.reduce((sum, order) => sum + order.reward, 0);
+    run = markCampaignBattleWon(run, {
+      combatMetrics: { casualties: 0, captures: 12, tacticalCredits: 12, underdogCredits: 12 },
+    });
+    expect(run.operationalCredits).toBe(before + baseReward + missionReward);
+    expect(run.lastMissionResult).toMatchObject({ nodeId: node.id, earned: missionReward });
+    expect(run.lastMissionResult.results.every((order) => order.completed)).toBe(true);
   });
 
   it('una retirada táctica conserva la campaña y devuelve el mismo sector al briefing', () => {
@@ -287,7 +308,7 @@ describe('Combat Chess campaign map', () => {
     delete v2.relicIds;
     localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(v2));
     const migrated = loadCampaign();
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(4);
     expect(migrated.relicIds).toEqual([]);
   });
 

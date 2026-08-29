@@ -1267,3 +1267,74 @@
   .combat-battle-screen .board-theme-combat-desert,
   .combat-battle-screen .board-theme-combat-citadel { box-shadow:0 13px 30px rgba(0,0,0,.38); }
 }
+
+/* Órdenes opcionales: visibles porque cambian la forma de jugar, compactas para no secuestrar el briefing. */
+.campaign-mission-orders {
+  display: grid;
+  gap: .55rem;
+  margin: .7rem 0;
+  padding: .75rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: .75rem;
+  background: rgba(0,0,0,.14);
+}
+.campaign-mission-orders-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.campaign-mission-orders-heading > span {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.campaign-mission-orders-heading > small {
+  opacity: .72;
+  text-align: right;
+}
+.campaign-mission-order-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+}
+.campaign-mission-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-width: 0;
+  padding: .65rem .7rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: .65rem;
+  background: rgba(255,255,255,.035);
+}
+.campaign-mission-order div {
+  display: grid;
+  gap: .16rem;
+  min-width: 0;
+}
+.campaign-mission-order strong { font-size: .86rem; }
+.campaign-mission-order span { font-size: .76rem; opacity: .76; }
+.campaign-mission-order > b {
+  flex: 0 0 auto;
+  font-size: .82rem;
+}
+.campaign-mission-result {
+  display: grid;
+  gap: .2rem;
+  margin: .6rem 0 .8rem;
+  padding: .65rem .75rem;
+  border-radius: .65rem;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.035);
+}
+.campaign-mission-result strong { font-size: .86rem; }
+.campaign-mission-result span { font-size: .78rem; opacity: .78; }
+.campaign-mission-result.success { border-color: rgba(155,205,125,.34); }
+.campaign-mission-result.missed { opacity: .84; }
+@media (max-width: 620px) {
+  .campaign-mission-orders-heading { align-items: flex-start; flex-direction: column; gap: .2rem; }
+  .campaign-mission-orders-heading > small { text-align: left; }
+  .campaign-mission-order-grid { grid-template-columns: 1fr; }
+}
