@@ -16,6 +16,19 @@ export function fetchMyFeedback({ signal } = {}) {
   return requestJson(`${BASE_URL}/feedback/mine`, { headers: { ...authHeader() }, signal });
 }
 
+export async function deleteMyFeedback(feedbackId) {
+  const response = await request(`${BASE_URL}/feedback/${encodeURIComponent(feedbackId)}`, {
+    method: 'DELETE',
+    headers: { ...authHeader() },
+  });
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`;
+    try { detail = (await response.json())?.detail || detail; } catch { /* 204/binary-safe */ }
+    throw new Error(detail);
+  }
+  return true;
+}
+
 export function fetchAdminFeedback() {
   return requestJson(`${BASE_URL}/admin/feedback`, { headers: { ...authHeader() } });
 }
