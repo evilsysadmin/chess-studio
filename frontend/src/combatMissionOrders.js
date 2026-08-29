@@ -1,3 +1,5 @@
+import { CAMPAIGN_MISSION_BONUS_CAP } from './combatEconomyBalance.js';
+
 const ORDER_DEFINITIONS = Object.freeze([
   {
     id: 'preserve-core',
@@ -115,11 +117,16 @@ export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null, { i
   const classified = classifiedCampaignMission(seed, node, intelLevel);
   const active = classified ? [...standard, classified] : standard;
   const definitions = new Map([...ORDER_DEFINITIONS, ...CLASSIFIED_DEFINITIONS].map((order) => [order.id, order]));
+  let remainingBonus = CAMPAIGN_MISSION_BONUS_CAP;
   const results = active.map((order) => {
     const definition = definitions.get(order.id);
     const completed = verified && Boolean(definition?.test(metrics));
-    return { ...order, completed, earned: completed ? order.reward : 0 };
+    const earned = completed ? Math.min(order.reward, remainingBonus) : 0;
+    remainingBonus = Math.max(0, remainingBonus - earned);
+    return { ...order, completed, earned };
   });
+  const rawEarned = results.reduce((sum, entry) => sum + (entry.completed ? entry.reward : 0), 0);
+  const earned = results.reduce((sum, entry) => sum + entry.earned, 0);
   return {
     nodeId: node?.id || null,
     verified,
@@ -127,7 +134,8 @@ export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null, { i
     results,
     completed: results.filter((entry) => entry.completed),
     missed: results.filter((entry) => !entry.completed),
-    earned: results.reduce((sum, entry) => sum + entry.earned, 0),
+    earned,
+    capped: Math.max(0, rawEarned - earned),
     classifiedRevealed: Boolean(classified),
   };
 }

@@ -6,6 +6,7 @@ import { campaignBossForSeed } from './combatBosses.js';
 import { campaignPhaseTransition, assertCampaignInvariant } from './campaignStateMachine.js';
 import { reportStateInvariant } from './stateMachine.js';
 import { evaluateCampaignMissionOrders } from './combatMissionOrders.js';
+import { BATTLE_CREDIT_REWARD, CAMPAIGN_INTEL_BASE_COSTS, CAMPAIGN_STARTING_CREDITS } from './combatEconomyBalance.js';
 
 
 function nextCampaignPhase(state, event) {
@@ -40,8 +41,6 @@ const CAMPAIGN_INTEL_TIERS = Object.freeze([
   { level: 3, label: 'Dossier', cost: 7 },
 ]);
 
-const CAMPAIGN_STARTING_CREDITS = 6;
-const BATTLE_CREDIT_REWARD = Object.freeze({ battle: 4, elite: 7, boss: 12 });
 
 const CAMPAIGN_RELICS = Object.freeze([
   { id: 'fieldCipher', icon: '⌁', label: 'Cifrador de campaña', description: 'La inteligencia cuesta 2 créditos menos (mínimo 1).' },

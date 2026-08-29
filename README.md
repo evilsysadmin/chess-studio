@@ -1,3 +1,8 @@
+### v16.6dm46zfrk · Gate de economía Combat Chess
+
+- Las órdenes opcionales comparten un tope de +9 suministros por sector para evitar que una batalla perfecta financie por sí sola un Dossier completo de Intel.
+- Un simulador/gate reproducible comprueba costes de Intel, recompensas base y escenarios de campaña para detectar inflación de suministros.
+
 ### v16.6dm46zfrj · Intel clasificada, convalecencia y temporadas personales
 
 - Combat Chess añade operaciones clasificadas: Intel de nivel Evaluación o superior revela un tercer objetivo opcional, determinista y más exigente, siempre basado en métricas reales del combate.
