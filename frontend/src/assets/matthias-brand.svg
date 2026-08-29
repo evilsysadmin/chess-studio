@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Marca de Matthias</title>
+  <circle cx="64" cy="64" r="60" fill="#11151c" stroke="#c9a53b" stroke-width="4"/>
+  <path d="M46 45 60 51M82 45 68 51" fill="none" stroke="#d7b64a" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="55" cy="57" r="4" fill="#d7b64a"/>
+  <circle cx="73" cy="57" r="4" fill="#d7b64a"/>
+  <path d="M52 71 Q64 78 76 71" fill="none" stroke="#d7b64a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M48 82h32c0 9-5 15-10 19h18v10H40v-10h18c-5-4-10-10-10-19Z" fill="#d7b64a"/>
+  <circle cx="64" cy="82" r="17" fill="none" stroke="#d7b64a" stroke-width="6"/>
+</svg>
