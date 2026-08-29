@@ -4,29 +4,28 @@ import lunchBocata from './assets/matthias-scenes/lunch-bocata.webp';
 import afternoonOps from './assets/matthias-scenes/afternoon-ops.webp';
 import nightCoffee from './assets/matthias-scenes/night-coffee.webp';
 import lateSleep from './assets/matthias-scenes/late-sleep.webp';
-import breakfastNews from './assets/matthias-scenes/breakfast-news.webp';
-import chessInception from './assets/matthias-scenes/chess-inception.webp';
 import dossier from './assets/matthias-scenes/dossier.webp';
-import beerBreak from './assets/matthias-scenes/beer-break.webp';
 import strategyBook from './assets/matthias-scenes/strategy-book.webp';
-import chessWeekly from './assets/matthias-scenes/chess-weekly.webp';
 import moodAnnoyed from './assets/matthias-scenes/mood-annoyed.webp';
 import moodImpressed from './assets/matthias-scenes/mood-impressed.webp';
 import moodSkeptical from './assets/matthias-scenes/mood-skeptical.webp';
 import { matthiasTimeScene } from './matthiasTime.js';
 
+// Las claves horarias son estables aunque una ilustración concreta cambie.
+// Hasta reintroducir los cuatro artes dañados con un canal binario verificado,
+// reutilizamos escenas válidas para que Matthias nunca desaparezca de Home.
 const TIME_ASSETS = Object.freeze({
   'morning-coffee': morningCoffee,
   'lunch-bocata': lunchBocata,
   'afternoon-ops': afternoonOps,
   'night-coffee': nightCoffee,
   'late-sleep': lateSleep,
-  'breakfast-news': breakfastNews,
-  'chess-inception': chessInception,
+  'breakfast-news': morningCoffee,
+  'chess-inception': afternoonOps,
   dossier,
-  'beer-break': beerBreak,
+  'beer-break': nightCoffee,
   'strategy-book': strategyBook,
-  'chess-weekly': chessWeekly,
+  'chess-weekly': strategyBook,
 });
 
 const MOOD_ASSETS = Object.freeze({

@@ -1,5 +1,5 @@
 import { MATTHIAS_BASE_AVATAR } from './matthiasVisuals.js';
-import matthiasBrandMark from './assets/matthias-brand.png';
+import matthiasBrandMark from './assets/matthias-brand.svg';
 
 export const CPU_IDENTITY = Object.freeze({
   name: 'Matthias',
