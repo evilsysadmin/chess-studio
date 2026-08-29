@@ -263,7 +263,10 @@ def test_matthias_mood_reacts_to_real_performance_with_inertia():
         assert (await store.user_summary("mood"))["mood"] == "observant"
 
         await store.observe_facts("mood", {"total_games": 12, "record": {"wins": 6, "losses": 4, "draws": 2}, "puzzles_solved": 2})
-        assert (await store.user_summary("mood"))["mood"] == "pleased"
+        second = await store.user_summary("mood")
+        assert second["mood"] == "pleased"
+        assert store._memory["mood"]["latest_observed_snapshot"]["total_games"] == 12
+        assert "facts_snapshot" not in store._memory["mood"]  # consultations own that separate baseline
 
         await store.observe_facts("mood", {"total_games": 15, "record": {"wins": 6, "losses": 7, "draws": 2}, "puzzles_solved": 2})
         summary = await store.user_summary("mood")
