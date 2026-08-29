@@ -22,8 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           cat .github/zfri-bootstrap/part*.patch > /tmp/zfri.patch
-          git apply --check /tmp/zfri.patch
-          git apply /tmp/zfri.patch
+          git apply --3way --whitespace=nowarn /tmp/zfri.patch
           rm -rf .github/zfri-bootstrap .github/workflows/zfri-bootstrap.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
