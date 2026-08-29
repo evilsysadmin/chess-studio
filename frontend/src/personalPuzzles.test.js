@@ -113,7 +113,8 @@ describe('personal puzzles', () => {
       suggested: 'Ra8#',
       title: 'Centro o funeral',
       source: 'workers-ai-validated',
-      aiQualityVersion: 4,
+      aiQualityVersion: 5,
+      aiValidatedLevel: 92,
       tacticalBestMoveChecked: true,
       tacticalRefutationChecked: true,
     };
@@ -150,12 +151,22 @@ describe('calidad versionada de puzzles personales IA', () => {
       {
         id: 'legacy-ai', kind: 'personal', source: 'workers-ai-validated',
         fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
-        aiQualityVersion: 3, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        aiQualityVersion: 4, aiValidatedLevel: 92, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+      },
+      {
+        id: 'current-low-engine', kind: 'personal', source: 'workers-ai-validated',
+        fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
+        aiQualityVersion: 5, aiValidatedLevel: 80, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+      },
+      {
+        id: 'current-no-engine', kind: 'personal', source: 'workers-ai-validated',
+        fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
+        aiQualityVersion: 5, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
       },
       {
         id: 'current-ai', kind: 'personal', source: 'workers-ai-validated',
         fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
-        aiQualityVersion: 4, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        aiQualityVersion: 5, aiValidatedLevel: 92, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
       },
     ]));
     expect(loadPersonalPuzzles().map((item) => item.id)).toEqual(['current-ai']);
