@@ -4,11 +4,11 @@ import { getToken } from './auth.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 import { loadPersonalPuzzles, saveGeneratedPersonalPuzzles } from './personalPuzzles.js';
 import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
-import { PERSONAL_PUZZLE_QUALITY_VERSION } from './personalPuzzleQuality.js';
+import { PERSONAL_PUZZLE_MIN_ENGINE_LEVEL, PERSONAL_PUZZLE_QUALITY_VERSION } from './personalPuzzleQuality.js';
 
 const MAX_SEEDS = 2;
 const MAX_CANDIDATES = 4;
-const ENGINE_LEVEL = 92;
+const ENGINE_LEVEL = PERSONAL_PUZZLE_MIN_ENGINE_LEVEL;
 
 function cleanText(value, max = 100) {
   const text = String(value ?? '').replace(/[\r\n\t]+/g, ' ').trim();
