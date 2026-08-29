@@ -1,0 +1,99 @@
+ node);
++    const second = campaignMissionOrders('operacion-rivas', node);
++    expect(first).toEqual(second);
++    expect(first).toHaveLength(2);
++    expect(new Set(first.map((order) => order.id)).size).toBe(2);
++    expect(first.every((order) => order.reward >= 2 && order.reward <= 4)).toBe(true);
++  });
++
++  it('sólo evalúa métricas reales de la batalla y suma únicamente órdenes cumplidas', () => {
++    const orders = campaignMissionOrders('operacion-rivas', node);
++    const perfect = evaluateCampaignMissionOrders('operacion-rivas', node, {
++      casualties: 0,
++      captures: 8,
++      tacticalCredits: 8,
++      underdogCredits: 8,
++    });
++    expect(perfect.completed.map((order) => order.id)).toEqual(orders.map((order) => order.id));
++    expect(perfect.earned).toBe(orders.reduce((sum, order) => sum + order.reward, 0));
++
++    const poor = evaluateCampaignMissionOrders('operacion-rivas', node, {
++      casualties: 9,
++      captures: 0,
++      tacticalCredits: 0,
++      underdogCredits: 0,
++    });
++    expect(poor.earned).toBe(0);
++  });
++
++  it('si faltan métricas verificables no concede éxitos por defecto', () => {
++    const result = evaluateCampaignMissionOrders('operacion-rivas', node);
++    expect(result.verified).toBe(false);
++    expect(result.earned).toBe(0);
++    expect(result.completed).toEqual([]);
++  });
++
++  it('no inventa órdenes en nodos seguros o de evento', () => {
++    expect(campaignMissionOrders('x', { id: 'camp', type: 'camp' })).toEqual([]);
++    expect(campaignMissionOrders('x', { id: 'event', type: 'event' })).toEqual([]);
++  });
++});
+diff --git a/frontend/src/components/CampaignBriefing.jsx b/frontend/src/components/CampaignBriefing.jsx
+index 7b9e7dda6deecb9a899dc7906b4932e20b62add6..0c1aef115e53d4c2dafba2b1f9a1012bf40fde7c 100644
+--- a/frontend/src/components/CampaignBriefing.jsx
++++ b/frontend/src/components/CampaignBriefing.jsx
+@@ -3,6 +3,7 @@ import {
+   campaignIntelBriefing,
+   nextCampaignIntelTier,
+ } from '../combatCampaign.js';
++import { campaignMissionOrders } from '../combatMissionOrders.js';
+ import MechanicTutorialModal from './MechanicTutorialModal.jsx';
+ import CampaignOperationSteps from './CampaignOperationSteps.jsx';
+ import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
+@@ -19,6 +20,7 @@ const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
+ export default function CampaignBriefing({ campaign, node, armySummary, onBuyIntel, onContinue, onRetire }) {
+   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
+   const nextTier = useMemo(() => nextCampaignIntelTier(campaign, node?.id), [campaign, node]);
++  const missionOrders = useMemo(() => campaignMissionOrders(campaign?.seed, node), [campaign?.seed, node]);
+   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
+   const [aiBriefing, setAiBriefing] = useState(null);
+   const [aiBriefingLoading, setAiBriefingLoading] = useState(false);
+@@ -88,6 +90,23 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
+         </div>
+       )}
+ 
++      {missionOrders.length > 0 && (
++        <section className="campaign-mission-orders" aria-label="Órdenes opcionales de misión">
++          <div className="campaign-mission-orders-heading">
++            <span>ÓRDENES OPCIONALES</span>
++            <small>No bloquean la victoria. Cumplirlas da suministros extra.</small>
++          </div>
++          <div className="campaign-mission-order-grid">
++            {missionOrders.map((order) => (
++              <article key={order.id} className="campaign-mission-order">
++                <div><strong>{order.label}</strong><span>{order.description}</span></div>
++                <b>+{order.reward}</b>
++              </article>
++            ))}
++          </div>
++        </section>
++      )}
++
+       <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
+         <div>
+           <span>SIGUIENTE</span>
+diff --git a/frontend/src/components/RoguelikeScreen.jsx b/frontend/src/components/RoguelikeScreen.jsx
+index b5dc82787b068795359e7a443bb39e1464f558d8..4453449064701f72c115ab0c27998c209e4c3f72 100644
+--- a/frontend/src/components/RoguelikeScreen.jsx
++++ b/frontend/src/components/RoguelikeScreen.jsx
+@@ -329,7 +329,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
+     setServiceRecord(loadCombatService());
+     setRoster(loadRoster());
+     if (outcome === 'win') {
+-      setCampaign((current) => markCampaignBattleWon(current));
++      setCampaign((current) => markCampaignBattleWon(current, meta.battleRecord));
+       setTowerCompleted(loadTowerCompleted());
+       setBestFloor(loadBestFloor());
+       setCampaignBestStage(loadCampaignBestStage());
+@@ -707,6 +707,12 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
+               <span clas

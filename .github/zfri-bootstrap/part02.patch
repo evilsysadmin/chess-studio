@@ -1,0 +1,126 @@
+t missionReward = orders.reduce((sum, order) => sum + order.reward, 0);
++    run = markCampaignBattleWon(run, {
++      combatMetrics: { casualties: 0, captures: 12, tacticalCredits: 12, underdogCredits: 12 },
++    });
++    expect(run.operationalCredits).toBe(before + baseReward + missionReward);
++    expect(run.lastMissionResult).toMatchObject({ nodeId: node.id, earned: missionReward });
++    expect(run.lastMissionResult.results.every((order) => order.completed)).toBe(true);
++  });
++
+   it('una retirada táctica conserva la campaña y devuelve el mismo sector al briefing', () => {
+     let run = startCampaign('retirada-tactica');
+     const first = availableCampaignNodes(run)[0];
+@@ -287,7 +308,7 @@ describe('Combat Chess campaign map', () => {
+     delete v2.relicIds;
+     localStorage.setItem('chess-study-combat-campaign-v1', JSON.stringify(v2));
+     const migrated = loadCampaign();
+-    expect(migrated.version).toBe(3);
++    expect(migrated.version).toBe(4);
+     expect(migrated.relicIds).toEqual([]);
+   });
+ 
+diff --git a/frontend/src/combatMissionOrders.js b/frontend/src/combatMissionOrders.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..a132beee0be9da8ec35d0b87833ebfa0a0d5ec4b
+--- /dev/null
++++ b/frontend/src/combatMissionOrders.js
+@@ -0,0 +1,85 @@
++const ORDER_DEFINITIONS = Object.freeze([
++  {
++    id: 'preserve-core',
++    label: 'Conservar el núcleo',
++    description: 'Gana sufriendo como máximo 2 bajas propias.',
++    reward: 3,
++    test: (metrics) => metrics.casualties <= 2,
++  },
++  {
++    id: 'take-ground',
++    label: 'Tomar terreno',
++    description: 'Confirma al menos 3 capturas enemigas.',
++    reward: 2,
++    test: (metrics) => metrics.captures >= 3,
++  },
++  {
++    id: 'tactical-edge',
++    label: 'Ventaja táctica',
++    description: 'Genera al menos 2 puntos de mérito táctico.',
++    reward: 3,
++    test: (metrics) => metrics.tacticalCredits >= 2,
++  },
++  {
++    id: 'punch-up',
++    label: 'Golpear por encima del peso',
++    description: 'Consigue al menos 2 puntos por acciones contra material superior.',
++    reward: 4,
++    test: (metrics) => metrics.underdogCredits >= 2,
++  },
++]);
++
++function safeInt(value) {
++  const number = Number(value);
++  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
++}
++
++function hash(value) {
++  let result = 2166136261;
++  for (const char of String(value)) {
++    result ^= char.charCodeAt(0);
++    result = Math.imul(result, 16777619);
++  }
++  return result >>> 0;
++}
++
++function normalizeMetrics(raw = {}) {
++  return {
++    casualties: safeInt(raw.casualties),
++    captures: safeInt(raw.captures),
++    tacticalCredits: safeInt(raw.tacticalCredits),
++    underdogCredits: safeInt(raw.underdogCredits),
++  };
++}
++
++export function campaignMissionOrders(seed, node) {
++  if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return [];
++  const pool = [...ORDER_DEFINITIONS];
++  const firstIndex = hash(`${seed}:${node.id}:orders:first`) % pool.length;
++  const first = pool.splice(firstIndex, 1)[0];
++  const secondIndex = hash(`${seed}:${node.id}:orders:second`) % pool.length;
++  const second = pool[secondIndex];
++  return [first, second].map(({ test, ...order }) => ({ ...order }));
++}
++
++export function evaluateCampaignMissionOrders(seed, node, rawMetrics = null) {
++  const requiredMetrics = ['casualties', 'captures', 'tacticalCredits', 'underdogCredits'];
++  const verified = Boolean(rawMetrics && typeof rawMetrics === 'object' && requiredMetrics.every((key) => Number.isFinite(Number(rawMetrics[key]))));
++  const metrics = normalizeMetrics(rawMetrics || {});
++  const active = campaignMissionOrders(seed, node);
++  const definitions = new Map(ORDER_DEFINITIONS.map((order) => [order.id, order]));
++  const results = active.map((order) => {
++    const definition = definitions.get(order.id);
++    const completed = verified && Boolean(definition?.test(metrics));
++    return { ...order, completed, earned: completed ? order.reward : 0 };
++  });
++  return {
++    nodeId: node?.id || null,
++    verified,
++    metrics,
++    results,
++    completed: results.filter((entry) => entry.completed),
++    missed: results.filter((entry) => !entry.completed),
++    earned: results.reduce((sum, entry) => sum + entry.earned, 0),
++  };
++}
+diff --git a/frontend/src/combatMissionOrders.test.js b/frontend/src/combatMissionOrders.test.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c46c4a59487857f58c53f466a115a209614d55d
+--- /dev/null
++++ b/frontend/src/combatMissionOrders.test.js
+@@ -0,0 +1,47 @@
++import { describe, expect, it } from 'vitest';
++import { campaignMissionOrders, evaluateCampaignMissionOrders } from './combatMissionOrders.js';
++
++describe('órdenes opcionales de Combat Chess', () => {
++  const node = { id: 's3-l1-elite', type: 'elite', stage: 3 };
++
++  it('genera dos órdenes deterministas, distintas y con recompensa acotada', () => {
++    const first = campaignMissionOrders('operacion-rivas',

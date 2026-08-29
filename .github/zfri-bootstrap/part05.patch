@@ -1,0 +1,39 @@
+s-heading > small { text-align: left; }
++  .campaign-mission-order-grid { grid-template-columns: 1fr; }
++}
+diff --git a/frontend/src/userReleaseNotes.js b/frontend/src/userReleaseNotes.js
+index 4377f15eed3e7f9cff2986c95e53b3fa8bc4ae4d..6b7964bb4a04ffda516b597236c168f615007ee5 100644
+--- a/frontend/src/userReleaseNotes.js
++++ b/frontend/src/userReleaseNotes.js
+@@ -5,6 +5,16 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
+ // Changelog de producto: sólo cambios que el jugador ve, entiende o puede usar.
+ // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
+ export const USER_RELEASE_NOTES = Object.freeze([
++  {
++    release: 'v16.6dm46zfri',
++    title: 'Combat recibe órdenes de misión',
++    highlights: [
++      'Cada sector de combate ofrece dos órdenes opcionales y deterministas que pueden cambiar cómo planteas la batalla sin bloquear nunca la victoria.',
++      'Las órdenes se evalúan sólo con hechos ya medidos por Combat: bajas propias, capturas, mérito táctico y acciones contra material superior; nada se inventa desde narrativa.',
++      'Cumplirlas entrega suministros temporales de campaña, no créditos persistentes, para que aporten decisiones sin convertir la economía en una granja.',
++      'El briefing muestra las órdenes de forma compacta y el cierre del sector indica cuáles se cumplieron y cuánto aportaron.',
++    ],
++  },
+   {
+     release: 'v16.6dm46zfrh',
+     title: 'Matthias deja de pasarse tres horas con el bocata',
+diff --git a/scripts/css_architecture_manifest.json b/scripts/css_architecture_manifest.json
+index ea0fe4f103ef811e24db5e324782fda874ada44e..367318ee35b1c173c52f0e6e8998d083a5b44b9d 100644
+--- a/scripts/css_architecture_manifest.json
++++ b/scripts/css_architecture_manifest.json
+@@ -28,7 +28,7 @@
+     "27-night-club-tactical.css",
+     "28-product-resilience.css"
+   ],
+-  "combinedSha256": "3272d5f7c8e8e508a30b86b43531d630146a5cf3b3143dde8d8ef5432735b69c",
+-  "combinedBytes": 529318,
+-  "combinedLines": 14662
++  "combinedSha256": "7ff8bb9b7dd94d7a9353e8b144b97c9ae1bfbde537e4a3dae66dc433d3371431",
++  "combinedBytes": 531319,
++  "combinedLines": 14733
+ }

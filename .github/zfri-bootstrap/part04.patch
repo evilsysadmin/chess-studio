@@ -1,0 +1,114 @@
+sName="section-label">{selected.type === 'elite' ? 'BOTÍN ÉLITE' : 'SECTOR ASEGURADO'}</span>
+               <h3>{selected.label}</h3>
+               <p className="combat-operational-hint" title={selected.type === 'elite' ? 'La ventaja elegida entra con dos cargas y recibes un refuerzo permanente.' : 'La ventaja dura hasta terminar la campaña.'}>Elige recompensa.</p>
++              {campaign.lastMissionResult?.nodeId === selected.id && (
++                <div className={`campaign-mission-result ${campaign.lastMissionResult.earned > 0 ? 'success' : 'missed'}`}>
++                  <strong>{campaign.lastMissionResult.earned > 0 ? `Órdenes: +${campaign.lastMissionResult.earned} suministros` : 'Órdenes: sin bonificación'}</strong>
++                  <span>{(campaign.lastMissionResult.results || []).map((order) => `${order.completed ? '✓' : '×'} ${order.label}`).join(' · ')}</span>
++                </div>
++              )}
+               <div className="roguelike-reward-grid">
+                 {rewardOptions.map((perk) => (
+                   <button type="button" key={perk.id} className="roguelike-reward-card" onClick={() => handleCampaignReward(perk.id)}>
+diff --git a/frontend/src/components/useCombatController.js b/frontend/src/components/useCombatController.js
+index 19bab14395222c46d41c3a358d3a28f66ab5f38f..980e531953d207c4dadb41f1583b0dbe0a272d29 100644
+--- a/frontend/src/components/useCombatController.js
++++ b/frontend/src/components/useCombatController.js
+@@ -567,6 +567,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle,
+       roguelikeFloor: combatVariant === 'roguelike' ? roguelikeFloor : null,
+       roguelikeMode: combatVariant === 'roguelike' ? (roguelikeMode || 'tower') : null,
+       boss: bossConfig ? { id: bossConfig.id, maxHp: bossConfig.maxHp, remainingHp: bossHpRef.current } : null,
++      combatMetrics: {
++        captures: totalCaptures,
++        casualties,
++        deployedUnitCount,
++        underdogCredits: Math.max(0, Number(unitStats.underdogCredits) || 0),
++        tacticalCredits: Math.max(0, Number(unitStats.tacticalCredits) || 0),
++      },
+     };
+ 
+     // La hoja de servicio se actualiza ANTES de guardar la batalla en el historial.
+diff --git a/frontend/src/release.js b/frontend/src/release.js
+index 6766298aa1f44cc0c76e8325dd9fbf0c9eedddc9..fa4b13e7b6e2f820c5d318f58387770bc285f823 100644
+--- a/frontend/src/release.js
++++ b/frontend/src/release.js
+@@ -1 +1 @@
+-export const APP_RELEASE = 'v16.6dm46zfrh';
++export const APP_RELEASE = 'v16.6dm46zfri';
+diff --git a/frontend/src/styles/06-combat-campaign.css b/frontend/src/styles/06-combat-campaign.css
+index fda2b3ba4df23a9242da988188b1971cf65feaad..36dc3b09c82a4201df8299a6f163dce4b4f38bea 100644
+--- a/frontend/src/styles/06-combat-campaign.css
++++ b/frontend/src/styles/06-combat-campaign.css
+@@ -1267,3 +1267,74 @@
+   .combat-battle-screen .board-theme-combat-desert,
+   .combat-battle-screen .board-theme-combat-citadel { box-shadow:0 13px 30px rgba(0,0,0,.38); }
+ }
++
++/* Órdenes opcionales: visibles porque cambian la forma de jugar, compactas para no secuestrar el briefing. */
++.campaign-mission-orders {
++  display: grid;
++  gap: .55rem;
++  margin: .7rem 0;
++  padding: .75rem;
++  border: 1px solid rgba(255,255,255,.1);
++  border-radius: .75rem;
++  background: rgba(0,0,0,.14);
++}
++.campaign-mission-orders-heading {
++  display: flex;
++  align-items: baseline;
++  justify-content: space-between;
++  gap: .75rem;
++}
++.campaign-mission-orders-heading > span {
++  font-size: .72rem;
++  font-weight: 800;
++  letter-spacing: .08em;
++}
++.campaign-mission-orders-heading > small {
++  opacity: .72;
++  text-align: right;
++}
++.campaign-mission-order-grid {
++  display: grid;
++  grid-template-columns: repeat(2, minmax(0, 1fr));
++  gap: .5rem;
++}
++.campaign-mission-order {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: .75rem;
++  min-width: 0;
++  padding: .65rem .7rem;
++  border: 1px solid rgba(255,255,255,.08);
++  border-radius: .65rem;
++  background: rgba(255,255,255,.035);
++}
++.campaign-mission-order div {
++  display: grid;
++  gap: .16rem;
++  min-width: 0;
++}
++.campaign-mission-order strong { font-size: .86rem; }
++.campaign-mission-order span { font-size: .76rem; opacity: .76; }
++.campaign-mission-order > b {
++  flex: 0 0 auto;
++  font-size: .82rem;
++}
++.campaign-mission-result {
++  display: grid;
++  gap: .2rem;
++  margin: .6rem 0 .8rem;
++  padding: .65rem .75rem;
++  border-radius: .65rem;
++  border: 1px solid rgba(255,255,255,.1);
++  background: rgba(255,255,255,.035);
++}
++.campaign-mission-result strong { font-size: .86rem; }
++.campaign-mission-result span { font-size: .78rem; opacity: .78; }
++.campaign-mission-result.success { border-color: rgba(155,205,125,.34); }
++.campaign-mission-result.missed { opacity: .84; }
++@media (max-width: 620px) {
++  .campaign-mission-orders-heading { align-items: flex-start; flex-direction: column; gap: .2rem; }
++  .campaign-mission-order
