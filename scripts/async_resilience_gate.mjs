@@ -66,7 +66,7 @@ requirePattern('frontend/src/components/FeedbackModal.jsx', /submitAbortRef\.cur
 requirePattern('frontend/src/components/AdminObservabilitySummary.jsx', /tempoProbeInFlightRef\.current/, 'el probe de trazas debe impedir doble ejecución concurrente');
 requirePattern('frontend/src/components/AdminObservabilitySummary.jsx', /signalProbeInFlightRef\.current/, 'el probe de señales debe impedir doble ejecución concurrente');
 requirePattern('frontend/src/components/ObservabilityPanel.jsx', /metricsRequestRef\.current\.controller\?\.abort/, 'Observabilidad debe cancelar refresh antiguos');
-requirePattern('frontend/src/components/AdminScreen.jsx', /adminDataEpochRef/, 'Admin debe impedir que un poll antiguo pise una mutación nueva');
+requirePattern('frontend/src/components/AdminDashboardContent.jsx', /adminDataEpochRef/, 'Admin debe impedir que un poll antiguo pise una mutación nueva');
 requirePattern('frontend/src/components/PuzzleScreen.jsx', /aiGenerationInFlightRef\.current/, 'la generación de puzzles AI debe tener exclusión mutua inmediata');
 requirePattern('frontend/src/components/LoginScreen.jsx', /submitInFlightRef\.current/, 'auth debe impedir doble submit en el mismo frame');
 requirePattern('frontend/src/components/LoginScreen.jsx', /submitAbortRef\.current\?\.abort/, 'auth debe cancelar requests al cambiar/cerrar pantalla');
