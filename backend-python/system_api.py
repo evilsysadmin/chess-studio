@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 
 import db
+import feedback_store as fstore
 import users_store as ustore
 from feature_flags import public_feature_flags
 from observability_history import record_presence_snapshot
@@ -56,6 +57,16 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
     @limiter.limit("120/minute")
     async def client_telemetry(request: Request, body: ClientTelemetryRequest, username: str = Depends(auth_dependency)):
         record_client_event(body.model_dump(), username=username)
+        return Response(status_code=204)
+
+    @router.delete("/api/feedback/{feedback_id}", status_code=204)
+    async def delete_own_feedback(feedback_id: str, username: str = Depends(auth_dependency)):
+        # id + owner se resuelven en una única operación de storage. Un id de
+        # otra cuenta se comporta igual que uno inexistente para no filtrar
+        # información sobre feedback ajeno.
+        deleted = await fstore.delete_feedback_for_user(feedback_id, username)
+        if not deleted:
+            raise HTTPException(404, "Feedback no encontrado.")
         return Response(status_code=204)
 
     @router.get("/api/status")

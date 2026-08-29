@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchMyFeedback, submitFeedback } from '../feedback.js';
+import { deleteMyFeedback, fetchMyFeedback, submitFeedback } from '../feedback.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { userFacingError } from '../userFacingError.js';
 import { MAX_FEEDBACK_IMAGES, prepareFeedbackAttachments, validateFeedbackFiles } from '../feedbackAttachments.js';
@@ -29,6 +29,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
   const [images, setImages] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [history, setHistory] = useState([]);
+  const [deletingId, setDeletingId] = useState(null);
   const mountedRef = useRef(true);
   const submitInFlightRef = useRef(false);
   const submitAbortRef = useRef(null);
@@ -105,6 +106,21 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
     if (selected.length) acceptImages(selected);
   }
 
+  async function handleDeleteFeedback(feedbackId) {
+    if (!feedbackId || deletingId) return;
+    if (typeof window !== 'undefined' && !window.confirm('¿Eliminar este feedback? Esta acción no se puede deshacer.')) return;
+    setDeletingId(feedbackId);
+    setError(null);
+    try {
+      await deleteMyFeedback(feedbackId);
+      if (mountedRef.current) setHistory((current) => current.filter((item) => item.id !== feedbackId));
+    } catch (err) {
+      if (mountedRef.current) setError(userFacingError(err, 'No se pudo eliminar el feedback.'));
+    } finally {
+      if (mountedRef.current) setDeletingId(null);
+    }
+  }
+
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="army-card feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -177,14 +193,24 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
               )}
             </div>
             {error && <p className="error-text" role="alert">{error}</p>}
-            {history.some((item) => item.admin_reply) && (
+            {history.length > 0 && (
               <details className="feedback-thread-history">
-                <summary>Respuestas de los admins</summary>
+                <summary>Tus envíos ({history.length})</summary>
                 <div className="feedback-thread-list">
-                  {history.filter((item) => item.admin_reply).slice(0, 5).map((item) => (
+                  {history.slice(0, 5).map((item) => (
                     <article key={item.id} className="feedback-thread-item">
-                      <small>{item.status === 'resolved' ? 'Resuelto' : 'Respondido'} · {item.context || 'Feedback'}</small>
-                      <p>{item.admin_reply}</p>
+                      <small>{item.status === 'resolved' ? 'Resuelto' : item.status === 'read' ? 'Leído' : 'Enviado'} · {item.context || 'Feedback'} · {item.category || 'general'}</small>
+                      <p>{item.message}</p>
+                      {item.admin_reply && <p><b>Respuesta del admin:</b> {item.admin_reply}</p>}
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        disabled={deletingId === item.id}
+                        onClick={() => handleDeleteFeedback(item.id)}
+                        aria-label="Eliminar este feedback"
+                      >
+                        {deletingId === item.id ? 'Eliminando…' : 'Eliminar'}
+                      </button>
                     </article>
                   ))}
                 </div>
