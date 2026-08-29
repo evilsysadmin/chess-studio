@@ -26,7 +26,6 @@ jobs:
 
           old = 'v16.6dm46zfrm'
           new = 'v16.6dm46zfrn'
-
           Path('RELEASE.txt').write_text(new + '\n', encoding='utf-8')
 
           release_js = Path('frontend/src/release.js')
@@ -49,16 +48,18 @@ jobs:
           anchor = 'export const USER_RELEASE_NOTES = Object.freeze([\n'
           if anchor not in text:
               raise SystemExit('release notes anchor not found')
-          entry = """  {
-    release: 'v16.6dm46zfrn',
-    title: 'Tu Némesis aprende cuándo dejarte en paz',
-    highlights: [
-      'Una apertura deja de figurar como Némesis cuando al menos cuatro resultados recientes demuestran una recuperación clara; una mala racha antigua ya no te persigue eternamente.',
-      'Si el rendimiento reciente mejora con fuerza pero aún no basta para dar el problema por resuelto, el sistema lo rebaja en prioridad en vez de ignorar la tendencia.',
-      'Cuando una Némesis queda superada, la siguiente debilidad real asciende automáticamente y el entrenamiento sigue usando posiciones auténticas del historial.',
-    ],
-  },
-"""
+          entry = '\n'.join([
+              '  {',
+              "    release: 'v16.6dm46zfrn',",
+              "    title: 'Tu Némesis aprende cuándo dejarte en paz',",
+              '    highlights: [',
+              "      'Una apertura deja de figurar como Némesis cuando al menos cuatro resultados recientes demuestran una recuperación clara; una mala racha antigua ya no te persigue eternamente.',",
+              "      'Si el rendimiento reciente mejora con fuerza pero aún no basta para dar el problema por resuelto, el sistema lo rebaja en prioridad en vez de ignorar la tendencia.',",
+              "      'Cuando una Némesis queda superada, la siguiente debilidad real asciende automáticamente y el entrenamiento sigue usando posiciones auténticas del historial.',",
+              '    ],',
+              '  },',
+              '',
+          ])
           notes.write_text(text.replace(anchor, anchor + entry, 1), encoding='utf-8')
           PY
           git rm .github/workflows/zfrn-finalize.yml
