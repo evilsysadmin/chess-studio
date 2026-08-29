@@ -70,13 +70,11 @@ jobs:
           if old not in text:
             raise SystemExit('resolve option guard not found')
           text = text.replace(old, new, 1)
-
           old = "  const rewardBits = [option.label];"
           new = "  const rewardBits = [option.label];\n  if (creditCost) rewardBits.push(`−${creditCost} suministros`);"
           if old not in text:
             raise SystemExit('rewardBits marker not found')
           text = text.replace(old, new, 1)
-
           old = "    operationalCredits: (Number(state.operationalCredits) || 0) + credits,"
           new = "    operationalCredits: Math.max(0, (Number(state.operationalCredits) || 0) - creditCost + credits),"
           if old not in text:
@@ -86,14 +84,10 @@ jobs:
 
           screen = Path('frontend/src/components/RoguelikeScreen.jsx')
           text = screen.read_text(encoding='utf-8')
-          old = '''                  <button type="button" key={option.id} className="roguelike-reward-card" onClick={() => handleCampaignEvent(option.id)}>
-                    <strong>{option.label}</strong><span>{option.description}</span>
-                  </button>'''
-          new = '''                  <button type="button" key={option.id} className="roguelike-reward-card" disabled={option.disabled} aria-disabled={option.disabled} onClick={() => handleCampaignEvent(option.id)}>
-                    <strong>{option.label}</strong><span>{option.description}</span>
-                  </button>'''
+          old = '<button type="button" key={option.id} className="roguelike-reward-card" onClick={() => handleCampaignEvent(option.id)}>'
+          new = '<button type="button" key={option.id} className="roguelike-reward-card" disabled={option.disabled} aria-disabled={option.disabled} onClick={() => handleCampaignEvent(option.id)}>'
           if old not in text:
-            raise SystemExit('campaign event button block not found')
+            raise SystemExit('campaign event button opener not found')
           screen.write_text(text.replace(old, new, 1), encoding='utf-8')
 
           tests = Path('frontend/src/combatCampaign.test.js')
