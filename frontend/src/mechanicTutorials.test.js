@@ -45,3 +45,16 @@ describe('tutorial de despliegue con defaults', () => {
     expect(copy).toContain('opcional');
   });
 });
+
+describe('tutorial de Supervivencia', () => {
+  it('explica el escalado y que cualquier resultado que no sea victoria termina la run', () => {
+    const tutorial = mechanicTutorialById('survival');
+    const copy = [tutorial.summary, ...tutorial.steps.map((step) => `${step.title} ${step.text}`)].join(' ');
+    expect(tutorial.title).toBe('Supervivencia');
+    expect(copy).toContain('CPU 30');
+    expect(copy).toContain('7 puntos');
+    expect(copy).toContain('derrota');
+    expect(copy).toContain('tablas');
+    expect(copy).toContain('récord');
+  });
+});
