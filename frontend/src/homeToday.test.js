@@ -14,7 +14,7 @@ describe('Home · Hoy', () => {
         { state: 'finished', outcome: 'win', modeLabel: 'Torneo', date: '2026-08-22T20:00:00Z' },
       ],
     });
-    expect(summary).toMatchObject({ dailySolved: true, dailySolvedCount: 1, dailyFull: false, streak: 4, bestStreak: 9, dailyHeadline: 'Desafíos de hoy · 1/3' });
+    expect(summary).toMatchObject({ dailySolved: true, dailySolvedCount: 1, dailyFull: false, streak: 4, bestStreak: 9, dailyHeadline: 'Hoy · 1/3' });
     expect(summary.lastResult).toMatchObject({ label: 'Victoria', modeLabel: 'Torneo' });
   });
 
@@ -26,7 +26,7 @@ describe('Home · Hoy', () => {
       dailyFull: false,
       streak: 0,
       bestStreak: 0,
-      dailyHeadline: 'Desafíos de hoy · 0/3',
+      dailyHeadline: 'Hoy · 0/3',
       dailyDetail: 'Tres posiciones. Completa al menos una para mantener la racha.',
       lastResult: null,
     });

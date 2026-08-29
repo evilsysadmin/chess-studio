@@ -12,20 +12,20 @@ export function buildMatthiasDeskArtifacts(memory = null) {
   const respect = memory.respect || {};
 
   if (challenge?.label) {
-    artifacts.push({ id: 'challenge', glyph: '⌖', label: 'Orden vigente', title: challenge.label });
+    artifacts.push({ id: 'challenge', glyph: '⌖', label: 'Orden', title: challenge.label });
   }
   if (fame.length) {
     const latest = fame.at(-1);
-    artifacts.push({ id: 'fame', glyph: '✦', label: 'Condecoración', title: latest?.label || 'Hito ganado' });
+    artifacts.push({ id: 'fame', glyph: '✦', label: 'Medalla', title: latest?.label || 'Hito ganado' });
   }
   if (shame.length) {
     const latest = shame.at(-1);
     artifacts.push({ id: 'shame', glyph: '▣', label: 'Expediente', title: latest?.label || 'Incidente archivado' });
   }
   if (respect.tier === 'formidable') {
-    artifacts.push({ id: 'respect', glyph: '♜', label: 'Rival respetado', title: respect.label || 'Respeto ganado' });
+    artifacts.push({ id: 'respect', glyph: '♜', label: 'Rival', title: respect.label || 'Respeto ganado' });
   } else if (relationship.tier === 'veteran' && Number(relationship.games_seen || 0) > 0) {
-    artifacts.push({ id: 'veteran', glyph: '▤', label: 'Archivo veterano', title: `${Number(relationship.games_seen)} partidas observadas` });
+    artifacts.push({ id: 'veteran', glyph: '▤', label: 'Veterano', title: `${Number(relationship.games_seen)} partidas observadas` });
   }
   return artifacts.slice(0, 3);
 }
