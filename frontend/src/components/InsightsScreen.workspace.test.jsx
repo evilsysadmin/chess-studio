@@ -9,18 +9,19 @@ vi.mock('./MechanicTutorialHelp.jsx', () => ({ default: () => <span data-insight
 
 import InsightsScreen, { normalizeInsightsSection } from './InsightsScreen.jsx';
 
-describe('InsightsScreen coaching workspace', () => {
-  it('abre Así juegas en una vista Ahora compacta con navegación por áreas', () => {
+describe('InsightsScreen Matthias-led coaching workspace', () => {
+  it('abre Así juegas en Ahora con Matthias como guía y sólo tres áreas', () => {
     const html = renderToStaticMarkup(<InsightsScreen onExit={() => {}} initialSection="diagnosis" />);
 
     expect(html).toContain('Así juegas');
     expect(html).toContain('Mi progreso');
+    expect(html).toContain('Matthias revisa tus datos');
     expect(html).toContain('Ahora');
-    expect(html).toContain('Matthias');
     expect(html).toContain('Errores');
     expect(html).toContain('Expediente');
     expect(html).toContain('insights-workspace-view-now');
     expect(html).toContain('id="insights-view-now"');
+    expect(html).not.toContain('id="insights-view-matthias"');
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain('data-insights-dashboard="diagnosis"');
   });
