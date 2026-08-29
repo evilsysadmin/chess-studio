@@ -37,6 +37,17 @@ const MOOD_ASSETS = Object.freeze({
   impressed: moodImpressed,
 });
 
+const AMBIENT_SCENES = Object.freeze({
+  base: { key: 'base', avatar: baseAvatar, label: 'Vigilando el desastre' },
+  coffee: { key: 'coffee', avatar: morningCoffee, label: 'Café de campaña' },
+  lunch: { key: 'lunch', avatar: lunchBocata, label: 'Repostando' },
+  ops: { key: 'ops', avatar: afternoonOps, label: 'Tomando notas' },
+  night: { key: 'night', avatar: nightCoffee, label: 'Café nocturno' },
+  sleep: { key: 'sleep', avatar: lateSleep, label: 'Cabeceando con disciplina' },
+  dossier: { key: 'dossier', avatar: dossier, label: 'Revisando el expediente' },
+  reading: { key: 'reading', avatar: strategyBook, label: 'Leyendo estrategia' },
+});
+
 export const MATTHIAS_BASE_AVATAR = baseAvatar;
 
 export function matthiasTimeVisual(hour = new Date().getHours()) {
@@ -45,6 +56,25 @@ export function matthiasTimeVisual(hour = new Date().getHours()) {
     ...scene,
     avatar: TIME_ASSETS[scene.key] || baseAvatar,
   };
+}
+
+export function matthiasAmbientVisuals(hour = new Date().getHours()) {
+  const h = Number.isFinite(Number(hour)) ? Number(hour) : 12;
+  const timed = matthiasTimeVisual(h);
+  let extras;
+  if (h >= 5 && h < 11) extras = [AMBIENT_SCENES.coffee, AMBIENT_SCENES.reading, AMBIENT_SCENES.dossier];
+  else if (h >= 11 && h < 15) extras = [AMBIENT_SCENES.lunch, AMBIENT_SCENES.dossier, AMBIENT_SCENES.reading];
+  else if (h >= 15 && h < 20) extras = [AMBIENT_SCENES.ops, AMBIENT_SCENES.dossier, AMBIENT_SCENES.reading];
+  else if (h >= 20 || h < 1) extras = [AMBIENT_SCENES.night, AMBIENT_SCENES.reading, AMBIENT_SCENES.dossier];
+  else extras = [AMBIENT_SCENES.sleep, AMBIENT_SCENES.reading, AMBIENT_SCENES.base];
+
+  const first = { key: `time-${timed.key}`, avatar: timed.avatar, label: timed.label || timed.fallbackStatus || 'En observación' };
+  const seen = new Set();
+  return [first, ...extras].filter((scene) => {
+    if (!scene?.avatar || seen.has(scene.avatar)) return false;
+    seen.add(scene.avatar);
+    return true;
+  });
 }
 
 export function matthiasMoodAvatar(mood = 'observant') {

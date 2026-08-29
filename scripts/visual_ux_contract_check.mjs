@@ -17,6 +17,8 @@ const app = read('frontend/src/App.jsx');
 const adminInbox = read('frontend/src/useAdminFeedbackInbox.js');
 const chat = read('frontend/src/components/GameChat.jsx');
 const menu = read('frontend/src/components/Menu.jsx');
+const matthiasHome = read('frontend/src/components/MatthiasHomeVisit.jsx');
+const matthiasResidentCss = read('frontend/src/components/MatthiasHomeResident.css');
 const insightsShell = read('frontend/src/components/InsightsScreen.jsx');
 const insightsDashboard = read('frontend/src/components/InsightsDashboardContent.jsx');
 const insightsWorkspaceCss = read('frontend/src/components/InsightsWorkspace.css');
@@ -52,7 +54,17 @@ const checks = [
   [/\.admin-feedback-card\.status-resolved \{ opacity: 1; \}/.test(finalCss) && /admin-feedback-delete/.test(finalCss), 'las acciones de feedback resuelto deben seguir visibles'],
   [/CPU_IDENTITY/.test(game) && /game-player-avatar\$\{cpu \? ' has-portrait'/.test(game) && /MATTHIAS_BASE_AVATAR/.test(cpuIdentity) && /matthias-scenes\/base\.webp/.test(matthiasVisuals), 'Matthias debe ocupar el hueco de identidad existente en la tarjeta rival'],
   [/CPU_IDENTITY\.name\.toUpperCase\(\)/.test(chat) && /game-chat-matthias-avatar/.test(finalCss), 'el chat debe firmar como Matthias con presencia compacta'],
-  [/MatthiasHomeVisit/.test(menu) && /matthias-home-card/.test(finalCss), 'Home debe integrar el rincón de Matthias con bocadillo propio sin capa flotante'],
+  [
+    /MatthiasHomeVisit/.test(menu)
+      && /matthias-resident/.test(matthiasHome)
+      && /speaking \? \(/.test(matthiasHome)
+      && !/["'`]…["'`]/.test(matthiasHome)
+      && /position:\s*fixed/.test(matthiasResidentCss)
+      && /pointer-events:\s*none/.test(matthiasResidentCss)
+      && /prefers-reduced-motion:\s*reduce/.test(matthiasResidentCss)
+      && /matthiasAmbientVisuals/.test(matthiasVisuals),
+    'Home debe mantener a Matthias como residente lateral silencioso, con bocadillo sólo al hablar, escenas ambientales y reduced-motion',
+  ],
   [/CPU_IDENTITY/.test(insightsDashboard) && /ai-player-portrait-character/.test(insightsDashboard) && /Ahora/.test(insightsShell) && /\.insights-workspace-view-now \.ai-player-portrait\s*\{/.test(insightsWorkspaceCss) && /\.insights-workspace-view-errors \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /\.insights-workspace-view-dossier \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias, guiar Ahora y no invadir Errores/Expediente'],
   [/resuelto mantiene Reabrir y Borrar feedback visibles/.test(feedbackE2e), 'falta E2E de borrado visible en feedback resuelto'],
   [/admin ve un sobre en Home cuando hay mensajes nuevos/.test(feedbackE2e), 'falta E2E del inbox admin de feedback'],
@@ -64,4 +76,4 @@ if (failed.length) {
   for (const message of failed) console.error(` - ${message}`);
   process.exit(1);
 }
-console.log('visual-ux-contract OK · viewport + barra única de mando + mapa artístico + acciones + onboarding + Matthias rival/rincón Home/veredicto + coach de replay + inbox admin protegidos');
+console.log('visual-ux-contract OK · viewport + barra única de mando + mapa artístico + acciones + onboarding + Matthias rival/residente Home/veredicto + coach de replay + inbox admin protegidos');
