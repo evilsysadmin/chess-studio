@@ -35,6 +35,8 @@ jobs:
 
           protected_branch() {
             case "$1" in
+              # Retired one-off archive: audited below and intentionally prunable.
+              artifact/zfrm-complete) return 1 ;;
               main|gh-pages|artifact/*) return 0 ;;
               *) return 1 ;;
             esac
@@ -69,46 +71,16 @@ jobs:
             echo "Eliminada: $branch"
           }
 
-          # Ramas históricas auditadas contra main o contra una PR ya mergeada.
-          # La lista es deliberadamente explícita: nada de borrados por wildcard.
-          legacy_stale=(
-            'audit/zfrt-cross-mode-continuity'
-            'chatgpt/zfrh-matthias-brand-tests-clean'
-            'chore/branch-housekeeping-once'
-            'chore/zfrs-actions-cleanup'
-            'feat/zfri-combat-mission-orders'
-            'feat/zfrj-product-mechanics'
-            'feat/zfrk-combat-economy-gate'
-            'feat/zfrl-enemy-doctrine'
-            'feat/zfrn-dynamic-nemesis'
-            'feat/zfro-hard-campaign-choices'
-            'feat/zfro-hard-campaign-decisions'
-            'feat/zfrp-backend-performance'
-            'feature/zfrq-feedback-delete'
-            'feature/zfrq-feedback-delete-actual'
-            'feature/zfrq-feedback-delete-clean'
-            'feature/zfrq-feedback-delete-final'
-            'feature/zfrq-feedback-delete-last'
-            'feature/zfrq-feedback-delete-no-more'
-            'feature/zfrq-feedback-delete-pr'
-            'feature/zfrq-feedback-delete-ready'
-            'feature/zfrq-feedback-delete-stop'
-            'feature/zfrr-admin-workspace'
-            'feature/zfrr-game-viewport'
-            'fix/combat-economy-empty-credits'
-            'fix/matthias-home-assets'
-            'fix/matthias-school-replay-zfrm'
-            'fix/zfrq-game-mode-legality-audit'
-            'noop-test'
-            'quality/e2e-tutorial-seed-parity'
-            'quality/home-matthias-image-e2e'
-            'quality/matthias-asset-integrity'
-            'quality/personal-puzzle-validation'
-            'quality/replay-refresh-continuity'
-            'ux/mobile-home-labels'
+          # Dos excepciones históricas auditadas tras la primera gran poda:
+          # - zfrm-complete sólo generaba un ZIP de una release antigua.
+          # - zfrh-matthias-brand-tests fue sustituida por la rama -clean de PR #1
+          #   y posteriormente por el hotfix de assets de PR #2.
+          retired_stale=(
+            'artifact/zfrm-complete'
+            'chatgpt/zfrh-matthias-brand-tests'
           )
 
-          for branch in "${legacy_stale[@]}"; do
+          for branch in "${retired_stale[@]}"; do
             delete_branch_if_safe "$branch"
           done
 
