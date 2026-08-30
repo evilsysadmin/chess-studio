@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
@@ -23,6 +23,46 @@ export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
   return Number.isFinite(width) && width <= 760;
 }
 
+export function matthiasMotionFrames({ speaking = false, scene = '' } = {}) {
+  if (speaking) {
+    return [
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+      { transform: 'translate3d(-4px, -7px, 0) rotate(-1deg) scale(1.025)' },
+      { transform: 'translate3d(5px, -10px, 0) rotate(1.2deg) scale(1.04)' },
+      { transform: 'translate3d(0, -3px, 0) rotate(0deg) scale(1.012)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+    ];
+  }
+
+  if (/coffee|breakfast|night|beer-break/.test(scene)) {
+    return [
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+      { transform: 'translate3d(-6px, -8px, 0) rotate(-2.5deg) scale(1.035)' },
+      { transform: 'translate3d(-9px, -13px, 0) rotate(-4.8deg) scale(1.06)' },
+      { transform: 'translate3d(-3px, -5px, 0) rotate(-1.2deg) scale(1.02)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+    ];
+  }
+
+  if (/lunch|bocata/.test(scene)) {
+    return [
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+      { transform: 'translate3d(6px, -8px, 0) rotate(2.4deg) scale(1.035)' },
+      { transform: 'translate3d(10px, -13px, 0) rotate(4.6deg) scale(1.06)' },
+      { transform: 'translate3d(4px, -5px, 0) rotate(1.4deg) scale(1.02)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+    ];
+  }
+
+  return [
+    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+    { transform: 'translate3d(-6px, -8px, 0) rotate(-1.8deg) scale(1.03)' },
+    { transform: 'translate3d(7px, -12px, 0) rotate(2.2deg) scale(1.05)' },
+    { transform: 'translate3d(-3px, -5px, 0) rotate(-1deg) scale(1.018)' },
+    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+  ];
+}
+
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
   const hour = useMemo(() => new Date().getHours(), []);
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
@@ -30,6 +70,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const [motionStatus, setMotionStatus] = useState(() => reducedMotionStatus());
   const [compactViewport, setCompactViewport] = useState(() => matthiasCompactViewport());
   const [portalReady, setPortalReady] = useState(false);
+  const motionLayerRef = useRef(null);
 
   useEffect(() => {
     setPortalReady(true);
@@ -79,6 +120,26 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     return () => window.clearInterval(timer);
   }, [ambientVisuals.length, motionStatus.effective, speaking]);
 
+  useEffect(() => {
+    const node = motionLayerRef.current;
+    if (!node || motionStatus.effective || typeof node.animate !== 'function') return undefined;
+
+    const scene = speaking
+      ? 'speaking'
+      : (ambientVisuals[ambientBeat]?.key || 'default');
+    const animation = node.animate(
+      matthiasMotionFrames({ speaking, scene }),
+      {
+        duration: speaking ? 3600 : 3000,
+        iterations: Infinity,
+        easing: 'ease-in-out',
+        fill: 'both',
+      },
+    );
+
+    return () => animation.cancel();
+  }, [ambientBeat, ambientVisuals, motionStatus.effective, speaking]);
+
   if (!model) return null;
 
   const speakingVisual = matthiasTimeVisual(hour);
@@ -89,6 +150,10 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     setReducedMotion(false);
     setMotionStatus(reducedMotionStatus());
   }
+
+  const motionOverrideLabel = motionStatus.source === 'system'
+    ? 'Movimiento desactivado por el sistema · activar'
+    : 'Movimiento desactivado en Chess Studio · activar';
 
   const resident = (
     <aside
@@ -124,16 +189,18 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
             aria-describedby={speaking ? 'matthias-home-message' : undefined}
             title="Matthias · abrir Así juegas"
           >
-            <span className="matthias-resident__portrait-shell" aria-hidden="true">
-              <img key={visual.key || visual.avatar} src={visual.avatar} alt="" />
+            <span ref={motionLayerRef} className="matthias-resident__motion-layer" data-motion-layer="true">
+              <span className="matthias-resident__portrait-shell" aria-hidden="true">
+                <img key={visual.key || visual.avatar} src={visual.avatar} alt="" />
+              </span>
             </span>
             <strong>{CPU_IDENTITY.name}</strong>
             <small>{speaking ? mood : visual.label}</small>
             {speaking && model.sessionLabel ? <em>{model.sessionLabel}</em> : null}
           </button>
-          {motionStatus.source === 'system' ? (
+          {motionStatus.effective ? (
             <button type="button" className="matthias-resident__motion-override" onClick={enableMotion}>
-              Movimiento desactivado por el sistema · activar
+              {motionOverrideLabel}
             </button>
           ) : null}
         </div>
