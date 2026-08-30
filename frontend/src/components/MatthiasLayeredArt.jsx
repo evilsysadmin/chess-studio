@@ -18,10 +18,9 @@ function frames(...items) {
 }
 
 /*
- * These are intentionally restrained. Every moving layer is a masked copy of
- * the canonical bitmap sitting over the same static bitmap, so large opposing
- * translations reveal the original body part underneath and read as a twitch.
- * Natural motion here means: one dominant direction, slow settle, tiny return.
+ * The old WebP remains the visual truth. Localized copies of that exact bitmap
+ * provide articulation, but the motion must be large enough to read at Home
+ * scale. Keep one clear intent per gesture, a slow settle and a long pause.
  */
 const MOTIONS = Object.freeze({
   glance: Object.freeze({
@@ -41,22 +40,22 @@ const MOTIONS = Object.freeze({
   inspect: Object.freeze({
     eyes: frames(
       { offset: 0, transform: 'translate3d(0,0,0)' },
-      { offset: .24, transform: 'translate3d(-2.2px,.2px,0)' },
-      { offset: .72, transform: 'translate3d(-2px,.2px,0)' },
+      { offset: .22, transform: 'translate3d(-3px,.45px,0)' },
+      { offset: .7, transform: 'translate3d(-2.6px,.4px,0)' },
       { offset: 1, transform: 'translate3d(0,0,0)' },
     ),
     head: frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .3, transform: 'translate3d(-.9px,-1px,0) rotate(-.65deg)' },
-      { offset: .74, transform: 'translate3d(-.8px,-.9px,0) rotate(-.58deg)' },
+      { offset: .3, transform: 'translate3d(-1.35px,-1.45px,0) rotate(-1deg)' },
+      { offset: .74, transform: 'translate3d(-1.2px,-1.25px,0) rotate(-.85deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'right-arm': frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .28, transform: 'translate3d(-1.7px,-3.5px,0) rotate(-1.25deg)' },
-      { offset: .44, transform: 'translate3d(-1.1px,-3.9px,0) rotate(-.8deg)' },
-      { offset: .6, transform: 'translate3d(-1.9px,-3.7px,0) rotate(-1.35deg)' },
-      { offset: .76, transform: 'translate3d(-1.3px,-3.5px,0) rotate(-.9deg)' },
+      { offset: .24, transform: 'translate3d(-2.6px,-4.8px,0) rotate(-1.8deg)' },
+      { offset: .42, transform: 'translate3d(-1.1px,-5.3px,0) rotate(-.65deg)' },
+      { offset: .58, transform: 'translate3d(-3.1px,-5px,0) rotate(-2deg)' },
+      { offset: .75, transform: 'translate3d(-1.4px,-4.6px,0) rotate(-.8deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
@@ -121,41 +120,41 @@ const MOTIONS = Object.freeze({
   read: Object.freeze({
     eyes: frames(
       { offset: 0, transform: 'translate3d(0,0,0)' },
-      { offset: .28, transform: 'translate3d(-2px,.3px,0)' },
-      { offset: .58, transform: 'translate3d(-.5px,.25px,0)' },
-      { offset: .78, transform: 'translate3d(1.4px,.2px,0)' },
+      { offset: .24, transform: 'translate3d(-2.8px,.55px,0)' },
+      { offset: .52, transform: 'translate3d(-.6px,.5px,0)' },
+      { offset: .76, transform: 'translate3d(2.2px,.4px,0)' },
       { offset: 1, transform: 'translate3d(0,0,0)' },
     ),
     head: frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .36, transform: 'translate3d(-.7px,.8px,0) rotate(-.5deg)' },
-      { offset: .78, transform: 'translate3d(-.5px,.6px,0) rotate(-.4deg)' },
+      { offset: .34, transform: 'translate3d(-1.25px,1.45px,0) rotate(-.9deg)' },
+      { offset: .78, transform: 'translate3d(-1px,1.15px,0) rotate(-.72deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'right-arm': frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .42, transform: 'translate3d(-1.4px,-2.6px,0) rotate(-1deg)' },
-      { offset: .76, transform: 'translate3d(-1.2px,-2.4px,0) rotate(-.85deg)' },
+      { offset: .38, transform: 'translate3d(-2.4px,-3.7px,0) rotate(-1.55deg)' },
+      { offset: .76, transform: 'translate3d(-2.1px,-3.35px,0) rotate(-1.3deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     prop: frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .42, transform: 'translate3d(-1px,-1.5px,0) rotate(-.55deg)' },
-      { offset: .76, transform: 'translate3d(-.9px,-1.4px,0) rotate(-.48deg)' },
+      { offset: .38, transform: 'translate3d(-1.8px,-2.4px,0) rotate(-1deg)' },
+      { offset: .76, transform: 'translate3d(-1.55px,-2.15px,0) rotate(-.82deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
   doze: Object.freeze({
     head: frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .48, transform: 'translate3d(.9px,2.4px,0) rotate(1.2deg)' },
-      { offset: .8, transform: 'translate3d(.8px,2.1px,0) rotate(1deg)' },
+      { offset: .44, transform: 'translate3d(1.5px,3.9px,0) rotate(1.8deg)' },
+      { offset: .76, transform: 'translate3d(1.25px,3.35px,0) rotate(1.5deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     eyes: frames(
       { offset: 0, transform: 'translate3d(0,0,0) scaleY(1)' },
-      { offset: .48, transform: 'translate3d(0,.4px,0) scaleY(.74)' },
-      { offset: .8, transform: 'translate3d(0,.35px,0) scaleY(.8)' },
+      { offset: .42, transform: 'translate3d(0,.7px,0) scaleY(.52)' },
+      { offset: .76, transform: 'translate3d(0,.55px,0) scaleY(.64)' },
       { offset: 1, transform: 'translate3d(0,0,0) scaleY(1)' },
     ),
   }),
@@ -182,22 +181,22 @@ const MOTIONS = Object.freeze({
 });
 
 const GESTURE_DURATIONS = Object.freeze({
-  glance: 1800,
-  inspect: 2600,
+  glance: 2000,
+  inspect: 3600,
   sip: 2300,
   bite: 2300,
-  read: 2500,
-  doze: 2800,
+  read: 3500,
+  doze: 3800,
   speak: 1900,
 });
 
 const PART_DELAYS = Object.freeze({
   glance: Object.freeze({ eyes: 0, head: 160 }),
-  inspect: Object.freeze({ eyes: 0, head: 140, 'right-arm': 320 }),
+  inspect: Object.freeze({ eyes: 0, head: 180, 'right-arm': 420 }),
   sip: Object.freeze({ eyes: 0, head: 120, 'left-arm': 280, prop: 280 }),
   bite: Object.freeze({ eyes: 0, head: 120, 'left-arm': 260, 'right-arm': 260, prop: 300 }),
-  read: Object.freeze({ eyes: 0, head: 180, 'right-arm': 480, prop: 480 }),
-  doze: Object.freeze({ head: 0, eyes: 180 }),
+  read: Object.freeze({ eyes: 0, head: 220, 'right-arm': 520, prop: 520 }),
+  doze: Object.freeze({ head: 0, eyes: 220 }),
   speak: Object.freeze({ head: 0, eyes: 120, 'right-arm': 300 }),
 });
 
@@ -218,8 +217,8 @@ export function matthiasGestureParts({ scene = '', speaking = false } = {}) {
 
 export function matthiasGestureDelay({ first = false } = {}) {
   return first
-    ? 1000 + Math.round(Math.random() * 700)
-    : 8000 + Math.round(Math.random() * 5000);
+    ? 550 + Math.round(Math.random() * 400)
+    : 12_000 + Math.round(Math.random() * 6_000);
 }
 
 export function matthiasGestureTiming({ gesture = 'glance', part = 'eyes', speaking = false } = {}) {
@@ -267,7 +266,7 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
       const running = [];
       root.dataset.gestureState = 'acting';
       root.dataset.gesture = gesture;
-      root.dataset.gestureProfile = 'natural';
+      root.dataset.gestureProfile = 'deliberate';
       root.dataset.gestureCount = String((Number(root.dataset.gestureCount) || 0) + 1);
 
       Object.entries(motion).forEach(([part, keyframes]) => {
@@ -311,7 +310,7 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
       data-rig-scene={scene || 'base'}
       data-gesture={gesture}
       data-gesture-state={reducedMotion ? 'reduced' : 'waiting'}
-      data-gesture-profile="natural"
+      data-gesture-profile="deliberate"
       data-gesture-count="0"
       style={{ '--matthias-rig-image': `url(${avatar})` }}
     >
