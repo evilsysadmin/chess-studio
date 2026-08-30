@@ -8,7 +8,12 @@ import {
 import MatthiasCoffeeSteam from './MatthiasCoffeeSteam.jsx';
 import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
 
-const PORTRAIT_SELECTOR = '.insights-workspace-view-now .ai-player-portrait-character';
+// The avatar the player actually sees at the top of "Consulta del día" is the
+// stable target in Así juegas. The larger "Así te ve la CPU" portrait is
+// conditional, so wiring motion there left the visible consultation avatar
+// static for users without enough portrait data.
+const PORTRAIT_SELECTOR = '.insights-workspace-view-now .matthias-daily-heading';
+const PORTRAIT_SIZE = 48;
 
 function currentReducedMotion() {
   return reducedMotionStatus().effective;
@@ -19,10 +24,9 @@ export default function InsightsMatthiasMotion() {
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
   const visual = useMemo(() => matthiasTimeVisual(), []);
 
-  // El diagnóstico y su retrato llegan después de montar InsightsScreen. Buscar
-  // sólo una vez dejaba a Matthias estático si la petición todavía no había
-  // terminado. Observamos inserciones y enlazamos el rig cuando aparece el
-  // retrato real; al salir de "Ahora" el observer desaparece con el componente.
+  // The daily consultation is data-backed and can arrive after InsightsScreen
+  // mounts. Observe insertions so motion attaches to the real avatar whenever
+  // the section becomes eligible instead of relying on one lucky first query.
   useEffect(() => {
     let disposed = false;
     const locate = () => {
@@ -47,18 +51,17 @@ export default function InsightsMatthiasMotion() {
 
     const originalImage = target.querySelector(':scope > img');
     const previousPosition = target.style.position;
-    const previousOverflow = target.style.overflow;
     const previousOpacity = originalImage?.style.opacity || '';
 
     target.style.position = 'relative';
-    target.style.overflow = 'hidden';
     target.dataset.matthiasInsightsAnimated = 'true';
+    // Keep the original image in layout so the title never shifts; the live rig
+    // paints exactly over its 48px slot.
     if (originalImage) originalImage.style.opacity = '0';
 
     return () => {
       delete target.dataset.matthiasInsightsAnimated;
       target.style.position = previousPosition;
-      target.style.overflow = previousOverflow;
       if (originalImage) originalImage.style.opacity = previousOpacity;
     };
   }, [target]);
@@ -82,12 +85,14 @@ export default function InsightsMatthiasMotion() {
       data-insights-matthias-motion="true"
       style={{
         position: 'absolute',
-        inset: 0,
+        top: 0,
+        left: 0,
         display: 'block',
-        width: '100%',
-        height: '100%',
-        borderRadius: 'inherit',
+        width: `${PORTRAIT_SIZE}px`,
+        height: `${PORTRAIT_SIZE}px`,
+        borderRadius: '10px',
         overflow: 'hidden',
+        pointerEvents: 'none',
       }}
       aria-hidden="true"
     >
