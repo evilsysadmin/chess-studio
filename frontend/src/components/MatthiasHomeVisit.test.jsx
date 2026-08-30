@@ -15,7 +15,7 @@ vi.mock('../userPreferences.js', () => ({
   USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
 }));
 
-import MatthiasHomeVisit, { matthiasMotionReduced } from './MatthiasHomeVisit.jsx';
+import MatthiasHomeVisit, { matthiasCompactViewport, matthiasMotionReduced } from './MatthiasHomeVisit.jsx';
 
 const MODEL = {
   variant: 'quiet',
@@ -35,6 +35,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
 
     expect(html).toContain('aria-label="Rincón de Matthias"');
     expect(html).toContain('data-viewport-resident="true"');
+    expect(html).toContain('data-placement="viewport"');
     expect(html).toContain('data-ambient-scene="reading"');
     expect(html).toContain('Abrir Así juegas con Matthias');
     expect(html).toContain('Leyendo estrategia');
@@ -60,6 +61,11 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('2 casos');
     expect(html).toContain('Ver Así juegas');
     expect(html).toContain('Cerrar comentario de Matthias');
+  });
+
+  it('usa colocación inline en viewport compacto para no tapar contenido móvil', () => {
+    expect(matthiasCompactViewport({ mediaMatches: true, innerWidth: 1440 })).toBe(true);
+    expect(matthiasCompactViewport({ mediaMatches: false, innerWidth: 390 })).toBe(false);
   });
 
   it('reduce el movimiento si lo pide la app o el sistema', () => {
