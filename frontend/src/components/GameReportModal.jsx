@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { analyzeGame } from '../gameReport.js';
+import { assessCleanGame } from '../cleanGame.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
 import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, moveContextLines, pointOfNoReturn } from '../advancedCareer.js';
@@ -116,6 +117,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const best = report ? bestMoveOfReport(report) : null;
   const noReturn = report ? pointOfNoReturn(report) : null;
   const keyMoments = report ? keyGameMoments(report) : [];
+  const cleanGame = report ? assessCleanGame(report) : null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -133,7 +135,11 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <div><span>Precisión estimada</span><b>{accuracy}%</b></div>
               <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>
               <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
+              <div><span>Partida limpia</span><b>{cleanGame?.eligible ? (cleanGame.clean ? '✓ Sí' : 'No') : `${cleanGame?.analyzedCount || 0}/${cleanGame?.minAnalyzedMoves || 8}`}</b></div>
             </div>
+            {cleanGame?.clean && <p className="hint-text friendly-inline-note">✓ <b>Partida limpia.</b> Muestra suficiente y sin errores serios, mates omitidos/permitidos ni entregas de material confirmadas por la autopsia.</p>}
+            {cleanGame && !cleanGame.eligible && <p className="hint-text friendly-inline-note">Partida limpia aún sin veredicto: hacen falta al menos <b>{cleanGame.minAnalyzedMoves}</b> jugadas tuyas analizadas; hay {cleanGame.analyzedCount}.</p>}
+            {cleanGame?.eligible && !cleanGame.clean && cleanGame.reasons.length > 0 && <p className="hint-text friendly-inline-note">Partida limpia: no. Motivo{cleanGame.reasons.length === 1 ? '' : 's'} medido{cleanGame.reasons.length === 1 ? '' : 's'}: <b>{cleanGame.reasons.join(' · ')}</b>.</p>}
             <div className="autopsy-key-moments" aria-label="Momentos clave de la partida">
               {keyMoments.map((item) => (
                 <article key={`${item.kind}-${item.move.index}`} className={`autopsy-key-moment sev-${item.move.severity || 'ok'}`}>
