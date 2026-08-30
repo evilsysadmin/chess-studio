@@ -7,6 +7,13 @@ import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
+export function canOfferPostGameTraining({ onTrainPersonal, seriesState = null, runState = null } = {}) {
+  if (typeof onTrainPersonal !== 'function') return false;
+  if (runState?.active) return false;
+  if (seriesState && !seriesState.winner) return false;
+  return true;
+}
+
 export default function PostGameExperience({
   game,
   humanColor,
@@ -55,6 +62,7 @@ export default function PostGameExperience({
     hasReport: game.history.length > 0,
   });
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
+  const trainingAvailable = canOfferPostGameTraining({ onTrainPersonal, seriesState, runState });
 
   return <>
     <div className="modal-backdrop endgame-modal-backdrop" role="presentation">
@@ -104,7 +112,7 @@ export default function PostGameExperience({
             Compartir resultado
           </button>
         )}
-        {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
+        {trainingAvailable && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
         {game.history.length > 0 && nextAction.id !== 'review' && (
           <button className="secondary-btn" onClick={() => setShowReport(true)}>
             Resumen de la partida
@@ -122,6 +130,7 @@ export default function PostGameExperience({
           history={game.history}
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
+          onTrainPersonal={trainingAvailable ? onTrainPersonal : null}
           meta={reportMeta}
           onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
