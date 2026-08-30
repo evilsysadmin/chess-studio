@@ -11,7 +11,12 @@ const contractCss = read('frontend/src/styles/28-product-resilience.css');
 const viewportCss = contractCss;
 const onboardingCss = contractCss;
 const finalCss = contractCss;
-const game = read('frontend/src/components/GameScreen.jsx');
+const gameController = read('frontend/src/components/GameScreen.jsx');
+const gameBoardView = read('frontend/src/components/GameBoardView.jsx');
+// GameScreen owns orchestration; GameBoardView owns the rendered board surface.
+// Visual contracts intentionally inspect the composed feature rather than forcing
+// presentational JSX back into the controller just to satisfy a source-location check.
+const game = `${gameController}\n${gameBoardView}`;
 const puzzle = read('frontend/src/components/PuzzleScreen.jsx');
 const app = read('frontend/src/App.jsx');
 const adminInbox = read('frontend/src/useAdminFeedbackInbox.js');
