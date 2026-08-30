@@ -38,7 +38,7 @@ test('Home · las capas animables de Matthias son imágenes reales, no cajas vac
   const rightArm = rig.locator('[data-matthias-art-part="right-arm"]');
   const before = await rightArm.evaluate((node) => getComputedStyle(node).transform);
   await expect.poll(
-    () => Number(rig.getAttribute('data-gesture-count')),
+    async () => Number(await rig.getAttribute('data-gesture-count')),
     { timeout: 2_000 },
   ).toBeGreaterThan(0);
   await expect.poll(
