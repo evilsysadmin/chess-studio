@@ -11,6 +11,7 @@ import {
   setBoardCoordinates,
   setDefaultTimeControlId,
   setReducedMotion,
+  setReducedMotionPreference,
   setUiLanguage,
 } from './userPreferences.js';
 
@@ -49,5 +50,24 @@ describe('user preferences', () => {
     setReducedMotion(true);
     expect(getReducedMotionPreference()).toBe('reduce');
     expect(reducedMotionStatus({ systemReduced: false })).toMatchObject({ effective: true, source: 'app', preference: 'reduce' });
+  });
+
+  it('permite volver a Sistema después de un override explícito', () => {
+    expect(setReducedMotionPreference('allow')).toBe('allow');
+    expect(getReducedMotionPreference()).toBe('allow');
+    expect(reducedMotionStatus({ systemReduced: true }).effective).toBe(false);
+
+    expect(setReducedMotionPreference('system')).toBe('system');
+    expect(getReducedMotionPreference()).toBe('system');
+    expect(reducedMotionStatus({ systemReduced: true })).toMatchObject({
+      effective: true,
+      source: 'system',
+      preference: 'system',
+    });
+
+    expect(setReducedMotionPreference('reduce')).toBe('reduce');
+    expect(getReducedMotionPreference()).toBe('reduce');
+    expect(setReducedMotionPreference('basura')).toBe('system');
+    expect(getReducedMotionPreference()).toBe('system');
   });
 });
