@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import MatthiasFrameSequence from './MatthiasFrameSequence.jsx';
-import MatthiasLayeredArt, { matthiasSceneFamily } from './MatthiasLayeredArt.jsx';
+import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
 import './MatthiasHomeResident.css';
 import './MatthiasMotionOverride.css';
 
@@ -85,8 +84,6 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const speakingVisual = matthiasTimeVisual(hour);
   const visual = speaking ? speakingVisual : (ambientVisuals[ambientBeat] || speakingVisual);
   const mood = model.moodLabel || 'Observador';
-  const visualFamily = matthiasSceneFamily(visual.key || 'base');
-  const useFrameSequence = !speaking && (visualFamily === 'coffee' || visualFamily === 'lunch');
 
   function enableMotion() {
     setReducedMotion(false);
@@ -132,20 +129,12 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
             title="Matthias · abrir Así juegas"
           >
             <span className="matthias-resident__portrait-shell" aria-hidden="true" data-portrait-frame="true">
-              {useFrameSequence ? (
-                <MatthiasFrameSequence
-                  family={visualFamily}
-                  fallbackAvatar={visual.avatar}
-                  reducedMotion={motionStatus.effective}
-                />
-              ) : (
-                <MatthiasLayeredArt
-                  avatar={visual.avatar}
-                  scene={visual.key || 'base'}
-                  speaking={speaking}
-                  reducedMotion={motionStatus.effective}
-                />
-              )}
+              <MatthiasLayeredArt
+                avatar={visual.avatar}
+                scene={visual.key || 'base'}
+                speaking={speaking}
+                reducedMotion={motionStatus.effective}
+              />
             </span>
             <strong>{CPU_IDENTITY.name}</strong>
             <small>{speaking ? mood : visual.label}</small>
