@@ -1,168 +1,82 @@
 /* Matthias · Home motion
- * El movimiento vive en el marco completo del retrato y además añade una
- * micro-paralaje interna a la ilustración. El objetivo aquí no es demostrar
- * que una matriz CSS cambia: tiene que percibirse a simple vista.
- * Reduced motion sigue teniendo prioridad absoluta.
+ * La escena completa permanece fijada al marco. El único elemento animado es
+ * una copia enmascarada del centro del arte, con bordes progresivos, para que
+ * se perciba movimiento del personaje sin desplazar un bitmap rectangular.
  */
 
-/* Neutraliza los loops históricos de MatthiasHomeResident.css sobre la imagen
- * y usa un gesto corto/repetible que acompaña el movimiento del portrait-shell. */
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
-  transform-origin: 50% 78%;
-  will-change: transform;
-  animation: matthias-home-image-life 3.6s ease-in-out infinite;
-}
-
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] .matthias-resident__portrait-shell {
-  transform-origin: 50% 78%;
-  will-change: transform;
-  animation: matthias-home-alive 3.8s ease-in-out infinite;
-}
-
-/* Beber debe leerse como una acción incluso con el avatar pequeño. */
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='coffee'] .matthias-resident__portrait-shell,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='breakfast'] .matthias-resident__portrait-shell,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='night'] .matthias-resident__portrait-shell,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='beer-break'] .matthias-resident__portrait-shell {
-  animation-name: matthias-home-drink;
-  animation-duration: 3.2s;
-  animation-timing-function: cubic-bezier(.45,0,.25,1);
-}
-
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='coffee'] img,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='breakfast'] img,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='night'] img,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='beer-break'] img {
-  animation-name: matthias-home-image-drink;
-  animation-duration: 3.2s;
-}
-
-/* Comer: acercamiento, mordisco y doble gesto de masticación. */
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='lunch'] .matthias-resident__portrait-shell,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='bocata'] .matthias-resident__portrait-shell {
-  animation-name: matthias-home-eat;
-  animation-duration: 3s;
-  animation-timing-function: cubic-bezier(.4,0,.2,1);
-}
-
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='lunch'] img,
-.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='bocata'] img {
-  animation-name: matthias-home-image-eat;
-  animation-duration: 3s;
-}
-
-/* Mientras habla mantiene vida corporal suave después de la entrada inicial. */
-.matthias-resident.is-speaking .matthias-resident__portrait-shell {
-  transform-origin: 50% 78%;
-  will-change: transform;
-  animation: matthias-home-speaking-life 4.4s ease-in-out infinite;
-}
-
-@keyframes matthias-home-alive {
-  0%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
-  14% { transform: translate(-3px, -5px) rotate(-1.3deg) scale(1.018); }
-  28% { transform: translate(4px, -8px) rotate(1.8deg) scale(1.04); }
-  42% { transform: translate(1px, -3px) rotate(-.8deg) scale(1.018); }
-  58% { transform: translate(0, 0) rotate(0) scale(1); }
-  74% { transform: translate(-4px, -7px) rotate(-1.5deg) scale(1.032); }
-  88% { transform: translate(3px, -3px) rotate(.9deg) scale(1.012); }
-}
-
-@keyframes matthias-home-image-life {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  28% { transform: translate(-2px, -3px) scale(1.025); }
-  42% { transform: translate(2px, -1px) scale(1.018); }
-  74% { transform: translate(2px, -2px) scale(1.022); }
-}
-
-@keyframes matthias-home-drink {
-  0%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
-  10% { transform: translate(-3px, -5px) rotate(-1.8deg) scale(1.02); }
-  22% { transform: translate(-7px, -11px) rotate(-4deg) scale(1.055); }
-  34% { transform: translate(-9px, -14px) rotate(-5.2deg) scale(1.075); }
-  46% { transform: translate(-7px, -12px) rotate(-4.2deg) scale(1.064); }
-  58% { transform: translate(-2px, -5px) rotate(-1.2deg) scale(1.022); }
-  70%, 84% { transform: translate(0, 0) rotate(0) scale(1); }
-  93% { transform: translate(2px, 3px) rotate(.7deg) scale(.994); }
-}
-
-@keyframes matthias-home-image-drink {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  22% { transform: translate(2px, -2px) scale(1.025); }
-  34% { transform: translate(4px, -4px) scale(1.045); }
-  46% { transform: translate(3px, -3px) scale(1.035); }
-  70% { transform: translate(0, 0) scale(1); }
-}
-
-@keyframes matthias-home-eat {
-  0%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
-  9% { transform: translate(4px, -5px) rotate(1.8deg) scale(1.022); }
-  20% { transform: translate(8px, -11px) rotate(4deg) scale(1.058); }
-  31% { transform: translate(6px, -7px) rotate(2.8deg) scale(1.04); }
-  40% { transform: translate(9px, -13px) rotate(4.3deg) scale(1.068); }
-  49% { transform: translate(5px, -6px) rotate(1.8deg) scale(1.03); }
-  58% { transform: translate(7px, -11px) rotate(3deg) scale(1.056); }
-  68% { transform: translate(1px, -3px) rotate(.5deg) scale(1.014); }
-  78%, 90% { transform: translate(0, 0) rotate(0) scale(1); }
-  96% { transform: translateY(3px) rotate(-.5deg) scale(.995); }
-}
-
-@keyframes matthias-home-image-eat {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  20% { transform: translate(-3px, -2px) scale(1.03); }
-  40% { transform: translate(-4px, -4px) scale(1.05); }
-  58% { transform: translate(-2px, -3px) scale(1.035); }
-  78% { transform: translate(0, 0) scale(1); }
-}
-
-@keyframes matthias-home-speaking-life {
-  0%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
-  18% { transform: translateY(-3px) rotate(-.55deg) scale(1.012); }
-  31% { transform: translate(2px, -6px) rotate(.65deg) scale(1.025); }
-  44% { transform: translateY(-2px) rotate(0) scale(1.01); }
-  60%, 78% { transform: translate(0, 0) rotate(0) scale(1); }
-  90% { transform: translate(-2px, -3px) rotate(-.35deg) scale(1.01); }
-}
-
-@media (max-width: 430px) {
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] .matthias-resident__portrait-shell,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
-    animation-duration: 3.3s;
-  }
-
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='coffee'] .matthias-resident__portrait-shell,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='breakfast'] .matthias-resident__portrait-shell,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='night'] .matthias-resident__portrait-shell,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='beer-break'] .matthias-resident__portrait-shell,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='coffee'] img,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='breakfast'] img,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='night'] img,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='beer-break'] img {
-    animation-duration: 2.9s;
-  }
-
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='lunch'] .matthias-resident__portrait-shell,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='bocata'] .matthias-resident__portrait-shell,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='lunch'] img,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='bocata'] img {
-    animation-duration: 2.8s;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img,
-  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] .matthias-resident__portrait-shell,
-  .matthias-resident.is-speaking .matthias-resident__portrait-shell {
-    animation: none;
-    transform: none !important;
-    will-change: auto;
-  }
-}
-
-html[data-reduced-motion='true'] .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img,
-html[data-reduced-motion='true'] .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] .matthias-resident__portrait-shell,
-html[data-reduced-motion='true'] .matthias-resident.is-speaking .matthias-resident__portrait-shell {
-  animation: none;
+.matthias-resident__portrait-shell {
+  position: relative;
+  isolation: isolate;
+  animation: none !important;
   transform: none !important;
   will-change: auto;
+  background-image:
+    linear-gradient(180deg, rgba(8, 11, 15, .02), rgba(8, 11, 15, .12)),
+    var(--matthias-scene-image);
+  background-size: cover;
+  background-position: 50% 44%;
+  background-repeat: no-repeat;
+}
+
+/* Esta capa se mueve, pero no es una caja visible: una máscara elíptica y
+ * feathered borra sus bordes y deja la escena fija del frame por debajo. */
+.matthias-resident__portrait-shell > .matthias-resident__motion-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+  transform-origin: 50% 62%;
+  will-change: transform;
+  -webkit-mask-image: radial-gradient(
+    ellipse 44% 64% at 50% 50%,
+    #000 0%,
+    #000 58%,
+    rgba(0, 0, 0, .88) 70%,
+    rgba(0, 0, 0, .42) 84%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 44% 64% at 50% 50%,
+    #000 0%,
+    #000 58%,
+    rgba(0, 0, 0, .88) 70%,
+    rgba(0, 0, 0, .42) 84%,
+    transparent 100%
+  );
+}
+
+.matthias-resident__motion-layer > img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 44%;
+  animation: none !important;
+  transform: none !important;
+  will-change: auto;
+}
+
+/* Ninguna regla de reduced-motion toca el frame ni el bitmap: el efecto WAAPI
+ * sólo se crea cuando el estado efectivo permite animación y se cancela al
+ * cambiar esa preferencia. Así el override explícito sigue funcionando. */
+@media (max-width: 430px) {
+  .matthias-resident__portrait-shell > .matthias-resident__motion-layer {
+    -webkit-mask-image: radial-gradient(
+      ellipse 46% 66% at 50% 50%,
+      #000 0%,
+      #000 56%,
+      rgba(0, 0, 0, .86) 70%,
+      rgba(0, 0, 0, .38) 84%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      ellipse 46% 66% at 50% 50%,
+      #000 0%,
+      #000 56%,
+      rgba(0, 0, 0, .86) 70%,
+      rgba(0, 0, 0, .38) 84%,
+      transparent 100%
+    );
+  }
 }
