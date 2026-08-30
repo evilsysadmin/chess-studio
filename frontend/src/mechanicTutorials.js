@@ -17,6 +17,18 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     ],
   },
   {
+    id: 'combat-casualties',
+    group: 'Combat Chess',
+    title: 'Bajas, revive y Memorial',
+    summary: 'Qué pasa cuando cae una unidad, cuándo puedes recuperarla y cuándo su identidad se pierde de forma definitiva.',
+    steps: [
+      { title: 'Una baja abre una única ventana', text: 'Al terminar la batalla, una unidad caída con progreso invertido puede revivirse antes de iniciar la siguiente batalla. Si entras al siguiente combate sin hacerlo, la ventana se cierra.' },
+      { title: 'Los reclutas no se rescatan', text: 'Una unidad de nivel 1 sin progreso invertido no tiene revive. Pasa al Memorial y el puesto recibe una identidad nueva.' },
+      { title: 'Revivir conserva a la unidad', text: 'Pagar el coste mantiene alias, identidad, rango, técnicas, medallas e historial. La unidad vuelve con una batalla desplegada de convalecencia y gana el 50% de XP durante esa batalla.' },
+      { title: 'No revivir sí es permanente', text: 'Cuando la ventana expira, la identidad queda archivada en el Memorial. El reemplazo empieza de nivel 1 y no hereda progreso ni historial.' },
+    ],
+  },
+  {
     id: 'combat-deployment',
     group: 'Combat Chess',
     title: 'Prepara tu formación',

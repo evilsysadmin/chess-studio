@@ -53,7 +53,10 @@ function Memorial({ roster }) {
       <div className="army-memorial-heading">
         <div>
           <span className="army-memorial-kicker">EXPEDIENTE CERRADO</span>
-          <h4>Memorial de Caídos</h4>
+          <div className="combat-heading-row">
+            <h4>Memorial de Caídos</h4>
+            <MechanicTutorialHelp tutorialId="combat-casualties" label="Tutorial de bajas, revive y Memorial" />
+          </div>
         </div>
         <b>{roster.memorial.length}</b>
       </div>
@@ -303,7 +306,10 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
 
             {isDead ? (
               <div className="army-dossier-actions danger-zone">
-                <strong>{canRevive ? 'Ventana de recuperación abierta' : 'Baja definitiva de recluta'}</strong>
+                <div className="combat-heading-row">
+                  <strong>{canRevive ? 'Ventana de recuperación abierta' : 'Baja definitiva de recluta'}</strong>
+                  <MechanicTutorialHelp tutorialId="combat-casualties" label="Tutorial de bajas, revive y Memorial" />
+                </div>
                 <p className="hint-text">
                   {canRevive
                     ? 'Si empiezas otra batalla sin revivir esta identidad, pasará al Memorial y el puesto recibirá un recluta nuevo. Si la recuperas, tendrá una batalla desplegada de convalecencia con XP al 50%.'
