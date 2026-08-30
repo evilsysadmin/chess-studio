@@ -3,6 +3,7 @@ import { loadPersonalPuzzles } from './personalPuzzles.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const GOAL_PRIORITY = Object.freeze({ debt: 0, 'clean-games': 1, 'personal-puzzles': 2 });
 
 function timestamp(value) {
   const parsed = Date.parse(value || '');
@@ -87,7 +88,12 @@ export function buildPersonalWeeklyGoals({
   ].filter(Boolean);
 
   return candidates
-    .sort((a, b) => Number(a.done) - Number(b.done) || (a.progress / a.target) - (b.progress / b.target) || a.id.localeCompare(b.id))
+    .sort((a, b) => (
+      Number(a.done) - Number(b.done)
+      || (GOAL_PRIORITY[a.kind] ?? 99) - (GOAL_PRIORITY[b.kind] ?? 99)
+      || (a.progress / a.target) - (b.progress / b.target)
+      || a.id.localeCompare(b.id)
+    ))
     .slice(0, 3);
 }
 
