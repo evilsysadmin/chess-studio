@@ -281,9 +281,29 @@ test('Home · sueño deja caer la cabeza y cierra visiblemente los ojos', async 
 
 test('Así juegas · el retrato de Matthias reutiliza el rig vivo en vez de quedarse como imagen funeraria', async ({ page }) => {
   await setMatthiasHour(page, 22);
-  const corner = await openHome(page);
+  const playedGame = {
+    id: 'e2e-insights-played-game',
+    sourceGameId: 'e2e-insights-played-game',
+    date: '2026-08-30T20:00:00Z',
+    mode: 'casual',
+    outcome: 'loss',
+    humanColor: 'w',
+    initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    moves: [
+      { san: 'e4', from: 'e2', to: 'e4' },
+      { san: 'e5', from: 'e7', to: 'e5' },
+    ],
+  };
+  const corner = await openHome(page, {
+    apiOptions: {
+      profileSeed: {
+        'chess-study-game-history': JSON.stringify([playedGame]),
+      },
+    },
+  });
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
 
   const livePortrait = page.locator('[data-insights-matthias-motion="true"]');
   const rig = livePortrait.locator('[data-matthias-layered-art="true"]');
