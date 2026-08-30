@@ -4,8 +4,9 @@ import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
 import { getReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './MatthiasHomeResident.css';
+import './MatthiasHomeMotion.css';
 
-const AMBIENT_SCENE_MS = 58_000;
+const AMBIENT_SCENE_MS = 18_000;
 
 export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
   const reducedByApp = appReduced ?? getReducedMotion();
