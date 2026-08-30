@@ -1,0 +1,85 @@
+/* Dirección artística adicional para los tableros existentes.
+   Sólo toca mesa/marco/textura: las piezas conservan sus siluetas y colores,
+   y las señales de turno/check/selección siguen teniendo prioridad. */
+
+.board-wrap.board-theme-classic,
+.board-wrap.board-theme-default {
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.075), transparent 24%),
+    repeating-linear-gradient(96deg, rgba(255,255,255,.018) 0 1px, transparent 1px 7px),
+    linear-gradient(135deg, #513e30, #241b16 64%, #3a2a20);
+}
+.board-theme-classic.board-wrap::after,
+.board-theme-default.board-wrap::after { border-color: rgba(231,199,139,.14); }
+
+.board-wrap.board-theme-midnight {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(104,151,182,.13), transparent 34%),
+    linear-gradient(145deg, rgba(255,255,255,.05), transparent 28%),
+    linear-gradient(135deg, #283440, #111820 66%, #202a34);
+}
+.board-theme-midnight.board-wrap::after { border-color: rgba(126,170,199,.16); }
+.board-theme-midnight .board-grid { box-shadow: 0 0 0 1px rgba(121,161,187,.12), inset 0 0 24px rgba(3,10,16,.2); }
+.board-theme-midnight .square.light {
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.08), transparent 46%),
+    linear-gradient(20deg, rgba(35,59,76,.045), transparent 58%),
+    #74808a;
+}
+.board-theme-midnight .square.dark {
+  background:
+    linear-gradient(155deg, rgba(112,158,187,.07), transparent 48%),
+    linear-gradient(20deg, rgba(0,0,0,.08), transparent 58%),
+    #27333e;
+}
+
+.board-wrap.board-theme-blood {
+  background:
+    radial-gradient(circle at 82% 12%, rgba(147,50,63,.14), transparent 32%),
+    repeating-linear-gradient(8deg, rgba(255,255,255,.012) 0 1px, transparent 1px 6px),
+    linear-gradient(135deg, #4a2529, #1e1315 68%, #341b20);
+}
+.board-theme-blood.board-wrap::after { border-color: rgba(190,105,104,.16); }
+.board-theme-blood .board-grid { box-shadow: 0 0 0 1px rgba(122,45,54,.16), inset 0 0 22px rgba(31,8,11,.16); }
+
+.board-wrap.board-theme-royal {
+  background:
+    radial-gradient(circle at 50% -10%, rgba(206,181,108,.13), transparent 36%),
+    linear-gradient(145deg, rgba(255,255,255,.055), transparent 27%),
+    linear-gradient(135deg, #4b4059, #211c29 67%, #372e44);
+}
+.board-theme-royal.board-wrap::after { border-color: rgba(218,190,112,.19); }
+.board-theme-royal .board-grid { box-shadow: 0 0 0 1px rgba(218,190,112,.12), inset 0 0 24px rgba(24,16,32,.15); }
+.board-theme-royal .square.light {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.11), transparent 46%),
+    linear-gradient(315deg, rgba(109,85,32,.035), transparent 58%),
+    #d8cfab;
+}
+.board-theme-royal .square.dark {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.055), transparent 46%),
+    linear-gradient(315deg, rgba(24,15,39,.08), transparent 58%),
+    #55476e;
+}
+
+.board-wrap.board-theme-forensic {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.05), transparent 26%),
+    repeating-linear-gradient(0deg, rgba(179,205,193,.018) 0 1px, transparent 1px 5px),
+    linear-gradient(135deg, #39433f, #171d1b 66%, #29322f);
+}
+.board-theme-forensic.board-wrap::after { border-color: rgba(154,190,174,.16); }
+.board-theme-forensic .board-grid { box-shadow: 0 0 0 1px rgba(145,181,164,.12), inset 0 0 20px rgba(7,20,15,.14); }
+
+/* Las texturas nunca deben competir con estado de juego ni con las piezas. */
+.board-wrap[class*='board-theme-'] .square.selected,
+.board-wrap[class*='board-theme-'] .square.last-move,
+.board-wrap[class*='board-theme-'] .square.in-check {
+  background-blend-mode: normal;
+}
+
+@media (prefers-contrast: more) {
+  .board-wrap[class*='board-theme-'] { background: #25211e; }
+  .board-wrap[class*='board-theme-']::after { border-color: rgba(255,255,255,.2); }
+}
