@@ -133,18 +133,10 @@
 }
 
 /* The canonical full render itself must never bob around. All physical motion
- * lives in the overlays above. */
+ * lives in the overlays above. The React motion contract, not the raw system
+ * media query, decides whether animations run so the user's explicit override
+ * can actually re-enable them. */
 .matthias-resident__portrait-shell .matthias-art-rig__base {
   animation: none !important;
-  transform: none !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .matthias-art-rig__part {
-    transform: none !important;
-  }
-}
-
-html[data-reduced-motion='true'] .matthias-art-rig__part {
   transform: none !important;
 }
