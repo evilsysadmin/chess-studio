@@ -73,11 +73,11 @@ describe('MatthiasLayeredArt', () => {
     }
   });
 
-  it('mantiene brazo y libro quietos al leer estrategia y usa una barrida ocular lenta', () => {
+  it('mantiene brazo y libro quietos al leer estrategia pero hace visible la lectura ocular', () => {
     const parts = matthiasGestureParts({ scene: 'strategy-book', activity: 'Leyendo estrategia' });
     expect(parts).toEqual(['eyes']);
     expect(parts).not.toEqual(expect.arrayContaining(['left-arm', 'right-arm', 'prop', 'head']));
-    expect(matthiasGestureTiming({ gesture: 'read-book', part: 'eyes' }).duration).toBeGreaterThanOrEqual(4500);
+    expect(matthiasGestureTiming({ gesture: 'read-book', part: 'eyes' }).duration).toBeGreaterThanOrEqual(4200);
   });
 
   it('usa idle como microgesto de ojos, no como balanceo del cráneo', () => {
@@ -85,25 +85,25 @@ describe('MatthiasLayeredArt', () => {
     expect(matthiasGestureParts({ scene: 'base', activity: 'Vigilando el desastre' })).toEqual(['eyes']);
   });
 
-  it('hace pronto el primer gesto y luego deja respirar al personaje', () => {
+  it('hace pronto el primer gesto y repite antes de que parezca una estatua', () => {
     for (let i = 0; i < 20; i += 1) {
-      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(550);
-      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(950);
-      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(12_000);
-      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(18_000);
+      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(400);
+      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(750);
+      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(8_000);
+      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(13_000);
     }
   });
 
-  it('da tiempo suficiente para leer escritura, expediente y movimientos de tablero', () => {
-    expect(matthiasGestureTiming({ gesture: 'write-notes', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3200);
-    expect(matthiasGestureTiming({ gesture: 'read-dossier', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3400);
+  it('da tiempo suficiente para leer escritura, expediente y pensamiento de tablero', () => {
+    expect(matthiasGestureTiming({ gesture: 'write-notes', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3500);
+    expect(matthiasGestureTiming({ gesture: 'read-dossier', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3800);
     expect(matthiasGestureTiming({ gesture: 'audit-dossier', part: 'prop' }).delay).toBeGreaterThan(0);
-    expect(matthiasGestureTiming({ gesture: 'board-move', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3100);
+    expect(matthiasGestureTiming({ gesture: 'board-move', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3800);
   });
 
   it('da recorrido claro al bocata y al café nocturno sin tocar partes incorrectas', () => {
-    expect(matthiasGestureTiming({ gesture: 'bite', part: 'prop' }).duration).toBeGreaterThanOrEqual(2700);
-    expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2500);
+    expect(matthiasGestureTiming({ gesture: 'bite', part: 'prop' }).duration).toBeGreaterThanOrEqual(2900);
+    expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2800);
     expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'prop' }).delay).toBeGreaterThan(0);
   });
 
@@ -112,7 +112,7 @@ describe('MatthiasLayeredArt', () => {
     expect(matthiasGestureParts({ scene: 'late-sleep' })).toEqual(
       expect.arrayContaining(['head', 'eyes']),
     );
-    expect(matthiasGestureTiming({ gesture: 'doze', part: 'head' }).duration).toBeGreaterThanOrEqual(3700);
+    expect(matthiasGestureTiming({ gesture: 'doze', part: 'head' }).duration).toBeGreaterThanOrEqual(3900);
   });
 
   it('renderiza el webp canónico como base y expone la actividad que eligió el gesto', () => {
