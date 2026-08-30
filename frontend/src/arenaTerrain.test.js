@@ -21,7 +21,7 @@ describe('Experimental Arenas · terreno bloqueado', () => {
   });
 
   it('los caballos saltan terreno pero no pueden aterrizar sobre él', () => {
-    const fen = '4k3/8/8/8/8/8/2R5/1N2K3 w - - 0 1';
+    const fen = '4k3/8/8/8/8/8/8/1N2K3 w - - 0 1';
     const targets = arenaLegalMoves(fen, ['b2', 'c2'], { from: 'b1' }).map((move) => move.to);
     expect(targets).toContain('c3');
     expect(targets).toContain('a3');
