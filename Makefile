@@ -16,6 +16,7 @@ TRIVY_CACHE ?= $(HOME)/.cache/trivy
 endif
 TRIVY_DB_TTL_MINUTES ?= 720
 NODE_CHECK_JOBS ?= 8
+CRITICAL_E2E_WORKERS ?= 4
 CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
@@ -247,7 +248,11 @@ test-be: tests-be
 tests/be: tests-be
 
 test-frontend: ensure-frontend-deps
+ifeq ($(GITHUB_ACTIONS),true)
+	cd frontend && npm run test:all
+else
 	cd frontend && npm test
+endif
 
 ## Alias histórico: el "resto backend" es la capa integration/API.
 test-backend: test-backend-integration
@@ -280,7 +285,7 @@ coverage: coverage-fe coverage-be
 
 e2e-install: ensure-frontend-deps
 	cd e2e && npm ci
-	@cd e2e && if [ "$${CI:-}" = "true" ]; then ./node_modules/.bin/playwright install --with-deps chromium; else ./node_modules/.bin/playwright install chromium; fi
+	cd e2e && ./node_modules/.bin/playwright install chromium
 
 ensure-e2e-deps: ensure-frontend-deps
 	@if [ ! -x "e2e/node_modules/.bin/playwright" ]; then \
@@ -290,7 +295,7 @@ ensure-e2e-deps: ensure-frontend-deps
 
 e2e-critical: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
-	cd e2e && ./node_modules/.bin/playwright test smoke.spec.js regression-journeys.spec.js --grep "$(CRITICAL_E2E_GREP)" --workers=2 --retries=0
+	cd e2e && ./node_modules/.bin/playwright test smoke.spec.js regression-journeys.spec.js --grep "$(CRITICAL_E2E_GREP)" --workers=$(CRITICAL_E2E_WORKERS) --retries=0
 
 e2e: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
