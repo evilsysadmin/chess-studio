@@ -4,6 +4,7 @@ import { analyzeGame } from '../gameReport.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
 import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, moveContextLines, pointOfNoReturn } from '../advancedCareer.js';
+import { cleanGameEvidence, recordCleanGameEvidence } from '../cleanGames.js';
 import { keyGameMoments } from '../postGameHighlights.js';
 import { glossaryEntry } from '../chessGlossary.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -72,7 +73,10 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     archivedRef.current = true;
     const info = savePersonalPuzzlesFromReport(history, humanColor, report, meta);
     setPersonalPuzzleInfo(info);
-    if (meta.gameId) archiveAnalysis(meta.gameId, report, meta);
+    if (meta.gameId) {
+      archiveAnalysis(meta.gameId, report, meta);
+      recordCleanGameEvidence(meta.gameId, report, meta);
+    }
   }, [status, report, history, humanColor, meta]);
 
   useEffect(() => {
@@ -116,6 +120,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const best = report ? bestMoveOfReport(report) : null;
   const noReturn = report ? pointOfNoReturn(report) : null;
   const keyMoments = report ? keyGameMoments(report) : [];
+  const cleanEvidence = report ? cleanGameEvidence(report, meta) : null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -134,6 +139,11 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>
               <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
             </div>
+            {cleanEvidence?.clean ? (
+              <div className="autopsy-training-note" data-clean-game="true"><b>✓ PARTIDA LIMPIA</b> · {cleanEvidence.analyzedCount} jugadas propias revisadas, sin mistakes/blunders, mate omitido ni regalo inmediato de pieza mayor o menor.</div>
+            ) : cleanEvidence && !cleanEvidence.sufficientSample ? (
+              <p className="hint-text">“Partida limpia” exige al menos 8 jugadas propias analizadas; esta autopsia sólo tiene {cleanEvidence.analyzedCount}. No se concede por falta de muestra.</p>
+            ) : null}
             <div className="autopsy-key-moments" aria-label="Momentos clave de la partida">
               {keyMoments.map((item) => (
                 <article key={`${item.kind}-${item.move.index}`} className={`autopsy-key-moment sev-${item.move.severity || 'ok'}`}>
