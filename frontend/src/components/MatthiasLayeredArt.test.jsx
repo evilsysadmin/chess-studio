@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import MatthiasLayeredArt, {
+  matthiasGestureDelay,
   matthiasGestureName,
   matthiasGestureParts,
   matthiasSceneFamily,
@@ -25,7 +26,20 @@ describe('MatthiasLayeredArt', () => {
     expect(matthiasGestureParts({ scene: 'dossier' })).toEqual(
       expect.arrayContaining(['head', 'eyes', 'right-arm', 'prop']),
     );
+    expect(matthiasGestureName({ scene: 'afternoon-ops' })).toBe('inspect');
+    expect(matthiasGestureParts({ scene: 'afternoon-ops' })).toEqual(
+      expect.arrayContaining(['head', 'eyes', 'right-arm', 'prop']),
+    );
     expect(matthiasGestureName({ speaking: true, scene: 'dossier' })).toBe('speak');
+  });
+
+  it('dispara el primer gesto pronto y mantiene pausas humanas entre gestos', () => {
+    for (let i = 0; i < 20; i += 1) {
+      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(450);
+      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(900);
+      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(4200);
+      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(7000);
+    }
   });
 
   it('renderiza el webp canónico como base y no contiene SVG redibujado', () => {
@@ -42,6 +56,7 @@ describe('MatthiasLayeredArt', () => {
     expect(html).toContain('data-matthias-art-part="left-arm"');
     expect(html).toContain('data-matthias-art-part="right-arm"');
     expect(html).toContain('data-matthias-art-part="prop"');
+    expect(html).toContain('data-gesture-count="0"');
     expect(html).not.toContain('<svg');
     expect(html).not.toContain('moustache');
   });
