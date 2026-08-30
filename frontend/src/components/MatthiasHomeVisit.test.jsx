@@ -31,6 +31,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
 
     expect(html).toContain('aria-label="Rincón de Matthias"');
     expect(html).toContain('data-viewport-resident="true"');
+    expect(html).toContain('data-ambient-scene="reading"');
     expect(html).toContain('Abrir Así juegas con Matthias');
     expect(html).toContain('Leyendo estrategia');
     expect(html).not.toContain('Mensaje de Matthias');
