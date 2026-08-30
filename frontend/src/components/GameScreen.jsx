@@ -1,30 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import Board from './Board.jsx';
-import NotationPanel from './NotationPanel.jsx';
 import PromotionModal from './PromotionModal.jsx';
-import GameChat from './GameChat.jsx';
-import MusicPlayer from './MusicPlayer.jsx';
+import GameBoardView from './GameBoardView.jsx';
 import PostGameExperience from './PostGameExperience.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playIllegalMoveSound } from '../sound.js';
 import { speakCpuComment, stopCpuSpeech } from '../voiceCommentary.js';
 import { formatLongMove } from '../notation.js';
-import { flagOutcome, formatClock } from '../clock.js';
+import { flagOutcome } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
 import { startMemoryComment, openingMemoryComment, resultMemoryComment, noteworthyMemoryFacts, noteworthyMemorySuffix } from '../cpuMemory.js';
-import { loadSeriesHistory, seriesHistoryStats, seriesLiveMoment, seriesStatusText } from '../series.js';
+import { loadSeriesHistory, seriesHistoryStats } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
-import { loadZenMode, saveZenMode, zenModeSummary } from '../zenMode.js';
+import { loadZenMode, saveZenMode } from '../zenMode.js';
 import { identifyOpening } from '../openings.js';
-import GlossaryTerm from './GlossaryTerm.jsx';
 import { noteworthyPresentation } from '../spectatorReactions.js';
-import { getToken, getUsername } from '../auth.js';
+import { getToken } from '../auth.js';
 import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
 import { useGameClock } from '../useGameClock.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
@@ -34,7 +30,6 @@ import { gameStatusView } from '../gameStatusView.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { chessFromFen, safeChessMove } from '../chessRules.js';
 import { createOperationId, operationFingerprint } from '../operationId.js';
-import { CPU_IDENTITY } from '../cpuIdentity.js';
 
 
 const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una torre', q: 'la dama' };
@@ -713,7 +708,6 @@ export default function GameScreen({
     onPersistenceState?.('saving');
     setHint(null);
     setTurnBanner(null);
-    setCpuComment(null);
     try {
       const operationId = mutationOperationId('undo', [game.id, game.history.length]);
       operation.operationId = operationId;
@@ -765,7 +759,6 @@ export default function GameScreen({
   if (hintLoading) hintButtonLabel = 'Pensando…';
   else if (hintMode === 'paid') hintButtonLabel = `Pista (${currentHintCost} pts)`;
 
-  const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
   const gameContextMessages = [
     !zenMode && prediction ? { id: 'game-prediction', by: 'system', event: 'PRONÓSTICO DE PARTIDA', text: prediction.text.replace(/^Pronóstico:\s*/i, '') } : null,
     activeContract ? { id: 'game-contract', by: 'system', event: 'RETO DE PARTIDA', text: `${activeContract.label} · ${activeContract.text} Es opcional: no cambia las reglas ni el rating.` } : null,
@@ -773,135 +766,57 @@ export default function GameScreen({
 
   const lastCpuComment = [...gameChat].reverse().find((message) => message?.by !== 'system' && message?.text)?.text || null;
 
-  const topColor = humanColor === 'w' ? 'b' : 'w'; // el rival siempre arriba
-  const bottomColor = humanColor;
-  const topTime = topColor === 'w' ? whiteTime : blackTime;
-  const bottomTime = bottomColor === 'w' ? whiteTime : blackTime;
-
-  // Función normal, NO un componente: si fuera un componente definido acá
-  // adentro (con mayúscula), React lo trataría como un tipo nuevo en cada
-  // render y remontaría el DOM entero cada 200ms (cada tick del reloj).
-  function renderPlayerRail({ color, seconds, cpu = false }) {
-    const isLow = seconds !== null && seconds <= 10;
-    const isTicking = tickingColor === color;
-    const active = game.turn === color && !game.isGameOver && !flagFallen && !forcedOutcome;
-    return (
-      <div className={`game-player-rail ${cpu ? 'is-cpu' : 'is-human'} ${active ? 'is-active' : ''}`} aria-label={`${cpu ? `${CPU_IDENTITY.name}, CPU` : 'Jugador'} ${active ? 'en turno' : 'esperando'}`}>
-        <span className={`game-player-avatar${cpu ? ' has-portrait' : ''}`} aria-hidden="true">{cpu ? <img src={CPU_IDENTITY.avatar} alt="" /> : '♙'}</span>
-        <span className="game-player-identity">
-          <strong>{cpu ? CPU_IDENTITY.name : (getUsername() || 'Tú')}</strong>
-          <small>{cpu
-            ? `${CPU_IDENTITY.role} · nivel ${game.difficulty}${Number(rivalryRecord.games || 0) > 0 ? ` · duelo ${Number(rivalryRecord.wins || 0)}V ${Number(rivalryRecord.draws || 0)}T ${Number(rivalryRecord.losses || 0)}D` : ''}`
-            : `${color === 'w' ? 'Blancas' : 'Negras'}${active ? ' · Tu turno' : ''}`}
-          </small>
-        </span>
-        {hasClock ? (
-          <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`}>{formatClock(seconds ?? 0)}</span>
-        ) : (
-          <span className="game-player-turn">{active ? 'EN TURNO' : 'ESPERANDO'}</span>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="game-screen">
-      <div className="game-layout">
-        <div className="board-column">
-          <div className={`status-line ${statusClass} ${!zenMode && turnBanner && !busy ? 'pulse' : ''}`} role="status" aria-label="Estado de la partida" aria-live="polite">
-            {statusText}
-          </div>
-          {!zenMode && audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{audienceReaction}</b></div>}
-          {!zenMode && matthiasSilentBeat && <div className="matthias-silent-beat" role="status" aria-label="Matthias observa en silencio"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><span>Matthias</span><b>…</b></div>}
-          {memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0,suddenLives))}{'♡'.repeat(Math.max(0,3-suddenLives))}</div>}
-          {controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{controlPrompt}</span><button className="secondary-btn" onClick={()=>controlResolveRef.current?.()}>Ya lo he mirado · que siga</button></div>}
-          {!zenMode && memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin afectar al rating</div>}
-          {!zenMode && game.ghostStyle && <div className="series-strip ghost-strip">Modo Rival Fantasma · nivel {game.difficulty} · estilo derivado de tus partidas</div>}
-          {!zenMode && seriesState && (
-            <div className={`series-strip series-live-strip ${seriesState.winner ? 'finished' : ''}`}>
-              <span>{seriesStatusText(seriesState)}</span>
-              {liveSeriesMoment?.label && <strong>{liveSeriesMoment.label}</strong>}
-            </div>
-          )}
-          {!zenMode && runState?.active && <div className="series-strip">{runState.mode === 'boss' ? `Boss Run · fase ${runState.stage + 1}/6 · CPU ${runState.difficulty}` : runState.mode === 'cup' ? `Copa · ${runState.completedStages || 0}/8 · ${runState.points || 0} pts · CPU ${runState.difficulty}` : `Racha · ${runState.wins} victorias · CPU ${runState.difficulty}`}</div>}
-          {!zenMode && achievementToast && (
-            <div className={`achievement-toast ${achievementToast.kind === 'shame' ? 'shame' : 'glory'}`}>
-              <b>{achievementToast.kind === 'shame' ? '☠ Trofeo de vergüenza' : '🏆 Logro desbloqueado'}</b>
-              <span>{achievementToast.name}</span>
-            </div>
-          )}
-          <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
-            <div className="game-board-stack">
-              {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
-              <Board
-                fen={visibleBoardFen}
-                onSquareClick={handleSquareClick}
-                selectedSquare={selected}
-                legalTargets={zenMode ? [] : legalTargets}
-                lastMove={zenMode ? null : lastMoveSquares}
-                animate={pendingAnim}
-                hintMove={zenMode ? null : hint}
-                checkSquare={zenMode ? null : kingInCheckSquare}
-                turnState={boardTurnState}
-                orientation={humanColor === 'b' ? 'black' : 'white'}
-                showCoordinates={!zenMode && showBoardCoordinates}
-                onCustomize={onCustomize}
-              />
-              {!zenMode && selectionNotice && (
-                <div className={`move-availability-note ${selectionNotice.kind}`} role="status" aria-live="polite">
-                  <b>{selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
-                  <span>{selectionNotice.text}</span>
-                </div>
-              )}
-              {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
-              <div className="game-command-deck" aria-label="Mesa de controles de la partida">
-                <div className="game-controls" aria-label="Controles principales de la partida">
-                  <span className={`game-controls-status ${game.turn === humanColor && !game.isGameOver ? 'is-active' : ''}`}><i aria-hidden="true" />{statusText}</span>
-                  <div className="game-controls-actions">
-                    {!zenMode && hintMode !== 'off' && (
-                      <button className="secondary-btn" disabled={!canHint} onClick={handleHint}>
-                        {hintButtonLabel}
-                      </button>
-                    )}
-                    {!zenMode && hintMode === 'free' && (
-                      <button className="secondary-btn" disabled={busy || game.history.length === 0} onClick={handleUndo}>
-                        Deshacer jugada
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
-                      aria-pressed={zenMode}
-                      title={zenModeSummary(zenMode)}
-                      onClick={() => setZenMode((current) => saveZenMode(!current))}
-                    >
-                      {zenMode ? 'Zen · ON' : 'Zen · OFF'}
-                    </button>
-                    <button className="secondary-btn game-abandon-btn" onClick={() => setShowAbandonConfirm(true)}>Abandonar partida</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {!zenMode && <aside className="game-side-column" aria-label="Chat de partida">
-              <div className="game-side-music" aria-label="Música de la partida">
-                <MusicPlayer initiallyCollapsed />
-              </div>
-              <details className="game-notation-disclosure" open={notationOpen} onToggle={(event) => setNotationOpen(event.currentTarget.open)}>
-                <summary>Cuaderno de jugadas · {game.history.length} movimientos</summary>
-                <div className="game-notation-row">
-                  <NotationPanel history={game.history} difficulty={game.difficulty} />
-                </div>
-              </details>
-              <GameChat messages={gameChat} contextMessages={gameContextMessages} />
-            </aside>}
-          </div>
-          {!zenMode && hint && <p className="hint-caption">Pista: {formatLongMove(hint)}</p>}
-          {!zenMode && captureFeedback && <p className="capture-feedback">{captureFeedback}</p>}
-          {!zenMode && hintMode === 'paid' && (
-            <p className="hint-caption hint-balance">Puntos disponibles: {points}</p>
-          )}
-        </div>
-      </div>
+      <GameBoardView
+        game={game}
+        humanColor={humanColor}
+        rivalryRecord={rivalryRecord}
+        zenMode={zenMode}
+        status={{ statusClass, statusText, turnBanner, busy, audienceReaction, matthiasSilentBeat }}
+        context={{
+          memoryContext,
+          suddenLives,
+          controlPrompt,
+          onContinueControl: () => controlResolveRef.current?.(),
+          seriesState,
+          runState,
+          achievementToast,
+        }}
+        clocks={{ hasClock, whiteTime, blackTime, tickingColor, flagFallen, forcedOutcome }}
+        board={{
+          visibleBoardFen,
+          onSquareClick: handleSquareClick,
+          selected,
+          legalTargets,
+          lastMoveSquares,
+          pendingAnim,
+          hint,
+          kingInCheckSquare,
+          boardTurnState,
+          showBoardCoordinates,
+          onCustomize,
+          selectionNotice,
+        }}
+        controls={{
+          hintMode,
+          canHint,
+          onHint: handleHint,
+          hintButtonLabel,
+          busy,
+          onUndo: handleUndo,
+          onToggleZen: () => setZenMode((current) => saveZenMode(!current)),
+          onAbandon: () => setShowAbandonConfirm(true),
+          captureFeedback,
+          points,
+        }}
+        side={{
+          notationOpen,
+          onNotationOpenChange: setNotationOpen,
+          gameChat,
+          gameContextMessages,
+        }}
+      />
 
       <PostGameExperience
         game={game}
