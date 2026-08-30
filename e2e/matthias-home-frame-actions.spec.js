@@ -42,6 +42,7 @@ async function gestureCount(rig) {
 
 async function expectCanonicalLayeredAction(page, corner, {
   family,
+  activity,
   gesture,
   movingParts,
   stationaryParts = [],
@@ -54,6 +55,7 @@ async function expectCanonicalLayeredAction(page, corner, {
   await expect(frame.locator('[data-matthias-frame-sequence="true"]')).toHaveCount(0);
   await expect(rig).toBeVisible();
   await expect(rig).toHaveAttribute('data-rig-family', family);
+  if (activity) await expect(rig).toHaveAttribute('data-rig-activity', activity);
   await expect(rig).toHaveAttribute('data-gesture', gesture);
   await expect(portrait).toBeVisible();
   await expect(portrait).toHaveAttribute('src', /\.webp(?:$|\?)/);
@@ -114,6 +116,7 @@ test('Home · café nocturno mueve la mano de la jarra y deja quieto el hombro c
   const corner = await openHomeAtHour(page, 21);
   await expectCanonicalLayeredAction(page, corner, {
     family: 'coffee',
+    activity: 'Turno nocturno',
     gesture: 'sip-night',
     movingParts: ['right-arm', 'prop'],
     upwardParts: ['right-arm', 'prop'],
@@ -125,9 +128,54 @@ test('Home · cena de campaña sube el bocata sin comprimir cabeza ni ojos', asy
   const corner = await openHomeAtHour(page, 20);
   await expectCanonicalLayeredAction(page, corner, {
     family: 'lunch',
+    activity: 'Cena de campaña',
     gesture: 'bite',
     movingParts: ['left-arm', 'right-arm', 'prop'],
     upwardParts: ['left-arm', 'right-arm', 'prop'],
     stationaryParts: ['head', 'eyes'],
+  });
+});
+
+test('Home · revisión de expedientes escanea el dossier sin mover el cráneo', async ({ page }) => {
+  const corner = await openHomeAtHour(page, 10);
+  await expectCanonicalLayeredAction(page, corner, {
+    family: 'reading',
+    activity: 'Revisión de expedientes',
+    gesture: 'read-dossier',
+    movingParts: ['eyes', 'right-arm'],
+    stationaryParts: ['head', 'left-arm'],
+  });
+});
+
+test('Home · auditoría táctica inspecciona el dossier con cabeza quieta', async ({ page }) => {
+  const corner = await openHomeAtHour(page, 17);
+  await expectCanonicalLayeredAction(page, corner, {
+    family: 'reading',
+    activity: 'Auditoría táctica',
+    gesture: 'audit-dossier',
+    movingParts: ['eyes', 'right-arm'],
+    stationaryParts: ['head', 'left-arm'],
+  });
+});
+
+test('Home · en plena operación escribe notas sin balancear cabeza ni otro brazo', async ({ page }) => {
+  const corner = await openHomeAtHour(page, 16);
+  await expectCanonicalLayeredAction(page, corner, {
+    family: 'ops',
+    activity: 'En plena operación',
+    gesture: 'write-notes',
+    movingParts: ['eyes', 'right-arm'],
+    stationaryParts: ['head', 'left-arm', 'prop'],
+  });
+});
+
+test('Home · partida privada usa un gesto de tablero y no el de tomar notas', async ({ page }) => {
+  const corner = await openHomeAtHour(page, 15);
+  await expectCanonicalLayeredAction(page, corner, {
+    family: 'ops',
+    activity: 'Partida privada',
+    gesture: 'board-move',
+    movingParts: ['eyes', 'right-arm'],
+    stationaryParts: ['head', 'left-arm', 'prop'],
   });
 });

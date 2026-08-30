@@ -13,49 +13,118 @@ export function matthiasSceneFamily(scene = '') {
   return 'base';
 }
 
+function cue(value = '') {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function frames(...items) {
   return items;
 }
 
 /*
  * The old WebP remains the visual truth. Localized copies of that exact bitmap
- * provide articulation, but the motion must be large enough to read at Home
- * scale. Keep one clear intent per gesture, a slow settle and a long pause.
+ * provide articulation. Gestures are selected by the actual Home activity so
+ * one shared render does not pretend to read, write and play in the same way.
  */
 const MOTIONS = Object.freeze({
-  glance: Object.freeze({
+  idle: Object.freeze({
     eyes: frames(
       { offset: 0, transform: 'translate3d(0,0,0) scaleY(1)' },
-      { offset: .34, transform: 'translate3d(2.2px,-.1px,0) scaleY(.97)' },
-      { offset: .72, transform: 'translate3d(2px,-.1px,0) scaleY(.98)' },
+      { offset: .3, transform: 'translate3d(1.8px,0,0) scaleY(1)' },
+      { offset: .52, transform: 'translate3d(1.6px,.2px,0) scaleY(.72)' },
+      { offset: .68, transform: 'translate3d(1.6px,0,0) scaleY(1)' },
       { offset: 1, transform: 'translate3d(0,0,0) scaleY(1)' },
     ),
-    head: frames(
-      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .42, transform: 'translate3d(.6px,-.5px,0) rotate(.45deg)' },
-      { offset: .76, transform: 'translate3d(.5px,-.4px,0) rotate(.38deg)' },
-      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
   }),
-  inspect: Object.freeze({
+  'write-notes': Object.freeze({
     eyes: frames(
       { offset: 0, transform: 'translate3d(0,0,0)' },
-      { offset: .22, transform: 'translate3d(-3px,.45px,0)' },
-      { offset: .7, transform: 'translate3d(-2.6px,.4px,0)' },
+      { offset: .28, transform: 'translate3d(-2.4px,.8px,0)' },
+      { offset: .76, transform: 'translate3d(-2.1px,.7px,0)' },
       { offset: 1, transform: 'translate3d(0,0,0)' },
-    ),
-    head: frames(
-      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .3, transform: 'translate3d(-1.35px,-1.45px,0) rotate(-1deg)' },
-      { offset: .74, transform: 'translate3d(-1.2px,-1.25px,0) rotate(-.85deg)' },
-      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'right-arm': frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .24, transform: 'translate3d(-2.6px,-4.8px,0) rotate(-1.8deg)' },
-      { offset: .42, transform: 'translate3d(-1.1px,-5.3px,0) rotate(-.65deg)' },
-      { offset: .58, transform: 'translate3d(-3.1px,-5px,0) rotate(-2deg)' },
-      { offset: .75, transform: 'translate3d(-1.4px,-4.6px,0) rotate(-.8deg)' },
+      { offset: .22, transform: 'translate3d(-2.8px,-3.4px,0) rotate(-1.2deg)' },
+      { offset: .38, transform: 'translate3d(-.7px,-3.9px,0) rotate(-.25deg)' },
+      { offset: .54, transform: 'translate3d(-3.2px,-3.5px,0) rotate(-1.35deg)' },
+      { offset: .7, transform: 'translate3d(-1px,-4px,0) rotate(-.4deg)' },
+      { offset: .84, transform: 'translate3d(-2.6px,-3.3px,0) rotate(-1.05deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+    ),
+  }),
+  'audit-dossier': Object.freeze({
+    eyes: frames(
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .22, transform: 'translate3d(-2.7px,.45px,0)' },
+      { offset: .5, transform: 'translate3d(.2px,.45px,0)' },
+      { offset: .76, transform: 'translate3d(2px,.35px,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
+    ),
+    'right-arm': frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .35, transform: 'translate3d(-2.1px,-3.1px,0) rotate(-1deg)' },
+      { offset: .68, transform: 'translate3d(-1.8px,-2.7px,0) rotate(-.8deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+    ),
+    prop: frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .38, transform: 'translate3d(-1.7px,-2px,0) rotate(-.6deg)' },
+      { offset: .7, transform: 'translate3d(-1.5px,-1.8px,0) rotate(-.5deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+    ),
+  }),
+  'read-dossier': Object.freeze({
+    eyes: frames(
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .2, transform: 'translate3d(-2.6px,.5px,0)' },
+      { offset: .48, transform: 'translate3d(-.4px,.45px,0)' },
+      { offset: .74, transform: 'translate3d(2.1px,.35px,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
+    ),
+    'right-arm': frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .4, transform: 'translate3d(-1.8px,-2.5px,0) rotate(-.8deg)' },
+      { offset: .74, transform: 'translate3d(-1.5px,-2.2px,0) rotate(-.65deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+    ),
+    prop: frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .42, transform: 'translate3d(-1.4px,-1.7px,0) rotate(-.45deg)' },
+      { offset: .74, transform: 'translate3d(-1.2px,-1.55px,0) rotate(-.38deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+    ),
+  }),
+  'read-book': Object.freeze({
+    eyes: frames(
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .2, transform: 'translate3d(-2.8px,.45px,0)' },
+      { offset: .45, transform: 'translate3d(-.5px,.45px,0)' },
+      { offset: .7, transform: 'translate3d(2.3px,.35px,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
+    ),
+    'right-arm': frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .45, transform: 'translate3d(-1.9px,-1.7px,0) rotate(-.7deg)' },
+      { offset: .76, transform: 'translate3d(-1.6px,-1.45px,0) rotate(-.55deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+    ),
+  }),
+  'board-move': Object.freeze({
+    eyes: frames(
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .3, transform: 'translate3d(2.2px,.7px,0)' },
+      { offset: .72, transform: 'translate3d(2px,.6px,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
+    ),
+    'right-arm': frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .34, transform: 'translate3d(-3.6px,-4.2px,0) rotate(-1.6deg)' },
+      { offset: .56, transform: 'translate3d(-1.4px,-5px,0) rotate(-.5deg)' },
+      { offset: .76, transform: 'translate3d(-3px,-3.8px,0) rotate(-1.25deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
@@ -119,33 +188,6 @@ const MOTIONS = Object.freeze({
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
-  read: Object.freeze({
-    eyes: frames(
-      { offset: 0, transform: 'translate3d(0,0,0)' },
-      { offset: .24, transform: 'translate3d(-2.8px,.55px,0)' },
-      { offset: .52, transform: 'translate3d(-.6px,.5px,0)' },
-      { offset: .76, transform: 'translate3d(2.2px,.4px,0)' },
-      { offset: 1, transform: 'translate3d(0,0,0)' },
-    ),
-    head: frames(
-      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .34, transform: 'translate3d(-1.25px,1.45px,0) rotate(-.9deg)' },
-      { offset: .78, transform: 'translate3d(-1px,1.15px,0) rotate(-.72deg)' },
-      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
-    'right-arm': frames(
-      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .38, transform: 'translate3d(-2.4px,-3.7px,0) rotate(-1.55deg)' },
-      { offset: .76, transform: 'translate3d(-2.1px,-3.35px,0) rotate(-1.3deg)' },
-      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
-    prop: frames(
-      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .38, transform: 'translate3d(-1.8px,-2.4px,0) rotate(-1deg)' },
-      { offset: .76, transform: 'translate3d(-1.55px,-2.15px,0) rotate(-.82deg)' },
-      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
-  }),
   doze: Object.freeze({
     head: frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
@@ -183,42 +225,59 @@ const MOTIONS = Object.freeze({
 });
 
 const GESTURE_DURATIONS = Object.freeze({
-  glance: 2000,
-  inspect: 3600,
+  idle: 2000,
+  'write-notes': 3300,
+  'audit-dossier': 3400,
+  'read-dossier': 3500,
+  'read-book': 3400,
+  'board-move': 3200,
   sip: 2300,
   'sip-night': 2600,
   bite: 2800,
-  read: 3500,
   doze: 3800,
   speak: 1900,
 });
 
 const PART_DELAYS = Object.freeze({
-  glance: Object.freeze({ eyes: 0, head: 160 }),
-  inspect: Object.freeze({ eyes: 0, head: 180, 'right-arm': 420 }),
+  idle: Object.freeze({ eyes: 0 }),
+  'write-notes': Object.freeze({ eyes: 0, 'right-arm': 300 }),
+  'audit-dossier': Object.freeze({ eyes: 0, 'right-arm': 420, prop: 500 }),
+  'read-dossier': Object.freeze({ eyes: 0, 'right-arm': 480, prop: 520 }),
+  'read-book': Object.freeze({ eyes: 0, 'right-arm': 560 }),
+  'board-move': Object.freeze({ eyes: 0, 'right-arm': 360 }),
   sip: Object.freeze({ eyes: 0, head: 120, 'left-arm': 280, prop: 280 }),
   'sip-night': Object.freeze({ 'right-arm': 80, prop: 160 }),
   bite: Object.freeze({ 'left-arm': 0, 'right-arm': 0, prop: 120 }),
-  read: Object.freeze({ eyes: 0, head: 220, 'right-arm': 520, prop: 520 }),
   doze: Object.freeze({ head: 0, eyes: 220 }),
   speak: Object.freeze({ head: 0, eyes: 120, 'right-arm': 300 }),
 });
 
-export function matthiasGestureName({ scene = '', speaking = false } = {}) {
+export function matthiasGestureName({ scene = '', activity = '', speaking = false } = {}) {
   if (speaking) return 'speak';
-  const key = String(scene || '').toLowerCase();
-  if (/night-coffee|beer-break/.test(key) || key === 'night') return 'sip-night';
+
+  const sceneKey = cue(scene);
+  const activityKey = cue(activity);
+
+  if (/night-coffee|beer-break/.test(sceneKey) || sceneKey === 'night') return 'sip-night';
+
   const family = matthiasSceneFamily(scene);
   if (family === 'coffee') return 'sip';
   if (family === 'lunch') return 'bite';
-  if (family === 'reading') return 'read';
-  if (family === 'ops') return 'inspect';
   if (family === 'sleep') return 'doze';
-  return 'glance';
+
+  if (/auditoria/.test(activityKey)) return 'audit-dossier';
+  if (/expedient/.test(activityKey) || /dossier/.test(sceneKey)) return 'read-dossier';
+
+  if (/partida|ajedrez dentro/.test(activityKey) || /inception/.test(sceneKey)) return 'board-move';
+  if (/notas|operacion/.test(activityKey) || /ops/.test(sceneKey)) return 'write-notes';
+
+  if (family === 'reading') return 'read-book';
+  if (family === 'ops') return 'write-notes';
+  return 'idle';
 }
 
-export function matthiasGestureParts({ scene = '', speaking = false } = {}) {
-  return Object.keys(MOTIONS[matthiasGestureName({ scene, speaking })] || {});
+export function matthiasGestureParts({ scene = '', activity = '', speaking = false } = {}) {
+  return Object.keys(MOTIONS[matthiasGestureName({ scene, activity, speaking })] || {});
 }
 
 export function matthiasGestureDelay({ first = false } = {}) {
@@ -227,9 +286,9 @@ export function matthiasGestureDelay({ first = false } = {}) {
     : 12_000 + Math.round(Math.random() * 6_000);
 }
 
-export function matthiasGestureTiming({ gesture = 'glance', part = 'eyes', speaking = false } = {}) {
+export function matthiasGestureTiming({ gesture = 'idle', part = 'eyes', speaking = false } = {}) {
   return {
-    duration: speaking ? 1900 : (GESTURE_DURATIONS[gesture] || GESTURE_DURATIONS.glance),
+    duration: speaking ? 1900 : (GESTURE_DURATIONS[gesture] || GESTURE_DURATIONS.idle),
     delay: PART_DELAYS[gesture]?.[part] || 0,
   };
 }
@@ -238,10 +297,19 @@ function safeFinished(animation) {
   return animation?.finished?.catch?.(() => undefined) || Promise.resolve();
 }
 
-export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = false, reducedMotion = false }) {
+export default function MatthiasLayeredArt({
+  avatar,
+  scene = 'base',
+  activity = '',
+  speaking = false,
+  reducedMotion = false,
+}) {
   const rootRef = useRef(null);
   const family = useMemo(() => matthiasSceneFamily(scene), [scene]);
-  const gesture = useMemo(() => matthiasGestureName({ scene, speaking }), [scene, speaking]);
+  const gesture = useMemo(
+    () => matthiasGestureName({ scene, activity, speaking }),
+    [activity, scene, speaking],
+  );
 
   useEffect(() => {
     const root = rootRef.current;
@@ -268,7 +336,7 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
 
     const runGesture = async () => {
       if (disposed) return;
-      const motion = MOTIONS[gesture] || MOTIONS.glance;
+      const motion = MOTIONS[gesture] || MOTIONS.idle;
       const running = [];
       root.dataset.gestureState = 'acting';
       root.dataset.gesture = gesture;
@@ -314,6 +382,7 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
       data-matthias-layered-art="true"
       data-rig-family={family}
       data-rig-scene={scene || 'base'}
+      data-rig-activity={activity || ''}
       data-gesture={gesture}
       data-gesture-state={reducedMotion ? 'reduced' : 'waiting'}
       data-gesture-profile="deliberate"
