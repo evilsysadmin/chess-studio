@@ -16,6 +16,19 @@ import {
 const HUMAN_COLOR = 'w';
 const CPU_COLOR = 'b';
 const LIVE_STATUSES = new Set(['playing', 'check']);
+const TERRAIN_MARKER_STYLE = Object.freeze({
+  position: 'absolute',
+  inset: '11%',
+  display: 'grid',
+  placeItems: 'center',
+  border: '1px solid rgba(220,210,190,.36)',
+  borderRadius: '18%',
+  background: 'radial-gradient(circle at 38% 28%, rgba(255,255,255,.16), transparent 28%), linear-gradient(145deg, rgba(77,81,86,.96), rgba(24,27,31,.98))',
+  color: 'rgba(232,222,201,.86)',
+  fontSize: 'clamp(.65rem, 2vw, 1.1rem)',
+  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.35), 0 2px 5px rgba(0,0,0,.28)',
+  pointerEvents: 'none',
+});
 
 function statusCopy(status, turn, thinking) {
   if (thinking) return 'Matthias calcula entre las ruinas…';
@@ -41,7 +54,6 @@ export default function ArenaExperiment() {
   const turn = arenaTurn(fen);
   const status = arenaStatus(fen, blocked, historyKeys);
   const legalFromSelected = selected ? arenaLegalMoves(fen, blocked, { from: selected }) : [];
-  const legalTargets = legalFromSelected.map((move) => move.to);
   const checkSquare = status === 'check' || status === 'checkmate' ? arenaKingSquare(fen, turn) : null;
 
   function reset(nextPreset = preset) {
@@ -101,16 +113,18 @@ export default function ArenaExperiment() {
 
   return (
     <section className="arena-experiment" aria-label="Arena experimental con terreno bloqueado">
-      <div className="arena-experiment-heading">
-        <div>
-          <span className="section-label">EXPERIMENTAL · NO COMPETITIVO</span>
-          <h2>Arena: {preset.label}</h2>
-          <p className="hint-text">{preset.summary} Juegas con blancas; Matthias lleva negras.</p>
+      <div className="menu-section">
+        <div className="combat-heading-row">
+          <div>
+            <span className="section-label">EXPERIMENTAL · NO COMPETITIVO</span>
+            <h2>Arena: {preset.label}</h2>
+          </div>
+          <button type="button" className="secondary-btn" onClick={() => reset()}>Reiniciar arena</button>
         </div>
-        <button type="button" className="secondary-btn" onClick={() => reset()}>Reiniciar arena</button>
+        <p className="hint-text">{preset.summary} Juegas con blancas; Matthias lleva negras.</p>
       </div>
 
-      <div className="arena-preset-tabs" role="radiogroup" aria-label="Geometría de la arena">
+      <div className="career-section-nav" role="radiogroup" aria-label="Geometría de la arena">
         {ARENA_PRESETS.map((item) => (
           <button
             key={item.id}
@@ -120,49 +134,46 @@ export default function ArenaExperiment() {
             className={item.id === preset.id ? 'active' : ''}
             onClick={() => choosePreset(item.id)}
           >
-            <strong>{item.label}</strong>
-            <small>{item.blocked.length} obstáculos</small>
+            {item.label} · {item.blocked.length}
           </button>
         ))}
       </div>
 
-      <div className="arena-experiment-layout">
-        <div className="arena-board-shell">
-          <Board
-            fen={fen}
-            orientation="white"
-            onSquareClick={onSquareClick}
-            selectedSquare={selected}
-            legalTargets={legalTargets}
-            lastMove={lastMove}
-            checkSquare={checkSquare}
-            turnState={turn === HUMAN_COLOR ? 'human' : 'cpu'}
-            themeOverride="obsidian"
-            squareClassName={(square) => blockedSet.has(square) ? 'arena-terrain-blocked' : ''}
-            squareBadge={(square) => blockedSet.has(square)
-              ? <span className="arena-terrain-marker" title="Terreno bloqueado" aria-label="Terreno bloqueado">◆</span>
-              : null}
-          />
-        </div>
-
-        <aside className="arena-rules-card">
-          <span className="section-label">ESTADO DE BATALLA</span>
-          <strong className="arena-status">{statusCopy(status, turn, thinking)}</strong>
-          <div className="arena-rule-list">
-            <p><b>◆ Obstáculo:</b> ninguna pieza puede ocuparlo.</p>
-            <p><b>Torres, alfiles y damas:</b> no pueden atravesarlo.</p>
-            <p><b>Caballos:</b> saltan por encima como siempre, pero no aterrizan sobre él.</p>
-            <p><b>Rey:</b> jaque y mate se recalculan con la geometría real de la arena.</p>
-          </div>
-          <small>Este prototipo es local: no modifica rating, carrera, historial ni estadísticas personales.</small>
-        </aside>
+      <div className="lab-board-editor">
+        <Board
+          fen={fen}
+          orientation="white"
+          onSquareClick={onSquareClick}
+          selectedSquare={selected}
+          legalTargets={legalFromSelected}
+          lastMove={lastMove}
+          checkSquare={checkSquare}
+          turnState={turn === HUMAN_COLOR ? 'human' : 'cpu'}
+          themeOverride="obsidian"
+          squareClassName={(square) => blockedSet.has(square) ? 'arena-terrain-blocked' : ''}
+          squareBadge={(square) => blockedSet.has(square)
+            ? <span style={TERRAIN_MARKER_STYLE} title="Terreno bloqueado" aria-label="Terreno bloqueado">◆</span>
+            : null}
+        />
       </div>
 
-      <details className="friendly-disclosure arena-technical-note">
+      <aside className="menu-section">
+        <span className="section-label">ESTADO DE BATALLA</span>
+        <h3>{statusCopy(status, turn, thinking)}</h3>
+        <div className="career-mini-grid">
+          <span><b>◆ Sólido</b><small>No se puede ocupar ni atravesar.</small></span>
+          <span><b>♜ ♝ ♛</b><small>Sus rayos terminan en el obstáculo.</small></span>
+          <span><b>♞ Salta</b><small>El caballo ignora el terreno intermedio.</small></span>
+          <span><b>♔ Real</b><small>Jaque y mate usan esta geometría.</small></span>
+        </div>
+        <p className="hint-text">Este prototipo es local: no modifica rating, carrera, historial ni estadísticas personales.</p>
+      </aside>
+
+      <details className="friendly-disclosure">
         <summary>Qué reglas normales siguen intactas</summary>
         <div className="friendly-disclosure-body">
           <p>Promoción, enroque, en passant, regla de 50 movimientos y triple repetición siguen existiendo. El terreno sólo añade casillas sólidas.</p>
-          <p>El objetivo de esta fase es demostrar que una geometría rara puede seguir sintiéndose como ajedrez antes de intentar puentes, despliegues asimétricos o tableros mayores.</p>
+          <p>Si esta fase aguanta, el siguiente escalón son puentes/corredores y despliegues asimétricos. Los tableros 8×10 o 10×10 vendrán bastante después.</p>
         </div>
       </details>
     </section>
