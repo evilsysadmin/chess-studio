@@ -1,0 +1,120 @@
+/* Errores is evidence, not a second copy of Ahora. The generic coaching list
+ * remains owned by the current-priority view; recurring mistakes below are
+ * backed by saved personal positions. */
+.insights-workspace-view-errors .insights-hub > .coaching-section {
+  display: none !important;
+}
+
+.insights-recurring-errors {
+  margin: 0 0 .85rem;
+  border: 1px solid rgba(198, 164, 93, .26);
+  background:
+    radial-gradient(circle at 94% 8%, rgba(198, 164, 93, .08), transparent 28%),
+    rgba(255,255,255,.018);
+}
+
+.insights-recurring-errors-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .8rem;
+  margin-bottom: .72rem;
+}
+
+.insights-recurring-errors-heading h2 {
+  margin: .08rem 0 .22rem;
+}
+
+.insights-recurring-errors-heading > strong {
+  flex: 0 0 auto;
+  padding: .26rem .48rem;
+  border: 1px solid rgba(198,164,93,.24);
+  border-radius: 999px;
+  color: var(--gold, #e5bf65);
+  font-size: .76rem;
+}
+
+.insights-recurring-errors-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .62rem;
+}
+
+.insights-recurring-error-card {
+  min-width: 0;
+  padding: .72rem;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 12px;
+  background: rgba(0,0,0,.12);
+}
+
+.insights-recurring-error-topline,
+.insights-recurring-error-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+
+.insights-recurring-error-topline > strong {
+  line-height: 1.28;
+}
+
+.insights-recurring-error-topline > span {
+  flex: 0 0 auto;
+  min-width: 2rem;
+  padding: .16rem .38rem;
+  border-radius: 999px;
+  background: rgba(198,164,93,.13);
+  color: var(--gold, #e5bf65);
+  text-align: center;
+  font-weight: 800;
+}
+
+.insights-recurring-error-card > p {
+  margin: .45rem 0 .62rem;
+  color: var(--parchment-dim);
+  font-size: .82rem;
+  line-height: 1.42;
+}
+
+.insights-recurring-error-footer small {
+  opacity: .7;
+  line-height: 1.3;
+}
+
+.insights-recurring-error-footer .primary-btn {
+  flex: 0 0 auto;
+  padding: .42rem .62rem;
+  font-size: .78rem;
+}
+
+.insights-recurring-errors-empty {
+  padding: .72rem;
+  border: 1px dashed rgba(255,255,255,.1);
+  border-radius: 11px;
+  background: rgba(0,0,0,.08);
+}
+
+.insights-recurring-errors-empty p {
+  margin: .2rem 0 0;
+}
+
+@media (max-width: 760px) {
+  .insights-recurring-errors-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .insights-recurring-errors-heading,
+  .insights-recurring-error-footer {
+    align-items: stretch;
+  }
+
+  .insights-recurring-error-footer {
+    flex-direction: column;
+  }
+
+  .insights-recurring-error-footer .primary-btn {
+    width: 100%;
+  }
+}
