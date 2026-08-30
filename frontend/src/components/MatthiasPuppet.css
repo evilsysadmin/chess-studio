@@ -6,92 +6,169 @@
 }
 
 .matthias-puppet__shadow {
-  fill: rgba(0, 0, 0, .24);
+  fill: rgba(0, 0, 0, .28);
 }
 
-.matthias-puppet__body > path:first-child,
-.matthias-puppet__head > circle:first-child,
-.matthias-puppet__arm path,
-.matthias-puppet__arm circle {
-  fill: color-mix(in srgb, var(--parchment) 76%, #9f7f49 24%);
-  stroke: color-mix(in srgb, var(--brass) 70%, #16191d 30%);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.matthias-puppet__body > path:first-child {
-  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .22));
-}
-
-.matthias-puppet__base {
-  fill: color-mix(in srgb, var(--parchment) 64%, #6e5a38 36%);
-  stroke: color-mix(in srgb, var(--brass) 72%, #111 28%);
-  stroke-width: 2.2;
-}
-
-.matthias-puppet__lapels {
-  fill: none;
-  stroke: rgba(18, 22, 27, .76);
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.matthias-puppet__tie {
-  fill: color-mix(in srgb, var(--brass) 74%, #7c2828 26%);
-  stroke: rgba(20, 18, 16, .55);
-  stroke-width: 1;
-}
-
+.matthias-puppet__body,
 .matthias-puppet__head,
 .matthias-puppet__eyes,
+.matthias-puppet__lids,
 .matthias-puppet__brows,
+.matthias-puppet__mouth,
+.matthias-puppet__moustache,
 .matthias-puppet__arm--action,
 .matthias-puppet__prop {
   transform-box: fill-box;
 }
 
 .matthias-puppet__head {
-  transform-origin: 50% 86%;
+  transform-origin: 50% 88%;
 }
 
 .matthias-puppet__eyes,
-.matthias-puppet__brows {
+.matthias-puppet__lids,
+.matthias-puppet__brows,
+.matthias-puppet__mouth,
+.matthias-puppet__moustache {
   transform-origin: center;
 }
 
 .matthias-puppet__arm--action {
-  transform-origin: 103px 101px;
+  transform-origin: 101px 108px;
 }
 
 .matthias-puppet__prop {
-  transform-origin: 50% 72%;
+  transform-origin: 50% 74%;
 }
 
-.matthias-puppet__brow-ridge {
-  fill: color-mix(in srgb, var(--parchment-dim) 46%, #5b4933 54%);
-  opacity: .72;
+.matthias-puppet__pawn-silhouette,
+.matthias-puppet__pawn-head,
+.matthias-puppet__arm path,
+.matthias-puppet__arm circle {
+  fill: color-mix(in srgb, var(--parchment) 66%, #8d7145 34%);
+  stroke: color-mix(in srgb, var(--brass) 70%, #11161d 30%);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.matthias-puppet__pawn-silhouette {
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .25));
+}
+
+.matthias-puppet__pawn-head {
+  fill: color-mix(in srgb, var(--parchment) 72%, #92764a 28%);
+}
+
+.matthias-puppet__pawn-collar {
+  fill: color-mix(in srgb, #171d25 78%, var(--brass) 22%);
+  stroke: color-mix(in srgb, var(--brass) 70%, #111 30%);
+  stroke-width: 1.8;
+}
+
+.matthias-puppet__uniform-panel {
+  fill: color-mix(in srgb, #2b313a 84%, var(--parchment) 16%);
+  stroke: color-mix(in srgb, var(--brass) 58%, #171a20 42%);
+  stroke-width: 1.5;
+}
+
+.matthias-puppet__sash,
+.matthias-puppet__belt {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brass) 72%, #8f732d 28%);
+  stroke-linecap: round;
+}
+
+.matthias-puppet__sash {
+  stroke-width: 5;
+  opacity: .9;
+}
+
+.matthias-puppet__belt {
+  stroke-width: 2.2;
+}
+
+.matthias-puppet__pawn-base {
+  fill: color-mix(in srgb, #252a31 82%, var(--parchment) 18%);
+  stroke: color-mix(in srgb, var(--brass) 74%, #111 26%);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.matthias-puppet__pawn-base--lower {
+  fill: color-mix(in srgb, #171c23 86%, var(--parchment) 14%);
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, .22));
+}
+
+.matthias-puppet__epaulette {
+  fill: color-mix(in srgb, var(--brass) 82%, #8c6f24 18%);
+  stroke: color-mix(in srgb, #171a20 55%, var(--brass) 45%);
+  stroke-width: 1.1;
+}
+
+.matthias-puppet__medal {
+  fill: color-mix(in srgb, #8d2525 68%, var(--brass) 32%);
+  stroke: color-mix(in srgb, var(--brass) 78%, #151515 22%);
+  stroke-width: 1;
+}
+
+.matthias-puppet__medal-core {
+  fill: var(--brass);
+}
+
+.matthias-puppet__cap-crown {
+  fill: color-mix(in srgb, #1d222a 86%, var(--brass) 14%);
+  stroke: color-mix(in srgb, var(--brass) 76%, #111 24%);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.matthias-puppet__cap-band {
+  fill: color-mix(in srgb, #11161d 78%, var(--brass) 22%);
+  stroke: color-mix(in srgb, var(--brass) 70%, #151515 30%);
+  stroke-width: 1.4;
+}
+
+.matthias-puppet__cap-badge {
+  fill: var(--brass);
+  stroke: color-mix(in srgb, #181818 62%, var(--brass) 38%);
+  stroke-width: .9;
+}
+
+.matthias-puppet__cap-visor {
+  fill: none;
+  stroke: rgba(9, 12, 16, .9);
+  stroke-width: 4.5;
+  stroke-linecap: round;
 }
 
 .matthias-puppet__brows path,
-.matthias-puppet__mouth,
+.matthias-puppet__lids path,
+.matthias-puppet__mouth path,
 .matthias-puppet__nose,
 .matthias-puppet__temple-lines {
   fill: none;
-  stroke: rgba(31, 27, 22, .86);
+  stroke: rgba(28, 26, 22, .88);
   stroke-linecap: round;
 }
 
 .matthias-puppet__brows path {
-  stroke-width: 2.7;
+  stroke-width: 2.8;
 }
 
 .matthias-puppet__eyes circle {
-  fill: rgba(20, 23, 27, .92);
+  fill: rgba(18, 21, 26, .96);
 }
 
-.matthias-puppet__mouth {
+.matthias-puppet__lids {
+  opacity: 0;
+}
+
+.matthias-puppet__lids path {
+  stroke-width: 2.3;
+}
+
+.matthias-puppet__mouth path {
   stroke-width: 1.8;
 }
 
@@ -102,13 +179,13 @@
 }
 
 .matthias-puppet__monocle {
-  fill: rgba(255,255,255,.025);
-  stroke: color-mix(in srgb, var(--brass) 86%, white 14%);
+  fill: rgba(255, 255, 255, .025);
+  stroke: color-mix(in srgb, var(--brass) 88%, white 12%);
   stroke-width: 1.4;
 }
 
-.matthias-puppet__moustache {
-  fill: rgba(49, 41, 31, .92);
+.matthias-puppet__moustache path {
+  fill: rgba(42, 37, 30, .95);
 }
 
 .matthias-puppet__prop-art {
@@ -144,7 +221,22 @@
 }
 
 .matthias-puppet[data-gesture-state='acting'] .matthias-puppet__eyes {
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--brass) 32%, transparent));
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--brass) 34%, transparent));
+}
+
+.matthias-puppet[data-gesture-kind='attend'] .matthias-puppet__mouth {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .18));
+}
+
+.matthias-puppet[data-gesture-kind='doze'] .matthias-puppet__lids,
+.matthias-puppet[data-gesture-state='acting'] .matthias-puppet__lids {
+  opacity: 1;
+}
+
+@media (max-width: 430px) {
+  .matthias-puppet__cap-visor {
+    stroke-width: 4;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
