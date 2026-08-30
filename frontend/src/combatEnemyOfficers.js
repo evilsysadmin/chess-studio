@@ -54,7 +54,9 @@ export function officerServiceRank(officer, rawRecord = {}) {
   if (!officer) return null;
   const record = normalizeRecord(rawRecord);
   const baseIndex = Math.max(0, OFFICER_RANKS.indexOf(officer.rank));
-  const serviceScore = record.encounters + (record.officerWins * 2);
+  // Ascenso narrativo por resultados reales: vencer al jugador pesa, las tablas
+  // algo, y la veteranía aporta muy poco. Ser apaleado muchas veces no basta.
+  const serviceScore = (record.officerWins * 3) + record.draws + Math.min(2, Math.floor(record.encounters / 4));
   const earnedSteps = serviceScore >= 10 ? 2 : serviceScore >= 4 ? 1 : 0;
   const rankIndex = Math.min(OFFICER_RANKS.length - 1, baseIndex + earnedSteps);
   const promotions = Math.max(0, rankIndex - baseIndex);
