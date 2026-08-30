@@ -26,10 +26,9 @@
     "25-visual-coherence.css",
     "26-visual-system-overhaul.css",
     "27-night-club-tactical.css",
-    "28-product-resilience.css",
-    "29-board-atmosphere-polish.css"
+    "28-product-resilience.css"
   ],
-  "combinedSha256": "b8b08c5974d4cc20c84f946fcfc0b90887609db027a28d9e466c287251e864ba",
+  "combinedSha256": "a3d5a617eacded316e774b917e385556706e150da9d6a59d150abe3d3f965224",
   "combinedBytes": 536415,
   "combinedLines": 14843
 }
