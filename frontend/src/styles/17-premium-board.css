@@ -322,3 +322,27 @@
   .board-wrap[class*='board-theme-'] { background: #25211e; }
   .board-wrap[class*='board-theme-']::after { border-color: rgba(255,255,255,.2); }
 }
+
+/* Obsidiana · recompensa de maestría: sobria, mineral y de alto contraste. */
+.board-wrap.board-theme-obsidian {
+  background:
+    radial-gradient(circle at 24% 8%, rgba(190,198,203,.10), transparent 32%),
+    repeating-linear-gradient(112deg, rgba(255,255,255,.012) 0 1px, transparent 1px 8px),
+    linear-gradient(135deg, #292c2f, #0b0d0f 66%, #181b1e);
+}
+.board-theme-obsidian.board-wrap::after { border-color: rgba(194,201,204,.18); }
+.board-theme-obsidian .board-grid {
+  box-shadow: 0 0 0 1px rgba(203,207,206,.14), inset 0 0 24px rgba(0,0,0,.24);
+}
+.board-theme-obsidian .square.light {
+  background:
+    linear-gradient(150deg, rgba(255,255,255,.12), transparent 44%),
+    linear-gradient(330deg, rgba(55,60,62,.035), transparent 58%),
+    #d1cec4;
+}
+.board-theme-obsidian .square.dark {
+  background:
+    linear-gradient(150deg, rgba(255,255,255,.055), transparent 46%),
+    linear-gradient(330deg, rgba(0,0,0,.11), transparent 60%),
+    #34383b;
+}
