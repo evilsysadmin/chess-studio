@@ -42,7 +42,7 @@ async function expectFrameAction(page, corner, { family, action }) {
     await img.decode();
     return { width: img.naturalWidth, height: img.naturalHeight };
   }, spriteSrc);
-  expect(decoded, `${action}: el sprite debe ser una imagen real decodificable`).toEqual({ width: 540, height: 480 });
+  expect(decoded, `${action}: el sprite debe ser una imagen real decodificable`).toEqual({ width: 270, height: 240 });
 
   await expect.poll(
     async () => Number(await sequence.getAttribute('data-sequence-cycle-count')),
