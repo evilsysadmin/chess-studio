@@ -13,160 +13,141 @@ async function dismissMatthiasSpeech(corner) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function motionSpan(page, layer) {
-  const samples = [];
-  for (let i = 0; i < 12; i += 1) {
-    samples.push(await layer.evaluate((node) => {
-      const rect = node.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    }));
-    await page.waitForTimeout(180);
-  }
-  const xs = samples.map((sample) => sample.x);
-  const ys = samples.map((sample) => sample.y);
-  return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-}
-
-async function expectPortraitMotion(page, layer, frame, image, label) {
-  await expect(frame).toBeVisible();
-  await expect(layer).toBeVisible();
-  await expect(image).toBeVisible();
-
-  await expect.poll(
-    () => layer.evaluate((node) => node.getAnimations().some((animation) => animation.playState === 'running')),
-    { message: `${label}: la capa enmascarada de Matthias debe tener una animación compositor real` },
-  ).toBe(true);
-
-  const structure = await frame.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return {
-      animationName: style.animationName,
-      transform: style.transform,
-      backgroundImage: style.backgroundImage,
-      ownAnimations: node.getAnimations().length,
-    };
-  });
-  expect(structure.animationName, `${label}: el frame no puede tener una animación CSS`).toBe('none');
-  expect(structure.transform, `${label}: el frame no puede tener transform`).toBe('none');
-  expect(structure.ownAnimations, `${label}: el frame no puede tener animaciones directas`).toBe(0);
-  expect(structure.backgroundImage, `${label}: la escena completa debe quedar fija como fondo del frame`).toContain('url(');
-
-  const layerStructure = await layer.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return {
-      parentIsFrame: node.parentElement?.dataset.portraitFrame === 'true',
-      position: style.position,
-      maskImage: style.maskImage || style.webkitMaskImage || 'none',
-    };
-  });
-  expect(layerStructure.parentIsFrame, `${label}: la capa animada debe vivir dentro del frame`).toBe(true);
-  expect(layerStructure.position, `${label}: el overlay animado no puede participar en layout`).toBe('absolute');
-  expect(layerStructure.maskImage, `${label}: el overlay debe estar enmascarado para que no se mueva un rectángulo opaco`).not.toBe('none');
-
-  const imageStructure = await image.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return {
-      animationName: style.animationName,
-      transform: style.transform,
-      ownAnimations: node.getAnimations().length,
-    };
-  });
-  expect(imageStructure.animationName, `${label}: el bitmap completo no puede tener animación propia`).toBe('none');
-  expect(imageStructure.transform, `${label}: el bitmap completo no puede transformarse directamente`).toBe('none');
-  expect(imageStructure.ownAnimations, `${label}: el bitmap completo no puede tener animaciones directas`).toBe(0);
-
-  expect(
-    await motionSpan(page, layer),
-    `${label}: la silueta enmascarada de Matthias debe moverse de forma visible`,
-  ).toBeGreaterThan(3);
-
-  expect(
-    await motionSpan(page, frame),
-    `${label}: el marco del retrato debe permanecer inmóvil mientras Matthias se mueve dentro`,
-  ).toBeLessThan(1);
-}
-
-test('Home · Matthias se mueve como personaje sobre una escena fija en desktop y móvil y abre Así juegas', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
+async function openHome(page, { dismissSpeech = true } = {}) {
   await mockApi(page);
   await login(page);
   await dismissHomeGuide(page);
-
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner).toBeVisible();
-  await dismissMatthiasSpeech(corner);
+  if (dismissSpeech) await dismissMatthiasSpeech(corner);
+  return corner;
+}
+
+async function center(locator) {
+  return locator.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  });
+}
+
+async function expectRigStructure(matthias, label) {
+  const frame = matthias.locator('[data-portrait-frame="true"]');
+  const puppet = matthias.locator('[data-matthias-puppet="true"]');
+
+  await expect(frame).toBeVisible();
+  await expect(puppet).toBeVisible();
+  await expect(frame.locator('img')).toHaveCount(0);
+  await expect(puppet.locator('[data-puppet-part="body"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="head"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="eyes"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="brows"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="left-arm"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="action-arm"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="prop"]')).toHaveCount(1);
+
+  const frameContract = await frame.evaluate((node) => ({
+    transform: getComputedStyle(node).transform,
+    ownAnimations: node.getAnimations().length,
+  }));
+  expect(frameContract.transform, `${label}: el marco no puede transformarse`).toBe('none');
+  expect(frameContract.ownAnimations, `${label}: el marco no puede animarse`).toBe(0);
+  return { frame, puppet };
+}
+
+test('Home · Matthias está articulado: cuerpo fijo, piezas independientes y gesto one-shot', async ({ page }) => {
+  await page.addInitScript(() => { Math.random = () => 0; });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const corner = await openHome(page);
 
   const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
-  await expect(matthias).toBeVisible();
-
-  const portrait = matthias.locator('[data-motion-art="true"]');
-  const frame = matthias.locator('[data-portrait-frame="true"]');
-  const motionLayer = matthias.locator('[data-motion-layer="true"]');
-  await expect(portrait).toBeVisible();
-  await expect.poll(
-    () => portrait.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
-    { message: 'El arte de Matthias debe haberse decodificado realmente' },
-  ).toBe(true);
-
+  const { frame, puppet } = await expectRigStructure(matthias, 'desktop');
   await expect(corner).toHaveAttribute('data-placement', 'viewport');
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
-  await expect(frame).toHaveAttribute('data-static-scene', 'true');
-  await expectPortraitMotion(page, motionLayer, frame, portrait, 'desktop');
+  await expect(puppet).toHaveAttribute('data-gesture-state', 'waiting');
 
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(corner).toHaveAttribute('data-placement', 'inline');
-  await expectPortraitMotion(page, motionLayer, frame, portrait, 'móvil');
+  const frameBefore = await center(frame);
+  await page.waitForTimeout(1200);
+  await expect(puppet).toHaveAttribute('data-gesture-state', 'waiting');
+  expect(await puppet.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
+
+  await expect.poll(
+    () => puppet.getAttribute('data-gesture-state'),
+    { timeout: 10_500, message: 'Matthias debe hacer un gesto después de una pausa, no rebotar continuamente' },
+  ).toBe('acting');
+
+  const movingParts = await puppet.evaluate((node) => {
+    const parts = [...node.querySelectorAll('[data-puppet-part]')];
+    return Object.fromEntries(parts.map((part) => [part.dataset.puppetPart, part.getAnimations().length]));
+  });
+  expect(movingParts.body, 'el cuerpo/base de Matthias debe permanecer fijo').toBe(0);
+  expect(
+    Object.entries(movingParts).some(([part, count]) => part !== 'body' && count > 0),
+    'al menos una parte humana debe moverse durante el gesto',
+  ).toBe(true);
+
+  const timings = await puppet.evaluate((node) => node.getAnimations({ subtree: true }).map((animation) => animation.effect?.getTiming?.().iterations));
+  expect(timings.length).toBeGreaterThan(0);
+  expect(timings.every((iterations) => iterations === 1), 'ninguna articulación puede entrar en loop infinito').toBe(true);
+
+  const frameDuring = await center(frame);
+  expect(Math.abs(frameDuring.x - frameBefore.x), 'el marco debe permanecer clavado en X').toBeLessThan(1);
+  expect(Math.abs(frameDuring.y - frameBefore.y), 'el marco debe permanecer clavado en Y').toBeLessThan(1);
+
+  await expect.poll(
+    () => puppet.getAttribute('data-gesture-state'),
+    { timeout: 3_000, message: 'después del gesto Matthias debe volver a reposo' },
+  ).toBe('rest');
+  await expect.poll(() => puppet.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 });
 
-test('Home · si el sistema congela animaciones explica por qué y permite activarlas explícitamente', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await mockApi(page);
-  await login(page);
-  await dismissHomeGuide(page);
+test('Home · el rig articulado también cabe en móvil sin mover su tarjeta', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const corner = await openHome(page);
+  await expect(corner).toHaveAttribute('data-placement', 'inline');
 
-  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-  await expect(corner).toBeVisible();
-  await dismissMatthiasSpeech(corner);
+  const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
+  const { frame, puppet } = await expectRigStructure(matthias, 'móvil');
+  const before = await center(frame);
+  await page.waitForTimeout(900);
+  const after = await center(frame);
+  expect(Math.abs(after.x - before.x)).toBeLessThan(1);
+  expect(Math.abs(after.y - before.y)).toBeLessThan(1);
+  await expect(puppet).toHaveAttribute('data-gesture-state', 'waiting');
+});
+
+test('Home · reduced-motion congela las articulaciones y permite activarlas explícitamente', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const corner = await openHome(page);
   await expect(corner).toHaveAttribute('data-motion-state', 'reduced');
   await expect(corner).toHaveAttribute('data-motion-source', 'system');
+
+  const puppet = corner.locator('[data-matthias-puppet="true"]');
+  await expect(puppet).toBeVisible();
+  expect(await puppet.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
 
   const enable = corner.getByRole('button', { name: 'Movimiento desactivado por el sistema · activar', exact: true });
   await expect(enable).toBeVisible();
   await enable.click();
-
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
   await expect(corner).toHaveAttribute('data-motion-source', 'app');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.motionPreference)).toBe('allow');
-
-  const frame = corner.locator('[data-portrait-frame="true"]');
-  const motionLayer = corner.locator('[data-motion-layer="true"]');
-  const portrait = corner.locator('[data-motion-art="true"]');
-  await expectPortraitMotion(page, motionLayer, frame, portrait, 'override del sistema');
 });
 
-test('Home · una preferencia guardada de reducir movimiento no deja a Matthias congelado sin explicación', async ({ page }) => {
+test('Home · una preferencia guardada de reducir movimiento sigue siendo reversible con el puppet', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript(() => localStorage.setItem('chess-study-reduced-motion', '1'));
-  await mockApi(page);
-  await login(page);
-  await dismissHomeGuide(page);
-
-  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-  await expect(corner).toBeVisible();
-  await dismissMatthiasSpeech(corner);
+  const corner = await openHome(page);
   await expect(corner).toHaveAttribute('data-motion-state', 'reduced');
   await expect(corner).toHaveAttribute('data-motion-source', 'app');
 
-  const enable = corner.getByRole('button', { name: 'Movimiento desactivado en Chess Studio · activar', exact: true });
-  await expect(enable).toBeVisible();
-  await enable.click();
+  const puppet = corner.locator('[data-matthias-puppet="true"]');
+  expect(await puppet.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
 
+  const enable = corner.getByRole('button', { name: 'Movimiento desactivado en Chess Studio · activar', exact: true });
+  await enable.click();
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
-  const frame = corner.locator('[data-portrait-frame="true"]');
-  const motionLayer = corner.locator('[data-motion-layer="true"]');
-  const portrait = corner.locator('[data-motion-art="true"]');
-  await expectPortraitMotion(page, motionLayer, frame, portrait, 'override de preferencia guardada');
 });
