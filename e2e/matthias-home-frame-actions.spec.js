@@ -25,13 +25,24 @@ async function openHomeAtHour(page, hour) {
   return corner;
 }
 
-async function expectFrameAction(corner, { family, action }) {
+async function expectFrameAction(page, corner, { family, action }) {
   const sequence = corner.locator('[data-matthias-frame-sequence="true"]');
   await expect(sequence).toBeVisible();
   await expect(sequence).toHaveAttribute('data-sequence-family', family);
   await expect(sequence).toHaveAttribute('data-sequence-action', action);
   await expect(sequence.locator('[data-matthias-art-part]')).toHaveCount(0);
   await expect(sequence.locator('[data-frame-layer]')).toHaveCount(2);
+  await expect(sequence.locator('img[data-matthias-canonical-art="true"]')).toBeVisible();
+
+  const spriteSrc = await sequence.getAttribute('data-sprite-src');
+  expect(spriteSrc).toBeTruthy();
+  const decoded = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    return { width: img.naturalWidth, height: img.naturalHeight };
+  }, spriteSrc);
+  expect(decoded, `${action}: el sprite debe ser una imagen real decodificable`).toEqual({ width: 540, height: 480 });
 
   await expect.poll(
     async () => Number(await sequence.getAttribute('data-sequence-cycle-count')),
@@ -48,10 +59,10 @@ async function expectFrameAction(corner, { family, action }) {
 
 test('Home · Matthias levanta la taza y bebe mediante fotogramas completos', async ({ page }) => {
   const corner = await openHomeAtHour(page, 7);
-  await expectFrameAction(corner, { family: 'coffee', action: 'drink' });
+  await expectFrameAction(page, corner, { family: 'coffee', action: 'drink' });
 });
 
 test('Home · Matthias acerca la comida y come mediante fotogramas completos', async ({ page }) => {
   const corner = await openHomeAtHour(page, 12);
-  await expectFrameAction(corner, { family: 'lunch', action: 'eat' });
+  await expectFrameAction(page, corner, { family: 'lunch', action: 'eat' });
 });
