@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
+import InsightsErrorsPanel from './InsightsErrorsPanel.jsx';
 import './InsightsWorkspace.css';
 
 const DIAGNOSIS_VIEWS = [
   { id: 'now', label: 'Ahora', detail: 'Matthias te marca el foco' },
-  { id: 'errors', label: 'Errores', detail: 'Patrones y errores recurrentes' },
+  { id: 'errors', label: 'Errores', detail: 'Reincidencias y evidencia real' },
   { id: 'dossier', label: 'Expediente', detail: 'Datos y tendencias' },
 ];
 
@@ -84,6 +85,7 @@ export default function InsightsScreen(props) {
         role="tabpanel"
         aria-labelledby={isCareer ? 'insights-section-career' : `insights-view-${diagnosisView}`}
       >
+        {!isCareer && diagnosisView === 'errors' && <InsightsErrorsPanel onOpenPuzzles={props.onOpenPuzzles} />}
         <InsightsDashboardContent key={section} {...props} initialSection={section} />
       </div>
     </div>
