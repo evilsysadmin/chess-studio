@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TIME_CONTROLS } from '../clock.js';
 import { getAmbientVolume, isFxMuted, isMusicMuted, setAmbientVolume, setFxMuted, setMusicMuted } from '../sound.js';
-import { getBoardCoordinates, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setDefaultTimeControlId, setReducedMotion, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
+import { getBoardCoordinates, getDefaultTimeControlId, getReducedMotionPreference, getUiLanguage, reducedMotionStatus, setBoardCoordinates, setDefaultTimeControlId, setReducedMotionPreference, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { levelForPoints, loadTournament } from '../tournament.js';
 import { loadSelectedSkin, PIECE_SKINS, saveSelectedSkin, unlockedSkins } from '../tournamentRewards.js';
@@ -23,6 +23,16 @@ const SKIN_PREVIEWS = {
   ...GENERATED_SKIN_PREVIEWS,
 };
 
+function motionStatusCopy(status) {
+  if (status.preference === 'allow' && status.systemReduced) {
+    return 'Animaciones activas: Chess Studio ignora la petición de movimiento reducido de este dispositivo.';
+  }
+  if (status.preference === 'allow') return 'Animaciones activas en este dispositivo.';
+  if (status.preference === 'reduce') return 'Animaciones reducidas por Chess Studio.';
+  if (status.systemReduced) return 'Sistema: el sistema o navegador solicita reducir movimiento; Matthias y otras animaciones permanecen quietas.';
+  return 'Sistema: las animaciones están activas.';
+}
+
 export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = false }) {
   useEscapeToClose(onClose);
   const [timeControlId, setTimeControlIdState] = useState(() => getDefaultTimeControlId());
@@ -31,10 +41,11 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => getAmbientVolume());
   const [pieceSkin, setPieceSkin] = useState(() => loadSelectedSkin());
-  const [reducedMotion, setReducedMotionState] = useState(() => getReducedMotion());
+  const [motionPreference, setMotionPreferenceState] = useState(() => getReducedMotionPreference());
   const [boardCoordinates, setBoardCoordinatesState] = useState(() => getBoardCoordinates());
   const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
   const availableSkinIds = new Set(unlockedSkins(tournamentLevel, { isAdmin: isAdminUser }).map((skin) => skin.id));
+  const motionStatus = reducedMotionStatus();
 
   function updateTimeControl(value) {
     setTimeControlIdState(setDefaultTimeControlId(value));
@@ -57,6 +68,9 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
   function updatePieceSkin(id) {
     saveSelectedSkin(id);
     setPieceSkin(id);
+  }
+  function updateMotionPreference(value) {
+    setMotionPreferenceState(setReducedMotionPreference(value));
   }
 
   return (
@@ -84,7 +98,15 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
               })}
             </div>
             <label className="settings-toggle"><input type="checkbox" checked={boardCoordinates} onChange={(event) => setBoardCoordinatesState(setBoardCoordinates(event.target.checked))} /><span>Mostrar coordenadas del tablero</span></label>
-            <label className="settings-toggle"><input type="checkbox" checked={reducedMotion} onChange={(event) => setReducedMotionState(setReducedMotion(event.target.checked))} /><span>Reducir animaciones</span></label>
+            <label className="settings-field">
+              <span>Animaciones</span>
+              <select value={motionPreference} onChange={(event) => updateMotionPreference(event.target.value)} aria-label="Preferencia de animaciones">
+                <option value="system">Sistema</option>
+                <option value="allow">Animaciones activas</option>
+                <option value="reduce">Reducir animaciones</option>
+              </select>
+            </label>
+            <small data-motion-effective={motionStatus.effective ? 'reduced' : 'active'}>{motionStatusCopy(motionStatus)}</small>
           </section>
           <section>
             <h3>Partidas</h3>
