@@ -1,15 +1,35 @@
-/* Matthias · Home motion hotfix
+/* Matthias · Home motion
  * Mantiene al personaje vivo de forma perceptible sin convertirlo en un loop
- * nervioso. Reduced motion sigue teniendo prioridad absoluta.
+ * nervioso. Las acciones físicas (comer/beber) son deliberadamente más claras
+ * que lectura/observación. Reduced motion sigue teniendo prioridad absoluta.
  */
 
-/* Override intencionado de las animaciones demasiado sutiles del residente.
- * El selector iguala/supera la especificidad de los presets por escena y este
- * fichero se importa después del CSS base. */
+/* Movimiento ambiental general: visible pero sobrio. */
 .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
   animation:
     matthias-resident-scene-in .45s ease-out both,
     matthias-home-alive 9.5s ease-in-out .45s infinite;
+}
+
+/* Beber sí debe leerse como una acción. La ilustración ya contiene la taza;
+ * el cuerpo la acompaña con una elevación/inclinación clara, pausa de trago y
+ * retorno. Incluye las escenas horarias que reutilizan el arte de café. */
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='coffee'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='breakfast'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='night'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='beer-break'] img {
+  animation:
+    matthias-resident-scene-in .45s ease-out both,
+    matthias-home-drink 6.8s cubic-bezier(.45,0,.25,1) .45s infinite;
+}
+
+/* Comer tiene su propia coreografía: acercamiento al bocata, mordisco, pequeño
+ * doble cabeceo de masticación y vuelta a reposo. */
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='lunch'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='bocata'] img {
+  animation:
+    matthias-resident-scene-in .45s ease-out both,
+    matthias-home-eat 6.2s cubic-bezier(.4,0,.2,1) .45s infinite;
 }
 
 /* Mientras habla mantiene una respiración mínima después del gesto inicial.
@@ -29,6 +49,30 @@
   91% { transform: translateY(-1.4px) rotate(.22deg) scale(1.005); }
 }
 
+@keyframes matthias-home-drink {
+  0%, 16%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
+  25% { transform: translate(-1px, -3px) rotate(-1deg) scale(1.012); }
+  34% { transform: translate(-2px, -6px) rotate(-2.3deg) scale(1.026); }
+  43% { transform: translate(-2px, -7px) rotate(-2.6deg) scale(1.03); }
+  49% { transform: translate(-1px, -6px) rotate(-2deg) scale(1.025); }
+  57% { transform: translate(0, -2px) rotate(-.6deg) scale(1.01); }
+  66%, 88% { transform: translate(0, 0) rotate(0) scale(1); }
+  93% { transform: translateY(1px) rotate(.25deg) scale(.998); }
+}
+
+@keyframes matthias-home-eat {
+  0%, 14%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
+  23% { transform: translate(2px, -3px) rotate(1.1deg) scale(1.014); }
+  31% { transform: translate(3px, -6px) rotate(2deg) scale(1.03); }
+  38% { transform: translate(2px, -4px) rotate(1.5deg) scale(1.022); }
+  44% { transform: translate(2px, -6px) rotate(1.8deg) scale(1.028); }
+  50% { transform: translate(1px, -3px) rotate(.8deg) scale(1.016); }
+  57% { transform: translate(1px, -5px) rotate(1.35deg) scale(1.023); }
+  66% { transform: translate(0, -1px) rotate(.2deg) scale(1.006); }
+  74%, 91% { transform: translate(0, 0) rotate(0) scale(1); }
+  95% { transform: translateY(1px) rotate(-.2deg) scale(.999); }
+}
+
 @keyframes matthias-home-speaking-life {
   0%, 52%, 100% { transform: translateY(0) rotate(0); }
   62% { transform: translateY(-1.5px) rotate(-.28deg); }
@@ -39,6 +83,18 @@
 @media (max-width: 430px) {
   .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
     animation-duration: .45s, 8.5s;
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='coffee'] img,
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='breakfast'] img,
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='night'] img,
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='beer-break'] img {
+    animation-duration: .45s, 6.2s;
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='lunch'] img,
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='bocata'] img {
+    animation-duration: .45s, 5.8s;
   }
 }
 
