@@ -17,165 +17,188 @@ function frames(...items) {
   return items;
 }
 
+/*
+ * These are intentionally restrained. Every moving layer is a masked copy of
+ * the canonical bitmap sitting over the same static bitmap, so large opposing
+ * translations reveal the original body part underneath and read as a twitch.
+ * Natural motion here means: one dominant direction, slow settle, tiny return.
+ */
 const MOTIONS = Object.freeze({
   glance: Object.freeze({
     eyes: frames(
-      { transform: 'translate3d(0,0,0) scaleY(1)' },
-      { transform: 'translate3d(3.8px,-.3px,0) scaleY(.94)' },
-      { transform: 'translate3d(-2.8px,.2px,0) scaleY(.98)' },
-      { transform: 'translate3d(0,0,0) scaleY(1)' },
+      { offset: 0, transform: 'translate3d(0,0,0) scaleY(1)' },
+      { offset: .34, transform: 'translate3d(2.2px,-.1px,0) scaleY(.97)' },
+      { offset: .72, transform: 'translate3d(2px,-.1px,0) scaleY(.98)' },
+      { offset: 1, transform: 'translate3d(0,0,0) scaleY(1)' },
     ),
     head: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(1.5px,-1.2px,0) rotate(1deg)' },
-      { transform: 'translate3d(-.7px,-.4px,0) rotate(-.35deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .42, transform: 'translate3d(.6px,-.5px,0) rotate(.45deg)' },
+      { offset: .76, transform: 'translate3d(.5px,-.4px,0) rotate(.38deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
   inspect: Object.freeze({
-    head: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-2.6px,-2.8px,0) rotate(-1.7deg)' },
-      { transform: 'translate3d(1.4px,-1.4px,0) rotate(.8deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
     eyes: frames(
-      { transform: 'translate3d(0,0,0)' },
-      { transform: 'translate3d(-3.8px,.2px,0)' },
-      { transform: 'translate3d(2.8px,-.1px,0)' },
-      { transform: 'translate3d(-1.4px,.1px,0)' },
-      { transform: 'translate3d(0,0,0)' },
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .24, transform: 'translate3d(-2.2px,.2px,0)' },
+      { offset: .72, transform: 'translate3d(-2px,.2px,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
+    ),
+    head: frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .3, transform: 'translate3d(-.9px,-1px,0) rotate(-.65deg)' },
+      { offset: .74, transform: 'translate3d(-.8px,-.9px,0) rotate(-.58deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'right-arm': frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-3.8px,-6.5px,0) rotate(-3.7deg)' },
-      { transform: 'translate3d(2.3px,-5.2px,0) rotate(2.4deg)' },
-      { transform: 'translate3d(-2.7px,-4.6px,0) rotate(-2.6deg)' },
-      { transform: 'translate3d(1.2px,-2.2px,0) rotate(1.1deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
-    prop: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-2.4px,-3.2px,0) rotate(-1.6deg)' },
-      { transform: 'translate3d(1.4px,-2.2px,0) rotate(.9deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .28, transform: 'translate3d(-1.7px,-3.5px,0) rotate(-1.25deg)' },
+      { offset: .44, transform: 'translate3d(-1.1px,-3.9px,0) rotate(-.8deg)' },
+      { offset: .6, transform: 'translate3d(-1.9px,-3.7px,0) rotate(-1.35deg)' },
+      { offset: .76, transform: 'translate3d(-1.3px,-3.5px,0) rotate(-.9deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
   sip: Object.freeze({
-    head: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-1.6px,2.2px,0) rotate(-1.2deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
     eyes: frames(
-      { transform: 'translate3d(0,0,0)' },
-      { transform: 'translate3d(-3px,.8px,0) scaleY(.92)' },
-      { transform: 'translate3d(0,0,0)' },
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .34, transform: 'translate3d(-1.5px,.3px,0) scaleY(.96)' },
+      { offset: .74, transform: 'translate3d(-1.4px,.3px,0) scaleY(.97)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
+    ),
+    head: frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .4, transform: 'translate3d(-.7px,1px,0) rotate(-.55deg)' },
+      { offset: .76, transform: 'translate3d(-.6px,.9px,0) rotate(-.48deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'left-arm': frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(3.2px,-7.2px,0) rotate(4.2deg)' },
-      { transform: 'translate3d(1.6px,-5.8px,0) rotate(2.8deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .34, transform: 'translate3d(1.6px,-3.8px,0) rotate(1.7deg)' },
+      { offset: .72, transform: 'translate3d(1.5px,-3.6px,0) rotate(1.55deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     prop: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(4px,-8px,0) rotate(3.2deg)' },
-      { transform: 'translate3d(2px,-6px,0) rotate(2deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .34, transform: 'translate3d(1.8px,-4.1px,0) rotate(1.35deg)' },
+      { offset: .72, transform: 'translate3d(1.7px,-3.9px,0) rotate(1.2deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
   bite: Object.freeze({
-    head: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(0,2.6px,0) rotate(.7deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-    ),
     eyes: frames(
-      { transform: 'translate3d(0,0,0) scaleY(1)' },
-      { transform: 'translate3d(0,.7px,0) scaleY(.82)' },
-      { transform: 'translate3d(0,0,0) scaleY(1)' },
+      { offset: 0, transform: 'translate3d(0,0,0) scaleY(1)' },
+      { offset: .4, transform: 'translate3d(0,.3px,0) scaleY(.9)' },
+      { offset: .72, transform: 'translate3d(0,.2px,0) scaleY(.94)' },
+      { offset: 1, transform: 'translate3d(0,0,0) scaleY(1)' },
+    ),
+    head: frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .42, transform: 'translate3d(0,1.1px,0) rotate(.3deg)' },
+      { offset: .74, transform: 'translate3d(0,1px,0) rotate(.25deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'left-arm': frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(3.6px,-5.8px,0) rotate(3.2deg)' },
-      { transform: 'translate3d(1.7px,-3.8px,0) rotate(1.6deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .36, transform: 'translate3d(1.5px,-3.2px,0) rotate(1.3deg)' },
+      { offset: .72, transform: 'translate3d(1.4px,-3px,0) rotate(1.15deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'right-arm': frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-3.6px,-5.8px,0) rotate(-3.2deg)' },
-      { transform: 'translate3d(-1.7px,-3.8px,0) rotate(-1.6deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .36, transform: 'translate3d(-1.5px,-3.2px,0) rotate(-1.3deg)' },
+      { offset: .72, transform: 'translate3d(-1.4px,-3px,0) rotate(-1.15deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     prop: frames(
-      { transform: 'translate3d(0,0,0) scale(1)' },
-      { transform: 'translate3d(0,-7.2px,0) scale(1.024)' },
-      { transform: 'translate3d(0,-4px,0) scale(1.014)' },
-      { transform: 'translate3d(0,0,0) scale(1)' },
+      { offset: 0, transform: 'translate3d(0,0,0) scale(1)' },
+      { offset: .38, transform: 'translate3d(0,-3.5px,0) scale(1.01)' },
+      { offset: .72, transform: 'translate3d(0,-3.2px,0) scale(1.008)' },
+      { offset: 1, transform: 'translate3d(0,0,0) scale(1)' },
     ),
   }),
   read: Object.freeze({
     eyes: frames(
-      { transform: 'translate3d(0,0,0)' },
-      { transform: 'translate3d(-3.6px,.7px,0)' },
-      { transform: 'translate3d(3px,.3px,0)' },
-      { transform: 'translate3d(-1.6px,.5px,0)' },
-      { transform: 'translate3d(0,0,0)' },
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .28, transform: 'translate3d(-2px,.3px,0)' },
+      { offset: .58, transform: 'translate3d(-.5px,.25px,0)' },
+      { offset: .78, transform: 'translate3d(1.4px,.2px,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
     ),
     head: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-1.7px,1.8px,0) rotate(-1.2deg)' },
-      { transform: 'translate3d(1.2px,.9px,0) rotate(.7deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .36, transform: 'translate3d(-.7px,.8px,0) rotate(-.5deg)' },
+      { offset: .78, transform: 'translate3d(-.5px,.6px,0) rotate(-.4deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'right-arm': frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-3.2px,-4.8px,0) rotate(-2.7deg)' },
-      { transform: 'translate3d(1.3px,-2.6px,0) rotate(1.2deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .42, transform: 'translate3d(-1.4px,-2.6px,0) rotate(-1deg)' },
+      { offset: .76, transform: 'translate3d(-1.2px,-2.4px,0) rotate(-.85deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     prop: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-2.8px,-3.2px,0) rotate(-1.8deg)' },
-      { transform: 'translate3d(1.8px,-1.4px,0) rotate(.9deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .42, transform: 'translate3d(-1px,-1.5px,0) rotate(-.55deg)' },
+      { offset: .76, transform: 'translate3d(-.9px,-1.4px,0) rotate(-.48deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
   doze: Object.freeze({
     head: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(2.2px,4.4px,0) rotate(2.4deg)' },
-      { transform: 'translate3d(1px,2.4px,0) rotate(1.1deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .48, transform: 'translate3d(.9px,2.4px,0) rotate(1.2deg)' },
+      { offset: .8, transform: 'translate3d(.8px,2.1px,0) rotate(1deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     eyes: frames(
-      { transform: 'translate3d(0,0,0) scaleY(1)' },
-      { transform: 'translate3d(0,1px,0) scaleY(.62)' },
-      { transform: 'translate3d(0,.4px,0) scaleY(.82)' },
-      { transform: 'translate3d(0,0,0) scaleY(1)' },
+      { offset: 0, transform: 'translate3d(0,0,0) scaleY(1)' },
+      { offset: .48, transform: 'translate3d(0,.4px,0) scaleY(.74)' },
+      { offset: .8, transform: 'translate3d(0,.35px,0) scaleY(.8)' },
+      { offset: 1, transform: 'translate3d(0,0,0) scaleY(1)' },
     ),
   }),
   speak: Object.freeze({
     head: frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-2.2px,-2.8px,0) rotate(-1.4deg)' },
-      { transform: 'translate3d(1.8px,-1.5px,0) rotate(.9deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .36, transform: 'translate3d(-.8px,-.9px,0) rotate(-.55deg)' },
+      { offset: .74, transform: 'translate3d(-.6px,-.7px,0) rotate(-.42deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     eyes: frames(
-      { transform: 'translate3d(0,0,0)' },
-      { transform: 'translate3d(-3.4px,0,0)' },
-      { transform: 'translate3d(2.4px,0,0)' },
-      { transform: 'translate3d(0,0,0)' },
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .32, transform: 'translate3d(-1.7px,0,0)' },
+      { offset: .72, transform: 'translate3d(-1.5px,0,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
     ),
     'right-arm': frames(
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { transform: 'translate3d(-3.5px,-5.2px,0) rotate(-3deg)' },
-      { transform: 'translate3d(1.5px,-2.8px,0) rotate(1.4deg)' },
-      { transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .4, transform: 'translate3d(-1.6px,-2.8px,0) rotate(-1.1deg)' },
+      { offset: .72, transform: 'translate3d(-1.4px,-2.5px,0) rotate(-.95deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
+});
+
+const GESTURE_DURATIONS = Object.freeze({
+  glance: 1800,
+  inspect: 2600,
+  sip: 2300,
+  bite: 2300,
+  read: 2500,
+  doze: 2800,
+  speak: 1900,
+});
+
+const PART_DELAYS = Object.freeze({
+  glance: Object.freeze({ eyes: 0, head: 160 }),
+  inspect: Object.freeze({ eyes: 0, head: 140, 'right-arm': 320 }),
+  sip: Object.freeze({ eyes: 0, head: 120, 'left-arm': 280, prop: 280 }),
+  bite: Object.freeze({ eyes: 0, head: 120, 'left-arm': 260, 'right-arm': 260, prop: 300 }),
+  read: Object.freeze({ eyes: 0, head: 180, 'right-arm': 480, prop: 480 }),
+  doze: Object.freeze({ head: 0, eyes: 180 }),
+  speak: Object.freeze({ head: 0, eyes: 120, 'right-arm': 300 }),
 });
 
 export function matthiasGestureName({ scene = '', speaking = false } = {}) {
@@ -195,8 +218,15 @@ export function matthiasGestureParts({ scene = '', speaking = false } = {}) {
 
 export function matthiasGestureDelay({ first = false } = {}) {
   return first
-    ? 450 + Math.round(Math.random() * 450)
-    : 4200 + Math.round(Math.random() * 2800);
+    ? 1000 + Math.round(Math.random() * 700)
+    : 8000 + Math.round(Math.random() * 5000);
+}
+
+export function matthiasGestureTiming({ gesture = 'glance', part = 'eyes', speaking = false } = {}) {
+  return {
+    duration: speaking ? 1900 : (GESTURE_DURATIONS[gesture] || GESTURE_DURATIONS.glance),
+    delay: PART_DELAYS[gesture]?.[part] || 0,
+  };
 }
 
 function safeFinished(animation) {
@@ -237,16 +267,17 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
       const running = [];
       root.dataset.gestureState = 'acting';
       root.dataset.gesture = gesture;
+      root.dataset.gestureProfile = 'natural';
       root.dataset.gestureCount = String((Number(root.dataset.gestureCount) || 0) + 1);
 
-      Object.entries(motion).forEach(([part, keyframes], index) => {
+      Object.entries(motion).forEach(([part, keyframes]) => {
         const node = root.querySelector(`[data-matthias-art-part="${part}"]`);
         if (!node || typeof node.animate !== 'function') return;
-        const baseDuration = gesture === 'inspect' ? 1750 : gesture === 'read' ? 1550 : 1400;
+        const timing = matthiasGestureTiming({ gesture, part, speaking });
         const animation = node.animate(keyframes, {
-          duration: speaking ? 920 : baseDuration + (index * 90),
+          ...timing,
           iterations: 1,
-          easing: 'cubic-bezier(.2,.75,.2,1)',
+          easing: 'cubic-bezier(.4,0,.2,1)',
           fill: 'none',
         });
         running.push(safeFinished(animation));
@@ -259,7 +290,7 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
     };
 
     if (speaking) {
-      timer = window.setTimeout(runGesture, 120);
+      timer = window.setTimeout(runGesture, 180);
     } else {
       schedule(true);
     }
@@ -280,6 +311,7 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
       data-rig-scene={scene || 'base'}
       data-gesture={gesture}
       data-gesture-state={reducedMotion ? 'reduced' : 'waiting'}
+      data-gesture-profile="natural"
       data-gesture-count="0"
       style={{ '--matthias-rig-image': `url(${avatar})` }}
     >
