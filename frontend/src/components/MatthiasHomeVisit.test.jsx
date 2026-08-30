@@ -21,12 +21,7 @@ vi.mock('../userPreferences.js', () => ({
   USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
 }));
 
-import MatthiasHomeVisit, {
-  matthiasCompactViewport,
-  matthiasGestureDelay,
-  matthiasHumanGesture,
-  matthiasMotionReduced,
-} from './MatthiasHomeVisit.jsx';
+import MatthiasHomeVisit, { matthiasCompactViewport, matthiasMotionReduced } from './MatthiasHomeVisit.jsx';
 
 const MODEL = {
   variant: 'quiet',
@@ -39,7 +34,7 @@ const MODEL = {
 };
 
 describe('MatthiasHomeVisit · residente de Home', () => {
-  it('cuando está callado sólo ocupa su rincón ambiental y no pinta bocadillo', () => {
+  it('cuando está callado usa el puppet articulado y no pinta bocadillo', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit model={MODEL} speaking={false} onOpenInsights={() => {}} />,
     );
@@ -50,14 +45,19 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-motion-state="active"');
     expect(html).toContain('data-motion-source="none"');
     expect(html).toContain('data-ambient-scene="reading"');
+    expect(html).toContain('data-matthias-puppet="true"');
+    expect(html).toContain('data-puppet-part="body"');
+    expect(html).toContain('data-puppet-part="head"');
+    expect(html).toContain('data-puppet-part="action-arm"');
+    expect(html).toContain('data-puppet-part="prop"');
+    expect(html).not.toContain('data-motion-art="true"');
     expect(html).toContain('Abrir Así juegas con Matthias');
     expect(html).toContain('Leyendo estrategia');
     expect(html).not.toContain('Mensaje de Matthias');
     expect(html).not.toContain(MODEL.text);
-    expect(html).not.toContain('&hellip;');
   });
 
-  it('cuando tiene algo real que decir muestra un único bocadillo con sus acciones', () => {
+  it('cuando tiene algo real que decir mantiene el puppet y muestra un único bocadillo', () => {
     const model = { ...MODEL, variant: 'comment', text: 'He encontrado una reincidencia real.', meta: '2 casos' };
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit
@@ -69,6 +69,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
       />,
     );
 
+    expect(html).toContain('data-matthias-puppet="true"');
     expect(html).toContain('Mensaje de Matthias');
     expect(html).toContain('He encontrado una reincidencia real.');
     expect(html).toContain('2 casos');
@@ -86,35 +87,5 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(matthiasMotionReduced({ appReduced: true, mediaReduced: false })).toBe(true);
     expect(matthiasMotionReduced({ appReduced: false, mediaReduced: true })).toBe(true);
     expect(matthiasMotionReduced({ appReduced: true, mediaReduced: true })).toBe(true);
-  });
-
-  it('espera antes de un gesto ambiental y atiende casi de inmediato cuando habla', () => {
-    expect(matthiasGestureDelay({ speaking: true, random: () => 1 })).toBe(140);
-    expect(matthiasGestureDelay({ random: () => 0 })).toBe(1800);
-    expect(matthiasGestureDelay({ random: () => 1 })).toBe(4000);
-  });
-
-  it('usa gestos humanos one-shot sin rebote vertical', () => {
-    const cases = [
-      { scene: 'coffee', expected: 'sip' },
-      { scene: 'lunch-bocata', expected: 'bite' },
-      { scene: 'strategy-book', expected: 'read' },
-      { scene: 'late-sleep', expected: 'doze' },
-      { scene: 'afternoon-ops', expected: 'inspect' },
-      { scene: 'base', expected: 'acknowledge' },
-    ];
-
-    for (const { scene, expected } of cases) {
-      const gesture = matthiasHumanGesture({ scene });
-      expect(gesture.name).toBe(expected);
-      expect(gesture.duration).toBeGreaterThanOrEqual(1400);
-      expect(gesture.duration).toBeLessThanOrEqual(1900);
-      expect(gesture.frames[0].transform).toBe(gesture.frames.at(-1).transform);
-      expect(gesture.frames.every((frame) => !/translateY|translate3d/.test(frame.transform))).toBe(true);
-    }
-
-    const speaking = matthiasHumanGesture({ speaking: true });
-    expect(speaking.name).toBe('attend');
-    expect(speaking.frames.every((frame) => !/translateY|translate3d/.test(frame.transform))).toBe(true);
   });
 });
