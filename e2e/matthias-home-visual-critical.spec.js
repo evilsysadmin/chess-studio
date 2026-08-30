@@ -34,6 +34,10 @@ function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+async function gestureCount(rig) {
+  return Number(await rig.getAttribute('data-gesture-count')) || 0;
+}
+
 async function expectLayeredCanonicalPortrait(matthias, label) {
   const frame = matthias.locator('[data-portrait-frame="true"]');
   const rig = frame.locator('[data-matthias-layered-art="true"]');
@@ -95,7 +99,7 @@ test('Home · Tomando notas desplaza físicamente brazo, mirada y cabeza sobre e
   const armBefore = await center(arm);
 
   await expect.poll(
-    () => Number(rig.getAttribute('data-gesture-count')),
+    () => gestureCount(rig),
     { timeout: 2_000, message: 'el primer gesto visible debe empezar casi inmediatamente' },
   ).toBeGreaterThan(0);
   await expect(rig).toHaveAttribute('data-gesture-state', 'acting');
@@ -149,10 +153,7 @@ test('Home · el rig por capas también se activa pronto en móvil sin mover la 
   const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
   const { frame, rig } = await expectLayeredCanonicalPortrait(matthias, 'móvil');
   const before = await center(frame);
-  await expect.poll(
-    () => Number(rig.getAttribute('data-gesture-count')),
-    { timeout: 2_000 },
-  ).toBeGreaterThan(0);
+  await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
   const after = await center(frame);
   expect(Math.abs(after.x - before.x)).toBeLessThan(1);
   expect(Math.abs(after.y - before.y)).toBeLessThan(1);
@@ -175,7 +176,7 @@ test('Home · reduced-motion congela las capas y permite activarlas explícitame
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
   await expect(corner).toHaveAttribute('data-motion-source', 'app');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.motionPreference)).toBe('allow');
-  await expect.poll(() => Number(rig.getAttribute('data-gesture-count')), { timeout: 2_000 }).toBeGreaterThan(0);
+  await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
 });
 
 test('Home · una preferencia guardada de reducir movimiento sigue siendo reversible con el rig antiguo', async ({ page }) => {
@@ -192,5 +193,5 @@ test('Home · una preferencia guardada de reducir movimiento sigue siendo revers
   const enable = corner.getByRole('button', { name: 'Movimiento desactivado en Chess Studio · activar', exact: true });
   await enable.click();
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
-  await expect.poll(() => Number(rig.getAttribute('data-gesture-count')), { timeout: 2_000 }).toBeGreaterThan(0);
+  await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
 });
