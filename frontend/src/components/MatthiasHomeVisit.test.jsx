@@ -21,7 +21,12 @@ vi.mock('../userPreferences.js', () => ({
   USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
 }));
 
-import MatthiasHomeVisit, { matthiasCompactViewport, matthiasMotionReduced } from './MatthiasHomeVisit.jsx';
+import MatthiasHomeVisit, {
+  matthiasCompactViewport,
+  matthiasGestureDelay,
+  matthiasHumanGesture,
+  matthiasMotionReduced,
+} from './MatthiasHomeVisit.jsx';
 
 const MODEL = {
   variant: 'quiet',
@@ -81,5 +86,35 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(matthiasMotionReduced({ appReduced: true, mediaReduced: false })).toBe(true);
     expect(matthiasMotionReduced({ appReduced: false, mediaReduced: true })).toBe(true);
     expect(matthiasMotionReduced({ appReduced: true, mediaReduced: true })).toBe(true);
+  });
+
+  it('espera antes de un gesto ambiental y atiende casi de inmediato cuando habla', () => {
+    expect(matthiasGestureDelay({ speaking: true, random: () => 1 })).toBe(140);
+    expect(matthiasGestureDelay({ random: () => 0 })).toBe(1800);
+    expect(matthiasGestureDelay({ random: () => 1 })).toBe(4000);
+  });
+
+  it('usa gestos humanos one-shot sin rebote vertical', () => {
+    const cases = [
+      { scene: 'coffee', expected: 'sip' },
+      { scene: 'lunch-bocata', expected: 'bite' },
+      { scene: 'strategy-book', expected: 'read' },
+      { scene: 'late-sleep', expected: 'doze' },
+      { scene: 'afternoon-ops', expected: 'inspect' },
+      { scene: 'base', expected: 'acknowledge' },
+    ];
+
+    for (const { scene, expected } of cases) {
+      const gesture = matthiasHumanGesture({ scene });
+      expect(gesture.name).toBe(expected);
+      expect(gesture.duration).toBeGreaterThanOrEqual(1400);
+      expect(gesture.duration).toBeLessThanOrEqual(1900);
+      expect(gesture.frames[0].transform).toBe(gesture.frames.at(-1).transform);
+      expect(gesture.frames.every((frame) => !/translateY|translate3d/.test(frame.transform))).toBe(true);
+    }
+
+    const speaking = matthiasHumanGesture({ speaking: true });
+    expect(speaking.name).toBe('attend');
+    expect(speaking.frames.every((frame) => !/translateY|translate3d/.test(frame.transform))).toBe(true);
   });
 });
