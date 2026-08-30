@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import Board from './Board.jsx';
 import NotationPanel from './NotationPanel.jsx';
 import PromotionModal from './PromotionModal.jsx';
 import GameChat from './GameChat.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
+import PostGameExperience from './PostGameExperience.jsx';
 import { api } from '../api.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playIllegalMoveSound } from '../sound.js';
@@ -15,7 +16,7 @@ import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
 import { startMemoryComment, openingMemoryComment, resultMemoryComment, noteworthyMemoryFacts, noteworthyMemorySuffix } from '../cpuMemory.js';
-import { loadSeriesHistory, seriesHistoryStats, seriesLiveMoment, seriesNextActionLabel, seriesStatusText } from '../series.js';
+import { loadSeriesHistory, seriesHistoryStats, seriesLiveMoment, seriesStatusText } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
@@ -26,19 +27,14 @@ import { noteworthyPresentation } from '../spectatorReactions.js';
 import { getToken, getUsername } from '../auth.js';
 import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
 import { useGameClock } from '../useGameClock.js';
-import { nextBestAction } from '../nextBestAction.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { humanHasLostPiece } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
-import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
-import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 import { gameStatusView } from '../gameStatusView.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { chessFromFen, safeChessMove } from '../chessRules.js';
 import { createOperationId, operationFingerprint } from '../operationId.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
-
-const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
 
 
 const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una torre', q: 'la dama' };
@@ -100,8 +96,6 @@ export default function GameScreen({
   const [busy, setBusy] = useState(false);
   const [showBoardCoordinates, setShowBoardCoordinates] = useState(() => getBoardCoordinates());
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
-  const [showPostGameFeedback, setShowPostGameFeedback] = useState(false);
-  const feedbackRegisteredGameRef = useRef(null);
   const [zenMode, setZenMode] = useState(() => loadZenMode());
   const zenModeRef = useRef(zenMode);
   zenModeRef.current = zenMode;
@@ -122,17 +116,6 @@ export default function GameScreen({
     onPressure: () => setTurnBanner('30 segundos. Ahora cada clic viene con auditoría.'),
   });
 
-  useEffect(() => {
-    const finished = Boolean(game.isGameOver || flagFallen || forcedOutcome);
-    if (!postGameFeedbackEnabled || !finished || !game.id || feedbackRegisteredGameRef.current === game.id) return;
-    // No interrumpimos una serie entre partidas ni una run activa: la pregunta
-    // sólo compite por atención cuando la partida ya ha terminado de verdad.
-    if ((seriesState && !seriesState.winner) || runState?.active) return;
-    feedbackRegisteredGameRef.current = game.id;
-    if (registerCompletedGameForFeedback({ gameId: game.id })) setShowPostGameFeedback(true);
-  }, [game.id, game.isGameOver, flagFallen, forcedOutcome, seriesState?.winner, runState?.active, postGameFeedbackEnabled]);
-
-  const [showReport, setShowReport] = useState(false);
   const [notationOpen, setNotationOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 820);
   const [achievementToast, setAchievementToast] = useState(null);
   const [suddenLives, setSuddenLives] = useState(3);
@@ -777,7 +760,6 @@ export default function GameScreen({
     flagFinalOutcome,
     forcedOutcome,
   });
-  const nextAction = nextBestAction({ outcome: finalOutcome, moveCount: game.history.length, hasReport: game.history.length > 0 });
 
   let hintButtonLabel = 'Pista';
   if (hintLoading) hintButtonLabel = 'Pensando…';
@@ -921,66 +903,39 @@ export default function GameScreen({
         </div>
       </div>
 
-      {(game.isGameOver || flagFallen || forcedOutcome) && (
-        <div className="modal-backdrop endgame-modal-backdrop" role="presentation">
-          <section className={`endgame-banner endgame-dialog outcome-${finalOutcome}`} role="dialog" aria-modal="true" aria-labelledby="game-finished-title">
-            <span className="endgame-modal-kicker">PARTIDA FINALIZADA</span>
-          <span className="endgame-eyebrow">{nextAction.eyebrow}</span>
-          <h2 id="game-finished-title">{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
-          <p>
-            {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al rating.' : flagFallen
-              ? (flagFinalOutcome === 'draw' ? 'Cayó una bandera, pero el rival no tenía material suficiente para dar mate.' : flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
-              : game.status === 'checkmate'
-              ? game.turn === humanColor ? `Ganó ${CPU_IDENTITY.name}.` : '¡Ganaste la partida!'
-              : 'La partida terminó en tablas.'}
-          </p>
-          {resultSummary && (
-            <p className="endgame-rating-impact">
-              <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
-              <span>{resultSummary.detail}</span>
-            </p>
-          )}
-          {lastCpuComment && (
-            <blockquote className="endgame-cpu-verdict">
-              <span>{CPU_IDENTITY.name}</span>
-              <p>{lastCpuComment}</p>
-            </blockquote>
-          )}
-          {seriesState && !seriesState.winner && liveSeriesMoment && (
-            <div className={`series-endgame-moment ${liveSeriesMoment.kind}`}>
-              <span>{liveSeriesMoment.label}</span>
-              <strong>{liveSeriesMoment.headline}</strong>
-              <small>{liveSeriesMoment.detail}</small>
-            </div>
-          )}
-          {seriesState && !seriesState.winner && onNextSeriesGame ? (
-            <button className="primary-btn" onClick={onNextSeriesGame}>{seriesNextActionLabel(seriesState)}</button>
-          ) : runState?.active && onNextRunGame ? (
-            <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
-          ) : nextAction.id === 'review' ? (
-            <button className="primary-btn" onClick={() => setShowReport(true)}>{nextAction.label}</button>
-          ) : (
-            <button className="primary-btn" onClick={handleAbandon}>{nextAction.label}</button>
-          )}
-          {!seriesState && !runState?.active && <p className="endgame-next-detail">{nextAction.detail}</p>}
-          {(seriesState || runState?.active || nextAction.id === 'review') && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={handleAbandon}>Volver al menú</button>}
-          {onShareResult && (
-            <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
-              Compartir resultado
-            </button>
-          )}
-          {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
-          {game.history.length > 0 && nextAction.id !== 'review' && (
-            <button className="secondary-btn" onClick={() => setShowReport(true)}>
-              Resumen de la partida
-            </button>
-          )}
-          {postGameFeedbackEnabled && showPostGameFeedback && (
-            <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />
-          )}
-          </section>
-        </div>
-      )}
+      <PostGameExperience
+        game={game}
+        humanColor={humanColor}
+        statusLabel={statusLabel}
+        finalOutcome={finalOutcome}
+        flagFallen={flagFallen}
+        flagFinalOutcome={flagFinalOutcome}
+        forcedOutcome={forcedOutcome}
+        resultSummary={resultSummary}
+        lastCpuComment={lastCpuComment}
+        seriesState={seriesState}
+        runState={runState}
+        onNextSeriesGame={onNextSeriesGame}
+        onNextRunGame={onNextRunGame}
+        onLeave={handleAbandon}
+        onShareResult={onShareResult}
+        onTrainPersonal={onTrainPersonal}
+        onShareIncident={onShareIncident}
+        onOpenCrimeScene={onOpenCrimeScene}
+        postGameFeedbackEnabled={postGameFeedbackEnabled}
+        reportMeta={{
+          gameId: game.id,
+          initialFen: game.initialFen || null,
+          date: new Date().toISOString(),
+          outcome: finalOutcome,
+          difficulty: game.difficulty,
+          opening: memoryContext.nemesisOpening || identifyOpening((game.history || []).map((m) => m.san).filter(Boolean)),
+          timeControlId: timeControl?.id || 'none',
+          pressureMoves: pressureMovesRef.current,
+          pressureIncidents: pressureIncidentsRef.current,
+          mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.nemesis ? 'nemesis-training' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual',
+        }}
+      />
 
       {pendingPromotion && <PromotionModal onChoose={choosePromotion} />}
       {showAbandonConfirm && (
@@ -1001,18 +956,6 @@ export default function GameScreen({
             </div>
           </div>
         </div>
-      )}
-      {showReport && (
-        <React.Suspense fallback={<div className="modal-backdrop"><div className="army-card game-autopsy" role="status">Preparando resumen…</div></div>}>
-        <GameReportModal
-          history={game.history}
-          humanColor={humanColor}
-          onClose={() => setShowReport(false)}
-          meta={{ gameId: game.id, initialFen: game.initialFen || null, date: new Date().toISOString(), outcome: finalOutcome, difficulty: game.difficulty, opening: memoryContext.nemesisOpening || identifyOpening((game.history || []).map((m) => m.san).filter(Boolean)), timeControlId: timeControl?.id || 'none', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.nemesis ? 'nemesis-training' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual' }}
-          onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
-          onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
-        />
-        </React.Suspense>
       )}
     </div>
   );
