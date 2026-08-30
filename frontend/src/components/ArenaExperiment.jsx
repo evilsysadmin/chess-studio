@@ -54,6 +54,7 @@ export default function ArenaExperiment() {
   const turn = arenaTurn(fen);
   const status = arenaStatus(fen, blocked, historyKeys);
   const legalFromSelected = selected ? arenaLegalMoves(fen, blocked, { from: selected }) : [];
+  const boardLegalTargets = legalFromSelected.map((move) => ({ ...move, san: move.captured ? 'x' : '' }));
   const checkSquare = status === 'check' || status === 'checkmate' ? arenaKingSquare(fen, turn) : null;
 
   function reset(nextPreset = preset) {
@@ -97,7 +98,11 @@ export default function ArenaExperiment() {
     if (turn !== CPU_COLOR || !LIVE_STATUSES.has(status)) return undefined;
     setThinking(true);
     const timer = window.setTimeout(() => {
-      const move = arenaChooseCpuMove(fen, blocked, { depth: 2 });
+      // Profundidad 1 es deliberada en esta primera vertical slice. El motor
+      // reconstruye legalidad con terreno y una capa extra ya puede bloquear
+      // perceptiblemente el hilo principal en móviles. Primero jugable; luego
+      // optimizamos o movemos la búsqueda a Worker antes de profundizar.
+      const move = arenaChooseCpuMove(fen, blocked, { depth: 1 });
       if (move) {
         const applied = arenaApplyMove(fen, blocked, move);
         if (applied) {
@@ -145,7 +150,7 @@ export default function ArenaExperiment() {
           orientation="white"
           onSquareClick={onSquareClick}
           selectedSquare={selected}
-          legalTargets={legalFromSelected}
+          legalTargets={boardLegalTargets}
           lastMove={lastMove}
           checkSquare={checkSquare}
           turnState={turn === HUMAN_COLOR ? 'human' : 'cpu'}
