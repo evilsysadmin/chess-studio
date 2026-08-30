@@ -58,9 +58,7 @@ describe('MatthiasLayeredArt', () => {
     );
 
     expect(matthiasGestureName({ scene: 'strategy-book', activity: 'Leyendo estrategia' })).toBe('read-book');
-    expect(matthiasGestureParts({ scene: 'strategy-book', activity: 'Leyendo estrategia' })).toEqual(
-      ['eyes', 'right-arm'],
-    );
+    expect(matthiasGestureParts({ scene: 'strategy-book', activity: 'Leyendo estrategia' })).toEqual(['eyes']);
   });
 
   it('deja la cabeza quieta en lectura, auditoría, notas y partida', () => {
@@ -73,6 +71,13 @@ describe('MatthiasLayeredArt', () => {
     ]) {
       expect(matthiasGestureParts(input)).not.toContain('head');
     }
+  });
+
+  it('mantiene brazo y libro quietos al leer estrategia y usa una barrida ocular lenta', () => {
+    const parts = matthiasGestureParts({ scene: 'strategy-book', activity: 'Leyendo estrategia' });
+    expect(parts).toEqual(['eyes']);
+    expect(parts).not.toEqual(expect.arrayContaining(['left-arm', 'right-arm', 'prop', 'head']));
+    expect(matthiasGestureTiming({ gesture: 'read-book', part: 'eyes' }).duration).toBeGreaterThanOrEqual(4500);
   });
 
   it('usa idle como microgesto de ojos, no como balanceo del cráneo', () => {
