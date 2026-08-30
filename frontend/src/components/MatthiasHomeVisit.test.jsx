@@ -10,8 +10,12 @@ vi.mock('../matthiasVisuals.js', () => ({
   ],
   matthiasTimeVisual: () => ({ key: 'time', avatar: '/matthias-time.webp', label: 'En observación' }),
 }));
+vi.mock('../userPreferences.js', () => ({
+  getReducedMotion: () => false,
+  USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
+}));
 
-import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
+import MatthiasHomeVisit, { matthiasMotionReduced } from './MatthiasHomeVisit.jsx';
 
 const MODEL = {
   variant: 'quiet',
@@ -56,5 +60,12 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('2 casos');
     expect(html).toContain('Ver Así juegas');
     expect(html).toContain('Cerrar comentario de Matthias');
+  });
+
+  it('reduce el movimiento si lo pide la app o el sistema', () => {
+    expect(matthiasMotionReduced({ appReduced: false, mediaReduced: false })).toBe(false);
+    expect(matthiasMotionReduced({ appReduced: true, mediaReduced: false })).toBe(true);
+    expect(matthiasMotionReduced({ appReduced: false, mediaReduced: true })).toBe(true);
+    expect(matthiasMotionReduced({ appReduced: true, mediaReduced: true })).toBe(true);
   });
 });

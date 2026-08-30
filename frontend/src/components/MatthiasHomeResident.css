@@ -109,6 +109,17 @@
     matthias-resident-doze 36s ease-in-out .55s infinite;
 }
 
+/* Speaking is an event, not another idle loop: Matthias leans in once and
+ * then stays still so the text remains the focus. */
+.matthias-resident.is-speaking .matthias-resident__portrait-shell img {
+  animation: matthias-resident-attend .52s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.matthias-resident.is-speaking .matthias-resident__bubble {
+  animation: matthias-resident-bubble-in .2s cubic-bezier(.2,.8,.2,1) both;
+  transform-origin: 100% 80%;
+}
+
 .matthias-resident__character strong {
   margin-top: .1rem;
   color: color-mix(in srgb, var(--parchment) 84%, var(--brass));
@@ -251,6 +262,17 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes matthias-resident-attend {
+  0% { opacity: .58; transform: translateY(2px) rotate(.35deg) scale(.992); }
+  58% { opacity: 1; transform: translateY(-1px) rotate(-.18deg) scale(1.006); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0) scale(1); }
+}
+
+@keyframes matthias-resident-bubble-in {
+  from { opacity: 0; transform: translate(4px, 3px) scale(.988); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+
 @keyframes matthias-resident-idle {
   0%, 67%, 100% { transform: translateY(0); }
   72%, 76% { transform: translateY(-1px); }
@@ -353,7 +375,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .matthias-resident__portrait-shell img {
+  .matthias-resident__portrait-shell img,
+  .matthias-resident__bubble {
     animation: none;
     transform: none !important;
   }
@@ -361,4 +384,14 @@
   .matthias-resident.is-quiet .matthias-resident__character {
     transition: none;
   }
+}
+
+html[data-reduced-motion='true'] .matthias-resident__portrait-shell img,
+html[data-reduced-motion='true'] .matthias-resident__bubble {
+  animation: none;
+  transform: none !important;
+}
+
+html[data-reduced-motion='true'] .matthias-resident.is-quiet .matthias-resident__character {
+  transition: none;
 }

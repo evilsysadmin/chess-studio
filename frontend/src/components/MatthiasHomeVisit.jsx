@@ -2,20 +2,26 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
+import { getReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './MatthiasHomeResident.css';
 
 const AMBIENT_SCENE_MS = 58_000;
 
-function reducedMotionPreferred() {
-  return typeof window !== 'undefined'
+export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
+  const reducedByApp = appReduced ?? getReducedMotion();
+  const reducedByMedia = mediaReduced ?? (
+    typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  return Boolean(reducedByApp || reducedByMedia);
 }
 
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
   const hour = useMemo(() => new Date().getHours(), []);
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
   const [ambientBeat, setAmbientBeat] = useState(0);
+  const [motionReduced, setMotionReduced] = useState(() => matthiasMotionReduced());
   const [portalReady, setPortalReady] = useState(false);
 
   useEffect(() => {
@@ -23,13 +29,29 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const media = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+    const refresh = () => setMotionReduced(matthiasMotionReduced());
+
+    refresh();
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+    media?.addEventListener?.('change', refresh);
+    return () => {
+      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+      media?.removeEventListener?.('change', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
     setAmbientBeat(0);
-    if (speaking || ambientVisuals.length < 2 || reducedMotionPreferred()) return undefined;
+    if (speaking || ambientVisuals.length < 2 || motionReduced) return undefined;
     const timer = window.setInterval(() => {
       setAmbientBeat((current) => (current + 1) % ambientVisuals.length);
     }, AMBIENT_SCENE_MS);
     return () => window.clearInterval(timer);
-  }, [ambientVisuals.length, speaking]);
+  }, [ambientVisuals.length, motionReduced, speaking]);
 
   if (!model) return null;
 
