@@ -1,5 +1,6 @@
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { buildRecurringErrorPatterns } from '../insightsRecurringErrors.js';
+import './InsightsRecurringErrors.css';
 
 export default function InsightsRecurringErrors({ onOpenPuzzles }) {
   const patterns = buildRecurringErrorPatterns(loadPersonalPuzzles());
