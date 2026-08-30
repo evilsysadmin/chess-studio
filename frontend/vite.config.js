@@ -1,5 +1,27 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { buildReleaseManifest } from './src/releaseManifest.js';
+
+const FRONTEND_DIR = fileURLToPath(new URL('.', import.meta.url));
+
+function releaseManifestPlugin() {
+  return {
+    name: 'chess-studio-release-manifest',
+    writeBundle(options) {
+      const templatePath = path.join(FRONTEND_DIR, 'public', 'release.json');
+      const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+      const manifest = buildReleaseManifest({
+        release: template.release,
+        buildSha: process.env.VITE_BUILD_SHA,
+      });
+      const outputDir = path.resolve(FRONTEND_DIR, options.dir || 'dist');
+      fs.writeFileSync(path.join(outputDir, 'release.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    },
+  };
+}
 
 export default defineConfig({
   // GitHub Pages usa /chess-studio/ en el dominio github.io, pero un dominio
@@ -7,7 +29,7 @@ export default defineConfig({
   // variante sin romper previews ni E2E locales.
   base: process.env.VITE_PUBLIC_BASE || '/chess-studio/',
 
-  plugins: [react()],
+  plugins: [react(), releaseManifestPlugin()],
 
   server: {
     port: 5173,
