@@ -40,7 +40,7 @@ describe('PostGameExperience', () => {
       seriesState: { bestOf: 3, humanWins: 1, cpuWins: 0, games: [{ outcome: 'win' }], winner: null },
       onNextSeriesGame: () => {},
     });
-    expect(html).toMatch(/Siguiente|partida/i);
+    expect(html).toContain('Intentar cerrar la serie');
     expect(html).toContain('Volver al menú');
   });
 });
