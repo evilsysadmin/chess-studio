@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import Board from './Board.jsx';
+import ArenaExperiment from './ArenaExperiment.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
@@ -16,6 +17,7 @@ function initialState() {
 export default function LabScreen({ onExit, onStart }){
   useEscapeToClose(onExit);
   const initial = initialState();
+  const [labMode,setLabMode]=useState('position');
   const [map,setMap]=useState(initial.map);
   const [brush,setBrush]=useState('');
   const [turn,setTurn]=useState(initial.turn);
@@ -59,29 +61,40 @@ export default function LabScreen({ onExit, onStart }){
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={onExit}>← Volver al menú</button>
-    <div className="menu-section friendly-primary-zone"><div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div><h2>Prepara una posición y juega</h2><p className="hint-text friendly-lead">Coloca las piezas en el tablero y empieza desde ahí. No afecta a tu rating competitivo.</p></div>
-    <div className="lab-toolbar">
-      <div className="lab-brushes">{BRUSHES.map(p=><button key={p||'erase'} className={`lab-brush ${brush===p?'active':''}`} onClick={()=>setBrush(p)} title={p?'Colocar pieza':'Borrar'}>{p?GLYPH[p]:'⌫'}</button>)}</div>
-      <button className="secondary-btn" onClick={resetInitial}>Posición inicial</button>
-      <button className="secondary-btn" onClick={emptyBoard}>Vaciar</button>
-    </div>
-    <div className="lab-board-editor">
-      <Board fen={fen} orientation="white" onSquareClick={editSquare} />
-    </div>
-    <div className="lab-config lab-config-friendly">
-      <label>Turno <select value={turn} onChange={e=>{setTurn(e.target.value);setEp('-');}}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
-      <label>Dificultad CPU <input type="range" min="0" max="100" value={difficulty} onChange={e=>setDifficulty(Number(e.target.value))}/><b>{difficulty}</b></label>
-    </div>
-    {error&&<p className="error-text">{error}</p>}
-    <button className="primary-btn friendly-main-cta" onClick={launch}>Jugar esta posición</button>
-    <details className="friendly-disclosure lab-technical-details">
-      <summary>Opciones avanzadas de la posición</summary>
-      <div className="friendly-disclosure-body lab-fen-readout">
-        <button className="secondary-btn" onClick={applyFen}>Importar posición en formato FEN</button>
-        <span className="section-label"><GlossaryTerm term="FEN">FEN</GlossaryTerm></span>
-        <code>{fen}</code>
-        <small>Piezas · turno · enroques · en passant · contador de 50 movimientos · número de jugada.</small>
+    <div className="menu-section friendly-primary-zone">
+      <div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId={labMode==='arena'?'arena-terrain':'lab'} /></div>
+      <h2>{labMode==='arena'?'Arenas experimentales':'Prepara una posición y juega'}</h2>
+      <p className="hint-text friendly-lead">{labMode==='arena'?'Geometría que rompe el tablero sin tocar el ajedrez normal. Aquí es donde hacemos barbaridades con casco y gafas.':'Coloca las piezas en el tablero y empieza desde ahí. No afecta a tu rating competitivo.'}</p>
+      <div className="lab-mode-switch" role="tablist" aria-label="Herramientas del laboratorio">
+        <button type="button" role="tab" aria-selected={labMode==='position'} className={labMode==='position'?'active':''} onClick={()=>setLabMode('position')}>Posición normal</button>
+        <button type="button" role="tab" aria-selected={labMode==='arena'} className={labMode==='arena'?'active':''} onClick={()=>setLabMode('arena')}>⚠ Arena experimental</button>
       </div>
-    </details>
+    </div>
+
+    {labMode==='arena' ? <ArenaExperiment /> : <>
+      <div className="lab-toolbar">
+        <div className="lab-brushes">{BRUSHES.map(p=><button key={p||'erase'} className={`lab-brush ${brush===p?'active':''}`} onClick={()=>setBrush(p)} title={p?'Colocar pieza':'Borrar'}>{p?GLYPH[p]:'⌫'}</button>)}</div>
+        <button className="secondary-btn" onClick={resetInitial}>Posición inicial</button>
+        <button className="secondary-btn" onClick={emptyBoard}>Vaciar</button>
+      </div>
+      <div className="lab-board-editor">
+        <Board fen={fen} orientation="white" onSquareClick={editSquare} />
+      </div>
+      <div className="lab-config lab-config-friendly">
+        <label>Turno <select value={turn} onChange={e=>{setTurn(e.target.value);setEp('-');}}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
+        <label>Dificultad CPU <input type="range" min="0" max="100" value={difficulty} onChange={e=>setDifficulty(Number(e.target.value))}/><b>{difficulty}</b></label>
+      </div>
+      {error&&<p className="error-text">{error}</p>}
+      <button className="primary-btn friendly-main-cta" onClick={launch}>Jugar esta posición</button>
+      <details className="friendly-disclosure lab-technical-details">
+        <summary>Opciones avanzadas de la posición</summary>
+        <div className="friendly-disclosure-body lab-fen-readout">
+          <button className="secondary-btn" onClick={applyFen}>Importar posición en formato FEN</button>
+          <span className="section-label"><GlossaryTerm term="FEN">FEN</GlossaryTerm></span>
+          <code>{fen}</code>
+          <small>Piezas · turno · enroques · en passant · contador de 50 movimientos · número de jugada.</small>
+        </div>
+      </details>
+    </>}
   </div>;
 }
