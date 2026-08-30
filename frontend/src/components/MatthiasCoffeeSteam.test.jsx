@@ -24,7 +24,7 @@ describe('MatthiasCoffeeSteam', () => {
     );
     expect(active).toContain('data-matthias-coffee-steam="true"');
     expect(active).toContain('data-steam-side="right"');
-    expect(active.match(/matthias-coffee-steam__wisp/g)).toHaveLength(3);
+    expect(active.match(/data-matthias-coffee-wisp="true"/g)).toHaveLength(3);
 
     const reduced = renderToStaticMarkup(
       <MatthiasCoffeeSteam scene="time-night-coffee" reducedMotion />,
