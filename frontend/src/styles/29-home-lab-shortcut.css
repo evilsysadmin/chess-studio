@@ -1,0 +1,94 @@
+/* Laboratorio es una herramienta de tablero, no un easter egg. Mantiene el
+   disclosure de modos secundarios, pero su tarjeta real queda anclada y
+   accesible incluso cuando "Más modos de juego" está cerrado. Al abrirlo,
+   recupera automáticamente el layout normal del grid. */
+.home-more-modes:not([open]) > .friendly-disclosure-body {
+  display: block;
+  padding: .62rem 0 0;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell {
+  display: none;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child {
+  display: block;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card {
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon title cta"
+    "icon copy cta";
+  column-gap: .82rem;
+  row-gap: .12rem;
+  align-items: center;
+  padding: .72rem .86rem;
+  border: 1px solid color-mix(in srgb, var(--success) 28%, rgba(255,255,255,.075));
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--success) 5%, transparent), transparent 46%),
+    rgba(12,15,20,.50);
+  box-shadow: none;
+  text-align: left;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card:hover,
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card:focus-visible {
+  border-color: color-mix(in srgb, var(--success) 50%, rgba(255,255,255,.12));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--success) 9%, transparent), transparent 52%),
+    rgba(12,15,20,.64);
+  transform: none;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child .menu-card-icon {
+  grid-area: icon;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child h3 {
+  grid-area: title;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child p {
+  grid-area: copy;
+  margin: 0;
+  color: color-mix(in srgb, var(--parchment-dim) 88%, transparent);
+  font-size: .74rem;
+  line-height: 1.35;
+}
+
+.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child .menu-card-cta {
+  grid-area: cta;
+  align-self: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+  font-size: .64rem;
+}
+
+@media (max-width: 640px) {
+  .home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card {
+    min-height: 68px;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "icon title"
+      "icon copy"
+      "icon cta";
+    padding: .68rem .72rem;
+  }
+
+  .home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child .menu-card-cta {
+    margin-top: .16rem;
+    white-space: normal;
+  }
+}
