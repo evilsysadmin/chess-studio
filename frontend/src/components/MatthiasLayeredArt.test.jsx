@@ -20,9 +20,21 @@ describe('MatthiasLayeredArt', () => {
 
   it('asigna gestos coherentes por escena y mantiene piezas independientes', () => {
     expect(matthiasGestureName({ scene: 'time-lunch-bocata' })).toBe('bite');
-    expect(matthiasGestureParts({ scene: 'time-lunch-bocata' })).toEqual(
-      expect.arrayContaining(['head', 'eyes', 'left-arm', 'right-arm', 'prop']),
+    expect(matthiasGestureParts({ scene: 'time-lunch-bocata' })).toEqual(['left-arm', 'right-arm', 'prop']);
+    expect(matthiasGestureParts({ scene: 'time-lunch-bocata' })).not.toEqual(
+      expect.arrayContaining(['head', 'eyes']),
     );
+
+    expect(matthiasGestureName({ scene: 'time-night-coffee' })).toBe('sip-night');
+    expect(matthiasGestureParts({ scene: 'time-night-coffee' })).toEqual(['right-arm', 'prop']);
+    expect(matthiasGestureName({ scene: 'time-beer-break' })).toBe('sip-night');
+    expect(matthiasGestureParts({ scene: 'time-beer-break' })).not.toContain('left-arm');
+
+    expect(matthiasGestureName({ scene: 'time-morning-coffee' })).toBe('sip');
+    expect(matthiasGestureParts({ scene: 'time-morning-coffee' })).toEqual(
+      expect.arrayContaining(['left-arm', 'prop']),
+    );
+
     expect(matthiasGestureName({ scene: 'dossier' })).toBe('read');
     expect(matthiasGestureParts({ scene: 'dossier' })).toEqual(
       expect.arrayContaining(['head', 'eyes', 'right-arm', 'prop']),
@@ -56,6 +68,12 @@ describe('MatthiasLayeredArt', () => {
     expect(head.delay).toBeGreaterThan(eyes.delay);
     expect(arm.delay).toBeGreaterThan(head.delay);
     expect(arm.delay).toBeGreaterThanOrEqual(400);
+  });
+
+  it('da recorrido claro al bocata y al café nocturno sin tocar partes incorrectas', () => {
+    expect(matthiasGestureTiming({ gesture: 'bite', part: 'prop' }).duration).toBeGreaterThanOrEqual(2700);
+    expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2500);
+    expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'prop' }).delay).toBeGreaterThan(0);
   });
 
   it('da más recorrido a lectura y sueño que el antiguo microgesto', () => {
