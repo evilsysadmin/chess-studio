@@ -2,7 +2,6 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import MatthiasFrameSequence, {
-  matthiasFramePosition,
   matthiasFrameSequenceConfig,
   matthiasFrameSequenceDelay,
 } from './MatthiasFrameSequence.jsx';
@@ -13,20 +12,14 @@ describe('MatthiasFrameSequence', () => {
     const lunch = matthiasFrameSequenceConfig('lunch');
 
     expect(coffee.action).toBe('drink');
-    expect(coffee.frames).toEqual([0, 1, 2, 3, 4, 5, 0]);
-    expect(coffee.holds[3]).toBeGreaterThanOrEqual(1200);
-    expect(lunch.action).toBe('eat');
-    expect(lunch.frames).toEqual([0, 1, 2, 3, 4, 5, 0]);
-    expect(lunch.holds[4]).toBeGreaterThanOrEqual(1100);
-  });
+    expect(coffee.poses).toHaveLength(3);
+    expect(coffee.frames).toEqual([0, 1, 2, 2, 1, 0]);
+    expect(coffee.holds[2]).toBeGreaterThanOrEqual(1400);
 
-  it('mapea correctamente la cuadrícula 3x2 del sprite', () => {
-    expect(matthiasFramePosition(0)).toBe('0% 0%');
-    expect(matthiasFramePosition(1)).toBe('50% 0%');
-    expect(matthiasFramePosition(2)).toBe('100% 0%');
-    expect(matthiasFramePosition(3)).toBe('0% 100%');
-    expect(matthiasFramePosition(4)).toBe('50% 100%');
-    expect(matthiasFramePosition(5)).toBe('100% 100%');
+    expect(lunch.action).toBe('eat');
+    expect(lunch.poses).toHaveLength(4);
+    expect(lunch.frames).toEqual([0, 1, 2, 3, 2, 1, 0]);
+    expect(lunch.holds[3]).toBeGreaterThanOrEqual(1400);
   });
 
   it('deja pausas largas entre acciones completas', () => {
@@ -50,7 +43,7 @@ describe('MatthiasFrameSequence', () => {
     expect(html).toContain('data-matthias-canonical-art="true"');
   });
 
-  it('en movimiento mantiene el arte antiguo como fallback bajo las dos capas de sprite', () => {
+  it('en movimiento mantiene el arte antiguo como fallback bajo dos imágenes de pose', () => {
     const html = renderToStaticMarkup(
       <MatthiasFrameSequence family="lunch" fallbackAvatar="/old-lunch.webp" reducedMotion={false} />,
     );
@@ -58,9 +51,11 @@ describe('MatthiasFrameSequence', () => {
     expect(html).toContain('data-sequence-action="eat"');
     expect(html).toContain('data-frame-layer="0"');
     expect(html).toContain('data-frame-layer="1"');
+    expect(html).toContain('data-frame-pose="0"');
     expect(html).toContain('src="/old-lunch.webp"');
     expect(html).toContain('data-matthias-canonical-art="true"');
-    expect(html).toContain('data-sprite-src=');
+    expect(html).not.toContain('data-sprite-src=');
+    expect(html).not.toContain('background-position');
     expect(html).not.toContain('data-matthias-art-part');
     expect(html).not.toContain('<svg');
   });
