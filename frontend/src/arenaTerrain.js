@@ -5,25 +5,48 @@ const PIECE_VALUE = Object.freeze({ p: 100, n: 320, b: 330, r: 500, q: 900, k: 0
 const MATE_SCORE = 100000;
 
 export const ARENA_START_FEN = new Chess().fen();
+export const ARENA_BRIDGEHEAD_FEN = 'rnbqkb1r/pppp1ppp/5n2/4p3/3P4/2N5/PPP1PPPP/R1BQKBNR w KQkq - 0 3';
 
 export const ARENA_PRESETS = Object.freeze([
   Object.freeze({
     id: 'breach',
     label: 'La Brecha',
     blocked: Object.freeze(['c4', 'f4', 'c5', 'f5']),
+    startFen: ARENA_START_FEN,
+    deployment: 'Clásico',
     summary: 'Cuatro pilares parten el centro y dejan dos corredores principales.',
   }),
   Object.freeze({
     id: 'wall',
     label: 'El Muro',
     blocked: Object.freeze(['d4', 'e4', 'd5', 'e5']),
+    startFen: ARENA_START_FEN,
+    deployment: 'Clásico',
     summary: 'El centro está sellado. El juego debe respirar por los flancos.',
   }),
   Object.freeze({
     id: 'gates',
     label: 'Las Puertas',
     blocked: Object.freeze(['b4', 'g4', 'b5', 'g5', 'd5', 'e4']),
+    startFen: ARENA_START_FEN,
+    deployment: 'Clásico',
     summary: 'Dos contrafuertes laterales y dos ruinas centrales crean cuellos de botella.',
+  }),
+  Object.freeze({
+    id: 'twin-bridges',
+    label: 'Los Dos Puentes',
+    blocked: Object.freeze(['a4', 'b4', 'd4', 'e4', 'g4', 'h4', 'a5', 'b5', 'd5', 'e5', 'g5', 'h5']),
+    startFen: ARENA_START_FEN,
+    deployment: 'Clásico · dos pasos',
+    summary: 'Una franja de ruinas deja sólo dos corredores de cruce, por c y f. Controlar el paso importa más que ocupar el centro.',
+  }),
+  Object.freeze({
+    id: 'bridgehead',
+    label: 'Cabeza de Puente',
+    blocked: Object.freeze(['a4', 'b4', 'g4', 'h4', 'a5', 'b5', 'g5', 'h5']),
+    startFen: ARENA_BRIDGEHEAD_FEN,
+    deployment: 'Asimétrico · contacto temprano',
+    summary: 'La batalla empieza con fuerzas ya desplegadas: blancas han ganado espacio y negras desarrollo. Los bordes cerrados convierten el centro en corredor de contacto.',
   }),
 ]);
 

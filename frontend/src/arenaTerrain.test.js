@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Chess } from 'chess.js';
 import {
+  ARENA_BRIDGEHEAD_FEN,
   ARENA_PRESETS,
   ARENA_START_FEN,
   arenaApplyMove,
@@ -8,6 +9,7 @@ import {
   arenaLegalMoves,
   arenaPositionKey,
   arenaStatus,
+  normalizeArenaBlocked,
 } from './arenaTerrain.js';
 
 describe('Experimental Arenas · terreno bloqueado', () => {
@@ -69,5 +71,35 @@ describe('Experimental Arenas · terreno bloqueado', () => {
     const chosen = arenaChooseCpuMove(ARENA_START_FEN, blocked, { depth: 1, randomFn: () => 0 });
     expect(chosen).not.toBeNull();
     expect(legal.some((move) => move.from === chosen.from && move.to === chosen.to)).toBe(true);
+  });
+
+  it('todos los escenarios empiezan con FEN legal y terreno sobre casillas vacías', () => {
+    for (const preset of ARENA_PRESETS) {
+      const fen = preset.startFen || ARENA_START_FEN;
+      expect(() => new Chess(fen)).not.toThrow();
+      expect(() => normalizeArenaBlocked(fen, preset.blocked)).not.toThrow();
+      expect(arenaLegalMoves(fen, preset.blocked).length).toBeGreaterThan(0);
+      expect(['playing', 'check']).toContain(arenaStatus(fen, preset.blocked));
+    }
+  });
+
+  it('Cabeza de Puente usa un despliegue legal distinto del arranque clásico', () => {
+    const preset = ARENA_PRESETS.find((item) => item.id === 'bridgehead');
+    expect(preset).toBeTruthy();
+    expect(preset.startFen).toBe(ARENA_BRIDGEHEAD_FEN);
+    expect(preset.startFen).not.toBe(ARENA_START_FEN);
+    const chess = new Chess(preset.startFen);
+    expect(chess.get('d4')).toMatchObject({ type: 'p', color: 'w' });
+    expect(chess.get('c3')).toMatchObject({ type: 'n', color: 'w' });
+    expect(chess.get('f6')).toMatchObject({ type: 'n', color: 'b' });
+    expect(chess.get('e5')).toMatchObject({ type: 'p', color: 'b' });
+  });
+
+  it('Los Dos Puentes deja exactamente c4/c5 y f4/f5 como pasos en la franja central', () => {
+    const preset = ARENA_PRESETS.find((item) => item.id === 'twin-bridges');
+    const blocked = new Set(preset.blocked);
+    const middleBand = ['a4', 'b4', 'c4', 'd4', 'e4', 'f4', 'g4', 'h4', 'a5', 'b5', 'c5', 'd5', 'e5', 'f5', 'g5', 'h5'];
+    const open = middleBand.filter((square) => !blocked.has(square));
+    expect(open).toEqual(['c4', 'f4', 'c5', 'f5']);
   });
 });
