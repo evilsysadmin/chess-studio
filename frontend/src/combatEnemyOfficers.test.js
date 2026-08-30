@@ -6,6 +6,7 @@ import {
   enemyOfficerBriefing,
   enemyOfficerForNode,
   loadEnemyOfficerHistory,
+  officerServiceRank,
   recordEnemyOfficerSessionEncounter,
 } from './combatEnemyOfficers.js';
 
@@ -62,7 +63,9 @@ describe('oficiales enemigos persistentes de Combat Chess', () => {
       lastOutcome: 'loss',
       lastNodeLabel: 'Cruce bajo fuego',
     });
-    expect(enemyOfficerBriefing(context.campaignSeed, context.node, history).note).toContain('Te venció la última vez');
+    const briefing = enemyOfficerBriefing(context.campaignSeed, context.node, history);
+    expect(briefing.note).toContain('Te venció la última vez');
+    expect(briefing.note).toContain('no altera la fuerza de la CPU');
     expect(localStorage.getItem(COMBAT_ENEMY_OFFICERS_KEY)).toContain('game-17');
   });
 
@@ -72,5 +75,35 @@ describe('oficiales enemigos persistentes de Combat Chess', () => {
     const context = campaignOfficerContext('campaign:alpha:s3-l1-battle', 'Uno');
     const officer = enemyOfficerForNode(context.campaignSeed, context.node);
     expect(loadEnemyOfficerHistory()[officer.id]).toMatchObject({ encounters: 2, playerWins: 0, officerWins: 0, draws: 1, retreats: 1 });
+  });
+
+  it('no asciende a un oficial sólo por acumular derrotas contra el jugador', () => {
+    const lieutenant = COMBAT_ENEMY_OFFICERS.find((officer) => officer.rank === 'Teniente');
+    expect(officerServiceRank(lieutenant, { encounters: 12, playerWins: 12, officerWins: 0, draws: 0 })).toMatchObject({
+      rank: 'Teniente',
+      promotions: 0,
+      serviceScore: 2,
+    });
+  });
+
+  it('asciende de forma narrativa cuando sus resultados reales justifican el expediente', () => {
+    const lieutenant = COMBAT_ENEMY_OFFICERS.find((officer) => officer.rank === 'Teniente');
+    const colonel = COMBAT_ENEMY_OFFICERS.find((officer) => officer.rank === 'Coronel');
+
+    expect(officerServiceRank(lieutenant, { encounters: 4, officerWins: 1, draws: 0 })).toMatchObject({
+      rank: 'Capitán',
+      promotions: 1,
+      serviceScore: 4,
+    });
+    expect(officerServiceRank(lieutenant, { encounters: 4, officerWins: 3, draws: 0 })).toMatchObject({
+      rank: 'Mayor',
+      promotions: 2,
+      serviceScore: 10,
+    });
+    expect(officerServiceRank(colonel, { encounters: 4, officerWins: 2, draws: 0 })).toMatchObject({
+      rank: 'General',
+      promotions: 1,
+      nextPromotionIn: null,
+    });
   });
 });
