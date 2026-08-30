@@ -121,10 +121,11 @@ describe('career persistente', () => {
     expect(unlockedBoardThemes({ records: {}, contracts: {} }).map((theme) => theme.id)).toEqual(['classic']);
     expect(saveBoardTheme('royal')).toBe('classic');
 
-    const earned = { records: { bestWinStreak: 3, highestDifficultyWin: 75, puzzleRushBest: 8 }, contracts: { failed: 0 } };
+    const earned = { records: { bestWinStreak: 8, highestDifficultyWin: 75, puzzleRushBest: 8 }, contracts: { failed: 0 } };
     const unlocked = unlockedBoardThemes(earned).map((theme) => theme.id);
-    expect(unlocked).toEqual(expect.arrayContaining(['classic', 'midnight', 'blood', 'royal', 'forensic']));
-    expect(BOARD_THEMES).toHaveLength(5);
+    expect(unlocked).toEqual(expect.arrayContaining(['classic', 'midnight', 'blood', 'royal', 'forensic', 'obsidian']));
+    expect(unlockedBoardThemes({ records: { bestWinStreak: 7 }, contracts: {} }).map((theme) => theme.id)).not.toContain('obsidian');
+    expect(BOARD_THEMES).toHaveLength(6);
   });
 
   it('contrato ofertado cambia con el historial de incidentes y es estable por gameCount', () => {
