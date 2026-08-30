@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { abortableDelay, isAbortError } from '../asyncControl.js';
 import coffeeSprite from '../assets/matthias-frames/coffee-sprite.webp';
 import lunchSprite from '../assets/matthias-frames/lunch-sprite.webp';
 import './MatthiasFrameSequence.css';
 
 const FRAME_FADE_MS = 180;
+const FRAME_PREPARE_MS = 34;
 
 const SEQUENCES = Object.freeze({
   coffee: Object.freeze({
@@ -37,13 +39,6 @@ export function matthiasFrameSequenceDelay({ first = false } = {}) {
     : 10_000 + Math.round(Math.random() * 6_000);
 }
 
-function wait(ms, setTimer) {
-  return new Promise((resolve) => {
-    const timer = window.setTimeout(resolve, ms);
-    setTimer(timer);
-  });
-}
-
 export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedMotion = false }) {
   const config = useMemo(() => matthiasFrameSequenceConfig(family), [family]);
   const [layerFrames, setLayerFrames] = useState([0, 0]);
@@ -55,57 +50,56 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
     const root = rootRef.current;
     if (!root || !config) return undefined;
 
-    let disposed = false;
-    let timer = null;
-    const setTimer = (value) => { timer = value; };
+    const controller = new AbortController();
+    const { signal } = controller;
 
-    const reset = () => {
-      if (timer) window.clearTimeout(timer);
-      slotRef.current = 0;
-      setActiveSlot(0);
-      setLayerFrames([0, 0]);
-      root.dataset.sequenceState = reducedMotion ? 'reduced' : 'waiting';
-      root.dataset.frameIndex = '0';
-    };
+    slotRef.current = 0;
+    setActiveSlot(0);
+    setLayerFrames([0, 0]);
+    root.dataset.sequenceState = reducedMotion ? 'reduced' : 'waiting';
+    root.dataset.frameIndex = '0';
 
-    reset();
-    if (reducedMotion) return reset;
+    if (reducedMotion) {
+      return () => controller.abort();
+    }
 
     async function crossfadeTo(frame) {
-      if (disposed) return;
       const nextSlot = slotRef.current === 0 ? 1 : 0;
       setLayerFrames((current) => current.map((value, index) => (index === nextSlot ? frame : value)));
-      await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-      if (disposed) return;
+      await abortableDelay(FRAME_PREPARE_MS, signal);
+      if (signal.aborted) return;
       slotRef.current = nextSlot;
       setActiveSlot(nextSlot);
       root.dataset.frameIndex = String(frame);
-      await wait(FRAME_FADE_MS, setTimer);
+      await abortableDelay(FRAME_FADE_MS, signal);
     }
 
-    async function runSequence() {
-      if (disposed) return;
-      root.dataset.sequenceState = 'acting';
-      root.dataset.sequenceCycleCount = String((Number(root.dataset.sequenceCycleCount) || 0) + 1);
+    async function runLoop() {
+      try {
+        await abortableDelay(matthiasFrameSequenceDelay({ first: true }), signal);
 
-      for (let index = 1; index < config.frames.length; index += 1) {
-        const hold = config.holds[index - 1] || 0;
-        if (hold > 0) await wait(hold, setTimer);
-        if (disposed) return;
-        await crossfadeTo(config.frames[index]);
+        while (!signal.aborted) {
+          root.dataset.sequenceState = 'acting';
+          root.dataset.sequenceCycleCount = String((Number(root.dataset.sequenceCycleCount) || 0) + 1);
+
+          for (let index = 1; index < config.frames.length; index += 1) {
+            const hold = config.holds[index - 1] || 0;
+            if (hold > 0) await abortableDelay(hold, signal);
+            await crossfadeTo(config.frames[index]);
+          }
+
+          if (signal.aborted) return;
+          root.dataset.sequenceState = 'rest';
+          await abortableDelay(matthiasFrameSequenceDelay({ first: false }), signal);
+        }
+      } catch (error) {
+        if (!isAbortError(error)) throw error;
       }
-
-      if (disposed) return;
-      root.dataset.sequenceState = 'rest';
-      timer = window.setTimeout(runSequence, matthiasFrameSequenceDelay({ first: false }));
     }
 
-    timer = window.setTimeout(runSequence, matthiasFrameSequenceDelay({ first: true }));
+    runLoop();
 
-    return () => {
-      disposed = true;
-      if (timer) window.clearTimeout(timer);
-    };
+    return () => controller.abort();
   }, [config, reducedMotion]);
 
   if (!config) return null;
