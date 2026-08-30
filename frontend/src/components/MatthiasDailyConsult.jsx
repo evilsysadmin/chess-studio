@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { matthiasMoodAvatar } from '../matthiasVisuals.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { askMatthiasDaily, createMatthiasConsultationId, fetchMatthiasDailyStatus } from '../matthiasDaily.js';
+import { focusMatthiasDailyFacts } from '../matthiasDailyQuestions.js';
 import { buildMatthiasDossierEntries, formatMatthiasDossierDate } from '../matthiasDossier.js';
 
 const MOOD_LABELS = Object.freeze({
@@ -52,7 +53,8 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
     const consultationId = retryIdsRef.current.get(kind) || createMatthiasConsultationId();
     retryIdsRef.current.set(kind, consultationId);
     try {
-      const result = await askMatthiasDaily(kind, facts, { id: consultationId });
+      const focusedFacts = focusMatthiasDailyFacts(kind, facts);
+      const result = await askMatthiasDaily(kind, focusedFacts, { id: consultationId });
       if (isRealMatthiasDailyAnswer(result)) {
         retryIdsRef.current.delete(kind);
         setStatus(result);
