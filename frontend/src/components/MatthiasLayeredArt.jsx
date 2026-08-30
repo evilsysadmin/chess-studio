@@ -400,7 +400,7 @@ export default function MatthiasLayeredArt({
           draggable="false"
           aria-hidden="true"
           data-matthias-art-part={part}
-          style={{ objectFit: 'cover', objectPosition: '50% 44%' }}
+          style={{ objectFit: 'cover', objectPosition: '50% 44%', animation: 'none' }}
         />
       ))}
     </span>
