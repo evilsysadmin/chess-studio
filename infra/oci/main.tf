@@ -8,10 +8,10 @@ locals {
 
 resource "oci_core_vcn" "backend" {
   compartment_id = var.compartment_ocid
-  cidr_blocks     = [var.vcn_cidr]
-  display_name    = "${var.instance_name}-vcn"
-  dns_label       = "chessvcn"
-  freeform_tags   = local.common_tags
+  cidr_blocks    = [var.vcn_cidr]
+  display_name   = "${var.instance_name}-vcn"
+  dns_label      = "chessvcn"
+  freeform_tags  = local.common_tags
 }
 
 resource "oci_core_internet_gateway" "backend" {
@@ -105,7 +105,7 @@ resource "oci_core_instance" "backend" {
 
   metadata = {
     ssh_authorized_keys = trimspace(var.ssh_authorized_key)
-    user_data           = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
+    user_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
       repo_url = var.repo_url
       repo_ref = var.repo_ref
     }))
