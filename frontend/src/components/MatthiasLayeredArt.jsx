@@ -99,18 +99,14 @@ const MOTIONS = Object.freeze({
     ),
   }),
   'read-book': Object.freeze({
+    // strategy-book.webp no tolera desplazar brazos sin que el recorte se vea
+    // como un tic. La lectura usa sólo una barrida ocular lenta y mínima.
     eyes: frames(
       { offset: 0, transform: 'translate3d(0,0,0)' },
-      { offset: .2, transform: 'translate3d(-2.8px,.45px,0)' },
-      { offset: .45, transform: 'translate3d(-.5px,.45px,0)' },
-      { offset: .7, transform: 'translate3d(2.3px,.35px,0)' },
+      { offset: .24, transform: 'translate3d(-1.15px,.18px,0)' },
+      { offset: .5, transform: 'translate3d(-.15px,.16px,0)' },
+      { offset: .76, transform: 'translate3d(1px,.12px,0)' },
       { offset: 1, transform: 'translate3d(0,0,0)' },
-    ),
-    'right-arm': frames(
-      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .45, transform: 'translate3d(-1.9px,-1.7px,0) rotate(-.7deg)' },
-      { offset: .76, transform: 'translate3d(-1.6px,-1.45px,0) rotate(-.55deg)' },
-      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
   'board-move': Object.freeze({
@@ -229,7 +225,7 @@ const GESTURE_DURATIONS = Object.freeze({
   'write-notes': 3300,
   'audit-dossier': 3400,
   'read-dossier': 3500,
-  'read-book': 3400,
+  'read-book': 4600,
   'board-move': 3200,
   sip: 2300,
   'sip-night': 2600,
@@ -243,7 +239,7 @@ const PART_DELAYS = Object.freeze({
   'write-notes': Object.freeze({ eyes: 0, 'right-arm': 300 }),
   'audit-dossier': Object.freeze({ eyes: 0, 'right-arm': 420, prop: 500 }),
   'read-dossier': Object.freeze({ eyes: 0, 'right-arm': 480, prop: 520 }),
-  'read-book': Object.freeze({ eyes: 0, 'right-arm': 560 }),
+  'read-book': Object.freeze({ eyes: 0 }),
   'board-move': Object.freeze({ eyes: 0, 'right-arm': 360 }),
   sip: Object.freeze({ eyes: 0, head: 120, 'left-arm': 280, prop: 280 }),
   'sip-night': Object.freeze({ 'right-arm': 80, prop: 160 }),
