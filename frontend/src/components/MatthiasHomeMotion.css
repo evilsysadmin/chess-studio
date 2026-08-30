@@ -1,7 +1,7 @@
 /* Matthias · Home motion
- * La escena completa permanece fijada al marco. El único elemento animado es
- * una copia enmascarada del centro del arte, con bordes progresivos, para que
- * se perciba movimiento del personaje sin desplazar un bitmap rectangular.
+ * La escena completa permanece fijada al marco. El único elemento que puede
+ * moverse es una copia enmascarada del personaje. No hay idle loop: la capa
+ * descansa quieta y Matthias sólo ejecuta gestos humanos puntuales desde JS.
  */
 
 .matthias-resident__portrait-shell {
@@ -18,16 +18,16 @@
   background-repeat: no-repeat;
 }
 
-/* Esta capa se mueve, pero no es una caja visible: una máscara elíptica y
- * feathered borra sus bordes y deja la escena fija del frame por debajo. */
+/* Esta capa sólo se activa durante un gesto one-shot. La máscara feathered
+ * evita que se vea moverse un rectángulo opaco sobre la escena fija. */
 .matthias-resident__portrait-shell > .matthias-resident__motion-layer {
   position: absolute;
   inset: 0;
   z-index: 1;
   display: block;
   pointer-events: none;
-  transform-origin: 50% 62%;
-  will-change: transform;
+  transform-origin: 50% 78%;
+  will-change: auto;
   -webkit-mask-image: radial-gradient(
     ellipse 44% 64% at 50% 50%,
     #000 0%,
@@ -57,9 +57,9 @@
   will-change: auto;
 }
 
-/* Ninguna regla de reduced-motion toca el frame ni el bitmap: el efecto WAAPI
- * sólo se crea cuando el estado efectivo permite animación y se cancela al
- * cambiar esa preferencia. Así el override explícito sigue funcionando. */
+/* Ninguna regla de reduced-motion toca el frame ni el bitmap: el gesto WAAPI
+ * sólo se programa cuando el estado efectivo permite movimiento y se cancela
+ * al cambiar la preferencia. */
 @media (max-width: 430px) {
   .matthias-resident__portrait-shell > .matthias-resident__motion-layer {
     -webkit-mask-image: radial-gradient(
