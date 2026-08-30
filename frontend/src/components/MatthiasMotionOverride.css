@@ -1,12 +1,26 @@
-/* Explicit user override for environments that report prefers-reduced-motion.
- * We still honor the system by default. Only an explicit app choice of
- * "allow" activates these individual-transform animations.
- * Individual transform properties deliberately avoid fighting legacy
- * transform:none !important guards inside reduced-motion media queries. */
+/* Matthias motion controls and compositor layer.
+ * The visible movement itself is driven by Web Animations API from
+ * MatthiasHomeVisit.jsx so global reduced-motion CSS cannot accidentally
+ * turn an explicitly enabled Matthias back into a statue. */
 .matthias-resident__character-stack {
   display: grid;
   justify-items: center;
   gap: .28rem;
+}
+
+.matthias-resident__motion-layer {
+  display: grid;
+  place-items: end center;
+  transform-origin: 50% 78%;
+  will-change: transform;
+}
+
+/* The wrapper above owns the visible body motion. Keep the portrait shell
+ * itself stable so legacy CSS animations cannot double the displacement. */
+.matthias-resident__motion-layer > .matthias-resident__portrait-shell {
+  animation: none !important;
+  transform: none !important;
+  will-change: auto;
 }
 
 .matthias-resident__motion-override {
@@ -27,45 +41,6 @@
 .matthias-resident__motion-override:focus-visible {
   color: var(--parchment);
   outline: 1px solid color-mix(in srgb, var(--brass) 56%, transparent);
-}
-
-html[data-motion-preference='allow'] .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] .matthias-resident__portrait-shell {
-  animation: matthias-explicit-motion 3.4s ease-in-out infinite !important;
-  transform-origin: 50% 78%;
-  will-change: translate, rotate, scale;
-}
-
-html[data-motion-preference='allow'] .matthias-resident.is-speaking .matthias-resident__portrait-shell {
-  animation: matthias-explicit-speaking 4.2s ease-in-out infinite !important;
-  transform-origin: 50% 78%;
-  will-change: translate, rotate, scale;
-}
-
-html[data-motion-preference='allow'] .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
-  animation: matthias-explicit-image 3.4s ease-in-out infinite !important;
-  will-change: translate, scale;
-}
-
-@keyframes matthias-explicit-motion {
-  0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
-  18% { translate: -3px -5px; rotate: -1.2deg; scale: 1.02; }
-  35% { translate: 5px -9px; rotate: 1.8deg; scale: 1.045; }
-  52% { translate: 1px -3px; rotate: -.6deg; scale: 1.016; }
-  72% { translate: -4px -7px; rotate: -1.4deg; scale: 1.034; }
-  88% { translate: 3px -2px; rotate: .8deg; scale: 1.01; }
-}
-
-@keyframes matthias-explicit-speaking {
-  0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; }
-  24% { translate: -2px -4px; rotate: -.5deg; scale: 1.014; }
-  46% { translate: 2px -6px; rotate: .6deg; scale: 1.024; }
-  68% { translate: 0 -2px; rotate: 0deg; scale: 1.01; }
-}
-
-@keyframes matthias-explicit-image {
-  0%, 100% { translate: 0 0; scale: 1; }
-  35% { translate: -2px -3px; scale: 1.025; }
-  72% { translate: 2px -2px; scale: 1.02; }
 }
 
 @media (max-width: 430px) {
