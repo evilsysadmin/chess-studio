@@ -21,6 +21,11 @@ const OPTIONS = Object.freeze([
   ['openings', '¿Qué apertura debería trabajar?'],
 ]);
 
+export function isRealMatthiasDailyAnswer(result) {
+  if (!result?.text || result?.provider !== 'cloudflare') return false;
+  return Boolean(result.used || result.unlimited);
+}
+
 export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
   const eligible = Number(facts?.total_games || 0) > 0;
   const [status, setStatus] = useState(null);
@@ -48,12 +53,13 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
     retryIdsRef.current.set(kind, consultationId);
     try {
       const result = await askMatthiasDaily(kind, facts, { id: consultationId });
-      if (result?.used || (result?.unlimited && result?.text)) {
+      if (isRealMatthiasDailyAnswer(result)) {
         retryIdsRef.current.delete(kind);
         setStatus(result);
       } else {
-        // Local fallback is explicitly retryable; keep the same logical id so
-        // an ambiguous transport retry cannot double-spend Workers AI later.
+        // A local fallback is retryable for every user, including admins. Admin
+        // unlimited quota must not turn provider-failure copy into a fake
+        // Matthias verdict merely because the fallback happened to contain text.
         setError(result?.text || 'Workers AI no respondió; la audiencia sigue disponible para reintentar hoy.');
       }
     } catch (err) {
