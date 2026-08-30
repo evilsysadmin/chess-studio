@@ -19,9 +19,9 @@ export default function MatthiasCoffeeSteam({ scene = '', reducedMotion = false 
       data-steam-side={side}
       aria-hidden="true"
     >
-      <span className="matthias-coffee-steam__wisp matthias-coffee-steam__wisp--1" />
-      <span className="matthias-coffee-steam__wisp matthias-coffee-steam__wisp--2" />
-      <span className="matthias-coffee-steam__wisp matthias-coffee-steam__wisp--3" />
+      <span data-matthias-coffee-wisp="true" className="matthias-coffee-steam__wisp matthias-coffee-steam__wisp--1" />
+      <span data-matthias-coffee-wisp="true" className="matthias-coffee-steam__wisp matthias-coffee-steam__wisp--2" />
+      <span data-matthias-coffee-wisp="true" className="matthias-coffee-steam__wisp matthias-coffee-steam__wisp--3" />
     </span>
   );
 }
