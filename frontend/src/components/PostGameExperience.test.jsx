@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import PostGameExperience from './PostGameExperience.jsx';
+import PostGameExperience, { canOfferPostGameTraining } from './PostGameExperience.jsx';
 
 const FINISHED_GAME = {
   id: 'game-1',
@@ -35,12 +35,22 @@ describe('PostGameExperience', () => {
     expect(html).toContain('Resumen de la partida');
   });
 
-  it('prioriza continuar una serie en curso', () => {
+  it('prioriza continuar una serie en curso sin invitar a abandonar el match para entrenar', () => {
+    const seriesState = { bestOf: 3, humanWins: 1, cpuWins: 0, games: [{ outcome: 'win' }], winner: null };
     const html = render({
-      seriesState: { bestOf: 3, humanWins: 1, cpuWins: 0, games: [{ outcome: 'win' }], winner: null },
+      seriesState,
       onNextSeriesGame: () => {},
+      onTrainPersonal: () => {},
     });
     expect(html).toContain('Intentar cerrar la serie');
     expect(html).toContain('Volver al menú');
+    expect(html).not.toContain('Entrenar mis errores');
+    expect(canOfferPostGameTraining({ onTrainPersonal: () => {}, seriesState })).toBe(false);
+  });
+
+  it('no ofrece entrenamiento durante una run activa y sí al terminar el flujo competitivo', () => {
+    expect(canOfferPostGameTraining({ onTrainPersonal: () => {}, runState: { active: true } })).toBe(false);
+    expect(canOfferPostGameTraining({ onTrainPersonal: () => {}, seriesState: { winner: 'human' } })).toBe(true);
+    expect(canOfferPostGameTraining({ onTrainPersonal: null })).toBe(false);
   });
 });
