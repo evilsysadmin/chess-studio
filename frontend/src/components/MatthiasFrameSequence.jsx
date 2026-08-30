@@ -115,6 +115,7 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
         data-sequence-state="reduced"
         data-frame-index="0"
         data-sequence-cycle-count="0"
+        data-sprite-src={config.sprite}
       >
         <img src={fallbackAvatar} alt="" draggable="false" data-matthias-canonical-art="true" />
       </span>
@@ -131,7 +132,15 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
       data-sequence-state="waiting"
       data-frame-index="0"
       data-sequence-cycle-count="0"
+      data-sprite-src={config.sprite}
     >
+      <img
+        className="matthias-frame-sequence__fallback"
+        src={fallbackAvatar}
+        alt=""
+        draggable="false"
+        data-matthias-canonical-art="true"
+      />
       {[0, 1].map((slot) => (
         <span
           key={slot}
