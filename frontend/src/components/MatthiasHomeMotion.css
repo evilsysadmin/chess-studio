@@ -1,0 +1,57 @@
+/* Matthias · Home motion hotfix
+ * Mantiene al personaje vivo de forma perceptible sin convertirlo en un loop
+ * nervioso. Reduced motion sigue teniendo prioridad absoluta.
+ */
+
+/* Override intencionado de las animaciones demasiado sutiles del residente.
+ * El selector iguala/supera la especificidad de los presets por escena y este
+ * fichero se importa después del CSS base. */
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
+  animation:
+    matthias-resident-scene-in .45s ease-out both,
+    matthias-home-alive 9.5s ease-in-out .45s infinite;
+}
+
+/* Mientras habla mantiene una respiración mínima después del gesto inicial.
+ * El gesto vive en la imagen; la vida residual, en el marco, para que las
+ * transformaciones no compitan entre sí. */
+.matthias-resident.is-speaking .matthias-resident__portrait-shell {
+  transform-origin: 50% 78%;
+  animation: matthias-home-speaking-life 8.5s ease-in-out .7s infinite;
+}
+
+@keyframes matthias-home-alive {
+  0%, 18%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
+  28% { transform: translateY(-2px) rotate(-.45deg) scale(1.008); }
+  38% { transform: translateY(-2.7px) rotate(.28deg) scale(1.012); }
+  49% { transform: translateY(-1.2px) rotate(0) scale(1.006); }
+  61%, 84% { transform: translate(0, 0) rotate(0) scale(1); }
+  91% { transform: translateY(-1.4px) rotate(.22deg) scale(1.005); }
+}
+
+@keyframes matthias-home-speaking-life {
+  0%, 52%, 100% { transform: translateY(0) rotate(0); }
+  62% { transform: translateY(-1.5px) rotate(-.28deg); }
+  72% { transform: translateY(-2px) rotate(.18deg); }
+  82% { transform: translateY(0) rotate(0); }
+}
+
+@media (max-width: 430px) {
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
+    animation-duration: .45s, 8.5s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img,
+  .matthias-resident.is-speaking .matthias-resident__portrait-shell {
+    animation: none;
+    transform: none !important;
+  }
+}
+
+html[data-reduced-motion='true'] .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img,
+html[data-reduced-motion='true'] .matthias-resident.is-speaking .matthias-resident__portrait-shell {
+  animation: none;
+  transform: none !important;
+}
