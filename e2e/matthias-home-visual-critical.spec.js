@@ -27,22 +27,33 @@ async function motionSpan(page, layer) {
   return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
 }
 
-async function expectPortraitMotion(page, layer, image, label) {
+async function expectPortraitMotion(page, layer, frame, image, label) {
+  await expect(frame).toBeVisible();
   await expect(layer).toBeVisible();
   await expect(image).toBeVisible();
 
   await expect.poll(
     () => layer.evaluate((node) => node.getAnimations().some((animation) => animation.playState === 'running')),
-    { message: `${label}: la capa de Matthias debe tener una animación compositor real` },
+    { message: `${label}: la capa interior de Matthias debe tener una animación compositor real` },
+  ).toBe(true);
+
+  expect(
+    await layer.evaluate((node) => node.parentElement?.dataset.portraitFrame === 'true'),
+    `${label}: la capa animada debe vivir dentro del marco fijo del retrato`,
   ).toBe(true);
 
   expect(
     await motionSpan(page, layer),
-    `${label}: Matthias debe desplazarse de forma claramente visible, no una microanimación testimonial`,
+    `${label}: Matthias debe desplazarse de forma claramente visible dentro del retrato`,
   ).toBeGreaterThan(8);
+
+  expect(
+    await motionSpan(page, frame),
+    `${label}: el marco del retrato debe permanecer inmóvil mientras Matthias se mueve dentro`,
+  ).toBeLessThan(1);
 }
 
-test('Home · Matthias carga, se mueve de forma claramente perceptible en desktop y móvil y abre Así juegas', async ({ page }) => {
+test('Home · Matthias se mueve dentro de un marco fijo en desktop y móvil y abre Así juegas', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await mockApi(page);
   await login(page);
@@ -56,6 +67,7 @@ test('Home · Matthias carga, se mueve de forma claramente perceptible en deskto
   await expect(matthias).toBeVisible();
 
   const portrait = matthias.locator('img');
+  const frame = matthias.locator('[data-portrait-frame="true"]');
   const motionLayer = matthias.locator('[data-motion-layer="true"]');
   await expect(portrait).toBeVisible();
   await expect.poll(
@@ -65,11 +77,11 @@ test('Home · Matthias carga, se mueve de forma claramente perceptible en deskto
 
   await expect(corner).toHaveAttribute('data-placement', 'viewport');
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
-  await expectPortraitMotion(page, motionLayer, portrait, 'desktop');
+  await expectPortraitMotion(page, motionLayer, frame, portrait, 'desktop');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(corner).toHaveAttribute('data-placement', 'inline');
-  await expectPortraitMotion(page, motionLayer, portrait, 'móvil');
+  await expectPortraitMotion(page, motionLayer, frame, portrait, 'móvil');
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
@@ -95,8 +107,10 @@ test('Home · si el sistema congela animaciones explica por qué y permite activ
   await expect(corner).toHaveAttribute('data-motion-source', 'app');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.motionPreference)).toBe('allow');
 
+  const frame = corner.locator('[data-portrait-frame="true"]');
   const motionLayer = corner.locator('[data-motion-layer="true"]');
   expect(await motionSpan(page, motionLayer), 'el override explícito debe mover físicamente a Matthias aunque el sistema pida reduce').toBeGreaterThan(8);
+  expect(await motionSpan(page, frame), 'el override no debe mover el marco del retrato').toBeLessThan(1);
 });
 
 test('Home · una preferencia guardada de reducir movimiento no deja a Matthias congelado sin explicación', async ({ page }) => {
@@ -117,6 +131,8 @@ test('Home · una preferencia guardada de reducir movimiento no deja a Matthias 
   await enable.click();
 
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
+  const frame = corner.locator('[data-portrait-frame="true"]');
   const motionLayer = corner.locator('[data-motion-layer="true"]');
   expect(await motionSpan(page, motionLayer), 'activar movimiento desde una preferencia guardada debe devolver vida visible a Matthias').toBeGreaterThan(8);
+  expect(await motionSpan(page, frame), 'activar movimiento no debe hacer bailar el marco de Matthias').toBeLessThan(1);
 });
