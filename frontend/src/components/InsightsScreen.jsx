@@ -2,6 +2,7 @@ import { useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
 import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
+import InsightsMatthiasMotion from './InsightsMatthiasMotion.jsx';
 import './InsightsWorkspace.css';
 
 const DIAGNOSIS_VIEWS = [
@@ -94,6 +95,8 @@ export default function InsightsScreen(props) {
         ) : null}
         <InsightsDashboardContent key={section} {...props} initialSection={section} />
       </div>
+
+      {!isCareer && diagnosisView === 'now' ? <InsightsMatthiasMotion /> : null}
     </div>
   );
 }
