@@ -5,7 +5,7 @@ import './InsightsWorkspace.css';
 
 const DIAGNOSIS_VIEWS = [
   { id: 'now', label: 'Ahora', detail: 'Matthias te marca el foco' },
-  { id: 'errors', label: 'Errores', detail: 'Cagadas y prioridades' },
+  { id: 'errors', label: 'Errores', detail: 'Patrones y errores recurrentes' },
   { id: 'dossier', label: 'Expediente', detail: 'Datos y tendencias' },
 ];
 
