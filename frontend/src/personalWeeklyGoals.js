@@ -54,12 +54,12 @@ function personalPuzzleGoal(puzzles, now) {
   if (!source.length) return null;
   const cutoff = now - WEEK_MS;
   const solvedThisWeek = source.filter((puzzle) => {
-    const at = timestamp(puzzle.masteredAt || puzzle.updatedAt);
+    const at = timestamp(puzzle.masteredAt);
     return Number(puzzle.cleanSolves || 0) > 0 && at >= cutoff && at <= now;
   }).length;
   const pending = source.filter((puzzle) => !puzzle.masteredAt && Number(puzzle.cleanSolves || 0) <= 0).length;
+  if (pending === 0) return null;
   const target = 3;
-  if (pending === 0 && solvedThisWeek === 0) return null;
   return {
     id: 'personal-puzzles-week',
     kind: 'personal-puzzles',
