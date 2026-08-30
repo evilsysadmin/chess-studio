@@ -80,7 +80,58 @@
   82% { transform: translateY(0) rotate(0); }
 }
 
+/* Responsive placement. En desktop Matthias debe formar parte del primer
+ * vistazo de Home, no vivir pegado al rodapié. */
+@media (min-width: 761px) {
+  .matthias-resident {
+    bottom: clamp(7.25rem, 14vh, 10rem);
+  }
+}
+
+@media (min-width: 431px) and (max-width: 760px) {
+  .matthias-resident {
+    bottom: max(5.4rem, calc(env(safe-area-inset-bottom) + 4.8rem));
+  }
+}
+
 @media (max-width: 430px) {
+  /* Cuando está callado se comporta como un companion de esquina: conserva
+   * presencia y movimiento, pero reduce drásticamente la superficie que puede
+   * tapar contenido. Si habla, el layout grande original sigue disponible. */
+  .matthias-resident.is-quiet {
+    width: auto;
+    right: .28rem;
+    bottom: max(4.65rem, calc(env(safe-area-inset-bottom) + 4.15rem));
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__stage {
+    gap: 0;
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__character {
+    flex-basis: 68px;
+    width: 68px;
+    padding: .14rem;
+    border-radius: 12px;
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__portrait-shell {
+    width: 62px;
+    height: 72px;
+    border-radius: 10px 10px 8px 8px;
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__character strong {
+    margin-top: .04rem;
+    font-size: .48rem;
+    letter-spacing: .09em;
+  }
+
+  .matthias-resident.is-quiet .matthias-resident__character small,
+  .matthias-resident.is-quiet .matthias-resident__character em {
+    display: none;
+  }
+
   .matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene] img {
     animation-duration: .45s, 8.5s;
   }
