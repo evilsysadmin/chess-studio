@@ -1,36 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
-import coffeeSprite from '../assets/matthias-frames/coffee-sprite.webp';
-import lunchSprite from '../assets/matthias-frames/lunch-sprite.webp';
+import coffee0 from '../assets/matthias-frames/coffee-0.webp';
+import coffee1 from '../assets/matthias-frames/coffee-1.webp';
+import coffee2 from '../assets/matthias-frames/coffee-2.webp';
+import lunch0 from '../assets/matthias-frames/lunch-0.webp';
+import lunch1 from '../assets/matthias-frames/lunch-1.webp';
+import lunch2 from '../assets/matthias-frames/lunch-2.webp';
+import lunch3 from '../assets/matthias-frames/lunch-3.webp';
 import './MatthiasFrameSequence.css';
 
-const FRAME_FADE_MS = 180;
+const FRAME_FADE_MS = 220;
 const FRAME_PREPARE_MS = 34;
 
 const SEQUENCES = Object.freeze({
   coffee: Object.freeze({
-    sprite: coffeeSprite,
+    poses: Object.freeze([coffee0, coffee1, coffee2]),
     action: 'drink',
-    frames: Object.freeze([0, 1, 2, 3, 4, 5, 0]),
-    holds: Object.freeze([650, 800, 900, 1250, 850, 700, 0]),
+    frames: Object.freeze([0, 1, 2, 2, 1, 0]),
+    holds: Object.freeze([700, 950, 1450, 500, 850, 0]),
   }),
   lunch: Object.freeze({
-    sprite: lunchSprite,
+    poses: Object.freeze([lunch0, lunch1, lunch2, lunch3]),
     action: 'eat',
-    frames: Object.freeze([0, 1, 2, 3, 4, 5, 0]),
-    holds: Object.freeze([650, 800, 900, 1050, 1200, 900, 0]),
+    frames: Object.freeze([0, 1, 2, 3, 2, 1, 0]),
+    holds: Object.freeze([700, 900, 1000, 1450, 600, 850, 0]),
   }),
 });
 
 export function matthiasFrameSequenceConfig(family = '') {
   return SEQUENCES[family] || null;
-}
-
-export function matthiasFramePosition(index = 0) {
-  const safe = Math.max(0, Math.min(5, Number(index) || 0));
-  const col = safe % 3;
-  const row = Math.floor(safe / 3);
-  return `${col * 50}% ${row * 100}%`;
 }
 
 export function matthiasFrameSequenceDelay({ first = false } = {}) {
@@ -115,7 +113,6 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
         data-sequence-state="reduced"
         data-frame-index="0"
         data-sequence-cycle-count="0"
-        data-sprite-src={config.sprite}
       >
         <img src={fallbackAvatar} alt="" draggable="false" data-matthias-canonical-art="true" />
       </span>
@@ -132,7 +129,6 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
       data-sequence-state="waiting"
       data-frame-index="0"
       data-sequence-cycle-count="0"
-      data-sprite-src={config.sprite}
     >
       <img
         className="matthias-frame-sequence__fallback"
@@ -142,14 +138,14 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
         data-matthias-canonical-art="true"
       />
       {[0, 1].map((slot) => (
-        <span
+        <img
           key={slot}
           className={`matthias-frame-sequence__layer${activeSlot === slot ? ' is-active' : ''}`}
           data-frame-layer={slot}
-          style={{
-            backgroundImage: `url(${config.sprite})`,
-            backgroundPosition: matthiasFramePosition(layerFrames[slot]),
-          }}
+          data-frame-pose={layerFrames[slot]}
+          src={config.poses[layerFrames[slot]]}
+          alt=""
+          draggable="false"
         />
       ))}
     </span>
