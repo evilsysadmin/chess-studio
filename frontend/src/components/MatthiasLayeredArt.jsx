@@ -383,7 +383,6 @@ export default function MatthiasLayeredArt({
       data-gesture-state={reducedMotion ? 'reduced' : 'waiting'}
       data-gesture-profile="deliberate"
       data-gesture-count="0"
-      style={{ '--matthias-rig-image': `url(${avatar})` }}
     >
       <img
         className="matthias-art-rig__base"
@@ -393,10 +392,15 @@ export default function MatthiasLayeredArt({
         data-matthias-canonical-art="true"
       />
       {PARTS.map((part) => (
-        <span
+        <img
           key={part}
           className={`matthias-art-rig__part matthias-art-rig__part--${part}`}
+          src={avatar}
+          alt=""
+          draggable="false"
+          aria-hidden="true"
           data-matthias-art-part={part}
+          style={{ objectFit: 'cover', objectPosition: '50% 44%' }}
         />
       ))}
     </span>
