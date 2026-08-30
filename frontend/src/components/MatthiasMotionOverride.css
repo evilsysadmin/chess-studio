@@ -1,6 +1,6 @@
 /* Matthias motion controls.
- * El frame y el bitmap completo son deliberadamente estáticos. La animación
- * real vive sólo en .matthias-resident__motion-layer y la gobierna WAAPI.
+ * El frame permanece estático. Las articulaciones del puppet SVG se gobiernan
+ * por WAAPI y respetan reduced-motion salvo override explícito del usuario.
  */
 .matthias-resident__character-stack {
   display: grid;
@@ -9,12 +9,6 @@
 }
 
 .matthias-resident__portrait-shell {
-  animation: none !important;
-  transform: none !important;
-  will-change: auto;
-}
-
-.matthias-resident__motion-layer > img {
   animation: none !important;
   transform: none !important;
   will-change: auto;
