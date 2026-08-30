@@ -46,6 +46,19 @@ describe('tutorial de despliegue con defaults', () => {
   });
 });
 
+describe('tutorial de bajas y Memorial', () => {
+  it('explica la única ventana de revive, reclutas, convalecencia y pérdida permanente', () => {
+    const tutorial = mechanicTutorialById('combat-casualties');
+    const copy = [tutorial.summary, ...tutorial.steps.map((step) => `${step.title} ${step.text}`)].join(' ');
+    expect(tutorial.title).toContain('Memorial');
+    expect(copy).toContain('antes de iniciar la siguiente batalla');
+    expect(copy).toContain('nivel 1');
+    expect(copy).toContain('50% de XP');
+    expect(copy).toContain('identidad');
+    expect(copy).toContain('no hereda');
+  });
+});
+
 describe('tutorial de Supervivencia', () => {
   it('explica el escalado y que cualquier resultado que no sea victoria termina la run', () => {
     const tutorial = mechanicTutorialById('survival');
