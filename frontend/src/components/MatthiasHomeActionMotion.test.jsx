@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../cpuIdentity.js', () => ({ CPU_IDENTITY: { name: 'Matthias' } }));
 vi.mock('../matthiasVisuals.js', () => ({
@@ -24,16 +24,18 @@ const MODEL = {
   moodCue: 'observant',
 };
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('MatthiasHomeVisit · escenas físicas reconocibles', () => {
   it('expone una escena de comida mediante una key estable que la animación puede reconocer', () => {
-    vi.spyOn(Date.prototype, 'getHours').mockReturnValueOnce(12);
+    vi.spyOn(Date.prototype, 'getHours').mockReturnValue(12);
     const html = renderToStaticMarkup(<MatthiasHomeVisit model={MODEL} speaking={false} />);
     expect(html).toContain('data-ambient-scene="time-lunch-bocata"');
     expect(html).toContain('Repostando');
   });
 
   it('expone una escena de bebida mediante una key estable que la animación puede reconocer', () => {
-    vi.spyOn(Date.prototype, 'getHours').mockReturnValueOnce(8);
+    vi.spyOn(Date.prototype, 'getHours').mockReturnValue(8);
     const html = renderToStaticMarkup(<MatthiasHomeVisit model={MODEL} speaking={false} />);
     expect(html).toContain('data-ambient-scene="time-morning-coffee"');
     expect(html).toContain('Café de campaña');
