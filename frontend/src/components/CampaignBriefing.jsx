@@ -3,6 +3,7 @@ import {
   campaignIntelBriefing,
   nextCampaignIntelTier,
 } from '../combatCampaign.js';
+import { enemyOfficerBriefing } from '../combatEnemyOfficers.js';
 import { campaignMissionOrders, classifiedCampaignMission } from '../combatMissionOrders.js';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
@@ -20,6 +21,7 @@ const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
 export default function CampaignBriefing({ campaign, node, armySummary, onBuyIntel, onContinue, onRetire }) {
   const intel = useMemo(() => campaignIntelBriefing(campaign, node), [campaign, node]);
   const nextTier = useMemo(() => nextCampaignIntelTier(campaign, node?.id), [campaign, node]);
+  const enemyOfficer = useMemo(() => enemyOfficerBriefing(campaign?.seed, node), [campaign?.seed, node?.id]);
   const missionOrders = useMemo(() => campaignMissionOrders(campaign?.seed, node), [campaign?.seed, node]);
   const classifiedMission = useMemo(() => classifiedCampaignMission(campaign?.seed, node, intel?.level), [campaign?.seed, intel?.level, node]);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
@@ -60,12 +62,19 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
         <button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)} aria-label="Tutorial de inteligencia">?</button>
       </div>
 
-
       <div className="campaign-briefing-at-glance" aria-label="Resumen táctico">
         <span><small>Amenaza</small><b>{intel.threatBand} · Nv. {intel.opponentLevelRange}</b></span>
         <span><small>Ejército</small><b>{armySummary ? `${armySummary.assignedCount}/${armySummary.totalSlots}` : '—'}</b></span>
         <span><small>Intel</small><b>{intel.levelLabel}</b></span>
       </div>
+
+      {enemyOfficer && (
+        <article className="campaign-rule-alert campaign-enemy-officer" aria-label={`Oficial enemigo: ${enemyOfficer.name}`}>
+          <span>OFICIAL ENEMIGO · {enemyOfficer.rank}</span>
+          <strong>{enemyOfficer.name} · «{enemyOfficer.callsign}»</strong>
+          <p>{enemyOfficer.note}{enemyOfficer.known ? ` ${enemyOfficer.record.encounters} encuentros registrados.` : ' No modifica la fuerza de la CPU: es identidad e historial, no un buff oculto.'}</p>
+        </article>
+      )}
 
       {boss && (
         <article className="campaign-boss-dossier" aria-label={`Boss: ${boss.label}`}>

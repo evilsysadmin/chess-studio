@@ -1,10 +1,20 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useCombatController } from './useCombatController.js';
 import CombatSetupView from './CombatSetupView.jsx';
 import CombatBattleView from './CombatBattleView.jsx';
+import { recordEnemyOfficerSessionEncounter } from '../combatEnemyOfficers.js';
 
 export default function CombatScreen(props) {
-  const controller = useCombatController(props);
+  const handleBattleResult = useCallback((outcome, debrief, meta = {}) => {
+    recordEnemyOfficerSessionEncounter({
+      combatSessionId: props.combatSessionId,
+      encounterLabel: props.encounterLabel,
+      outcome,
+      encounterId: meta.gameId || meta.battleRecord?.id,
+    });
+    props.onBattleResult?.(outcome, debrief, meta);
+  }, [props.combatSessionId, props.encounterLabel, props.onBattleResult]);
+  const controller = useCombatController({ ...props, onBattleResult: handleBattleResult });
 
   // No actualizamos al padre desde useLayoutEffect: en dev/StrictMode puede
   // provocar renders reentrantes justo durante la transición Setup -> Battle.
