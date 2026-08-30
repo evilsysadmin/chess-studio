@@ -85,36 +85,38 @@ const MOTIONS = Object.freeze({
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
-  bite: Object.freeze({
-    eyes: frames(
-      { offset: 0, transform: 'translate3d(0,0,0) scaleY(1)' },
-      { offset: .4, transform: 'translate3d(0,.3px,0) scaleY(.9)' },
-      { offset: .72, transform: 'translate3d(0,.2px,0) scaleY(.94)' },
-      { offset: 1, transform: 'translate3d(0,0,0) scaleY(1)' },
-    ),
-    head: frames(
+  'sip-night': Object.freeze({
+    'right-arm': frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .42, transform: 'translate3d(0,1.1px,0) rotate(.3deg)' },
-      { offset: .74, transform: 'translate3d(0,1px,0) rotate(.25deg)' },
+      { offset: .34, transform: 'translate3d(-4.7px,-6.5px,0) rotate(-2.1deg)' },
+      { offset: .72, transform: 'translate3d(-4.3px,-6.1px,0) rotate(-1.85deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
+    prop: frames(
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .36, transform: 'translate3d(-5.1px,-7.2px,0) rotate(-1.8deg)' },
+      { offset: .72, transform: 'translate3d(-4.7px,-6.7px,0) rotate(-1.55deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+    ),
+  }),
+  bite: Object.freeze({
     'left-arm': frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .36, transform: 'translate3d(1.5px,-3.2px,0) rotate(1.3deg)' },
-      { offset: .72, transform: 'translate3d(1.4px,-3px,0) rotate(1.15deg)' },
+      { offset: .38, transform: 'translate3d(1.2px,-4.8px,0) rotate(.8deg)' },
+      { offset: .72, transform: 'translate3d(1.1px,-4.4px,0) rotate(.7deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     'right-arm': frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .36, transform: 'translate3d(-1.5px,-3.2px,0) rotate(-1.3deg)' },
-      { offset: .72, transform: 'translate3d(-1.4px,-3px,0) rotate(-1.15deg)' },
+      { offset: .38, transform: 'translate3d(-1.2px,-4.8px,0) rotate(-.8deg)' },
+      { offset: .72, transform: 'translate3d(-1.1px,-4.4px,0) rotate(-.7deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     prop: frames(
-      { offset: 0, transform: 'translate3d(0,0,0) scale(1)' },
-      { offset: .38, transform: 'translate3d(0,-3.5px,0) scale(1.01)' },
-      { offset: .72, transform: 'translate3d(0,-3.2px,0) scale(1.008)' },
-      { offset: 1, transform: 'translate3d(0,0,0) scale(1)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: .4, transform: 'translate3d(0,-6.8px,0) rotate(0deg)' },
+      { offset: .72, transform: 'translate3d(0,-6.2px,0) rotate(0deg)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
   read: Object.freeze({
@@ -184,7 +186,8 @@ const GESTURE_DURATIONS = Object.freeze({
   glance: 2000,
   inspect: 3600,
   sip: 2300,
-  bite: 2300,
+  'sip-night': 2600,
+  bite: 2800,
   read: 3500,
   doze: 3800,
   speak: 1900,
@@ -194,7 +197,8 @@ const PART_DELAYS = Object.freeze({
   glance: Object.freeze({ eyes: 0, head: 160 }),
   inspect: Object.freeze({ eyes: 0, head: 180, 'right-arm': 420 }),
   sip: Object.freeze({ eyes: 0, head: 120, 'left-arm': 280, prop: 280 }),
-  bite: Object.freeze({ eyes: 0, head: 120, 'left-arm': 260, 'right-arm': 260, prop: 300 }),
+  'sip-night': Object.freeze({ 'right-arm': 80, prop: 160 }),
+  bite: Object.freeze({ 'left-arm': 0, 'right-arm': 0, prop: 120 }),
   read: Object.freeze({ eyes: 0, head: 220, 'right-arm': 520, prop: 520 }),
   doze: Object.freeze({ head: 0, eyes: 220 }),
   speak: Object.freeze({ head: 0, eyes: 120, 'right-arm': 300 }),
@@ -202,6 +206,8 @@ const PART_DELAYS = Object.freeze({
 
 export function matthiasGestureName({ scene = '', speaking = false } = {}) {
   if (speaking) return 'speak';
+  const key = String(scene || '').toLowerCase();
+  if (/night-coffee|beer-break/.test(key) || key === 'night') return 'sip-night';
   const family = matthiasSceneFamily(scene);
   if (family === 'coffee') return 'sip';
   if (family === 'lunch') return 'bite';
