@@ -6,6 +6,7 @@ describe('buildRecurringErrorPatterns', () => {
     const patterns = buildRecurringErrorPatterns([
       {
         id: 'fork-1',
+        source: 'autopsy',
         incidentKeys: ['cpu:KNIGHT_FORK'],
         sourceGameId: 'g1',
         loss: 180,
@@ -15,6 +16,7 @@ describe('buildRecurringErrorPatterns', () => {
       },
       {
         id: 'fork-2',
+        source: 'autopsy',
         incidentKeys: ['cpu:KNIGHT_FORK'],
         sourceGameId: 'g2',
         loss: 260,
@@ -26,6 +28,7 @@ describe('buildRecurringErrorPatterns', () => {
       },
       {
         id: 'mate-singleton',
+        source: 'autopsy',
         incidentKeys: ['human:MISSED_MATE'],
         sourceGameId: 'g3',
         loss: 400,
@@ -41,18 +44,37 @@ describe('buildRecurringErrorPatterns', () => {
       sourceGames: 2,
       friction: 2,
       maxLoss: 260,
+      debt: {
+        progress: 1,
+        target: 2,
+        paid: false,
+        active: true,
+        realCases: 2,
+        distinctGames: 2,
+      },
       filter: { incidentKey: 'cpu:KNIGHT_FORK' },
     });
   });
 
   it('no cuenta dos veces la misma incidentKey dentro de una sola posición', () => {
     const patterns = buildRecurringErrorPatterns([
-      { id: 'one', incidentKeys: ['human:ALLOWED_MATE', 'human:ALLOWED_MATE'] },
-      { id: 'two', incidentKeys: ['human:ALLOWED_MATE'] },
+      { id: 'one', source: 'autopsy', incidentKeys: ['human:ALLOWED_MATE', 'human:ALLOWED_MATE'] },
+      { id: 'two', source: 'autopsy', incidentKeys: ['human:ALLOWED_MATE'] },
     ]);
 
     expect(patterns).toHaveLength(1);
     expect(patterns[0].positions).toBe(2);
+  });
+
+  it('marca una deuda como pagada sólo con dos casos reales distintos resueltos limpiamente', () => {
+    const [pattern] = buildRecurringErrorPatterns([
+      { id: 'a1', source: 'autopsy', incidentKeys: ['human:STALEMATE_BLUNDER'], sourceGameId: 'g1', cleanSolves: 1, solves: 1 },
+      { id: 'a2', source: 'autopsy', incidentKeys: ['human:STALEMATE_BLUNDER'], sourceGameId: 'g2', cleanSolves: 2, solves: 2 },
+      { id: 'ai-variant', source: 'workers-ai-validated', incidentKeys: ['human:STALEMATE_BLUNDER'], cleanSolves: 0 },
+    ]);
+
+    expect(pattern.positions).toBe(3);
+    expect(pattern.debt).toMatchObject({ progress: 2, target: 2, paid: true, active: false, realCases: 2 });
   });
 
   it('ordena primero la reincidencia más demostrada y no inventa patrones sin incidentKeys', () => {
