@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { buildReleaseManifest } from './src/releaseManifest.js';
 
 const FRONTEND_DIR = fileURLToPath(new URL('.', import.meta.url));
+const BUILD_ID = String(process.env.VITE_BUILD_SHA || '').trim();
 
 function releaseManifestPlugin() {
   return {
@@ -15,7 +16,7 @@ function releaseManifestPlugin() {
       const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
       const manifest = buildReleaseManifest({
         release: template.release,
-        buildSha: process.env.VITE_BUILD_SHA,
+        buildSha: BUILD_ID,
       });
       const outputDir = path.resolve(FRONTEND_DIR, options.dir || 'dist');
       fs.writeFileSync(path.join(outputDir, 'release.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
@@ -28,6 +29,13 @@ export default defineConfig({
   // propio sirve la aplicación desde /. El workflow de Pages fija la segunda
   // variante sin romper previews ni E2E locales.
   base: process.env.VITE_PUBLIC_BASE || '/chess-studio/',
+
+  // `release.js` también se importa directamente desde Playwright/Node. Una
+  // constante Vite explícita conserva ese módulo portable y sólo inyecta el
+  // SHA en el bundle que realmente va a desplegarse.
+  define: {
+    __CHESS_BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
 
   plugins: [react(), releaseManifestPlugin()],
 
