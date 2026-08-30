@@ -47,6 +47,12 @@
   font-size: 1.3rem;
 }
 .game-player-rail.is-active .game-player-avatar { border-color: var(--brass-dim); color: var(--brass); }
+/* Matthias reacts exactly once when his turn becomes active. The portrait then
+ * stays still: a turn cue, not a looping breathing doll. */
+.game-player-rail.is-cpu.is-active .game-player-avatar.has-portrait img {
+  transform-origin: 50% 72%;
+  animation: matthias-turn-attend .44s cubic-bezier(.2,.8,.2,1) both;
+}
 .game-player-identity { min-width: 0; display: grid; gap: .05rem; text-align: left; }
 .game-player-identity strong { overflow: hidden; color: var(--parchment); font-size: .86rem; text-overflow: ellipsis; white-space: nowrap; }
 .game-player-identity small { color: var(--parchment-dim); font-size: .68rem; }
@@ -65,6 +71,12 @@
   letter-spacing: .09em;
 }
 .game-player-rail.is-active .game-player-turn { color: var(--brass); }
+
+@keyframes matthias-turn-attend {
+  0% { transform: translateY(1px) scale(.97); opacity: .82; }
+  62% { transform: translateY(-1px) scale(1.018); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
 
 .game-notation-disclosure {
   width: min(100%, 620px);
@@ -166,3 +178,8 @@
   .game-player-identity small { max-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .game-controls { grid-template-columns: 1fr; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .game-player-rail.is-cpu.is-active .game-player-avatar.has-portrait img { animation: none; transform: none; }
+}
+html[data-reduced-motion='true'] .game-player-rail.is-cpu.is-active .game-player-avatar.has-portrait img { animation: none; transform: none; }
