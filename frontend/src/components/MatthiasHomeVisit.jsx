@@ -5,6 +5,7 @@ import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.j
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './MatthiasHomeResident.css';
 import './MatthiasHomeMotion.css';
+import './MatthiasMotionOverride.css';
 
 const AMBIENT_SCENE_MS = 18_000;
 const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
