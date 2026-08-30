@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import MatthiasPuppet from './MatthiasPuppet.jsx';
 import './MatthiasHomeResident.css';
-import './MatthiasHomeMotion.css';
 import './MatthiasMotionOverride.css';
 
 const AMBIENT_SCENE_MS = 28_000;
@@ -23,106 +23,6 @@ export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
   return Number.isFinite(width) && width <= 760;
 }
 
-export function matthiasGestureDelay({ speaking = false, random = Math.random } = {}) {
-  if (speaking) return 140;
-  const sample = Math.min(1, Math.max(0, Number(random?.()) || 0));
-  return Math.round(1800 + (sample * 2200));
-}
-
-export function matthiasHumanGesture({ speaking = false, scene = '' } = {}) {
-  if (speaking) {
-    return {
-      name: 'attend',
-      duration: 1450,
-      frames: [
-        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
-        { offset: .28, transform: 'translateX(-1px) rotate(-.45deg) scale(1.009)' },
-        { offset: .58, transform: 'translateX(1px) rotate(.28deg) scale(1.005)' },
-        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
-      ],
-    };
-  }
-
-  if (/coffee|breakfast|night|beer-break/.test(scene)) {
-    return {
-      name: 'sip',
-      duration: 1750,
-      frames: [
-        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
-        { offset: .24, transform: 'translateX(-1px) rotate(-.55deg) scale(1.004)' },
-        { offset: .52, transform: 'translateX(-2px) rotate(-1.55deg) scale(1.012)' },
-        { offset: .72, transform: 'translateX(-2px) rotate(-1.35deg) scale(1.01)' },
-        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
-      ],
-    };
-  }
-
-  if (/lunch|bocata/.test(scene)) {
-    return {
-      name: 'bite',
-      duration: 1650,
-      frames: [
-        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
-        { offset: .3, transform: 'translateX(2px) rotate(1.15deg) scale(1.01)' },
-        { offset: .48, transform: 'translateX(2px) rotate(.55deg) scale(1.014)' },
-        { offset: .62, transform: 'translateX(2px) rotate(1.05deg) scale(1.01)' },
-        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
-      ],
-    };
-  }
-
-  if (/reading|strategy|dossier|weekly/.test(scene)) {
-    return {
-      name: 'read',
-      duration: 1550,
-      frames: [
-        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
-        { offset: .32, transform: 'translateX(1px) rotate(.7deg) scale(1.005)' },
-        { offset: .64, transform: 'translateX(-1px) rotate(-.35deg) scale(1.003)' },
-        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
-      ],
-    };
-  }
-
-  if (/sleep/.test(scene)) {
-    return {
-      name: 'doze',
-      duration: 1900,
-      frames: [
-        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
-        { offset: .38, transform: 'translateX(1px) rotate(1.45deg) scale(.997)' },
-        { offset: .68, transform: 'translateX(1px) rotate(1.7deg) scale(.996)' },
-        { offset: .82, transform: 'translateX(-1px) rotate(-.45deg) scale(1.004)' },
-        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
-      ],
-    };
-  }
-
-  if (/ops|inception/.test(scene)) {
-    return {
-      name: 'inspect',
-      duration: 1500,
-      frames: [
-        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
-        { offset: .34, transform: 'translateX(-1px) rotate(-.75deg) scale(1.006)' },
-        { offset: .68, transform: 'translateX(1px) rotate(.42deg) scale(1.003)' },
-        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
-      ],
-    };
-  }
-
-  return {
-    name: 'acknowledge',
-    duration: 1400,
-    frames: [
-      { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
-      { offset: .34, transform: 'translateX(-1px) rotate(-.5deg) scale(1.005)' },
-      { offset: .62, transform: 'translateX(1px) rotate(.35deg) scale(1.003)' },
-      { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
-    ],
-  };
-}
-
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
   const hour = useMemo(() => new Date().getHours(), []);
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
@@ -130,7 +30,6 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const [motionStatus, setMotionStatus] = useState(() => reducedMotionStatus());
   const [compactViewport, setCompactViewport] = useState(() => matthiasCompactViewport());
   const [portalReady, setPortalReady] = useState(false);
-  const motionLayerRef = useRef(null);
 
   useEffect(() => {
     setPortalReady(true);
@@ -179,48 +78,6 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     }, AMBIENT_SCENE_MS);
     return () => window.clearInterval(timer);
   }, [ambientVisuals.length, motionStatus.effective, speaking]);
-
-  useEffect(() => {
-    const node = motionLayerRef.current;
-    if (!node || motionStatus.effective || typeof node.animate !== 'function') return undefined;
-
-    const scene = speaking
-      ? 'speaking'
-      : (ambientVisuals[ambientBeat]?.key || 'default');
-    const gesture = matthiasHumanGesture({ speaking, scene });
-    let animation = null;
-    let cancelled = false;
-
-    node.dataset.motionBehavior = 'human-gestures';
-    node.dataset.gestureState = 'waiting';
-    node.dataset.gestureKind = gesture.name;
-
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      node.dataset.gestureState = 'acting';
-      node.style.willChange = 'transform';
-      animation = node.animate(gesture.frames, {
-        duration: gesture.duration,
-        iterations: 1,
-        easing: 'cubic-bezier(.22,.61,.36,1)',
-        fill: 'none',
-      });
-      animation.onfinish = () => {
-        node.dataset.gestureState = 'rest';
-        node.style.willChange = 'auto';
-        animation?.cancel();
-        animation = null;
-      };
-    }, matthiasGestureDelay({ speaking }));
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-      animation?.cancel();
-      node.dataset.gestureState = 'rest';
-      node.style.willChange = 'auto';
-    };
-  }, [ambientBeat, ambientVisuals, motionStatus.effective, speaking]);
 
   if (!model) return null;
 
@@ -271,16 +128,12 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
             aria-describedby={speaking ? 'matthias-home-message' : undefined}
             title="Matthias · abrir Así juegas"
           >
-            <span
-              className="matthias-resident__portrait-shell"
-              aria-hidden="true"
-              data-portrait-frame="true"
-              data-static-scene="true"
-              style={{ '--matthias-scene-image': `url(${visual.avatar})` }}
-            >
-              <span ref={motionLayerRef} className="matthias-resident__motion-layer" data-motion-layer="true">
-                <img key={visual.key || visual.avatar} src={visual.avatar} alt="" data-motion-art="true" />
-              </span>
+            <span className="matthias-resident__portrait-shell" aria-hidden="true" data-portrait-frame="true">
+              <MatthiasPuppet
+                scene={visual.key || 'base'}
+                speaking={speaking}
+                reducedMotion={motionStatus.effective}
+              />
             </span>
             <strong>{CPU_IDENTITY.name}</strong>
             <small>{speaking ? mood : visual.label}</small>
