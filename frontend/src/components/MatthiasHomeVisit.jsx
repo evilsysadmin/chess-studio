@@ -7,6 +7,7 @@ import './MatthiasHomeResident.css';
 import './MatthiasHomeMotion.css';
 
 const AMBIENT_SCENE_MS = 18_000;
+const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
 
 export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
   const reducedByApp = appReduced ?? getReducedMotion();
@@ -18,15 +19,43 @@ export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
   return Boolean(reducedByApp || reducedByMedia);
 }
 
+export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
+  if (typeof mediaMatches === 'boolean') return mediaMatches;
+  if (typeof window === 'undefined') return false;
+  if (typeof window.matchMedia === 'function') return window.matchMedia(COMPACT_VIEWPORT_QUERY).matches;
+  const width = innerWidth ?? window.innerWidth;
+  return Number.isFinite(width) && width <= 760;
+}
+
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
   const hour = useMemo(() => new Date().getHours(), []);
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
   const [ambientBeat, setAmbientBeat] = useState(0);
   const [motionReduced, setMotionReduced] = useState(() => matthiasMotionReduced());
+  const [compactViewport, setCompactViewport] = useState(() => matthiasCompactViewport());
   const [portalReady, setPortalReady] = useState(false);
 
   useEffect(() => {
     setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const media = typeof window.matchMedia === 'function'
+      ? window.matchMedia(COMPACT_VIEWPORT_QUERY)
+      : null;
+    const refresh = () => setCompactViewport(matthiasCompactViewport({
+      mediaMatches: media?.matches,
+      innerWidth: window.innerWidth,
+    }));
+
+    refresh();
+    media?.addEventListener?.('change', refresh);
+    if (!media) window.addEventListener('resize', refresh);
+    return () => {
+      media?.removeEventListener?.('change', refresh);
+      if (!media) window.removeEventListener('resize', refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -62,9 +91,10 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
 
   const resident = (
     <aside
-      className={`matthias-resident matthias-resident--${model.variant || 'quiet'} matthias-resident--mood-${model.moodCue || 'observant'}${speaking ? ' is-speaking' : ' is-quiet'}`}
+      className={`matthias-resident matthias-resident--${model.variant || 'quiet'} matthias-resident--mood-${model.moodCue || 'observant'}${speaking ? ' is-speaking' : ' is-quiet'}${compactViewport ? ' is-inline' : ' is-viewport'}`}
       aria-label="Rincón de Matthias"
       data-viewport-resident="true"
+      data-placement={compactViewport ? 'inline' : 'viewport'}
     >
       <div className="matthias-resident__stage">
         {speaking ? (
@@ -101,10 +131,11 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     </aside>
   );
 
-  // Home usa transforms para su composición visual. Un fixed dentro de un
-  // ancestor transformado deja de estar fijado al viewport y puede acabar en
-  // mitad del lienzo. Tras montar, sacamos al residente a document.body para
-  // que right/bottom sean siempre coordenadas reales de la ventana.
+  // En móvil Matthias forma parte del flujo de Home: así nunca tapa tarjetas,
+  // texto ni acciones aunque el bocadillo crezca. En desktop sí lo sacamos a
+  // document.body, porque Home usa transforms y un fixed dentro de un ancestor
+  // transformado dejaría de estar fijado al viewport.
+  if (compactViewport) return resident;
   if (!portalReady || typeof document === 'undefined' || !document.body) return resident;
   return createPortal(resident, document.body);
 }
