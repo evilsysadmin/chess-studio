@@ -36,7 +36,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Terraform fmt
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check -diff -recursive
 
       - name: Terraform init without backend
         run: terraform init -backend=false
