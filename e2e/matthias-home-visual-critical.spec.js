@@ -13,20 +13,42 @@ async function dismissMatthiasSpeech(corner) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function expectPortraitMotion(page, shell, label) {
+async function expectPortraitMotion(page, shell, image, label) {
   await expect(shell).toBeVisible();
-  const animationName = await shell.evaluate((node) => getComputedStyle(node).animationName);
-  expect(animationName, `${label}: el portrait-shell debe tener una animación real`).toMatch(/matthias-home-/);
+  await expect(image).toBeVisible();
 
-  const transforms = [];
-  for (let i = 0; i < 7; i += 1) {
-    transforms.push(await shell.evaluate((node) => getComputedStyle(node).transform));
-    await page.waitForTimeout(220);
+  const shellAnimation = await shell.evaluate((node) => getComputedStyle(node).animationName);
+  const imageAnimation = await image.evaluate((node) => getComputedStyle(node).animationName);
+  expect(shellAnimation, `${label}: el portrait-shell debe tener una animación real`).toMatch(/matthias-home-/);
+  expect(imageAnimation, `${label}: la ilustración debe acompañar físicamente el gesto`).toMatch(/matthias-home-/);
+
+  const samples = [];
+  for (let i = 0; i < 10; i += 1) {
+    samples.push(await shell.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        transform: getComputedStyle(node).transform,
+      };
+    }));
+    await page.waitForTimeout(180);
   }
-  expect(new Set(transforms).size, `${label}: la transformación debe cambiar con el tiempo`).toBeGreaterThan(2);
+
+  const xValues = samples.map((sample) => sample.x);
+  const yValues = samples.map((sample) => sample.y);
+  const xSpan = Math.max(...xValues) - Math.min(...xValues);
+  const ySpan = Math.max(...yValues) - Math.min(...yValues);
+  const transforms = new Set(samples.map((sample) => sample.transform));
+
+  expect(transforms.size, `${label}: la transformación debe cambiar con el tiempo`).toBeGreaterThan(3);
+  expect(
+    Math.max(xSpan, ySpan),
+    `${label}: Matthias debe desplazarse varios píxeles de verdad, no sólo cambiar una matriz imperceptible`,
+  ).toBeGreaterThan(3);
 }
 
-test('Home · Matthias carga, se mueve de verdad en desktop y móvil y abre Así juegas', async ({ page }) => {
+test('Home · Matthias carga, se mueve de forma perceptible en desktop y móvil y abre Así juegas', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await mockApi(page);
   await login(page);
@@ -47,11 +69,11 @@ test('Home · Matthias carga, se mueve de verdad en desktop y móvil y abre Así
   ).toBe(true);
 
   await expect(corner).toHaveAttribute('data-placement', 'viewport');
-  await expectPortraitMotion(page, matthias.locator('.matthias-resident__portrait-shell'), 'desktop');
+  await expectPortraitMotion(page, matthias.locator('.matthias-resident__portrait-shell'), portrait, 'desktop');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(corner).toHaveAttribute('data-placement', 'inline');
-  await expectPortraitMotion(page, matthias.locator('.matthias-resident__portrait-shell'), 'móvil');
+  await expectPortraitMotion(page, matthias.locator('.matthias-resident__portrait-shell'), portrait, 'móvil');
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
