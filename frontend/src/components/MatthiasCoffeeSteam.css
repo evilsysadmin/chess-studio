@@ -1,0 +1,77 @@
+/* Café vivo, Matthias quieto: el vapor es un detalle ambiental continuo.
+ * Se renderiza sólo para escenas de café y desaparece con reduced-motion. */
+.matthias-resident__portrait-shell {
+  position: relative;
+}
+
+.matthias-coffee-steam {
+  position: absolute;
+  top: 18%;
+  z-index: 9;
+  width: 24%;
+  height: 34%;
+  overflow: visible;
+  pointer-events: none;
+  opacity: .72;
+}
+
+.matthias-coffee-steam--left {
+  left: 18%;
+}
+
+.matthias-coffee-steam--right {
+  right: 17%;
+}
+
+.matthias-coffee-steam__wisp {
+  position: absolute;
+  bottom: 0;
+  width: 5px;
+  height: 22px;
+  border-left: 1.5px solid rgba(235, 237, 229, .42);
+  border-radius: 55% 45% 60% 40%;
+  filter: blur(.45px);
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: matthias-coffee-steam-rise 3.8s ease-in-out infinite;
+}
+
+.matthias-coffee-steam__wisp--1 {
+  left: 18%;
+}
+
+.matthias-coffee-steam__wisp--2 {
+  left: 46%;
+  height: 25px;
+  animation-delay: -1.25s;
+  animation-duration: 4.3s;
+}
+
+.matthias-coffee-steam__wisp--3 {
+  left: 70%;
+  height: 18px;
+  animation-delay: -2.45s;
+  animation-duration: 3.5s;
+}
+
+@keyframes matthias-coffee-steam-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 5px, 0) scaleX(.82) rotate(-4deg);
+  }
+  18% {
+    opacity: .46;
+  }
+  48% {
+    opacity: .34;
+    transform: translate3d(2px, -7px, 0) scaleX(1.05) rotate(3deg);
+  }
+  78% {
+    opacity: .16;
+    transform: translate3d(-1px, -14px, 0) scaleX(.92) rotate(-2deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(1px, -19px, 0) scaleX(1.08) rotate(4deg);
+  }
+}
