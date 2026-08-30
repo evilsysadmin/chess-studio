@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
+import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
 import './InsightsWorkspace.css';
 
 const DIAGNOSIS_VIEWS = [
@@ -13,9 +14,13 @@ export function normalizeInsightsSection(value) {
   return value === 'career' ? 'career' : 'diagnosis';
 }
 
+export function normalizeInsightsDiagnosisView(value) {
+  return DIAGNOSIS_VIEWS.some((view) => view.id === value) ? value : 'now';
+}
+
 export default function InsightsScreen(props) {
   const [section, setSection] = useState(() => normalizeInsightsSection(props.initialSection));
-  const [diagnosisView, setDiagnosisView] = useState('now');
+  const [diagnosisView, setDiagnosisView] = useState(() => normalizeInsightsDiagnosisView(props.initialDiagnosisView));
   const isCareer = section === 'career';
 
   return (
@@ -84,6 +89,9 @@ export default function InsightsScreen(props) {
         role="tabpanel"
         aria-labelledby={isCareer ? 'insights-section-career' : `insights-view-${diagnosisView}`}
       >
+        {!isCareer && diagnosisView === 'errors' ? (
+          <InsightsRecurringErrors onOpenPuzzles={props.onOpenPuzzles} />
+        ) : null}
         <InsightsDashboardContent key={section} {...props} initialSection={section} />
       </div>
     </div>
