@@ -1,36 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
-import coffeeSprite from '../assets/matthias-frames/coffee-sprite.webp';
-import lunchSprite from '../assets/matthias-frames/lunch-sprite.webp';
+import coffee0 from '../assets/matthias-frames/coffee-0.webp';
+import coffee1 from '../assets/matthias-frames/coffee-1.webp';
+import coffee2 from '../assets/matthias-frames/coffee-2.webp';
+import lunch0 from '../assets/matthias-frames/lunch-0.webp';
+import lunch1 from '../assets/matthias-frames/lunch-1.webp';
+import lunch2 from '../assets/matthias-frames/lunch-2.webp';
+import lunch3 from '../assets/matthias-frames/lunch-3.webp';
 import './MatthiasFrameSequence.css';
 
-const FRAME_FADE_MS = 180;
+const FRAME_FADE_MS = 220;
 const FRAME_PREPARE_MS = 34;
 
 const SEQUENCES = Object.freeze({
   coffee: Object.freeze({
-    sprite: coffeeSprite,
+    poses: Object.freeze([coffee0, coffee1, coffee2]),
     action: 'drink',
-    frames: Object.freeze([0, 1, 2, 3, 4, 5, 0]),
-    holds: Object.freeze([650, 800, 900, 1250, 850, 700, 0]),
+    frames: Object.freeze([0, 1, 2, 2, 1, 0]),
+    holds: Object.freeze([700, 950, 1450, 500, 850, 0]),
   }),
   lunch: Object.freeze({
-    sprite: lunchSprite,
+    poses: Object.freeze([lunch0, lunch1, lunch2, lunch3]),
     action: 'eat',
-    frames: Object.freeze([0, 1, 2, 3, 4, 5, 0]),
-    holds: Object.freeze([650, 800, 900, 1050, 1200, 900, 0]),
+    frames: Object.freeze([0, 1, 2, 3, 2, 1, 0]),
+    holds: Object.freeze([700, 900, 1000, 1450, 600, 850, 0]),
   }),
 });
 
 export function matthiasFrameSequenceConfig(family = '') {
   return SEQUENCES[family] || null;
-}
-
-export function matthiasFramePosition(index = 0) {
-  const safe = Math.max(0, Math.min(5, Number(index) || 0));
-  const col = safe % 3;
-  const row = Math.floor(safe / 3);
-  return `${col * 50}% ${row * 100}%`;
 }
 
 export function matthiasFrameSequenceDelay({ first = false } = {}) {
@@ -43,55 +41,48 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
   const config = useMemo(() => matthiasFrameSequenceConfig(family), [family]);
   const [layerFrames, setLayerFrames] = useState([0, 0]);
   const [activeSlot, setActiveSlot] = useState(0);
-  const [spriteState, setSpriteState] = useState(() => (reducedMotion ? 'unused' : 'loading'));
+  const [frameState, setFrameState] = useState(() => (reducedMotion ? 'unused' : 'loading'));
   const slotRef = useRef(0);
   const rootRef = useRef(null);
 
   useEffect(() => {
     if (!config) {
-      setSpriteState('error');
+      setFrameState('error');
       return undefined;
     }
     if (reducedMotion) {
-      setSpriteState('unused');
+      setFrameState('unused');
       return undefined;
     }
     if (typeof Image === 'undefined') {
-      setSpriteState('loading');
+      setFrameState('loading');
       return undefined;
     }
 
     let cancelled = false;
-    let settled = false;
-    const image = new Image();
+    const images = config.poses.map((src) => {
+      const image = new Image();
+      image.src = src;
+      return image;
+    });
 
-    function commit(state) {
-      if (cancelled || settled) return;
-      settled = true;
-      setSpriteState(state);
-    }
-
-    async function validateDecodedSprite() {
+    async function validateFrames() {
       try {
-        if (typeof image.decode === 'function') await image.decode();
-        commit(image.naturalWidth > 0 && image.naturalHeight > 0 ? 'ready' : 'error');
+        await Promise.all(images.map((image) => (
+          typeof image.decode === 'function' ? image.decode() : Promise.resolve()
+        )));
+        if (cancelled) return;
+        setFrameState(images.every((image) => image.naturalWidth > 0 && image.naturalHeight > 0) ? 'ready' : 'error');
       } catch {
-        commit('error');
+        if (!cancelled) setFrameState('error');
       }
     }
 
-    setSpriteState('loading');
-    image.onload = () => {
-      void validateDecodedSprite();
-    };
-    image.onerror = () => commit('error');
-    image.src = config.sprite;
-    if (image.complete) void validateDecodedSprite();
+    setFrameState('loading');
+    void validateFrames();
 
     return () => {
       cancelled = true;
-      image.onload = null;
-      image.onerror = null;
     };
   }, [config, reducedMotion]);
 
@@ -105,7 +96,7 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
     slotRef.current = 0;
     setActiveSlot(0);
     setLayerFrames([0, 0]);
-    root.dataset.spriteState = spriteState;
+    root.dataset.frameState = frameState;
     root.dataset.frameIndex = '0';
 
     if (reducedMotion) {
@@ -113,8 +104,8 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
       return () => controller.abort();
     }
 
-    if (spriteState !== 'ready') {
-      root.dataset.sequenceState = spriteState === 'error' ? 'fallback' : 'loading';
+    if (frameState !== 'ready') {
+      root.dataset.sequenceState = frameState === 'error' ? 'fallback' : 'loading';
       return () => controller.abort();
     }
 
@@ -154,10 +145,10 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
       }
     }
 
-    runLoop();
+    void runLoop();
 
     return () => controller.abort();
-  }, [config, reducedMotion, spriteState]);
+  }, [config, frameState, reducedMotion]);
 
   if (!config) return null;
 
@@ -170,7 +161,7 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
         data-sequence-family={family}
         data-sequence-action={config.action}
         data-sequence-state="reduced"
-        data-sprite-state="unused"
+        data-frame-state="unused"
         data-frame-index="0"
         data-sequence-cycle-count="0"
       >
@@ -187,11 +178,12 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
       data-sequence-family={family}
       data-sequence-action={config.action}
       data-sequence-state="loading"
-      data-sprite-state={spriteState}
+      data-frame-state={frameState}
       data-frame-index="0"
       data-sequence-cycle-count="0"
     >
       <img
+        className="matthias-frame-sequence__fallback"
         src={fallbackAvatar}
         alt=""
         draggable="false"
@@ -199,14 +191,14 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
         data-sequence-fallback="true"
       />
       {[0, 1].map((slot) => (
-        <span
+        <img
           key={slot}
-          className={`matthias-frame-sequence__layer${activeSlot === slot ? ' is-active' : ''}`}
+          className={`matthias-frame-sequence__layer${frameState === 'ready' && activeSlot === slot ? ' is-active' : ''}`}
           data-frame-layer={slot}
-          style={{
-            backgroundImage: `url(${config.sprite})`,
-            backgroundPosition: matthiasFramePosition(layerFrames[slot]),
-          }}
+          data-frame-pose={layerFrames[slot]}
+          src={config.poses[layerFrames[slot]]}
+          alt=""
+          draggable="false"
         />
       ))}
     </span>
