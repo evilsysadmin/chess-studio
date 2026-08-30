@@ -157,9 +157,9 @@
  * so reduced-motion remains respected. */
 @keyframes matthias-read-book-eye-scan {
   0%, 100% { translate: 0 0; }
-  28% { translate: -1.7px 0; }
+  28% { translate: -2.05px 0; }
   58% { translate: -.2px 0; }
-  78% { translate: 1.55px 0; }
+  78% { translate: 1.8px 0; }
 }
 
 .matthias-art-rig[data-gesture='read-book'] .matthias-art-rig__part--eyes {
