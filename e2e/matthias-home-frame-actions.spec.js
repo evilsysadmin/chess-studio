@@ -25,69 +25,88 @@ async function openHomeAtHour(page, hour) {
   return corner;
 }
 
-async function decodedSpriteDimensions(page, sequence) {
-  const spriteUrl = await sequence.locator('[data-frame-layer]').first().evaluate((node) => {
-    const background = getComputedStyle(node).backgroundImage;
-    const match = /^url\(["']?(.*?)["']?\)$/.exec(background);
-    return match?.[1] || '';
+async function center(locator) {
+  return locator.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   });
-
-  expect(spriteUrl).toBeTruthy();
-  return page.evaluate((src) => new Promise((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
-    image.onerror = () => resolve({ width: 0, height: 0 });
-    image.src = src;
-  }), spriteUrl);
 }
 
-async function expectFrameAction(page, corner, { family, action }) {
-  const sequence = corner.locator('[data-matthias-frame-sequence="true"]');
-  await expect(sequence).toBeVisible();
-  await expect(sequence).toHaveAttribute('data-sequence-family', family);
-  await expect(sequence).toHaveAttribute('data-sequence-action', action);
-  await expect(sequence.locator('[data-matthias-art-part]')).toHaveCount(0);
-  await expect(sequence.locator('[data-frame-layer]')).toHaveCount(2);
-  await expect(sequence.locator('[data-sequence-fallback="true"]')).toHaveCount(1);
-
-  await expect.poll(
-    async () => decodedSpriteDimensions(page, sequence),
-    { timeout: 3_500, message: `${action}: el sprite debe decodificar como hoja 3x2 de 270x240` },
-  ).toEqual({ width: 270, height: 240 });
-  await expect(sequence).toHaveAttribute('data-sprite-state', 'ready');
-
-  await expect.poll(
-    async () => Number(await sequence.getAttribute('data-sequence-cycle-count')),
-    { timeout: 3_500, message: `${action}: debe arrancar una acción completa tras una pausa breve` },
-  ).toBeGreaterThan(0);
-
-  await expect.poll(
-    async () => Number(await sequence.getAttribute('data-frame-index')),
-    { timeout: 4_500, message: `${action}: debe avanzar a otro fotograma real` },
-  ).toBeGreaterThan(0);
-
-  await expect(sequence).toHaveAttribute('data-sequence-state', 'acting');
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-test('Home · Matthias levanta la taza y bebe mediante fotogramas completos', async ({ page }) => {
+async function gestureCount(rig) {
+  return Number(await rig.getAttribute('data-gesture-count')) || 0;
+}
+
+async function expectCanonicalLayeredAction(corner, { family, gesture, movingParts }) {
+  const frame = corner.locator('[data-portrait-frame="true"]');
+  const rig = frame.locator('[data-matthias-layered-art="true"]');
+  const portrait = rig.locator('img[data-matthias-canonical-art="true"]');
+
+  await expect(frame.locator('[data-matthias-frame-sequence="true"]')).toHaveCount(0);
+  await expect(rig).toBeVisible();
+  await expect(rig).toHaveAttribute('data-rig-family', family);
+  await expect(rig).toHaveAttribute('data-gesture', gesture);
+  await expect(portrait).toBeVisible();
+  await expect(portrait).toHaveAttribute('src', /\.webp(?:$|\?)/);
+  await expect.poll(
+    () => portrait.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
+    { message: `${gesture}: el WebP canónico debe decodificar realmente` },
+  ).toBe(true);
+
+  const before = Object.fromEntries(await Promise.all(
+    movingParts.map(async (part) => [part, await center(rig.locator(`[data-matthias-art-part="${part}"]`))]),
+  ));
+
+  await expect.poll(
+    () => gestureCount(rig),
+    { timeout: 2_000, message: `${gesture}: debe empezar el gesto poco después de entrar en Home` },
+  ).toBeGreaterThan(0);
+  await expect(rig).toHaveAttribute('data-gesture-state', 'acting');
+  await pageWait(corner, 1_250);
+
+  for (const part of movingParts) {
+    const after = await center(rig.locator(`[data-matthias-art-part="${part}"]`));
+    expect(distance(before[part], after), `${gesture}: ${part} debe desplazarse visiblemente`).toBeGreaterThan(1.5);
+  }
+
+  const baseContract = await portrait.evaluate((node) => ({
+    transform: getComputedStyle(node).transform,
+    animations: node.getAnimations().length,
+  }));
+  expect(baseContract.transform).toBe('none');
+  expect(baseContract.animations).toBe(0);
+}
+
+async function pageWait(locator, milliseconds) {
+  await locator.page().waitForTimeout(milliseconds);
+}
+
+test('Home · café matinal usa el WebP canónico y un gesto de beber visible', async ({ page }) => {
   const corner = await openHomeAtHour(page, 7);
-  await expectFrameAction(page, corner, { family: 'coffee', action: 'drink' });
+  await expectCanonicalLayeredAction(corner, {
+    family: 'coffee',
+    gesture: 'sip',
+    movingParts: ['left-arm', 'prop'],
+  });
 });
 
-test('Home · Matthias acerca la comida y come mediante fotogramas completos', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 12);
-  await expectFrameAction(page, corner, { family: 'lunch', action: 'eat' });
+test('Home · café nocturno también se mueve y no vuelve al sprite', async ({ page }) => {
+  const corner = await openHomeAtHour(page, 21);
+  await expectCanonicalLayeredAction(corner, {
+    family: 'coffee',
+    gesture: 'sip',
+    movingParts: ['left-arm', 'prop'],
+  });
 });
 
-test('Home · si el sprite no carga, Matthias conserva el arte canónico estático', async ({ page }) => {
-  await page.route('**/*coffee-sprite.webp*', (route) => route.abort());
-  const corner = await openHomeAtHour(page, 7);
-  const sequence = corner.locator('[data-matthias-frame-sequence="true"]');
-
-  await expect(sequence).toHaveAttribute('data-sequence-family', 'coffee');
-  await expect(sequence).toHaveAttribute('data-sprite-state', 'error');
-  await expect(sequence).toHaveAttribute('data-sequence-state', 'fallback');
-  await expect(sequence.locator('[data-sequence-fallback="true"]')).toBeVisible();
-  await expect(sequence.locator('[data-sequence-fallback="true"]')).toHaveAttribute('data-matthias-canonical-art', 'true');
-  await expect(sequence).toHaveAttribute('data-sequence-cycle-count', '0');
+test('Home · cena de campaña usa el WebP completo y un gesto de comer visible', async ({ page }) => {
+  const corner = await openHomeAtHour(page, 20);
+  await expectCanonicalLayeredAction(corner, {
+    family: 'lunch',
+    gesture: 'bite',
+    movingParts: ['left-arm', 'right-arm', 'prop'],
+  });
 });
