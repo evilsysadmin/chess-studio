@@ -75,7 +75,7 @@ async function expectLayeredCanonicalPortrait(matthias, label) {
   return { frame, rig, portrait };
 }
 
-test('Home · Tomando notas desplaza físicamente brazo, mirada y cabeza sobre el arte antiguo', async ({ page }) => {
+test('Home · Tomando notas se mueve visible pero escalonado y sin latigazos', async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0;
     Date.prototype.getHours = () => 16;
@@ -89,6 +89,7 @@ test('Home · Tomando notas desplaza físicamente brazo, mirada y cabeza sobre e
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
   await expect(rig).toHaveAttribute('data-rig-family', 'ops');
   await expect(rig).toHaveAttribute('data-gesture', 'inspect');
+  await expect(rig).toHaveAttribute('data-gesture-profile', 'natural');
 
   const head = rig.locator('[data-matthias-art-part="head"]');
   const eyes = rig.locator('[data-matthias-art-part="eyes"]');
@@ -100,17 +101,31 @@ test('Home · Tomando notas desplaza físicamente brazo, mirada y cabeza sobre e
 
   await expect.poll(
     () => gestureCount(rig),
-    { timeout: 2_000, message: 'el primer gesto visible debe empezar casi inmediatamente' },
+    { timeout: 3_000, message: 'Matthias debe iniciar un gesto tras una pausa breve' },
   ).toBeGreaterThan(0);
   await expect(rig).toHaveAttribute('data-gesture-state', 'acting');
-  await page.waitForTimeout(500);
+
+  const timings = await rig.evaluate((node) => Object.fromEntries(
+    [...node.querySelectorAll('[data-matthias-art-part]')].map((part) => {
+      const animation = part.getAnimations()[0];
+      if (!animation) return [part.dataset.matthiasArtPart, null];
+      const timing = animation.effect?.getTiming?.() || {};
+      return [part.dataset.matthiasArtPart, { delay: timing.delay || 0, duration: timing.duration || 0 }];
+    }),
+  ));
+  expect(timings.eyes?.delay).toBe(0);
+  expect(timings.head?.delay).toBeGreaterThan(timings.eyes?.delay ?? -1);
+  expect(timings['right-arm']?.delay).toBeGreaterThan(timings.head?.delay ?? -1);
+  expect(timings['right-arm']?.duration).toBeGreaterThanOrEqual(2400);
+
+  await page.waitForTimeout(1200);
 
   const headDuring = await center(head);
   const eyesDuring = await center(eyes);
   const armDuring = await center(arm);
-  expect(distance(armBefore, armDuring), 'el brazo que toma notas debe desplazarse visiblemente').toBeGreaterThan(3);
-  expect(distance(eyesBefore, eyesDuring), 'la mirada debe desplazarse de forma perceptible').toBeGreaterThan(1.5);
-  expect(distance(headBefore, headDuring), 'la cabeza debe acompañar el gesto').toBeGreaterThan(1);
+  expect(distance(armBefore, armDuring), 'el brazo que toma notas debe desplazarse visiblemente').toBeGreaterThan(2);
+  expect(distance(eyesBefore, eyesDuring), 'la mirada debe desplazarse de forma perceptible').toBeGreaterThan(.8);
+  expect(distance(headBefore, headDuring), 'la cabeza debe acompañar el gesto sin sacudirse').toBeGreaterThan(.35);
 
   const movingParts = await rig.evaluate((node) => Object.fromEntries(
     [...node.querySelectorAll('[data-matthias-art-part]')].map((part) => [
@@ -121,6 +136,7 @@ test('Home · Tomando notas desplaza físicamente brazo, mirada y cabeza sobre e
   expect(movingParts.head).toBeGreaterThan(0);
   expect(movingParts.eyes).toBeGreaterThan(0);
   expect(movingParts['right-arm']).toBeGreaterThan(0);
+  expect(movingParts.prop || 0, 'el dossier debe quedarse quieto mientras escribe').toBe(0);
 
   const iterations = await rig.evaluate((node) => node.getAnimations({ subtree: true })
     .map((animation) => animation.effect?.getTiming?.().iterations));
@@ -140,7 +156,7 @@ test('Home · Tomando notas desplaza físicamente brazo, mirada y cabeza sobre e
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 });
 
-test('Home · el rig por capas también se activa pronto en móvil sin mover la tarjeta', async ({ page }) => {
+test('Home · el rig por capas también se activa en móvil sin mover la tarjeta', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
     Math.random = () => 0;
@@ -153,7 +169,7 @@ test('Home · el rig por capas también se activa pronto en móvil sin mover la 
   const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
   const { frame, rig } = await expectLayeredCanonicalPortrait(matthias, 'móvil');
   const before = await center(frame);
-  await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
+  await expect.poll(() => gestureCount(rig), { timeout: 3_000 }).toBeGreaterThan(0);
   const after = await center(frame);
   expect(Math.abs(after.x - before.x)).toBeLessThan(1);
   expect(Math.abs(after.y - before.y)).toBeLessThan(1);
@@ -176,7 +192,7 @@ test('Home · reduced-motion congela las capas y permite activarlas explícitame
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
   await expect(corner).toHaveAttribute('data-motion-source', 'app');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.motionPreference)).toBe('allow');
-  await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
+  await expect.poll(() => gestureCount(rig), { timeout: 3_000 }).toBeGreaterThan(0);
 });
 
 test('Home · una preferencia guardada de reducir movimiento sigue siendo reversible con el rig antiguo', async ({ page }) => {
@@ -193,5 +209,5 @@ test('Home · una preferencia guardada de reducir movimiento sigue siendo revers
   const enable = corner.getByRole('button', { name: 'Movimiento desactivado en Chess Studio · activar', exact: true });
   await enable.click();
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
-  await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
+  await expect.poll(() => gestureCount(rig), { timeout: 3_000 }).toBeGreaterThan(0);
 });

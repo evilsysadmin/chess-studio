@@ -5,6 +5,7 @@ import MatthiasLayeredArt, {
   matthiasGestureDelay,
   matthiasGestureName,
   matthiasGestureParts,
+  matthiasGestureTiming,
   matthiasSceneFamily,
 } from './MatthiasLayeredArt.jsx';
 
@@ -28,18 +29,29 @@ describe('MatthiasLayeredArt', () => {
     );
     expect(matthiasGestureName({ scene: 'afternoon-ops' })).toBe('inspect');
     expect(matthiasGestureParts({ scene: 'afternoon-ops' })).toEqual(
-      expect.arrayContaining(['head', 'eyes', 'right-arm', 'prop']),
+      expect.arrayContaining(['head', 'eyes', 'right-arm']),
     );
     expect(matthiasGestureName({ speaking: true, scene: 'dossier' })).toBe('speak');
   });
 
-  it('dispara el primer gesto pronto y mantiene pausas humanas entre gestos', () => {
+  it('deja respirar al personaje entre gestos en vez de encadenar espasmos', () => {
     for (let i = 0; i < 20; i += 1) {
-      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(450);
-      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(900);
-      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(4200);
-      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(7000);
+      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(1000);
+      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(1700);
+      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(8000);
+      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(13000);
     }
+  });
+
+  it('escalona mirada, cabeza y brazo en Tomando notas', () => {
+    const eyes = matthiasGestureTiming({ gesture: 'inspect', part: 'eyes' });
+    const head = matthiasGestureTiming({ gesture: 'inspect', part: 'head' });
+    const arm = matthiasGestureTiming({ gesture: 'inspect', part: 'right-arm' });
+
+    expect(eyes.duration).toBeGreaterThanOrEqual(2400);
+    expect(head.delay).toBeGreaterThan(eyes.delay);
+    expect(arm.delay).toBeGreaterThan(head.delay);
+    expect(arm.delay).toBeGreaterThanOrEqual(300);
   });
 
   it('renderiza el webp canónico como base y no contiene SVG redibujado', () => {
@@ -56,6 +68,7 @@ describe('MatthiasLayeredArt', () => {
     expect(html).toContain('data-matthias-art-part="left-arm"');
     expect(html).toContain('data-matthias-art-part="right-arm"');
     expect(html).toContain('data-matthias-art-part="prop"');
+    expect(html).toContain('data-gesture-profile="natural"');
     expect(html).toContain('data-gesture-count="0"');
     expect(html).not.toContain('<svg');
     expect(html).not.toContain('moustache');
