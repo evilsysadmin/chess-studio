@@ -50,7 +50,7 @@ describe('MatthiasFrameSequence', () => {
     expect(html).toContain('data-matthias-canonical-art="true"');
   });
 
-  it('en movimiento usa dos capas de sprite y no el rig de máscaras', () => {
+  it('en movimiento mantiene el arte antiguo como fallback bajo las dos capas de sprite', () => {
     const html = renderToStaticMarkup(
       <MatthiasFrameSequence family="lunch" fallbackAvatar="/old-lunch.webp" reducedMotion={false} />,
     );
@@ -58,6 +58,9 @@ describe('MatthiasFrameSequence', () => {
     expect(html).toContain('data-sequence-action="eat"');
     expect(html).toContain('data-frame-layer="0"');
     expect(html).toContain('data-frame-layer="1"');
+    expect(html).toContain('src="/old-lunch.webp"');
+    expect(html).toContain('data-matthias-canonical-art="true"');
+    expect(html).toContain('data-sprite-src=');
     expect(html).not.toContain('data-matthias-art-part');
     expect(html).not.toContain('<svg');
   });
