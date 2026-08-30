@@ -10,7 +10,13 @@ vi.mock('../matthiasVisuals.js', () => ({
   matthiasTimeVisual: () => ({ key: 'base', avatar: '/base.webp', label: 'En observación' }),
 }));
 vi.mock('../userPreferences.js', () => ({
-  getReducedMotion: () => false,
+  reducedMotionStatus: () => ({
+    effective: false,
+    source: 'none',
+    preference: 'system',
+    systemReduced: false,
+  }),
+  setReducedMotion: () => false,
   USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
 }));
 
