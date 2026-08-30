@@ -46,11 +46,23 @@ describe('MatthiasFrameSequence', () => {
     expect(html).toContain('data-matthias-frame-sequence="true"');
     expect(html).toContain('data-sequence-action="drink"');
     expect(html).toContain('data-sequence-state="reduced"');
+    expect(html).toContain('data-sprite-state="unused"');
     expect(html).toContain('src="/old-coffee.webp"');
     expect(html).toContain('data-matthias-canonical-art="true"');
   });
 
-  it('en movimiento mantiene el arte antiguo como fallback bajo las dos capas de sprite', () => {
+  it('mantiene el arte canónico debajo del sprite mientras carga o si el WebP falla', () => {
+    const html = renderToStaticMarkup(
+      <MatthiasFrameSequence family="coffee" fallbackAvatar="/old-coffee.webp" reducedMotion={false} />,
+    );
+
+    expect(html).toContain('data-sprite-state="loading"');
+    expect(html).toContain('data-sequence-fallback="true"');
+    expect(html).toContain('src="/old-coffee.webp"');
+    expect(html).toContain('data-matthias-canonical-art="true"');
+  });
+
+  it('en movimiento usa dos capas de sprite y no el rig de máscaras', () => {
     const html = renderToStaticMarkup(
       <MatthiasFrameSequence family="lunch" fallbackAvatar="/old-lunch.webp" reducedMotion={false} />,
     );
@@ -58,9 +70,7 @@ describe('MatthiasFrameSequence', () => {
     expect(html).toContain('data-sequence-action="eat"');
     expect(html).toContain('data-frame-layer="0"');
     expect(html).toContain('data-frame-layer="1"');
-    expect(html).toContain('src="/old-lunch.webp"');
-    expect(html).toContain('data-matthias-canonical-art="true"');
-    expect(html).toContain('data-sprite-src=');
+    expect(html).toContain('data-sequence-fallback="true"');
     expect(html).not.toContain('data-matthias-art-part');
     expect(html).not.toContain('<svg');
   });
