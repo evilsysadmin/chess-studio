@@ -40,7 +40,7 @@ async function gestureCount(rig) {
   return Number(await rig.getAttribute('data-gesture-count')) || 0;
 }
 
-async function expectCanonicalLayeredAction(corner, { family, gesture, movingParts }) {
+async function expectCanonicalLayeredAction(page, corner, { family, gesture, movingParts }) {
   const frame = corner.locator('[data-portrait-frame="true"]');
   const rig = frame.locator('[data-matthias-layered-art="true"]');
   const portrait = rig.locator('img[data-matthias-canonical-art="true"]');
@@ -65,7 +65,7 @@ async function expectCanonicalLayeredAction(corner, { family, gesture, movingPar
     { timeout: 2_000, message: `${gesture}: debe empezar el gesto poco después de entrar en Home` },
   ).toBeGreaterThan(0);
   await expect(rig).toHaveAttribute('data-gesture-state', 'acting');
-  await pageWait(corner, 1_250);
+  await page.waitForTimeout(1_250);
 
   for (const part of movingParts) {
     const after = await center(rig.locator(`[data-matthias-art-part="${part}"]`));
@@ -80,13 +80,9 @@ async function expectCanonicalLayeredAction(corner, { family, gesture, movingPar
   expect(baseContract.animations).toBe(0);
 }
 
-async function pageWait(locator, milliseconds) {
-  await locator.page().waitForTimeout(milliseconds);
-}
-
 test('Home · café matinal usa el WebP canónico y un gesto de beber visible', async ({ page }) => {
   const corner = await openHomeAtHour(page, 7);
-  await expectCanonicalLayeredAction(corner, {
+  await expectCanonicalLayeredAction(page, corner, {
     family: 'coffee',
     gesture: 'sip',
     movingParts: ['left-arm', 'prop'],
@@ -95,7 +91,7 @@ test('Home · café matinal usa el WebP canónico y un gesto de beber visible', 
 
 test('Home · café nocturno también se mueve y no vuelve al sprite', async ({ page }) => {
   const corner = await openHomeAtHour(page, 21);
-  await expectCanonicalLayeredAction(corner, {
+  await expectCanonicalLayeredAction(page, corner, {
     family: 'coffee',
     gesture: 'sip',
     movingParts: ['left-arm', 'prop'],
@@ -104,7 +100,7 @@ test('Home · café nocturno también se mueve y no vuelve al sprite', async ({ 
 
 test('Home · cena de campaña usa el WebP completo y un gesto de comer visible', async ({ page }) => {
   const corner = await openHomeAtHour(page, 20);
-  await expectCanonicalLayeredAction(corner, {
+  await expectCanonicalLayeredAction(page, corner, {
     family: 'lunch',
     gesture: 'bite',
     movingParts: ['left-arm', 'right-arm', 'prop'],
