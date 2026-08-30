@@ -36,14 +36,53 @@ export function setUiLanguage(value) {
   return normalized;
 }
 
+export function getReducedMotionPreference() {
+  const value = getStorageItem(STORAGE_LOCAL, REDUCED_MOTION_KEY);
+  if (value === '1') return 'reduce';
+  if (value === '0') return 'allow';
+  return 'system';
+}
+
+export function systemPrefersReducedMotion() {
+  return Boolean(
+    typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+export function reducedMotionStatus({ systemReduced } = {}) {
+  const preference = getReducedMotionPreference();
+  const reducedBySystem = systemReduced ?? systemPrefersReducedMotion();
+  if (preference === 'reduce') return { effective: true, source: 'app', preference, systemReduced: reducedBySystem };
+  if (preference === 'allow') return { effective: false, source: 'app', preference, systemReduced: reducedBySystem };
+  return {
+    effective: reducedBySystem,
+    source: reducedBySystem ? 'system' : 'none',
+    preference,
+    systemReduced: reducedBySystem,
+  };
+}
+
 export function getReducedMotion() {
-  return getStorageItem(STORAGE_LOCAL, REDUCED_MOTION_KEY) === '1';
+  return getReducedMotionPreference() === 'reduce';
+}
+
+export function getEffectiveReducedMotion(options = {}) {
+  return reducedMotionStatus(options).effective;
+}
+
+function syncReducedMotionDataset() {
+  if (typeof document === 'undefined') return;
+  const status = reducedMotionStatus();
+  document.documentElement.dataset.reducedMotion = status.effective ? 'true' : 'false';
+  document.documentElement.dataset.motionPreference = status.preference;
 }
 
 export function setReducedMotion(value) {
   const normalized = !!value;
   setProfileStorageItem(REDUCED_MOTION_KEY, normalized ? '1' : '0');
-  if (typeof document !== 'undefined') document.documentElement.dataset.reducedMotion = normalized ? 'true' : 'false';
+  syncReducedMotionDataset();
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
   return normalized;
 }
