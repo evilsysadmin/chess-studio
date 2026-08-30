@@ -11,7 +11,13 @@ vi.mock('../matthiasVisuals.js', () => ({
   matthiasTimeVisual: () => ({ key: 'time', avatar: '/matthias-time.webp', label: 'En observación' }),
 }));
 vi.mock('../userPreferences.js', () => ({
-  getReducedMotion: () => false,
+  reducedMotionStatus: ({ systemReduced } = {}) => ({
+    effective: Boolean(systemReduced),
+    source: systemReduced ? 'system' : 'none',
+    preference: 'system',
+    systemReduced: Boolean(systemReduced),
+  }),
+  setReducedMotion: () => false,
   USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
 }));
 
@@ -36,6 +42,8 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('aria-label="Rincón de Matthias"');
     expect(html).toContain('data-viewport-resident="true"');
     expect(html).toContain('data-placement="viewport"');
+    expect(html).toContain('data-motion-state="active"');
+    expect(html).toContain('data-motion-source="none"');
     expect(html).toContain('data-ambient-scene="reading"');
     expect(html).toContain('Abrir Así juegas con Matthias');
     expect(html).toContain('Leyendo estrategia');
@@ -68,7 +76,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(matthiasCompactViewport({ mediaMatches: false, innerWidth: 390 })).toBe(false);
   });
 
-  it('reduce el movimiento si lo pide la app o el sistema', () => {
+  it('reduce el movimiento si lo pide la app o el sistema en el contrato legacy', () => {
     expect(matthiasMotionReduced({ appReduced: false, mediaReduced: false })).toBe(false);
     expect(matthiasMotionReduced({ appReduced: true, mediaReduced: false })).toBe(true);
     expect(matthiasMotionReduced({ appReduced: false, mediaReduced: true })).toBe(true);

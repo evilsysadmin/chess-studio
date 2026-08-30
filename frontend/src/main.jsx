@@ -5,13 +5,15 @@ import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './styles.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
-import { getReducedMotion } from './userPreferences.js';
+import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
 import { installChessStudioPwa } from './pwaInstall.js';
 
 migratePersistentStorage();
 installReleaseContinuity();
 installChessStudioPwa();
-document.documentElement.dataset.reducedMotion = getReducedMotion() ? 'true' : 'false';
+const initialMotion = reducedMotionStatus();
+document.documentElement.dataset.reducedMotion = initialMotion.effective ? 'true' : 'false';
+document.documentElement.dataset.motionPreference = getReducedMotionPreference();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

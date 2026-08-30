@@ -2,21 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
-import { getReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './MatthiasHomeResident.css';
 import './MatthiasHomeMotion.css';
+import './MatthiasMotionOverride.css';
 
 const AMBIENT_SCENE_MS = 18_000;
 const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
 
 export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
-  const reducedByApp = appReduced ?? getReducedMotion();
-  const reducedByMedia = mediaReduced ?? (
-    typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-  return Boolean(reducedByApp || reducedByMedia);
+  if (typeof appReduced === 'boolean') return Boolean(appReduced || mediaReduced);
+  return reducedMotionStatus({ systemReduced: mediaReduced }).effective;
 }
 
 export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
@@ -31,7 +27,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const hour = useMemo(() => new Date().getHours(), []);
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
   const [ambientBeat, setAmbientBeat] = useState(0);
-  const [motionReduced, setMotionReduced] = useState(() => matthiasMotionReduced());
+  const [motionStatus, setMotionStatus] = useState(() => reducedMotionStatus());
   const [compactViewport, setCompactViewport] = useState(() => matthiasCompactViewport());
   const [portalReady, setPortalReady] = useState(false);
 
@@ -63,7 +59,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     const media = typeof window.matchMedia === 'function'
       ? window.matchMedia('(prefers-reduced-motion: reduce)')
       : null;
-    const refresh = () => setMotionReduced(matthiasMotionReduced());
+    const refresh = () => setMotionStatus(reducedMotionStatus({ systemReduced: media?.matches }));
 
     refresh();
     window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
@@ -76,12 +72,12 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
 
   useEffect(() => {
     setAmbientBeat(0);
-    if (speaking || ambientVisuals.length < 2 || motionReduced) return undefined;
+    if (speaking || ambientVisuals.length < 2 || motionStatus.effective) return undefined;
     const timer = window.setInterval(() => {
       setAmbientBeat((current) => (current + 1) % ambientVisuals.length);
     }, AMBIENT_SCENE_MS);
     return () => window.clearInterval(timer);
-  }, [ambientVisuals.length, motionReduced, speaking]);
+  }, [ambientVisuals.length, motionStatus.effective, speaking]);
 
   if (!model) return null;
 
@@ -89,12 +85,19 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const visual = speaking ? speakingVisual : (ambientVisuals[ambientBeat] || speakingVisual);
   const mood = model.moodLabel || 'Observador';
 
+  function enableMotion() {
+    setReducedMotion(false);
+    setMotionStatus(reducedMotionStatus());
+  }
+
   const resident = (
     <aside
       className={`matthias-resident matthias-resident--${model.variant || 'quiet'} matthias-resident--mood-${model.moodCue || 'observant'}${speaking ? ' is-speaking' : ' is-quiet'}${compactViewport ? ' is-inline' : ' is-viewport'}`}
       aria-label="Rincón de Matthias"
       data-viewport-resident="true"
       data-placement={compactViewport ? 'inline' : 'viewport'}
+      data-motion-state={motionStatus.effective ? 'reduced' : 'active'}
+      data-motion-source={motionStatus.source}
     >
       <div className="matthias-resident__stage">
         {speaking ? (
@@ -111,22 +114,29 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
           </section>
         ) : null}
 
-        <button
-          type="button"
-          className="matthias-resident__character"
-          data-ambient-scene={visual.key || 'default'}
-          onClick={onOpenInsights}
-          aria-label="Abrir Así juegas con Matthias"
-          aria-describedby={speaking ? 'matthias-home-message' : undefined}
-          title="Matthias · abrir Así juegas"
-        >
-          <span className="matthias-resident__portrait-shell" aria-hidden="true">
-            <img key={visual.key || visual.avatar} src={visual.avatar} alt="" />
-          </span>
-          <strong>{CPU_IDENTITY.name}</strong>
-          <small>{speaking ? mood : visual.label}</small>
-          {speaking && model.sessionLabel ? <em>{model.sessionLabel}</em> : null}
-        </button>
+        <div className="matthias-resident__character-stack">
+          <button
+            type="button"
+            className="matthias-resident__character"
+            data-ambient-scene={visual.key || 'default'}
+            onClick={onOpenInsights}
+            aria-label="Abrir Así juegas con Matthias"
+            aria-describedby={speaking ? 'matthias-home-message' : undefined}
+            title="Matthias · abrir Así juegas"
+          >
+            <span className="matthias-resident__portrait-shell" aria-hidden="true">
+              <img key={visual.key || visual.avatar} src={visual.avatar} alt="" />
+            </span>
+            <strong>{CPU_IDENTITY.name}</strong>
+            <small>{speaking ? mood : visual.label}</small>
+            {speaking && model.sessionLabel ? <em>{model.sessionLabel}</em> : null}
+          </button>
+          {motionStatus.source === 'system' ? (
+            <button type="button" className="matthias-resident__motion-override" onClick={enableMotion}>
+              Movimiento desactivado por el sistema · activar
+            </button>
+          ) : null}
+        </div>
       </div>
     </aside>
   );

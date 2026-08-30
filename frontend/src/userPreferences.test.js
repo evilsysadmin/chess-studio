@@ -1,6 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
-import { getBoardCoordinates, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setDefaultTimeControlId, setReducedMotion, setUiLanguage } from './userPreferences.js';
+import {
+  getBoardCoordinates,
+  getDefaultTimeControlId,
+  getEffectiveReducedMotion,
+  getReducedMotion,
+  getReducedMotionPreference,
+  getUiLanguage,
+  reducedMotionStatus,
+  setBoardCoordinates,
+  setDefaultTimeControlId,
+  setReducedMotion,
+  setUiLanguage,
+} from './userPreferences.js';
 
 describe('user preferences', () => {
   beforeEach(() => { localStorage.clear(); clearStorageMemoryFallback(); });
@@ -22,5 +34,20 @@ describe('user preferences', () => {
     expect(getReducedMotion()).toBe(false);
     expect(setReducedMotion(true)).toBe(true);
     expect(getReducedMotion()).toBe(true);
+  });
+
+  it('honra el sistema por defecto pero una elección explícita puede permitir movimiento', () => {
+    expect(getReducedMotionPreference()).toBe('system');
+    expect(reducedMotionStatus({ systemReduced: true })).toMatchObject({ effective: true, source: 'system', preference: 'system' });
+    expect(getEffectiveReducedMotion({ systemReduced: true })).toBe(true);
+
+    setReducedMotion(false);
+    expect(getReducedMotionPreference()).toBe('allow');
+    expect(reducedMotionStatus({ systemReduced: true })).toMatchObject({ effective: false, source: 'app', preference: 'allow' });
+    expect(getEffectiveReducedMotion({ systemReduced: true })).toBe(false);
+
+    setReducedMotion(true);
+    expect(getReducedMotionPreference()).toBe('reduce');
+    expect(reducedMotionStatus({ systemReduced: false })).toMatchObject({ effective: true, source: 'app', preference: 'reduce' });
   });
 });
