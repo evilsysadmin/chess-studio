@@ -5,7 +5,7 @@
 .matthias-resident {
   position: fixed;
   right: clamp(.65rem, 1.6vw, 1.35rem);
-  bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4.25rem));
+  bottom: max(clamp(7.25rem, 14vh, 11rem), calc(env(safe-area-inset-bottom) + 5.5rem));
   z-index: 24;
   width: min(440px, calc(100vw - 1.3rem));
   pointer-events: none;
@@ -312,34 +312,48 @@
   79% { transform: translate(0, 0) rotate(0); }
 }
 
+/* On phones Matthias belongs to Home's document flow. The resident can still
+ * animate and speak, but it cannot physically cover cards or copy underneath. */
 @media (max-width: 760px) {
   .matthias-resident {
-    right: .45rem;
-    bottom: max(4.35rem, calc(env(safe-area-inset-bottom) + 3.8rem));
-    width: min(338px, calc(100vw - .9rem));
+    position: relative;
+    right: auto;
+    bottom: auto;
+    z-index: 4;
+    width: 100%;
+    margin: .15rem 0 .8rem;
+  }
+
+  .matthias-resident__stage {
+    width: 100%;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: .5rem;
   }
 
   .matthias-resident__character {
-    flex-basis: 84px;
-    width: 84px;
-    padding: .2rem;
+    flex-basis: 78px;
+    width: 78px;
+    padding: .18rem;
   }
 
   .matthias-resident__portrait-shell {
-    width: 76px;
-    height: 88px;
+    width: 70px;
+    height: 80px;
     border-radius: 12px 12px 9px 9px;
   }
 
   .matthias-resident__character small,
   .matthias-resident__character em {
-    max-width: 80px;
-    font-size: .49rem;
+    max-width: 74px;
+    font-size: .48rem;
   }
 
   .matthias-resident__bubble {
-    max-width: 238px;
-    margin-bottom: 18px;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 320px;
+    margin-bottom: 10px;
     padding: .62rem .66rem .54rem;
   }
 
@@ -350,27 +364,43 @@
 
 @media (max-width: 430px) {
   .matthias-resident {
-    width: calc(100vw - .7rem);
-    right: .35rem;
+    width: 100%;
   }
 
   .matthias-resident__stage {
     position: relative;
+    gap: .42rem;
+  }
+
+  .matthias-resident__character {
+    flex-basis: 72px;
+    width: 72px;
+  }
+
+  .matthias-resident__portrait-shell {
+    width: 64px;
+    height: 74px;
   }
 
   .matthias-resident__bubble {
-    position: absolute;
-    right: 0;
-    bottom: 92px;
-    width: min(292px, calc(100vw - 1rem));
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: auto;
     max-width: none;
-    margin: 0;
+    margin: 0 0 8px;
   }
 
   .matthias-resident__bubble::after {
-    right: 26px;
-    bottom: -8px;
-    transform: rotate(135deg);
+    right: -8px;
+    bottom: 18px;
+    transform: rotate(45deg);
+  }
+}
+
+@media (min-width: 761px) and (max-height: 720px) {
+  .matthias-resident {
+    bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 4.75rem));
   }
 }
 
