@@ -26,40 +26,40 @@ export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
 export function matthiasMotionFrames({ speaking = false, scene = '' } = {}) {
   if (speaking) {
     return [
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-      { transform: 'translate3d(-4px, -7px, 0) rotate(-1deg) scale(1.025)' },
-      { transform: 'translate3d(5px, -10px, 0) rotate(1.2deg) scale(1.04)' },
-      { transform: 'translate3d(0, -3px, 0) rotate(0deg) scale(1.012)' },
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.035)' },
+      { transform: 'translate3d(-4px, -7px, 0) rotate(-1deg) scale(1.06)' },
+      { transform: 'translate3d(5px, -10px, 0) rotate(1.2deg) scale(1.075)' },
+      { transform: 'translate3d(0, -3px, 0) rotate(0deg) scale(1.05)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.035)' },
     ];
   }
 
   if (/coffee|breakfast|night|beer-break/.test(scene)) {
     return [
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-      { transform: 'translate3d(-6px, -8px, 0) rotate(-2.5deg) scale(1.035)' },
-      { transform: 'translate3d(-9px, -13px, 0) rotate(-4.8deg) scale(1.06)' },
-      { transform: 'translate3d(-3px, -5px, 0) rotate(-1.2deg) scale(1.02)' },
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.04)' },
+      { transform: 'translate3d(-6px, -8px, 0) rotate(-2.5deg) scale(1.07)' },
+      { transform: 'translate3d(-9px, -13px, 0) rotate(-4.8deg) scale(1.095)' },
+      { transform: 'translate3d(-3px, -5px, 0) rotate(-1.2deg) scale(1.06)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.04)' },
     ];
   }
 
   if (/lunch|bocata/.test(scene)) {
     return [
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-      { transform: 'translate3d(6px, -8px, 0) rotate(2.4deg) scale(1.035)' },
-      { transform: 'translate3d(10px, -13px, 0) rotate(4.6deg) scale(1.06)' },
-      { transform: 'translate3d(4px, -5px, 0) rotate(1.4deg) scale(1.02)' },
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.04)' },
+      { transform: 'translate3d(6px, -8px, 0) rotate(2.4deg) scale(1.07)' },
+      { transform: 'translate3d(10px, -13px, 0) rotate(4.6deg) scale(1.095)' },
+      { transform: 'translate3d(4px, -5px, 0) rotate(1.4deg) scale(1.06)' },
+      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.04)' },
     ];
   }
 
   return [
-    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-    { transform: 'translate3d(-6px, -8px, 0) rotate(-1.8deg) scale(1.03)' },
-    { transform: 'translate3d(7px, -12px, 0) rotate(2.2deg) scale(1.05)' },
-    { transform: 'translate3d(-3px, -5px, 0) rotate(-1deg) scale(1.018)' },
-    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
+    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.04)' },
+    { transform: 'translate3d(-6px, -8px, 0) rotate(-1.8deg) scale(1.065)' },
+    { transform: 'translate3d(7px, -12px, 0) rotate(2.2deg) scale(1.085)' },
+    { transform: 'translate3d(-3px, -5px, 0) rotate(-1deg) scale(1.055)' },
+    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1.04)' },
   ];
 }
 
@@ -189,8 +189,8 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
             aria-describedby={speaking ? 'matthias-home-message' : undefined}
             title="Matthias · abrir Así juegas"
           >
-            <span ref={motionLayerRef} className="matthias-resident__motion-layer" data-motion-layer="true">
-              <span className="matthias-resident__portrait-shell" aria-hidden="true">
+            <span className="matthias-resident__portrait-shell" aria-hidden="true" data-portrait-frame="true">
+              <span ref={motionLayerRef} className="matthias-resident__motion-layer" data-motion-layer="true">
                 <img key={visual.key || visual.avatar} src={visual.avatar} alt="" />
               </span>
             </span>
