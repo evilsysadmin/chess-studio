@@ -1,6 +1,7 @@
 /* Matthias motion controls.
- * El frame permanece estático. Las articulaciones del puppet SVG se gobiernan
- * por WAAPI y respetan reduced-motion salvo override explícito del usuario.
+ * El marco siempre permanece estático. El arte canónico antiguo puede tener
+ * micro-movimiento ambiental y cambios de escena; reduced-motion los congela
+ * salvo override explícito del usuario.
  */
 .matthias-resident__character-stack {
   display: grid;

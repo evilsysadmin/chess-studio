@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { MATTHIAS_BASE_AVATAR, matthiasMoodAvatar, matthiasTimeVisual } from './matthiasVisuals.js';
 
 describe('Matthias visual identity', () => {
-  it('mantiene cara de pocos amigos incluso satisfecho o contento', () => {
+  it('mantiene cara de pocos amigos en todos los estados no-enfadado', () => {
+    expect(matthiasMoodAvatar('observant')).toBe(MATTHIAS_BASE_AVATAR);
     expect(matthiasMoodAvatar('satisfied')).toBe(MATTHIAS_BASE_AVATAR);
     expect(matthiasMoodAvatar('pleased')).toBe(MATTHIAS_BASE_AVATAR);
+    expect(matthiasMoodAvatar('skeptical')).toBe(MATTHIAS_BASE_AVATAR);
+    expect(matthiasMoodAvatar('impressed')).toBe(MATTHIAS_BASE_AVATAR);
     expect(matthiasMoodAvatar('annoyed')).not.toBe(MATTHIAS_BASE_AVATAR);
-    expect(matthiasMoodAvatar('impressed')).not.toBe(MATTHIAS_BASE_AVATAR);
   });
 
   it('usa las escenas de café completas en mañana y turno nocturno', () => {

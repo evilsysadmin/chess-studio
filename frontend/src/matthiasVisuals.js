@@ -7,8 +7,6 @@ import lateSleep from './assets/matthias-scenes/late-sleep.webp';
 import dossier from './assets/matthias-scenes/dossier.webp';
 import strategyBook from './assets/matthias-scenes/strategy-book.webp';
 import moodAnnoyed from './assets/matthias-scenes/mood-annoyed.webp';
-import moodImpressed from './assets/matthias-scenes/mood-impressed.webp';
-import moodSkeptical from './assets/matthias-scenes/mood-skeptical.webp';
 import { matthiasTimeScene } from './matthiasTime.js';
 
 // Las claves horarias son estables aunque una ilustración concreta cambie.
@@ -28,13 +26,16 @@ const TIME_ASSETS = Object.freeze({
   'chess-weekly': strategyBook,
 });
 
+// Canon visual: Matthias puede estar satisfecho, impresionado o escéptico en
+// lógica/texto, pero su cara nunca se vuelve alegre. Sigue siendo el peón
+// militar ceñudo de los artes originales; annoyed sólo intensifica el gesto.
 const MOOD_ASSETS = Object.freeze({
   observant: baseAvatar,
   satisfied: baseAvatar,
   pleased: baseAvatar,
-  skeptical: moodSkeptical,
+  skeptical: baseAvatar,
   annoyed: moodAnnoyed,
-  impressed: moodImpressed,
+  impressed: baseAvatar,
 });
 
 const AMBIENT_SCENES = Object.freeze({
