@@ -62,10 +62,10 @@ export default function LabScreen({ onExit, onStart }){
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={onExit}>← Volver al menú</button>
     <div className="menu-section friendly-primary-zone">
-      <div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId={labMode==='arena'?'arena-terrain':'lab'} /></div>
+      <div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div>
       <h2>{labMode==='arena'?'Arenas experimentales':'Prepara una posición y juega'}</h2>
       <p className="hint-text friendly-lead">{labMode==='arena'?'Geometría que rompe el tablero sin tocar el ajedrez normal. Aquí es donde hacemos barbaridades con casco y gafas.':'Coloca las piezas en el tablero y empieza desde ahí. No afecta a tu rating competitivo.'}</p>
-      <div className="lab-mode-switch" role="tablist" aria-label="Herramientas del laboratorio">
+      <div className="career-section-nav" role="tablist" aria-label="Herramientas del laboratorio">
         <button type="button" role="tab" aria-selected={labMode==='position'} className={labMode==='position'?'active':''} onClick={()=>setLabMode('position')}>Posición normal</button>
         <button type="button" role="tab" aria-selected={labMode==='arena'} className={labMode==='arena'?'active':''} onClick={()=>setLabMode('arena')}>⚠ Arena experimental</button>
       </div>
