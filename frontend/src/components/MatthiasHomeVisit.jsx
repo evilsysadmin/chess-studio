@@ -208,6 +208,8 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
       animation.onfinish = () => {
         node.dataset.gestureState = 'rest';
         node.style.willChange = 'auto';
+        animation?.cancel();
+        animation = null;
       };
     }, matthiasGestureDelay({ speaking }));
 
