@@ -10,6 +10,7 @@ on:
       - 'frontend/src/assets/matthias-*/**'
       - 'e2e/matthias-home-visual-critical.spec.js'
       - 'e2e/matthias-read-book-regression.spec.js'
+      - 'e2e/insights-matthias-motion.spec.js'
       - '.github/workflows/matthias-visual.yml'
   push:
     branches: [main]
@@ -21,6 +22,7 @@ on:
       - 'frontend/src/assets/matthias-*/**'
       - 'e2e/matthias-home-visual-critical.spec.js'
       - 'e2e/matthias-read-book-regression.spec.js'
+      - 'e2e/insights-matthias-motion.spec.js'
       - '.github/workflows/matthias-visual.yml'
 
 permissions:
@@ -56,7 +58,7 @@ jobs:
       - name: Build production frontend
         run: cd frontend && npm run build
       - name: Verify Matthias paint and motion in Chromium
-        run: cd e2e && ./node_modules/.bin/playwright test matthias-home-visual-critical.spec.js matthias-read-book-regression.spec.js --workers=4 --retries=0
+        run: cd e2e && ./node_modules/.bin/playwright test matthias-home-visual-critical.spec.js matthias-read-book-regression.spec.js insights-matthias-motion.spec.js --workers=4 --retries=0
       - name: Upload diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v7
