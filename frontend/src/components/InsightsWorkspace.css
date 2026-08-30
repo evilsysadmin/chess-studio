@@ -151,8 +151,9 @@
   margin-top: 0;
 }
 
-/* NOW · Matthias speaks first, then one recommended action. */
+/* NOW · Matthias speaks first, then exactly one recommended action. */
 .insights-workspace-view-now .insights-hub > .worst-move-spotlight,
+.insights-workspace-view-now .insights-hub > .personal-training-spotlight,
 .insights-workspace-view-now .insights-hub > .insights-roast-details,
 .insights-workspace-view-now .insights-hub > .insights-full-details {
   display: none !important;
@@ -162,7 +163,8 @@
 .insights-workspace-view-now .coaching-ai-plan,
 .insights-workspace-view-now .coaching-ai-status,
 .insights-workspace-view-now .coaching-footnote,
-.insights-workspace-view-now .coaching-count {
+.insights-workspace-view-now .coaching-count,
+.insights-workspace-view-now .coaching-heading {
   display: none !important;
 }
 
@@ -215,7 +217,6 @@
 }
 
 .insights-workspace-view-now .coaching-section,
-.insights-workspace-view-now .personal-training-spotlight,
 .insights-workspace-view-now .matthias-daily {
   min-width: 0;
 }
@@ -224,10 +225,6 @@
   margin-bottom: 0;
   border-width: 1px;
   box-shadow: 0 14px 32px rgba(0,0,0,.11);
-}
-
-.insights-workspace-view-now .personal-training-spotlight {
-  align-content: start;
 }
 
 /* Daily consultation is a secondary conversation, not another hero. */
@@ -245,7 +242,7 @@
   font-size: 1rem;
 }
 
-/* ERRORS · forensic work and training material live together. */
+/* ERRORS · forensic evidence, personal material and recurring patterns. */
 .insights-workspace-view-errors .insights-hub > .ai-player-portrait,
 .insights-workspace-view-errors .insights-hub > .matthias-daily,
 .insights-workspace-view-errors .insights-hub > .insights-roast-details,
@@ -261,6 +258,31 @@
 
 .insights-workspace-view-errors .coaching-section {
   grid-column: 1 / -1;
+}
+
+/* The primary assignment already lives in Ahora. Errores must not repeat it. */
+.insights-workspace-view-errors .training-now-card,
+.insights-workspace-view-errors .coaching-heading {
+  display: none !important;
+}
+
+.insights-workspace-view-errors .coaching-section::before {
+  content: 'Patrones que se repiten';
+  display: block;
+  margin-bottom: .18rem;
+  color: var(--parchment);
+  font-size: clamp(1.04rem, 2vw, 1.22rem);
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.insights-workspace-view-errors .coaching-section::after {
+  content: 'Aquí quedan las prioridades secundarias y reincidencias. La tarea principal ya está en Ahora.';
+  display: block;
+  margin-top: .58rem;
+  color: var(--parchment-dim);
+  font-size: .76rem;
+  line-height: 1.4;
 }
 
 /* DOSSIER · opening this view is already the explicit disclosure action. */
@@ -314,12 +336,7 @@
   }
 
   .insights-workspace-view-now .coaching-section {
-    grid-column: 1 / span 7;
-    grid-row: 2;
-  }
-
-  .insights-workspace-view-now .personal-training-spotlight {
-    grid-column: 8 / -1;
+    grid-column: 1 / -1;
     grid-row: 2;
   }
 
