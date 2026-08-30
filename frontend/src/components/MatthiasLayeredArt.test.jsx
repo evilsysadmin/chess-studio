@@ -31,27 +31,36 @@ describe('MatthiasLayeredArt', () => {
     expect(matthiasGestureParts({ scene: 'afternoon-ops' })).toEqual(
       expect.arrayContaining(['head', 'eyes', 'right-arm']),
     );
+    expect(matthiasGestureName({ scene: 'late-sleep' })).toBe('doze');
+    expect(matthiasGestureParts({ scene: 'late-sleep' })).toEqual(
+      expect.arrayContaining(['head', 'eyes']),
+    );
     expect(matthiasGestureName({ speaking: true, scene: 'dossier' })).toBe('speak');
   });
 
-  it('deja respirar al personaje entre gestos en vez de encadenar espasmos', () => {
+  it('hace pronto el primer gesto y luego deja respirar al personaje', () => {
     for (let i = 0; i < 20; i += 1) {
-      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(1000);
-      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(1700);
-      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(8000);
-      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(13000);
+      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(550);
+      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(950);
+      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(12_000);
+      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(18_000);
     }
   });
 
-  it('escalona mirada, cabeza y brazo en Tomando notas', () => {
+  it('escalona mirada, cabeza y brazo en Tomando notas con tiempo para leer el gesto', () => {
     const eyes = matthiasGestureTiming({ gesture: 'inspect', part: 'eyes' });
     const head = matthiasGestureTiming({ gesture: 'inspect', part: 'head' });
     const arm = matthiasGestureTiming({ gesture: 'inspect', part: 'right-arm' });
 
-    expect(eyes.duration).toBeGreaterThanOrEqual(2400);
+    expect(eyes.duration).toBeGreaterThanOrEqual(3500);
     expect(head.delay).toBeGreaterThan(eyes.delay);
     expect(arm.delay).toBeGreaterThan(head.delay);
-    expect(arm.delay).toBeGreaterThanOrEqual(300);
+    expect(arm.delay).toBeGreaterThanOrEqual(400);
+  });
+
+  it('da más recorrido a lectura y sueño que el antiguo microgesto', () => {
+    expect(matthiasGestureTiming({ gesture: 'read', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3400);
+    expect(matthiasGestureTiming({ gesture: 'doze', part: 'head' }).duration).toBeGreaterThanOrEqual(3700);
   });
 
   it('renderiza el webp canónico como base y no contiene SVG redibujado', () => {
@@ -68,7 +77,7 @@ describe('MatthiasLayeredArt', () => {
     expect(html).toContain('data-matthias-art-part="left-arm"');
     expect(html).toContain('data-matthias-art-part="right-arm"');
     expect(html).toContain('data-matthias-art-part="prop"');
-    expect(html).toContain('data-gesture-profile="natural"');
+    expect(html).toContain('data-gesture-profile="deliberate"');
     expect(html).toContain('data-gesture-count="0"');
     expect(html).not.toContain('<svg');
     expect(html).not.toContain('moustache');
