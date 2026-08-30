@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars locally; never commit the real file.
+region              = "eu-frankfurt-1"
+compartment_ocid    = "ocid1.compartment.oc1..REPLACE_ME"
+availability_domain = "REPLACE_ME:EU-FRANKFURT-1-AD-1"
+image_ocid          = "ocid1.image.oc1.eu-frankfurt-1.REPLACE_ME"
+ssh_authorized_key  = "ssh-ed25519 AAAA... operator@example"
+
+# Preferred posture: no public SSH ingress. Use OCI Console/Bastion or add a
+# temporary, explicit operator CIDR when genuinely needed.
+ssh_ingress_cidr = null
+
+ocpus      = 1
+memory_gb  = 6
+repo_ref   = "REPLACE_WITH_VALIDATED_COMMIT_SHA"
+
+freeform_tags = {
+  environment = "production-candidate"
+}

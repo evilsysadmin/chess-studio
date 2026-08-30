@@ -1,0 +1,54 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - docker.io
+
+write_files:
+  - path: /etc/systemd/system/chess-studio-backend.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Chess Studio backend container
+      Wants=network-online.target
+      After=network-online.target docker.service
+      Requires=docker.service
+      ConditionPathExists=/etc/chess-studio/backend.env
+
+      [Service]
+      Type=simple
+      Restart=always
+      RestartSec=5
+      ExecStartPre=-/usr/bin/docker rm -f chess-studio-backend
+      ExecStart=/usr/bin/docker run --name chess-studio-backend --env-file /etc/chess-studio/backend.env -p 127.0.0.1:4000:4000 chess-studio-backend:oci
+      ExecStop=/usr/bin/docker stop -t 20 chess-studio-backend
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/chess-studio/README
+    owner: root:root
+    permissions: '0644'
+    content: |
+      Terraform deliberately writes no production secrets.
+      Provision /etc/chess-studio/backend.env out-of-band with mode 0600,
+      configure Cloudflare Tunnel credentials out-of-band, then run:
+
+        systemctl start chess-studio-backend
+
+      FastAPI is bound only to 127.0.0.1:4000 on the host.
+
+runcmd:
+  - [ mkdir, -p, /opt/chess-studio, /etc/chess-studio ]
+  - [ systemctl, enable, --now, docker ]
+  - [ git, clone, "${repo_url}", /opt/chess-studio/repo ]
+  - [ bash, -lc, "cd /opt/chess-studio/repo && git checkout --detach '${repo_ref}'" ]
+  - [ docker, build, -t, chess-studio-backend:oci, /opt/chess-studio/repo/backend-python ]
+  - [ systemctl, daemon-reload ]
+  - [ systemctl, enable, chess-studio-backend.service ]
+  - [ bash, -lc, "printf '%s\n' 'Chess Studio OCI bootstrap complete; secrets and Tunnel remain intentionally manual.' > /opt/chess-studio/BOOTSTRAP_READY" ]

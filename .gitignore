@@ -21,6 +21,14 @@ infra/cloudflare/.terraform.lock.hcl
 infra/cloudflare/*.tfstate
 infra/cloudflare/*.tfstate.*
 infra/cloudflare/tfplan
+# OCI/Terraform local transient state and real inputs
+infra/oci/.terraform/
+infra/oci/.terraform.lock.hcl
+infra/oci/*.tfstate
+infra/oci/*.tfstate.*
+infra/oci/tfplan
+infra/oci/terraform.tfvars
+infra/oci/*.auto.tfvars
 
 # Test/coverage artifacts
 frontend/coverage/
