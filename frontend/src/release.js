@@ -2,7 +2,8 @@ import { normalizeBuildSha } from './releaseManifest.js';
 
 export const APP_RELEASE = 'v16.6dm46zfrp';
 
-// Human-facing releases can span several small deploys. Update discovery must
-// distinguish those deploys, so Pages injects the tested commit SHA at build
-// time. Local/dev builds deliberately fall back to the human release label.
-export const APP_BUILD_ID = normalizeBuildSha(import.meta.env?.VITE_BUILD_SHA) || APP_RELEASE;
+// Vite replaces this free constant in browser builds. `typeof` keeps the same
+// module safely importable from Playwright/Node, where no build injection
+// exists. Local/dev therefore falls back to the human release label.
+const injectedBuildId = typeof __CHESS_BUILD_ID__ !== 'undefined' ? __CHESS_BUILD_ID__ : '';
+export const APP_BUILD_ID = normalizeBuildSha(injectedBuildId) || APP_RELEASE;
