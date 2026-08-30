@@ -150,6 +150,27 @@
   display: none;
 }
 
+/* read-book used to scale the entire raster eye overlay to fake a blink. On
+ * strategy-book.webp that makes the copied eyes visibly detach from the face.
+ * Neutralise that transform and use a horizontal scan only: readable motion,
+ * zero vertical drop or squash. The rig's acting/rest state owns the cadence,
+ * so reduced-motion remains respected. */
+@keyframes matthias-read-book-eye-scan {
+  0%, 100% { translate: 0 0; }
+  28% { translate: -2.05px 0; }
+  58% { translate: -.2px 0; }
+  78% { translate: 1.8px 0; }
+}
+
+.matthias-art-rig[data-gesture='read-book'] .matthias-art-rig__part--eyes {
+  transform: none !important;
+  transform-origin: 50% 40%;
+}
+
+.matthias-art-rig[data-gesture='read-book'][data-gesture-state='acting'] .matthias-art-rig__part--eyes {
+  animation: matthias-read-book-eye-scan 4.3s cubic-bezier(.4,0,.2,1) 1 !important;
+}
+
 /* The canonical full render itself must never bob around. All physical motion
  * lives in the overlays above. The React motion contract, not the raw system
  * media query, decides whether animations run so the user's explicit override
