@@ -40,7 +40,13 @@ async function gestureCount(rig) {
   return Number(await rig.getAttribute('data-gesture-count')) || 0;
 }
 
-async function expectCanonicalLayeredAction(page, corner, { family, gesture, movingParts }) {
+async function expectCanonicalLayeredAction(page, corner, {
+  family,
+  gesture,
+  movingParts,
+  stationaryParts = [],
+  upwardParts = [],
+}) {
   const frame = corner.locator('[data-portrait-frame="true"]');
   const rig = frame.locator('[data-matthias-layered-art="true"]');
   const portrait = rig.locator('img[data-matthias-canonical-art="true"]');
@@ -56,8 +62,9 @@ async function expectCanonicalLayeredAction(page, corner, { family, gesture, mov
     { message: `${gesture}: el WebP canónico debe decodificar realmente` },
   ).toBe(true);
 
+  const trackedParts = [...new Set([...movingParts, ...stationaryParts])];
   const before = Object.fromEntries(await Promise.all(
-    movingParts.map(async (part) => [part, await center(rig.locator(`[data-matthias-art-part="${part}"]`))]),
+    trackedParts.map(async (part) => [part, await center(rig.locator(`[data-matthias-art-part="${part}"]`))]),
   ));
 
   await expect.poll(
@@ -67,9 +74,23 @@ async function expectCanonicalLayeredAction(page, corner, { family, gesture, mov
   await expect(rig).toHaveAttribute('data-gesture-state', 'acting');
   await page.waitForTimeout(1_250);
 
+  const after = {};
+  for (const part of trackedParts) {
+    after[part] = await center(rig.locator(`[data-matthias-art-part="${part}"]`));
+  }
+
   for (const part of movingParts) {
-    const after = await center(rig.locator(`[data-matthias-art-part="${part}"]`));
-    expect(distance(before[part], after), `${gesture}: ${part} debe desplazarse visiblemente`).toBeGreaterThan(1.5);
+    expect(distance(before[part], after[part]), `${gesture}: ${part} debe desplazarse visiblemente`).toBeGreaterThan(1.5);
+  }
+
+  for (const part of upwardParts) {
+    expect(after[part].y, `${gesture}: ${part} debe subir hacia la boca`).toBeLessThan(before[part].y - 1.5);
+  }
+
+  for (const part of stationaryParts) {
+    expect(distance(before[part], after[part]), `${gesture}: ${part} debe permanecer quieto`).toBeLessThan(.35);
+    const animationCount = await rig.locator(`[data-matthias-art-part="${part}"]`).evaluate((node) => node.getAnimations().length);
+    expect(animationCount, `${gesture}: ${part} no debe recibir animación`).toBe(0);
   }
 
   const baseContract = await portrait.evaluate((node) => ({
@@ -89,20 +110,24 @@ test('Home · café matinal usa el WebP canónico y un gesto de beber visible', 
   });
 });
 
-test('Home · café nocturno también se mueve y no vuelve al sprite', async ({ page }) => {
+test('Home · café nocturno mueve la mano de la jarra y deja quieto el hombro contrario', async ({ page }) => {
   const corner = await openHomeAtHour(page, 21);
   await expectCanonicalLayeredAction(page, corner, {
     family: 'coffee',
-    gesture: 'sip',
-    movingParts: ['left-arm', 'prop'],
+    gesture: 'sip-night',
+    movingParts: ['right-arm', 'prop'],
+    upwardParts: ['right-arm', 'prop'],
+    stationaryParts: ['left-arm', 'head'],
   });
 });
 
-test('Home · cena de campaña usa el WebP completo y un gesto de comer visible', async ({ page }) => {
+test('Home · cena de campaña sube el bocata sin comprimir cabeza ni ojos', async ({ page }) => {
   const corner = await openHomeAtHour(page, 20);
   await expectCanonicalLayeredAction(page, corner, {
     family: 'lunch',
     gesture: 'bite',
     movingParts: ['left-arm', 'right-arm', 'prop'],
+    upwardParts: ['left-arm', 'right-arm', 'prop'],
+    stationaryParts: ['head', 'eyes'],
   });
 });
