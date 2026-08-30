@@ -37,10 +37,17 @@ async function expectRigStructure(matthias, label) {
   await expect(frame).toBeVisible();
   await expect(puppet).toBeVisible();
   await expect(frame.locator('img')).toHaveCount(0);
+  await expect(puppet).toHaveAttribute('data-puppet-form', 'military-pawn');
+  await expect(puppet.locator('.matthias-puppet__pawn-silhouette')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="uniform"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="cap"]')).toHaveCount(1);
   await expect(puppet.locator('[data-puppet-part="body"]')).toHaveCount(1);
   await expect(puppet.locator('[data-puppet-part="head"]')).toHaveCount(1);
   await expect(puppet.locator('[data-puppet-part="eyes"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="lids"]')).toHaveCount(1);
   await expect(puppet.locator('[data-puppet-part="brows"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="mouth"]')).toHaveCount(1);
+  await expect(puppet.locator('[data-puppet-part="moustache"]')).toHaveCount(1);
   await expect(puppet.locator('[data-puppet-part="left-arm"]')).toHaveCount(1);
   await expect(puppet.locator('[data-puppet-part="action-arm"]')).toHaveCount(1);
   await expect(puppet.locator('[data-puppet-part="prop"]')).toHaveCount(1);
@@ -54,7 +61,7 @@ async function expectRigStructure(matthias, label) {
   return { frame, puppet };
 }
 
-test('Home · Matthias está articulado: cuerpo fijo, piezas independientes y gesto one-shot', async ({ page }) => {
+test('Home · Matthias conserva forma de peón militar y usa articulaciones one-shot', async ({ page }) => {
   await page.addInitScript(() => { Math.random = () => 0; });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   const corner = await openHome(page);
@@ -79,10 +86,11 @@ test('Home · Matthias está articulado: cuerpo fijo, piezas independientes y ge
     const parts = [...node.querySelectorAll('[data-puppet-part]')];
     return Object.fromEntries(parts.map((part) => [part.dataset.puppetPart, part.getAnimations().length]));
   });
-  expect(movingParts.body, 'el cuerpo/base de Matthias debe permanecer fijo').toBe(0);
+  expect(movingParts.body, 'el cuerpo/base de peón debe permanecer fijo').toBe(0);
+  expect(movingParts.uniform, 'el uniforme pertenece al cuerpo fijo, no debe bailar').toBe(0);
   expect(
-    Object.entries(movingParts).some(([part, count]) => part !== 'body' && count > 0),
-    'al menos una parte humana debe moverse durante el gesto',
+    Object.entries(movingParts).some(([part, count]) => !['body', 'uniform', 'cap'].includes(part) && count > 0),
+    'al menos una articulación expresiva debe moverse durante el gesto',
   ).toBe(true);
 
   const timings = await puppet.evaluate((node) => node.getAnimations({ subtree: true }).map((animation) => animation.effect?.getTiming?.().iterations));
@@ -103,7 +111,7 @@ test('Home · Matthias está articulado: cuerpo fijo, piezas independientes y ge
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 });
 
-test('Home · el rig articulado también cabe en móvil sin mover su tarjeta', async ({ page }) => {
+test('Home · el peón militar articulado también cabe en móvil sin mover su tarjeta', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   const corner = await openHome(page);
@@ -127,6 +135,7 @@ test('Home · reduced-motion congela las articulaciones y permite activarlas exp
 
   const puppet = corner.locator('[data-matthias-puppet="true"]');
   await expect(puppet).toBeVisible();
+  await expect(puppet).toHaveAttribute('data-puppet-form', 'military-pawn');
   expect(await puppet.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
 
   const enable = corner.getByRole('button', { name: 'Movimiento desactivado por el sistema · activar', exact: true });
@@ -145,6 +154,7 @@ test('Home · una preferencia guardada de reducir movimiento sigue siendo revers
   await expect(corner).toHaveAttribute('data-motion-source', 'app');
 
   const puppet = corner.locator('[data-matthias-puppet="true"]');
+  await expect(puppet).toHaveAttribute('data-puppet-form', 'military-pawn');
   expect(await puppet.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
 
   const enable = corner.getByRole('button', { name: 'Movimiento desactivado en Chess Studio · activar', exact: true });
