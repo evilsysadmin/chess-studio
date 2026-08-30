@@ -1,3 +1,5 @@
+import { personalTrainingDebts } from './trainingDebt.js';
+
 const INCIDENT_LABELS = Object.freeze({
   'human:MISSED_MATE': 'Mates que dejaste escapar',
   'human:ALLOWED_MATE': 'Mates que regalaste',
@@ -19,9 +21,11 @@ function incidentLabel(key) {
 }
 
 export function buildRecurringErrorPatterns(puzzles = []) {
+  const source = Array.isArray(puzzles) ? puzzles : [];
   const groups = new Map();
+  const debtByIncident = new Map(personalTrainingDebts(source).map((debt) => [debt.incidentKey, debt]));
 
-  for (const puzzle of Array.isArray(puzzles) ? puzzles : []) {
+  for (const puzzle of source) {
     const keys = [...new Set(Array.isArray(puzzle?.incidentKeys) ? puzzle.incidentKeys.filter(Boolean) : [])];
     for (const key of keys) {
       const current = groups.get(key) || {
@@ -48,19 +52,31 @@ export function buildRecurringErrorPatterns(puzzles = []) {
 
   return [...groups.values()]
     .filter((group) => group.positions >= 2)
-    .map((group) => ({
-      incidentKey: group.incidentKey,
-      label: incidentLabel(group.incidentKey),
-      positions: group.positions,
-      pending: group.pending,
-      sourceGames: group.sourceGames.size,
-      friction: Math.max(0, group.attempts - group.cleanSolves),
-      maxLoss: group.maxLoss,
-      newestAt: group.newestAt,
-      filter: { incidentKey: group.incidentKey },
-    }))
+    .map((group) => {
+      const debt = debtByIncident.get(group.incidentKey) || null;
+      return {
+        incidentKey: group.incidentKey,
+        label: incidentLabel(group.incidentKey),
+        positions: group.positions,
+        pending: group.pending,
+        sourceGames: group.sourceGames.size,
+        friction: Math.max(0, group.attempts - group.cleanSolves),
+        maxLoss: group.maxLoss,
+        newestAt: group.newestAt,
+        debt: debt ? {
+          progress: debt.progress,
+          target: debt.target,
+          paid: debt.paid,
+          active: debt.active,
+          realCases: debt.cases,
+          distinctGames: debt.distinctGames,
+        } : null,
+        filter: { incidentKey: group.incidentKey },
+      };
+    })
     .sort((a, b) => (
-      b.positions - a.positions
+      Number(a.debt?.paid) - Number(b.debt?.paid)
+      || b.positions - a.positions
       || b.pending - a.pending
       || b.friction - a.friction
       || b.maxLoss - a.maxLoss

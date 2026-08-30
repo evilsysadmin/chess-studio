@@ -75,6 +75,8 @@ test('Así juegas · Errores muestra reincidencias reales sin repetir el coachin
   await expect(page.getByRole('heading', { name: 'No vuelvas a hacer esto', exact: true })).toBeVisible();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await expect(page.getByText('2 posiciones reales · 2 partidas fuente · peor pérdida ~330 cp', { exact: true })).toBeVisible();
+  await expect(page.getByText('Deuda activa · 0/2 casos limpios', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-training-debt="active"]')).toHaveCount(1);
   await expect(page.getByText('Mates que dejaste escapar', { exact: true })).toHaveCount(0);
   await expect(page.locator('.coaching-section')).toBeHidden();
 
