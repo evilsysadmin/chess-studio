@@ -7,7 +7,7 @@ import './MatthiasHomeResident.css';
 import './MatthiasHomeMotion.css';
 import './MatthiasMotionOverride.css';
 
-const AMBIENT_SCENE_MS = 18_000;
+const AMBIENT_SCENE_MS = 28_000;
 const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
 
 export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
@@ -23,44 +23,104 @@ export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
   return Number.isFinite(width) && width <= 760;
 }
 
-export function matthiasMotionFrames({ speaking = false, scene = '' } = {}) {
+export function matthiasGestureDelay({ speaking = false, random = Math.random } = {}) {
+  if (speaking) return 140;
+  const sample = Math.min(1, Math.max(0, Number(random?.()) || 0));
+  return Math.round(1800 + (sample * 2200));
+}
+
+export function matthiasHumanGesture({ speaking = false, scene = '' } = {}) {
   if (speaking) {
-    return [
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-      { transform: 'translate3d(-2px, -3px, 0) rotate(-.7deg) scale(1.018)' },
-      { transform: 'translate3d(3px, -5px, 0) rotate(.9deg) scale(1.025)' },
-      { transform: 'translate3d(0, -2px, 0) rotate(0deg) scale(1.012)' },
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-    ];
+    return {
+      name: 'attend',
+      duration: 1450,
+      frames: [
+        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
+        { offset: .28, transform: 'translateX(-1px) rotate(-.45deg) scale(1.009)' },
+        { offset: .58, transform: 'translateX(1px) rotate(.28deg) scale(1.005)' },
+        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
+      ],
+    };
   }
 
   if (/coffee|breakfast|night|beer-break/.test(scene)) {
-    return [
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-      { transform: 'translate3d(-2px, -3px, 0) rotate(-1deg) scale(1.018)' },
-      { transform: 'translate3d(-4px, -6px, 0) rotate(-2deg) scale(1.03)' },
-      { transform: 'translate3d(-2px, -3px, 0) rotate(-.8deg) scale(1.016)' },
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-    ];
+    return {
+      name: 'sip',
+      duration: 1750,
+      frames: [
+        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
+        { offset: .24, transform: 'translateX(-1px) rotate(-.55deg) scale(1.004)' },
+        { offset: .52, transform: 'translateX(-2px) rotate(-1.55deg) scale(1.012)' },
+        { offset: .72, transform: 'translateX(-2px) rotate(-1.35deg) scale(1.01)' },
+        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
+      ],
+    };
   }
 
   if (/lunch|bocata/.test(scene)) {
-    return [
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-      { transform: 'translate3d(2px, -3px, 0) rotate(.9deg) scale(1.018)' },
-      { transform: 'translate3d(4px, -6px, 0) rotate(2deg) scale(1.03)' },
-      { transform: 'translate3d(2px, -2px, 0) rotate(.7deg) scale(1.014)' },
-      { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-    ];
+    return {
+      name: 'bite',
+      duration: 1650,
+      frames: [
+        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
+        { offset: .3, transform: 'translateX(2px) rotate(1.15deg) scale(1.01)' },
+        { offset: .48, transform: 'translateX(2px) rotate(.55deg) scale(1.014)' },
+        { offset: .62, transform: 'translateX(2px) rotate(1.05deg) scale(1.01)' },
+        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
+      ],
+    };
   }
 
-  return [
-    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-    { transform: 'translate3d(-3px, -3px, 0) rotate(-.8deg) scale(1.018)' },
-    { transform: 'translate3d(4px, -5px, 0) rotate(1.1deg) scale(1.026)' },
-    { transform: 'translate3d(-1px, -2px, 0) rotate(-.5deg) scale(1.012)' },
-    { transform: 'translate3d(0, 0, 0) rotate(0deg) scale(1)' },
-  ];
+  if (/reading|strategy|dossier|weekly/.test(scene)) {
+    return {
+      name: 'read',
+      duration: 1550,
+      frames: [
+        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
+        { offset: .32, transform: 'translateX(1px) rotate(.7deg) scale(1.005)' },
+        { offset: .64, transform: 'translateX(-1px) rotate(-.35deg) scale(1.003)' },
+        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
+      ],
+    };
+  }
+
+  if (/sleep/.test(scene)) {
+    return {
+      name: 'doze',
+      duration: 1900,
+      frames: [
+        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
+        { offset: .38, transform: 'translateX(1px) rotate(1.45deg) scale(.997)' },
+        { offset: .68, transform: 'translateX(1px) rotate(1.7deg) scale(.996)' },
+        { offset: .82, transform: 'translateX(-1px) rotate(-.45deg) scale(1.004)' },
+        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
+      ],
+    };
+  }
+
+  if (/ops|inception/.test(scene)) {
+    return {
+      name: 'inspect',
+      duration: 1500,
+      frames: [
+        { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
+        { offset: .34, transform: 'translateX(-1px) rotate(-.75deg) scale(1.006)' },
+        { offset: .68, transform: 'translateX(1px) rotate(.42deg) scale(1.003)' },
+        { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
+      ],
+    };
+  }
+
+  return {
+    name: 'acknowledge',
+    duration: 1400,
+    frames: [
+      { offset: 0, transform: 'translateX(0) rotate(0deg) scale(1)' },
+      { offset: .34, transform: 'translateX(-1px) rotate(-.5deg) scale(1.005)' },
+      { offset: .62, transform: 'translateX(1px) rotate(.35deg) scale(1.003)' },
+      { offset: 1, transform: 'translateX(0) rotate(0deg) scale(1)' },
+    ],
+  };
 }
 
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
@@ -127,17 +187,37 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     const scene = speaking
       ? 'speaking'
       : (ambientVisuals[ambientBeat]?.key || 'default');
-    const animation = node.animate(
-      matthiasMotionFrames({ speaking, scene }),
-      {
-        duration: speaking ? 3800 : 3400,
-        iterations: Infinity,
-        easing: 'ease-in-out',
-        fill: 'both',
-      },
-    );
+    const gesture = matthiasHumanGesture({ speaking, scene });
+    let animation = null;
+    let cancelled = false;
 
-    return () => animation.cancel();
+    node.dataset.motionBehavior = 'human-gestures';
+    node.dataset.gestureState = 'waiting';
+    node.dataset.gestureKind = gesture.name;
+
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      node.dataset.gestureState = 'acting';
+      node.style.willChange = 'transform';
+      animation = node.animate(gesture.frames, {
+        duration: gesture.duration,
+        iterations: 1,
+        easing: 'cubic-bezier(.22,.61,.36,1)',
+        fill: 'none',
+      });
+      animation.onfinish = () => {
+        node.dataset.gestureState = 'rest';
+        node.style.willChange = 'auto';
+      };
+    }, matthiasGestureDelay({ speaking }));
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      animation?.cancel();
+      node.dataset.gestureState = 'rest';
+      node.style.willChange = 'auto';
+    };
   }, [ambientBeat, ambientVisuals, motionStatus.effective, speaking]);
 
   if (!model) return null;
