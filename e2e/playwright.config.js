@@ -1,9 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
+const chaosMode = process.env.CHESS_CHAOS === '1';
 
 export default defineConfig({
   testDir: '.',
+  testIgnore: chaosMode ? [] : ['**/chaos-local.spec.js'],
   reporter: process.env.CI ? [['list']] : [['line']],
   timeout: 20_000,
   fullyParallel: true,
