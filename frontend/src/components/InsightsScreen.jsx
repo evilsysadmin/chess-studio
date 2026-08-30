@@ -2,6 +2,7 @@ import { useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
 import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
+import InsightsCleanGames from './InsightsCleanGames.jsx';
 import InsightsMatthiasMotion from './InsightsMatthiasMotion.jsx';
 import './InsightsWorkspace.css';
 
@@ -93,6 +94,7 @@ export default function InsightsScreen(props) {
         {!isCareer && diagnosisView === 'errors' ? (
           <InsightsRecurringErrors onOpenPuzzles={props.onOpenPuzzles} />
         ) : null}
+        {!isCareer && diagnosisView === 'dossier' ? <InsightsCleanGames /> : null}
         <InsightsDashboardContent key={section} {...props} initialSection={section} />
       </div>
 
