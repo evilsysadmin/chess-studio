@@ -34,7 +34,7 @@ const MODEL = {
 };
 
 describe('MatthiasHomeVisit · residente de Home', () => {
-  it('cuando está callado usa el arte canónico original y no pinta bocadillo', () => {
+  it('mantiene el arte canónico antiguo como base y monta articulaciones encima', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit model={MODEL} speaking={false} onOpenInsights={() => {}} />,
     );
@@ -45,8 +45,14 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-motion-state="active"');
     expect(html).toContain('data-motion-source="none"');
     expect(html).toContain('data-ambient-scene="reading"');
+    expect(html).toContain('data-matthias-layered-art="true"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias-reading.webp"');
+    expect(html).toContain('data-matthias-art-part="head"');
+    expect(html).toContain('data-matthias-art-part="eyes"');
+    expect(html).toContain('data-matthias-art-part="left-arm"');
+    expect(html).toContain('data-matthias-art-part="right-arm"');
+    expect(html).toContain('data-matthias-art-part="prop"');
     expect(html).not.toContain('data-matthias-puppet');
     expect(html).toContain('Abrir Así juegas con Matthias');
     expect(html).toContain('Leyendo estrategia');
@@ -54,7 +60,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).not.toContain(MODEL.text);
   });
 
-  it('cuando tiene algo real que decir conserva el arte original y muestra un único bocadillo', () => {
+  it('cuando tiene algo real que decir conserva el arte original y activa el gesto de habla', () => {
     const model = { ...MODEL, variant: 'comment', text: 'He encontrado una reincidencia real.', meta: '2 casos' };
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit
@@ -68,6 +74,9 @@ describe('MatthiasHomeVisit · residente de Home', () => {
 
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias-time.webp"');
+    expect(html).toContain('data-gesture="speak"');
+    expect(html).toContain('data-matthias-art-part="head"');
+    expect(html).toContain('data-matthias-art-part="eyes"');
     expect(html).not.toContain('data-matthias-puppet');
     expect(html).toContain('Mensaje de Matthias');
     expect(html).toContain('He encontrado una reincidencia real.');

@@ -1,0 +1,142 @@
+/* Matthias layered art rig
+ * The canonical old render remains the visual truth. These overlays reuse the
+ * exact same bitmap and reveal only small feathered regions, so head/eyes/arms
+ * can move independently without redrawing the character.
+ */
+.matthias-art-rig {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.matthias-art-rig__base,
+.matthias-art-rig__part {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.matthias-art-rig__base {
+  display: block;
+  object-fit: cover;
+  object-position: 50% 44%;
+  animation: none !important;
+  transform: none !important;
+  will-change: auto;
+  z-index: 0;
+}
+
+.matthias-art-rig__part {
+  z-index: 1;
+  pointer-events: none;
+  background-image: var(--matthias-rig-image);
+  background-size: cover;
+  background-position: 50% 44%;
+  background-repeat: no-repeat;
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+
+/* Generic masks are deliberately feathered. They keep seams invisible when a
+ * layer moves just a few pixels over the static original beneath it. */
+.matthias-art-rig__part--head {
+  z-index: 2;
+  transform-origin: 50% 48%;
+  -webkit-mask-image: radial-gradient(ellipse 34% 30% at 50% 37%, #000 0 58%, rgba(0,0,0,.92) 69%, rgba(0,0,0,.42) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 34% 30% at 50% 37%, #000 0 58%, rgba(0,0,0,.92) 69%, rgba(0,0,0,.42) 84%, transparent 100%);
+}
+
+.matthias-art-rig__part--eyes {
+  z-index: 5;
+  transform-origin: 50% 39%;
+  -webkit-mask-image: radial-gradient(ellipse 23% 10% at 50% 40%, #000 0 46%, rgba(0,0,0,.9) 63%, rgba(0,0,0,.36) 82%, transparent 100%);
+  mask-image: radial-gradient(ellipse 23% 10% at 50% 40%, #000 0 46%, rgba(0,0,0,.9) 63%, rgba(0,0,0,.36) 82%, transparent 100%);
+}
+
+.matthias-art-rig__part--left-arm {
+  z-index: 4;
+  transform-origin: 35% 55%;
+  -webkit-mask-image: radial-gradient(ellipse 24% 31% at 31% 63%, #000 0 48%, rgba(0,0,0,.9) 65%, rgba(0,0,0,.34) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 31% at 31% 63%, #000 0 48%, rgba(0,0,0,.9) 65%, rgba(0,0,0,.34) 84%, transparent 100%);
+}
+
+.matthias-art-rig__part--right-arm {
+  z-index: 4;
+  transform-origin: 65% 55%;
+  -webkit-mask-image: radial-gradient(ellipse 24% 31% at 69% 63%, #000 0 48%, rgba(0,0,0,.9) 65%, rgba(0,0,0,.34) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 31% at 69% 63%, #000 0 48%, rgba(0,0,0,.9) 65%, rgba(0,0,0,.34) 84%, transparent 100%);
+}
+
+.matthias-art-rig__part--prop {
+  z-index: 6;
+  transform-origin: 67% 64%;
+  -webkit-mask-image: radial-gradient(ellipse 31% 30% at 66% 63%, #000 0 48%, rgba(0,0,0,.9) 65%, rgba(0,0,0,.32) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 31% 30% at 66% 63%, #000 0 48%, rgba(0,0,0,.9) 65%, rgba(0,0,0,.32) 84%, transparent 100%);
+}
+
+/* Scene-specific masks keep the moving patch around the physical object that
+ * actually exists in each old render. */
+.matthias-art-rig[data-rig-family='coffee'] .matthias-art-rig__part--prop {
+  transform-origin: 31% 68%;
+  -webkit-mask-image: radial-gradient(ellipse 22% 28% at 31% 68%, #000 0 50%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.28) 85%, transparent 100%);
+  mask-image: radial-gradient(ellipse 22% 28% at 31% 68%, #000 0 50%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.28) 85%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='coffee'] .matthias-art-rig__part--left-arm {
+  transform-origin: 35% 57%;
+  -webkit-mask-image: radial-gradient(ellipse 23% 31% at 35% 61%, #000 0 48%, rgba(0,0,0,.88) 66%, rgba(0,0,0,.3) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 23% 31% at 35% 61%, #000 0 48%, rgba(0,0,0,.88) 66%, rgba(0,0,0,.3) 84%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='lunch'] .matthias-art-rig__part--prop {
+  transform-origin: 50% 69%;
+  -webkit-mask-image: radial-gradient(ellipse 34% 24% at 50% 69%, #000 0 52%, rgba(0,0,0,.9) 69%, rgba(0,0,0,.3) 86%, transparent 100%);
+  mask-image: radial-gradient(ellipse 34% 24% at 50% 69%, #000 0 52%, rgba(0,0,0,.9) 69%, rgba(0,0,0,.3) 86%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='lunch'] .matthias-art-rig__part--left-arm {
+  -webkit-mask-image: radial-gradient(ellipse 24% 27% at 34% 66%, #000 0 50%, rgba(0,0,0,.9) 67%, rgba(0,0,0,.3) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 27% at 34% 66%, #000 0 50%, rgba(0,0,0,.9) 67%, rgba(0,0,0,.3) 84%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='lunch'] .matthias-art-rig__part--right-arm {
+  -webkit-mask-image: radial-gradient(ellipse 24% 27% at 66% 66%, #000 0 50%, rgba(0,0,0,.9) 67%, rgba(0,0,0,.3) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 27% at 66% 66%, #000 0 50%, rgba(0,0,0,.9) 67%, rgba(0,0,0,.3) 84%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='reading'] .matthias-art-rig__part--prop {
+  transform-origin: 69% 61%;
+  -webkit-mask-image: radial-gradient(ellipse 31% 35% at 69% 61%, #000 0 52%, rgba(0,0,0,.9) 69%, rgba(0,0,0,.28) 86%, transparent 100%);
+  mask-image: radial-gradient(ellipse 31% 35% at 69% 61%, #000 0 52%, rgba(0,0,0,.9) 69%, rgba(0,0,0,.28) 86%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='reading'] .matthias-art-rig__part--right-arm {
+  transform-origin: 65% 57%;
+  -webkit-mask-image: radial-gradient(ellipse 24% 30% at 65% 61%, #000 0 50%, rgba(0,0,0,.88) 67%, rgba(0,0,0,.28) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 30% at 65% 61%, #000 0 50%, rgba(0,0,0,.88) 67%, rgba(0,0,0,.28) 84%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='ops'] .matthias-art-rig__part--prop {
+  transform-origin: 63% 66%;
+  -webkit-mask-image: radial-gradient(ellipse 33% 31% at 63% 66%, #000 0 50%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.3) 85%, transparent 100%);
+  mask-image: radial-gradient(ellipse 33% 31% at 63% 66%, #000 0 50%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.3) 85%, transparent 100%);
+}
+
+.matthias-art-rig[data-rig-family='sleep'] .matthias-art-rig__part--left-arm,
+.matthias-art-rig[data-rig-family='sleep'] .matthias-art-rig__part--right-arm,
+.matthias-art-rig[data-rig-family='sleep'] .matthias-art-rig__part--prop {
+  display: none;
+}
+
+/* The canonical full render itself must never bob around. All physical motion
+ * lives in the overlays above. The React motion contract, not the raw system
+ * media query, decides whether animations run so the user's explicit override
+ * can actually re-enable them. */
+.matthias-resident__portrait-shell .matthias-art-rig__base {
+  animation: none !important;
+  transform: none !important;
+}

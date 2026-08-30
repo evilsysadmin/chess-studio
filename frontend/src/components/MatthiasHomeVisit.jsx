@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
 import './MatthiasHomeResident.css';
 import './MatthiasMotionOverride.css';
 
@@ -128,11 +129,11 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
             title="Matthias · abrir Así juegas"
           >
             <span className="matthias-resident__portrait-shell" aria-hidden="true" data-portrait-frame="true">
-              <img
-                src={visual.avatar}
-                alt=""
-                draggable="false"
-                data-matthias-canonical-art="true"
+              <MatthiasLayeredArt
+                avatar={visual.avatar}
+                scene={visual.key || 'base'}
+                speaking={speaking}
+                reducedMotion={motionStatus.effective}
               />
             </span>
             <strong>{CPU_IDENTITY.name}</strong>
