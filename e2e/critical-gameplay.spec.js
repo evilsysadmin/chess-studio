@@ -10,6 +10,8 @@ import {
   startTournamentGame,
 } from './helpers.js';
 
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
 const GAME_SCREEN_MODES = [
   ['Partida rápida', startQuickGame],
   ['Torneo', startTournamentGame],
@@ -54,3 +56,42 @@ for (const [label, launch] of GAME_SCREEN_MODES) {
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
   });
 }
+
+test('Partida de práctica · Deshacer revierte humano + CPU sin romper la pantalla', async ({ page }) => {
+  await mockApi(page, { gameScenario: 'opening' });
+  await page.route('http://localhost:4000/api/games/*/undo', async (route) => {
+    const match = new URL(route.request().url()).pathname.match(/\/games\/([^/]+)\/undo$/);
+    const id = match?.[1] || 'e2e-game-1';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id,
+        fen: START_FEN,
+        turn: 'w',
+        humanColor: 'w',
+        difficulty: 50,
+        status: 'playing',
+        insufficientMatingMaterial: { w: false, b: false },
+        isGameOver: false,
+        history: [],
+        lastMove: null,
+        initialFen: null,
+        ghostStyle: null,
+      }),
+    });
+  });
+  await login(page);
+  await startPracticeGame(page);
+
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Deshacer jugada', exact: true }).click();
+
+  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e2, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e7, peón negro/i })).toBeVisible();
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
