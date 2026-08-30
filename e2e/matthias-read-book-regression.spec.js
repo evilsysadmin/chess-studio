@@ -4,7 +4,7 @@ import { login, mockApi } from './helpers.js';
 async function openReadingHome(page) {
   await page.addInitScript(() => {
     Math.random = () => 0;
-    Date.prototype.getHours = () => 22;
+    Date.prototype.getHours = () => 23;
   });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await mockApi(page);
