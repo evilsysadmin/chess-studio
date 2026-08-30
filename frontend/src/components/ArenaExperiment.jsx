@@ -40,15 +40,22 @@ function statusCopy(status, turn, thinking) {
   return turn === HUMAN_COLOR ? 'Tu turno.' : 'Turno de Matthias.';
 }
 
+function startFenFor(preset) {
+  return preset?.startFen || ARENA_START_FEN;
+}
+
 export default function ArenaExperiment() {
   const [presetId, setPresetId] = useState(ARENA_PRESETS[0].id);
   const preset = useMemo(() => ARENA_PRESETS.find((item) => item.id === presetId) || ARENA_PRESETS[0], [presetId]);
   const blocked = preset.blocked;
   const blockedSet = useMemo(() => new Set(blocked), [blocked]);
-  const [fen, setFen] = useState(ARENA_START_FEN);
+  const [fen, setFen] = useState(() => startFenFor(ARENA_PRESETS[0]));
   const [selected, setSelected] = useState(null);
   const [lastMove, setLastMove] = useState(null);
-  const [historyKeys, setHistoryKeys] = useState(() => [arenaPositionKey(ARENA_START_FEN, ARENA_PRESETS[0].blocked)]);
+  const [historyKeys, setHistoryKeys] = useState(() => {
+    const initial = ARENA_PRESETS[0];
+    return [arenaPositionKey(startFenFor(initial), initial.blocked)];
+  });
   const [thinking, setThinking] = useState(false);
 
   const turn = arenaTurn(fen);
@@ -58,11 +65,12 @@ export default function ArenaExperiment() {
   const checkSquare = status === 'check' || status === 'checkmate' ? arenaKingSquare(fen, turn) : null;
 
   function reset(nextPreset = preset) {
-    setFen(ARENA_START_FEN);
+    const startFen = startFenFor(nextPreset);
+    setFen(startFen);
     setSelected(null);
     setLastMove(null);
     setThinking(false);
-    setHistoryKeys([arenaPositionKey(ARENA_START_FEN, nextPreset.blocked)]);
+    setHistoryKeys([arenaPositionKey(startFen, nextPreset.blocked)]);
   }
 
   function choosePreset(nextId) {
@@ -98,10 +106,6 @@ export default function ArenaExperiment() {
     if (turn !== CPU_COLOR || !LIVE_STATUSES.has(status)) return undefined;
     setThinking(true);
     const timer = window.setTimeout(() => {
-      // Profundidad 1 es deliberada en esta primera vertical slice. El motor
-      // reconstruye legalidad con terreno y una capa extra ya puede bloquear
-      // perceptiblemente el hilo principal en móviles. Primero jugable; luego
-      // optimizamos o movemos la búsqueda a Worker antes de profundizar.
       const move = arenaChooseCpuMove(fen, blocked, { depth: 1 });
       if (move) {
         const applied = arenaApplyMove(fen, blocked, move);
@@ -127,6 +131,10 @@ export default function ArenaExperiment() {
           <button type="button" className="secondary-btn" onClick={() => reset()}>Reiniciar arena</button>
         </div>
         <p className="hint-text">{preset.summary} Juegas con blancas; Matthias lleva negras.</p>
+        <div className="career-mini-grid">
+          <span><b>Despliegue</b><small>{preset.deployment || 'Clásico'}</small></span>
+          <span><b>Terreno sólido</b><small>{preset.blocked.length} casillas</small></span>
+        </div>
       </div>
 
       <div className="career-section-nav" role="radiogroup" aria-label="Geometría de la arena">
@@ -175,10 +183,10 @@ export default function ArenaExperiment() {
       </aside>
 
       <details className="friendly-disclosure">
-        <summary>Qué reglas normales siguen intactas</summary>
+        <summary>Qué cambia en esta fase</summary>
         <div className="friendly-disclosure-body">
-          <p>Promoción, enroque, en passant, regla de 50 movimientos y triple repetición siguen existiendo. El terreno sólo añade casillas sólidas.</p>
-          <p>Si esta fase aguanta, el siguiente escalón son puentes/corredores y despliegues asimétricos. Los tableros 8×10 o 10×10 vendrán bastante después.</p>
+          <p>Promoción, enroque, en passant, regla de 50 movimientos y triple repetición siguen intactos. El terreno continúa siendo la única regla nueva.</p>
+          <p>Algunas arenas ahora empiezan desde un despliegue legal ya avanzado y otras fuerzan pasos estrechos. Eso permite probar puentes y contacto asimétrico sin inventar otra gramática de movimiento.</p>
         </div>
       </details>
     </section>
