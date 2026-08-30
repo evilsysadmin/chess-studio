@@ -43,8 +43,57 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
   const config = useMemo(() => matthiasFrameSequenceConfig(family), [family]);
   const [layerFrames, setLayerFrames] = useState([0, 0]);
   const [activeSlot, setActiveSlot] = useState(0);
+  const [spriteState, setSpriteState] = useState(() => (reducedMotion ? 'unused' : 'loading'));
   const slotRef = useRef(0);
   const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!config) {
+      setSpriteState('error');
+      return undefined;
+    }
+    if (reducedMotion) {
+      setSpriteState('unused');
+      return undefined;
+    }
+    if (typeof Image === 'undefined') {
+      setSpriteState('loading');
+      return undefined;
+    }
+
+    let cancelled = false;
+    let settled = false;
+    const image = new Image();
+
+    function commit(state) {
+      if (cancelled || settled) return;
+      settled = true;
+      setSpriteState(state);
+    }
+
+    async function validateDecodedSprite() {
+      try {
+        if (typeof image.decode === 'function') await image.decode();
+        commit(image.naturalWidth > 0 && image.naturalHeight > 0 ? 'ready' : 'error');
+      } catch {
+        commit('error');
+      }
+    }
+
+    setSpriteState('loading');
+    image.onload = () => {
+      void validateDecodedSprite();
+    };
+    image.onerror = () => commit('error');
+    image.src = config.sprite;
+    if (image.complete) void validateDecodedSprite();
+
+    return () => {
+      cancelled = true;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [config, reducedMotion]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -56,12 +105,20 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
     slotRef.current = 0;
     setActiveSlot(0);
     setLayerFrames([0, 0]);
-    root.dataset.sequenceState = reducedMotion ? 'reduced' : 'waiting';
+    root.dataset.spriteState = spriteState;
     root.dataset.frameIndex = '0';
 
     if (reducedMotion) {
+      root.dataset.sequenceState = 'reduced';
       return () => controller.abort();
     }
+
+    if (spriteState !== 'ready') {
+      root.dataset.sequenceState = spriteState === 'error' ? 'fallback' : 'loading';
+      return () => controller.abort();
+    }
+
+    root.dataset.sequenceState = 'waiting';
 
     async function crossfadeTo(frame) {
       const nextSlot = slotRef.current === 0 ? 1 : 0;
@@ -100,7 +157,7 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
     runLoop();
 
     return () => controller.abort();
-  }, [config, reducedMotion]);
+  }, [config, reducedMotion, spriteState]);
 
   if (!config) return null;
 
@@ -113,6 +170,7 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
         data-sequence-family={family}
         data-sequence-action={config.action}
         data-sequence-state="reduced"
+        data-sprite-state="unused"
         data-frame-index="0"
         data-sequence-cycle-count="0"
       >
@@ -128,10 +186,18 @@ export default function MatthiasFrameSequence({ family, fallbackAvatar, reducedM
       data-matthias-frame-sequence="true"
       data-sequence-family={family}
       data-sequence-action={config.action}
-      data-sequence-state="waiting"
+      data-sequence-state="loading"
+      data-sprite-state={spriteState}
       data-frame-index="0"
       data-sequence-cycle-count="0"
     >
+      <img
+        src={fallbackAvatar}
+        alt=""
+        draggable="false"
+        data-matthias-canonical-art="true"
+        data-sequence-fallback="true"
+      />
       {[0, 1].map((slot) => (
         <span
           key={slot}
