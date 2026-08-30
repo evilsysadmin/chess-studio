@@ -33,8 +33,10 @@ describe('MatthiasPuppet · rig articulado de Home', () => {
     expect(matthiasPuppetGestureKind({ scene: 'base' })).toBe('acknowledge');
   });
 
-  it('mantiene pausas largas entre gestos ambientales y atiende rápido al hablar', () => {
+  it('hace un primer gesto pronto y después mantiene pausas largas', () => {
     expect(matthiasPuppetGestureDelay({ speaking: true, random: () => 1 })).toBe(120);
+    expect(matthiasPuppetGestureDelay({ initial: true, random: () => 0 })).toBe(2200);
+    expect(matthiasPuppetGestureDelay({ initial: true, random: () => 1 })).toBe(4000);
     expect(matthiasPuppetGestureDelay({ random: () => 0 })).toBe(8500);
     expect(matthiasPuppetGestureDelay({ random: () => 1 })).toBe(15500);
   });
@@ -43,8 +45,13 @@ describe('MatthiasPuppet · rig articulado de Home', () => {
     const sip = matthiasPuppetGesturePlan('sip');
     expect(sip.head).toBeTruthy();
     expect(sip.actionArm).toBeTruthy();
+    expect(sip.prop).toEqual(sip.actionArm);
     expect(sip.eyes).toBeTruthy();
     expect(sip.duration).toBeLessThan(2000);
+
+    const bite = matthiasPuppetGesturePlan('bite');
+    expect(bite.actionArm).toBeTruthy();
+    expect(bite.prop).toEqual(bite.actionArm);
 
     const read = matthiasPuppetGesturePlan('read');
     expect(read.head).toBeTruthy();
