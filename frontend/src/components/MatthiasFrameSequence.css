@@ -1,7 +1,6 @@
 /* Frame-based Matthias actions.
- * Each sprite contains a 3x2 grid of complete poses. We crossfade between
- * whole frames so mugs, sandwiches, hands and faces move together with no
- * duplicated limbs or masked-image ghosts.
+ * Cada pose es una imagen completa y validada. El arte canónico permanece
+ * debajo como fallback, así que una carga fallida nunca deja un rectángulo negro.
  */
 .matthias-frame-sequence {
   position: relative;
@@ -9,34 +8,33 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0b0d10;
+  background: transparent;
   isolation: isolate;
 }
 
-.matthias-frame-sequence__layer,
 .matthias-frame-sequence > img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 44%;
+}
+
+.matthias-frame-sequence__fallback {
+  z-index: 0;
 }
 
 .matthias-frame-sequence__layer {
-  background-size: 300% 200%;
-  background-repeat: no-repeat;
+  z-index: 1;
   opacity: 0;
-  transition: opacity 180ms ease-in-out;
+  transition: opacity 220ms ease-in-out;
   will-change: opacity;
 }
 
 .matthias-frame-sequence__layer.is-active {
   opacity: 1;
-}
-
-.matthias-frame-sequence > img {
-  display: block;
-  object-fit: cover;
-  object-position: 50% 44%;
 }
 
 .matthias-frame-sequence.is-reduced {
