@@ -8,6 +8,8 @@ import {
 import MatthiasCoffeeSteam from './MatthiasCoffeeSteam.jsx';
 import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
 
+const PORTRAIT_SELECTOR = '.insights-workspace-view-now .ai-player-portrait-character';
+
 function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
@@ -17,31 +19,49 @@ export default function InsightsMatthiasMotion() {
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
   const visual = useMemo(() => matthiasTimeVisual(), []);
 
+  // El diagnóstico y su retrato llegan después de montar InsightsScreen. Buscar
+  // sólo una vez dejaba a Matthias estático si la petición todavía no había
+  // terminado. Observamos inserciones y enlazamos el rig cuando aparece el
+  // retrato real; al salir de "Ahora" el observer desaparece con el componente.
   useEffect(() => {
-    const node = document.querySelector(
-      '.insights-workspace-view-now .ai-player-portrait-character',
-    );
-    if (!node) return undefined;
+    let disposed = false;
+    const locate = () => {
+      if (disposed) return;
+      const next = document.querySelector(PORTRAIT_SELECTOR);
+      setTarget((current) => current === next ? current : next);
+    };
 
-    const originalImage = node.querySelector(':scope > img');
-    const previousPosition = node.style.position;
-    const previousOverflow = node.style.overflow;
-    const previousOpacity = originalImage?.style.opacity || '';
-
-    node.style.position = 'relative';
-    node.style.overflow = 'hidden';
-    node.dataset.matthiasInsightsAnimated = 'true';
-    if (originalImage) originalImage.style.opacity = '0';
-    setTarget(node);
+    locate();
+    const observer = new MutationObserver(locate);
+    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      disposed = true;
+      observer.disconnect();
       setTarget(null);
-      delete node.dataset.matthiasInsightsAnimated;
-      node.style.position = previousPosition;
-      node.style.overflow = previousOverflow;
-      if (originalImage) originalImage.style.opacity = previousOpacity;
     };
   }, []);
+
+  useEffect(() => {
+    if (!target) return undefined;
+
+    const originalImage = target.querySelector(':scope > img');
+    const previousPosition = target.style.position;
+    const previousOverflow = target.style.overflow;
+    const previousOpacity = originalImage?.style.opacity || '';
+
+    target.style.position = 'relative';
+    target.style.overflow = 'hidden';
+    target.dataset.matthiasInsightsAnimated = 'true';
+    if (originalImage) originalImage.style.opacity = '0';
+
+    return () => {
+      delete target.dataset.matthiasInsightsAnimated;
+      target.style.position = previousPosition;
+      target.style.overflow = previousOverflow;
+      if (originalImage) originalImage.style.opacity = previousOpacity;
+    };
+  }, [target]);
 
   useEffect(() => {
     const refresh = () => setReducedMotion(currentReducedMotion());
