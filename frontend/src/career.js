@@ -13,6 +13,7 @@ export const BOARD_THEMES = [
   { id: 'blood', label: 'Acta forense', unlock: (career) => Number(career?.contracts?.failed || 0) >= 3 || Number(career?.records?.highestDifficultyWin || 0) >= 40 },
   { id: 'royal', label: 'Real', unlock: (career) => Number(career?.records?.highestDifficultyWin || 0) >= 70 },
   { id: 'forensic', label: 'Laboratorio', unlock: (career) => Number(career?.records?.puzzleRushBest || 0) >= 8 },
+  { id: 'obsidian', label: 'Obsidiana', unlock: (career) => Number(career?.records?.bestWinStreak || 0) >= 8 },
 ];
 
 
