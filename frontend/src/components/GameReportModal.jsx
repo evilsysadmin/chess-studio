@@ -39,7 +39,7 @@ function forensicVerdict(report) {
   return 'Dictamen: pequeñas contusiones, nada que requiera cerrar el club ni cambiar de identidad.';
 }
 
-export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, onShareIncident, meta = {} }) {
+export default function GameReportModal({ history, humanColor, onClose, onTrainPersonal, onOpenCrimeScene, onShareIncident, meta = {} }) {
   useEscapeToClose(onClose);
   const [status, setStatus] = useState('loading');
   const [report, setReport] = useState(null);
@@ -146,7 +146,12 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             {aiAutopsyStatus === 'loading' && <div className="ai-task-card is-loading"><small>MATTHIAS // DEBRIEF</small><p>Revisando las pruebas sin inventarme cadáveres adicionales…</p></div>}
             {aiAutopsy && <div className="ai-task-card"><small>MATTHIAS // DEBRIEF</small><p>{aiAutopsy}</p></div>}
 
-            {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
+            {personalPuzzleInfo?.added > 0 && (
+              <div className="autopsy-training-note">
+                <span>🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Puzzles personales</b>.</span>
+                {onTrainPersonal && <button type="button" className="secondary-btn" onClick={onTrainPersonal}>Entrenar estos errores</button>}
+              </div>
+            )}
 
             <div className="autopsy-actions">
               {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver el peor momento · jugada {report.worst.moveNumber}</button>}
