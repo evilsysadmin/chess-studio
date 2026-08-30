@@ -182,23 +182,23 @@ const MOTIONS = Object.freeze({
 });
 
 const GESTURE_DURATIONS = Object.freeze({
-  glance: 1800,
-  inspect: 2600,
-  sip: 2300,
-  bite: 2300,
-  read: 2500,
-  doze: 2800,
-  speak: 1900,
+  glance: 3000,
+  inspect: 3800,
+  sip: 3600,
+  bite: 3600,
+  read: 3800,
+  doze: 4400,
+  speak: 3000,
 });
 
 const PART_DELAYS = Object.freeze({
-  glance: Object.freeze({ eyes: 0, head: 160 }),
-  inspect: Object.freeze({ eyes: 0, head: 140, 'right-arm': 320 }),
-  sip: Object.freeze({ eyes: 0, head: 120, 'left-arm': 280, prop: 280 }),
-  bite: Object.freeze({ eyes: 0, head: 120, 'left-arm': 260, 'right-arm': 260, prop: 300 }),
-  read: Object.freeze({ eyes: 0, head: 180, 'right-arm': 480, prop: 480 }),
-  doze: Object.freeze({ head: 0, eyes: 180 }),
-  speak: Object.freeze({ head: 0, eyes: 120, 'right-arm': 300 }),
+  glance: Object.freeze({ eyes: 0, head: 300 }),
+  inspect: Object.freeze({ eyes: 0, head: 250, 'right-arm': 450 }),
+  sip: Object.freeze({ eyes: 0, head: 250, 'left-arm': 600, prop: 600 }),
+  bite: Object.freeze({ eyes: 0, head: 250, 'left-arm': 550, 'right-arm': 550, prop: 650 }),
+  read: Object.freeze({ eyes: 0, head: 350, 'right-arm': 800, prop: 800 }),
+  doze: Object.freeze({ head: 0, eyes: 350 }),
+  speak: Object.freeze({ head: 0, eyes: 250, 'right-arm': 650 }),
 });
 
 export function matthiasGestureName({ scene = '', speaking = false } = {}) {
@@ -224,7 +224,7 @@ export function matthiasGestureDelay({ first = false } = {}) {
 
 export function matthiasGestureTiming({ gesture = 'glance', part = 'eyes', speaking = false } = {}) {
   return {
-    duration: speaking ? 1900 : (GESTURE_DURATIONS[gesture] || GESTURE_DURATIONS.glance),
+    duration: speaking ? 3000 : (GESTURE_DURATIONS[gesture] || GESTURE_DURATIONS.glance),
     delay: PART_DELAYS[gesture]?.[part] || 0,
   };
 }
@@ -277,7 +277,7 @@ export default function MatthiasLayeredArt({ avatar, scene = 'base', speaking = 
         const animation = node.animate(keyframes, {
           ...timing,
           iterations: 1,
-          easing: 'cubic-bezier(.4,0,.2,1)',
+          easing: 'cubic-bezier(.42,0,.58,1)',
           fill: 'none',
         });
         running.push(safeFinished(animation));
