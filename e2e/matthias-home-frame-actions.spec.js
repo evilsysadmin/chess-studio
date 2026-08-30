@@ -25,7 +25,7 @@ async function openHomeAtHour(page, hour) {
   return corner;
 }
 
-async function decodedSpriteWidth(page, sequence) {
+async function decodedSpriteDimensions(page, sequence) {
   const spriteUrl = await sequence.locator('[data-frame-layer]').first().evaluate((node) => {
     const background = getComputedStyle(node).backgroundImage;
     const match = /^url\(["']?(.*?)["']?\)$/.exec(background);
@@ -35,8 +35,8 @@ async function decodedSpriteWidth(page, sequence) {
   expect(spriteUrl).toBeTruthy();
   return page.evaluate((src) => new Promise((resolve) => {
     const image = new Image();
-    image.onload = () => resolve(image.naturalWidth);
-    image.onerror = () => resolve(0);
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => resolve({ width: 0, height: 0 });
     image.src = src;
   }), spriteUrl);
 }
@@ -51,9 +51,9 @@ async function expectFrameAction(page, corner, { family, action }) {
   await expect(sequence.locator('[data-sequence-fallback="true"]')).toHaveCount(1);
 
   await expect.poll(
-    async () => decodedSpriteWidth(page, sequence),
-    { timeout: 3_500, message: `${action}: el WebP del sprite debe decodificar de verdad` },
-  ).toBeGreaterThan(0);
+    async () => decodedSpriteDimensions(page, sequence),
+    { timeout: 3_500, message: `${action}: el sprite debe decodificar como hoja 3x2 de 270x240` },
+  ).toEqual({ width: 270, height: 240 });
   await expect(sequence).toHaveAttribute('data-sprite-state', 'ready');
 
   await expect.poll(

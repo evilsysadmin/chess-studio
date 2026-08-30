@@ -9,7 +9,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0b0d10;
+  background: transparent;
   isolation: isolate;
 }
 
@@ -21,7 +21,15 @@
   height: 100%;
 }
 
+.matthias-frame-sequence > img {
+  z-index: 0;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 44%;
+}
+
 .matthias-frame-sequence__layer {
+  z-index: 1;
   background-size: 300% 200%;
   background-repeat: no-repeat;
   opacity: 0;
@@ -29,14 +37,8 @@
   will-change: opacity;
 }
 
-.matthias-frame-sequence__layer.is-active {
+.matthias-frame-sequence[data-sprite-state='ready'] .matthias-frame-sequence__layer.is-active {
   opacity: 1;
-}
-
-.matthias-frame-sequence > img {
-  display: block;
-  object-fit: cover;
-  object-position: 50% 44%;
 }
 
 .matthias-frame-sequence.is-reduced {
