@@ -25,36 +25,40 @@ async function openHomeAtHour(page, hour) {
   return corner;
 }
 
-async function decodedSpriteWidth(page, sequence) {
-  const spriteUrl = await sequence.locator('[data-frame-layer]').first().evaluate((node) => {
-    const background = getComputedStyle(node).backgroundImage;
-    const match = /^url\(["']?(.*?)["']?\)$/.exec(background);
-    return match?.[1] || '';
+async function decodedImageSize(locator) {
+  return locator.evaluate(async (img) => {
+    await img.decode();
+    return { width: img.naturalWidth, height: img.naturalHeight };
   });
-
-  expect(spriteUrl).toBeTruthy();
-  return page.evaluate((src) => new Promise((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve(image.naturalWidth);
-    image.onerror = () => resolve(0);
-    image.src = src;
-  }), spriteUrl);
 }
 
-async function expectFrameAction(page, corner, { family, action }) {
+async function expectFrameAction(corner, { family, action }) {
   const sequence = corner.locator('[data-matthias-frame-sequence="true"]');
   await expect(sequence).toBeVisible();
   await expect(sequence).toHaveAttribute('data-sequence-family', family);
   await expect(sequence).toHaveAttribute('data-sequence-action', action);
   await expect(sequence.locator('[data-matthias-art-part]')).toHaveCount(0);
-  await expect(sequence.locator('[data-frame-layer]')).toHaveCount(2);
   await expect(sequence.locator('[data-sequence-fallback="true"]')).toHaveCount(1);
 
+  const fallback = sequence.locator('[data-sequence-fallback="true"]');
+  await expect(fallback).toBeVisible();
   await expect.poll(
-    async () => decodedSpriteWidth(page, sequence),
-    { timeout: 3_500, message: `${action}: el WebP del sprite debe decodificar de verdad` },
-  ).toBeGreaterThan(0);
-  await expect(sequence).toHaveAttribute('data-sprite-state', 'ready');
+    async () => {
+      const size = await decodedImageSize(fallback);
+      return size.width > 0 && size.height > 0;
+    },
+    { message: `${action}: el Matthias canónico de respaldo debe decodificar` },
+  ).toBe(true);
+
+  const frameLayers = sequence.locator('img[data-frame-layer]');
+  await expect(frameLayers).toHaveCount(2);
+  for (let slot = 0; slot < 2; slot += 1) {
+    await expect.poll(
+      async () => decodedImageSize(frameLayers.nth(slot)),
+      { timeout: 3_500, message: `${action}: la pose ${slot} debe ser una imagen real decodificable` },
+    ).toEqual({ width: 90, height: 120 });
+  }
+  await expect(sequence).toHaveAttribute('data-frame-state', 'ready');
 
   await expect.poll(
     async () => Number(await sequence.getAttribute('data-sequence-cycle-count')),
@@ -63,29 +67,35 @@ async function expectFrameAction(page, corner, { family, action }) {
 
   await expect.poll(
     async () => Number(await sequence.getAttribute('data-frame-index')),
-    { timeout: 4_500, message: `${action}: debe avanzar a otro fotograma real` },
+    { timeout: 4_500, message: `${action}: debe avanzar a otra pose real` },
   ).toBeGreaterThan(0);
 
+  const activeLayer = sequence.locator('img[data-frame-layer].is-active');
+  await expect(activeLayer).toHaveCount(1);
+  await expect.poll(
+    async () => decodedImageSize(activeLayer),
+    { message: `${action}: la pose activa debe seguir siendo decodificable` },
+  ).toEqual({ width: 90, height: 120 });
   await expect(sequence).toHaveAttribute('data-sequence-state', 'acting');
 }
 
 test('Home · Matthias levanta la taza y bebe mediante fotogramas completos', async ({ page }) => {
   const corner = await openHomeAtHour(page, 7);
-  await expectFrameAction(page, corner, { family: 'coffee', action: 'drink' });
+  await expectFrameAction(corner, { family: 'coffee', action: 'drink' });
 });
 
 test('Home · Matthias acerca la comida y come mediante fotogramas completos', async ({ page }) => {
   const corner = await openHomeAtHour(page, 12);
-  await expectFrameAction(page, corner, { family: 'lunch', action: 'eat' });
+  await expectFrameAction(corner, { family: 'lunch', action: 'eat' });
 });
 
-test('Home · si el sprite no carga, Matthias conserva el arte canónico estático', async ({ page }) => {
-  await page.route('**/*coffee-sprite.webp*', (route) => route.abort());
+test('Home · si una pose no carga, Matthias conserva el arte canónico estático', async ({ page }) => {
+  await page.route('**/*coffee-1*.webp*', (route) => route.abort());
   const corner = await openHomeAtHour(page, 7);
   const sequence = corner.locator('[data-matthias-frame-sequence="true"]');
 
   await expect(sequence).toHaveAttribute('data-sequence-family', 'coffee');
-  await expect(sequence).toHaveAttribute('data-sprite-state', 'error');
+  await expect(sequence).toHaveAttribute('data-frame-state', 'error');
   await expect(sequence).toHaveAttribute('data-sequence-state', 'fallback');
   await expect(sequence.locator('[data-sequence-fallback="true"]')).toBeVisible();
   await expect(sequence.locator('[data-sequence-fallback="true"]')).toHaveAttribute('data-matthias-canonical-art', 'true');
