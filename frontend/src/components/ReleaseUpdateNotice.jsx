@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { APP_RELEASE } from '../release.js';
+import { APP_BUILD_ID, APP_RELEASE } from '../release.js';
 import { fetchLatestRelease, isReleaseUpdateAvailable, RELEASE_CHECK_INTERVAL_MS } from '../releaseUpdate.js';
 import { STORAGE_SESSION, getStorageItem, setStorageItem } from '../safeStorage.js';
 
@@ -71,7 +71,7 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
     };
   }, []);
 
-  if (!isReleaseUpdateAvailable(latestRelease, APP_RELEASE) || dismissed || (deferReload && boardSnoozed)) return null;
+  if (!isReleaseUpdateAvailable(latestRelease, APP_BUILD_ID) || dismissed || (deferReload && boardSnoozed)) return null;
 
   function dismiss() {
     setStorageItem(STORAGE_SESSION, dismissedKey(latestRelease), '1');
@@ -79,7 +79,7 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
   }
 
   return (
-    <aside className="release-update-notice" role="status" aria-live="polite" title={`Esta pestaña usa ${APP_RELEASE}; publicada: ${latestRelease}`}>
+    <aside className="release-update-notice" role="status" aria-live="polite" title={`${APP_RELEASE} tiene un despliegue más reciente disponible`}>
       <div className="release-update-copy">
         <strong>Nueva versión disponible</strong>
         <span>{deferReload ? 'Tu partida sigue intacta; actualiza al terminar.' : 'Hay mejoras nuevas listas para cargar.'}</span>
