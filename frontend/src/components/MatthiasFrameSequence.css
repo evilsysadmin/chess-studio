@@ -37,7 +37,7 @@
   will-change: opacity;
 }
 
-.matthias-frame-sequence__layer.is-active {
+.matthias-frame-sequence[data-sprite-state='ready'] .matthias-frame-sequence__layer.is-active {
   opacity: 1;
 }
 
