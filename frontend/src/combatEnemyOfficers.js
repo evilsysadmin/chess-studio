@@ -15,7 +15,8 @@ const OFFICERS = Object.freeze([
   Object.freeze({ id: 'ibarra', rank: 'Coronel', name: 'Elena Ibarra', callsign: 'Centinela' }),
 ]);
 
-const VALID_OUTCOMES = new Set(['win', 'loss', 'retired']);
+const VALID_OUTCOMES = new Set(['win', 'loss', 'draw', 'retired']);
+const CAMPAIGN_SESSION_RE = /^campaign:([^:]+):(s(\d+)-l(\d+)-(battle|elite|boss))$/;
 
 function boundedInt(value) {
   return Math.max(0, Math.floor(Number(value) || 0));
@@ -27,6 +28,7 @@ function normalizeRecord(record = {}) {
     encounters: boundedInt(record.encounters),
     playerWins: boundedInt(record.playerWins),
     officerWins: boundedInt(record.officerWins),
+    draws: boundedInt(record.draws),
     retreats: boundedInt(record.retreats),
     firstSeenAt: boundedInt(record.firstSeenAt),
     lastSeenAt: boundedInt(record.lastSeenAt),
@@ -71,19 +73,39 @@ export function enemyOfficerForNode(campaignSeed, node) {
   return pool[Math.min(pool.length - 1, Math.floor(roll * pool.length))] || null;
 }
 
+export function campaignOfficerContext(combatSessionId, nodeLabel = '') {
+  const match = String(combatSessionId || '').match(CAMPAIGN_SESSION_RE);
+  if (!match) return null;
+  const [, campaignSeed, nodeId, stage, lane, type] = match;
+  if (type === 'boss') return null;
+  return {
+    campaignSeed,
+    node: {
+      id: nodeId,
+      stage: Number(stage),
+      lane: Number(lane),
+      type,
+      label: String(nodeLabel || nodeId),
+    },
+  };
+}
+
 export function enemyOfficerBriefing(campaignSeed, node, history = loadEnemyOfficerHistory()) {
   const officer = enemyOfficerForNode(campaignSeed, node);
   if (!officer) return null;
   const record = normalizeRecord(history?.[officer.id]);
   const known = record.encounters > 0;
   const score = known ? `${record.playerWins}–${record.officerWins}` : null;
+  const drawSuffix = record.draws > 0 ? ` · ${record.draws} tablas` : '';
   const note = !known
     ? 'Primer contacto confirmado.'
     : record.lastOutcome === 'loss'
-      ? `Te venció la última vez · balance ${score}.`
+      ? `Te venció la última vez · balance ${score}${drawSuffix}.`
       : record.lastOutcome === 'win'
-        ? `Lo venciste la última vez · balance ${score}.`
-        : `Último contacto: retirada · balance ${score}.`;
+        ? `Lo venciste la última vez · balance ${score}${drawSuffix}.`
+        : record.lastOutcome === 'draw'
+          ? `La última quedó en tablas · balance ${score}${drawSuffix}.`
+          : `Último contacto: retirada · balance ${score}${drawSuffix}.`;
   return { ...officer, known, record, score, note };
 }
 
@@ -110,6 +132,7 @@ export function recordEnemyOfficerEncounter({ campaignSeed, node, outcome, encou
     encounters: current.encounters + 1,
     playerWins: current.playerWins + (outcome === 'win' ? 1 : 0),
     officerWins: current.officerWins + (outcome === 'loss' ? 1 : 0),
+    draws: current.draws + (outcome === 'draw' ? 1 : 0),
     retreats: current.retreats + (outcome === 'retired' ? 1 : 0),
     firstSeenAt: current.firstSeenAt || encounter.at,
     lastSeenAt: encounter.at,
@@ -122,6 +145,12 @@ export function recordEnemyOfficerEncounter({ campaignSeed, node, outcome, encou
   const next = { ...history, [officer.id]: nextRecord };
   setProfileStorageItem(COMBAT_ENEMY_OFFICERS_KEY, JSON.stringify(next));
   return next;
+}
+
+export function recordEnemyOfficerSessionEncounter({ combatSessionId, encounterLabel, outcome, encounterId, at } = {}) {
+  const context = campaignOfficerContext(combatSessionId, encounterLabel);
+  if (!context) return loadEnemyOfficerHistory();
+  return recordEnemyOfficerEncounter({ ...context, outcome, encounterId, at });
 }
 
 export { OFFICERS as COMBAT_ENEMY_OFFICERS };
