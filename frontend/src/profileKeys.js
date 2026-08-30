@@ -33,6 +33,7 @@ export const PROFILE_PROGRESS_KEYS = Object.freeze([
   'chess-study-combat-roster',
   'chess-study-combat-service',
   'chess-study-combat-deployment-presets-v1',
+  'chess-study-combat-enemy-officers-v1',
   'chess-study-player-rating',
   'chess-study-rating-history',
   'chess-study-achievements',
