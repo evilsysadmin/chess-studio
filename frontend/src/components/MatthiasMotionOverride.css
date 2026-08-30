@@ -1,23 +1,37 @@
 /* Matthias motion controls and compositor layer.
- * The visible movement itself is driven by Web Animations API from
- * MatthiasHomeVisit.jsx so global reduced-motion CSS cannot accidentally
- * turn an explicitly enabled Matthias back into a statue. */
+ * The visible movement is driven by Web Animations API from
+ * MatthiasHomeVisit.jsx. The portrait frame stays fixed; only the artwork
+ * inside it moves. This keeps Matthias alive without making his whole card
+ * wobble around the Home screen. */
 .matthias-resident__character-stack {
   display: grid;
   justify-items: center;
   gap: .28rem;
 }
 
-.matthias-resident__motion-layer {
+/* The frame is part of the UI chrome and must never be animated. */
+.matthias-resident__portrait-shell {
+  animation: none !important;
+  transform: none !important;
+  will-change: auto;
+}
+
+/* This layer sits INSIDE the fixed portrait shell. The shell's overflow:hidden
+ * clips the moving artwork, so Matthias moves while the border/background stay
+ * perfectly still. */
+.matthias-resident__portrait-shell > .matthias-resident__motion-layer {
+  width: 100%;
+  height: 100%;
   display: grid;
   place-items: end center;
   transform-origin: 50% 78%;
   will-change: transform;
 }
 
-/* The wrapper above owns the visible body motion. Keep the portrait shell
- * itself stable so legacy CSS animations cannot double the displacement. */
-.matthias-resident__motion-layer > .matthias-resident__portrait-shell {
+/* Legacy resident/scene CSS still targets the img directly. Disable those
+ * transforms here so the compositor layer is the single owner of visible
+ * motion and we do not get double animation. */
+.matthias-resident__motion-layer > img {
   animation: none !important;
   transform: none !important;
   will-change: auto;
