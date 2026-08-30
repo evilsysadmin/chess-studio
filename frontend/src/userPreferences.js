@@ -1,5 +1,5 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
-import { setProfileStorageItem } from './profileKeys.js';
+import { removeProfileStorageItem, setProfileStorageItem } from './profileKeys.js';
 import { TIME_CONTROLS } from './clock.js';
 
 export const DEFAULT_TIME_CONTROL_KEY = 'chess-study-default-time-control';
@@ -79,11 +79,18 @@ function syncReducedMotionDataset() {
   document.documentElement.dataset.motionPreference = status.preference;
 }
 
-export function setReducedMotion(value) {
-  const normalized = !!value;
-  setProfileStorageItem(REDUCED_MOTION_KEY, normalized ? '1' : '0');
+export function setReducedMotionPreference(value) {
+  const normalized = ['system', 'allow', 'reduce'].includes(value) ? value : 'system';
+  if (normalized === 'system') removeProfileStorageItem(REDUCED_MOTION_KEY);
+  else setProfileStorageItem(REDUCED_MOTION_KEY, normalized === 'reduce' ? '1' : '0');
   syncReducedMotionDataset();
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
+  return normalized;
+}
+
+export function setReducedMotion(value) {
+  const normalized = !!value;
+  setReducedMotionPreference(normalized ? 'reduce' : 'allow');
   return normalized;
 }
 
