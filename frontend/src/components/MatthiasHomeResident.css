@@ -64,9 +64,49 @@
   display: block;
   object-fit: cover;
   object-position: 50% 44%;
+  transform-origin: 50% 78%;
   animation:
     matthias-resident-scene-in .55s ease-out both,
-    matthias-resident-idle 8s ease-in-out .55s infinite;
+    matthias-resident-idle 24s ease-in-out .55s infinite;
+}
+
+/* Quiet Matthias moves rarely and according to the scene instead of bobbing
+ * every few seconds. Static art stays recognisable; motion is ambient flavour. */
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='coffee'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='breakfast'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='night'] img {
+  animation:
+    matthias-resident-scene-in .55s ease-out both,
+    matthias-resident-sip 29s ease-in-out .55s infinite;
+}
+
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='reading'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='strategy'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='dossier'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='weekly'] img {
+  animation:
+    matthias-resident-scene-in .55s ease-out both,
+    matthias-resident-page 31s ease-in-out .55s infinite;
+}
+
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='ops'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='inception'] img {
+  animation:
+    matthias-resident-scene-in .55s ease-out both,
+    matthias-resident-inspect 27s ease-in-out .55s infinite;
+}
+
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='lunch'] img,
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='bocata'] img {
+  animation:
+    matthias-resident-scene-in .55s ease-out both,
+    matthias-resident-bite 33s ease-in-out .55s infinite;
+}
+
+.matthias-resident.is-quiet .matthias-resident__character[data-ambient-scene*='sleep'] img {
+  animation:
+    matthias-resident-scene-in .55s ease-out both,
+    matthias-resident-doze 36s ease-in-out .55s infinite;
 }
 
 .matthias-resident__character strong {
@@ -212,9 +252,42 @@
 }
 
 @keyframes matthias-resident-idle {
-  0%, 100% { transform: translateY(0); }
-  48% { transform: translateY(-1.5px); }
-  52% { transform: translateY(-1.5px); }
+  0%, 67%, 100% { transform: translateY(0); }
+  72%, 76% { transform: translateY(-1px); }
+  81% { transform: translateY(0); }
+}
+
+@keyframes matthias-resident-sip {
+  0%, 69%, 100% { transform: translate(0, 0) rotate(0); }
+  73% { transform: translateY(-1px) rotate(-.35deg); }
+  77% { transform: translateY(-1.5px) rotate(-.45deg); }
+  82% { transform: translate(0, 0) rotate(0); }
+}
+
+@keyframes matthias-resident-page {
+  0%, 61%, 100% { transform: translate(0, 0) rotate(0); }
+  65% { transform: translateX(.8px) rotate(.22deg); }
+  69% { transform: translateX(-.5px) rotate(-.15deg); }
+  74% { transform: translate(0, 0) rotate(0); }
+}
+
+@keyframes matthias-resident-inspect {
+  0%, 58%, 100% { transform: translate(0, 0) rotate(0); }
+  63%, 68% { transform: translateY(-.8px) rotate(.28deg); }
+  73% { transform: translate(0, 0) rotate(0); }
+}
+
+@keyframes matthias-resident-bite {
+  0%, 72%, 100% { transform: translate(0, 0) scale(1); }
+  76% { transform: translateY(-.7px) scale(1.004); }
+  80% { transform: translateY(-1px) scale(1.006); }
+  85% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes matthias-resident-doze {
+  0%, 49%, 100% { transform: translate(0, 0) rotate(0); }
+  58%, 72% { transform: translateY(1px) rotate(.38deg); }
+  79% { transform: translate(0, 0) rotate(0); }
 }
 
 @media (max-width: 760px) {

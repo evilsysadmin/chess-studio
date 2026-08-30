@@ -61,6 +61,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
         <button
           type="button"
           className="matthias-resident__character"
+          data-ambient-scene={visual.key || 'default'}
           onClick={onOpenInsights}
           aria-label="Abrir Así juegas con Matthias"
           aria-describedby={speaking ? 'matthias-home-message' : undefined}
