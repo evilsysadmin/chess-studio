@@ -15,6 +15,7 @@ const OFFICERS = Object.freeze([
   Object.freeze({ id: 'ibarra', rank: 'Coronel', name: 'Elena Ibarra', callsign: 'Centinela' }),
 ]);
 
+const OFFICER_RANKS = Object.freeze(['Teniente', 'Capitán', 'Mayor', 'Comandante', 'Coronel', 'General']);
 const VALID_OUTCOMES = new Set(['win', 'loss', 'draw', 'retired']);
 const CAMPAIGN_SESSION_RE = /^campaign:([^:]+):(s(\d+)-l(\d+)-(battle|elite|boss))$/;
 
@@ -46,6 +47,26 @@ function normalizeRecord(record = {}) {
           nodeLabel: entry?.nodeLabel ? String(entry.nodeLabel) : null,
         })).filter((entry) => entry.id && entry.outcome)
       : [],
+  };
+}
+
+export function officerServiceRank(officer, rawRecord = {}) {
+  if (!officer) return null;
+  const record = normalizeRecord(rawRecord);
+  const baseIndex = Math.max(0, OFFICER_RANKS.indexOf(officer.rank));
+  const serviceScore = record.encounters + (record.officerWins * 2);
+  const earnedSteps = serviceScore >= 10 ? 2 : serviceScore >= 4 ? 1 : 0;
+  const rankIndex = Math.min(OFFICER_RANKS.length - 1, baseIndex + earnedSteps);
+  const promotions = Math.max(0, rankIndex - baseIndex);
+  const nextThreshold = rankIndex >= OFFICER_RANKS.length - 1
+    ? null
+    : serviceScore < 4 ? 4 : serviceScore < 10 ? 10 : null;
+  return {
+    rank: OFFICER_RANKS[rankIndex],
+    baseRank: officer.rank,
+    serviceScore,
+    promotions,
+    nextPromotionIn: nextThreshold == null ? null : Math.max(0, nextThreshold - serviceScore),
   };
 }
 
@@ -95,9 +116,13 @@ export function enemyOfficerBriefing(campaignSeed, node, history = loadEnemyOffi
   if (!officer) return null;
   const record = normalizeRecord(history?.[officer.id]);
   const known = record.encounters > 0;
+  const service = officerServiceRank(officer, record);
   const score = known ? `${record.playerWins}–${record.officerWins}` : null;
   const drawSuffix = record.draws > 0 ? ` · ${record.draws} tablas` : '';
-  const note = !known
+  const promotionSuffix = service.promotions > 0
+    ? ` Ascendido ${service.promotions === 1 ? 'una vez' : `${service.promotions} veces`} por servicio registrado.`
+    : '';
+  const resultNote = !known
     ? 'Primer contacto confirmado.'
     : record.lastOutcome === 'loss'
       ? `Te venció la última vez · balance ${score}${drawSuffix}.`
@@ -106,7 +131,19 @@ export function enemyOfficerBriefing(campaignSeed, node, history = loadEnemyOffi
         : record.lastOutcome === 'draw'
           ? `La última quedó en tablas · balance ${score}${drawSuffix}.`
           : `Último contacto: retirada · balance ${score}${drawSuffix}.`;
-  return { ...officer, known, record, score, note };
+  const note = `${resultNote}${promotionSuffix} El rango es expediente narrativo: no altera la fuerza de la CPU.`;
+  return {
+    ...officer,
+    rank: service.rank,
+    baseRank: service.baseRank,
+    serviceScore: service.serviceScore,
+    promotions: service.promotions,
+    nextPromotionIn: service.nextPromotionIn,
+    known,
+    record,
+    score,
+    note,
+  };
 }
 
 export function recordEnemyOfficerEncounter({ campaignSeed, node, outcome, encounterId, at = Date.now() } = {}) {
@@ -153,4 +190,4 @@ export function recordEnemyOfficerSessionEncounter({ combatSessionId, encounterL
   return recordEnemyOfficerEncounter({ ...context, outcome, encounterId, at });
 }
 
-export { OFFICERS as COMBAT_ENEMY_OFFICERS };
+export { OFFICERS as COMBAT_ENEMY_OFFICERS, OFFICER_RANKS as COMBAT_ENEMY_OFFICER_RANKS };
