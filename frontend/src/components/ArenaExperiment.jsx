@@ -12,6 +12,7 @@ import {
   arenaStatus,
   arenaTurn,
 } from '../arenaTerrain.js';
+import { arenaObjectiveState } from '../arenaObjectives.js';
 
 const HUMAN_COLOR = 'w';
 const CPU_COLOR = 'b';
@@ -52,6 +53,7 @@ export default function ArenaExperiment() {
   const [fen, setFen] = useState(() => startFenFor(ARENA_PRESETS[0]));
   const [selected, setSelected] = useState(null);
   const [lastMove, setLastMove] = useState(null);
+  const [elapsedPlies, setElapsedPlies] = useState(0);
   const [historyKeys, setHistoryKeys] = useState(() => {
     const initial = ARENA_PRESETS[0];
     return [arenaPositionKey(startFenFor(initial), initial.blocked)];
@@ -60,6 +62,7 @@ export default function ArenaExperiment() {
 
   const turn = arenaTurn(fen);
   const status = arenaStatus(fen, blocked, historyKeys);
+  const objective = arenaObjectiveState(preset.id, fen, { elapsedPlies, humanColor: HUMAN_COLOR });
   const legalFromSelected = selected ? arenaLegalMoves(fen, blocked, { from: selected }) : [];
   const boardLegalTargets = legalFromSelected.map((move) => ({ ...move, san: move.captured ? 'x' : '' }));
   const checkSquare = status === 'check' || status === 'checkmate' ? arenaKingSquare(fen, turn) : null;
@@ -69,6 +72,7 @@ export default function ArenaExperiment() {
     setFen(startFen);
     setSelected(null);
     setLastMove(null);
+    setElapsedPlies(0);
     setThinking(false);
     setHistoryKeys([arenaPositionKey(startFen, nextPreset.blocked)]);
   }
@@ -85,6 +89,7 @@ export default function ArenaExperiment() {
     setFen(applied.fen);
     setSelected(null);
     setLastMove({ from: applied.move.from, to: applied.move.to });
+    setElapsedPlies((value) => value + 1);
     setHistoryKeys((prev) => [...prev, arenaPositionKey(applied.fen, blocked)].slice(-160));
     return true;
   }
@@ -112,6 +117,7 @@ export default function ArenaExperiment() {
         if (applied) {
           setFen(applied.fen);
           setLastMove({ from: applied.move.from, to: applied.move.to });
+          setElapsedPlies((value) => value + 1);
           setHistoryKeys((prev) => [...prev, arenaPositionKey(applied.fen, blocked)].slice(-160));
         }
       }
@@ -135,6 +141,12 @@ export default function ArenaExperiment() {
           <span><b>Despliegue</b><small>{preset.deployment || 'Clásico'}</small></span>
           <span><b>Terreno sólido</b><small>{preset.blocked.length} casillas</small></span>
         </div>
+        {objective && (
+          <div className={`coaching-action ${objective.achieved ? 'is-success' : objective.failed ? 'is-danger' : ''}`} style={{ marginTop: '.8rem' }} role="status">
+            <strong>{objective.achieved ? '✓ MISIÓN CUMPLIDA' : objective.failed ? '✕ MISIÓN FALLIDA' : 'OBJETIVO OPCIONAL'} · {objective.label}</strong>
+            <span>{objective.detail}{objective.target > 1 ? ` · progreso ${objective.progress}/${objective.target}` : ''}</span>
+          </div>
+        )}
       </div>
 
       <div className="career-section-nav" role="radiogroup" aria-label="Geometría de la arena">
@@ -179,14 +191,14 @@ export default function ArenaExperiment() {
           <span><b>♞ Salta</b><small>El caballo ignora el terreno intermedio.</small></span>
           <span><b>♔ Real</b><small>Jaque y mate usan esta geometría.</small></span>
         </div>
-        <p className="hint-text">Este prototipo es local: no modifica rating, carrera, historial ni estadísticas personales.</p>
+        <p className="hint-text">Las misiones son objetivos opcionales locales: no cambian la legalidad, no otorgan rating y no sustituyen jaque mate/tablas.</p>
       </aside>
 
       <details className="friendly-disclosure">
         <summary>Qué cambia en esta fase</summary>
         <div className="friendly-disclosure-body">
-          <p>Promoción, enroque, en passant, regla de 50 movimientos y triple repetición siguen intactos. El terreno continúa siendo la única regla nueva.</p>
-          <p>Algunas arenas ahora empiezan desde un despliegue legal ya avanzado y otras fuerzan pasos estrechos. Eso permite probar puentes y contacto asimétrico sin inventar otra gramática de movimiento.</p>
+          <p>Promoción, enroque, en passant, regla de 50 movimientos y triple repetición siguen intactos. El terreno continúa siendo la única regla que modifica el tablero.</p>
+          <p>Ruptura y supervivencia son condiciones de misión superpuestas: sirven para obligarte a jugar con un propósito táctico distinto sin crear movimientos especiales ni resultados competitivos falsos.</p>
         </div>
       </details>
     </section>
