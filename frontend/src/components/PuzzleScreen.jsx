@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import Board from './Board.jsx';
+import PersonalTrainingDebtPanel from './PersonalTrainingDebtPanel.jsx';
 import { PUZZLES, PUZZLE_DIFFICULTY_LABELS, randomPuzzle } from '../puzzles.js';
 import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
+import { personalTrainingDebtSummary } from '../trainingDebt.js';
 import { generateValidatedPersonalPuzzleBatch, shouldOfferAiPersonalPuzzleGeneration } from '../aiPersonalPuzzles.js';
 import { dailyChallengeBrief, dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
@@ -78,6 +80,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const filteredPersonalTotalCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length, [personalPuzzles, initialFilter]);
   const filteredPersonalActiveCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter) && !isPersonalPuzzleMastered(item)).length, [personalPuzzles, initialFilter]);
   const personalHistory = useMemo(() => personalPuzzleHistory(initialFilter), [personalPuzzles, initialFilter]);
+  const personalDebtSummary = useMemo(() => personalTrainingDebtSummary(personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter))), [personalPuzzles, initialFilter]);
   const currentPersonalMastered = source === 'personal' && isPersonalPuzzleMastered(puzzle);
   const offerAiGeneration = source === 'personal' && shouldOfferAiPersonalPuzzleGeneration({ ...personalStats, active: filteredPersonalActiveCount, total: filteredPersonalTotalCount });
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
@@ -514,6 +517,7 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
               <p className="hint-text personal-puzzle-note">{puzzle.source === 'workers-ai-validated' ? 'Escenario inspirado en tus errores y validado tácticamente antes de entrar en tu cola.' : 'Caso reconstruido desde una de tus partidas.'}{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
               {currentPersonalMastered && <p className="hint-text friendly-inline-note">✓ Este caso ya está superado y vive en tu histórico. Lo estás revisando a propósito; no vuelve a la cola normal.</p>}
               {!currentPersonalMastered && filteredPersonalActiveCount > 0 && <p className="hint-text friendly-inline-note"><b>{filteredPersonalActiveCount}</b> error{filteredPersonalActiveCount === 1 ? '' : 'es'} pendiente{filteredPersonalActiveCount === 1 ? '' : 's'} de entrenar.</p>}
+              <PersonalTrainingDebtPanel summary={personalDebtSummary} puzzles={personalPuzzles} onTrain={reviewPersonalPuzzle} />
               {offerAiGeneration && (
                 <div className="personal-puzzle-ai-action">
                   <button type="button" className="secondary-btn" disabled={aiGenerating} onClick={generateAiPersonalVariants}>{aiGenerating ? 'Validando propuestas…' : 'Generar variantes desde mis errores'}</button>
