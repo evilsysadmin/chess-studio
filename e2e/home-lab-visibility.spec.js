@@ -11,24 +11,27 @@ async function openHome(page) {
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
 }
 
-async function visiblePinnedLab(page) {
+async function visibleLabShortcut(page) {
   const moreModes = page.locator('details.home-more-modes');
   await expect(moreModes).not.toHaveAttribute('open', '');
 
-  const cards = moreModes.locator('.friendly-disclosure-body > .menu-card-shell');
-  const lab = cards.last().getByRole('button', { name: /Laboratorio/i });
+  const lab = page.locator('.home-lab-access > .menu-card-shell > button.home-lab-shortcut');
   await expect(lab).toBeVisible();
+  await expect(lab).toContainText('Laboratorio');
+  await expect(lab).toContainText('Construye, pega o prueba una posición');
 
-  const secondaryCards = cards.filter({ hasNot: lab });
-  for (let index = 0; index < await secondaryCards.count(); index += 1) {
-    await expect(secondaryCards.nth(index).locator('button').first()).toBeHidden();
-  }
+  // Laboratorio ya no vive dentro del disclosure; los secundarios siguen
+  // realmente plegados hasta que el usuario los pida.
+  await expect(moreModes.getByText('Laboratorio', { exact: true })).toHaveCount(0);
+  const secondaryCards = moreModes.locator('.friendly-disclosure-body > .menu-card-shell > button');
+  expect(await secondaryCards.count()).toBeGreaterThan(0);
+  await expect(secondaryCards.first()).toBeHidden();
   return lab;
 }
 
 test('Home · Laboratorio permanece visible sin abrir Más modos de juego', async ({ page }) => {
   await openHome(page);
-  const lab = await visiblePinnedLab(page);
+  const lab = await visibleLabShortcut(page);
   await lab.click();
 
   await expect(page.getByText('Laboratorio libre', { exact: true })).toBeVisible();
@@ -38,7 +41,7 @@ test('Home · Laboratorio permanece visible sin abrir Más modos de juego', asyn
 test('Home móvil · Laboratorio sigue visible y no provoca scroll horizontal', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openHome(page);
-  const lab = await visiblePinnedLab(page);
+  const lab = await visibleLabShortcut(page);
   await expect(lab).toBeVisible();
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
