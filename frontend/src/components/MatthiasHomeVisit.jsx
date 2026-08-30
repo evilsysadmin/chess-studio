@@ -132,6 +132,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
               <MatthiasLayeredArt
                 avatar={visual.avatar}
                 scene={visual.key || 'base'}
+                activity={visual.label || ''}
                 speaking={speaking}
                 reducedMotion={motionStatus.effective}
               />
