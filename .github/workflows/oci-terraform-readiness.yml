@@ -1,0 +1,55 @@
+name: OCI Terraform Readiness
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'infra/oci/**'
+      - '.github/workflows/oci-terraform-readiness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/oci/**'
+      - '.github/workflows/oci-terraform-readiness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Terraform · fmt + validate
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: infra/oci
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init without backend
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+      - name: Secret-surface guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -En '(MONGO_URL|JWT_SECRET|cloudflare_tunnel_token|private_key[[:space:]]*=)' ./*.tf; then
+            echo 'ERROR: production secret material must not be modeled as Terraform input/state.' >&2
+            exit 1
+          fi
+          echo 'OCI Terraform secret-surface guard OK'
