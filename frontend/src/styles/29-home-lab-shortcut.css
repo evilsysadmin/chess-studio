@@ -1,30 +1,22 @@
-/* Laboratorio es una herramienta de tablero, no un easter egg. Mantiene el
-   disclosure de modos secundarios, pero su tarjeta real queda anclada y
-   accesible incluso cuando "Más modos de juego" está cerrado. Al abrirlo,
-   recupera automáticamente el layout normal del grid. */
-.home-more-modes:not([open]) > .friendly-disclosure-body {
-  display: block;
-  padding: .62rem 0 0;
+/* Laboratorio es una herramienta de tablero, no un modo secundario escondido.
+   Conserva una presencia compacta debajo de los tres modos principales sin
+   competir visualmente con Torneo, Combat Chess o Partida rápida. */
+.home-lab-access {
+  margin-top: .72rem;
 }
 
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell {
-  display: none;
+.home-lab-access > .menu-card-shell {
+  width: 100%;
 }
 
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child {
-  display: block;
-}
-
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card {
+.home-lab-shortcut {
   width: 100%;
   min-height: 72px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "icon title cta"
     "icon copy cta";
   column-gap: .82rem;
-  row-gap: .12rem;
   align-items: center;
   padding: .72rem .86rem;
   border: 1px solid color-mix(in srgb, var(--success) 28%, rgba(255,255,255,.075));
@@ -36,8 +28,8 @@
   text-align: left;
 }
 
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card:hover,
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card:focus-visible {
+.home-lab-shortcut:hover,
+.home-lab-shortcut:focus-visible {
   border-color: color-mix(in srgb, var(--success) 50%, rgba(255,255,255,.12));
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--success) 9%, transparent), transparent 52%),
@@ -45,28 +37,47 @@
   transform: none;
 }
 
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child .menu-card-icon {
+.home-lab-shortcut .home-mode-icon {
   grid-area: icon;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+}
+
+.home-lab-shortcut .home-mode-icon .menu-card-icon {
   width: 26px;
   height: 26px;
-  margin: 0;
 }
 
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child h3 {
-  grid-area: title;
-  margin: 0;
-  font-size: 1rem;
-}
-
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child p {
+.home-lab-shortcut-copy {
   grid-area: copy;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .12rem .72rem;
+}
+
+.home-lab-shortcut-copy .section-label {
+  flex-basis: 100%;
   margin: 0;
+  font-size: .55rem;
+}
+
+.home-lab-shortcut-copy strong {
+  color: var(--parchment);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.home-lab-shortcut-copy small {
   color: color-mix(in srgb, var(--parchment-dim) 88%, transparent);
   font-size: .74rem;
   line-height: 1.35;
 }
 
-.home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child .menu-card-cta {
+.home-lab-shortcut .menu-card-cta {
   grid-area: cta;
   align-self: center;
   margin: 0;
@@ -77,18 +88,31 @@
 }
 
 @media (max-width: 640px) {
-  .home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child > .menu-card {
+  .home-lab-access { margin-top: .58rem; }
+
+  .home-lab-shortcut {
     min-height: 68px;
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      "icon title"
       "icon copy"
       "icon cta";
+    row-gap: .2rem;
     padding: .68rem .72rem;
   }
 
-  .home-more-modes:not([open]) > .friendly-disclosure-body > .menu-card-shell:last-child .menu-card-cta {
-    margin-top: .16rem;
+  .home-lab-shortcut-copy {
+    display: block;
+  }
+
+  .home-lab-shortcut-copy > * {
+    display: block;
+  }
+
+  .home-lab-shortcut-copy small {
+    margin-top: .08rem;
+  }
+
+  .home-lab-shortcut .menu-card-cta {
     white-space: normal;
   }
 }
