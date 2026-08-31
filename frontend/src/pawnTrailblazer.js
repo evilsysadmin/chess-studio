@@ -121,93 +121,100 @@ export function trailBishopParryReady(aimUntil = 0, now = 0) {
   return remaining > 0 && remaining <= TRAIL_BISHOP_PARRY_WINDOW_MS;
 }
 
+export function trailRunFrameIndex(now = 0, speed = 5.2, reducedMotion = false, frameCount = 6) {
+  const frames = Math.max(1, Math.floor(Number(frameCount) || 1));
+  const safeSpeed = Math.max(1, Number(speed) || 5.2);
+  const fps = reducedMotion ? 4 : Math.min(13, 8 + (safeSpeed - 5.2) * 0.75);
+  return Math.floor((Math.max(0, Number(now) || 0) / 1000) * fps) % frames;
+}
+
 export function trailSpriteMotion(kind = 'pawn', now = 0, seed = 0, state = 'running') {
   const t = (Math.max(0, Number(now) || 0) + (Number(seed) || 0) * 97) / 1000;
-  const still = Object.freeze({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 });
-  if (state === 'reduced') return still;
+  const reduced = state === 'reduced';
+  const intensity = reduced ? 0.45 : 1;
 
   if (kind === 'matthias') {
     if (state === 'slash') {
       return {
-        x: 0.035,
-        y: -0.045,
-        rotation: -0.16 + Math.sin(t * 22) * 0.025,
-        scaleX: 1.08,
-        scaleY: 0.95,
+        x: 0.055,
+        y: -0.085,
+        rotation: -0.21 + Math.sin(t * 22) * 0.035,
+        scaleX: 1.12,
+        scaleY: 0.92,
       };
     }
-    const stride = t * 11;
+    const stride = t * (reduced ? 6 : 12.5);
     return {
-      x: Math.sin(stride * 0.5) * 0.035,
-      y: -Math.abs(Math.sin(stride)) * 0.075,
-      rotation: Math.sin(stride * 0.5) * 0.055,
-      scaleX: 1 + Math.cos(stride) * 0.035,
-      scaleY: 1 - Math.cos(stride) * 0.045,
+      x: Math.sin(stride * 0.5) * 0.048 * intensity,
+      y: -Math.abs(Math.sin(stride)) * 0.125 * intensity,
+      rotation: Math.sin(stride * 0.5) * 0.082 * intensity,
+      scaleX: 1 + Math.cos(stride) * 0.055 * intensity,
+      scaleY: 1 - Math.cos(stride) * 0.07 * intensity,
     };
   }
 
   if (kind === 'duelist') {
-    const shove = t * 9;
+    const shove = t * (reduced ? 5 : 10.5);
     return {
-      x: Math.sin(shove) * 0.045,
-      y: -Math.abs(Math.sin(shove * 0.5)) * 0.025,
-      rotation: Math.sin(shove) * 0.075,
-      scaleX: 1 + Math.abs(Math.sin(shove)) * 0.035,
-      scaleY: 1 - Math.abs(Math.sin(shove)) * 0.025,
+      x: Math.sin(shove) * 0.072 * intensity,
+      y: -Math.abs(Math.sin(shove * 0.5)) * 0.055 * intensity,
+      rotation: Math.sin(shove) * 0.12 * intensity,
+      scaleX: 1 + Math.abs(Math.sin(shove)) * 0.055 * intensity,
+      scaleY: 1 - Math.abs(Math.sin(shove)) * 0.04 * intensity,
     };
   }
 
   if (kind === 'knight') {
-    const leap = t * 7.2;
+    const leap = t * (reduced ? 4 : 8.2);
     return {
-      x: Math.sin(leap * 0.5) * 0.03,
-      y: -Math.abs(Math.sin(leap)) * 0.14,
-      rotation: Math.sin(leap * 0.5) * 0.09,
-      scaleX: 1.02,
-      scaleY: 0.98,
+      x: Math.sin(leap * 0.5) * 0.045 * intensity,
+      y: -Math.abs(Math.sin(leap)) * 0.22 * intensity,
+      rotation: Math.sin(leap * 0.5) * 0.14 * intensity,
+      scaleX: 1.04,
+      scaleY: 0.96,
     };
   }
 
   if (kind === 'bishop') {
-    const pulse = t * (state === 'aiming' ? 8 : 4.2);
+    const pulse = t * (state === 'aiming' ? 9.5 : (reduced ? 2.6 : 5.2));
     return {
-      x: Math.sin(pulse * 0.4) * 0.014,
-      y: Math.sin(pulse) * 0.022,
-      rotation: state === 'aiming' ? Math.sin(pulse) * 0.045 : Math.sin(pulse * 0.45) * 0.025,
-      scaleX: 1 + (state === 'aiming' ? Math.sin(pulse) * 0.025 : 0),
-      scaleY: 1 - (state === 'aiming' ? Math.sin(pulse) * 0.02 : 0),
+      x: Math.sin(pulse * 0.4) * 0.022 * intensity,
+      y: Math.sin(pulse) * 0.04 * intensity,
+      rotation: state === 'aiming' ? Math.sin(pulse) * 0.075 : Math.sin(pulse * 0.45) * 0.045 * intensity,
+      scaleX: 1 + (state === 'aiming' ? Math.sin(pulse) * 0.045 : 0) * intensity,
+      scaleY: 1 - (state === 'aiming' ? Math.sin(pulse) * 0.035 : 0) * intensity,
     };
   }
 
   if (kind === 'rook') {
-    const weight = t * 3.6;
+    const weight = t * (reduced ? 2.2 : 4.4);
     return {
       x: 0,
-      y: Math.sin(weight) * 0.009,
+      y: Math.sin(weight) * 0.022 * intensity,
       rotation: 0,
-      scaleX: 1 + Math.sin(weight) * 0.012,
-      scaleY: 1 - Math.sin(weight) * 0.009,
+      scaleX: 1 + Math.sin(weight) * 0.024 * intensity,
+      scaleY: 1 - Math.sin(weight) * 0.018 * intensity,
     };
   }
 
   if (kind === 'power') {
-    const float = t * 4.6;
+    const float = t * (reduced ? 2.8 : 5.5);
     return {
-      x: Math.sin(float * 0.5) * 0.025,
-      y: -0.055 - Math.sin(float) * 0.035,
-      rotation: t * 0.85,
-      scaleX: 1 + Math.sin(float) * 0.035,
-      scaleY: 1 + Math.sin(float) * 0.035,
+      x: Math.sin(float * 0.5) * 0.04 * intensity,
+      y: -0.075 * intensity - Math.sin(float) * 0.055 * intensity,
+      rotation: t * (reduced ? 0.3 : 1.15),
+      scaleX: 1 + Math.sin(float) * 0.055 * intensity,
+      scaleY: 1 + Math.sin(float) * 0.055 * intensity,
     };
   }
 
-  const step = t * 5.2;
+  const step = t * (reduced ? 3.2 : 6.4);
   return {
-    x: Math.sin(step * 0.5) * 0.012,
-    y: -Math.abs(Math.sin(step)) * 0.018,
-    rotation: Math.sin(step * 0.5) * 0.018,
-    scaleX: 1,
-    scaleY: 1,
+    x: Math.sin(step * 0.5) * 0.022 * intensity,
+    y: -Math.abs(Math.sin(step)) * 0.045 * intensity,
+    rotation: Math.sin(step * 0.5) * 0.032 * intensity,
+    scaleX: 1 + Math.cos(step) * 0.012 * intensity,
+    scaleY: 1 - Math.cos(step) * 0.018 * intensity,
   };
 }
 

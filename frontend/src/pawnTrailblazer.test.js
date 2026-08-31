@@ -14,6 +14,7 @@ import {
   trailEnemyTypeForDistance,
   trailKnightJumpLane,
   trailPowerLane,
+  trailRunFrameIndex,
   trailSpeedForDistance,
   trailSpriteMotion,
 } from './pawnTrailblazer.js';
@@ -91,24 +92,29 @@ describe('Pawn Trailblazer core', () => {
     expect(trailBishopParryReady(1_000, 1_001)).toBe(false);
   });
 
-  it('da movimiento procedural visible a los sprites sin necesitar más frames', () => {
+  it('mantiene movimiento visible incluso con reduced motion, pero atenuado', () => {
     const runA = trailSpriteMotion('matthias', 100, 0, 'running');
     const runB = trailSpriteMotion('matthias', 260, 0, 'running');
     expect(runA).not.toEqual(runB);
     expect(Math.abs(runB.y - runA.y)).toBeGreaterThan(0.01);
+
+    const reducedA = trailSpriteMotion('matthias', 100, 0, 'reduced');
+    const reducedB = trailSpriteMotion('matthias', 360, 0, 'reduced');
+    expect(reducedA).not.toEqual(reducedB);
+    expect(Math.abs(reducedB.y - reducedA.y)).toBeGreaterThan(0.005);
+    expect(Math.abs(reducedB.y)).toBeLessThan(Math.abs(trailSpriteMotion('matthias', 360, 0, 'running').y));
 
     const jump = trailSpriteMotion('knight', 220, 2, 'running');
     expect(jump.y).toBeLessThan(-0.02);
 
     const power = trailSpriteMotion('power', 600, 1, 'running');
     expect(Math.abs(power.rotation)).toBeGreaterThan(0.1);
+  });
 
-    expect(trailSpriteMotion('matthias', 500, 0, 'reduced')).toEqual({
-      x: 0,
-      y: 0,
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-    });
+  it('calcula una cadencia de frames que escala con la velocidad', () => {
+    expect(trailRunFrameIndex(0, 5.2, false, 6)).toBe(0);
+    expect(trailRunFrameIndex(1_000, 5.2, false, 6)).toBe(2);
+    expect(trailRunFrameIndex(1_000, 9.2, false, 6)).not.toBe(trailRunFrameIndex(1_000, 5.2, false, 6));
+    expect(trailRunFrameIndex(1_000, 9.2, true, 6)).toBe(4);
   });
 });

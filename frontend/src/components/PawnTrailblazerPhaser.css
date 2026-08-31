@@ -20,24 +20,24 @@
 .pawn-trailblazer-phaser::before {
   z-index: 2;
   background:
-    radial-gradient(ellipse at 50% 17%, rgba(231, 198, 92, .13), transparent 31%),
-    linear-gradient(90deg, rgba(0, 0, 0, .5), transparent 18%, transparent 82%, rgba(0, 0, 0, .5)),
-    linear-gradient(180deg, rgba(255, 231, 155, .025), transparent 38%, rgba(0, 0, 0, .22) 100%);
+    radial-gradient(ellipse at 50% 17%, rgba(231, 198, 92, .17), transparent 30%),
+    linear-gradient(90deg, rgba(0, 0, 0, .56), transparent 17%, transparent 83%, rgba(0, 0, 0, .56)),
+    linear-gradient(180deg, rgba(255, 231, 155, .035), transparent 36%, rgba(0, 0, 0, .26) 100%);
   mix-blend-mode: screen;
-  opacity: .78;
-  animation: pawn-trailblazer-horizon-breathe 1.65s ease-in-out infinite alternate;
+  opacity: .8;
+  animation: pawn-trailblazer-horizon-breathe 1.2s ease-in-out infinite alternate;
 }
 
 .pawn-trailblazer-phaser::after {
   z-index: 3;
-  inset: -8% -10%;
+  inset: -9% -12%;
   background:
-    repeating-linear-gradient(101deg, transparent 0 37px, rgba(245, 225, 157, .04) 38px 39px, transparent 40px 82px),
-    repeating-linear-gradient(79deg, transparent 0 49px, rgba(255, 255, 255, .025) 50px 51px, transparent 52px 104px),
-    linear-gradient(90deg, rgba(216, 178, 66, .08), transparent 10%, transparent 90%, rgba(216, 178, 66, .08));
-  opacity: .6;
+    repeating-linear-gradient(101deg, transparent 0 34px, rgba(245, 225, 157, .055) 35px 37px, transparent 38px 78px),
+    repeating-linear-gradient(79deg, transparent 0 45px, rgba(255, 255, 255, .035) 46px 48px, transparent 49px 96px),
+    linear-gradient(90deg, rgba(216, 178, 66, .1), transparent 10%, transparent 90%, rgba(216, 178, 66, .1));
+  opacity: .7;
   transform-origin: 50% 18%;
-  animation: pawn-trailblazer-speed-tunnel .72s linear infinite;
+  animation: pawn-trailblazer-speed-tunnel .52s linear infinite;
 }
 
 .pawn-trailblazer-stage .pawn-trailblazer-phaser canvas {
@@ -48,9 +48,9 @@
   height: 100% !important;
   min-height: 0;
   outline: none;
-  filter: contrast(1.07) saturate(1.06) brightness(1.025);
-  transform-origin: 50% 68%;
-  animation: pawn-trailblazer-fov 1.55s ease-in-out infinite alternate;
+  filter: contrast(1.09) saturate(1.08) brightness(1.035);
+  transform-origin: 50% 70%;
+  animation: pawn-trailblazer-fov 1.15s ease-in-out infinite alternate;
 }
 
 .pawn-trailblazer-overlay {
@@ -95,7 +95,7 @@
   color: #f3e7c2;
   text-align: center;
   pointer-events: none;
-  animation: pawn-trailblazer-duel-pulse .36s ease-in-out infinite alternate;
+  animation: pawn-trailblazer-duel-pulse .32s ease-in-out infinite alternate;
 }
 
 .pawn-trailblazer-duel strong {
@@ -125,23 +125,23 @@
 
 @keyframes pawn-trailblazer-speed-tunnel {
   from {
-    transform: perspective(420px) rotateX(3deg) scale(1.01) translateY(-1.5%);
+    transform: perspective(420px) rotateX(3deg) scale(1.01) translateY(-2%);
     background-position: 0 0, 0 0, 0 0;
   }
   to {
-    transform: perspective(420px) rotateX(3deg) scale(1.055) translateY(3%);
-    background-position: 0 94px, 0 126px, 0 0;
+    transform: perspective(420px) rotateX(3deg) scale(1.075) translateY(4%);
+    background-position: 0 118px, 0 154px, 0 0;
   }
 }
 
 @keyframes pawn-trailblazer-horizon-breathe {
-  from { opacity: .6; }
-  to { opacity: .88; }
+  from { opacity: .64; }
+  to { opacity: .92; }
 }
 
 @keyframes pawn-trailblazer-fov {
-  from { transform: scale(1.006); }
-  to { transform: scale(1.018); }
+  from { transform: scale(1.004) translateY(0); }
+  to { transform: scale(1.028) translateY(.35%); }
 }
 
 @keyframes pawn-trailblazer-duel-pulse {
@@ -150,15 +150,15 @@
     box-shadow: 0 10px 28px rgba(0, 0, 0, .42), 0 0 18px rgba(201, 162, 39, .13);
   }
   to {
-    transform: translateX(-50%) scale(1.018);
-    box-shadow: 0 12px 34px rgba(0, 0, 0, .5), 0 0 34px rgba(235, 201, 91, .28);
+    transform: translateX(-50%) scale(1.024);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .5), 0 0 38px rgba(235, 201, 91, .31);
   }
 }
 
 @media (max-width: 520px) {
   .pawn-trailblazer-phaser::after {
-    inset: -5% -22%;
-    opacity: .5;
+    inset: -6% -24%;
+    opacity: .58;
   }
 
   .pawn-trailblazer-duel {
@@ -178,18 +178,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pawn-trailblazer-phaser::before,
-  .pawn-trailblazer-phaser::after,
-  .pawn-trailblazer-stage .pawn-trailblazer-phaser canvas,
-  .pawn-trailblazer-duel {
-    animation: none;
+  .pawn-trailblazer-phaser::before {
+    animation-duration: 3.8s;
   }
 
   .pawn-trailblazer-phaser::after {
-    display: none;
+    display: block;
+    opacity: .2;
+    animation-duration: 2.8s;
   }
 
-  .pawn-trailblazer-stage .pawn-trailblazer-phaser canvas {
+  .pawn-trailblazer-stage .pawn-trailblazer-phaser canvas,
+  .pawn-trailblazer-duel {
+    animation: none;
     transform: none;
   }
 
