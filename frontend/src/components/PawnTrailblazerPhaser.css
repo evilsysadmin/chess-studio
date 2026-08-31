@@ -49,8 +49,8 @@
   min-height: 0;
   outline: none;
   filter: contrast(1.09) saturate(1.08) brightness(1.035);
-  transform-origin: 50% 70%;
-  animation: pawn-trailblazer-fov 1.15s ease-in-out infinite alternate;
+  transform: none;
+  animation: none;
 }
 
 .pawn-trailblazer-overlay {
@@ -139,11 +139,6 @@
   to { opacity: .92; }
 }
 
-@keyframes pawn-trailblazer-fov {
-  from { transform: scale(1.004) translateY(0); }
-  to { transform: scale(1.028) translateY(.35%); }
-}
-
 @keyframes pawn-trailblazer-duel-pulse {
   from {
     transform: translateX(-50%) scale(1);
@@ -188,13 +183,34 @@
     animation-duration: 2.8s;
   }
 
-  .pawn-trailblazer-stage .pawn-trailblazer-phaser canvas,
   .pawn-trailblazer-duel {
     animation: none;
-    transform: none;
   }
 
   .pawn-trailblazer-duel-meter span {
     transition: none;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .pawn-trailblazer-phaser::before,
+  .pawn-trailblazer-phaser::after {
+    animation: none;
+  }
+
+  .pawn-trailblazer-phaser::before {
+    mix-blend-mode: normal;
+    opacity: .34;
+  }
+
+  .pawn-trailblazer-phaser::after {
+    opacity: .16;
+    transform: none;
+  }
+
+  .pawn-trailblazer-stage .pawn-trailblazer-phaser canvas {
+    filter: none;
+    transform: none !important;
+    animation: none !important;
   }
 }
