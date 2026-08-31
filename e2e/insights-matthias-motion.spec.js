@@ -112,7 +112,7 @@ test('Así juegas · Auditoría táctica mueve ojos y brazo con el rig de dossie
   await expect(rig).toHaveAttribute('data-rig-activity', 'Auditoría táctica');
   await expect(rig).toHaveAttribute('data-gesture', 'audit-dossier');
   await expect.poll(
-    () => Number(rig.getAttribute('data-gesture-count')),
+    async () => Number(await rig.getAttribute('data-gesture-count')) || 0,
     { timeout: 2_000, message: 'Auditoría táctica debe iniciar el gesto del puppet' },
   ).toBeGreaterThan(0);
   await expect(rig).toHaveAttribute('data-gesture-state', 'acting');
