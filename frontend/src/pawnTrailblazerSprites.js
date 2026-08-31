@@ -1,27 +1,31 @@
-import matthiasRun from './assets/pawnTrailblazer/matthias_run.webp';
-import matthiasCapture from './assets/pawnTrailblazer/matthias_capture.webp';
-import enemyPawn from './pieces-regimiento/bP.png';
-import enemyDuelist from './pieces-regimiento/bP.png';
-import enemyKnight from './pieces-regimiento/bN.png';
-import enemyBishop from './pieces-regimiento/bB.png';
-import enemyRook from './pieces-regimiento/bR.png';
-import powerRook from './pieces-regimiento/wR.png';
-import powerBishop from './pieces-regimiento/wB.png';
-import powerQueen from './pieces-regimiento/wQ.png';
+import trailArtAtlas from './assets/pawnTrailblazer/pawn_chess_atlas.webp';
 
-export const TRAIL_SPRITES = Object.freeze({
-  matthiasRun,
-  matthiasCapture,
-  enemyPawn,
-  enemyDuelist,
-  enemyKnight,
-  enemyBishop,
-  enemyRook,
-  powerRook,
-  powerBishop,
-  powerQueen,
+export const TRAIL_ATLAS_IMAGE = trailArtAtlas;
+export const TRAIL_ATLAS_GRID = 4;
+
+export const TRAIL_ATLAS_CELLS = Object.freeze({
+  matthiasRun: { col: 0, row: 0 },
+  matthiasCapture: { col: 1, row: 0 },
+  matthiasHit: { col: 2, row: 0 },
+  matthiasVictory: { col: 3, row: 0 },
+  enemyPawn: { col: 0, row: 1 },
+  enemyDuelist: { col: 1, row: 1 },
+  enemyKnight: { col: 2, row: 1 },
+  enemyBishop: { col: 3, row: 1 },
+  enemyRook: { col: 0, row: 2 },
+  powerRook: { col: 1, row: 2 },
+  powerBishop: { col: 2, row: 2 },
+  powerQueen: { col: 3, row: 2 },
+  obstacleWall: { col: 0, row: 3 },
+  obstacleSpikes: { col: 1, row: 3 },
+  obstacleRock: { col: 2, row: 3 },
+  obstacleBarrel: { col: 3, row: 3 },
 });
 
+export const TRAIL_SPRITES = Object.freeze(
+  Object.fromEntries(Object.keys(TRAIL_ATLAS_CELLS).map((name) => [name, name])),
+);
+
 export function trailSprite(name) {
-  return TRAIL_SPRITES[name] || null;
+  return TRAIL_ATLAS_CELLS[name] ? name : null;
 }
