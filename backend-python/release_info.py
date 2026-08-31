@@ -30,15 +30,23 @@ def _safe_identity_component(value: str, *, limit: int = 80) -> str:
     return normalized[:limit]
 
 
-def deployment_identity() -> str:
-    """Return a stable, non-secret identity for the current deployed build.
-
-    Prefer a provider/CI commit SHA when one is available.  This makes repeated
-    cold starts of the same Render deploy idempotent.  Local runs and providers
-    without commit metadata fall back to the packaged application release.
-    """
+def build_commit() -> str | None:
+    """Return the provider git commit for the running build, when available."""
     for key in _COMMIT_ENV_KEYS:
         component = _safe_identity_component(os.getenv(key, ""))
         if component:
-            return f"git:{component}"
+            return component
+    return None
+
+
+def deployment_identity() -> str:
+    """Return a stable, non-secret identity for the current deployed build.
+
+    Prefer a provider/CI commit SHA when one is available. This makes repeated
+    cold starts of the same Render deploy idempotent. Local runs and providers
+    without commit metadata fall back to the packaged application release.
+    """
+    commit = build_commit()
+    if commit:
+        return f"git:{commit}"
     return f"release:{APP_RELEASE}"

@@ -1,4 +1,4 @@
-name: Staging · Cloudflare Pages
+name: Staging · deploy
 
 on:
   workflow_run:
@@ -14,32 +14,34 @@ permissions:
   contents: read
 
 concurrency:
-  group: chess-studio-cloudflare-pages-staging
+  group: chess-studio-staging-deploy
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Frontend staging · Pages
+    name: Backend + frontend staging
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     environment:
       name: staging
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
 
     steps:
-      - name: Validate required Cloudflare credentials
+      - name: Validate staging credentials and commit
         shell: bash
         run: |
           set -euo pipefail
+          [[ -n "${RENDER_API_KEY:-}" ]] || { echo '::error::Falta RENDER_API_KEY'; exit 1; }
           [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
           [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA no es un commit completo: $DEPLOY_SHA"; exit 1; }
@@ -49,7 +51,159 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      - name: Bootstrap contract smoke
+      - name: Refuse stale staging commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
+            echo "::error::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. No despliego staging obsoleto."
+            exit 1
+          fi
+
+      - name: Install pinned Render CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version='2.25.0'
+          archive="$RUNNER_TEMP/render-cli.zip"
+          curl --fail --silent --show-error --location \
+            "https://github.com/render-oss/cli/releases/download/v${version}/cli_${version}_linux_amd64.zip" \
+            --output "$archive"
+          echo '3b3f1f839ef36b81f12d84ac7288f1c96f9f7519b39c53fe6f866612f704e7cd  '"$archive" | sha256sum --check --status
+          unzip -q "$archive" -d "$RUNNER_TEMP/render-cli"
+          render_bin="$(find "$RUNNER_TEMP/render-cli" -type f -name "cli_v${version}" -print -quit)"
+          [[ -n "$render_bin" ]] || { echo "::error::El ZIP verificado no contiene cli_v${version}"; exit 1; }
+          install "$render_bin" "$RUNNER_TEMP/render"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Reconcile Render staging configuration
+        id: render_bootstrap
+        run: python3 scripts/render_staging_bootstrap.py
+
+      - name: Deploy exact backend commit to Render staging
+        id: render_deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_id='${{ steps.render_bootstrap.outputs.service_id }}'
+          [[ -n "$service_id" ]] || { echo '::error::Bootstrap no devolvió service_id'; exit 1; }
+          response="$RUNNER_TEMP/render-staging-deploy.json"
+          status="$(curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $RENDER_API_KEY" \
+            --header 'Accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --data "{\"clearCache\":\"do_not_clear\",\"commitId\":\"$DEPLOY_SHA\"}" \
+            --output "$response" \
+            --write-out '%{http_code}' \
+            "https://api.render.com/v1/services/$service_id/deploys")"
+          [[ "$status" == 201 || "$status" == 202 ]] || { echo "::error::Render deploy devolvió HTTP $status"; exit 1; }
+          deploy_id="$(python3 - "$response" <<'PY'
+          import json, pathlib, sys
+          body = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          deploy = body.get('deploy') if isinstance(body, dict) and isinstance(body.get('deploy'), dict) else body
+          print((deploy or {}).get('id', ''))
+          PY
+          )"
+          [[ -n "$deploy_id" ]] || { echo '::error::Render no devolvió deploy id'; cat "$response"; exit 1; }
+          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for exact Render staging deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_id='${{ steps.render_bootstrap.outputs.service_id }}'
+          deploy_id='${{ steps.render_deploy.outputs.deploy_id }}'
+          live=false
+          for attempt in {1..180}; do
+            response="$RUNNER_TEMP/render-staging-status-$attempt.json"
+            http="$(curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer $RENDER_API_KEY" \
+              --header 'Accept: application/json' \
+              --output "$response" \
+              --write-out '%{http_code}' \
+              "https://api.render.com/v1/services/$service_id/deploys/$deploy_id")"
+            [[ "$http" == 200 ]] || { echo "::error::Consultar deploy Render devolvió HTTP $http"; exit 1; }
+            readarray -t deploy_meta < <(python3 - "$response" <<'PY'
+          import json, pathlib, sys
+          body = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          deploy = body.get('deploy') if isinstance(body, dict) and isinstance(body.get('deploy'), dict) else body
+          deploy = deploy or {}
+          print(deploy.get('status', 'unknown'))
+          print(deploy.get('commit', {}).get('id', '') if isinstance(deploy.get('commit'), dict) else deploy.get('commitId', ''))
+          PY
+          )
+            deploy_status="${deploy_meta[0]:-unknown}"
+            deployed_commit="${deploy_meta[1]:-}"
+            echo "Render staging: $deploy_status · ${deployed_commit:-commit-pendiente} (intento $attempt/180)"
+            case "$deploy_status" in
+              live)
+                if [[ -n "$deployed_commit" && "$deployed_commit" != "$DEPLOY_SHA" ]]; then
+                  echo "::error::Render marcó live el commit $deployed_commit, esperaba $DEPLOY_SHA"
+                  exit 1
+                fi
+                live=true
+                break
+                ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "::error::Deploy staging terminó en $deploy_status"
+                exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          [[ "$live" == true ]] || { echo '::error::Render staging no llegó a live en 15 minutos'; exit 1; }
+
+      - name: Verify backend staging readiness and build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          gate_ok=false
+          for attempt in {1..60}; do
+            ready_body="$RUNNER_TEMP/staging-api-ready-$attempt.json"
+            ready_status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 12 \
+              --output "$ready_body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'Cache-Control: no-cache' \
+              -H 'User-Agent: chess-studio-staging-deploy/2' \
+              "$STAGING_API_URL/ready" || true)"
+
+            release_body="$RUNNER_TEMP/staging-api-release-$attempt.json"
+            release_status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 12 \
+              --output "$release_body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'Cache-Control: no-cache' \
+              -H 'User-Agent: chess-studio-staging-deploy/2' \
+              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+
+            if [[ "$ready_status" == 200 && "$release_status" == 200 ]] && \
+              python3 - "$ready_body" "$release_body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+          expected = sys.argv[3].lower()
+          readiness_ok = ready.get('ok') is True and ready.get('storage') == 'mongo'
+          build_ok = str(release.get('build') or '').lower() == expected
+          raise SystemExit(0 if readiness_ok and build_ok else 1)
+          PY
+            then
+              gate_ok=true
+              break
+            fi
+
+            echo "Backend staging aún no acredita Mongo ready + SHA $DEPLOY_SHA (ready=${ready_status:-curl-error}, release=${release_status:-curl-error}, intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$gate_ok" == true ]] || { echo '::error::Backend staging no acreditó readiness y SHA esperado tras 5 minutos'; exit 1; }
+
+      - name: Cloudflare bootstrap contract smoke
         run: python3 -S scripts/cloudflare_staging_pages_smoke.py
 
       - name: Setup Node.js
@@ -64,32 +218,8 @@ jobs:
         run: npm ci
 
       - name: Reconcile Pages project, domains and staging DNS
-        id: bootstrap
+        id: pages_bootstrap
         run: python3 scripts/cloudflare_staging_pages.py
-
-      - name: Wait for staging API custom domain
-        shell: bash
-        run: |
-          set -euo pipefail
-          ready=false
-          for attempt in {1..60}; do
-            body="$RUNNER_TEMP/staging-api-ready-$attempt.json"
-            status="$(curl --silent --show-error \
-              --connect-timeout 5 \
-              --max-time 12 \
-              --output "$body" \
-              --write-out '%{http_code}' \
-              -H 'Accept: application/json' \
-              -H 'User-Agent: chess-studio-staging-deploy/1' \
-              "$STAGING_API_URL/ready" || true)"
-            if [[ "$status" == 200 ]]; then
-              ready=true
-              break
-            fi
-            echo "API staging HTTP ${status:-curl-error} (intento $attempt/60)"
-            sleep 5
-          done
-          [[ "$ready" == true ]] || { echo '::error::La API staging no quedó lista tras 5 minutos'; exit 1; }
 
       - name: Build frontend for staging
         working-directory: frontend
@@ -103,7 +233,7 @@ jobs:
           VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
         run: npm run build
 
-      - name: Deploy tested build to Cloudflare Pages
+      - name: Deploy tested frontend to Cloudflare Pages
         working-directory: frontend
         shell: bash
         run: |
@@ -114,7 +244,7 @@ jobs:
             --commit-hash "$DEPLOY_SHA" \
             --commit-dirty=false
 
-      - name: Verify deployed release
+      - name: Verify frontend staging build identity
         shell: bash
         run: |
           set -euo pipefail
@@ -130,9 +260,7 @@ jobs:
               -H 'Cache-Control: no-cache' \
               "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
             if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json
-          import pathlib
-          import sys
+          import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
           actual = str(payload.get('build') or '').lower()
           expected = sys.argv[2].lower()
@@ -154,12 +282,15 @@ jobs:
         shell: bash
         run: |
           {
-            echo '### Cloudflare Pages staging desplegado'
+            echo '### Staging desplegado y alineado'
             echo
             echo '- Frontend: `https://staging.chess-studio.shadowops.dpdns.org`'
             echo '- API: `https://api-staging.chess-studio.shadowops.dpdns.org/api`'
+            echo '- Render: `chess-study-backend-staging`'
             echo '- Pages project: `chess-studio-staging`'
-            echo "- Commit: \`$DEPLOY_SHA\`"
-            echo "- Web Analytics: \`${{ steps.bootstrap.outputs.analytics || 'revisar permiso Account Settings' }}\`"
-            echo '- Release smoke: OK'
+            echo "- Backend SHA: \`$DEPLOY_SHA\`"
+            echo "- Frontend SHA: \`$DEPLOY_SHA\`"
+            echo "- Web Analytics: \`${{ steps.pages_bootstrap.outputs.analytics || 'revisar permiso Account Settings' }}\`"
+            echo '- Mongo staging: `ready`'
+            echo '- Release gate: `OK`'
           } >> "$GITHUB_STEP_SUMMARY"

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 import db
 import feedback_store as fstore
 import users_store as ustore
+import release_info
 from feature_flags import public_feature_flags
 from observability_history import record_presence_snapshot
 from api_models import ClientTelemetryRequest
@@ -36,6 +37,18 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
     async def health():
         # Liveness puro: storage caído no debe provocar un restart loop.
         return {"ok": True}
+
+    @router.get("/api/release")
+    @limiter.exempt
+    async def release():
+        # Identidad pública no sensible del binario/proceso en ejecución. Se
+        # mantiene separada de readiness para no convertir health checks en un
+        # contrato de despliegue ni romper consumidores que esperan su shape.
+        payload = {"release": release_info.backend_release()}
+        build = release_info.build_commit()
+        if build:
+            payload["build"] = build
+        return payload
 
     @router.get("/api/ready")
     @limiter.exempt

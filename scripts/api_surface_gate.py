@@ -21,10 +21,11 @@ PUBLIC = {
     ("POST", "/api/auth/reset-password"),
     ("GET", "/api/health"),
     ("GET", "/api/ready"),
+    ("GET", "/api/release"),
 }
 AUTH_DEPS = {"get_current_user", "get_user_or_m2m", "require_admin", "auth_dependency", "compute_auth_dependency", "admin_dependency"}
 ADMIN_DEPS = {"require_admin", "admin_dependency"}
-RATE_LIMITED_PUBLIC = PUBLIC - {("GET", "/api/health"), ("GET", "/api/ready")}
+RATE_LIMITED_PUBLIC = PUBLIC - {("GET", "/api/health"), ("GET", "/api/ready"), ("GET", "/api/release")}
 RATE_LIMITED_PRIVATE = {
     ("PUT", "/api/auth/email"),
     ("POST", "/api/auth/activity"),
