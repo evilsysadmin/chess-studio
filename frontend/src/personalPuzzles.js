@@ -4,6 +4,7 @@ import { setProfileStorageItem } from './profileKeys.js';
 import { detectNoteworthyMove } from './cpuCommentary.js';
 import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
 import { provesCurrentPersonalPuzzleQuality } from './personalPuzzleQuality.js';
+import { spacedReviewResultPatch } from './spacedReview.js';
 
 const KEY = 'chess-study-personal-puzzles';
 const MAX_PUZZLES = 40;
@@ -324,13 +325,19 @@ export function saveGeneratedPersonalPuzzles(puzzles = []) {
   return { added, total: next.length, saved };
 }
 
-export function recordPersonalPuzzleResult(id, { solved = false, clean = false } = {}) {
+export function recordPersonalPuzzleResult(id, { solved = false, clean = false, review = false } = {}) {
   if (!id) return null;
   const all = loadPersonalPuzzles();
   const index = all.findIndex((p) => p.id === id);
   if (index < 0) return null;
   const now = new Date().toISOString();
   const previous = all[index];
+  const reviewPatch = spacedReviewResultPatch(previous, {
+    solved,
+    clean,
+    review,
+    now: Date.parse(now),
+  });
   const updated = {
     ...previous,
     attempts: Number(previous.attempts || 0) + 1,
@@ -339,6 +346,7 @@ export function recordPersonalPuzzleResult(id, { solved = false, clean = false }
     lastAttemptAt: now,
     lastSolvedAt: solved ? now : (previous.lastSolvedAt || null),
     masteredAt: solved ? (previous.masteredAt || now) : (previous.masteredAt || null),
+    ...reviewPatch,
   };
   all[index] = updated;
   setProfileStorageItem(KEY, JSON.stringify(all));
