@@ -79,21 +79,23 @@
 }
 
 /* Scene-specific masks keep the moving patch around the physical object that
- * actually exists in each old render. */
+ * actually exists in each old render. The surviving morning coffee art also
+ * carries the mug on screen-right, so its drinking hand and steam must follow
+ * the same side instead of animating the empty hand. */
 .matthias-art-rig[data-rig-family='coffee'] .matthias-art-rig__part--prop {
-  transform-origin: 31% 68%;
-  -webkit-mask-image: radial-gradient(ellipse 22% 28% at 31% 68%, #000 0 50%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.28) 85%, transparent 100%);
-  mask-image: radial-gradient(ellipse 22% 28% at 31% 68%, #000 0 50%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.28) 85%, transparent 100%);
+  transform-origin: 69% 67%;
+  -webkit-mask-image: radial-gradient(ellipse 24% 29% at 69% 67%, #000 0 50%, rgba(0,0,0,.9) 68%, rgba(0,0,0,.3) 85%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 29% at 69% 67%, #000 0 50%, rgba(0,0,0,.9) 68%, rgba(0,0,0,.3) 85%, transparent 100%);
 }
 
-.matthias-art-rig[data-rig-family='coffee'] .matthias-art-rig__part--left-arm {
-  transform-origin: 35% 57%;
-  -webkit-mask-image: radial-gradient(ellipse 23% 31% at 35% 61%, #000 0 48%, rgba(0,0,0,.88) 66%, rgba(0,0,0,.3) 84%, transparent 100%);
-  mask-image: radial-gradient(ellipse 23% 31% at 35% 61%, #000 0 48%, rgba(0,0,0,.88) 66%, rgba(0,0,0,.3) 84%, transparent 100%);
+.matthias-art-rig[data-rig-family='coffee'] .matthias-art-rig__part--right-arm {
+  transform-origin: 67% 58%;
+  -webkit-mask-image: radial-gradient(ellipse 24% 31% at 68% 62%, #000 0 49%, rgba(0,0,0,.9) 66%, rgba(0,0,0,.3) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 24% 31% at 68% 62%, #000 0 49%, rgba(0,0,0,.9) 66%, rgba(0,0,0,.3) 84%, transparent 100%);
 }
 
-/* night-coffee.webp/beer-break place the mug on screen-right, opposite the
- * morning render. Override the generic coffee prop mask for those exact poses. */
+/* Keep the exact night pose explicit: future coffee art can change without
+ * silently moving the mug or hand back to the wrong side. */
 .matthias-art-rig[data-rig-scene*='night-coffee'] .matthias-art-rig__part--prop,
 .matthias-art-rig[data-rig-scene*='beer-break'] .matthias-art-rig__part--prop,
 .matthias-art-rig[data-rig-scene='night'] .matthias-art-rig__part--prop {
@@ -150,16 +152,23 @@
   display: none;
 }
 
-/* read-book used to scale the entire raster eye overlay to fake a blink. On
- * strategy-book.webp that makes the copied eyes visibly detach from the face.
- * Neutralise that transform and use a horizontal scan only: readable motion,
- * zero vertical drop or squash. The rig's acting/rest state owns the cadence,
- * so reduced-motion remains respected. */
+/* strategy-book.webp cannot tolerate a transform-based eye squash: the copied
+ * raster visibly detaches from the face. Keep the eye layer geometrically
+ * stable, scan with the independent translate property, and paint a very short
+ * two-lid stroke above it for the blink. This gives life without resurrecting
+ * the old floating-eyes regression. */
 @keyframes matthias-read-book-eye-scan {
   0%, 100% { translate: 0 0; }
   28% { translate: -2.05px 0; }
   58% { translate: -.2px 0; }
   78% { translate: 1.8px 0; }
+}
+
+@keyframes matthias-read-book-blink {
+  0%, 39%, 45%, 100% { opacity: 0; scale: 1 .15; }
+  41% { opacity: .72; scale: 1 .72; }
+  42.4% { opacity: .92; scale: 1 1; }
+  43.7% { opacity: .66; scale: 1 .62; }
 }
 
 .matthias-art-rig[data-gesture='read-book'] .matthias-art-rig__part--eyes {
@@ -169,6 +178,33 @@
 
 .matthias-art-rig[data-gesture='read-book'][data-gesture-state='acting'] .matthias-art-rig__part--eyes {
   animation: matthias-read-book-eye-scan 4.3s cubic-bezier(.4,0,.2,1) 1 !important;
+}
+
+.matthias-art-rig[data-gesture='read-book']::after {
+  content: '';
+  position: absolute;
+  z-index: 8;
+  left: 38.5%;
+  top: 39.1%;
+  width: 23%;
+  height: 2.2%;
+  min-height: 1px;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  background: linear-gradient(
+    90deg,
+    transparent 0 5%,
+    rgba(24, 21, 17, .9) 8% 42%,
+    transparent 45% 55%,
+    rgba(24, 21, 17, .9) 58% 92%,
+    transparent 95% 100%
+  );
+}
+
+.matthias-art-rig[data-gesture='read-book'][data-gesture-state='acting']::after {
+  animation: matthias-read-book-blink 4.3s linear 1;
 }
 
 /* The canonical full render itself must never bob around. All physical motion
