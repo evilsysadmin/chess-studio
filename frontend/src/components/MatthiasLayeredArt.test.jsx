@@ -20,13 +20,11 @@ describe('MatthiasLayeredArt', () => {
 
   it('mantiene café y cena en sus miembros correctos', () => {
     expect(matthiasGestureName({ scene: 'time-lunch-bocata' })).toBe('bite');
-    expect(matthiasGestureParts({ scene: 'time-lunch-bocata' })).toEqual(['left-arm', 'right-arm', 'prop']);
-    expect(matthiasGestureParts({ scene: 'time-lunch-bocata' })).not.toEqual(
-      expect.arrayContaining(['head', 'eyes']),
-    );
+    expect(matthiasGestureParts({ scene: 'time-lunch-bocata' })).toEqual(['head', 'left-arm', 'right-arm', 'prop']);
+    expect(matthiasGestureParts({ scene: 'time-lunch-bocata' })).not.toContain('eyes');
 
     expect(matthiasGestureName({ scene: 'time-night-coffee' })).toBe('sip-night');
-    expect(matthiasGestureParts({ scene: 'time-night-coffee' })).toEqual(['right-arm', 'prop']);
+    expect(matthiasGestureParts({ scene: 'time-night-coffee' })).toEqual(['head', 'right-arm', 'prop']);
     expect(matthiasGestureName({ scene: 'time-beer-break' })).toBe('sip-night');
     expect(matthiasGestureParts({ scene: 'time-beer-break' })).not.toContain('left-arm');
 
@@ -40,73 +38,73 @@ describe('MatthiasLayeredArt', () => {
   it('elige un gesto distinto según la acción real aunque comparta el mismo render', () => {
     expect(matthiasGestureName({ scene: 'time-dossier', activity: 'Revisión de expedientes' })).toBe('read-dossier');
     expect(matthiasGestureParts({ scene: 'time-dossier', activity: 'Revisión de expedientes' })).toEqual(
-      ['eyes', 'right-arm', 'prop'],
+      ['head', 'eyes', 'right-arm', 'prop'],
     );
 
     expect(matthiasGestureName({ scene: 'time-dossier', activity: 'Auditoría táctica' })).toBe('audit-dossier');
     expect(matthiasGestureParts({ scene: 'time-dossier', activity: 'Auditoría táctica' })).toEqual(
-      ['eyes', 'right-arm', 'prop'],
+      ['head', 'eyes', 'right-arm', 'prop'],
     );
 
     expect(matthiasGestureName({ scene: 'time-afternoon-ops', activity: 'En plena operación' })).toBe('write-notes');
     expect(matthiasGestureParts({ scene: 'time-afternoon-ops', activity: 'En plena operación' })).toEqual(
-      ['eyes', 'right-arm'],
+      ['head', 'eyes', 'right-arm'],
     );
 
     expect(matthiasGestureName({ scene: 'time-chess-inception', activity: 'Partida privada' })).toBe('board-move');
     expect(matthiasGestureParts({ scene: 'time-chess-inception', activity: 'Partida privada' })).toEqual(
-      ['eyes', 'right-arm'],
+      ['head', 'eyes', 'right-arm'],
     );
 
     expect(matthiasGestureName({ scene: 'strategy-book', activity: 'Leyendo estrategia' })).toBe('read-book');
     expect(matthiasGestureParts({ scene: 'strategy-book', activity: 'Leyendo estrategia' })).toEqual(['eyes']);
   });
 
-  it('deja la cabeza quieta en lectura, auditoría, notas y partida', () => {
+  it('hace participar la cabeza en acciones expresivas sin tocar el libro sensible', () => {
     for (const input of [
       { scene: 'time-dossier', activity: 'Revisión de expedientes' },
       { scene: 'time-dossier', activity: 'Auditoría táctica' },
       { scene: 'time-afternoon-ops', activity: 'En plena operación' },
       { scene: 'time-chess-inception', activity: 'Partida privada' },
-      { scene: 'strategy-book', activity: 'Leyendo estrategia' },
     ]) {
-      expect(matthiasGestureParts(input)).not.toContain('head');
+      expect(matthiasGestureParts(input)).toContain('head');
     }
+    expect(matthiasGestureParts({ scene: 'strategy-book', activity: 'Leyendo estrategia' })).not.toContain('head');
   });
 
   it('mantiene brazo y libro quietos al leer estrategia pero hace visible la lectura ocular', () => {
     const parts = matthiasGestureParts({ scene: 'strategy-book', activity: 'Leyendo estrategia' });
     expect(parts).toEqual(['eyes']);
     expect(parts).not.toEqual(expect.arrayContaining(['left-arm', 'right-arm', 'prop', 'head']));
-    expect(matthiasGestureTiming({ gesture: 'read-book', part: 'eyes' }).duration).toBeGreaterThanOrEqual(4200);
+    expect(matthiasGestureTiming({ gesture: 'read-book', part: 'eyes' }).duration).toBeGreaterThanOrEqual(3900);
   });
 
-  it('usa idle como microgesto de ojos, no como balanceo del cráneo', () => {
+  it('usa idle como gesto visible de cabeza y ojos', () => {
     expect(matthiasGestureName({ scene: 'base', activity: 'Vigilando el desastre' })).toBe('idle');
-    expect(matthiasGestureParts({ scene: 'base', activity: 'Vigilando el desastre' })).toEqual(['eyes']);
+    expect(matthiasGestureParts({ scene: 'base', activity: 'Vigilando el desastre' })).toEqual(['head', 'eyes']);
   });
 
-  it('hace pronto el primer gesto y repite antes de que parezca una estatua', () => {
+  it('hace pronto el primer gesto y repite antes de volver a parecer una estatua', () => {
     for (let i = 0; i < 20; i += 1) {
-      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(400);
-      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(750);
-      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(8_000);
-      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(13_000);
+      expect(matthiasGestureDelay({ first: true })).toBeGreaterThanOrEqual(280);
+      expect(matthiasGestureDelay({ first: true })).toBeLessThanOrEqual(600);
+      expect(matthiasGestureDelay({ first: false })).toBeGreaterThanOrEqual(4_500);
+      expect(matthiasGestureDelay({ first: false })).toBeLessThanOrEqual(7_500);
     }
   });
 
   it('da tiempo suficiente para leer escritura, expediente y pensamiento de tablero', () => {
-    expect(matthiasGestureTiming({ gesture: 'write-notes', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3500);
-    expect(matthiasGestureTiming({ gesture: 'read-dossier', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3800);
+    expect(matthiasGestureTiming({ gesture: 'write-notes', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3200);
+    expect(matthiasGestureTiming({ gesture: 'read-dossier', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3500);
     expect(matthiasGestureTiming({ gesture: 'audit-dossier', part: 'prop' }).delay).toBeGreaterThan(0);
-    expect(matthiasGestureTiming({ gesture: 'board-move', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3800);
+    expect(matthiasGestureTiming({ gesture: 'board-move', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3400);
   });
 
   it('da recorrido claro al café y al bocata sin tocar partes incorrectas', () => {
-    expect(matthiasGestureTiming({ gesture: 'sip', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2500);
+    expect(matthiasGestureTiming({ gesture: 'sip', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2400);
     expect(matthiasGestureTiming({ gesture: 'sip', part: 'prop' }).delay).toBeGreaterThan(0);
-    expect(matthiasGestureTiming({ gesture: 'bite', part: 'prop' }).duration).toBeGreaterThanOrEqual(2900);
-    expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2800);
+    expect(matthiasGestureTiming({ gesture: 'bite', part: 'prop' }).duration).toBeGreaterThanOrEqual(2700);
+    expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2600);
     expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'prop' }).delay).toBeGreaterThan(0);
   });
 
@@ -115,7 +113,13 @@ describe('MatthiasLayeredArt', () => {
     expect(matthiasGestureParts({ scene: 'late-sleep' })).toEqual(
       expect.arrayContaining(['head', 'eyes']),
     );
-    expect(matthiasGestureTiming({ gesture: 'doze', part: 'head' }).duration).toBeGreaterThanOrEqual(3900);
+    expect(matthiasGestureTiming({ gesture: 'doze', part: 'head' }).duration).toBeGreaterThanOrEqual(3500);
+  });
+
+  it('el habla mueve cabeza, ojos y ambos brazos', () => {
+    expect(matthiasGestureName({ speaking: true, scene: 'time-dossier', activity: 'Auditoría táctica' })).toBe('speak');
+    expect(matthiasGestureParts({ speaking: true })).toEqual(['head', 'eyes', 'left-arm', 'right-arm']);
+    expect(matthiasGestureTiming({ gesture: 'speak', part: 'right-arm', speaking: true }).duration).toBe(1900);
   });
 
   it('renderiza el webp canónico como base y expone la actividad que eligió el gesto', () => {
@@ -139,14 +143,10 @@ describe('MatthiasLayeredArt', () => {
     expect(html).toContain('data-matthias-art-part="left-arm"');
     expect(html).toContain('data-matthias-art-part="right-arm"');
     expect(html).toContain('data-matthias-art-part="prop"');
-    expect(html).toContain('data-gesture-profile="deliberate"');
+    expect(html).toContain('data-gesture-profile="expressive-v2"');
     expect(html).toContain('data-gesture-count="0"');
     expect(html).not.toContain('<svg');
     expect(html).not.toContain('moustache');
-  });
-
-  it('el habla sigue teniendo prioridad sobre la actividad', () => {
-    expect(matthiasGestureName({ speaking: true, scene: 'time-dossier', activity: 'Auditoría táctica' })).toBe('speak');
   });
 
   it('marca reduced-motion desde el primer render', () => {

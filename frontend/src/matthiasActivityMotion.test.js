@@ -37,11 +37,15 @@ describe('Matthias · contrato completo de actividad', () => {
     expect(matthiasGestureParts({ scene: visual.key, activity: visual.label }).length).toBeGreaterThan(0);
   });
 
-  it('mantiene quieta la cabeza en lectura, expedientes, notas y partidas', () => {
+  it('v2 mantiene la lectura de libro contenida y hace participar la cabeza en trabajo táctico y partidas', () => {
     for (const [hour, , gesture] of HOURS) {
-      if (!['read-book', 'read-dossier', 'audit-dossier', 'write-notes', 'board-move'].includes(gesture)) continue;
       const visual = matthiasTimeVisual(hour);
-      expect(matthiasGestureParts({ scene: visual.key, activity: visual.label })).not.toContain('head');
+      const parts = matthiasGestureParts({ scene: visual.key, activity: visual.label });
+      if (gesture === 'read-book') {
+        expect(parts).not.toContain('head');
+      } else if (['read-dossier', 'audit-dossier', 'write-notes', 'board-move'].includes(gesture)) {
+        expect(parts).toContain('head');
+      }
     }
   });
 
