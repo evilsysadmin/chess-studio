@@ -1,14 +1,9 @@
 name: Staging · bootstrap Render
 
+# Maintenance escape hatch only. Normal staging mutations must flow through
+# Chess Studio CI/CD -> Staging · deploy so every deployed SHA is accredited.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/staging-bootstrap.yml
-      - scripts/render_staging_bootstrap.py
-      - scripts/render_staging_bootstrap_smoke.py
 
 permissions:
   contents: read
@@ -145,8 +140,9 @@ jobs:
         shell: bash
         run: |
           {
-            echo '### Render staging preparado'
+            echo '### Render staging preparado manualmente'
             echo
+            echo '- Ruta: `maintenance-only`; las releases normales usan `Staging · deploy`.'
             echo '- Servicio: `chess-study-backend-staging`'
             echo '- Service ID: `${{ steps.bootstrap.outputs.service_id }}`'
             echo '- Creado ahora: `${{ steps.bootstrap.outputs.created }}`'
