@@ -86,6 +86,9 @@ export default function Menu({
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
   const matthiasIntroPending = !matthiasOnboarded();
   const matthiasIntroBlocked = suppressHomeNudge || hasSavedGame || showQuickMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
+  // Una acción prioritaria (p. ej. Continuar partida) silencia el bocadillo,
+  // pero no debe borrar al personaje residente de Home. Los overlays reales sí.
+  const matthiasCornerBlocked = suppressHomeNudge || showQuickMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
   const blockingHomeOverlay = matthiasIntroBlocked || showHomeGuide;
   const hasOpenOverlay = blockingHomeOverlay || Boolean(matthiasVisit);
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
@@ -350,7 +353,7 @@ export default function Menu({
         </section>
       )}
 
-      {!showHomeGuide && !matthiasIntroBlocked && (
+      {!showHomeGuide && !matthiasCornerBlocked && (
         <MatthiasHomeVisit
           model={matthiasCardModel}
           speaking={Boolean(matthiasVisit)}
