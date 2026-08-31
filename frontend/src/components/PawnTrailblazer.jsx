@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { TRAIL_SPRITES } from '../pawnTrailblazerSprites.js';
+import { trailSpriteStyle } from '../pawnTrailblazerSprites.js';
 import {
   TRAIL_PROMOTION_BONUS,
   trailPowerLabel,
@@ -141,7 +141,12 @@ export default function PawnTrailblazer({ onExit }) {
 
           {(hud.phase === 'ready' || hud.phase === 'gameover') && (
             <div className="pawn-trailblazer-overlay">
-              <img src={TRAIL_SPRITES.matthiasRun} alt="Matthias corredor" />
+              <span
+                className="pawn-trailblazer-overlay-sprite"
+                role="img"
+                aria-label="Matthias corredor"
+                style={trailSpriteStyle('matthiasRun')}
+              />
               <span>{hud.phase === 'gameover' ? 'FIN DE MANIOBRAS' : 'GENERAL MATTHIAS VON LOPSTEIN'}</span>
               <strong>{hud.phase === 'gameover' ? `${hud.distance || 0} m · ${hud.score || 0} puntos · ${hud.captures || 0} capturas` : 'Nací peón. Siempre seré peón.'}</strong>
               <button type="button" className="primary-btn" onClick={() => sendControl('action')}>{hud.phase === 'gameover' ? 'Otra vez' : 'Iniciar carrera'}</button>
