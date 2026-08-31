@@ -104,7 +104,7 @@ def self_test() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--commit")
+    parser.add_argument("--sha", dest="commit")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
