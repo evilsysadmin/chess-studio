@@ -11,6 +11,8 @@
 .global-music-dock:has(.music-deck-collapsed) { width: min(290px, calc(100vw - 1.5rem)); }
 .global-music-dock .music-deck { box-shadow: 0 10px 30px rgba(0,0,0,.24); }
 .global-music-dock .live-service-status { margin: .34rem 0 0; }
+.live-service-online-compact,
+.live-service-backend-compact { display: none; }
 
 .masthead-account-button,
 .masthead-logout-button {
@@ -58,5 +60,29 @@
     width: calc(100vw - 1rem);
   }
   .global-music-dock:has(.music-deck-collapsed) { width: 76px; }
-  .global-music-dock .live-service-status { max-width: calc(100vw - 1rem); }
+  .global-music-dock .live-service-status {
+    max-width: calc(100vw - 1rem);
+  }
+  .global-music-dock:has(.music-deck-collapsed) .live-service-status {
+    position: absolute;
+    top: 0;
+    left: 84px;
+    width: max-content;
+    max-width: calc(100vw - 100px);
+    margin: 0;
+    gap: .26rem;
+    padding: .28rem .38rem;
+    border-radius: 999px;
+    font-size: .58rem;
+    box-shadow: 0 8px 22px rgba(0,0,0,.22);
+  }
+  .global-music-dock:has(.music-deck-collapsed) .live-service-online-full,
+  .global-music-dock:has(.music-deck-collapsed) .live-service-backend-full { display: none; }
+  .global-music-dock:has(.music-deck-collapsed) .live-service-online-compact,
+  .global-music-dock:has(.music-deck-collapsed) .live-service-backend-compact { display: inline; }
+  .global-music-dock:has(.music-deck-collapsed) .live-service-online-link {
+    min-width: 1.2rem;
+    text-align: center;
+    text-decoration: none;
+  }
 }

@@ -27,6 +27,14 @@ async function openExperimentsFromMoreModes(page) {
   return experiments;
 }
 
+async function openPawnTrailblazer(page) {
+  await openHome(page);
+  const experiments = await openExperimentsFromMoreModes(page);
+  await experiments.click();
+  await page.getByRole('button', { name: /Pawn Trailblazer/ }).click();
+  await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
+}
+
 test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre el hangar', async ({ page }) => {
   await openHome(page);
 
@@ -43,12 +51,8 @@ test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre 
 });
 
 test('Pawn Trailblazer · la POC arranca y expone sus controles', async ({ page }) => {
-  await openHome(page);
-  const experiments = await openExperimentsFromMoreModes(page);
-  await experiments.click();
-  await page.getByRole('button', { name: /Pawn Trailblazer/ }).click();
+  await openPawnTrailblazer(page);
 
-  await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
   await expect(page.locator('[data-pawn-trailblazer="true"] canvas')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Iniciar carrera', exact: true })).toBeVisible();
   await expect(page.getByText('Nací peón. Siempre seré peón.', { exact: true })).toBeVisible();
@@ -63,6 +67,38 @@ test('Home móvil · Experimentos geniales no provoca scroll horizontal', async 
   await openHome(page);
   const experiments = await openExperimentsFromMoreModes(page);
   await expect(experiments).toBeVisible();
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('Pawn Trailblazer móvil · HUD coherente y dock global no tapa las métricas', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openPawnTrailblazer(page);
+
+  const hud = page.locator('.pawn-trailblazer-hud');
+  const formCard = hud.locator(':scope > span').last();
+  await expect(hud).toBeVisible();
+  await expect(formCard).toBeVisible();
+
+  const [hudBox, formBox] = await Promise.all([hud.boundingBox(), formCard.boundingBox()]);
+  expect(hudBox).not.toBeNull();
+  expect(formBox).not.toBeNull();
+  expect(formBox.width).toBeGreaterThan(hudBox.width * 0.9);
+
+  const status = page.locator('.global-music-dock .live-service-status');
+  if (await status.isVisible().catch(() => false)) {
+    const statusBox = await status.boundingBox();
+    expect(statusBox).not.toBeNull();
+    const overlapsHud = !(
+      statusBox.x + statusBox.width <= hudBox.x
+      || hudBox.x + hudBox.width <= statusBox.x
+      || statusBox.y + statusBox.height <= hudBox.y
+      || hudBox.y + hudBox.height <= statusBox.y
+    );
+    expect(overlapsHud).toBe(false);
+    expect(statusBox.width).toBeLessThan(180);
+  }
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
