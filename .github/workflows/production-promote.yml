@@ -153,6 +153,11 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
+      - name: Preflight Render production safety before Cloudflare
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: python3 ../../scripts/render_production_deploy.py --check-only
+
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
@@ -319,7 +324,7 @@ jobs:
             --data-urlencode "hostname=$CUSTOM_DOMAIN" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Accept: application/json' "$domains_api")"
           [[ "$domain_status" == 200 ]] || { cat "$domain_body" >&2; exit 1; }
-          python3 -c 'import json,pathlib,sys; p=json.loads(pathlib.Path(sys.argv[1]).read_text()); h=sys.argv[2]; s=sys.argv[3]; rows=[x for x in (p.get("result") or []) if isinstance(x,dict) and x.get("hostname")==h]; len(rows)==1 or sys.exit(f"Custom Domain {h}: {len(rows)}"); rows[0].get("service")==s or sys.exit(f"Custom Domain apunta a {rows[0].get(chr(115)+chr(101)+chr(114)+chr(118)+chr(105)+chr(99)+chr(101))}")' "$domain_body" "$CUSTOM_DOMAIN" "$WORKER_NAME"
+          python3 -c 'import json,pathlib,sys; p=json.loads(pathlib.Path(sys.argv[1]).read_text()); h=sys.argv[2]; s=sys.argv[3]; rows=[x for x in (p.get("result") or []) if isinstance(x,dict) and x.get("hostname")==h]; len(rows)==1 or sys.exit(f"Custom Domain {h}: {len(rows)}"); actual=rows[0].get("service"); actual==s or sys.exit("Custom Domain apunta a %r, esperaba %r" % (actual, s))' "$domain_body" "$CUSTOM_DOMAIN" "$WORKER_NAME"
           health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"
           health_ok=false
           for attempt in {1..60}; do
