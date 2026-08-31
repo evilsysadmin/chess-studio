@@ -73,6 +73,44 @@ def find_service(name: str) -> dict | None:
     return matches[0] if matches else None
 
 
+def service_repo(service: dict) -> str:
+    value = service.get("repo") or service.get("repoUrl") or ""
+    normalized = str(value).strip().lower().removesuffix(".git").rstrip("/")
+    return normalized
+
+
+def find_production_service() -> dict:
+    """Resuelve producción sin depender de un nombre histórico de Render."""
+    configured_name = os.environ.get("RENDER_PRODUCTION_SERVICE_NAME", "").strip() or PRODUCTION_NAME
+    exact = find_service(configured_name)
+    if exact and exact.get("id"):
+        return exact
+
+    repository = required("GITHUB_REPOSITORY").lower()
+    expected_repos = {repository, f"https://github.com/{repository}"}
+    rows = unwrap_services(api("GET", "/services?limit=100"))
+    candidates = [
+        row for row in rows
+        if row.get("id")
+        and row.get("name") != SERVICE_NAME
+        and not str(row.get("name") or "").endswith("-staging")
+    ]
+    repo_matches = [row for row in candidates if service_repo(row) in expected_repos]
+    if repo_matches:
+        candidates = repo_matches
+    mongo_candidates = [row for row in candidates if read_env(str(row["id"]), "MONGO_URL")]
+    if len(mongo_candidates) == 1:
+        selected = mongo_candidates[0]
+        print(f"Producción detectada por repositorio y MONGO_URL: {selected.get('name')}")
+        return selected
+
+    visible_names = ", ".join(sorted(str(row.get("name") or "<sin nombre>") for row in candidates)) or "ninguno"
+    raise SystemExit(
+        "No se pudo identificar un único backend de producción. "
+        f"Define RENDER_PRODUCTION_SERVICE_NAME. Candidatos públicos: {visible_names}"
+    )
+
+
 def read_env(service_id: str, key: str) -> str | None:
     encoded = urllib.parse.quote(key, safe="")
     try:
@@ -184,9 +222,7 @@ def wait_for_service() -> dict:
 
 
 def main() -> None:
-    production = find_service(PRODUCTION_NAME)
-    if not production or not production.get("id"):
-        raise SystemExit(f"No existe el servicio de producción {PRODUCTION_NAME}")
+    production = find_production_service()
     service = find_service(SERVICE_NAME)
     values = env_values(production, service)
     created = service is None
