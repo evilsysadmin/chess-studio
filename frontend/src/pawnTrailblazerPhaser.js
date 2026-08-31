@@ -31,6 +31,9 @@ const CAPTURE_WINDOW = 4.2;
 const BISHOP_AIM_Z = 16;
 const BISHOP_AIM_MS = 700;
 const POWER_TYPES = ['rook', 'bishop', 'queen'];
+const CAPTURE_BURST_MS = 360;
+const DAMAGE_FX_MS = 420;
+const LANE_LERP_MS = 92;
 
 const ENEMY_TEXTURES = Object.freeze({
   pawn: 'enemyPawn',
@@ -86,6 +89,13 @@ export function trailProject(lane, z, width, height) {
   return { x, y, laneWidth, scale, halfWidth };
 }
 
+function smoothLane(current, target, deltaMs, reducedMotion = false) {
+  if (reducedMotion || !Number.isFinite(current)) return target;
+  const amount = 1 - Math.exp(-Math.max(0, deltaMs) / LANE_LERP_MS);
+  const next = current + (target - current) * amount;
+  return Math.abs(target - next) < 0.002 ? target : next;
+}
+
 function createArcadeMusic(kind) {
   if (typeof window === 'undefined') return () => {};
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -133,16 +143,26 @@ function createArcadeMusic(kind) {
   };
 }
 
-function drawTrack(graphics, width, height, distance, reducedMotion) {
+function drawTrack(graphics, width, height, distance, speed, reducedMotion) {
   graphics.clear();
-  graphics.fillStyle(0x07090d, 1);
+  graphics.fillStyle(0x05070b, 1);
   graphics.fillRect(0, 0, width, height);
-  graphics.fillStyle(0x171b27, 1);
+  graphics.fillStyle(0x151a26, 1);
   graphics.fillRect(0, 0, width, height * 0.5);
-  graphics.fillStyle(0x0c1018, 0.95);
-  graphics.fillRect(0, height * 0.12, width, height * 0.17);
+  graphics.fillStyle(0x0b0f17, 0.98);
+  graphics.fillRect(0, height * 0.11, width, height * 0.2);
 
-  const safeDistance = reducedMotion ? 0 : Math.max(0, Number(distance) || 0);
+  const horizonY = height * 0.17;
+  graphics.fillStyle(0xc9a227, 0.045);
+  graphics.fillEllipse(width / 2, horizonY + 5, width * 0.62, Math.max(28, height * 0.09));
+  graphics.lineStyle(1, 0xe5ca65, 0.17);
+  graphics.beginPath();
+  graphics.moveTo(width * 0.18, horizonY);
+  graphics.lineTo(width * 0.82, horizonY);
+  graphics.strokePath();
+
+  const visualBoost = 1.45 + Math.max(0, Number(speed) || 0) * 0.035;
+  const safeDistance = reducedMotion ? 0 : Math.max(0, Number(distance) || 0) * visualBoost;
   const scroll = safeDistance % 1;
   const checkerPhase = Math.floor(safeDistance);
 
@@ -155,8 +175,8 @@ function drawTrack(graphics, width, height, distance, reducedMotion) {
     for (let lane = 0; lane < TRAIL_LANES; lane += 1) {
       const f = trailProject(lane, farZ, width, height);
       const n = trailProject(lane, nearZ, width, height);
-      graphics.fillStyle((row + lane + checkerPhase) % 2 ? 0x5a4636 : 0xd9d0bb, 0.86);
-      graphics.lineStyle(Math.max(0.6, 1.3 * n.scale), 0x0a0a0a, 0.28);
+      graphics.fillStyle((row + lane + checkerPhase) % 2 ? 0x493a31 : 0xd9d0bb, 0.9);
+      graphics.lineStyle(Math.max(0.6, 1.25 * n.scale), 0x08090b, 0.34);
       graphics.beginPath();
       graphics.moveTo(f.x - f.laneWidth / 2, f.y);
       graphics.lineTo(f.x + f.laneWidth / 2, f.y);
@@ -174,13 +194,39 @@ function drawTrack(graphics, width, height, distance, reducedMotion) {
   const leftNear = trailProject(0, 0, width, height);
   const rightFar = trailProject(TRAIL_LANES - 1, MAX_DEPTH, width, height);
   const rightNear = trailProject(TRAIL_LANES - 1, 0, width, height);
-  graphics.lineStyle(2, 0xc9a227, 0.38);
+  graphics.lineStyle(2, 0xc9a227, 0.48);
   graphics.beginPath();
   graphics.moveTo(leftFar.x - leftFar.laneWidth / 2, leftFar.y);
   graphics.lineTo(leftNear.x - leftNear.laneWidth / 2, leftNear.y);
   graphics.moveTo(rightFar.x + rightFar.laneWidth / 2, rightFar.y);
   graphics.lineTo(rightNear.x + rightNear.laneWidth / 2, rightNear.y);
   graphics.strokePath();
+
+  if (!reducedMotion) {
+    const phase = safeDistance * 1.7;
+    for (let i = 0; i < 12; i += 1) {
+      const raw = i * 3.11 - phase;
+      const z = ((raw % MAX_DEPTH) + MAX_DEPTH) % MAX_DEPTH;
+      if (z < 0.8 || z > MAX_DEPTH - 0.6) continue;
+      const near = trailProject(0, z, width, height);
+      const far = trailProject(0, Math.min(MAX_DEPTH, z + 0.9), width, height);
+      const alpha = Phaser.Math.Clamp(0.08 + near.scale * 0.18, 0.08, 0.28);
+      const offset = near.laneWidth * 0.78;
+      graphics.lineStyle(Math.max(1, near.scale * 2.3), 0xe8d783, alpha);
+      graphics.beginPath();
+      graphics.moveTo(near.x - near.laneWidth / 2 - offset, near.y);
+      graphics.lineTo(far.x - far.laneWidth / 2 - offset * 0.45, far.y);
+      graphics.moveTo(
+        trailProject(TRAIL_LANES - 1, z, width, height).x + near.laneWidth / 2 + offset,
+        near.y,
+      );
+      graphics.lineTo(
+        trailProject(TRAIL_LANES - 1, Math.min(MAX_DEPTH, z + 0.9), width, height).x + far.laneWidth / 2 + offset * 0.45,
+        far.y,
+      );
+      graphics.strokePath();
+    }
+  }
 }
 
 function drawDashedLine(graphics, from, to, dashLength, gapLength) {
@@ -215,6 +261,11 @@ class PawnTrailblazerScene extends Phaser.Scene {
     this.mediaListener = null;
     this.pendingControls = [];
     this.ready = false;
+    this.visualLane = this.state.lane;
+    this.visualDeltaMs = 16;
+    this.captureBurstUntil = 0;
+    this.captureBurstLane = this.state.lane;
+    this.damageFxUntil = 0;
   }
 
   preload() {
@@ -223,6 +274,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
 
   create() {
     this.trackGraphics = this.add.graphics().setDepth(0);
+    this.laneGraphics = this.add.graphics().setDepth(80);
     this.aimGraphics = this.add.graphics().setDepth(1400);
     this.shadowGraphics = this.add.graphics().setDepth(1900);
     this.fxGraphics = this.add.graphics().setDepth(2100);
@@ -322,6 +374,9 @@ class PawnTrailblazerScene extends Phaser.Scene {
     this.state.toastUntil = now + 1100;
     this.previousLives = this.state.lives;
     this.wasSlashing = false;
+    this.visualLane = this.state.lane;
+    this.captureBurstUntil = 0;
+    this.damageFxUntil = 0;
     this.startRunAudio();
     this.emitHud(true);
   }
@@ -373,11 +428,17 @@ class PawnTrailblazerScene extends Phaser.Scene {
       .sort((a, b) => a.z - b.z)[0] || null;
   }
 
+  triggerCaptureFx(lane, now) {
+    this.captureBurstLane = lane;
+    this.captureBurstUntil = now + CAPTURE_BURST_MS;
+  }
+
   loseLife(now, message) {
     const state = this.state;
     state.lives -= 1;
     state.flashUntil = now + 420;
     state.duel = null;
+    this.damageFxUntil = now + DAMAGE_FX_MS;
     this.breakCombo();
     state.phase = state.lives <= 0 ? 'gameover' : 'running';
     this.setToast(state.lives <= 0 ? 'Fin de maniobras. Otra vez.' : message, now, 1600);
@@ -399,6 +460,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
     state.slashUntil = now + 380;
     state.duel = null;
     state.phase = 'running';
+    this.triggerCaptureFx(targetLane, now);
     this.setToast(state.combo > 1 ? `COMBO x${state.combo} · +${awarded}` : `Captura · +${awarded}`, now, 1050);
     this.emitHud(true);
   }
@@ -424,6 +486,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
         sniper.fired = true;
         state.score += 120;
         state.slashUntil = now + 360;
+        this.triggerCaptureFx(state.lane, now);
         this.setToast('PARADA · +120. Nein.', now, 900);
         this.emitHud(true);
       } else if (sniper) {
@@ -465,6 +528,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
           state.score += 70;
           state.slashUntil = now + 250;
           state.lane = nextLane;
+          this.triggerCaptureFx(nextLane, now);
           this.emitHud(true);
         }
         return;
@@ -591,6 +655,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
     const now = time;
     const dt = Math.min(0.05, Math.max(0, delta / 1000));
     const state = this.state;
+    this.visualDeltaMs = Math.min(50, Math.max(0, delta));
 
     if (state.power && now >= state.powerUntil) state.power = null;
     if (state.combo && now >= state.comboUntil) this.breakCombo();
@@ -598,6 +663,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
     if (state.phase === 'running') this.updateRunning(now, dt);
     else if (state.phase === 'duel') this.updateDuel(now, dt);
 
+    this.visualLane = smoothLane(this.visualLane, state.lane, this.visualDeltaMs, this.reducedMotion);
     this.renderWorld(now);
     this.emitHud(false, now);
   }
@@ -636,8 +702,18 @@ class PawnTrailblazerScene extends Phaser.Scene {
     }
 
     const node = item.kind === 'obstacle'
-      ? { kind: 'rect', object: this.add.rectangle(0, 0, 28, 28, 0x7c2f2a, 1).setStrokeStyle(2, 0xdb8e75, 0.95) }
-      : { kind: 'image', object: this.add.image(0, 0, textureKey).setOrigin(0.5) };
+      ? {
+          kind: 'rect',
+          object: this.add.rectangle(0, 0, 28, 28, 0x7c2f2a, 1).setStrokeStyle(2, 0xdb8e75, 0.95),
+          visualLane: item.lane,
+          bornAt: this.time.now,
+        }
+      : {
+          kind: 'image',
+          object: this.add.image(0, 0, textureKey).setOrigin(0.5),
+          visualLane: item.lane,
+          bornAt: this.time.now,
+        };
     this.nodes.set(item.id, node);
     return node;
   }
@@ -651,10 +727,38 @@ class PawnTrailblazerScene extends Phaser.Scene {
     }
   }
 
+  renderLaneWake(width, height, now) {
+    this.laneGraphics.clear();
+    if (this.state.phase !== 'running' && this.state.phase !== 'duel') return;
+
+    const near = trailProject(this.visualLane, 0.12, width, height);
+    const far = trailProject(this.visualLane, 6.8, width, height);
+    this.laneGraphics.fillStyle(0xe4c554, 0.055);
+    this.laneGraphics.beginPath();
+    this.laneGraphics.moveTo(near.x - near.laneWidth * 0.34, near.y);
+    this.laneGraphics.lineTo(near.x + near.laneWidth * 0.34, near.y);
+    this.laneGraphics.lineTo(far.x + far.laneWidth * 0.18, far.y);
+    this.laneGraphics.lineTo(far.x - far.laneWidth * 0.18, far.y);
+    this.laneGraphics.closePath();
+    this.laneGraphics.fillPath();
+
+    if (this.reducedMotion) return;
+    for (let i = 0; i < 5; i += 1) {
+      const cycle = ((now * 0.0045 + i * 0.21) % 1 + 1) % 1;
+      const z = 0.7 + cycle * 5.4;
+      const puff = trailProject(this.visualLane, z, width, height);
+      const radius = Math.max(1.5, 5 * puff.scale * (1 - cycle * 0.5));
+      this.laneGraphics.fillStyle(0xe6d6a7, 0.12 * (1 - cycle));
+      this.laneGraphics.fillCircle(
+        puff.x + Math.sin(i * 2.1 + now * 0.006) * puff.laneWidth * 0.08,
+        puff.y - radius * 0.6,
+        radius,
+      );
+    }
+  }
+
   renderObject(item, width, height, now) {
     const state = this.state;
-    const p = trailProject(item.lane, item.z, width, height);
-    const size = Math.max(16, 58 * p.scale);
     const duelActive = state.phase === 'duel' && state.duel?.enemyId === item.id;
     let textureKey = '';
 
@@ -667,11 +771,14 @@ class PawnTrailblazerScene extends Phaser.Scene {
     }
 
     const node = this.ensureNode(item, textureKey);
+    node.visualLane = smoothLane(node.visualLane, item.lane, this.visualDeltaMs, this.reducedMotion);
+    const p = trailProject(node.visualLane, item.z, width, height);
+    const size = Math.max(18, 66 * p.scale);
     node.object.setDepth(400 + Math.round((MAX_DEPTH - item.z) * 28));
 
     if (node.kind === 'rect') {
       node.object.setPosition(p.x, p.y - size * 0.42);
-      node.object.setDisplaySize(size * 0.64, size * 0.56);
+      node.object.setDisplaySize(size * 0.68, size * 0.58);
       node.object.setRotation(0);
       node.object.setAlpha(0.82 + p.scale * 0.16);
       return;
@@ -684,22 +791,29 @@ class PawnTrailblazerScene extends Phaser.Scene {
       ? 'reduced'
       : item.enemyType === 'bishop' && item.aimed && !item.fired ? 'aiming' : 'running';
     const motion = trailSpriteMotion(motionKind, now, item.id, motionState);
-    const targetSize = item.kind === 'power' ? size * 0.92 : size;
+    const targetSize = item.kind === 'power' ? size * 0.96 : size;
     const baseScale = targetSize / Math.max(1, node.object.width);
+    const age = Math.max(0, now - node.bornAt);
+    const arrivalScale = this.reducedMotion ? 1 : Phaser.Math.Clamp(0.55 + age / 520, 0.55, 1);
     node.object.setPosition(
       p.x + motion.x * targetSize,
       p.y - size * 0.48 + motion.y * targetSize,
     );
     node.object.setRotation(motion.rotation || 0);
-    node.object.setScale(baseScale * (motion.scaleX || 1), baseScale * (motion.scaleY || 1));
-    node.object.setAlpha(Phaser.Math.Clamp(0.45 + p.scale * 0.62, 0.45, 1));
+    node.object.setScale(
+      baseScale * (motion.scaleX || 1) * arrivalScale,
+      baseScale * (motion.scaleY || 1) * arrivalScale,
+    );
+    node.object.setAlpha(Phaser.Math.Clamp(0.42 + p.scale * 0.66, 0.42, 1));
   }
 
   renderBishopAims(width, height, now) {
     this.aimGraphics.clear();
     for (const item of this.state.objects) {
       if (item.enemyType !== 'bishop' || !item.aimed || item.fired || item.aimLane == null || now >= item.aimUntil) continue;
-      const from = trailProject(item.lane, item.z, width, height);
+      const node = this.nodes.get(item.id);
+      const fromLane = node?.visualLane ?? item.lane;
+      const from = trailProject(fromLane, item.z, width, height);
       const to = trailProject(item.aimLane, 0.25, width, height);
       const remaining = Phaser.Math.Clamp((item.aimUntil - now) / BISHOP_AIM_MS, 0, 1);
       this.aimGraphics.lineStyle(Math.max(2, 5 * from.scale), 0xff5b4f, 0.35 + (1 - remaining) * 0.55);
@@ -713,42 +827,65 @@ class PawnTrailblazerScene extends Phaser.Scene {
     }
   }
 
+  cropMatthias(textureKey) {
+    const width = Math.max(1, this.matthias.width);
+    const height = Math.max(1, this.matthias.height);
+    if (textureKey === 'matthiasRun') {
+      const x = Math.round(width * 0.08);
+      const y = Math.round(height * 0.105);
+      const cropWidth = Math.round(width * 0.84);
+      const cropHeight = Math.round(height * 0.84);
+      this.matthias.setCrop(x, y, cropWidth, cropHeight);
+      return cropWidth;
+    }
+    const x = Math.round(width * 0.055);
+    const y = Math.round(height * 0.055);
+    const cropWidth = Math.round(width * 0.89);
+    const cropHeight = Math.round(height * 0.89);
+    this.matthias.setCrop(x, y, cropWidth, cropHeight);
+    return cropWidth;
+  }
+
   renderMatthias(width, height, now) {
     const state = this.state;
-    const p = trailProject(state.lane, 0.2, width, height);
-    const size = Math.max(72, Math.min(116, width * 0.13));
+    const p = trailProject(this.visualLane, 0.2, width, height);
+    const size = Math.max(86, Math.min(142, width * 0.18));
     const slash = now < state.slashUntil;
     const motionState = this.reducedMotion ? 'reduced' : slash ? 'slash' : state.phase === 'duel' ? 'duel' : 'running';
     const motion = trailSpriteMotion('matthias', now, 0, motionState);
     const textureKey = slash ? 'matthiasCapture' : 'matthiasRun';
     if (this.matthias.texture.key !== textureKey) this.matthias.setTexture(textureKey);
+    const croppedWidth = this.cropMatthias(textureKey);
 
     this.shadowGraphics.clear();
     const lift = Math.min(0.15, Math.abs(motion.y));
-    this.shadowGraphics.fillStyle(0x000000, 0.34);
+    this.shadowGraphics.fillStyle(0x000000, 0.42);
     this.shadowGraphics.fillEllipse(
       p.x,
-      p.y - size * 0.03,
-      size * (0.60 - lift * 1.4),
-      size * (0.15 - lift * 0.32),
+      p.y - size * 0.01,
+      size * (0.56 - lift * 1.25),
+      size * (0.14 - lift * 0.28),
     );
 
-    const baseScale = size / Math.max(1, this.matthias.width);
-    this.matthias.setPosition(p.x + motion.x * size, p.y - size * 0.5 + motion.y * size);
-    this.matthias.setRotation(motion.rotation || 0);
+    const baseScale = size / Math.max(1, croppedWidth);
+    const laneLean = this.reducedMotion
+      ? 0
+      : Phaser.Math.Clamp((state.lane - this.visualLane) * 0.24, -0.18, 0.18);
+    this.matthias.setPosition(p.x + motion.x * size, p.y - size * 0.61 + motion.y * size);
+    this.matthias.setRotation((motion.rotation || 0) + laneLean);
     this.matthias.setScale(baseScale * (motion.scaleX || 1), baseScale * (motion.scaleY || 1));
-    this.matthias.setAlpha(now < state.flashUntil ? 0.72 : 1);
+    this.matthias.setAlpha(now < state.flashUntil ? 0.74 : 1);
 
     this.powerBadge.setVisible(Boolean(state.power));
     if (state.power) {
       const badgeKey = POWER_TEXTURES[state.power] || POWER_TEXTURES.queen;
       if (this.powerBadge.texture.key !== badgeKey) this.powerBadge.setTexture(badgeKey);
       const badgeMotion = trailSpriteMotion('power', now, 11, this.reducedMotion ? 'reduced' : 'running');
-      const badgeSize = size * 0.34;
+      const badgeSize = size * 0.31;
       const badgeScale = badgeSize / Math.max(1, this.powerBadge.width);
       this.powerBadge.setPosition(
-        p.x + size * 0.42 + badgeMotion.x * badgeSize,
-        p.y - size * 0.88 + badgeMotion.y * badgeSize,
+        p.x + size * 0.39 + badgeMotion.x * badgeSize,
+        p.y - size * 0.94 + badgeMotion.y * badgeSize,
       );
       this.powerBadge.setRotation(badgeMotion.rotation || 0);
       this.powerBadge.setScale(badgeScale * (badgeMotion.scaleX || 1), badgeScale * (badgeMotion.scaleY || 1));
@@ -756,18 +893,55 @@ class PawnTrailblazerScene extends Phaser.Scene {
 
     this.fxGraphics.clear();
     if (slash) {
-      this.fxGraphics.lineStyle(Math.max(3, size * 0.045), 0xffefae, 0.9);
+      this.fxGraphics.lineStyle(Math.max(3, size * 0.045), 0xffefae, 0.92);
       this.fxGraphics.beginPath();
-      this.fxGraphics.moveTo(p.x - size * 0.5, p.y - size * 0.72);
-      this.fxGraphics.lineTo(p.x + size * 0.52, p.y - size * 0.25);
+      this.fxGraphics.moveTo(p.x - size * 0.54, p.y - size * 0.82);
+      this.fxGraphics.lineTo(p.x + size * 0.58, p.y - size * 0.28);
+      this.fxGraphics.strokePath();
+      this.fxGraphics.lineStyle(Math.max(1.5, size * 0.018), 0xffffff, 0.62);
+      this.fxGraphics.beginPath();
+      this.fxGraphics.moveTo(p.x - size * 0.42, p.y - size * 0.91);
+      this.fxGraphics.lineTo(p.x + size * 0.66, p.y - size * 0.38);
       this.fxGraphics.strokePath();
     }
 
+    if (now < this.captureBurstUntil && !this.reducedMotion) {
+      const remaining = this.captureBurstUntil - now;
+      const progress = 1 - Phaser.Math.Clamp(remaining / CAPTURE_BURST_MS, 0, 1);
+      const burst = trailProject(this.captureBurstLane, 0.36, width, height);
+      const radius = size * (0.18 + progress * 0.62);
+      this.fxGraphics.lineStyle(Math.max(1.5, size * 0.018), 0xffe589, 0.7 * (1 - progress));
+      this.fxGraphics.strokeCircle(burst.x, burst.y - size * 0.46, radius);
+      for (let i = 0; i < 8; i += 1) {
+        const angle = (Math.PI * 2 * i) / 8 + 0.22;
+        const inner = radius * 0.42;
+        const outer = radius * 1.12;
+        this.fxGraphics.beginPath();
+        this.fxGraphics.moveTo(
+          burst.x + Math.cos(angle) * inner,
+          burst.y - size * 0.46 + Math.sin(angle) * inner,
+        );
+        this.fxGraphics.lineTo(
+          burst.x + Math.cos(angle) * outer,
+          burst.y - size * 0.46 + Math.sin(angle) * outer,
+        );
+        this.fxGraphics.strokePath();
+      }
+    }
+
+    if (now < this.damageFxUntil) {
+      const remaining = Phaser.Math.Clamp((this.damageFxUntil - now) / DAMAGE_FX_MS, 0, 1);
+      this.fxGraphics.fillStyle(0xff241c, 0.10 * remaining);
+      this.fxGraphics.fillRect(0, 0, width, height);
+      this.fxGraphics.lineStyle(Math.max(8, width * 0.025), 0xff4c3f, 0.26 * remaining);
+      this.fxGraphics.strokeRect(0, 0, width, height);
+    }
+
     if (!this.reducedMotion && this.previousLives != null && state.lives < this.previousLives) {
-      this.cameras.main.shake(140, 0.008);
+      this.cameras.main.shake(150, 0.0095);
     }
     if (!this.reducedMotion && slash && !this.wasSlashing) {
-      this.cameras.main.shake(65, 0.0022);
+      this.cameras.main.shake(75, 0.0032);
     }
     this.previousLives = state.lives;
     this.wasSlashing = slash;
@@ -776,7 +950,8 @@ class PawnTrailblazerScene extends Phaser.Scene {
   renderWorld(now) {
     const width = Math.max(320, this.scale.width || 320);
     const height = Math.max(420, this.scale.height || 420);
-    drawTrack(this.trackGraphics, width, height, this.state.distance, this.reducedMotion);
+    drawTrack(this.trackGraphics, width, height, this.state.distance, this.state.speed, this.reducedMotion);
+    this.renderLaneWake(width, height, now);
     this.renderBishopAims(width, height, now);
     this.removeMissingNodes();
     for (const item of [...this.state.objects].sort((a, b) => b.z - a.z)) {
