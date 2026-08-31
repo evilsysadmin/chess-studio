@@ -1,0 +1,360 @@
+name: Production · rollback
+run-name: Production rollback · ${{ inputs.target_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: SHA completo de una promoción de producción anterior y verde
+        required: true
+        type: string
+      confirm:
+        description: Escribe ROLLBACK para confirmar
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+# Rollback y promoción normal nunca pueden tocar producción a la vez.
+concurrency:
+  group: chess-studio-production-promote
+  cancel-in-progress: false
+
+env:
+  DEPLOY_SHA: ${{ inputs.target_sha }}
+  CONFIRM_ROLLBACK: ${{ inputs.confirm }}
+  ORCHESTRATOR_SHA: ${{ github.sha }}
+  PRODUCTION_URL: https://chess-studio.shadowops.dpdns.org
+  PRODUCTION_API_URL: https://api.chess-studio.shadowops.dpdns.org/api
+  PRODUCTION_AI_URL: https://ai.shadowops.dpdns.org
+
+jobs:
+  gate:
+    name: Gate · known-good production SHA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Validate explicit rollback request
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || {
+            echo '::error::El rollback sólo puede lanzarse desde el workflow de main.'
+            exit 1
+          }
+          [[ "$CONFIRM_ROLLBACK" == 'ROLLBACK' ]] || {
+            echo '::error::Confirmación inválida. Escribe exactamente ROLLBACK.'
+            exit 1
+          }
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || {
+            echo "::error::target_sha debe ser un SHA Git completo de 40 hex: $DEPLOY_SHA"
+            exit 1
+          }
+          echo "DEPLOY_SHA=${DEPLOY_SHA,,}" >> "$GITHUB_ENV"
+
+      - name: Checkout rollback orchestrator
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.ORCHESTRATOR_SHA }}
+
+      - name: Verify rollback SHA was previously promoted successfully
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          compare_status="$(gh api --method GET \
+            "repos/$GITHUB_REPOSITORY/compare/$DEPLOY_SHA...$ORCHESTRATOR_SHA" \
+            --jq '.status')"
+          case "$compare_status" in
+            ahead|identical) ;;
+            *)
+              echo "::error::$DEPLOY_SHA no es ancestro de main ($ORCHESTRATOR_SHA): status=$compare_status"
+              exit 1
+              ;;
+          esac
+
+          runs_file="$RUNNER_TEMP/known-good-production-runs.json"
+          gh api --method GET \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/production-promote.yml/runs" \
+            -f status=success \
+            -f event=workflow_run \
+            -f per_page=100 \
+            > "$runs_file"
+
+          python3 - "$runs_file" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          expected = sys.argv[2].lower()
+          runs = payload.get('workflow_runs') or []
+          matches = [
+              row for row in runs
+              if isinstance(row, dict)
+              and str(row.get('head_sha') or '').lower() == expected
+              and row.get('event') == 'workflow_run'
+              and row.get('conclusion') == 'success'
+          ]
+          if not matches:
+              raise SystemExit(
+                  f"Refuso rollback a {expected}: no figura entre las últimas 100 promociones de producción exitosas."
+              )
+          print(f"Known-good acreditado por Production · promote run {matches[0].get('id')}")
+          PY
+
+      - name: Validate current rollback machinery
+        run: python3 -S scripts/render_production_deploy.py --self-test
+
+      - name: Record current production release best-effort
+        shell: bash
+        run: |
+          set -u
+          backend="$(curl --silent --show-error --max-time 10 "$PRODUCTION_API_URL/release" 2>/dev/null || true)"
+          frontend="$(curl --silent --show-error --max-time 10 "$PRODUCTION_URL/release.json" 2>/dev/null || true)"
+          {
+            echo '### Rollback autorizado'
+            echo
+            echo "- Target conocido bueno: \`$DEPLOY_SHA\`"
+            echo "- Backend antes del rollback: \`${backend:-no disponible}\`"
+            echo "- Frontend antes del rollback: \`${frontend:-no disponible}\`"
+            echo '- La salud actual es informativa: una producción rota no bloquea su propio rollback.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cloudflare:
+    name: Rollback · Cloudflare Worker
+    needs: gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout rollback orchestrator
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.ORCHESTRATOR_SHA }}
+
+      - name: Checkout known-good source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          path: rollback-source
+
+      - name: Validate and harden rollback Worker config
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S - <<'PY'
+          import pathlib, tomllib
+
+          config_path = pathlib.Path('rollback-source/infra/cloudflare/wrangler.toml')
+          worker_path = pathlib.Path('rollback-source/infra/cloudflare/worker/index.js')
+          if not config_path.is_file() or not worker_path.is_file():
+              raise SystemExit('El SHA conocido bueno no contiene Worker/config de producción')
+
+          text = config_path.read_text(encoding='utf-8')
+          cfg = tomllib.loads(text)
+          if cfg.get('name') != 'chess-studio-narrative-ai':
+              raise SystemExit(f"Worker inesperado en target: {cfg.get('name')!r}")
+          if 'route' in cfg or 'routes' in cfg:
+              raise SystemExit('El rollback no acepta un wrangler.toml que administre rutas/domains')
+          ai = cfg.get('ai')
+          if not isinstance(ai, dict) or ai.get('binding') != 'AI':
+              raise SystemExit('El target no declara el binding AI esperado')
+          limits = cfg.get('ratelimits') if isinstance(cfg.get('ratelimits'), list) else []
+          limiter = next((x for x in limits if isinstance(x, dict) and x.get('name') == 'AI_RATE_LIMITER'), None)
+          if not limiter:
+              raise SystemExit('El target no declara AI_RATE_LIMITER')
+
+          # El Custom Domain lo administra Terraform. Wrangler sólo reemplaza
+          # código/bindings y debe mantener workers.dev apagado.
+          if 'workers_dev' not in cfg:
+              lines = text.splitlines()
+              insert_at = next((i + 1 for i, line in enumerate(lines) if line.startswith('compatibility_date')), 1)
+              lines.insert(insert_at, 'workers_dev = false')
+              text = '\n'.join(lines) + '\n'
+          else:
+              if cfg.get('workers_dev') is not False:
+                  raise SystemExit('El target intentaría habilitar workers.dev')
+          config_path.write_text(text, encoding='utf-8')
+          print('Rollback Worker config OK · sin routes · workers.dev=false')
+          PY
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Deploy known-good Worker code without touching DNS
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4 deploy \
+            --config rollback-source/infra/cloudflare/wrangler.toml \
+            --keep-vars
+
+      - name: Verify production AI after rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          health_ok=false
+          for attempt in {1..60}; do
+            body="$RUNNER_TEMP/rollback-ai-health-$attempt.json"
+            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
+              --output "$body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$PRODUCTION_AI_URL/health" || true)"
+            if [[ "$status" == 200 ]] && \
+              python3 rollback-source/scripts/cloudflare_health_contract.py "$body"; then
+              health_ok=true
+              break
+            fi
+            echo "Production AI propagando rollback (HTTP ${status:-curl-error}, intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$health_ok" == true ]] || { echo '::error::Workers AI no quedó healthy tras rollback'; exit 1; }
+
+  backend:
+    name: Rollback · Render backend
+    needs: cloudflare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+    steps:
+      - name: Checkout rollback orchestrator
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.ORCHESTRATOR_SHA }}
+
+      - name: Revalidate production Render safety
+        run: python3 scripts/render_production_deploy.py --check-only
+
+      - name: Deploy exact known-good backend commit
+        run: python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"
+
+      - name: Verify production backend rollback identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          gate_ok=false
+          for attempt in {1..60}; do
+            ready="$RUNNER_TEMP/rollback-ready-$attempt.json"
+            release="$RUNNER_TEMP/rollback-release-$attempt.json"
+            ready_status="$(curl --silent --show-error --connect-timeout 5 --max-time 12 --output "$ready" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "$PRODUCTION_API_URL/ready" || true)"
+            release_status="$(curl --silent --show-error --connect-timeout 5 --max-time 12 --output "$release" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "$PRODUCTION_API_URL/release?sha=$DEPLOY_SHA" || true)"
+            if [[ "$ready_status" == 200 && "$release_status" == 200 ]] && python3 - "$ready" "$release" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+          expected = sys.argv[3].lower()
+          ok = ready.get('ok') is True and ready.get('storage') == 'mongo' and str(release.get('build') or '').lower() == expected
+          raise SystemExit(0 if ok else 1)
+          PY
+            then gate_ok=true; break; fi
+            echo "Backend rollback propagando $DEPLOY_SHA (intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$gate_ok" == true ]] || { echo '::error::Backend no acreditó el SHA de rollback'; exit 1; }
+
+  pages:
+    name: Rollback · GitHub Pages
+    needs: backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout exact known-good frontend
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build exact rollback frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+        run: npm run build
+
+      - name: Verify rollback artifact identity before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
+          actual = str(payload.get('build') or '').lower()
+          expected = sys.argv[1].lower()
+          raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
+          PY
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload rollback artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/dist
+
+      - name: Deploy rollback to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Verify production frontend rollback identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          live=false
+          for attempt in {1..60}; do
+            body="$RUNNER_TEMP/rollback-frontend-$attempt.json"
+            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 --output "$body" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "$PRODUCTION_URL/release.json?sha=$DEPLOY_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+            then live=true; break; fi
+            echo "Frontend rollback propagando $DEPLOY_SHA (intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$live" == true ]] || { echo '::error::Frontend no sirve el SHA de rollback'; exit 1; }
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 "$PRODUCTION_URL/" >/dev/null
+
+      - name: Rollback summary
+        shell: bash
+        run: |
+          {
+            echo '### Producción revertida a known-good'
+            echo
+            echo "- SHA: \`$DEPLOY_SHA\`"
+            echo '- Workers AI: `healthy`'
+            echo '- Render backend: `Mongo ready + SHA exacto`'
+            echo '- GitHub Pages: `SHA exacto`'
+            echo '- Infra/DNS: `no modificados`'
+          } >> "$GITHUB_STEP_SUMMARY"
