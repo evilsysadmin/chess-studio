@@ -34,6 +34,7 @@ const POWER_TYPES = ['rook', 'bishop', 'queen'];
 const CAPTURE_BURST_MS = 360;
 const DAMAGE_FX_MS = 420;
 const LANE_LERP_MS = 92;
+const MATTHIAS_RIG_HEIGHT = 104;
 
 const ENEMY_TEXTURES = Object.freeze({
   pawn: 'enemyPawn',
@@ -47,6 +48,135 @@ const POWER_TEXTURES = Object.freeze({
   bishop: 'powerBishop',
   queen: 'powerQueen',
 });
+
+function trailObjectBaseSize(item, duelActive = false) {
+  if (item.kind === 'power') return 56;
+  if (item.kind === 'obstacle') return 68;
+  if (duelActive) return 74;
+  if (item.enemyType === 'rook') return 78;
+  if (item.enemyType === 'knight') return 72;
+  if (item.enemyType === 'bishop') return 70;
+  return 68;
+}
+
+function shouldPreferCanvasRenderer() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
+  const touchPoints = Math.max(0, Number(navigator.maxTouchPoints) || 0);
+  const android = /Android/i.test(String(navigator.userAgent || ''));
+  return coarsePointer || touchPoints > 0 || android;
+}
+
+function createRunnerLimb(scene, x, y, length, width, fill, boot = false) {
+  const body = scene.add.rectangle(0, 0, width, length, fill, 1).setOrigin(0.5, 0.08);
+  const end = boot
+    ? scene.add.ellipse(0, length * 0.91, width * 1.55, width * 0.72, 0x17191d, 1)
+    : scene.add.circle(0, length * 0.9, width * 0.52, 0xb78945, 1);
+  return scene.add.container(x, y, [body, end]);
+}
+
+function createMatthiasRunner(scene) {
+  const cape = scene.add.polygon(
+    0,
+    -1,
+    [-25, -24, 25, -24, 19, 24, 7, 36, 0, 31, -7, 36, -19, 24],
+    0x7a211d,
+    1,
+  );
+  cape.setStrokeStyle(2, 0xb2533d, 0.72);
+
+  const leftLeg = createRunnerLimb(scene, -10, 14, 34, 11, 0x2b2c2c, true);
+  const rightLeg = createRunnerLimb(scene, 10, 14, 34, 11, 0x2b2c2c, true);
+  const leftArm = createRunnerLimb(scene, -23, -17, 31, 10, 0x44483f, false);
+  const rightArm = createRunnerLimb(scene, 23, -17, 31, 10, 0x44483f, false);
+
+  const torso = scene.add.polygon(
+    0,
+    -5,
+    [-20, -23, 20, -23, 17, 18, 0, 25, -17, 18],
+    0x343832,
+    1,
+  );
+  torso.setStrokeStyle(2, 0x77725a, 0.76);
+  const belt = scene.add.rectangle(0, 11, 36, 7, 0x17191a, 1);
+  const buckle = scene.add.rectangle(0, 11, 8, 6, 0xc7a34a, 1);
+  const leftEpaulette = scene.add.rectangle(-18, -23, 13, 6, 0xb99145, 1).setRotation(-0.08);
+  const rightEpaulette = scene.add.rectangle(18, -23, 13, 6, 0xb99145, 1).setRotation(0.08);
+
+  const neck = scene.add.rectangle(0, -29, 14, 9, 0x3b3e36, 1);
+  const head = scene.add.circle(0, -43, 15, 0xb88745, 1).setStrokeStyle(2, 0xe0bd72, 0.86);
+  const helmet = scene.add.ellipse(0, -48, 31, 18, 0x655f4c, 1).setStrokeStyle(2, 0xc5a65b, 0.74);
+  const helmetBand = scene.add.rectangle(0, -44, 30, 5, 0x252723, 1);
+  const helmetRidge = scene.add.rectangle(0, -58, 5, 12, 0xa78648, 1);
+  const collarLeft = scene.add.polygon(-8, -26, [-8, -5, 0, 5, 6, -5], 0x8f2d28, 1);
+  const collarRight = scene.add.polygon(8, -26, [-6, -5, 0, 5, 8, -5], 0x8f2d28, 1);
+
+  const root = scene.add.container(0, 0, [
+    cape,
+    leftLeg,
+    rightLeg,
+    leftArm,
+    rightArm,
+    torso,
+    belt,
+    buckle,
+    leftEpaulette,
+    rightEpaulette,
+    neck,
+    collarLeft,
+    collarRight,
+    head,
+    helmet,
+    helmetBand,
+    helmetRidge,
+  ]).setDepth(2000);
+
+  return {
+    root,
+    cape,
+    torso,
+    head,
+    helmet,
+    leftArm,
+    rightArm,
+    leftLeg,
+    rightLeg,
+  };
+}
+
+function updateMatthiasRunner(rig, now, state = 'running', reducedMotion = false) {
+  const t = Math.max(0, Number(now) || 0) / 1000;
+  const intensity = reducedMotion ? 0.46 : 1;
+  const pace = state === 'duel' ? 8.4 : 11.4;
+  const stride = Math.sin(t * pace);
+  const counter = Math.cos(t * pace);
+
+  if (state === 'slash') {
+    rig.leftLeg.setRotation(-0.18);
+    rig.rightLeg.setRotation(0.33);
+    rig.leftArm.setRotation(0.58);
+    rig.rightArm.setRotation(-0.82);
+    rig.cape.setRotation(-0.08);
+    rig.torso.setRotation(-0.04);
+    return { x: 2.2, y: -1.5, rotation: -0.08 };
+  }
+
+  rig.leftLeg.setRotation(stride * 0.46 * intensity);
+  rig.rightLeg.setRotation(-stride * 0.46 * intensity);
+  rig.leftArm.setRotation(-stride * 0.5 * intensity);
+  rig.rightArm.setRotation(stride * 0.5 * intensity);
+  rig.cape.setRotation(-stride * 0.045 * intensity);
+  rig.cape.setScale(1 + Math.abs(counter) * 0.025 * intensity, 1);
+  rig.torso.setRotation(stride * 0.012 * intensity);
+  rig.head.setY(-43 + Math.abs(counter) * 0.7 * intensity);
+  rig.helmet.setY(-48 + Math.abs(counter) * 0.7 * intensity);
+
+  return {
+    x: stride * 0.7 * intensity,
+    y: -Math.abs(counter) * 1.15 * intensity,
+    rotation: stride * 0.012 * intensity,
+  };
+}
 
 export function createTrailGameState() {
   return {
@@ -161,8 +291,8 @@ function drawTrack(graphics, width, height, distance, speed, reducedMotion) {
   graphics.lineTo(width * 0.82, horizonY);
   graphics.strokePath();
 
-  const visualBoost = 1.45 + Math.max(0, Number(speed) || 0) * 0.035;
-  const safeDistance = reducedMotion ? 0 : Math.max(0, Number(distance) || 0) * visualBoost;
+  const visualBoost = (reducedMotion ? 0.82 : 1.45) + Math.max(0, Number(speed) || 0) * 0.035;
+  const safeDistance = Math.max(0, Number(distance) || 0) * visualBoost;
   const scroll = safeDistance % 1;
   const checkerPhase = Math.floor(safeDistance);
 
@@ -278,7 +408,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
     this.aimGraphics = this.add.graphics().setDepth(1400);
     this.shadowGraphics = this.add.graphics().setDepth(1900);
     this.fxGraphics = this.add.graphics().setDepth(2100);
-    this.matthias = this.add.image(0, 0, 'matthiasRun').setOrigin(0.5).setDepth(2000);
+    this.matthiasRig = createMatthiasRunner(this);
     this.powerBadge = this.add.image(0, 0, 'powerQueen').setOrigin(0.5).setDepth(2050).setVisible(false);
 
     this.mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
@@ -773,7 +903,7 @@ class PawnTrailblazerScene extends Phaser.Scene {
     const node = this.ensureNode(item, textureKey);
     node.visualLane = smoothLane(node.visualLane, item.lane, this.visualDeltaMs, this.reducedMotion);
     const p = trailProject(node.visualLane, item.z, width, height);
-    const size = Math.max(18, 66 * p.scale);
+    const size = Math.max(16, trailObjectBaseSize(item, duelActive) * p.scale);
     node.object.setDepth(400 + Math.round((MAX_DEPTH - item.z) * 28));
 
     if (node.kind === 'rect') {
@@ -827,65 +957,45 @@ class PawnTrailblazerScene extends Phaser.Scene {
     }
   }
 
-  cropMatthias(textureKey) {
-    const width = Math.max(1, this.matthias.width);
-    const height = Math.max(1, this.matthias.height);
-    if (textureKey === 'matthiasRun') {
-      const x = Math.round(width * 0.08);
-      const y = Math.round(height * 0.105);
-      const cropWidth = Math.round(width * 0.84);
-      const cropHeight = Math.round(height * 0.84);
-      this.matthias.setCrop(x, y, cropWidth, cropHeight);
-      return cropWidth;
-    }
-    const x = Math.round(width * 0.055);
-    const y = Math.round(height * 0.055);
-    const cropWidth = Math.round(width * 0.89);
-    const cropHeight = Math.round(height * 0.89);
-    this.matthias.setCrop(x, y, cropWidth, cropHeight);
-    return cropWidth;
-  }
-
   renderMatthias(width, height, now) {
     const state = this.state;
     const p = trailProject(this.visualLane, 0.2, width, height);
-    const size = Math.max(86, Math.min(142, width * 0.18));
+    const size = Phaser.Math.Clamp(width * 0.125, 84, 112);
     const slash = now < state.slashUntil;
-    const motionState = this.reducedMotion ? 'reduced' : slash ? 'slash' : state.phase === 'duel' ? 'duel' : 'running';
-    const motion = trailSpriteMotion('matthias', now, 0, motionState);
-    const textureKey = slash ? 'matthiasCapture' : 'matthiasRun';
-    if (this.matthias.texture.key !== textureKey) this.matthias.setTexture(textureKey);
-    const croppedWidth = this.cropMatthias(textureKey);
+    const motionState = slash ? 'slash' : state.phase === 'duel' ? 'duel' : 'running';
+    const rigMotion = updateMatthiasRunner(this.matthiasRig, now, motionState, this.reducedMotion);
 
     this.shadowGraphics.clear();
-    const lift = Math.min(0.15, Math.abs(motion.y));
     this.shadowGraphics.fillStyle(0x000000, 0.42);
     this.shadowGraphics.fillEllipse(
       p.x,
       p.y - size * 0.01,
-      size * (0.56 - lift * 1.25),
-      size * (0.14 - lift * 0.28),
+      size * 0.48,
+      size * 0.105,
     );
 
-    const baseScale = size / Math.max(1, croppedWidth);
+    const baseScale = size / MATTHIAS_RIG_HEIGHT;
     const laneLean = this.reducedMotion
       ? 0
-      : Phaser.Math.Clamp((state.lane - this.visualLane) * 0.24, -0.18, 0.18);
-    this.matthias.setPosition(p.x + motion.x * size, p.y - size * 0.61 + motion.y * size);
-    this.matthias.setRotation((motion.rotation || 0) + laneLean);
-    this.matthias.setScale(baseScale * (motion.scaleX || 1), baseScale * (motion.scaleY || 1));
-    this.matthias.setAlpha(now < state.flashUntil ? 0.74 : 1);
+      : Phaser.Math.Clamp((state.lane - this.visualLane) * 0.105, -0.07, 0.07);
+    this.matthiasRig.root.setPosition(
+      p.x + rigMotion.x * baseScale,
+      p.y - size * 0.46 + rigMotion.y * baseScale,
+    );
+    this.matthiasRig.root.setRotation(rigMotion.rotation + laneLean);
+    this.matthiasRig.root.setScale(baseScale);
+    this.matthiasRig.root.setAlpha(now < state.flashUntil ? 0.74 : 1);
 
     this.powerBadge.setVisible(Boolean(state.power));
     if (state.power) {
       const badgeKey = POWER_TEXTURES[state.power] || POWER_TEXTURES.queen;
       if (this.powerBadge.texture.key !== badgeKey) this.powerBadge.setTexture(badgeKey);
       const badgeMotion = trailSpriteMotion('power', now, 11, this.reducedMotion ? 'reduced' : 'running');
-      const badgeSize = size * 0.31;
+      const badgeSize = size * 0.28;
       const badgeScale = badgeSize / Math.max(1, this.powerBadge.width);
       this.powerBadge.setPosition(
-        p.x + size * 0.39 + badgeMotion.x * badgeSize,
-        p.y - size * 0.94 + badgeMotion.y * badgeSize,
+        p.x + size * 0.36 + badgeMotion.x * badgeSize,
+        p.y - size * 0.78 + badgeMotion.y * badgeSize,
       );
       this.powerBadge.setRotation(badgeMotion.rotation || 0);
       this.powerBadge.setScale(badgeScale * (badgeMotion.scaleX || 1), badgeScale * (badgeMotion.scaleY || 1));
@@ -895,13 +1005,13 @@ class PawnTrailblazerScene extends Phaser.Scene {
     if (slash) {
       this.fxGraphics.lineStyle(Math.max(3, size * 0.045), 0xffefae, 0.92);
       this.fxGraphics.beginPath();
-      this.fxGraphics.moveTo(p.x - size * 0.54, p.y - size * 0.82);
-      this.fxGraphics.lineTo(p.x + size * 0.58, p.y - size * 0.28);
+      this.fxGraphics.moveTo(p.x - size * 0.5, p.y - size * 0.72);
+      this.fxGraphics.lineTo(p.x + size * 0.56, p.y - size * 0.25);
       this.fxGraphics.strokePath();
       this.fxGraphics.lineStyle(Math.max(1.5, size * 0.018), 0xffffff, 0.62);
       this.fxGraphics.beginPath();
-      this.fxGraphics.moveTo(p.x - size * 0.42, p.y - size * 0.91);
-      this.fxGraphics.lineTo(p.x + size * 0.66, p.y - size * 0.38);
+      this.fxGraphics.moveTo(p.x - size * 0.38, p.y - size * 0.81);
+      this.fxGraphics.lineTo(p.x + size * 0.62, p.y - size * 0.34);
       this.fxGraphics.strokePath();
     }
 
@@ -965,7 +1075,7 @@ export function createPawnTrailblazerGame(host, callbacks = {}) {
   if (!host) throw new Error('Pawn Trailblazer requires a host element');
   const scene = new PawnTrailblazerScene(callbacks);
   const game = new Phaser.Game({
-    type: Phaser.AUTO,
+    type: shouldPreferCanvasRenderer() ? Phaser.CANVAS : Phaser.AUTO,
     parent: host,
     backgroundColor: '#07090d',
     antialias: true,
@@ -973,6 +1083,17 @@ export function createPawnTrailblazerGame(host, callbacks = {}) {
     roundPixels: false,
     banner: false,
     audio: { noAudio: true },
+    render: {
+      antialias: true,
+      pixelArt: false,
+      roundPixels: false,
+      clearBeforeRender: true,
+    },
+    fps: {
+      target: 60,
+      min: 24,
+      smoothStep: true,
+    },
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
