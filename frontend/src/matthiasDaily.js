@@ -3,6 +3,7 @@ import { fetchWithTimeout } from './asyncControl.js';
 import { withRequestId } from './requestId.js';
 
 const BASE_URL = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+let dailyStatusInFlight = null;
 
 async function request(path, options = {}) {
   const token = getToken();
@@ -27,7 +28,14 @@ async function request(path, options = {}) {
 }
 
 export function fetchMatthiasDailyStatus() {
-  return request('/matthias/daily');
+  // Insights puede montar a la vez la consulta diaria y otras vistas del
+  // expediente. Comparten la misma lectura GET mientras esté en vuelo para no
+  // duplicar tráfico; una llamada posterior vuelve a leer el estado fresco.
+  if (dailyStatusInFlight) return dailyStatusInFlight;
+  dailyStatusInFlight = request('/matthias/daily').finally(() => {
+    dailyStatusInFlight = null;
+  });
+  return dailyStatusInFlight;
 }
 
 export function fetchMatthiasBriefing() {
