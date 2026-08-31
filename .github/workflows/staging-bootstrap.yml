@@ -1,0 +1,60 @@
+name: Staging · bootstrap Render
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-staging-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: Crear o reconciliar backend staging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: staging
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pinned Render CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version='2.25.0'
+          archive="$RUNNER_TEMP/render-cli.zip"
+          curl --fail --silent --show-error --location \
+            "https://github.com/render-oss/cli/releases/download/v${version}/cli_${version}_linux_amd64.zip" \
+            --output "$archive"
+          echo '3b3f1f839ef36b81f12d84ac7288f1c96f9f7519b39c53fe6f866612f704e7cd  '"$archive" | sha256sum --check --status
+          unzip -q "$archive" -d "$RUNNER_TEMP/render-cli"
+          install "$RUNNER_TEMP/render-cli/render" "$RUNNER_TEMP/render"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Validate required GitHub environment values
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${RENDER_API_KEY:-}" ]] || { echo '::error::Falta el secret RENDER_API_KEY'; exit 1; }
+
+      - name: Bootstrap idempotent staging service
+        id: bootstrap
+        run: python3 scripts/render_staging_bootstrap.py
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo '### Render staging preparado'
+            echo
+            echo '- Servicio: `chess-study-backend-staging`'
+            echo '- Service ID: `${{ steps.bootstrap.outputs.service_id }}`'
+            echo '- Creado ahora: `${{ steps.bootstrap.outputs.created }}`'
+            echo '- Mongo: `chess_study_staging` (nombre no secreto)'
+            echo '- Custom Domain: `api-staging.chess-studio.shadowops.dpdns.org`'
+          } >> "$GITHUB_STEP_SUMMARY"
