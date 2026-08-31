@@ -8,9 +8,9 @@ The production workflow deliberately runs this in two phases:
 * ``activate`` attaches the custom domain and reconciles DNS only after the
   exact tested SHA is already serving successfully on the pages.dev origin.
 
-This keeps the GitHub Pages -> Cloudflare Pages migration free of the avoidable
-"CNAME points at an empty Pages project" outage window. The same helper remains
-safe to run on later promotions and known-good rollbacks.
+Cloudflare custom-domain activation is asynchronous. ``activate`` therefore
+waits for the Pages domain API to report ``active`` after DNS reconciliation,
+instead of racing the public build-identity probe against edge propagation.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -27,6 +28,8 @@ ZONE_NAME = "shadowops.dpdns.org"
 PAGES_PROJECT = "chess-studio-production"
 PAGES_HOSTNAME = "chess-studio.shadowops.dpdns.org"
 PAGES_TARGET = f"{PAGES_PROJECT}.pages.dev"
+DOMAIN_ACTIVE_TIMEOUT_S = 600
+DOMAIN_ACTIVE_POLL_S = 5
 
 
 def required(name: str) -> str:
@@ -150,9 +153,13 @@ def ensure_pages_project() -> str:
     return "created"
 
 
-def ensure_pages_domain() -> str:
+def pages_domain_path() -> str:
     encoded = urllib.parse.quote(PAGES_HOSTNAME, safe="")
-    path = f"/accounts/{account_id()}/pages/projects/{PAGES_PROJECT}/domains/{encoded}"
+    return f"/accounts/{account_id()}/pages/projects/{PAGES_PROJECT}/domains/{encoded}"
+
+
+def ensure_pages_domain() -> str:
+    path = pages_domain_path()
     status, body = request_json("GET", path)
     if status == 200:
         result_or_die(status, body, context="Leer custom domain de Pages production")
@@ -171,6 +178,58 @@ def ensure_pages_domain() -> str:
         allowed={200, 201},
     )
     return "created"
+
+
+def pages_domain_status() -> tuple[str, str]:
+    status, body = request_json("GET", pages_domain_path())
+    domain = result_or_die(status, body, context="Consultar estado custom domain de Pages")
+    if not isinstance(domain, dict):
+        raise SystemExit("Cloudflare devolvió un custom domain inesperado")
+    state = str(domain.get("status") or "unknown")
+    details: list[str] = []
+    for name in ("validation_data", "verification_data"):
+        data = domain.get(name)
+        if not isinstance(data, dict):
+            continue
+        substate = str(data.get("status") or "")
+        error = str(data.get("error_message") or "")
+        if substate:
+            details.append(f"{name}={substate}")
+        if error:
+            details.append(f"{name}.error={error}")
+    return state, ", ".join(details)
+
+
+def wait_pages_domain_active(
+    *,
+    timeout_s: int = DOMAIN_ACTIVE_TIMEOUT_S,
+    poll_s: int = DOMAIN_ACTIVE_POLL_S,
+) -> str:
+    deadline = time.monotonic() + timeout_s
+    attempt = 0
+    last_state = "unknown"
+    last_detail = ""
+    while True:
+        attempt += 1
+        last_state, last_detail = pages_domain_status()
+        if last_state == "active":
+            print(f"Custom domain Pages activo tras {attempt} comprobaciones.")
+            return last_state
+        if last_state in {"deactivated", "blocked", "error"}:
+            raise SystemExit(
+                f"Custom domain Pages terminó en estado {last_state}"
+                f"{': ' + last_detail if last_detail else ''}"
+            )
+        if time.monotonic() >= deadline:
+            raise SystemExit(
+                f"Custom domain Pages no llegó a active en {timeout_s}s; "
+                f"último estado={last_state}{', ' + last_detail if last_detail else ''}"
+            )
+        print(
+            f"Custom domain Pages aún {last_state} "
+            f"(intento {attempt}, {last_detail or 'sin detalle'}); reintentando..."
+        )
+        time.sleep(poll_s)
 
 
 def dns_rows(zone_id: str, hostname: str) -> list[dict]:
@@ -296,6 +355,8 @@ def self_test() -> None:
     assert PAGES_TARGET == "chess-studio-production.pages.dev"
     assert PAGES_HOSTNAME == "chess-studio.shadowops.dpdns.org"
     assert PAGES_HOSTNAME != PAGES_TARGET
+    assert DOMAIN_ACTIVE_TIMEOUT_S >= 300
+    assert 1 <= DOMAIN_ACTIVE_POLL_S <= 30
     print("cloudflare_production_pages self-test OK")
 
 
@@ -325,6 +386,7 @@ def main() -> None:
     zone_id = find_zone_id()
     domain = ensure_pages_domain()
     dns = ensure_pages_cname(zone_id)
+    domain_status = wait_pages_domain_active()
     analytics = ensure_web_analytics(zone_id)
     write_outputs(
         pages_project=PAGES_PROJECT,
@@ -333,11 +395,13 @@ def main() -> None:
         project=project,
         domain=domain,
         dns=dns,
+        domain_status=domain_status,
         analytics=analytics,
     )
     print(
         "Cloudflare Pages production activado: "
-        f"project={project}, domain={domain}, DNS={dns}, Web Analytics={analytics}"
+        f"project={project}, domain={domain}, DNS={dns}, "
+        f"domain_status={domain_status}, Web Analytics={analytics}"
     )
 
 
