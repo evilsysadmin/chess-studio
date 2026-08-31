@@ -15,7 +15,7 @@
       "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
       "options": {
         "mode": "markdown",
-        "content": "**Edge/Cloudflare** mide tráfico HTTP, errores, países, seguridad y Workers desde el exporter oficial. Puede incluir bots. Para popularidad humana exacta (visitantes/pageviews RUM), usa **Cloudflare Web Analytics**; no confundas requests de edge con personas."
+        "content": "**Edge/Cloudflare** mide tráfico HTTP, errores, países, seguridad y Workers desde el exporter oficial. Puede incluir bots. **Un request no equivale a una persona.** Para popularidad humana exacta (visitantes/pageviews RUM), usa **Cloudflare Web Analytics**."
       }
     },
     {
