@@ -19,7 +19,30 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "chess_study")
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").strip().lower()
 MONGO_RETRY_COOLDOWN_S = max(0.25, float(os.environ.get("MONGO_RETRY_COOLDOWN_S", "5")))
+
+PRODUCTION_DB_NAME = "chess_study"
+NON_PRODUCTION_ENVIRONMENTS = frozenset({"staging", "preview", "test"})
+
+
+def validate_storage_namespace(environment: str | None = None, db_name: str | None = None) -> None:
+    """Impide que un entorno no productivo escriba en la base de producción.
+
+    Staging comparte deliberadamente el mismo cluster/URI de Atlas con prod,
+    pero nunca su base lógica. Este guardarraíl falla antes de aceptar tráfico
+    si una variable de Render se configura mal.
+    """
+    env = str(ENVIRONMENT if environment is None else environment).strip().lower()
+    database = str(MONGO_DB_NAME if db_name is None else db_name).strip()
+    if env in NON_PRODUCTION_ENVIRONMENTS and database == PRODUCTION_DB_NAME:
+        raise RuntimeError(
+            f"Entorno {env!r} no puede usar la base Mongo de producción {PRODUCTION_DB_NAME!r}. "
+            "Configura MONGO_DB_NAME con un namespace aislado."
+        )
+
+
+validate_storage_namespace()
 
 _db = None
 _client = None
