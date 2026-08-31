@@ -32,8 +32,9 @@ describe('MatthiasLayeredArt', () => {
 
     expect(matthiasGestureName({ scene: 'time-morning-coffee' })).toBe('sip');
     expect(matthiasGestureParts({ scene: 'time-morning-coffee' })).toEqual(
-      expect.arrayContaining(['left-arm', 'prop']),
+      expect.arrayContaining(['eyes', 'head', 'right-arm', 'prop']),
     );
+    expect(matthiasGestureParts({ scene: 'time-morning-coffee' })).not.toContain('left-arm');
   });
 
   it('elige un gesto distinto según la acción real aunque comparta el mismo render', () => {
@@ -101,7 +102,9 @@ describe('MatthiasLayeredArt', () => {
     expect(matthiasGestureTiming({ gesture: 'board-move', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(3800);
   });
 
-  it('da recorrido claro al bocata y al café nocturno sin tocar partes incorrectas', () => {
+  it('da recorrido claro al café y al bocata sin tocar partes incorrectas', () => {
+    expect(matthiasGestureTiming({ gesture: 'sip', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2500);
+    expect(matthiasGestureTiming({ gesture: 'sip', part: 'prop' }).delay).toBeGreaterThan(0);
     expect(matthiasGestureTiming({ gesture: 'bite', part: 'prop' }).duration).toBeGreaterThanOrEqual(2900);
     expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'right-arm' }).duration).toBeGreaterThanOrEqual(2800);
     expect(matthiasGestureTiming({ gesture: 'sip-night', part: 'prop' }).delay).toBeGreaterThan(0);

@@ -9,13 +9,16 @@
 
 .matthias-coffee-steam {
   position: absolute;
-  top: 18%;
+  /* The old 18% anchor made the wisps start around shoulder height. The mug
+   * rim lives much lower in the surviving coffee art, so start the emitter at
+   * the cup instead of giving Matthias a steam-powered biceps implant. */
+  top: 30%;
   z-index: 9;
-  width: 24%;
+  width: 22%;
   height: 34%;
   overflow: visible;
   pointer-events: none;
-  opacity: .78;
+  opacity: .74;
 }
 
 .matthias-coffee-steam--left {
@@ -23,15 +26,17 @@
 }
 
 .matthias-coffee-steam--right {
-  right: 17%;
+  right: 16%;
 }
 
 .matthias-coffee-steam__wisp {
   position: absolute;
   bottom: 0;
-  width: 6px;
-  height: 25px;
-  border-left: 1.7px solid rgba(235, 237, 229, .52);
+  width: 18%;
+  height: 58%;
+  min-width: 1px;
+  min-height: 7px;
+  border-left: 1px solid rgba(235, 237, 229, .5);
   border-radius: 55% 45% 60% 40%;
   filter: blur(.45px);
   opacity: 0;
@@ -46,10 +51,10 @@
 
 .matthias-coffee-steam__wisp--2 {
   left: 46%;
-  height: 29px;
+  height: 68%;
 }
 
 .matthias-coffee-steam__wisp--3 {
   left: 70%;
-  height: 22px;
+  height: 52%;
 }

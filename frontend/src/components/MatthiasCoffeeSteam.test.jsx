@@ -5,9 +5,9 @@ import MatthiasCoffeeSteam, { matthiasCoffeeSteamSide, matthiasCoffeeSteamTiming
 
 describe('MatthiasCoffeeSteam', () => {
   it('ancla el vapor al lado real de cada taza', () => {
-    expect(matthiasCoffeeSteamSide('time-morning-coffee')).toBe('left');
-    expect(matthiasCoffeeSteamSide('time-breakfast-news')).toBe('left');
-    expect(matthiasCoffeeSteamSide('coffee')).toBe('left');
+    expect(matthiasCoffeeSteamSide('time-morning-coffee')).toBe('right');
+    expect(matthiasCoffeeSteamSide('time-breakfast-news')).toBe('right');
+    expect(matthiasCoffeeSteamSide('coffee')).toBe('right');
     expect(matthiasCoffeeSteamSide('time-night-coffee')).toBe('right');
     expect(matthiasCoffeeSteamSide('night')).toBe('right');
   });
@@ -27,7 +27,7 @@ describe('MatthiasCoffeeSteam', () => {
 
   it('renderiza tres volutas sólo con movimiento permitido', () => {
     const active = renderToStaticMarkup(
-      <MatthiasCoffeeSteam scene="time-night-coffee" reducedMotion={false} />,
+      <MatthiasCoffeeSteam scene="time-morning-coffee" reducedMotion={false} />,
     );
     expect(active).toContain('data-matthias-coffee-steam="true"');
     expect(active).toContain('data-steam-side="right"');

@@ -10,8 +10,10 @@ const WISP_MOTIONS = Object.freeze([
 export function matthiasCoffeeSteamSide(scene = '') {
   const key = String(scene || '').toLowerCase();
   if (!key || /beer-break/.test(key)) return null;
-  if (/night-coffee/.test(key) || key === 'night') return 'right';
-  if (/morning-coffee|breakfast-news/.test(key) || key === 'coffee') return 'left';
+  // Both surviving coffee renders place the mug on Matthias's screen-right.
+  // Keep this tied to the actual pixels rather than to a semantic "morning"
+  // versus "night" assumption: otherwise the steam comes out of his arm.
+  if (/morning-coffee|breakfast-news|night-coffee/.test(key) || key === 'coffee' || key === 'night') return 'right';
   return null;
 }
 
@@ -31,11 +33,11 @@ export default function MatthiasCoffeeSteam({ scene = '', reducedMotion = false 
       if (typeof node.animate !== 'function') return null;
       const motion = matthiasCoffeeSteamTiming(index);
       return node.animate([
-        { offset: 0, opacity: 0, transform: 'translate3d(0,6px,0) scaleX(.78) rotate(-5deg)' },
-        { offset: .2, opacity: .58, transform: `translate3d(${motion.x * .25}px,1px,0) scaleX(.9) rotate(-1deg)` },
-        { offset: .52, opacity: .42, transform: `translate3d(${motion.x}px,-10px,0) scaleX(1.12) rotate(4deg)` },
-        { offset: .8, opacity: .18, transform: `translate3d(${-motion.x * .55}px,-20px,0) scaleX(.94) rotate(-3deg)` },
-        { offset: 1, opacity: 0, transform: `translate3d(${motion.x * .35}px,-28px,0) scaleX(1.18) rotate(5deg)` },
+        { offset: 0, opacity: 0, transform: 'translate3d(0,24%,0) scaleX(.78) rotate(-5deg)' },
+        { offset: .2, opacity: .58, transform: `translate3d(${motion.x * .25}px,2%,0) scaleX(.9) rotate(-1deg)` },
+        { offset: .52, opacity: .42, transform: `translate3d(${motion.x}px,-42%,0) scaleX(1.12) rotate(4deg)` },
+        { offset: .8, opacity: .18, transform: `translate3d(${-motion.x * .55}px,-88%,0) scaleX(.94) rotate(-3deg)` },
+        { offset: 1, opacity: 0, transform: `translate3d(${motion.x * .35}px,-132%,0) scaleX(1.18) rotate(5deg)` },
       ], {
         duration: motion.duration,
         delay: motion.delay,

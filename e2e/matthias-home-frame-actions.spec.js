@@ -103,12 +103,14 @@ async function expectCanonicalLayeredAction(page, corner, {
   expect(baseContract.animations).toBe(0);
 }
 
-test('Home · café matinal usa el WebP canónico y un gesto de beber visible', async ({ page }) => {
+test('Home · café matinal sube taza y mano correctas hacia la boca', async ({ page }) => {
   const corner = await openHomeAtHour(page, 7);
   await expectCanonicalLayeredAction(page, corner, {
     family: 'coffee',
     gesture: 'sip',
-    movingParts: ['left-arm', 'prop'],
+    movingParts: ['right-arm', 'prop'],
+    upwardParts: ['right-arm', 'prop'],
+    stationaryParts: ['left-arm'],
   });
 });
 
