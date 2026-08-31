@@ -24,7 +24,7 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     environment:
       name: staging
       url: https://staging.chess-studio.shadowops.dpdns.org
@@ -211,7 +211,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -278,11 +280,53 @@ jobs:
           root_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$STAGING_URL/")"
           [[ "$root_status" == 200 ]] || { echo "::error::Frontend staging raíz devuelve HTTP $root_status"; exit 1; }
 
+      - name: Derive isolated staging smoke credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          identity="$(printf 'chess-studio-staging-smoke-user:v1:%s' "$RENDER_API_KEY" | sha256sum | awk '{print substr($1,1,16)}')"
+          secret="$(printf 'chess-studio-staging-smoke-password:v1:%s' "$RENDER_API_KEY" | sha256sum | awk '{print $1}')"
+          username="ci_smoke_${identity}"
+          password="CS!${secret}"
+          echo "::add-mask::$username"
+          echo "::add-mask::$password"
+          echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
+          echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: staging-playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install staging E2E dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Chromium runtime
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Live browser smoke against deployed staging
+        working-directory: e2e
+        run: npx playwright test --config=playwright.staging.config.js
+
+      - name: Upload staging browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: staging-live-playwright-${{ env.DEPLOY_SHA }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Summary
         shell: bash
         run: |
           {
-            echo '### Staging desplegado y alineado'
+            echo '### Staging desplegado, alineado y probado'
             echo
             echo '- Frontend: `https://staging.chess-studio.shadowops.dpdns.org`'
             echo '- API: `https://api-staging.chess-studio.shadowops.dpdns.org/api`'
@@ -293,4 +337,5 @@ jobs:
             echo "- Web Analytics: \`${{ steps.pages_bootstrap.outputs.analytics || 'revisar permiso Account Settings' }}\`"
             echo '- Mongo staging: `ready`'
             echo '- Release gate: `OK`'
+            echo '- Live browser smoke: `login → Home → Partida rápida → e2-e4 · OK`'
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,155 @@
+import { expect, test } from '@playwright/test';
+import { buttonWithVisibleText, clickBoardMove, gameStatus } from './helpers.js';
+
+const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
+const STAGING_API_URL = process.env.STAGING_API_URL || 'https://api-staging.chess-studio.shadowops.dpdns.org/api';
+const EXPECTED_SHA = process.env.DEPLOY_SHA || '';
+
+function requiredEnv(name) {
+  const value = String(process.env[name] || '').trim();
+  if (!value) throw new Error(`Falta ${name} para el smoke live de staging`);
+  return value;
+}
+
+async function authenticateOrCreate(request, username, password) {
+  const login = await request.post(`${STAGING_API_URL}/auth/login`, {
+    data: { username, password },
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  if (login.ok()) return login.json();
+
+  if (![401, 404].includes(login.status())) {
+    throw new Error(`Login técnico staging devolvió HTTP ${login.status()}: ${await login.text()}`);
+  }
+
+  const register = await request.post(`${STAGING_API_URL}/auth/register`, {
+    data: {
+      username,
+      password,
+      email: `${username}@example.invalid`,
+    },
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  if (register.status() === 201) return register.json();
+
+  // Dos jobs jamás deberían compartir staging por concurrency, pero si una
+  // reconciliación manual cruza justo la creación, el 409 puede ser una carrera
+  // inocua. Reintentar login distingue eso de una contraseña realmente rota.
+  if (register.status() === 409) {
+    const retry = await request.post(`${STAGING_API_URL}/auth/login`, {
+      data: { username, password },
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (retry.ok()) return retry.json();
+  }
+
+  throw new Error(`No se pudo preparar usuario técnico staging: register HTTP ${register.status()} · ${await register.text()}`);
+}
+
+async function seedStableSmokeProfile(request, token) {
+  const tutorialProgress = {
+    'combat-basics': { seen: true },
+    'combat-campaign': { seen: true },
+    'combat-intelligence': { seen: true },
+    'combat-deployment': { seen: true },
+    'quick-match-rules': { seen: true },
+    tournament: { seen: true },
+    practice: { seen: true },
+    puzzles: { seen: true },
+    spectator: { seen: true },
+    lab: { seen: true },
+    'rival-ghost': { seen: true },
+  };
+  const response = await request.put(`${STAGING_API_URL}/profile`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      data: {
+        'chess-study-mechanic-tutorial-progress-v1': JSON.stringify(tutorialProgress),
+        'chess-study-home-guide-dismissed-v1': '1',
+        'matthias.onboarded': '2',
+        'chess-study-onboarding-insights-seen-v1': '1',
+        'chess-study-reduced-motion': '1',
+        'chess-study-ui-language': 'es',
+      },
+    },
+  });
+  expect(response.status(), `seed de perfil staging: ${await response.text()}`).toBe(200);
+}
+
+test('staging live · login real → Home → partida rápida → jugada real', async ({ page, request }) => {
+  const username = requiredEnv('STAGING_E2E_USERNAME');
+  const password = requiredEnv('STAGING_E2E_PASSWORD');
+
+  if (EXPECTED_SHA) {
+    const releaseResponse = await request.get(`${STAGING_API_URL}/release?sha=${encodeURIComponent(EXPECTED_SHA)}`, {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    expect(releaseResponse.status()).toBe(200);
+    const release = await releaseResponse.json();
+    expect(String(release.build || '').toLowerCase()).toBe(EXPECTED_SHA.toLowerCase());
+  }
+
+  const session = await authenticateOrCreate(request, username, password);
+  expect(session.token).toBeTruthy();
+  await seedStableSmokeProfile(request, session.token);
+
+  let gameId = null;
+  try {
+    await page.goto(STAGING_URL, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
+    await page.getByLabel('Usuario').fill(username);
+    await page.getByLabel('Contraseña').fill(password);
+
+    const browserLogin = page.waitForResponse((response) => (
+      response.request().method() === 'POST'
+      && response.url().startsWith(`${STAGING_API_URL}/auth/login`)
+    ));
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+    expect((await browserLogin).status()).toBe(200);
+
+    await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible({ timeout: 25_000 });
+    await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
+    await buttonWithVisibleText(page, 'Partida rápida').click();
+
+    const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await expect(dialog).toBeVisible();
+    const settings = dialog.locator('details.quick-match-settings');
+    if (!(await settings.evaluate((node) => node.open))) await settings.locator('summary').click();
+    await dialog.getByRole('radio', { name: 'Blancas', exact: true }).click();
+
+    const createGame = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'POST' && url.origin + url.pathname === `${STAGING_API_URL}/games`;
+    }, { timeout: 60_000 });
+    await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+    const createdResponse = await createGame;
+    expect(createdResponse.status()).toBe(201);
+    const created = await createdResponse.json();
+    gameId = created.id || null;
+    expect(gameId).toBeTruthy();
+    await expect(gameStatus(page)).toBeVisible({ timeout: 30_000 });
+
+    const moveResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'POST'
+        && Boolean(gameId)
+        && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}/move`;
+    }, { timeout: 60_000 });
+    await clickBoardMove(page, 'e2', 'e4');
+    const moveResponse = await moveResponsePromise;
+    expect(moveResponse.status()).toBe(200);
+    const moved = await moveResponse.json();
+    expect(Array.isArray(moved.history)).toBe(true);
+    expect(moved.history.length).toBeGreaterThanOrEqual(1);
+    await expect(gameStatus(page)).toBeVisible();
+  } finally {
+    if (gameId && session.token) {
+      const cleanup = await request.delete(`${STAGING_API_URL}/games/${encodeURIComponent(gameId)}`, {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (![204, 404].includes(cleanup.status())) {
+        throw new Error(`Cleanup de partida smoke devolvió HTTP ${cleanup.status()}: ${await cleanup.text()}`);
+      }
+    }
+  }
+});
