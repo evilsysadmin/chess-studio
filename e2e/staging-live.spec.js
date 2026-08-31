@@ -11,7 +11,19 @@ function requiredEnv(name) {
   return value;
 }
 
-async function authenticateOrCreate(request, username, password) {
+async function assertRegistrationIsGated(request, username, password) {
+  const blocked = await request.post(`${STAGING_API_URL}/auth/register`, {
+    data: {
+      username,
+      password,
+      email: `${username}@example.invalid`,
+    },
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  expect(blocked.status(), `staging debe rechazar altas sin invitación: ${await blocked.text()}`).toBe(403);
+}
+
+async function authenticateOrCreate(request, username, password, inviteCode) {
   const login = await request.post(`${STAGING_API_URL}/auth/login`, {
     data: { username, password },
     headers: { 'Cache-Control': 'no-cache' },
@@ -27,6 +39,7 @@ async function authenticateOrCreate(request, username, password) {
       username,
       password,
       email: `${username}@example.invalid`,
+      invite_code: inviteCode,
     },
     headers: { 'Cache-Control': 'no-cache' },
   });
@@ -76,9 +89,10 @@ async function seedStableSmokeProfile(request, token) {
   expect(response.status(), `seed de perfil staging: ${await response.text()}`).toBe(200);
 }
 
-test('staging live · login real → Matthias → Home → partida rápida → jugada real', async ({ page, request }) => {
+test('staging live · alta protegida → login real → Matthias → Home → partida rápida → jugada real', async ({ page, request }) => {
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
+  const inviteCode = requiredEnv('STAGING_INVITE_CODE');
 
   if (EXPECTED_SHA) {
     const releaseResponse = await request.get(`${STAGING_API_URL}/release?sha=${encodeURIComponent(EXPECTED_SHA)}`, {
@@ -89,7 +103,11 @@ test('staging live · login real → Matthias → Home → partida rápida → j
     expect(String(release.build || '').toLowerCase()).toBe(EXPECTED_SHA.toLowerCase());
   }
 
-  const session = await authenticateOrCreate(request, username, password);
+  // Guardarraíl de producto: el endpoint sigue disponible para CI, pero nunca
+  // debe aceptar una cuenta pública sin el secreto generado por el bootstrap.
+  await assertRegistrationIsGated(request, username, password);
+
+  const session = await authenticateOrCreate(request, username, password, inviteCode);
   expect(session.token).toBeTruthy();
   await seedStableSmokeProfile(request, session.token);
 

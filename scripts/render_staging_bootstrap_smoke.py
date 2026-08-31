@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -32,6 +33,7 @@ def test_environment_isolated_and_secrets_stable() -> None:
     values = {
         ("srv-prod", "MONGO_URL"): "mongodb://atlas",
         ("srv-stage", "JWT_SECRET"): "jwt-stable",
+        ("srv-stage", "INVITE_CODE"): "invite-stable",
         ("srv-stage", "CHESS_AI_SHARED_SECRET"): "ai-stable",
     }
     with patch.object(module, "read_env", side_effect=lambda service, key: values.get((service, key))):
@@ -39,6 +41,8 @@ def test_environment_isolated_and_secrets_stable() -> None:
     check(result["MONGO_URL"] == "mongodb://atlas?appName=chess-studio-staging", "staging debe reutilizar Atlas con identidad propia")
     check(result["MONGO_DB_NAME"] == "chess_study_staging", "staging debe aislar el nombre de base")
     check(result["JWT_SECRET"] == "jwt-stable", "una reconciliación no debe rotar JWT")
+    check(result["INVITE_CODE"] == "invite-stable", "una reconciliación no debe rotar el código privado de altas")
+    check(result["ALLOW_REGISTRATION"] == "true", "CI debe poder seguir creando su identidad temporal")
     check(result["CHESS_AI_SHARED_SECRET"] == "ai-stable", "una reconciliación no debe rotar AI secret")
 
     rewritten = module.with_app_name(
@@ -48,6 +52,17 @@ def test_environment_isolated_and_secrets_stable() -> None:
     check("appName=chess-studio-staging" in rewritten, "appName staging debe ser visible en Atlas")
     check("appName=chess-studio&" not in rewritten, "no debe sobrevivir la etiqueta de producción")
     check("retryWrites=true" in rewritten and "w=majority" in rewritten, "no debe perder opciones de conexión")
+
+
+def test_invite_is_exported_only_to_ephemeral_github_env() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        env_file = Path(tmp) / "github-env"
+        with patch.dict(module.os.environ, {"GITHUB_ENV": str(env_file)}):
+            module.export_github_secret_env("STAGING_INVITE_CODE", "invite-test-secret")
+        check(
+            env_file.read_text(encoding="utf-8") == "STAGING_INVITE_CODE=invite-test-secret\n",
+            "el smoke debe recibir el invite sólo por GITHUB_ENV",
+        )
 
 
 def test_production_discovery_uses_repo_and_mongo_evidence() -> None:
@@ -144,18 +159,20 @@ def test_main_reconciles_without_duplicate_creation() -> None:
     with (
         patch.object(module, "find_production_service", return_value=production),
         patch.object(module, "find_service", side_effect=find),
-        patch.object(module, "env_values", return_value={"MONGO_DB_NAME": "chess_study_staging"}),
+        patch.object(module, "env_values", return_value={"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-stable"}),
         patch.object(module, "api", side_effect=lambda method, path, payload=None: calls.append((method, path, payload)) or {}),
         patch.object(module, "create_service") as create,
         patch.object(module, "reconcile_environment") as reconcile,
         patch.object(module, "ensure_custom_domain") as domain,
         patch.object(module, "ensure_service_grouped", return_value={"id": "env-stage"}) as group,
+        patch.object(module, "export_github_secret_env") as export_secret,
     ):
         module.main()
     create.assert_not_called()
-    reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging"})
+    reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-stable"})
     domain.assert_called_once_with("srv-stage")
     group.assert_called_once_with(production, "srv-stage")
+    export_secret.assert_called_once_with("STAGING_INVITE_CODE", "invite-stable")
     check(("PUT", "/services/srv-prod/env-vars/ENVIRONMENT", {"value": "production"}) in calls, "producción debe declarar su entorno")
     check(("PUT", "/services/srv-prod/env-vars/MONGO_DB_NAME", {"value": "chess_study"}) in calls, "producción debe quedar explícita")
 
@@ -163,9 +180,10 @@ def test_main_reconciles_without_duplicate_creation() -> None:
 if __name__ == "__main__":
     test_unwrap_service_shapes()
     test_environment_isolated_and_secrets_stable()
+    test_invite_is_exported_only_to_ephemeral_github_env()
     test_production_discovery_uses_repo_and_mongo_evidence()
     test_create_service_uses_noninteractive_boolean_syntax()
     test_staging_environment_is_reused_and_service_grouped()
     test_staging_environment_is_created_when_missing()
     test_main_reconciles_without_duplicate_creation()
-    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + agrupación Render")
+    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + invite privado + agrupación Render")
