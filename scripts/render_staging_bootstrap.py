@@ -321,6 +321,36 @@ def ensure_service_grouped(production: dict, service_id: str) -> dict:
     return environment
 
 
+def service_suspension_state(service_id: str) -> str:
+    payload = api("GET", f"/services/{service_id}")
+    service = payload.get("service") if isinstance(payload, dict) and isinstance(payload.get("service"), dict) else payload
+    if not isinstance(service, dict):
+        raise SystemExit("Render no devolvió los detalles del servicio staging")
+    state = str(service.get("suspended") or "").strip()
+    if state not in {"suspended", "not_suspended"}:
+        raise SystemExit(f"Estado de suspensión Render inesperado para staging: {state or '<vacío>'}")
+    return state
+
+
+def ensure_service_resumed(service_id: str) -> None:
+    """Levanta staging si fue suspendido manualmente antes de lanzar el deploy."""
+    state = service_suspension_state(service_id)
+    if state == "not_suspended":
+        print("Render staging ya estaba activo")
+        return
+
+    print("Render staging está suspendido; reanudando antes del deploy...")
+    api("POST", f"/services/{service_id}/resume")
+    for attempt in range(1, 25):
+        time.sleep(5)
+        state = service_suspension_state(service_id)
+        print(f"Render staging resume: {state} (intento {attempt}/24)")
+        if state == "not_suspended":
+            print("Render staging reanudado; el deploy puede continuar")
+            return
+    raise SystemExit("Render staging siguió suspendido tras 2 minutos de espera")
+
+
 def wait_for_service() -> dict:
     for _ in range(24):
         service = find_service(SERVICE_NAME)
@@ -346,6 +376,7 @@ def main() -> None:
     reconcile_environment(service_id, values)
     ensure_custom_domain(service_id)
     environment = ensure_service_grouped(production, service_id)
+    ensure_service_resumed(service_id)
     environment_id = str(environment.get("id") or "")
     # Sólo el runner de staging necesita el código para crear la identidad
     # efímera del smoke. El frontend desplegado no recibe esta variable.
