@@ -14,12 +14,15 @@ vi.mock('./InsightsCleanGames.jsx', () => ({
 vi.mock('./InsightsWeeklyGoals.jsx', () => ({
   default: () => <section data-weekly-goals="true">Objetivos personales</section>,
 }));
+vi.mock('./InsightsGuidedSession.jsx', () => ({
+  default: () => <section data-guided-session="true">Sesión automática</section>,
+}));
 vi.mock('./MechanicTutorialHelp.jsx', () => ({ default: () => <span data-insights-help="true">help</span> }));
 
 import InsightsScreen, { normalizeInsightsDiagnosisView, normalizeInsightsSection } from './InsightsScreen.jsx';
 
 describe('InsightsScreen Matthias-led coaching workspace', () => {
-  it('abre Así juegas en Ahora con Matthias como guía, objetivos semanales y sólo tres áreas', () => {
+  it('abre Así juegas en Ahora con sesión guiada, objetivos semanales y sólo tres áreas', () => {
     const html = renderToStaticMarkup(<InsightsScreen onExit={() => {}} initialSection="diagnosis" />);
 
     expect(html).toContain('Así juegas');
@@ -34,12 +37,13 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).not.toContain('id="insights-view-matthias"');
     expect(html).toContain('aria-selected="true"');
     expect(html).toContain('data-insights-dashboard="diagnosis"');
+    expect(html).toContain('data-guided-session="true"');
     expect(html).toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-clean-games="true"');
   });
 
-  it('reserva Errores para reincidencias reales y no las mezcla con Ahora', () => {
+  it('reserva Errores para reincidencias reales y no mezcla la sesión guiada con esa pestaña', () => {
     const html = renderToStaticMarkup(
       <InsightsScreen onExit={() => {}} initialSection="diagnosis" initialDiagnosisView="errors" />,
     );
@@ -50,6 +54,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('No vuelvas a hacer esto');
     expect(html).toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-weekly-goals="true"');
+    expect(html).not.toContain('data-guided-session="true"');
   });
 
   it('reserva Expediente para métricas demostradas como Partidas limpias', () => {
@@ -60,6 +65,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('insights-workspace-view-dossier');
     expect(html).toContain('data-clean-games="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
+    expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-recurring-errors="true"');
   });
 
@@ -71,6 +77,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).not.toContain('aria-label="Áreas de Así juegas"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
+    expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-clean-games="true"');
   });
 
