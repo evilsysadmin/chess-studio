@@ -24,6 +24,7 @@ BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
 CI_WORKFLOW = ROOT / ".github/workflows/cicd.yml"
 PROMOTION_WORKFLOW = ROOT / ".github/workflows/production-promote.yml"
+ROLLBACK_WORKFLOW = ROOT / ".github/workflows/production-rollback.yml"
 
 EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
 EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]
@@ -50,7 +51,10 @@ def static_check() -> list[str]:
     ci = CI_WORKFLOW.read_text(encoding="utf-8")
     if not PROMOTION_WORKFLOW.exists():
         return ["pipeline: falta .github/workflows/production-promote.yml"]
+    if not ROLLBACK_WORKFLOW.exists():
+        return ["pipeline: falta .github/workflows/production-rollback.yml"]
     promotion = PROMOTION_WORKFLOW.read_text(encoding="utf-8")
+    rollback = ROLLBACK_WORKFLOW.read_text(encoding="utf-8")
 
     for needle in (
         'env.AI.run(',
@@ -175,6 +179,45 @@ def static_check() -> list[str]:
     require(promotion, 'for attempt in {1..60}', "promotion propagation retry", errors)
     require(promotion, 'health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"', "promotion shared health contract path", errors)
     require(promotion, 'python3 "$health_contract" "$health_body"', "promotion shared health invocation", errors)
+
+    # Rollback is deliberately a runtime rollback, never an infrastructure
+    # rewind. It is manual, serializes with normal promotion, and only accepts a
+    # SHA that GitHub records as a prior successful automatic production
+    # promotion. This keeps emergency recovery fast without letting a typo or an
+    # arbitrary historical commit bypass staging provenance.
+    for needle, label in (
+        ("name: Production · rollback", "rollback workflow name"),
+        ("workflow_dispatch:", "rollback manual trigger"),
+        ("target_sha:", "rollback explicit target"),
+        ("Escribe ROLLBACK", "rollback explicit confirmation"),
+        ("actions: read", "rollback promotion-history permission"),
+        ("group: chess-studio-production-promote", "rollback serializes with promotion"),
+        ("Gate · known-good production SHA", "rollback known-good gate"),
+        ("Verify rollback SHA was previously promoted successfully", "rollback provenance check"),
+        ("actions/workflows/production-promote.yml/runs", "rollback reads promotion history"),
+        ("event=workflow_run", "rollback only trusts automatic promotions"),
+        ("compare/$DEPLOY_SHA...$ORCHESTRATOR_SHA", "rollback requires main ancestry"),
+        ("Rollback · Cloudflare Worker", "rollback Worker stage"),
+        ("--keep-vars", "rollback preserves Worker variables"),
+        ("workers_dev = false", "rollback keeps workers.dev disabled"),
+        ("El rollback no acepta un wrangler.toml que administre rutas/domains", "rollback refuses route ownership"),
+        ("Rollback · Render backend", "rollback Render stage"),
+        ('render_production_deploy.py --sha "$DEPLOY_SHA"', "rollback exact Render SHA"),
+        ("Rollback · GitHub Pages", "rollback frontend stage"),
+        ('VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}', "rollback frontend exact SHA"),
+        ("Verify production frontend rollback identity", "rollback live frontend identity"),
+        ("Infra/DNS: `no modificados`", "rollback leaves infra untouched"),
+    ):
+        require(rollback, needle, label, errors)
+
+    for forbidden in (
+        "terraform apply",
+        "terraform plan",
+        "cloudflare_dns_record",
+        "workers/domains",
+    ):
+        if forbidden in rollback:
+            errors.append(f"rollback no debe modificar infraestructura/DNS: {forbidden!r}")
 
     for obsolete in (ROOT / ".github/workflows/terraform-cloudflare.yml", ROOT / ".github/workflows/static.yml"):
         if obsolete.exists():
