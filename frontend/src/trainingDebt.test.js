@@ -51,6 +51,18 @@ describe('deuda de errores recurrentes', () => {
     expect(summary.debts[0]).toMatchObject({ cases: 3, cleanCases: 2, progress: 2, paid: true });
   });
 
+  it('una recaída posterior vuelve a abrir una deuda que estaba pagada', () => {
+    const cleanAt = '2026-08-01T10:00:00.000Z';
+    const relapseAt = '2026-08-10T10:00:00.000Z';
+    const summary = personalTrainingDebtSummary([
+      puzzle('a', { cleanSolves: 1, solves: 1, lastCleanAt: cleanAt }),
+      puzzle('b', { cleanSolves: 1, solves: 1, lastCleanAt: cleanAt, retentionBrokenAt: relapseAt }),
+    ]);
+    expect(summary.activeCount).toBe(1);
+    expect(summary.paidCount).toBe(0);
+    expect(summary.debts[0]).toMatchObject({ cleanCases: 1, progress: 1, active: true, paid: false });
+  });
+
   it('variantes de IA no convierten por sí solas una sospecha en antecedente real', () => {
     expect(personalTrainingDebts([
       puzzle('real'),
