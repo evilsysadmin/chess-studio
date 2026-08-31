@@ -72,19 +72,20 @@ test('Home móvil · Experimentos geniales no provoca scroll horizontal', async 
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test('Pawn Trailblazer móvil · HUD coherente y dock global no tapa las métricas', async ({ page }) => {
+test('Pawn Trailblazer móvil · HUD compacto, controles táctiles y dock global no se pisan', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openPawnTrailblazer(page);
 
   const hud = page.locator('.pawn-trailblazer-hud');
   const formCard = hud.locator(':scope > span').last();
+  const stagePower = page.locator('.pawn-trailblazer-stage-power');
   await expect(hud).toBeVisible();
-  await expect(formCard).toBeVisible();
+  await expect(formCard).toBeHidden();
+  await expect(stagePower).toBeVisible();
+  await expect(stagePower).toContainText('PEÓN');
 
-  const [hudBox, formBox] = await Promise.all([hud.boundingBox(), formCard.boundingBox()]);
+  const hudBox = await hud.boundingBox();
   expect(hudBox).not.toBeNull();
-  expect(formBox).not.toBeNull();
-  expect(formBox.width).toBeGreaterThan(hudBox.width * 0.9);
 
   const status = page.locator('.global-music-dock .live-service-status');
   if (await status.isVisible().catch(() => false)) {
@@ -99,6 +100,37 @@ test('Pawn Trailblazer móvil · HUD coherente y dock global no tapa las métric
     expect(overlapsHud).toBe(false);
     expect(statusBox.width).toBeLessThan(180);
   }
+
+  await page.getByRole('button', { name: 'Iniciar carrera', exact: true }).click();
+  const touchControls = page.getByLabel('Controles táctiles');
+  const left = page.getByRole('button', { name: 'Mover o capturar a la izquierda', exact: true });
+  const action = page.getByRole('button', { name: 'Acción', exact: true });
+  const right = page.getByRole('button', { name: 'Mover o capturar a la derecha', exact: true });
+  await expect(touchControls).toBeVisible();
+  await expect(left).toBeVisible();
+  await expect(action).toBeVisible();
+  await expect(right).toBeVisible();
+
+  for (const control of [left, action, right]) {
+    const box = await control.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.height).toBeGreaterThanOrEqual(56);
+  }
+
+  await left.click();
+  await expect(page.getByText('Nein. Un peón no se mueve de lado.', { exact: true })).toBeVisible();
+
+  const stage = page.locator('.pawn-trailblazer-stage');
+  const [stageBox, powerBox, touchBox] = await Promise.all([
+    stage.boundingBox(),
+    stagePower.boundingBox(),
+    touchControls.boundingBox(),
+  ]);
+  expect(stageBox).not.toBeNull();
+  expect(powerBox).not.toBeNull();
+  expect(touchBox).not.toBeNull();
+  expect(stageBox.height).toBeGreaterThanOrEqual(500);
+  expect(powerBox.y + powerBox.height).toBeLessThan(touchBox.y);
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
