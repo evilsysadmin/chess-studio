@@ -27,7 +27,7 @@ const INITIAL_HUD = Object.freeze({
 
 export default function PawnTrailblazer({ onExit }) {
   useEscapeToClose(onExit);
-  const phaserHostRef = useRef(null);
+  const threeHostRef = useRef(null);
   const engineRef = useRef(null);
   const pendingControlsRef = useRef([]);
   const musicRef = useRef('synthmetal');
@@ -39,15 +39,15 @@ export default function PawnTrailblazer({ onExit }) {
   useEffect(() => {
     let cancelled = false;
     let engine = null;
-    const host = phaserHostRef.current;
+    const host = threeHostRef.current;
     if (!host) return undefined;
 
-    void import('../pawnTrailblazerPhaser.js')
+    void import('../pawnTrailblazerThree.js')
       .then(({ createPawnTrailblazerGame }) => {
         if (cancelled) return;
         engine = createPawnTrailblazerGame(host, {
           onReady: (backend) => {
-            if (!cancelled) setRendererName(`PHASER 3 · ${backend}`);
+            if (!cancelled) setRendererName(backend);
           },
           onHud: (nextHud) => {
             if (!cancelled) setHud(nextHud);
@@ -58,10 +58,10 @@ export default function PawnTrailblazer({ onExit }) {
         for (const control of pendingControlsRef.current.splice(0)) engine.input(control);
       })
       .catch((error) => {
-        console.error('Pawn Trailblazer Phaser boot failed', error);
+        console.error('Pawn Trailblazer Three.js boot failed', error);
         if (!cancelled) {
-          setRendererName('PHASER 3 · ERROR');
-          setRendererError('No se ha podido iniciar el motor Phaser.');
+          setRendererName('THREE.JS · ERROR');
+          setRendererError('No se ha podido iniciar el motor 3D.');
         }
       });
 
@@ -93,7 +93,7 @@ export default function PawnTrailblazer({ onExit }) {
     <div className="pawn-trailblazer" data-pawn-trailblazer="true">
       <div className="pawn-trailblazer-head">
         <div>
-          <span className="section-label">EXPERIMENTO ARCADE · PHASER 3</span>
+          <span className="section-label">EXPERIMENTO ARCADE · THREE.JS</span>
           <h2>Pawn Trailblazer</h2>
           <p>Matthias avanza solo. Peones forcejean, caballos saltan, alfiles marcan diagonales y las torres te pasan por encima si las recibes de frente. Captura en diagonal para encadenar combo.</p>
         </div>
@@ -111,10 +111,10 @@ export default function PawnTrailblazer({ onExit }) {
 
         <div className="pawn-trailblazer-stage">
           <div
-            ref={phaserHostRef}
-            className="pawn-trailblazer-phaser"
-            data-pawn-trailblazer-renderer="phaser"
-            aria-label="Corredor pseudo 3D de Pawn Trailblazer controlado por Phaser 3"
+            ref={threeHostRef}
+            className="pawn-trailblazer-three"
+            data-pawn-trailblazer-renderer="three"
+            aria-label="Corredor 3D de Pawn Trailblazer controlado por Three.js"
           />
 
           <div className="pawn-trailblazer-stage-sector" aria-label={`Sector ${hudSector.code}: ${hudSector.name}`}>
@@ -184,7 +184,7 @@ export default function PawnTrailblazer({ onExit }) {
           <div className="pawn-trailblazer-music"><span>BSO</span><button type="button" className={music === 'synthmetal' ? 'active' : ''} onClick={() => switchMusic('synthmetal')}>Synthmetal</button><button type="button" className={music === 'classical' ? 'active' : ''} onClick={() => switchMusic('classical')}>Clásica</button></div>
         </div>
 
-        <p className="pawn-trailblazer-note">Motor {rendererName}. Phaser controla loop, inputs, spawns, colisiones, cámara y render; React queda como shell accesible del experimento. El modo sigue aislado del rating competitivo.</p>
+        <p className="pawn-trailblazer-note">Motor {rendererName}. Three.js controla escena, cámara, sprites, colisiones de carril y render; React queda como shell accesible del experimento. El modo sigue aislado del rating competitivo.</p>
       </div>
     </div>
   );

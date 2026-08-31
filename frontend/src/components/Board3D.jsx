@@ -8,6 +8,8 @@ import './Board3D.css';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const DISPLAY_RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
+const BOARD_CAMERA_HALF_SPAN = 5.05;
+const BOARD_CAMERA_PADDING = 1.06;
 
 const BOARD_THEME_3D = Object.freeze({
   classic: { light: 0xd9cfba, dark: 0x5a4236, frame: 0x34251f, felt: 0x111722, glow: 0xc9a227 },
@@ -201,6 +203,24 @@ function makeTextSprite(text, color = '#e7dcc0') {
   return sprite;
 }
 
+function fitBoardCamera(camera, width, height, whiteSide) {
+  const aspect = Math.max(0.35, width / Math.max(1, height));
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+  const limitingFov = Math.min(verticalFov, horizontalFov);
+  const distance = THREE.MathUtils.clamp(
+    (BOARD_CAMERA_HALF_SPAN / Math.tan(limitingFov / 2)) * BOARD_CAMERA_PADDING,
+    12.8,
+    22.5,
+  );
+  const target = new THREE.Vector3(0, 0.12, 0);
+  const direction = new THREE.Vector3(0, 7.23, whiteSide ? 7.75 : -7.75).normalize();
+  camera.aspect = aspect;
+  camera.position.copy(target).addScaledVector(direction, distance);
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+}
+
 function Board3DCanvas({
   fen,
   onSquareClick,
@@ -339,7 +359,7 @@ function Board3DCanvas({
     scene.add(boardGroup);
 
     const whiteSide = orientation !== 'black';
-    camera.position.set(0, 7.35, whiteSide ? 7.75 : -7.75);
+    camera.position.set(0, 9.2, whiteSide ? 9.8 : -9.8);
     camera.lookAt(0, 0.12, 0);
 
     if (showCoordinates) {
@@ -365,8 +385,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      fitBoardCamera(camera, width, height, whiteSide);
       render();
     }
     resize();
