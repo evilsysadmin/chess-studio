@@ -100,7 +100,7 @@ def cf_result(status: int, body: object, *, context: str, allowed: set[int] | No
     if status not in allowed or (isinstance(body, dict) and body.get("success") is False):
         errors = body.get("errors") if isinstance(body, dict) else []
         details = []
-        for item in errors if isinstance(errors, list) else []:
+        for item in (errors if isinstance(errors, list) else []):
             if isinstance(item, dict):
                 details.append(str(item.get("message") or item.get("code") or "error"))
         suffix = f": {'; '.join(details[:3])}" if details else ""
