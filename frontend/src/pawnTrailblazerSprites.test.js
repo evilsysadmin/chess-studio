@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { TRAIL_SPRITES } from './pawnTrailblazerSprites.js';
+import {
+  TRAIL_ATLAS_CELLS,
+  TRAIL_ATLAS_GRID,
+  TRAIL_ATLAS_IMAGE,
+  TRAIL_SPRITES,
+  trailSprite,
+} from './pawnTrailblazerSprites.js';
 
-describe('Pawn Trailblazer sprite assets', () => {
-  it('mantiene la hoja aprobada completa de Matthias, enemigos y powerups', () => {
+describe('3D Pawn Chess professional art atlas', () => {
+  it('mantiene Matthias, enemigos, powerups y obstáculos dentro de una sola textura', () => {
+    expect(TRAIL_ATLAS_GRID).toBe(4);
+    expect(typeof TRAIL_ATLAS_IMAGE).toBe('string');
+    expect(TRAIL_ATLAS_IMAGE.length).toBeGreaterThan(5);
+
     expect(Object.keys(TRAIL_SPRITES).sort()).toEqual([
       'enemyBishop',
       'enemyDuelist',
@@ -10,14 +20,30 @@ describe('Pawn Trailblazer sprite assets', () => {
       'enemyPawn',
       'enemyRook',
       'matthiasCapture',
+      'matthiasHit',
       'matthiasRun',
+      'matthiasVictory',
+      'obstacleBarrel',
+      'obstacleRock',
+      'obstacleSpikes',
+      'obstacleWall',
       'powerBishop',
       'powerQueen',
       'powerRook',
     ]);
-    for (const value of Object.values(TRAIL_SPRITES)) {
-      expect(typeof value).toBe('string');
-      expect(value.length).toBeGreaterThan(5);
+
+    for (const [name, value] of Object.entries(TRAIL_SPRITES)) {
+      expect(value).toBe(name);
+      expect(TRAIL_ATLAS_CELLS[name]).toMatchObject({
+        col: expect.any(Number),
+        row: expect.any(Number),
+      });
+      expect(TRAIL_ATLAS_CELLS[name].col).toBeGreaterThanOrEqual(0);
+      expect(TRAIL_ATLAS_CELLS[name].col).toBeLessThan(TRAIL_ATLAS_GRID);
+      expect(TRAIL_ATLAS_CELLS[name].row).toBeGreaterThanOrEqual(0);
+      expect(TRAIL_ATLAS_CELLS[name].row).toBeLessThan(TRAIL_ATLAS_GRID);
+      expect(trailSprite(name)).toBe(name);
     }
+    expect(trailSprite('no-existe')).toBeNull();
   });
 });
