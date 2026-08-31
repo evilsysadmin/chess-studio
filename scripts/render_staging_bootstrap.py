@@ -234,6 +234,7 @@ def main() -> None:
         raise SystemExit("El servicio staging no tiene ID")
     # Migra producción fuera del default implícito antes de que el nuevo
     # guardarraíl del backend llegue a desplegarse.
+    api("PUT", f"/services/{production['id']}/env-vars/ENVIRONMENT", {"value": "production"})
     api("PUT", f"/services/{production['id']}/env-vars/MONGO_DB_NAME", {"value": "chess_study"})
     reconcile_environment(service_id, values)
     ensure_custom_domain(service_id)
