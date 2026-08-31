@@ -4,6 +4,7 @@ import InsightsDashboardContent from './InsightsDashboardContent.jsx';
 import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
 import InsightsCleanGames from './InsightsCleanGames.jsx';
 import InsightsWeeklyGoals from './InsightsWeeklyGoals.jsx';
+import InsightsGuidedSession from './InsightsGuidedSession.jsx';
 import InsightsMatthiasMotion from './InsightsMatthiasMotion.jsx';
 import './InsightsWorkspace.css';
 
@@ -92,7 +93,17 @@ export default function InsightsScreen(props) {
         role="tabpanel"
         aria-labelledby={isCareer ? 'insights-section-career' : `insights-view-${diagnosisView}`}
       >
-        {!isCareer && diagnosisView === 'now' ? <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} /> : null}
+        {!isCareer && diagnosisView === 'now' ? (
+          <>
+            <InsightsGuidedSession
+              gameHistory={props.gameHistory}
+              onOpenPuzzles={props.onOpenPuzzles}
+              onPlayFromHere={props.onPlayFromHere}
+              onStartShortPracticeGame={props.onStartShortPracticeGame}
+            />
+            <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} />
+          </>
+        ) : null}
         {!isCareer && diagnosisView === 'errors' ? (
           <InsightsRecurringErrors onOpenPuzzles={props.onOpenPuzzles} />
         ) : null}
