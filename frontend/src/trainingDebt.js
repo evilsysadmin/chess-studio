@@ -1,3 +1,5 @@
+import { isPersonalPuzzleCurrentlyClean } from './spacedReview.js';
+
 const INCIDENT_LABELS = Object.freeze({
   'human:MISSED_MATE': 'Mates en una ignorados',
   'human:ALLOWED_MATE': 'Mates permitidos',
@@ -36,7 +38,7 @@ export function personalTrainingDebts(puzzles = []) {
     .map(([key, cases]) => {
       const uniqueCases = [...new Map(cases.map((puzzle) => [puzzle.id, puzzle])).values()];
       if (uniqueCases.length < 2) return null;
-      const cleanCases = uniqueCases.filter((puzzle) => Number(puzzle.cleanSolves || 0) > 0);
+      const cleanCases = uniqueCases.filter(isPersonalPuzzleCurrentlyClean);
       const target = 2;
       const progress = Math.min(target, cleanCases.length);
       const paid = progress >= target;
