@@ -4,7 +4,9 @@
 This helper is intentionally fail-closed: it resolves the production service
 using the existing repository/Mongo guardrails, requires Render auto-deploy to
 remain disabled, refuses the staging database and waits until Render marks the
-requested commit live. Secrets are only read by the shared Render API client.
+requested commit live. ``--check-only`` performs all production configuration
+validation without creating a deploy, so the promotion can fail before touching
+Cloudflare. Secrets are only read by the shared Render API client.
 """
 from __future__ import annotations
 
@@ -69,15 +71,19 @@ def validate_production_service(service: dict, service_id: str) -> None:
         raise SystemExit(f"Producción debe usar MONGO_DB_NAME={PRODUCTION_DB}; actual={db_name or '<ausente>'}")
 
 
-def promote(sha: str, *, poll_seconds: int = 5, max_attempts: int = 180) -> tuple[str, str]:
+def resolve_and_validate() -> tuple[str, str]:
     production = render.find_production_service()
     service_id = str(production.get("id") or "").strip()
     if not service_id:
         raise SystemExit("No se pudo resolver de forma segura el backend Render de producción")
-
     service = unwrap_service(render.api("GET", f"/services/{service_id}"))
     validate_production_service(service, service_id)
+    service_name = str(service.get("name") or production.get("name") or "production").strip()
+    return service_id, service_name
 
+
+def promote(sha: str, *, poll_seconds: int = 5, max_attempts: int = 180) -> tuple[str, str]:
+    service_id, _ = resolve_and_validate()
     created = unwrap_deploy(
         render.api(
             "POST",
@@ -118,10 +124,19 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sha", default=os.environ.get("DEPLOY_SHA", ""))
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--check-only", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
         self_test()
+        return
+    if args.check_only:
+        service_id, service_name = resolve_and_validate()
+        output = os.environ.get("GITHUB_OUTPUT")
+        if output:
+            with open(output, "a", encoding="utf-8") as handle:
+                handle.write(f"service_id={service_id}\n")
+        print(f"Render production preflight OK: {service_name} · autoDeploy=no · MONGO_DB_NAME={PRODUCTION_DB}")
         return
 
     sha = validate_sha(args.sha)
