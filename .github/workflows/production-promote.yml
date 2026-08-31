@@ -136,13 +136,9 @@ jobs:
       TF_VAR_worker_name: chess-studio-narrative-ai
       TF_VAR_custom_domain_hostname: ai.shadowops.dpdns.org
       TF_VAR_custom_domain_zone_name: shadowops.dpdns.org
-      TF_VAR_pages_hostname: chess-studio.shadowops.dpdns.org
-      TF_VAR_github_pages_cname_target: evilsysadmin.github.io
       TF_VAR_render_api_hostname: api.chess-studio.shadowops.dpdns.org
       TF_VAR_render_api_cname_target: chess-study-backend.onrender.com
       CF_DNS_ZONE_NAME: shadowops.dpdns.org
-      PAGES_HOSTNAME: chess-studio.shadowops.dpdns.org
-      PAGES_CNAME_TARGET: evilsysadmin.github.io
       RENDER_API_HOSTNAME: api.chess-studio.shadowops.dpdns.org
       RENDER_API_CNAME_TARGET: chess-study-backend.onrender.com
       WORKER_NAME: chess-studio-narrative-ai
@@ -263,33 +259,26 @@ jobs:
         if: steps.cf_state.outputs.custom_domain_exists == 'true'
         run: terraform import cloudflare_workers_custom_domain.narrative_ai "$TF_VAR_cloudflare_account_id/${{ steps.cf_state.outputs.custom_domain_id }}"
 
-      - name: Probe managed frontend and API CNAMEs
+      - name: Probe managed Render API CNAME
         id: dns_state
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
-          probe_record() {
-            local hostname="$1"
-            local label="$2"
-            local body="$RUNNER_TEMP/cf-dns-$label.json"
-            local status
-            status="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' --get \
-              --data-urlencode "name=$hostname" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Accept: application/json' \
-              "https://api.cloudflare.com/client/v4/zones/$TF_VAR_cloudflare_zone_id/dns_records")"
-            [[ "$status" == 200 ]] || { cat "$body" >&2; exit 1; }
-            python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text()).get("result") or []; host=sys.argv[2]; len(rows)<=1 or sys.exit(f"Más de un DNS record para {host}: {rows}"); row=rows[0] if rows else None; row is None or row.get("type")=="CNAME" or sys.exit(f"{host} no es CNAME: {row}"); print(row.get("id") if row else "")' "$body" "$hostname"
-          }
-          pages_id="$(probe_record "$PAGES_HOSTNAME" pages)"
-          api_id="$(probe_record "$RENDER_API_HOSTNAME" api)"
-          if [[ -n "$pages_id" ]]; then echo 'pages_exists=true' >> "$GITHUB_OUTPUT"; echo "pages_id=$pages_id" >> "$GITHUB_OUTPUT"; else echo 'pages_exists=false' >> "$GITHUB_OUTPUT"; fi
-          if [[ -n "$api_id" ]]; then echo 'api_exists=true' >> "$GITHUB_OUTPUT"; echo "api_id=$api_id" >> "$GITHUB_OUTPUT"; else echo 'api_exists=false' >> "$GITHUB_OUTPUT"; fi
-
-      - name: Import existing GitHub Pages CNAME
-        if: steps.dns_state.outputs.pages_exists == 'true'
-        run: terraform import cloudflare_dns_record.github_pages "$TF_VAR_cloudflare_zone_id/${{ steps.dns_state.outputs.pages_id }}"
+          body="$RUNNER_TEMP/cf-dns-api.json"
+          status="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' --get \
+            --data-urlencode "name=$RENDER_API_HOSTNAME" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Accept: application/json' \
+            "https://api.cloudflare.com/client/v4/zones/$TF_VAR_cloudflare_zone_id/dns_records")"
+          [[ "$status" == 200 ]] || { cat "$body" >&2; exit 1; }
+          api_id="$(python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text()).get("result") or []; host=sys.argv[2]; len(rows)<=1 or sys.exit(f"Más de un DNS record para {host}: {rows}"); row=rows[0] if rows else None; row is None or row.get("type")=="CNAME" or sys.exit(f"{host} no es CNAME: {row}"); print(row.get("id") if row else "")' "$body" "$RENDER_API_HOSTNAME")"
+          if [[ -n "$api_id" ]]; then
+            echo 'api_exists=true' >> "$GITHUB_OUTPUT"
+            echo "api_id=$api_id" >> "$GITHUB_OUTPUT"
+          else
+            echo 'api_exists=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Import existing Render API CNAME
         if: steps.dns_state.outputs.api_exists == 'true'
@@ -389,17 +378,14 @@ jobs:
           [[ "$gate_ok" == true ]] || { echo '::error::Production backend no acreditó SHA exacto'; exit 1; }
 
   pages:
-    name: Production · GitHub Pages
+    name: Production · Cloudflare Pages
     needs: backend
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_ORIGIN: https://chess-studio-production.pages.dev
     steps:
       - name: Checkout staging-accredited commit
         uses: actions/checkout@v7
@@ -412,6 +398,13 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Validate and prepare Cloudflare Pages project
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/cloudflare_production_pages.py --self-test
+          python3 scripts/cloudflare_production_pages.py prepare
 
       - name: Install dependencies
         working-directory: frontend
@@ -429,17 +422,53 @@ jobs:
           VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v6
+      - name: Verify artifact identity before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
+          actual = str(payload.get('build') or '').lower()
+          expected = sys.argv[1].lower()
+          raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
+          PY
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: frontend/dist
+      - name: Deploy tested frontend to Cloudflare Pages
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 pages deploy dist \
+            --project-name chess-studio-production \
+            --branch main \
+            --commit-hash "$DEPLOY_SHA" \
+            --commit-dirty=false
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Verify Pages origin before public cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          origin_ok=false
+          for attempt in {1..60}; do
+            body="$RUNNER_TEMP/production-pages-origin-$attempt.json"
+            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
+              --output "$body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$PAGES_ORIGIN/release.json?sha=$DEPLOY_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+            then origin_ok=true; break; fi
+            echo "Pages origin aún no sirve $DEPLOY_SHA (HTTP ${status:-curl-error}, intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$origin_ok" == true ]] || { echo '::error::Cloudflare Pages origin no sirve el SHA promocionado'; exit 1; }
+
+      - name: Activate Cloudflare Pages production custom domain
+        run: python3 scripts/cloudflare_production_pages.py activate
 
       - name: Verify production frontend build identity
         shell: bash
@@ -473,5 +502,5 @@ jobs:
             echo "- SHA: \`$DEPLOY_SHA\`"
             echo '- Workers AI: `OK`'
             echo '- Render backend: `Mongo ready + SHA exacto`'
-            echo '- GitHub Pages: `SHA exacto`'
+            echo '- Cloudflare Pages: `origin verificado + custom domain + SHA exacto`'
           } >> "$GITHUB_STEP_SUMMARY"
