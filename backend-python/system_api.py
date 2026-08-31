@@ -38,6 +38,18 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         # Liveness puro: storage caído no debe provocar un restart loop.
         return {"ok": True}
 
+    @router.get("/api/release")
+    @limiter.exempt
+    async def release():
+        # Identidad pública no sensible del binario/proceso en ejecución. Se
+        # mantiene separada de readiness para no convertir health checks en un
+        # contrato de despliegue ni romper consumidores que esperan su shape.
+        payload = {"release": release_info.backend_release()}
+        build = release_info.build_commit()
+        if build:
+            payload["build"] = build
+        return payload
+
     @router.get("/api/ready")
     @limiter.exempt
     async def ready():
@@ -46,15 +58,7 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         storage_required = db.persistent_storage_required()
         if storage_required and await db.get_db() is None:
             raise HTTPException(503, "MongoDB no está lista.")
-        payload = {
-            "ok": True,
-            "storage": "mongo" if storage_required else "memory",
-            "release": release_info.backend_release(),
-        }
-        build = release_info.build_commit()
-        if build:
-            payload["build"] = build
-        return payload
+        return {"ok": True, "storage": "mongo" if storage_required else "memory"}
 
     @router.get("/api/features")
     async def public_features(_username: str = Depends(auth_dependency)):
