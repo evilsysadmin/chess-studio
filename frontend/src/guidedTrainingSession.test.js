@@ -69,11 +69,24 @@ describe('sesiones guiadas 15/30 minutos', () => {
     expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 
+  it('no deja que otra cuenta herede la sesión guiada de la anterior', () => {
+    const now = Date.now();
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now });
+    expect(started.owner).toBe('alice');
+
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    expect(loadGuidedTrainingSession({ now })).toBeNull();
+    expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+  });
+
   it('descarta sesiones viejas en vez de resucitarlas en otra visita', () => {
     const now = Date.now();
     sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({
       schema: 1,
       id: 'stale',
+      owner: null,
       minutes: 15,
       startedAt: now - 5 * 60 * 60 * 1000,
       currentIndex: 0,
