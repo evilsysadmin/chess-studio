@@ -25,7 +25,7 @@ import profile_store as pstore
 import users_store as ustore
 import matthias_daily_store
 import matthias_memory_store
-from db import PersistentStorageUnavailable
+from db import PersistentStorageUnavailable, validate_mongo_environment
 from auth import (
     hash_password, verify_password, create_token, verify_token,
     create_password_reset_token, verify_password_reset_token,
@@ -54,6 +54,9 @@ ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").strip().lower(
 INVITE_CODE = os.environ.get("INVITE_CODE", "").strip()
 PASSWORD_RESET_URL = os.environ.get("PASSWORD_RESET_URL", "http://localhost:5173/").strip()
 ENABLE_EMAIL_RECOVERY = os.environ.get("ENABLE_EMAIL_RECOVERY", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+# Falla antes de aceptar tráfico si un despliegue apunta a la base equivocada.
+validate_mongo_environment()
 
 app = FastAPI(
     title="Estudio de Ajedrez API",
