@@ -94,9 +94,26 @@ def test_web_analytics_permission_is_non_blocking() -> None:
     check(outcome == "permission-missing", "RUM no debe tumbar hosting si el token no tiene Account Settings")
 
 
+def test_web_analytics_existing_zone_is_idempotent() -> None:
+    responses = [
+        (200, {"success": True, "result": []}),
+        (400, {
+            "success": False,
+            "errors": [{"message": "web_analytics.configuration.api.siteInfoForZoneExist"}],
+        }),
+    ]
+    with (
+        patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
+        patch.object(module, "request_json", side_effect=responses),
+    ):
+        outcome = module.ensure_web_analytics("zone")
+    check(outcome == "existing", "Site Info ya existente para la zona debe ser convergencia, no fallo")
+
+
 if __name__ == "__main__":
     test_pages_project_is_idempotent()
     test_pages_project_is_created_when_missing()
     test_dns_reconciliation_updates_target_and_proxy_mode()
     test_web_analytics_permission_is_non_blocking()
-    print("cloudflare-staging-pages-smoke OK · Pages + DNS + RUM opcional")
+    test_web_analytics_existing_zone_is_idempotent()
+    print("cloudflare-staging-pages-smoke OK · Pages + DNS + RUM opcional/idempotente")

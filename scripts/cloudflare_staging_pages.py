@@ -57,18 +57,23 @@ def request_json(method: str, path: str, payload: dict | None = None) -> tuple[i
         return exc.code, body
 
 
+def error_messages(body: object) -> set[str]:
+    if not isinstance(body, dict):
+        return set()
+    errors = body.get("errors") or []
+    if not isinstance(errors, list):
+        return set()
+    return {
+        str(item.get("message") or item.get("code") or item)
+        for item in errors
+        if isinstance(item, dict)
+    }
+
+
 def result_or_die(status: int, body: object, *, context: str, allowed: set[int] | None = None) -> object:
     allowed = allowed or {200}
     if status not in allowed:
-        detail = ""
-        if isinstance(body, dict):
-            errors = body.get("errors") or []
-            if isinstance(errors, list):
-                detail = "; ".join(
-                    str(item.get("message") or item.get("code") or item)
-                    for item in errors[:4]
-                    if isinstance(item, dict)
-                )
+        detail = "; ".join(sorted(error_messages(body))[:4])
         suffix = f": {detail}" if detail else ""
         raise SystemExit(f"{context}: Cloudflare respondió HTTP {status}{suffix}")
     if isinstance(body, dict) and body.get("success") is False:
@@ -176,8 +181,10 @@ def ensure_cname(zone_id: str, hostname: str, target: str, *, proxied: bool, com
 def ensure_web_analytics(zone_id: str) -> str:
     """Activa RUM si el token ya tiene permisos de Account Settings.
 
-    Pages/hosting no debe depender de este permiso adicional. Si el token actual
-    sólo tiene Pages/DNS/Workers, dejamos un aviso claro y el staging sigue vivo.
+    Pages/hosting no debe depender de este permiso adicional. Cloudflare sólo
+    admite una configuración Site Info por zona; si la lista no expone reglas
+    que identifiquen nuestro hostname pero el alta responde que ya existe Site
+    Info para la zona, eso es estado convergente y no un error de despliegue.
     """
     status, body = request_json("GET", f"/accounts/{account_id()}/rum/site_info/list?per_page=100")
     if status in {401, 403}:
@@ -203,6 +210,8 @@ def ensure_web_analytics(zone_id: str) -> str:
     if status in {401, 403}:
         print("AVISO: Web Analytics no creado; el token necesita Account Settings Write.")
         return "permission-missing"
+    if status == 400 and "web_analytics.configuration.api.siteInfoForZoneExist" in error_messages(body):
+        return "existing"
     result_or_die(status, body, context="Crear Web Analytics", allowed={200, 201})
     return "created"
 
