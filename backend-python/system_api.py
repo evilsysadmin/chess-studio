@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 import db
 import feedback_store as fstore
 import users_store as ustore
+import release_info
 from feature_flags import public_feature_flags
 from observability_history import record_presence_snapshot
 from api_models import ClientTelemetryRequest
@@ -45,7 +46,15 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         storage_required = db.persistent_storage_required()
         if storage_required and await db.get_db() is None:
             raise HTTPException(503, "MongoDB no está lista.")
-        return {"ok": True, "storage": "mongo" if storage_required else "memory"}
+        payload = {
+            "ok": True,
+            "storage": "mongo" if storage_required else "memory",
+            "release": release_info.backend_release(),
+        }
+        build = release_info.build_commit()
+        if build:
+            payload["build"] = build
+        return payload
 
     @router.get("/api/features")
     async def public_features(_username: str = Depends(auth_dependency)):
