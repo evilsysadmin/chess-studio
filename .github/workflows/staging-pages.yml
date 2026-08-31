@@ -1,0 +1,165 @@
+name: Staging · Cloudflare Pages
+
+on:
+  workflow_run:
+    workflows:
+      - Chess Studio CI/CD
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-cloudflare-pages-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Frontend staging · Pages
+    if: >
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
+      STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+
+    steps:
+      - name: Validate required Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
+          [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA no es un commit completo: $DEPLOY_SHA"; exit 1; }
+
+      - name: Checkout CI-approved commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Bootstrap contract smoke
+        run: python3 -S scripts/cloudflare_staging_pages_smoke.py
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Reconcile Pages project, domains and staging DNS
+        id: bootstrap
+        run: python3 scripts/cloudflare_staging_pages.py
+
+      - name: Wait for staging API custom domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=false
+          for attempt in {1..60}; do
+            body="$RUNNER_TEMP/staging-api-ready-$attempt.json"
+            status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 12 \
+              --output "$body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'User-Agent: chess-studio-staging-deploy/1' \
+              "$STAGING_API_URL/ready" || true)"
+            if [[ "$status" == 200 ]]; then
+              ready=true
+              break
+            fi
+            echo "API staging HTTP ${status:-curl-error} (intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$ready" == true ]] || { echo '::error::La API staging no quedó lista tras 5 minutos'; exit 1; }
+
+      - name: Build frontend for staging
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ env.STAGING_API_URL }}
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+        run: npm run build
+
+      - name: Deploy tested build to Cloudflare Pages
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 pages deploy dist \
+            --project-name chess-studio-staging \
+            --branch main \
+            --commit-hash "$DEPLOY_SHA" \
+            --commit-dirty=false
+
+      - name: Verify deployed release
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_ok=false
+          for attempt in {1..60}; do
+            body="$RUNNER_TEMP/staging-release-$attempt.json"
+            status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 10 \
+              --output "$body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'Cache-Control: no-cache' \
+              "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json
+          import pathlib
+          import sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          actual = str(payload.get('build') or '').lower()
+          expected = sys.argv[2].lower()
+          raise SystemExit(0 if actual == expected else 1)
+          PY
+            then
+              release_ok=true
+              break
+            fi
+            echo "Frontend staging aún no sirve $DEPLOY_SHA (HTTP ${status:-curl-error}, intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$release_ok" == true ]] || { echo '::error::Pages no sirvió el SHA esperado tras 5 minutos'; exit 1; }
+
+          root_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$STAGING_URL/")"
+          [[ "$root_status" == 200 ]] || { echo "::error::Frontend staging raíz devuelve HTTP $root_status"; exit 1; }
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo '### Cloudflare Pages staging desplegado'
+            echo
+            echo '- Frontend: `https://staging.chess-studio.shadowops.dpdns.org`'
+            echo '- API: `https://api-staging.chess-studio.shadowops.dpdns.org/api`'
+            echo '- Pages project: `chess-studio-staging`'
+            echo "- Commit: \`$DEPLOY_SHA\`"
+            echo "- Web Analytics: \`${{ steps.bootstrap.outputs.analytics || 'revisar permiso Account Settings' }}\`"
+            echo '- Release smoke: OK'
+          } >> "$GITHUB_STEP_SUMMARY"
