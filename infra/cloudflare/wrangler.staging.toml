@@ -1,0 +1,19 @@
+name = "chess-studio-narrative-ai-staging"
+main = "worker/index.js"
+compatibility_date = "2026-08-22"
+workers_dev = false
+
+[[routes]]
+pattern = "ai-staging.shadowops.dpdns.org"
+custom_domain = true
+
+[ai]
+binding = "AI"
+
+[[ratelimits]]
+name = "AI_RATE_LIMITER"
+namespace_id = "1606602"
+
+  [ratelimits.simple]
+  limit = 300
+  period = 60
