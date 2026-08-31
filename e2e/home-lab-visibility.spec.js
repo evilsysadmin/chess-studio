@@ -11,39 +11,58 @@ async function openHome(page) {
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
 }
 
-async function openLabFromMoreModes(page) {
+async function openExperimentsFromMoreModes(page) {
   const moreModes = page.locator('details.home-more-modes');
   await expect(moreModes).not.toHaveAttribute('open', '');
 
-  // Seleccionamos la tarjeta de modo, no el botón "?" del tutorial de
-  // Laboratorio que comparte texto accesible dentro del mismo disclosure.
-  const lab = moreModes
+  const experiments = moreModes
     .locator('.friendly-disclosure-body > .menu-card-shell > button')
-    .filter({ hasText: 'Laboratorio' });
-  await expect(lab).toHaveCount(1);
-  await expect(lab).toBeHidden();
+    .filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toHaveCount(1);
+  await expect(experiments).toBeHidden();
   await moreModes.getByText('Más modos de juego', { exact: true }).click();
   await expect(moreModes).toHaveAttribute('open', '');
-  await expect(lab).toBeVisible();
-  await expect(lab).toContainText('Construye, pega o prueba una posición');
-  return lab;
+  await expect(experiments).toBeVisible();
+  await expect(experiments).toContainText('Pawn Trailblazer');
+  return experiments;
 }
 
-test('Home · Laboratorio vive dentro de Más modos de juego', async ({ page }) => {
+test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre el hangar', async ({ page }) => {
   await openHome(page);
-  await expect(page.locator('.home-lab-access')).toHaveCount(0);
-  const lab = await openLabFromMoreModes(page);
-  await lab.click();
 
-  await expect(page.getByText('Laboratorio libre', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Prepara una posición y juega', exact: true })).toBeVisible();
+  const learning = page.locator('details.home-learning-more');
+  await expect(learning).toHaveAttribute('open', '');
+  await expect(learning.getByRole('heading', { name: 'Puzzles', exact: true })).toBeVisible();
+
+  const experiments = await openExperimentsFromMoreModes(page);
+  await experiments.click();
+
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ajedrez 3D/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 
-test('Home móvil · disclosure de Laboratorio no provoca scroll horizontal', async ({ page }) => {
+test('Pawn Trailblazer · la POC arranca y expone sus controles', async ({ page }) => {
+  await openHome(page);
+  const experiments = await openExperimentsFromMoreModes(page);
+  await experiments.click();
+  await page.getByRole('button', { name: /Pawn Trailblazer/ }).click();
+
+  await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
+  await expect(page.locator('[data-pawn-trailblazer="true"] canvas')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Iniciar carrera', exact: true })).toBeVisible();
+  await expect(page.getByText('Nací peón. Siempre seré peón.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Iniciar carrera', exact: true }).click();
+  await expect(page.getByText('Iniciar carrera', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Synthmetal', { exact: true })).toBeVisible();
+  await expect(page.getByText('Clásica', { exact: true })).toBeVisible();
+});
+
+test('Home móvil · Experimentos geniales no provoca scroll horizontal', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openHome(page);
-  const lab = await openLabFromMoreModes(page);
-  await expect(lab).toBeVisible();
+  const experiments = await openExperimentsFromMoreModes(page);
+  await expect(experiments).toBeVisible();
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);

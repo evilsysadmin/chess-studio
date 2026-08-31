@@ -422,7 +422,7 @@ export default function Menu({
               <IconEye className="menu-card-icon" /><h3>Espectador</h3><p>CPU contra CPU. Tú miras el incendio.</p><span className="menu-card-cta">Mirar →</span>
             </TutorialModeCard>}
             <TutorialModeCard tutorialId="lab" className="menu-card accent-success" onClick={onLab}>
-              <IconPuzzle className="menu-card-icon" /><h3>Laboratorio</h3><p>Construye, pega o prueba una posición y juégala.</p><span className="menu-card-cta">Abrir →</span>
+              <IconPuzzle className="menu-card-icon" /><h3>Experimentos geniales</h3><p>Ajedrez 3D, Pawn Trailblazer, Arenas y otras ideas bajo vigilancia.</p><span className="menu-card-cta">Entrar al hangar →</span>
             </TutorialModeCard>
           </div>
         </details>
@@ -449,7 +449,7 @@ export default function Menu({
           </button>
         </div>
 
-        <details className="friendly-disclosure home-learning-more" open={showHomeGuide && onboarding.next === 'puzzle' ? true : undefined}>
+        <details className="friendly-disclosure home-learning-more" open>
           <summary>Más aprendizaje y herramientas</summary>
           <div className="friendly-disclosure-body menu-grid compact-mode-grid home-tools-grid">
             <TutorialModeCard tutorialId="puzzles" className={`menu-card accent-hint home-mode-card home-tool-card${onboardingTargetClass('puzzle')}`} onClick={onPuzzle}>
