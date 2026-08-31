@@ -46,19 +46,11 @@ resource "cloudflare_workers_custom_domain" "narrative_ai" {
   depends_on = [cloudflare_workers_script.narrative_ai]
 }
 
-# DNS de las dos superficies públicas. GitHub Pages y Render validan el CNAME
-# directamente, por eso ambos permanecen DNS-only; no se añade un proxy que
-# pueda ocultar el target durante la emisión de sus certificados.
-resource "cloudflare_dns_record" "github_pages" {
-  zone_id = var.cloudflare_zone_id
-  name    = var.pages_hostname
-  type    = "CNAME"
-  content = var.github_pages_cname_target
-  proxied = false
-  ttl     = 1
-  comment = "Chess Studio frontend · GitHub Pages"
-}
-
+# The production frontend DNS is intentionally owned by
+# scripts/cloudflare_production_pages.py. That helper performs a two-phase
+# cutover: it verifies the exact build on pages.dev before switching the public
+# CNAME, which Terraform cannot express safely in one apply. Render remains
+# DNS-only so its custom-domain validation sees the real target directly.
 resource "cloudflare_dns_record" "render_api" {
   zone_id = var.cloudflare_zone_id
   name    = var.render_api_hostname
