@@ -1,4 +1,5 @@
 import { STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
 import { loadRivalry } from './rivalry.js';
@@ -8,6 +9,10 @@ export const GUIDED_TRAINING_SESSION_KEY = 'chess-study-guided-training-session-
 const SESSION_SCHEMA = 1;
 const MAX_SESSION_AGE_MS = 4 * 60 * 60 * 1000;
 const INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+function sessionOwner() {
+  return String(getUsername() || '').trim().toLowerCase() || null;
+}
 
 function pendingPersonalPuzzles(puzzles = []) {
   return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => (
@@ -130,12 +135,14 @@ export function buildGuidedTrainingPlan({
 
 function normalizeStoredSession(value, now = Date.now()) {
   if (!value || value.schema !== SESSION_SCHEMA || !Array.isArray(value.steps) || !value.steps.length) return null;
+  if ((value.owner || null) !== sessionOwner()) return null;
   const startedAt = Number(value.startedAt || 0);
   if (!startedAt || now - startedAt > MAX_SESSION_AGE_MS || startedAt - now > 60_000) return null;
   const currentIndex = Math.max(0, Math.min(value.steps.length - 1, Math.floor(Number(value.currentIndex) || 0)));
   return {
     schema: SESSION_SCHEMA,
     id: String(value.id || `guided-${startedAt}`),
+    owner: value.owner || null,
     minutes: Number(value.minutes) === 30 ? 30 : 15,
     startedAt,
     currentIndex,
@@ -161,6 +168,7 @@ export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
   const session = {
     schema: SESSION_SCHEMA,
     id: `guided-${startedAt}-${plan.minutes}`,
+    owner: sessionOwner(),
     minutes: plan.minutes,
     startedAt,
     currentIndex: 0,
