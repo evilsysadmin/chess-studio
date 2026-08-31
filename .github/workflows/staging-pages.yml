@@ -280,12 +280,22 @@ jobs:
           root_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$STAGING_URL/")"
           [[ "$root_status" == 200 ]] || { echo "::error::Frontend staging raíz devuelve HTTP $root_status"; exit 1; }
 
+      - name: Prepare and sweep staging smoke janitor
+        env:
+          RENDER_STAGING_SERVICE_ID: ${{ steps.render_bootstrap.outputs.service_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/staging_smoke_user_cleanup.py --self-test
+          python3 -m pip install --disable-pip-version-check --quiet 'pymongo>=4.9,<5'
+          python3 scripts/staging_smoke_user_cleanup.py --sweep
+
       - name: Derive isolated staging smoke credentials
         shell: bash
         run: |
           set -euo pipefail
-          identity="$(printf 'chess-studio-staging-smoke-user:v1:%s' "$RENDER_API_KEY" | sha256sum | awk '{print substr($1,1,16)}')"
-          secret="$(printf 'chess-studio-staging-smoke-password:v1:%s' "$RENDER_API_KEY" | sha256sum | awk '{print $1}')"
+          identity="$(printf 'chess-studio-staging-smoke-user:v2:%s:%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$DEPLOY_SHA" "$RENDER_API_KEY" | sha256sum | awk '{print substr($1,1,16)}')"
+          secret="$(printf 'chess-studio-staging-smoke-password:v2:%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$RENDER_API_KEY" | sha256sum | awk '{print $1}')"
           username="ci_smoke_${identity}"
           password="CS!${secret}"
           echo "::add-mask::$username"
@@ -310,8 +320,22 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Live browser smoke against deployed staging
+        timeout-minutes: 5
         working-directory: e2e
         run: npx playwright test --config=playwright.staging.config.js
+
+      - name: Cleanup staging smoke identity
+        if: always()
+        env:
+          RENDER_STAGING_SERVICE_ID: ${{ steps.render_bootstrap.outputs.service_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${STAGING_E2E_USERNAME:-}" ]]; then
+            echo 'No se creó identidad de smoke; cleanup no necesario.'
+            exit 0
+          fi
+          python3 scripts/staging_smoke_user_cleanup.py
 
       - name: Upload staging browser diagnostics on failure
         if: failure()
@@ -338,4 +362,5 @@ jobs:
             echo '- Mongo staging: `ready`'
             echo '- Release gate: `OK`'
             echo '- Live browser smoke: `login → Home → Partida rápida → e2-e4 · OK`'
+            echo '- Identidad CI: `eliminada y verificada`'
           } >> "$GITHUB_STEP_SUMMARY"
