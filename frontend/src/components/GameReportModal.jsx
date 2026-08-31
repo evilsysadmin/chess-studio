@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { analyzeGame } from '../gameReport.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
+import { postGameExamCandidateIds } from '../postGameExam.js';
 import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, moveContextLines, pointOfNoReturn } from '../advancedCareer.js';
 import { cleanGameEvidence, recordCleanGameEvidence } from '../cleanGames.js';
 import { keyGameMoments } from '../postGameHighlights.js';
@@ -40,7 +41,7 @@ function forensicVerdict(report) {
   return 'Dictamen: pequeñas contusiones, nada que requiera cerrar el club ni cambiar de identidad.';
 }
 
-export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, onShareIncident, meta = {} }) {
+export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, onShareIncident, onStartExam, meta = {} }) {
   useEscapeToClose(onClose);
   const [status, setStatus] = useState('loading');
   const [report, setReport] = useState(null);
@@ -72,7 +73,10 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     if (status !== 'done' || !report || archivedRef.current) return;
     archivedRef.current = true;
     const info = savePersonalPuzzlesFromReport(history, humanColor, report, meta);
-    setPersonalPuzzleInfo(info);
+    // `savePersonalPuzzlesFromReport` es síncrono: después de persistir podemos
+    // seleccionar sólo las posiciones de ESTA autopsia sin fabricar ejercicios.
+    const examIds = postGameExamCandidateIds(report, meta);
+    setPersonalPuzzleInfo({ ...info, examIds });
     if (meta.gameId) {
       archiveAnalysis(meta.gameId, report, meta);
       recordCleanGameEvidence(meta.gameId, report, meta);
@@ -121,6 +125,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const noReturn = report ? pointOfNoReturn(report) : null;
   const keyMoments = report ? keyGameMoments(report) : [];
   const cleanEvidence = report ? cleanGameEvidence(report, meta) : null;
+  const examIds = personalPuzzleInfo?.examIds || [];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -157,9 +162,11 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             {aiAutopsy && <div className="ai-task-card"><small>MATTHIAS // DEBRIEF</small><p>{aiAutopsy}</p></div>}
 
             {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
+            {examIds.length >= 2 && <div className="autopsy-training-note"><b>🧪 Examen disponible.</b> He aislado {examIds.length} posiciones críticas de esta partida. En el examen desaparecen tu jugada, la alternativa y el botón de solución hasta que resuelvas cada posición.</div>}
 
             <div className="autopsy-actions">
               {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver el peor momento · jugada {report.worst.moveNumber}</button>}
+              {examIds.length >= 2 && onStartExam && <button className="secondary-btn" onClick={() => onStartExam(examIds, { sourceGameId: meta.gameId || null })}>🧪 Examinarme · {examIds.length} posiciones</button>}
               {report.worst && onShareIncident && <button className="secondary-btn" onClick={() => onShareIncident(report.worst, report)}>📤 Compartir</button>}
               {report.worst && <button className="secondary-btn" disabled={matthiasPositionStatus === 'loading'} onClick={() => void askMatthiasAboutWorst()}>{matthiasPositionStatus === 'loading' ? 'Matthias está mirando…' : '♟ Preguntar a Matthias'}</button>}
             </div>
