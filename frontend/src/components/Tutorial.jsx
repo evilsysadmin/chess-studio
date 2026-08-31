@@ -46,7 +46,7 @@ export default function Tutorial({ onExit }) {
   const [selected, setSelected] = useState(null);
   const [lineIndex, setLineIndex] = useState(0);
   const [mistakes, setMistakes] = useState(0);
-  const [examFailed, setExamFailed] = useState(false);
+  const [attemptEpoch, setAttemptEpoch] = useState(0);
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
@@ -64,6 +64,7 @@ export default function Tutorial({ onExit }) {
   const completedHumanMoves = line.slice(0, lineIndex).filter((step) => !step.auto).length;
   const totalHumanMoves = humanMoveCount(lesson);
   const runComplete = lineIndex >= line.length;
+  const examFailed = Boolean(lesson.exam && mistakes > Number(lesson.maxMistakes || 0));
 
   function goTo(newIndex) {
     const clamped = Math.max(0, Math.min(MATTHIAS_SCHOOL_LESSONS.length - 1, newIndex));
@@ -75,7 +76,7 @@ export default function Tutorial({ onExit }) {
     setSelected(null);
     setLineIndex(0);
     setMistakes(0);
-    setExamFailed(false);
+    setAttemptEpoch((current) => current + 1);
     setCoach({ tone: 'neutral', text: initialCoachText(next) });
   }
 
@@ -97,7 +98,6 @@ export default function Tutorial({ onExit }) {
     setMistakes(nextMistakes);
     setSelected(null);
     if (lesson.exam && nextMistakes > Number(lesson.maxMistakes || 0)) {
-      setExamFailed(true);
       setCoach({ tone: 'retry', text: `Suspendido. ${text} Has agotado el margen del examen. Repite cuando quieras; prefiero eso a promocionarte por lástima.` });
       return;
     }
@@ -108,10 +108,8 @@ export default function Tutorial({ onExit }) {
     setPracticeFen(lesson.fen);
     setSelected(null);
     setLineIndex(0);
-    if (clearFailure) {
-      setMistakes(0);
-      setExamFailed(false);
-    }
+    setAttemptEpoch((current) => current + 1);
+    if (clearFailure) setMistakes(0);
     if (!keepCoach) setCoach({ tone: 'neutral', text: initialCoachText(lesson) });
   }
 
@@ -316,10 +314,10 @@ export default function Tutorial({ onExit }) {
 
             <div className="matthias-school-stage">
               <div className="board-column matthias-school-board">
-                <Board fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} />
+                <Board key={`${lesson.id}:${attemptEpoch}`} fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} />
                 <div className="matthias-school-board-actions">
-                  <button className="secondary-btn" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
-                  {!lesson.exam && <button className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>}
+                  <button type="button" className="secondary-btn" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
+                  {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>}
                 </div>
               </div>
 
