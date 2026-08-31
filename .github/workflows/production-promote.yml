@@ -1,0 +1,473 @@
+name: Production · promote
+
+on:
+  workflow_run:
+    workflows:
+      - Staging · AI Worker
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-production-promotion
+  cancel-in-progress: false
+
+env:
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+  PROD_URL: https://chess-studio.shadowops.dpdns.org
+  PROD_API_URL: https://api.chess-studio.shadowops.dpdns.org/api
+  PROD_AI_URL: https://ai.shadowops.dpdns.org
+
+jobs:
+  gate:
+    name: Gate · staging accredited SHA
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_run'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Validate promoted commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Staging no acreditó un SHA completo: $DEPLOY_SHA"; exit 1; }
+
+      - name: Checkout staging-accredited commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Require current main before starting promotion
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$DEPLOY_SHA" == "$current_main" ]] || {
+            echo "::error::Staging acreditó $DEPLOY_SHA, pero main ya apunta a $current_main. No inicio una promoción obsoleta."
+            exit 1
+          }
+
+      - name: Verify staging backend still serves approved SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready="$RUNNER_TEMP/staging-ready.json"
+          release="$RUNNER_TEMP/staging-api-release.json"
+          curl --fail --silent --show-error --max-time 15 -H 'Cache-Control: no-cache' "$PROD_API_URL" >/dev/null 2>&1 || true
+          curl --fail --silent --show-error --max-time 15 -H 'Cache-Control: no-cache' \
+            'https://api-staging.chess-studio.shadowops.dpdns.org/api/ready' -o "$ready"
+          curl --fail --silent --show-error --max-time 15 -H 'Cache-Control: no-cache' \
+            "https://api-staging.chess-studio.shadowops.dpdns.org/api/release?sha=$DEPLOY_SHA" -o "$release"
+          python3 - "$ready" "$release" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+          expected = sys.argv[3].lower()
+          if ready.get('ok') is not True or ready.get('storage') != 'mongo':
+              raise SystemExit(f"Readiness staging inválido: {ready}")
+          if str(release.get('build') or '').lower() != expected:
+              raise SystemExit(f"Backend staging no sirve {expected}: {release}")
+          PY
+
+      - name: Verify staging frontend still serves approved SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/staging-frontend-release.json"
+          curl --fail --silent --show-error --max-time 15 -H 'Cache-Control: no-cache' \
+            "https://staging.chess-studio.shadowops.dpdns.org/release.json?sha=$DEPLOY_SHA" -o "$body"
+          python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          expected = sys.argv[2].lower()
+          if str(payload.get('build') or '').lower() != expected:
+              raise SystemExit(f"Frontend staging no sirve {expected}: {payload}")
+          PY
+
+      - name: Verify staging AI health contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/staging-ai-health.json"
+          curl --fail --silent --show-error --max-time 15 -H 'Cache-Control: no-cache' \
+            'https://ai-staging.shadowops.dpdns.org/health' -o "$body"
+          python3 scripts/cloudflare_health_contract.py "$body"
+          python3 scripts/cloudflare_ai_preflight.py --worker-url 'https://ai-staging.shadowops.dpdns.org'
+
+  cloudflare:
+    name: Production · Cloudflare Worker
+    needs: gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: production
+    defaults:
+      run:
+        working-directory: infra/cloudflare
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_worker_name: chess-studio-narrative-ai
+      TF_VAR_custom_domain_hostname: ai.shadowops.dpdns.org
+      TF_VAR_custom_domain_zone_name: shadowops.dpdns.org
+      TF_VAR_pages_hostname: chess-studio.shadowops.dpdns.org
+      TF_VAR_github_pages_cname_target: evilsysadmin.github.io
+      TF_VAR_render_api_hostname: api.chess-studio.shadowops.dpdns.org
+      TF_VAR_render_api_cname_target: chess-study-backend.onrender.com
+      CF_DNS_ZONE_NAME: shadowops.dpdns.org
+      PAGES_HOSTNAME: chess-studio.shadowops.dpdns.org
+      RENDER_API_HOSTNAME: api.chess-studio.shadowops.dpdns.org
+      WORKER_NAME: chess-studio-narrative-ai
+      CUSTOM_DOMAIN: ai.shadowops.dpdns.org
+
+    steps:
+      - name: Checkout promoted commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Resolve managed DNS zone
+        id: dns_zone
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          zone_body="$RUNNER_TEMP/cf-zone.json"
+          zone_status="$(curl --silent --show-error --output "$zone_body" --write-out '%{http_code}' --get \
+            --data-urlencode "name=$CF_DNS_ZONE_NAME" \
+            --data-urlencode "account.id=$CLOUDFLARE_ACCOUNT_ID" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' \
+            'https://api.cloudflare.com/client/v4/zones')"
+          [[ "$zone_status" == 200 ]] || { cat "$zone_body" >&2; exit 1; }
+          zone_id="$(python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")).get("result") or []; len(rows)==1 or sys.exit(f"Se esperaba una única zona activa: {rows}"); print(rows[0]["id"])' "$zone_body")"
+          echo "TF_VAR_cloudflare_zone_id=$zone_id" >> "$GITHUB_ENV"
+          echo "zone_id=$zone_id" >> "$GITHUB_OUTPUT"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Probe existing Cloudflare Worker state
+        id: cf_state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          probe() {
+            curl --silent --show-error --output "$2" --write-out '%{http_code}' \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Accept: application/json' "$1"
+          }
+          worker_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME"
+          worker_body="$RUNNER_TEMP/cf-worker-probe.json"
+          worker_status="$(probe "$worker_api" "$worker_body")"
+          case "$worker_status" in
+            200) echo 'worker_exists=true' >> "$GITHUB_OUTPUT" ;;
+            404)
+              python3 -c 'import json,pathlib,sys; p=json.loads(pathlib.Path(sys.argv[1]).read_text()); codes={x.get("code") for x in p.get("errors",[]) if isinstance(x,dict)}; 10007 in codes or sys.exit(p)' "$worker_body"
+              echo 'worker_exists=false' >> "$GITHUB_OUTPUT"
+              echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT"
+              ;;
+            *) cat "$worker_body" >&2; exit 1 ;;
+          esac
+          if [[ "$worker_status" == 200 ]]; then
+            subdomain_body="$RUNNER_TEMP/cf-subdomain-probe.json"
+            subdomain_status="$(probe "$worker_api/subdomain" "$subdomain_body")"
+            case "$subdomain_status" in
+              200) echo 'subdomain_exists=true' >> "$GITHUB_OUTPUT" ;;
+              404) echo 'subdomain_exists=false' >> "$GITHUB_OUTPUT" ;;
+              *) cat "$subdomain_body" >&2; exit 1 ;;
+            esac
+          fi
+          domains_body="$RUNNER_TEMP/cf-custom-domain-probe.json"
+          domains_status="$(curl --silent --show-error --output "$domains_body" --write-out '%{http_code}' --get \
+            --data-urlencode "hostname=$CUSTOM_DOMAIN" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Accept: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains")"
+          [[ "$domains_status" == 200 ]] || { cat "$domains_body" >&2; exit 1; }
+          readarray -t domain_meta < <(python3 -c 'import json,pathlib,sys; p=json.loads(pathlib.Path(sys.argv[1]).read_text()); host=sys.argv[2]; rows=[x for x in p.get("result",[]) if isinstance(x,dict) and x.get("hostname")==host]; len(rows)<=1 or sys.exit(rows); row=rows[0] if rows else {}; print(row.get("id") or ""); print(row.get("service") or "")' "$domains_body" "$CUSTOM_DOMAIN")
+          if [[ -n "${domain_meta[0]:-}" ]]; then
+            [[ "${domain_meta[1]:-}" == "$WORKER_NAME" ]] || { echo '::error::Custom Domain pertenece a otro Worker'; exit 1; }
+            echo 'custom_domain_exists=true' >> "$GITHUB_OUTPUT"
+            echo "custom_domain_id=${domain_meta[0]}" >> "$GITHUB_OUTPUT"
+          else
+            echo 'custom_domain_exists=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Import existing Worker state
+        if: steps.cf_state.outputs.worker_exists == 'true'
+        run: terraform import cloudflare_workers_script.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
+
+      - name: Import existing workers.dev state
+        if: steps.cf_state.outputs.subdomain_exists == 'true'
+        run: terraform import cloudflare_workers_script_subdomain.narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME"
+
+      - name: Import existing Custom Domain state
+        if: steps.cf_state.outputs.custom_domain_exists == 'true'
+        run: terraform import cloudflare_workers_custom_domain.narrative_ai "$TF_VAR_cloudflare_account_id/${{ steps.cf_state.outputs.custom_domain_id }}"
+
+      - name: Probe managed frontend and API CNAMEs
+        id: dns_state
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          probe_record() {
+            local body="$RUNNER_TEMP/cf-dns-$2.json"
+            local status
+            status="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' --get \
+              --data-urlencode "name=$1" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Accept: application/json' "https://api.cloudflare.com/client/v4/zones/$TF_VAR_cloudflare_zone_id/dns_records")"
+            [[ "$status" == 200 ]] || { cat "$body" >&2; exit 1; }
+            python3 -c 'import json,pathlib,sys; rows=json.loads(pathlib.Path(sys.argv[1]).read_text()).get("result") or []; len(rows)<=1 or sys.exit(rows); row=rows[0] if rows else None; row is None or row.get("type")=="CNAME" or sys.exit(row); print(row.get("id") if row else "")' "$body"
+          }
+          pages_id="$(probe_record "$PAGES_HOSTNAME" pages)"
+          api_id="$(probe_record "$RENDER_API_HOSTNAME" api)"
+          if [[ -n "$pages_id" ]]; then echo 'pages_exists=true' >> "$GITHUB_OUTPUT"; echo "pages_id=$pages_id" >> "$GITHUB_OUTPUT"; else echo 'pages_exists=false' >> "$GITHUB_OUTPUT"; fi
+          if [[ -n "$api_id" ]]; then echo 'api_exists=true' >> "$GITHUB_OUTPUT"; echo "api_id=$api_id" >> "$GITHUB_OUTPUT"; else echo 'api_exists=false' >> "$GITHUB_OUTPUT"; fi
+
+      - name: Import existing GitHub Pages CNAME
+        if: steps.dns_state.outputs.pages_exists == 'true'
+        run: terraform import cloudflare_dns_record.github_pages "$TF_VAR_cloudflare_zone_id/${{ steps.dns_state.outputs.pages_id }}"
+
+      - name: Import existing Render API CNAME
+        if: steps.dns_state.outputs.api_exists == 'true'
+        run: terraform import cloudflare_dns_record.render_api "$TF_VAR_cloudflare_zone_id/${{ steps.dns_state.outputs.api_id }}"
+
+      - name: Terraform plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan
+
+      - name: Install Worker shared secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CHESS_AI_SHARED_SECRET: ${{ secrets.CHESS_AI_SHARED_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$CHESS_AI_SHARED_SECRET"
+          printf '%s' "$CHESS_AI_SHARED_SECRET" | npx --yes wrangler@4 secret put CHESS_AI_SHARED_SECRET --name "$WORKER_NAME"
+
+      - name: Verify Custom Domain and health
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          domains_body="$RUNNER_TEMP/cf-custom-domain-live.json"
+          status="$(curl --silent --show-error --output "$domains_body" --write-out '%{http_code}' --get \
+            --data-urlencode "hostname=$CUSTOM_DOMAIN" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Accept: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains")"
+          [[ "$status" == 200 ]] || { cat "$domains_body" >&2; exit 1; }
+          python3 -c 'import json,pathlib,sys; p=json.loads(pathlib.Path(sys.argv[1]).read_text()); host=sys.argv[2]; service=sys.argv[3]; rows=[x for x in p.get("result",[]) if isinstance(x,dict) and x.get("hostname")==host]; len(rows)==1 or sys.exit(f"Custom Domain count={len(rows)}"); rows[0].get("service")==service or sys.exit(rows[0])' "$domains_body" "$CUSTOM_DOMAIN" "$WORKER_NAME"
+          health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"
+          health_ok=false
+          for attempt in {1..60}; do
+            health_body="$RUNNER_TEMP/cf-health-$attempt.json"
+            health_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
+              --output "$health_body" --write-out '%{http_code}' -H 'Cache-Control: no-cache' \
+              "https://$CUSTOM_DOMAIN/health" || true)"
+            if [[ "$health_status" == 200 ]] && python3 "$health_contract" "$health_body"; then
+              health_ok=true
+              break
+            fi
+            echo "Production AI aún no está healthy (HTTP ${health_status:-curl-error}, intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$health_ok" == true ]] || { echo '::error::Production AI no quedó healthy'; exit 1; }
+          python3 "$GITHUB_WORKSPACE/scripts/cloudflare_ai_preflight.py" --worker-url "https://$CUSTOM_DOMAIN"
+
+  backend:
+    name: Production · Render backend
+    needs: cloudflare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: https://api.chess-studio.shadowops.dpdns.org/api/ready
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Checkout promoted commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Production Render deploy contract
+        run: python3 -S scripts/render_production_deploy.py --self-test
+
+      - name: Enforce production auto-deploy off
+        run: python3 scripts/render_production_guardrail.py
+
+      - name: Deploy exact Render production commit
+        id: render_deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"
+
+      - name: Verify production backend readiness and build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          gate_ok=false
+          for attempt in {1..60}; do
+            ready="$RUNNER_TEMP/prod-ready-$attempt.json"
+            release="$RUNNER_TEMP/prod-release-$attempt.json"
+            ready_status="$(curl --silent --show-error --max-time 12 --output "$ready" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "$PROD_API_URL/ready" || true)"
+            release_status="$(curl --silent --show-error --max-time 12 --output "$release" --write-out '%{http_code}' -H 'Cache-Control: no-cache' "$PROD_API_URL/release?sha=$DEPLOY_SHA" || true)"
+            if [[ "$ready_status" == 200 && "$release_status" == 200 ]] && python3 - "$ready" "$release" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+          expected = sys.argv[3].lower()
+          ok = ready.get('ok') is True and ready.get('storage') == 'mongo' and str(release.get('build') or '').lower() == expected
+          raise SystemExit(0 if ok else 1)
+          PY
+            then
+              gate_ok=true
+              break
+            fi
+            echo "Production backend propagando $DEPLOY_SHA (intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$gate_ok" == true ]] || { echo '::error::Backend production no acreditó readiness + SHA'; exit 1; }
+
+  pages:
+    name: Production · GitHub Pages
+    needs: backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout promoted commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build promoted frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://api.chess-studio.shadowops.dpdns.org/api
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
+          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
+          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+        run: npm run build
+
+      - name: Verify built frontend identity before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
+          expected = sys.argv[1].lower()
+          actual = str(payload.get('build') or '').lower()
+          if actual != expected:
+              raise SystemExit(f"dist/release.json={actual or '<vacío>'}, esperaba {expected}")
+          PY
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload promoted frontend artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: frontend/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Verify production frontend build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          live=false
+          for attempt in {1..60}; do
+            body="$RUNNER_TEMP/prod-frontend-release-$attempt.json"
+            status="$(curl --silent --show-error --max-time 10 --output "$body" --write-out '%{http_code}' \
+              -H 'Cache-Control: no-cache' "$PROD_URL/release.json?sha=$DEPLOY_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
+          PY
+            then
+              live=true
+              break
+            fi
+            echo "Production frontend propagando $DEPLOY_SHA (intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$live" == true ]] || { echo '::error::Frontend production no sirve el SHA promocionado'; exit 1; }
+          root_status="$(curl --silent --show-error --max-time 10 --output /dev/null --write-out '%{http_code}' "$PROD_URL/")"
+          [[ "$root_status" == 200 ]] || { echo "::error::Frontend production raíz HTTP $root_status"; exit 1; }
+
+      - name: Promotion summary
+        shell: bash
+        run: |
+          {
+            echo '### Producción promocionada desde staging'
+            echo
+            echo "- SHA: \`$DEPLOY_SHA\`"
+            echo '- Staging backend/frontend/AI: `acreditados`'
+            echo '- Production Worker: `healthy`'
+            echo '- Production Render: `ready + SHA exacto`'
+            echo '- Production frontend: `release.json + HTTP 200`'
+          } >> "$GITHUB_STEP_SUMMARY"
