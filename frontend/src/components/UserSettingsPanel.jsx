@@ -14,6 +14,7 @@ import emeraldBlackKnight from '../pieces-medieval-esmeralda/bN.png';
 import studioWhiteKnight from '../pieces-studio/wN.png';
 import studioBlackKnight from '../pieces-studio/bN.png';
 import { GENERATED_SKIN_PREVIEWS } from '../generatedPieceSkins.js';
+import './UserSettingsBoardRenderer.css';
 
 const SKIN_PREVIEWS = {
   default: [pixelWhiteKnight, pixelBlackKnight],
