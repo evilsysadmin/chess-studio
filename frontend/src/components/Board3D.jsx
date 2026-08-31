@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Board from './Board.jsx';
 import { loadBoardTheme } from '../career.js';
@@ -7,8 +7,7 @@ import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../us
 import './Board3D.css';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
-const BOARD_SIZE = 8;
+const DISPLAY_RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
 const BOARD_THEME_3D = Object.freeze({
   classic: { light: 0xd9cfba, dark: 0x5a4236, frame: 0x34251f, felt: 0x111722, glow: 0xc9a227 },
@@ -83,10 +82,25 @@ function parseFen(fen) {
 function squarePosition(square) {
   const file = FILES.indexOf(square?.[0]);
   const rank = Number(square?.[1]);
-  return {
-    x: file - 3.5,
-    z: 4.5 - rank,
-  };
+  return { x: file - 3.5, z: 4.5 - rank };
+}
+
+function adjacentSquare(square, key, orientation) {
+  const fileIndex = FILES.indexOf(square?.[0]);
+  const rankIndex = DISPLAY_RANKS.indexOf(square?.[1]);
+  if (fileIndex < 0 || rankIndex < 0) return null;
+  let df = 0;
+  let dr = 0;
+  if (key === 'ArrowRight') df = 1;
+  else if (key === 'ArrowLeft') df = -1;
+  else if (key === 'ArrowUp') dr = -1;
+  else if (key === 'ArrowDown') dr = 1;
+  else return null;
+  if (orientation === 'black') { df *= -1; dr *= -1; }
+  const nextFile = fileIndex + df;
+  const nextRank = rankIndex + dr;
+  if (nextFile < 0 || nextFile > 7 || nextRank < 0 || nextRank > 7) return null;
+  return `${FILES[nextFile]}${DISPLAY_RANKS[nextRank]}`;
 }
 
 function makeMaterial(color, skin, accent = false) {
@@ -155,10 +169,15 @@ function buildPiece(type, color, skinId) {
 }
 
 function disposeObject(object) {
+  const disposedMaterials = new Set();
   object?.traverse?.((child) => {
     child.geometry?.dispose?.();
-    if (Array.isArray(child.material)) child.material.forEach((material) => material?.dispose?.());
-    else child.material?.dispose?.();
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      if (!material || disposedMaterials.has(material)) continue;
+      disposedMaterials.add(material);
+      material.dispose?.();
+    }
   });
 }
 
@@ -189,6 +208,7 @@ function Board3DCanvas({
   legalTargets = [],
   lastMove,
   orientation = 'white',
+  animate,
   hintMove,
   checkSquare,
   showCoordinates = true,
@@ -199,11 +219,14 @@ function Board3DCanvas({
   const sceneStateRef = useRef(null);
   const pointerStartRef = useRef(null);
   const latestPropsRef = useRef({});
+  const animationFrameRef = useRef(0);
+  const lastAnimatedSeqRef = useRef(0);
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
+  const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
 
-  latestPropsRef.current = { onSquareClick };
+  latestPropsRef.current = { onSquareClick, onRendererFailure };
 
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
@@ -217,6 +240,10 @@ function Board3DCanvas({
   }, []);
 
   useEffect(() => {
+    setFocusedSquare(orientation === 'black' ? 'e8' : 'e1');
+  }, [orientation]);
+
+  useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
 
@@ -224,16 +251,18 @@ function Board3DCanvas({
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     } catch (error) {
-      onRendererFailure?.(error);
+      latestPropsRef.current.onRendererFailure?.(error);
       return undefined;
     }
 
+    const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const squareMeshes = new Map();
     const highlightMeshes = new Map();
+    const pieceMeshes = new Map();
     const pieceGroup = new THREE.Group();
     const coordinateGroup = new THREE.Group();
     const boardGroup = new THREE.Group();
@@ -242,24 +271,24 @@ function Board3DCanvas({
     scene.background = new THREE.Color(theme.felt);
     scene.fog = new THREE.FogExp2(theme.felt, 0.035);
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.35 : 1.75));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     renderer.domElement.className = 'board3d-main-canvas';
-    renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D. Cámara fija desde tu lado.');
-    renderer.domElement.setAttribute('role', 'img');
+    renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D. Cámara fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
+    renderer.domElement.setAttribute('role', 'application');
+    renderer.domElement.tabIndex = 0;
     renderer.domElement.style.touchAction = 'manipulation';
     host.appendChild(renderer.domElement);
 
-    const ambient = new THREE.HemisphereLight(0xfff1d4, 0x192131, 1.25);
-    scene.add(ambient);
+    scene.add(new THREE.HemisphereLight(0xfff1d4, 0x192131, 1.25));
     const key = new THREE.DirectionalLight(0xffefd0, 2.1);
     key.position.set(-4.5, 9, 5.5);
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.mapSize.set(coarsePointer ? 512 : 1024, coarsePointer ? 512 : 1024);
     key.shadow.camera.left = -7;
     key.shadow.camera.right = 7;
     key.shadow.camera.top = 7;
@@ -284,11 +313,7 @@ function Board3DCanvas({
         const light = (rank + fileIndex) % 2 === 1;
         const tile = new THREE.Mesh(
           new THREE.BoxGeometry(0.985, 0.075, 0.985),
-          new THREE.MeshStandardMaterial({
-            color: light ? theme.light : theme.dark,
-            metalness: 0.05,
-            roughness: 0.72,
-          }),
+          new THREE.MeshStandardMaterial({ color: light ? theme.light : theme.dark, metalness: 0.05, roughness: 0.72 }),
         );
         tile.position.set(x, 0.035, z);
         tile.receiveShadow = true;
@@ -313,31 +338,28 @@ function Board3DCanvas({
     boardGroup.add(coordinateGroup);
     scene.add(boardGroup);
 
-    function updateCamera() {
-      const white = orientation !== 'black';
-      camera.position.set(0, 7.35, white ? 7.75 : -7.75);
-      camera.lookAt(0, 0.12, 0);
-    }
-    updateCamera();
+    const whiteSide = orientation !== 'black';
+    camera.position.set(0, 7.35, whiteSide ? 7.75 : -7.75);
+    camera.lookAt(0, 0.12, 0);
 
-    function rebuildCoordinates() {
-      coordinateGroup.clear();
-      if (!showCoordinates) return;
-      const white = orientation !== 'black';
-      const fileOrder = white ? FILES : [...FILES].reverse();
-      const rankOrder = white ? ['1','2','3','4','5','6','7','8'] : ['8','7','6','5','4','3','2','1'];
+    if (showCoordinates) {
+      const fileOrder = whiteSide ? FILES : [...FILES].reverse();
+      const rankOrder = whiteSide ? ['1','2','3','4','5','6','7','8'] : ['8','7','6','5','4','3','2','1'];
       fileOrder.forEach((file, index) => {
         const sprite = makeTextSprite(file.toUpperCase());
-        sprite.position.set(index - 3.5, 0.11, white ? 4.62 : -4.62);
+        sprite.position.set(index - 3.5, 0.11, whiteSide ? 4.62 : -4.62);
         coordinateGroup.add(sprite);
       });
       rankOrder.forEach((rank, index) => {
         const sprite = makeTextSprite(rank);
-        sprite.position.set(white ? -4.62 : 4.62, 0.11, white ? 3.5 - index : -3.5 + index);
+        sprite.position.set(whiteSide ? -4.62 : 4.62, 0.11, whiteSide ? 3.5 - index : -3.5 + index);
         coordinateGroup.add(sprite);
       });
     }
-    rebuildCoordinates();
+
+    function render() {
+      renderer.render(scene, camera);
+    }
 
     function resize() {
       const width = Math.max(280, host.clientWidth || 280);
@@ -345,25 +367,20 @@ function Board3DCanvas({
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      render();
     }
     resize();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
     observer?.observe(host);
 
-    function eventPoint(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      return {
-        x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        y: -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      };
-    }
-
     function squareFromPointer(event) {
-      const point = eventPoint(event);
-      pointer.set(point.x, point.y);
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.set(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1,
+      );
       raycaster.setFromCamera(pointer, camera);
-      const candidates = [...pieceGroup.children, ...squareMeshes.values()];
-      const intersections = raycaster.intersectObjects(candidates, true);
+      const intersections = raycaster.intersectObjects([...pieceGroup.children, ...squareMeshes.values()], true);
       for (const hit of intersections) {
         let object = hit.object;
         while (object && !object.userData?.square) object = object.parent;
@@ -382,38 +399,39 @@ function Board3DCanvas({
       if (!start || start.id !== event.pointerId) return;
       if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
       const square = squareFromPointer(event);
-      if (square) latestPropsRef.current.onSquareClick?.(square);
+      if (!square) return;
+      setFocusedSquare(square);
+      latestPropsRef.current.onSquareClick?.(square);
+    }
+
+    function onContextLost(event) {
+      event.preventDefault();
+      latestPropsRef.current.onRendererFailure?.(new Error('WebGL context lost'));
     }
 
     renderer.domElement.addEventListener('pointerdown', onPointerDown, { passive: true });
     renderer.domElement.addEventListener('pointerup', onPointerUp, { passive: true });
+    renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
 
     sceneStateRef.current = {
       scene,
       camera,
       renderer,
       pieceGroup,
+      pieceMeshes,
       highlightMeshes,
-      coordinateGroup,
-      rebuildCoordinates,
-      updateCamera,
-      skinId,
-      boardTheme,
+      render,
     };
     setRendererLabel(renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL');
-
-    let frame = 0;
-    const renderLoop = () => {
-      renderer.render(scene, camera);
-      frame = window.requestAnimationFrame(renderLoop);
-    };
-    frame = window.requestAnimationFrame(renderLoop);
+    render();
 
     return () => {
-      window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = 0;
       observer?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
+      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       scene.traverse((object) => {
         if (object.userData?.ownedTexture) object.userData.ownedTexture.dispose();
       });
@@ -423,15 +441,20 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [boardTheme, orientation, showCoordinates, onRendererFailure]);
+  }, [boardTheme, orientation, showCoordinates]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
-    while (state.pieceGroup.children.length) {
-      const child = state.pieceGroup.children.pop();
+    window.cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = 0;
+
+    for (const child of [...state.pieceGroup.children]) {
+      state.pieceGroup.remove(child);
       disposeObject(child);
     }
+    state.pieceMeshes.clear();
+
     for (const piece of parseFen(fen)) {
       const mesh = buildPiece(piece.type, piece.color, skinId);
       const { x, z } = squarePosition(piece.square);
@@ -439,10 +462,61 @@ function Board3DCanvas({
       mesh.userData.square = piece.square;
       mesh.traverse((object) => { object.userData.square = piece.square; });
       state.pieceGroup.add(mesh);
+      state.pieceMeshes.set(piece.square, mesh);
     }
-  }, [fen, skinId]);
 
-  const legalMap = useMemo(() => new Map((legalTargets || []).map((target) => [target.to || target.square || target, Boolean(target.captured)])), [legalTargets]);
+    const animatedMesh = animate?.to ? state.pieceMeshes.get(animate.to) : null;
+    const shouldAnimate = Boolean(
+      animatedMesh
+      && animate?.from
+      && animate?.to
+      && animate?.seq
+      && animate.seq !== lastAnimatedSeqRef.current
+      && !getEffectiveReducedMotion(),
+    );
+
+    if (!shouldAnimate) {
+      if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
+      state.render();
+      return;
+    }
+
+    lastAnimatedSeqRef.current = animate.seq;
+    const from = squarePosition(animate.from);
+    const to = squarePosition(animate.to);
+    const start = performance.now();
+    const duration = animate.kind === 'miss' ? 300 : 190;
+
+    function frame(now) {
+      const raw = Math.min(1, Math.max(0, (now - start) / duration));
+      const progress = animate.kind === 'miss'
+        ? (raw < 0.5 ? raw * 0.72 : (1 - raw) * 0.72)
+        : 1 - Math.pow(1 - raw, 3);
+      animatedMesh.position.x = to.x + (from.x - to.x) * (1 - progress);
+      animatedMesh.position.z = to.z + (from.z - to.z) * (1 - progress);
+      state.render();
+      if (raw < 1) animationFrameRef.current = window.requestAnimationFrame(frame);
+      else {
+        animatedMesh.position.set(to.x, 0.08, to.z);
+        state.render();
+        animationFrameRef.current = 0;
+      }
+    }
+
+    animatedMesh.position.set(from.x, 0.08, from.z);
+    state.render();
+    animationFrameRef.current = window.requestAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = 0;
+    };
+  }, [fen, skinId, animate, boardTheme, orientation, showCoordinates]);
+
+  const legalMap = useMemo(() => new Map((legalTargets || []).map((target) => {
+    const square = target?.to || target?.square || target;
+    const capture = Boolean(target?.captured || target?.san?.includes?.('x'));
+    return [square, capture];
+  })), [legalTargets]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -451,10 +525,11 @@ function Board3DCanvas({
       marker.visible = false;
       let color = null;
       let opacity = 0.86;
+      if (focusedSquare === square) { color = 0xe8dfc3; opacity = 0.42; }
       if (lastMove && (square === lastMove.from || square === lastMove.to)) color = 0xb9952e;
       if (hintMove && (square === hintMove.from || square === hintMove.to)) color = 0x50a4c6;
       if (legalMap.has(square)) color = legalMap.get(square) ? 0xb4483a : 0x5fa8d3;
-      if (selectedSquare === square) color = 0xe0b84e;
+      if (selectedSquare === square) { color = 0xe0b84e; opacity = 0.96; }
       if (checkSquare === square) { color = 0xe33b32; opacity = 1; }
       if (color != null) {
         marker.material.color.setHex(color);
@@ -462,11 +537,24 @@ function Board3DCanvas({
         marker.visible = true;
       }
     }
-  }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare]);
+    state.render();
+  }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, boardTheme, orientation, showCoordinates]);
+
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSquareClick?.(focusedSquare);
+      return;
+    }
+    const next = adjacentSquare(focusedSquare, event.key, orientation);
+    if (!next) return;
+    event.preventDefault();
+    setFocusedSquare(next);
+  }
 
   return (
     <div className="board3d-main-shell">
-      <div ref={hostRef} className="board3d-main-host" />
+      <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
       <div className="board3d-fixed-camera-note" aria-hidden="true">CÁMARA FIJA · TU LADO</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
@@ -476,7 +564,7 @@ function Board3DCanvas({
 
 export default function Board3D(props) {
   const [failed, setFailed] = useState(false);
-  const reducedMotion = getEffectiveReducedMotion();
+  const handleRendererFailure = useCallback(() => setFailed(true), []);
 
   if (failed) {
     return (
@@ -487,5 +575,5 @@ export default function Board3D(props) {
     );
   }
 
-  return <Board3DCanvas {...props} reducedMotion={reducedMotion} onRendererFailure={() => setFailed(true)} />;
+  return <Board3DCanvas {...props} onRendererFailure={handleRendererFailure} />;
 }
