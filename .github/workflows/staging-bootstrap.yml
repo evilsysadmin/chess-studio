@@ -40,7 +40,9 @@ jobs:
             --output "$archive"
           echo '3b3f1f839ef36b81f12d84ac7288f1c96f9f7519b39c53fe6f866612f704e7cd  '"$archive" | sha256sum --check --status
           unzip -q "$archive" -d "$RUNNER_TEMP/render-cli"
-          install "$RUNNER_TEMP/render-cli/render" "$RUNNER_TEMP/render"
+          render_bin="$(find "$RUNNER_TEMP/render-cli" -type f -name render -print -quit)"
+          [[ -n "$render_bin" ]] || { echo '::error::El ZIP verificado no contiene el binario render'; exit 1; }
+          install "$render_bin" "$RUNNER_TEMP/render"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
       - name: Validate required GitHub environment values
