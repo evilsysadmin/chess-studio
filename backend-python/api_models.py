@@ -29,6 +29,10 @@ class LoginRequest(BaseModel):
     password: str = Field(max_length=128)
 
 
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(max_length=128)
+
+
 class ForgotPasswordRequest(BaseModel):
     email: str = Field(max_length=254)
 
