@@ -1,0 +1,74 @@
+# render.staging.yaml — backend efímero de staging.
+#
+# Se crea UNA vez como Blueprint/servicio separado y se deja con autodeploy
+# desactivado. Las PRs despliegan un SHA concreto mediante su Deploy Hook.
+# Render Free vuelve a dormir el servicio por inactividad, así que staging no
+# necesita estar encendido permanentemente.
+#
+# MONGO_URL puede ser exactamente la misma conexión de Atlas que producción.
+# El aislamiento lo da MONGO_DB_NAME=chess_study_staging. db.py contiene además
+# un guardarraíl que impide arrancar staging contra la base de producción.
+
+services:
+  - type: web
+    name: chess-study-backend-staging
+    runtime: docker
+    dockerfilePath: ./backend-python/Dockerfile
+    dockerContext: ./backend-python
+    plan: free
+    healthCheckPath: /api/ready
+    autoDeployTrigger: off
+
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: MONGO_DB_NAME
+        value: chess_study_staging
+      - key: JWT_SECRET
+        sync: false
+      - key: ENVIRONMENT
+        value: staging
+
+      # Staging nunca debe enviar recuperación de contraseña real.
+      - key: ENABLE_EMAIL_RECOVERY
+        value: "false"
+      - key: PASSWORD_RESET_URL
+        value: https://staging.chess-studio.shadowops.dpdns.org/
+      - key: EXPOSE_API_DOCS
+        value: "false"
+      - key: ALLOW_REGISTRATION
+        value: "true"
+
+      # El frontend staging se publica por Direct Upload en Cloudflare Pages.
+      - key: CORS_ORIGINS
+        value: https://chess-studio-staging.pages.dev,https://staging.chess-studio.shadowops.dpdns.org
+
+      # Reutilizamos el Worker AI de producción por ahora: es stateless y la
+      # persistencia/datos que lo alimentan siguen saliendo de la DB staging.
+      # Si más adelante queremos aislar también sus métricas/cupo, se separa
+      # como chess-studio-narrative-ai-staging sin tocar el contrato del backend.
+      - key: CF_AI_WORKER_URL
+        value: https://ai.shadowops.dpdns.org
+      - key: CHESS_AI_SHARED_SECRET
+        sync: false
+
+      # Mismo destino de observabilidad si se configuran los secretos, pero con
+      # service.name distinto para filtrar staging sin mezclarlo con producción.
+      - key: OTEL_SERVICE_NAME
+        value: chess-studio-backend-staging
+      - key: OTEL_TRACES_ENABLED
+        value: "true"
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - key: OTEL_TRACES_SAMPLER
+        value: parentbased_traceidratio
+      - key: OTEL_TRACES_SAMPLER_ARG
+        value: "1.0"
+      - key: OTEL_METRICS_ENABLED
+        value: "true"
+      - key: OTEL_LOGS_ENABLED
+        value: "true"
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
