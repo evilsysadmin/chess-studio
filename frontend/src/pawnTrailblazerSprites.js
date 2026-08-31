@@ -35,6 +35,13 @@ export function trailSpriteStyle(name) {
   if (!cell) return null;
   const denominator = Math.max(1, TRAIL_ATLAS_GRID - 1);
   return {
+    display: 'block',
+    width: '128px',
+    height: '128px',
+    flex: '0 0 128px',
+    border: '3px solid #c9a227',
+    borderRadius: '16px',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, .45)',
     backgroundImage: `url(${TRAIL_ATLAS_IMAGE})`,
     backgroundRepeat: 'no-repeat',
     backgroundSize: `${TRAIL_ATLAS_GRID * 100}% ${TRAIL_ATLAS_GRID * 100}%`,
