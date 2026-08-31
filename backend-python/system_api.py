@@ -9,11 +9,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 import db
 import feedback_store as fstore
+import game_store as gstore
+import matthias_daily_store
+import matthias_memory_store
+import profile_store as pstore
 import users_store as ustore
 import release_info
+from auth import verify_password
 from feature_flags import public_feature_flags
 from observability_history import record_presence_snapshot
-from api_models import ClientTelemetryRequest
+from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
 
 _logger = logging.getLogger("chess.system")
@@ -81,6 +86,36 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         if not deleted:
             raise HTTPException(404, "Feedback no encontrado.")
         return Response(status_code=204)
+
+    @router.post("/api/auth/delete-account")
+    @limiter.limit("5/hour")
+    async def delete_own_account(
+        request: Request,
+        body: DeleteAccountRequest,
+        username: str = Depends(auth_dependency),
+    ):
+        """Borra la identidad autenticada sólo tras revalidar su contraseña.
+
+        La cuenta se elimina al final de la cascada. Si una dependencia de
+        persistencia falla a mitad, el usuario conserva su identidad y puede
+        reintentar sin dejar una cuenta aparentemente borrada con restos
+        inaccesibles. El JWT queda inválido inmediatamente porque users_store
+        actualiza su caché de existencia al borrar la cuenta.
+        """
+        user = await ustore.get_user(username)
+        if not user or not verify_password(body.password, user.get("password_hash", "")):
+            raise HTTPException(401, "La contraseña actual no es correcta.")
+
+        deleted_games = await gstore.delete_games_by_owner(username)
+        await pstore.delete_profile(username)
+        await matthias_daily_store.delete_user_daily(username)
+        await matthias_memory_store.delete_user_memory(username)
+        deleted = await ustore.delete_user(username)
+        if not deleted:
+            raise HTTPException(404, "La cuenta ya no existe.")
+
+        request.state.username = username
+        return {"deleted": True, "username": username, "deletedGames": deleted_games}
 
     @router.get("/api/status")
     async def public_status(_username: str = Depends(auth_dependency)):
