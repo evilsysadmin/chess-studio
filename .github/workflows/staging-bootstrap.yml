@@ -21,10 +21,11 @@ jobs:
   render:
     name: Crear o reconciliar backend staging
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     environment: staging
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
 
     steps:
       - uses: actions/checkout@v7
@@ -55,6 +56,91 @@ jobs:
         id: bootstrap
         run: python3 scripts/render_staging_bootstrap.py
 
+      - name: Deploy reconciled staging configuration
+        id: deploy
+        if: steps.bootstrap.outputs.created != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_id='${{ steps.bootstrap.outputs.service_id }}'
+          response="$RUNNER_TEMP/render-deploy.json"
+          status="$(curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer $RENDER_API_KEY" \
+            --header 'Accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --data "{\"clearCache\":\"do_not_clear\",\"commitId\":\"$GITHUB_SHA\"}" \
+            --output "$response" \
+            --write-out '%{http_code}' \
+            "https://api.render.com/v1/services/$service_id/deploys")"
+          [[ "$status" == 201 || "$status" == 202 ]] || { echo "::error::Render deploy devolvió HTTP $status"; exit 1; }
+          deploy_id="$(python3 - "$response" <<'PY'
+          import json, pathlib, sys
+          body = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          deploy = body.get('deploy') if isinstance(body, dict) and isinstance(body.get('deploy'), dict) else body
+          print((deploy or {}).get('id', ''))
+          PY
+          )"
+          [[ -n "$deploy_id" ]] || { echo '::error::Render no devolvió deploy id'; cat "$response"; exit 1; }
+          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Render staging deploy
+        if: steps.bootstrap.outputs.created != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_id='${{ steps.bootstrap.outputs.service_id }}'
+          deploy_id='${{ steps.deploy.outputs.deploy_id }}'
+          live=false
+          for attempt in {1..180}; do
+            response="$RUNNER_TEMP/render-deploy-status.json"
+            http="$(curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer $RENDER_API_KEY" \
+              --header 'Accept: application/json' \
+              --output "$response" \
+              --write-out '%{http_code}' \
+              "https://api.render.com/v1/services/$service_id/deploys/$deploy_id")"
+            [[ "$http" == 200 ]] || { echo "::error::Consultar deploy Render devolvió HTTP $http"; exit 1; }
+            deploy_status="$(python3 - "$response" <<'PY'
+          import json, pathlib, sys
+          body = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          deploy = body.get('deploy') if isinstance(body, dict) and isinstance(body.get('deploy'), dict) else body
+          print((deploy or {}).get('status', 'unknown'))
+          PY
+          )"
+            echo "Render staging: $deploy_status (intento $attempt/180)"
+            case "$deploy_status" in
+              live)
+                live=true
+                break
+                ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "::error::Deploy staging terminó en $deploy_status"
+                exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          [[ "$live" == true ]] || { echo '::error::Render staging no llegó a live en 15 minutos'; exit 1; }
+
+      - name: Verify staging readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=false
+          for attempt in {1..30}; do
+            status="$(curl --silent --show-error --connect-timeout 5 --max-time 12 \
+              --output /dev/null --write-out '%{http_code}' \
+              "$STAGING_API_URL/ready" || true)"
+            if [[ "$status" == 200 ]]; then
+              ready=true
+              break
+            fi
+            echo "API staging HTTP ${status:-curl-error} (intento $attempt/30)"
+            sleep 5
+          done
+          [[ "$ready" == true ]] || { echo '::error::API staging no quedó ready'; exit 1; }
+
       - name: Summary
         shell: bash
         run: |
@@ -65,5 +151,8 @@ jobs:
             echo '- Service ID: `${{ steps.bootstrap.outputs.service_id }}`'
             echo '- Creado ahora: `${{ steps.bootstrap.outputs.created }}`'
             echo '- Mongo: `chess_study_staging` (nombre no secreto)'
+            echo '- Admin: `evilsysadmin`'
             echo '- Custom Domain: `api-staging.chess-studio.shadowops.dpdns.org`'
+            echo "- Commit desplegado: \`$GITHUB_SHA\`"
+            echo '- Readiness: `OK`'
           } >> "$GITHUB_STEP_SUMMARY"
