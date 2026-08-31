@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,6 +23,8 @@ PAGES_HOSTNAME = "staging.chess-studio.shadowops.dpdns.org"
 PAGES_TARGET = f"{PAGES_PROJECT}.pages.dev"
 API_HOSTNAME = "api-staging.chess-studio.shadowops.dpdns.org"
 RENDER_TARGET = "chess-study-backend-staging.onrender.com"
+DOMAIN_ACTIVE_TIMEOUT_S = 600
+DOMAIN_ACTIVE_POLL_S = 5
 
 
 def required(name: str) -> str:
@@ -121,9 +124,13 @@ def ensure_pages_project() -> bool:
     return True
 
 
-def ensure_pages_domain() -> bool:
+def pages_domain_path() -> str:
     encoded = urllib.parse.quote(PAGES_HOSTNAME, safe="")
-    path = f"/accounts/{account_id()}/pages/projects/{PAGES_PROJECT}/domains/{encoded}"
+    return f"/accounts/{account_id()}/pages/projects/{PAGES_PROJECT}/domains/{encoded}"
+
+
+def ensure_pages_domain() -> bool:
+    path = pages_domain_path()
     status, body = request_json("GET", path)
     if status == 200:
         result_or_die(status, body, context="Leer custom domain de Pages")
@@ -137,6 +144,49 @@ def ensure_pages_domain() -> bool:
     )
     result_or_die(create_status, create_body, context="Crear custom domain de Pages", allowed={200, 201})
     return True
+
+
+def pages_domain_status() -> tuple[str, str]:
+    status, body = request_json("GET", pages_domain_path())
+    domain = result_or_die(status, body, context="Consultar estado custom domain de Pages staging")
+    if not isinstance(domain, dict):
+        raise SystemExit("Cloudflare devolvió un custom domain staging inesperado")
+    state = str(domain.get("status") or "unknown")
+    details: list[str] = []
+    for name in ("validation_data", "verification_data"):
+        data = domain.get(name)
+        if not isinstance(data, dict):
+            continue
+        substate = str(data.get("status") or "")
+        error = str(data.get("error_message") or "")
+        if substate:
+            details.append(f"{name}={substate}")
+        if error:
+            details.append(f"{name}.error={error}")
+    return state, ", ".join(details)
+
+
+def wait_pages_domain_active(*, timeout_s: int = DOMAIN_ACTIVE_TIMEOUT_S, poll_s: int = DOMAIN_ACTIVE_POLL_S) -> str:
+    deadline = time.monotonic() + timeout_s
+    attempt = 0
+    while True:
+        attempt += 1
+        state, detail = pages_domain_status()
+        if state == "active":
+            print(f"Custom domain Pages staging activo tras {attempt} comprobaciones.")
+            return state
+        if state in {"deactivated", "blocked", "error"}:
+            raise SystemExit(f"Custom domain Pages staging terminó en {state}{': ' + detail if detail else ''}")
+        if time.monotonic() >= deadline:
+            raise SystemExit(
+                f"Custom domain Pages staging no llegó a active en {timeout_s}s; "
+                f"último estado={state}{', ' + detail if detail else ''}"
+            )
+        print(
+            f"Custom domain Pages staging aún {state} "
+            f"(intento {attempt}, {detail or 'sin detalle'}); reintentando..."
+        )
+        time.sleep(poll_s)
 
 
 def dns_rows(zone_id: str, hostname: str) -> list[dict]:
@@ -243,18 +293,21 @@ def main() -> None:
         proxied=False,
         comment="Chess Studio staging API · Render",
     )
+    domain_status = wait_pages_domain_active()
     analytics = ensure_web_analytics(zone_id)
     write_outputs(
         pages_project=PAGES_PROJECT,
         pages_hostname=PAGES_HOSTNAME,
         api_hostname=API_HOSTNAME,
+        domain_status=domain_status,
         analytics=analytics,
     )
     print(
         "Cloudflare staging reconciliado: "
         f"Pages={PAGES_PROJECT} ({'creado' if project_created else 'existente'}), "
         f"domain={'creado' if domain_created else 'existente'}, "
-        f"DNS pages={pages_dns}, DNS api={api_dns}, Web Analytics={analytics}"
+        f"DNS pages={pages_dns}, DNS api={api_dns}, domain_status={domain_status}, "
+        f"Web Analytics={analytics}"
     )
 
 

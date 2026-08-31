@@ -85,6 +85,47 @@ def test_dns_reconciliation_updates_target_and_proxy_mode() -> None:
     check(payload["content"] == module.PAGES_TARGET and payload["proxied"] is True, "Pages staging debe quedar proxied")
 
 
+def test_pages_domain_waits_until_active() -> None:
+    responses = [
+        (200, {"success": True, "result": {"status": "pending", "validation_data": {"status": "pending"}}}),
+        (200, {"success": True, "result": {"status": "active", "validation_data": {"status": "active"}}}),
+    ]
+    clock = [100.0]
+
+    def sleep(seconds):
+        clock[0] += seconds
+
+    with (
+        patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
+        patch.object(module, "request_json", side_effect=responses),
+        patch.object(module.time, "monotonic", side_effect=lambda: clock[0]),
+        patch.object(module.time, "sleep", side_effect=sleep),
+    ):
+        outcome = module.wait_pages_domain_active(timeout_s=30, poll_s=5)
+    check(outcome == "active", "debe esperar a que Cloudflare confirme el custom domain")
+    check(clock[0] == 105.0, "debe hacer sólo la espera necesaria")
+
+
+def test_pages_domain_terminal_error_fails_fast() -> None:
+    response = (200, {
+        "success": True,
+        "result": {
+            "status": "error",
+            "verification_data": {"status": "failed", "error_message": "bad cname"},
+        },
+    })
+    with (
+        patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
+        patch.object(module, "request_json", return_value=response),
+    ):
+        try:
+            module.wait_pages_domain_active(timeout_s=30, poll_s=5)
+        except SystemExit as exc:
+            check("error" in str(exc) and "bad cname" in str(exc), "debe conservar diagnóstico de Cloudflare")
+        else:
+            raise AssertionError("un custom domain en error debe fallar sin esperar el timeout")
+
+
 def test_web_analytics_permission_is_non_blocking() -> None:
     with (
         patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
@@ -114,6 +155,8 @@ if __name__ == "__main__":
     test_pages_project_is_idempotent()
     test_pages_project_is_created_when_missing()
     test_dns_reconciliation_updates_target_and_proxy_mode()
+    test_pages_domain_waits_until_active()
+    test_pages_domain_terminal_error_fails_fast()
     test_web_analytics_permission_is_non_blocking()
     test_web_analytics_existing_zone_is_idempotent()
-    print("cloudflare-staging-pages-smoke OK · Pages + DNS + RUM opcional/idempotente")
+    print("cloudflare-staging-pages-smoke OK · Pages + DNS + domain active + RUM opcional/idempotente")

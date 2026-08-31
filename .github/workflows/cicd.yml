@@ -54,8 +54,11 @@ jobs:
       - name: Frontend build
         run: make frontend-build
 
+      # `make bundle-report` volvería a ejecutar frontend-build. En CI el dist
+      # acaba de generarse en el paso anterior, así que consumimos ese artefacto
+      # directamente y evitamos una segunda compilación idéntica.
       - name: Bundle size report
-        run: make bundle-report
+        run: node scripts/bundle_size_report.mjs
 
       - name: Prepare security report
         run: mkdir -p .security

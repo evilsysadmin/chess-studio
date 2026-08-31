@@ -25,10 +25,11 @@ function releaseManifestPlugin() {
 }
 
 export default defineConfig({
-  // GitHub Pages usa /chess-studio/ en el dominio github.io, pero un dominio
-  // propio sirve la aplicación desde /. El workflow de Pages fija la segunda
-  // variante sin romper previews ni E2E locales.
-  base: process.env.VITE_PUBLIC_BASE || '/chess-studio/',
+  // Producción, staging y desarrollo sirven Chess Studio desde la raíz. Los
+  // workflows pueden seguir fijando VITE_PUBLIC_BASE explícitamente para dejar
+  // el contrato visible, pero un build manual ya no hereda el prefijo histórico
+  // de GitHub Pages.
+  base: process.env.VITE_PUBLIC_BASE || '/',
 
   // `release.js` también se importa directamente desde Playwright/Node. Una
   // constante Vite explícita conserva ese módulo portable y sólo inyecta el

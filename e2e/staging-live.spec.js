@@ -76,7 +76,7 @@ async function seedStableSmokeProfile(request, token) {
   expect(response.status(), `seed de perfil staging: ${await response.text()}`).toBe(200);
 }
 
-test('staging live · login real → Home → partida rápida → jugada real', async ({ page, request }) => {
+test('staging live · login real → Matthias → Home → partida rápida → jugada real', async ({ page, request }) => {
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
 
@@ -108,6 +108,10 @@ test('staging live · login real → Home → partida rápida → jugada real', 
     expect((await browserLogin).status()).toBe(200);
 
     await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible({ timeout: 25_000 });
+    // Staging debe acreditar también la experiencia narrativa real. Un login
+    // correcto con Home visible pero sin Matthias es una regresión de producto,
+    // aunque API, Pages y el tablero sigan funcionando.
+    await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await buttonWithVisibleText(page, 'Partida rápida').click();
 

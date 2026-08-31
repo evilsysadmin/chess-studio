@@ -1,10 +1,9 @@
-# render.yaml — Blueprint de Render para el backend.
+# render.yaml — Blueprint de referencia para el backend de producción.
 #
-# Al conectar este repo en Render (New -> Blueprint), detecta este archivo
-# solo y arma el servicio. MONGO_URL queda como "sync: false" a propósito:
-# es un secreto (usuario/contraseña de tu cluster de MongoDB Atlas), así
-# que Render te va a pedir cargarlo a mano desde su dashboard en vez de
-# dejarlo committeado acá.
+# La release normal NO usa autodeploy ni este Blueprint: GitHub Actions
+# reconcilia Render por API y promociona únicamente el SHA acreditado en
+# staging. Este archivo se conserva como configuración reproducible/recuperación
+# manual. Los secretos usan sync:false y nunca se commitean.
 
 services:
   - type: web
@@ -14,8 +13,8 @@ services:
     dockerContext: ./backend-python
     plan: free
     healthCheckPath: /api/ready
-    # El frontend vive en GitHub Pages; la API usa su propio subdominio. Si el
-    # servicio se creó manualmente, añádelo también en Settings -> Custom Domains.
+    # El frontend de producción vive en Cloudflare Pages bajo el dominio propio;
+    # la API usa su subdominio independiente de Render.
     domains:
       - api.chess-studio.shadowops.dpdns.org
     envVars:
@@ -25,10 +24,7 @@ services:
         value: chess_study
       - key: JWT_SECRET
         sync: false
-      # Recuperación de contraseña. RESEND_API_KEY es el único secreto nuevo.
-      # Para producción real verifica un remitente/dominio en Resend; si quieres
-      # sobrescribir el remitente por defecto, añade PASSWORD_RESET_FROM en el
-      # dashboard sin committearlo.
+      # Recuperación de contraseña. RESEND_API_KEY es secreto.
       - key: RESEND_API_KEY
         sync: false
       - key: PASSWORD_RESET_URL
@@ -71,4 +67,4 @@ services:
       - key: INVITE_CODE
         sync: false
       - key: CORS_ORIGINS
-        value: https://evilsysadmin.github.io,https://chess-studio.shadowops.dpdns.org
+        value: https://chess-studio.shadowops.dpdns.org

@@ -303,21 +303,21 @@ jobs:
           echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
           echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
 
+      # Same cache key as CI: when the lockfile pins the same Playwright browser,
+      # staging reuses the exact Chromium payload instead of downloading it again.
       - name: Cache Playwright Chromium
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: staging-playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
 
       - name: Install staging E2E dependencies
         working-directory: e2e
         run: npm ci
 
-      - name: Install Chromium runtime
+      - name: Ensure cached Chromium is present
         working-directory: e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Live browser smoke against deployed staging
         timeout-minutes: 5

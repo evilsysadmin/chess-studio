@@ -34,6 +34,38 @@ class PersistentStorageUnavailable(RuntimeError):
     """Mongo está configurado como persistencia real pero no está accesible."""
 
 
+def validate_mongo_environment(env: dict[str, str] | None = None) -> str:
+    """Impide que staging y producción arranquen contra el namespace equivocado.
+
+    Desarrollo conserva defaults cómodos, pero un entorno desplegado debe
+    declarar tanto el cluster como la base. Staging nunca puede caer por default
+    en ``chess_study`` y producción nunca puede desviarse a la base de staging.
+    """
+    values = os.environ if env is None else env
+    environment = str(values.get("ENVIRONMENT") or "development").strip().lower()
+    mongo_url = str(values.get("MONGO_URL") or "").strip()
+    database = str(values.get("MONGO_DB_NAME") or "").strip()
+    deployed = environment in {"production", "prod", "staging", "stage"}
+
+    if deployed and not mongo_url:
+        raise RuntimeError(f"{environment}: MONGO_URL es obligatorio")
+    if deployed and not database:
+        raise RuntimeError(
+            f"{environment}: MONGO_DB_NAME debe configurarse explícitamente"
+        )
+    if environment in {"staging", "stage"} and database == "chess_study":
+        raise RuntimeError("staging no puede usar la base de producción chess_study")
+    if environment in {"production", "prod"} and database != "chess_study":
+        raise RuntimeError("producción debe usar MONGO_DB_NAME=chess_study")
+    return database or "chess_study"
+
+
+# Cualquier proceso que importe la capa de persistencia en un despliegue real
+# falla antes de aceptar tráfico si la selección de base es insegura. En local,
+# sin ENVIRONMENT desplegado, el comportamiento histórico sigue intacto.
+validate_mongo_environment()
+
+
 def persistent_storage_required() -> bool:
     # Se consulta el entorno en cada llamada para que tests/entornos que lo
     # monkeypatchean no dependan del orden de imports.
