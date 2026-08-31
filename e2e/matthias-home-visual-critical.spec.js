@@ -137,7 +137,7 @@ async function expectLayeredCanonicalPortrait(matthias, label) {
   return { frame, rig, portrait };
 }
 
-test('Home · Tomando notas mueve mirada y mano de forma perceptible sin menear la cabeza', async ({ page }) => {
+test('Home · Tomando notas mueve cabeza, mirada y mano de forma perceptible', async ({ page }) => {
   await setMatthiasHour(page, 16);
   const corner = await openHome(page);
   const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
@@ -147,25 +147,27 @@ test('Home · Tomando notas mueve mirada y mano de forma perceptible sin menear 
   await expect(corner).toHaveAttribute('data-motion-state', 'active');
   await expect(rig).toHaveAttribute('data-rig-family', 'ops');
   await expect(rig).toHaveAttribute('data-gesture', 'write-notes');
-  await expect(rig).toHaveAttribute('data-gesture-profile', 'deliberate');
+  await expect(rig).toHaveAttribute('data-gesture-profile', 'expressive-v2');
   await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
 
   const parts = await movingPartCounts(rig);
-  expect(parts.head || 0).toBe(0);
+  expect(parts.head).toBeGreaterThan(0);
   expect(parts.eyes).toBeGreaterThan(0);
   expect(parts['right-arm']).toBeGreaterThan(0);
   expect(parts.prop || 0).toBe(0);
 
   const frameBefore = await center(frame);
+  const headMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="head"]'), .28);
   const eyeMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="eyes"]'), .32);
   const armMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="right-arm"]'), .30);
+  expect(headMotion.distance, 'la cabeza debe acompañar la escritura').toBeGreaterThan(1);
   expect(eyeMotion.distance, 'la mirada debe desplazarse claramente').toBeGreaterThan(2);
   expect(armMotion.distance, 'el brazo que escribe debe verse claramente').toBeGreaterThan(4);
   const frameAfter = await center(frame);
   expect(distance(frameBefore, frameAfter), 'el marco debe permanecer clavado').toBeLessThan(1);
 });
 
-test('Home · Auditoría táctica mueve mirada, mano y expediente, no el cráneo', async ({ page }) => {
+test('Home · Auditoría táctica mueve cabeza, mirada, mano y expediente', async ({ page }) => {
   await setMatthiasHour(page, 17);
   const corner = await openHome(page);
   const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
@@ -175,20 +177,22 @@ test('Home · Auditoría táctica mueve mirada, mano y expediente, no el cráneo
   await expect(rig).toHaveAttribute('data-gesture', 'audit-dossier');
   await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
   const parts = await movingPartCounts(rig);
-  expect(parts.head || 0).toBe(0);
+  expect(parts.head).toBeGreaterThan(0);
   expect(parts.eyes).toBeGreaterThan(0);
   expect(parts['right-arm']).toBeGreaterThan(0);
   expect(parts.prop).toBeGreaterThan(0);
 
+  const headMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="head"]'), .22);
   const eyeMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="eyes"]'), .24);
   const armMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="right-arm"]'), .4);
   const propMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="prop"]'), .45);
+  expect(headMotion.distance, 'la cabeza debe acompañar la inspección').toBeGreaterThan(1);
   expect(eyeMotion.distance, 'debe recorrer el expediente con la mirada').toBeGreaterThan(2.2);
   expect(armMotion.distance, 'la mano debe acompañar la auditoría').toBeGreaterThan(3.5);
   expect(propMotion.distance, 'el expediente debe levantarse perceptiblemente').toBeGreaterThan(2.4);
 });
 
-test('Home · Partida nocturna piensa con la mano hacia la barbilla, no sólo con los ojillos', async ({ page }) => {
+test('Home · Partida nocturna piensa con cabeza y mano, no sólo con los ojillos', async ({ page }) => {
   await setMatthiasHour(page, 22);
   const corner = await openHome(page);
   const matthias = corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
@@ -199,14 +203,16 @@ test('Home · Partida nocturna piensa con la mano hacia la barbilla, no sólo co
   await expect(rig).toHaveAttribute('data-gesture', 'board-move');
   await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
   const parts = await movingPartCounts(rig);
-  expect(parts.head || 0).toBe(0);
+  expect(parts.head).toBeGreaterThan(0);
   expect(parts['left-arm'] || 0).toBe(0);
   expect(parts.prop || 0).toBe(0);
   expect(parts.eyes).toBeGreaterThan(0);
   expect(parts['right-arm']).toBeGreaterThan(0);
 
+  const headMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="head"]'), .22);
   const armMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="right-arm"]'), .46);
   const eyeMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="eyes"]'), .3);
+  expect(headMotion.distance, 'la cabeza debe inclinarse hacia el tablero').toBeGreaterThan(1);
   expect(armMotion.distance, 'la mano debe subir claramente hacia la barbilla').toBeGreaterThan(8);
   expect(armMotion.dy, 'la mano debe viajar hacia arriba, no encogerse de lado').toBeLessThan(-6);
   expect(eyeMotion.distance, 'la mirada debe acompañar el pensamiento').toBeGreaterThan(2.4);
@@ -272,8 +278,10 @@ test('Home · sueño deja caer la cabeza y cierra visiblemente los ojos', async 
   await expect(rig).toHaveAttribute('data-rig-family', 'sleep');
   await expect(rig).toHaveAttribute('data-gesture', 'doze');
   await expect.poll(() => gestureCount(rig), { timeout: 2_000 }).toBeGreaterThan(0);
-  const headMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="head"]'), .48);
-  const eyeMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="eyes"]'), .46);
+  // .34 coincide con el punto de máxima caída del keyframe. El gate debe medir
+  // el gesto completo, no una foto intermedia mientras la cabeza aún desciende.
+  const headMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="head"]'), .34);
+  const eyeMotion = await samplePartMotion(rig.locator('[data-matthias-art-part="eyes"]'), .30);
   expect(headMotion.distance, 'la cabeza debe vencerse de sueño').toBeGreaterThan(4);
   expect(headMotion.dy, 'la cabeza debe caer hacia abajo').toBeGreaterThan(3);
   expect(eyeMotion.heightRatio, 'los párpados deben cerrarse de forma perceptible').toBeLessThan(.65);
