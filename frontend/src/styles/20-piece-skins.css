@@ -18,25 +18,6 @@
 .settings-section-intro { display: grid; gap: .16rem; margin-bottom: .7rem; }
 .settings-section-intro h3 { margin: 0; }
 .settings-section-intro small { color: var(--parchment-dim); font-size: .68rem; }
-
-.settings-board-renderer {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) auto;
-  align-items: center;
-  gap: .75rem;
-  margin-bottom: .72rem;
-  padding: .7rem;
-  border: 1px solid color-mix(in srgb, var(--brass-dim) 35%, var(--line-soft));
-  border-radius: 10px;
-  background: rgba(0,0,0,.14);
-}
-.settings-board-renderer-copy { display: grid; gap: .15rem; min-width: 0; }
-.settings-board-renderer-copy strong { color: var(--parchment); font-size: .78rem; }
-.settings-board-renderer-copy small { color: var(--parchment-dim); font-size: .63rem; line-height: 1.4; }
-.settings-board-renderer-options { display: grid; grid-template-columns: repeat(2,minmax(62px,1fr)); gap: .38rem; }
-.settings-renderer-option { min-height: 36px; padding: .45rem .58rem; font-size: .7rem; }
-.settings-renderer-option.is-selected { border-color: var(--brass); color: var(--brass); background: rgba(201,162,39,.08); box-shadow: inset 0 0 0 1px rgba(201,162,39,.16); }
-
 .piece-skin-picker { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .58rem; }
 .piece-skin-option {
   position: relative;
@@ -90,16 +71,8 @@
 .settings-inline-action > div { display: grid; gap: .12rem; }
 .settings-inline-action small { color: var(--parchment-dim); font-size: .68rem; }
 
-.board-renderer-toggle.active {
-  border-color: var(--brass);
-  color: var(--brass);
-  box-shadow: inset 0 0 0 1px rgba(201,162,39,.16);
-}
-
 @media (max-width: 560px) {
   .piece-skin-picker, .account-center-tools { grid-template-columns: 1fr; }
   .piece-skin-option { min-height: 74px; }
-  .settings-board-renderer { grid-template-columns: 1fr; }
-  .settings-board-renderer-options { width: 100%; }
 }
 @media (max-width: 900px) { .board-appearance-tab { top: 7px; left: 7px; width: 36px; min-height: 36px; grid-auto-flow: column; gap: .25rem; padding: .25rem .38rem; border-radius: 7px; background: rgba(24,29,39,.86); } .board-appearance-tab b { writing-mode: horizontal-tb; transform: none; font-size: .5rem; } }
