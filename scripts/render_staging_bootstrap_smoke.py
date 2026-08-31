@@ -87,8 +87,54 @@ def test_create_service_uses_noninteractive_boolean_syntax() -> None:
     check("--auto-deploy" not in command, "no debe dejar false como argumento posicional")
 
 
+def test_staging_environment_is_reused_and_service_grouped() -> None:
+    production = {"id": "srv-prod", "ownerId": "tea-owner"}
+    calls = []
+
+    def fake_api(method, path, payload=None):
+        calls.append((method, path, payload))
+        if method == "GET" and path.startswith("/projects?"):
+            return [{"project": {"id": "prj-1", "name": "Chess studio"}}]
+        if method == "GET" and path.startswith("/environments?"):
+            return [{"environment": {"id": "env-stage", "name": "Staging"}}]
+        if method == "GET" and path.startswith("/services?"):
+            return []
+        if method == "POST" and path == "/environments/env-stage/resources":
+            return {}
+        raise AssertionError(f"API inesperada: {method} {path} {payload}")
+
+    with patch.object(module, "api", side_effect=fake_api):
+        environment = module.ensure_service_grouped(production, "srv-stage")
+
+    check(environment["id"] == "env-stage", "debe reutilizar el environment Staging existente")
+    check(
+        ("POST", "/environments/env-stage/resources", {"resourceIds": ["srv-stage"]}) in calls,
+        "debe mover el servicio al environment Staging",
+    )
+    check(not any(method == "POST" and path == "/environments" for method, path, _ in calls), "no debe duplicar Staging")
+
+
+def test_staging_environment_is_created_when_missing() -> None:
+    production = {"id": "srv-prod", "ownerId": "tea-owner"}
+
+    def fake_api(method, path, payload=None):
+        if method == "GET" and path.startswith("/projects?"):
+            return [{"project": {"id": "prj-1", "name": "Chess studio"}}]
+        if method == "GET" and path.startswith("/environments?"):
+            return [{"environment": {"id": "env-prod", "name": "Production"}}]
+        if method == "POST" and path == "/environments":
+            check(payload["projectId"] == "prj-1", "Staging debe crearse dentro del proyecto correcto")
+            check(payload["name"] == "Staging", "el environment debe llamarse Staging")
+            return {"environment": {"id": "env-stage", "name": "Staging"}}
+        raise AssertionError(f"API inesperada: {method} {path} {payload}")
+
+    with patch.object(module, "api", side_effect=fake_api):
+        environment = module.ensure_staging_environment(production)
+    check(environment["id"] == "env-stage", "debe devolver el environment recién creado")
+
+
 def test_main_reconciles_without_duplicate_creation() -> None:
-    production = {"id": "srv-prod", "name": module.PRODUCTION_NAME}
+    production = {"id": "srv-prod", "name": module.PRODUCTION_NAME, "ownerId": "tea-owner"}
     staging = {"id": "srv-stage", "name": module.SERVICE_NAME}
     calls = []
 
@@ -103,11 +149,13 @@ def test_main_reconciles_without_duplicate_creation() -> None:
         patch.object(module, "create_service") as create,
         patch.object(module, "reconcile_environment") as reconcile,
         patch.object(module, "ensure_custom_domain") as domain,
+        patch.object(module, "ensure_service_grouped", return_value={"id": "env-stage"}) as group,
     ):
         module.main()
     create.assert_not_called()
     reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging"})
     domain.assert_called_once_with("srv-stage")
+    group.assert_called_once_with(production, "srv-stage")
     check(("PUT", "/services/srv-prod/env-vars/ENVIRONMENT", {"value": "production"}) in calls, "producción debe declarar su entorno")
     check(("PUT", "/services/srv-prod/env-vars/MONGO_DB_NAME", {"value": "chess_study"}) in calls, "producción debe quedar explícita")
 
@@ -117,5 +165,7 @@ if __name__ == "__main__":
     test_environment_isolated_and_secrets_stable()
     test_production_discovery_uses_repo_and_mongo_evidence()
     test_create_service_uses_noninteractive_boolean_syntax()
+    test_staging_environment_is_reused_and_service_grouped()
+    test_staging_environment_is_created_when_missing()
     test_main_reconciles_without_duplicate_creation()
-    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + secretos estables")
+    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + agrupación Render")

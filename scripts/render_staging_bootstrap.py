@@ -22,6 +22,8 @@ import urllib.request
 API = "https://api.render.com/v1"
 SERVICE_NAME = "chess-study-backend-staging"
 PRODUCTION_NAME = "chess-study-backend"
+PROJECT_NAME = "Chess studio"
+STAGING_ENVIRONMENT_NAME = "Staging"
 CUSTOM_DOMAIN = "api-staging.chess-studio.shadowops.dpdns.org"
 
 
@@ -53,16 +55,20 @@ def api(method: str, path: str, payload: dict | None = None) -> object:
         raise SystemExit(f"Render API {method} {path}: HTTP {exc.code}: {detail}") from None
 
 
-def unwrap_services(payload: object) -> list[dict]:
+def unwrap_rows(payload: object, nested_key: str) -> list[dict]:
     rows = payload if isinstance(payload, list) else []
-    services = []
+    result = []
     for row in rows:
         if not isinstance(row, dict):
             continue
-        service = row.get("service") if isinstance(row.get("service"), dict) else row
-        if isinstance(service, dict):
-            services.append(service)
-    return services
+        value = row.get(nested_key) if isinstance(row.get(nested_key), dict) else row
+        if isinstance(value, dict):
+            result.append(value)
+    return result
+
+
+def unwrap_services(payload: object) -> list[dict]:
+    return unwrap_rows(payload, "service")
 
 
 def find_service(name: str) -> dict | None:
@@ -206,8 +212,6 @@ def create_service(values: dict[str, str], production: dict) -> None:
         command.extend(("--env-var", f"{key}={value}"))
     result = subprocess.run(command, text=True, capture_output=True, check=False)
     if result.returncode:
-        # El CLI recibe secretos como argumentos: no imprimimos el comando ni
-        # stdout. Saneamos stderr por defensa adicional antes de mostrarlo.
         diagnostic = result.stderr.strip()
         for value in values.values():
             if value:
@@ -233,6 +237,70 @@ def ensure_custom_domain(service_id: str) -> None:
         api("POST", f"/services/{service_id}/custom-domains", {"name": CUSTOM_DOMAIN})
 
 
+def production_owner_id(production: dict) -> str:
+    owner = production.get("owner") if isinstance(production.get("owner"), dict) else {}
+    owner_id = str(production.get("ownerId") or owner.get("id") or "").strip()
+    if not owner_id:
+        raise SystemExit("El servicio de producción no expone ownerId")
+    return owner_id
+
+
+def find_project(production: dict) -> dict:
+    owner_id = production_owner_id(production)
+    query = urllib.parse.urlencode({"ownerId": owner_id, "limit": "100"})
+    projects = unwrap_rows(api("GET", f"/projects?{query}"), "project")
+    matches = [row for row in projects if str(row.get("name") or "").strip().casefold() == PROJECT_NAME.casefold()]
+    if len(matches) != 1:
+        visible = ", ".join(sorted(str(row.get("name") or "<sin nombre>") for row in projects)) or "ninguno"
+        raise SystemExit(f"No se pudo identificar un único proyecto {PROJECT_NAME!r}. Proyectos visibles: {visible}")
+    return matches[0]
+
+
+def ensure_staging_environment(production: dict) -> dict:
+    project = find_project(production)
+    project_id = str(project.get("id") or "").strip()
+    if not project_id:
+        raise SystemExit(f"El proyecto {PROJECT_NAME!r} no tiene ID")
+    query = urllib.parse.urlencode({"projectId": project_id, "limit": "100"})
+    environments = unwrap_rows(api("GET", f"/environments?{query}"), "environment")
+    matches = [
+        row for row in environments
+        if str(row.get("name") or "").strip().casefold() == STAGING_ENVIRONMENT_NAME.casefold()
+    ]
+    if len(matches) > 1:
+        raise SystemExit(f"Render devolvió más de un environment llamado {STAGING_ENVIRONMENT_NAME}")
+    if matches:
+        return matches[0]
+    created = api("POST", "/environments", {
+        "name": STAGING_ENVIRONMENT_NAME,
+        "projectId": project_id,
+        "protectedStatus": "unprotected",
+        "networkIsolationEnabled": False,
+    })
+    environment = created.get("environment") if isinstance(created, dict) and isinstance(created.get("environment"), dict) else created
+    if not isinstance(environment, dict) or not environment.get("id"):
+        raise SystemExit(f"Render no devolvió el environment {STAGING_ENVIRONMENT_NAME} recién creado")
+    print(f"Environment creado: {PROJECT_NAME} / {STAGING_ENVIRONMENT_NAME}")
+    return environment
+
+
+def service_is_in_environment(environment_id: str, service_id: str) -> bool:
+    query = urllib.parse.urlencode({"environmentId": environment_id, "limit": "100"})
+    services = unwrap_services(api("GET", f"/services?{query}"))
+    return any(str(row.get("id") or "") == service_id for row in services)
+
+
+def ensure_service_grouped(production: dict, service_id: str) -> dict:
+    environment = ensure_staging_environment(production)
+    environment_id = str(environment.get("id") or "").strip()
+    if not environment_id:
+        raise SystemExit(f"El environment {STAGING_ENVIRONMENT_NAME} no tiene ID")
+    if not service_is_in_environment(environment_id, service_id):
+        api("POST", f"/environments/{environment_id}/resources", {"resourceIds": [service_id]})
+        print(f"Servicio movido a {PROJECT_NAME} / {STAGING_ENVIRONMENT_NAME}")
+    return environment
+
+
 def wait_for_service() -> dict:
     for _ in range(24):
         service = find_service(SERVICE_NAME)
@@ -253,18 +321,19 @@ def main() -> None:
     service_id = str(service.get("id") or "")
     if not service_id:
         raise SystemExit("El servicio staging no tiene ID")
-    # Migra producción fuera del default implícito antes de que el nuevo
-    # guardarraíl del backend llegue a desplegarse.
     api("PUT", f"/services/{production['id']}/env-vars/ENVIRONMENT", {"value": "production"})
     api("PUT", f"/services/{production['id']}/env-vars/MONGO_DB_NAME", {"value": "chess_study"})
     reconcile_environment(service_id, values)
     ensure_custom_domain(service_id)
+    environment = ensure_service_grouped(production, service_id)
+    environment_id = str(environment.get("id") or "")
     output = os.environ.get("GITHUB_OUTPUT")
     if output:
         with open(output, "a", encoding="utf-8") as handle:
             handle.write(f"service_id={service_id}\n")
             handle.write(f"created={'true' if created else 'false'}\n")
-    print(f"Staging reconciliado: {SERVICE_NAME} ({service_id})")
+            handle.write(f"environment_id={environment_id}\n")
+    print(f"Staging reconciliado: {SERVICE_NAME} ({service_id}) en {PROJECT_NAME} / {STAGING_ENVIRONMENT_NAME}")
 
 
 if __name__ == "__main__":
