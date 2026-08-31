@@ -180,7 +180,7 @@ def create_service(values: dict[str, str], production: dict) -> None:
         "--root-directory", "backend-python",
         "--plan", "free",
         "--region", region,
-        "--auto-deploy", "false",
+        "--auto-deploy=false",
         "--health-check-path", "/api/ready",
         "--output", "json",
         "--confirm",
@@ -190,8 +190,12 @@ def create_service(values: dict[str, str], production: dict) -> None:
     result = subprocess.run(command, text=True, capture_output=True, check=False)
     if result.returncode:
         # El CLI recibe secretos como argumentos: no imprimimos el comando ni
-        # stdout. stderr no contiene la configuración suministrada.
-        print(result.stderr[-1000:], file=sys.stderr)
+        # stdout. Saneamos stderr por defensa adicional antes de mostrarlo.
+        diagnostic = result.stderr.strip()
+        for value in values.values():
+            if value:
+                diagnostic = diagnostic.replace(value, "[REDACTED]")
+        print(diagnostic[:1400], file=sys.stderr)
         raise SystemExit("Render CLI no pudo crear el servicio de staging")
 
 
