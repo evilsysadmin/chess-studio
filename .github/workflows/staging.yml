@@ -131,6 +131,8 @@ jobs:
         working-directory: frontend
         env:
           VITE_API_URL: ${{ env.STAGING_API_ORIGIN }}/api
+          VITE_PUBLIC_BASE: /
+          VITE_BUILD_SHA: ${{ steps.pin.outputs.sha }}
           VITE_DEPLOY_ENV: staging
           VITE_DEPLOY_SHA: ${{ steps.pin.outputs.sha }}
         run: |
@@ -222,6 +224,9 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --retry 12 --retry-delay 5 "$STAGING_PAGES_URL/" >/tmp/staging-index.html
           grep -q '<div id="root"' /tmp/staging-index.html
+          asset_path="$(grep -oE 'src="/[^"]+\.js"' /tmp/staging-index.html | head -n1 | cut -d'"' -f2)"
+          test -n "$asset_path"
+          curl --fail --silent --show-error "$STAGING_PAGES_URL$asset_path" >/dev/null
           curl --fail --silent --show-error --max-time 10 "$STAGING_API_ORIGIN/api/ready" >/dev/null
 
       - name: Staging summary
