@@ -17,6 +17,13 @@ export function trailPowerLane({ lane, direction, power }) {
   return clampTrailLane(lane);
 }
 
+export function trailDuelDirection(lane, direction) {
+  const current = clampTrailLane(lane);
+  const requested = direction < 0 ? -1 : 1;
+  if (current + requested >= 0 && current + requested < TRAIL_LANES) return requested;
+  return -requested;
+}
+
 export function trailDuelPress(meter = 0) {
   return Math.min(100, Math.max(0, Number(meter) || 0) + TRAIL_DUEL_PRESS);
 }
