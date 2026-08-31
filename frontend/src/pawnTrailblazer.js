@@ -3,6 +3,7 @@ export const TRAIL_POWER_DURATION_MS = 6_000;
 export const TRAIL_DUEL_PRESS = 14;
 export const TRAIL_COMBO_WINDOW_MS = 2_800;
 export const TRAIL_MAX_COMBO = 8;
+export const TRAIL_BISHOP_PARRY_WINDOW_MS = 520;
 
 export function clampTrailLane(lane) {
   return Math.max(0, Math.min(TRAIL_LANES - 1, Math.round(Number(lane) || 0)));
@@ -53,13 +54,21 @@ export function trailEnemyTypeForDistance(distance = 0, roll = 0) {
   const random = Math.max(0, Math.min(0.999999, Number(roll) || 0));
   if (meters < 70) return 'pawn';
   if (meters < 170) return random < 0.72 ? 'pawn' : 'knight';
-  if (random < 0.54) return 'pawn';
-  if (random < 0.82) return 'knight';
+  if (meters < 300) {
+    if (random < 0.5) return 'pawn';
+    if (random < 0.72) return 'knight';
+    if (random < 0.9) return 'bishop';
+    return 'rook';
+  }
+  if (random < 0.4) return 'pawn';
+  if (random < 0.63) return 'knight';
+  if (random < 0.84) return 'bishop';
   return 'rook';
 }
 
 export function trailEnemyCapturePoints(enemyType = 'pawn') {
   if (enemyType === 'rook') return 420;
+  if (enemyType === 'bishop') return 360;
   if (enemyType === 'knight') return 320;
   return 240;
 }
@@ -70,6 +79,20 @@ export function trailKnightJumpLane(lane, targetLane) {
   const candidates = [current - 2, current + 2].filter((value) => value >= 0 && value < TRAIL_LANES);
   if (!candidates.length) return current;
   return candidates.sort((a, b) => Math.abs(a - target) - Math.abs(b - target) || a - b)[0];
+}
+
+export function trailBishopTargetLane(lane, targetLane) {
+  const current = clampTrailLane(lane);
+  const target = clampTrailLane(targetLane);
+  if (target !== current) return target;
+  if (current === 0) return 1;
+  if (current === TRAIL_LANES - 1) return TRAIL_LANES - 2;
+  return current <= Math.floor((TRAIL_LANES - 1) / 2) ? current + 1 : current - 1;
+}
+
+export function trailBishopParryReady(aimUntil = 0, now = 0) {
+  const remaining = Math.max(0, Number(aimUntil) || 0) - Math.max(0, Number(now) || 0);
+  return remaining > 0 && remaining <= TRAIL_BISHOP_PARRY_WINDOW_MS;
 }
 
 export function trailPowerLabel(power) {
