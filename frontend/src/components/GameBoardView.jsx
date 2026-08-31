@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import Board from './Board.jsx';
-import Board3D from './Board3D.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
@@ -12,6 +11,8 @@ import { seriesLiveMoment, seriesStatusText } from '../series.js';
 import { getUsername } from '../auth.js';
 import { zenModeSummary } from '../zenMode.js';
 import { getBoardRenderer, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+
+const Board3D = lazy(() => import('./Board3D.jsx'));
 
 export default function GameBoardView({
   game,
@@ -31,7 +32,6 @@ export default function GameBoardView({
   const bottomColor = humanColor;
   const topTime = topColor === 'w' ? clocks.whiteTime : clocks.blackTime;
   const bottomTime = bottomColor === 'w' ? clocks.whiteTime : clocks.blackTime;
-  const BoardSurface = boardRenderer === '3d' ? Board3D : Board;
 
   useEffect(() => {
     const refreshRenderer = () => setBoardRendererState(getBoardRenderer());
@@ -67,6 +67,21 @@ export default function GameBoardView({
     );
   }
 
+  const boardProps = {
+    fen: board.visibleBoardFen,
+    onSquareClick: board.onSquareClick,
+    selectedSquare: board.selected,
+    legalTargets: zenMode ? [] : board.legalTargets,
+    lastMove: zenMode ? null : board.lastMoveSquares,
+    animate: board.pendingAnim,
+    hintMove: zenMode ? null : board.hint,
+    checkSquare: zenMode ? null : board.kingInCheckSquare,
+    turnState: board.boardTurnState,
+    orientation: humanColor === 'b' ? 'black' : 'white',
+    showCoordinates: !zenMode && board.showBoardCoordinates,
+    onCustomize: board.onCustomize,
+  };
+
   return (
     <div className="game-layout">
       <div className="board-column">
@@ -95,20 +110,11 @@ export default function GameBoardView({
         <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
           <div className="game-board-stack">
             {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
-            <BoardSurface
-              fen={board.visibleBoardFen}
-              onSquareClick={board.onSquareClick}
-              selectedSquare={board.selected}
-              legalTargets={zenMode ? [] : board.legalTargets}
-              lastMove={zenMode ? null : board.lastMoveSquares}
-              animate={board.pendingAnim}
-              hintMove={zenMode ? null : board.hint}
-              checkSquare={zenMode ? null : board.kingInCheckSquare}
-              turnState={board.boardTurnState}
-              orientation={humanColor === 'b' ? 'black' : 'white'}
-              showCoordinates={!zenMode && board.showBoardCoordinates}
-              onCustomize={board.onCustomize}
-            />
+            {boardRenderer === '3d' ? (
+              <Suspense fallback={<div className="hint-text">Preparando tablero 3D…</div>}>
+                <Board3D {...boardProps} />
+              </Suspense>
+            ) : <Board {...boardProps} />}
             {!zenMode && board.selectionNotice && (
               <div className={`move-availability-note ${board.selectionNotice.kind}`} role="status" aria-live="polite">
                 <b>{board.selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
