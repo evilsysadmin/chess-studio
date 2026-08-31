@@ -78,11 +78,9 @@ export default function InsightsMatthiasMotion() {
     };
   }, []);
 
-  // At 48×48 the time-of-day rig can legitimately move a hand or a prop that
-  // lives outside the visible crop, making Matthias look static even though
-  // Web Animations is running. Give this tiny portrait its own always-visible
-  // acting layer: a slow lean/breath over the whole face slot. The detailed rig
-  // still animates underneath, but this guarantees a perceptible sign of life.
+  // A 48×48 avatar needs a readable silhouette motion in addition to the
+  // layered puppet. v2 deliberately leans a couple of pixels and changes
+  // direction twice: visible without becoming a perpetual bobble-head.
   useEffect(() => {
     const node = portraitRef.current;
     if (!node) return undefined;
@@ -91,15 +89,16 @@ export default function InsightsMatthiasMotion() {
     if (reducedMotion || typeof node.animate !== 'function') return undefined;
 
     const animation = node.animate([
-      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .24, transform: 'translate3d(-1.2px,-.7px,0) rotate(-1deg)' },
-      { offset: .5, transform: 'translate3d(.5px,-1.15px,0) rotate(.35deg)' },
-      { offset: .76, transform: 'translate3d(1.15px,-.35px,0) rotate(.85deg)' },
-      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
+      { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg) scale(1)' },
+      { offset: .2, transform: 'translate3d(-2.2px,-1.15px,0) rotate(-1.7deg) scale(1.018)' },
+      { offset: .46, transform: 'translate3d(.9px,-1.8px,0) rotate(.7deg) scale(1.025)' },
+      { offset: .72, transform: 'translate3d(2.05px,-.45px,0) rotate(1.45deg) scale(1.014)' },
+      { offset: .86, transform: 'translate3d(-.7px,.35px,0) rotate(-.45deg) scale(1.006)' },
+      { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg) scale(1)' },
     ], {
-      duration: 5_200,
+      duration: 4_200,
       iterations: Infinity,
-      easing: 'cubic-bezier(.4,0,.2,1)',
+      easing: 'cubic-bezier(.35,0,.18,1)',
     });
 
     return () => animation.cancel();
@@ -112,7 +111,7 @@ export default function InsightsMatthiasMotion() {
       ref={portraitRef}
       className="insights-matthias-motion"
       data-insights-matthias-motion="true"
-      data-insights-motion-profile="portrait-breathe"
+      data-insights-motion-profile="portrait-breathe-v2"
       data-insights-motion-state={reducedMotion ? 'reduced' : 'active'}
       data-insights-motion-scene={visual.key || 'base'}
       style={{
