@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 import {
   getBoardCoordinates,
+  getBoardRenderer,
   getDefaultTimeControlId,
   getEffectiveReducedMotion,
   getReducedMotion,
@@ -9,6 +10,7 @@ import {
   getUiLanguage,
   reducedMotionStatus,
   setBoardCoordinates,
+  setBoardRenderer,
   setDefaultTimeControlId,
   setReducedMotion,
   setUiLanguage,
@@ -34,6 +36,14 @@ describe('user preferences', () => {
     expect(getReducedMotion()).toBe(false);
     expect(setReducedMotion(true)).toBe(true);
     expect(getReducedMotion()).toBe(true);
+  });
+
+  it('mantiene 2D por defecto y persiste una elección 3D válida', () => {
+    expect(getBoardRenderer()).toBe('2d');
+    expect(setBoardRenderer('3d')).toBe('3d');
+    expect(getBoardRenderer()).toBe('3d');
+    expect(setBoardRenderer('holograma-cuántico')).toBe('2d');
+    expect(getBoardRenderer()).toBe('2d');
   });
 
   it('honra el sistema por defecto pero una elección explícita puede permitir movimiento', () => {
