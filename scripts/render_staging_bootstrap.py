@@ -162,6 +162,7 @@ def env_values(production: dict, staging: dict | None) -> dict[str, str]:
         "EXPOSE_API_DOCS": "false",
         "ALLOW_REGISTRATION": "true",
         "ENABLE_EMAIL_RECOVERY": "false",
+        "ADMIN_USERNAMES": "evilsysadmin",
         "CF_AI_WORKER_URL": "https://ai-staging.shadowops.dpdns.org",
         "CHESS_AI_SHARED_SECRET": stable_staging_secret(staging, "CHESS_AI_SHARED_SECRET"),
         "CORS_ORIGINS": "https://staging.chess-studio.shadowops.dpdns.org",
