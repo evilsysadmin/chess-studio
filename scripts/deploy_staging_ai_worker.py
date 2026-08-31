@@ -2,9 +2,9 @@
 """Deploys the isolated staging Workers AI service without exposing its secret.
 
 The shared secret already lives on the Render staging service. This helper
-validates that the supplied service really is Chess Studio staging, reads that
-single value through the authenticated Render API and streams it to Wrangler's
-stdin. The secret is never written to disk, argv or logs.
+finds and validates that service, reads that single value through the
+authenticated Render API and streams it to Wrangler's stdin. The secret is
+never written to disk, argv or logs.
 """
 from __future__ import annotations
 
@@ -36,12 +36,21 @@ def unwrap_service(payload: object) -> dict:
     return service if isinstance(service, dict) else payload
 
 
+def resolve_staging_service() -> dict:
+    service = render.find_service(SERVICE_NAME)
+    if not service or not service.get("id"):
+        raise SystemExit(f"No existe un único servicio Render {SERVICE_NAME}")
+    return service
+
+
 def validate_service(service_id: str) -> str:
     service = unwrap_service(render.api("GET", f"/services/{service_id}"))
     if str(service.get("name") or "") != SERVICE_NAME:
         raise SystemExit("El service ID no corresponde al backend de staging; no se lee ningún secreto")
     if (render.read_env(service_id, "ENVIRONMENT") or "").strip().lower() != "staging":
         raise SystemExit("El servicio no declara ENVIRONMENT=staging; aborto fail-closed")
+    if (render.read_env(service_id, "MONGO_DB_NAME") or "").strip() != "chess_study_staging":
+        raise SystemExit("El servicio no apunta a chess_study_staging; aborto fail-closed")
     if (render.read_env(service_id, "CF_AI_WORKER_URL") or "").rstrip("/") != WORKER_URL:
         raise SystemExit("CF_AI_WORKER_URL de staging no apunta al Worker aislado esperado")
     secret = render.read_env(service_id, "CHESS_AI_SHARED_SECRET") or ""
@@ -94,9 +103,10 @@ def main() -> None:
     if args.self_test:
         self_test()
         return
+
     service_id = str(args.service_id or "").strip()
     if not service_id:
-        raise SystemExit("Falta --service-id del bootstrap de Render staging")
+        service_id = str(resolve_staging_service()["id"])
 
     secret = validate_service(service_id)
     wrangler(["deploy"])
