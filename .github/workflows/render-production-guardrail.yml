@@ -1,0 +1,50 @@
+name: Render production · deployment guardrail
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-render-production-guardrail
+  cancel-in-progress: false
+
+jobs:
+  guardrail:
+    name: Production auto-deploy · off
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+
+    steps:
+      - name: Validate Render credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${RENDER_API_KEY:-}" ]] || { echo '::error::Falta RENDER_API_KEY'; exit 1; }
+
+      - name: Checkout exact main commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Enforce production auto-deploy off
+        id: render_guardrail
+        run: python3 scripts/render_production_guardrail.py
+
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo '### Render production protegido'
+            echo
+            echo '- Auto-deploy: `off`'
+            echo '- Los siguientes despliegues de backend deben promocionar un SHA explícito después de staging.'
+            echo "- Config corregida en este run: \`${{ steps.render_guardrail.outputs.changed || 'false' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
