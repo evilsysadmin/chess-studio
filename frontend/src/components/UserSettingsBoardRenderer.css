@@ -1,0 +1,57 @@
+.settings-board-renderer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: .72rem;
+  padding: .7rem;
+  border: 1px solid color-mix(in srgb, var(--brass-dim) 35%, var(--line-soft));
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .14);
+}
+
+.settings-board-renderer-copy {
+  display: grid;
+  gap: .15rem;
+  min-width: 0;
+}
+
+.settings-board-renderer-copy strong {
+  color: var(--parchment);
+  font-size: .78rem;
+}
+
+.settings-board-renderer-copy small {
+  color: var(--parchment-dim);
+  font-size: .63rem;
+  line-height: 1.4;
+}
+
+.settings-board-renderer-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(62px, 1fr));
+  gap: .38rem;
+}
+
+.settings-renderer-option {
+  min-height: 36px;
+  padding: .45rem .58rem;
+  font-size: .7rem;
+}
+
+.settings-renderer-option.is-selected {
+  border-color: var(--brass);
+  color: var(--brass);
+  background: rgba(201, 162, 39, .08);
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 39, .16);
+}
+
+@media (max-width: 560px) {
+  .settings-board-renderer {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-board-renderer-options {
+    width: 100%;
+  }
+}

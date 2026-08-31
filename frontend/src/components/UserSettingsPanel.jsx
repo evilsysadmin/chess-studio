@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TIME_CONTROLS } from '../clock.js';
 import { getAmbientVolume, isFxMuted, isMusicMuted, setAmbientVolume, setFxMuted, setMusicMuted } from '../sound.js';
-import { getBoardCoordinates, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setDefaultTimeControlId, setReducedMotion, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
+import { BOARD_RENDERERS, getBoardCoordinates, getBoardRenderer, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setBoardRenderer, setDefaultTimeControlId, setReducedMotion, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { levelForPoints, loadTournament } from '../tournament.js';
 import { loadSelectedSkin, PIECE_SKINS, saveSelectedSkin, unlockedSkins } from '../tournamentRewards.js';
@@ -14,6 +14,7 @@ import emeraldBlackKnight from '../pieces-medieval-esmeralda/bN.png';
 import studioWhiteKnight from '../pieces-studio/wN.png';
 import studioBlackKnight from '../pieces-studio/bN.png';
 import { GENERATED_SKIN_PREVIEWS } from '../generatedPieceSkins.js';
+import './UserSettingsBoardRenderer.css';
 
 const SKIN_PREVIEWS = {
   default: [pixelWhiteKnight, pixelBlackKnight],
@@ -31,6 +32,7 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
   const [fxMuted, setFxMutedState] = useState(() => isFxMuted());
   const [volume, setVolume] = useState(() => getAmbientVolume());
   const [pieceSkin, setPieceSkin] = useState(() => loadSelectedSkin());
+  const [boardRenderer, setBoardRendererState] = useState(() => getBoardRenderer());
   const [reducedMotion, setReducedMotionState] = useState(() => getReducedMotion());
   const [boardCoordinates, setBoardCoordinatesState] = useState(() => getBoardCoordinates());
   const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
@@ -58,6 +60,9 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
     saveSelectedSkin(id);
     setPieceSkin(id);
   }
+  function updateBoardRenderer(id) {
+    setBoardRendererState(setBoardRenderer(id));
+  }
 
   return (
     <div className="modal-backdrop settings-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>
@@ -69,7 +74,29 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
 
         <div className="settings-sections">
           <section className="settings-appearance-featured">
-            <div className="settings-section-intro"><span className="section-label">Tu mesa</span><h3>Apariencia del juego</h3><small>{isAdminUser ? 'Catálogo completo disponible para pruebas de administración.' : 'Elige una skin y comprueba el resultado directamente en el mini-tablero.'}</small></div>
+            <div className="settings-section-intro"><span className="section-label">Tu mesa</span><h3>Apariencia del juego</h3><small>{isAdminUser ? 'Catálogo completo disponible para pruebas de administración.' : 'Elige cómo se representa el tablero y después la estética de tus piezas.'}</small></div>
+
+            <div className="settings-board-renderer" role="radiogroup" aria-label="Representación del tablero">
+              <div className="settings-board-renderer-copy">
+                <strong>Tablero principal</strong>
+                <small>{boardRenderer === '3d' ? 'Perspectiva 3D fija desde tu lado. No gira ni se arrastra durante la partida.' : 'Vista 2D clásica, plana y directa.'}</small>
+              </div>
+              <div className="settings-board-renderer-options">
+                {BOARD_RENDERERS.map((renderer) => (
+                  <button
+                    key={renderer.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={boardRenderer === renderer.id}
+                    className={`secondary-btn settings-renderer-option${boardRenderer === renderer.id ? ' is-selected' : ''}`}
+                    onClick={() => updateBoardRenderer(renderer.id)}
+                  >
+                    {renderer.id === '3d' ? '◈ ' : '▦ '}{renderer.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="piece-skin-picker" role="radiogroup" aria-label="Estilo de piezas">
               {PIECE_SKINS.map((skin) => {
                 const unlocked = availableSkinIds.has(skin.id);
@@ -77,7 +104,7 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
                 return (
                   <button key={skin.id} type="button" role="radio" aria-checked={pieceSkin === skin.id} className={`piece-skin-option${pieceSkin === skin.id ? ' is-selected' : ''}`} disabled={!unlocked} onClick={() => updatePieceSkin(skin.id)}>
                     <span className={`piece-skin-preview piece-skin-preview-${skin.id}`} aria-hidden="true"><span><img src={preview[0]} alt="" /></span><span><img src={preview[1]} alt="" /></span><span /><span /></span>
-                    <span><b>{unlocked ? skin.label : `🔒 ${skin.label}`}</b><small>{unlocked ? skin.description : `Se desbloquea en Torneo · nivel ${skin.level}`}</small></span>
+                    <span><b>{unlocked ? skin.label : `🔒 ${skin.label}`}</b><small>{unlocked ? `${skin.description}${boardRenderer === '3d' ? ' · Adaptada a materiales 3D.' : ''}` : `Se desbloquea en Torneo · nivel ${skin.level}`}</small></span>
                     {pieceSkin === skin.id && <span className="piece-skin-selected-label">Seleccionada</span>}
                   </button>
                 );
@@ -105,9 +132,9 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
             <small>La pantalla de acceso ya está localizada. El resto de la interfaz irá adoptando esta preferencia progresivamente.</small>
           </section>
 
-          {onBoard3D && <section>
-            <h3>Experimentos</h3>
-            <div className="settings-inline-action"><div><strong>Tablero 3D</strong><small>Vista experimental independiente del tablero principal.</small></div><button type="button" className="secondary-btn" onClick={onBoard3D}>Abrir</button></div>
+          {isAdminUser && onBoard3D && <section>
+            <h3>Laboratorio</h3>
+            <div className="settings-inline-action"><div><strong>Prototipo 3D aislado</strong><small>Se conserva para comparar el prototipo histórico con el nuevo tablero principal.</small></div><button type="button" className="secondary-btn" onClick={onBoard3D}>Abrir lab</button></div>
           </section>}
         </div>
       </section>

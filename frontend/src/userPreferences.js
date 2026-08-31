@@ -6,10 +6,15 @@ export const DEFAULT_TIME_CONTROL_KEY = 'chess-study-default-time-control';
 export const UI_LANGUAGE_KEY = 'chess-study-ui-language';
 export const REDUCED_MOTION_KEY = 'chess-study-reduced-motion';
 export const BOARD_COORDINATES_KEY = 'chess-study-board-coordinates';
+export const BOARD_RENDERER_KEY = 'chess-study-board-renderer';
 export const USER_PREFERENCES_CHANGED_EVENT = 'chess-study-user-preferences-changed';
 export const SUPPORTED_UI_LANGUAGES = [
   { id: 'es', label: 'Español' },
   { id: 'en', label: 'English' },
+];
+export const BOARD_RENDERERS = [
+  { id: '2d', label: '2D' },
+  { id: '3d', label: '3D' },
 ];
 
 export function getDefaultTimeControlId() {
@@ -94,6 +99,18 @@ export function getBoardCoordinates() {
 export function setBoardCoordinates(value) {
   const normalized = !!value;
   setProfileStorageItem(BOARD_COORDINATES_KEY, normalized ? '1' : '0');
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
+  return normalized;
+}
+
+export function getBoardRenderer() {
+  const value = getStorageItem(STORAGE_LOCAL, BOARD_RENDERER_KEY) || '2d';
+  return BOARD_RENDERERS.some((row) => row.id === value) ? value : '2d';
+}
+
+export function setBoardRenderer(value) {
+  const normalized = BOARD_RENDERERS.some((row) => row.id === value) ? value : '2d';
+  setProfileStorageItem(BOARD_RENDERER_KEY, normalized);
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
   return normalized;
 }
