@@ -17,6 +17,7 @@ import json
 import os
 import pathlib
 import subprocess
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -171,18 +172,31 @@ def wrangler(args: list[str], *, stdin: str | None = None) -> None:
 
 def self_test() -> None:
     text = CONFIG.read_text(encoding="utf-8")
-    required_fragments = (
-        f'name = "{WORKER_NAME}"',
-        'workers_dev = false',
-        'binding = "AI"',
-        'name = "AI_RATE_LIMITER"',
-        'namespace_id = "1606602"',
-    )
-    missing = [fragment for fragment in required_fragments if fragment not in text]
-    if missing:
-        raise SystemExit(f"wrangler.staging.toml incompleto: {missing}")
-    if "[[routes]]" in text or "custom_domain" in text:
-        raise SystemExit("Wrangler staging no debe gestionar routes/custom domains; eso exigiría permisos de zona adicionales")
+    try:
+        config = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise SystemExit(f"wrangler.staging.toml no es TOML válido: {exc}") from exc
+
+    if config.get("name") != WORKER_NAME:
+        raise SystemExit(f"Wrangler staging usa identidad inesperada: {config.get('name')!r}")
+    if config.get("workers_dev") is not False:
+        raise SystemExit("Wrangler staging debe mantener workers_dev=false")
+    if "routes" in config:
+        raise SystemExit("Wrangler staging no debe declarar routes; Custom Domains se gestionan por API account-level")
+
+    ai = config.get("ai")
+    if not isinstance(ai, dict) or ai.get("binding") != "AI":
+        raise SystemExit("Wrangler staging no declara el binding AI esperado")
+
+    rate_limits = config.get("ratelimits")
+    rate_limits = rate_limits if isinstance(rate_limits, list) else []
+    limiter = next((item for item in rate_limits if isinstance(item, dict) and item.get("name") == "AI_RATE_LIMITER"), None)
+    if not limiter or str(limiter.get("namespace_id") or "") != "1606602":
+        raise SystemExit("Wrangler staging no declara el rate-limit aislado esperado")
+    simple = limiter.get("simple")
+    if not isinstance(simple, dict) or simple.get("limit") != 300 or simple.get("period") != 60:
+        raise SystemExit("Wrangler staging tiene un contrato de rate-limit inesperado")
+
     production = (ROOT / "infra/cloudflare/wrangler.toml").read_text(encoding="utf-8")
     if f'name = "{WORKER_NAME}"' in production or WORKER_HOSTNAME in production:
         raise SystemExit("La configuración de producción contiene identidad/ruta de staging")
