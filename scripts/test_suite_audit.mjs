@@ -131,17 +131,23 @@ if (checkCiWiring) {
   if (!workflowFiles.length) fail('No hay workflows de GitHub Actions que auditar');
   const workflowSource = workflowFiles.map((name) => read(path.join(workflowsDir, name))).join('\n');
   const mainCiPath = path.join(workflowsDir, 'cicd.yml');
+  const promotionPath = path.join(workflowsDir, 'production-promote.yml');
+  const stagingAiPath = path.join(workflowsDir, 'staging-ai-worker.yml');
   const coverageWorkflowPath = path.join(workflowsDir, 'coverage.yml');
   if (!fs.existsSync(mainCiPath)) fail('Falta .github/workflows/cicd.yml');
+  if (!fs.existsSync(promotionPath)) fail('Falta .github/workflows/production-promote.yml');
+  if (!fs.existsSync(stagingAiPath)) fail('Falta .github/workflows/staging-ai-worker.yml');
   if (!fs.existsSync(coverageWorkflowPath)) fail('Coverage informativo debe vivir fuera del CI de cada push');
   const mainCiSource = read(mainCiPath);
+  const promotionSource = read(promotionPath);
+  const stagingAiSource = read(stagingAiPath);
   const coverageWorkflowSource = read(coverageWorkflowPath);
   for (const obsolete of ['terraform-cloudflare.yml', 'static.yml']) {
     if (fs.existsSync(path.join(workflowsDir, obsolete))) fail(`Pipeline de producción duplicado: ${obsolete}`);
   }
-  if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; quality gate paralelo → Terraform → Pages vive en el mismo workflow');
-  for (const forbidden of ['Wait for Render backend', 'render_ready_contract.py', 'RENDER_GIT_COMMIT']) {
-    if (mainCiSource.includes(forbidden)) fail(`CI principal no debe bloquear producción esperando Render: ${forbidden}`);
+  if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; sólo valida calidad');
+  for (const forbidden of ['Cloudflare Worker · Terraform', 'actions/deploy-pages@', 'RENDER_API_KEY', '  terraform:\n', '  pages:\n']) {
+    if (mainCiSource.includes(forbidden)) fail(`CI principal no debe desplegar producción: ${forbidden}`);
   }
   for (const required of [
     '  preflight:\n',
@@ -155,15 +161,8 @@ if (checkCiWiring) {
     '  e2e:\n',
     'name: Tests · Playwright',
     'needs: preflight',
-    '  terraform:\n',
-    'name: Cloudflare Worker · Terraform',
-    'needs: [frontend, backend, security, e2e]',
-    '  pages:\n',
-    'name: GitHub Pages',
-    'needs: terraform',
-    'VITE_BUILD_SHA: ${{ github.sha }}',
   ]) {
-    if (!mainCiSource.includes(required)) fail(`Pipeline único incompleto: falta ${JSON.stringify(required)}`);
+    if (!mainCiSource.includes(required)) fail(`CI quality-only incompleto: falta ${JSON.stringify(required)}`);
   }
   for (const qualityJob of ['frontend', 'backend', 'security', 'e2e']) {
     const start = mainCiSource.indexOf(`\n  ${qualityJob}:\n`);
@@ -173,10 +172,29 @@ if (checkCiWiring) {
     const block = nextJobOffset >= 0
       ? tail.slice(0, tail.indexOf('\n') + 1 + nextJobOffset)
       : tail;
-    if (!block.includes('\n    needs: preflight\n')) {
-      fail(`${qualityJob} debe depender sólo del preflight y poder correr en paralelo`);
-    }
+    if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender sólo del preflight y poder correr en paralelo`);
   }
+  for (const required of [
+    'name: Production · promote',
+    'workflow_run:',
+    'Staging · AI Worker',
+    "github.event.workflow_run.conclusion == 'success'",
+    "github.event.workflow_run.event == 'workflow_run'",
+    'DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}',
+    'name: Gate · staging accredited SHA',
+    'name: Production · Cloudflare Worker',
+    'name: Production · Render backend',
+    'needs: cloudflare',
+    'python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"',
+    'name: Production · GitHub Pages',
+    'needs: backend',
+    'VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}',
+    'Verify production frontend build identity',
+  ]) {
+    if (!promotionSource.includes(required)) fail(`Promoción de producción incompleta: falta ${JSON.stringify(required)}`);
+  }
+  if (!stagingAiSource.includes('UPSTREAM_EVENT: ${{ github.event.workflow_run.event')) fail('Staging AI debe conservar la procedencia del staging deploy');
+  if (!stagingAiSource.includes("$TRIGGER_EVENT\" == 'workflow_run' && \"$UPSTREAM_EVENT\" != 'workflow_run'")) fail('Staging AI debe rechazar como acreditación un staging disparado manualmente');
   if (/Coverage (?:frontend|backend) \(informativo\)/.test(mainCiSource)) fail('CI principal no debe repetir suites completas sólo para coverage informativo');
   if (!coverageWorkflowSource.includes('workflow_dispatch:') || !coverageWorkflowSource.includes('schedule:')) fail('Coverage debe quedar disponible manualmente y por calendario');
   const frontendCentralized = /npm\s+(?:run\s+)?test\b/.test(workflowSource)
