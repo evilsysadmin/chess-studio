@@ -114,7 +114,7 @@ test('staging live · login real → Home → partida rápida → jugada real', 
     const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
     await expect(dialog).toBeVisible();
     const settings = dialog.locator('details.quick-match-settings');
-    if (!(await settings.evaluate((node) => node.open))) await settings.locator('summary').click();
+    if (!(await settings.evaluate((node) => node.open))) await settings.locator(':scope > summary').click();
     await dialog.getByRole('radio', { name: 'Blancas', exact: true }).click();
 
     const createGame = page.waitForResponse((response) => {
