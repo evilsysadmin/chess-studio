@@ -1,0 +1,246 @@
+name: Chess Studio Staging
+
+on:
+  # Automatic staging happens only after the normal PR CI is green.
+  workflow_run:
+    workflows: ["Chess Studio CI/CD"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref or SHA to deploy to staging
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+# There is deliberately one shared staging environment. The newest validated
+# request wins and cancels an older staging deployment still in progress.
+concurrency:
+  group: chess-studio-staging
+  cancel-in-progress: true
+
+env:
+  CF_PAGES_PROJECT: chess-studio-staging
+  STAGING_BRANCH: staging
+  STAGING_HOSTNAME: staging.chess-studio.shadowops.dpdns.org
+  STAGING_PAGES_URL: https://chess-studio-staging.pages.dev
+  STAGING_API_ORIGIN: https://chess-study-backend-staging.onrender.com
+
+jobs:
+  deploy:
+    name: Deploy validated SHA to staging
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.pull_requests[0].number != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Resolve requested revision
+        id: revision
+        shell: bash
+        env:
+          MANUAL_REF: ${{ inputs.ref }}
+          PR_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ref="${MANUAL_REF:-main}"
+            echo "ref=$ref" >> "$GITHUB_OUTPUT"
+            echo "source=manual" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+          else
+            test -n "$PR_SHA"
+            echo "ref=$PR_SHA" >> "$GITHUB_OUTPUT"
+            echo "source=pr" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout exact staging candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.revision.outputs.ref }}
+          fetch-depth: 1
+
+      - name: Pin resolved SHA
+        id: pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${sha:0:8}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate staging credentials
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RENDER_STAGING_DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$RENDER_STAGING_DEPLOY_HOOK" || {
+            echo '::error::Falta RENDER_STAGING_DEPLOY_HOOK. Créalo una vez en el servicio chess-study-backend-staging de Render.'
+            exit 1
+          }
+
+      - name: Trigger exact Render staging deploy
+        shell: bash
+        env:
+          RENDER_STAGING_DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+          STAGING_SHA: ${{ steps.pin.outputs.sha }}
+        run: |
+          set -euo pipefail
+          separator='?'
+          [[ "$RENDER_STAGING_DEPLOY_HOOK" == *'?'* ]] && separator='&'
+          curl --fail --silent --show-error --request POST \
+            "${RENDER_STAGING_DEPLOY_HOOK}${separator}ref=${STAGING_SHA}" >/dev/null
+          echo "Render staging solicitado para $STAGING_SHA"
+
+      - name: Wait for Render readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready_url="$STAGING_API_ORIGIN/api/ready"
+          for attempt in $(seq 1 72); do
+            if curl --fail --silent --show-error --max-time 10 "$ready_url" >/tmp/staging-ready.json 2>/dev/null; then
+              cat /tmp/staging-ready.json
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Staging no alcanzó readiness en $ready_url"
+          exit 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend for staging
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ env.STAGING_API_ORIGIN }}/api
+          VITE_DEPLOY_ENV: staging
+          VITE_DEPLOY_SHA: ${{ steps.pin.outputs.sha }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Ensure Cloudflare Pages staging project
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CF_PAGES_PROJECT"
+          body="$RUNNER_TEMP/cf-pages-project.json"
+          status="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' "$api")"
+          case "$status" in
+            200)
+              echo "Pages project $CF_PAGES_PROJECT ya existe."
+              ;;
+            404)
+              create_body="$RUNNER_TEMP/cf-pages-create.json"
+              create_status="$(curl --silent --show-error --output "$create_body" --write-out '%{http_code}' \
+                --request POST \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                -H 'Content-Type: application/json' \
+                --data "{\"name\":\"$CF_PAGES_PROJECT\",\"production_branch\":\"$STAGING_BRANCH\"}" \
+                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects")"
+              [[ "$create_status" == 200 || "$create_status" == 201 ]] || {
+                cat "$create_body" >&2
+                echo '::error::El token de Cloudflare necesita Pages Write además de los permisos actuales.'
+                exit 1
+              }
+              ;;
+            *)
+              cat "$body" >&2 || true
+              echo "::error::Cloudflare devolvió HTTP $status al consultar Pages."
+              exit 1
+              ;;
+          esac
+
+      - name: Ensure staging custom domain
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          domain_api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CF_PAGES_PROJECT/domains/$STAGING_HOSTNAME"
+          body="$RUNNER_TEMP/cf-pages-domain.json"
+          status="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H 'Accept: application/json' "$domain_api")"
+          case "$status" in
+            200) ;;
+            404)
+              create_body="$RUNNER_TEMP/cf-pages-domain-create.json"
+              create_status="$(curl --silent --show-error --output "$create_body" --write-out '%{http_code}' \
+                --request POST \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                -H 'Content-Type: application/json' \
+                --data "{\"name\":\"$STAGING_HOSTNAME\"}" \
+                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CF_PAGES_PROJECT/domains")"
+              [[ "$create_status" == 200 || "$create_status" == 201 ]] || { cat "$create_body" >&2; exit 1; }
+              ;;
+            *)
+              cat "$body" >&2 || true
+              exit 1
+              ;;
+          esac
+
+      - name: Deploy frontend to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          STAGING_SHA: ${{ steps.pin.outputs.sha }}
+        run: |
+          npx --yes wrangler@4 pages deploy frontend/dist \
+            --project-name="$CF_PAGES_PROJECT" \
+            --branch="$STAGING_BRANCH" \
+            --commit-hash="$STAGING_SHA" \
+            --commit-message="Chess Studio staging $STAGING_SHA"
+
+      - name: Smoke deployed frontend and API
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 "$STAGING_PAGES_URL/" >/tmp/staging-index.html
+          grep -q '<div id="root"' /tmp/staging-index.html
+          curl --fail --silent --show-error --max-time 10 "$STAGING_API_ORIGIN/api/ready" >/dev/null
+
+      - name: Staging summary
+        shell: bash
+        env:
+          SHA: ${{ steps.pin.outputs.sha }}
+          SHORT_SHA: ${{ steps.pin.outputs.short_sha }}
+          SOURCE: ${{ steps.revision.outputs.source }}
+          PR_NUMBER: ${{ steps.revision.outputs.pr_number }}
+        run: |
+          {
+            echo '## Chess Studio staging'
+            echo
+            echo "- SHA: \`$SHA\`"
+            echo "- Source: $SOURCE${PR_NUMBER:+ (PR #$PR_NUMBER)}"
+            echo "- Frontend: https://$STAGING_HOSTNAME"
+            echo "- Pages fallback: $STAGING_PAGES_URL"
+            echo "- Backend: $STAGING_API_ORIGIN"
+            echo "- Identificador visible: STAGING · $SHORT_SHA"
+            echo
+            echo 'El servicio Render Free volverá a dormirse por inactividad; el siguiente deploy lo despertará.'
+          } >> "$GITHUB_STEP_SUMMARY"
