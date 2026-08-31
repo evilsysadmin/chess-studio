@@ -1,0 +1,197 @@
+name: Cloudflare · Prometheus exporter
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cloudflare-prometheus-exporter.yml'
+      - 'infra/grafana/alloy/cloudflare-exporter.alloy.example'
+      - 'infra/grafana/README.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-cloudflare-prometheus-exporter
+  cancel-in-progress: false
+
+env:
+  EXPORTER_NAME: chess-studio-cloudflare-prometheus
+  EXPORTER_HOSTNAME: metrics.shadowops.dpdns.org
+  EXPORTER_UPSTREAM_SHA: c98fd6772a4ff806e40ba08cb5d4edb002ef13dc
+
+jobs:
+  deploy:
+    name: Deploy official exporter
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_EXPORTER_API_TOKEN: ${{ secrets.CLOUDFLARE_EXPORTER_API_TOKEN }}
+      CLOUDFLARE_EXPORTER_BASIC_AUTH_USER: ${{ secrets.CLOUDFLARE_EXPORTER_BASIC_AUTH_USER }}
+      CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD: ${{ secrets.CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD }}
+      CLOUDFLARE_EXPORTER_FREE_TIER: ${{ vars.CLOUDFLARE_EXPORTER_FREE_TIER || 'true' }}
+    steps:
+      - name: Check exporter credentials
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            CLOUDFLARE_API_TOKEN \
+            CLOUDFLARE_ACCOUNT_ID \
+            CLOUDFLARE_EXPORTER_API_TOKEN \
+            CLOUDFLARE_EXPORTER_BASIC_AUTH_USER \
+            CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD; do
+            [[ -n "${!name:-}" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} )); then
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            {
+              echo '### Cloudflare Prometheus exporter pendiente de credenciales'
+              echo
+              echo 'El código está preparado, pero no se despliega con secretos incompletos.'
+              echo
+              printf -- '- Falta `%s`\n' "${missing[@]}"
+              echo
+              echo 'El token runtime del exporter debe ser dedicado y de sólo lectura; no se reutiliza el token de Terraform/Pages.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo 'configured=true' >> "$GITHUB_OUTPUT"
+
+      - name: Checkout pinned official exporter
+        if: steps.gate.outputs.configured == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: cloudflare/cloudflare-prometheus-exporter
+          ref: ${{ env.EXPORTER_UPSTREAM_SHA }}
+          path: upstream-exporter
+
+      - name: Setup Bun
+        if: steps.gate.outputs.configured == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.2.22'
+
+      - name: Install pinned exporter dependencies
+        if: steps.gate.outputs.configured == 'true'
+        working-directory: upstream-exporter
+        run: bun install --frozen-lockfile
+
+      - name: Build hardened Chess Studio exporter config
+        if: steps.gate.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          root = pathlib.Path('upstream-exporter')
+          text = (root / 'wrangler.jsonc').read_text(encoding='utf-8')
+          cfg = json.loads(text[text.index('{'):])
+          cfg['name'] = os.environ['EXPORTER_NAME']
+          cfg['workers_dev'] = False
+          cfg['routes'] = [
+              {
+                  'pattern': os.environ['EXPORTER_HOSTNAME'],
+                  'custom_domain': True,
+              }
+          ]
+          vars_cfg = dict(cfg.get('vars') or {})
+          account_id = os.environ['CLOUDFLARE_ACCOUNT_ID']
+          vars_cfg.update({
+              'CF_ACCOUNTS': account_id,
+              'HOST_METRICS_ALLOWLIST': (
+                  'chess-studio.shadowops.dpdns.org,'
+                  'staging.chess-studio.shadowops.dpdns.org'
+              ),
+              'CF_HTTP_STATUS_GROUP': True,
+              'DISABLE_UI': True,
+              'DISABLE_CONFIG_API': True,
+              'LOG_LEVEL': 'info',
+              'LOG_FORMAT': 'json',
+          })
+          if os.environ.get('CLOUDFLARE_EXPORTER_FREE_TIER', 'true').lower() in {'1', 'true', 'yes', 'on'}:
+              vars_cfg['CF_FREE_TIER_ACCOUNTS'] = account_id
+          else:
+              vars_cfg.pop('CF_FREE_TIER_ACCOUNTS', None)
+          cfg['vars'] = vars_cfg
+          (root / 'wrangler.chess-studio.json').write_text(
+              json.dumps(cfg, indent=2) + '\n', encoding='utf-8'
+          )
+          print(
+              f"Exporter pinned={os.environ['EXPORTER_UPSTREAM_SHA']} "
+              f"name={cfg['name']} host={os.environ['EXPORTER_HOSTNAME']}"
+          )
+          PY
+
+      - name: Validate upstream exporter
+        if: steps.gate.outputs.configured == 'true'
+        working-directory: upstream-exporter
+        run: |
+          bun run typecheck
+          bun test
+
+      - name: Deploy pinned exporter Worker
+        if: steps.gate.outputs.configured == 'true'
+        working-directory: upstream-exporter
+        run: bunx wrangler deploy --config wrangler.chess-studio.json
+
+      - name: Install least-privilege runtime and Basic Auth secrets
+        if: steps.gate.outputs.configured == 'true'
+        working-directory: upstream-exporter
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$CLOUDFLARE_EXPORTER_API_TOKEN" \
+            | bunx wrangler secret put CLOUDFLARE_API_TOKEN --config wrangler.chess-studio.json
+          printf '%s' "$CLOUDFLARE_EXPORTER_BASIC_AUTH_USER" \
+            | bunx wrangler secret put BASIC_AUTH_USER --config wrangler.chess-studio.json
+          printf '%s' "$CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD" \
+            | bunx wrangler secret put BASIC_AUTH_PASSWORD --config wrangler.chess-studio.json
+
+      - name: Verify protected exporter health and metrics
+        if: steps.gate.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://$EXPORTER_HOSTNAME"
+          healthy=false
+          for attempt in {1..60}; do
+            health_code="$(curl --silent --show-error --connect-timeout 5 --max-time 15 \
+              --user "$CLOUDFLARE_EXPORTER_BASIC_AUTH_USER:$CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD" \
+              --output "$RUNNER_TEMP/cf-exporter-health.json" --write-out '%{http_code}' \
+              "$base/health" || true)"
+            metrics_code="$(curl --silent --show-error --connect-timeout 5 --max-time 25 \
+              --user "$CLOUDFLARE_EXPORTER_BASIC_AUTH_USER:$CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD" \
+              --output "$RUNNER_TEMP/cf-exporter-metrics.txt" --write-out '%{http_code}' \
+              "$base/metrics" || true)"
+            if [[ "$health_code" == 200 && "$metrics_code" == 200 ]] \
+              && grep -q '^cloudflare_' "$RUNNER_TEMP/cf-exporter-metrics.txt"; then
+              healthy=true
+              break
+            fi
+            echo "Exporter aún propagando (health=$health_code metrics=$metrics_code intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$healthy" == true ]] || { echo '::error::Exporter no quedó healthy con métricas Cloudflare'; exit 1; }
+
+          unauth_code="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
+            --output /dev/null --write-out '%{http_code}' "$base/metrics" || true)"
+          [[ "$unauth_code" == 401 ]] || { echo "::error::/metrics sin auth devolvió HTTP $unauth_code, esperaba 401"; exit 1; }
+
+          {
+            echo '### Cloudflare Prometheus exporter operativo'
+            echo
+            echo "- Upstream pin: \`$EXPORTER_UPSTREAM_SHA\`"
+            echo "- Endpoint: \`https://$EXPORTER_HOSTNAME/metrics\`"
+            echo '- Protección: `HTTP Basic Auth`'
+            echo '- UI/config API: `disabled`'
+            echo '- Host metrics: `production + staging`'
+          } >> "$GITHUB_STEP_SUMMARY"
