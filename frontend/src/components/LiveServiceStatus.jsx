@@ -41,11 +41,14 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
 
   const backendUp = status.backend === 'up';
   const checking = status.backend === 'checking';
-  const onlineLabel = Number.isInteger(status.onlineUsers)
-    ? `${status.onlineUsers} ${status.onlineUsers === 1 ? 'usuario online' : 'usuarios online'}`
+  const onlineCount = Number.isInteger(status.onlineUsers) ? status.onlineUsers : null;
+  const onlineLabel = onlineCount !== null
+    ? `${onlineCount} ${onlineCount === 1 ? 'usuario online' : 'usuarios online'}`
     : '— usuarios online';
   const latency = backendUp && Number.isInteger(status.latencyMs) ? ` · ${status.latencyMs} ms` : '';
   const backendLabel = checking ? 'Backend …' : `Backend ${backendUp ? 'UP' : 'DOWN'}${latency}`;
+  const compactOnlineLabel = onlineCount !== null ? String(onlineCount) : '—';
+  const compactBackendLabel = checking ? '…' : `${backendUp ? 'UP' : 'DOWN'}${latency}`;
   const canOpenAdmin = isAdminUser && typeof onAdmin === 'function';
 
   // Para un jugador, la ausencia de problemas ya es suficiente información.
@@ -56,12 +59,22 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
     <aside className={`live-service-status ${backendUp ? 'is-up' : checking ? 'is-checking' : 'is-down'}`} aria-live="polite" title="Usuarios activos en los últimos ~2,5 minutos">
       <span className="live-service-dot" aria-hidden="true" />
       {canOpenAdmin ? (
-        <button type="button" className="live-service-online-link" onClick={onAdmin} title="Abrir Panel de admin">
-          {onlineLabel}
+        <button
+          type="button"
+          className="live-service-online-link"
+          onClick={onAdmin}
+          title="Abrir Panel de admin"
+          aria-label={`${onlineLabel}. Abrir Panel de admin`}
+        >
+          <span className="live-service-online-full">{onlineLabel}</span>
+          <span className="live-service-online-compact" aria-hidden="true">{compactOnlineLabel}</span>
         </button>
       ) : null}
       {canOpenAdmin && <span className="live-service-separator" aria-hidden="true">·</span>}
-      <strong>{canOpenAdmin ? backendLabel : 'Conexión no disponible'}</strong>
+      <strong>
+        <span className="live-service-backend-full">{canOpenAdmin ? backendLabel : 'Conexión no disponible'}</span>
+        {canOpenAdmin && <span className="live-service-backend-compact" aria-hidden="true">{compactBackendLabel}</span>}
+      </strong>
     </aside>
   );
 }

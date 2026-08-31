@@ -278,6 +278,34 @@
   .pawn-trailblazer-stage canvas { min-height: 520px; }
 }
 
+@media (max-width: 520px) {
+  .pawn-trailblazer { gap: 14px; }
+  .pawn-trailblazer-shell {
+    gap: 10px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .pawn-trailblazer-hud { gap: 6px; }
+  .pawn-trailblazer-hud span {
+    min-height: 54px;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: .64rem;
+    line-height: 1.15;
+  }
+  .pawn-trailblazer-hud b { font-size: .9rem; }
+  .pawn-trailblazer-hud span:last-child {
+    grid-column: 1 / -1;
+    min-height: 46px;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .pawn-trailblazer-stage,
+  .pawn-trailblazer-stage canvas { min-height: clamp(460px, 64svh, 540px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .experiments-card:hover { transform: none; }
 }
