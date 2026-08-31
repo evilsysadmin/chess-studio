@@ -15,7 +15,12 @@ async function openLabFromMoreModes(page) {
   const moreModes = page.locator('details.home-more-modes');
   await expect(moreModes).not.toHaveAttribute('open', '');
 
-  const lab = moreModes.getByRole('button', { name: /Laboratorio/ });
+  // Seleccionamos la tarjeta de modo, no el botón "?" del tutorial de
+  // Laboratorio que comparte texto accesible dentro del mismo disclosure.
+  const lab = moreModes
+    .locator('.friendly-disclosure-body > .menu-card-shell > button')
+    .filter({ hasText: 'Laboratorio' });
+  await expect(lab).toHaveCount(1);
   await expect(lab).toBeHidden();
   await moreModes.getByText('Más modos de juego', { exact: true }).click();
   await expect(moreModes).toHaveAttribute('open', '');
