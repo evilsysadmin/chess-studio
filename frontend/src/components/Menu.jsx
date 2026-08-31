@@ -406,18 +406,6 @@ export default function Menu({
           </TutorialModeCard>
         </div>
 
-        <div className="home-lab-access" aria-label="Herramienta de tablero">
-          <TutorialModeCard tutorialId="lab" className="menu-card accent-success home-lab-shortcut" onClick={onLab}>
-            <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span>
-            <span className="home-lab-shortcut-copy">
-              <span className="section-label">Herramienta de tablero</span>
-              <strong>Laboratorio</strong>
-              <small>Construye, pega o prueba una posición y juégala.</small>
-            </span>
-            <span className="menu-card-cta">Abrir laboratorio <b aria-hidden="true">→</b></span>
-          </TutorialModeCard>
-        </div>
-
         <details className="friendly-disclosure home-more-modes">
           <summary>Más modos de juego</summary>
           <div className="friendly-disclosure-body menu-grid menu-grid-4 compact-mode-grid">
@@ -430,6 +418,9 @@ export default function Menu({
             {features.spectator !== false && <TutorialModeCard tutorialId="spectator" className="menu-card accent-hint" onClick={onSpectator}>
               <IconEye className="menu-card-icon" /><h3>Espectador</h3><p>CPU contra CPU. Tú miras el incendio.</p><span className="menu-card-cta">Mirar →</span>
             </TutorialModeCard>}
+            <TutorialModeCard tutorialId="lab" className="menu-card accent-success" onClick={onLab}>
+              <IconPuzzle className="menu-card-icon" /><h3>Laboratorio</h3><p>Construye, pega o prueba una posición y juégala.</p><span className="menu-card-cta">Abrir →</span>
+            </TutorialModeCard>
           </div>
         </details>
       </section>
