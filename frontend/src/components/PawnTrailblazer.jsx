@@ -19,6 +19,7 @@ import {
   trailPowerLabel,
   trailPowerLane,
   trailSpeedForDistance,
+  trailSpriteMotion,
 } from '../pawnTrailblazer.js';
 import './PawnTrailblazer.css';
 
@@ -220,7 +221,7 @@ function preloadSprites() {
   return images;
 }
 
-function drawTrack(ctx, width, height) {
+function drawTrack(ctx, width, height, distance = 0, reducedMotion = false) {
   ctx.fillStyle = '#07090d';
   ctx.fillRect(0, 0, width, height);
   const grad = ctx.createLinearGradient(0, 0, 0, height * 0.45);
@@ -229,19 +230,25 @@ function drawTrack(ctx, width, height) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height * 0.5);
 
-  for (let row = Math.ceil(MAX_DEPTH); row >= 0; row -= 1) {
-    const far = project(0, row + 1, width, height);
-    const near = project(0, row, width, height);
+  const safeDistance = reducedMotion ? 0 : Math.max(0, Number(distance) || 0);
+  const scroll = safeDistance % 1;
+  const checkerPhase = Math.floor(safeDistance);
+
+  for (let row = Math.ceil(MAX_DEPTH) + 1; row >= 0; row -= 1) {
+    const farZ = Math.max(0, row + 1 - scroll);
+    const nearZ = Math.max(0, row - scroll);
+    const far = project(0, farZ, width, height);
+    const near = project(0, nearZ, width, height);
     for (let lane = 0; lane < TRAIL_LANES; lane += 1) {
-      const f = project(lane, row + 1, width, height);
-      const n = project(lane, row, width, height);
+      const f = project(lane, farZ, width, height);
+      const n = project(lane, nearZ, width, height);
       ctx.beginPath();
       ctx.moveTo(f.x - f.laneWidth / 2, f.y);
       ctx.lineTo(f.x + f.laneWidth / 2, f.y);
       ctx.lineTo(n.x + n.laneWidth / 2, n.y);
       ctx.lineTo(n.x - n.laneWidth / 2, n.y);
       ctx.closePath();
-      ctx.fillStyle = (row + lane) % 2 ? '#5a4636' : '#d9d0bb';
+      ctx.fillStyle = (row + lane + checkerPhase) % 2 ? '#5a4636' : '#d9d0bb';
       ctx.globalAlpha = 0.82;
       ctx.fill();
       ctx.globalAlpha = 1;
@@ -252,16 +259,20 @@ function drawTrack(ctx, width, height) {
   }
 }
 
-function drawSprite(ctx, image, x, y, size, glow = '#d5b15a') {
+function drawSprite(ctx, image, x, y, size, glow = '#d5b15a', motion = null) {
   if (!image?.complete || !image.naturalWidth) return false;
+  const m = motion || { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
   ctx.save();
+  ctx.translate(x + m.x * size, y + m.y * size);
+  ctx.rotate(m.rotation || 0);
+  ctx.scale(m.scaleX || 1, m.scaleY || 1);
   ctx.shadowColor = glow;
   ctx.shadowBlur = Math.max(2, size * 0.16);
   ctx.beginPath();
   const radius = Math.max(3, size * 0.16);
-  ctx.roundRect(x - size / 2, y - size / 2, size, size, radius);
+  ctx.roundRect(-size / 2, -size / 2, size, size, radius);
   ctx.clip();
-  ctx.drawImage(image, x - size / 2, y - size / 2, size, size);
+  ctx.drawImage(image, -size / 2, -size / 2, size, size);
   ctx.restore();
   return true;
 }
@@ -282,7 +293,7 @@ function drawBishopAim(ctx, item, width, height, now) {
   ctx.restore();
 }
 
-function drawObject(ctx, item, sprites, width, height, now, game) {
+function drawObject(ctx, item, sprites, width, height, now, game, reducedMotion) {
   const p = project(item.lane, item.z, width, height);
   const size = Math.max(16, 58 * p.scale);
   drawBishopAim(ctx, item, width, height, now);
@@ -293,13 +304,17 @@ function drawObject(ctx, item, sprites, width, height, now, game) {
       ? 'enemyDuelist'
       : (ENEMY_SPRITE_KEYS[item.enemyType] || ENEMY_SPRITE_KEYS.pawn);
     const glow = item.enemyType === 'rook' ? '#c44c3d' : item.enemyType === 'bishop' ? '#d176ff' : '#d5b15a';
-    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size, glow)) return;
+    const motionKind = duelActive && item.enemyType === 'pawn' ? 'duelist' : item.enemyType;
+    const motionState = reducedMotion ? 'reduced' : item.enemyType === 'bishop' && item.aimed && !item.fired ? 'aiming' : 'running';
+    const motion = trailSpriteMotion(motionKind, now, item.id, motionState);
+    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size, glow, motion)) return;
   }
 
   if (item.kind === 'power') {
     const spriteKey = POWER_SPRITE_KEYS[item.power];
     const glow = item.power === 'rook' ? '#5eb8ff' : item.power === 'bishop' ? '#72d96d' : '#c58cff';
-    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size * 0.92, glow)) return;
+    const motion = trailSpriteMotion('power', now, item.id, reducedMotion ? 'reduced' : 'running');
+    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size * 0.92, glow, motion)) return;
   }
 
   ctx.save();
@@ -339,15 +354,45 @@ function drawObject(ctx, item, sprites, width, height, now, game) {
   ctx.restore();
 }
 
-function drawMatthias(ctx, sprites, game, width, height, now) {
+function drawMatthias(ctx, sprites, game, width, height, now, reducedMotion) {
   const p = project(game.lane, 0.2, width, height);
   const size = Math.max(72, Math.min(116, width * 0.13));
-  const image = now < game.slashUntil ? sprites.matthiasCapture : sprites.matthiasRun;
-  const drew = drawSprite(ctx, image, p.x, p.y - size * 0.5, size, now < game.flashUntil ? '#ff5b4f' : '#d8b54f');
+  const slash = now < game.slashUntil;
+  const image = slash ? sprites.matthiasCapture : sprites.matthiasRun;
+  const state = reducedMotion ? 'reduced' : slash ? 'slash' : game.phase === 'duel' ? 'duel' : 'running';
+  const motion = trailSpriteMotion('matthias', now, 0, state);
+
+  ctx.save();
+  ctx.globalAlpha = 0.34;
+  ctx.fillStyle = '#000';
+  const lift = Math.min(0.15, Math.abs(motion.y));
+  ctx.beginPath();
+  ctx.ellipse(
+    p.x,
+    p.y - size * 0.03,
+    size * (0.30 - lift * 0.7),
+    size * (0.075 - lift * 0.16),
+    0,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+  ctx.restore();
+
+  const drew = drawSprite(
+    ctx,
+    image,
+    p.x,
+    p.y - size * 0.5,
+    size,
+    now < game.flashUntil ? '#ff5b4f' : '#d8b54f',
+    motion,
+  );
 
   if (game.power) {
     const badge = POWER_SPRITE_KEYS[game.power];
-    drawSprite(ctx, sprites[badge], p.x + size * 0.42, p.y - size * 0.88, size * 0.34, '#fff3b0');
+    const badgeMotion = trailSpriteMotion('power', now, 11, reducedMotion ? 'reduced' : 'running');
+    drawSprite(ctx, sprites[badge], p.x + size * 0.42, p.y - size * 0.88, size * 0.34, '#fff3b0', badgeMotion);
   }
   if (drew) return;
 
@@ -372,12 +417,21 @@ export default function PawnTrailblazer({ onExit }) {
   const spriteRef = useRef({});
   const musicStopRef = useRef(() => {});
   const musicRef = useRef('synthmetal');
+  const reducedMotionRef = useRef(false);
   const [hud, setHud] = useState(() => ({ ...createGame() }));
   const [music, setMusic] = useState('synthmetal');
 
   useEffect(() => {
     spriteRef.current = preloadSprites();
     return () => { spriteRef.current = {}; };
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const sync = () => { reducedMotionRef.current = Boolean(media?.matches); };
+    sync();
+    media?.addEventListener?.('change', sync);
+    return () => media?.removeEventListener?.('change', sync);
   }, []);
 
   useEffect(() => () => {
@@ -483,11 +537,12 @@ export default function PawnTrailblazer({ onExit }) {
       }
 
       const { width, height } = resize();
-      drawTrack(ctx, width, height);
+      const reducedMotion = reducedMotionRef.current;
+      drawTrack(ctx, width, height, game.distance, reducedMotion);
       for (const item of [...game.objects].sort((a, b) => b.z - a.z)) {
-        drawObject(ctx, item, spriteRef.current, width, height, now, game);
+        drawObject(ctx, item, spriteRef.current, width, height, now, game, reducedMotion);
       }
-      drawMatthias(ctx, spriteRef.current, game, width, height, now);
+      drawMatthias(ctx, spriteRef.current, game, width, height, now, reducedMotion);
 
       if (game.phase === 'duel' && game.duel) {
         ctx.fillStyle = 'rgba(0,0,0,.76)';
@@ -667,7 +722,7 @@ export default function PawnTrailblazer({ onExit }) {
           <div><kbd>ESPACIO</kbd><span>Forcejea contra peones o para el disparo de un alfil al final de su carga.</span></div>
           <div className="pawn-trailblazer-music"><span>BSO</span><button type="button" className={music === 'synthmetal' ? 'active' : ''} onClick={() => switchMusic('synthmetal')}>Synthmetal</button><button type="button" className={music === 'classical' ? 'active' : ''} onClick={() => switchMusic('classical')}>Clásica</button></div>
         </div>
-        <p className="pawn-trailblazer-note">Arte de la POC: sprites WebP aprobados de Matthias, enemigos y powerups. El modo sigue aislado: no toca rating ni progreso competitivo.</p>
+        <p className="pawn-trailblazer-note">Arte de la POC: sprites WebP aprobados de Matthias, enemigos y powerups con animación procedural en Canvas. El modo sigue aislado: no toca rating ni progreso competitivo.</p>
       </div>
     </div>
   );
