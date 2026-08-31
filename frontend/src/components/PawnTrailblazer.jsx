@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { duckAmbientMusic } from '../sound.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import {
   TRAIL_LANES,
   TRAIL_POWER_DURATION_MS,
   trailDuelDecay,
+  trailDuelDirection,
   trailDuelPress,
   trailPowerLabel,
   trailPowerLane,
@@ -289,7 +291,10 @@ export default function PawnTrailblazer({ onExit }) {
     return () => { imageRef.current = null; };
   }, []);
 
-  useEffect(() => () => musicStopRef.current(), []);
+  useEffect(() => () => {
+    musicStopRef.current();
+    duckAmbientMusic(false);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -406,15 +411,15 @@ export default function PawnTrailblazer({ onExit }) {
         return;
       }
       if (game.phase === 'duel' && game.duel) {
-        if (event.key === 'ArrowLeft') game.duel.direction = -1;
-        else if (event.key === 'ArrowRight') game.duel.direction = 1;
+        if (event.key === 'ArrowLeft') game.duel.direction = trailDuelDirection(game.lane, -1);
+        else if (event.key === 'ArrowRight') game.duel.direction = trailDuelDirection(game.lane, 1);
         else {
           game.duel.meter = trailDuelPress(game.duel.meter);
           if (game.duel.meter >= 100) {
             const enemy = game.objects.find((item) => item.id === game.duel.enemyId);
             if (enemy) {
-              const targetLane = Math.max(0, Math.min(TRAIL_LANES - 1, game.lane + game.duel.direction));
-              finishCapture(game, enemy, targetLane, now, 320);
+              const direction = trailDuelDirection(game.lane, game.duel.direction);
+              finishCapture(game, enemy, game.lane + direction, now, 320);
             }
           }
         }
@@ -452,6 +457,7 @@ export default function PawnTrailblazer({ onExit }) {
 
   function startRun() {
     musicStopRef.current();
+    duckAmbientMusic(true);
     musicStopRef.current = createArcadeMusic(music);
     const game = createGame();
     game.phase = 'running';
