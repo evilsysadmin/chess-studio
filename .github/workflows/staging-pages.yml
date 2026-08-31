@@ -155,38 +155,53 @@ jobs:
           done
           [[ "$live" == true ]] || { echo '::error::Render staging no llegó a live en 15 minutos'; exit 1; }
 
-      - name: Verify backend staging build identity
+      - name: Verify backend staging readiness and build identity
         shell: bash
         run: |
           set -euo pipefail
-          ready=false
+          gate_ok=false
           for attempt in {1..60}; do
-            body="$RUNNER_TEMP/staging-api-ready-$attempt.json"
-            status="$(curl --silent --show-error \
+            ready_body="$RUNNER_TEMP/staging-api-ready-$attempt.json"
+            ready_status="$(curl --silent --show-error \
               --connect-timeout 5 \
               --max-time 12 \
-              --output "$body" \
+              --output "$ready_body" \
               --write-out '%{http_code}' \
               -H 'Accept: application/json' \
               -H 'Cache-Control: no-cache' \
               -H 'User-Agent: chess-studio-staging-deploy/2' \
-              "$STAGING_API_URL/ready?sha=$DEPLOY_SHA" || true)"
-            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
+              "$STAGING_API_URL/ready" || true)"
+
+            release_body="$RUNNER_TEMP/staging-api-release-$attempt.json"
+            release_status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 12 \
+              --output "$release_body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'Cache-Control: no-cache' \
+              -H 'User-Agent: chess-studio-staging-deploy/2' \
+              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+
+            if [[ "$ready_status" == 200 && "$release_status" == 200 ]] && \
+              python3 - "$ready_body" "$release_body" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          expected = sys.argv[2].lower()
-          actual = str(payload.get('build') or '').lower()
-          ok = payload.get('ok') is True and payload.get('storage') == 'mongo' and actual == expected
-          raise SystemExit(0 if ok else 1)
+          ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+          expected = sys.argv[3].lower()
+          readiness_ok = ready.get('ok') is True and ready.get('storage') == 'mongo'
+          build_ok = str(release.get('build') or '').lower() == expected
+          raise SystemExit(0 if readiness_ok and build_ok else 1)
           PY
             then
-              ready=true
+              gate_ok=true
               break
             fi
-            echo "Backend staging aún no sirve $DEPLOY_SHA con Mongo ready (HTTP ${status:-curl-error}, intento $attempt/60)"
+
+            echo "Backend staging aún no acredita Mongo ready + SHA $DEPLOY_SHA (ready=${ready_status:-curl-error}, release=${release_status:-curl-error}, intento $attempt/60)"
             sleep 5
           done
-          [[ "$ready" == true ]] || { echo '::error::Backend staging no acreditó el SHA esperado tras 5 minutos'; exit 1; }
+          [[ "$gate_ok" == true ]] || { echo '::error::Backend staging no acreditó readiness y SHA esperado tras 5 minutos'; exit 1; }
 
       - name: Cloudflare bootstrap contract smoke
         run: python3 -S scripts/cloudflare_staging_pages_smoke.py
