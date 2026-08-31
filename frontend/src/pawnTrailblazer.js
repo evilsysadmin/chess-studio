@@ -4,6 +4,15 @@ export const TRAIL_DUEL_PRESS = 14;
 export const TRAIL_COMBO_WINDOW_MS = 2_800;
 export const TRAIL_MAX_COMBO = 8;
 export const TRAIL_BISHOP_PARRY_WINDOW_MS = 520;
+export const TRAIL_PROMOTION_DISTANCE = 250;
+export const TRAIL_PROMOTION_BONUS = 750;
+
+export const TRAIL_SECTORS = Object.freeze([
+  Object.freeze({ key: 'infantry', minDistance: 0, code: 'I', name: 'INFANTERÍA', toast: 'Peones al frente.' }),
+  Object.freeze({ key: 'cavalry', minDistance: 70, code: 'II', name: 'CABALLERÍA', toast: 'Los caballos entran en pista.' }),
+  Object.freeze({ key: 'crossfire', minDistance: 170, code: 'III', name: 'FUEGO CRUZADO', toast: 'Alfiles y torres autorizados.' }),
+  Object.freeze({ key: 'hell', minDistance: 300, code: 'IV', name: 'HÖLLE', toast: 'Todos los patrones. Keine Gnade.' }),
+]);
 
 export function clampTrailLane(lane) {
   return Math.max(0, Math.min(TRAIL_LANES - 1, Math.round(Number(lane) || 0)));
@@ -11,6 +20,23 @@ export function clampTrailLane(lane) {
 
 export function trailSpeedForDistance(distance = 0) {
   return Math.min(10.5, 5.2 + Math.max(0, Number(distance) || 0) / 115);
+}
+
+export function trailSectorForDistance(distance = 0) {
+  const meters = Math.max(0, Number(distance) || 0);
+  let sector = TRAIL_SECTORS[0];
+  for (const candidate of TRAIL_SECTORS) {
+    if (meters < candidate.minDistance) break;
+    sector = candidate;
+  }
+  return sector;
+}
+
+export function trailPromotionCrossed(previousDistance = 0, nextDistance = 0, alreadyRefused = false) {
+  if (alreadyRefused) return false;
+  const previous = Math.max(0, Number(previousDistance) || 0);
+  const next = Math.max(0, Number(nextDistance) || 0);
+  return previous < TRAIL_PROMOTION_DISTANCE && next >= TRAIL_PROMOTION_DISTANCE;
 }
 
 export function trailPowerLane({ lane, direction, power }) {
