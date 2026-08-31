@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOKEN_KEY } from './auth.js';
-import { askMatthiasDaily, fetchMatthiasBriefing, resetOwnMatthiasMemory } from './matthiasDaily.js';
+import { askMatthiasDaily, fetchMatthiasBriefing, fetchMatthiasDailyStatus, resetOwnMatthiasMemory } from './matthiasDaily.js';
 
 function response(status, body) {
   return {
@@ -30,6 +30,20 @@ describe('Matthias daily transport', () => {
       facts: { total_games: 8 },
       consultationId: 'fixed-consultation',
     });
+  });
+
+  it('comparte una lectura GET concurrente del estado de Matthias y permite refrescar después', async () => {
+    global.fetch.mockResolvedValue(response(200, { used: false, memory: { consultations: 2 } }));
+    const first = fetchMatthiasDailyStatus();
+    const second = fetchMatthiasDailyStatus();
+    const [a, b] = await Promise.all([first, second]);
+
+    expect(a.memory.consultations).toBe(2);
+    expect(b.memory.consultations).toBe(2);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    await fetchMatthiasDailyStatus();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('lee un briefing persistente sin consumir una audiencia', async () => {
