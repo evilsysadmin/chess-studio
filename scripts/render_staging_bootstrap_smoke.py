@@ -50,6 +50,22 @@ def test_environment_isolated_and_secrets_stable() -> None:
     check("retryWrites=true" in rewritten and "w=majority" in rewritten, "no debe perder opciones de conexión")
 
 
+def test_production_discovery_uses_repo_and_mongo_evidence() -> None:
+    services = [
+        {"id": "srv-static", "name": "chess-studio-web", "repo": "https://github.com/acme/chess-studio"},
+        {"id": "srv-prod", "name": "api-prod", "repo": "https://github.com/acme/chess-studio.git"},
+        {"id": "srv-other", "name": "other-api", "repo": "https://github.com/acme/other"},
+    ]
+    with (
+        patch.dict(module.os.environ, {"GITHUB_REPOSITORY": "acme/chess-studio"}),
+        patch.object(module, "find_service", return_value=None),
+        patch.object(module, "api", return_value=[{"service": row} for row in services]),
+        patch.object(module, "read_env", side_effect=lambda service, key: "mongodb://atlas" if service == "srv-prod" and key == "MONGO_URL" else None),
+    ):
+        selected = module.find_production_service()
+    check(selected["id"] == "srv-prod", "debe detectar el backend por repo y presencia de MONGO_URL")
+
+
 def test_main_reconciles_without_duplicate_creation() -> None:
     production = {"id": "srv-prod", "name": module.PRODUCTION_NAME}
     staging = {"id": "srv-stage", "name": module.SERVICE_NAME}
@@ -59,6 +75,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
         return production if name == module.PRODUCTION_NAME else staging
 
     with (
+        patch.object(module, "find_production_service", return_value=production),
         patch.object(module, "find_service", side_effect=find),
         patch.object(module, "env_values", return_value={"MONGO_DB_NAME": "chess_study_staging"}),
         patch.object(module, "api", side_effect=lambda method, path, payload=None: calls.append((method, path, payload)) or {}),
@@ -76,5 +93,6 @@ def test_main_reconciles_without_duplicate_creation() -> None:
 if __name__ == "__main__":
     test_unwrap_service_shapes()
     test_environment_isolated_and_secrets_stable()
+    test_production_discovery_uses_repo_and_mongo_evidence()
     test_main_reconciles_without_duplicate_creation()
     print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + secretos estables")
