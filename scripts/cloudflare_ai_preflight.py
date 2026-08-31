@@ -22,7 +22,8 @@ WRANGLER = ROOT / "infra/cloudflare/wrangler.toml"
 TF_MAIN = ROOT / "infra/cloudflare/main.tf"
 BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
-WORKFLOW = ROOT / ".github/workflows/cicd.yml"
+CI_WORKFLOW = ROOT / ".github/workflows/cicd.yml"
+PROMOTION_WORKFLOW = ROOT / ".github/workflows/production-promote.yml"
 
 EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
 EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]
@@ -39,7 +40,6 @@ def require_pattern(text: str, pattern: str, label: str, errors: list[str]) -> N
         errors.append(f"{label}: no cumple el patrón esperado {pattern!r}")
 
 
-
 def static_check() -> list[str]:
     errors: list[str] = []
     worker = WORKER.read_text(encoding="utf-8")
@@ -47,7 +47,10 @@ def static_check() -> list[str]:
     tf_main = TF_MAIN.read_text(encoding="utf-8")
     backend = BACKEND.read_text(encoding="utf-8")
     frontend = FRONTEND_REMOTE.read_text(encoding="utf-8")
-    workflow = WORKFLOW.read_text(encoding="utf-8")
+    ci = CI_WORKFLOW.read_text(encoding="utf-8")
+    if not PROMOTION_WORKFLOW.exists():
+        return ["pipeline: falta .github/workflows/production-promote.yml"]
+    promotion = PROMOTION_WORKFLOW.read_text(encoding="utf-8")
 
     for needle in (
         'env.AI.run(',
@@ -111,47 +114,67 @@ def static_check() -> list[str]:
             errors.append(f"frontend: secreto/Worker directo expuesto: {needle}")
     require(frontend, '/narrative', "frontend FastAPI route", errors)
 
-    # First deploys have no Worker/Custom Domain to import. The workflow must
-    # discover existing resources and import only those that exist; swallowing
-    # terraform import errors would hide real authentication/provider failures.
-    require(workflow, 'Probe existing Cloudflare Worker state', "workflow state probe", errors)
-    require(workflow, "steps.cf_state.outputs.worker_exists == 'true'", "workflow conditional Worker import", errors)
-    require(workflow, "steps.cf_state.outputs.subdomain_exists == 'true'", "workflow conditional workers.dev settings import", errors)
-    require(workflow, "steps.cf_state.outputs.custom_domain_exists == 'true'", "workflow conditional Custom Domain import", errors)
-    require(workflow, 'CUSTOM_DOMAIN: ai.shadowops.dpdns.org', "workflow Custom Domain", errors)
-    require(workflow, '/workers/domains', "workflow Workers Domains API", errors)
-    require(workflow, 'cloudflare_workers_custom_domain.narrative_ai', "workflow Custom Domain Terraform import", errors)
-    require(workflow, '- name: Verify Custom Domain and health', "workflow Custom Domain health step", errors)
-    require(workflow, 'for attempt in {1..60}', "workflow TLS/health propagation retry", errors)
-    require(workflow, 'Health HTTP ${health_status:-curl-error}', "workflow diagnosable live health", errors)
-    # Deployment health uses the same executable contract as this preflight.
-    # Do not inspect inline Python/YAML implementation details: that was brittle
-    # and produced false CI failures for semantically equivalent workflows.
-    require(workflow, 'health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"', "workflow absolute health contract path", errors)
-    require(workflow, 'python3 "$health_contract" "$health_body"', "workflow shared health contract invocation", errors)
-    require(workflow, '[[ -f "$health_contract" ]]', "workflow health contract existence check", errors)
-
-    # Production is deliberately one workflow. A cheap preflight fans out to
-    # frontend/backend/security/E2E runners in parallel; Terraform waits for
-    # all four quality branches and Pages remains the final serial stage.
-    require(workflow, "  preflight:\n", "pipeline contains Preflight job", errors)
+    # CI is quality-only. Production changes are forbidden here so a main push
+    # cannot bypass the deployed staging + Workers AI accreditation chain.
+    require(ci, "  preflight:\n", "CI contains Preflight job", errors)
     for job in ("frontend", "backend", "security", "e2e"):
-        require(workflow, f"  {job}:\n", f"pipeline contains parallel {job} job", errors)
-    require(workflow, "  terraform:\n", "pipeline contains Terraform job", errors)
-    require(workflow, "name: Cloudflare Worker · Terraform", "Terraform stage is explicit", errors)
-    require(workflow, "needs: [frontend, backend, security, e2e]", "Terraform waits for every parallel quality branch", errors)
-    require(workflow, "  pages:\n", "pipeline contains Pages job", errors)
-    require(workflow, "name: GitHub Pages", "Pages stage is explicit", errors)
-    require(workflow, "needs: terraform", "Pages waits for Terraform", errors)
-    require(workflow, "github.event_name == 'push' && github.ref == 'refs/heads/main'", "production stages only auto-run on main push", errors)
-    if "workflow_run:" in workflow:
-        errors.append("pipeline: workflow_run no debe existir; producción vive en un único workflow")
-    require(workflow, "ref: ${{ github.sha }}", "deploy stages pin the tested SHA", errors)
-    require(workflow, "Refuse stale production commit", "pipeline blocks stale production commits", errors)
-    require(workflow, "git ls-remote --exit-code origin refs/heads/main", "pipeline compares tested SHA with current main", errors)
-    require(workflow, 'tested_sha="${{ github.sha }}"', "pipeline stale guard uses tested SHA", errors)
-    require(workflow, "VITE_BUILD_SHA: ${{ github.sha }}", "Pages exposes tested SHA", errors)
-    require(workflow, "uses: actions/deploy-pages@v", "Pages deploy action wired", errors)
+        require(ci, f"  {job}:\n", f"CI contains parallel {job} job", errors)
+        require(ci, "needs: preflight", f"CI {job} waits for preflight", errors)
+    for forbidden in (
+        "  terraform:\n",
+        "  pages:\n",
+        "Cloudflare Worker · Terraform",
+        "actions/deploy-pages@",
+        "RENDER_API_KEY",
+    ):
+        if forbidden in ci:
+            errors.append(f"CI quality-only contiene despliegue de producción: {forbidden!r}")
+    if "workflow_run:" in ci:
+        errors.append("CI principal no debe usar workflow_run; staging lo encadena después del quality gate")
+
+    # Promotion must be provenance-bound to the staging AI workflow, use the
+    # exact accredited SHA everywhere and serialize Worker -> backend -> frontend.
+    for needle, label in (
+        ("name: Production · promote", "promotion workflow name"),
+        ("workflow_run:", "promotion workflow_run trigger"),
+        ("Staging · AI Worker", "promotion staging AI source"),
+        ("github.event.workflow_run.conclusion == 'success'", "promotion requires successful staging AI"),
+        ("github.event.workflow_run.event == 'workflow_run'", "promotion rejects manual AI runs"),
+        ('DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}', "promotion exact source SHA"),
+        ("Gate · staging accredited SHA", "promotion staging gate"),
+        ("Require current main before starting promotion", "promotion stale-start guard"),
+        ("git ls-remote --exit-code origin refs/heads/main", "promotion compares accredited SHA to main"),
+        ("Verify staging backend still serves approved SHA", "promotion rechecks staging backend"),
+        ("Verify staging frontend still serves approved SHA", "promotion rechecks staging frontend"),
+        ("Verify staging AI health contract", "promotion rechecks staging AI"),
+        ("Production · Cloudflare Worker", "promotion Worker stage"),
+        ("Production · Render backend", "promotion Render stage"),
+        ("needs: cloudflare", "Render waits for Worker"),
+        ('python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"', "Render exact commit deploy"),
+        ("Verify production backend readiness and build identity", "Render live identity gate"),
+        ("Production · GitHub Pages", "promotion frontend stage"),
+        ("needs: backend", "Pages waits for backend"),
+        ('ref: ${{ env.DEPLOY_SHA }}', "promotion checkouts exact SHA"),
+        ('VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}', "Pages exposes promoted SHA"),
+        ("uses: actions/deploy-pages@v", "Pages deploy action wired"),
+        ("Verify production frontend build identity", "Pages live identity gate"),
+    ):
+        require(promotion, needle, label, errors)
+
+    # First deploys have no Worker/Custom Domain to import. Promotion must
+    # discover existing resources and import only those that exist; swallowing
+    # Terraform import errors would hide real authentication/provider failures.
+    require(promotion, 'Probe existing Cloudflare Worker state', "promotion state probe", errors)
+    require(promotion, "steps.cf_state.outputs.worker_exists == 'true'", "promotion conditional Worker import", errors)
+    require(promotion, "steps.cf_state.outputs.subdomain_exists == 'true'", "promotion conditional workers.dev import", errors)
+    require(promotion, "steps.cf_state.outputs.custom_domain_exists == 'true'", "promotion conditional Custom Domain import", errors)
+    require(promotion, 'CUSTOM_DOMAIN: ai.shadowops.dpdns.org', "promotion Custom Domain", errors)
+    require(promotion, '/workers/domains', "promotion Workers Domains API", errors)
+    require(promotion, 'cloudflare_workers_custom_domain.narrative_ai', "promotion Custom Domain Terraform import", errors)
+    require(promotion, '- name: Verify Custom Domain and health', "promotion Custom Domain health step", errors)
+    require(promotion, 'for attempt in {1..60}', "promotion propagation retry", errors)
+    require(promotion, 'health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"', "promotion shared health contract path", errors)
+    require(promotion, 'python3 "$health_contract" "$health_body"', "promotion shared health invocation", errors)
 
     for obsolete in (ROOT / ".github/workflows/terraform-cloudflare.yml", ROOT / ".github/workflows/static.yml"):
         if obsolete.exists():
@@ -170,24 +193,23 @@ def static_check() -> list[str]:
     missing_analysis = {**expected_payload, "models": {k: v for k, v in EXPECTED_MODELS.items() if k != "analysis"}}
     if not validate_health_payload(missing_analysis):
         errors.append("shared health contract: no detecta routing analysis ausente")
-    require(workflow, 'CF_AI_WORKER_URL=https://ai.shadowops.dpdns.org', "workflow Render handoff", errors)
 
     require(tf_main, 'resource "cloudflare_workers_custom_domain" "narrative_ai"', "terraform Custom Domain", errors)
     require(tf_main, 'hostname   = var.custom_domain_hostname', "terraform Custom Domain hostname", errors)
     require(tf_main, 'zone_name  = var.custom_domain_zone_name', "terraform Custom Domain zone", errors)
     require(tf_main, 'enabled          = false', "terraform workers.dev disabled", errors)
 
-    forbidden_workflow = (
+    forbidden_promotion = (
         '- name: Ensure account workers.dev namespace',
         'desired_subdomain="chess-studio-$suffix"',
         'subdomain.get("url")',
     )
-    for needle in forbidden_workflow:
-        if needle in workflow:
-            errors.append(f"workflow: lógica workers.dev obsoleta presente: {needle}")
+    for needle in forbidden_promotion:
+        if needle in promotion:
+            errors.append(f"promotion: lógica workers.dev obsoleta presente: {needle}")
 
-    if 'terraform import cloudflare_workers_script.narrative_ai' in workflow and 'narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME" || true' in workflow:
-        errors.append("workflow: terraform import no debe ocultar errores con || true")
+    if 'terraform import cloudflare_workers_script.narrative_ai' in promotion and 'narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME" || true' in promotion:
+        errors.append("promotion: terraform import no debe ocultar errores con || true")
 
     return errors
 
