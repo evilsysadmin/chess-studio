@@ -64,7 +64,7 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
           className="live-service-online-link"
           onClick={onAdmin}
           title="Abrir Panel de admin"
-          aria-label={`${onlineLabel}. Abrir Panel de admin`}
+          aria-label={onlineLabel}
         >
           <span className="live-service-online-full">{onlineLabel}</span>
           <span className="live-service-online-compact" aria-hidden="true">{compactOnlineLabel}</span>
