@@ -6,6 +6,8 @@ import {
   TRAIL_COMBO_WINDOW_MS,
   TRAIL_LANES,
   TRAIL_POWER_DURATION_MS,
+  trailBishopParryReady,
+  trailBishopTargetLane,
   trailComboAfterCapture,
   trailComboMultiplier,
   trailDuelDecay,
@@ -24,12 +26,21 @@ const MAX_DEPTH = 34;
 const COLLISION_Z = 1.25;
 const CAPTURE_WINDOW = 4.2;
 const POWER_TYPES = ['rook', 'bishop', 'queen'];
+const BISHOP_AIM_Z = 16;
+const BISHOP_AIM_MS = 700;
 
-const ENEMY_SPRITE_KEYS = {
+const ENEMY_SPRITE_KEYS = Object.freeze({
   pawn: 'enemyPawn',
   knight: 'enemyKnight',
+  bishop: 'enemyBishop',
   rook: 'enemyRook',
-};
+});
+
+const POWER_SPRITE_KEYS = Object.freeze({
+  rook: 'powerRook',
+  bishop: 'powerBishop',
+  queen: 'powerQueen',
+});
 
 function createGame() {
   return {
@@ -98,6 +109,10 @@ function spawnObject(game) {
     power: kind === 'power' ? POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)] : null,
     enemyType: kind === 'enemy' ? trailEnemyTypeForDistance(game.distance, Math.random()) : null,
     jumped: false,
+    aimed: false,
+    fired: false,
+    aimLane: null,
+    aimUntil: 0,
   });
   game.spawnIn = Math.max(3.25, 4.35 + Math.random() * 3.1 - game.distance / 900);
 }
@@ -251,18 +266,46 @@ function drawSprite(ctx, image, x, y, size, glow = '#d5b15a') {
   return true;
 }
 
-function drawObject(ctx, item, sprites, width, height) {
+function drawBishopAim(ctx, item, width, height, now) {
+  if (item.enemyType !== 'bishop' || !item.aimed || item.fired || item.aimLane == null || now >= item.aimUntil) return;
+  const from = project(item.lane, item.z, width, height);
+  const to = project(item.aimLane, 0.25, width, height);
+  const remaining = Math.max(0, Math.min(1, (item.aimUntil - now) / BISHOP_AIM_MS));
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 91, 79, ${0.35 + (1 - remaining) * 0.55})`;
+  ctx.lineWidth = Math.max(2, 5 * from.scale);
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y - 18 * from.scale);
+  ctx.lineTo(to.x, to.y - 38);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawObject(ctx, item, sprites, width, height, now, game) {
   const p = project(item.lane, item.z, width, height);
   const size = Math.max(16, 58 * p.scale);
+  drawBishopAim(ctx, item, width, height, now);
+
   if (item.kind === 'enemy') {
-    const spriteKey = ENEMY_SPRITE_KEYS[item.enemyType] || ENEMY_SPRITE_KEYS.pawn;
-    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size, item.enemyType === 'rook' ? '#c44c3d' : '#d5b15a')) return;
+    const duelActive = game.phase === 'duel' && game.duel?.enemyId === item.id;
+    const spriteKey = duelActive && item.enemyType === 'pawn'
+      ? 'enemyDuelist'
+      : (ENEMY_SPRITE_KEYS[item.enemyType] || ENEMY_SPRITE_KEYS.pawn);
+    const glow = item.enemyType === 'rook' ? '#c44c3d' : item.enemyType === 'bishop' ? '#d176ff' : '#d5b15a';
+    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size, glow)) return;
+  }
+
+  if (item.kind === 'power') {
+    const spriteKey = POWER_SPRITE_KEYS[item.power];
+    const glow = item.power === 'rook' ? '#5eb8ff' : item.power === 'bishop' ? '#72d96d' : '#c58cff';
+    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size * 0.92, glow)) return;
   }
 
   ctx.save();
   ctx.translate(p.x, p.y - size * 0.42);
   if (item.kind === 'enemy') {
-    const glyph = item.enemyType === 'rook' ? '♜' : item.enemyType === 'knight' ? '♞' : '♟';
+    const glyph = item.enemyType === 'rook' ? '♜' : item.enemyType === 'bishop' ? '♝' : item.enemyType === 'knight' ? '♞' : '♟';
     ctx.fillStyle = '#17120f';
     ctx.strokeStyle = '#d5b15a';
     ctx.lineWidth = Math.max(1, p.scale * 2);
@@ -301,6 +344,11 @@ function drawMatthias(ctx, sprites, game, width, height, now) {
   const size = Math.max(72, Math.min(116, width * 0.13));
   const image = now < game.slashUntil ? sprites.matthiasCapture : sprites.matthiasRun;
   const drew = drawSprite(ctx, image, p.x, p.y - size * 0.5, size, now < game.flashUntil ? '#ff5b4f' : '#d8b54f');
+
+  if (game.power) {
+    const badge = POWER_SPRITE_KEYS[game.power];
+    drawSprite(ctx, sprites[badge], p.x + size * 0.42, p.y - size * 0.88, size * 0.34, '#fff3b0');
+  }
   if (drew) return;
 
   ctx.save();
@@ -323,6 +371,7 @@ export default function PawnTrailblazer({ onExit }) {
   const gameRef = useRef(createGame());
   const spriteRef = useRef({});
   const musicStopRef = useRef(() => {});
+  const musicRef = useRef('synthmetal');
   const [hud, setHud] = useState(() => ({ ...createGame() }));
   const [music, setMusic] = useState('synthmetal');
 
@@ -371,11 +420,28 @@ export default function PawnTrailblazer({ onExit }) {
         game.score += game.speed * dt * 2;
         game.spawnIn -= game.speed * dt;
         if (game.spawnIn <= 0) spawnObject(game);
-        for (const item of game.objects) {
+
+        for (const item of [...game.objects]) {
           item.z -= game.speed * dt;
-          if (item.kind === 'enemy' && item.enemyType === 'knight' && !item.jumped && item.z < 12) {
+          if (item.kind !== 'enemy') continue;
+
+          if (item.enemyType === 'knight' && !item.jumped && item.z < 12) {
             item.lane = trailKnightJumpLane(item.lane, game.lane);
             item.jumped = true;
+          }
+
+          if (item.enemyType === 'bishop' && !item.aimed && item.z < BISHOP_AIM_Z) {
+            item.aimed = true;
+            item.aimLane = trailBishopTargetLane(item.lane, game.lane);
+            item.aimUntil = now + BISHOP_AIM_MS;
+            setToast(game, 'ALFIL · diagonal marcada. Muévete o para el disparo.', now, 900);
+          } else if (item.enemyType === 'bishop' && item.aimed && !item.fired && now >= item.aimUntil) {
+            item.fired = true;
+            if (game.lane === item.aimLane) {
+              loseLife(game, now, 'El alfil te ha cosido en diagonal. Eso sí estaba anunciado.');
+            } else {
+              setToast(game, 'El disparo del alfil ha pasado de largo.', now, 850);
+            }
           }
         }
 
@@ -394,6 +460,9 @@ export default function PawnTrailblazer({ onExit }) {
           } else if (item.kind === 'enemy' && item.enemyType === 'knight') {
             removeObject(game, item.id);
             loseLife(game, now, 'El caballo ha saltado sobre tu línea. Previsible después de verlo.');
+          } else if (item.kind === 'enemy' && item.enemyType === 'bishop') {
+            removeObject(game, item.id);
+            loseLife(game, now, 'El alfil ha cerrado la diagonal. Muy litúrgico todo.');
           } else if (item.kind === 'enemy' && item.enemyType === 'rook') {
             removeObject(game, item.id);
             loseLife(game, now, 'Una torre de frente. Ni siquiera tú eres tan cabezón, Matthias.');
@@ -415,7 +484,9 @@ export default function PawnTrailblazer({ onExit }) {
 
       const { width, height } = resize();
       drawTrack(ctx, width, height);
-      for (const item of [...game.objects].sort((a, b) => b.z - a.z)) drawObject(ctx, item, spriteRef.current, width, height);
+      for (const item of [...game.objects].sort((a, b) => b.z - a.z)) {
+        drawObject(ctx, item, spriteRef.current, width, height, now, game);
+      }
       drawMatthias(ctx, spriteRef.current, game, width, height, now);
 
       if (game.phase === 'duel' && game.duel) {
@@ -465,6 +536,26 @@ export default function PawnTrailblazer({ onExit }) {
         if (event.key === ' ' || event.key === 'Spacebar') startRun();
         return;
       }
+
+      if (game.phase === 'running' && (event.key === ' ' || event.key === 'Spacebar')) {
+        const sniper = game.objects.find((item) => (
+          item.kind === 'enemy'
+          && item.enemyType === 'bishop'
+          && item.aimed
+          && !item.fired
+          && item.aimLane === game.lane
+        ));
+        if (sniper && trailBishopParryReady(sniper.aimUntil, now)) {
+          sniper.fired = true;
+          game.score += 120;
+          game.slashUntil = now + 360;
+          setToast(game, 'PARADA · +120. Nein.', now, 900);
+        } else if (sniper) {
+          setToast(game, 'Aún no. Espera el destello del alfil.', now, 700);
+        }
+        return;
+      }
+
       if (game.phase === 'duel' && game.duel) {
         if (event.key === 'ArrowLeft') game.duel.direction = trailDuelDirection(game.lane, -1);
         else if (event.key === 'ArrowRight') game.duel.direction = trailDuelDirection(game.lane, 1);
@@ -518,7 +609,7 @@ export default function PawnTrailblazer({ onExit }) {
   function startRun() {
     musicStopRef.current();
     duckAmbientMusic(true);
-    musicStopRef.current = createArcadeMusic(music);
+    musicStopRef.current = createArcadeMusic(musicRef.current);
     const game = createGame();
     game.phase = 'running';
     game.toast = 'Vorwärts.';
@@ -530,6 +621,7 @@ export default function PawnTrailblazer({ onExit }) {
 
   function switchMusic(next) {
     setMusic(next);
+    musicRef.current = next;
     if (gameRef.current.phase === 'running' || gameRef.current.phase === 'duel') {
       musicStopRef.current();
       musicStopRef.current = createArcadeMusic(next);
@@ -542,7 +634,7 @@ export default function PawnTrailblazer({ onExit }) {
         <div>
           <span className="section-label">EXPERIMENTO ARCADE · POC</span>
           <h2>Pawn Trailblazer</h2>
-          <p>Matthias avanza solo. Peones forcejean, caballos saltan dos carriles y las torres te pasan por encima si las recibes de frente. Captura en diagonal para encadenar combo.</p>
+          <p>Matthias avanza solo. Peones forcejean, caballos saltan, alfiles marcan diagonales y las torres te pasan por encima si las recibes de frente. Captura en diagonal para encadenar combo.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </div>
@@ -572,10 +664,10 @@ export default function PawnTrailblazer({ onExit }) {
 
         <div className="pawn-trailblazer-controls">
           <div><kbd>←</kbd><kbd>→</kbd><span>Captura diagonal. Con powerup, maniobra.</span></div>
-          <div><kbd>ESPACIO</kbd><span>Contra peones: forcejea y remata. Caballo/torre requieren lectura de carril.</span></div>
+          <div><kbd>ESPACIO</kbd><span>Forcejea contra peones o para el disparo de un alfil al final de su carga.</span></div>
           <div className="pawn-trailblazer-music"><span>BSO</span><button type="button" className={music === 'synthmetal' ? 'active' : ''} onClick={() => switchMusic('synthmetal')}>Synthmetal</button><button type="button" className={music === 'classical' ? 'active' : ''} onClick={() => switchMusic('classical')}>Clásica</button></div>
         </div>
-        <p className="pawn-trailblazer-note">Arte de la POC: recortes WebP de las láminas aprobadas de Matthias y enemigos. El modo sigue aislado: no toca rating ni progreso competitivo.</p>
+        <p className="pawn-trailblazer-note">Arte de la POC: sprites WebP aprobados de Matthias, enemigos y powerups. El modo sigue aislado: no toca rating ni progreso competitivo.</p>
       </div>
     </div>
   );
