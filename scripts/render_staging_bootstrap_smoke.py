@@ -66,6 +66,23 @@ def test_production_discovery_uses_repo_and_mongo_evidence() -> None:
     check(selected["id"] == "srv-prod", "debe detectar el backend por repo y presencia de MONGO_URL")
 
 
+def test_create_service_uses_noninteractive_boolean_syntax() -> None:
+    captured = {}
+
+    def run(command, **_kwargs):
+        captured["command"] = command
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    with (
+        patch.dict(module.os.environ, {"GITHUB_REPOSITORY": "acme/chess-studio"}),
+        patch.object(module.subprocess, "run", side_effect=run),
+    ):
+        module.create_service({"MONGO_DB_NAME": "chess_study_staging"}, {"region": "frankfurt"})
+    command = captured["command"]
+    check("--auto-deploy=false" in command, "Cobra requiere el booleano en el mismo argumento")
+    check("--auto-deploy" not in command, "no debe dejar false como argumento posicional")
+
+
 def test_main_reconciles_without_duplicate_creation() -> None:
     production = {"id": "srv-prod", "name": module.PRODUCTION_NAME}
     staging = {"id": "srv-stage", "name": module.SERVICE_NAME}
@@ -95,5 +112,6 @@ if __name__ == "__main__":
     test_unwrap_service_shapes()
     test_environment_isolated_and_secrets_stable()
     test_production_discovery_uses_repo_and_mongo_evidence()
+    test_create_service_uses_noninteractive_boolean_syntax()
     test_main_reconciles_without_duplicate_creation()
     print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + secretos estables")
