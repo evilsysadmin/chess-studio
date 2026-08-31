@@ -66,7 +66,28 @@ async function sampleReadingEyes(eyes) {
   });
 }
 
-test('Leyendo estrategia · los ojos recorren la línea sin caer ni comprimirse', async ({ page }) => {
+async function sampleReadingBlink(rig) {
+  return rig.evaluate(async (node) => {
+    const animations = node.getAnimations({ subtree: true });
+    const blink = animations.find((animation) => animation.animationName === 'matthias-read-book-blink');
+    if (!blink) return null;
+
+    animations.forEach((animation) => animation.pause());
+    const duration = Number(blink.effect?.getTiming?.().duration) || 4300;
+    const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const opacity = () => Number(getComputedStyle(node, '::after').opacity || 0);
+
+    blink.currentTime = 0;
+    await settle();
+    const rest = opacity();
+    blink.currentTime = duration * .424;
+    await settle();
+    const closed = opacity();
+    return { rest, closed };
+  });
+}
+
+test('Leyendo estrategia · recorre la línea y parpadea sin despegar los ojos', async ({ page }) => {
   const rig = await openReadingHome(page);
   const eyes = rig.locator('[data-matthias-art-part="eyes"]');
   const head = rig.locator('[data-matthias-art-part="head"]');
@@ -75,6 +96,7 @@ test('Leyendo estrategia · los ojos recorren la línea sin caer ni comprimirse'
   const prop = rig.locator('[data-matthias-art-part="prop"]');
 
   await expect.poll(() => eyes.evaluate((node) => node.getAnimations().some((animation) => animation.animationName === 'matthias-read-book-eye-scan'))).toBe(true);
+  await expect.poll(() => rig.evaluate((node) => node.getAnimations({ subtree: true }).some((animation) => animation.animationName === 'matthias-read-book-blink'))).toBe(true);
   expect(await head.evaluate((node) => node.getAnimations().length)).toBe(0);
   expect(await leftArm.evaluate((node) => node.getAnimations().length)).toBe(0);
   expect(await rightArm.evaluate((node) => node.getAnimations().length)).toBe(0);
@@ -86,4 +108,9 @@ test('Leyendo estrategia · los ojos recorren la línea sin caer ni comprimirse'
   expect(Math.abs(motion.dy), 'los ojos no pueden deslizarse verticalmente por la cara').toBeLessThan(.25);
   expect(Math.abs(1 - motion.heightRatio), 'la capa de ojos no puede comprimirse para fingir un parpadeo').toBeLessThan(.01);
   expect(motion.active.transform, 'el transform WAAPI deformante debe quedar neutralizado').toBe('none');
+
+  const blink = await sampleReadingBlink(rig);
+  expect(blink).not.toBeNull();
+  expect(blink.rest, 'el párpado debe estar oculto en reposo').toBeLessThan(.05);
+  expect(blink.closed, 'el parpadeo debe hacerse visible durante un instante corto').toBeGreaterThan(.5);
 });
