@@ -1,25 +1,36 @@
 #!/usr/bin/env python3
-"""Deploys the isolated staging Workers AI service without exposing its secret.
+"""Deploy the isolated staging Workers AI service with least privilege.
+
+Wrangler uploads only the Worker script and secret. The Custom Domain is then
+attached through the account-level Workers Domains API, which needs Workers
+Scripts Write but not the broader zone-level Workers Routes permission.
 
 The shared secret already lives on the Render staging service. This helper
-finds and validates that service, reads that single value through the
-authenticated Render API and streams it to Wrangler's stdin. The secret is
-never written to disk, argv or logs.
+validates that service, reads the secret through the authenticated Render API
+and streams it to Wrangler's stdin. The secret is never written to disk, argv
+or logs.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import pathlib
 import subprocess
+import urllib.error
+import urllib.parse
+import urllib.request
 
 import render_staging_bootstrap as render
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "infra/cloudflare/wrangler.staging.toml"
+CF_API = "https://api.cloudflare.com/client/v4"
+ZONE_NAME = "shadowops.dpdns.org"
 SERVICE_NAME = "chess-study-backend-staging"
 WORKER_NAME = "chess-studio-narrative-ai-staging"
-WORKER_URL = "https://ai-staging.shadowops.dpdns.org"
+WORKER_HOSTNAME = "ai-staging.shadowops.dpdns.org"
+WORKER_URL = f"https://{WORKER_HOSTNAME}"
 
 
 def required(name: str) -> str:
@@ -59,6 +70,89 @@ def validate_service(service_id: str) -> str:
     return secret
 
 
+def cf_request(method: str, path: str, payload: dict | None = None) -> tuple[int, object]:
+    data = None if payload is None else json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        f"{CF_API}{path}",
+        data=data,
+        method=method,
+        headers={
+            "Authorization": f"Bearer {required('CLOUDFLARE_API_TOKEN')}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read()
+            return response.status, json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        try:
+            body = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            body = {"errors": [{"message": raw.decode("utf-8", "replace")[:300]}]}
+        return exc.code, body
+
+
+def cf_result(status: int, body: object, *, context: str, allowed: set[int] | None = None) -> object:
+    allowed = allowed or {200}
+    if status not in allowed or (isinstance(body, dict) and body.get("success") is False):
+        errors = body.get("errors") if isinstance(body, dict) else []
+        details = []
+        for item in (errors if isinstance(errors, list) else []):
+            if isinstance(item, dict):
+                details.append(str(item.get("message") or item.get("code") or "error"))
+        suffix = f": {'; '.join(details[:3])}" if details else ""
+        raise SystemExit(f"{context}: Cloudflare respondió HTTP {status}{suffix}")
+    return body.get("result") if isinstance(body, dict) else body
+
+
+def cloudflare_zone_id() -> str:
+    account_id = required("CLOUDFLARE_ACCOUNT_ID")
+    query = urllib.parse.urlencode({"name": ZONE_NAME, "account.id": account_id, "per_page": "50"})
+    status, body = cf_request("GET", f"/zones?{query}")
+    rows = cf_result(status, body, context="Resolver zona Cloudflare")
+    rows = rows if isinstance(rows, list) else []
+    matches = [row for row in rows if isinstance(row, dict) and row.get("name") == ZONE_NAME and row.get("id")]
+    if len(matches) != 1:
+        raise SystemExit(f"Se esperaba una única zona Cloudflare {ZONE_NAME}; encontradas {len(matches)}")
+    return str(matches[0]["id"])
+
+
+def ensure_custom_domain() -> str:
+    account_id = required("CLOUDFLARE_ACCOUNT_ID")
+    zone_id = cloudflare_zone_id()
+    query = urllib.parse.urlencode({"hostname": WORKER_HOSTNAME})
+    status, body = cf_request("GET", f"/accounts/{account_id}/workers/domains?{query}")
+    rows = cf_result(status, body, context="Consultar Custom Domain staging")
+    rows = rows if isinstance(rows, list) else []
+    matches = [row for row in rows if isinstance(row, dict) and row.get("hostname") == WORKER_HOSTNAME]
+    if len(matches) > 1:
+        raise SystemExit(f"Cloudflare devolvió más de un Custom Domain para {WORKER_HOSTNAME}")
+
+    if matches:
+        current = matches[0]
+        if str(current.get("service") or "") == WORKER_NAME and str(current.get("zone_id") or "") == zone_id:
+            print(f"Custom Domain staging ya converge: {WORKER_HOSTNAME} → {WORKER_NAME}")
+            return "unchanged"
+
+    desired = {
+        "hostname": WORKER_HOSTNAME,
+        "service": WORKER_NAME,
+        "zone_id": zone_id,
+        "zone_name": ZONE_NAME,
+    }
+    status, body = cf_request("PUT", f"/accounts/{account_id}/workers/domains", desired)
+    result = cf_result(status, body, context="Adjuntar Custom Domain staging", allowed={200, 201})
+    if not isinstance(result, dict):
+        raise SystemExit("Cloudflare no devolvió metadata del Custom Domain staging")
+    if str(result.get("hostname") or "") != WORKER_HOSTNAME or str(result.get("service") or "") != WORKER_NAME:
+        raise SystemExit("Cloudflare adjuntó un Custom Domain distinto del solicitado")
+    print(f"Custom Domain staging reconciliado: {WORKER_HOSTNAME} → {WORKER_NAME}")
+    return "updated" if matches else "created"
+
+
 def wrangler(args: list[str], *, stdin: str | None = None) -> None:
     required("CLOUDFLARE_API_TOKEN")
     required("CLOUDFLARE_ACCOUNT_ID")
@@ -80,8 +174,6 @@ def self_test() -> None:
     required_fragments = (
         f'name = "{WORKER_NAME}"',
         'workers_dev = false',
-        'pattern = "ai-staging.shadowops.dpdns.org"',
-        'custom_domain = true',
         'binding = "AI"',
         'name = "AI_RATE_LIMITER"',
         'namespace_id = "1606602"',
@@ -89,10 +181,12 @@ def self_test() -> None:
     missing = [fragment for fragment in required_fragments if fragment not in text]
     if missing:
         raise SystemExit(f"wrangler.staging.toml incompleto: {missing}")
+    if "[[routes]]" in text or "custom_domain" in text:
+        raise SystemExit("Wrangler staging no debe gestionar routes/custom domains; eso exigiría permisos de zona adicionales")
     production = (ROOT / "infra/cloudflare/wrangler.toml").read_text(encoding="utf-8")
-    if f'name = "{WORKER_NAME}"' in production or "ai-staging.shadowops.dpdns.org" in production:
+    if f'name = "{WORKER_NAME}"' in production or WORKER_HOSTNAME in production:
         raise SystemExit("La configuración de producción contiene identidad/ruta de staging")
-    print("staging-ai-worker self-test OK · identidad, ruta y rate-limit aislados")
+    print("staging-ai-worker self-test OK · script route-free, identidad y rate-limit aislados")
 
 
 def main() -> None:
@@ -111,7 +205,11 @@ def main() -> None:
     secret = validate_service(service_id)
     wrangler(["deploy"])
     wrangler(["secret", "put", "CHESS_AI_SHARED_SECRET"], stdin=secret + "\n")
-    print(f"Workers AI staging desplegado: {WORKER_NAME} · secreto sincronizado sin exponerlo")
+    domain_state = ensure_custom_domain()
+    print(
+        f"Workers AI staging desplegado: {WORKER_NAME} · secreto sincronizado sin exponerlo · "
+        f"Custom Domain={domain_state}"
+    )
 
 
 if __name__ == "__main__":
