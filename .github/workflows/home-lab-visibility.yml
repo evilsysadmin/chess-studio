@@ -1,11 +1,10 @@
-name: Home Laboratorio visibility
+name: Home Laboratorio disclosure
 
 on:
   pull_request:
     paths:
       - 'frontend/src/components/Menu.jsx'
       - 'frontend/src/styles.css'
-      - 'frontend/src/styles/29-home-lab-shortcut.css'
       - 'e2e/home-lab-visibility.spec.js'
       - '.github/workflows/home-lab-visibility.yml'
   workflow_dispatch:
@@ -19,7 +18,7 @@ concurrency:
 
 jobs:
   browser:
-    name: Laboratorio · Home visibility
+    name: Laboratorio · progressive disclosure
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -50,7 +49,7 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Verify Laboratorio is discoverable before disclosure
+      - name: Verify Laboratorio lives under More game modes
         working-directory: e2e
         run: ./node_modules/.bin/playwright test home-lab-visibility.spec.js --workers=2 --retries=0
 
@@ -58,7 +57,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: home-lab-visibility-diagnostics
+          name: home-lab-disclosure-diagnostics
           path: |
             e2e/test-results
             e2e/playwright-report
