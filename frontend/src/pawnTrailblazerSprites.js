@@ -29,3 +29,15 @@ export const TRAIL_SPRITES = Object.freeze(
 export function trailSprite(name) {
   return TRAIL_ATLAS_CELLS[name] ? name : null;
 }
+
+export function trailSpriteStyle(name) {
+  const cell = TRAIL_ATLAS_CELLS[name];
+  if (!cell) return null;
+  const denominator = Math.max(1, TRAIL_ATLAS_GRID - 1);
+  return {
+    backgroundImage: `url(${TRAIL_ATLAS_IMAGE})`,
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: `${TRAIL_ATLAS_GRID * 100}% ${TRAIL_ATLAS_GRID * 100}%`,
+    backgroundPosition: `${(cell.col / denominator) * 100}% ${(cell.row / denominator) * 100}%`,
+  };
+}
