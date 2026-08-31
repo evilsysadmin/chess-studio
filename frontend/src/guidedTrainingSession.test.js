@@ -7,6 +7,7 @@ import {
   startGuidedTrainingSession,
 } from './guidedTrainingSession.js';
 
+const NOW = 1_800_000_000_000;
 const debtPuzzles = [
   { id: 'p1', source: 'autopsy', sourceGameId: 'g1', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 1 },
   { id: 'p2', source: 'autopsy', sourceGameId: 'g2', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 },
@@ -54,45 +55,42 @@ describe('sesiones guiadas 15/30 minutos', () => {
   });
 
   it('conserva el paso actual en sessionStorage y lo elimina al terminar', () => {
-    const now = Date.now();
     const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
-    const started = startGuidedTrainingSession(plan, { now });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
     expect(started.currentIndex).toBe(0);
-    expect(loadGuidedTrainingSession({ now })).toMatchObject({ id: started.id, currentIndex: 0, minutes: 15 });
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({ id: started.id, currentIndex: 0, minutes: 15 });
 
-    let session = advanceGuidedTrainingSession(started);
+    let session = advanceGuidedTrainingSession(started, { now: NOW });
     expect(session.currentIndex).toBe(1);
-    session = advanceGuidedTrainingSession(session);
+    session = advanceGuidedTrainingSession(session, { now: NOW });
     expect(session.currentIndex).toBe(2);
-    session = advanceGuidedTrainingSession(session);
+    session = advanceGuidedTrainingSession(session, { now: NOW });
     expect(session).toBeNull();
     expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 
   it('no deja que otra cuenta herede la sesión guiada de la anterior', () => {
-    const now = Date.now();
     localStorage.setItem('chess-study-auth-username', 'alice');
     const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
-    const started = startGuidedTrainingSession(plan, { now });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
     expect(started.owner).toBe('alice');
 
     localStorage.setItem('chess-study-auth-username', 'bob');
-    expect(loadGuidedTrainingSession({ now })).toBeNull();
+    expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
     expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 
   it('descarta sesiones viejas en vez de resucitarlas en otra visita', () => {
-    const now = Date.now();
     sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({
       schema: 1,
       id: 'stale',
       owner: null,
       minutes: 15,
-      startedAt: now - 5 * 60 * 60 * 1000,
+      startedAt: NOW - 5 * 60 * 60 * 1000,
       currentIndex: 0,
       steps: [{ id: 'x', title: 'viejo', minutes: 15 }],
     }));
-    expect(loadGuidedTrainingSession({ now })).toBeNull();
+    expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
     expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 });
