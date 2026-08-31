@@ -67,18 +67,22 @@ def test_production_discovery_uses_repo_and_mongo_evidence() -> None:
 
 
 def test_create_service_uses_noninteractive_boolean_syntax() -> None:
-    captured = {}
+    captured = []
 
     def run(command, **_kwargs):
-        captured["command"] = command
+        captured.append(command)
         return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
 
     with (
         patch.dict(module.os.environ, {"GITHUB_REPOSITORY": "acme/chess-studio"}),
         patch.object(module.subprocess, "run", side_effect=run),
     ):
-        module.create_service({"MONGO_DB_NAME": "chess_study_staging"}, {"region": "frankfurt"})
-    command = captured["command"]
+        module.create_service(
+            {"MONGO_DB_NAME": "chess_study_staging"},
+            {"region": "frankfurt", "ownerId": "tea-owner"},
+        )
+    check(captured[0] == ["render", "workspace", "set", "tea-owner", "--output", "json"], "debe seleccionar el workspace de producción")
+    command = captured[1]
     check("--auto-deploy=false" in command, "Cobra requiere el booleano en el mismo argumento")
     check("--auto-deploy" not in command, "no debe dejar false como argumento posicional")
 
