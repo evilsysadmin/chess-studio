@@ -7,6 +7,7 @@ import { personalTrainingDebtSummary } from './trainingDebt.js';
 export const GUIDED_TRAINING_SESSION_KEY = 'chess-study-guided-training-session-v1';
 const SESSION_SCHEMA = 1;
 const MAX_SESSION_AGE_MS = 4 * 60 * 60 * 1000;
+const INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 function pendingPersonalPuzzles(puzzles = []) {
   return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => (
@@ -40,15 +41,35 @@ function focusStep(puzzles) {
 function nemesisStep(history, rivalry) {
   const dossier = buildNemesisDossier(history, rivalry);
   if (!dossier?.opening || !dossier?.training) return null;
+  const training = dossier.training;
   return {
     id: `nemesis:${dossier.opening.opening}:${dossier.opening.humanColor}`,
     kind: 'nemesis',
     title: `Némesis: ${dossier.opening.opening}`,
     detail: `${dossier.opening.games} partidas · ${dossier.opening.scorePct}% de puntuación. Rejuega una posición real de una derrota, sin rating.`,
     action: 'nemesis-position',
-    training: dossier.training,
+    training: {
+      fen: training.fen,
+      humanColor: training.humanColor,
+      difficulty: training.difficulty,
+      moveNumber: training.moveNumber,
+      sourceRecordId: training.sourceRecord?.id || null,
+    },
     opening: dossier.opening.opening,
   };
+}
+
+function recentPracticeDifficulty(history = []) {
+  const rows = (Array.isArray(history) ? history : [])
+    .filter((row) => Number.isFinite(Number(row?.difficulty)))
+    .slice(-5);
+  if (!rows.length) return 50;
+  return Math.max(5, Math.min(95, Math.round(rows.reduce((sum, row) => sum + Number(row.difficulty), 0) / rows.length)));
+}
+
+function recentHumanColor(history = []) {
+  const row = [...(Array.isArray(history) ? history : [])].reverse().find((entry) => ['w', 'b'].includes(entry?.humanColor));
+  return row?.humanColor || 'w';
 }
 
 function allocateDurations(minutes, hasFocus, hasNemesis) {
@@ -86,8 +107,13 @@ export function buildGuidedTrainingPlan({
     id: 'short-practice-game',
     kind: 'short-game',
     title: 'Partida corta de práctica',
-    detail: '5+0 contra Matthias, sin rating. La idea es transferir lo entrenado al tablero, no farmear puntos.',
+    detail: 'Desde la posición inicial, sin rating. Usa sólo el presupuesto de este bloque y vuelve al recorrido al terminar.',
     action: 'short-game',
+    training: {
+      fen: INITIAL_FEN,
+      humanColor: recentHumanColor(history),
+      difficulty: recentPracticeDifficulty(history),
+    },
     minutes: allocation.game,
   });
   steps.push({
