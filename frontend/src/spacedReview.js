@@ -99,7 +99,6 @@ export function personalSpacedReviewSummary(puzzles = [], { now = Date.now() } =
 export function spacedReviewResultPatch(puzzle, {
   solved = false,
   clean = false,
-  review = false,
   now = Date.now(),
 } = {}) {
   if (puzzle?.source !== 'autopsy') return {};
@@ -115,7 +114,10 @@ export function spacedReviewResultPatch(puzzle, {
       retentionBrokenAt: null,
     };
 
-    if (review && state.eligible && state.due && !state.completed) {
+    // Si el caso ya venció, cualquier revisión real de esa misma posición
+    // cuenta como repaso. No hace falta abrir un cuarto modo de puzzle sólo
+    // para transportar un booleano hasta aquí.
+    if (state.eligible && state.due && !state.completed) {
       const nextStage = state.stage + 1;
       if (nextStage >= SPACED_REVIEW_INTERVAL_DAYS.length) {
         return {
