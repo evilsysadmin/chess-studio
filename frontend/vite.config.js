@@ -45,17 +45,17 @@ export default defineConfig({
   },
 
   build: {
-    // Board3D ya se carga de forma lazy. Separamos además las librerías gordas
-    // para que el bundle principal no arrastre React, chess.js y Three juntos.
-    // Three es un chunk deliberadamente lazy del tablero 3D. El warning raw de
-    // Vite no distingue inicial de lazy; el bundle_size_report sí controla gzip
-    // inicial/total. Evitamos por tanto un aviso ruidoso sin relajar ese informe.
+    // Board3D y Pawn Trailblazer se cargan de forma lazy. Separamos además las
+    // librerías gordas para que el bundle principal no arrastre React, chess.js,
+    // Three o Phaser juntos. Three y Phaser son chunks deliberadamente lazy de
+    // sus experimentos. El bundle_size_report distingue inicial de lazy.
     chunkSizeWarningLimit: 750,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
           if (id.includes('/three/')) return 'vendor-three';
+          if (id.includes('/phaser/') || id.includes('/eventemitter3/')) return 'vendor-phaser';
           if (id.includes('/react/') || id.includes('/react-dom/')) return 'vendor-react';
           if (id.includes('/chess.js/')) return 'vendor-chess';
           return 'vendor';

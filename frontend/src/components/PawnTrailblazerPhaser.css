@@ -1,0 +1,103 @@
+.pawn-trailblazer-phaser {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #07090d;
+}
+
+.pawn-trailblazer-stage .pawn-trailblazer-phaser canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0;
+  outline: none;
+}
+
+.pawn-trailblazer-overlay {
+  z-index: 6;
+}
+
+.pawn-trailblazer-renderer-error {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 50%;
+  width: min(90%, 520px);
+  transform: translate(-50%, -50%);
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 91, 79, .7);
+  border-radius: 12px;
+  background: rgba(43, 10, 9, .94);
+  color: #ffe4df;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .45);
+}
+
+.pawn-trailblazer-duel {
+  position: absolute;
+  z-index: 5;
+  top: 64px;
+  left: 50%;
+  width: min(60%, 520px);
+  transform: translateX(-50%);
+  display: grid;
+  gap: 9px;
+  padding: 12px 16px;
+  border: 1px solid rgba(201, 162, 39, .55);
+  border-radius: 14px;
+  background: rgba(5, 6, 9, .82);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .42);
+  color: #f3e7c2;
+  text-align: center;
+  pointer-events: none;
+}
+
+.pawn-trailblazer-duel strong {
+  font-size: .78rem;
+  letter-spacing: .09em;
+}
+
+.pawn-trailblazer-duel-meter {
+  height: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 999px;
+  background: #3b2d27;
+}
+
+.pawn-trailblazer-duel-meter span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8e6d20, #e4c554);
+  transition: width 70ms linear;
+}
+
+@media (max-width: 520px) {
+  .pawn-trailblazer-duel {
+    top: 58px;
+    width: calc(100% - 86px);
+    gap: 6px;
+    padding: 9px 10px;
+  }
+
+  .pawn-trailblazer-duel strong {
+    font-size: .64rem;
+  }
+
+  .pawn-trailblazer-duel-meter {
+    height: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pawn-trailblazer-duel-meter span {
+    transition: none;
+  }
+}

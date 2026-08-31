@@ -50,16 +50,21 @@ test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre 
   await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 
-test('Pawn Trailblazer · la POC arranca y expone sus controles', async ({ page }) => {
+test('Pawn Trailblazer · Phaser gobierna el runner y conserva teclado/controles', async ({ page }) => {
   await openPawnTrailblazer(page);
 
-  await expect(page.locator('[data-pawn-trailblazer="true"] canvas')).toBeVisible();
+  const renderer = page.locator('[data-pawn-trailblazer-renderer="phaser"]');
+  await expect(renderer).toBeVisible();
+  await expect(renderer.locator('canvas')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Iniciar carrera', exact: true })).toBeVisible();
   await expect(page.getByText('Nací peón. Siempre seré peón.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Iniciar carrera', exact: true }).click();
   await expect(page.getByText('Iniciar carrera', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Synthmetal', { exact: true })).toBeVisible();
   await expect(page.getByText('Clásica', { exact: true })).toBeVisible();
+
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByText('Nein. Un peón no se mueve de lado.', { exact: true })).toBeVisible();
 });
 
 test('Home móvil · Experimentos geniales no provoca scroll horizontal', async ({ page }) => {
@@ -75,6 +80,10 @@ test('Home móvil · Experimentos geniales no provoca scroll horizontal', async 
 test('Pawn Trailblazer móvil · HUD compacto, controles táctiles y dock global no se pisan', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openPawnTrailblazer(page);
+
+  const renderer = page.locator('[data-pawn-trailblazer-renderer="phaser"]');
+  await expect(renderer).toBeVisible();
+  await expect(renderer.locator('canvas')).toBeVisible();
 
   const hud = page.locator('.pawn-trailblazer-hud');
   const formCard = hud.locator(':scope > span').last();
