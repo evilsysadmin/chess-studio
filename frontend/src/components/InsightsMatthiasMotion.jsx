@@ -114,6 +114,7 @@ export default function InsightsMatthiasMotion() {
       data-insights-matthias-motion="true"
       data-insights-motion-profile="portrait-breathe"
       data-insights-motion-state={reducedMotion ? 'reduced' : 'active'}
+      data-insights-motion-scene={visual.key || 'base'}
       style={{
         position: 'absolute',
         top: 0,
@@ -131,12 +132,12 @@ export default function InsightsMatthiasMotion() {
     >
       <MatthiasLayeredArt
         avatar={visual.avatar}
-        scene={visual.scene}
+        scene={visual.key || 'base'}
         activity={visual.label}
         reducedMotion={reducedMotion}
       />
       <MatthiasCoffeeSteam
-        scene={visual.scene}
+        scene={visual.key || 'base'}
         reducedMotion={reducedMotion}
       />
     </span>,
