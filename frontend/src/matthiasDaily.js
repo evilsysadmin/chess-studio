@@ -1,8 +1,9 @@
-import { getToken } from './auth.js';
+import { getToken, getUsername } from './auth.js';
 import { fetchWithTimeout } from './asyncControl.js';
 import { withRequestId } from './requestId.js';
 
 const BASE_URL = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+let dailyStatusInFlight = null;
 
 async function request(path, options = {}) {
   const token = getToken();
@@ -27,7 +28,16 @@ async function request(path, options = {}) {
 }
 
 export function fetchMatthiasDailyStatus() {
-  return request('/matthias/daily');
+  // Insights puede montar a la vez la consulta diaria y otras vistas del
+  // expediente. Comparten la misma lectura GET sólo dentro de la misma
+  // identidad; un cambio Alice → Bob jamás hereda el Promise de Alice.
+  const identity = String(getUsername() || '').trim().toLowerCase() || null;
+  if (dailyStatusInFlight?.identity === identity) return dailyStatusInFlight.promise;
+  const promise = request('/matthias/daily').finally(() => {
+    if (dailyStatusInFlight?.promise === promise) dailyStatusInFlight = null;
+  });
+  dailyStatusInFlight = { identity, promise };
+  return promise;
 }
 
 export function fetchMatthiasBriefing() {
