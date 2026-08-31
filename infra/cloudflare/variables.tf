@@ -15,18 +15,6 @@ variable "cloudflare_zone_id" {
   type        = string
 }
 
-variable "pages_hostname" {
-  description = "Public GitHub Pages hostname for Chess Studio."
-  type        = string
-  default     = "chess-studio.shadowops.dpdns.org"
-}
-
-variable "github_pages_cname_target" {
-  description = "GitHub Pages user/organization hostname; never include the repository path."
-  type        = string
-  default     = "evilsysadmin.github.io"
-}
-
 variable "render_api_hostname" {
   description = "Public API hostname delegated to the Render web service."
   type        = string
