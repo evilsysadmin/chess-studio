@@ -32,6 +32,10 @@ export default function GameBoardView({
   const bottomColor = humanColor;
   const topTime = topColor === 'w' ? clocks.whiteTime : clocks.blackTime;
   const bottomTime = bottomColor === 'w' ? clocks.whiteTime : clocks.blackTime;
+  const isThreeD = boardRenderer === '3d';
+  const latestMatthiasMessage = [...(side.gameContextMessages || []), ...(side.gameChat || [])]
+    .filter((message) => message?.by !== 'system' && message?.text)
+    .at(-1);
 
   useEffect(() => {
     const refreshRenderer = () => setBoardRendererState(getBoardRenderer());
@@ -83,7 +87,7 @@ export default function GameBoardView({
   };
 
   return (
-    <div className="game-layout">
+    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}`}>
       <div className="board-column">
         <div className={`status-line ${status.statusClass} ${!zenMode && status.turnBanner && !status.busy ? 'pulse' : ''}`} role="status" aria-label="Estado de la partida" aria-live="polite">
           {status.statusText}
@@ -107,11 +111,48 @@ export default function GameBoardView({
             <span>{context.achievementToast.name}</span>
           </div>
         )}
-        <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
-          <div className="game-board-stack">
-            {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
-            {boardRenderer === '3d' ? (
-              <Suspense fallback={<div className="hint-text">Preparando tablero 3D…</div>}>
+        <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}${isThreeD ? ' is-3d-warroom' : ''}`}>
+          {!zenMode && isThreeD && (
+            <aside className="game-3d-command-column" aria-label="Puesto de mando de Matthias">
+              <div className="game-3d-matthias-card">
+                <div className="game-3d-matthias-portrait-wrap">
+                  <img src={CPU_IDENTITY.avatar} alt="Matthias, peón militar" className="game-3d-matthias-portrait" />
+                  <span className="game-3d-matthias-rank" aria-hidden="true">♟</span>
+                </div>
+                <div className="game-3d-matthias-copy">
+                  <span>COMANDANTE RIVAL</span>
+                  <h2>{CPU_IDENTITY.name}</h2>
+                  <p>{CPU_IDENTITY.role} · nivel {game.difficulty}</p>
+                  {Number(rivalryRecord.games || 0) > 0 && (
+                    <small>{Number(rivalryRecord.wins || 0)}V · {Number(rivalryRecord.draws || 0)}T · {Number(rivalryRecord.losses || 0)}D contra ti</small>
+                  )}
+                </div>
+              </div>
+
+              <div className="game-3d-warroom-message" aria-live="polite">
+                <span>ÚLTIMA OBSERVACIÓN</span>
+                <p>{latestMatthiasMessage?.text || 'Silencio táctico. Matthias todavía no ha considerado necesario abrir la boca.'}</p>
+              </div>
+
+              <div className="game-3d-warroom-status">
+                <span>SITUACIÓN</span>
+                <strong>{status.statusText}</strong>
+              </div>
+
+              <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
+                <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
+                <button type="button" className="secondary-btn" onClick={toggleBoardRenderer}>2D</button>
+                {board.onCustomize && <button type="button" className="secondary-btn" onClick={board.onCustomize}>Apariencia</button>}
+              </div>
+
+              <blockquote>«Nací peón. Siempre seré peón.»</blockquote>
+            </aside>
+          )}
+
+          <div className={`game-board-stack${isThreeD ? ' game-board-stack-3d' : ''}`}>
+            {!isThreeD && renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
+            {isThreeD ? (
+              <Suspense fallback={<div className="hint-text">Preparando sala 3D…</div>}>
                 <Board3D {...boardProps} />
               </Suspense>
             ) : <Board {...boardProps} />}
@@ -138,12 +179,12 @@ export default function GameBoardView({
                   )}
                   <button
                     type="button"
-                    className={`secondary-btn board-renderer-toggle ${boardRenderer === '3d' ? 'active' : ''}`}
-                    aria-pressed={boardRenderer === '3d'}
-                    title={boardRenderer === '3d' ? 'Volver al tablero 2D' : 'Usar tablero 3D con cámara fija'}
+                    className={`secondary-btn board-renderer-toggle ${isThreeD ? 'active' : ''}`}
+                    aria-pressed={isThreeD}
+                    title={isThreeD ? 'Volver al tablero 2D' : 'Usar tablero 3D con cámara fija'}
                     onClick={toggleBoardRenderer}
                   >
-                    {boardRenderer === '3d' ? 'Vista · 3D' : 'Vista · 2D'}
+                    {isThreeD ? 'Vista · 3D' : 'Vista · 2D'}
                   </button>
                   <button
                     type="button"
@@ -159,7 +200,7 @@ export default function GameBoardView({
               </div>
             </div>
           </div>
-          {!zenMode && <aside className="game-side-column" aria-label="Chat de partida">
+          {!zenMode && <aside className={`game-side-column${isThreeD ? ' game-side-column-3d' : ''}`} aria-label="Chat de partida">
             <div className="game-side-music" aria-label="Música de la partida">
               <MusicPlayer initiallyCollapsed />
             </div>
