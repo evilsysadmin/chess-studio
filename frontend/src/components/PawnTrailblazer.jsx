@@ -6,6 +6,7 @@ import {
   TRAIL_COMBO_WINDOW_MS,
   TRAIL_LANES,
   TRAIL_POWER_DURATION_MS,
+  TRAIL_PROMOTION_BONUS,
   trailBishopParryReady,
   trailBishopTargetLane,
   trailComboAfterCapture,
@@ -18,6 +19,8 @@ import {
   trailKnightJumpLane,
   trailPowerLabel,
   trailPowerLane,
+  trailPromotionCrossed,
+  trailSectorForDistance,
   trailSpeedForDistance,
   trailSpriteMotion,
 } from '../pawnTrailblazer.js';
@@ -63,6 +66,9 @@ function createGame() {
     comboUntil: 0,
     lastCaptureAt: 0,
     captures: 0,
+    sectorKey: trailSectorForDistance(0).key,
+    promotionRefused: false,
+    promotionUntil: 0,
     toast: 'Nací peón. Siempre seré peón.',
     toastUntil: 0,
     lastTime: 0,
@@ -469,9 +475,24 @@ export default function PawnTrailblazer({ onExit }) {
       if (game.combo && now >= game.comboUntil) breakCombo(game);
 
       if (game.phase === 'running') {
+        const previousDistance = game.distance;
         game.speed = trailSpeedForDistance(game.distance);
         game.distance += game.speed * dt;
         game.score += game.speed * dt * 2;
+
+        const sector = trailSectorForDistance(game.distance);
+        if (sector.key !== game.sectorKey) {
+          game.sectorKey = sector.key;
+          setToast(game, `SECTOR ${sector.code} · ${sector.name} · ${sector.toast}`, now, 1600);
+        }
+        if (trailPromotionCrossed(previousDistance, game.distance, game.promotionRefused)) {
+          game.promotionRefused = true;
+          game.promotionUntil = now + 1900;
+          game.score += TRAIL_PROMOTION_BONUS;
+          game.flashUntil = now + 320;
+          setToast(game, `PROMOCIÓN A DAMA · RECHAZADA. +${TRAIL_PROMOTION_BONUS}`, now, 1900);
+        }
+
         game.spawnIn -= game.speed * dt;
         if (game.spawnIn <= 0) spawnObject(game);
 
@@ -571,6 +592,8 @@ export default function PawnTrailblazer({ onExit }) {
           combo: game.combo,
           captures: game.captures,
           duel: game.duel ? { ...game.duel } : null,
+          sector: trailSectorForDistance(game.distance),
+          promotionActive: now < game.promotionUntil,
           toast: now < game.toastUntil || game.phase === 'ready' || game.phase === 'gameover' ? game.toast : '',
         });
       }
@@ -687,6 +710,9 @@ export default function PawnTrailblazer({ onExit }) {
     window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
   }
 
+  const hudSector = hud.sector || trailSectorForDistance(hud.distance || 0);
+  const powerSeconds = hud.power ? Math.max(1, Math.ceil((hud.powerLeft || 0) / 1000)) : 0;
+
   return (
     <div className="pawn-trailblazer" data-pawn-trailblazer="true">
       <div className="pawn-trailblazer-head">
@@ -704,14 +730,19 @@ export default function PawnTrailblazer({ onExit }) {
           <span>DISTANCIA <b>{hud.distance || 0} m</b></span>
           <span>PUNTOS <b>{hud.score || 0}</b></span>
           <span>COMBO <b>{hud.combo > 1 ? `x${hud.combo}` : '—'}</b></span>
-          <span>FORMA <b>{trailPowerLabel(hud.power)}</b></span>
+          <span>FORMA <b>{trailPowerLabel(hud.power)}{hud.power ? ` · ${powerSeconds}s` : ''}</b></span>
         </div>
 
         <div className="pawn-trailblazer-stage">
           <canvas ref={canvasRef} aria-label="Corredor pseudo 3D de Pawn Trailblazer" />
+          <div className="pawn-trailblazer-stage-sector" aria-label={`Sector ${hudSector.code}: ${hudSector.name}`}>
+            <span>SECTOR {hudSector.code}</span>
+            <b>{hudSector.name}</b>
+          </div>
           <div className="pawn-trailblazer-stage-power" aria-label={`Forma ${trailPowerLabel(hud.power)}`}>
             <span>FORMA</span>
             <b>{trailPowerLabel(hud.power)}</b>
+            <small>{hud.power ? `${powerSeconds}s` : 'BASE'}</small>
           </div>
           {(hud.phase === 'ready' || hud.phase === 'gameover') && (
             <div className="pawn-trailblazer-overlay">
@@ -720,6 +751,14 @@ export default function PawnTrailblazer({ onExit }) {
               <strong>{hud.phase === 'gameover' ? `${hud.distance || 0} m · ${hud.score || 0} puntos · ${hud.captures || 0} capturas` : 'Nací peón. Siempre seré peón.'}</strong>
               <button type="button" className="primary-btn" onClick={startRun}>{hud.phase === 'gameover' ? 'Otra vez' : 'Iniciar carrera'}</button>
               <small>También puedes pulsar ESPACIO.</small>
+            </div>
+          )}
+          {hud.promotionActive && hud.phase !== 'ready' && hud.phase !== 'gameover' && (
+            <div className="pawn-trailblazer-promotion" role="status" aria-label="Promoción a dama rechazada por Matthias">
+              <span aria-hidden="true">♛</span>
+              <small>PROMOCIÓN DISPONIBLE</small>
+              <strong>NEIN.</strong>
+              <b>Matthias sigue siendo peón · +{TRAIL_PROMOTION_BONUS}</b>
             </div>
           )}
           {hud.toast && hud.phase !== 'ready' && hud.phase !== 'gameover' && <div className="pawn-trailblazer-toast">{hud.toast}</div>}
