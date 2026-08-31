@@ -1,6 +1,7 @@
 name = "chess-studio-narrative-ai"
 main = "worker/index.js"
 compatibility_date = "2026-08-22"
+workers_dev = false
 
 [ai]
 binding = "AI"
