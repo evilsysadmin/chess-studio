@@ -100,15 +100,15 @@ const MOTIONS = Object.freeze({
   }),
   'read-book': Object.freeze({
     // strategy-book.webp no tolera desplazar brazos sin que el recorte se vea
-    // como un tic. La lectura se hace perceptible con ojos + parpadeo, sin
-    // mover cabeza, libro ni hombros.
+    // como un tic. La lectura se hace perceptible con los ojos; el parpadeo
+    // visual se pinta por CSS sin comprimir ni despegar esta capa raster.
     eyes: frames(
-      { offset: 0, transform: 'translate3d(0,0,0) scaleY(1)' },
-      { offset: .2, transform: 'translate3d(-2.3px,.28px,0) scaleY(1)' },
-      { offset: .43, transform: 'translate3d(-.25px,.25px,0) scaleY(.68)' },
-      { offset: .58, transform: 'translate3d(-.15px,.18px,0) scaleY(1)' },
-      { offset: .78, transform: 'translate3d(2.1px,.2px,0) scaleY(1)' },
-      { offset: 1, transform: 'translate3d(0,0,0) scaleY(1)' },
+      { offset: 0, transform: 'translate3d(0,0,0)' },
+      { offset: .2, transform: 'translate3d(-2.3px,.28px,0)' },
+      { offset: .43, transform: 'translate3d(-.25px,.25px,0)' },
+      { offset: .58, transform: 'translate3d(-.15px,.18px,0)' },
+      { offset: .78, transform: 'translate3d(2.1px,.2px,0)' },
+      { offset: 1, transform: 'translate3d(0,0,0)' },
     ),
   }),
   'board-move': Object.freeze({
@@ -130,28 +130,31 @@ const MOTIONS = Object.freeze({
     ),
   }),
   sip: Object.freeze({
+    // In the surviving morning-coffee render the mug is on screen-right.
+    // Raise that hand and the mug toward the mouth; the previous left-arm
+    // motion was physically moving the empty hand while the coffee stayed put.
     eyes: frames(
       { offset: 0, transform: 'translate3d(0,0,0)' },
-      { offset: .34, transform: 'translate3d(-2px,.4px,0) scaleY(.94)' },
-      { offset: .74, transform: 'translate3d(-1.8px,.35px,0) scaleY(.96)' },
+      { offset: .34, transform: 'translate3d(2.2px,.35px,0)' },
+      { offset: .74, transform: 'translate3d(2px,.3px,0)' },
       { offset: 1, transform: 'translate3d(0,0,0)' },
     ),
     head: frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .4, transform: 'translate3d(-1px,1.5px,0) rotate(-.75deg)' },
-      { offset: .76, transform: 'translate3d(-.9px,1.3px,0) rotate(-.65deg)' },
+      { offset: .4, transform: 'translate3d(1px,1.2px,0) rotate(.7deg)' },
+      { offset: .76, transform: 'translate3d(.9px,1px,0) rotate(.6deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
-    'left-arm': frames(
+    'right-arm': frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .34, transform: 'translate3d(2.4px,-5.3px,0) rotate(2.2deg)' },
-      { offset: .72, transform: 'translate3d(2.2px,-5px,0) rotate(2deg)' },
+      { offset: .34, transform: 'translate3d(-5.5px,-8.1px,0) rotate(-2.4deg)' },
+      { offset: .72, transform: 'translate3d(-5.1px,-7.7px,0) rotate(-2.15deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
     prop: frames(
       { offset: 0, transform: 'translate3d(0,0,0) rotate(0deg)' },
-      { offset: .34, transform: 'translate3d(2.7px,-5.7px,0) rotate(1.8deg)' },
-      { offset: .72, transform: 'translate3d(2.5px,-5.4px,0) rotate(1.6deg)' },
+      { offset: .34, transform: 'translate3d(-5.9px,-8.8px,0) rotate(-2deg)' },
+      { offset: .72, transform: 'translate3d(-5.5px,-8.3px,0) rotate(-1.8deg)' },
       { offset: 1, transform: 'translate3d(0,0,0) rotate(0deg)' },
     ),
   }),
@@ -246,7 +249,7 @@ const PART_DELAYS = Object.freeze({
   'read-dossier': Object.freeze({ eyes: 0, 'right-arm': 360, prop: 430 }),
   'read-book': Object.freeze({ eyes: 0 }),
   'board-move': Object.freeze({ eyes: 0, 'right-arm': 240 }),
-  sip: Object.freeze({ eyes: 0, head: 100, 'left-arm': 220, prop: 220 }),
+  sip: Object.freeze({ eyes: 0, head: 100, 'right-arm': 220, prop: 220 }),
   'sip-night': Object.freeze({ 'right-arm': 60, prop: 120 }),
   bite: Object.freeze({ 'left-arm': 0, 'right-arm': 0, prop: 100 }),
   doze: Object.freeze({ head: 0, eyes: 180 }),
