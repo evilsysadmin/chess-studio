@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { duckAmbientMusic } from '../sound.js';
+import { TRAIL_SPRITES } from '../pawnTrailblazerSprites.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import {
+  TRAIL_COMBO_WINDOW_MS,
   TRAIL_LANES,
   TRAIL_POWER_DURATION_MS,
+  trailComboAfterCapture,
+  trailComboMultiplier,
   trailDuelDecay,
   trailDuelDirection,
   trailDuelPress,
+  trailEnemyCapturePoints,
+  trailEnemyTypeForDistance,
+  trailKnightJumpLane,
   trailPowerLabel,
   trailPowerLane,
   trailSpeedForDistance,
@@ -18,6 +24,12 @@ const MAX_DEPTH = 34;
 const COLLISION_Z = 1.25;
 const CAPTURE_WINDOW = 4.2;
 const POWER_TYPES = ['rook', 'bishop', 'queen'];
+
+const ENEMY_SPRITE_KEYS = {
+  pawn: 'enemyPawn',
+  knight: 'enemyKnight',
+  rook: 'enemyRook',
+};
 
 function createGame() {
   return {
@@ -35,6 +47,10 @@ function createGame() {
     duel: null,
     slashUntil: 0,
     flashUntil: 0,
+    combo: 0,
+    comboUntil: 0,
+    lastCaptureAt: 0,
+    captures: 0,
     toast: 'Nací peón. Siempre seré peón.',
     toastUntil: 0,
     lastTime: 0,
@@ -62,14 +78,14 @@ function objectLane(game, preferCurrent = false) {
 function spawnObject(game) {
   const roll = Math.random();
   let kind = 'enemy';
-  if (roll < 0.2) kind = 'power';
-  else if (roll > 0.68) kind = 'obstacle';
+  if (roll < 0.19) kind = 'power';
+  else if (roll > 0.7) kind = 'obstacle';
 
   let lane = objectLane(game, kind === 'power');
   if (kind === 'obstacle' && !game.power && lane === game.lane) {
     lane = (lane + 1 + Math.floor(Math.random() * (TRAIL_LANES - 1))) % TRAIL_LANES;
   }
-  if (kind === 'enemy' && Math.random() < 0.5) {
+  if (kind === 'enemy' && Math.random() < 0.55) {
     const dir = Math.random() < 0.5 ? -1 : 1;
     lane = Math.max(0, Math.min(TRAIL_LANES - 1, game.lane + dir));
   }
@@ -80,8 +96,10 @@ function spawnObject(game) {
     lane,
     z: MAX_DEPTH,
     power: kind === 'power' ? POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)] : null,
+    enemyType: kind === 'enemy' ? trailEnemyTypeForDistance(game.distance, Math.random()) : null,
+    jumped: false,
   });
-  game.spawnIn = 4.2 + Math.random() * 3.3;
+  game.spawnIn = Math.max(3.25, 4.35 + Math.random() * 3.1 - game.distance / 900);
 }
 
 function removeObject(game, id) {
@@ -99,22 +117,35 @@ function setToast(game, text, now, duration = 1200) {
   game.toastUntil = now + duration;
 }
 
+function breakCombo(game) {
+  game.combo = 0;
+  game.comboUntil = 0;
+  game.lastCaptureAt = 0;
+}
+
 function loseLife(game, now, message) {
   game.lives -= 1;
   game.flashUntil = now + 420;
   game.duel = null;
+  breakCombo(game);
   game.phase = game.lives <= 0 ? 'gameover' : 'running';
   setToast(game, game.lives <= 0 ? 'Fin de maniobras. Otra vez.' : message, now, 1600);
 }
 
-function finishCapture(game, enemy, targetLane, now, points = 220) {
+function finishCapture(game, enemy, targetLane, now, points = trailEnemyCapturePoints(enemy?.enemyType)) {
   removeObject(game, enemy.id);
   game.lane = targetLane;
-  game.score += points;
-  game.slashUntil = now + 300;
+  game.combo = trailComboAfterCapture(game.combo, game.lastCaptureAt, now);
+  game.lastCaptureAt = now;
+  game.comboUntil = now + TRAIL_COMBO_WINDOW_MS;
+  game.captures += 1;
+  const multiplier = trailComboMultiplier(game.combo);
+  const awarded = Math.round(points * multiplier);
+  game.score += awarded;
+  game.slashUntil = now + 380;
   game.duel = null;
   game.phase = 'running';
-  setToast(game, 'Captura diagonal. Como manda el reglamento.', now);
+  setToast(game, game.combo > 1 ? `COMBO x${game.combo} · +${awarded}` : `Captura · +${awarded}`, now, 1050);
 }
 
 function createArcadeMusic(kind) {
@@ -164,6 +195,16 @@ function createArcadeMusic(kind) {
   };
 }
 
+function preloadSprites() {
+  const images = {};
+  for (const [key, src] of Object.entries(TRAIL_SPRITES)) {
+    const image = new Image();
+    image.src = src;
+    images[key] = image;
+  }
+  return images;
+}
+
 function drawTrack(ctx, width, height) {
   ctx.fillStyle = '#07090d';
   ctx.fillRect(0, 0, width, height);
@@ -179,15 +220,11 @@ function drawTrack(ctx, width, height) {
     for (let lane = 0; lane < TRAIL_LANES; lane += 1) {
       const f = project(lane, row + 1, width, height);
       const n = project(lane, row, width, height);
-      const farLeft = f.x - f.laneWidth / 2;
-      const farRight = f.x + f.laneWidth / 2;
-      const nearLeft = n.x - n.laneWidth / 2;
-      const nearRight = n.x + n.laneWidth / 2;
       ctx.beginPath();
-      ctx.moveTo(farLeft, far.y);
-      ctx.lineTo(farRight, far.y);
-      ctx.lineTo(nearRight, near.y);
-      ctx.lineTo(nearLeft, near.y);
+      ctx.moveTo(f.x - f.laneWidth / 2, f.y);
+      ctx.lineTo(f.x + f.laneWidth / 2, f.y);
+      ctx.lineTo(n.x + n.laneWidth / 2, n.y);
+      ctx.lineTo(n.x - n.laneWidth / 2, n.y);
       ctx.closePath();
       ctx.fillStyle = (row + lane) % 2 ? '#5a4636' : '#d9d0bb';
       ctx.globalAlpha = 0.82;
@@ -200,30 +237,51 @@ function drawTrack(ctx, width, height) {
   }
 }
 
-function drawObject(ctx, item, width, height) {
+function drawSprite(ctx, image, x, y, size, glow = '#d5b15a') {
+  if (!image?.complete || !image.naturalWidth) return false;
+  ctx.save();
+  ctx.shadowColor = glow;
+  ctx.shadowBlur = Math.max(2, size * 0.16);
+  ctx.beginPath();
+  const radius = Math.max(3, size * 0.16);
+  ctx.roundRect(x - size / 2, y - size / 2, size, size, radius);
+  ctx.clip();
+  ctx.drawImage(image, x - size / 2, y - size / 2, size, size);
+  ctx.restore();
+  return true;
+}
+
+function drawObject(ctx, item, sprites, width, height) {
   const p = project(item.lane, item.z, width, height);
-  const size = Math.max(10, 44 * p.scale);
+  const size = Math.max(16, 58 * p.scale);
+  if (item.kind === 'enemy') {
+    const spriteKey = ENEMY_SPRITE_KEYS[item.enemyType] || ENEMY_SPRITE_KEYS.pawn;
+    if (drawSprite(ctx, sprites[spriteKey], p.x, p.y - size * 0.48, size, item.enemyType === 'rook' ? '#c44c3d' : '#d5b15a')) return;
+  }
+
   ctx.save();
   ctx.translate(p.x, p.y - size * 0.42);
   if (item.kind === 'enemy') {
+    const glyph = item.enemyType === 'rook' ? '♜' : item.enemyType === 'knight' ? '♞' : '♟';
     ctx.fillStyle = '#17120f';
     ctx.strokeStyle = '#d5b15a';
     ctx.lineWidth = Math.max(1, p.scale * 2);
-    ctx.font = `${Math.max(16, size * 1.15)}px serif`;
+    ctx.font = `${Math.max(16, size * 1.05)}px serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.strokeText('♟', 0, 0);
-    ctx.fillText('♟', 0, 0);
+    ctx.strokeText(glyph, 0, 0);
+    ctx.fillText(glyph, 0, 0);
   } else if (item.kind === 'power') {
     const labels = { rook: 'R', bishop: 'B', queen: 'Q' };
-    ctx.fillStyle = '#c9a227';
+    const colors = { rook: '#5eb8ff', bishop: '#72d96d', queen: '#c58cff' };
+    ctx.fillStyle = colors[item.power] || '#c9a227';
     ctx.strokeStyle = '#fff1a8';
     ctx.lineWidth = Math.max(1, p.scale * 2);
     ctx.beginPath();
     ctx.arc(0, 0, size * 0.38, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = '#17130b';
+    ctx.fillStyle = '#11131a';
     ctx.font = `bold ${Math.max(9, size * 0.42)}px system-ui`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -238,40 +296,24 @@ function drawObject(ctx, item, width, height) {
   ctx.restore();
 }
 
-function drawMatthias(ctx, image, game, width, height, now) {
+function drawMatthias(ctx, sprites, game, width, height, now) {
   const p = project(game.lane, 0.2, width, height);
-  const size = Math.max(58, Math.min(92, width * 0.105));
+  const size = Math.max(72, Math.min(116, width * 0.13));
+  const image = now < game.slashUntil ? sprites.matthiasCapture : sprites.matthiasRun;
+  const drew = drawSprite(ctx, image, p.x, p.y - size * 0.5, size, now < game.flashUntil ? '#ff5b4f' : '#d8b54f');
+  if (drew) return;
+
   ctx.save();
   ctx.translate(p.x, p.y - size * 0.54);
-  if (now < game.slashUntil) {
-    ctx.strokeStyle = '#fff3b0';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(size * 0.2, -size * 0.05, size * 0.62, -1.2, 0.35);
-    ctx.stroke();
-  }
+  ctx.fillStyle = '#d8c79d';
   ctx.beginPath();
-  ctx.arc(0, 0, size * 0.46, 0, Math.PI * 2);
-  ctx.clip();
-  if (image?.complete && image.naturalWidth) {
-    ctx.drawImage(image, -size * 0.52, -size * 0.52, size * 1.04, size * 1.04);
-  } else {
-    ctx.fillStyle = '#d8c79d';
-    ctx.fillRect(-size / 2, -size / 2, size, size);
-    ctx.fillStyle = '#111';
-    ctx.font = `${size * 0.7}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('♙', 0, 0);
-  }
-  ctx.restore();
-  ctx.save();
-  ctx.translate(p.x, p.y - size * 0.54);
-  ctx.strokeStyle = now < game.flashUntil ? '#ff5b4f' : '#d8b54f';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(0, 0, size * 0.47, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.arc(0, 0, size * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.font = `${size * 0.65}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('♙', 0, 0);
   ctx.restore();
 }
 
@@ -279,16 +321,14 @@ export default function PawnTrailblazer({ onExit }) {
   useEscapeToClose(onExit);
   const canvasRef = useRef(null);
   const gameRef = useRef(createGame());
-  const imageRef = useRef(null);
+  const spriteRef = useRef({});
   const musicStopRef = useRef(() => {});
   const [hud, setHud] = useState(() => ({ ...createGame() }));
   const [music, setMusic] = useState('synthmetal');
 
   useEffect(() => {
-    const img = new Image();
-    img.src = CPU_IDENTITY.avatar;
-    imageRef.current = img;
-    return () => { imageRef.current = null; };
+    spriteRef.current = preloadSprites();
+    return () => { spriteRef.current = {}; };
   }, []);
 
   useEffect(() => () => {
@@ -323,6 +363,7 @@ export default function PawnTrailblazer({ onExit }) {
       game.lastTime = now;
 
       if (game.power && now >= game.powerUntil) game.power = null;
+      if (game.combo && now >= game.comboUntil) breakCombo(game);
 
       if (game.phase === 'running') {
         game.speed = trailSpeedForDistance(game.distance);
@@ -330,7 +371,13 @@ export default function PawnTrailblazer({ onExit }) {
         game.score += game.speed * dt * 2;
         game.spawnIn -= game.speed * dt;
         if (game.spawnIn <= 0) spawnObject(game);
-        for (const item of game.objects) item.z -= game.speed * dt;
+        for (const item of game.objects) {
+          item.z -= game.speed * dt;
+          if (item.kind === 'enemy' && item.enemyType === 'knight' && !item.jumped && item.z < 12) {
+            item.lane = trailKnightJumpLane(item.lane, game.lane);
+            item.jumped = true;
+          }
+        }
 
         for (const item of [...game.objects].sort((a, b) => a.z - b.z)) {
           if (item.z > COLLISION_Z || item.lane !== game.lane) continue;
@@ -340,10 +387,16 @@ export default function PawnTrailblazer({ onExit }) {
             game.score += 80;
             removeObject(game, item.id);
             setToast(game, `${trailPowerLabel(item.power)} · movimiento desbloqueado`, now, 1400);
-          } else if (item.kind === 'enemy') {
+          } else if (item.kind === 'enemy' && item.enemyType === 'pawn') {
             game.phase = 'duel';
             game.duel = { enemyId: item.id, meter: 24, timeLeft: 2.6, direction: game.lane === TRAIL_LANES - 1 ? -1 : 1 };
             setToast(game, '¡FRONTAL! Machaca ESPACIO.', now, 1000);
+          } else if (item.kind === 'enemy' && item.enemyType === 'knight') {
+            removeObject(game, item.id);
+            loseLife(game, now, 'El caballo ha saltado sobre tu línea. Previsible después de verlo.');
+          } else if (item.kind === 'enemy' && item.enemyType === 'rook') {
+            removeObject(game, item.id);
+            loseLife(game, now, 'Una torre de frente. Ni siquiera tú eres tan cabezón, Matthias.');
           } else {
             removeObject(game, item.id);
             loseLife(game, now, 'Eso era un obstáculo, general.');
@@ -362,8 +415,8 @@ export default function PawnTrailblazer({ onExit }) {
 
       const { width, height } = resize();
       drawTrack(ctx, width, height);
-      for (const item of [...game.objects].sort((a, b) => b.z - a.z)) drawObject(ctx, item, width, height);
-      drawMatthias(ctx, imageRef.current, game, width, height, now);
+      for (const item of [...game.objects].sort((a, b) => b.z - a.z)) drawObject(ctx, item, spriteRef.current, width, height);
+      drawMatthias(ctx, spriteRef.current, game, width, height, now);
 
       if (game.phase === 'duel' && game.duel) {
         ctx.fillStyle = 'rgba(0,0,0,.76)';
@@ -389,6 +442,8 @@ export default function PawnTrailblazer({ onExit }) {
           speed: game.speed,
           power: game.power,
           powerLeft: game.power ? Math.max(0, game.powerUntil - now) : 0,
+          combo: game.combo,
+          captures: game.captures,
           duel: game.duel ? { ...game.duel } : null,
           toast: now < game.toastUntil || game.phase === 'ready' || game.phase === 'gameover' ? game.toast : '',
         });
@@ -419,7 +474,7 @@ export default function PawnTrailblazer({ onExit }) {
             const enemy = game.objects.find((item) => item.id === game.duel.enemyId);
             if (enemy) {
               const direction = trailDuelDirection(game.lane, game.duel.direction);
-              finishCapture(game, enemy, game.lane + direction, now, 320);
+              finishCapture(game, enemy, game.lane + direction, now);
             }
           }
         }
@@ -435,9 +490,14 @@ export default function PawnTrailblazer({ onExit }) {
         const nextLane = trailPowerLane({ lane: game.lane, direction, power: game.power });
         const victim = nearestObject(game, nextLane);
         if (victim && (game.power === 'bishop' || game.power === 'queen')) {
-          removeObject(game, victim.id);
-          game.score += victim.kind === 'enemy' ? 180 : 70;
-          game.slashUntil = now + 250;
+          if (victim.kind === 'enemy') finishCapture(game, victim, nextLane, now);
+          else {
+            removeObject(game, victim.id);
+            game.score += 70;
+            game.slashUntil = now + 250;
+            game.lane = nextLane;
+          }
+          return;
         }
         game.lane = nextLane;
         return;
@@ -445,7 +505,7 @@ export default function PawnTrailblazer({ onExit }) {
 
       const enemy = nearestObject(game, targetLane, 'enemy');
       if (enemy) {
-        finishCapture(game, enemy, targetLane, now, 240);
+        finishCapture(game, enemy, targetLane, now);
       } else {
         setToast(game, 'Nein. Un peón no se mueve de lado.', now, 900);
       }
@@ -482,7 +542,7 @@ export default function PawnTrailblazer({ onExit }) {
         <div>
           <span className="section-label">EXPERIMENTO ARCADE · POC</span>
           <h2>Pawn Trailblazer</h2>
-          <p>Matthias avanza solo. Como peón, no puede cambiar de columna salvo capturando. Consigue movimiento de torre, alfil o dama durante unos segundos y sobrevive al corredor.</p>
+          <p>Matthias avanza solo. Peones forcejean, caballos saltan dos carriles y las torres te pasan por encima si las recibes de frente. Captura en diagonal para encadenar combo.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </div>
@@ -492,6 +552,7 @@ export default function PawnTrailblazer({ onExit }) {
           <span>VIDAS <b>{'♥'.repeat(Math.max(0, hud.lives || 0)) || '—'}</b></span>
           <span>DISTANCIA <b>{hud.distance || 0} m</b></span>
           <span>PUNTOS <b>{hud.score || 0}</b></span>
+          <span>COMBO <b>{hud.combo > 1 ? `x${hud.combo}` : '—'}</b></span>
           <span>FORMA <b>{trailPowerLabel(hud.power)}</b></span>
         </div>
 
@@ -499,9 +560,9 @@ export default function PawnTrailblazer({ onExit }) {
           <canvas ref={canvasRef} aria-label="Corredor pseudo 3D de Pawn Trailblazer" />
           {(hud.phase === 'ready' || hud.phase === 'gameover') && (
             <div className="pawn-trailblazer-overlay">
-              <img src={CPU_IDENTITY.avatar} alt="Matthias" />
+              <img src={TRAIL_SPRITES.matthiasRun} alt="Matthias corredor" />
               <span>{hud.phase === 'gameover' ? 'FIN DE MANIOBRAS' : 'GENERAL MATTHIAS VON LOPSTEIN'}</span>
-              <strong>{hud.phase === 'gameover' ? `${hud.distance || 0} m · ${hud.score || 0} puntos` : 'Nací peón. Siempre seré peón.'}</strong>
+              <strong>{hud.phase === 'gameover' ? `${hud.distance || 0} m · ${hud.score || 0} puntos · ${hud.captures || 0} capturas` : 'Nací peón. Siempre seré peón.'}</strong>
               <button type="button" className="primary-btn" onClick={startRun}>{hud.phase === 'gameover' ? 'Otra vez' : 'Iniciar carrera'}</button>
               <small>También puedes pulsar ESPACIO.</small>
             </div>
@@ -511,10 +572,10 @@ export default function PawnTrailblazer({ onExit }) {
 
         <div className="pawn-trailblazer-controls">
           <div><kbd>←</kbd><kbd>→</kbd><span>Captura diagonal. Con powerup, maniobra.</span></div>
-          <div><kbd>ESPACIO</kbd><span>Forcejeo frontal: machácalo hasta poder rematar.</span></div>
+          <div><kbd>ESPACIO</kbd><span>Contra peones: forcejea y remata. Caballo/torre requieren lectura de carril.</span></div>
           <div className="pawn-trailblazer-music"><span>BSO</span><button type="button" className={music === 'synthmetal' ? 'active' : ''} onClick={() => switchMusic('synthmetal')}>Synthmetal</button><button type="button" className={music === 'classical' ? 'active' : ''} onClick={() => switchMusic('classical')}>Clásica</button></div>
         </div>
-        <p className="pawn-trailblazer-note">POC: la música es procedural y minimalista. Si el loop engancha, la BSO final puede ir a synthmetal con guitarra/riffs/voces largas y una segunda familia clásica completa.</p>
+        <p className="pawn-trailblazer-note">Arte de la POC: recortes WebP de las láminas aprobadas de Matthias y enemigos. El modo sigue aislado: no toca rating ni progreso competitivo.</p>
       </div>
     </div>
   );
