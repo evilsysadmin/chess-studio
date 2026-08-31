@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Static/live preflight for the optional Cloudflare Workers AI narrator.
-
-No secrets are required for the default static check. Pass --worker-url after a
-real deploy to verify the public /health endpoint without invoking the model.
-"""
+"""Static/live preflight for the optional Cloudflare Workers AI narrator."""
 from __future__ import annotations
 
 import argparse
@@ -25,6 +21,7 @@ FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
 CI_WORKFLOW = ROOT / ".github/workflows/cicd.yml"
 PROMOTION_WORKFLOW = ROOT / ".github/workflows/production-promote.yml"
 ROLLBACK_WORKFLOW = ROOT / ".github/workflows/production-rollback.yml"
+PAGES_HELPER = ROOT / "scripts/cloudflare_production_pages.py"
 
 EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
 EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]
@@ -53,8 +50,11 @@ def static_check() -> list[str]:
         return ["pipeline: falta .github/workflows/production-promote.yml"]
     if not ROLLBACK_WORKFLOW.exists():
         return ["pipeline: falta .github/workflows/production-rollback.yml"]
+    if not PAGES_HELPER.exists():
+        return ["pipeline: falta scripts/cloudflare_production_pages.py"]
     promotion = PROMOTION_WORKFLOW.read_text(encoding="utf-8")
     rollback = ROLLBACK_WORKFLOW.read_text(encoding="utf-8")
+    pages_helper = PAGES_HELPER.read_text(encoding="utf-8")
 
     for needle in (
         'env.AI.run(',
@@ -156,14 +156,37 @@ def static_check() -> list[str]:
         ("needs: cloudflare", "Render waits for Worker"),
         ('python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"', "Render exact commit deploy"),
         ("Verify production backend readiness and build identity", "Render live identity gate"),
-        ("Production · GitHub Pages", "promotion frontend stage"),
+        ("Production · Cloudflare Pages", "promotion frontend stage"),
         ("needs: backend", "Pages waits for backend"),
         ('ref: ${{ env.DEPLOY_SHA }}', "promotion checkouts exact SHA"),
         ('VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}', "Pages exposes promoted SHA"),
-        ("uses: actions/deploy-pages@v", "Pages deploy action wired"),
+        ("cloudflare_production_pages.py prepare", "Pages project prepared before deploy"),
+        ('--project-name chess-studio-production', "Pages direct upload project"),
+        ('--commit-hash "$DEPLOY_SHA"', "Pages direct upload provenance"),
+        ("Verify Pages origin before public cutover", "Pages origin gate before cutover"),
+        ("cloudflare_production_pages.py activate", "Pages public cutover"),
         ("Verify production frontend build identity", "Pages live identity gate"),
     ):
         require(promotion, needle, label, errors)
+
+    # The helper, not Terraform, owns production frontend DNS so it can enforce
+    # verify-before-cutover. The direct Pages origin is deployed first; only then
+    # may the public CNAME/custom-domain be reconciled.
+    for needle, label in (
+        ('PAGES_PROJECT = "chess-studio-production"', "Pages production project"),
+        ('PAGES_HOSTNAME = "chess-studio.shadowops.dpdns.org"', "Pages public hostname"),
+        ('PAGES_TARGET = f"{PAGES_PROJECT}.pages.dev"', "Pages direct origin"),
+        ('phase not in {"prepare", "activate"}', "Pages explicit two-phase helper"),
+        ('if phase == "prepare"', "Pages prepare phase"),
+        ('domain = ensure_pages_domain()', "Pages custom-domain activation"),
+        ('dns = ensure_pages_cname(zone_id)', "Pages DNS activation"),
+        ('"proxied": True', "Pages public hostname proxied through Cloudflare"),
+    ):
+        require(pages_helper, needle, label, errors)
+    if 'resource "cloudflare_dns_record" "github_pages"' in tf_main:
+        errors.append("terraform: frontend DNS no debe seguir ligado a GitHub Pages")
+    if 'evilsysadmin.github.io' in promotion:
+        errors.append("promotion: referencia obsoleta a GitHub Pages")
 
     # First deploys have no Worker/Custom Domain to import. Promotion must
     # discover existing resources and import only those that exist; swallowing
@@ -180,11 +203,11 @@ def static_check() -> list[str]:
     require(promotion, 'health_contract="$GITHUB_WORKSPACE/scripts/cloudflare_health_contract.py"', "promotion shared health contract path", errors)
     require(promotion, 'python3 "$health_contract" "$health_body"', "promotion shared health invocation", errors)
 
-    # Rollback is deliberately a runtime rollback, never an infrastructure
-    # rewind. It is manual, serializes with normal promotion, and only accepts a
-    # SHA that GitHub records as a prior successful automatic production
-    # promotion. This keeps emergency recovery fast without letting a typo or an
-    # arbitrary historical commit bypass staging provenance.
+    # Rollback is deliberately a runtime rollback, never a generic infra rewind.
+    # It is manual, serializes with normal promotion, and only accepts a SHA that
+    # GitHub records as a prior successful automatic production promotion. The
+    # sole infrastructure reconciliation permitted is the already-known Pages
+    # custom domain/CNAME, after the rollback SHA is verified on pages.dev.
     for needle, label in (
         ("name: Production · rollback", "rollback workflow name"),
         ("workflow_dispatch:", "rollback manual trigger"),
@@ -200,13 +223,17 @@ def static_check() -> list[str]:
         ("Rollback · Cloudflare Worker", "rollback Worker stage"),
         ("--keep-vars", "rollback preserves Worker variables"),
         ("workers_dev = false", "rollback keeps workers.dev disabled"),
-        ("El rollback no acepta un wrangler.toml que administre rutas/domains", "rollback refuses route ownership"),
+        ("El rollback no acepta un wrangler.toml que administre rutas/domains", "rollback refuses Worker route ownership"),
         ("Rollback · Render backend", "rollback Render stage"),
         ('render_production_deploy.py --sha "$DEPLOY_SHA"', "rollback exact Render SHA"),
-        ("Rollback · GitHub Pages", "rollback frontend stage"),
+        ("Rollback · Cloudflare Pages", "rollback frontend stage"),
+        ('path: rollback-source', "rollback builds exact historical source"),
         ('VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}', "rollback frontend exact SHA"),
+        ('--project-name chess-studio-production', "rollback uses current Pages project"),
+        ("Verify Pages origin rollback identity", "rollback Pages origin gate"),
+        ("Reconcile production Pages domain and DNS", "rollback scoped Pages domain reconciliation"),
+        ("cloudflare_production_pages.py activate", "rollback current Pages helper"),
         ("Verify production frontend rollback identity", "rollback live frontend identity"),
-        ("Infra/DNS: `no modificados`", "rollback leaves infra untouched"),
     ):
         require(rollback, needle, label, errors)
 
@@ -217,7 +244,7 @@ def static_check() -> list[str]:
         "workers/domains",
     ):
         if forbidden in rollback:
-            errors.append(f"rollback no debe modificar infraestructura/DNS: {forbidden!r}")
+            errors.append(f"rollback no debe modificar infraestructura genérica: {forbidden!r}")
 
     for obsolete in (ROOT / ".github/workflows/terraform-cloudflare.yml", ROOT / ".github/workflows/static.yml"):
         if obsolete.exists():
@@ -246,10 +273,12 @@ def static_check() -> list[str]:
         '- name: Ensure account workers.dev namespace',
         'desired_subdomain="chess-studio-$suffix"',
         'subdomain.get("url")',
+        'actions/deploy-pages@',
+        'actions/configure-pages@',
     )
     for needle in forbidden_promotion:
         if needle in promotion:
-            errors.append(f"promotion: lógica workers.dev obsoleta presente: {needle}")
+            errors.append(f"promotion: lógica obsoleta presente: {needle}")
 
     if 'terraform import cloudflare_workers_script.narrative_ai' in promotion and 'narrative_ai "$TF_VAR_cloudflare_account_id/$WORKER_NAME" || true' in promotion:
         errors.append("promotion: terraform import no debe ocultar errores con || true")
