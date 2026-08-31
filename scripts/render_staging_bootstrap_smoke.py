@@ -87,6 +87,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
     create.assert_not_called()
     reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging"})
     domain.assert_called_once_with("srv-stage")
+    check(("PUT", "/services/srv-prod/env-vars/ENVIRONMENT", {"value": "production"}) in calls, "producción debe declarar su entorno")
     check(("PUT", "/services/srv-prod/env-vars/MONGO_DB_NAME", {"value": "chess_study"}) in calls, "producción debe quedar explícita")
 
 
