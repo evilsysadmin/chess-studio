@@ -15,6 +15,7 @@ import {
   trailKnightJumpLane,
   trailPowerLane,
   trailSpeedForDistance,
+  trailSpriteMotion,
 } from './pawnTrailblazer.js';
 
 describe('Pawn Trailblazer core', () => {
@@ -88,5 +89,26 @@ describe('Pawn Trailblazer core', () => {
     expect(trailBishopParryReady(1_000, 1_000 - TRAIL_BISHOP_PARRY_WINDOW_MS)).toBe(true);
     expect(trailBishopParryReady(1_000, 1_000 - TRAIL_BISHOP_PARRY_WINDOW_MS - 1)).toBe(false);
     expect(trailBishopParryReady(1_000, 1_001)).toBe(false);
+  });
+
+  it('da movimiento procedural visible a los sprites sin necesitar más frames', () => {
+    const runA = trailSpriteMotion('matthias', 100, 0, 'running');
+    const runB = trailSpriteMotion('matthias', 260, 0, 'running');
+    expect(runA).not.toEqual(runB);
+    expect(Math.abs(runB.y - runA.y)).toBeGreaterThan(0.01);
+
+    const jump = trailSpriteMotion('knight', 220, 2, 'running');
+    expect(jump.y).toBeLessThan(-0.02);
+
+    const power = trailSpriteMotion('power', 600, 1, 'running');
+    expect(Math.abs(power.rotation)).toBeGreaterThan(0.1);
+
+    expect(trailSpriteMotion('matthias', 500, 0, 'reduced')).toEqual({
+      x: 0,
+      y: 0,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+    });
   });
 });

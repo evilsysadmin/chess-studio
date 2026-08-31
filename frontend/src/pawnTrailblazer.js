@@ -95,6 +95,96 @@ export function trailBishopParryReady(aimUntil = 0, now = 0) {
   return remaining > 0 && remaining <= TRAIL_BISHOP_PARRY_WINDOW_MS;
 }
 
+export function trailSpriteMotion(kind = 'pawn', now = 0, seed = 0, state = 'running') {
+  const t = (Math.max(0, Number(now) || 0) + (Number(seed) || 0) * 97) / 1000;
+  const still = Object.freeze({ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 });
+  if (state === 'reduced') return still;
+
+  if (kind === 'matthias') {
+    if (state === 'slash') {
+      return {
+        x: 0.035,
+        y: -0.045,
+        rotation: -0.16 + Math.sin(t * 22) * 0.025,
+        scaleX: 1.08,
+        scaleY: 0.95,
+      };
+    }
+    const stride = t * 11;
+    return {
+      x: Math.sin(stride * 0.5) * 0.035,
+      y: -Math.abs(Math.sin(stride)) * 0.075,
+      rotation: Math.sin(stride * 0.5) * 0.055,
+      scaleX: 1 + Math.cos(stride) * 0.035,
+      scaleY: 1 - Math.cos(stride) * 0.045,
+    };
+  }
+
+  if (kind === 'duelist') {
+    const shove = t * 9;
+    return {
+      x: Math.sin(shove) * 0.045,
+      y: -Math.abs(Math.sin(shove * 0.5)) * 0.025,
+      rotation: Math.sin(shove) * 0.075,
+      scaleX: 1 + Math.abs(Math.sin(shove)) * 0.035,
+      scaleY: 1 - Math.abs(Math.sin(shove)) * 0.025,
+    };
+  }
+
+  if (kind === 'knight') {
+    const leap = t * 7.2;
+    return {
+      x: Math.sin(leap * 0.5) * 0.03,
+      y: -Math.abs(Math.sin(leap)) * 0.14,
+      rotation: Math.sin(leap * 0.5) * 0.09,
+      scaleX: 1.02,
+      scaleY: 0.98,
+    };
+  }
+
+  if (kind === 'bishop') {
+    const pulse = t * (state === 'aiming' ? 8 : 4.2);
+    return {
+      x: Math.sin(pulse * 0.4) * 0.014,
+      y: Math.sin(pulse) * 0.022,
+      rotation: state === 'aiming' ? Math.sin(pulse) * 0.045 : Math.sin(pulse * 0.45) * 0.025,
+      scaleX: 1 + (state === 'aiming' ? Math.sin(pulse) * 0.025 : 0),
+      scaleY: 1 - (state === 'aiming' ? Math.sin(pulse) * 0.02 : 0),
+    };
+  }
+
+  if (kind === 'rook') {
+    const weight = t * 3.6;
+    return {
+      x: 0,
+      y: Math.sin(weight) * 0.009,
+      rotation: 0,
+      scaleX: 1 + Math.sin(weight) * 0.012,
+      scaleY: 1 - Math.sin(weight) * 0.009,
+    };
+  }
+
+  if (kind === 'power') {
+    const float = t * 4.6;
+    return {
+      x: Math.sin(float * 0.5) * 0.025,
+      y: -0.055 - Math.sin(float) * 0.035,
+      rotation: t * 0.85,
+      scaleX: 1 + Math.sin(float) * 0.035,
+      scaleY: 1 + Math.sin(float) * 0.035,
+    };
+  }
+
+  const step = t * 5.2;
+  return {
+    x: Math.sin(step * 0.5) * 0.012,
+    y: -Math.abs(Math.sin(step)) * 0.018,
+    rotation: Math.sin(step * 0.5) * 0.018,
+    scaleX: 1,
+    scaleY: 1,
+  };
+}
+
 export function trailPowerLabel(power) {
   if (power === 'rook') return 'TORRE';
   if (power === 'bishop') return 'ALFIL';
