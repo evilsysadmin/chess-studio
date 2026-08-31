@@ -178,8 +178,8 @@ export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
   return session;
 }
 
-export function advanceGuidedTrainingSession(session) {
-  const normalized = normalizeStoredSession(session);
+export function advanceGuidedTrainingSession(session, { now = Date.now() } = {}) {
+  const normalized = normalizeStoredSession(session, Number(now));
   if (!normalized) return null;
   const nextIndex = normalized.currentIndex + 1;
   if (nextIndex >= normalized.steps.length) {
