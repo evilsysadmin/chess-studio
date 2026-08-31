@@ -1,0 +1,28 @@
+// Append this scrape component to the Alloy instance that already owns
+// prometheus.remote_write.metrics_service for the Chess Studio Grafana Cloud
+// stack. The credentials must match the GitHub exporter secrets.
+//
+// Required Alloy process environment variables:
+//   CLOUDFLARE_EXPORTER_BASIC_AUTH_USER
+//   CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD
+
+prometheus.scrape "chess_studio_cloudflare" {
+  targets = [
+    {
+      __address__ = "metrics.shadowops.dpdns.org",
+      instance    = "chess-studio-cloudflare",
+    },
+  ]
+
+  scheme          = "https"
+  scrape_interval = "60s"
+  scrape_timeout  = "30s"
+  job_name        = "integrations/cloudflare"
+
+  basic_auth {
+    username = sys.env("CLOUDFLARE_EXPORTER_BASIC_AUTH_USER")
+    password = sys.env("CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD")
+  }
+
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+}
