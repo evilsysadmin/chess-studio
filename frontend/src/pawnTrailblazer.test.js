@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clampTrailLane,
   trailDuelDecay,
+  trailDuelDirection,
   trailDuelPress,
   trailPowerLane,
   trailSpeedForDistance,
@@ -18,6 +19,13 @@ describe('Pawn Trailblazer core', () => {
     expect(trailPowerLane({ lane: 2, direction: -1, power: 'bishop' })).toBe(1);
     expect(trailPowerLane({ lane: 2, direction: 1, power: 'queen' })).toBe(3);
     expect(trailPowerLane({ lane: 4, direction: 1, power: 'queen' })).toBe(4);
+  });
+
+  it('el remate de un forcejeo siempre conserva una diagonal válida', () => {
+    expect(trailDuelDirection(0, -1)).toBe(1);
+    expect(trailDuelDirection(4, 1)).toBe(-1);
+    expect(trailDuelDirection(2, -1)).toBe(-1);
+    expect(trailDuelDirection(2, 1)).toBe(1);
   });
 
   it('el forcejeo requiere varias pulsaciones y nunca supera 100', () => {
