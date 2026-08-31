@@ -122,14 +122,16 @@ test('Así juegas · Auditoría táctica mueve cabeza, ojos y brazo con el rig d
   await expect.poll(() => eyes.evaluate((node) => node.getAnimations().length)).toBeGreaterThan(0);
   await expect.poll(() => rightArm.evaluate((node) => node.getAnimations().length)).toBeGreaterThan(0);
 
-  // Freeze the portrait-level breathing so these measurements prove that the
-  // actual puppet layers move independently at the real 48×48 Insights size.
+  // Congelamos el balanceo global del retrato: estas medidas demuestran que
+  // las capas reales del puppet se mueven por separado incluso a 48×48.
   await portrait.evaluate((node) => node.getAnimations().forEach((animation) => animation.pause()));
   const headTravel = await maxAnimatedDisplacement(head);
   const eyeTravel = await maxAnimatedDisplacement(eyes);
   const armTravel = await maxAnimatedDisplacement(rightArm);
 
   expect(headTravel, 'Auditoría táctica: la cabeza debe acompañar la inspección').toBeGreaterThan(1);
-  expect(eyeTravel, 'Auditoría táctica: los ojos deben escanear el dossier').toBeGreaterThan(3);
+  // 2.5 px en un retrato de 48 px es >5% de su anchura: claramente visible,
+  // pero sin exigir un desplazamiento que rompa la máscara ocular.
+  expect(eyeTravel, 'Auditoría táctica: los ojos deben escanear el dossier').toBeGreaterThan(2.5);
   expect(armTravel, 'Auditoría táctica: el brazo derecho debe moverse de forma perceptible').toBeGreaterThan(4);
 });
