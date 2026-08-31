@@ -9,7 +9,7 @@ import {
 
 function actionLabel(step) {
   if (step?.action === 'nemesis-position') return 'Abrir posición Némesis →';
-  if (step?.action === 'short-game') return 'Jugar 5+0 de práctica →';
+  if (step?.action === 'short-game') return 'Abrir partida de práctica →';
   if (step?.action === 'personal-filter') return 'Entrenar esta deuda →';
   if (step?.action === 'personal') return 'Abrir Tus crímenes →';
   return 'Cerrar sesión';
@@ -19,7 +19,6 @@ export default function InsightsGuidedSession({
   gameHistory = [],
   onOpenPuzzles,
   onPlayFromHere,
-  onStartShortPracticeGame,
 }) {
   const [session, setSession] = useState(() => loadGuidedTrainingSession());
   const plans = useMemo(() => ({
@@ -42,6 +41,15 @@ export default function InsightsGuidedSession({
     setSession(next);
   }
 
+  function openTrainingPosition(step, meta = {}) {
+    const training = step?.training;
+    if (!training?.fen) return;
+    onPlayFromHere?.(training.fen, training.humanColor, training.difficulty, {
+      ...meta,
+      sourceRecord: training.sourceRecordId ? { id: training.sourceRecordId } : undefined,
+    });
+  }
+
   function runStep(step) {
     if (!step) return;
     if (step.action === 'personal-filter') {
@@ -53,18 +61,15 @@ export default function InsightsGuidedSession({
       return;
     }
     if (step.action === 'nemesis-position') {
-      const training = step.training;
-      if (!training?.fen) return;
-      onPlayFromHere?.(training.fen, training.humanColor, training.difficulty, {
+      openTrainingPosition(step, {
         nemesis: true,
         nemesisLabel: `Némesis · ${step.opening}`,
         nemesisOpening: step.opening,
-        sourceRecord: training.sourceRecord,
       });
       return;
     }
     if (step.action === 'short-game') {
-      onStartShortPracticeGame?.();
+      openTrainingPosition(step);
       return;
     }
     nextStep();
@@ -76,7 +81,7 @@ export default function InsightsGuidedSession({
       <section className="menu-section insights-guided-session" aria-labelledby="guided-session-title">
         <span className="section-label">Sin buscar por menús</span>
         <h2 id="guided-session-title">Sesión automática</h2>
-        <p className="hint-text">Chess Studio compone el recorrido con errores personales y Némesis demostradas, añade una 5+0 de práctica y termina de nuevo aquí. El paso actual sobrevive mientras vas y vuelves entre pantallas.</p>
+        <p className="hint-text">Chess Studio compone el recorrido con errores personales y Némesis demostradas, añade una partida corta de práctica y termina de nuevo aquí. El paso actual sobrevive mientras vas y vuelves entre pantallas.</p>
         {available ? (
           <div className="coaching-action">
             <button type="button" className="primary-btn" disabled={!plans[15].available} onClick={() => begin(15)}>Tengo 15 min</button>
