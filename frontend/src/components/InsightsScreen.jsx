@@ -5,6 +5,7 @@ import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
 import InsightsCleanGames from './InsightsCleanGames.jsx';
 import InsightsWeeklyGoals from './InsightsWeeklyGoals.jsx';
 import InsightsGuidedSession from './InsightsGuidedSession.jsx';
+import InsightsMatthiasCampaign from './InsightsMatthiasCampaign.jsx';
 import InsightsMatthiasMotion from './InsightsMatthiasMotion.jsx';
 import './InsightsWorkspace.css';
 
@@ -99,7 +100,11 @@ export default function InsightsScreen(props) {
               gameHistory={props.gameHistory}
               onOpenPuzzles={props.onOpenPuzzles}
               onPlayFromHere={props.onPlayFromHere}
-              onStartShortPracticeGame={props.onStartShortPracticeGame}
+            />
+            <InsightsMatthiasCampaign
+              gameHistory={props.gameHistory}
+              onOpenPuzzles={props.onOpenPuzzles}
+              onPlayFromHere={props.onPlayFromHere}
             />
             <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} />
           </>
