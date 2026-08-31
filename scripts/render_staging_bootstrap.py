@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Crea o reconcilia el backend de staging en Render de forma idempotente.
 
-Los secretos entran únicamente por el entorno del runner. Nunca se imprimen ni
-se escriben en disco. La API pública de Render no crea Blueprints, por lo que
-se usa el CLI oficial para crear el servicio y la API para reconciliar valores.
+Los secretos viven en Render o en el entorno efímero del runner. Nunca se
+persisten en el repo ni en artefactos. La API pública de Render no crea
+Blueprints, por lo que se usa el CLI oficial para crear el servicio y la API
+para reconciliar valores.
 """
 
 from __future__ import annotations
@@ -140,6 +141,21 @@ def stable_staging_secret(service: dict | None, key: str) -> str:
     return secrets.token_urlsafe(48)
 
 
+def export_github_secret_env(name: str, value: str) -> None:
+    """Expone un secreto sólo a pasos posteriores del mismo runner.
+
+    GitHub procesa add-mask antes de que el valor pueda reaparecer en logs. El
+    fichero GITHUB_ENV es efímero del runner y nunca forma parte del repo ni de
+    los artefactos de staging.
+    """
+    env_file = os.environ.get("GITHUB_ENV", "").strip()
+    if not env_file or not value:
+        return
+    print(f"::add-mask::{value}")
+    with open(env_file, "a", encoding="utf-8") as handle:
+        handle.write(f"{name}={value}\n")
+
+
 def with_app_name(mongo_url: str, app_name: str) -> str:
     """Cambia sólo la etiqueta de cliente Atlas, nunca host/credenciales/DB."""
     parts = urllib.parse.urlsplit(mongo_url)
@@ -160,7 +176,10 @@ def env_values(production: dict, staging: dict | None) -> dict[str, str]:
         "JWT_SECRET": stable_staging_secret(staging, "JWT_SECRET"),
         "ENVIRONMENT": "staging",
         "EXPOSE_API_DOCS": "false",
+        # Staging mantiene el endpoint de alta para el smoke live, pero toda
+        # creación exige un código aleatorio que sólo conocen Render y CI.
         "ALLOW_REGISTRATION": "true",
+        "INVITE_CODE": stable_staging_secret(staging, "INVITE_CODE"),
         "ENABLE_EMAIL_RECOVERY": "false",
         "ADMIN_USERNAMES": "evilsysadmin",
         "CF_AI_WORKER_URL": "https://ai-staging.shadowops.dpdns.org",
@@ -328,6 +347,9 @@ def main() -> None:
     ensure_custom_domain(service_id)
     environment = ensure_service_grouped(production, service_id)
     environment_id = str(environment.get("id") or "")
+    # Sólo el runner de staging necesita el código para crear la identidad
+    # efímera del smoke. El frontend desplegado no recibe esta variable.
+    export_github_secret_env("STAGING_INVITE_CODE", values["INVITE_CODE"])
     output = os.environ.get("GITHUB_OUTPUT")
     if output:
         with open(output, "a", encoding="utf-8") as handle:
