@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { duckAmbientMusic } from './sound.js';
-import { TRAIL_SPRITES } from './pawnTrailblazerSprites.js';
+import {
+  TRAIL_ATLAS_CELLS,
+  TRAIL_ATLAS_GRID,
+  TRAIL_ATLAS_IMAGE,
+  TRAIL_SPRITES,
+} from './pawnTrailblazerSprites.js';
 import {
   TRAIL_COMBO_WINDOW_MS,
   TRAIL_LANES,
@@ -47,6 +52,13 @@ const POWER_SPRITES = Object.freeze({
   bishop: TRAIL_SPRITES.powerBishop,
   queen: TRAIL_SPRITES.powerQueen,
 });
+
+const OBSTACLE_SPRITES = Object.freeze([
+  TRAIL_SPRITES.obstacleWall,
+  TRAIL_SPRITES.obstacleSpikes,
+  TRAIL_SPRITES.obstacleRock,
+  TRAIL_SPRITES.obstacleBarrel,
+]);
 
 function laneX(lane) {
   return (Number(lane) - (TRAIL_LANES - 1) / 2) * LANE_GAP;
@@ -129,7 +141,7 @@ function createArcadeMusic(kind) {
 }
 
 function spriteMaterial(texture) {
-  return new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.06, depthWrite: true });
+  return new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.045, depthWrite: true });
 }
 
 function disposeObject(object) {
@@ -218,22 +230,36 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
 
   const textureLoader = new THREE.TextureLoader();
   const textures = new Map();
-  function texture(url) {
-    if (textures.has(url)) return textures.get(url);
-    const loaded = textureLoader.load(url, () => {
-      loaded.colorSpace = THREE.SRGBColorSpace;
-      loaded.needsUpdate = true;
-    });
+  const atlasTexture = textureLoader.load(TRAIL_ATLAS_IMAGE, () => {
+    atlasTexture.colorSpace = THREE.SRGBColorSpace;
+    atlasTexture.needsUpdate = true;
+    for (const loaded of textures.values()) loaded.needsUpdate = true;
+  });
+  atlasTexture.colorSpace = THREE.SRGBColorSpace;
+  atlasTexture.minFilter = THREE.LinearFilter;
+  atlasTexture.magFilter = THREE.LinearFilter;
+
+  function spriteTexture(name) {
+    if (textures.has(name)) return textures.get(name);
+    const cell = TRAIL_ATLAS_CELLS[name];
+    if (!cell) throw new Error(`Unknown Pawn Chess sprite: ${name}`);
+    const size = 1 / TRAIL_ATLAS_GRID;
+    const loaded = atlasTexture.clone();
     loaded.colorSpace = THREE.SRGBColorSpace;
     loaded.minFilter = THREE.LinearFilter;
     loaded.magFilter = THREE.LinearFilter;
-    textures.set(url, loaded);
+    loaded.wrapS = THREE.ClampToEdgeWrapping;
+    loaded.wrapT = THREE.ClampToEdgeWrapping;
+    loaded.repeat.set(size, size);
+    loaded.offset.set(cell.col * size, 1 - ((cell.row + 1) * size));
+    loaded.needsUpdate = true;
+    textures.set(name, loaded);
     return loaded;
   }
 
-  const matthias = new THREE.Sprite(spriteMaterial(texture(TRAIL_SPRITES.matthiasRun)));
-  matthias.scale.set(1.45, 2, 1);
-  matthias.position.set(laneX(2), 1.04, PLAYER_Z);
+  const matthias = new THREE.Sprite(spriteMaterial(spriteTexture(TRAIL_SPRITES.matthiasRun)));
+  matthias.scale.set(1.55, 1.82, 1);
+  matthias.position.set(laneX(2), 0.96, PLAYER_Z);
   matthias.renderOrder = 12;
   scene.add(matthias);
 
@@ -251,6 +277,13 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
   let stopMusic = () => {};
   let musicKind = 'synthmetal';
   let ambientDucked = false;
+  let matthiasPoseUntil = 0;
+
+  function setMatthiasPose(spriteName, until = 0) {
+    matthias.material.map = spriteTexture(spriteName);
+    matthias.material.needsUpdate = true;
+    matthiasPoseUntil = until;
+  }
 
   function duckAmbient(enabled) {
     if (ambientDucked === enabled) return;
@@ -292,21 +325,18 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     state.objects = [];
   }
 
-  function createObjectSprite(url, scale = 1) {
-    const sprite = new THREE.Sprite(spriteMaterial(texture(url)));
-    sprite.scale.set(1.25 * scale, 1.65 * scale, 1);
-    sprite.position.y = 0.9 * scale;
+  function createObjectSprite(spriteName, scale = 1) {
+    const sprite = new THREE.Sprite(spriteMaterial(spriteTexture(spriteName)));
+    sprite.scale.set(1.2 * scale, 1.58 * scale, 1);
+    sprite.position.y = 0.84 * scale;
     return sprite;
   }
 
   function createObstacle() {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.82, 0.78, 0.82),
-      new THREE.MeshStandardMaterial({ color: 0x7c2f2a, emissive: 0x2b0807, emissiveIntensity: 0.22, roughness: 0.62 }),
-    );
-    mesh.position.y = 0.42;
-    mesh.castShadow = true;
-    return mesh;
+    const spriteName = OBSTACLE_SPRITES[Math.floor(Math.random() * OBSTACLE_SPRITES.length)];
+    const sprite = createObjectSprite(spriteName, 0.9);
+    sprite.position.y = 0.72;
+    return sprite;
   }
 
   function spawnObject() {
@@ -326,9 +356,9 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
 
     const power = kind === 'power' ? POWER_TYPES[Math.floor(Math.random() * POWER_TYPES.length)] : null;
     const enemyType = kind === 'enemy' ? trailEnemyTypeForDistance(state.distance, Math.random()) : null;
-    const scale = enemyType === 'rook' ? 1.08 : enemyType === 'knight' ? 1 : 0.92;
+    const scale = enemyType === 'rook' ? 1.08 : enemyType === 'knight' ? 1 : 0.94;
     const mesh = kind === 'power'
-      ? createObjectSprite(POWER_SPRITES[power], 0.72)
+      ? createObjectSprite(POWER_SPRITES[power], 0.7)
       : kind === 'enemy'
         ? createObjectSprite(ENEMY_SPRITES[enemyType] || ENEMY_SPRITES.pawn, scale)
         : createObstacle();
@@ -379,8 +409,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     state.toast = 'Vorwärts.';
     state.toastUntil = now + 1100;
     targetLaneX = laneX(state.lane);
-    matthias.material.map = texture(TRAIL_SPRITES.matthiasRun);
-    matthias.material.needsUpdate = true;
+    setMatthiasPose(TRAIL_SPRITES.matthiasRun);
     duckAmbient(true);
     stopMusic = createArcadeMusic(musicKind);
     emitHud(now, true);
@@ -402,6 +431,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     state.duel = null;
     breakCombo();
     state.phase = state.lives <= 0 ? 'gameover' : 'running';
+    setMatthiasPose(TRAIL_SPRITES.matthiasHit, state.lives <= 0 ? Number.POSITIVE_INFINITY : now + 620);
     setToast(state.lives <= 0 ? 'Fin de maniobras. Otra vez.' : message, now, 1600);
     if (state.phase === 'gameover') endGame(now);
     emitHud(now, true);
@@ -420,8 +450,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     state.slashUntil = now + 380;
     state.duel = null;
     state.phase = 'running';
-    matthias.material.map = texture(TRAIL_SPRITES.matthiasCapture);
-    matthias.material.needsUpdate = true;
+    setMatthiasPose(TRAIL_SPRITES.matthiasCapture, state.slashUntil);
     setToast(state.combo > 1 ? `COMBO x${state.combo} · +${awarded}` : `Captura · +${awarded}`, now, 1050);
     emitHud(now, true);
   }
@@ -460,8 +489,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
         removeAim(sniper);
         state.score += 120;
         state.slashUntil = now + 360;
-        matthias.material.map = texture(TRAIL_SPRITES.matthiasCapture);
-        matthias.material.needsUpdate = true;
+        setMatthiasPose(TRAIL_SPRITES.matthiasCapture, state.slashUntil);
         setToast('PARADA · +120. Nein.', now, 900);
         emitHud(now, true);
       } else if (sniper) {
@@ -504,6 +532,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
           state.slashUntil = now + 250;
           state.lane = nextLane;
           targetLaneX = laneX(nextLane);
+          setMatthiasPose(TRAIL_SPRITES.matthiasCapture, state.slashUntil);
           emitHud(now, true);
         }
         return;
@@ -551,16 +580,14 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
       state.promotionRefused = true;
       state.promotionUntil = now + 1900;
       state.score += TRAIL_PROMOTION_BONUS;
+      setMatthiasPose(TRAIL_SPRITES.matthiasVictory, now + 900);
       setToast(`PROMOCIÓN A DAMA · RECHAZADA. +${TRAIL_PROMOTION_BONUS}`, now, 1900);
     }
 
     if (state.power && now >= state.powerUntil) state.power = null;
     if (state.combo && now >= state.comboUntil) breakCombo();
-    if (state.slashUntil && now >= state.slashUntil) {
-      state.slashUntil = 0;
-      matthias.material.map = texture(TRAIL_SPRITES.matthiasRun);
-      matthias.material.needsUpdate = true;
-    }
+    if (state.slashUntil && now >= state.slashUntil) state.slashUntil = 0;
+    if (matthiasPoseUntil && now >= matthiasPoseUntil) setMatthiasPose(TRAIL_SPRITES.matthiasRun);
 
     state.spawnIn -= state.speed * dt;
     if (state.spawnIn <= 0) spawnObject();
@@ -596,9 +623,9 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
         item.mesh.position.y = 0.78 + Math.sin(now / 180 + item.id) * 0.09;
         item.mesh.material.rotation = now / 900;
       } else if (item.kind === 'enemy' && item.enemyType === 'knight') {
-        item.mesh.position.y = 0.94 + Math.abs(Math.sin(now / 230 + item.id)) * 0.2;
+        item.mesh.position.y = 0.92 + Math.abs(Math.sin(now / 230 + item.id)) * 0.18;
       } else if (item.kind === 'enemy') {
-        item.mesh.position.y = 0.9 + Math.abs(Math.sin(now / 310 + item.id)) * 0.05;
+        item.mesh.position.y = 0.84 + Math.abs(Math.sin(now / 310 + item.id)) * 0.045;
       }
       if (item.aimLine) createBishopAim(item);
 
@@ -614,6 +641,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
         state.powerUntil = now + TRAIL_POWER_DURATION_MS;
         state.score += 80;
         removeObject(item);
+        setMatthiasPose(TRAIL_SPRITES.matthiasVictory, now + 480);
         setToast(`${trailPowerLabel(item.power)} · movimiento desbloqueado`, now, 1400);
       } else if (item.kind === 'enemy' && item.enemyType === 'pawn') {
         state.phase = 'duel';
@@ -623,7 +651,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
           timeLeft: 2.6,
           direction: state.lane === TRAIL_LANES - 1 ? -1 : 1,
         };
-        item.mesh.material.map = texture(TRAIL_SPRITES.enemyDuelist);
+        item.mesh.material.map = spriteTexture(TRAIL_SPRITES.enemyDuelist);
         item.mesh.material.needsUpdate = true;
         item.z = PLAYER_Z - 0.18;
         setToast('¡FRONTAL! Machaca ESPACIO.', now, 1000);
@@ -658,7 +686,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
       item.z = PLAYER_Z - 0.18;
       item.mesh.position.z = item.z;
       item.mesh.position.x = laneX(state.lane) + state.duel.direction * 0.46;
-      item.mesh.position.y = 0.92 + Math.sin(now / 85) * 0.04;
+      item.mesh.position.y = 0.86 + Math.sin(now / 85) * 0.04;
     }
     if (state.duel.timeLeft <= 0) {
       if (item) removeObject(item);
@@ -696,8 +724,8 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     const laneEase = reducedMotion ? 1 : Math.min(1, dt * 12);
     matthias.position.x += (targetLaneX - matthias.position.x) * laneEase;
     const runPulse = state.phase === 'running' ? Math.sin(now / 70) : Math.sin(now / 180);
-    matthias.position.y = 1.04 + Math.abs(runPulse) * (reducedMotion ? 0.025 : 0.09);
-    matthias.material.rotation = reducedMotion ? 0 : runPulse * 0.025;
+    matthias.position.y = 0.96 + Math.abs(runPulse) * (reducedMotion ? 0.02 : 0.075);
+    matthias.material.rotation = reducedMotion ? 0 : runPulse * 0.018;
 
     camera.position.x += (matthias.position.x * 0.08 - camera.position.x) * Math.min(1, dt * 4);
     camera.lookAt(matthias.position.x * 0.08, 0.35, -10.5);
@@ -707,7 +735,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     frame = requestAnimationFrame(render);
   }
   frame = requestAnimationFrame(render);
-  onReady?.(`THREE.JS · WebGL${renderer.capabilities.isWebGL2 ? '2' : '1'}`);
+  onReady?.(`THREE.JS · WebGL${renderer.capabilities.isWebGL2 ? '2' : '1'} · ART ATLAS`);
   emitHud(performance.now(), true);
 
   return {
@@ -734,6 +762,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
       disposeObject(scene);
       for (const value of textures.values()) value.dispose?.();
       textures.clear();
+      atlasTexture.dispose();
       renderer.dispose();
       renderer.forceContextLoss?.();
       if (host.contains(renderer.domElement)) host.removeChild(renderer.domElement);
