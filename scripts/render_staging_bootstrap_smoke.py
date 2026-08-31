@@ -148,6 +148,29 @@ def test_staging_environment_is_created_when_missing() -> None:
     check(environment["id"] == "env-stage", "debe devolver el environment recién creado")
 
 
+def test_suspended_staging_is_resumed_before_deploy() -> None:
+    calls = []
+    with (
+        patch.object(module, "service_suspension_state", side_effect=["suspended", "not_suspended"]),
+        patch.object(module, "api", side_effect=lambda method, path, payload=None: calls.append((method, path, payload)) or {}),
+        patch.object(module.time, "sleep"),
+    ):
+        module.ensure_service_resumed("srv-stage")
+    check(
+        ("POST", "/services/srv-stage/resume", None) in calls,
+        "staging suspendido debe reanudarse antes de desplegar",
+    )
+
+
+def test_active_staging_does_not_resume_again() -> None:
+    with (
+        patch.object(module, "service_suspension_state", return_value="not_suspended"),
+        patch.object(module, "api") as render_api,
+    ):
+        module.ensure_service_resumed("srv-stage")
+    render_api.assert_not_called()
+
+
 def test_main_reconciles_without_duplicate_creation() -> None:
     production = {"id": "srv-prod", "name": module.PRODUCTION_NAME, "ownerId": "tea-owner"}
     staging = {"id": "srv-stage", "name": module.SERVICE_NAME}
@@ -165,6 +188,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
         patch.object(module, "reconcile_environment") as reconcile,
         patch.object(module, "ensure_custom_domain") as domain,
         patch.object(module, "ensure_service_grouped", return_value={"id": "env-stage"}) as group,
+        patch.object(module, "ensure_service_resumed") as resume,
         patch.object(module, "export_github_secret_env") as export_secret,
     ):
         module.main()
@@ -172,6 +196,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
     reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-stable"})
     domain.assert_called_once_with("srv-stage")
     group.assert_called_once_with(production, "srv-stage")
+    resume.assert_called_once_with("srv-stage")
     export_secret.assert_called_once_with("STAGING_INVITE_CODE", "invite-stable")
     check(("PUT", "/services/srv-prod/env-vars/ENVIRONMENT", {"value": "production"}) in calls, "producción debe declarar su entorno")
     check(("PUT", "/services/srv-prod/env-vars/MONGO_DB_NAME", {"value": "chess_study"}) in calls, "producción debe quedar explícita")
@@ -185,5 +210,7 @@ if __name__ == "__main__":
     test_create_service_uses_noninteractive_boolean_syntax()
     test_staging_environment_is_reused_and_service_grouped()
     test_staging_environment_is_created_when_missing()
+    test_suspended_staging_is_resumed_before_deploy()
+    test_active_staging_does_not_resume_again()
     test_main_reconciles_without_duplicate_creation()
-    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + invite privado + agrupación Render")
+    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + invite privado + agrupación + auto-resume Render")
