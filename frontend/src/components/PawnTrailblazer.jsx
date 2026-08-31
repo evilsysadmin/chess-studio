@@ -683,6 +683,10 @@ export default function PawnTrailblazer({ onExit }) {
     }
   }
 
+  function pressControl(key) {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  }
+
   return (
     <div className="pawn-trailblazer" data-pawn-trailblazer="true">
       <div className="pawn-trailblazer-head">
@@ -705,6 +709,10 @@ export default function PawnTrailblazer({ onExit }) {
 
         <div className="pawn-trailblazer-stage">
           <canvas ref={canvasRef} aria-label="Corredor pseudo 3D de Pawn Trailblazer" />
+          <div className="pawn-trailblazer-stage-power" aria-label={`Forma ${trailPowerLabel(hud.power)}`}>
+            <span>FORMA</span>
+            <b>{trailPowerLabel(hud.power)}</b>
+          </div>
           {(hud.phase === 'ready' || hud.phase === 'gameover') && (
             <div className="pawn-trailblazer-overlay">
               <img src={TRAIL_SPRITES.matthiasRun} alt="Matthias corredor" />
@@ -715,6 +723,22 @@ export default function PawnTrailblazer({ onExit }) {
             </div>
           )}
           {hud.toast && hud.phase !== 'ready' && hud.phase !== 'gameover' && <div className="pawn-trailblazer-toast">{hud.toast}</div>}
+          {hud.phase !== 'ready' && hud.phase !== 'gameover' && (
+            <div className={`pawn-trailblazer-touch-controls ${hud.phase === 'duel' ? 'is-duel' : ''}`} aria-label="Controles táctiles">
+              <button type="button" aria-label="Mover o capturar a la izquierda" onClick={() => pressControl('ArrowLeft')}>
+                <span aria-hidden="true">←</span>
+                <small>IZQ</small>
+              </button>
+              <button type="button" className="pawn-trailblazer-touch-action" aria-label={hud.phase === 'duel' ? 'Empujar al peón rival' : 'Acción'} onClick={() => pressControl(' ')}>
+                <span aria-hidden="true">⚔</span>
+                <small>{hud.phase === 'duel' ? 'EMPUJA' : 'ACCIÓN'}</small>
+              </button>
+              <button type="button" aria-label="Mover o capturar a la derecha" onClick={() => pressControl('ArrowRight')}>
+                <span aria-hidden="true">→</span>
+                <small>DER</small>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="pawn-trailblazer-controls">
