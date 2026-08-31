@@ -167,7 +167,24 @@ def env_values(production: dict, staging: dict | None) -> dict[str, str]:
     }
 
 
+def set_cli_workspace(production: dict) -> None:
+    owner = production.get("owner") if isinstance(production.get("owner"), dict) else {}
+    owner_id = str(production.get("ownerId") or owner.get("id") or "").strip()
+    if not owner_id:
+        raise SystemExit("El servicio de producción no expone ownerId; no se puede fijar el workspace de Render")
+    result = subprocess.run(
+        ["render", "workspace", "set", owner_id, "--output", "json"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        print(result.stderr.strip()[:1000], file=sys.stderr)
+        raise SystemExit("Render CLI no pudo seleccionar el workspace de producción")
+
+
 def create_service(values: dict[str, str], production: dict) -> None:
+    set_cli_workspace(production)
     region = str((production or {}).get("region") or "frankfurt")
     repository = required("GITHUB_REPOSITORY")
     command = [
