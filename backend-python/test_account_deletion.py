@@ -63,7 +63,7 @@ def test_delete_own_account_cascades_and_revokes_existing_token():
     assert deleted.json()["deletedGames"] >= 1
 
     assert asyncio.run(ustore.user_exists(username, force=True)) is False
-    assert asyncio.run(pstore.get_profile(username)) == {}
+    assert asyncio.run(pstore.get_profile(username)) is None
     assert asyncio.run(gstore.get_game(game_id)) is None
     assert username not in mdstore._memory
     assert username not in mmstore._memory
