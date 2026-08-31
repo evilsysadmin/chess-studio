@@ -1,6 +1,47 @@
 import asyncio
 
+import pytest
+
 import db
+
+
+def test_deployed_environments_require_explicit_database_selection():
+    assert db.validate_mongo_environment({}) == "chess_study"
+    assert db.validate_mongo_environment({
+        "ENVIRONMENT": "production",
+        "MONGO_URL": "mongodb://cluster",
+        "MONGO_DB_NAME": "chess_study",
+    }) == "chess_study"
+    assert db.validate_mongo_environment({
+        "ENVIRONMENT": "staging",
+        "MONGO_URL": "mongodb://cluster",
+        "MONGO_DB_NAME": "chess_study_staging",
+    }) == "chess_study_staging"
+
+
+def test_staging_and_production_cannot_cross_databases():
+    with pytest.raises(RuntimeError, match="MONGO_URL"):
+        db.validate_mongo_environment({
+            "ENVIRONMENT": "staging",
+            "MONGO_DB_NAME": "chess_study_staging",
+        })
+    with pytest.raises(RuntimeError, match="MONGO_DB_NAME"):
+        db.validate_mongo_environment({
+            "ENVIRONMENT": "staging",
+            "MONGO_URL": "mongodb://cluster",
+        })
+    with pytest.raises(RuntimeError, match="no puede usar"):
+        db.validate_mongo_environment({
+            "ENVIRONMENT": "staging",
+            "MONGO_URL": "mongodb://cluster",
+            "MONGO_DB_NAME": "chess_study",
+        })
+    with pytest.raises(RuntimeError, match="debe usar"):
+        db.validate_mongo_environment({
+            "ENVIRONMENT": "production",
+            "MONGO_URL": "mongodb://cluster",
+            "MONGO_DB_NAME": "chess_study_staging",
+        })
 
 
 def _reset_db_state(monkeypatch, *, clock=100.0):
