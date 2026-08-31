@@ -15,7 +15,7 @@ export const TRAIL_SECTORS = Object.freeze([
 ]);
 
 export function clampTrailLane(lane) {
-  return Math.max(0, Math.min(TRAIL_LANES - 1, Math.round(Number(lane) || 0));
+  return Math.max(0, Math.min(TRAIL_LANES - 1, Math.round(Number(lane) || 0)));
 }
 
 export function trailSpeedForDistance(distance = 0) {
