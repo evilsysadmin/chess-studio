@@ -50,10 +50,10 @@ test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre 
   await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 
-test('Pawn Trailblazer · Phaser gobierna el runner y conserva teclado/controles', async ({ page }) => {
+test('Pawn Trailblazer · Three.js gobierna el runner y conserva teclado/controles', async ({ page }) => {
   await openPawnTrailblazer(page);
 
-  const renderer = page.locator('[data-pawn-trailblazer-renderer="phaser"]');
+  const renderer = page.locator('[data-pawn-trailblazer-renderer="three"]');
   await expect(renderer).toBeVisible();
   await expect(renderer.locator('canvas')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Iniciar carrera', exact: true })).toBeVisible();
@@ -81,7 +81,7 @@ test('Pawn Trailblazer móvil · HUD compacto, controles táctiles y dock global
   await page.setViewportSize({ width: 390, height: 844 });
   await openPawnTrailblazer(page);
 
-  const renderer = page.locator('[data-pawn-trailblazer-renderer="phaser"]');
+  const renderer = page.locator('[data-pawn-trailblazer-renderer="three"]');
   await expect(renderer).toBeVisible();
   await expect(renderer.locator('canvas')).toBeVisible();
 
