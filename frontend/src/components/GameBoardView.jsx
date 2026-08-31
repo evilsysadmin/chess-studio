@@ -1,4 +1,4 @@
-import Board from './Board.jsx';
+import PlayableBoard from './PlayableBoard.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
@@ -79,7 +79,7 @@ export default function GameBoardView({
         <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
           <div className="game-board-stack">
             {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
-            <Board
+            <PlayableBoard
               fen={board.visibleBoardFen}
               onSquareClick={board.onSquareClick}
               selectedSquare={board.selected}
