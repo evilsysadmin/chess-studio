@@ -74,6 +74,11 @@
   min-height: clamp(430px, 65vh, 700px);
 }
 
+.pawn-trailblazer-stage-power,
+.pawn-trailblazer-touch-controls {
+  display: none;
+}
+
 .pawn-trailblazer-overlay {
   position: absolute;
   inset: 0;
@@ -279,33 +284,172 @@
 }
 
 @media (max-width: 520px) {
-  .pawn-trailblazer { gap: 14px; }
-  .pawn-trailblazer-shell {
+  .pawn-trailblazer {
     gap: 10px;
-    padding: 10px;
+    padding-bottom: 16px;
+  }
+
+  .pawn-trailblazer-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pawn-trailblazer-head > div { min-width: 0; }
+  .pawn-trailblazer-head p { display: none; }
+  .pawn-trailblazer-head h2 {
+    margin: .12rem 0 0;
+    font-size: clamp(1.45rem, 7vw, 1.9rem);
+    line-height: 1.05;
+  }
+  .pawn-trailblazer-head .section-label {
+    font-size: .62rem;
+    letter-spacing: .1em;
+  }
+  .pawn-trailblazer-head .secondary-btn {
+    min-height: 40px;
+    padding: 7px 9px;
+    white-space: nowrap;
+    font-size: .76rem;
+  }
+
+  .pawn-trailblazer-shell {
+    gap: 8px;
+    padding: 8px;
     border-radius: 14px;
   }
-  .pawn-trailblazer-hud { gap: 6px; }
+
+  .pawn-trailblazer-hud { gap: 5px; }
   .pawn-trailblazer-hud span {
-    min-height: 54px;
+    min-height: 44px;
     justify-content: center;
-    padding: 6px 8px;
-    font-size: .64rem;
-    line-height: 1.15;
+    padding: 5px 7px;
+    font-size: .6rem;
+    line-height: 1.1;
   }
-  .pawn-trailblazer-hud b { font-size: .9rem; }
-  .pawn-trailblazer-hud span:last-child {
-    grid-column: 1 / -1;
-    min-height: 46px;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-  }
+  .pawn-trailblazer-hud b { font-size: .86rem; }
+  .pawn-trailblazer-hud span:last-child { display: none; }
+
   .pawn-trailblazer-stage,
-  .pawn-trailblazer-stage canvas { min-height: clamp(460px, 64svh, 540px); }
+  .pawn-trailblazer-stage canvas {
+    min-height: clamp(500px, 70svh, 590px);
+  }
+
+  .pawn-trailblazer-stage-power {
+    position: absolute;
+    z-index: 3;
+    top: 9px;
+    right: 9px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    max-width: calc(100% - 18px);
+    padding: 6px 9px;
+    border: 1px solid rgba(201, 162, 39, .45);
+    border-radius: 999px;
+    background: rgba(7, 8, 11, .82);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
+  }
+  .pawn-trailblazer-stage-power span {
+    color: var(--text-muted);
+    font-size: .56rem;
+    letter-spacing: .1em;
+  }
+  .pawn-trailblazer-stage-power b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #f2df9d;
+    font-size: .74rem;
+  }
+
+  .pawn-trailblazer-touch-controls {
+    position: absolute;
+    z-index: 4;
+    left: 9px;
+    right: 9px;
+    bottom: max(9px, env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: 1fr 1.18fr 1fr;
+    gap: 7px;
+    pointer-events: auto;
+  }
+  .pawn-trailblazer-touch-controls button {
+    min-width: 0;
+    min-height: 58px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 14px;
+    background: rgba(10, 12, 17, .78);
+    backdrop-filter: blur(9px);
+    color: #f3e7c2;
+    box-shadow: 0 5px 18px rgba(0, 0, 0, .36);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pawn-trailblazer-touch-controls button:active {
+    transform: translateY(1px) scale(.985);
+    background: rgba(32, 34, 42, .9);
+  }
+  .pawn-trailblazer-touch-controls button > span {
+    font: 800 1.35rem/1 system-ui;
+  }
+  .pawn-trailblazer-touch-controls button > small {
+    font: 800 .58rem/1 system-ui;
+    letter-spacing: .1em;
+    color: rgba(243, 231, 194, .72);
+  }
+  .pawn-trailblazer-touch-action {
+    border-color: rgba(201, 162, 39, .62) !important;
+    background: rgba(74, 55, 18, .82) !important;
+  }
+  .pawn-trailblazer-touch-controls.is-duel .pawn-trailblazer-touch-action {
+    border-color: rgba(255, 91, 79, .82) !important;
+    background: rgba(92, 31, 26, .88) !important;
+  }
+
+  .pawn-trailblazer-toast {
+    bottom: calc(max(9px, env(safe-area-inset-bottom)) + 70px);
+    max-width: calc(100% - 18px);
+    padding: 7px 10px;
+    font-size: .78rem;
+    line-height: 1.2;
+  }
+
+  .pawn-trailblazer-overlay {
+    padding: 18px 14px 88px;
+  }
+  .pawn-trailblazer-overlay img {
+    width: 110px;
+    height: 110px;
+  }
+  .pawn-trailblazer-overlay strong {
+    font-size: clamp(1.15rem, 5.5vw, 1.6rem);
+  }
+
+  .pawn-trailblazer-controls > div:nth-child(1),
+  .pawn-trailblazer-controls > div:nth-child(2) {
+    display: none;
+  }
+  .pawn-trailblazer-music {
+    justify-content: center;
+    padding: 7px !important;
+  }
+  .pawn-trailblazer-music span { font-size: .68rem; }
+  .pawn-trailblazer-music button {
+    min-height: 34px;
+    padding: 6px 10px;
+  }
+  .pawn-trailblazer-note { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .experiments-card:hover { transform: none; }
+  .experiments-card:hover,
+  .pawn-trailblazer-touch-controls button:active { transform: none; }
 }
