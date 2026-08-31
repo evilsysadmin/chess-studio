@@ -1,4 +1,4 @@
-import { getToken } from './auth.js';
+import { getToken, getUsername } from './auth.js';
 import { fetchWithTimeout } from './asyncControl.js';
 import { withRequestId } from './requestId.js';
 
@@ -29,13 +29,15 @@ async function request(path, options = {}) {
 
 export function fetchMatthiasDailyStatus() {
   // Insights puede montar a la vez la consulta diaria y otras vistas del
-  // expediente. Comparten la misma lectura GET mientras esté en vuelo para no
-  // duplicar tráfico; una llamada posterior vuelve a leer el estado fresco.
-  if (dailyStatusInFlight) return dailyStatusInFlight;
-  dailyStatusInFlight = request('/matthias/daily').finally(() => {
-    dailyStatusInFlight = null;
+  // expediente. Comparten la misma lectura GET sólo dentro de la misma
+  // identidad; un cambio Alice → Bob jamás hereda el Promise de Alice.
+  const identity = String(getUsername() || '').trim().toLowerCase() || null;
+  if (dailyStatusInFlight?.identity === identity) return dailyStatusInFlight.promise;
+  const promise = request('/matthias/daily').finally(() => {
+    if (dailyStatusInFlight?.promise === promise) dailyStatusInFlight = null;
   });
-  return dailyStatusInFlight;
+  dailyStatusInFlight = { identity, promise };
+  return promise;
 }
 
 export function fetchMatthiasBriefing() {
