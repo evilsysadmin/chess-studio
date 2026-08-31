@@ -5,6 +5,7 @@ import {
   TRAIL_ATLAS_IMAGE,
   TRAIL_SPRITES,
   trailSprite,
+  trailSpriteStyle,
 } from './pawnTrailblazerSprites.js';
 
 describe('3D Pawn Chess professional art atlas', () => {
@@ -45,5 +46,15 @@ describe('3D Pawn Chess professional art atlas', () => {
       expect(trailSprite(name)).toBe(name);
     }
     expect(trailSprite('no-existe')).toBeNull();
+  });
+
+  it('expone crops CSS del mismo atlas para overlays React sin duplicar arte', () => {
+    const run = trailSpriteStyle('matthiasRun');
+    const capture = trailSpriteStyle('matthiasCapture');
+    expect(run.backgroundImage).toContain('url(');
+    expect(run.backgroundSize).toBe('400% 400%');
+    expect(run.backgroundPosition).not.toBe(capture.backgroundPosition);
+    expect(run.width).toBe('128px');
+    expect(trailSpriteStyle('no-existe')).toBeNull();
   });
 });
