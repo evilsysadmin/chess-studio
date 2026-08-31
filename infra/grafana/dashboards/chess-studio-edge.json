@@ -1,0 +1,157 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Qué mide este dashboard",
+      "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "mode": "markdown",
+        "content": "**Edge/Cloudflare** mide tráfico HTTP, errores, países, seguridad y Workers desde el exporter oficial. Puede incluir bots. **Un request no equivale a una persona.** Para popularidad humana exacta (visitantes/pageviews RUM), usa **Cloudflare Web Analytics**."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Requests producción · 24 h",
+      "description": "Requests del hostname público de Chess Studio vistos en los colos de Cloudflare.",
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Security events · 24 h",
+      "description": "Eventos sobre los que Cloudflare/WAF ha actuado para el hostname de producción.",
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "4xx producción · 24 h",
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_customer_error_4xx_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "5xx producción · 24 h",
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(increase(cloudflare_zone_customer_error_5xx_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])) or vector(0)", "refId": "A"}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Requests/s · producción",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(rate(cloudflare_zone_colocation_requests_total{host=\"chess-studio.shadowops.dpdns.org\"}[$__rate_interval]))", "legendFormat": "requests/s", "refId": "A"}
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "HTTP status · producción",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum by (edge_status) (rate(cloudflare_zone_requests_status_country_host_total{host=\"chess-studio.shadowops.dpdns.org\"}[$__rate_interval]))", "legendFormat": "{{edge_status}}", "refId": "A"}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Top países · requests 24 h",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 17},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "orientation": "auto", "showValue": "auto", "stacking": "none", "xTickLabelRotation": 0, "xTickLabelSpacing": 0},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "topk(10, sum by (country) (increase(cloudflare_zone_requests_status_country_host_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h])))", "format": "time_series", "instant": true, "legendFormat": "{{country}}", "refId": "A"}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "barchart",
+      "title": "WAF / firewall · acciones 24 h",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 17},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "orientation": "auto", "showValue": "auto", "stacking": "none", "xTickLabelRotation": 0, "xTickLabelSpacing": 0},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum by (action) (increase(cloudflare_zone_firewall_events_total{host=\"chess-studio.shadowops.dpdns.org\"}[24h]))", "instant": true, "legendFormat": "{{action}}", "refId": "A"}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Workers AI · requests y errores",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 25},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(rate(cloudflare_worker_requests_total{script_name=\"chess-studio-narrative-ai\"}[$__rate_interval]))", "legendFormat": "requests/s", "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "sum(rate(cloudflare_worker_errors_total{script_name=\"chess-studio-narrative-ai\"}[$__rate_interval]))", "legendFormat": "errors/s", "refId": "B"}
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Cache hit ratio · zona",
+      "description": "Métrica de zona, no exclusiva de Chess Studio si shadowops.dpdns.org aloja otros hostnames.",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 25},
+      "datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}, "overrides": []},
+      "options": {"legend": {"calcs": ["lastNotNull", "mean"], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "${metrics_datasource_uid}"}, "expr": "cloudflare_zone_cache_hit_ratio{zone=\"shadowops.dpdns.org\"}", "legendFormat": "cache hit", "refId": "A"}
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["chess-studio", "cloudflare", "edge", "prometheus"],
+  "templating": {"list": []},
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Chess Studio · Edge / Cloudflare",
+  "uid": "chess-studio-edge",
+  "version": 1,
+  "weekStart": ""
+}

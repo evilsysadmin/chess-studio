@@ -186,12 +186,20 @@ if (checkCiWiring) {
     'name: Production · Render backend',
     'needs: cloudflare',
     'python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"',
-    'name: Production · GitHub Pages',
+    'name: Production · Cloudflare Pages',
     'needs: backend',
     'VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}',
+    'cloudflare_production_pages.py prepare',
+    '--project-name chess-studio-production',
+    '--commit-hash "$DEPLOY_SHA"',
+    'Verify Pages origin before public cutover',
+    'cloudflare_production_pages.py activate',
     'Verify production frontend build identity',
   ]) {
     if (!promotionSource.includes(required)) fail(`Promoción de producción incompleta: falta ${JSON.stringify(required)}`);
+  }
+  if (promotionSource.includes('actions/deploy-pages@') || promotionSource.includes('actions/configure-pages@')) {
+    fail('Promoción no debe conservar el runtime de GitHub Pages tras el cutover a Cloudflare Pages');
   }
   if (!stagingAiSource.includes('UPSTREAM_EVENT: ${{ github.event.workflow_run.event')) fail('Staging AI debe conservar la procedencia del staging deploy');
   if (!stagingAiSource.includes("$TRIGGER_EVENT\" == 'workflow_run' && \"$UPSTREAM_EVENT\" != 'workflow_run'")) fail('Staging AI debe rechazar como acreditación un staging disparado manualmente');

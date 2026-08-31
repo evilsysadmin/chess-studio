@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PORTABLE_LOGS = ROOT / "ops" / "grafana" / "chess-studio-logs.json"
 INFRA = ROOT / "infra" / "grafana"
 WORKFLOW = ROOT / ".github" / "workflows" / "grafana-dashboards.yml"
+EXPORTER_WORKFLOW = ROOT / ".github" / "workflows" / "cloudflare-prometheus-exporter.yml"
+ALLOY_EXAMPLE = INFRA / "alloy" / "cloudflare-exporter.alloy.example"
 
 
 def fail(message: str) -> None:
@@ -44,6 +46,7 @@ def main() -> int:
         "chess-studio-overview.json": "chess-studio-api-overview",
         "chess-studio-logs.json": "chess-studio-logs",
         "chess-studio-traces.json": "chess-studio-traces",
+        "chess-studio-edge.json": "chess-studio-edge",
     }
     for filename, uid in required_dashboards.items():
         path = INFRA / "dashboards" / filename
@@ -57,16 +60,29 @@ def main() -> int:
         if token not in trace_dash:
             fail(f"dashboard Tempo no cubre {token}")
 
+    edge_dash = (INFRA / "dashboards" / "chess-studio-edge.json").read_text(encoding="utf-8")
+    for token in (
+        '${metrics_datasource_uid}',
+        'chess-studio.shadowops.dpdns.org',
+        'cloudflare_zone_colocation_requests_total',
+        'cloudflare_zone_firewall_events_total',
+        'cloudflare_worker_requests_total',
+        'requests ≠ humanos' if 'requests ≠ humanos' in edge_dash else 'Un request no equivale a una persona',
+    ):
+        if token not in edge_dash:
+            fail(f"dashboard Edge no cubre {token}")
+
     tf = (INFRA / "terraform" / "main.tf").read_text(encoding="utf-8")
     for resource in (
         'grafana_dashboard" "chess_studio_overview',
         'grafana_dashboard" "chess_studio_logs',
         'grafana_dashboard" "chess_studio_traces',
+        'grafana_dashboard" "chess_studio_edge',
     ):
         if resource not in tf:
             fail(f"Terraform no declara {resource}")
     workflow = WORKFLOW.read_text(encoding="utf-8") if WORKFLOW.exists() else ""
-    for token in ('infra/grafana/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'Validate Grafana datasources', '/api/datasources/uid/$uid', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform apply -auto-approve tfplan', 'Verify published dashboards', '/api/dashboards/uid/$uid'):
+    for token in ('infra/grafana/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'Validate Grafana datasources', '/api/datasources/uid/$uid', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform import grafana_dashboard.chess_studio_edge', 'terraform apply -auto-approve tfplan', 'Verify published dashboards', '/api/dashboards/uid/$uid', 'chess-studio-edge'):
         if token not in workflow:
             fail(f"workflow Grafana incompleto: {token}")
     # El token de publicación no necesita ampliar permisos sólo para este probe.
@@ -74,6 +90,37 @@ def main() -> int:
     for token in ('403)', '::warning::No se puede leer el datasource Grafana', '404)', 'no existe: HTTP 404'):
         if token not in workflow:
             fail(f"workflow Grafana perdió el contrato least-privilege: {token}")
+
+    exporter_workflow = EXPORTER_WORKFLOW.read_text(encoding="utf-8") if EXPORTER_WORKFLOW.exists() else ""
+    for token in (
+        'cloudflare/cloudflare-prometheus-exporter',
+        'c98fd6772a4ff806e40ba08cb5d4edb002ef13dc',
+        'CLOUDFLARE_EXPORTER_API_TOKEN',
+        'CLOUDFLARE_EXPORTER_BASIC_AUTH_USER',
+        'CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD',
+        'DISABLE_UI',
+        'DISABLE_CONFIG_API',
+        'HOST_METRICS_ALLOWLIST',
+        'chess-studio.shadowops.dpdns.org',
+        'staging.chess-studio.shadowops.dpdns.org',
+        'unauth_code',
+        'esperaba 401',
+    ):
+        if token not in exporter_workflow:
+            fail(f"workflow exporter Cloudflare incompleto: {token}")
+    if 'printf \'%s\' "$CLOUDFLARE_API_TOKEN"' in exporter_workflow:
+        fail("exporter no debe reutilizar el token write-capable de CI como token runtime")
+
+    alloy = ALLOY_EXAMPLE.read_text(encoding="utf-8") if ALLOY_EXAMPLE.exists() else ""
+    for token in (
+        'metrics.shadowops.dpdns.org',
+        'prometheus.scrape "chess_studio_cloudflare"',
+        'CLOUDFLARE_EXPORTER_BASIC_AUTH_USER',
+        'CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD',
+        'prometheus.remote_write.metrics_service.receiver',
+    ):
+        if token not in alloy:
+            fail(f"Alloy Cloudflare incompleto: {token}")
 
     tracing = (ROOT / "backend-python" / "tracing.py").read_text(encoding="utf-8")
     requirements = (ROOT / "backend-python" / "requirements.txt").read_text(encoding="utf-8")
@@ -128,7 +175,7 @@ def main() -> int:
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
 
-    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · Terraform 3 dashboards · OTLP logs+metrics+traces + trace_id")
+    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · Terraform 4 dashboards · OTLP + Cloudflare edge")
     return 0
 
 

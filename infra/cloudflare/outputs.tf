@@ -14,8 +14,8 @@ output "workers_dev_enabled" {
 }
 
 output "frontend_url" {
-  description = "Public GitHub Pages frontend URL."
-  value       = "https://${cloudflare_dns_record.github_pages.name}"
+  description = "Public Cloudflare Pages frontend URL. DNS ownership lives in the two-phase Pages cutover helper."
+  value       = "https://chess-studio.shadowops.dpdns.org"
 }
 
 output "api_url" {

@@ -30,3 +30,9 @@ resource "grafana_dashboard" "chess_studio_traces" {
   overwrite   = true
   config_json = templatefile("${path.module}/../dashboards/chess-studio-traces.json", local.dashboard_vars)
 }
+
+resource "grafana_dashboard" "chess_studio_edge" {
+  folder      = grafana_folder.chess_studio.uid
+  overwrite   = true
+  config_json = templatefile("${path.module}/../dashboards/chess-studio-edge.json", local.dashboard_vars)
+}
