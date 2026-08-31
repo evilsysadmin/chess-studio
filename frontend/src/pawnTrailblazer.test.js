@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  TRAIL_BISHOP_PARRY_WINDOW_MS,
   TRAIL_COMBO_WINDOW_MS,
   clampTrailLane,
+  trailBishopParryReady,
+  trailBishopTargetLane,
   trailComboAfterCapture,
   trailComboMultiplier,
   trailDuelDecay,
@@ -58,13 +61,16 @@ describe('Pawn Trailblazer core', () => {
     expect(trailComboMultiplier(8)).toBe(2.75);
   });
 
-  it('introduce caballo y torre sólo cuando la distancia lo justifica', () => {
+  it('introduce caballo, alfil y torre por distancia con recompensas distintas', () => {
     expect(trailEnemyTypeForDistance(20, 0.99)).toBe('pawn');
     expect(trailEnemyTypeForDistance(100, 0.2)).toBe('pawn');
     expect(trailEnemyTypeForDistance(100, 0.9)).toBe('knight');
+    expect(trailEnemyTypeForDistance(220, 0.6)).toBe('knight');
+    expect(trailEnemyTypeForDistance(220, 0.8)).toBe('bishop');
     expect(trailEnemyTypeForDistance(220, 0.95)).toBe('rook');
     expect(trailEnemyCapturePoints('pawn')).toBe(240);
     expect(trailEnemyCapturePoints('knight')).toBe(320);
+    expect(trailEnemyCapturePoints('bishop')).toBe(360);
     expect(trailEnemyCapturePoints('rook')).toBe(420);
   });
 
@@ -73,5 +79,14 @@ describe('Pawn Trailblazer core', () => {
     expect(trailKnightJumpLane(4, 0)).toBe(2);
     expect(trailKnightJumpLane(2, 4)).toBe(4);
     expect(trailKnightJumpLane(2, 0)).toBe(0);
+  });
+
+  it('el alfil siempre marca una diagonal y sólo se puede parar al final de la carga', () => {
+    expect(trailBishopTargetLane(1, 4)).toBe(4);
+    expect(trailBishopTargetLane(2, 2)).toBe(3);
+    expect(trailBishopTargetLane(4, 4)).toBe(3);
+    expect(trailBishopParryReady(1_000, 1_000 - TRAIL_BISHOP_PARRY_WINDOW_MS)).toBe(true);
+    expect(trailBishopParryReady(1_000, 1_000 - TRAIL_BISHOP_PARRY_WINDOW_MS - 1)).toBe(false);
+    expect(trailBishopParryReady(1_000, 1_001)).toBe(false);
   });
 });
