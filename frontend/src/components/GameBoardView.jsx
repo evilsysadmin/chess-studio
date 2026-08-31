@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import Board from './Board.jsx';
+import Board3D from './Board3D.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
@@ -9,6 +11,7 @@ import { formatLongMove } from '../notation.js';
 import { seriesLiveMoment, seriesStatusText } from '../series.js';
 import { getUsername } from '../auth.js';
 import { zenModeSummary } from '../zenMode.js';
+import { getBoardRenderer, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 
 export default function GameBoardView({
   game,
@@ -22,11 +25,24 @@ export default function GameBoardView({
   controls,
   side,
 }) {
+  const [boardRenderer, setBoardRendererState] = useState(() => getBoardRenderer());
   const liveSeriesMoment = context.seriesState ? seriesLiveMoment(context.seriesState) : null;
   const topColor = humanColor === 'w' ? 'b' : 'w';
   const bottomColor = humanColor;
   const topTime = topColor === 'w' ? clocks.whiteTime : clocks.blackTime;
   const bottomTime = bottomColor === 'w' ? clocks.whiteTime : clocks.blackTime;
+  const BoardSurface = boardRenderer === '3d' ? Board3D : Board;
+
+  useEffect(() => {
+    const refreshRenderer = () => setBoardRendererState(getBoardRenderer());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshRenderer);
+    return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshRenderer);
+  }, []);
+
+  function toggleBoardRenderer() {
+    const next = setBoardRenderer(boardRenderer === '3d' ? '2d' : '3d');
+    setBoardRendererState(next);
+  }
 
   function renderPlayerRail({ color, seconds, cpu = false }) {
     const isLow = seconds !== null && seconds <= 10;
@@ -79,7 +95,7 @@ export default function GameBoardView({
         <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}`}>
           <div className="game-board-stack">
             {renderPlayerRail({ color: topColor, seconds: topTime, cpu: true })}
-            <Board
+            <BoardSurface
               fen={board.visibleBoardFen}
               onSquareClick={board.onSquareClick}
               selectedSquare={board.selected}
@@ -114,6 +130,15 @@ export default function GameBoardView({
                       Deshacer jugada
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className={`secondary-btn board-renderer-toggle ${boardRenderer === '3d' ? 'active' : ''}`}
+                    aria-pressed={boardRenderer === '3d'}
+                    title={boardRenderer === '3d' ? 'Volver al tablero 2D' : 'Usar tablero 3D con cámara fija'}
+                    onClick={toggleBoardRenderer}
+                  >
+                    {boardRenderer === '3d' ? 'Vista · 3D' : 'Vista · 2D'}
+                  </button>
                   <button
                     type="button"
                     className={`secondary-btn zen-mode-toggle ${zenMode ? 'active' : ''}`}
