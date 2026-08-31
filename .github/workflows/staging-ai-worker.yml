@@ -30,6 +30,8 @@ jobs:
       url: https://ai-staging.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      TRIGGER_EVENT: ${{ github.event_name }}
+      UPSTREAM_EVENT: ${{ github.event.workflow_run.event || '' }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -45,6 +47,10 @@ jobs:
           [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
           [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
+          if [[ "$TRIGGER_EVENT" == 'workflow_run' && "$UPSTREAM_EVENT" != 'workflow_run' ]]; then
+            echo "::error::Staging AI fue encadenado desde un Staging · deploy manual ($UPSTREAM_EVENT); puede probar staging, pero no acreditar producción."
+            exit 1
+          fi
 
       - name: Checkout staging-approved commit
         uses: actions/checkout@v7
@@ -135,4 +141,5 @@ jobs:
             echo '- Shared secret: `sincronizado desde Render staging sin exponerlo`'
             echo "- Source SHA: \`$DEPLOY_SHA\`"
             echo '- Health + routing contract: `OK`'
+            echo "- Upstream event: \`${UPSTREAM_EVENT:-manual}\`"
           } >> "$GITHUB_STEP_SUMMARY"
