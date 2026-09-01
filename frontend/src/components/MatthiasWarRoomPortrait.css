@@ -2,19 +2,33 @@
   isolation: isolate;
 }
 
-.game-3d-matthias-portrait-wrap .game-3d-matthias-portrait {
+.game-3d-matthias-character {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
   transform-origin: 50% 72%;
-  transition: transform .55s cubic-bezier(.2,.75,.2,1), filter .35s ease;
+  animation: matthias-warroom-idle 6.4s ease-in-out infinite alternate;
+  transition: transform .58s cubic-bezier(.2,.75,.2,1), filter .35s ease;
+  pointer-events: none;
 }
 
+.game-3d-matthias-portrait-wrap .game-3d-matthias-portrait {
+  transform: none;
+  transform-origin: 50% 72%;
+  transition: filter .35s ease;
+}
+
+/* La expresión base es severa. Estas cejas no aparecen sólo cuando se enfada:
+   corrigen la lectura triste del arte y después se intensifican con angerLevel. */
 .game-3d-matthias-brows {
   position: absolute;
   z-index: 5;
   left: 50%;
-  top: 44%;
-  width: 24%;
-  height: 7%;
-  opacity: 0;
+  top: 42.7%;
+  width: 27%;
+  height: 8%;
+  opacity: .74;
   transform: translateX(-50%);
   transition: opacity .28s ease, transform .35s ease;
   pointer-events: none;
@@ -25,110 +39,190 @@
   content: '';
   position: absolute;
   top: 42%;
-  width: 42%;
+  width: 43%;
   height: 3px;
   border-radius: 999px;
-  background: rgba(37, 18, 12, .88);
-  box-shadow: 0 1px 0 rgba(224, 176, 104, .12), 0 2px 5px rgba(0, 0, 0, .38);
+  background: rgba(32, 16, 10, .94);
+  box-shadow: 0 1px 0 rgba(229, 184, 115, .11), 0 2px 5px rgba(0, 0, 0, .42);
 }
 
 .game-3d-matthias-brows::before {
-  left: 2%;
-  transform: rotate(12deg);
+  left: 1%;
+  transform: rotate(19deg);
 }
 
 .game-3d-matthias-brows::after {
-  right: 2%;
-  transform: rotate(-12deg);
+  right: 1%;
+  transform: rotate(-19deg);
 }
 
-.game-3d-matthias-mouth {
+/* Párpados discretos para un blink real sobre el retrato estático. */
+.game-3d-matthias-eyelids {
   position: absolute;
-  z-index: 4;
+  z-index: 6;
   left: 50%;
-  top: 57.5%;
-  width: 9.5%;
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(34,19,12,.78);
-  box-shadow: 0 1px 1px rgba(255,221,175,.18);
+  top: 48.2%;
+  width: 27%;
+  height: 5%;
   opacity: 0;
-  transform: translateX(-50%) scaleX(.9) scaleY(.45);
+  transform: translateX(-50%) scaleY(.12);
+  transform-origin: center;
+  transition: opacity .035s linear, transform .07s ease;
   pointer-events: none;
 }
 
+.game-3d-matthias-eyelids::before,
+.game-3d-matthias-eyelids::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 36%;
+  height: 78%;
+  border-radius: 50% 50% 45% 45%;
+  background: linear-gradient(180deg, rgba(228,214,187,.98), rgba(190,169,137,.95));
+  box-shadow: inset 0 -1px rgba(67,42,25,.34), 0 1px 1px rgba(0,0,0,.18);
+}
+
+.game-3d-matthias-eyelids::before { left: 2%; transform: rotate(2deg); }
+.game-3d-matthias-eyelids::after { right: 2%; transform: rotate(-2deg); }
+
+.game-3d-matthias-portrait-wrap.is-blinking .game-3d-matthias-eyelids {
+  opacity: .98;
+  transform: translateX(-50%) scaleY(1);
+}
+
+/* Enmascara suavemente la boca triste del arte y dibuja una boca recta y seca.
+   El parche es translúcido para absorber los cambios de iluminación del retrato. */
+.game-3d-matthias-mouth {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 55.8%;
+  width: 14%;
+  height: 7%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(213,196,164,.72) 0 46%, rgba(213,196,164,.34) 63%, transparent 78%);
+  opacity: .94;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.game-3d-matthias-mouth::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 51%;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(39, 21, 14, .88);
+  box-shadow: 0 1px 0 rgba(255,232,194,.16), 0 2px 2px rgba(0,0,0,.24);
+  transform-origin: center;
+}
+
 .game-3d-matthias-portrait-wrap.anger-level-1 .game-3d-matthias-portrait {
-  filter: saturate(1.035) contrast(1.035);
+  filter: saturate(1.035) contrast(1.04);
 }
 
 .game-3d-matthias-portrait-wrap.anger-level-1 .game-3d-matthias-brows {
-  opacity: .28;
-  transform: translateX(-50%) translateY(1px) scaleX(.94);
+  opacity: .8;
+  transform: translateX(-50%) translateY(1px) scaleX(1.01);
 }
 
 .game-3d-matthias-portrait-wrap.anger-level-2 .game-3d-matthias-portrait {
-  filter: saturate(1.07) contrast(1.065) brightness(.985) drop-shadow(0 11px 17px rgba(66, 20, 8, .22));
+  filter: saturate(1.07) contrast(1.07) brightness(.985) drop-shadow(0 11px 17px rgba(66, 20, 8, .22));
 }
 
 .game-3d-matthias-portrait-wrap.anger-level-2 .game-3d-matthias-brows {
-  opacity: .55;
-  transform: translateX(-50%) translateY(2px) scaleX(1.02);
+  opacity: .88;
+  transform: translateX(-50%) translateY(2px) scaleX(1.05);
 }
 
 .game-3d-matthias-portrait-wrap.anger-level-3 .game-3d-matthias-portrait {
-  filter: saturate(1.12) contrast(1.1) brightness(.97) drop-shadow(0 12px 19px rgba(82, 18, 5, .31));
+  filter: saturate(1.12) contrast(1.11) brightness(.97) drop-shadow(0 12px 19px rgba(82, 18, 5, .31));
 }
 
 .game-3d-matthias-portrait-wrap.anger-level-3 .game-3d-matthias-brows {
-  opacity: .78;
-  transform: translateX(-50%) translateY(3px) scaleX(1.08);
+  opacity: .96;
+  transform: translateX(-50%) translateY(3px) scaleX(1.09);
 }
 
 .game-3d-matthias-portrait-wrap.anger-level-4 .game-3d-matthias-portrait {
-  filter: saturate(1.18) contrast(1.14) brightness(.955) drop-shadow(0 13px 21px rgba(96, 17, 4, .4));
+  filter: saturate(1.18) contrast(1.15) brightness(.955) drop-shadow(0 13px 21px rgba(96, 17, 4, .4));
 }
 
 .game-3d-matthias-portrait-wrap.anger-level-4 .game-3d-matthias-brows {
-  opacity: .96;
-  transform: translateX(-50%) translateY(4px) scaleX(1.13);
+  opacity: 1;
+  transform: translateX(-50%) translateY(4px) scaleX(1.14);
 }
 
-.game-3d-matthias-portrait-wrap.anger-level-2:not(.is-speaking) .game-3d-matthias-mouth,
-.game-3d-matthias-portrait-wrap.anger-level-3:not(.is-speaking) .game-3d-matthias-mouth,
-.game-3d-matthias-portrait-wrap.anger-level-4:not(.is-speaking) .game-3d-matthias-mouth {
-  opacity: .68;
-  height: 3px;
-  width: 11.5%;
-  background: linear-gradient(180deg, rgba(235, 222, 194, .9) 0 46%, rgba(57, 28, 18, .92) 47% 100%);
-  box-shadow: 0 1px 0 rgba(255, 236, 202, .22), 0 2px 3px rgba(0, 0, 0, .28);
-  transform: translateX(-50%) scaleX(1) scaleY(.78);
-}
-
-.game-3d-matthias-portrait-wrap.anger-level-3:not(.is-speaking):not(.is-ordering) .game-3d-matthias-portrait {
+.game-3d-matthias-portrait-wrap.anger-level-3:not(.is-speaking):not(.is-disapproving):not(.is-smirking) .game-3d-matthias-character {
   animation: matthias-warroom-simmer 2.6s ease-in-out infinite alternate;
 }
 
-.game-3d-matthias-portrait-wrap.anger-level-4:not(.is-speaking):not(.is-ordering) .game-3d-matthias-portrait {
+.game-3d-matthias-portrait-wrap.anger-level-4:not(.is-speaking):not(.is-disapproving):not(.is-smirking) .game-3d-matthias-character {
   animation: matthias-warroom-simmer-hot 1.55s ease-in-out infinite alternate;
 }
 
-.game-3d-matthias-portrait-wrap.is-speaking .game-3d-matthias-mouth {
-  opacity: .78;
+.game-3d-matthias-portrait-wrap.is-speaking .game-3d-matthias-mouth::after {
   animation: matthias-warroom-mouth .22s steps(2,end) infinite;
 }
 
-.game-3d-matthias-portrait-wrap.is-speaking .game-3d-matthias-portrait {
+.game-3d-matthias-portrait-wrap.is-speaking .game-3d-matthias-character {
   animation: matthias-warroom-address 1.15s ease-in-out infinite alternate;
 }
 
-.game-3d-matthias-portrait-wrap.is-glancing .game-3d-matthias-portrait {
+.game-3d-matthias-portrait-wrap.is-glancing .game-3d-matthias-character {
   transform: scale(1.018) translateX(1.3%) rotate(.35deg);
-  filter: saturate(1.02) brightness(1.04) contrast(1.045) drop-shadow(0 12px 18px rgba(0,0,0,.32));
+}
+
+.game-3d-matthias-portrait-wrap.is-glaring .game-3d-matthias-character {
+  animation: matthias-warroom-glare 1.9s cubic-bezier(.22,.9,.25,1) both;
+}
+
+.game-3d-matthias-portrait-wrap.is-glaring .game-3d-matthias-brows {
+  opacity: 1;
+  transform: translateX(-50%) translateY(3px) scaleX(1.12);
+}
+
+.game-3d-matthias-portrait-wrap.is-head-left .game-3d-matthias-character {
+  transform: scale(1.012) translateX(-.7%) rotate(-.55deg);
+}
+
+.game-3d-matthias-portrait-wrap.is-head-right .game-3d-matthias-character {
+  transform: scale(1.012) translateX(.7%) rotate(.55deg);
+}
+
+/* El humano captura: una negación breve, más marcada cuanto mayor es la rabia. */
+.game-3d-matthias-portrait-wrap.is-disapproving .game-3d-matthias-character {
+  animation: matthias-warroom-head-no .58s cubic-bezier(.35,.05,.25,1) 2;
+}
+
+.game-3d-matthias-portrait-wrap.is-disapproving .game-3d-matthias-brows {
+  opacity: 1;
+  transform: translateX(-50%) translateY(4px) scaleX(1.15);
+}
+
+/* Matthias captura: no sonríe. Sólo una comisura insolente y un mínimo avance. */
+.game-3d-matthias-portrait-wrap.is-smirking .game-3d-matthias-character {
+  animation: matthias-warroom-smug 1.3s cubic-bezier(.2,.78,.2,1) both;
+}
+
+.game-3d-matthias-portrait-wrap.is-smirking .game-3d-matthias-mouth::after {
+  left: 21%;
+  right: 14%;
+  top: 48%;
+  height: 6px;
+  background: transparent;
+  border-bottom: 2px solid rgba(38,20,13,.9);
+  border-radius: 0 0 75% 35%;
+  box-shadow: none;
+  transform: rotate(-5deg);
 }
 
 .game-3d-matthias-coffee {
   position: absolute;
-  z-index: 5;
+  z-index: 7;
   right: 8%;
   bottom: 8%;
   width: 30px;
@@ -186,24 +280,49 @@
   animation: matthias-coffee-steam 1.9s .35s ease-in-out infinite;
 }
 
+@keyframes matthias-warroom-idle {
+  0% { transform: translate3d(-.18%, .35%, 0) scale(1.004) rotate(-.08deg); }
+  45% { transform: translate3d(.12%, -.12%, 0) scale(1.009) rotate(.08deg); }
+  100% { transform: translate3d(.28%, -.38%, 0) scale(1.006) rotate(.14deg); }
+}
+
 @keyframes matthias-warroom-mouth {
-  0%, 100% { transform: translateX(-50%) scaleX(.88) scaleY(.5); }
-  50% { transform: translateX(-50%) scaleX(1.05) scaleY(2.3); }
+  0%, 100% { transform: scaleX(.9) scaleY(.72); }
+  50% { transform: scaleX(1.04) scaleY(2.2); }
 }
 
 @keyframes matthias-warroom-address {
-  from { transform: scale(1) translateY(0); }
-  to { transform: scale(1.008) translateY(-1px); }
+  from { transform: scale(1.006) translateY(0); }
+  to { transform: scale(1.016) translateY(-1px); }
+}
+
+@keyframes matthias-warroom-glare {
+  0% { transform: scale(1.006) translateY(0); }
+  35% { transform: scale(1.028) translateY(-2px); }
+  100% { transform: scale(1.022) translateY(-1px); }
+}
+
+@keyframes matthias-warroom-head-no {
+  0%, 100% { transform: scale(1.012) translateX(0) rotate(0); }
+  22% { transform: scale(1.02) translateX(-1.2%) rotate(-1.05deg); }
+  48% { transform: scale(1.02) translateX(1.15%) rotate(.95deg); }
+  72% { transform: scale(1.018) translateX(-.65%) rotate(-.55deg); }
+}
+
+@keyframes matthias-warroom-smug {
+  0% { transform: scale(1.006) translateY(0) rotate(0); }
+  38% { transform: scale(1.024) translateY(-1px) rotate(.22deg); }
+  100% { transform: scale(1.014) translateY(0) rotate(.08deg); }
 }
 
 @keyframes matthias-warroom-simmer {
-  from { transform: scale(1.004) translateY(0); }
-  to { transform: scale(1.014) translateY(-1px) rotate(-.16deg); }
+  from { transform: scale(1.006) translateY(0); }
+  to { transform: scale(1.016) translateY(-1px) rotate(-.16deg); }
 }
 
 @keyframes matthias-warroom-simmer-hot {
-  from { transform: scale(1.008) translate(0, 0) rotate(.12deg); }
-  to { transform: scale(1.022) translate(-.45%, -1px) rotate(-.34deg); }
+  from { transform: scale(1.009) translate(0, 0) rotate(.12deg); }
+  to { transform: scale(1.024) translate(-.45%, -1px) rotate(-.34deg); }
 }
 
 @keyframes matthias-coffee-steam {
@@ -213,12 +332,16 @@
 
 @media (max-width: 820px) {
   .game-3d-matthias-brows {
-    top: 43.5%;
-    width: 27%;
+    top: 42.4%;
+    width: 29%;
+  }
+  .game-3d-matthias-eyelids {
+    top: 47.9%;
+    width: 29%;
   }
   .game-3d-matthias-mouth {
-    top: 56%;
-    width: 11%;
+    top: 55.3%;
+    width: 15.5%;
   }
   .game-3d-matthias-coffee {
     right: 5%;
@@ -231,9 +354,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-3d-matthias-portrait-wrap .game-3d-matthias-portrait,
+  .game-3d-matthias-character,
+  .game-3d-matthias-portrait,
   .game-3d-matthias-brows,
+  .game-3d-matthias-eyelids,
   .game-3d-matthias-mouth,
+  .game-3d-matthias-mouth::after,
   .game-3d-matthias-coffee,
   .game-3d-matthias-coffee i,
   .game-3d-matthias-coffee b {
