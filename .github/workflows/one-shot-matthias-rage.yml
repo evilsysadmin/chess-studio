@@ -27,6 +27,7 @@ jobs:
         run: |
           python3 scripts/one_shot_matthias_rage.py
           python3 scripts/one_shot_ci_audit_patch.py
+          python3 scripts/one_shot_android_debug_patch.py
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -34,7 +35,7 @@ jobs:
 
       - name: Focused tests
         working-directory: frontend
-        run: npx vitest run src/matthiasWarRoomRage.test.js src/components/MatthiasWarRoomPortrait.test.jsx src/components/MatthiasKing3D.test.js src/cpuCommentary.test.js src/spectatorReactions.test.js
+        run: npx vitest run src/matthiasWarRoomRage.test.js src/components/MatthiasWarRoomPortrait.test.jsx src/components/MatthiasKing3D.test.js src/cpuCommentary.test.js src/spectatorReactions.test.js src/warRoomPointerCapture.test.js
 
       - name: Frontend build
         working-directory: frontend
@@ -60,6 +61,8 @@ jobs:
             frontend/src/cpuCommentary.test.js \
             frontend/src/spectatorReactions.js \
             frontend/src/spectatorReactions.test.js \
+            frontend/src/warRoomPointerCapture.js \
+            frontend/src/warRoomPointerCapture.test.js \
             .github/workflows/cicd.yml \
             scripts/test_suite_audit.mjs \
             /tmp/rage-artifact/
@@ -69,4 +72,5 @@ jobs:
         with:
           name: matthias-rage-patched-files
           path: /tmp/rage-artifact/
+          include-hidden-files: true
           retention-days: 1
