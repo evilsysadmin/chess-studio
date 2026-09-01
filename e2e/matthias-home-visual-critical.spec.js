@@ -15,9 +15,6 @@ async function openHomeAt(page, hour, { dismissSpeech = true } = {}) {
   }, hour);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await mockApi(page, {
-    // Este gate prueba la visita residente, no el onboarding. Sembramos un
-    // perfil que ya conoce a Matthias para que el saludo explícito de login
-    // quede disponible y no sea consumido por la Guía rápida.
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
@@ -34,7 +31,7 @@ async function openHomeAt(page, hour, { dismissSpeech = true } = {}) {
   return corner;
 }
 
-async function expectThreeScene(corner, profile, label) {
+async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   const frame = corner.locator('[data-portrait-frame="true"]');
   const avatar = frame.locator('[data-matthias-three-avatar="true"]');
   const canvas = avatar.locator('canvas');
@@ -58,6 +55,12 @@ async function expectThreeScene(corner, profile, label) {
   await expect(canvas).toBeVisible();
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-frame')) || 0, { timeout: 4_000 }).toBeGreaterThan(6);
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 4_000 }).toBeGreaterThan(.08);
+  if (minReach > 0) {
+    await expect.poll(
+      async () => Number(await avatar.getAttribute('data-three-reach')) || 0,
+      { timeout: 4_500, message: `${label}: el objeto debe completar el recorrido del gesto` },
+    ).toBeGreaterThan(minReach);
+  }
 
   const frameContract = await frame.evaluate((node) => ({
     transform: getComputedStyle(node).transform,
@@ -68,18 +71,18 @@ async function expectThreeScene(corner, profile, label) {
   return avatar;
 }
 
-for (const [hour, profile, label] of [
-  [7, 'sip', 'café de campaña'],
-  [12, 'bite', 'comida táctica'],
-  [16, 'write', 'operación y notas'],
-  [17, 'dossier', 'auditoría del expediente'],
-  [22, 'think', 'partida privada'],
-  [23, 'read', 'estudio y lectura'],
-  [2, 'sleep', 'sueño'],
+for (const [hour, profile, label, minReach] of [
+  [7, 'sip', 'café de campaña', .25],
+  [12, 'bite', 'comida táctica', .3],
+  [16, 'write', 'operación y notas', 0],
+  [17, 'dossier', 'auditoría del expediente', 0],
+  [22, 'think', 'partida privada', 0],
+  [23, 'read', 'estudio y lectura', 0],
+  [2, 'sleep', 'sueño', 0],
 ]) {
   test(`Home · Three.js anima ${label} sin recomponer a Matthias por capas`, async ({ page }) => {
     const corner = await openHomeAt(page, hour);
-    await expectThreeScene(corner, profile, label);
+    await expectThreeScene(corner, profile, label, { minReach });
   });
 }
 
