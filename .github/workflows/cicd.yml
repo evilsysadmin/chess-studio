@@ -115,8 +115,48 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect Docker/dependency/security changes
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "run_security=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Un before nulo/inválido no es permiso para saltarse seguridad:
+          # ante la duda ejecutamos el gate pesado.
+          if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            echo "run_security=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          printf '%s\n' "$files"
+
+          security_pattern='(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(npm_audit_gate\.py|pip_audit_gate\.py|compose_smoke\.py|security[^/]*)$|^\.github/workflows/cicd\.yml$|^(infra|deploy)/|^render\.ya?ml$'
+          if grep -Eq "$security_pattern" <<< "$files"; then
+            echo "run_security=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_security=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Security gate skipped · no sensitive surface changed
+        if: steps.changes.outputs.run_security != 'true'
+        run: |
+          echo "Trivy/Docker omitidos: este cambio no toca dependencias, imágenes, compose ni infraestructura sensible."
 
       - name: Cache Trivy DB
+        if: steps.changes.outputs.run_security == 'true'
         uses: actions/cache@v6
         with:
           path: .trivy-cache
@@ -125,12 +165,15 @@ jobs:
             trivy-db-${{ runner.os }}-
 
       - name: Trivy filesystem
+        if: steps.changes.outputs.run_security == 'true'
         run: make security-trivy
 
       - name: Docker image security
+        if: steps.changes.outputs.run_security == 'true'
         run: make security-images
 
       - name: Real stack smoke · Docker Compose
+        if: steps.changes.outputs.run_security == 'true'
         shell: bash
         run: |
           set -euo pipefail
