@@ -14,9 +14,16 @@ export function nextWarRoomGesture(random = Math.random) {
   return 'glance';
 }
 
-export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speechText = '' }) {
+function normalizeAngerLevel(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(4, Math.round(parsed)));
+}
+
+export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speechText = '', angerLevel = 0 }) {
   const [speaking, setSpeaking] = useState(false);
   const [gesture, setGesture] = useState('idle');
+  const normalizedAnger = normalizeAngerLevel(angerLevel);
 
   useEffect(() => {
     if (!speechKey || !speechText || getEffectiveReducedMotion()) return undefined;
@@ -60,11 +67,17 @@ export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speech
     ordering ? 'is-ordering' : '',
     gesture === 'glance' ? 'is-glancing' : '',
     gesture === 'coffee' ? 'has-coffee' : '',
+    `anger-level-${normalizedAnger}`,
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={`game-3d-matthias-portrait-wrap ${stateClass}`} data-matthias-warroom-gesture={gesture}>
+    <div
+      className={`game-3d-matthias-portrait-wrap ${stateClass}`}
+      data-matthias-warroom-gesture={gesture}
+      data-matthias-anger-level={normalizedAnger}
+    >
       <img src={avatar} alt="Matthias, peón militar" className="game-3d-matthias-portrait" />
+      <span className="game-3d-matthias-brows" aria-hidden="true" />
       <span className="game-3d-matthias-mouth" aria-hidden="true" />
       <span className="game-3d-matthias-coffee" aria-hidden="true"><i /><b /></span>
       <span className="game-3d-matthias-rank" aria-hidden="true">♟</span>
