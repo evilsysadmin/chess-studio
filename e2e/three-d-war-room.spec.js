@@ -74,6 +74,52 @@ async function openQuickGameWarRoom(page, requestLog = []) {
   return { warRoom, board3d, canvas };
 }
 
+test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado usa el mismo estado', async ({ page }) => {
+  test.setTimeout(75_000);
+
+  const requestLog = [];
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await mockApi(page, { requestLog });
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const e2 = page.locator('.square[aria-label^="Casilla e2,"]');
+  const e3 = page.locator('.square[aria-label^="Casilla e3,"]');
+  const e4 = page.locator('.square[aria-label^="Casilla e4,"]');
+  await e2.click();
+  await expect(e2).toHaveClass(/selected/);
+  await expect(e3).toHaveClass(/legal-move/);
+  await expect(e4).toHaveClass(/legal-move/);
+
+  const rendererToggle = page.getByRole('button', { name: 'Vista · 2D', exact: true });
+  await rendererToggle.click();
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(board3d).toBeVisible();
+  await expect(canvas).toBeVisible();
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
+
+  await canvas.focus();
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
+
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
+  await canvas.press('ArrowUp');
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e4');
+  await canvas.press('Enter');
+
+  await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
+});
+
 test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({ page }) => {
   // Three.js/WebGL can be substantially slower on GitHub-hosted runners than
   // the rest of the E2E suite. Keep this gate blocking, but give rendering time
