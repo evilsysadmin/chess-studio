@@ -124,14 +124,18 @@ describe('Matthias rival king 3D', () => {
     accent.dispose();
   });
 
-  it('viste chaqueta oscura cuando Matthias juega con negras', () => {
+  it('viste antracita legible, no negro funerario, cuando Matthias juega con negras', () => {
     const main = new THREE.MeshPhysicalMaterial({ color: 0x22252a });
     const accent = new THREE.MeshPhysicalMaterial({ color: 0xa43631, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent, { pieceColor: 'b', skinId: 'delta' });
     const jacket = group.getObjectByName('matthias-command-jacket');
+    const sash = group.getObjectByName('matthias-command-sash');
 
     expect(jacket).toBeTruthy();
-    expect(jacket.material.color.getHex()).toBe(0x171b22);
+    expect(sash).toBeTruthy();
+    expect(jacket.material.color.getHex()).toBe(0x2c3036);
+    expect(sash.material.color.getHex()).toBe(0x59393b);
+    expect(jacket.material.color.r + jacket.material.color.g + jacket.material.color.b).toBeGreaterThan(0.07);
     expect(group.userData.pieceColor).toBe('b');
     expect(group.userData.skinId).toBe('delta');
 
