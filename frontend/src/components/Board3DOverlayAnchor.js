@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+export const MATTHIAS_KING_ANCHOR_EVENT = 'chess-war-room-matthias-anchor';
+
 const worldPoint = new THREE.Vector3();
 
 export function projectMatthiasKingAnchor(mesh, camera, viewport = {}) {
