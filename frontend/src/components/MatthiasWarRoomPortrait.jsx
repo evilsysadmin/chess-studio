@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
 import './MatthiasWarRoomPortrait.css';
+import './WarRoomReferencePolish.css';
 
 function speechDuration(text) {
   return Math.max(1500, Math.min(4200, String(text || '').length * 46));
 }
 
 export function nextWarRoomGesture(random = Math.random) {
-  return random() < 0.28 ? 'coffee' : 'glance';
+  const roll = random();
+  if (roll < 0.18) return 'coffee';
+  if (roll < 0.42) return 'order';
+  return 'glance';
 }
 
 export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speechText = '' }) {
@@ -28,16 +32,17 @@ export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speech
     let cancelled = false;
 
     const schedule = () => {
-      const delay = 18000 + Math.round(Math.random() * 17000);
+      const delay = 15000 + Math.round(Math.random() * 21000);
       gestureTimer = window.setTimeout(() => {
         if (cancelled) return;
         const next = nextWarRoomGesture();
         setGesture(next);
+        const duration = next === 'coffee' ? 4600 : next === 'order' ? 1800 : 2100;
         resetTimer = window.setTimeout(() => {
           if (cancelled) return;
           setGesture('idle');
           schedule();
-        }, next === 'coffee' ? 4600 : 2100);
+        }, duration);
       }, delay);
     };
 
@@ -49,8 +54,10 @@ export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speech
     };
   }, []);
 
+  const ordering = speaking || gesture === 'order';
   const stateClass = [
     speaking ? 'is-speaking' : '',
+    ordering ? 'is-ordering' : '',
     gesture === 'glance' ? 'is-glancing' : '',
     gesture === 'coffee' ? 'has-coffee' : '',
   ].filter(Boolean).join(' ');
