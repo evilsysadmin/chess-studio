@@ -34,6 +34,10 @@ async function waitForWarRoom(page) {
   return { board3d, canvas };
 }
 
+async function pressKeys(page, keys) {
+  for (const key of keys) await page.keyboard.press(key);
+}
+
 function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
@@ -52,10 +56,13 @@ test('War Room parity · jaque seleccionado en 2D se ejecuta en 3D y vuelve a 2D
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
 
+  // Focus the WebGL surface once, then send native keyboard events through the
+  // page. Re-resolving the canvas locator for every key can race React's focus
+  // state updates even though the canvas itself remains mounted.
   await canvas.focus();
-  for (let step = 0; step < 7; step += 1) await canvas.press('ArrowUp');
+  await pressKeys(page, Array(7).fill('ArrowUp'));
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'e8');
-  await canvas.press('Enter');
+  await page.keyboard.press('Enter');
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible();
@@ -81,11 +88,9 @@ test('War Room parity · selección 2D puede rematar jaque mate desde el teclado
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'g6');
 
   await canvas.focus();
-  await canvas.press('ArrowRight');
-  await canvas.press('ArrowRight');
-  for (let step = 0; step < 6; step += 1) await canvas.press('ArrowUp');
+  await pressKeys(page, ['ArrowRight', 'ArrowRight', ...Array(6).fill('ArrowUp')]);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'g7');
-  await canvas.press('Enter');
+  await page.keyboard.press('Enter');
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
