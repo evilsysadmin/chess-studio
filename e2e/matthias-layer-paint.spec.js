@@ -8,10 +8,10 @@ async function dismissHomeGuide(page) {
   }
 }
 
-test('Home · las capas animables de Matthias son imágenes reales, no cajas vacías', async ({ page }) => {
+test('Home · Matthias usa un canvas Three.js y un único arte canónico, no cinco recortes raster', async ({ page }) => {
   await page.addInitScript(() => {
     Math.random = () => 0;
-    Date.prototype.getHours = () => 15;
+    Date.prototype.getHours = () => 16;
     localStorage.setItem('chess-study-reduced-motion', '0');
   });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -21,28 +21,23 @@ test('Home · las capas animables de Matthias son imágenes reales, no cajas vac
 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner).toBeVisible();
-  const rig = corner.locator('[data-matthias-layered-art="true"]');
-  await expect(rig).toBeVisible();
+  const avatar = corner.locator('[data-matthias-three-avatar="true"]');
+  await expect(avatar).toBeVisible();
+  await expect(avatar).toHaveAttribute('data-three-profile', 'write');
+  await expect(corner.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+  await expect(corner.locator('[data-matthias-art-part]')).toHaveCount(0);
 
-  for (const part of ['head', 'eyes', 'left-arm', 'right-arm', 'prop']) {
-    const layer = rig.locator(`[data-matthias-art-part="${part}"]`);
-    await expect(layer).toHaveCount(1);
-    await expect(layer).toHaveJSProperty('tagName', 'IMG');
-    await expect(layer).toHaveAttribute('src', /\.webp(?:$|\?)/);
-    await expect.poll(
-      () => layer.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
-      { message: `${part}: la capa articulada debe decodificar una imagen real` },
-    ).toBe(true);
-  }
+  const canonical = avatar.locator('img[data-matthias-canonical-art="true"]');
+  await expect(canonical).toHaveCount(1);
+  await expect(canonical).toHaveAttribute('src', /\.webp(?:$|\?)/);
+  await expect.poll(
+    () => canonical.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
+    { message: 'el fallback/textura de Matthias debe ser una imagen real' },
+  ).toBe(true);
 
-  const rightArm = rig.locator('[data-matthias-art-part="right-arm"]');
-  const before = await rightArm.evaluate((node) => getComputedStyle(node).transform);
-  await expect.poll(
-    async () => Number(await rig.getAttribute('data-gesture-count')),
-    { timeout: 2_000 },
-  ).toBeGreaterThan(0);
-  await expect.poll(
-    () => rightArm.evaluate((node) => getComputedStyle(node).transform),
-    { timeout: 2_000 },
-  ).not.toBe(before);
+  await expect(avatar.locator('canvas')).toHaveCount(1);
+  await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');
+  await expect(avatar).toHaveAttribute('data-three-failed', 'false');
+  await expect.poll(async () => Number(await avatar.getAttribute('data-three-frame')) || 0, { timeout: 4_000 }).toBeGreaterThan(6);
+  await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 4_000 }).toBeGreaterThan(.08);
 });
