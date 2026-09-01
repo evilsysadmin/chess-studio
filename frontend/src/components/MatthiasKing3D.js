@@ -39,10 +39,10 @@ function mat(color, options = {}) {
 }
 
 /**
- * Matthias es el rey reglamentario del bando rival. El cuerpo conserva la
- * lectura cromática del bando, mientras la chaqueta, el ceño, la gorra de
- * plato y la postura orgullosa aportan identidad. No está triste: está
- * enfadado, altivo y bastante convencido de que el problema eres tú.
+ * Matthias is read from tactical-camera distance, not from a portrait crop.
+ * Keep the face intentionally simple: two narrow eyes, two separated brows and
+ * one dry mouth line. Tiny cheeks, lip creases and extra brow geometry collapse
+ * together at board scale and create accidental expressions.
  */
 export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   coarsePointer = false,
@@ -53,9 +53,10 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   const group = new THREE.Group();
   group.name = 'matthias-rival-king';
   group.userData.matthiasKing = true;
-  group.userData.faceStyle = 'proud-scowl-v3';
+  group.userData.faceStyle = 'clean-command-scowl-v4';
   group.userData.capStyle = 'command-peaked-cap-v3';
   group.userData.posture = 'proud-command-v1';
+  group.userData.motionRig = 'head-rig-v1';
   group.userData.pieceColor = pieceColor;
   group.userData.skinId = skinId;
 
@@ -75,13 +76,6 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
     clearcoat: 0.01,
     envMapIntensity: 0.1,
     specularIntensity: 0.08,
-  });
-  const eyeWhite = mat(0xe7dfcf, {
-    metalness: 0,
-    roughness: 0.76,
-    clearcoat: 0.03,
-    envMapIntensity: 0.16,
-    specularIntensity: 0.12,
   });
   const cap = mat(0x10141a, {
     metalness: 0.16,
@@ -138,8 +132,6 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   add(group, new THREE.TorusGeometry(0.235, 0.022, 10, segments), accentMaterial, [0, 0.73, 0], [Math.PI / 2, 0, 0], null, 'matthias-king-shoulder-ring');
   add(group, new THREE.TorusGeometry(0.176, 0.016, 9, segments), brass, [0, 0.815, 0], [Math.PI / 2, 0, 0], null, 'matthias-king-collar');
 
-  // Chaqueta de mando: marfil para blancas y carbón oscuro para negras. Es un
-  // sobrecuerpo corto para que siga leyendo inequívocamente como rey de ajedrez.
   lathe(group, [
     [0.19, 0.31], [0.205, 0.38], [0.215, 0.52], [0.235, 0.63],
     [0.248, 0.69], [0.222, 0.735], [0.19, 0.765],
@@ -150,44 +142,34 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   add(group, new THREE.SphereGeometry(0.026, 12, 8), brass, [-0.105, 0.58, front * 0.225], [0, 0, 0], null, 'matthias-medal-left');
   add(group, new THREE.SphereGeometry(0.021, 12, 8), brass, [-0.04, 0.55, front * 0.229], [0, 0, 0], null, 'matthias-medal-right');
 
-  // Cabeza algo más alta y barbilla marcada: postura orgullosa, no cabizbaja.
-  add(group, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.012, 0], [0, 0, 0], [1.055, 0.94, 0.93], 'matthias-face');
-  add(group, new THREE.SphereGeometry(0.18, segments, coarsePointer ? 12 : 18), faceShadow, [0, 0.916, -front * 0.008], [0, 0, 0], [1.12, 0.43, 0.82], 'matthias-jaw-shadow');
-  add(group, new THREE.SphereGeometry(0.058, 16, 10), face, [0.01, 0.888, front * 0.178], [0, 0, 0], [1.25, 0.52, 0.72], 'matthias-proud-chin');
-  const faceZ = front * 0.214;
+  const headRig = new THREE.Group();
+  headRig.name = 'matthias-head-rig';
+  headRig.userData.basePosition = headRig.position.clone();
+  headRig.userData.baseRotation = headRig.rotation.clone();
+  group.add(headRig);
 
-  // Ojos estrechos y ligeramente bajos: Matthias mira al rival como quien ya
-  // ha leído el informe y no le ha impresionado demasiado.
-  add(group, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [-0.078, 1.018, faceZ], [0, 0, 0], [1.22, 0.62, 0.42], 'matthias-eye-white-left');
-  add(group, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [0.078, 1.018, faceZ], [0, 0, 0], [1.22, 0.62, 0.42], 'matthias-eye-white-right');
-  add(group, new THREE.SphereGeometry(0.021, 12, 8), ink, [-0.068, 1.012, front * 0.239], [0, 0, 0], [1, 0.88, 0.62], 'matthias-eye-left');
-  add(group, new THREE.SphereGeometry(0.021, 12, 8), ink, [0.074, 1.012, front * 0.239], [0, 0, 0], [1, 0.88, 0.62], 'matthias-eye-right');
+  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.012, 0], [0, 0, 0], [1.055, 0.94, 0.93], 'matthias-face');
+  const faceZ = front * 0.226;
 
-  add(group, new THREE.BoxGeometry(0.13, 0.029, 0.022), ink, [-0.072, 1.073, front * 0.224], [0, 0, -0.48 * front], null, 'matthias-brow-left');
-  add(group, new THREE.BoxGeometry(0.13, 0.029, 0.022), ink, [0.072, 1.068, front * 0.224], [0, 0, 0.43 * front], null, 'matthias-brow-right');
-  add(group, new THREE.BoxGeometry(0.068, 0.014, 0.018), faceShadow, [-0.073, 1.042, front * 0.231], [0, 0, -0.28 * front], null, 'matthias-brow-crease-left');
-  add(group, new THREE.BoxGeometry(0.068, 0.014, 0.018), faceShadow, [0.073, 1.04, front * 0.231], [0, 0, 0.26 * front], null, 'matthias-brow-crease-right');
+  // Dark eye slits survive downsampling much better than tiny whites + pupils.
+  add(headRig, new THREE.SphereGeometry(0.029, 14, 9), ink, [-0.073, 1.023, faceZ], [0, 0, 0], [1.2, 0.52, 0.38], 'matthias-eye-left');
+  add(headRig, new THREE.SphereGeometry(0.029, 14, 9), ink, [0.073, 1.023, faceZ], [0, 0, 0], [1.2, 0.52, 0.38], 'matthias-eye-right');
 
-  add(group, new THREE.SphereGeometry(0.032, 14, 9), face, [0.008, 0.977, front * 0.235], [0, 0, 0.08 * front], [0.86, 1.28, 0.68], 'matthias-nose');
-  add(group, new THREE.SphereGeometry(0.036, 12, 8), faceShadow, [-0.132, 0.973, front * 0.204], [0, 0, 0], [0.65, 0.86, 0.36], 'matthias-cheek-left');
-  add(group, new THREE.SphereGeometry(0.036, 12, 8), faceShadow, [0.132, 0.967, front * 0.204], [0, 0, 0], [0.65, 0.86, 0.36], 'matthias-cheek-right');
+  // Angry brows slope toward the nose but stay visibly above the eye line.
+  add(headRig, new THREE.BoxGeometry(0.104, 0.017, 0.018), ink, [-0.066, 1.079, front * 0.229], [0, 0, -0.25 * front], null, 'matthias-brow-left');
+  add(headRig, new THREE.BoxGeometry(0.104, 0.017, 0.018), ink, [0.066, 1.079, front * 0.229], [0, 0, 0.25 * front], null, 'matthias-brow-right');
 
-  // Boca dura casi horizontal, con una esquina apenas elevada. Nada de arco
-  // descendente: el gesto es desprecio orgulloso, no pena.
-  add(group, new THREE.BoxGeometry(0.084, 0.018, 0.02), ink, [-0.038, 0.919, front * 0.226], [0, 0, 0.045 * front], null, 'matthias-mouth-left');
-  add(group, new THREE.BoxGeometry(0.084, 0.018, 0.02), ink, [0.038, 0.922, front * 0.226], [0, 0, 0.075 * front], null, 'matthias-mouth-right');
-  add(group, new THREE.BoxGeometry(0.062, 0.011, 0.017), faceShadow, [0.045, 0.898, front * 0.218], [0, 0, 0.04 * front], null, 'matthias-lower-lip-crease');
+  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), faceShadow, [0.006, 0.982, front * 0.236], [0, 0, 0], [0.72, 1.2, 0.55], 'matthias-nose');
 
-  if (!coarsePointer) {
-    add(group, new THREE.BoxGeometry(0.012, 0.075, 0.014), faceShadow, [0.142, 0.996, front * 0.211], [0, 0, -0.34 * front], null, 'matthias-face-scar');
-  }
+  // One dry horizontal line. Two angled mouth pieces looked like a frightened grimace.
+  add(headRig, new THREE.BoxGeometry(0.132, 0.012, 0.016), ink, [0, 0.928, front * 0.229], [0, 0, 0.015 * front], null, 'matthias-mouth');
 
   const capGroup = new THREE.Group();
   capGroup.name = 'matthias-officer-cap';
   capGroup.position.set(0, 1.132, 0);
   capGroup.rotation.z = -0.042 * front;
   capGroup.rotation.x = -0.018 * front;
-  group.add(capGroup);
+  headRig.add(capGroup);
 
   add(capGroup, new THREE.CylinderGeometry(0.24, 0.265, 0.12, segments), cap, [0, 0.075, 0], [0, 0, 0], [1.13, 1, 0.92], 'matthias-cap');
   add(capGroup, new THREE.TorusGeometry(0.246, 0.023, 8, segments), capBand, [0, 0.025, 0], [Math.PI / 2, 0, 0], [1.07, 0.9, 1], 'matthias-cap-band');

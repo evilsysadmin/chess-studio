@@ -1,12 +1,8 @@
-@keyframes warroom-status-pulse {
-  0% { opacity: 0; transform: translateX(-50%) translateY(-3px) scale(.97); }
-  20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.035); }
-  35% { transform: translateX(-50%) translateY(0) scale(1); }
-  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-}
-
-@media (min-width: 821px) {
-  .game-layout-3d .status-line.pulse {
-    animation: warroom-status-pulse .4s cubic-bezier(.22,1,.36,1);
-  }
+/*
+ * War Room already exposes the live game state in the Matthias command column
+ * under SITUACIÓN. The floating top pill duplicated that information and covered
+ * the room decoration, so 3D keeps a single visible owner for status.
+ */
+.game-layout-3d .status-line {
+  display: none !important;
 }
