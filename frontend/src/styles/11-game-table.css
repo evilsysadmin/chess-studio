@@ -1,21 +1,32 @@
 .masthead-game-compact {
   width: min(100%, 1240px);
-  min-height: 38px;
-  margin-bottom: .45rem;
-  padding-bottom: .38rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--studio-line) 52%, transparent);
+  min-height: 30px;
+  margin-bottom: .22rem;
+  padding-bottom: .18rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--studio-line) 42%, transparent);
 }
-.masthead-game-compact .masthead-top-row { min-height: 36px; justify-content: flex-start; }
-.masthead-game-compact .masthead-text { justify-items: start; text-align: left; }
+.masthead-game-compact .masthead-top-row { min-height: 30px; justify-content: flex-end; }
+.masthead-game-compact .masthead-text { display: none; }
+.masthead-game-compact .game-wordmark { display: none; }
+.masthead-game-compact .masthead-actions {
+  position: relative;
+  top: 0;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+.masthead-game-compact .settings-gear-button { width: 32px; height: 32px; }
+
 .game-wordmark {
   color: color-mix(in srgb, var(--parchment-dim) 78%, transparent);
   font: 650 .72rem/1 var(--font-display);
   letter-spacing: .025em;
 }
-.masthead-game-compact .masthead-actions { top: 0; }
-.masthead-game-compact .settings-gear-button { width: 36px; height: 36px; }
 
-.game-board-stack { width: min(100%, 646px); gap: .52rem; }
+.game-board-stack {
+  position: relative;
+  width: min(100%, 646px);
+  gap: .52rem;
+}
 
 .game-player-rail {
   width: min(100%, 620px);
@@ -69,6 +80,7 @@
   color: var(--parchment-dim);
   font: 750 .57rem/1 var(--font-mono);
   letter-spacing: .09em;
+  white-space: nowrap;
 }
 .game-player-rail.is-active .game-player-turn { color: var(--brass); }
 
@@ -76,6 +88,55 @@
   0% { transform: translateY(1px) scale(.97); opacity: .82; }
   62% { transform: translateY(-1px) scale(1.018); opacity: 1; }
   100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Comentario excepcional sobre el propio tablero. El chat conserva el texto;
+ * aquí sólo aparece unos segundos como una viñeta, sin convertirse en HUD fijo. */
+.matthias-board-bubble {
+  position: absolute;
+  z-index: 12;
+  top: 66px;
+  right: 14px;
+  width: min(290px, 52%);
+  padding: .72rem .82rem .78rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 70%, var(--studio-line));
+  border-radius: 13px 13px 3px 13px;
+  background: color-mix(in srgb, #17130d 92%, transparent);
+  box-shadow: 0 12px 32px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.045);
+  pointer-events: none;
+  transform-origin: 100% 100%;
+  animation: matthias-board-bubble-life 7.2s ease both;
+}
+.game-board-stack-3d .matthias-board-bubble { top: 14px; right: 16px; }
+.matthias-board-bubble::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  bottom: -11px;
+  width: 18px;
+  height: 18px;
+  border-right: 1px solid color-mix(in srgb, var(--brass) 70%, var(--studio-line));
+  border-bottom: 1px solid color-mix(in srgb, var(--brass) 70%, var(--studio-line));
+  background: #17130d;
+  transform: skewY(38deg) rotate(24deg);
+}
+.matthias-board-bubble > span {
+  display: block;
+  margin-bottom: .28rem;
+  color: var(--brass);
+  font: 800 .55rem/1 var(--font-mono);
+  letter-spacing: .14em;
+}
+.matthias-board-bubble p {
+  margin: 0;
+  color: var(--parchment);
+  font-size: .76rem;
+  line-height: 1.42;
+}
+@keyframes matthias-board-bubble-life {
+  0% { opacity: 0; transform: translateY(7px) scale(.96); }
+  8%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-3px) scale(.985); visibility: hidden; }
 }
 
 .game-notation-disclosure {
@@ -118,7 +179,8 @@
 .game-side-column .game-chat:focus-within,
 .game-side-column .game-chat:hover { opacity: 1; }
 
-.game-controls { margin-top: .25rem; }
+.game-controls { margin-top: .08rem; }
+.game-controls-actions { margin-left: auto; }
 .game-controls .secondary-btn { min-height: 38px; padding: .62rem .78rem; font-size: .78rem; }
 .prediction-strip,
 .contract-strip {
@@ -155,13 +217,13 @@
   .game-side-column .game-chat { order: 2; min-height: 210px; max-height: 330px; }
   .game-music-rail { margin-top: .25rem; }
   .game-music-rail .music-deck { width: min(100%, 390px); }
+  .matthias-board-bubble { width: min(280px, 62%); }
 }
 
 @media (max-width: 520px) {
-  .masthead-game-compact { min-height: 34px; margin-bottom: .25rem; padding-bottom: .22rem; }
-  .masthead-game-compact .masthead-top-row { min-height: 32px; }
-  .masthead-game-compact .game-wordmark { display: none; }
-  .masthead-game-compact .masthead-actions { position: absolute; right: 0; }
+  .masthead-game-compact { min-height: 28px; margin-bottom: .12rem; padding-bottom: .12rem; }
+  .masthead-game-compact .masthead-top-row { min-height: 28px; }
+  .masthead-game-compact .masthead-actions { margin-left: auto; }
   .game-board-stack { gap: .4rem; }
   .game-player-rail { min-height: 46px; grid-template-columns: 32px minmax(0,1fr) auto; gap: .48rem; padding: .35rem .42rem; border-radius: 8px; }
   .game-player-avatar { width: 30px; height: 30px; border-radius: 7px; font-size: 1.05rem; }
@@ -170,16 +232,29 @@
   .game-player-rail .clock-chip { min-width: 74px; min-height: 34px; padding: .3rem .55rem; font-size: .88rem; }
   .game-player-turn { font-size: .5rem; }
   .game-notation-disclosure > summary { min-height: 44px; }
-  .game-controls { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .game-controls { display: grid; width: 100%; grid-template-columns: 1fr; }
+  .game-controls-actions { margin-left: 0; }
   .game-controls .secondary-btn { width: 100%; }
+  .matthias-board-bubble,
+  .game-board-stack-3d .matthias-board-bubble {
+    top: 54px;
+    right: 8px;
+    width: min(260px, 72%);
+    padding: .58rem .65rem;
+  }
+  .game-board-stack-3d .matthias-board-bubble { top: 10px; }
+  .matthias-board-bubble p { font-size: .68rem; }
 }
 
 @media (max-width: 360px) {
   .game-player-identity small { max-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .game-controls { grid-template-columns: 1fr; }
+  .matthias-board-bubble { width: 76%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .game-player-rail.is-cpu.is-active .game-player-avatar.has-portrait img { animation: none; transform: none; }
+  .matthias-board-bubble { animation: none; }
 }
 html[data-reduced-motion='true'] .game-player-rail.is-cpu.is-active .game-player-avatar.has-portrait img { animation: none; transform: none; }
+html[data-reduced-motion='true'] .matthias-board-bubble { animation: none; }

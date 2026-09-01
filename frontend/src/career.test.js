@@ -128,10 +128,27 @@ describe('career persistente', () => {
     expect(BOARD_THEMES).toHaveLength(6);
   });
 
-  it('contrato ofertado cambia con el historial de incidentes y es estable por gameCount', () => {
+  it('el reto ofertado cambia con el historial de incidentes y es estable por gameCount', () => {
     expect(chooseContract({ gameCount: 0, incidents: {} }).id).toBe('win');
     const disciplined = chooseContract({ gameCount: 0, incidents: { missedMate: 5 } });
     expect(disciplined.id).not.toBe('win');
-    expect(chooseContract({ gameCount: 3, incidents: {} }).id).toBe(CONTRACTS[3].id);
+  });
+
+  it('una rápida sin pistas nunca recibe Sin ruedines ni retos de reglas ausentes', () => {
+    const forbidden = new Set(['no-hints', 'blackwin', 'no-pressure-crime', 'sudden-survivor']);
+    const offered = Array.from({ length: 30 }, (_, gameCount) => chooseContract({ gameCount, incidents: {} }).id);
+    expect(offered.some((id) => forbidden.has(id))).toBe(false);
+    expect(offered).toEqual(expect.arrayContaining(['win', 'survive20', 'fastwin', 'castle', 'queen-home']));
+  });
+
+  it('habilita retos específicos sólo cuando la partida realmente ofrece esa mecánica', () => {
+    const withHints = Array.from({ length: 20 }, (_, gameCount) => chooseContract({ gameCount, hintsAvailable: true }).id);
+    const withBlack = Array.from({ length: 20 }, (_, gameCount) => chooseContract({ gameCount, humanColor: 'b' }).id);
+    const withClock = Array.from({ length: 20 }, (_, gameCount) => chooseContract({ gameCount, hasClock: true }).id);
+    const withSudden = Array.from({ length: 20 }, (_, gameCount) => chooseContract({ gameCount, suddenDeath: true }).id);
+    expect(withHints).toContain('no-hints');
+    expect(withBlack).toContain('blackwin');
+    expect(withClock).toContain('no-pressure-crime');
+    expect(withSudden).toContain('sudden-survivor');
   });
 });

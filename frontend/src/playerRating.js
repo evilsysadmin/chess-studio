@@ -1,5 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { loadGameActivity } from './gameActivity.js';
 
 // playerRating.js — Estimación de nivel del jugador tipo ELO, calculada a
 // partir de tus partidas normales y de Torneo contra una dificultad conocida.
@@ -9,33 +10,27 @@ import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.j
 //
 // Es un ELO simplificado: le ganas a un rival con rating alto, subes
 // bastante; le ganas a uno flojo, subes poco; perder contra algo débil te
-// baja más que perder contra algo fuerte. Nada de esto afecta al juego en
-// sí — es puramente informativo/de flavor.
+// baja más que perder contra algo fuerte. El rating sigue siendo historial de
+// fuerza estimada; la dificultad automática añade además una corrección de
+// forma reciente para no machacar a un perfil legacy cuyo rating esté inflado.
 
 const RATING_KEY = 'chess-study-player-rating';
 const RATING_HISTORY_KEY = 'chess-study-rating-history';
-const MAX_HISTORY_POINTS = 200; // no hace falta guardar miles de puntos para un gráfico chico
-// Arrancar en 800 ponía a cualquiera que nunca jugó ya en "Aficionado", a un
-// solo punto de "Intermedio" — no se sentía a "recién empezando". 600 caía
-// sólido dentro de "Principiante", pero seguía sin resolver el problema real:
-// la CPU no sabe nada de un jugador nuevo. Ahora arranca justo en el PISO
-// (`Math.max(400, ...)` en updateRating) — con la fórmula real: cualquier
-// victoria da entre +18 y +24 según la dureza del rival, mientras que una
-// derrota casi no mueve nada (el piso la achica). Un jugador bueno sube
-// rápido con cada victoria; uno que todavía no está listo se queda
-// estacionado en 400 sin seguir bajando — no hay "más abajo" a donde ir.
+const MAX_HISTORY_POINTS = 200;
 const DEFAULT_RATING = 400;
 const K_FACTOR = 24;
-// Rating "provisional" (mismo concepto que usan FIDE/USCF de verdad): la
-// CPU todavía no sabe nada de ti en tus primeros partidos, así que se
-// mueve el doble de rápido — se estabiliza al K_FACTOR normal después de
-// PROVISIONAL_GAMES partidos, cuando ya hay señal suficiente acumulada.
 const PROVISIONAL_K_FACTOR = 48;
 const PROVISIONAL_GAMES = 12;
 
-// Única fuente de verdad de las categorías — de acá sale tanto la etiqueta
-// (ratingLabel) como el detalle completo que se muestra al hacer clic en el
-// chip de la cabecera (qué categoría es cada una, y dónde caes tú).
+// El ajuste automático sólo mira una ventana corta y exige señal suficiente.
+// Nunca cambia la fuerza a mitad de partida: se calcula al crear la siguiente.
+const ADAPTIVE_RECENT_GAMES = 8;
+const ADAPTIVE_MIN_GAMES = 3;
+const ADAPTIVE_DIFFICULTY_BAND = 25;
+const ADAPTIVE_MIN_ADJUSTMENT = -22;
+const ADAPTIVE_MAX_ADJUSTMENT = 8;
+const ADAPTIVE_ABANDON_SCORE = 0.15;
+
 export const RATING_TIERS = [
   { label: 'Principiante', min: 0, max: 699 },
   { label: 'Aficionado', min: 700, max: 999 },
@@ -68,12 +63,6 @@ export function saveRating(state) {
   setProfileStorageItem(RATING_KEY, JSON.stringify(state));
 }
 
-
-// Historial de rating para el gráfico de evolución — una foto {date,
-// rating} cada vez que el rating cambia. A propósito NO se reconstruye
-// retroactivamente desde el historial de partidas: se conserva como serie
-// incremental para no reescribir la historia cada vez que cambie el cálculo.
-// Se graba en los modos que sí puntúan: partida normal y Torneo.
 export function loadRatingHistory() {
   try {
     const raw = getStorageItem(STORAGE_LOCAL, RATING_HISTORY_KEY);
@@ -118,9 +107,6 @@ function periodCheckpoint(points, cutoff, label) {
   };
 }
 
-// Resumen móvil y legible del ritmo reciente. Los periodos son deliberadamente
-// rodantes salvo "Hoy", que empieza a medianoche local: responde mejor a
-// "¿cómo voy esta semana?" que obligar al usuario a interpretar la curva.
 export function ratingPeriodCheckpoints(history = [], now = new Date()) {
   const nowTime = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const points = history
@@ -140,10 +126,6 @@ export function ratingPeriodCheckpoints(history = [], now = new Date()) {
   ];
 }
 
-// Rating efectivo INTERNO de la CPU. No pretende ser una equivalencia FIDE:
-// sirve para que el cambio ELO tenga sentido relativo a la fuerza real del
-// motor. La curva sigue los saltos de búsqueda del motor (0/20/45/70/90) en
-// vez de asumir que cada punto de dificultad vale exactamente lo mismo.
 const CPU_RATING_ANCHORS = [
   [0, 450],
   [20, 650],
@@ -168,15 +150,10 @@ export function cpuRatingForDifficulty(rawDifficulty) {
   return CPU_RATING_ANCHORS[CPU_RATING_ANCHORS.length - 1][1];
 }
 
-// Conversión única de resultados competitivos a score ELO. Torneo y partida
-// normal usan exactamente esta función: una derrota nunca queda "gratis" por
-// haber ocurrido dentro de una copa.
 export function ratingScoreForOutcome(outcome) {
   return outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
 }
 
-// Actualiza el rating tras una partida contra la CPU a una dificultad dada.
-// `score` es 1 (ganaste), 0.5 (tablas) o 0 (perdiste).
 export function ratingChangeDetails(state, cpuDifficulty, score) {
   const cpuRating = cpuRatingForDifficulty(cpuDifficulty);
   const expected = 1 / (1 + Math.pow(10, (cpuRating - state.rating) / 400));
@@ -196,14 +173,10 @@ export function updateRating(state, cpuDifficulty, score) {
   return ratingChangeDetails(state, cpuDifficulty, score).next;
 }
 
-// Etiqueta legible para el rating numérico.
 export function ratingLabel(rating) {
   return tierFor(rating).label;
 }
 
-// Todo lo que necesita el modal de detalle: la categoría actual, cuánto
-// falta para la siguiente, y qué tan avanzado estás dentro de la actual (en
-// %, para una barra de progreso).
 export function ratingProgress(rating) {
   const tier = tierFor(rating);
   const isMaxTier = tier.max === Infinity;
@@ -219,14 +192,108 @@ export function ratingProgress(rating) {
   };
 }
 
-// Traduce el rating a una dificultad de CPU 0-100 — la usa Modo Combate
-// para que el rival se ajuste solo a "cómo te ve la CPU" en vez de
-// elegirlo tú con un slider. Lineal (no como la curva de raíz cuadrada
-// del torneo): el rating ya es una medida continua de habilidad en sí
-// misma, no necesita una curva aparte para repartir la progresión.
-// rating 200 (piso teórico) -> dificultad 0. rating 400 (con el que
-// arranca cualquiera, justo en el piso real de updateRating) -> ~11, muy
-// accesible. rating 2000+ -> tope en 100.
-export function difficultyForRating(rating) {
-  return Math.max(0, Math.min(100, Math.round((rating - 200) / 18)));
+function baseDifficultyForRating(rating) {
+  return Math.max(0, Math.min(100, Math.round((Number(rating) - 200) / 18)));
+}
+
+function isDifficultyRelevant(event, baseDifficulty) {
+  const difficulty = Number(event?.difficulty);
+  if (!Number.isFinite(difficulty)) return false;
+
+  // La evidencia es deliberadamente asimétrica. Perder a un nivel MUCHO más
+  // bajo que el que propone el rating es una señal muy fuerte de que el perfil
+  // legacy está inflado y debe contar. En cambio, perder porque el usuario se
+  // puso voluntariamente una CPU 40 puntos más fuerte no debe bajar el auto.
+  if (event?.outcome === 'loss') return difficulty <= baseDifficulty + ADAPTIVE_DIFFICULTY_BAND;
+  // Ganar por encima de la propuesta sí demuestra nivel; machacar una CPU muy
+  // inferior no sirve para subir el automático.
+  if (event?.outcome === 'win') return difficulty >= baseDifficulty - ADAPTIVE_DIFFICULTY_BAND;
+  return Math.abs(difficulty - baseDifficulty) <= ADAPTIVE_DIFFICULTY_BAND;
+}
+
+function competitiveAdaptiveEvents(activity, baseDifficulty) {
+  const rows = Array.isArray(activity) ? activity : [];
+  const adaptiveStarts = new Map(
+    rows
+      .filter((event) => event?.state === 'started' && event?.detail === 'adaptive-difficulty')
+      .map((event) => [event.gameId, event]),
+  );
+
+  return rows
+    .map((event) => {
+      if (event?.state === 'finished' && ['win', 'draw', 'loss'].includes(event?.outcome)) return event;
+      // Un abandono explícito antes de perder material puede no tocar el ELO,
+      // pero repetirlo contra la dificultad automática sí es señal útil de que
+      // el reto estaba por encima del usuario. Lo tratamos como derrota suave,
+      // sólo para elegir la SIGUIENTE CPU y sin reescribir rating/historial.
+      if (event?.state === 'cancelled' && adaptiveStarts.has(event?.gameId)) {
+        const started = adaptiveStarts.get(event.gameId);
+        return {
+          ...event,
+          difficulty: Number.isFinite(Number(event?.difficulty)) ? Number(event.difficulty) : Number(started?.difficulty),
+          outcome: 'loss',
+          adaptiveAbandon: true,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .filter((event) => ['casual', 'tournament'].includes(event?.mode))
+    .filter((event) => isDifficultyRelevant(event, baseDifficulty))
+    .slice(0, ADAPTIVE_RECENT_GAMES);
+}
+
+function adaptiveScore(event) {
+  if (event?.adaptiveAbandon) return ADAPTIVE_ABANDON_SCORE;
+  return ratingScoreForOutcome(event?.outcome);
+}
+
+/**
+ * Corrección de forma reciente aplicada sólo a la dificultad automática.
+ * Las derrotas bajan el reto con rapidez; las victorias lo suben despacio.
+ * Esto sanea perfiles legacy sobreestimados sin reescribir su ELO ni hacer
+ * rubber-banding oculto dentro de una partida ya empezada.
+ */
+export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) {
+  const recent = competitiveAdaptiveEvents(activity, baseDifficulty);
+  if (recent.length < ADAPTIVE_MIN_GAMES) return 0;
+
+  // gameActivity está newest-first. Damos algo más de peso a lo ocurrido ayer
+  // que a una partida antigua de esta ventana corta.
+  let weightedScore = 0;
+  let weightTotal = 0;
+  recent.forEach((event, index) => {
+    const weight = Math.max(1, recent.length - index);
+    weightedScore += adaptiveScore(event) * weight;
+    weightTotal += weight;
+  });
+  const performance = weightTotal ? weightedScore / weightTotal : 0.5;
+
+  let adjustment = 0;
+  if (performance <= 0.20) adjustment = -16;
+  else if (performance <= 0.35) adjustment = -11;
+  else if (performance <= 0.45) adjustment = -6;
+  else if (performance >= 0.80) adjustment = 6;
+  else if (performance >= 0.68) adjustment = 3;
+
+  let lossStreak = 0;
+  for (const event of recent) {
+    if (event.outcome !== 'loss') break;
+    lossStreak += 1;
+  }
+  if (lossStreak >= 5) adjustment -= 8;
+  else if (lossStreak >= 4) adjustment -= 6;
+  else if (lossStreak >= 3) adjustment -= 4;
+
+  return Math.max(ADAPTIVE_MIN_ADJUSTMENT, Math.min(ADAPTIVE_MAX_ADJUSTMENT, adjustment));
+}
+
+// Traduce el rating a dificultad y añade una corrección conservadora basada
+// en resultados recientes. Sin muestra suficiente se comporta exactamente
+// como la curva histórica. El segundo argumento existe para tests y análisis;
+// en producto se usa el journal local real ya sincronizado del perfil.
+export function difficultyForRating(rating, activity = null) {
+  const base = baseDifficultyForRating(rating);
+  const recent = activity == null ? loadGameActivity() : activity;
+  return Math.max(0, Math.min(100, base + adaptiveDifficultyAdjustment(recent, base)));
 }

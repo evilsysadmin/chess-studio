@@ -69,7 +69,7 @@ export default function QuickMatchModal({
         )}
 
         <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
-          <span aria-hidden="true">◎</span><span><b>Encuentra mi nivel</b><small>Ajusta la CPU a tu rating actual · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
+          <span aria-hidden="true">◎</span><span><b>Encuentra mi nivel</b><small>Ajusta la CPU a tu rating y forma reciente · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
         </button>
 
         <div className={`difficulty-slider-row friendly-difficulty-main ${autoDifficulty ? 'is-disabled' : ''}`}>
