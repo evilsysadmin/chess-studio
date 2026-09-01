@@ -3,10 +3,11 @@ import * as THREE from 'three';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 
 function sceneStats(root) {
-  const stats = { meshes: 0, lights: 0 };
+  const stats = { meshes: 0, lights: 0, spotLights: 0 };
   root.traverse((object) => {
     if (object instanceof THREE.Mesh) stats.meshes += 1;
     if (object instanceof THREE.Light) stats.lights += 1;
+    if (object instanceof THREE.SpotLight) stats.spotLights += 1;
   });
   return stats;
 }
@@ -31,7 +32,7 @@ function dispose(root) {
 describe('PremiumWarRoomScene', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('construye una sala de mando rica y reduce detalle geométrico en táctil', () => {
+  it('construye una sala de mando cinematográfica y reduce detalle geométrico en táctil', () => {
     const desktop = buildPremiumWarRoomLayer(theme, true, false);
     const mobile = buildPremiumWarRoomLayer(theme, true, true);
     const desktopStats = sceneStats(desktop);
@@ -39,20 +40,27 @@ describe('PremiumWarRoomScene', () => {
 
     expect(desktop.name).toBe('premium-war-room-layer');
     expect(desktop.userData.premiumWarRoom).toBe(true);
-    expect(desktopStats.meshes).toBeGreaterThan(70);
-    expect(desktopStats.lights).toBeGreaterThanOrEqual(4);
+    expect(desktop.userData.premiumPass).toBe('cinematic-v2');
+    expect(desktop.getObjectByName('coffered-paneling')).toBeTruthy();
+    expect(desktop.getObjectByName('ceremonial-pawn-crest')).toBeTruthy();
+    expect(desktop.getObjectByName('command-cabinet')).toBeTruthy();
+    expect(desktopStats.meshes).toBeGreaterThan(100);
+    expect(desktopStats.lights).toBeGreaterThanOrEqual(6);
+    expect(desktopStats.spotLights).toBeGreaterThanOrEqual(1);
     expect(desktopStats.meshes).toBeGreaterThan(mobileStats.meshes);
 
     dispose(desktop);
     dispose(mobile);
   });
 
-  it('añade al tablero un reveal de cuero, doble rail y herrajes de latón', () => {
+  it('añade a la mesa cuero, doble rail, latón e inlay verde de mando', () => {
     const table = buildPremiumTableLayer(theme, false);
     const stats = sceneStats(table);
 
     expect(table.name).toBe('premium-table-layer');
-    expect(stats.meshes).toBeGreaterThanOrEqual(17);
+    expect(table.userData.premiumPass).toBe('cinematic-v2');
+    expect(table.getObjectByName('emerald-table-inlay')).toBeTruthy();
+    expect(stats.meshes).toBeGreaterThanOrEqual(25);
     expect(stats.lights).toBe(0);
 
     dispose(table);
