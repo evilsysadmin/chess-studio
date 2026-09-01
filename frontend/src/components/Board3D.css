@@ -562,3 +562,39 @@
 @media (prefers-reduced-motion: reduce) {
   .game-3d-matthias-portrait { filter: saturate(.98) brightness(1.08) contrast(1.03); }
 }
+
+
+/* War Room 3D kinetics: the board moves, the camera only breathes. */
+.board3d-inspect {
+  position: absolute;
+  z-index: 5;
+  left: .68rem;
+  bottom: .68rem;
+  min-height: 34px;
+  padding: .4rem .62rem;
+  font-size: .66rem;
+  background: rgba(11,15,21,.86);
+  backdrop-filter: blur(8px);
+}
+
+.board3d-inspect[aria-pressed='true'] {
+  border-color: rgba(201,162,39,.72);
+  color: var(--brass);
+  box-shadow: inset 0 0 0 1px rgba(201,162,39,.14), 0 0 20px rgba(201,162,39,.08);
+}
+
+.board3d-main-shell[data-board3d-inspect='true'] .board3d-main-canvas {
+  cursor: grab;
+}
+
+.board3d-main-shell[data-board3d-inspect='true'] .board3d-main-canvas:active {
+  cursor: grabbing;
+}
+
+@media (pointer: coarse) {
+  .board3d-inspect { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board3d-main-canvas { transition: none !important; }
+}
