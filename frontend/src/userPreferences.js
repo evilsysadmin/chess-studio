@@ -104,8 +104,10 @@ export function setBoardCoordinates(value) {
 }
 
 export function getConfiguredBoardRendererDefault() {
-  const configured = String(import.meta.env?.VITE_DEFAULT_BOARD_RENDERER || '2d').trim().toLowerCase();
-  return BOARD_RENDERERS.some((row) => row.id === configured) ? configured : '2d';
+  const configured = String(import.meta.env?.VITE_DEFAULT_BOARD_RENDERER || '').trim().toLowerCase();
+  if (BOARD_RENDERERS.some((row) => row.id === configured)) return configured;
+  const apiUrl = String(import.meta.env?.VITE_API_URL || '').trim().toLowerCase();
+  return apiUrl.includes('api-staging.') ? '3d' : '2d';
 }
 
 export function getBoardRenderer() {
