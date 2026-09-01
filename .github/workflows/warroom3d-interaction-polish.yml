@@ -19,9 +19,21 @@ jobs:
           fetch-depth: 0
 
       - name: Apply product patch
-        run: python3 scripts/apply_warroom3d_interaction_polish.py
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 scripts/apply_warroom3d_interaction_polish.py 2>&1 | tee warroom-patch.log
+
+      - name: Upload patch diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: warroom-patch-diagnostics
+          path: warroom-patch.log
+          if-no-files-found: warn
 
       - name: Commit product changes
+        if: success()
         run: |
           git config user.name "chess-studio-bot"
           git config user.email "actions@users.noreply.github.com"
