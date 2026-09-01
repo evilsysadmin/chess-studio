@@ -1,0 +1,76 @@
+name: Fix War Room visible selection
+
+on:
+  push:
+    branches:
+      - fix/warroom-visible-selection-markers
+    paths:
+      - '.github/workflows/fix-warroom-visible-selection.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/warroom-visible-selection-markers
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Patch War Room selection markers
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/components/Board3D.jsx')
+          source = path.read_text()
+
+          old_import = "import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';"
+          new_import = old_import + "\nimport { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';"
+          assert old_import in source, 'Board3D import anchor missing'
+          source = source.replace(old_import, new_import, 1)
+
+          old_marker = """        const marker = new THREE.Mesh(\n          new THREE.RingGeometry(0.29, 0.43, 32),\n          new THREE.MeshBasicMaterial({ color: 0xc9a227, transparent: true, opacity: 0.86, side: THREE.DoubleSide, depthWrite: false }),\n        );\n        marker.rotation.x = -Math.PI / 2;\n        marker.position.set(x, 0.102, z);\n        marker.visible = false;\n        marker.renderOrder = 4;\n"""
+          new_marker = """        const marker = new THREE.Mesh(\n          new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE),\n          new THREE.MeshBasicMaterial({\n            color: 0x145f8a,\n            transparent: true,\n            opacity: 0.86,\n            side: THREE.DoubleSide,\n            depthWrite: false,\n            polygonOffset: true,\n            polygonOffsetFactor: -2,\n            polygonOffsetUnits: -2,\n            toneMapped: false,\n          }),\n        );\n        marker.rotation.x = -Math.PI / 2;\n        // La cara superior de las casillas llega a ~0.107 por el settling.\n        // El antiguo y=0.102 enterraba el marcador dentro de la madera.\n        marker.position.set(x, BOARD3D_HIGHLIGHT_Y, z);\n        marker.visible = false;\n        marker.renderOrder = 6;\n"""
+          assert old_marker in source, 'Board3D marker block missing'
+          source = source.replace(old_marker, new_marker, 1)
+
+          old_effect = """    for (const [square, marker] of state.highlightMeshes.entries()) {\n      marker.visible = false;\n      let color = null;\n      let opacity = 0.86;\n      if (focusedSquare === square) { color = 0xe8dfc3; opacity = 0.42; }\n      if (hoveredSquare === square) { color = 0x8bc7e8; opacity = 0.58; }\n      if (lastMove && (square === lastMove.from || square === lastMove.to)) color = 0xb9952e;\n      if (hintMove && (square === hintMove.from || square === hintMove.to)) color = 0x50a4c6;\n      if (legalMap.has(square)) color = legalMap.get(square) ? 0xb4483a : 0x5fa8d3;\n      if (selectedSquare === square) { color = 0xe0b84e; opacity = 0.96; }\n      if (checkSquare === square) { color = 0xe33b32; opacity = 1; }\n      if (color != null) {\n        marker.material.color.setHex(color);\n        marker.material.opacity = opacity;\n        marker.visible = true;\n      }\n    }\n"""
+          new_effect = """    for (const [square, marker] of state.highlightMeshes.entries()) {\n      marker.visible = false;\n      marker.scale.setScalar(1);\n      const style = board3DHighlightStyle({\n        square,\n        focusedSquare,\n        hoveredSquare,\n        lastMove,\n        hintMove,\n        legalMap,\n        selectedSquare,\n        checkSquare,\n      });\n      if (style) {\n        marker.material.color.setHex(style.color);\n        marker.material.opacity = style.opacity;\n        marker.scale.setScalar(style.scale);\n        marker.visible = true;\n      }\n    }\n"""
+          assert old_effect in source, 'Board3D highlight effect missing'
+          source = source.replace(old_effect, new_effect, 1)
+          path.write_text(source)
+
+          Path('frontend/src/components/Board3DHighlights.js').write_text("""export const BOARD3D_HIGHLIGHT_Y = 0.122;\nexport const BOARD3D_HIGHLIGHT_SIZE = 0.86;\n\nexport const BOARD3D_HIGHLIGHT_COLORS = Object.freeze({\n  focus: 0x6f6650,\n  hover: 0x1d6f9d,\n  lastMove: 0x9a7722,\n  hint: 0x175f86,\n  legal: 0x145f8a,\n  capture: 0x8f3028,\n  selected: 0x0b3f66,\n  check: 0xc52d28,\n});\n\nexport function board3DHighlightStyle({\n  square,\n  focusedSquare,\n  hoveredSquare,\n  lastMove,\n  hintMove,\n  legalMap,\n  selectedSquare,\n  checkSquare,\n} = {}) {\n  let color = null;\n  let opacity = 0.82;\n  let scale = 1;\n\n  if (focusedSquare === square) { color = BOARD3D_HIGHLIGHT_COLORS.focus; opacity = 0.38; }\n  if (hoveredSquare === square) { color = BOARD3D_HIGHLIGHT_COLORS.hover; opacity = 0.62; }\n  if (lastMove && (square === lastMove.from || square === lastMove.to)) {\n    color = BOARD3D_HIGHLIGHT_COLORS.lastMove;\n    opacity = 0.72;\n  }\n  if (hintMove && (square === hintMove.from || square === hintMove.to)) {\n    color = BOARD3D_HIGHLIGHT_COLORS.hint;\n    opacity = 0.82;\n  }\n  if (legalMap?.has?.(square)) {\n    color = legalMap.get(square) ? BOARD3D_HIGHLIGHT_COLORS.capture : BOARD3D_HIGHLIGHT_COLORS.legal;\n    opacity = legalMap.get(square) ? 0.9 : 0.86;\n  }\n  if (selectedSquare === square) {\n    color = BOARD3D_HIGHLIGHT_COLORS.selected;\n    opacity = 0.96;\n    scale = 1.045;\n  }\n  if (checkSquare === square) {\n    color = BOARD3D_HIGHLIGHT_COLORS.check;\n    opacity = 0.98;\n    scale = 1.045;\n  }\n\n  return color == null ? null : { color, opacity, scale };\n}\n""")
+
+          Path('frontend/src/components/Board3DHighlights.test.js').write_text("""import { describe, expect, it } from 'vitest';\nimport {\n  BOARD3D_HIGHLIGHT_COLORS,\n  BOARD3D_HIGHLIGHT_SIZE,\n  BOARD3D_HIGHLIGHT_Y,\n  board3DHighlightStyle,\n} from './Board3DHighlights.js';\n\ndescribe('War Room 3D highlight visibility', () => {\n  it('keeps the overlay safely above the settled tile surface', () => {\n    expect(BOARD3D_HIGHLIGHT_Y).toBeGreaterThan(0.11);\n    expect(BOARD3D_HIGHLIGHT_SIZE).toBeGreaterThan(0.8);\n  });\n\n  it('uses a substantially darker blue for legal moves and selection', () => {\n    expect(BOARD3D_HIGHLIGHT_COLORS.legal).toBe(0x145f8a);\n    expect(BOARD3D_HIGHLIGHT_COLORS.selected).toBe(0x0b3f66);\n    const legal = board3DHighlightStyle({ square: 'e4', legalMap: new Map([['e4', false]]) });\n    const selected = board3DHighlightStyle({ square: 'e2', selectedSquare: 'e2', legalMap: new Map() });\n    expect(legal).toMatchObject({ color: 0x145f8a, opacity: 0.86 });\n    expect(selected).toMatchObject({ color: 0x0b3f66, opacity: 0.96 });\n  });\n\n  it('keeps captures and check red while selection wins over ordinary legal styling', () => {\n    const capture = board3DHighlightStyle({ square: 'd5', legalMap: new Map([['d5', true]]) });\n    const selected = board3DHighlightStyle({ square: 'e2', selectedSquare: 'e2', legalMap: new Map([['e2', false]]) });\n    const check = board3DHighlightStyle({ square: 'e8', selectedSquare: 'e8', checkSquare: 'e8', legalMap: new Map() });\n    expect(capture.color).toBe(BOARD3D_HIGHLIGHT_COLORS.capture);\n    expect(selected.color).toBe(BOARD3D_HIGHLIGHT_COLORS.selected);\n    expect(check.color).toBe(BOARD3D_HIGHLIGHT_COLORS.check);\n  });\n});\n""")
+          PY
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Test highlight contract
+        working-directory: frontend
+        run: npx vitest run src/components/Board3DHighlights.test.js
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name 'Chess Studio automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add frontend/src/components/Board3D.jsx frontend/src/components/Board3DHighlights.js frontend/src/components/Board3DHighlights.test.js
+          git commit -m 'Fix visible War Room selection markers'
+          git push origin HEAD:fix/warroom-visible-selection-markers
