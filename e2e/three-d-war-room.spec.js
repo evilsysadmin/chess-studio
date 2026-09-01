@@ -91,28 +91,18 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
   expect(desktopGeometry.width).toBeGreaterThan(640);
   expect(desktopGeometry.height).toBeGreaterThan(540);
 
-  // Regresión real del antiguo pointermove global: el ratón puede cruzar el
-  // canvas en modo juego sin robar la secuencia de click de Three.js.
+  // Regresión del antiguo pointermove global y del micro-parallax: el ratón
+  // puede cruzar el canvas durante juego normal sin liberar la cámara ni robar
+  // la secuencia de click de Three.js.
   const canvasRect = await canvas.boundingBox();
   expect(canvasRect).not.toBeNull();
   await page.mouse.move(canvasRect.x + canvasRect.width * 0.2, canvasRect.y + canvasRect.height * 0.25);
   await page.mouse.move(canvasRect.x + canvasRect.width * 0.8, canvasRect.y + canvasRect.height * 0.7);
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
-
-  // En dispositivos/pipelines que exponen puntero fino, Inspeccionar libera la
-  // cámara y al salir vuelve al contrato fijo. Con pointer:coarse el producto
-  // oculta este control a propósito, pero el click real del tablero de abajo
-  // sigue siendo obligatorio y es la regresión principal de este test.
-  const inspectButton = board3d.locator('.board3d-inspect');
-  if (await inspectButton.isVisible()) {
-    await inspectButton.click();
-    await expect(board3d).toHaveAttribute('data-board3d-inspect', 'true');
-    await page.mouse.move(canvasRect.x + canvasRect.width * 0.35, canvasRect.y + canvasRect.height * 0.4);
-    await board3d.getByRole('button', { name: 'Volver a jugar', exact: true }).click();
-    await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
-  }
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
+  // Clicks físicos sobre el WebGL: si vuelve una captura global de pointermove,
+  // una proyección de cámara distinta o se rompe el raycast, este POST no sale.
   await clickWarRoomSquare(page, 'e2');
   await clickWarRoomSquare(page, 'e4');
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
