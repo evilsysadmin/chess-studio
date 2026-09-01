@@ -52,6 +52,23 @@ async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
   await page.mouse.click(point.x, point.y);
 }
 
+async function setRendererViaAppearance(page, renderer) {
+  const warRoom = page.locator('[data-board3d-war-room="true"]');
+  if (await warRoom.count()) {
+    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  }
+
+  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('radio', { name: /2D$/ })).toBeVisible();
+  await expect(dialog.getByRole('radio', { name: /3D$/ })).toBeVisible();
+  await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
+  await dialog.getByRole('radio', { name: new RegExp(`${renderer}$`) }).click();
+  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+}
+
 async function openQuickGameWarRoom(page, requestLog = []) {
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page, { requestLog });
@@ -61,9 +78,8 @@ async function openQuickGameWarRoom(page, requestLog = []) {
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 
-  const rendererToggle = page.getByRole('button', { name: 'Vista · 2D', exact: true });
-  await expect(rendererToggle).toBeVisible();
-  await rendererToggle.click();
+  await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
+  await setRendererViaAppearance(page, '3D');
 
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const board3d = page.locator('[data-board3d-war-room="true"]');
@@ -93,8 +109,7 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await expect(e3).toHaveClass(/legal-move/);
   await expect(e4).toHaveClass(/legal-move/);
 
-  const rendererToggle = page.getByRole('button', { name: 'Vista · 2D', exact: true });
-  await rendererToggle.click();
+  await setRendererViaAppearance(page, '3D');
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
   await expect(board3d).toBeVisible();
@@ -121,9 +136,6 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
 });
 
 test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({ page }) => {
-  // Three.js/WebGL can be substantially slower on GitHub-hosted runners than
-  // the rest of the E2E suite. Keep this gate blocking, but give rendering time
-  // to settle so runner load is not confused with an input regression.
   test.setTimeout(75_000);
 
   const requestLog = [];
@@ -153,6 +165,8 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
   await expect(warRoom.getByRole('complementary', { name: 'Puesto táctico de Matthias' })).toBeVisible();
   await expect(warRoom.getByText('COMANDANTE RIVAL', { exact: true })).toBeVisible();
   await expect(warRoom.getByText('SALA DE GUERRA · CÁMARA TÁCTICA', { exact: true })).toBeVisible();
+  await expect(warRoom.locator('.game-3d-warroom-controls')).toBeHidden();
+  await expect(page.locator('.game-board-stack-3d .matthias-board-bubble')).toBeHidden();
 
   const portrait = warRoom.locator('.game-3d-matthias-portrait');
   await expect(portrait).toBeVisible();
@@ -193,7 +207,7 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
   expect(mobileBoardWidth).toBeGreaterThan(320);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
-  await warRoom.getByRole('button', { name: '2D', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeVisible();
+  await setRendererViaAppearance(page, '2D');
+  await expect(page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true })).toBeVisible();
   await expect(page.locator('.board-live-row.is-3d-warroom')).toHaveCount(0);
 });
