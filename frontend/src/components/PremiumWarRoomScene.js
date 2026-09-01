@@ -114,8 +114,6 @@ function addWallSconce(group, x, y, z, towardBoard, segments, coarsePointer) {
 
 function addCurtain(group, x, y, z, towardBoard, side, compact = false) {
   const folds = compact ? 4 : 6;
-  const burgundy = material(COLORS.burgundy, { roughness: 0.82, clearcoat: 0.05 });
-  const burgundyDark = material(COLORS.burgundyDark, { roughness: 0.9, clearcoat: 0.02 });
   const brass = material(COLORS.brass, { metalness: 0.82, roughness: 0.22 });
   addMesh(group, new THREE.CylinderGeometry(0.035, 0.035, 2.5, 12), brass, [x, y + 1.22, z], [0, 0, Math.PI / 2]);
   for (let index = 0; index < folds; index += 1) {
@@ -123,7 +121,7 @@ function addCurtain(group, x, y, z, towardBoard, side, compact = false) {
     const px = x + side * (index * 0.18 + 0.1);
     const pz = z + towardBoard * (0.02 + (index % 2) * 0.055);
     addBox(group, [width, 2.7 - index * 0.08, 0.13], index % 2 ? COLORS.burgundyDark : COLORS.burgundy, [px, y - index * 0.035, pz], {
-      roughness: index % 2 ? burgundyDark.roughness : burgundy.roughness,
+      roughness: index % 2 ? 0.9 : 0.82,
       clearcoat: 0.04,
       rotation: [0, side * 0.02 * index, side * 0.012 * index],
     });
@@ -171,16 +169,14 @@ function addPawnCrest(group, x, y, z, towardBoard, segments) {
 
 function addPictureFrame(group, x, y, z, towardBoard, flip = false) {
   const frameMat = material(COLORS.brassDark, { metalness: 0.62, roughness: 0.28, clearcoat: 0.5 });
-  const mapMat = material(flip ? 0x314535 : 0x3f3727, { roughness: 0.86, clearcoat: 0.03 });
   addBox(group, [2.0, 1.42, 0.09], COLORS.walnutWarm, [x, y, z], { roughness: 0.52, clearcoat: 0.34 });
-  addBox(group, [1.72, 1.14, 0.04], flip ? 0x314535 : 0x3f3727, [x, y, z + towardBoard * 0.075], { roughness: mapMat.roughness, castShadow: false });
+  addBox(group, [1.72, 1.14, 0.04], flip ? 0x314535 : 0x3f3727, [x, y, z + towardBoard * 0.075], { roughness: 0.86, castShadow: false });
   for (const [dx, dy, sx, sy] of [[0, 0.65, 1.95, 0.07], [0, -0.65, 1.95, 0.07], [-0.93, 0, 0.07, 1.35], [0.93, 0, 0.07, 1.35]]) {
     addMesh(group, new THREE.BoxGeometry(sx, sy, 0.04), frameMat, [x + dx, y + dy, z + towardBoard * 0.11]);
   }
-  const routeMat = material(COLORS.parchment, { roughness: 0.8, clearcoat: 0.02 });
   for (let index = 0; index < 4; index += 1) {
     addBox(group, [1.05 - index * 0.13, 0.025, 0.02], COLORS.parchment, [x + (index - 1.5) * 0.1, y + (index - 1.5) * 0.18, z + towardBoard * 0.12], {
-      roughness: routeMat.roughness,
+      roughness: 0.8,
       rotation: [0, 0, (index % 2 ? -1 : 1) * 0.14],
       castShadow: false,
     });
@@ -200,15 +196,12 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   const leftX = whiteSide ? -4.95 : 4.95;
   const rightX = -leftX;
 
-  // Central ceremonial axis: crest, curtains and lamps. This is the visual anchor
-  // from the approved art direction, not extra game state.
   addCurtain(group, -1.65, 3.28, wallZ + towardBoard * 0.48, towardBoard, -1, coarsePointer);
   addCurtain(group, 1.65, 3.28, wallZ + towardBoard * 0.48, towardBoard, 1, coarsePointer);
   addPawnCrest(group, 0, 3.25, wallZ + towardBoard * 0.58, towardBoard, segments);
   addWallSconce(group, -3.25, 4.55, wallZ + towardBoard * 0.44, towardBoard, segments, coarsePointer);
   addWallSconce(group, 3.25, 4.55, wallZ + towardBoard * 0.44, towardBoard, segments, coarsePointer);
 
-  // Side consoles give the room colour and depth without stealing board contrast.
   addBox(group, [3.25, 0.22, 0.82], COLORS.walnutWarm, [leftX, 1.83, shelfZ], { roughness: 0.48, clearcoat: 0.38 });
   addBox(group, [3.25, 0.16, 0.84], COLORS.brassDark, [leftX, 1.69, shelfZ], { metalness: 0.55, roughness: 0.3 });
   addBankerLamp(group, leftX - (whiteSide ? 0.55 : -0.55), 1.92, shelfZ + towardBoard * 0.22, whiteSide ? 1 : -1, segments, coarsePointer);
@@ -226,7 +219,6 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
     addBookStack(group, rightX + (whiteSide ? 0.82 : -0.82), 3.02, wallZ + towardBoard * 0.54, !whiteSide, false);
   }
 
-  // A restrained cool fill keeps walnut from collapsing into a brown blob.
   const coolFill = new THREE.PointLight(theme?.felt ?? COLORS.teal, coarsePointer ? 1.2 : 2.1, 9.5, 2);
   coolFill.position.set(rightX * 0.72, 3.25, wallZ + towardBoard * 1.4);
   group.add(coolFill);
@@ -241,10 +233,8 @@ export function buildPremiumTableLayer(theme, coarsePointer = false) {
   const leather = material(COLORS.burgundyDark, { roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.18 });
   const walnut = material(COLORS.walnutWarm, { metalness: 0.04, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.16 });
 
-  // Visible leather reveal around the board pedestal.
   addMesh(group, new THREE.BoxGeometry(10.25, 0.07, 10.25), leather, [0, -0.165, 0]);
 
-  // Double wooden/brass rail gives the table the furniture-like silhouette from the target art.
   for (const [x, z, sx, sz] of [
     [0, 5.23, 10.55, 0.18], [0, -5.23, 10.55, 0.18],
     [5.23, 0, 0.18, 10.55], [-5.23, 0, 0.18, 10.55],
