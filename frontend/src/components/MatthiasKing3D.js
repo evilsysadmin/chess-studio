@@ -41,13 +41,15 @@ function mat(color, options = {}) {
 /**
  * Matthias es el rey reglamentario del bando rival y, por tanto, su cuerpo
  * debe leerse primero como una pieza de ese color. La identidad la ponen la
- * cara permanentemente cabreada y la gorra de plato, no un uniforme negro que
- * pueda confundir una pieza blanca con una negra.
+ * cara permanentemente cabreada y su gorra de oficial, no un uniforme negro
+ * que pueda confundir una pieza blanca con una negra.
  */
 export function buildMatthiasKing3D(mainMaterial, accentMaterial, { coarsePointer = false, faceTowardCamera = true } = {}) {
   const group = new THREE.Group();
   group.name = 'matthias-rival-king';
   group.userData.matthiasKing = true;
+  group.userData.faceStyle = 'permanent-scowl-v2';
+  group.userData.capStyle = 'crooked-officer-cap-v2';
 
   const segments = coarsePointer ? 24 : 42;
   const front = faceTowardCamera ? 1 : -1;
@@ -58,6 +60,20 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, { coarsePointe
     clearcoatRoughness: 0.82,
     envMapIntensity: 0.18,
     specularIntensity: 0.15,
+  });
+  const faceShadow = mat(0x9c6d4d, {
+    metalness: 0,
+    roughness: 0.9,
+    clearcoat: 0.01,
+    envMapIntensity: 0.1,
+    specularIntensity: 0.08,
+  });
+  const eyeWhite = mat(0xdacfb9, {
+    metalness: 0,
+    roughness: 0.74,
+    clearcoat: 0.03,
+    envMapIntensity: 0.16,
+    specularIntensity: 0.12,
   });
   const cap = mat(0x11151b, {
     metalness: 0.16,
@@ -102,27 +118,67 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, { coarsePointe
   add(group, new THREE.TorusGeometry(0.235, 0.022, 10, segments), accentMaterial, [0, 0.73, 0], [Math.PI / 2, 0, 0], null, 'matthias-king-shoulder-ring');
   add(group, new THREE.TorusGeometry(0.176, 0.016, 9, segments), brass, [0, 0.815, 0], [Math.PI / 2, 0, 0], null, 'matthias-king-collar');
 
-  // Cara de Matthias: grande, mate, ceño muy marcado y boca torcida hacia abajo.
-  add(group, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 0.985, 0], [0, 0, 0], [1.04, 0.96, 0.95], 'matthias-face');
-  const faceZ = front * 0.218;
-  add(group, new THREE.SphereGeometry(0.03, 14, 9), ink, [-0.078, 0.995, faceZ], [0, 0, 0], [1.18, 0.78, 0.54], 'matthias-eye-left');
-  add(group, new THREE.SphereGeometry(0.03, 14, 9), ink, [0.078, 0.995, faceZ], [0, 0, 0], [1.18, 0.78, 0.54], 'matthias-eye-right');
-  add(group, new THREE.BoxGeometry(0.112, 0.024, 0.022), ink, [-0.073, 1.043, front * 0.223], [0, 0, -0.32 * front], null, 'matthias-brow-left');
-  add(group, new THREE.BoxGeometry(0.112, 0.024, 0.022), ink, [0.073, 1.043, front * 0.223], [0, 0, 0.32 * front], null, 'matthias-brow-right');
-  add(group, new THREE.SphereGeometry(0.025, 12, 8), face, [0, 0.956, front * 0.232], [0, 0, 0], [0.86, 1, 0.66], 'matthias-nose');
-  add(group, new THREE.BoxGeometry(0.075, 0.017, 0.02), ink, [-0.032, 0.907, front * 0.227], [0, 0, 0.16 * front], null, 'matthias-mouth-left');
-  add(group, new THREE.BoxGeometry(0.075, 0.017, 0.02), ink, [0.032, 0.907, front * 0.227], [0, 0, -0.16 * front], null, 'matthias-mouth-right');
+  // Cara: menos muñeco redondo y más viejo general obstinado. El maxilar y las
+  // mejillas rompen la esfera perfecta; los ojos pequeños, el ceño asimétrico
+  // y la boca torcida conservan su enfado incluso a tamaño móvil.
+  add(group, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 0.988, 0], [0, 0, 0], [1.055, 0.94, 0.93], 'matthias-face');
+  add(group, new THREE.SphereGeometry(0.18, segments, coarsePointer ? 12 : 18), faceShadow, [0, 0.897, -front * 0.008], [0, 0, 0], [1.12, 0.43, 0.82], 'matthias-jaw-shadow');
+  const faceZ = front * 0.214;
 
-  // Gorra de plato: firma visual, pero ahora corona un cuerpo de rey normal en
-  // vez de convertir toda la pieza en un peón militar oscuro.
-  add(group, new THREE.CylinderGeometry(0.248, 0.268, 0.13, segments), cap, [0, 1.18, 0], [0, 0, 0], [1.08, 1, 0.91], 'matthias-cap');
-  add(group, new THREE.TorusGeometry(0.245, 0.024, 8, segments), capBand, [0, 1.13, 0], [Math.PI / 2, 0, 0], [1.04, 0.9, 1], 'matthias-cap-band');
-  add(group, new THREE.TorusGeometry(0.249, 0.011, 8, segments), brass, [0, 1.145, 0], [Math.PI / 2, 0, 0], [1.04, 0.9, 1], 'matthias-cap-piping');
-  add(group, new THREE.CylinderGeometry(0.228, 0.244, 0.058, segments), cap, [0, 1.267, 0], [0, 0, 0], [1.12, 1, 0.92], 'matthias-cap-top');
-  add(group, new THREE.BoxGeometry(0.37, 0.035, 0.155), cap, [0, 1.135, front * 0.205], [-0.09 * front, 0, 0], [1.16, 1, 1], 'matthias-visor');
-  add(group, new THREE.SphereGeometry(0.055, 14, 9), brass, [0, 1.22, front * 0.236], [0, 0, 0], null, 'matthias-cap-badge');
-  add(group, new THREE.BoxGeometry(0.021, 0.086, 0.016), ink, [0, 1.22, front * 0.286], [0, 0, 0], null, 'matthias-cap-badge-vertical');
-  add(group, new THREE.BoxGeometry(0.078, 0.021, 0.016), ink, [0, 1.22, front * 0.286], [0, 0, 0], null, 'matthias-cap-badge-horizontal');
+  add(group, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [-0.078, 1.002, faceZ], [0, 0, 0], [1.22, 0.7, 0.42], 'matthias-eye-white-left');
+  add(group, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [0.078, 1.002, faceZ], [0, 0, 0], [1.22, 0.7, 0.42], 'matthias-eye-white-right');
+  add(group, new THREE.SphereGeometry(0.021, 12, 8), ink, [-0.071, 0.999, front * 0.239], [0, 0, 0], [1, 0.94, 0.62], 'matthias-eye-left');
+  add(group, new THREE.SphereGeometry(0.021, 12, 8), ink, [0.071, 0.999, front * 0.239], [0, 0, 0], [1, 0.94, 0.62], 'matthias-eye-right');
+
+  add(group, new THREE.BoxGeometry(0.12, 0.027, 0.022), ink, [-0.072, 1.054, front * 0.224], [0, 0, -0.39 * front], null, 'matthias-brow-left');
+  add(group, new THREE.BoxGeometry(0.12, 0.027, 0.022), ink, [0.072, 1.049, front * 0.224], [0, 0, 0.33 * front], null, 'matthias-brow-right');
+  add(group, new THREE.BoxGeometry(0.068, 0.014, 0.018), faceShadow, [-0.073, 1.026, front * 0.231], [0, 0, -0.22 * front], null, 'matthias-brow-crease-left');
+  add(group, new THREE.BoxGeometry(0.068, 0.014, 0.018), faceShadow, [0.073, 1.024, front * 0.231], [0, 0, 0.2 * front], null, 'matthias-brow-crease-right');
+
+  add(group, new THREE.SphereGeometry(0.032, 14, 9), face, [0.008, 0.958, front * 0.235], [0, 0, 0.08 * front], [0.86, 1.28, 0.68], 'matthias-nose');
+  add(group, new THREE.SphereGeometry(0.036, 12, 8), faceShadow, [-0.132, 0.955, front * 0.204], [0, 0, 0], [0.65, 0.86, 0.36], 'matthias-cheek-left');
+  add(group, new THREE.SphereGeometry(0.036, 12, 8), faceShadow, [0.132, 0.949, front * 0.204], [0, 0, 0], [0.65, 0.86, 0.36], 'matthias-cheek-right');
+
+  add(group, new THREE.BoxGeometry(0.082, 0.018, 0.02), ink, [-0.035, 0.9, front * 0.226], [0, 0, 0.22 * front], null, 'matthias-mouth-left');
+  add(group, new THREE.BoxGeometry(0.082, 0.018, 0.02), ink, [0.035, 0.898, front * 0.226], [0, 0, -0.12 * front], null, 'matthias-mouth-right');
+  add(group, new THREE.BoxGeometry(0.062, 0.011, 0.017), faceShadow, [0.045, 0.876, front * 0.218], [0, 0, -0.18 * front], null, 'matthias-lower-lip-crease');
+
+  // Una cicatriz/arruga corta aporta historia sin convertir la cara en un
+  // disfraz. No hay bigote: la silueta sigue siendo la del Matthias aprobado.
+  if (!coarsePointer) {
+    add(group, new THREE.BoxGeometry(0.012, 0.075, 0.014), faceShadow, [0.142, 0.978, front * 0.211], [0, 0, -0.34 * front], null, 'matthias-face-scar');
+  }
+
+  // Gorra de oficial deliberadamente imperfecta: copa algo ladeada, banda baja
+  // y una visera curva que sobresale. La antigua forma cilíndrica demasiado
+  // perfecta era la responsable principal del efecto "Playmobil picoleto".
+  const capGroup = new THREE.Group();
+  capGroup.name = 'matthias-officer-cap';
+  capGroup.position.set(0, 1.105, 0);
+  capGroup.rotation.z = -0.055 * front;
+  capGroup.rotation.x = 0.025 * front;
+  group.add(capGroup);
+
+  add(capGroup, new THREE.CylinderGeometry(0.24, 0.265, 0.12, segments), cap, [0, 0.075, 0], [0, 0, 0], [1.13, 1, 0.92], 'matthias-cap');
+  add(capGroup, new THREE.TorusGeometry(0.246, 0.023, 8, segments), capBand, [0, 0.025, 0], [Math.PI / 2, 0, 0], [1.07, 0.9, 1], 'matthias-cap-band');
+  add(capGroup, new THREE.TorusGeometry(0.25, 0.01, 8, segments), brass, [0, 0.041, 0], [Math.PI / 2, 0, 0], [1.07, 0.9, 1], 'matthias-cap-piping');
+  add(capGroup, new THREE.CylinderGeometry(0.235, 0.25, 0.052, segments), cap, [-0.006, 0.145, -front * 0.006], [0, 0, 0.025 * front], [1.17, 1, 0.91], 'matthias-cap-top');
+
+  const visor = add(
+    capGroup,
+    new THREE.CylinderGeometry(0.325, 0.35, 0.03, segments, 1, false, -1.02, 2.04),
+    cap,
+    [0, 0.005, front * 0.175],
+    [0.12 * front, 0, 0],
+    [1.04, 1, 0.92],
+    'matthias-visor',
+  );
+  visor.castShadow = true;
+
+  add(capGroup, new THREE.SphereGeometry(0.052, 14, 9), brass, [0, 0.095, front * 0.247], [0, 0, 0], [1, 0.92, 0.52], 'matthias-cap-badge');
+  // Insignia propia: un minúsculo peón. Nada de cruces ni emblemas históricos.
+  add(capGroup, new THREE.CylinderGeometry(0.017, 0.026, 0.042, 10), ink, [0, 0.086, front * 0.278], [Math.PI / 2, 0, 0], null, 'matthias-cap-badge-pawn-body');
+  add(capGroup, new THREE.SphereGeometry(0.022, 10, 7), ink, [0, 0.111, front * 0.28], [0, 0, 0], null, 'matthias-cap-badge-pawn-head');
 
   group.scale.setScalar(1.03);
   return group;
