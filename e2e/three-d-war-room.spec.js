@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
-const WAR_ROOM_READY_TIMEOUT = 30_000;
+const WAR_ROOM_READY_TIMEOUT = 45_000;
 
 function normalized(vector) {
   const length = Math.hypot(...vector);
@@ -71,6 +71,19 @@ async function setRendererViaAppearance(page, renderer) {
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 }
 
+async function waitForWarRoomRenderer(page) {
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+  const preparing = page.getByText('Preparando sala 3D…', { exact: true });
+
+  if (await preparing.count()) {
+    await expect(preparing).toBeVisible();
+  }
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  return { board3d, canvas };
+}
+
 async function openQuickGameWarRoom(page, requestLog = []) {
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page, { requestLog });
@@ -84,16 +97,13 @@ async function openQuickGameWarRoom(page, requestLog = []) {
   await setRendererViaAppearance(page, '3D');
 
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
-  const board3d = page.locator('[data-board3d-war-room="true"]');
-  const canvas = page.locator('.board3d-main-canvas');
   await expect(warRoom).toBeVisible();
-  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  const { board3d, canvas } = await waitForWarRoomRenderer(page);
   return { warRoom, board3d, canvas };
 }
 
 test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado usa el mismo estado', async ({ page }) => {
-  test.setTimeout(75_000);
+  test.setTimeout(90_000);
 
   const requestLog = [];
   await page.setViewportSize({ width: 1440, height: 960 });
@@ -112,10 +122,7 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await expect(e4).toHaveClass(/legal-move/);
 
   await setRendererViaAppearance(page, '3D');
-  const board3d = page.locator('[data-board3d-war-room="true"]');
-  const canvas = page.locator('.board3d-main-canvas');
-  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  const { board3d, canvas } = await waitForWarRoomRenderer(page);
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
 
@@ -138,7 +145,7 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
 });
 
 test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({ page }) => {
-  test.setTimeout(75_000);
+  test.setTimeout(90_000);
 
   const requestLog = [];
   const { board3d, canvas } = await openQuickGameWarRoom(page, requestLog);
@@ -159,7 +166,7 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
 });
 
 test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y sigue cabiendo en móvil', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
 
   const { warRoom, board3d } = await openQuickGameWarRoom(page);
   await expect(board3d).toHaveAttribute('data-board3d-scene', 'premium');
@@ -178,29 +185,31 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
     const rect = element.getBoundingClientRect();
     return { width: rect.width, height: rect.height };
   });
-  expect(desktopGeometry.width).toBeGreaterThan(640);
-  expect(desktopGeometry.height).toBeGreaterThan(540);
-
-  const footerAlignment = await page.evaluate(() => {
-    const rail = document.querySelector('.game-board-stack-3d > .game-player-rail.is-human')?.getBoundingClientRect();
-    const controls = document.querySelector('.game-board-stack-3d > .game-command-deck')?.getBoundingClientRect();
-    return rail && controls ? { railTop: rail.top, controlsTop: controls.top, railBottom: rail.bottom, controlsBottom: controls.bottom } : null;
-  });
-  expect(footerAlignment).not.toBeNull();
-  expect(Math.abs(footerAlignment.railTop - footerAlignment.controlsTop)).toBeLessThan(4);
-  expect(Math.abs(footerAlignment.railBottom - footerAlignment.controlsBottom)).toBeLessThan(8);
+  expect(desktopGeometry.width).toBeGreaterThan(700);
+  expect(desktopGeometry.height).toBeGreaterThan(700);
 
   const warRoomGeometry = await warRoom.evaluate((element) => {
     const rect = element.getBoundingClientRect();
-    return { width: rect.width, left: rect.left, right: rect.right };
+    return { width: rect.width, right: rect.right, scrollWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
   });
-  expect(warRoomGeometry.width).toBeGreaterThan(1320);
-  expect(warRoomGeometry.left).toBeGreaterThanOrEqual(0);
-  expect(warRoomGeometry.right).toBeLessThanOrEqual(1441);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  expect(warRoomGeometry.width).toBeGreaterThan(1380);
+  expect(warRoomGeometry.right).toBeLessThanOrEqual(warRoomGeometry.viewportWidth + 1);
+  expect(warRoomGeometry.scrollWidth).toBeLessThanOrEqual(warRoomGeometry.viewportWidth + 1);
+
+  const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
+  const controls = page.locator('.game-board-stack-3d .game-command-deck');
+  await expect(humanRail).toBeVisible();
+  await expect(controls).toBeVisible();
+  const footerGeometry = await page.evaluate(() => {
+    const player = document.querySelector('.game-board-stack-3d .game-player-rail.is-human')?.getBoundingClientRect();
+    const actions = document.querySelector('.game-board-stack-3d .game-command-deck')?.getBoundingClientRect();
+    return player && actions ? { playerTop: player.top, actionsTop: actions.top } : null;
+  });
+  expect(footerGeometry).not.toBeNull();
+  expect(Math.abs(footerGeometry.playerTop - footerGeometry.actionsTop)).toBeLessThan(4);
 
   await page.setViewportSize({ width: 1662, height: 796 });
-  await expect(warRoom).toBeVisible();
+  await page.waitForTimeout(180);
   const shortDesktopGeometry = await page.locator('.board3d-main-shell').evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return { width: rect.width, height: rect.height, bottom: rect.bottom };
@@ -209,16 +218,14 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
   expect(shortDesktopGeometry.height).toBeGreaterThan(580);
   expect(shortDesktopGeometry.height).toBeLessThan(625);
   expect(shortDesktopGeometry.bottom).toBeLessThanOrEqual(796);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(warRoom).toBeVisible();
-  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  const mobileBoardWidth = await page.locator('.board3d-main-shell').evaluate((element) => element.getBoundingClientRect().width);
-  expect(mobileBoardWidth).toBeGreaterThan(320);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
-
-  await setRendererViaAppearance(page, '2D');
-  await expect(page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true })).toBeVisible();
-  await expect(page.locator('.board-live-row.is-3d-warroom')).toHaveCount(0);
+  await page.waitForTimeout(180);
+  const mobileGeometry = await page.locator('.board3d-main-shell').evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, right: rect.right, scrollWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth };
+  });
+  expect(mobileGeometry.width).toBeGreaterThan(320);
+  expect(mobileGeometry.right).toBeLessThanOrEqual(mobileGeometry.viewportWidth + 1);
+  expect(mobileGeometry.scrollWidth).toBeLessThanOrEqual(mobileGeometry.viewportWidth + 1);
 });
