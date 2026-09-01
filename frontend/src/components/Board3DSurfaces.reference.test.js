@@ -13,6 +13,12 @@ const skin = {
   emissiveIntensity: 0,
 };
 
+function disposeMaterial(material) {
+  const textures = new Set([material?.roughnessMap, material?.bumpMap].filter(Boolean));
+  for (const texture of textures) texture.dispose();
+  material?.dispose?.();
+}
+
 describe('Board3D reference look', () => {
   it('mantiene las blancas en marfil mate y lejos del blanco quemado', () => {
     const ivory = makePremiumPieceMaterial({ color: 0xf0eadc, skin, side: 'w' });
@@ -25,9 +31,7 @@ describe('Board3D reference look', () => {
     expect(ivory.specularIntensity).toBeLessThanOrEqual(0.12);
     expect(ivory.envMapIntensity).toBeLessThanOrEqual(0.15);
 
-    ivory.roughnessMap?.dispose();
-    ivory.bumpMap?.dispose();
-    ivory.dispose();
+    disposeMaterial(ivory);
   });
 
   it('oscurece y mata el barniz de los muebles existentes', () => {
@@ -52,9 +56,7 @@ describe('Board3D reference look', () => {
     expect(wood.envMapIntensity).toBeLessThanOrEqual(0.38);
     expect(wood.specularIntensity).toBeLessThanOrEqual(0.34);
 
-    wood.roughnessMap?.dispose();
-    wood.bumpMap?.dispose();
-    wood.dispose();
+    disposeMaterial(wood);
     geometry.dispose();
   });
 
