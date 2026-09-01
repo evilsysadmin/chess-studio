@@ -27,7 +27,7 @@ describe('Matthias rival king 3D', () => {
     expect(isMatthiasRivalKing({ type: 'k', color: 'b' }, null)).toBe(false);
   });
 
-  it('mantiene una silueta inequívoca de Matthias y no un rey clásico', () => {
+  it('usa cuerpo reglamentario de rey del bando con cara y gorra inequívocas de Matthias', () => {
     const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
     const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent);
@@ -36,10 +36,11 @@ describe('Matthias rival king 3D', () => {
 
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
-    expect(meshes).toBeGreaterThanOrEqual(24);
-    expect(group.scale.x).toBeCloseTo(1.11);
-    expect(group.getObjectByName('matthias-side-base')).toBeTruthy();
-    expect(group.getObjectByName('matthias-uniform')).toBeTruthy();
+    expect(meshes).toBeGreaterThanOrEqual(20);
+    expect(group.scale.x).toBeCloseTo(1.03);
+    expect(group.getObjectByName('matthias-king-body')).toBeTruthy();
+    expect(group.getObjectByName('matthias-king-base-ring')).toBeTruthy();
+    expect(group.getObjectByName('matthias-king-shoulder-ring')).toBeTruthy();
     expect(group.getObjectByName('matthias-face')).toBeTruthy();
     expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-brow-left')).toBeTruthy();
@@ -48,7 +49,10 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-cap-band')).toBeTruthy();
     expect(group.getObjectByName('matthias-visor')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
-    expect(group.getObjectByName('matthias-insignia')).toBeTruthy();
+
+    // El cuerpo usa exactamente el material del bando; la identidad no debe
+    // convertir una pieza blanca en una figura negra.
+    expect(group.getObjectByName('matthias-king-body').material).toBe(main);
 
     disposeGroup(group);
     main.dispose();

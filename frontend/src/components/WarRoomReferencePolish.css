@@ -1,0 +1,166 @@
+/* Approved War Room reference polish.
+   Keep this layer scoped to board-game / 3D classes so the rest of Chess Studio
+   retains the existing progressive-disclosure layout. */
+
+/* Desktop game header: useful controls stay visible and sit deliberately at
+   the upper-right instead of collapsing into anonymous icon dots. */
+@media (min-width: 821px) {
+  .app-shell-board-game .masthead-game-compact {
+    width: min(100%, 1680px);
+    padding-inline: clamp(.75rem, 1.4vw, 1.35rem);
+    box-sizing: border-box;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-top-row {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-actions {
+    width: auto;
+    margin-left: auto;
+    padding-right: clamp(.15rem, .65vw, .7rem);
+    gap: .5rem;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-feedback-trigger,
+  .app-shell-board-game .masthead-game-compact .masthead-account-trigger {
+    width: auto;
+    min-width: 112px;
+    min-height: 36px;
+    padding: .35rem .68rem;
+    justify-content: center;
+    border-radius: 9px;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-feedback-trigger > span:last-child,
+  .app-shell-board-game .masthead-game-compact .masthead-account-trigger > span:not(.masthead-account-avatar) {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-account-chevron {
+    display: none;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-account-avatar {
+    width: 25px;
+    height: 25px;
+  }
+}
+
+/* The bottom human rail already has the global status line above the board.
+   In 3D, repeating TU TURNO here wastes height and adds visual noise. */
+.game-board-stack-3d .game-player-rail.is-human .game-player-turn {
+  display: none;
+}
+
+.game-board-stack-3d .game-player-rail.is-human {
+  min-height: 42px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: .5rem;
+  padding: .32rem .5rem;
+}
+
+.game-board-stack-3d .game-player-rail.is-human .game-player-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  font-size: 1.05rem;
+}
+
+.game-board-stack-3d .game-player-rail.is-human .game-player-identity strong {
+  font-size: .78rem;
+}
+
+.game-board-stack-3d .game-player-rail.is-human .game-player-identity small {
+  font-size: .61rem;
+}
+
+/* Compact command deck: one clean line on desktop, freeing real viewport
+   height for the board and the physical set. */
+@media (min-width: 821px) {
+  .game-board-stack-3d .game-command-deck {
+    margin-top: -.08rem;
+  }
+
+  .game-board-stack-3d .game-controls {
+    padding: .28rem .38rem;
+  }
+
+  .game-board-stack-3d .game-controls-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: .34rem;
+  }
+
+  .game-board-stack-3d .game-controls-actions .secondary-btn {
+    min-height: 34px;
+    padding: .34rem .55rem;
+    font-size: .64rem;
+    white-space: nowrap;
+  }
+
+  .game-board-stack-3d .game-abandon-btn {
+    margin-left: auto;
+  }
+
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(480px, calc(100dvh - 16.7rem), 690px);
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 900px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(450px, calc(100dvh - 15.9rem), 620px);
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 780px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(405px, calc(100dvh - 15.1rem), 520px);
+  }
+}
+
+/* The portrait is intentionally more alive than before, but not a looping
+   puppet. Movement is event/gesture driven and therefore remains occasional. */
+.game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-portrait {
+  animation: matthias-warroom-order .62s cubic-bezier(.18,.82,.24,1) 2 alternate;
+}
+
+.game-3d-matthias-portrait-wrap.is-ordering::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  right: 4%;
+  top: 16%;
+  width: 22%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(205,161,72,.7), transparent);
+  transform: rotate(-18deg);
+  opacity: .65;
+  pointer-events: none;
+}
+
+@keyframes matthias-warroom-order {
+  from { transform: scale(1.005) translateX(0) rotate(0); }
+  to { transform: scale(1.025) translateX(-1.2%) rotate(-.6deg); }
+}
+
+@media (max-width: 820px) {
+  .game-board-stack-3d .game-player-rail.is-human {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-portrait {
+    animation: none !important;
+  }
+}

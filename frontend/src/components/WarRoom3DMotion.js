@@ -1,30 +1,11 @@
 // Pure motion/lighting helpers live here so the 3D scene can be tuned and tested
 // without coupling chess rules or game-state ownership to the renderer.
-
-const FIXED_CAMERA_POINTER_GUARD = Symbol.for('chess-studio.war-room.fixed-camera-pointer-guard');
-
-export function shouldSuppressWarRoomParallax(target) {
-  const canvas = target?.closest?.('.board3d-main-canvas');
-  if (!canvas) return false;
-  const shell = canvas.closest?.('.board3d-main-shell');
-  // The normal match camera is deliberately fixed. Pointer motion is useful
-  // only after the user explicitly enters Inspect mode.
-  return shell?.dataset?.board3dInspect !== 'true';
-}
-
-function installFixedCameraPointerGuard() {
-  if (typeof document === 'undefined' || document[FIXED_CAMERA_POINTER_GUARD]) return;
-  const handler = (event) => {
-    if (shouldSuppressWarRoomParallax(event.target)) event.stopImmediatePropagation();
-  };
-  document.addEventListener('pointermove', handler, { capture: true, passive: true });
-  document[FIXED_CAMERA_POINTER_GUARD] = handler;
-}
-
-// Board3D already imports this module. Installing the capture guard here keeps
-// the normal War Room camera truly fixed without interfering with pointerdown /
-// pointerup selection. Inspect mode still receives pointermove and can orbit.
-installFixedCameraPointerGuard();
+//
+// Important: this module must stay free of document-level pointer listeners.
+// A capture-phase pointermove guard briefly used to freeze the War Room camera
+// also swallowed the desktop interaction stream before it reached the WebGL
+// canvas. Camera policy belongs inside Board3D; motion math must not interfere
+// with chess input.
 
 export function clamp01(value) {
   return Math.min(1, Math.max(0, Number(value) || 0));
