@@ -14,7 +14,15 @@ async function openHomeAt(page, hour, { dismissSpeech = true } = {}) {
     Date.prototype.getHours = () => fixedHour;
   }, hour);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await mockApi(page);
+  await mockApi(page, {
+    // Este gate prueba la visita residente, no el onboarding. Sembramos un
+    // perfil que ya conoce a Matthias para que el saludo explícito de login
+    // quede disponible y no sea consumido por la Guía rápida.
+    profileSeed: {
+      'matthias.onboarded': '2',
+      'chess-study-home-guide-dismissed-v1': '1',
+    },
+  });
   await login(page);
   await dismissHomeGuide(page);
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
