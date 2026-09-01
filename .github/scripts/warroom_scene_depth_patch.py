@@ -1,0 +1,185 @@
+from pathlib import Path
+
+
+def replace_once(text, old, new, label):
+    if old not in text:
+        raise SystemExit(f"missing marker: {label}")
+    return text.replace(old, new, 1)
+
+
+p = Path("frontend/src/components/PremiumWarRoomScene.js")
+s = p.read_text(encoding="utf-8")
+marker = "export function buildPremiumTableLayer(theme, coarsePointer = false) {"
+helpers = r"""
+function addWarTablePapers(group, coarsePointer = false) {
+  const paper = material(0xb6a681, { metalness: 0, roughness: 0.9, clearcoat: 0.02, specularIntensity: 0.18 });
+  const ink = material(0x27221b, { metalness: 0, roughness: 0.95, clearcoat: 0, specularIntensity: 0.08 });
+  const leather = material(0x2b1512, { metalness: 0, roughness: 0.72, clearcoat: 0.08, sheen: 0.18, sheenColor: 0x6e3d32 });
+  const brass = material(COLORS.brassDark, { metalness: 0.82, roughness: 0.34, clearcoat: 0.18 });
+
+  const folio = new THREE.Group();
+  folio.name = 'war-table-field-folio';
+  addMesh(folio, new THREE.BoxGeometry(1.1, 0.035, 0.72), leather, [-4.64, 0.11, -3.92], [0, 0.22, 0]);
+  addMesh(folio, new THREE.BoxGeometry(0.92, 0.018, 0.61), paper, [-4.59, 0.145, -3.86], [0, 0.18, 0.018]);
+  if (!coarsePointer) {
+    for (let index = 0; index < 4; index += 1) {
+      addMesh(folio, new THREE.BoxGeometry(0.52 - index * 0.055, 0.004, 0.012), ink,
+        [-4.68 + index * 0.035, 0.16 + index * 0.001, -3.78 - index * 0.105], [0, 0.18, 0]);
+    }
+  }
+  addMesh(folio, new THREE.CylinderGeometry(0.055, 0.055, 0.055, 18), brass, [-4.24, 0.185, -3.6]);
+  group.add(folio);
+
+  const pencil = new THREE.Group();
+  pencil.name = 'war-table-map-pencil';
+  addMesh(pencil, new THREE.CylinderGeometry(0.022, 0.022, 1.12, 12), material(0x7a4b27, { roughness: 0.76, clearcoat: 0.05 }), [4.73, 0.16, -2.3], [Math.PI / 2, 0, 0.08]);
+  addMesh(pencil, new THREE.ConeGeometry(0.028, 0.12, 12), material(0x25201c, { roughness: 0.9, clearcoat: 0 }), [4.73, 0.16, -2.88], [Math.PI / 2, 0, 0]);
+  group.add(pencil);
+}
+
+function addCommandChronometer(group, coarsePointer = false) {
+  const brass = material(COLORS.brass, { metalness: 0.9, roughness: 0.3, clearcoat: 0.2, clearcoatRoughness: 0.28 });
+  const face = material(0x9c9071, { metalness: 0, roughness: 0.82, clearcoat: 0.05, specularIntensity: 0.18 });
+  const dark = material(0x15171a, { metalness: 0.12, roughness: 0.72, clearcoat: 0.08 });
+  const watch = new THREE.Group();
+  watch.name = 'war-table-command-chronometer';
+  addMesh(watch, new THREE.CylinderGeometry(0.25, 0.25, 0.055, coarsePointer ? 18 : 32), brass, [4.62, 0.14, 3.86]);
+  addMesh(watch, new THREE.CylinderGeometry(0.205, 0.205, 0.015, coarsePointer ? 18 : 32), face, [4.62, 0.18, 3.86]);
+  if (!coarsePointer) {
+    addMesh(watch, new THREE.BoxGeometry(0.018, 0.008, 0.145), dark, [4.62, 0.195, 3.81], [0, 0.45, 0]);
+    addMesh(watch, new THREE.BoxGeometry(0.012, 0.009, 0.1), dark, [4.62, 0.197, 3.86], [0, -0.72, 0]);
+    addMesh(watch, new THREE.TorusGeometry(0.29, 0.018, 8, 30), brass, [4.62, 0.15, 3.86], [Math.PI / 2, 0, 0]);
+  }
+  group.add(watch);
+}
+
+function addMatthiasCommandRelic(group, theme, coarsePointer = false) {
+  const brass = material(theme?.glow ?? COLORS.brass, { metalness: 0.86, roughness: 0.3, clearcoat: 0.24 });
+  const charcoal = material(0x17191d, { metalness: 0.12, roughness: 0.68, clearcoat: 0.08 });
+  const relic = new THREE.Group();
+  relic.name = 'matthias-command-relic';
+  relic.userData.matthiasPresence = true;
+  addMesh(relic, new THREE.CylinderGeometry(0.3, 0.36, 0.09, coarsePointer ? 16 : 28), brass, [-4.62, 0.13, 4.08]);
+  addMesh(relic, new THREE.CylinderGeometry(0.17, 0.24, 0.42, coarsePointer ? 16 : 28), charcoal, [-4.62, 0.38, 4.08]);
+  addMesh(relic, new THREE.SphereGeometry(0.19, coarsePointer ? 16 : 28, coarsePointer ? 10 : 18), material(0x8e7354, { roughness: 0.82, clearcoat: 0.03 }), [-4.62, 0.67, 4.08]);
+  addMesh(relic, new THREE.CylinderGeometry(0.22, 0.25, 0.07, coarsePointer ? 16 : 28), charcoal, [-4.62, 0.82, 4.08]);
+  addMesh(relic, new THREE.BoxGeometry(0.29, 0.025, 0.12), charcoal, [-4.62, 0.79, 3.96], [0.08, 0, 0]);
+  addMesh(relic, new THREE.SphereGeometry(0.035, 10, 8), brass, [-4.62, 0.825, 3.84]);
+  group.add(relic);
+}
+
+function addTableEdgeWear(group, coarsePointer = false) {
+  if (coarsePointer) return;
+  const wear = material(0x7b5730, { metalness: 0.02, roughness: 0.82, clearcoat: 0.02, opacity: 0.48, specularIntensity: 0.18 });
+  const marks = [
+    [-3.8, -5.245, 0.48, 0.022], [-1.25, -5.245, 0.25, 0.018], [2.72, -5.245, 0.4, 0.02],
+    [5.245, -2.95, 0.022, 0.42], [5.245, 2.1, 0.02, 0.3], [-5.245, 1.1, 0.02, 0.36],
+  ];
+  for (const [x, z, sx, sz] of marks) addMesh(group, new THREE.BoxGeometry(sx, 0.012, sz), wear, [x, 0.055, z]);
+}
+
+"""
+s = replace_once(s, marker, helpers + marker, "table helper insertion")
+table_start = s.index(marker)
+end_marker = "  return group;\n}\n"
+table_end = s.index(end_marker, table_start)
+insertion = "  addWarTablePapers(group, coarsePointer);\n  addCommandChronometer(group, coarsePointer);\n  addMatthiasCommandRelic(group, theme, coarsePointer);\n  addTableEdgeWear(group, coarsePointer);\n\n"
+s = s[:table_end] + insertion + s[table_end:]
+p.write_text(s, encoding="utf-8")
+
+p = Path("frontend/src/components/Board3D.jsx")
+s = p.read_text(encoding="utf-8")
+old_shadow = """function addContactShadow(group, coarsePointer = false) {
+  if (coarsePointer) return;
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.34, 28),
+    new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.17,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = -0.006;
+  shadow.renderOrder = 1;
+  shadow.castShadow = false;
+  shadow.receiveShadow = false;
+  shadow.userData.contactShadow = true;
+  group.add(shadow);
+}"""
+new_shadow = """function addContactShadow(group, coarsePointer = false) {
+  if (coarsePointer) return;
+  for (const [radius, opacity, y] of [[0.31, 0.2, -0.006], [0.39, 0.075, -0.009]]) {
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(radius, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = y;
+    shadow.renderOrder = 1;
+    shadow.castShadow = false;
+    shadow.receiveShadow = false;
+    shadow.userData.contactShadow = true;
+    group.add(shadow);
+  }
+}"""
+s = replace_once(s, old_shadow, new_shadow, "contact shadow")
+s = replace_once(s,
+"""      new THREE.BoxGeometry(9.35, 0.38, 9.35),
+      new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.18, roughness: 0.48, clearcoat: 0.4, clearcoatRoughness: 0.18, envMapIntensity: 0.78 }),
+""",
+"""      new THREE.BoxGeometry(9.35, 0.4, 9.35),
+      new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.08, roughness: 0.67, clearcoat: 0.18, clearcoatRoughness: 0.36, envMapIntensity: 0.48, specularIntensity: 0.42 }),
+""", "pedestal material")
+s = replace_once(s,
+"    const frameWood = new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.06, roughness: 0.48, clearcoat: 0.42, clearcoatRoughness: 0.2, envMapIntensity: 0.82 });\n",
+"    const frameWood = new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.025, roughness: 0.7, clearcoat: 0.15, clearcoatRoughness: 0.4, envMapIntensity: 0.42, specularIntensity: 0.36 });\n",
+"frame wood material")
+s = replace_once(s, "          new THREE.BoxGeometry(0.992, 0.09, 0.992),\n", "          new THREE.BoxGeometry(0.984, 0.105, 0.984),\n", "tile geometry")
+s = replace_once(s, "        tile.position.set(x, 0.045, z);\n",
+"""        const tileSettling = ((fileIndex * 13 + rank * 7) % 5 - 2) * 0.0008;
+        tile.position.set(x, 0.0525 + tileSettling, z);
+""", "tile settling")
+p.write_text(s, encoding="utf-8")
+
+p = Path("frontend/src/components/Board3DSurfaces.js")
+s = p.read_text(encoding="utf-8")
+s = replace_once(s, "export const PREMIUM_SURFACE_VERSION = 'premium-v6';", "export const PREMIUM_SURFACE_VERSION = 'premium-v7';", "surface version")
+s = replace_once(s, "    roughness: micro ? (light ? 0.67 : 0.63) : (light ? 0.56 : 0.52),\n",
+                 "    roughness: micro ? (light ? 0.74 : 0.7) : (light ? 0.64 : 0.6),\n", "tile roughness")
+s = replace_once(s, "    clearcoat: light ? 0.3 : 0.34,\n    clearcoatRoughness: light ? 0.21 : 0.18,\n",
+                 "    clearcoat: light ? 0.18 : 0.21,\n    clearcoatRoughness: light ? 0.38 : 0.34,\n", "tile clearcoat")
+s = replace_once(s, "    specularIntensity: light ? 0.56 : 0.64,\n    envMapIntensity: 0.68,\n",
+                 "    specularIntensity: light ? 0.4 : 0.46,\n    envMapIntensity: 0.5,\n", "tile reflection")
+p.write_text(s, encoding="utf-8")
+
+p = Path("frontend/src/components/Board3DSurfaces.test.js")
+s = p.read_text(encoding="utf-8")
+s = replace_once(s,
+"""    expect(desktop.bumpScale).toBeGreaterThan(0);
+    expect(mobile.roughnessMap).toBeNull();
+""",
+"""    expect(desktop.bumpScale).toBeGreaterThan(0);
+    expect(desktop.roughness).toBeGreaterThanOrEqual(0.68);
+    expect(desktop.clearcoat).toBeLessThanOrEqual(0.24);
+    expect(desktop.envMapIntensity).toBeLessThanOrEqual(0.52);
+    expect(mobile.roughnessMap).toBeNull();
+""", "tile surface assertions")
+p.write_text(s, encoding="utf-8")
+
+for workflow in [
+    ".github/workflows/warroom3d-scene-depth-autopatch.yml",
+    ".github/workflows/warroom3d-scene-depth-run.yml",
+    ".github/scripts/warroom_scene_depth_patch.py",
+]:
+    target = Path(workflow)
+    if target.exists():
+        target.unlink()
