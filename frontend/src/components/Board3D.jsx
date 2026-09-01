@@ -817,7 +817,9 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [boardTheme, orientation, showCoordin  useEffect(() => {
+  }, [boardTheme, orientation, showCoordinates]);
+
+  useEffect(() => {
   const state = sceneStateRef.current;
   if (!state) return undefined;
   window.cancelAnimationFrame(animationFrameRef.current);
