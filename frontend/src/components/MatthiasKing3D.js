@@ -107,16 +107,19 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
     envMapIntensity: 0.08,
     specularIntensity: 0.08,
   });
-  const uniform = mat(pieceColor === 'b' ? 0x171b22 : 0xd8d0c1, {
-    metalness: pieceColor === 'b' ? 0.1 : 0.02,
-    roughness: pieceColor === 'b' ? 0.58 : 0.72,
+  // Black-side Matthias stays military and elegant rather than becoming a
+  // near-black gothic silhouette. Charcoal/slate keeps the jacket readable
+  // against black pieces; brass and a muted wine sash provide restrained rank.
+  const uniform = mat(pieceColor === 'b' ? 0x2c3036 : 0xd8d0c1, {
+    metalness: pieceColor === 'b' ? 0.08 : 0.02,
+    roughness: pieceColor === 'b' ? 0.62 : 0.72,
     clearcoat: 0.06,
-    envMapIntensity: pieceColor === 'b' ? 0.3 : 0.2,
-    specularIntensity: pieceColor === 'b' ? 0.26 : 0.16,
+    envMapIntensity: pieceColor === 'b' ? 0.34 : 0.2,
+    specularIntensity: pieceColor === 'b' ? 0.3 : 0.16,
   });
-  const sash = mat(pieceColor === 'b' ? 0x6f2328 : 0x8a3030, {
+  const sash = mat(pieceColor === 'b' ? 0x59393b : 0x8a3030, {
     metalness: 0.04,
-    roughness: 0.68,
+    roughness: pieceColor === 'b' ? 0.74 : 0.68,
     clearcoat: 0.03,
     envMapIntensity: 0.14,
     specularIntensity: 0.12,
