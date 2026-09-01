@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import './Board3DSurfaces.css';
 
 export const PREMIUM_SURFACE_VERSION = 'premium-v2';
 
@@ -83,24 +84,27 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
         kind: side === 'w' ? 'ivory' : 'piece',
         coarsePointer,
       });
+  const surfaceColor = new THREE.Color(color);
+  if (side === 'w' && !accent) surfaceColor.lerp(new THREE.Color(0xcdbd9f), 0.14);
+  const ivoryRoughness = Math.min(0.94, baseRoughness * (micro ? 1.3 : 1.12));
 
   const material = new THREE.MeshPhysicalMaterial({
-    color,
+    color: surfaceColor,
     metalness: baseMetalness,
-    roughness: micro ? Math.min(0.92, baseRoughness * 1.18) : baseRoughness,
+    roughness: side === 'w' && !accent ? ivoryRoughness : (micro ? Math.min(0.92, baseRoughness * 1.18) : baseRoughness),
     roughnessMap: micro,
     bumpMap: micro,
     bumpScale: micro ? (side === 'w' ? 0.006 : 0.009) : 0,
     emissive: skin.emissive,
     emissiveIntensity: accent ? skin.emissiveIntensity * 1.25 : skin.emissiveIntensity,
-    clearcoat: accent ? 0.9 : side === 'w' ? 0.68 : 0.74,
-    clearcoatRoughness: accent ? 0.08 : side === 'w' ? 0.16 : 0.13,
-    sheen: accent ? 0.2 : side === 'w' ? 0.09 : 0.14,
-    sheenRoughness: side === 'w' ? 0.42 : 0.32,
-    ior: side === 'w' ? 1.48 : 1.58,
-    specularIntensity: accent ? 1 : side === 'w' ? 0.74 : 0.86,
-    specularColor: side === 'w' ? new THREE.Color(0xfff0cf) : new THREE.Color(0xa5b0bb),
-    envMapIntensity: accent ? 1.2 : side === 'w' ? 0.82 : 0.94,
+    clearcoat: accent ? 0.9 : side === 'w' ? 0.52 : 0.74,
+    clearcoatRoughness: accent ? 0.08 : side === 'w' ? 0.24 : 0.13,
+    sheen: accent ? 0.2 : side === 'w' ? 0.07 : 0.14,
+    sheenRoughness: side === 'w' ? 0.5 : 0.32,
+    ior: side === 'w' ? 1.46 : 1.58,
+    specularIntensity: accent ? 1 : side === 'w' ? 0.56 : 0.86,
+    specularColor: side === 'w' ? new THREE.Color(0xf1d9b4) : new THREE.Color(0xa5b0bb),
+    envMapIntensity: accent ? 1.2 : side === 'w' ? 0.62 : 0.94,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = accent ? 'metal-inlay' : side === 'w' ? 'ivory' : 'ebony';
@@ -141,7 +145,7 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
   const room = new RoomEnvironment();
   const target = pmrem.fromScene(room, 0.035);
   scene.environment = target.texture;
-  scene.environmentIntensity = 0.78;
+  scene.environmentIntensity = 0.66;
   scene.userData.premiumIbl = true;
   pmrem.dispose();
 
