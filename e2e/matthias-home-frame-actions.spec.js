@@ -25,159 +25,36 @@ async function openHomeAtHour(page, hour) {
   return corner;
 }
 
-async function center(locator) {
-  return locator.evaluate((node) => {
-    const rect = node.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  });
-}
-
-function distance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-async function gestureCount(rig) {
-  return Number(await rig.getAttribute('data-gesture-count')) || 0;
-}
-
-async function expectCanonicalLayeredAction(page, corner, {
-  family,
-  activity,
-  gesture,
-  movingParts,
-  stationaryParts = [],
-  upwardParts = [],
-}) {
+async function expectThreeAction(corner, { profile, activity }) {
   const frame = corner.locator('[data-portrait-frame="true"]');
-  const rig = frame.locator('[data-matthias-layered-art="true"]');
-  const portrait = rig.locator('img[data-matthias-canonical-art="true"]');
+  const avatar = frame.locator('[data-matthias-three-avatar="true"]');
+  await expect(avatar).toHaveAttribute('data-three-profile', profile);
+  if (activity) await expect(avatar).toHaveAttribute('data-three-activity', activity);
+  await expect(frame.locator('[data-matthias-art-part]')).toHaveCount(0);
+  await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');
+  await expect(avatar).toHaveAttribute('data-three-failed', 'false');
+  await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 4_000 }).toBeGreaterThan(.08);
+  await expect.poll(async () => Number(await avatar.getAttribute('data-three-frame')) || 0, { timeout: 4_000 }).toBeGreaterThan(6);
 
-  await expect(frame.locator('[data-matthias-frame-sequence="true"]')).toHaveCount(0);
-  await expect(rig).toBeVisible();
-  await expect(rig).toHaveAttribute('data-rig-family', family);
-  if (activity) await expect(rig).toHaveAttribute('data-rig-activity', activity);
-  await expect(rig).toHaveAttribute('data-gesture', gesture);
-  await expect(portrait).toBeVisible();
-  await expect(portrait).toHaveAttribute('src', /\.webp(?:$|\?)/);
-  await expect.poll(
-    () => portrait.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
-    { message: `${gesture}: el WebP canónico debe decodificar realmente` },
-  ).toBe(true);
-
-  const trackedParts = [...new Set([...movingParts, ...stationaryParts])];
-  const before = Object.fromEntries(await Promise.all(
-    trackedParts.map(async (part) => [part, await center(rig.locator(`[data-matthias-art-part="${part}"]`))]),
-  ));
-
-  await expect.poll(
-    () => gestureCount(rig),
-    { timeout: 2_000, message: `${gesture}: debe empezar el gesto poco después de entrar en Home` },
-  ).toBeGreaterThan(0);
-  await expect(rig).toHaveAttribute('data-gesture-state', 'acting');
-  await page.waitForTimeout(1_250);
-
-  const after = {};
-  for (const part of trackedParts) {
-    after[part] = await center(rig.locator(`[data-matthias-art-part="${part}"]`));
-  }
-
-  for (const part of movingParts) {
-    expect(distance(before[part], after[part]), `${gesture}: ${part} debe desplazarse visiblemente`).toBeGreaterThan(1.5);
-  }
-
-  for (const part of upwardParts) {
-    expect(after[part].y, `${gesture}: ${part} debe subir hacia la boca`).toBeLessThan(before[part].y - 1.5);
-  }
-
-  for (const part of stationaryParts) {
-    expect(distance(before[part], after[part]), `${gesture}: ${part} debe permanecer quieto`).toBeLessThan(.35);
-    const animationCount = await rig.locator(`[data-matthias-art-part="${part}"]`).evaluate((node) => node.getAnimations().length);
-    expect(animationCount, `${gesture}: ${part} no debe recibir animación`).toBe(0);
-  }
-
-  const baseContract = await portrait.evaluate((node) => ({
+  const outerFrame = await frame.evaluate((node) => ({
     transform: getComputedStyle(node).transform,
     animations: node.getAnimations().length,
   }));
-  expect(baseContract.transform).toBe('none');
-  expect(baseContract.animations).toBe(0);
+  expect(outerFrame.transform).toBe('none');
+  expect(outerFrame.animations).toBe(0);
 }
 
-test('Home · café matinal sube taza y mano correctas hacia la boca', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 7);
-  await expectCanonicalLayeredAction(page, corner, {
-    family: 'coffee',
-    gesture: 'sip',
-    movingParts: ['right-arm', 'prop'],
-    upwardParts: ['right-arm', 'prop'],
-    stationaryParts: ['left-arm'],
+for (const [hour, profile, activity] of [
+  [7, 'sip', 'Primer café'],
+  [21, 'sip', 'Turno nocturno'],
+  [20, 'bite', 'Cena de campaña'],
+  [10, 'dossier', 'Revisión de expedientes'],
+  [17, 'dossier', 'Auditoría táctica'],
+  [16, 'write', 'En plena operación'],
+  [15, 'think', 'Partida privada'],
+]) {
+  test(`Home · ${activity} tiene una acción Three.js reconocible`, async ({ page }) => {
+    const corner = await openHomeAtHour(page, hour);
+    await expectThreeAction(corner, { profile, activity });
   });
-});
-
-test('Home · café nocturno mueve la mano de la jarra y deja quieto el hombro contrario', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 21);
-  await expectCanonicalLayeredAction(page, corner, {
-    family: 'coffee',
-    activity: 'Turno nocturno',
-    gesture: 'sip-night',
-    movingParts: ['right-arm', 'prop'],
-    upwardParts: ['right-arm', 'prop'],
-    stationaryParts: ['left-arm', 'head'],
-  });
-});
-
-test('Home · cena de campaña sube el bocata sin comprimir cabeza ni ojos', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 20);
-  await expectCanonicalLayeredAction(page, corner, {
-    family: 'lunch',
-    activity: 'Cena de campaña',
-    gesture: 'bite',
-    movingParts: ['left-arm', 'right-arm', 'prop'],
-    upwardParts: ['left-arm', 'right-arm', 'prop'],
-    stationaryParts: ['head', 'eyes'],
-  });
-});
-
-test('Home · revisión de expedientes escanea el dossier sin mover el cráneo', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 10);
-  await expectCanonicalLayeredAction(page, corner, {
-    family: 'reading',
-    activity: 'Revisión de expedientes',
-    gesture: 'read-dossier',
-    movingParts: ['eyes', 'right-arm'],
-    stationaryParts: ['head', 'left-arm'],
-  });
-});
-
-test('Home · auditoría táctica inspecciona el dossier con cabeza quieta', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 17);
-  await expectCanonicalLayeredAction(page, corner, {
-    family: 'reading',
-    activity: 'Auditoría táctica',
-    gesture: 'audit-dossier',
-    movingParts: ['eyes', 'right-arm'],
-    stationaryParts: ['head', 'left-arm'],
-  });
-});
-
-test('Home · en plena operación escribe notas sin balancear cabeza ni otro brazo', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 16);
-  await expectCanonicalLayeredAction(page, corner, {
-    family: 'ops',
-    activity: 'En plena operación',
-    gesture: 'write-notes',
-    movingParts: ['eyes', 'right-arm'],
-    stationaryParts: ['head', 'left-arm', 'prop'],
-  });
-});
-
-test('Home · partida privada usa un gesto de tablero y no el de tomar notas', async ({ page }) => {
-  const corner = await openHomeAtHour(page, 15);
-  await expectCanonicalLayeredAction(page, corner, {
-    family: 'ops',
-    activity: 'Partida privada',
-    gesture: 'board-move',
-    movingParts: ['eyes', 'right-arm'],
-    stationaryParts: ['head', 'left-arm', 'prop'],
-  });
-});
+}
