@@ -48,17 +48,21 @@ describe('WarRoom3DMotion', () => {
   });
 
   it('keeps pointer parallax disabled during normal play and allows it only in Inspect mode', () => {
-    const shell = document.createElement('div');
-    shell.className = 'board3d-main-shell';
-    shell.dataset.board3dInspect = 'false';
-    const canvas = document.createElement('canvas');
-    canvas.className = 'board3d-main-canvas';
-    shell.appendChild(canvas);
+    const makeCanvasTarget = (inspect) => {
+      const shell = { dataset: { board3dInspect: inspect } };
+      const canvas = {
+        closest(selector) {
+          if (selector === '.board3d-main-canvas') return canvas;
+          if (selector === '.board3d-main-shell') return shell;
+          return null;
+        },
+      };
+      return canvas;
+    };
 
-    expect(shouldSuppressWarRoomParallax(canvas)).toBe(true);
-    shell.dataset.board3dInspect = 'true';
-    expect(shouldSuppressWarRoomParallax(canvas)).toBe(false);
-    expect(shouldSuppressWarRoomParallax(document.createElement('div'))).toBe(false);
+    expect(shouldSuppressWarRoomParallax(makeCanvasTarget('false'))).toBe(true);
+    expect(shouldSuppressWarRoomParallax(makeCanvasTarget('true'))).toBe(false);
+    expect(shouldSuppressWarRoomParallax({ closest: () => null })).toBe(false);
   });
 
   it('smoothstep stays bounded', () => {
