@@ -1,7 +1,12 @@
 export const COARSE_PIECE_HIT_TARGET = Object.freeze({
-  radius: 0.46,
-  height: 1.45,
-  centerY: 0.62,
+  // Keep the synthetic touch helper down at the base of the piece. A tall
+  // almost-full-square cylinder looks generous on paper, but in a perspective
+  // camera it overlaps the next rank and steals taps from the piece the user
+  // actually touched. The visible piece geometry remains raycastable; this
+  // small base target only closes the awkward gaps around the foot.
+  radius: 0.31,
+  height: 0.28,
+  centerY: 0.22,
 });
 
 export function resolveBoardTap(start, end, { coarsePointer = false } = {}) {
@@ -10,9 +15,8 @@ export function resolveBoardTap(start, end, { coarsePointer = false } = {}) {
   const distance = Math.hypot(Number(end.x) - Number(start.x), Number(end.y) - Number(start.y));
   if (!Number.isFinite(distance) || distance > tolerance) return null;
 
-  // En táctil usamos el punto inicial: al levantar el dedo suele haber unos
-  // píxeles de deriva que, con la perspectiva del tablero 3D, pueden mandar
-  // el rayo a la casilla vecina. Ratón/trackpad mantienen el punto final.
+  // On touch, use the contact point, not finger-up. The few pixels of normal
+  // release drift are enough to cross a projected rank in the 3D camera.
   return coarsePointer
     ? { x: Number(start.x), y: Number(start.y) }
     : { x: Number(end.x), y: Number(end.y) };

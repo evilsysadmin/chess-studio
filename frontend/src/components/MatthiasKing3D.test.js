@@ -36,15 +36,35 @@ describe('Matthias rival king 3D', () => {
 
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
-    expect(meshes).toBeGreaterThanOrEqual(16);
-    expect(group.scale.x).toBeCloseTo(1.03);
+    expect(meshes).toBeGreaterThanOrEqual(24);
+    expect(group.scale.x).toBeCloseTo(1.11);
     expect(group.getObjectByName('matthias-side-base')).toBeTruthy();
     expect(group.getObjectByName('matthias-uniform')).toBeTruthy();
     expect(group.getObjectByName('matthias-face')).toBeTruthy();
+    expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-brow-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-mouth-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-band')).toBeTruthy();
     expect(group.getObjectByName('matthias-visor')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
     expect(group.getObjectByName('matthias-insignia')).toBeTruthy();
+
+    disposeGroup(group);
+    main.dispose();
+    accent.dispose();
+  });
+
+  it('no elimina la cara enfadada en móvil/coarse pointer', () => {
+    const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
+    const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
+    const group = buildMatthiasKing3D(main, accent, { coarsePointer: true });
+
+    expect(group.getObjectByName('matthias-brow-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-brow-right')).toBeTruthy();
+    expect(group.getObjectByName('matthias-mouth-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-mouth-right')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
 
     disposeGroup(group);
     main.dispose();

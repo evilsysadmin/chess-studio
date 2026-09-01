@@ -4,6 +4,7 @@ import {
   deriveMoveKinetics,
   inferCapturedPiece,
   reactiveLightProfile,
+  shouldSuppressWarRoomParallax,
   smoothstep,
 } from './WarRoom3DMotion.js';
 
@@ -44,6 +45,24 @@ describe('WarRoom3DMotion', () => {
     expect(adaptiveRenderScale({ slowFrameCount: 2 })).toBe(1.75);
     expect(adaptiveRenderScale({ slowFrameCount: 12 })).toBe(1.35);
     expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 12 })).toBe(1);
+  });
+
+  it('keeps pointer parallax disabled during normal play and allows it only in Inspect mode', () => {
+    const makeCanvasTarget = (inspect) => {
+      const shell = { dataset: { board3dInspect: inspect } };
+      const canvas = {
+        closest(selector) {
+          if (selector === '.board3d-main-canvas') return canvas;
+          if (selector === '.board3d-main-shell') return shell;
+          return null;
+        },
+      };
+      return canvas;
+    };
+
+    expect(shouldSuppressWarRoomParallax(makeCanvasTarget('false'))).toBe(true);
+    expect(shouldSuppressWarRoomParallax(makeCanvasTarget('true'))).toBe(false);
+    expect(shouldSuppressWarRoomParallax({ closest: () => null })).toBe(false);
   });
 
   it('smoothstep stays bounded', () => {
