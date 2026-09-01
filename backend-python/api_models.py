@@ -89,6 +89,11 @@ class AdminDeleteUserRequest(BaseModel):
     username: str = Field(max_length=64)
 
 
+class AdminUserRatingRequest(BaseModel):
+    username: str = Field(max_length=64)
+    rating: int = Field(ge=400, le=3000)
+
+
 class AdminPlayerPortraitRequest(BaseModel):
     username: str = Field(max_length=64)
     facts: dict[str, Any] = Field(default_factory=dict)
