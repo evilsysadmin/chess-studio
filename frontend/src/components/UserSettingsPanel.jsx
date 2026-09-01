@@ -25,7 +25,6 @@ const SKIN_PREVIEWS = {
 };
 
 export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = false }) {
-  useEscapeToClose(onClose);
   const [timeControlId, setTimeControlIdState] = useState(() => getDefaultTimeControlId());
   const [language, setLanguageState] = useState(() => getUiLanguage());
   const [musicMuted, setMusicMutedState] = useState(() => isMusicMuted());
@@ -37,6 +36,16 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
   const [boardCoordinates, setBoardCoordinatesState] = useState(() => getBoardCoordinates());
   const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
   const availableSkinIds = new Set(unlockedSkins(tournamentLevel, { isAdmin: isAdminUser }).map((skin) => skin.id));
+
+  function closeSettings() {
+    // Cambiar 2D/3D puede montar o desmontar Three.js. Lo aplicamos después de
+    // cerrar el modal para que el propio cambio de renderer no mueva el botón
+    // Cerrar bajo el dedo, especialmente en Android/WebView.
+    if (boardRenderer !== getBoardRenderer()) setBoardRenderer(boardRenderer);
+    onClose?.();
+  }
+
+  useEscapeToClose(closeSettings);
 
   function updateTimeControl(value) {
     setTimeControlIdState(setDefaultTimeControlId(value));
@@ -61,15 +70,16 @@ export default function UserSettingsPanel({ onClose, onBoard3D, isAdminUser = fa
     setPieceSkin(id);
   }
   function updateBoardRenderer(id) {
-    setBoardRendererState(setBoardRenderer(id));
+    const normalized = BOARD_RENDERERS.some((renderer) => renderer.id === id) ? id : '2d';
+    setBoardRendererState(normalized);
   }
 
   return (
-    <div className="modal-backdrop settings-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>
+    <div className="modal-backdrop settings-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSettings(); }}>
       <section className="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div className="settings-panel-heading">
           <div><span className="section-label">Preferencias</span><h2 id="settings-title">Ajustes</h2></div>
-          <button type="button" className="secondary-btn" onClick={onClose}>Cerrar</button>
+          <button type="button" className="secondary-btn" onClick={closeSettings}>Cerrar</button>
         </div>
 
         <div className="settings-sections">
