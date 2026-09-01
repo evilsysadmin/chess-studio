@@ -95,6 +95,10 @@ function attachFireplaceKinetics(fireCore, flames, embers, light, baseIntensity,
   fireCore.userData.warRoomFireCore = true;
   if (coarsePointer) return;
 
+  const animationAnchor = flames[0];
+  if (!animationAnchor) return;
+  animationAnchor.userData.warRoomFireAnimationAnchor = true;
+
   const bases = flames.map((flame) => ({
     scale: flame.scale.clone(),
     y: flame.position.y,
@@ -102,7 +106,7 @@ function attachFireplaceKinetics(fireCore, flames, embers, light, baseIntensity,
   }));
   const emberBases = embers.map((item) => item.material?.emissiveIntensity ?? 0.8);
 
-  fireCore.onBeforeRender = () => {
+  animationAnchor.onBeforeRender = () => {
     const now = nowMs();
     const slow = Math.sin(now * 0.0049);
     const mid = Math.sin(now * 0.0117 + 1.4);
