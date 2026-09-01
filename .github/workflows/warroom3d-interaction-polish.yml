@@ -1,0 +1,32 @@
+name: War Room 3D interaction polish
+
+on:
+  push:
+    branches:
+      - feat/warroom3d-interaction-polish
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Apply product patch
+        run: python3 scripts/apply_warroom3d_interaction_polish.py
+
+      - name: Commit product changes
+        run: |
+          git config user.name "chess-studio-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "Polish War Room 3D interactions and Matthias"
+          git push origin HEAD
