@@ -56,6 +56,11 @@ async function clickWarRoomSquare(page, square) {
 }
 
 test('Partida rápida · una partida activa · vista 3D usa la sala de mando y sigue cabiendo en móvil', async ({ page }) => {
+  // La inicialización WebGL/Three.js en runners compartidos puede gastar más de
+  // 20 s antes de llegar al primer click. El gate conserva todos sus asserts y
+  // sólo amplía el presupuesto total para medir interacción real, no startup.
+  test.setTimeout(45_000);
+
   await page.setViewportSize({ width: 1440, height: 960 });
   const requestLog = [];
   await mockApi(page, { requestLog });
