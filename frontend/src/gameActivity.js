@@ -45,6 +45,8 @@ export function recordGameActivity({
   // inicio y final en vez de inventar una única respuesta retrospectiva.
   const rendererCandidate = boardRenderer ?? (mode === 'combat' ? null : getBoardRenderer());
   const normalizedRenderer = BOARD_RENDERERS.has(rendererCandidate) ? rendererCandidate : null;
+  const baseModeLabel = gameModeLabel(record);
+  const rendererLabel = normalizedRenderer ? normalizedRenderer.toUpperCase() : null;
   const event = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     dedupeKey,
@@ -52,7 +54,10 @@ export function recordGameActivity({
     date: date || new Date().toISOString(),
     state,
     mode,
-    modeLabel: gameModeLabel(record),
+    // Admin ya utiliza modeLabel como etiqueta visible de cada hito. Añadir
+    // aquí la vista evita otro canal de telemetría y hace que cada partida
+    // diga claramente 2D/3D usando el mismo journal que ya sincronizamos.
+    modeLabel: rendererLabel ? `${baseModeLabel} · ${rendererLabel}` : baseModeLabel,
     outcome: outcome || null,
     difficulty: Number.isFinite(Number(difficulty)) ? Number(difficulty) : null,
     detail: detail || null,
