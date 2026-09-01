@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { levelTier } from '../combat.js';
+import { boardGridFromFen, legalTargetsByDestination } from '../boardRenderModel.js';
 import RankInsignia from './RankInsignia.jsx';
 import VeteranMarks from './VeteranMarks.jsx';
 // Skin "Clásico" (crema/dorado + carbón/carmesí) — la de siempre, sin sufijo de carpeta.
@@ -88,6 +89,8 @@ function playCaptureImpact(squareEl, pieceEl) {
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
+const REVERSED_FILES = [...FILES].reverse();
+const REVERSED_RANKS = [...RANKS].reverse();
 
 // Calcula la casilla vecina en la dirección de una flecha del teclado,
 // respetando cómo se ve realmente el tablero según la orientación (si está
@@ -144,31 +147,6 @@ const PIECE_NAMES = {
   P: 'peón blanco', N: 'caballo blanco', B: 'alfil blanco', R: 'torre blanca', Q: 'dama blanca', K: 'rey blanco',
 };
 
-// Convierte un FEN (solo la parte de piezas) en una matriz [rank][file] de símbolos ("" si vacío).
-function parseFen(fen) {
-  const empty = () => Array.from({ length: 8 }, () => Array(8).fill(''));
-  if (typeof fen !== 'string') return empty();
-  const placement = fen.trim().split(/\s+/)[0] || '';
-  const rows = placement.split('/');
-  if (rows.length !== 8) return empty();
-  const grid = [];
-  for (const row of rows) {
-    const cells = [];
-    for (const ch of row) {
-      if (/^[1-8]$/.test(ch)) {
-        for (let i = 0; i < Number(ch); i += 1) cells.push('');
-      } else if (/^[prnbqkPRNBQK]$/.test(ch)) {
-        cells.push(ch);
-      } else {
-        return empty();
-      }
-    }
-    if (cells.length !== 8) return empty();
-    grid.push(cells);
-  }
-  return grid;
-}
-
 /**
  * Tablero visual controlado desde afuera: recibe el FEN a mostrar y notifica
  * clicks de casillas. No conoce reglas de ajedrez — eso lo maneja quien lo usa.
@@ -216,9 +194,10 @@ export default function Board({
   // tablero nuevo que se monte la use, sin plomería adicional.
   const [pieceSkin, setPieceSkin] = useState(() => loadSelectedSkin());
   const pieceImages = PIECE_IMAGES_BY_SKIN[pieceSkin] || PIECE_IMAGES_BY_SKIN.default;
-  const grid = parseFen(fen);
-  const files = orientation === 'white' ? FILES : [...FILES].reverse();
-  const ranks = orientation === 'white' ? RANKS : [...RANKS].reverse();
+  const grid = useMemo(() => boardGridFromFen(fen), [fen]);
+  const indexedLegalTargets = useMemo(() => legalTargetsByDestination(legalTargets), [legalTargets]);
+  const files = orientation === 'white' ? FILES : REVERSED_FILES;
+  const ranks = orientation === 'white' ? RANKS : REVERSED_RANKS;
   const squareRefs = useRef({});
   const lastAnimatedSeq = useRef(0);
 
@@ -352,7 +331,7 @@ export default function Board({
             const piece = grid[rIdx][fIdx];
             const isLight = (fIdx + rIdx) % 2 === 0;
             const isSelected = selectedSquare === square;
-            const target = legalTargets.find((m) => m.to === square);
+            const target = indexedLegalTargets.get(square);
             const isLastMove = lastMove && (lastMove.from === square || lastMove.to === square);
             const isHint = hintMove && (hintMove.from === square || hintMove.to === square);
             const isMistakeSquare = mistakeMove && (mistakeMove.from === square || mistakeMove.to === square);
