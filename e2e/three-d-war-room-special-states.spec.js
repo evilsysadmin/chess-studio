@@ -64,7 +64,7 @@ test('War Room parity · jaque seleccionado en 2D se ejecuta en 3D y vuelve a 2D
   await setRendererViaAppearance(page, '2D');
   await expect(page.getByRole('button', { name: /Casilla h8, rey negro, rey en jaque/i })).toBeVisible();
   await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible();
-  await expect(movePosts(requestLog)).resolves;
+  expect(movePosts(requestLog)).toHaveLength(1);
 });
 
 test('War Room parity · selección 2D puede rematar jaque mate desde el teclado 3D una sola vez', async ({ page }) => {
@@ -92,4 +92,5 @@ test('War Room parity · selección 2D puede rematar jaque mate desde el teclado
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+  expect(movePosts(requestLog)).toHaveLength(1);
 });
