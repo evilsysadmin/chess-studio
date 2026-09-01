@@ -111,25 +111,6 @@
   50% { transform: translateY(-3px) translateX(2px) scaleY(1.12); opacity: .72; }
 }
 
-/* Recupera un poco de altura útil sin volver a sacar la War Room del viewport. */
-@media (min-width: 1081px) {
-  .game-screen .game-layout-3d .game-board-stack-3d .board3d-main-shell {
-    height: clamp(480px, calc(100dvh - 16.75rem), 660px);
-  }
-}
-
-@media (min-width: 1081px) and (max-height: 900px) {
-  .game-screen .game-layout-3d .game-board-stack-3d .board3d-main-shell {
-    height: clamp(450px, calc(100dvh - 16.7rem), 615px);
-  }
-}
-
-@media (min-width: 1081px) and (max-height: 780px) {
-  .game-screen .game-layout-3d .game-board-stack-3d .board3d-main-shell {
-    height: clamp(410px, calc(100dvh - 16.35rem), 500px);
-  }
-}
-
 @media (max-width: 820px) {
   .game-3d-matthias-mouth {
     top: 56%;
