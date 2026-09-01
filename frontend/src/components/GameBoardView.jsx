@@ -96,6 +96,7 @@ export default function GameBoardView({
     animate: board.pendingAnim,
     hintMove: zenMode ? null : board.hint,
     checkSquare: zenMode ? null : board.kingInCheckSquare,
+    gameOver: Boolean(game.isGameOver || clocks.flagFallen || clocks.forcedOutcome),
     turnState: board.boardTurnState,
     orientation: humanColor === 'b' ? 'black' : 'white',
     showCoordinates: !zenMode && board.showBoardCoordinates,

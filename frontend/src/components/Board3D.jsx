@@ -12,6 +12,7 @@ import {
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
+import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 
@@ -442,6 +443,8 @@ function fitBoardCamera(camera, width, height, whiteSide) {
   camera.aspect = aspect;
   camera.position.copy(target).addScaledVector(direction, distance);
   camera.lookAt(target);
+  camera.userData.basePosition = camera.position.clone();
+  camera.userData.baseTarget = target.clone();
   camera.updateProjectionMatrix();
 }
 
@@ -455,6 +458,7 @@ function Board3DCanvas({
   animate,
   hintMove,
   checkSquare,
+  gameOver = false,
   showCoordinates = true,
   matthiasKingColor = null,
   onCustomize,
@@ -465,11 +469,16 @@ function Board3DCanvas({
   const pointerStartRef = useRef(null);
   const latestPropsRef = useRef({});
   const animationFrameRef = useRef(0);
+  const ambientFrameRef = useRef(0);
+  const previousFenRef = useRef(fen);
   const lastAnimatedSeqRef = useRef(0);
+  const inspectModeRef = useRef(false);
+  const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
+  const [inspectMode, setInspectMode] = useState(false);
 
   latestPropsRef.current = { onSquareClick, onRendererFailure };
 
@@ -487,6 +496,16 @@ function Board3DCanvas({
   useEffect(() => {
     setFocusedSquare(orientation === 'black' ? 'e8' : 'e1');
   }, [orientation]);
+
+  useEffect(() => {
+    inspectModeRef.current = inspectMode;
+    if (!inspectMode) {
+      const motion = cameraMotionRef.current;
+      motion.yaw = 0;
+      motion.pitch = 0;
+      motion.dragging = false;
+    }
+  }, [inspectMode]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -673,11 +692,46 @@ function Board3DCanvas({
 
     function onPointerDown(event) {
       pointerStartRef.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      if (inspectModeRef.current) {
+        const motion = cameraMotionRef.current;
+        motion.dragging = true;
+        motion.lastX = event.clientX;
+        motion.lastY = event.clientY;
+        renderer.domElement.setPointerCapture?.(event.pointerId);
+      }
+    }
+
+    function onPointerMove(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const motion = cameraMotionRef.current;
+      if (inspectModeRef.current && motion.dragging) {
+        const dx = event.clientX - motion.lastX;
+        const dy = event.clientY - motion.lastY;
+        motion.lastX = event.clientX;
+        motion.lastY = event.clientY;
+        motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -0.14, 0.14);
+        motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, -0.08, 0.075);
+        return;
+      }
+      motion.targetX = THREE.MathUtils.clamp(((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2, -1, 1);
+      motion.targetY = THREE.MathUtils.clamp(((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2, -1, 1);
+    }
+
+    function onPointerLeave() {
+      const motion = cameraMotionRef.current;
+      motion.targetX = 0;
+      motion.targetY = 0;
+      motion.dragging = false;
     }
 
     function onPointerUp(event) {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
+      if (inspectModeRef.current) {
+        cameraMotionRef.current.dragging = false;
+        renderer.domElement.releasePointerCapture?.(event.pointerId);
+        return;
+      }
       if (!start || start.id !== event.pointerId) return;
       if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
       const square = squareFromPointer(event);
@@ -692,8 +746,37 @@ function Board3DCanvas({
     }
 
     renderer.domElement.addEventListener('pointerdown', onPointerDown, { passive: true });
+    renderer.domElement.addEventListener('pointermove', onPointerMove, { passive: true });
+    renderer.domElement.addEventListener('pointerleave', onPointerLeave, { passive: true });
     renderer.domElement.addEventListener('pointerup', onPointerUp, { passive: true });
     renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
+
+    let lastAmbientPaint = 0;
+    function ambientFrame(now) {
+      const motion = cameraMotionRef.current;
+      const reduced = getEffectiveReducedMotion();
+      const activeMotion = motion.dragging || Math.abs(motion.x - motion.targetX) > 0.003 || Math.abs(motion.y - motion.targetY) > 0.003;
+      const interval = activeMotion ? 16 : 33;
+      if (!document.hidden && !reduced && !coarsePointer && now - lastAmbientPaint >= interval) {
+        lastAmbientPaint = now;
+        motion.x += (motion.targetX - motion.x) * 0.075;
+        motion.y += (motion.targetY - motion.y) * 0.075;
+        const basePosition = camera.userData.basePosition;
+        const baseTarget = camera.userData.baseTarget;
+        if (basePosition && baseTarget) {
+          const breathYaw = Math.sin(now * 0.00018) * 0.0045;
+          const breathPitch = Math.sin(now * 0.00014 + 1.1) * 0.0022;
+          const yaw = (inspectModeRef.current ? motion.yaw : motion.x * 0.025) + breathYaw;
+          const pitch = (inspectModeRef.current ? motion.pitch : -motion.y * 0.012) + breathPitch;
+          const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+          camera.position.copy(baseTarget).add(offset);
+          camera.lookAt(baseTarget.clone().add(new THREE.Vector3(motion.x * 0.035, -motion.y * 0.018, 0)));
+          render();
+        }
+      }
+      ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
+    }
+    if (!coarsePointer) ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
 
     sceneStateRef.current = {
       scene,
@@ -703,7 +786,12 @@ function Board3DCanvas({
       pieceMeshes,
       highlightMeshes,
       coarsePointer,
+      key,
+      rim,
+      warm,
       render,
+      renderScale: Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.25 : 1.75),
+      slowFrameCount: 0,
     };
     setRendererLabel(renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL');
     render();
@@ -711,8 +799,12 @@ function Board3DCanvas({
     return () => {
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
+      window.cancelAnimationFrame(ambientFrameRef.current);
+      ambientFrameRef.current = 0;
       observer?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       scene.traverse((object) => {
@@ -725,82 +817,195 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [boardTheme, orientation, showCoordinates]);
+  }, [boardTheme, orientation, showCoordin  useEffect(() => {
+  const state = sceneStateRef.current;
+  if (!state) return undefined;
+  window.cancelAnimationFrame(animationFrameRef.current);
+  animationFrameRef.current = 0;
 
-  useEffect(() => {
-    const state = sceneStateRef.current;
-    if (!state) return undefined;
+  const previousPieces = parseFen(previousFenRef.current);
+  const nextPieces = parseFen(fen);
+  const movingBefore = animate?.from ? previousPieces.find((piece) => piece.square === animate.from) : null;
+  const movingAfter = animate?.to ? nextPieces.find((piece) => piece.square === animate.to) : null;
+  const capturedPiece = inferCapturedPiece(previousPieces, nextPieces, animate);
+  const promotion = Boolean(movingBefore?.type === 'p' && movingAfter && movingAfter.type !== 'p');
+  const fromFile = FILES.indexOf(animate?.from?.[0]);
+  const toFile = FILES.indexOf(animate?.to?.[0]);
+  const castling = Boolean(movingBefore?.type === 'k' && fromFile >= 0 && toFile >= 0 && Math.abs(toFile - fromFile) === 2);
+
+  for (const child of [...state.pieceGroup.children]) {
+    state.pieceGroup.remove(child);
+    disposeObject(child);
+  }
+  state.pieceMeshes.clear();
+
+  for (const piece of nextPieces) {
+    const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
+    const mesh = buildPiece(piece.type, piece.color, skinId, state.coarsePointer, {
+      matthiasKing,
+      faceTowardCamera: orientation !== 'black',
+    });
+    const { x, z } = squarePosition(piece.square);
+    mesh.position.set(x, 0.1, z);
+    mesh.userData.square = piece.square;
+    mesh.userData.type = piece.type;
+    mesh.userData.color = piece.color;
+    if (matthiasKing) mesh.userData.matthiasKing = true;
+    mesh.traverse((object) => { object.userData.square = piece.square; });
+    state.pieceGroup.add(mesh);
+    state.pieceMeshes.set(piece.square, mesh);
+  }
+
+  previousFenRef.current = fen;
+  const animatedMesh = animate?.to ? state.pieceMeshes.get(animate.to) : null;
+  const shouldAnimate = Boolean(
+    animatedMesh
+    && animate?.from
+    && animate?.to
+    && animate?.seq
+    && animate.seq !== lastAnimatedSeqRef.current
+    && !getEffectiveReducedMotion(),
+  );
+
+  if (!shouldAnimate) {
+    if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
+    state.render();
+    return undefined;
+  }
+
+  lastAnimatedSeqRef.current = animate.seq;
+  const from = squarePosition(animate.from);
+  const to = squarePosition(animate.to);
+  const kinetics = deriveMoveKinetics({
+    movingType: movingBefore?.type || movingAfter?.type,
+    capture: Boolean(animate.capture),
+    promotion,
+    castling,
+    coarsePointer: state.coarsePointer,
+  });
+  const start = performance.now();
+  const baseScale = animatedMesh.scale.clone();
+  let capturedGhost = null;
+  let castleRook = null;
+  let castleFrom = null;
+  let castleTo = null;
+
+  if (capturedPiece) {
+    capturedGhost = buildPiece(capturedPiece.type, capturedPiece.color, skinId, state.coarsePointer, {
+      matthiasKing: isMatthiasRivalKing(capturedPiece, matthiasKingColor),
+      faceTowardCamera: orientation !== 'black',
+    });
+    const capturedPosition = squarePosition(capturedPiece.square);
+    capturedGhost.position.set(capturedPosition.x, 0.1, capturedPosition.z);
+    capturedGhost.userData.captureGhost = true;
+    state.pieceGroup.add(capturedGhost);
+  }
+
+  if (castling) {
+    const rank = animate.to[1];
+    const kingSide = toFile > fromFile;
+    const rookFromSquare = `${kingSide ? 'h' : 'a'}${rank}`;
+    const rookToSquare = `${kingSide ? 'f' : 'd'}${rank}`;
+    castleRook = state.pieceMeshes.get(rookToSquare) || null;
+    castleFrom = squarePosition(rookFromSquare);
+    castleTo = squarePosition(rookToSquare);
+    if (castleRook) castleRook.position.set(castleFrom.x, 0.1, castleFrom.z);
+  }
+
+  function setOpacity(group, opacity) {
+    group?.traverse?.((object) => {
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      materials.forEach((material) => {
+        if (!material) return;
+        material.transparent = opacity < 0.999;
+        material.opacity = opacity;
+        if (opacity < 0.999) material.depthWrite = false;
+      });
+    });
+  }
+
+  function frame(now) {
+    const raw = Math.min(1, Math.max(0, (now - start) / kinetics.duration));
+    const progress = animate.kind === 'miss'
+      ? (raw < 0.5 ? raw * 0.72 : (1 - raw) * 0.72)
+      : easeOutCubic(raw);
+    animatedMesh.position.x = to.x + (from.x - to.x) * (1 - progress);
+    animatedMesh.position.z = to.z + (from.z - to.z) * (1 - progress);
+    animatedMesh.position.y = 0.1 + Math.sin(raw * Math.PI) * (animate.kind === 'miss' ? 0.08 : kinetics.lift);
+
+    if (animate.capture && capturedGhost) {
+      const impact = smoothstep(kinetics.impactStart, 0.9, raw);
+      const side = orientation === 'black' ? -1 : 1;
+      capturedGhost.rotation.z = side * kinetics.captureTilt * impact;
+      capturedGhost.rotation.x = impact * 0.16;
+      capturedGhost.position.y = 0.1 - impact * 0.075;
+      capturedGhost.scale.multiplyScalar(1 - impact * 0.0016);
+      setOpacity(capturedGhost, 1 - impact * 0.92);
+      animatedMesh.rotation.z = Math.sin(impact * Math.PI) * 0.045 * side;
+    }
+
+    if (promotion && raw > 0.62) {
+      const pulseT = (raw - 0.62) / 0.38;
+      const pulse = Math.sin(Math.min(1, pulseT) * Math.PI) * kinetics.promotionPulse;
+      animatedMesh.scale.copy(baseScale).multiplyScalar(1 + pulse);
+      state.rim.intensity = 14.5 + pulse * 56;
+    }
+
+    if (castleRook && castleFrom && castleTo) {
+      const rookRaw = clamp01((raw - kinetics.rookDelay) / Math.max(0.01, 1 - kinetics.rookDelay));
+      const rookProgress = easeOutCubic(rookRaw);
+      castleRook.position.x = castleTo.x + (castleFrom.x - castleTo.x) * (1 - rookProgress);
+      castleRook.position.z = castleTo.z + (castleFrom.z - castleTo.z) * (1 - rookProgress);
+      castleRook.position.y = 0.1 + Math.sin(rookRaw * Math.PI) * 0.075;
+    }
+
+    const dt = state.lastAnimationFrameAt ? now - state.lastAnimationFrameAt : 16;
+    state.lastAnimationFrameAt = now;
+    state.slowFrameCount = dt > 23 ? state.slowFrameCount + 1 : Math.max(0, state.slowFrameCount - 1);
+    const requestedScale = adaptiveRenderScale({ coarsePointer: state.coarsePointer, slowFrameCount: state.slowFrameCount });
+    const cappedScale = Math.min(window.devicePixelRatio || 1, requestedScale);
+    if (cappedScale + 0.05 < state.renderScale) {
+      state.renderScale = cappedScale;
+      state.renderer.setPixelRatio(cappedScale);
+      const host = hostRef.current;
+      if (host) state.renderer.setSize(Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), false);
+    }
+
+    state.render();
+    if (raw < 1) animationFrameRef.current = window.requestAnimationFrame(frame);
+    else {
+      animatedMesh.position.set(to.x, 0.1, to.z);
+      animatedMesh.rotation.z = 0;
+      animatedMesh.scale.copy(baseScale);
+      if (castleRook && castleTo) castleRook.position.set(castleTo.x, 0.1, castleTo.z);
+      if (capturedGhost) {
+        state.pieceGroup.remove(capturedGhost);
+        disposeObject(capturedGhost);
+        capturedGhost = null;
+      }
+      const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
+      state.key.intensity = lights.key;
+      state.rim.intensity = lights.rim;
+      state.warm.intensity = lights.warm;
+      state.renderer.toneMappingExposure = lights.exposure;
+      state.render();
+      animationFrameRef.current = 0;
+      state.lastAnimationFrameAt = 0;
+    }
+  }
+
+  animatedMesh.position.set(from.x, 0.1, from.z);
+  state.render();
+  animationFrameRef.current = window.requestAnimationFrame(frame);
+  return () => {
     window.cancelAnimationFrame(animationFrameRef.current);
     animationFrameRef.current = 0;
-
-    for (const child of [...state.pieceGroup.children]) {
-      state.pieceGroup.remove(child);
-      disposeObject(child);
+    if (capturedGhost) {
+      state.pieceGroup.remove(capturedGhost);
+      disposeObject(capturedGhost);
     }
-    state.pieceMeshes.clear();
-
-    for (const piece of parseFen(fen)) {
-      const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
-      const mesh = buildPiece(piece.type, piece.color, skinId, state.coarsePointer, {
-        matthiasKing,
-        faceTowardCamera: orientation !== 'black',
-      });
-      const { x, z } = squarePosition(piece.square);
-      mesh.position.set(x, 0.1, z);
-      mesh.userData.square = piece.square;
-      if (matthiasKing) mesh.userData.matthiasKing = true;
-      mesh.traverse((object) => { object.userData.square = piece.square; });
-      state.pieceGroup.add(mesh);
-      state.pieceMeshes.set(piece.square, mesh);
-    }
-
-    const animatedMesh = animate?.to ? state.pieceMeshes.get(animate.to) : null;
-    const shouldAnimate = Boolean(
-      animatedMesh
-      && animate?.from
-      && animate?.to
-      && animate?.seq
-      && animate.seq !== lastAnimatedSeqRef.current
-      && !getEffectiveReducedMotion(),
-    );
-
-    if (!shouldAnimate) {
-      if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
-      state.render();
-      return undefined;
-    }
-
-    lastAnimatedSeqRef.current = animate.seq;
-    const from = squarePosition(animate.from);
-    const to = squarePosition(animate.to);
-    const start = performance.now();
-    const duration = animate.kind === 'miss' ? 320 : 220;
-
-    function frame(now) {
-      const raw = Math.min(1, Math.max(0, (now - start) / duration));
-      const progress = animate.kind === 'miss'
-        ? (raw < 0.5 ? raw * 0.72 : (1 - raw) * 0.72)
-        : 1 - Math.pow(1 - raw, 3);
-      animatedMesh.position.x = to.x + (from.x - to.x) * (1 - progress);
-      animatedMesh.position.z = to.z + (from.z - to.z) * (1 - progress);
-      animatedMesh.position.y = 0.1 + Math.sin(raw * Math.PI) * (animate.kind === 'miss' ? 0.08 : 0.14);
-      state.render();
-      if (raw < 1) animationFrameRef.current = window.requestAnimationFrame(frame);
-      else {
-        animatedMesh.position.set(to.x, 0.1, to.z);
-        state.render();
-        animationFrameRef.current = 0;
-      }
-    }
-
-    animatedMesh.position.set(from.x, 0.1, from.z);
-    state.render();
-    animationFrameRef.current = window.requestAnimationFrame(frame);
-    return () => {
-      window.cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = 0;
-    };
-  }, [fen, skinId, animate, boardTheme, orientation, showCoordinates, matthiasKingColor]);
+  };
+}, [fen, skinId, animate, boardTheme, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);gColor]);
 
   const legalMap = useMemo(() => new Map((legalTargets || []).map((target) => {
     const square = target?.to || target?.square || target;
@@ -830,7 +1035,19 @@ function Board3DCanvas({
     state.render();
   }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, boardTheme, orientation, showCoordinates]);
 
-  function handleKeyDown(event) {
+useEffect(() => {
+  const state = sceneStateRef.current;
+  if (!state) return;
+  const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
+  state.key.intensity = lights.key;
+  state.rim.intensity = lights.rim;
+  state.warm.intensity = lights.warm;
+  state.renderer.toneMappingExposure = lights.exposure;
+  if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
+  state.render();
+}, [checkSquare, gameOver, boardTheme, orientation, showCoordinates]);
+
+function handleKeyDown(event) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onSquareClick?.(focusedSquare);
@@ -848,11 +1065,15 @@ function Board3DCanvas({
       data-board3d-war-room="true"
       data-board3d-scene="premium"
       data-board3d-surface="premium-v2"
+      data-board3d-motion="physical-v1"
+      data-board3d-camera="micro-parallax"
+      data-board3d-inspect={inspectMode ? 'true' : 'false'}
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
-      <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE MANDO · CÁMARA FIJA</div>
+      <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE MANDO · {inspectMode ? 'INSPECCIÓN' : 'CÁMARA TÁCTICA'}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
+      <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
     </div>
   );
