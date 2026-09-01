@@ -1,7 +1,10 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import MatthiasThreeAvatar, { matthiasThreeMotionProfile } from './MatthiasThreeAvatar.jsx';
+import MatthiasThreeAvatar, {
+  matthiasThreeMotionProfile,
+  matthiasThreeMotionSample,
+} from './MatthiasThreeAvatar.jsx';
 
 describe('MatthiasThreeAvatar', () => {
   it('maps Home activities to distinct Three.js motion profiles', () => {
@@ -14,6 +17,33 @@ describe('MatthiasThreeAvatar', () => {
     expect(matthiasThreeMotionProfile({ scene: 'chess-inception', activity: 'Partida nocturna' })).toBe('think');
     expect(matthiasThreeMotionProfile({ scene: 'late-sleep', activity: 'Sobando' })).toBe('sleep');
     expect(matthiasThreeMotionProfile({ speaking: true, scene: 'strategy-book' })).toBe('speak');
+  });
+
+  it('lleva bebida y comida hasta la cara en vez de levantarlas a medias', () => {
+    const cup = matthiasThreeMotionSample({ profile: 'sip', x: .4, y: -.34, time: 1.7 });
+    const food = matthiasThreeMotionSample({ profile: 'bite', x: 0, y: -.4, time: 1.8 });
+
+    expect(cup.dy).toBeGreaterThan(.27);
+    expect(Math.abs(cup.dx)).toBeGreaterThan(.05);
+    expect(food.dy).toBeGreaterThan(.32);
+    expect(food.dz).toBeGreaterThan(.02);
+  });
+
+  it('da intención diferenciada a notas, dossier, lectura, pensamiento, sueño y habla', () => {
+    const writeA = matthiasThreeMotionSample({ profile: 'write', x: .36, y: -.18, time: 1.35 });
+    const writeB = matthiasThreeMotionSample({ profile: 'write', x: .36, y: -.18, time: 1.47 });
+    const dossier = matthiasThreeMotionSample({ profile: 'dossier', x: .4, y: -.34, time: 1.7 });
+    const read = matthiasThreeMotionSample({ profile: 'read', x: 0, y: .3, time: 1.5 });
+    const think = matthiasThreeMotionSample({ profile: 'think', x: .36, y: -.18, time: 1.8 });
+    const sleep = matthiasThreeMotionSample({ profile: 'sleep', x: 0, y: .3, time: 2 });
+    const speak = matthiasThreeMotionSample({ profile: 'speak', x: 0, y: .18, time: 1, speaking: true });
+
+    expect(Math.abs(writeA.dx - writeB.dx)).toBeGreaterThan(.01);
+    expect(dossier.dy).toBeGreaterThan(.06);
+    expect(Math.abs(read.dx)).toBeGreaterThan(.001);
+    expect(think.dy).toBeGreaterThan(.12);
+    expect(sleep.dy).toBeLessThan(-.02);
+    expect(speak.energy).toBeGreaterThan(.4);
   });
 
   it('renders one canonical fallback plus a Three.js canvas instead of raster body-part layers', () => {
@@ -29,6 +59,7 @@ describe('MatthiasThreeAvatar', () => {
     expect(html).toContain('data-three-profile="read"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
+    expect(html).toContain('data-three-reach="0"');
     expect(html).toContain('strategy-book.webp');
     expect(html).not.toContain('data-matthias-art-part');
     expect(html).not.toContain('data-matthias-layered-art');

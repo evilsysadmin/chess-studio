@@ -23,17 +23,36 @@ export function matthiasThreeMotionProfile({ scene = '', activity = '', speaking
   return 'idle';
 }
 
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function smooth01(value) {
+  const t = clamp01(value);
+  return t * t * (3 - 2 * t);
+}
+
+function gestureCycle(time, {
+  period = 8.4,
+  delay = 0.45,
+  rise = 1.0,
+  hold = 0.75,
+  fall = 1.05,
+} = {}) {
+  const local = ((time % period) + period) % period;
+  const riseEnd = delay + rise;
+  const holdEnd = riseEnd + hold;
+  const fallEnd = holdEnd + fall;
+  if (local < delay || local >= fallEnd) return 0;
+  if (local < riseEnd) return smooth01((local - delay) / Math.max(.001, rise));
+  if (local < holdEnd) return 1;
+  return 1 - smooth01((local - holdEnd) / Math.max(.001, fall));
+}
+
 function gaussian(x, y, cx, cy, sx, sy) {
   const dx = (x - cx) / sx;
   const dy = (y - cy) / sy;
   return Math.exp(-(dx * dx + dy * dy) * 2.15);
-}
-
-function envelope(time, period = 8.4, active = 2.65) {
-  const local = ((time % period) + period) % period;
-  if (local >= active) return 0;
-  const phase = local / active;
-  return Math.sin(Math.PI * phase) ** 2;
 }
 
 function rotateRegion(x, y, pivotX, pivotY, angle, weight) {
@@ -51,112 +70,138 @@ function rotateRegion(x, y, pivotX, pivotY, angle, weight) {
 function deformVertex(profile, x, y, imageAspect, time, speaking) {
   const nx = imageAspect ? x / imageAspect : x;
   const head = gaussian(nx, y, 0, .30, .42, .42);
-  const leftArm = gaussian(nx, y, -.36, -.18, .34, .55);
-  const rightArm = gaussian(nx, y, .36, -.18, .34, .55);
-  const centerProp = gaussian(nx, y, 0, -.38, .42, .34);
-  const rightProp = gaussian(nx, y, .40, -.34, .34, .38);
-  const body = gaussian(nx, y, 0, -.05, .78, .94);
-  const idleBreath = Math.sin(time * 1.35) * .0045 * body;
+  const mouth = gaussian(nx, y, 0, .18, .20, .12);
+  const eyeBand = gaussian(nx, y, 0, .40, .28, .10);
+  const leftArm = gaussian(nx, y, -.36, -.18, .32, .52);
+  const rightArm = gaussian(nx, y, .36, -.18, .32, .52);
+  const centerProp = gaussian(nx, y, 0, -.40, .36, .30);
+  const rightProp = gaussian(nx, y, .40, -.34, .30, .34);
+  const book = gaussian(nx, y, 0, -.46, .58, .28);
+  const body = gaussian(nx, y, 0, -.05, .74, .92);
+  const idleBreath = Math.sin(time * 1.25) * .0048 * body;
   let dx = 0;
   let dy = idleBreath;
   let dz = 0;
+  let energy = 0;
 
   if (profile === 'idle') {
-    const action = envelope(time + .25, 10.5, 2.2);
-    const rot = rotateRegion(nx, y, 0, .17, -.025 * action, head);
-    dx += rot.dx * imageAspect;
+    const action = gestureCycle(time + .2, { period: 10.6, delay: .7, rise: .8, hold: .35, fall: .9 });
+    const glance = Math.sin(time * 1.7) * action;
+    const rot = rotateRegion(nx, y, 0, .17, -.026 * action, head);
+    dx += rot.dx * imageAspect + head * glance * .006;
     dy += rot.dy;
     dz += head * action * .008;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'sip') {
-    const action = envelope(time, 8.2, 2.7);
-    dy += rightArm * action * .115;
-    dy += rightProp * action * .145;
-    dx -= (rightArm + rightProp) * action * .022;
-    const rot = rotateRegion(nx, y, 0, .18, .035 * action, head);
+    energy = action;
+  } else if (profile === 'sip') {
+    // Mano + taza/vaso llegan de verdad a la cara, se detienen un instante y vuelven.
+    const action = gestureCycle(time, { period: 8.4, delay: .45, rise: 1.05, hold: .85, fall: 1.12 });
+    const swallow = action > .94 ? Math.sin(time * 8.2) * .5 + .5 : 0;
+    dy += rightArm * action * .205;
+    dy += rightProp * action * .305;
+    dx -= rightArm * action * .045;
+    dx -= rightProp * action * .075;
+    const rot = rotateRegion(nx, y, 0, .18, .046 * action, head);
+    dx += rot.dx * imageAspect;
+    dy += rot.dy - head * action * .022 - head * swallow * .007;
+    dz += (rightArm + rightProp) * action * .022;
+    energy = action;
+  } else if (profile === 'bite') {
+    // El bocata/hamburguesa no puede quedarse flotando a media asta: manos y comida
+    // suben hasta la boca, Matthias inclina la cabeza, muerde y sólo entonces baja.
+    const action = gestureCycle(time + .15, { period: 9.2, delay: .5, rise: 1.15, hold: .95, fall: 1.18 });
+    const chew = action > .9 ? (Math.sin(time * 10.5) * .5 + .5) : 0;
+    dy += centerProp * action * .355;
+    dy += leftArm * action * .225;
+    dy += rightArm * action * .225;
+    dx += leftArm * action * .035;
+    dx -= rightArm * action * .035;
+    const rot = rotateRegion(nx, y, 0, .18, -.052 * action, head);
+    dx += rot.dx * imageAspect;
+    dy += rot.dy - head * action * .034 - mouth * chew * .012;
+    dz += centerProp * action * .028 + (leftArm + rightArm) * action * .012;
+    energy = action;
+  } else if (profile === 'write') {
+    const action = gestureCycle(time, { period: 7.8, delay: .35, rise: .7, hold: 1.8, fall: .8 });
+    const scribble = Math.sin(time * 13.5) * action;
+    const scratch = Math.cos(time * 8.4) * action;
+    dx += rightArm * scribble * .052 + rightProp * scribble * .035;
+    dy += rightArm * action * .052 + rightArm * scratch * .014;
+    dy += rightProp * action * .028;
+    const rot = rotateRegion(nx, y, 0, .18, -.034 * action, head);
     dx += rot.dx * imageAspect;
     dy += rot.dy - head * action * .012;
-    dz += (rightArm + rightProp) * action * .014;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'bite') {
-    const action = envelope(time + .3, 9.4, 2.75);
-    dy += (leftArm + rightArm) * action * .072;
-    dy += centerProp * action * .105;
-    const rot = rotateRegion(nx, y, 0, .18, -.028 * action, head);
-    dx += rot.dx * imageAspect;
-    dy += rot.dy - head * action * .014;
-    dz += centerProp * action * .012;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'write') {
-    const action = envelope(time, 7.6, 3.0);
-    const scribble = Math.sin(time * 12.5) * action;
-    dx += rightArm * scribble * .045;
-    dy += rightArm * action * .045 + rightArm * Math.cos(time * 11.2) * action * .018;
+    dz += rightArm * action * .014;
+    energy = action;
+  } else if (profile === 'dossier') {
+    const action = gestureCycle(time + .1, { period: 8.9, delay: .45, rise: .85, hold: 1.55, fall: .95 });
+    const scan = Math.sin(time * 4.8) * action;
+    dx += head * scan * .017;
+    dy += rightArm * action * .065;
+    dy += rightProp * action * .085;
+    dx -= rightProp * action * .018;
+    dz += rightProp * action * .018;
     const rot = rotateRegion(nx, y, 0, .18, -.022 * action, head);
     dx += rot.dx * imageAspect;
-    dy += rot.dy + head * action * .008;
-    dz += rightArm * action * .012;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'dossier') {
-    const action = envelope(time + .15, 8.8, 3.15);
-    const scan = Math.sin(time * 4.6) * action;
-    dx += head * scan * .012;
-    dy += rightArm * action * .052;
-    dy += rightProp * action * .062;
-    dx -= rightProp * action * .012;
-    dz += rightProp * action * .016;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'read') {
-    const action = envelope(time, 8.6, 3.25);
-    const scan = Math.sin(time * 4.2) * action;
-    dx += head * scan * .014;
-    dy += head * Math.sin(time * 2.1) * action * .004;
-    dx += rightProp * Math.sin(time * 1.9) * action * .006;
-    dz += head * action * .006;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'think') {
-    const action = envelope(time + .25, 8.1, 3.0);
-    dy += rightArm * action * .105;
-    dx -= rightArm * action * .035;
-    const rot = rotateRegion(nx, y, 0, .17, -.038 * action, head);
+    dy += rot.dy;
+    energy = action;
+  } else if (profile === 'read') {
+    const action = .38 + gestureCycle(time, { period: 8.8, delay: .6, rise: .75, hold: 1.85, fall: .8 }) * .62;
+    const scan = Math.sin(time * 3.7) * action;
+    const page = gestureCycle(time + 4.2, { period: 9.6, delay: .25, rise: .45, hold: .18, fall: .55 });
+    dx += head * scan * .018;
+    dy += head * Math.sin(time * 1.9) * .0045;
+    dx += book * page * .018;
+    dy += book * page * .012;
+    dz += head * action * .007 + book * page * .006;
+    energy = Math.max(action * .55, page);
+  } else if (profile === 'think') {
+    const action = gestureCycle(time + .2, { period: 8.2, delay: .5, rise: .95, hold: 1.2, fall: 1.0 });
+    dy += rightArm * action * .17;
+    dx -= rightArm * action * .055;
+    const rot = rotateRegion(nx, y, 0, .17, -.05 * action, head);
     dx += rot.dx * imageAspect;
-    dy += rot.dy - head * action * .018;
-    dz += rightArm * action * .018;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'sleep') {
-    const action = envelope(time + .4, 9.8, 4.2);
-    const nod = Math.sin(Math.PI * Math.min(1, ((time + .4) % 9.8) / 4.2)) * action;
-    const rot = rotateRegion(nx, y, 0, .17, -.06 * nod, head);
+    dy += rot.dy - head * action * .022;
+    dz += rightArm * action * .02;
+    energy = action;
+  } else if (profile === 'sleep') {
+    const local = ((time + .4) % 9.8 + 9.8) % 9.8;
+    const action = gestureCycle(time + .4, { period: 9.8, delay: .5, rise: 1.8, hold: 1.4, fall: 1.8 });
+    const nod = action * (.72 + Math.sin(local * 1.1) * .18);
+    const rot = rotateRegion(nx, y, 0, .17, -.082 * nod, head);
     dx += rot.dx * imageAspect;
-    dy += rot.dy - head * nod * .036;
-    dz -= head * nod * .012;
-    return { dx, dy, dz, energy: action };
-  }
-
-  if (profile === 'speak') {
-    const action = speaking ? (.55 + Math.sin(time * 4.4) * .22) : envelope(time, 5, 2);
-    const rot = rotateRegion(nx, y, 0, .16, Math.sin(time * 2.8) * .014 * action, head);
+    dy += rot.dy - head * nod * .048 + body * Math.sin(time * .72) * .005;
+    dz -= head * nod * .015;
+    energy = action;
+  } else if (profile === 'speak') {
+    const action = speaking ? (.62 + Math.sin(time * 3.8) * .18) : gestureCycle(time, { period: 5, delay: .2, rise: .5, hold: 1.2, fall: .6 });
+    const syllable = speaking ? Math.sin(time * 11.5) : 0;
+    const rot = rotateRegion(nx, y, 0, .16, Math.sin(time * 2.4) * .017 * action, head);
     dx += rot.dx * imageAspect;
-    dy += rot.dy - body * action * .006;
-    dz += head * action * .009;
-    return { dx, dy, dz, energy: action };
+    dy += rot.dy - body * action * .006 + mouth * syllable * .009;
+    dz += head * action * .01;
+    energy = action;
   }
 
-  return { dx, dy, dz, energy: 0 };
+  // Un parpadeo geométrico muy discreto evita el efecto de foto rígida sin
+  // convertir los ojos en goma. Se suprime al dormir porque el cabeceo manda.
+  if (profile !== 'sleep') {
+    const blink = gestureCycle(time + 5.1, { period: 7.4, delay: 0, rise: .06, hold: .025, fall: .09 });
+    dy -= eyeBand * blink * .012;
+    energy = Math.max(energy, blink * .3);
+  }
+
+  return { dx, dy, dz, energy };
+}
+
+export function matthiasThreeMotionSample({
+  profile = 'idle',
+  x = 0,
+  y = 0,
+  imageAspect = 1,
+  time = 0,
+  speaking = false,
+} = {}) {
+  return deformVertex(profile, x, y, imageAspect, time, speaking);
 }
 
 function resizeRenderer(renderer, camera, canvas, imageAspect, mesh) {
@@ -209,6 +254,7 @@ export default function MatthiasThreeAvatar({
     root.dataset.threeFailed = 'false';
     root.dataset.threeFrame = '0';
     root.dataset.threeEnergy = '0';
+    root.dataset.threeReach = '0';
 
     try {
       const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -238,8 +284,9 @@ export default function MatthiasThreeAvatar({
         loaded.colorSpace = THREE.SRGBColorSpace;
         loaded.minFilter = THREE.LinearFilter;
         loaded.magFilter = THREE.LinearFilter;
+        loaded.needsUpdate = true;
         const imageAspect = Math.max(.1, (loaded.image?.naturalWidth || loaded.image?.width || 1) / (loaded.image?.naturalHeight || loaded.image?.height || 1));
-        geometry = new THREE.PlaneGeometry(2 * imageAspect, 2, 24, 28);
+        geometry = new THREE.PlaneGeometry(2 * imageAspect, 2, 28, 32);
         const basePositions = new Float32Array(geometry.attributes.position.array);
         material = new THREE.MeshBasicMaterial({
           map: loaded,
@@ -262,12 +309,14 @@ export default function MatthiasThreeAvatar({
 
         let frames = 0;
         let peakEnergy = 0;
+        let peakReach = 0;
         const startedAt = performance.now();
         const render = (stamp) => {
           if (disposed) return;
           const time = Math.max(0, stamp - startedAt) / 1000;
           const positions = geometry.attributes.position;
           let energy = 0;
+          let reach = 0;
           for (let index = 0; index < positions.count; index += 1) {
             const offset = index * 3;
             const x = basePositions[offset];
@@ -280,6 +329,7 @@ export default function MatthiasThreeAvatar({
             positions.array[offset + 1] = y + motion.dy;
             positions.array[offset + 2] = z + motion.dz;
             energy = Math.max(energy, motion.energy || 0);
+            reach = Math.max(reach, motion.dy || 0);
           }
           positions.needsUpdate = true;
           if (!reducedMotion) {
@@ -291,16 +341,15 @@ export default function MatthiasThreeAvatar({
           renderer.render(scene3d, camera);
           frames += 1;
           peakEnergy = Math.max(peakEnergy, energy);
+          peakReach = Math.max(peakReach, reach);
           if (frames === 1) {
             setReady(true);
             root.dataset.threeReady = 'true';
           }
           if (frames % 6 === 0 || frames === 1) {
             root.dataset.threeFrame = String(frames);
-            // Guardamos el pico observado, no sólo la muestra de este frame.
-            // Así el gate verifica que hubo movimiento real aunque consulte
-            // durante la pausa natural entre dos gestos.
             root.dataset.threeEnergy = peakEnergy.toFixed(3);
+            root.dataset.threeReach = peakReach.toFixed(3);
           }
           if (!reducedMotion) raf = window.requestAnimationFrame(render);
         };
@@ -341,6 +390,7 @@ export default function MatthiasThreeAvatar({
       data-three-failed={failed ? 'true' : 'false'}
       data-three-frame="0"
       data-three-energy="0"
+      data-three-reach="0"
     >
       <canvas ref={canvasRef} className="matthias-three-avatar__canvas" aria-hidden="true" />
       <img
