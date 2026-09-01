@@ -1,11 +1,58 @@
-// Pure motion/lighting helpers live here so the 3D scene can be tuned and tested
-// without coupling chess rules or game-state ownership to the renderer.
-//
-// Important: this module must stay free of document-level pointer listeners.
-// A capture-phase pointermove guard briefly used to freeze the War Room camera
-// also swallowed the desktop interaction stream before it reached the WebGL
-// canvas. Camera policy belongs inside Board3D; motion math must not interfere
-// with chess input.
+import * as THREE from 'three';
+
+const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
+const shadowRefreshState = new WeakMap();
+
+export function shadowRefreshInterval({ coarsePointer = false } = {}) {
+  return coarsePointer ? 180 : 120;
+}
+
+export function shouldRefreshShadowMap({ now = 0, lastShadowAt = Number.NEGATIVE_INFINITY, coarsePointer = false } = {}) {
+  const current = Number(now);
+  const previous = Number(lastShadowAt);
+  if (!Number.isFinite(previous)) return true;
+  if (!Number.isFinite(current)) return false;
+  return current - previous >= shadowRefreshInterval({ coarsePointer });
+}
+
+function installWarRoomRenderDiscipline() {
+  const prototype = THREE.WebGLRenderer?.prototype;
+  if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
+
+  const originalRender = prototype.render;
+  Object.defineProperty(prototype, WAR_ROOM_RENDER_DISCIPLINE, {
+    value: true,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+
+  prototype.render = function renderWithWarRoomShadowBudget(scene, camera) {
+    const budget = scene?.userData?.warRoomRenderBudget;
+    if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
+
+    const coarsePointer = Number(budget.shadowMapSize) <= 512;
+    const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+    const state = shadowRefreshState.get(this) || { lastShadowAt: Number.NEGATIVE_INFINITY };
+
+    // The scene still renders every requested frame, but the expensive directional
+    // shadow pass no longer follows it blindly at 60 Hz. Piece contact shadows keep
+    // movement grounded between refreshes; the final move frame is always far enough
+    // past the interval to refresh the real shadow map again.
+    this.shadowMap.autoUpdate = false;
+    if (shouldRefreshShadowMap({ now, lastShadowAt: state.lastShadowAt, coarsePointer })) {
+      this.shadowMap.needsUpdate = true;
+      state.lastShadowAt = now;
+      shadowRefreshState.set(this, state);
+    }
+
+    return originalRender.call(this, scene, camera);
+  };
+}
+
+installWarRoomRenderDiscipline();
 
 export function clamp01(value) {
   return Math.min(1, Math.max(0, Number(value) || 0));
@@ -36,7 +83,7 @@ export function inferCapturedPiece(previousPieces = [], nextPieces = [], animate
 
 export function deriveMoveKinetics({ movingType = 'p', capture = false, promotion = false, castling = false, coarsePointer = false } = {}) {
   const type = String(movingType || 'p').toLowerCase();
-  const duration = coarsePointer ? (capture ? 230 : 190) : (capture ? 300 : type === 'n' ? 270 : 230);
+  const duration = coarsePointer ? (capture ? 200 : 170) : (capture ? 240 : type === 'n' ? 220 : 190);
   const lift = coarsePointer ? 0.08 : type === 'n' ? 0.28 : capture ? 0.19 : 0.13;
   return {
     duration,
@@ -56,12 +103,9 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
 }
 
 export function adaptiveRenderScale({ coarsePointer = false, slowFrameCount = 0 } = {}) {
-  // La escena anterior conservaba 1.75 DPR hasta detectar diez frames lentos,
-  // y esa detección sólo ocurre mientras una pieza está animándose. En pantallas
-  // HiDPI eso significa renderizar ~3x los píxeles de CSS justo en el momento en
-  // que más trabajo hace Three.js. Empezamos cada animación con un presupuesto
-  // razonable y degradamos pronto si aun así no alcanza. En DPR <= 1 no hay pérdida:
-  // Board3D siempre limita este valor con window.devicePixelRatio.
-  if (coarsePointer) return slowFrameCount >= 5 ? 0.8 : 1;
-  return slowFrameCount >= 6 ? 1 : 1.35;
+  // Animation is the hottest path: moving geometry, transparency and reactive
+  // lighting all converge here. Keep the static War Room crisp, but drop the
+  // animation budget one notch before frame loss becomes visible.
+  if (coarsePointer) return slowFrameCount >= 4 ? 0.75 : 1;
+  return slowFrameCount >= 4 ? 0.9 : 1.2;
 }
