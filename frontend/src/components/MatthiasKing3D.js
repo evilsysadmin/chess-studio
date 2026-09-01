@@ -161,9 +161,10 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [-0.071, 1.029, faceZ], [0, 0, -0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-left');
   add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [0.071, 1.029, faceZ], [0, 0, 0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-right');
 
-  // Low, steep brows: the inner ends point down at the nose, unmistakably angry.
-  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [-0.064, 1.078, front * 0.229], [0, 0, -0.38 * front], null, 'matthias-brow-left');
-  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [0.064, 1.078, front * 0.229], [0, 0, 0.38 * front], null, 'matthias-brow-right');
+  // Match Matthias' canonical avatar: brows rise toward the outside corners.
+  // From the tactical camera this reads as proud/angry, not drooping/sad.
+  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [-0.064, 1.078, front * 0.229], [0, 0, 0.38 * front], null, 'matthias-brow-left');
+  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [0.064, 1.078, front * 0.229], [0, 0, -0.38 * front], null, 'matthias-brow-right');
 
   // Keep the nose subordinate so it cannot turn the expression into a droop.
   add(headRig, new THREE.SphereGeometry(0.022, 14, 9), faceShadow, [0.004, 0.992, front * 0.236], [0, 0, 0], [0.62, 1.05, 0.46], 'matthias-nose');
