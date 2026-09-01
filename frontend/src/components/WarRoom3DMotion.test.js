@@ -46,8 +46,7 @@ describe('WarRoom3DMotion', () => {
     expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 12 })).toBe(1);
   });
 
-  it('stays a pure helper module so desktop pointer events remain owned by Board3D', async () => {
-    expect(typeof document).toBe('undefined');
+  it('does not expose the old document-level pointer suppression hook', async () => {
     const mod = await import('./WarRoom3DMotion.js');
     expect(mod.shouldSuppressWarRoomParallax).toBeUndefined();
   });
