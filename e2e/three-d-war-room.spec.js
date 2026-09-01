@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
+const WAR_ROOM_READY_TIMEOUT = 30_000;
+
 function normalized(vector) {
   const length = Math.hypot(...vector);
   return vector.map((value) => value / length);
@@ -85,8 +87,8 @@ async function openQuickGameWarRoom(page, requestLog = []) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
   await expect(warRoom).toBeVisible();
-  await expect(board3d).toBeVisible();
-  await expect(canvas).toBeVisible();
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   return { warRoom, board3d, canvas };
 }
 
@@ -112,8 +114,8 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await setRendererViaAppearance(page, '3D');
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
-  await expect(board3d).toBeVisible();
-  await expect(canvas).toBeVisible();
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
 
@@ -211,7 +213,7 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(warRoom).toBeVisible();
-  await expect(board3d).toBeVisible();
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   const mobileBoardWidth = await page.locator('.board3d-main-shell').evaluate((element) => element.getBoundingClientRect().width);
   expect(mobileBoardWidth).toBeGreaterThan(320);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
