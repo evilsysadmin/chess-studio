@@ -15,6 +15,32 @@ export function shouldRefreshShadowMap({ now = 0, lastShadowAt = Number.NEGATIVE
   return current - previous >= shadowRefreshInterval({ coarsePointer });
 }
 
+export function nextRuntimeRenderScale({
+  currentScale = 1,
+  frameMs = 16,
+  slowFrameCount = 0,
+  coarsePointer = false,
+} = {}) {
+  const current = Math.max(0.5, Number(currentScale) || 1);
+  const dt = Number(frameMs);
+  const minimum = coarsePointer ? 0.75 : 0.9;
+  let slow = Math.max(0, Number(slowFrameCount) || 0);
+
+  // Ignore sparse UI renders: a 150 ms gap between two clicks is not a 6 FPS GPU.
+  // Only contiguous frame cadence is useful for deciding that the renderer is hot.
+  if (!Number.isFinite(dt) || dt <= 0 || dt >= 80) slow = 0;
+  else if (dt > 24) slow += 1;
+  else slow = Math.max(0, slow - 1);
+
+  if (slow < 5 || current <= minimum + 0.01) {
+    return { scale: current, slowFrameCount: slow, downgraded: false };
+  }
+
+  const step = coarsePointer ? 0.15 : 0.2;
+  const scale = Math.max(minimum, Math.round((current - step) * 100) / 100);
+  return { scale, slowFrameCount: 0, downgraded: scale < current };
+}
+
 function installWarRoomRenderDiscipline() {
   const prototype = THREE.WebGLRenderer?.prototype;
   if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
@@ -35,7 +61,29 @@ function installWarRoomRenderDiscipline() {
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
-    const state = shadowRefreshState.get(this) || { lastShadowAt: Number.NEGATIVE_INFINITY };
+    const state = shadowRefreshState.get(this) || {
+      lastShadowAt: Number.NEGATIVE_INFINITY,
+      lastRenderAt: Number.NaN,
+      slowFrameCount: 0,
+    };
+    shadowRefreshState.set(this, state);
+
+    const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
+    state.lastRenderAt = now;
+    const currentScale = typeof this.getPixelRatio === 'function'
+      ? this.getPixelRatio()
+      : Number(budget.pixelRatio) || 1;
+    const runtime = nextRuntimeRenderScale({
+      currentScale,
+      frameMs,
+      slowFrameCount: state.slowFrameCount,
+      coarsePointer,
+    });
+    state.slowFrameCount = runtime.slowFrameCount;
+    if (runtime.downgraded && typeof this.setPixelRatio === 'function') {
+      this.setPixelRatio(runtime.scale);
+      scene.userData.warRoomRuntimeScale = runtime.scale;
+    }
 
     // The scene still renders every requested frame, but the expensive directional
     // shadow pass no longer follows it blindly at 60 Hz. Piece contact shadows keep
@@ -45,7 +93,6 @@ function installWarRoomRenderDiscipline() {
     if (shouldRefreshShadowMap({ now, lastShadowAt: state.lastShadowAt, coarsePointer })) {
       this.shadowMap.needsUpdate = true;
       state.lastShadowAt = now;
-      shadowRefreshState.set(this, state);
     }
 
     return originalRender.call(this, scene, camera);
