@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v5';
+export const PREMIUM_SURFACE_VERSION = 'premium-v6';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
   'ivory',
@@ -23,24 +23,26 @@ export function getCameraFramingProfile(aspect) {
   const wide = safeAspect >= 1.42;
   return wide
     ? {
-        halfSpan: 4.78,
-        padding: 1.04,
-        minDistance: 12.1,
-        maxDistance: 21,
-        targetY: 0.34,
-        targetZ: -0.08,
-        cameraY: 7.05,
-        cameraZ: 10.15,
+        // El tablero sigue siendo protagonista, pero dejamos respirar la sala:
+        // crest, cortinas, estanterías y decoración deben entrar completos.
+        halfSpan: 5.38,
+        padding: 1.07,
+        minDistance: 13.2,
+        maxDistance: 22.6,
+        targetY: 1.08,
+        targetZ: -0.16,
+        cameraY: 7.35,
+        cameraZ: 10.6,
       }
     : {
-        halfSpan: 5.24,
-        padding: 1.12,
-        minDistance: 13.4,
-        maxDistance: 24,
-        targetY: 0.48,
-        targetZ: -0.02,
-        cameraY: 8.1,
-        cameraZ: 10.2,
+        halfSpan: 5.78,
+        padding: 1.13,
+        minDistance: 14.5,
+        maxDistance: 25.6,
+        targetY: 0.92,
+        targetZ: -0.08,
+        cameraY: 8.2,
+        cameraZ: 10.72,
       };
 }
 
@@ -131,29 +133,28 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
         coarsePointer,
       });
   const surfaceColor = new THREE.Color(color);
-  // Marfil envejecido, no faros antiaéreos. La corrección es deliberadamente
-  // visible: baja luminancia, mata el brillo especular y conserva volumen por
-  // rugosidad/microtextura en vez de iluminar la pieza entera como porcelana.
-  if (ivory) surfaceColor.lerp(new THREE.Color(0xaa9168), 0.45);
-  const ivoryRoughness = Math.min(0.96, Math.max(0.68, baseRoughness * (micro ? 1.5 : 1.3)));
+  // Marfil mate y envejecido. La referencia visual pide beige real, no blanco
+  // porcelana: bajamos luminancia y hacemos que el volumen venga de sombras.
+  if (ivory) surfaceColor.lerp(new THREE.Color(0x927858), 0.62);
+  const ivoryRoughness = Math.min(0.98, Math.max(0.78, baseRoughness * (micro ? 1.68 : 1.48)));
 
   const material = new THREE.MeshPhysicalMaterial({
     color: surfaceColor,
-    metalness: ivory ? Math.min(baseMetalness, 0.018) : baseMetalness,
+    metalness: ivory ? Math.min(baseMetalness, 0.006) : baseMetalness,
     roughness: ivory ? ivoryRoughness : (micro ? Math.min(0.92, baseRoughness * 1.18) : baseRoughness),
     roughnessMap: micro,
     bumpMap: micro,
     bumpScale: micro ? (side === 'w' ? 0.006 : 0.009) : 0,
     emissive: skin.emissive,
     emissiveIntensity: accent ? skin.emissiveIntensity * 1.25 : skin.emissiveIntensity,
-    clearcoat: accent ? 0.9 : ivory ? 0.2 : 0.74,
-    clearcoatRoughness: accent ? 0.08 : ivory ? 0.44 : 0.13,
-    sheen: accent ? 0.2 : ivory ? 0.015 : 0.14,
-    sheenRoughness: ivory ? 0.72 : 0.32,
-    ior: ivory ? 1.42 : 1.58,
-    specularIntensity: accent ? 1 : ivory ? 0.22 : 0.86,
-    specularColor: ivory ? new THREE.Color(0xc3aa7e) : new THREE.Color(0xa5b0bb),
-    envMapIntensity: accent ? 1.2 : ivory ? 0.27 : 0.94,
+    clearcoat: accent ? 0.9 : ivory ? 0.08 : 0.74,
+    clearcoatRoughness: accent ? 0.08 : ivory ? 0.66 : 0.13,
+    sheen: accent ? 0.2 : ivory ? 0.008 : 0.14,
+    sheenRoughness: ivory ? 0.82 : 0.32,
+    ior: ivory ? 1.38 : 1.58,
+    specularIntensity: accent ? 1 : ivory ? 0.12 : 0.86,
+    specularColor: ivory ? new THREE.Color(0xa58b66) : new THREE.Color(0xa5b0bb),
+    envMapIntensity: accent ? 1.2 : ivory ? 0.13 : 0.94,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = accent ? 'metal-inlay' : side === 'w' ? 'ivory' : 'ebony';
@@ -200,13 +201,13 @@ export function makePremiumDecorMaterial({
 } = {}) {
   const micro = coarsePointer ? null : createMicroSurfaceMap({ seed, kind, coarsePointer });
   const defaults = {
-    // El acabado de los cajones funciona mejor que el barniz anterior de la
-    // sala: madera oscura, grano legible y brillo ancho, no plástico pulido.
-    wood: { metalness: 0.025, roughness: 0.54, clearcoat: 0.3, clearcoatRoughness: 0.24, sheen: 0.05, bump: 0.012, env: 0.66, specular: 0.58 },
-    leather: { metalness: 0.01, roughness: 0.62, clearcoat: 0.18, clearcoatRoughness: 0.32, sheen: 0.28, bump: 0.018, env: 0.58, specular: 0.55 },
-    fabric: { metalness: 0, roughness: 0.88, clearcoat: 0.02, clearcoatRoughness: 0.7, sheen: 0.55, bump: 0.01, env: 0.36, specular: 0.35 },
-    metal: { metalness: 0.88, roughness: 0.27, clearcoat: 0.45, clearcoatRoughness: 0.12, sheen: 0.04, bump: 0.003, env: 1.05, specular: 0.96 },
-  }[kind] || { metalness: 0.05, roughness: 0.58, clearcoat: 0.2, clearcoatRoughness: 0.2, sheen: 0.08, bump: 0.008, env: 0.7, specular: 0.7 };
+    // Madera oscura como el mueble de la referencia: veta legible, reflejo
+    // ancho y débil, sin el brillo de barniz que estaba encendiendo cajones.
+    wood: { metalness: 0.015, roughness: 0.68, clearcoat: 0.12, clearcoatRoughness: 0.38, sheen: 0.025, bump: 0.012, env: 0.38, specular: 0.32 },
+    leather: { metalness: 0.01, roughness: 0.62, clearcoat: 0.18, clearcoatRoughness: 0.32, sheen: 0.28, bump: 0.018, env: 0.52, specular: 0.5 },
+    fabric: { metalness: 0, roughness: 0.88, clearcoat: 0.02, clearcoatRoughness: 0.7, sheen: 0.55, bump: 0.01, env: 0.32, specular: 0.32 },
+    metal: { metalness: 0.88, roughness: 0.29, clearcoat: 0.42, clearcoatRoughness: 0.13, sheen: 0.04, bump: 0.003, env: 0.9, specular: 0.88 },
+  }[kind] || { metalness: 0.05, roughness: 0.62, clearcoat: 0.16, clearcoatRoughness: 0.28, sheen: 0.06, bump: 0.008, env: 0.52, specular: 0.5 };
 
   const material = new THREE.MeshPhysicalMaterial({
     color,
@@ -257,31 +258,32 @@ function classifyDecorSurface(material) {
 function tuneExistingDecorMaterial(material, kind, coarsePointer, seed) {
   const micro = coarsePointer ? null : createMicroSurfaceMap({ seed, kind, coarsePointer });
   if (kind === 'wood') {
-    material.metalness = Math.min(material.metalness ?? 0.03, 0.06);
-    material.roughness = THREE.MathUtils.clamp((material.roughness ?? 0.5) * 1.08, 0.5, 0.72);
-    material.clearcoat = Math.min(material.clearcoat ?? 0.3, 0.34);
-    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.2, 0.22);
-    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.66);
-    material.specularIntensity = Math.min(material.specularIntensity ?? 1, 0.58);
+    material.color.multiplyScalar(0.78);
+    material.metalness = Math.min(material.metalness ?? 0.03, 0.035);
+    material.roughness = THREE.MathUtils.clamp((material.roughness ?? 0.5) * 1.18, 0.62, 0.82);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.3, 0.16);
+    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.2, 0.38);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.38);
+    material.specularIntensity = Math.min(material.specularIntensity ?? 1, 0.34);
   } else if (kind === 'leather') {
     material.metalness = Math.min(material.metalness ?? 0.01, 0.04);
-    material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.6, 0.54, 0.72);
-    material.clearcoat = Math.min(material.clearcoat ?? 0.2, 0.24);
-    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.3, 0.28);
-    material.sheen = Math.max(material.sheen ?? 0, 0.25);
-    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.62);
+    material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.6, 0.58, 0.76);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.2, 0.2);
+    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.3, 0.34);
+    material.sheen = Math.max(material.sheen ?? 0, 0.22);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.5);
   } else if (kind === 'fabric') {
     material.metalness = 0;
-    material.roughness = Math.max(material.roughness ?? 0.85, 0.84);
-    material.clearcoat = Math.min(material.clearcoat ?? 0.02, 0.04);
-    material.sheen = Math.max(material.sheen ?? 0, 0.48);
-    material.sheenRoughness = Math.max(material.sheenRoughness ?? 0.7, 0.72);
-    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.4);
+    material.roughness = Math.max(material.roughness ?? 0.85, 0.86);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.02, 0.03);
+    material.sheen = Math.max(material.sheen ?? 0, 0.45);
+    material.sheenRoughness = Math.max(material.sheenRoughness ?? 0.7, 0.74);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.34);
   } else if (kind === 'metal') {
     material.metalness = Math.max(material.metalness ?? 0.8, 0.78);
-    material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.26, 0.2, 0.36);
-    material.clearcoat = Math.max(material.clearcoat ?? 0.3, 0.34);
-    material.envMapIntensity = Math.max(material.envMapIntensity ?? 1, 1.02);
+    material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.26, 0.22, 0.38);
+    material.clearcoat = Math.max(material.clearcoat ?? 0.3, 0.32);
+    material.envMapIntensity = Math.min(Math.max(material.envMapIntensity ?? 0.82, 0.78), 0.92);
   }
 
   if (micro && !material.roughnessMap && !material.bumpMap) {
@@ -347,7 +349,7 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
   const room = new RoomEnvironment();
   const target = pmrem.fromScene(room, 0.035);
   scene.environment = target.texture;
-  scene.environmentIntensity = 0.66;
+  scene.environmentIntensity = 0.46;
   scene.userData.premiumIbl = true;
   pmrem.dispose();
 
