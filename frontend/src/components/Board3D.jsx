@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Board from './Board.jsx';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
+import {
+  getCameraFramingProfile,
+  installPremiumEnvironment,
+  makePremiumPieceMaterial,
+  makePremiumTileMaterial,
+} from './Board3DSurfaces.js';
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
@@ -9,8 +15,6 @@ import './Board3D.css';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const DISPLAY_RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
-const BOARD_CAMERA_HALF_SPAN = 5.2;
-const BOARD_CAMERA_PADDING = 1.12;
 
 const BOARD_THEME_3D = Object.freeze({
   classic: { light: 0xd9cfba, dark: 0x5a4236, frame: 0x34251f, felt: 0x111722, glow: 0xc9a227 },
@@ -106,17 +110,8 @@ function adjacentSquare(square, key, orientation) {
   return `${FILES[nextFile]}${DISPLAY_RANKS[nextRank]}`;
 }
 
-function makeMaterial(color, skin, accent = false) {
-  return new THREE.MeshPhysicalMaterial({
-    color,
-    metalness: Math.min(1, skin.metalness + (accent ? 0.18 : 0)),
-    roughness: Math.max(0.12, skin.roughness - (accent ? 0.12 : 0)),
-    emissive: skin.emissive,
-    emissiveIntensity: accent ? skin.emissiveIntensity * 1.2 : skin.emissiveIntensity,
-    clearcoat: accent ? 0.82 : 0.5,
-    clearcoatRoughness: accent ? 0.12 : 0.2,
-    sheen: accent ? 0.15 : 0.06,
-  });
+function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false) {
+  return makePremiumPieceMaterial({ color, skin, accent, side, coarsePointer });
 }
 
 function addMesh(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0]) {
@@ -142,7 +137,46 @@ const BASE_PROFILE = [
   [0.23, 0.21], [0.22, 0.26], [0.18, 0.29],
 ];
 
-function buildKnight(main, accent) {
+function addContactShadow(group, coarsePointer = false) {
+  if (coarsePointer) return;
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.34, 28),
+    new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.17,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = -0.006;
+  shadow.renderOrder = 1;
+  shadow.castShadow = false;
+  shadow.receiveShadow = false;
+  shadow.userData.contactShadow = true;
+  group.add(shadow);
+}
+
+function addSignatureDetail(group, type, accent, coarsePointer = false) {
+  if (coarsePointer) return;
+  if (type === 'p') {
+    addMesh(group, new THREE.TorusGeometry(0.115, 0.009, 7, 28), accent, [0, 0.37, 0], [Math.PI / 2, 0, 0]);
+  } else if (type === 'n') {
+    addMesh(group, new THREE.TorusGeometry(0.14, 0.012, 8, 32), accent, [0, 0.55, 0], [Math.PI / 2, 0, 0]);
+  } else if (type === 'b') {
+    addMesh(group, new THREE.TorusGeometry(0.135, 0.011, 8, 32), accent, [0, 0.7, 0], [Math.PI / 2, 0, 0]);
+  } else if (type === 'r') {
+    addMesh(group, new THREE.TorusGeometry(0.255, 0.012, 8, 36), accent, [0, 0.77, 0], [Math.PI / 2, 0, 0]);
+  } else if (type === 'q') {
+    addMesh(group, new THREE.SphereGeometry(0.052, 16, 10), accent, [0, 1.13, 0]);
+  } else if (type === 'k') {
+    addMesh(group, new THREE.TorusGeometry(0.155, 0.011, 8, 34), accent, [0, 0.89, 0], [Math.PI / 2, 0, 0]);
+    addMesh(group, new THREE.SphereGeometry(0.032, 14, 8), accent, [0, 1.37, 0]);
+  }
+}
+
+function buildKnight(main, accent, coarsePointer = false) {
   const group = new THREE.Group();
   addLathe(group, BASE_PROFILE, main);
   addLathe(group, [[0.18, 0.29], [0.16, 0.38], [0.13, 0.48], [0.14, 0.57]], main);
@@ -160,66 +194,70 @@ function buildKnight(main, accent) {
     bevelEnabled: true,
     bevelThickness: 0.035,
     bevelSize: 0.025,
-    bevelSegments: 2,
-    curveSegments: 12,
+    bevelSegments: 3,
+    curveSegments: 16,
   });
   head.center();
   const headMesh = addMesh(group, head, main, [0, 0.69, 0], [0, 0, 0]);
   headMesh.scale.set(1.05, 1.05, 1.05);
-  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, 14), accent, [-0.07, 1.02, 0.02], [0.02, 0, -0.32]);
-  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, 14), accent, [0.07, 1.02, 0.02], [0.02, 0, 0.32]);
-  addMesh(group, new THREE.SphereGeometry(0.025, 12, 8), accent, [0.17, 0.82, 0.135]);
-  addMesh(group, new THREE.SphereGeometry(0.025, 12, 8), accent, [0.17, 0.82, -0.135]);
+  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, 18), accent, [-0.07, 1.02, 0.02], [0.02, 0, -0.32]);
+  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, 18), accent, [0.07, 1.02, 0.02], [0.02, 0, 0.32]);
+  addMesh(group, new THREE.SphereGeometry(0.025, 16, 10), accent, [0.17, 0.82, 0.135]);
+  addMesh(group, new THREE.SphereGeometry(0.025, 16, 10), accent, [0.17, 0.82, -0.135]);
+  addSignatureDetail(group, 'n', accent, coarsePointer);
+  addContactShadow(group, coarsePointer);
   return group;
 }
 
-function buildPiece(type, color, skinId) {
+function buildPiece(type, color, skinId, coarsePointer = false) {
   const skin = SKIN_3D[skinId] || SKIN_3D.studio;
-  const main = makeMaterial(color === 'w' ? skin.white : skin.black, skin);
-  const accent = makeMaterial(color === 'w' ? skin.whiteAccent : skin.blackAccent, skin, true);
+  const main = makeMaterial(color === 'w' ? skin.white : skin.black, skin, false, color, coarsePointer);
+  const accent = makeMaterial(color === 'w' ? skin.whiteAccent : skin.blackAccent, skin, true, color, coarsePointer);
 
   if (type === 'n') {
-    const knight = buildKnight(main, accent);
+    const knight = buildKnight(main, accent, coarsePointer);
     knight.scale.setScalar(0.9);
     return knight;
   }
 
   const group = new THREE.Group();
   addLathe(group, BASE_PROFILE, main);
-  addMesh(group, new THREE.TorusGeometry(0.245, 0.022, 10, 40), accent, [0, 0.2, 0], [Math.PI / 2, 0, 0]);
+  addMesh(group, new THREE.TorusGeometry(0.245, 0.022, 12, 48), accent, [0, 0.2, 0], [Math.PI / 2, 0, 0]);
 
   if (type === 'p') {
     addLathe(group, [[0.18, 0.28], [0.155, 0.36], [0.13, 0.49], [0.15, 0.55], [0.16, 0.59]], main);
-    addMesh(group, new THREE.SphereGeometry(0.19, 28, 18), main, [0, 0.73, 0]);
-    addMesh(group, new THREE.TorusGeometry(0.16, 0.025, 10, 36), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
+    addMesh(group, new THREE.SphereGeometry(0.19, 32, 22), main, [0, 0.73, 0]);
+    addMesh(group, new THREE.TorusGeometry(0.16, 0.025, 12, 44), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'b') {
     addLathe(group, [[0.19, 0.28], [0.16, 0.4], [0.12, 0.58], [0.16, 0.68], [0.19, 0.73]], main);
-    addMesh(group, new THREE.SphereGeometry(0.15, 24, 16), main, [0, 0.84, 0]);
-    addMesh(group, new THREE.ConeGeometry(0.07, 0.22, 18), accent, [0, 1.02, 0]);
-    addMesh(group, new THREE.BoxGeometry(0.045, 0.2, 0.18), accent, [0.035, 0.86, 0], [0, 0, 0.62]);
+    addMesh(group, new THREE.SphereGeometry(0.15, 30, 20), main, [0, 0.84, 0]);
+    addMesh(group, new THREE.ConeGeometry(0.07, 0.22, 22), accent, [0, 1.02, 0]);
+    addMesh(group, new THREE.BoxGeometry(0.04, 0.2, 0.17, 2, 5, 2), accent, [0.035, 0.86, 0], [0, 0, 0.62]);
   } else if (type === 'r') {
     addLathe(group, [[0.22, 0.28], [0.2, 0.38], [0.19, 0.68], [0.24, 0.75], [0.28, 0.79]], main);
-    addMesh(group, new THREE.CylinderGeometry(0.29, 0.27, 0.12, 32), accent, [0, 0.83, 0]);
+    addMesh(group, new THREE.CylinderGeometry(0.29, 0.27, 0.12, 40), accent, [0, 0.83, 0]);
     for (let index = 0; index < 6; index += 1) {
       const angle = index * Math.PI / 3;
-      addMesh(group, new THREE.BoxGeometry(0.13, 0.17, 0.13), main, [Math.cos(angle) * 0.22, 0.95, Math.sin(angle) * 0.22], [0, -angle, 0]);
+      addMesh(group, new THREE.BoxGeometry(0.13, 0.17, 0.13, 2, 3, 2), main, [Math.cos(angle) * 0.22, 0.95, Math.sin(angle) * 0.22], [0, -angle, 0]);
     }
   } else if (type === 'q') {
     addLathe(group, [[0.2, 0.28], [0.17, 0.4], [0.13, 0.61], [0.18, 0.75], [0.22, 0.8]], main);
-    addMesh(group, new THREE.TorusGeometry(0.205, 0.028, 10, 40), accent, [0, 0.84, 0], [Math.PI / 2, 0, 0]);
+    addMesh(group, new THREE.TorusGeometry(0.205, 0.028, 12, 48), accent, [0, 0.84, 0], [Math.PI / 2, 0, 0]);
     for (let index = 0; index < 7; index += 1) {
       const angle = index * (Math.PI * 2 / 7);
-      addMesh(group, new THREE.ConeGeometry(0.055, 0.24, 14), accent, [Math.cos(angle) * 0.17, 0.96, Math.sin(angle) * 0.17]);
-      addMesh(group, new THREE.SphereGeometry(0.045, 12, 8), main, [Math.cos(angle) * 0.17, 1.08, Math.sin(angle) * 0.17]);
+      addMesh(group, new THREE.ConeGeometry(0.055, 0.24, 18), accent, [Math.cos(angle) * 0.17, 0.96, Math.sin(angle) * 0.17]);
+      addMesh(group, new THREE.SphereGeometry(0.045, 16, 10), main, [Math.cos(angle) * 0.17, 1.08, Math.sin(angle) * 0.17]);
     }
   } else if (type === 'k') {
     addLathe(group, [[0.2, 0.28], [0.17, 0.42], [0.14, 0.68], [0.19, 0.81], [0.21, 0.85]], main);
-    addMesh(group, new THREE.TorusGeometry(0.195, 0.028, 10, 40), accent, [0, 0.86, 0], [Math.PI / 2, 0, 0]);
-    addMesh(group, new THREE.SphereGeometry(0.1, 20, 14), main, [0, 0.96, 0]);
-    addMesh(group, new THREE.BoxGeometry(0.07, 0.32, 0.07), accent, [0, 1.18, 0]);
-    addMesh(group, new THREE.BoxGeometry(0.25, 0.075, 0.07), accent, [0, 1.15, 0]);
+    addMesh(group, new THREE.TorusGeometry(0.195, 0.028, 12, 48), accent, [0, 0.86, 0], [Math.PI / 2, 0, 0]);
+    addMesh(group, new THREE.SphereGeometry(0.1, 24, 18), main, [0, 0.96, 0]);
+    addMesh(group, new THREE.BoxGeometry(0.07, 0.32, 0.07, 2, 5, 2), accent, [0, 1.18, 0]);
+    addMesh(group, new THREE.BoxGeometry(0.25, 0.075, 0.07, 5, 2, 2), accent, [0, 1.15, 0]);
   }
 
+  addSignatureDetail(group, type, accent, coarsePointer);
+  addContactShadow(group, coarsePointer);
   group.scale.setScalar(0.9);
   return group;
 }
@@ -227,6 +265,7 @@ function buildPiece(type, color, skinId) {
 function disposeObject(object) {
   const disposedMaterials = new Set();
   const disposedGeometries = new Set();
+  const disposedTextures = new Set();
   object?.traverse?.((child) => {
     if (child.geometry && !disposedGeometries.has(child.geometry)) {
       disposedGeometries.add(child.geometry);
@@ -236,7 +275,11 @@ function disposeObject(object) {
     for (const material of materials) {
       if (!material || disposedMaterials.has(material)) continue;
       disposedMaterials.add(material);
-      material.map?.dispose?.();
+      for (const value of Object.values(material)) {
+        if (!value?.isTexture || disposedTextures.has(value)) continue;
+        disposedTextures.add(value);
+        value.dispose?.();
+      }
       material.dispose?.();
     }
   });
@@ -287,7 +330,7 @@ function buildTrophy(group, x, y, z, goldMaterial) {
   addMesh(group, handle.clone(), goldMaterial, [x + 0.12, y + 0.3, z], [Math.PI / 2, Math.PI, -Math.PI * 0.2]);
 }
 
-function buildWarRoom(theme, whiteSide) {
+function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   const room = new THREE.Group();
   const far = whiteSide ? -1 : 1;
   const wallZ = far * 7.6;
@@ -331,7 +374,7 @@ function buildWarRoom(theme, whiteSide) {
   addBox(room, [2.25, 3.25, 0.12], 0x171c2a, [bannerX, 3.25, wallZ + towardBoard * 0.31], { roughness: 0.88 });
   addBox(room, [2.34, 0.09, 0.18], brass, [bannerX, 4.9, wallZ + towardBoard * 0.38], { metalness: 0.8, roughness: 0.24 });
   const emblemSkin = { metalness: 0.72, roughness: 0.22, emissive: 0x4b2d00, emissiveIntensity: 0.08 };
-  const emblem = buildPiece('p', 'w', 'regimiento');
+  const emblem = buildPiece('p', 'w', 'regimiento', coarsePointer);
   emblem.traverse((child) => {
     if (child.material?.color) {
       child.material.color.setHex(0xc5963f);
@@ -343,13 +386,13 @@ function buildWarRoom(theme, whiteSide) {
   emblem.scale.setScalar(1.05);
   room.add(emblem);
 
-  const gold = new THREE.MeshPhysicalMaterial({ color: brass, metalness: 0.82, roughness: 0.22, clearcoat: 0.7, clearcoatRoughness: 0.1 });
+  const gold = new THREE.MeshPhysicalMaterial({ color: brass, metalness: 0.82, roughness: 0.22, clearcoat: 0.7, clearcoatRoughness: 0.1, envMapIntensity: 1.18 });
   const shelfZ = wallZ + towardBoard * 0.55;
   buildTrophy(room, bannerX - 2.35, 2.18, shelfZ, gold);
   buildTrophy(room, bannerX + 2.25, 2.18, shelfZ, gold);
 
   const globeX = whiteSide ? -4.2 : 4.2;
-  addMesh(room, new THREE.SphereGeometry(0.52, 28, 18), new THREE.MeshPhysicalMaterial({ color: 0x283640, metalness: 0.25, roughness: 0.45, clearcoat: 0.45 }), [globeX, 2.78, shelfZ]);
+  addMesh(room, new THREE.SphereGeometry(0.52, 28, 18), new THREE.MeshPhysicalMaterial({ color: 0x283640, metalness: 0.25, roughness: 0.45, clearcoat: 0.45, envMapIntensity: 0.82 }), [globeX, 2.78, shelfZ]);
   addMesh(room, new THREE.TorusGeometry(0.61, 0.035, 10, 36), gold, [globeX, 2.78, shelfZ], [Math.PI / 2.2, 0, 0.35]);
   addMesh(room, new THREE.CylinderGeometry(0.05, 0.09, 0.55, 18), gold, [globeX, 2.25, shelfZ]);
 
@@ -376,16 +419,17 @@ function buildWarRoom(theme, whiteSide) {
 
 function fitBoardCamera(camera, width, height, whiteSide) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
+  const profile = getCameraFramingProfile(aspect);
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const distance = THREE.MathUtils.clamp(
-    (BOARD_CAMERA_HALF_SPAN / Math.tan(limitingFov / 2)) * BOARD_CAMERA_PADDING,
-    13.4,
-    24,
+    (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding,
+    profile.minDistance,
+    profile.maxDistance,
   );
-  const target = new THREE.Vector3(0, 0.48, whiteSide ? -0.34 : 0.34);
-  const direction = new THREE.Vector3(0, 8.1, whiteSide ? 10.2 : -10.2).normalize();
+  const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
+  const direction = new THREE.Vector3(0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
   camera.aspect = aspect;
   camera.position.copy(target).addScaledVector(direction, distance);
   camera.lookAt(target);
@@ -448,7 +492,7 @@ function Board3DCanvas({
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const squareMeshes = new Map();
@@ -476,15 +520,22 @@ function Board3DCanvas({
     renderer.domElement.style.touchAction = 'manipulation';
     host.appendChild(renderer.domElement);
 
+    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer });
+
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.7));
     const key = new THREE.DirectionalLight(0xffe1aa, 3.1);
     key.position.set(-5.4, 10, whiteSide ? 6.6 : -6.6);
     key.castShadow = true;
-    key.shadow.mapSize.set(coarsePointer ? 512 : 1024, coarsePointer ? 512 : 1024);
+    key.shadow.mapSize.set(coarsePointer ? 512 : 2048, coarsePointer ? 512 : 2048);
     key.shadow.camera.left = -8;
     key.shadow.camera.right = 8;
     key.shadow.camera.top = 8;
     key.shadow.camera.bottom = -8;
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 28;
+    key.shadow.bias = -0.00045;
+    key.shadow.normalBias = 0.018;
+    key.shadow.radius = coarsePointer ? 1.1 : 2.35;
     scene.add(key);
     const rim = new THREE.PointLight(theme.glow, 18, 19, 2);
     rim.position.set(4.8, 3.6, whiteSide ? -4.8 : 4.8);
@@ -493,13 +544,13 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const warRoom = buildWarRoom(theme, whiteSide);
+    const warRoom = buildWarRoom(theme, whiteSide, coarsePointer);
     scene.add(warRoom);
     scene.add(buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer));
 
     const table = new THREE.Mesh(
       new THREE.BoxGeometry(11.6, 0.55, 11.6),
-      new THREE.MeshPhysicalMaterial({ color: 0x1f120c, metalness: 0.08, roughness: 0.6, clearcoat: 0.28, clearcoatRoughness: 0.25 }),
+      new THREE.MeshPhysicalMaterial({ color: 0x1f120c, metalness: 0.08, roughness: 0.6, clearcoat: 0.28, clearcoatRoughness: 0.25, envMapIntensity: 0.74 }),
     );
     table.position.y = -0.48;
     table.receiveShadow = true;
@@ -508,14 +559,14 @@ function Board3DCanvas({
 
     const pedestal = new THREE.Mesh(
       new THREE.BoxGeometry(9.35, 0.38, 9.35),
-      new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.18, roughness: 0.48, clearcoat: 0.4, clearcoatRoughness: 0.18 }),
+      new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.18, roughness: 0.48, clearcoat: 0.4, clearcoatRoughness: 0.18, envMapIntensity: 0.78 }),
     );
     pedestal.position.y = -0.22;
     pedestal.receiveShadow = true;
     boardGroup.add(pedestal);
 
-    const frameGold = new THREE.MeshPhysicalMaterial({ color: 0xa77a2d, metalness: 0.72, roughness: 0.24, clearcoat: 0.68, clearcoatRoughness: 0.12 });
-    const frameWood = new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.06, roughness: 0.48, clearcoat: 0.42, clearcoatRoughness: 0.2 });
+    const frameGold = new THREE.MeshPhysicalMaterial({ color: 0xa77a2d, metalness: 0.72, roughness: 0.24, clearcoat: 0.68, clearcoatRoughness: 0.12, envMapIntensity: 1.2 });
+    const frameWood = new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.06, roughness: 0.48, clearcoat: 0.42, clearcoatRoughness: 0.2, envMapIntensity: 0.82 });
     for (const [x, z, sx, sz] of [
       [0, 4.38, 9.05, 0.28], [0, -4.38, 9.05, 0.28],
       [4.38, 0, 0.28, 9.05], [-4.38, 0, 0.28, 9.05],
@@ -529,6 +580,9 @@ function Board3DCanvas({
       addMesh(boardGroup, new THREE.BoxGeometry(sx, 0.08, sz), frameGold, [x, 0.135, z]);
     }
 
+    const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer, seed: 0x531f });
+    const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer, seed: 0xa72d });
+
     for (let rank = 1; rank <= 8; rank += 1) {
       for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
         const square = `${FILES[fileIndex]}${rank}`;
@@ -536,13 +590,7 @@ function Board3DCanvas({
         const light = (rank + fileIndex) % 2 === 1;
         const tile = new THREE.Mesh(
           new THREE.BoxGeometry(0.992, 0.09, 0.992),
-          new THREE.MeshPhysicalMaterial({
-            color: light ? theme.light : theme.dark,
-            metalness: 0.02,
-            roughness: light ? 0.54 : 0.5,
-            clearcoat: 0.22,
-            clearcoatRoughness: 0.25,
-          }),
+          light ? lightTileMaterial : darkTileMaterial,
         );
         tile.position.set(x, 0.045, z);
         tile.receiveShadow = true;
@@ -644,6 +692,7 @@ function Board3DCanvas({
       pieceGroup,
       pieceMeshes,
       highlightMeshes,
+      coarsePointer,
       render,
     };
     setRendererLabel(renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL');
@@ -659,6 +708,7 @@ function Board3DCanvas({
       scene.traverse((object) => {
         if (object.userData?.ownedTexture) object.userData.ownedTexture.dispose();
       });
+      releaseEnvironment();
       disposeObject(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
@@ -680,7 +730,7 @@ function Board3DCanvas({
     state.pieceMeshes.clear();
 
     for (const piece of parseFen(fen)) {
-      const mesh = buildPiece(piece.type, piece.color, skinId);
+      const mesh = buildPiece(piece.type, piece.color, skinId, state.coarsePointer);
       const { x, z } = squarePosition(piece.square);
       mesh.position.set(x, 0.1, z);
       mesh.userData.square = piece.square;
@@ -778,7 +828,7 @@ function Board3DCanvas({
   }
 
   return (
-    <div className="board3d-main-shell" data-board3d-war-room="true" data-board3d-scene="premium">
+    <div className="board3d-main-shell" data-board3d-war-room="true" data-board3d-scene="premium" data-board3d-surface="premium-v2">
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
       <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE MANDO · CÁMARA FIJA</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
