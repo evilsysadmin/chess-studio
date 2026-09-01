@@ -27,7 +27,7 @@ describe('Matthias rival king 3D', () => {
     expect(isMatthiasRivalKing({ type: 'k', color: 'b' }, null)).toBe(false);
   });
 
-  it('usa cuerpo de rey, postura orgullosa, ceño permanente y gorra de plato', () => {
+  it('usa cuerpo de rey, rig de cabeza, ceño limpio y gorra de plato', () => {
     const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
     const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent, { pieceColor: 'w', skinId: 'studio' });
@@ -36,28 +36,54 @@ describe('Matthias rival king 3D', () => {
 
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
-    expect(group.userData.faceStyle).toBe('proud-scowl-v3');
+    expect(group.userData.faceStyle).toBe('clean-command-scowl-v4');
     expect(group.userData.capStyle).toBe('command-peaked-cap-v3');
     expect(group.userData.posture).toBe('proud-command-v1');
-    expect(meshes).toBeGreaterThanOrEqual(35);
+    expect(group.userData.motionRig).toBe('head-rig-v1');
+    expect(meshes).toBeGreaterThanOrEqual(24);
     expect(group.scale.x).toBeCloseTo(1.035);
     expect(group.getObjectByName('matthias-king-body')).toBeTruthy();
     expect(group.getObjectByName('matthias-command-jacket')).toBeTruthy();
     expect(group.getObjectByName('matthias-command-sash')).toBeTruthy();
     expect(group.getObjectByName('matthias-epaulette-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-head-rig')).toBeTruthy();
     expect(group.getObjectByName('matthias-face')).toBeTruthy();
-    expect(group.getObjectByName('matthias-proud-chin')).toBeTruthy();
     expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-brow-left')).toBeTruthy();
-    expect(group.getObjectByName('matthias-mouth-left')).toBeTruthy();
-    expect(group.getObjectByName('matthias-face-scar')).toBeTruthy();
+    expect(group.getObjectByName('matthias-mouth')).toBeTruthy();
     expect(group.getObjectByName('matthias-officer-cap')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap')).toBeTruthy();
     expect(group.getObjectByName('matthias-visor')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge-pawn-head')).toBeTruthy();
 
-    // El cuerpo reglamentario sigue usando exactamente el material del bando.
+    // No vuelva el Frankenstein de micro-geometrías faciales que se apilaban
+    // al reducir el rey a tamaño de tablero.
+    expect(group.getObjectByName('matthias-brow-crease-left')).toBeFalsy();
+    expect(group.getObjectByName('matthias-cheek-left')).toBeFalsy();
+    expect(group.getObjectByName('matthias-mouth-left')).toBeFalsy();
+    expect(group.getObjectByName('matthias-mouth-right')).toBeFalsy();
+    expect(group.getObjectByName('matthias-lower-lip-crease')).toBeFalsy();
+    expect(group.getObjectByName('matthias-proud-chin')).toBeFalsy();
+
     expect(group.getObjectByName('matthias-king-body').material).toBe(main);
+
+    disposeGroup(group);
+    main.dispose();
+    accent.dispose();
+  });
+
+  it('mantiene cejas, ojos y boca separados verticalmente a escala de tablero', () => {
+    const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
+    const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
+    const group = buildMatthiasKing3D(main, accent);
+    const brow = group.getObjectByName('matthias-brow-left');
+    const eye = group.getObjectByName('matthias-eye-left');
+    const mouth = group.getObjectByName('matthias-mouth');
+
+    expect(brow.position.y - eye.position.y).toBeGreaterThan(0.045);
+    expect(eye.position.y - mouth.position.y).toBeGreaterThan(0.085);
+    expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.105);
+    expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.012);
 
     disposeGroup(group);
     main.dispose();
@@ -80,19 +106,18 @@ describe('Matthias rival king 3D', () => {
     accent.dispose();
   });
 
-  it('mantiene ceño, boca dura e insignia de peón en móvil/coarse pointer', () => {
+  it('mantiene la cara mínima e insignia de peón en móvil/coarse pointer', () => {
     const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
     const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent, { coarsePointer: true });
 
     expect(group.getObjectByName('matthias-brow-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-brow-right')).toBeTruthy();
-    expect(group.getObjectByName('matthias-mouth-left')).toBeTruthy();
-    expect(group.getObjectByName('matthias-mouth-right')).toBeTruthy();
-    expect(group.getObjectByName('matthias-proud-chin')).toBeTruthy();
+    expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-eye-right')).toBeTruthy();
+    expect(group.getObjectByName('matthias-mouth')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge-pawn-body')).toBeTruthy();
-    expect(group.getObjectByName('matthias-face-scar')).toBeFalsy();
 
     disposeGroup(group);
     main.dispose();
