@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Board from './Board.jsx';
+import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
@@ -467,7 +468,7 @@ function Board3DCanvas({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
+    renderer.toneMappingExposure = coarsePointer ? 1.08 : 1.17;
     renderer.domElement.className = 'board3d-main-canvas';
     renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en sala de mando. Cámara fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
     renderer.domElement.setAttribute('role', 'application');
@@ -494,6 +495,7 @@ function Board3DCanvas({
 
     const warRoom = buildWarRoom(theme, whiteSide);
     scene.add(warRoom);
+    scene.add(buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer));
 
     const table = new THREE.Mesh(
       new THREE.BoxGeometry(11.6, 0.55, 11.6),
@@ -502,6 +504,7 @@ function Board3DCanvas({
     table.position.y = -0.48;
     table.receiveShadow = true;
     scene.add(table);
+    scene.add(buildPremiumTableLayer(theme, coarsePointer));
 
     const pedestal = new THREE.Mesh(
       new THREE.BoxGeometry(9.35, 0.38, 9.35),
@@ -775,7 +778,7 @@ function Board3DCanvas({
   }
 
   return (
-    <div className="board3d-main-shell" data-board3d-war-room="true">
+    <div className="board3d-main-shell" data-board3d-war-room="true" data-board3d-scene="premium">
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
       <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE MANDO · CÁMARA FIJA</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
