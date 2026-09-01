@@ -14,6 +14,7 @@ import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import { COARSE_PIECE_HIT_TARGET, resolveBoardTap } from './WarRoom3DTouch.js';
+import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 
@@ -377,6 +378,7 @@ function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   const wood = 0x2a160d;
   const woodDark = 0x130b07;
   const brass = 0xb88a35;
+  const decor = warRoomDecorProfile(coarsePointer);
 
   addBox(room, [19, 0.38, 18], 0x100b08, [0, -0.55, 0], { roughness: 0.82, metalness: 0.02 });
   addBox(room, [15.6, 6.3, 0.35], woodDark, [0, 2.42, wallZ], { roughness: 0.82 });
@@ -410,7 +412,7 @@ function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   }
 
   const bannerX = whiteSide ? -0.6 : 0.6;
-  addBox(room, [2.25, 3.25, 0.12], 0x171c2a, [bannerX, 3.25, wallZ + towardBoard * 0.31], { roughness: 0.88 });
+  addBox(room, [2.25, 3.25, 0.12], decor.banner, [bannerX, 3.25, wallZ + towardBoard * 0.31], { roughness: 0.88 });
   addBox(room, [2.34, 0.09, 0.18], brass, [bannerX, 4.9, wallZ + towardBoard * 0.38], { metalness: 0.8, roughness: 0.24 });
   const emblemSkin = { metalness: 0.72, roughness: 0.22, emissive: 0x4b2d00, emissiveIntensity: 0.08 };
   const emblem = buildPiece('p', 'w', 'regimiento', coarsePointer);
