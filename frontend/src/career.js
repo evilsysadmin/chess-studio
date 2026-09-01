@@ -16,7 +16,6 @@ export const BOARD_THEMES = [
   { id: 'obsidian', label: 'Obsidiana', unlock: (career) => Number(career?.records?.bestWinStreak || 0) >= 8 },
 ];
 
-
 function normalizeLegacyMilestoneText(text) {
   const value = String(text || '');
   return value
@@ -69,10 +68,10 @@ function milestone(state, text, type='record', meta={}) {
 
 export const CONTRACTS = [
   { id:'win', label:'Haz el trabajo', text:'Gana la partida.', test:({outcome})=>outcome==='win' },
-  { id:'no-hints', label:'Sin ruedines', text:'Termina sin usar una sola pista.', test:({hintsUsed})=>Number(hintsUsed||0)===0 },
+  { id:'no-hints', label:'Sin ruedines', text:'Termina sin usar una sola pista.', requires:({hintsAvailable})=>hintsAvailable===true, test:({hintsUsed})=>Number(hintsUsed||0)===0 },
   { id:'survive20', label:'Mantén el pulso', text:'Llega al movimiento 20.', test:({plies})=>Number(plies||0)>=39 },
   { id:'fastwin', label:'Ejecución sumaria', text:'Gana antes del movimiento 30.', test:({outcome,plies})=>outcome==='win'&&Number(plies||0)<=59 },
-  { id:'blackwin', label:'Con negras, además', text:'Gana jugando con negras.', test:({outcome,humanColor})=>outcome==='win'&&humanColor==='b' },
+  { id:'blackwin', label:'Con negras, además', text:'Gana jugando con negras.', requires:({humanColor})=>humanColor==='b', test:({outcome,humanColor})=>outcome==='win'&&humanColor==='b' },
   { id:'castle', label:'Techo antes de la tormenta', text:'Enrócate antes de tu movimiento 13.', test:({record}) => {
     const human = record?.humanColor || 'w';
     return (record?.moves || []).some((m,i) => (i % 2 === 0 ? 'w':'b') === human && i < 25 && String(m?.san||'').startsWith('O-O'));
@@ -85,13 +84,19 @@ export const CONTRACTS = [
     }
     return true;
   }},
-  { id:'no-pressure-crime', label:'Pulso estable', text:'No cometas un incidente grave con menos de 40 segundos.', test:({pressureIncidents})=>Number(pressureIncidents||0)===0 },
-  { id:'sudden-survivor', label:'Tres vidas, una dignidad', text:'Gana una partida Sudden Death.', test:({outcome,suddenDeath})=>outcome==='win'&&!!suddenDeath },
+  { id:'no-pressure-crime', label:'Pulso estable', text:'No cometas un incidente grave con menos de 40 segundos.', requires:({hasClock})=>hasClock===true, test:({pressureIncidents})=>Number(pressureIncidents||0)===0 },
+  { id:'sudden-survivor', label:'Tres vidas, una dignidad', text:'Gana una partida Sudden Death.', requires:({suddenDeath})=>suddenDeath===true, test:({outcome,suddenDeath})=>outcome==='win'&&!!suddenDeath },
 ];
 
-export function chooseContract({ gameCount = 0, incidents = {} } = {}) {
+// Los retos nunca deben pedir una mecánica que esta partida no tiene. Si el
+// caller no declara una capacidad, se asume ausente: así las partidas rápidas
+// antiguas dejan de recibir "Sin ruedines" cuando ni siquiera existe Pista.
+export function chooseContract({ gameCount = 0, incidents = {}, hintsAvailable = false, humanColor = null, hasClock = false, suddenDeath = false } = {}) {
+  const capabilities = { hintsAvailable, humanColor, hasClock, suddenDeath };
+  const eligible = CONTRACTS.filter((contract) => !contract.requires || contract.requires(capabilities));
   const discipline = Object.values(incidents || {}).reduce((s,n)=>s+Number(n||0),0) > 4;
-  const pool = discipline ? CONTRACTS.filter(c=>c.id!=='win') : CONTRACTS;
+  const disciplined = discipline ? eligible.filter((contract)=>contract.id!=='win') : eligible;
+  const pool = disciplined.length ? disciplined : eligible.length ? eligible : CONTRACTS.filter((contract)=>contract.id==='win');
   return { ...pool[gameCount % pool.length], offeredAt: new Date().toISOString() };
 }
 export function saveActiveContract(c) { if (c) setProfileStorageItem(CONTRACT_KEY, JSON.stringify(c)); }
@@ -125,7 +130,6 @@ export function recordCareerGame(record, meta={}) {
   if(cr){state.contracts={...state.contracts,offered:(state.contracts?.offered||0)+1,completed:(state.contracts?.completed||0)+(cr.success?1:0),failed:(state.contracts?.failed||0)+(cr.success?0:1)};state=milestone(state,`${cr.success?'Reto superado':'Reto fallido'} · ${cr.label}.`,cr.success?'contract-win':'contract-loss');}
   return saveCareer(state);
 }
-
 
 // Backfill seguro para usuarios que ya tenían partidas antes de que existiera
 // Centro de Operaciones. El Historial es la fuente de verdad para estadísticas
