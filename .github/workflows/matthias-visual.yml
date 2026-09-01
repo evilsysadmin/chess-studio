@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'frontend/src/components/Matthias*.jsx'
+      - 'frontend/src/components/Matthias*.js'
       - 'frontend/src/components/Matthias*.css'
       - 'frontend/src/components/InsightsMatthiasMotion.jsx'
       - 'frontend/src/matthias*.js'
@@ -16,6 +17,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/src/components/Matthias*.jsx'
+      - 'frontend/src/components/Matthias*.js'
       - 'frontend/src/components/Matthias*.css'
       - 'frontend/src/components/InsightsMatthiasMotion.jsx'
       - 'frontend/src/matthias*.js'
