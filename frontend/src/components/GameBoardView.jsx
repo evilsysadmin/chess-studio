@@ -11,6 +11,7 @@ import { formatClock } from '../clock.js';
 import { formatLongMove } from '../notation.js';
 import { seriesLiveMoment, seriesStatusText } from '../series.js';
 import { getUsername } from '../auth.js';
+import { matthiasMoodAvatar } from '../matthiasVisuals.js';
 import { zenModeSummary } from '../zenMode.js';
 import { speakCpuComment } from '../voiceCommentary.js';
 import { getBoardRenderer, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
@@ -21,6 +22,7 @@ import {
 } from '../matthiasAnger.js';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
+const WAR_ROOM_MATTHIAS_AVATAR = matthiasMoodAvatar('annoyed');
 
 const BOARD_BUBBLE_EVENTS = new Set([
   'MATE_FOUND', 'MISSED_MATE', 'STALEMATE_BLUNDER', 'STALEMATE', 'ALLOWED_MATE',
@@ -49,8 +51,10 @@ export default function GameBoardView({
 }) {
   const [boardRenderer, setBoardRendererState] = useState(() => getBoardRenderer());
   const [captureReaction, setCaptureReaction] = useState(null);
+  const [portraitReaction, setPortraitReaction] = useState({ key: '', type: 'none' });
   const captureReactionTimeoutRef = useRef(null);
   const captureTrackingRef = useRef({ gameId: null, seenId: null, lastReaction: null });
+  const portraitTrackingRef = useRef({ gameId: null, humanId: null, cpuId: null });
   const liveSeriesMoment = context.seriesState ? seriesLiveMoment(context.seriesState) : null;
   const topColor = humanColor === 'w' ? 'b' : 'w';
   const bottomColor = humanColor;
@@ -76,6 +80,14 @@ export default function GameBoardView({
     };
   }
 
+  if (portraitTrackingRef.current.gameId !== game.id) {
+    portraitTrackingRef.current = {
+      gameId: game.id,
+      humanId: matthiasAnger.latestHumanCapture?.id || null,
+      cpuId: matthiasAnger.latestCpuCapture?.id || null,
+    };
+  }
+
   const activeMatthiasMessage = captureReaction || latestMatthiasMessage;
   const activeBoardBubble = captureReaction || latestBoardBubble;
 
@@ -88,7 +100,39 @@ export default function GameBoardView({
   useEffect(() => {
     if (captureReactionTimeoutRef.current) window.clearTimeout(captureReactionTimeoutRef.current);
     setCaptureReaction(null);
+    setPortraitReaction({ key: '', type: 'none' });
   }, [game.id]);
+
+  useEffect(() => {
+    const tracking = portraitTrackingRef.current;
+    const humanCapture = matthiasAnger.latestHumanCapture;
+    const cpuCapture = matthiasAnger.latestCpuCapture;
+    const humanChanged = Boolean(humanCapture?.id && tracking.humanId !== humanCapture.id);
+    const cpuChanged = Boolean(cpuCapture?.id && tracking.cpuId !== cpuCapture.id);
+
+    tracking.humanId = humanCapture?.id || null;
+    tracking.cpuId = cpuCapture?.id || null;
+
+    if (!isThreeD || zenMode || (!humanChanged && !cpuChanged)) return;
+
+    const candidates = [
+      humanChanged ? { capture: humanCapture, type: 'disapprove' } : null,
+      cpuChanged ? { capture: cpuCapture, type: 'smirk' } : null,
+    ].filter(Boolean).sort((a, b) => Number(b.capture?.ply || 0) - Number(a.capture?.ply || 0));
+    const latest = candidates[0];
+    if (!latest?.capture?.id) return;
+
+    setPortraitReaction({
+      key: `${latest.type}:${game.id}:${latest.capture.id}`,
+      type: latest.type,
+    });
+  }, [
+    game.id,
+    isThreeD,
+    zenMode,
+    matthiasAnger.latestHumanCapture?.id,
+    matthiasAnger.latestCpuCapture?.id,
+  ]);
 
   useEffect(() => {
     const capture = matthiasAnger.latestHumanCapture;
@@ -211,10 +255,12 @@ export default function GameBoardView({
             <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
               <div className="game-3d-matthias-card">
                 <MatthiasWarRoomPortrait
-                  avatar={CPU_IDENTITY.avatar}
+                  avatar={WAR_ROOM_MATTHIAS_AVATAR}
                   speechKey={activeMatthiasMessage?.id || activeMatthiasMessage?.text || ''}
                   speechText={activeMatthiasMessage?.text || ''}
                   angerLevel={matthiasAnger.level}
+                  reactionKey={portraitReaction.key}
+                  reactionType={portraitReaction.type}
                 />
                 <div className="game-3d-matthias-copy">
                   <span>COMANDANTE RIVAL</span>

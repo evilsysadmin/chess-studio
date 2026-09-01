@@ -15,7 +15,7 @@ describe('matthiasAnger', () => {
     expect(angerLevelForMaterial(9)).toBe(4);
   });
 
-  it('cuenta sólo las piezas de Matthias capturadas por el humano', () => {
+  it('cuenta sólo las piezas de Matthias capturadas por el humano y conserva su última captura propia', () => {
     const state = matthiasAngerState([
       { san: 'e4' },
       { san: 'd5' },
@@ -27,11 +27,18 @@ describe('matthiasAnger', () => {
     expect(state.material).toBe(1);
     expect(state.level).toBe(1);
     expect(state.latestHumanCapture).toMatchObject({ piece: 'p', value: 1, ply: 3 });
+    expect(state.latestCpuCapture).toMatchObject({ piece: 'p', value: 1, ply: 4 });
   });
 
-  it('no fabrica rabia si una partida especial no puede reconstruirse', () => {
+  it('no fabrica rabia ni capturas si una partida especial no puede reconstruirse', () => {
     const state = matthiasAngerState([{ san: 'Qh8#' }], 'w');
-    expect(state).toMatchObject({ material: 0, level: 0, reconstructable: false });
+    expect(state).toMatchObject({
+      material: 0,
+      level: 0,
+      latestHumanCapture: null,
+      latestCpuCapture: null,
+      reconstructable: false,
+    });
   });
 
   it('aplica cooldown a capturas normales y deja pasar una dama', () => {
