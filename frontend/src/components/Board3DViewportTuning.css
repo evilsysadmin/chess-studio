@@ -1,12 +1,34 @@
 /*
  * Viewport and input tuning for the 3D War Room.
- * Desktop rules spend previously-unused bottom space; the coarse-pointer rule
- * keeps Android touches owned by the board instead of letting browser panning
- * cancel the pointer sequence before Board3D receives pointerup.
+ * Desktop rules spend previously-unused bottom space; coarse-pointer rules keep
+ * Android touches owned by the board and use a lighter, less red/black chamber
+ * palette without changing desktop art direction.
  */
 @media (pointer: coarse) {
   .game-screen .game-board-stack-3d .board3d-main-canvas {
     touch-action: none !important;
+  }
+
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    background:
+      radial-gradient(circle at 16% 18%, rgba(89, 112, 83, .22), transparent 29%),
+      radial-gradient(circle at 84% 14%, rgba(166, 128, 69, .15), transparent 28%),
+      radial-gradient(circle at 50% 15%, rgba(202, 158, 76, .17), transparent 36%),
+      linear-gradient(180deg, #30291f 0 22%, #1c2824 58% 100%);
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
+    background:
+      radial-gradient(circle at 48% -8%, rgba(201,154,66,.16), transparent 36%),
+      radial-gradient(circle at 10% 38%, rgba(73,104,81,.14), transparent 24%),
+      radial-gradient(circle at 90% 36%, rgba(93,104,88,.11), transparent 24%),
+      linear-gradient(180deg, rgba(45,37,27,.96), rgba(21,31,27,.98) 60%);
+  }
+
+  .game-screen .board-live-row.is-3d-warroom::before {
+    background:
+      linear-gradient(90deg, rgba(67,52,34,.48) 0 15%, transparent 27% 74%, rgba(61,53,38,.45) 86% 100%),
+      repeating-linear-gradient(90deg, transparent 0 78px, rgba(207,165,82,.032) 79px 80px);
   }
 }
 
