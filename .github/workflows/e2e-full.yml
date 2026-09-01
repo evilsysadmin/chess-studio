@@ -14,6 +14,7 @@ on:
       - 'frontend/src/main.jsx'
       - 'e2e/three-d-war-room.spec.js'
       - 'e2e/three-d-war-room-android-touch.spec.js'
+      - 'e2e/three-d-war-room-special-states.spec.js'
       - 'e2e/helpers.js'
       - '.github/workflows/e2e-full.yml'
   workflow_dispatch:
@@ -78,6 +79,11 @@ jobs:
         if: github.event_name == 'pull_request'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000
+
+      - name: Prove War Room check and mate parity
+        if: github.event_name == 'pull_request'
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000
 
       - name: Run full Playwright suite
         if: github.event_name != 'pull_request'
