@@ -179,6 +179,15 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
   expect(desktopGeometry.width).toBeGreaterThan(640);
   expect(desktopGeometry.height).toBeGreaterThan(540);
 
+  const footerAlignment = await page.evaluate(() => {
+    const rail = document.querySelector('.game-board-stack-3d > .game-player-rail.is-human')?.getBoundingClientRect();
+    const controls = document.querySelector('.game-board-stack-3d > .game-command-deck')?.getBoundingClientRect();
+    return rail && controls ? { railTop: rail.top, controlsTop: controls.top, railBottom: rail.bottom, controlsBottom: controls.bottom } : null;
+  });
+  expect(footerAlignment).not.toBeNull();
+  expect(Math.abs(footerAlignment.railTop - footerAlignment.controlsTop)).toBeLessThan(4);
+  expect(Math.abs(footerAlignment.railBottom - footerAlignment.controlsBottom)).toBeLessThan(8);
+
   const warRoomGeometry = await warRoom.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return { width: rect.width, left: rect.left, right: rect.right };
@@ -195,8 +204,8 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
     return { width: rect.width, height: rect.height, bottom: rect.bottom };
   });
   expect(shortDesktopGeometry.width).toBeGreaterThan(700);
-  expect(shortDesktopGeometry.height).toBeGreaterThan(550);
-  expect(shortDesktopGeometry.height).toBeLessThan(590);
+  expect(shortDesktopGeometry.height).toBeGreaterThan(580);
+  expect(shortDesktopGeometry.height).toBeLessThan(625);
   expect(shortDesktopGeometry.bottom).toBeLessThanOrEqual(796);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
