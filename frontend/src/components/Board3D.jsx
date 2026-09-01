@@ -13,6 +13,7 @@ import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { COARSE_PIECE_HIT_TARGET, resolveBoardTap } from './WarRoom3DTouch.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 
@@ -161,6 +162,32 @@ function addContactShadow(group, coarsePointer = false) {
     shadow.userData.contactShadow = true;
     group.add(shadow);
   }
+}
+
+function addCoarsePieceHitTarget(group, square, coarsePointer = false) {
+  if (!coarsePointer || !square) return;
+  const target = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      COARSE_PIECE_HIT_TARGET.radius,
+      COARSE_PIECE_HIT_TARGET.radius,
+      COARSE_PIECE_HIT_TARGET.height,
+      16,
+    ),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      colorWrite: false,
+      toneMapped: false,
+    }),
+  );
+  target.position.y = COARSE_PIECE_HIT_TARGET.centerY;
+  target.castShadow = false;
+  target.receiveShadow = false;
+  target.userData.square = square;
+  target.userData.touchHitTarget = true;
+  group.add(target);
 }
 
 function addSignatureDetail(group, type, accent, coarsePointer = false) {
@@ -694,7 +721,7 @@ function Board3DCanvas({
     }
 
     function onPointerDown(event) {
-      pointerStartRef.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      pointerStartRef.current = { x: event.clientX, y: event.clientY, id: event.pointerId, pointerType: event.pointerType };
       if (inspectModeRef.current) {
         const motion = cameraMotionRef.current;
         motion.dragging = true;
@@ -735,9 +762,14 @@ function Board3DCanvas({
         renderer.domElement.releasePointerCapture?.(event.pointerId);
         return;
       }
-      if (!start || start.id !== event.pointerId) return;
-      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) return;
-      const square = squareFromPointer(event);
+      const touchLike = coarsePointer || start?.pointerType === 'touch';
+      const tap = resolveBoardTap(
+        start,
+        { x: event.clientX, y: event.clientY, id: event.pointerId },
+        { coarsePointer: touchLike },
+      );
+      if (!tap) return;
+      const square = squareFromPointer({ clientX: tap.x, clientY: tap.y });
       if (!square) return;
       setFocusedSquare(square);
       latestPropsRef.current.onSquareClick?.(square);
@@ -857,6 +889,7 @@ function Board3DCanvas({
     mesh.userData.color = piece.color;
     if (matthiasKing) mesh.userData.matthiasKing = true;
     mesh.traverse((object) => { object.userData.square = piece.square; });
+    addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer);
     state.pieceGroup.add(mesh);
     state.pieceMeshes.set(piece.square, mesh);
   }
