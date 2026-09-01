@@ -7,10 +7,12 @@ import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
 import { installChessStudioPwa } from './pwaInstall.js';
+import { installWarRoomPointerCapture } from './warRoomPointerCapture.js';
 
 migratePersistentStorage();
 installReleaseContinuity();
 installChessStudioPwa();
+installWarRoomPointerCapture();
 const initialMotion = reducedMotionStatus();
 document.documentElement.dataset.reducedMotion = initialMotion.effective ? 'true' : 'false';
 document.documentElement.dataset.motionPreference = getReducedMotionPreference();
