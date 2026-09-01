@@ -36,9 +36,9 @@ describe('Matthias rival king 3D', () => {
 
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
-    expect(group.userData.faceStyle).toBe('clean-command-scowl-v4');
+    expect(group.userData.faceStyle).toBe('proud-command-scowl-v5');
     expect(group.userData.capStyle).toBe('command-peaked-cap-v3');
-    expect(group.userData.posture).toBe('proud-command-v1');
+    expect(group.userData.posture).toBe('proud-command-v2');
     expect(group.userData.motionRig).toBe('head-rig-v1');
     expect(meshes).toBeGreaterThanOrEqual(24);
     expect(group.scale.x).toBeCloseTo(1.035);
@@ -82,8 +82,42 @@ describe('Matthias rival king 3D', () => {
 
     expect(brow.position.y - eye.position.y).toBeGreaterThan(0.045);
     expect(eye.position.y - mouth.position.y).toBeGreaterThan(0.085);
-    expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.105);
-    expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.012);
+    expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.1);
+    expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.01);
+
+    disposeGroup(group);
+    main.dispose();
+    accent.dispose();
+  });
+
+  it('lee cabreado y orgulloso, no cansado o triste', () => {
+    const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
+    const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
+    const group = buildMatthiasKing3D(main, accent);
+    const headRig = group.getObjectByName('matthias-head-rig');
+    const face = group.getObjectByName('matthias-face');
+    const leftEye = group.getObjectByName('matthias-eye-left');
+    const rightEye = group.getObjectByName('matthias-eye-right');
+    const leftBrow = group.getObjectByName('matthias-brow-left');
+    const rightBrow = group.getObjectByName('matthias-brow-right');
+    const mouth = group.getObjectByName('matthias-mouth');
+
+    expect(headRig.userData.expression).toBe('proud-angry-v1');
+    expect(face.scale.x).toBeGreaterThan(1.07);
+    expect(face.scale.y).toBeLessThan(0.93);
+
+    // Los extremos interiores de ojos y cejas bajan hacia la nariz: scowl,
+    // no arco triste ni mirada horizontal de cansancio.
+    expect(leftEye.rotation.z).toBeLessThan(-0.07);
+    expect(rightEye.rotation.z).toBeGreaterThan(0.07);
+    expect(leftBrow.rotation.z).toBeLessThan(-0.32);
+    expect(rightBrow.rotation.z).toBeGreaterThan(0.32);
+    expect(leftEye.scale.y).toBeLessThan(0.42);
+    expect(rightEye.scale.y).toBeLessThan(0.42);
+
+    // La boca no puede volver a convertirse en frown: corta, plana y comprimida.
+    expect(mouth.geometry.parameters.width).toBeLessThanOrEqual(0.11);
+    expect(Math.abs(mouth.rotation.z)).toBeLessThan(0.001);
 
     disposeGroup(group);
     main.dispose();
