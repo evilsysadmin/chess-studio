@@ -6,7 +6,7 @@
    the upper-right instead of collapsing into anonymous icon dots. */
 @media (min-width: 821px) {
   .app-shell-board-game .masthead-game-compact {
-    width: min(100%, 1680px);
+    width: min(100%, 1780px);
     padding-inline: clamp(.75rem, 1.4vw, 1.35rem);
     box-sizing: border-box;
   }
@@ -50,6 +50,15 @@
     width: 25px;
     height: 25px;
   }
+
+  .game-screen .game-layout.game-layout-3d {
+    width: min(99vw, 1780px);
+    max-width: 1780px;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(226px, 252px) minmax(680px, 1fr) minmax(270px, 304px);
+  }
 }
 
 /* The bottom human rail already has the global status line above the board.
@@ -80,15 +89,71 @@
   font-size: .61rem;
 }
 
-/* Compact command deck: one clean line on desktop, freeing real viewport
-   height for the board and the physical set. */
+/* In War Room the speech balloon follows the projected 3D king head instead
+   of floating at a hard-coded corner. The tail flips depending on which side
+   of Matthias still has room. */
+.game-board-stack-3d .matthias-board-bubble.is-king-anchored {
+  right: auto !important;
+  bottom: auto;
+  max-width: min(286px, 54%);
+  border-radius: 13px;
+  transform-origin: 50% 100%;
+}
+
+.game-board-stack-3d .matthias-board-bubble.is-king-anchored.tail-left::after {
+  left: 18px;
+  right: auto;
+}
+
+.game-board-stack-3d .matthias-board-bubble.is-king-anchored.tail-right::after {
+  left: auto;
+  right: 18px;
+}
+
+/* Compact command deck: player identity, clock and actions share one strip on
+   desktop. This removes an entire row and gives those pixels back to the board. */
 @media (min-width: 821px) {
-  .game-board-stack-3d .game-command-deck {
+  .game-board-stack-3d .game-3d-footer-strip {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
+    gap: .38rem;
     margin-top: -.08rem;
   }
 
-  .game-board-stack-3d .game-controls {
-    padding: .28rem .38rem;
+  .game-board-stack-3d .game-3d-footer-strip .game-player-rail.is-human {
+    flex: 1 1 170px;
+    width: auto;
+    min-width: 145px;
+    min-height: 36px;
+    grid-template-columns: 28px minmax(64px, 1fr) auto;
+    gap: .38rem;
+    padding: .24rem .38rem;
+  }
+
+  .game-board-stack-3d .game-3d-footer-strip .game-player-avatar {
+    width: 27px;
+    height: 27px;
+  }
+
+  .game-board-stack-3d .game-3d-footer-strip .game-player-identity small {
+    display: none;
+  }
+
+  .game-board-stack-3d .game-3d-footer-strip .game-command-deck {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .game-board-stack-3d .game-3d-footer-strip .game-controls {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: .2rem .28rem;
   }
 
   .game-board-stack-3d .game-controls-actions {
@@ -96,34 +161,46 @@
     align-items: center;
     justify-content: flex-end;
     flex-wrap: nowrap;
-    gap: .34rem;
+    gap: .28rem;
   }
 
   .game-board-stack-3d .game-controls-actions .secondary-btn {
-    min-height: 34px;
-    padding: .34rem .55rem;
-    font-size: .64rem;
+    min-height: 32px;
+    padding: .3rem .44rem;
+    font-size: .61rem;
     white-space: nowrap;
   }
 
   .game-board-stack-3d .game-abandon-btn {
-    margin-left: auto;
+    margin-left: 0;
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(480px, calc(100dvh - 16.7rem), 690px);
+    height: clamp(510px, calc(100dvh - 14.1rem), 740px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 900px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(450px, calc(100dvh - 15.9rem), 620px);
+    height: clamp(475px, calc(100dvh - 13.5rem), 670px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 780px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(405px, calc(100dvh - 15.1rem), 520px);
+    height: clamp(425px, calc(100dvh - 12.7rem), 560px);
+  }
+}
+
+@media (min-width: 821px) and (max-width: 1120px) {
+  .game-board-stack-3d .game-3d-footer-strip .game-player-rail.is-human {
+    flex-basis: 145px;
+    min-width: 132px;
+  }
+
+  .game-board-stack-3d .game-controls-actions .secondary-btn {
+    padding-inline: .36rem;
+    font-size: .58rem;
   }
 }
 
@@ -156,6 +233,11 @@
 @media (max-width: 820px) {
   .game-board-stack-3d .game-player-rail.is-human {
     min-height: 40px;
+  }
+
+  .game-board-stack-3d .game-3d-footer-strip {
+    display: grid;
+    gap: .4rem;
   }
 }
 
