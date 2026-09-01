@@ -11,6 +11,7 @@ function fakeCanvas({ inspect = false } = {}) {
   const setPointerCapture = vi.fn();
   const shell = { dataset: { board3dInspect: inspect ? 'true' : 'false' } };
   const canvas = {
+    dataset: {},
     setPointerCapture,
     closest(selector) {
       if (selector === '.board3d-main-canvas') return this;
@@ -22,10 +23,11 @@ function fakeCanvas({ inspect = false } = {}) {
 }
 
 describe('War Room pointer capture', () => {
-  it('captura touch/pen durante juego normal y no depende de media queries', () => {
+  it('captura touch/pen durante juego normal sin sintetizar eventos', () => {
     const { canvas, setPointerCapture } = fakeCanvas();
     expect(captureWarRoomPointer({ pointerType: 'touch', pointerId: 17, target: canvas })).toBe(true);
     expect(setPointerCapture).toHaveBeenCalledWith(17);
+    expect(canvas.dataset.warRoomTouchStage).toBe('captured');
   });
 
   it('no altera mouse ni modo inspección', () => {

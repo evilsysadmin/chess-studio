@@ -8,6 +8,7 @@ export function captureWarRoomPointer(event) {
   if (shell?.dataset?.board3dInspect === 'true') return false;
   try {
     canvas.setPointerCapture?.(event.pointerId);
+    canvas.dataset.warRoomTouchStage = 'captured';
     return true;
   } catch {
     return false;

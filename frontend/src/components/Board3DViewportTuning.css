@@ -5,9 +5,20 @@
  */
 .game-screen .game-board-stack-3d .board3d-main-canvas {
   touch-action: none !important;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.game-screen .game-board-stack-3d .board3d-main-canvas:focus-visible {
+  outline: 2px solid rgba(95, 168, 211, .92);
+  outline-offset: 2px;
 }
 
 @media (pointer: coarse) {
+  .game-screen .game-board-stack-3d .board3d-main-canvas:focus-visible {
+    outline: none;
+  }
+
   .game-screen .game-board-stack-3d .board3d-main-shell {
     background:
       radial-gradient(circle at 16% 18%, rgba(89, 112, 83, .22), transparent 29%),

@@ -49,15 +49,21 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
   };
 }
 
-async function touchWithNaturalDrift(cdp, point) {
+async function touchStart(cdp, point) {
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
     touchPoints: [{ x: point.x, y: point.y, radiusX: 4, radiusY: 4, force: 0.7, id: 1 }],
   });
+}
+
+async function touchMove(cdp, point) {
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchMove',
     touchPoints: [{ x: point.x + 8, y: point.y + 5, radiusX: 4, radiusY: 4, force: 0.7, id: 1 }],
   });
+}
+
+async function touchEnd(cdp) {
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchEnd',
     touchPoints: [],
@@ -68,7 +74,7 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
-test('War Room 路 Android captura el primer toque, selecciona y luego juega e2鈫抏4', async ({ page }) => {
+test('War Room 路 Android selecciona una pieza en pointerdown y muestra destinos reales', async ({ page }) => {
   test.setTimeout(75_000);
   await page.addInitScript(() => {
     window.__warRoomPointerCaptures = [];
@@ -93,14 +99,15 @@ test('War Room 路 Android captura el primer toque, selecciona y luego juega e2鈫
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
-  // Three.js/WebGL startup varies heavily on hosted runners. This timeout is
-  // only for mounting the scene; the actual pointer assertions below remain
-  // deterministic and must still pass once the canvas exists.
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
 
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
+  expect(await canvas.evaluate((element) => {
+    const value = getComputedStyle(element).webkitTapHighlightColor;
+    return value === 'transparent' || value === 'rgba(0, 0, 0, 0)';
+  })).toBe(true);
 
   const rect = await canvas.boundingBox();
   expect(rect).not.toBeNull();
@@ -108,10 +115,20 @@ test('War Room 路 Android captura el primer toque, selecciona y luego juega e2鈫
   const to = projectWarRoomSquare(rect, 'e4');
   const cdp = await page.context().newCDPSession(page);
 
-  await touchWithNaturalDrift(cdp, from);
+  await touchStart(cdp, from);
+  await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect.poll(async () => Number(await board3d.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
   await expect.poll(() => movePosts(requestLog).length).toBe(0);
   expect(await page.evaluate(() => window.__warRoomPointerCaptures.some((entry) => entry.className.includes('board3d-main-canvas')))).toBe(true);
 
-  await touchWithNaturalDrift(cdp, to);
+  await touchMove(cdp, from);
+  await touchEnd(cdp);
+
+  await touchStart(cdp, to);
+  await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e4');
+  // Critical contract: moving to a legal destination must happen on the real
+  // second pointerdown, before Android delivers touchEnd.
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await touchEnd(cdp);
 });
