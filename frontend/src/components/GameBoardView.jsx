@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import Board from './Board.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -13,6 +13,7 @@ import { seriesLiveMoment, seriesStatusText } from '../series.js';
 import { getUsername } from '../auth.js';
 import { zenModeSummary } from '../zenMode.js';
 import { getBoardRenderer, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { matthiasAngerState } from '../matthiasAnger.js';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
 
@@ -42,6 +43,10 @@ export default function GameBoardView({
   const topTime = topColor === 'w' ? clocks.whiteTime : clocks.blackTime;
   const bottomTime = bottomColor === 'w' ? clocks.whiteTime : clocks.blackTime;
   const isThreeD = boardRenderer === '3d';
+  const matthiasAnger = useMemo(
+    () => matthiasAngerState(game.history || [], humanColor),
+    [game.history, humanColor],
+  );
   const latestMatthiasMessage = [...(side.gameContextMessages || []), ...(side.gameChat || [])]
     .filter((message) => message?.by === 'cpu' && message?.text)
     .at(-1);
@@ -138,6 +143,7 @@ export default function GameBoardView({
                   avatar={CPU_IDENTITY.avatar}
                   speechKey={latestMatthiasMessage?.id || latestMatthiasMessage?.text || ''}
                   speechText={latestMatthiasMessage?.text || ''}
+                  angerLevel={matthiasAnger.level}
                 />
                 <div className="game-3d-matthias-copy">
                   <span>COMANDANTE RIVAL</span>
