@@ -1,14 +1,13 @@
 /*
  * Viewport and input tuning for the 3D War Room.
- * Desktop rules spend previously-unused bottom space; coarse-pointer rules keep
- * Android touches owned by the board and use a lighter, less red/black chamber
- * palette without changing desktop art direction.
+ * The canvas always owns touch gestures; coarse-pointer rules only control
+ * the lighter Android/mobile art direction. Desktop sizing remains separate.
  */
-@media (pointer: coarse) {
-  .game-screen .game-board-stack-3d .board3d-main-canvas {
-    touch-action: none !important;
-  }
+.game-screen .game-board-stack-3d .board3d-main-canvas {
+  touch-action: none !important;
+}
 
+@media (pointer: coarse) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
     background:
       radial-gradient(circle at 16% 18%, rgba(89, 112, 83, .22), transparent 29%),
