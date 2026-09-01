@@ -3,6 +3,32 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 export const PREMIUM_SURFACE_VERSION = 'premium-v2';
 
+export function getCameraFramingProfile(aspect) {
+  const safeAspect = Math.max(0.35, Number(aspect) || 1);
+  const wide = safeAspect >= 1.42;
+  return wide
+    ? {
+        halfSpan: 4.72,
+        padding: 1.035,
+        minDistance: 12.1,
+        maxDistance: 21,
+        targetY: 0.34,
+        targetZ: 0.28,
+        cameraY: 7.05,
+        cameraZ: 10.15,
+      }
+    : {
+        halfSpan: 5.2,
+        padding: 1.12,
+        minDistance: 13.4,
+        maxDistance: 24,
+        targetY: 0.48,
+        targetZ: 0.34,
+        cameraY: 8.1,
+        cameraZ: 10.2,
+      };
+}
+
 function nextNoise(state) {
   const next = (Math.imul(state, 1664525) + 1013904223) >>> 0;
   return [next, ((next >>> 8) & 0xffff) / 0xffff];
