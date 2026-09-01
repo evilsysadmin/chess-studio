@@ -1,0 +1,12 @@
+@keyframes warroom-status-pulse {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-3px) scale(.97); }
+  20% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.035); }
+  35% { transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@media (min-width: 821px) {
+  .game-layout-3d .status-line.pulse {
+    animation: warroom-status-pulse .4s cubic-bezier(.22,1,.36,1);
+  }
+}
