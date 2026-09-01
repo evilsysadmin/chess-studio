@@ -3,6 +3,7 @@ import {
   adaptiveRenderScale,
   deriveMoveKinetics,
   inferCapturedPiece,
+  nextRuntimeRenderScale,
   reactiveLightProfile,
   shadowRefreshInterval,
   shouldRefreshShadowMap,
@@ -63,6 +64,31 @@ describe('WarRoom3DMotion', () => {
     expect(shouldRefreshShadowMap({ now: 120, lastShadowAt: 0 })).toBe(true);
     expect(shouldRefreshShadowMap({ now: 179, lastShadowAt: 0, coarsePointer: true })).toBe(false);
     expect(shouldRefreshShadowMap({ now: 180, lastShadowAt: 0, coarsePointer: true })).toBe(true);
+  });
+
+  it('degrades runtime DPR only after sustained contiguous slow frames', () => {
+    let state = { scale: 1.35, slowFrameCount: 0 };
+    for (let index = 0; index < 5; index += 1) {
+      state = nextRuntimeRenderScale({ currentScale: state.scale, slowFrameCount: state.slowFrameCount, frameMs: 28 });
+    }
+    expect(state).toMatchObject({ scale: 1.15, slowFrameCount: 0, downgraded: true });
+
+    for (let index = 0; index < 10; index += 1) {
+      state = nextRuntimeRenderScale({ currentScale: state.scale, slowFrameCount: state.slowFrameCount, frameMs: 30 });
+    }
+    expect(state.scale).toBe(0.9);
+
+    const sparse = nextRuntimeRenderScale({ currentScale: 1.35, slowFrameCount: 4, frameMs: 140 });
+    expect(sparse).toMatchObject({ scale: 1.35, slowFrameCount: 0, downgraded: false });
+  });
+
+  it('uses a lower floor on coarse-pointer devices without dropping below it', () => {
+    let state = { scale: 1, slowFrameCount: 0 };
+    for (let index = 0; index < 10; index += 1) {
+      state = nextRuntimeRenderScale({ currentScale: state.scale, slowFrameCount: state.slowFrameCount, frameMs: 32, coarsePointer: true });
+    }
+    expect(state.scale).toBe(0.75);
+    expect(nextRuntimeRenderScale({ currentScale: 0.75, slowFrameCount: 5, frameMs: 35, coarsePointer: true }).scale).toBe(0.75);
   });
 
   it('does not expose the old document-level pointer suppression hook', async () => {
