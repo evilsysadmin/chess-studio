@@ -597,7 +597,7 @@ function Board3DCanvas({
     renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
     renderer.domElement.setAttribute('role', 'application');
     renderer.domElement.tabIndex = 0;
-    renderer.domElement.style.touchAction = 'manipulation';
+    renderer.domElement.style.touchAction = 'none';
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer });
@@ -742,15 +742,37 @@ function Board3DCanvas({
       return null;
     }
 
+    function selectSquareFromTouch(event) {
+      const square = squareFromPointer(event);
+      renderer.domElement.dataset.warRoomLastSquare = square || '';
+      if (!square) return false;
+      setFocusedSquare(square);
+      latestPropsRef.current.onSquareClick?.(square);
+      return true;
+    }
+
     function onPointerDown(event) {
-      pointerStartRef.current = { x: event.clientX, y: event.clientY, id: event.pointerId, pointerType: event.pointerType };
+      const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
+      pointerStartRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        id: event.pointerId,
+        pointerType: event.pointerType,
+        handled: false,
+      };
       if (inspectModeRef.current) {
         const motion = cameraMotionRef.current;
         motion.dragging = true;
         motion.lastX = event.clientX;
         motion.lastY = event.clientY;
         renderer.domElement.setPointerCapture?.(event.pointerId);
+        return;
       }
+      if (!touchLike) return;
+      renderer.domElement.setPointerCapture?.(event.pointerId);
+      renderer.domElement.dataset.warRoomTouchStage = 'down';
+      const handled = selectSquareFromTouch(event);
+      if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
 
     function onPointerMove(event) {
@@ -783,26 +805,56 @@ function Board3DCanvas({
       setHoveredSquare(null);
     }
 
+    function releasePointer(event) {
+      try {
+        if (renderer.domElement.hasPointerCapture?.(event.pointerId)) {
+          renderer.domElement.releasePointerCapture?.(event.pointerId);
+        }
+      } catch {
+        // Android/WebView can already have released capture on cancellation.
+      }
+    }
+
+    function onPointerCancel(event) {
+      pointerStartRef.current = null;
+      cameraMotionRef.current.dragging = false;
+      renderer.domElement.dataset.warRoomTouchStage = 'cancel';
+      releasePointer(event);
+    }
+
     function onPointerUp(event) {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
       if (inspectModeRef.current) {
         cameraMotionRef.current.dragging = false;
         renderer.domElement.style.cursor = 'grab';
-        renderer.domElement.releasePointerCapture?.(event.pointerId);
+        releasePointer(event);
         return;
       }
-      const touchLike = coarsePointer || start?.pointerType === 'touch';
+      if (start?.handled) {
+        renderer.domElement.dataset.warRoomTouchStage = 'up';
+        releasePointer(event);
+        return;
+      }
+      const touchLike = coarsePointer || start?.pointerType === 'touch' || start?.pointerType === 'pen';
       const tap = resolveBoardTap(
         start,
         { x: event.clientX, y: event.clientY, id: event.pointerId },
         { coarsePointer: touchLike },
       );
-      if (!tap) return;
+      if (!tap) {
+        releasePointer(event);
+        return;
+      }
       const square = squareFromPointer({ clientX: tap.x, clientY: tap.y });
-      if (!square) return;
+      renderer.domElement.dataset.warRoomLastSquare = square || '';
+      if (!square) {
+        releasePointer(event);
+        return;
+      }
       setFocusedSquare(square);
       latestPropsRef.current.onSquareClick?.(square);
+      releasePointer(event);
     }
 
     function onContextLost(event) {
@@ -814,6 +866,7 @@ function Board3DCanvas({
     renderer.domElement.addEventListener('pointermove', onPointerMove, { passive: true });
     renderer.domElement.addEventListener('pointerleave', onPointerLeave, { passive: true });
     renderer.domElement.addEventListener('pointerup', onPointerUp, { passive: true });
+    renderer.domElement.addEventListener('pointercancel', onPointerCancel, { passive: true });
     renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
 
     let lastAmbientPaint = 0;
@@ -863,6 +916,7 @@ function Board3DCanvas({
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
       renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
+      renderer.domElement.removeEventListener('pointercancel', onPointerCancel);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       scene.traverse((object) => {
         if (object.userData?.ownedTexture) object.userData.ownedTexture.dispose();
@@ -1135,6 +1189,9 @@ function handleKeyDown(event) {
       data-board3d-motion="physical-v1"
       data-board3d-camera="fixed-tactical"
       data-board3d-inspect={inspectMode ? 'true' : 'false'}
+      data-board3d-selected={selectedSquare || ''}
+      data-board3d-focused={focusedSquare || ''}
+      data-board3d-legal-target-count={legalMap.size}
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
