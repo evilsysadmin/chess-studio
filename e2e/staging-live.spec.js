@@ -159,15 +159,23 @@ test('staging live · alta protegida → login real → Matthias → Escuela 3D 
     const created = await createdResponse.json();
     gameId = created.id || null;
     expect(gameId).toBeTruthy();
-    await expect(gameStatus(page)).toBeVisible({ timeout: 30_000 });
+
+    // En 3D la columna táctica es el único dueño visible del estado. La antigua
+    // píldora superior se retiró deliberadamente porque duplicaba SITUACIÓN y
+    // tapaba el decorado de la War Room.
+    const warRoom3d = page.locator('[data-board3d-war-room="true"]');
+    await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
+    const warRoomStatus = page.locator('.game-3d-warroom-status');
+    await expect(warRoomStatus).toBeVisible();
+    await expect(warRoomStatus.getByText('SITUACIÓN', { exact: true })).toBeVisible();
+    await expect(warRoomStatus.locator('strong')).not.toHaveText('');
 
     // Staging estrena 3D por defecto para perfiles sin preferencia guardada.
     // El selector duplicado 2D/3D ya no forma parte de la partida: el contrato
     // real es War Room → Apariencia → representación del tablero. Acreditamos
     // primero el 3D desplegado y luego elegimos 2D para que clickBoardMove use
     // los botones accesibles de casilla como contrato determinista.
-    const warRoom3d = page.locator('[data-board3d-war-room="true"]');
-    await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
 
     const appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
