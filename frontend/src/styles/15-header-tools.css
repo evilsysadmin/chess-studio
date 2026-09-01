@@ -63,12 +63,16 @@
   .global-music-dock .live-service-status {
     max-width: calc(100vw - 1rem);
   }
+
+  /* En móvil el estado de servicio de admin vive en su propia fila debajo del
+     RetroPlayer minimizado. Antes compartía la misma franja y podía montarse
+     encima del player al cambiar de ancho o al aparecer la latencia. */
   .global-music-dock:has(.music-deck-collapsed) .live-service-status {
     position: absolute;
-    top: 0;
-    left: 84px;
+    top: 52px;
+    left: 0;
     width: max-content;
-    max-width: calc(100vw - 100px);
+    max-width: min(190px, calc(100vw - 1rem));
     margin: 0;
     gap: .26rem;
     padding: .28rem .38rem;
