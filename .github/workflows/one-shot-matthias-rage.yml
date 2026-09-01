@@ -1,0 +1,69 @@
+name: One-shot Matthias rage artifact
+
+on:
+  push:
+    branches:
+      - feature/matthias-rage-captures-ci
+
+permissions:
+  contents: read
+
+jobs:
+  build-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/matthias-rage-captures-ci
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Apply patch in workspace
+        run: python3 scripts/one_shot_matthias_rage.py
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Focused tests
+        working-directory: frontend
+        run: npx vitest run src/matthiasWarRoomRage.test.js src/components/MatthiasWarRoomPortrait.test.jsx src/components/MatthiasKing3D.test.js src/cpuCommentary.test.js src/spectatorReactions.test.js
+
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Static preflight
+        run: make static-preflight
+
+      - name: Stage patched files
+        shell: bash
+        run: |
+          mkdir -p /tmp/rage-artifact
+          cp --parents \
+            frontend/src/matthiasWarRoomRage.js \
+            frontend/src/matthiasWarRoomRage.test.js \
+            frontend/src/components/GameBoardView.jsx \
+            frontend/src/components/MatthiasWarRoomPortrait.jsx \
+            frontend/src/components/MatthiasWarRoomPortrait.css \
+            frontend/src/components/MatthiasWarRoomPortrait.test.jsx \
+            frontend/src/components/MatthiasKing3D.js \
+            frontend/src/components/MatthiasKing3D.test.js \
+            frontend/src/cpuCommentary.js \
+            frontend/src/cpuCommentary.test.js \
+            frontend/src/spectatorReactions.js \
+            frontend/src/spectatorReactions.test.js \
+            .github/workflows/cicd.yml \
+            /tmp/rage-artifact/
+
+      - name: Upload patched files
+        uses: actions/upload-artifact@v7
+        with:
+          name: matthias-rage-patched-files
+          path: /tmp/rage-artifact/
+          retention-days: 1
