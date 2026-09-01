@@ -42,9 +42,36 @@
   }
 }
 
+/* The compact masthead, floating turn pill and one-line footer bought real
+   space. Spend it on the board instead of leaving a black moat around it. */
+@media (min-width: 1261px) {
+  .game-screen .game-layout.game-layout-3d {
+    width: min(99.4vw, 1840px);
+    max-width: 1840px;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(216px, 248px) minmax(700px, 1fr) minmax(252px, 292px);
+    gap: clamp(.52rem, .72vw, .72rem);
+    padding: clamp(.48rem, .62vw, .68rem);
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1260px) {
+  .game-screen .game-layout.game-layout-3d {
+    width: min(99.5vw, 1250px);
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(192px, 222px) minmax(560px, 1fr) minmax(226px, 258px);
+    gap: .5rem;
+    padding: .5rem;
+  }
+}
+
 @media (min-width: 1081px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(500px, calc(100dvh - 15.2rem), 720px);
+    height: clamp(560px, calc(100dvh - 8.6rem), 840px);
   }
 
   /* Final post-tone-mapping trim: keep highlights readable without flattening the room. */
@@ -55,12 +82,12 @@
 
 @media (min-width: 1081px) and (max-height: 900px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(465px, calc(100dvh - 14.35rem), 655px);
+    height: clamp(520px, calc(100dvh - 9.4rem), 735px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 780px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(430px, calc(100dvh - 14.05rem), 555px);
+    height: clamp(470px, calc(100dvh - 8.9rem), 620px);
   }
 }
