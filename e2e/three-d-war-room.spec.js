@@ -44,6 +44,20 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
   expect(warRoomGeometry.right).toBeLessThanOrEqual(1441);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
+  // Laptop/desktop corto: gastamos el espacio inferior que antes quedaba vacío
+  // sin volver a la War Room excesivamente alta de las primeras iteraciones.
+  await page.setViewportSize({ width: 1662, height: 796 });
+  await expect(warRoom).toBeVisible();
+  const shortDesktopGeometry = await page.locator('.board3d-main-shell').evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, bottom: rect.bottom };
+  });
+  expect(shortDesktopGeometry.width).toBeGreaterThan(700);
+  expect(shortDesktopGeometry.height).toBeGreaterThan(510);
+  expect(shortDesktopGeometry.height).toBeLessThan(550);
+  expect(shortDesktopGeometry.bottom).toBeLessThanOrEqual(796);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(warRoom).toBeVisible();
   await expect(board3d).toBeVisible();

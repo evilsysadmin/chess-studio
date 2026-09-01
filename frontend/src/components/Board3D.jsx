@@ -12,6 +12,7 @@ import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import './Board3D.css';
+import './Board3DViewportTuning.css';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const DISPLAY_RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
@@ -512,7 +513,7 @@ function Board3DCanvas({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = coarsePointer ? 1.08 : 1.17;
+    renderer.toneMappingExposure = coarsePointer ? 1.02 : 1.05;
     renderer.domElement.className = 'board3d-main-canvas';
     renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en sala de mando. Cámara fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
     renderer.domElement.setAttribute('role', 'application');
@@ -522,8 +523,8 @@ function Board3DCanvas({
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer });
 
-    scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.7));
-    const key = new THREE.DirectionalLight(0xffe1aa, 3.1);
+    scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
+    const key = new THREE.DirectionalLight(0xffe1aa, 2.35);
     key.position.set(-5.4, 10, whiteSide ? 6.6 : -6.6);
     key.castShadow = true;
     key.shadow.mapSize.set(coarsePointer ? 512 : 2048, coarsePointer ? 512 : 2048);
@@ -537,10 +538,10 @@ function Board3DCanvas({
     key.shadow.normalBias = 0.018;
     key.shadow.radius = coarsePointer ? 1.1 : 2.35;
     scene.add(key);
-    const rim = new THREE.PointLight(theme.glow, 18, 19, 2);
+    const rim = new THREE.PointLight(theme.glow, 14.5, 19, 2);
     rim.position.set(4.8, 3.6, whiteSide ? -4.8 : 4.8);
     scene.add(rim);
-    const warm = new THREE.PointLight(0xffa449, 8, 16, 2);
+    const warm = new THREE.PointLight(0xffa449, 5.8, 16, 2);
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 

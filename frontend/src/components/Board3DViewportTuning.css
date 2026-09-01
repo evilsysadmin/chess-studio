@@ -1,0 +1,22 @@
+/*
+ * Desktop-only viewport tuning for the 3D War Room.
+ * Keep this separate from the base responsive layout: these values deliberately
+ * spend previously-unused bottom space without changing the mobile stack.
+ */
+@media (min-width: 1081px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(480px, calc(100dvh - 16.8rem), 680px);
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 900px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(445px, calc(100dvh - 16.7rem), 620px);
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 780px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(410px, calc(100dvh - 16.2rem), 520px);
+  }
+}
