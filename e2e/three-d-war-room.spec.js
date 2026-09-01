@@ -16,7 +16,9 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
 
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   await expect(warRoom).toBeVisible();
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  await expect(board3d).toBeVisible();
+  await expect(board3d).toHaveAttribute('data-board3d-scene', 'premium');
   await expect(warRoom.getByRole('complementary', { name: 'Puesto de mando de Matthias' })).toBeVisible();
   await expect(warRoom.getByText('COMANDANTE RIVAL', { exact: true })).toBeVisible();
 
@@ -44,7 +46,7 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(warRoom).toBeVisible();
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
+  await expect(board3d).toBeVisible();
   const mobileBoardWidth = await page.locator('.board3d-main-shell').evaluate((element) => element.getBoundingClientRect().width);
   expect(mobileBoardWidth).toBeGreaterThan(320);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
