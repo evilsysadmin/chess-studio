@@ -99,6 +99,7 @@ export default function GameBoardView({
     turnState: board.boardTurnState,
     orientation: humanColor === 'b' ? 'black' : 'white',
     showCoordinates: !zenMode && board.showBoardCoordinates,
+    matthiasKingColor: topColor,
     onCustomize: board.onCustomize,
   };
 
