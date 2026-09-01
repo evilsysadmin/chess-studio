@@ -1007,7 +1007,7 @@ function Board3DCanvas({
       disposeObject(capturedGhost);
     }
   };
-}, [fen, skinId, animate, boardTheme, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);gColor]);
+}, [fen, skinId, animate, boardTheme, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);
 
   const legalMap = useMemo(() => new Map((legalTargets || []).map((target) => {
     const square = target?.to || target?.square || target;
