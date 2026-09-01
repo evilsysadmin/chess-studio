@@ -36,7 +36,7 @@ export function inferCapturedPiece(previousPieces = [], nextPieces = [], animate
 
 export function deriveMoveKinetics({ movingType = 'p', capture = false, promotion = false, castling = false, coarsePointer = false } = {}) {
   const type = String(movingType || 'p').toLowerCase();
-  const duration = coarsePointer ? (capture ? 250 : 210) : (capture ? 330 : type === 'n' ? 300 : 255);
+  const duration = coarsePointer ? (capture ? 230 : 190) : (capture ? 300 : type === 'n' ? 270 : 230);
   const lift = coarsePointer ? 0.08 : type === 'n' ? 0.28 : capture ? 0.19 : 0.13;
   return {
     duration,
@@ -56,6 +56,12 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
 }
 
 export function adaptiveRenderScale({ coarsePointer = false, slowFrameCount = 0 } = {}) {
-  if (coarsePointer) return slowFrameCount >= 8 ? 1 : 1.25;
-  return slowFrameCount >= 10 ? 1.35 : 1.75;
+  // La escena anterior conservaba 1.75 DPR hasta detectar diez frames lentos,
+  // y esa detección sólo ocurre mientras una pieza está animándose. En pantallas
+  // HiDPI eso significa renderizar ~3x los píxeles de CSS justo en el momento en
+  // que más trabajo hace Three.js. Empezamos cada animación con un presupuesto
+  // razonable y degradamos pronto si aun así no alcanza. En DPR <= 1 no hay pérdida:
+  // Board3D siempre limita este valor con window.devicePixelRatio.
+  if (coarsePointer) return slowFrameCount >= 5 ? 0.8 : 1;
+  return slowFrameCount >= 6 ? 1 : 1.35;
 }
