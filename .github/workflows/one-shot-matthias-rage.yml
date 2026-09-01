@@ -24,7 +24,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Apply patch in workspace
-        run: python3 scripts/one_shot_matthias_rage.py
+        run: |
+          python3 scripts/one_shot_matthias_rage.py
+          python3 scripts/one_shot_ci_audit_patch.py
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -59,6 +61,7 @@ jobs:
             frontend/src/spectatorReactions.js \
             frontend/src/spectatorReactions.test.js \
             .github/workflows/cicd.yml \
+            scripts/test_suite_audit.mjs \
             /tmp/rage-artifact/
 
       - name: Upload patched files
