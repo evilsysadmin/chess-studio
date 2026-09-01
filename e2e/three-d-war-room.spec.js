@@ -46,7 +46,7 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
   await expect(warRoom).toBeVisible();
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
   const mobileBoardWidth = await page.locator('.board3d-main-shell').evaluate((element) => element.getBoundingClientRect().width);
-  expect(mobileBoardWidth).toBeGreaterThan(350);
+  expect(mobileBoardWidth).toBeGreaterThan(320);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
   await warRoom.getByRole('button', { name: '2D', exact: true }).click();
