@@ -6,7 +6,7 @@
    height. The turn state itself is rendered as an in-room pill below. */
 @media (min-width: 821px) {
   .app-shell-board-game .masthead-game-compact {
-    width: min(100%, 1680px);
+    width: min(100%, 1840px);
     min-height: 27px;
     margin-bottom: .08rem;
     padding: 0 clamp(.75rem, 1.4vw, 1.35rem) .08rem;
@@ -223,25 +223,25 @@
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(520px, calc(100dvh - 12.8rem), 760px);
+    height: clamp(560px, calc(100dvh - 8.6rem), 840px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 900px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(485px, calc(100dvh - 12.2rem), 690px);
+    height: clamp(520px, calc(100dvh - 9.4rem), 735px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 780px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(435px, calc(100dvh - 11.65rem), 580px);
+    height: clamp(470px, calc(100dvh - 8.9rem), 620px);
   }
 }
 
-/* The portrait is intentionally alive but not a looping puppet. Movement is
-   event/gesture driven and therefore remains occasional. */
-.game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-portrait {
+/* Speech gets a slightly stronger command pose on top of the portrait's
+   continuous micro-motion. */
+.game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-character {
   animation: matthias-warroom-order .62s cubic-bezier(.18,.82,.24,1) 2 alternate;
 }
 
@@ -295,7 +295,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-portrait {
+  .game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-character {
     animation: none !important;
   }
 }
