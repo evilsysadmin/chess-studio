@@ -236,7 +236,7 @@ function classifyDecorSurface(material) {
 
   const hex = material.color.getHex();
   if (KNOWN_BURGUNDY_COLORS.has(hex)) {
-    return (material.roughness ?? 0.5) >= 0.76 || (material.sheen ?? 0) >= 0.36 ? 'fabric' : 'leather';
+    return (material.roughness ?? 0.5) >= 0.76 ? 'fabric' : 'leather';
   }
   if (KNOWN_WOOD_COLORS.has(hex)) return 'wood';
 
