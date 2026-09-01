@@ -60,17 +60,20 @@ describe('PremiumWarRoomScene', () => {
     dispose(mobile);
   });
 
-  it('usa un fuego multicapa irregular con núcleo, brasas y luz cálida', () => {
+  it('usa un fuego multicapa irregular con núcleo, brasas, luz cálida y un ancla renderizable', () => {
     const room = buildPremiumWarRoomLayer(theme, false, false);
     const fire = room.getObjectByName('war-room-fireplace');
+    const outerFlame = fire?.getObjectByName('war-room-fire-flame-outer');
 
     expect(fire).toBeTruthy();
     expect(fire.getObjectByName('war-room-fire-core')).toBeTruthy();
-    expect(fire.getObjectByName('war-room-fire-flame-outer')).toBeTruthy();
+    expect(outerFlame).toBeInstanceOf(THREE.Mesh);
     expect(fire.getObjectByName('war-room-fire-flame-inner')).toBeTruthy();
     expect(fire.getObjectByName('war-room-fire-ember')).toBeTruthy();
     expect(fire.getObjectByName('war-room-fire-light')).toBeInstanceOf(THREE.PointLight);
     expect(fire.getObjectByName('war-room-fire-core').userData.warRoomFireCore).toBe(true);
+    expect(outerFlame.userData.warRoomFireAnimationAnchor).toBe(true);
+    expect(typeof outerFlame.onBeforeRender).toBe('function');
 
     dispose(room);
   });
