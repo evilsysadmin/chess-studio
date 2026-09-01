@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v7';
+export const PREMIUM_SURFACE_VERSION = 'premium-v8';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
   'ivory',
@@ -116,35 +116,29 @@ export function createMicroSurfaceMap({ seed = 1, kind = 'piece', coarsePointer 
   return texture;
 }
 
-function materialSeed(color, side, accent) {
-  const value = typeof color === 'number' ? color : new THREE.Color(color).getHex();
-  return (value ^ (side === 'w' ? 0x5a17 : 0xa31d) ^ (accent ? 0x79b9 : 0x2d43)) >>> 0;
-}
-
 export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = false, coarsePointer = false }) {
   const baseMetalness = Math.min(1, skin.metalness + (accent ? 0.2 : 0));
   const baseRoughness = Math.max(0.1, skin.roughness - (accent ? 0.15 : 0.04));
   const ivory = side === 'w' && !accent;
-  const micro = accent || coarsePointer
-    ? null
-    : createMicroSurfaceMap({
-        seed: materialSeed(color, side, accent),
-        kind: side === 'w' ? 'ivory' : 'piece',
-        coarsePointer,
-      });
+  // Las piezas se reconstruyen desde el FEN en cada jugada. Crear una DataTexture
+  // por material principal multiplicaba uploads/dispose de GPU por todas las piezas
+  // para un micro-relieve prácticamente imperceptible a escala de partida. El PBR,
+  // color, roughness, clearcoat e IBL siguen dando el volumen; reservamos las
+  // microtexturas para tablero y decorado, que sí son recursos estables de escena.
+  const micro = null;
   const surfaceColor = new THREE.Color(color);
   // Marfil mate y envejecido. La referencia visual pide beige real, no blanco
   // porcelana: bajamos luminancia y hacemos que el volumen venga de sombras.
   if (ivory) surfaceColor.lerp(new THREE.Color(0x927858), 0.62);
-  const ivoryRoughness = Math.min(0.98, Math.max(0.78, baseRoughness * (micro ? 1.68 : 1.48)));
+  const ivoryRoughness = Math.min(0.98, Math.max(0.78, baseRoughness * 1.48));
 
   const material = new THREE.MeshPhysicalMaterial({
     color: surfaceColor,
     metalness: ivory ? Math.min(baseMetalness, 0.006) : baseMetalness,
-    roughness: ivory ? ivoryRoughness : (micro ? Math.min(0.92, baseRoughness * 1.18) : baseRoughness),
+    roughness: ivory ? ivoryRoughness : baseRoughness,
     roughnessMap: micro,
     bumpMap: micro,
-    bumpScale: micro ? (side === 'w' ? 0.006 : 0.009) : 0,
+    bumpScale: 0,
     emissive: skin.emissive,
     emissiveIntensity: accent ? skin.emissiveIntensity * 1.25 : skin.emissiveIntensity,
     clearcoat: accent ? 0.9 : ivory ? 0.08 : 0.74,
@@ -158,6 +152,7 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = accent ? 'metal-inlay' : side === 'w' ? 'ivory' : 'ebony';
+  material.userData.microSurface = 'stable-scene-only';
   return material;
 }
 
