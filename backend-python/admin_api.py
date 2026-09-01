@@ -5,6 +5,8 @@ The router owns transport concerns; profile aggregation stays in
 """
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -29,6 +31,7 @@ from api_models import (
     AdminInsightsRequest,
     AdminPlayerPortraitRequest,
     AdminMatthiasPreviewRequest,
+    AdminUserRatingRequest,
     FeedbackRequest,
 )
 from observability import get_database_metrics, get_http_metrics
@@ -324,6 +327,68 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
                 return str(existing)
 
         raise HTTPException(404, "Usuario no encontrado.")
+
+
+    @router.post("/api/admin/user-rating")
+    async def admin_update_user_rating(body: AdminUserRatingRequest, username: str = Depends(admin_dependency)):
+        target = await _resolve_admin_target_username(body.username)
+        rating_key = "chess-study-player-rating"
+        audit_key = "chess-study-admin-rating-audit"
+
+        for _attempt in range(2):
+            profile = await pstore.get_profile(target) or {}
+            data = profile.get("data") if isinstance(profile.get("data"), dict) else {}
+            revisions = profile.get("revisions") if isinstance(profile.get("revisions"), dict) else {}
+
+            try:
+                rating_data = json.loads(data.get(rating_key) or "{}")
+            except (json.JSONDecodeError, TypeError):
+                rating_data = {}
+            if not isinstance(rating_data, dict):
+                rating_data = {}
+            try:
+                games = max(0, int(rating_data.get("games") or 0))
+            except (TypeError, ValueError):
+                games = 0
+            try:
+                previous_rating = int(round(float(rating_data.get("rating"))))
+            except (TypeError, ValueError):
+                previous_rating = None
+
+            try:
+                audit = json.loads(data.get(audit_key) or "[]")
+            except (json.JSONDecodeError, TypeError):
+                audit = []
+            if not isinstance(audit, list):
+                audit = []
+            audit.append({
+                "date": datetime.now(timezone.utc).isoformat(),
+                "source": "admin",
+                "previousRating": previous_rating,
+                "rating": int(body.rating),
+            })
+            audit = audit[-50:]
+
+            result = await pstore.patch_profile(
+                target,
+                {
+                    rating_key: json.dumps({"rating": int(body.rating), "games": games}, separators=(",", ":")),
+                    audit_key: json.dumps(audit, separators=(",", ":")),
+                },
+                {
+                    rating_key: int(revisions.get(rating_key) or 0),
+                    audit_key: int(revisions.get(audit_key) or 0),
+                },
+            )
+            if not isinstance(result, pstore.ProfilePatchConflict):
+                return {
+                    "username": target,
+                    "rating": int(body.rating),
+                    "games": games,
+                    "previousRating": previous_rating,
+                }
+
+        raise HTTPException(409, "El perfil cambió mientras se corregía el ELO. Vuelve a intentarlo.")
 
 
     async def _admin_insights_response(target_username: str) -> dict:

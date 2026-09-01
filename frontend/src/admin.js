@@ -9,6 +9,13 @@ export async function fetchAdminUsers() {
   return body.users;
 }
 
+export function updateAdminUserRating(username, rating) {
+  return requestJson(`${BASE_URL}/admin/user-rating`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ username, rating: Number(rating) }),
+  });
+}
 
 export function fetchAdminMatthiasStatus() {
   return requestJson(`${BASE_URL}/admin/matthias-status`, { headers: { ...authHeader() } });
@@ -21,7 +28,6 @@ export function fetchAdminUserInsights(username) {
     body: JSON.stringify({ username }),
   });
 }
-
 
 export function fetchAdminMatthiasMemory(username) {
   return requestJson(`${BASE_URL}/admin/matthias/memory`, {

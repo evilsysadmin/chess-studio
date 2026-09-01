@@ -1,10 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { handicapForGap } from './handicap.js';
+import { saveRating } from './playerRating.js';
+
+beforeEach(() => localStorage.clear());
 
 describe('handicapForGap', () => {
   it('sin hándicap si la brecha es chica (dificultad elegida cerca de lo que el rating sugiere)', () => {
     // rating 600 -> dificultad "justa" ~22, elegir 30 es una brecha de 8, chica
     expect(handicapForGap(600, 30)).toBeNull();
+  });
+
+  it('el alivio provisional automático no deforma el hándicap de una dificultad manual', () => {
+    saveRating({ rating: 600, games: 0 });
+    expect(handicapForGap(600, 30)).toBeNull();
+    expect(handicapForGap(600, 40)?.id).toBe('pawn');
   });
 
   it('sin hándicap si la dificultad elegida es MENOR a lo que el rating sugiere', () => {

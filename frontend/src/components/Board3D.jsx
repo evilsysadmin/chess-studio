@@ -115,6 +115,23 @@ function adjacentSquare(square, key, orientation) {
   return `${FILES[nextFile]}${DISPLAY_RANKS[nextRank]}`;
 }
 
+function applyMatthiasCheckPose(state, checkSquare, orientation) {
+  if (!state?.pieceMeshes) return;
+  for (const [square, mesh] of state.pieceMeshes.entries()) {
+    if (!mesh?.userData?.matthiasKing) continue;
+    const baseScale = mesh.userData.baseScale;
+    if (baseScale) mesh.scale.copy(baseScale);
+    mesh.rotation.z = 0;
+    mesh.position.y = mesh.userData.baseY ?? 0.1;
+    if (checkSquare === square) {
+      const direction = orientation === 'black' ? -1 : 1;
+      mesh.rotation.z = direction * 0.055;
+      mesh.position.y += 0.035;
+      if (baseScale) mesh.scale.copy(baseScale).multiplyScalar(1.025);
+    }
+  }
+}
+
 function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false) {
   return makePremiumPieceMaterial({ color, skin, accent, side, coarsePointer });
 }
@@ -509,6 +526,7 @@ function Board3DCanvas({
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
+  const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
 
   latestPropsRef.current = { onSquareClick, onRendererFailure };
@@ -526,15 +544,28 @@ function Board3DCanvas({
 
   useEffect(() => {
     setFocusedSquare(orientation === 'black' ? 'e8' : 'e1');
+    setHoveredSquare(null);
   }, [orientation]);
 
   useEffect(() => {
     inspectModeRef.current = inspectMode;
     if (!inspectMode) {
       const motion = cameraMotionRef.current;
+      motion.x = 0;
+      motion.y = 0;
+      motion.targetX = 0;
+      motion.targetY = 0;
       motion.yaw = 0;
       motion.pitch = 0;
       motion.dragging = false;
+      const state = sceneStateRef.current;
+      const basePosition = state?.camera?.userData?.basePosition;
+      const baseTarget = state?.camera?.userData?.baseTarget;
+      if (state && basePosition && baseTarget) {
+        state.camera.position.copy(basePosition);
+        state.camera.lookAt(baseTarget);
+        state.render();
+      }
     }
   }, [inspectMode]);
 
@@ -734,19 +765,24 @@ function Board3DCanvas({
     }
 
     function onPointerMove(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
       const motion = cameraMotionRef.current;
-      if (inspectModeRef.current && motion.dragging) {
-        const dx = event.clientX - motion.lastX;
-        const dy = event.clientY - motion.lastY;
-        motion.lastX = event.clientX;
-        motion.lastY = event.clientY;
-        motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -0.14, 0.14);
-        motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, -0.08, 0.075);
+      if (inspectModeRef.current) {
+        renderer.domElement.style.cursor = motion.dragging ? 'grabbing' : 'grab';
+        if (motion.dragging) {
+          const dx = event.clientX - motion.lastX;
+          const dy = event.clientY - motion.lastY;
+          motion.lastX = event.clientX;
+          motion.lastY = event.clientY;
+          motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -0.14, 0.14);
+          motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, -0.08, 0.075);
+        }
         return;
       }
-      motion.targetX = THREE.MathUtils.clamp(((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2, -1, 1);
-      motion.targetY = THREE.MathUtils.clamp(((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2, -1, 1);
+      if (coarsePointer) return;
+      const square = squareFromPointer(event);
+      const pieceHover = square && pieceMeshes.has(square) ? square : null;
+      renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
+      setHoveredSquare((current) => current === pieceHover ? current : pieceHover);
     }
 
     function onPointerLeave() {
@@ -754,6 +790,8 @@ function Board3DCanvas({
       motion.targetX = 0;
       motion.targetY = 0;
       motion.dragging = false;
+      renderer.domElement.style.cursor = 'default';
+      setHoveredSquare(null);
     }
 
     function onPointerUp(event) {
@@ -761,6 +799,7 @@ function Board3DCanvas({
       pointerStartRef.current = null;
       if (inspectModeRef.current) {
         cameraMotionRef.current.dragging = false;
+        renderer.domElement.style.cursor = 'grab';
         renderer.domElement.releasePointerCapture?.(event.pointerId);
         return;
       }
@@ -792,22 +831,14 @@ function Board3DCanvas({
     function ambientFrame(now) {
       const motion = cameraMotionRef.current;
       const reduced = getEffectiveReducedMotion();
-      const activeMotion = motion.dragging || Math.abs(motion.x - motion.targetX) > 0.003 || Math.abs(motion.y - motion.targetY) > 0.003;
-      const interval = activeMotion ? 16 : 33;
-      if (!document.hidden && !reduced && !coarsePointer && now - lastAmbientPaint >= interval) {
+      if (!document.hidden && !reduced && !coarsePointer && inspectModeRef.current && now - lastAmbientPaint >= 16) {
         lastAmbientPaint = now;
-        motion.x += (motion.targetX - motion.x) * 0.075;
-        motion.y += (motion.targetY - motion.y) * 0.075;
         const basePosition = camera.userData.basePosition;
         const baseTarget = camera.userData.baseTarget;
         if (basePosition && baseTarget) {
-          const breathYaw = Math.sin(now * 0.00018) * 0.0045;
-          const breathPitch = Math.sin(now * 0.00014 + 1.1) * 0.0022;
-          const yaw = (inspectModeRef.current ? motion.yaw : motion.x * 0.025) + breathYaw;
-          const pitch = (inspectModeRef.current ? motion.pitch : -motion.y * 0.012) + breathPitch;
-          const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+          const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ'));
           camera.position.copy(baseTarget).add(offset);
-          camera.lookAt(baseTarget.clone().add(new THREE.Vector3(motion.x * 0.035, -motion.y * 0.018, 0)));
+          camera.lookAt(baseTarget);
           render();
         }
       }
@@ -889,6 +920,8 @@ function Board3DCanvas({
     mesh.userData.square = piece.square;
     mesh.userData.type = piece.type;
     mesh.userData.color = piece.color;
+    mesh.userData.baseY = 0.1;
+    mesh.userData.baseScale = mesh.scale.clone();
     if (matthiasKing) mesh.userData.matthiasKing = true;
     mesh.traverse((object) => { object.userData.square = piece.square; });
     addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer);
@@ -909,6 +942,7 @@ function Board3DCanvas({
 
   if (!shouldAnimate) {
     if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
+    applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
     return undefined;
   }
@@ -1028,6 +1062,7 @@ function Board3DCanvas({
       state.rim.intensity = lights.rim;
       state.warm.intensity = lights.warm;
       state.renderer.toneMappingExposure = lights.exposure;
+      applyMatthiasCheckPose(state, checkSquare, orientation);
       state.render();
       animationFrameRef.current = 0;
       state.lastAnimationFrameAt = 0;
@@ -1061,6 +1096,7 @@ function Board3DCanvas({
       let color = null;
       let opacity = 0.86;
       if (focusedSquare === square) { color = 0xe8dfc3; opacity = 0.42; }
+      if (hoveredSquare === square) { color = 0x8bc7e8; opacity = 0.58; }
       if (lastMove && (square === lastMove.from || square === lastMove.to)) color = 0xb9952e;
       if (hintMove && (square === hintMove.from || square === hintMove.to)) color = 0x50a4c6;
       if (legalMap.has(square)) color = legalMap.get(square) ? 0xb4483a : 0x5fa8d3;
@@ -1072,8 +1108,9 @@ function Board3DCanvas({
         marker.visible = true;
       }
     }
+    applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, boardTheme, orientation, showCoordinates]);
+  }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, boardTheme, orientation, showCoordinates]);
 
 useEffect(() => {
   const state = sceneStateRef.current;
@@ -1084,6 +1121,7 @@ useEffect(() => {
   state.warm.intensity = lights.warm;
   state.renderer.toneMappingExposure = lights.exposure;
   if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
+  applyMatthiasCheckPose(state, checkSquare, orientation);
   state.render();
 }, [checkSquare, gameOver, boardTheme, orientation, showCoordinates]);
 
@@ -1106,7 +1144,7 @@ function handleKeyDown(event) {
       data-board3d-scene="premium"
       data-board3d-surface="premium-v2"
       data-board3d-motion="physical-v1"
-      data-board3d-camera="micro-parallax"
+      data-board3d-camera="fixed-tactical"
       data-board3d-inspect={inspectMode ? 'true' : 'false'}
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >

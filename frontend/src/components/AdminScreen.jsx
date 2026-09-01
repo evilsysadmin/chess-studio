@@ -3,6 +3,7 @@ import { fetchAdminUsers } from '../admin.js';
 import { getToken, getUsername } from '../auth.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import AdminDashboardContent from './AdminDashboardContent.jsx';
+import AdminRatingEditor from './AdminRatingEditor.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import './AdminWorkspace.css';
 
@@ -122,6 +123,7 @@ export default function AdminScreen({ onExit }) {
           role="tabpanel"
           aria-labelledby={`admin-tab-${section}`}
         >
+          {section === 'users' && <AdminRatingEditor />}
           <AdminDashboardContent onExit={onExit} />
         </div>
       )}

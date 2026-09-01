@@ -39,7 +39,7 @@ export default function QuickMatchModal({
 }) {
   useEscapeToClose(onClose);
   const handicap = rating ? handicapForGap(rating.rating, difficulty) : null;
-  const adaptiveLevel = difficultyForRating(rating?.rating ?? 400);
+  const adaptiveLevel = difficultyForRating(rating?.rating ?? 400, null, rating?.games ?? 0);
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
