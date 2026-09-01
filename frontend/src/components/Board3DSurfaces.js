@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v2';
+export const PREMIUM_SURFACE_VERSION = 'premium-v3';
 
 export function getCameraFramingProfile(aspect) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
@@ -34,6 +34,46 @@ function nextNoise(state) {
   return [next, ((next >>> 8) & 0xffff) / 0xffff];
 }
 
+function surfaceWave(kind, x, y, size) {
+  if (kind === 'wood') {
+    return Math.sin((x / size) * Math.PI * 10 + Math.sin(y * 0.42) * 0.8) * 13
+      + Math.sin((x / size) * Math.PI * 22 + y * 0.17) * 4;
+  }
+  if (kind === 'leather') {
+    return Math.sin(x * 1.35 + y * 0.83) * 5
+      + Math.sin(x * 2.8 - y * 1.9) * 2.5;
+  }
+  if (kind === 'brass') {
+    return Math.sin(y * 3.6) * 2.2
+      + Math.sin(y * 7.8 + x * 0.13) * 1.2;
+  }
+  if (kind === 'fabric') {
+    return Math.sin(x * Math.PI * 0.7) * 4.2
+      + Math.sin(y * Math.PI * 0.7) * 4.2;
+  }
+  if (kind === 'lacquer') {
+    return Math.sin((x + y) * 0.72) * 2.2;
+  }
+  return Math.sin((x + y * 0.7) * 0.9) * 4;
+}
+
+function surfacePores(kind, x, y) {
+  if (kind === 'ivory') return Math.sin(x * 1.7 + y * 2.1) * 3;
+  if (kind === 'leather') return Math.sin(x * 3.4) * Math.cos(y * 2.9) * 4.4;
+  if (kind === 'fabric') return Math.sin((x - y) * 2.1) * 2.8;
+  if (kind === 'brass') return Math.sin(x * 0.18 + y * 5.8) * 1.6;
+  return Math.sin(x * 0.65 - y * 0.8) * 5;
+}
+
+function textureRepeat(kind) {
+  if (kind === 'wood') return [2.4, 4.6];
+  if (kind === 'leather') return [5.6, 5.6];
+  if (kind === 'brass') return [3.4, 8.2];
+  if (kind === 'fabric') return [6.4, 6.4];
+  if (kind === 'lacquer') return [4.2, 4.2];
+  return [3.2, 3.6];
+}
+
 export function createMicroSurfaceMap({ seed = 1, kind = 'piece', coarsePointer = false } = {}) {
   const size = coarsePointer ? 16 : 32;
   const data = new Uint8Array(size * size * 4);
@@ -43,13 +83,14 @@ export function createMicroSurfaceMap({ seed = 1, kind = 'piece', coarsePointer 
     for (let x = 0; x < size; x += 1) {
       let noise;
       [state, noise] = nextNoise(state);
-      const directional = kind === 'wood'
-        ? Math.sin((x / size) * Math.PI * 10 + Math.sin(y * 0.42) * 0.8) * 13
-        : Math.sin((x + y * 0.7) * 0.9) * 4;
-      const pores = kind === 'ivory'
-        ? Math.sin(x * 1.7 + y * 2.1) * 3
-        : Math.sin(x * 0.65 - y * 0.8) * 5;
-      const value = THREE.MathUtils.clamp(Math.round(205 + (noise - 0.5) * 34 + directional + pores), 148, 246);
+      const directional = surfaceWave(kind, x, y, size);
+      const pores = surfacePores(kind, x, y);
+      const noiseAmplitude = kind === 'brass' || kind === 'lacquer' ? 18 : 34;
+      const value = THREE.MathUtils.clamp(
+        Math.round(205 + (noise - 0.5) * noiseAmplitude + directional + pores),
+        148,
+        246,
+      );
       const index = (y * size + x) * 4;
       data[index] = value;
       data[index + 1] = value;
@@ -61,7 +102,8 @@ export function createMicroSurfaceMap({ seed = 1, kind = 'piece', coarsePointer 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(kind === 'wood' ? 2.4 : 3.2, kind === 'wood' ? 4.6 : 3.6);
+  const repeat = textureRepeat(kind);
+  texture.repeat.set(...repeat);
   texture.colorSpace = THREE.NoColorSpace;
   texture.needsUpdate = true;
   texture.userData.surfaceKind = kind;
@@ -124,6 +166,110 @@ export function makePremiumTileMaterial({ color, light = false, coarsePointer = 
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = light ? 'board-light' : 'board-dark';
+  return material;
+}
+
+const DECOR_PRESETS = Object.freeze({
+  wood: {
+    metalness: 0.035,
+    roughness: 0.5,
+    clearcoat: 0.56,
+    clearcoatRoughness: 0.15,
+    sheen: 0.08,
+    sheenRoughness: 0.46,
+    ior: 1.47,
+    specularIntensity: 0.7,
+    envMapIntensity: 0.86,
+    bumpScale: 0.012,
+  },
+  leather: {
+    metalness: 0.01,
+    roughness: 0.61,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.28,
+    sheen: 0.34,
+    sheenRoughness: 0.72,
+    ior: 1.45,
+    specularIntensity: 0.48,
+    envMapIntensity: 0.54,
+    bumpScale: 0.018,
+  },
+  brass: {
+    metalness: 0.9,
+    roughness: 0.24,
+    clearcoat: 0.72,
+    clearcoatRoughness: 0.1,
+    sheen: 0.06,
+    sheenRoughness: 0.28,
+    ior: 1.5,
+    specularIntensity: 1,
+    envMapIntensity: 1.28,
+    bumpScale: 0.004,
+  },
+  fabric: {
+    metalness: 0,
+    roughness: 0.88,
+    clearcoat: 0.025,
+    clearcoatRoughness: 0.62,
+    sheen: 0.5,
+    sheenRoughness: 0.82,
+    ior: 1.44,
+    specularIntensity: 0.4,
+    envMapIntensity: 0.46,
+    bumpScale: 0.02,
+  },
+  lacquer: {
+    metalness: 0.03,
+    roughness: 0.32,
+    clearcoat: 0.78,
+    clearcoatRoughness: 0.09,
+    sheen: 0.08,
+    sheenRoughness: 0.28,
+    ior: 1.52,
+    specularIntensity: 0.88,
+    envMapIntensity: 1.02,
+    bumpScale: 0.004,
+  },
+});
+
+export function makePremiumDecorMaterial({
+  color,
+  kind = 'wood',
+  coarsePointer = false,
+  seed = 1,
+  emissive = 0x000000,
+  emissiveIntensity = 0,
+  opacity = 1,
+  sheenColor = color,
+  specularColor = 0xffffff,
+  ...overrides
+}) {
+  const preset = DECOR_PRESETS[kind] || DECOR_PRESETS.wood;
+  const micro = coarsePointer ? null : createMicroSurfaceMap({ seed, kind, coarsePointer });
+  const values = { ...preset, ...overrides };
+  const material = new THREE.MeshPhysicalMaterial({
+    color,
+    metalness: values.metalness,
+    roughness: values.roughness,
+    roughnessMap: micro,
+    bumpMap: micro,
+    bumpScale: micro ? values.bumpScale : 0,
+    clearcoat: values.clearcoat,
+    clearcoatRoughness: values.clearcoatRoughness,
+    sheen: values.sheen,
+    sheenRoughness: values.sheenRoughness,
+    sheenColor: new THREE.Color(sheenColor),
+    ior: values.ior,
+    specularIntensity: values.specularIntensity,
+    specularColor: new THREE.Color(specularColor),
+    envMapIntensity: values.envMapIntensity,
+    emissive,
+    emissiveIntensity,
+    transparent: opacity < 1,
+    opacity,
+  });
+  material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
+  material.userData.surfaceRole = `decor-${kind}`;
   return material;
 }
 
