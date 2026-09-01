@@ -1,3 +1,5 @@
+// Pure motion/lighting helpers live here so the 3D scene can be tuned and tested
+// without coupling chess rules or game-state ownership to the renderer.
 export function clamp01(value) {
   return Math.min(1, Math.max(0, Number(value) || 0));
 }
