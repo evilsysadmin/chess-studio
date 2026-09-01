@@ -5,18 +5,23 @@
  */
 @media (min-width: 1081px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(480px, calc(100dvh - 16.8rem), 680px);
+    height: clamp(500px, calc(100dvh - 15.2rem), 720px);
+  }
+
+  /* Final post-tone-mapping trim: keep highlights readable without flattening the room. */
+  .game-screen .game-board-stack-3d .board3d-main-canvas {
+    filter: saturate(1.05) contrast(1.025) brightness(.94);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 900px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(445px, calc(100dvh - 16.7rem), 620px);
+    height: clamp(465px, calc(100dvh - 14.35rem), 655px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 780px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(410px, calc(100dvh - 16.2rem), 520px);
+    height: clamp(430px, calc(100dvh - 14.05rem), 555px);
   }
 }
