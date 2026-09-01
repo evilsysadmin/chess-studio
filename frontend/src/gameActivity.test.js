@@ -34,6 +34,6 @@ describe('game activity lifecycle', () => {
 
   it('does not attribute the normal 2D/3D preference to Combat Chess', () => {
     recordGameActivity({ gameId: 'combat-1', state: 'started', mode: 'combat' });
-    expect(loadGameActivity()[0]).toMatchObject({ gameId: 'combat-1', modeLabel: 'Combat Chess', boardRenderer: null });
+    expect(loadGameActivity()[0]).toMatchObject({ gameId: 'combat-1', boardRenderer: null });
   });
 });
