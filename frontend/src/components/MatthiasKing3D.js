@@ -63,7 +63,10 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
 
   const segments = coarsePointer ? 24 : 42;
   const front = faceTowardCamera ? 1 : -1;
-  const face = mat(0xd3bea0, {
+  // The black king still has Matthias' pale face. Piece allegiance belongs to
+  // the body/uniform; darkening the skin with the black set erases his eyes,
+  // brows and mouth at tactical-camera distance.
+  const face = mat(pieceColor === 'b' ? 0xeee1c9 : 0xd3bea0, {
     metalness: 0,
     roughness: 0.82,
     clearcoat: 0.025,
@@ -71,7 +74,7 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
     envMapIntensity: 0.18,
     specularIntensity: 0.14,
   });
-  const faceShadow = mat(0x9b7659, {
+  const faceShadow = mat(pieceColor === 'b' ? 0xbda78b : 0x9b7659, {
     metalness: 0,
     roughness: 0.92,
     clearcoat: 0.01,
