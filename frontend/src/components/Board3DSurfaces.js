@@ -46,6 +46,15 @@ export function getCameraFramingProfile(aspect) {
       };
 }
 
+export function warRoomRenderBudget({ coarsePointer = false, devicePixelRatio = 1 } = {}) {
+  const dpr = Math.max(0.5, Number(devicePixelRatio) || 1);
+  return Object.freeze({
+    pixelRatio: Math.min(dpr, coarsePointer ? 1 : 1.35),
+    shadowMapSize: coarsePointer ? 512 : 1024,
+    shadowRadius: coarsePointer ? 1.1 : 1.8,
+  });
+}
+
 function nextNoise(state) {
   const next = (Math.imul(state, 1664525) + 1013904223) >>> 0;
   return [next, ((next >>> 8) & 0xffff) / 0xffff];
@@ -291,12 +300,27 @@ function tuneExistingDecorMaterial(material, kind, coarsePointer, seed) {
   material.needsUpdate = true;
 }
 
+function tuneShadowBudget(object, budget) {
+  const shadow = object?.castShadow ? object.shadow : null;
+  if (!shadow?.mapSize?.set) return;
+  const currentWidth = Number(shadow.mapSize.width) || budget.shadowMapSize;
+  const currentHeight = Number(shadow.mapSize.height) || budget.shadowMapSize;
+  if (Math.max(currentWidth, currentHeight) > budget.shadowMapSize) {
+    shadow.map?.dispose?.();
+    shadow.map = null;
+    shadow.mapSize.set(budget.shadowMapSize, budget.shadowMapSize);
+  }
+  if (Number.isFinite(shadow.radius)) shadow.radius = Math.min(shadow.radius, budget.shadowRadius);
+}
+
 export function applyPremiumDecorSurfacePass(root, { coarsePointer = false } = {}) {
   const seen = new Set();
   const stats = { wood: 0, leather: 0, fabric: 0, metal: 0, total: 0 };
+  const budget = warRoomRenderBudget({ coarsePointer });
   let index = 0;
 
   root?.traverse?.((object) => {
+    tuneShadowBudget(object, budget);
     const list = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of list) {
       if (!material || seen.has(material)) continue;
@@ -315,6 +339,7 @@ export function applyPremiumDecorSurfacePass(root, { coarsePointer = false } = {
   if (root?.userData) {
     root.userData.premiumDecorSurfacePass = PREMIUM_SURFACE_VERSION;
     root.userData.premiumDecorSurfaceStats = stats;
+    root.userData.warRoomRenderBudget = budget;
   }
   return stats;
 }
@@ -330,6 +355,16 @@ function disposeEnvironmentScene(scene) {
 export function installPremiumEnvironment(renderer, scene, { coarsePointer = false } = {}) {
   if (!renderer || !scene) return () => {};
   let cancelled = false;
+  const budget = warRoomRenderBudget({
+    coarsePointer,
+    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 1,
+  });
+  // Board3D históricamente fijaba 1.75/1.25 antes de entrar aquí. Reaplicamos
+  // inmediatamente el presupuesto efectivo para que el primer render ya nazca
+  // a coste razonable, en lugar de esperar a que una animación detecte lentitud.
+  renderer.setPixelRatio?.(budget.pixelRatio);
+  scene.userData.warRoomRenderBudget = budget;
+
   const runDecorPass = () => {
     if (!cancelled) applyPremiumDecorSurfacePass(scene, { coarsePointer });
   };
