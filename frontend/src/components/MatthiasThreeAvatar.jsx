@@ -14,12 +14,12 @@ export function matthiasThreeMotionProfile({ scene = '', activity = '', speaking
   const sceneKey = cue(scene);
   const activityKey = cue(activity);
   if (/sleep|sobando/.test(sceneKey) || /sobando|cabeceando/.test(activityKey)) return 'sleep';
-  if (/coffee|beer-break|night/.test(sceneKey) || /cafe|cerve/.test(activityKey)) return 'sip';
+  if (/coffee|beer-break|night|breakfast/.test(sceneKey) || /cafe|cerve|desayuno/.test(activityKey)) return 'sip';
   if (/lunch|bocata/.test(sceneKey) || /comida|cena|repostando/.test(activityKey)) return 'bite';
   if (/inception/.test(sceneKey) || /partida|ajedrez dentro/.test(activityKey)) return 'think';
   if (/ops/.test(sceneKey) || /operacion|notas/.test(activityKey)) return 'write';
   if (/dossier/.test(sceneKey) || /auditoria|expedient/.test(activityKey)) return 'dossier';
-  if (/strategy|weekly|reading/.test(sceneKey) || /lectura|estudio|manual|estrategia/.test(activityKey)) return 'read';
+  if (/strategy|weekly|reading/.test(sceneKey) || /lectura|estudio|manual|estrategia|prensa/.test(activityKey)) return 'read';
   return 'idle';
 }
 
@@ -198,6 +198,7 @@ export default function MatthiasThreeAvatar({
     let raf = 0;
     let disposed = false;
     let resizeObserver = null;
+    let resizeFallback = null;
     let geometry = null;
     let material = null;
     let texture = null;
@@ -205,6 +206,7 @@ export default function MatthiasThreeAvatar({
     setReady(false);
     setFailed(false);
     root.dataset.threeReady = 'false';
+    root.dataset.threeFailed = 'false';
     root.dataset.threeFrame = '0';
     root.dataset.threeEnergy = '0';
 
@@ -254,10 +256,12 @@ export default function MatthiasThreeAvatar({
           resizeObserver = new ResizeObserver(doResize);
           resizeObserver.observe(canvas);
         } else {
-          window.addEventListener('resize', doResize);
+          resizeFallback = doResize;
+          window.addEventListener('resize', resizeFallback);
         }
 
         let frames = 0;
+        let peakEnergy = 0;
         const startedAt = performance.now();
         const render = (stamp) => {
           if (disposed) return;
@@ -286,13 +290,17 @@ export default function MatthiasThreeAvatar({
           }
           renderer.render(scene3d, camera);
           frames += 1;
+          peakEnergy = Math.max(peakEnergy, energy);
           if (frames === 1) {
             setReady(true);
             root.dataset.threeReady = 'true';
           }
           if (frames % 6 === 0 || frames === 1) {
             root.dataset.threeFrame = String(frames);
-            root.dataset.threeEnergy = energy.toFixed(3);
+            // Guardamos el pico observado, no sólo la muestra de este frame.
+            // Así el gate verifica que hubo movimiento real aunque consulte
+            // durante la pausa natural entre dos gestos.
+            root.dataset.threeEnergy = peakEnergy.toFixed(3);
           }
           if (!reducedMotion) raf = window.requestAnimationFrame(render);
         };
@@ -312,7 +320,7 @@ export default function MatthiasThreeAvatar({
       disposed = true;
       if (raf) window.cancelAnimationFrame(raf);
       resizeObserver?.disconnect?.();
-      if (!resizeObserver) window.removeEventListener('resize', () => {});
+      if (resizeFallback) window.removeEventListener('resize', resizeFallback);
       geometry?.dispose?.();
       material?.dispose?.();
       texture?.dispose?.();
