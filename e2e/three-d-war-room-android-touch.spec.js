@@ -74,25 +74,15 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
-test('War Room · Android selecciona en pointerdown y juega sin depender de touchEnd', async ({ page }) => {
+test('War Room · Android selecciona una pieza en pointerdown y muestra destinos reales', async ({ page }) => {
   test.setTimeout(75_000);
   await page.addInitScript(() => {
     window.__warRoomPointerCaptures = [];
-    window.__warRoomPointerUps = [];
     const original = Element.prototype.setPointerCapture;
     Element.prototype.setPointerCapture = function patchedSetPointerCapture(pointerId) {
       window.__warRoomPointerCaptures.push({ pointerId, className: String(this.className || '') });
       return original?.call(this, pointerId);
     };
-    document.addEventListener('pointerup', (event) => {
-      if (!event.target?.classList?.contains('board3d-main-canvas')) return;
-      window.__warRoomPointerUps.push({
-        trusted: event.isTrusted,
-        pointerType: event.pointerType,
-        clientX: event.clientX,
-        clientY: event.clientY,
-      });
-    }, true);
   });
 
   const requestLog = [];
@@ -126,17 +116,19 @@ test('War Room · Android selecciona en pointerdown y juega sin depender de touc
   const cdp = await page.context().newCDPSession(page);
 
   await touchStart(cdp, from);
-  await expect.poll(() => canvas.getAttribute('data-war-room-atomic-tap')).toBe('dispatched');
+  await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect.poll(async () => Number(await board3d.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
   await expect.poll(() => movePosts(requestLog).length).toBe(0);
   expect(await page.evaluate(() => window.__warRoomPointerCaptures.some((entry) => entry.className.includes('board3d-main-canvas')))).toBe(true);
-  expect(await page.evaluate(() => window.__warRoomPointerUps.some((entry) => entry.trusted === false && entry.pointerType === 'touch'))).toBe(true);
 
   await touchMove(cdp, from);
   await touchEnd(cdp);
 
   await touchStart(cdp, to);
-  // Critical contract: the move must happen from the second pointerdown,
-  // before Android delivers the real touchEnd.
+  await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e4');
+  // Critical contract: moving to a legal destination must happen on the real
+  // second pointerdown, before Android delivers touchEnd.
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await touchEnd(cdp);
 });
