@@ -31,6 +31,12 @@ describe('WarRoom3DMotion', () => {
     expect(capture.captureTilt).toBeGreaterThan(0.5);
   });
 
+  it('keeps move animations brisk so input is not hidden behind cinematic latency', () => {
+    expect(deriveMoveKinetics({ movingType: 'p' }).duration).toBeLessThanOrEqual(230);
+    expect(deriveMoveKinetics({ movingType: 'q', capture: true }).duration).toBeLessThanOrEqual(300);
+    expect(deriveMoveKinetics({ movingType: 'q', capture: true, coarsePointer: true }).duration).toBeLessThanOrEqual(230);
+  });
+
   it('uses restrained check light and a dimmer terminal tableau', () => {
     const normal = reactiveLightProfile();
     const check = reactiveLightProfile({ check: true });
@@ -40,10 +46,11 @@ describe('WarRoom3DMotion', () => {
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);
   });
 
-  it('degrades render scale only after sustained slow frames', () => {
-    expect(adaptiveRenderScale({ slowFrameCount: 2 })).toBe(1.75);
-    expect(adaptiveRenderScale({ slowFrameCount: 12 })).toBe(1.35);
-    expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 12 })).toBe(1);
+  it('starts animations on a sane HiDPI budget and degrades quickly on slow frames', () => {
+    expect(adaptiveRenderScale({ slowFrameCount: 0 })).toBe(1.35);
+    expect(adaptiveRenderScale({ slowFrameCount: 6 })).toBe(1);
+    expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 0 })).toBe(1);
+    expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 5 })).toBe(0.8);
   });
 
   it('does not expose the old document-level pointer suppression hook', async () => {
