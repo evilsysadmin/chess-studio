@@ -6,7 +6,7 @@
 // nuevo. Reusa `difficultyForRating` (ya existe en playerRating.js) para
 // traducir tu rating a un número 0-100 comparable con la dificultad.
 
-import { difficultyForRating } from './playerRating.js';
+import { difficultyForRating, PROVISIONAL_GAMES } from './playerRating.js';
 
 // Umbrales de brecha (dificultad elegida menos tu dificultad "justa"
 // según rating) — por debajo de HANDICAP_THRESHOLDS[0].gap no hay
@@ -19,9 +19,12 @@ const HANDICAP_LEVELS = [
 ];
 
 // Devuelve { id, label } del hándicap que corresponde, o null si la
-// brecha es chica y no hace falta ninguno.
+// brecha es chica y no hace falta ninguno. El hándicap compara contra la
+// fuerza base que corresponde al ELO: el alivio provisional y la forma
+// reciente sirven para elegir la próxima CPU automática, no para convertir
+// una selección manual en un hándicap distinto según el estado local actual.
 export function handicapForGap(playerRating, cpuDifficulty) {
-  const fairDifficulty = difficultyForRating(playerRating);
+  const fairDifficulty = difficultyForRating(playerRating, [], PROVISIONAL_GAMES);
   const gap = cpuDifficulty - fairDifficulty;
 
   let chosen = null;
