@@ -2,17 +2,20 @@
    Keep this layer scoped to board-game / 3D classes so the rest of Chess Studio
    retains the existing progressive-disclosure layout. */
 
-/* Desktop game header: useful controls stay visible and sit deliberately at
-   the upper-right instead of collapsing into anonymous icon dots. */
+/* Desktop game header: useful controls stay visible but stop stealing board
+   height. The turn state itself is rendered as an in-room pill below. */
 @media (min-width: 821px) {
   .app-shell-board-game .masthead-game-compact {
     width: min(100%, 1680px);
-    padding-inline: clamp(.75rem, 1.4vw, 1.35rem);
+    min-height: 27px;
+    margin-bottom: .08rem;
+    padding: 0 clamp(.75rem, 1.4vw, 1.35rem) .08rem;
     box-sizing: border-box;
   }
 
   .app-shell-board-game .masthead-game-compact .masthead-top-row {
     width: 100%;
+    min-height: 27px;
     justify-content: flex-end;
   }
 
@@ -20,17 +23,22 @@
     width: auto;
     margin-left: auto;
     padding-right: clamp(.15rem, .65vw, .7rem);
-    gap: .5rem;
+    gap: .36rem;
   }
 
   .app-shell-board-game .masthead-game-compact .masthead-feedback-trigger,
   .app-shell-board-game .masthead-game-compact .masthead-account-trigger {
     width: auto;
-    min-width: 112px;
-    min-height: 36px;
-    padding: .35rem .68rem;
+    min-width: 104px;
+    min-height: 30px;
+    padding: .24rem .58rem;
     justify-content: center;
-    border-radius: 9px;
+    border-radius: 8px;
+  }
+
+  .app-shell-board-game .masthead-game-compact .settings-gear-button {
+    width: 30px;
+    height: 30px;
   }
 
   .app-shell-board-game .masthead-game-compact .masthead-feedback-trigger > span:last-child,
@@ -47,48 +55,151 @@
   }
 
   .app-shell-board-game .masthead-game-compact .masthead-account-avatar {
-    width: 25px;
-    height: 25px;
+    width: 23px;
+    height: 23px;
   }
 }
 
-/* The bottom human rail already has the global status line above the board.
-   In 3D, repeating TU TURNO here wastes height and adds visual noise. */
+/* Apariencia tiene un único dueño contextual. El modal ya contiene Vista 2D/3D,
+   skin y el resto de preferencias visuales; por tanto no repetimos conmutadores
+   en el footer ni debajo de Matthias. */
+.game-screen .board-renderer-toggle,
+.game-3d-warroom-controls {
+  display: none !important;
+}
+
+.board-appearance-tab b {
+  font-size: 0;
+}
+
+.board-appearance-tab b::after {
+  content: 'Apariencia';
+  font-size: .68rem;
+}
+
+/* El comentario 3D nace visualmente del retrato de Matthias. Se retira la
+   viñeta flotante sobre el tablero, que parecía venir del éter. */
+.game-board-stack-3d > .matthias-board-bubble {
+  display: none !important;
+}
+
+.game-3d-warroom-message {
+  position: relative;
+  border-radius: 4px 12px 12px 12px;
+}
+
+.game-3d-warroom-message::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: -10px;
+  width: 18px;
+  height: 18px;
+  border-left: 1px solid color-mix(in srgb, var(--brass) 54%, var(--studio-line));
+  border-top: 1px solid color-mix(in srgb, var(--brass) 54%, var(--studio-line));
+  background: #111720;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.game-3d-warroom-message > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* The bottom human rail already has the global state; in 3D, repeating TU TURNO
+   inside the rail wastes height. Active state + the top pill make ownership clear. */
 .game-board-stack-3d .game-player-rail.is-human .game-player-turn {
   display: none;
 }
 
 .game-board-stack-3d .game-player-rail.is-human {
-  min-height: 42px;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  gap: .5rem;
-  padding: .32rem .5rem;
+  min-height: 38px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: .42rem;
+  padding: .24rem .42rem;
 }
 
 .game-board-stack-3d .game-player-rail.is-human .game-player-avatar {
-  width: 30px;
-  height: 30px;
+  width: 27px;
+  height: 27px;
   border-radius: 7px;
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .game-board-stack-3d .game-player-rail.is-human .game-player-identity strong {
-  font-size: .78rem;
+  font-size: .75rem;
 }
 
 .game-board-stack-3d .game-player-rail.is-human .game-player-identity small {
-  font-size: .61rem;
+  font-size: .58rem;
 }
 
-/* Compact command deck: one clean line on desktop, freeing real viewport
-   height for the board and the physical set. */
+/* Turn state floats over the room instead of consuming its own row. */
+.game-layout-3d .board-column {
+  position: relative;
+}
+
+.game-layout-3d .status-line {
+  position: absolute;
+  z-index: 18;
+  top: .86rem;
+  left: 50%;
+  width: max-content;
+  max-width: min(44vw, 430px);
+  min-height: 27px !important;
+  margin: 0;
+  padding: .34rem .72rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 48%, rgba(53,42,28,.78));
+  border-radius: 999px;
+  background: rgba(8,12,18,.9);
+  box-shadow: 0 8px 24px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.035);
+  backdrop-filter: blur(9px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Footer real de la mesa: identidad del jugador + acciones en una sola línea.
+   Recupera una fila completa para el tablero en desktop. */
 @media (min-width: 821px) {
-  .game-board-stack-3d .game-command-deck {
-    margin-top: -.08rem;
+  .game-screen .game-board-stack.game-board-stack-3d {
+    display: grid;
+    grid-template-columns: minmax(185px, .72fr) minmax(0, 1.28fr);
+    grid-template-areas:
+      'board board'
+      'player controls';
+    column-gap: .42rem;
+    row-gap: .34rem;
+  }
+
+  .game-board-stack-3d > .board3d-main-shell,
+  .game-board-stack-3d > .board3d-fallback {
+    grid-area: board;
+  }
+
+  .game-board-stack-3d > .game-player-rail.is-human {
+    grid-area: player;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .game-board-stack-3d > .game-command-deck {
+    grid-area: controls;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .game-board-stack-3d > .move-availability-note {
+    grid-column: 1 / -1;
   }
 
   .game-board-stack-3d .game-controls {
-    padding: .28rem .38rem;
+    width: 100%;
+    min-height: 38px;
+    margin: 0;
+    padding: .22rem .3rem;
   }
 
   .game-board-stack-3d .game-controls-actions {
@@ -96,13 +207,14 @@
     align-items: center;
     justify-content: flex-end;
     flex-wrap: nowrap;
-    gap: .34rem;
+    gap: .28rem;
   }
 
   .game-board-stack-3d .game-controls-actions .secondary-btn {
-    min-height: 34px;
-    padding: .34rem .55rem;
-    font-size: .64rem;
+    min-height: 32px;
+    height: 32px;
+    padding: .28rem .48rem;
+    font-size: .61rem;
     white-space: nowrap;
   }
 
@@ -111,24 +223,24 @@
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(480px, calc(100dvh - 16.7rem), 690px);
+    height: clamp(520px, calc(100dvh - 12.8rem), 760px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 900px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(450px, calc(100dvh - 15.9rem), 620px);
+    height: clamp(485px, calc(100dvh - 12.2rem), 690px);
   }
 }
 
 @media (min-width: 1081px) and (max-height: 780px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: clamp(405px, calc(100dvh - 15.1rem), 520px);
+    height: clamp(435px, calc(100dvh - 11.65rem), 580px);
   }
 }
 
-/* The portrait is intentionally more alive than before, but not a looping
-   puppet. Movement is event/gesture driven and therefore remains occasional. */
+/* The portrait is intentionally alive but not a looping puppet. Movement is
+   event/gesture driven and therefore remains occasional. */
 .game-3d-matthias-portrait-wrap.is-ordering .game-3d-matthias-portrait {
   animation: matthias-warroom-order .62s cubic-bezier(.18,.82,.24,1) 2 alternate;
 }
@@ -155,7 +267,30 @@
 
 @media (max-width: 820px) {
   .game-board-stack-3d .game-player-rail.is-human {
-    min-height: 40px;
+    min-height: 38px;
+  }
+
+  .game-layout-3d .status-line {
+    position: sticky;
+    top: max(.3rem, env(safe-area-inset-top));
+    left: auto;
+    width: 100%;
+    max-width: none;
+    min-height: 28px !important;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .game-3d-warroom-message {
+    border-radius: 4px 12px 12px 12px;
+  }
+
+  .game-3d-warroom-message::before {
+    left: -9px;
+    top: 22px;
+    border-top: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--brass) 54%, var(--studio-line));
+    transform: rotate(45deg);
   }
 }
 

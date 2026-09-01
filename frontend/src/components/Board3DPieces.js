@@ -2,10 +2,16 @@ import * as THREE from 'three';
 import { buildMatthiasKing3D } from './MatthiasKing3D.js';
 import { makePremiumPieceMaterial } from './Board3DSurfaces.js';
 import { SKIN_3D } from './Board3DConfig.js';
+import { addPieceSkinDetails, reinforcePieceSkinMaterial } from './Board3DSkinDecor.js';
 import { COARSE_PIECE_HIT_TARGET } from './WarRoom3DTouch.js';
 
-function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false) {
-  return makePremiumPieceMaterial({ color, skin, accent, side, coarsePointer });
+function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false, skinId = 'studio') {
+  return reinforcePieceSkinMaterial(
+    makePremiumPieceMaterial({ color, skin, accent, side, coarsePointer }),
+    color,
+    skinId,
+    { accent },
+  );
 }
 
 function addMesh(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0]) {
@@ -133,18 +139,25 @@ function buildKnight(main, accent, coarsePointer = false) {
 
 export function buildPiece(type, color, skinId, coarsePointer = false, options = {}) {
   const skin = SKIN_3D[skinId] || SKIN_3D.studio;
-  const main = makeMaterial(color === 'w' ? skin.white : skin.black, skin, false, color, coarsePointer);
-  const accent = makeMaterial(color === 'w' ? skin.whiteAccent : skin.blackAccent, skin, true, color, coarsePointer);
+  const mainColor = color === 'w' ? skin.white : skin.black;
+  const accentColor = color === 'w' ? skin.whiteAccent : skin.blackAccent;
+  const main = makeMaterial(mainColor, skin, false, color, coarsePointer, skinId);
+  const accent = makeMaterial(accentColor, skin, true, color, coarsePointer, skinId);
 
   if (options.matthiasKing) {
-    return buildMatthiasKing3D(main, accent, {
+    const matthias = buildMatthiasKing3D(main, accent, {
       coarsePointer,
       faceTowardCamera: options.faceTowardCamera !== false,
+      pieceColor: color,
+      skinId,
     });
+    addPieceSkinDetails(matthias, 'k', skinId, accent, coarsePointer);
+    return matthias;
   }
 
   if (type === 'n') {
     const knight = buildKnight(main, accent, coarsePointer);
+    addPieceSkinDetails(knight, type, skinId, accent, coarsePointer);
     knight.scale.setScalar(0.9);
     return knight;
   }
@@ -186,6 +199,7 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
   }
 
   addSignatureDetail(group, type, accent, coarsePointer);
+  addPieceSkinDetails(group, type, skinId, accent, coarsePointer);
   addContactShadow(group, coarsePointer);
   group.scale.setScalar(0.9);
   return group;

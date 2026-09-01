@@ -74,6 +74,16 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
+async function open3DFromAppearance(page) {
+  await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
+  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
+  await dialog.getByRole('radio', { name: /3D$/ }).click();
+  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+}
+
 test('War Room · Android selecciona una pieza en pointerdown y muestra destinos reales', async ({ page }) => {
   test.setTimeout(75_000);
   await page.addInitScript(() => {
@@ -93,9 +103,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 
-  const rendererToggle = page.getByRole('button', { name: 'Vista · 2D', exact: true });
-  await expect(rendererToggle).toBeVisible();
-  await rendererToggle.click();
+  await open3DFromAppearance(page);
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
