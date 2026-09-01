@@ -61,7 +61,7 @@ async function expectThreeScene(corner, profile, label) {
 }
 
 for (const [hour, profile, label] of [
-  [6, 'sip', 'café de campaña'],
+  [7, 'sip', 'café de campaña'],
   [12, 'bite', 'comida táctica'],
   [16, 'write', 'operación y notas'],
   [17, 'dossier', 'auditoría del expediente'],
