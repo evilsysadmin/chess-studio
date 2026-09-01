@@ -162,15 +162,23 @@ test('staging live · alta protegida → login real → Matthias → Escuela 3D 
     await expect(gameStatus(page)).toBeVisible({ timeout: 30_000 });
 
     // Staging estrena 3D por defecto para perfiles sin preferencia guardada.
-    // El smoke lo acredita primero y después vuelve a 2D porque clickBoardMove
-    // usa los botones accesibles de casilla como contrato determinista. La War
-    // Room puede seguir asentando su layout/animación aunque el control ya sea
-    // visible y activo; force evita confundir ese micro-reflow con un fallo UI.
-    const activeThreeD = page.getByRole('button', { name: 'Vista · 3D', exact: true });
-    await expect(activeThreeD).toBeVisible({ timeout: 30_000 });
-    await expect(activeThreeD).toHaveAttribute('aria-pressed', 'true');
-    await activeThreeD.click({ force: true });
-    await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeVisible();
+    // El selector duplicado 2D/3D ya no forma parte de la partida: el contrato
+    // real es War Room → Apariencia → representación del tablero. Acreditamos
+    // primero el 3D desplegado y luego elegimos 2D para que clickBoardMove use
+    // los botones accesibles de casilla como contrato determinista.
+    const warRoom3d = page.locator('[data-board3d-war-room="true"]');
+    await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+
+    const appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
+    await expect(appearanceDialog).toBeVisible();
+    await expect(appearanceDialog.getByRole('radiogroup', { name: 'Representación del tablero' })).toBeVisible();
+    await expect(appearanceDialog.getByRole('radio', { name: /3D$/ })).toHaveAttribute('aria-checked', 'true');
+    await appearanceDialog.getByRole('radio', { name: /2D$/ }).click();
+    await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+
+    await expect(page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible();
 
     const moveResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
