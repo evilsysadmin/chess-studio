@@ -34,11 +34,15 @@
   white-space: nowrap;
 }
 
+/* En una apertura normal el rey rival está en la fila lejana y ligeramente
+   por encima del centro visual de la cámara táctica. El bocadillo vive dentro
+   del propio shell 3D (portal), no en la columna derecha, y su cola apunta al
+   rey Matthias. Así la lectura es "habla la pieza", no "habla el tablero". */
 .matthias-3d-opening-banter {
   position: absolute;
-  top: clamp(3.5rem, 10%, 5.2rem);
-  right: clamp(.85rem, 4.5%, 4.8rem);
-  width: min(24rem, 44%);
+  top: 36%;
+  left: 50%;
+  width: min(23rem, 44%);
   margin: 0;
   padding: .84rem 1rem .88rem;
   border: 2px solid rgba(43, 34, 26, .96);
@@ -46,22 +50,23 @@
   background: linear-gradient(145deg, rgba(247, 239, 216, .98), rgba(218, 202, 162, .96));
   box-shadow: .28rem .34rem 0 rgba(26, 18, 12, .48), 0 .7rem 2rem rgba(0, 0, 0, .38);
   color: #211a14;
-  transform-origin: 85% 100%;
+  transform: translate(-50%, -100%);
+  transform-origin: 50% 100%;
   animation: matthias-3d-banter-in .22s cubic-bezier(.2, .8, .2, 1), matthias-3d-banter-out .38s ease 4.28s forwards;
 }
 
 .matthias-3d-opening-banter::before {
   content: '';
   position: absolute;
-  right: 1.55rem;
-  bottom: -.84rem;
-  width: 1.42rem;
-  height: 1.42rem;
+  left: 50%;
+  bottom: -.72rem;
+  width: 1.18rem;
+  height: 1.18rem;
   border-right: 2px solid rgba(43, 34, 26, .96);
   border-bottom: 2px solid rgba(43, 34, 26, .96);
   background: #dacaa2;
-  transform: skewY(-28deg) rotate(24deg);
-  transform-origin: 0 0;
+  transform: translateX(-50%) rotate(45deg);
+  transform-origin: 50% 50%;
 }
 
 .matthias-3d-opening-banter-name {
@@ -85,12 +90,12 @@
 }
 
 @keyframes matthias-3d-banter-in {
-  from { opacity: 0; transform: translate(.45rem, .35rem) scale(.84) rotate(1.5deg); }
-  to { opacity: 1; transform: translate(0, 0) scale(1) rotate(0); }
+  from { opacity: 0; transform: translate(-50%, calc(-100% + .42rem)) scale(.84) rotate(1.5deg); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1) rotate(0); }
 }
 
 @keyframes matthias-3d-banter-out {
-  to { opacity: 0; transform: translate(.18rem, -.15rem) scale(.96); }
+  to { opacity: 0; transform: translate(-50%, calc(-100% - .15rem)) scale(.96); }
 }
 
 @media (max-width: 760px) {
@@ -103,9 +108,9 @@
   }
 
   .matthias-3d-opening-banter {
-    top: 2.8rem;
-    right: .58rem;
-    width: min(18rem, 72%);
+    top: 38%;
+    left: 50%;
+    width: min(18rem, 76%);
     padding: .67rem .78rem .72rem;
     border-radius: .9rem .9rem .28rem .9rem;
   }
