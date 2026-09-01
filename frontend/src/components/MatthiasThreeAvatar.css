@@ -1,0 +1,64 @@
+.matthias-three-avatar {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent;
+}
+
+.matthias-three-avatar__canvas,
+.matthias-three-avatar__fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.matthias-three-avatar__canvas {
+  z-index: 2;
+  opacity: 0;
+  transition: opacity .22s ease;
+  pointer-events: none;
+}
+
+.matthias-three-avatar__fallback {
+  z-index: 1;
+  object-fit: cover;
+  object-position: 50% 44%;
+  opacity: 1;
+  transform: none !important;
+  animation: none !important;
+  transition: opacity .18s ease;
+  pointer-events: none;
+}
+
+.matthias-three-avatar.is-ready .matthias-three-avatar__canvas {
+  opacity: 1;
+}
+
+.matthias-three-avatar.is-ready .matthias-three-avatar__fallback {
+  opacity: 0;
+}
+
+.matthias-three-avatar.is-failed .matthias-three-avatar__canvas {
+  display: none;
+}
+
+.matthias-three-avatar.is-failed .matthias-three-avatar__fallback {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matthias-three-avatar__canvas,
+  .matthias-three-avatar__fallback {
+    transition: none;
+  }
+}
+
+html[data-reduced-motion='true'] .matthias-three-avatar__canvas,
+html[data-reduced-motion='true'] .matthias-three-avatar__fallback {
+  transition: none;
+}
