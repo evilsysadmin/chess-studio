@@ -32,7 +32,7 @@ function dispose(root) {
 describe('PremiumWarRoomScene', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('construye una sala de mando cinematográfica y reduce detalle geométrico en táctil', () => {
+  it('construye la sala teutónica con cortinas, chimenea, cuadro y luz cálida', () => {
     const desktop = buildPremiumWarRoomLayer(theme, true, false);
     const mobile = buildPremiumWarRoomLayer(theme, true, true);
     const desktopStats = sceneStats(desktop);
@@ -40,10 +40,13 @@ describe('PremiumWarRoomScene', () => {
 
     expect(desktop.name).toBe('premium-war-room-layer');
     expect(desktop.userData.premiumWarRoom).toBe(true);
-    expect(desktop.userData.premiumPass).toBe('cinematic-v2');
+    expect(desktop.userData.premiumPass).toBe('cinematic-v3-teutonic');
     expect(desktop.getObjectByName('coffered-paneling')).toBeTruthy();
     expect(desktop.getObjectByName('ceremonial-pawn-crest')).toBeTruthy();
     expect(desktop.getObjectByName('command-cabinet')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-fireplace')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-velvet-curtain-fold')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-sconce-flame')).toBeTruthy();
     expect(desktopStats.meshes).toBeGreaterThan(100);
     expect(desktopStats.lights).toBeGreaterThanOrEqual(6);
     expect(desktopStats.spotLights).toBeGreaterThanOrEqual(1);
@@ -58,7 +61,7 @@ describe('PremiumWarRoomScene', () => {
     const stats = sceneStats(table);
 
     expect(table.name).toBe('premium-table-layer');
-    expect(table.userData.premiumPass).toBe('cinematic-v2');
+    expect(table.userData.premiumPass).toBe('cinematic-v3-teutonic');
     expect(table.getObjectByName('emerald-table-inlay')).toBeTruthy();
     expect(stats.meshes).toBeGreaterThanOrEqual(25);
     expect(stats.lights).toBe(0);
