@@ -8,7 +8,7 @@ start = text.find(start_marker)
 end = text.find(end_marker, start)
 if start < 0 or end < 0:
     raise SystemExit(f'CI audit boundaries not found: start={start}, end={end}')
-new = """  for (const qualityJob of ['frontend', 'backend', 'e2e']) {
+new = r"""  for (const qualityJob of ['frontend', 'backend', 'e2e']) {
     const start = mainCiSource.indexOf(`\n  ${qualityJob}:\n`);
     if (start < 0) fail(`Falta job paralelo ${qualityJob}`);
     const tail = mainCiSource.slice(start + 1);
