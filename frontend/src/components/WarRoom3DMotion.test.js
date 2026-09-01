@@ -4,6 +4,8 @@ import {
   deriveMoveKinetics,
   inferCapturedPiece,
   reactiveLightProfile,
+  shadowRefreshInterval,
+  shouldRefreshShadowMap,
   smoothstep,
 } from './WarRoom3DMotion.js';
 
@@ -32,9 +34,9 @@ describe('WarRoom3DMotion', () => {
   });
 
   it('keeps move animations brisk so input is not hidden behind cinematic latency', () => {
-    expect(deriveMoveKinetics({ movingType: 'p' }).duration).toBeLessThanOrEqual(230);
-    expect(deriveMoveKinetics({ movingType: 'q', capture: true }).duration).toBeLessThanOrEqual(300);
-    expect(deriveMoveKinetics({ movingType: 'q', capture: true, coarsePointer: true }).duration).toBeLessThanOrEqual(230);
+    expect(deriveMoveKinetics({ movingType: 'p' }).duration).toBeLessThanOrEqual(190);
+    expect(deriveMoveKinetics({ movingType: 'q', capture: true }).duration).toBeLessThanOrEqual(240);
+    expect(deriveMoveKinetics({ movingType: 'q', capture: true, coarsePointer: true }).duration).toBeLessThanOrEqual(200);
   });
 
   it('uses restrained check light and a dimmer terminal tableau', () => {
@@ -46,11 +48,21 @@ describe('WarRoom3DMotion', () => {
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);
   });
 
-  it('starts animations on a sane HiDPI budget and degrades quickly on slow frames', () => {
-    expect(adaptiveRenderScale({ slowFrameCount: 0 })).toBe(1.35);
-    expect(adaptiveRenderScale({ slowFrameCount: 6 })).toBe(1);
+  it('cuts animation resolution before frame loss becomes obvious', () => {
+    expect(adaptiveRenderScale({ slowFrameCount: 0 })).toBe(1.2);
+    expect(adaptiveRenderScale({ slowFrameCount: 4 })).toBe(0.9);
     expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 0 })).toBe(1);
-    expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 5 })).toBe(0.8);
+    expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 4 })).toBe(0.75);
+  });
+
+  it('throttles the expensive shadow pass while preserving regular scene renders', () => {
+    expect(shadowRefreshInterval()).toBe(120);
+    expect(shadowRefreshInterval({ coarsePointer: true })).toBe(180);
+    expect(shouldRefreshShadowMap({ now: 0 })).toBe(true);
+    expect(shouldRefreshShadowMap({ now: 119, lastShadowAt: 0 })).toBe(false);
+    expect(shouldRefreshShadowMap({ now: 120, lastShadowAt: 0 })).toBe(true);
+    expect(shouldRefreshShadowMap({ now: 179, lastShadowAt: 0, coarsePointer: true })).toBe(false);
+    expect(shouldRefreshShadowMap({ now: 180, lastShadowAt: 0, coarsePointer: true })).toBe(true);
   });
 
   it('does not expose the old document-level pointer suppression hook', async () => {
