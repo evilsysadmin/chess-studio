@@ -1,0 +1,122 @@
+.matthias-3d-opening-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* El canvas conserva el viejo nodo por compatibilidad, pero la etiqueta visible
+   pertenece ya a la Sala de guerra y no compite con el HUD del renderer. */
+.game-board-stack-3d .board3d-fixed-camera-note {
+  display: none;
+}
+
+.warroom-chamber-label {
+  position: absolute;
+  top: .72rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 8.5rem);
+  padding: .34rem .72rem;
+  border: 1px solid rgba(208, 170, 93, .38);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(19, 15, 12, .86), rgba(10, 9, 8, .72));
+  box-shadow: 0 .3rem 1.1rem rgba(0, 0, 0, .32), inset 0 1px rgba(255, 230, 170, .06);
+  color: rgba(235, 216, 173, .9);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(.56rem, 1vw, .68rem);
+  font-weight: 800;
+  letter-spacing: .15em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.matthias-3d-opening-banter {
+  position: absolute;
+  top: clamp(3.5rem, 10%, 5.2rem);
+  right: clamp(.85rem, 4.5%, 4.8rem);
+  width: min(24rem, 44%);
+  margin: 0;
+  padding: .84rem 1rem .88rem;
+  border: 2px solid rgba(43, 34, 26, .96);
+  border-radius: 1.1rem 1.1rem .35rem 1.1rem;
+  background: linear-gradient(145deg, rgba(247, 239, 216, .98), rgba(218, 202, 162, .96));
+  box-shadow: .28rem .34rem 0 rgba(26, 18, 12, .48), 0 .7rem 2rem rgba(0, 0, 0, .38);
+  color: #211a14;
+  transform-origin: 85% 100%;
+  animation: matthias-3d-banter-in .22s cubic-bezier(.2, .8, .2, 1), matthias-3d-banter-out .38s ease 4.28s forwards;
+}
+
+.matthias-3d-opening-banter::before {
+  content: '';
+  position: absolute;
+  right: 1.55rem;
+  bottom: -.84rem;
+  width: 1.42rem;
+  height: 1.42rem;
+  border-right: 2px solid rgba(43, 34, 26, .96);
+  border-bottom: 2px solid rgba(43, 34, 26, .96);
+  background: #dacaa2;
+  transform: skewY(-28deg) rotate(24deg);
+  transform-origin: 0 0;
+}
+
+.matthias-3d-opening-banter-name {
+  display: block;
+  margin-bottom: .23rem;
+  color: #6b211f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.matthias-3d-opening-banter p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: clamp(.88rem, 1.35vw, 1.08rem);
+  font-weight: 850;
+  line-height: 1.28;
+  text-wrap: balance;
+}
+
+@keyframes matthias-3d-banter-in {
+  from { opacity: 0; transform: translate(.45rem, .35rem) scale(.84) rotate(1.5deg); }
+  to { opacity: 1; transform: translate(0, 0) scale(1) rotate(0); }
+}
+
+@keyframes matthias-3d-banter-out {
+  to { opacity: 0; transform: translate(.18rem, -.15rem) scale(.96); }
+}
+
+@media (max-width: 760px) {
+  .warroom-chamber-label {
+    top: .46rem;
+    max-width: calc(100% - 5.8rem);
+    padding: .28rem .52rem;
+    font-size: .5rem;
+    letter-spacing: .1em;
+  }
+
+  .matthias-3d-opening-banter {
+    top: 2.8rem;
+    right: .58rem;
+    width: min(18rem, 72%);
+    padding: .67rem .78rem .72rem;
+    border-radius: .9rem .9rem .28rem .9rem;
+  }
+
+  .matthias-3d-opening-banter p {
+    font-size: .82rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matthias-3d-opening-banter {
+    animation: none;
+  }
+}
