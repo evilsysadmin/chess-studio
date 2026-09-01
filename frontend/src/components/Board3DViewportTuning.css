@@ -1,8 +1,15 @@
 /*
- * Desktop-only viewport tuning for the 3D War Room.
- * Keep this separate from the base responsive layout: these values deliberately
- * spend previously-unused bottom space without changing the mobile stack.
+ * Viewport and input tuning for the 3D War Room.
+ * Desktop rules spend previously-unused bottom space; the coarse-pointer rule
+ * keeps Android touches owned by the board instead of letting browser panning
+ * cancel the pointer sequence before Board3D receives pointerup.
  */
+@media (pointer: coarse) {
+  .game-screen .game-board-stack-3d .board3d-main-canvas {
+    touch-action: none !important;
+  }
+}
+
 @media (min-width: 1081px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
     height: clamp(500px, calc(100dvh - 15.2rem), 720px);
