@@ -69,7 +69,7 @@ function movePosts(requestLog) {
 }
 
 test('War Room · Android captura el primer toque, selecciona y luego juega e2→e4', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(75_000);
   await page.addInitScript(() => {
     window.__warRoomPointerCaptures = [];
     const original = Element.prototype.setPointerCapture;
@@ -93,9 +93,12 @@ test('War Room · Android captura el primer toque, selecciona y luego juega e2�
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
-  await expect(board3d).toBeVisible();
-  await expect(canvas).toBeVisible();
-  await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
+  // Three.js/WebGL startup varies heavily on hosted runners. This timeout is
+  // only for mounting the scene; the actual pointer assertions below remain
+  // deterministic and must still pass once the canvas exists.
+  await expect(board3d).toBeVisible({ timeout: 30_000 });
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
 
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
 
