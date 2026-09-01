@@ -1,6 +1,6 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import Board from './Board.jsx';
-import { getConfiguredBoardRendererDefault } from '../userPreferences.js';
+import { getConfiguredBoardRendererDefault, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
 
@@ -9,7 +9,14 @@ export function getSchoolBoardRenderer() {
 }
 
 export default function SchoolBoard(props) {
-  const renderer = getSchoolBoardRenderer();
+  const [renderer, setRenderer] = useState(() => getSchoolBoardRenderer());
+
+  useEffect(() => {
+    const refreshRenderer = () => setRenderer(getSchoolBoardRenderer());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshRenderer);
+    return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshRenderer);
+  }, []);
+
   if (renderer !== '3d') return <Board {...props} />;
 
   return (
