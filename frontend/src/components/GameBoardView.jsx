@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Board from './Board.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -12,8 +12,13 @@ import { formatLongMove } from '../notation.js';
 import { seriesLiveMoment, seriesStatusText } from '../series.js';
 import { getUsername } from '../auth.js';
 import { zenModeSummary } from '../zenMode.js';
+import { speakCpuComment } from '../voiceCommentary.js';
 import { getBoardRenderer, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import { matthiasAngerState } from '../matthiasAnger.js';
+import {
+  matthiasAngerState,
+  matthiasCaptureReaction,
+  shouldMatthiasReactToCapture,
+} from '../matthiasAnger.js';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
 
@@ -22,6 +27,12 @@ const BOARD_BUBBLE_EVENTS = new Set([
   'PAWN_TAKES_QUEEN', 'QUEEN_CAPTURE', 'QUEEN_SACRIFICE_OFFER', 'PROMOTION',
   'SKEWER', 'DISCOVERED_CHECK', 'KNIGHT_FORK', 'PAWN_FORK', 'ROOK_SACRIFICE_OFFER',
   'QUEEN_EN_PRISE_TO_PAWN', 'PAWN_TAKES_ROOK', 'CHECK',
+]);
+
+const CAPTURE_REACTION_SUPPRESSED_EVENTS = new Set([
+  'PAWN_TAKES_QUEEN',
+  'QUEEN_CAPTURE',
+  'PAWN_TAKES_ROOK',
 ]);
 
 export default function GameBoardView({
@@ -37,6 +48,9 @@ export default function GameBoardView({
   side,
 }) {
   const [boardRenderer, setBoardRendererState] = useState(() => getBoardRenderer());
+  const [captureReaction, setCaptureReaction] = useState(null);
+  const captureReactionTimeoutRef = useRef(null);
+  const captureTrackingRef = useRef({ gameId: null, seenId: null, lastReaction: null });
   const liveSeriesMoment = context.seriesState ? seriesLiveMoment(context.seriesState) : null;
   const topColor = humanColor === 'w' ? 'b' : 'w';
   const bottomColor = humanColor;
@@ -54,10 +68,67 @@ export default function GameBoardView({
     .reverse()
     .find((message) => message?.by === 'cpu' && message?.text && BOARD_BUBBLE_EVENTS.has(message?.event));
 
+  if (captureTrackingRef.current.gameId !== game.id) {
+    captureTrackingRef.current = {
+      gameId: game.id,
+      seenId: matthiasAnger.latestHumanCapture?.id || null,
+      lastReaction: null,
+    };
+  }
+
+  const activeMatthiasMessage = captureReaction || latestMatthiasMessage;
+  const activeBoardBubble = captureReaction || latestBoardBubble;
+
   useEffect(() => {
     const refreshRenderer = () => setBoardRendererState(getBoardRenderer());
     window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshRenderer);
     return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshRenderer);
+  }, []);
+
+  useEffect(() => {
+    if (captureReactionTimeoutRef.current) window.clearTimeout(captureReactionTimeoutRef.current);
+    setCaptureReaction(null);
+  }, [game.id]);
+
+  useEffect(() => {
+    const capture = matthiasAnger.latestHumanCapture;
+    const tracking = captureTrackingRef.current;
+    if (!capture || tracking.seenId === capture.id) return;
+
+    // Marcamos la captura como vista incluso si estamos en 2D/Zen. Al entrar
+    // luego en War Room no queremos una protesta retrospectiva de hace 12 jugadas.
+    tracking.seenId = capture.id;
+    if (!isThreeD || zenMode) return;
+
+    const bubblePly = Number(latestBoardBubble?.ply);
+    const overlapsExistingNoteworthy = latestBoardBubble?.actor === 'human'
+      && CAPTURE_REACTION_SUPPRESSED_EVENTS.has(latestBoardBubble?.event)
+      && Number.isFinite(bubblePly)
+      && Math.abs(bubblePly - capture.ply) <= 1;
+    if (overlapsExistingNoteworthy) return;
+
+    const now = Date.now();
+    if (!shouldMatthiasReactToCapture(capture, tracking.lastReaction, now)) return;
+
+    const text = matthiasCaptureReaction(capture.piece, matthiasAnger.level);
+    const message = {
+      id: `capture-reaction:${game.id}:${capture.id}`,
+      by: 'cpu',
+      actor: 'human',
+      event: 'CAPTURE_REACTION',
+      ply: capture.ply,
+      text,
+    };
+    tracking.lastReaction = { at: now, ply: capture.ply, piece: capture.piece };
+    setCaptureReaction(message);
+    speakCpuComment(text);
+
+    if (captureReactionTimeoutRef.current) window.clearTimeout(captureReactionTimeoutRef.current);
+    captureReactionTimeoutRef.current = window.setTimeout(() => setCaptureReaction(null), 4200);
+  }, [game.id, isThreeD, zenMode, matthiasAnger.latestHumanCapture?.id, matthiasAnger.level, latestBoardBubble?.id]);
+
+  useEffect(() => () => {
+    if (captureReactionTimeoutRef.current) window.clearTimeout(captureReactionTimeoutRef.current);
   }, []);
 
   function toggleBoardRenderer() {
@@ -141,8 +212,8 @@ export default function GameBoardView({
               <div className="game-3d-matthias-card">
                 <MatthiasWarRoomPortrait
                   avatar={CPU_IDENTITY.avatar}
-                  speechKey={latestMatthiasMessage?.id || latestMatthiasMessage?.text || ''}
-                  speechText={latestMatthiasMessage?.text || ''}
+                  speechKey={activeMatthiasMessage?.id || activeMatthiasMessage?.text || ''}
+                  speechText={activeMatthiasMessage?.text || ''}
                   angerLevel={matthiasAnger.level}
                 />
                 <div className="game-3d-matthias-copy">
@@ -157,7 +228,7 @@ export default function GameBoardView({
 
               <div className="game-3d-warroom-message" aria-live="polite">
                 <span>ÚLTIMA OBSERVACIÓN</span>
-                <p>{latestMatthiasMessage?.text || 'Silencio táctico. Matthias todavía no ha considerado necesario abrir la boca.'}</p>
+                <p>{activeMatthiasMessage?.text || 'Silencio táctico. Matthias todavía no ha considerado necesario abrir la boca.'}</p>
               </div>
 
               <div className="game-3d-warroom-status">
@@ -188,10 +259,10 @@ export default function GameBoardView({
               historyLength={game.history.length}
               enabled={!zenMode}
             />
-            {!zenMode && latestBoardBubble && (
-              <aside key={latestBoardBubble.id} className="matthias-board-bubble" role="status" aria-label="Comentario de Matthias sobre el tablero">
+            {!zenMode && activeBoardBubble && (
+              <aside key={activeBoardBubble.id} className="matthias-board-bubble" role="status" aria-label="Comentario de Matthias sobre el tablero">
                 <span>MATTHIAS</span>
-                <p>{latestBoardBubble.text}</p>
+                <p>{activeBoardBubble.text}</p>
               </aside>
             )}
             {!zenMode && board.selectionNotice && (
