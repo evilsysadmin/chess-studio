@@ -103,9 +103,17 @@ export function setBoardCoordinates(value) {
   return normalized;
 }
 
+export function getConfiguredBoardRendererDefault() {
+  const configured = String(import.meta.env?.VITE_DEFAULT_BOARD_RENDERER || '').trim().toLowerCase();
+  if (BOARD_RENDERERS.some((row) => row.id === configured)) return configured;
+  const apiUrl = String(import.meta.env?.VITE_API_URL || '').trim().toLowerCase();
+  return apiUrl.includes('api-staging.') ? '3d' : '2d';
+}
+
 export function getBoardRenderer() {
-  const value = getStorageItem(STORAGE_LOCAL, BOARD_RENDERER_KEY) || '2d';
-  return BOARD_RENDERERS.some((row) => row.id === value) ? value : '2d';
+  const stored = getStorageItem(STORAGE_LOCAL, BOARD_RENDERER_KEY);
+  if (BOARD_RENDERERS.some((row) => row.id === stored)) return stored;
+  return getConfiguredBoardRendererDefault();
 }
 
 export function setBoardRenderer(value) {

@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 import {
   getBoardCoordinates,
   getBoardRenderer,
+  getConfiguredBoardRendererDefault,
   getDefaultTimeControlId,
   getEffectiveReducedMotion,
   getReducedMotion,
@@ -17,7 +18,11 @@ import {
 } from './userPreferences.js';
 
 describe('user preferences', () => {
-  beforeEach(() => { localStorage.clear(); clearStorageMemoryFallback(); });
+  beforeEach(() => {
+    localStorage.clear();
+    clearStorageMemoryFallback();
+    vi.unstubAllEnvs();
+  });
   it('guarda un control de tiempo válido y rechaza basura', () => {
     expect(getDefaultTimeControlId()).toBe('none');
     expect(setDefaultTimeControlId('5+0')).toBe('5+0');
@@ -39,11 +44,32 @@ describe('user preferences', () => {
   });
 
   it('mantiene 2D por defecto y persiste una elección 3D válida', () => {
+    expect(getConfiguredBoardRendererDefault()).toBe('2d');
     expect(getBoardRenderer()).toBe('2d');
     expect(setBoardRenderer('3d')).toBe('3d');
     expect(getBoardRenderer()).toBe('3d');
     expect(setBoardRenderer('holograma-cuántico')).toBe('2d');
     expect(getBoardRenderer()).toBe('2d');
+  });
+
+  it('propone 3D en staging sólo mientras el usuario no haya elegido renderer', () => {
+    vi.stubEnv('VITE_API_URL', 'https://api-staging.chess-studio.shadowops.dpdns.org/api');
+    expect(getConfiguredBoardRendererDefault()).toBe('3d');
+    expect(getBoardRenderer()).toBe('3d');
+
+    setBoardRenderer('2d');
+    expect(getBoardRenderer()).toBe('2d');
+  });
+
+  it('permite un default explícito pero producción sigue cayendo a 2D', () => {
+    vi.stubEnv('VITE_API_URL', 'https://api.chess-studio.shadowops.dpdns.org/api');
+    expect(getConfiguredBoardRendererDefault()).toBe('2d');
+
+    vi.stubEnv('VITE_DEFAULT_BOARD_RENDERER', '3d');
+    expect(getConfiguredBoardRendererDefault()).toBe('3d');
+
+    vi.stubEnv('VITE_DEFAULT_BOARD_RENDERER', 'holograma');
+    expect(getConfiguredBoardRendererDefault()).toBe('2d');
   });
 
   it('honra el sistema por defecto pero una elección explícita puede permitir movimiento', () => {
