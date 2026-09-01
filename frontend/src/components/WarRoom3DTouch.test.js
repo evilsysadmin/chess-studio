@@ -16,9 +16,10 @@ describe('War Room 3D touch targeting', () => {
     expect(resolveBoardTap(start, end, { coarsePointer: true })).toBeNull();
   });
 
-  it('usa un hit target que cabe dentro de una casilla pero amplía claramente la pieza', () => {
-    expect(COARSE_PIECE_HIT_TARGET.radius).toBeGreaterThan(0.4);
-    expect(COARSE_PIECE_HIT_TARGET.radius).toBeLessThan(0.5);
-    expect(COARSE_PIECE_HIT_TARGET.height).toBeGreaterThan(1.2);
+  it('mantiene el hit target táctil pegado a la peana para no robar la fila vecina en perspectiva', () => {
+    expect(COARSE_PIECE_HIT_TARGET.radius).toBeGreaterThan(0.28);
+    expect(COARSE_PIECE_HIT_TARGET.radius).toBeLessThan(0.36);
+    expect(COARSE_PIECE_HIT_TARGET.height).toBeLessThan(0.4);
+    expect(COARSE_PIECE_HIT_TARGET.centerY).toBeLessThan(0.3);
   });
 });
