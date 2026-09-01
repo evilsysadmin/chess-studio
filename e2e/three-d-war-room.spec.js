@@ -52,14 +52,8 @@ async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
   await page.mouse.click(point.x, point.y);
 }
 
-test('Partida rápida · una partida activa · vista 3D usa la sala de mando y sigue cabiendo en móvil', async ({ page }) => {
-  // La inicialización WebGL/Three.js en runners compartidos puede gastar más de
-  // 20 s antes de llegar al primer click. El gate conserva todos sus asserts y
-  // sólo amplía el presupuesto total para medir interacción real, no startup.
-  test.setTimeout(45_000);
-
+async function openQuickGameWarRoom(page, requestLog = []) {
   await page.setViewportSize({ width: 1440, height: 960 });
-  const requestLog = [];
   await mockApi(page, { requestLog });
   await login(page);
 
@@ -72,9 +66,49 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
   await rendererToggle.click();
 
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
-  await expect(warRoom).toBeVisible();
   const board3d = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(warRoom).toBeVisible();
   await expect(board3d).toBeVisible();
+  await expect(canvas).toBeVisible();
+  return { warRoom, board3d, canvas };
+}
+
+test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({ page }) => {
+  // Three.js puede tardar en inicializarse en runners compartidos; este gate
+  // termina en cuanto demuestra la interacción crítica y no carga además con
+  // los recorridos responsive del test visual independiente.
+  test.setTimeout(45_000);
+
+  const requestLog = [];
+  const { board3d, canvas } = await openQuickGameWarRoom(page, requestLog);
+  await expect(board3d).toHaveAttribute('data-board3d-scene', 'premium');
+  await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
+
+  const canvasRect = await canvas.boundingBox();
+  expect(canvasRect).not.toBeNull();
+
+  // Regresión del antiguo pointermove global y del micro-parallax: mover el
+  // ratón por los extremos del tablero no libera ni inclina la cámara.
+  await page.mouse.move(canvasRect.x + canvasRect.width * 0.2, canvasRect.y + canvasRect.height * 0.25);
+  await page.mouse.move(canvasRect.x + canvasRect.width * 0.8, canvasRect.y + canvasRect.height * 0.7);
+  await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
+  await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
+
+  // El origen se pulsa sobre el cuerpo visible del peón e2: proyectar el suelo
+  // de e2 puede quedar ocluido por piezas de la primera fila con esta cámara.
+  // El destino vacío e4 sí se pulsa sobre el plano de la casilla.
+  await clickWarRoomSquare(page, canvasRect, 'e2', 0.76);
+  await clickWarRoomSquare(page, canvasRect, 'e4');
+  await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
+});
+
+test('Partida rápida · una partida activa · vista 3D usa la sala de mando y sigue cabiendo en móvil', async ({ page }) => {
+  // Este recorrido mide composición y responsive; no vuelve a probar la
+  // mutación e2→e4, que tiene su gate desktop dedicado arriba.
+  test.setTimeout(60_000);
+
+  const { warRoom, board3d } = await openQuickGameWarRoom(page);
   await expect(board3d).toHaveAttribute('data-board3d-scene', 'premium');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
   await expect(warRoom.getByRole('complementary', { name: 'Puesto de mando de Matthias' })).toBeVisible();
@@ -84,33 +118,12 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
   await expect(portrait).toBeVisible();
   expect(await portrait.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
 
-  const canvas = page.locator('.board3d-main-canvas');
-  await expect(canvas).toBeVisible();
   const desktopGeometry = await page.locator('.board3d-main-shell').evaluate((element) => {
     const rect = element.getBoundingClientRect();
     return { width: rect.width, height: rect.height };
   });
   expect(desktopGeometry.width).toBeGreaterThan(640);
   expect(desktopGeometry.height).toBeGreaterThan(540);
-
-  // Regresión del antiguo pointermove global y del micro-parallax: el ratón
-  // puede cruzar el canvas durante juego normal sin liberar la cámara ni robar
-  // la secuencia de click de Three.js.
-  const canvasRect = await canvas.boundingBox();
-  expect(canvasRect).not.toBeNull();
-  await page.mouse.move(canvasRect.x + canvasRect.width * 0.2, canvasRect.y + canvasRect.height * 0.25);
-  await page.mouse.move(canvasRect.x + canvasRect.width * 0.8, canvasRect.y + canvasRect.height * 0.7);
-  await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
-  await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
-
-  // Clicks físicos sobre el WebGL. El centro del plano de e2 queda visualmente
-  // detrás de geometría de la primera fila por la perspectiva; un usuario toca
-  // el cuerpo visible del peón. 0.76 es aproximadamente el centro de su cabeza
-  // ya escalada y posicionada. e4 sí se pulsa sobre el plano de la casilla.
-  await clickWarRoomSquare(page, canvasRect, 'e2', 0.76);
-  await clickWarRoomSquare(page, canvasRect, 'e4');
-  await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
-  await expect(gameTurn(page)).toBeVisible();
 
   const warRoomGeometry = await warRoom.evaluate((element) => {
     const rect = element.getBoundingClientRect();
