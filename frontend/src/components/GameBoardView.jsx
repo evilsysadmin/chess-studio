@@ -15,6 +15,13 @@ import { getBoardRenderer, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } fr
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
 
+const BOARD_BUBBLE_EVENTS = new Set([
+  'MATE_FOUND', 'MISSED_MATE', 'STALEMATE_BLUNDER', 'STALEMATE', 'ALLOWED_MATE',
+  'PAWN_TAKES_QUEEN', 'QUEEN_CAPTURE', 'QUEEN_SACRIFICE_OFFER', 'PROMOTION',
+  'SKEWER', 'DISCOVERED_CHECK', 'KNIGHT_FORK', 'PAWN_FORK', 'ROOK_SACRIFICE_OFFER',
+  'QUEEN_EN_PRISE_TO_PAWN', 'PAWN_TAKES_ROOK', 'CHECK',
+]);
+
 export default function GameBoardView({
   game,
   humanColor,
@@ -37,6 +44,9 @@ export default function GameBoardView({
   const latestMatthiasMessage = [...(side.gameContextMessages || []), ...(side.gameChat || [])]
     .filter((message) => message?.by === 'cpu' && message?.text)
     .at(-1);
+  const latestBoardBubble = [...(side.gameChat || [])]
+    .reverse()
+    .find((message) => message?.by === 'cpu' && message?.text && BOARD_BUBBLE_EVENTS.has(message?.event));
 
   useEffect(() => {
     const refreshRenderer = () => setBoardRendererState(getBoardRenderer());
@@ -53,20 +63,25 @@ export default function GameBoardView({
     const isLow = seconds !== null && seconds <= 10;
     const isTicking = clocks.tickingColor === color;
     const active = game.turn === color && !game.isGameOver && !clocks.flagFallen && !clocks.forcedOutcome;
+    const railTurnLabel = game.isGameOver || clocks.flagFallen || clocks.forcedOutcome
+      ? 'FINAL'
+      : cpu
+        ? (active ? 'TURNO CPU' : 'ESPERANDO')
+        : (game.turn === humanColor ? 'TU TURNO' : 'TURNO CPU');
     return (
-      <div className={`game-player-rail ${cpu ? 'is-cpu' : 'is-human'} ${active ? 'is-active' : ''}`} aria-label={`${cpu ? `${CPU_IDENTITY.name}, CPU` : 'Jugador'} ${active ? 'en turno' : 'esperando'}`}>
+      <div className={`game-player-rail ${cpu ? 'is-cpu' : 'is-human'} ${active ? 'is-active' : ''}`} aria-label={`${cpu ? `${CPU_IDENTITY.name}, CPU` : 'Jugador'} ${railTurnLabel.toLowerCase()}`}>
         <span className={`game-player-avatar${cpu ? ' has-portrait' : ''}`} aria-hidden="true">{cpu ? <img src={CPU_IDENTITY.avatar} alt="" /> : '♙'}</span>
         <span className="game-player-identity">
           <strong>{cpu ? CPU_IDENTITY.name : (getUsername() || 'Tú')}</strong>
           <small>{cpu
             ? `${CPU_IDENTITY.role} · nivel ${game.difficulty}${Number(rivalryRecord.games || 0) > 0 ? ` · duelo ${Number(rivalryRecord.wins || 0)}V ${Number(rivalryRecord.draws || 0)}T ${Number(rivalryRecord.losses || 0)}D` : ''}`
-            : `${color === 'w' ? 'Blancas' : 'Negras'}${active ? ' · Tu turno' : ''}`}
+            : (color === 'w' ? 'Blancas' : 'Negras')}
           </small>
         </span>
         {clocks.hasClock ? (
-          <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`}>{formatClock(seconds ?? 0)}</span>
+          <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`} title={railTurnLabel}>{formatClock(seconds ?? 0)}</span>
         ) : (
-          <span className="game-player-turn">{active ? 'EN TURNO' : 'ESPERANDO'}</span>
+          <span className="game-player-turn">{railTurnLabel}</span>
         )}
       </div>
     );
@@ -158,6 +173,12 @@ export default function GameBoardView({
                 <Board3D {...boardProps} />
               </Suspense>
             ) : <Board {...boardProps} />}
+            {!zenMode && latestBoardBubble && (
+              <aside key={latestBoardBubble.id} className="matthias-board-bubble" role="status" aria-label="Comentario de Matthias sobre el tablero">
+                <span>MATTHIAS</span>
+                <p>{latestBoardBubble.text}</p>
+              </aside>
+            )}
             {!zenMode && board.selectionNotice && (
               <div className={`move-availability-note ${board.selectionNotice.kind}`} role="status" aria-live="polite">
                 <b>{board.selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
@@ -167,7 +188,6 @@ export default function GameBoardView({
             {renderPlayerRail({ color: bottomColor, seconds: bottomTime, cpu: false })}
             <div className="game-command-deck" aria-label="Mesa de controles de la partida">
               <div className="game-controls" aria-label="Controles principales de la partida">
-                <span className={`game-controls-status ${game.turn === humanColor && !game.isGameOver ? 'is-active' : ''}`}><i aria-hidden="true" />{status.statusText}</span>
                 <div className="game-controls-actions">
                   {!zenMode && controls.hintMode !== 'off' && (
                     <button className="secondary-btn" disabled={!controls.canHint} onClick={controls.onHint}>
