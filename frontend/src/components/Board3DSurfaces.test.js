@@ -46,6 +46,8 @@ describe('Board3D premium surfaces', () => {
     const ivory = makePremiumPieceMaterial({ color: 0xf0eadc, skin, side: 'w' });
     const ebony = makePremiumPieceMaterial({ color: 0x262a30, skin, side: 'b' });
     const accent = makePremiumPieceMaterial({ color: 0xc7a34a, skin, side: 'w', accent: true });
+    const ivoryHsl = {};
+    ivory.color.getHSL(ivoryHsl);
 
     expect(ivory.userData.surfaceVersion).toBe(PREMIUM_SURFACE_VERSION);
     expect(ivory.userData.surfaceRole).toBe('ivory');
@@ -58,10 +60,12 @@ describe('Board3D premium surfaces', () => {
     expect(ivory.specularIntensity).toBeLessThan(ebony.specularIntensity);
     expect(ivory.envMapIntensity).toBeLessThan(ebony.envMapIntensity);
     expect(ivory.roughness).toBeGreaterThan(ebony.roughness);
-    expect(ivory.metalness).toBeLessThan(0.05);
-    expect(ivory.specularIntensity).toBeLessThan(0.5);
-    expect(ivory.envMapIntensity).toBeLessThan(0.5);
-    expect(ivory.clearcoat).toBeLessThan(0.4);
+    expect(ivory.roughness).toBeGreaterThanOrEqual(0.68);
+    expect(ivory.metalness).toBeLessThan(0.03);
+    expect(ivory.specularIntensity).toBeLessThanOrEqual(0.25);
+    expect(ivory.envMapIntensity).toBeLessThan(0.3);
+    expect(ivory.clearcoat).toBeLessThanOrEqual(0.22);
+    expect(ivoryHsl.l).toBeLessThan(0.82);
 
     disposeMaterial(ivory);
     disposeMaterial(ebony);
@@ -96,6 +100,10 @@ describe('Board3D premium surfaces', () => {
     expect(metal.metalness).toBeGreaterThan(wood.metalness);
     expect(fabric.roughness).toBeGreaterThan(leather.roughness);
     expect(wood.roughnessMap).toBeTruthy();
+    expect(wood.roughness).toBeGreaterThanOrEqual(0.5);
+    expect(wood.clearcoat).toBeLessThanOrEqual(0.34);
+    expect(wood.envMapIntensity).toBeLessThanOrEqual(0.7);
+    expect(wood.specularIntensity).toBeLessThanOrEqual(0.6);
     expect(mobileWood.roughnessMap).toBeNull();
 
     for (const material of [wood, leather, fabric, metal, mobileWood]) disposeMaterial(material);
@@ -104,7 +112,7 @@ describe('Board3D premium surfaces', () => {
   it('aplica las superficies al decorado existente sin pisar piezas ni casillas premium', () => {
     const scene = new THREE.Group();
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const wood = new THREE.MeshPhysicalMaterial({ color: 0x5a321c, metalness: 0.03, roughness: 0.48 });
+    const wood = new THREE.MeshPhysicalMaterial({ color: 0x5a321c, metalness: 0.03, roughness: 0.48, clearcoat: 0.56, envMapIntensity: 1, specularIntensity: 1 });
     const leather = new THREE.MeshPhysicalMaterial({ color: 0x2e1015, metalness: 0.01, roughness: 0.46, sheen: 0.38 });
     const fabric = new THREE.MeshPhysicalMaterial({ color: 0x5b2028, metalness: 0, roughness: 0.9, sheen: 0.45 });
     const brass = new THREE.MeshPhysicalMaterial({ color: 0xc5963f, metalness: 0.88, roughness: 0.2 });
@@ -120,6 +128,9 @@ describe('Board3D premium surfaces', () => {
     expect(fabric.userData.surfaceRole).toBe('decor-fabric');
     expect(brass.userData.surfaceRole).toBe('decor-metal');
     expect(wood.roughnessMap).toBeTruthy();
+    expect(wood.clearcoat).toBeLessThanOrEqual(0.34);
+    expect(wood.envMapIntensity).toBeLessThanOrEqual(0.66);
+    expect(wood.specularIntensity).toBeLessThanOrEqual(0.58);
     expect(fabric.bumpMap).toBeTruthy();
     expect(brass.bumpScale).toBeLessThan(wood.bumpScale);
     expect(ivory.userData.surfaceRole).toBe('ivory');
