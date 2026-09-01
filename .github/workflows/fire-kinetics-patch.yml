@@ -1,0 +1,48 @@
+name: Fireplace kinetics patch
+
+on:
+  push:
+    branches:
+      - warroom-matthias-personality
+
+permissions:
+  contents: write
+
+jobs:
+  patch-fire-anchor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: warroom-matthias-personality
+          fetch-depth: 0
+
+      - name: Anchor fireplace animation to a renderable flame
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/components/PremiumWarRoomScene.js')
+          text = path.read_text(encoding='utf-8')
+          old = """  fireCore.userData.warRoomFireCore = true;\n  if (coarsePointer) return;\n\n  const bases = flames.map((flame) => ({\n"""
+          new = """  fireCore.userData.warRoomFireCore = true;\n  if (coarsePointer) return;\n\n  const animationAnchor = flames[0];\n  if (!animationAnchor) return;\n  animationAnchor.userData.warRoomFireAnimationAnchor = true;\n\n  const bases = flames.map((flame) => ({\n"""
+          if text.count(old) != 1:
+              raise SystemExit(f'fire anchor prelude matches: {text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old_callback = "  fireCore.onBeforeRender = () => {"
+          new_callback = "  animationAnchor.onBeforeRender = () => {"
+          if text.count(old_callback) != 1:
+              raise SystemExit(f'fire callback matches: {text.count(old_callback)}')
+          text = text.replace(old_callback, new_callback, 1)
+
+          path.write_text(text, encoding='utf-8')
+          Path('.github/workflows/fire-kinetics-patch.yml').unlink()
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/components/PremiumWarRoomScene.js .github/workflows/fire-kinetics-patch.yml
+          git commit -m "Anchor fireplace motion to rendered flame"
+          git push origin HEAD:warroom-matthias-personality
