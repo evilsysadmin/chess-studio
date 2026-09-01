@@ -18,7 +18,7 @@ function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-function projectWarRoomSquare(rect, square) {
+function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
   const profile = aspect >= 1.42
     ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, maxDistance: 22.6, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
@@ -33,7 +33,7 @@ function projectWarRoomSquare(rect, square) {
   const camera = target.map((value, index) => value + direction[index] * distance);
   const fileIndex = square.charCodeAt(0) - 97;
   const rank = Number(square[1]);
-  const point = [fileIndex - 3.5, 0.12, 4.5 - rank];
+  const point = [fileIndex - 3.5, worldY, 4.5 - rank];
   const forward = normalized(target.map((value, index) => value - camera[index]));
   const right = normalized(cross(forward, [0, 1, 0]));
   const up = cross(right, forward);
@@ -47,11 +47,8 @@ function projectWarRoomSquare(rect, square) {
   };
 }
 
-async function clickWarRoomSquare(page, square) {
-  const canvas = page.locator('.board3d-main-canvas');
-  const rect = await canvas.boundingBox();
-  expect(rect).not.toBeNull();
-  const point = projectWarRoomSquare(rect, square);
+async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
+  const point = projectWarRoomSquare(rect, square, worldY);
   await page.mouse.click(point.x, point.y);
 }
 
@@ -106,10 +103,12 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
-  // Clicks físicos sobre el WebGL: si vuelve una captura global de pointermove,
-  // una proyección de cámara distinta o se rompe el raycast, este POST no sale.
-  await clickWarRoomSquare(page, 'e2');
-  await clickWarRoomSquare(page, 'e4');
+  // Clicks físicos sobre el WebGL. El centro del plano de e2 queda visualmente
+  // detrás de geometría de la primera fila por la perspectiva; un usuario toca
+  // el cuerpo visible del peón. 0.76 es aproximadamente el centro de su cabeza
+  // ya escalada y posicionada. e4 sí se pulsa sobre el plano de la casilla.
+  await clickWarRoomSquare(page, canvasRect, 'e2', 0.76);
+  await clickWarRoomSquare(page, canvasRect, 'e4');
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
   await expect(gameTurn(page)).toBeVisible();
 
