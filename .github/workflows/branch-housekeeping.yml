@@ -37,7 +37,7 @@ jobs:
             case "$1" in
               # Retired one-off archive: audited below and intentionally prunable.
               artifact/zfrm-complete) return 1 ;;
-              main|gh-pages|artifact/*) return 0 ;;
+              main|artifact/*) return 0 ;;
               *) return 1 ;;
             esac
           }
@@ -71,11 +71,14 @@ jobs:
             echo "Eliminada: $branch"
           }
 
-          # Dos excepciones históricas auditadas tras la primera gran poda:
+          # Excepciones históricas auditadas tras las podas y migraciones:
+          # - gh-pages quedó obsoleta al completar el cutover del frontend a
+          #   Cloudflare Pages; no debe seguir protegida ni servir de fallback.
           # - zfrm-complete sólo generaba un ZIP de una release antigua.
           # - zfrh-matthias-brand-tests fue sustituida por la rama -clean de PR #1
           #   y posteriormente por el hotfix de assets de PR #2.
           retired_stale=(
+            'gh-pages'
             'artifact/zfrm-complete'
             'chatgpt/zfrh-matthias-brand-tests'
           )
