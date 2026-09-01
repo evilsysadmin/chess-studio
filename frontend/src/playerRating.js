@@ -20,16 +20,16 @@ const MAX_HISTORY_POINTS = 200;
 const DEFAULT_RATING = 400;
 const K_FACTOR = 24;
 const PROVISIONAL_K_FACTOR = 48;
-const PROVISIONAL_GAMES = 12;
+export const PROVISIONAL_GAMES = 12;
 
-// El ajuste automático sólo mira una ventana corta y exige señal suficiente.
-// Nunca cambia la fuerza a mitad de partida: se calcula al crear la siguiente.
+// La forma reciente sólo afecta a la SIGUIENTE partida automática: jamás
+// hacemos rubber-banding dentro de una partida ya empezada.
 const ADAPTIVE_RECENT_GAMES = 8;
-const ADAPTIVE_MIN_GAMES = 3;
 const ADAPTIVE_DIFFICULTY_BAND = 25;
 const ADAPTIVE_MIN_ADJUSTMENT = -22;
 const ADAPTIVE_MAX_ADJUSTMENT = 8;
 const ADAPTIVE_ABANDON_SCORE = 0.15;
+const PROVISIONAL_MAX_RELIEF = 10;
 
 export const RATING_TIERS = [
   { label: 'Principiante', min: 0, max: 699 },
@@ -196,6 +196,13 @@ function baseDifficultyForRating(rating) {
   return Math.max(0, Math.min(100, Math.round((Number(rating) - 200) / 18)));
 }
 
+export function provisionalDifficultyRelief(games = PROVISIONAL_GAMES) {
+  const count = Number(games);
+  if (!Number.isFinite(count) || count >= PROVISIONAL_GAMES) return 0;
+  const progress = Math.max(0, Math.min(1, count / PROVISIONAL_GAMES));
+  return Math.round(PROVISIONAL_MAX_RELIEF * (1 - progress));
+}
+
 function isDifficultyRelevant(event, baseDifficulty) {
   const difficulty = Number(event?.difficulty);
   if (!Number.isFinite(difficulty)) return false;
@@ -250,13 +257,28 @@ function adaptiveScore(event) {
 
 /**
  * Corrección de forma reciente aplicada sólo a la dificultad automática.
- * Las derrotas bajan el reto con rapidez; las victorias lo suben despacio.
- * Esto sanea perfiles legacy sobreestimados sin reescribir su ELO ni hacer
- * rubber-banding oculto dentro de una partida ya empezada.
+ * Una derrota aislada ya hace bajar un poco la SIGUIENTE CPU y dos derrotas
+ * consecutivas bajan claramente el reto. Las subidas siguen exigiendo tres
+ * resultados comparables para que una buena tarde no infle el nivel.
  */
 export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) {
   const recent = competitiveAdaptiveEvents(activity, baseDifficulty);
-  if (recent.length < ADAPTIVE_MIN_GAMES) return 0;
+  if (!recent.length) return 0;
+
+  let lossStreak = 0;
+  for (const event of recent) {
+    if (event.outcome !== 'loss') break;
+    lossStreak += 1;
+  }
+
+  if (recent.length === 1) {
+    return lossStreak === 1 ? -5 : 0;
+  }
+  if (recent.length === 2) {
+    if (lossStreak >= 2) return -9;
+    const performance = (adaptiveScore(recent[0]) * 2 + adaptiveScore(recent[1])) / 3;
+    return performance <= 0.25 ? -5 : 0;
+  }
 
   // gameActivity está newest-first. Damos algo más de peso a lo ocurrido ayer
   // que a una partida antigua de esta ventana corta.
@@ -276,11 +298,6 @@ export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) 
   else if (performance >= 0.80) adjustment = 6;
   else if (performance >= 0.68) adjustment = 3;
 
-  let lossStreak = 0;
-  for (const event of recent) {
-    if (event.outcome !== 'loss') break;
-    lossStreak += 1;
-  }
   if (lossStreak >= 5) adjustment -= 8;
   else if (lossStreak >= 4) adjustment -= 6;
   else if (lossStreak >= 3) adjustment -= 4;
@@ -288,12 +305,13 @@ export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) 
   return Math.max(ADAPTIVE_MIN_ADJUSTMENT, Math.min(ADAPTIVE_MAX_ADJUSTMENT, adjustment));
 }
 
-// Traduce el rating a dificultad y añade una corrección conservadora basada
-// en resultados recientes. Sin muestra suficiente se comporta exactamente
-// como la curva histórica. El segundo argumento existe para tests y análisis;
-// en producto se usa el journal local real ya sincronizado del perfil.
-export function difficultyForRating(rating, activity = null) {
-  const base = baseDifficultyForRating(rating);
+// Traduce el rating a dificultad y añade dos correcciones deliberadamente
+// asimétricas: durante las 12 partidas provisionales ofrece una CPU algo más
+// amable y la forma reciente baja rápido tras derrotas, pero sube despacio.
+// `games` es opcional para conservar compatibilidad con llamadas históricas.
+export function difficultyForRating(rating, activity = null, games = PROVISIONAL_GAMES) {
+  const historicalBase = baseDifficultyForRating(rating);
+  const base = Math.max(0, historicalBase - provisionalDifficultyRelief(games));
   const recent = activity == null ? loadGameActivity() : activity;
   return Math.max(0, Math.min(100, base + adaptiveDifficultyAdjustment(recent, base)));
 }
