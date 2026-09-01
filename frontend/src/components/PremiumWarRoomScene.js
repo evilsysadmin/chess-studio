@@ -322,6 +322,74 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   return group;
 }
 
+
+function addWarTablePapers(group, coarsePointer = false) {
+  const paper = material(0xb6a681, { metalness: 0, roughness: 0.9, clearcoat: 0.02, specularIntensity: 0.18 });
+  const ink = material(0x27221b, { metalness: 0, roughness: 0.95, clearcoat: 0, specularIntensity: 0.08 });
+  const leather = material(0x2b1512, { metalness: 0, roughness: 0.72, clearcoat: 0.08, sheen: 0.18, sheenColor: 0x6e3d32 });
+  const brass = material(COLORS.brassDark, { metalness: 0.82, roughness: 0.34, clearcoat: 0.18 });
+
+  const folio = new THREE.Group();
+  folio.name = 'war-table-field-folio';
+  addMesh(folio, new THREE.BoxGeometry(1.1, 0.035, 0.72), leather, [-4.64, 0.11, -3.92], [0, 0.22, 0]);
+  addMesh(folio, new THREE.BoxGeometry(0.92, 0.018, 0.61), paper, [-4.59, 0.145, -3.86], [0, 0.18, 0.018]);
+  if (!coarsePointer) {
+    for (let index = 0; index < 4; index += 1) {
+      addMesh(folio, new THREE.BoxGeometry(0.52 - index * 0.055, 0.004, 0.012), ink,
+        [-4.68 + index * 0.035, 0.16 + index * 0.001, -3.78 - index * 0.105], [0, 0.18, 0]);
+    }
+  }
+  addMesh(folio, new THREE.CylinderGeometry(0.055, 0.055, 0.055, 18), brass, [-4.24, 0.185, -3.6]);
+  group.add(folio);
+
+  const pencil = new THREE.Group();
+  pencil.name = 'war-table-map-pencil';
+  addMesh(pencil, new THREE.CylinderGeometry(0.022, 0.022, 1.12, 12), material(0x7a4b27, { roughness: 0.76, clearcoat: 0.05 }), [4.73, 0.16, -2.3], [Math.PI / 2, 0, 0.08]);
+  addMesh(pencil, new THREE.ConeGeometry(0.028, 0.12, 12), material(0x25201c, { roughness: 0.9, clearcoat: 0 }), [4.73, 0.16, -2.88], [Math.PI / 2, 0, 0]);
+  group.add(pencil);
+}
+
+function addCommandChronometer(group, coarsePointer = false) {
+  const brass = material(COLORS.brass, { metalness: 0.9, roughness: 0.3, clearcoat: 0.2, clearcoatRoughness: 0.28 });
+  const face = material(0x9c9071, { metalness: 0, roughness: 0.82, clearcoat: 0.05, specularIntensity: 0.18 });
+  const dark = material(0x15171a, { metalness: 0.12, roughness: 0.72, clearcoat: 0.08 });
+  const watch = new THREE.Group();
+  watch.name = 'war-table-command-chronometer';
+  addMesh(watch, new THREE.CylinderGeometry(0.25, 0.25, 0.055, coarsePointer ? 18 : 32), brass, [4.62, 0.14, 3.86]);
+  addMesh(watch, new THREE.CylinderGeometry(0.205, 0.205, 0.015, coarsePointer ? 18 : 32), face, [4.62, 0.18, 3.86]);
+  if (!coarsePointer) {
+    addMesh(watch, new THREE.BoxGeometry(0.018, 0.008, 0.145), dark, [4.62, 0.195, 3.81], [0, 0.45, 0]);
+    addMesh(watch, new THREE.BoxGeometry(0.012, 0.009, 0.1), dark, [4.62, 0.197, 3.86], [0, -0.72, 0]);
+    addMesh(watch, new THREE.TorusGeometry(0.29, 0.018, 8, 30), brass, [4.62, 0.15, 3.86], [Math.PI / 2, 0, 0]);
+  }
+  group.add(watch);
+}
+
+function addMatthiasCommandRelic(group, theme, coarsePointer = false) {
+  const brass = material(theme?.glow ?? COLORS.brass, { metalness: 0.86, roughness: 0.3, clearcoat: 0.24 });
+  const charcoal = material(0x17191d, { metalness: 0.12, roughness: 0.68, clearcoat: 0.08 });
+  const relic = new THREE.Group();
+  relic.name = 'matthias-command-relic';
+  relic.userData.matthiasPresence = true;
+  addMesh(relic, new THREE.CylinderGeometry(0.3, 0.36, 0.09, coarsePointer ? 16 : 28), brass, [-4.62, 0.13, 4.08]);
+  addMesh(relic, new THREE.CylinderGeometry(0.17, 0.24, 0.42, coarsePointer ? 16 : 28), charcoal, [-4.62, 0.38, 4.08]);
+  addMesh(relic, new THREE.SphereGeometry(0.19, coarsePointer ? 16 : 28, coarsePointer ? 10 : 18), material(0x8e7354, { roughness: 0.82, clearcoat: 0.03 }), [-4.62, 0.67, 4.08]);
+  addMesh(relic, new THREE.CylinderGeometry(0.22, 0.25, 0.07, coarsePointer ? 16 : 28), charcoal, [-4.62, 0.82, 4.08]);
+  addMesh(relic, new THREE.BoxGeometry(0.29, 0.025, 0.12), charcoal, [-4.62, 0.79, 3.96], [0.08, 0, 0]);
+  addMesh(relic, new THREE.SphereGeometry(0.035, 10, 8), brass, [-4.62, 0.825, 3.84]);
+  group.add(relic);
+}
+
+function addTableEdgeWear(group, coarsePointer = false) {
+  if (coarsePointer) return;
+  const wear = material(0x7b5730, { metalness: 0.02, roughness: 0.82, clearcoat: 0.02, opacity: 0.48, specularIntensity: 0.18 });
+  const marks = [
+    [-3.8, -5.245, 0.48, 0.022], [-1.25, -5.245, 0.25, 0.018], [2.72, -5.245, 0.4, 0.02],
+    [5.245, -2.95, 0.022, 0.42], [5.245, 2.1, 0.02, 0.3], [-5.245, 1.1, 0.02, 0.36],
+  ];
+  for (const [x, z, sx, sz] of marks) addMesh(group, new THREE.BoxGeometry(sx, 0.012, sz), wear, [x, 0.055, z]);
+}
+
 export function buildPremiumTableLayer(theme, coarsePointer = false) {
   const group = new THREE.Group();
   group.name = 'premium-table-layer';
@@ -362,6 +430,11 @@ export function buildPremiumTableLayer(theme, coarsePointer = false) {
       }
     }
   }
+
+  addWarTablePapers(group, coarsePointer);
+  addCommandChronometer(group, coarsePointer);
+  addMatthiasCommandRelic(group, theme, coarsePointer);
+  addTableEdgeWear(group, coarsePointer);
 
   return group;
 }
