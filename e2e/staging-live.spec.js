@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, clickBoardMove, gameStatus } from './helpers.js';
+import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, gameStatus } from './helpers.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
 const STAGING_API_URL = process.env.STAGING_API_URL || 'https://api-staging.chess-studio.shadowops.dpdns.org/api';
@@ -89,7 +89,7 @@ async function seedStableSmokeProfile(request, token) {
   expect(response.status(), `seed de perfil staging: ${await response.text()}`).toBe(200);
 }
 
-test('staging live · alta protegida → login real → Matthias → Home → partida rápida → jugada real', async ({ page, request }) => {
+test('staging live · alta protegida → login real → Matthias → Escuela 3D → partida rápida → jugada real', async ({ page, request }) => {
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
   const inviteCode = requiredEnv('STAGING_INVITE_CODE');
@@ -130,6 +130,16 @@ test('staging live · alta protegida → login real → Matthias → Home → pa
     // correcto con Home visible pero sin Matthias es una regresión de producto,
     // aunque API, Pages y el tablero sigan funcionando.
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
+
+    // La Escuela sirve de canario del rollout 3D: staging usa el modelado nuevo,
+    // mientras producción conserva de momento el Board 2D/Studio Marfil.
+    await buttonWithHeading(page, 'Escuela de Matthias').click();
+    const schoolBoard = page.locator('.matthias-school-board');
+    await expect(schoolBoard).toHaveAttribute('data-school-renderer', '3d', { timeout: 30_000 });
+    await expect(schoolBoard.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: /Volver al menú/ }).click();
+    await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await buttonWithVisibleText(page, 'Partida rápida').click();
 
