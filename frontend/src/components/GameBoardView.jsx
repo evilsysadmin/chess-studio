@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import Board from './Board.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import MatthiasWarRoomPortrait from './MatthiasWarRoomPortrait.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import NotationPanel from './NotationPanel.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
@@ -34,7 +35,7 @@ export default function GameBoardView({
   const bottomTime = bottomColor === 'w' ? clocks.whiteTime : clocks.blackTime;
   const isThreeD = boardRenderer === '3d';
   const latestMatthiasMessage = [...(side.gameContextMessages || []), ...(side.gameChat || [])]
-    .filter((message) => message?.by !== 'system' && message?.text)
+    .filter((message) => message?.by === 'cpu' && message?.text)
     .at(-1);
 
   useEffect(() => {
@@ -115,10 +116,11 @@ export default function GameBoardView({
           {!zenMode && isThreeD && (
             <aside className="game-3d-command-column" aria-label="Puesto de mando de Matthias">
               <div className="game-3d-matthias-card">
-                <div className="game-3d-matthias-portrait-wrap">
-                  <img src={CPU_IDENTITY.avatar} alt="Matthias, peón militar" className="game-3d-matthias-portrait" />
-                  <span className="game-3d-matthias-rank" aria-hidden="true">♟</span>
-                </div>
+                <MatthiasWarRoomPortrait
+                  avatar={CPU_IDENTITY.avatar}
+                  speechKey={latestMatthiasMessage?.id || latestMatthiasMessage?.text || ''}
+                  speechText={latestMatthiasMessage?.text || ''}
+                />
                 <div className="game-3d-matthias-copy">
                   <span>COMANDANTE RIVAL</span>
                   <h2>{CPU_IDENTITY.name}</h2>
