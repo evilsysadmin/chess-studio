@@ -257,11 +257,11 @@ function adaptiveScore(event) {
 
 /**
  * Corrección de forma reciente aplicada sólo a la dificultad automática.
- * Una derrota aislada ya hace bajar un poco la SIGUIENTE CPU y dos derrotas
- * consecutivas bajan claramente el reto. Las subidas siguen exigiendo tres
- * resultados comparables para que una buena tarde no infle el nivel.
+ * En perfiles provisionales una derrota ya hace bajar un poco la SIGUIENTE
+ * CPU y dos derrotas consecutivas bajan claramente el reto. Un perfil ya
+ * establecido conserva la muestra mínima histórica de tres partidas.
  */
-export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) {
+export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0, allowEarlyDrop = false) {
   const recent = competitiveAdaptiveEvents(activity, baseDifficulty);
   if (!recent.length) return 0;
 
@@ -271,9 +271,8 @@ export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) 
     lossStreak += 1;
   }
 
-  if (recent.length === 1) {
-    return lossStreak === 1 ? -5 : 0;
-  }
+  if (recent.length < 3 && !allowEarlyDrop) return 0;
+  if (recent.length === 1) return lossStreak === 1 ? -5 : 0;
   if (recent.length === 2) {
     if (lossStreak >= 2) return -9;
     const performance = (adaptiveScore(recent[0]) * 2 + adaptiveScore(recent[1])) / 3;
@@ -307,11 +306,12 @@ export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) 
 
 // Traduce el rating a dificultad y añade dos correcciones deliberadamente
 // asimétricas: durante las 12 partidas provisionales ofrece una CPU algo más
-// amable y la forma reciente baja rápido tras derrotas, pero sube despacio.
-// `games` es opcional para conservar compatibilidad con llamadas históricas.
+// amable y reacciona antes a derrotas, pero sube despacio. `games` es opcional
+// para conservar compatibilidad con llamadas históricas.
 export function difficultyForRating(rating, activity = null, games = PROVISIONAL_GAMES) {
   const historicalBase = baseDifficultyForRating(rating);
+  const provisional = Number.isFinite(Number(games)) && Number(games) < PROVISIONAL_GAMES;
   const base = Math.max(0, historicalBase - provisionalDifficultyRelief(games));
   const recent = activity == null ? loadGameActivity() : activity;
-  return Math.max(0, Math.min(100, base + adaptiveDifficultyAdjustment(recent, base)));
+  return Math.max(0, Math.min(100, base + adaptiveDifficultyAdjustment(recent, base, provisional)));
 }
