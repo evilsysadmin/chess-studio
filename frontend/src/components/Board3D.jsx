@@ -461,6 +461,8 @@ function Board3DCanvas({
   hintMove,
   checkSquare,
   gameOver = false,
+  cinematicMode = false,
+  cinematicCue = 'normal',
   showCoordinates = true,
   matthiasKingColor = null,
   onCustomize,
@@ -475,7 +477,8 @@ function Board3DCanvas({
   const previousFenRef = useRef(fen);
   const lastAnimatedSeqRef = useRef(0);
   const inspectModeRef = useRef(false);
-  const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
+  const cinematicResetTimeoutRef = useRef(null);
+  const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0, cinematicZoom: 0, cinematicTargetZoom: 0, cinematicFocusX: 0, cinematicTargetFocusX: 0, cinematicFocusZ: 0, cinematicTargetFocusZ: 0 });
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
@@ -758,12 +761,18 @@ function Board3DCanvas({
     function ambientFrame(now) {
       const motion = cameraMotionRef.current;
       const reduced = getEffectiveReducedMotion();
-      const activeMotion = motion.dragging || Math.abs(motion.x - motion.targetX) > 0.003 || Math.abs(motion.y - motion.targetY) > 0.003;
+      const cinematicActive = Math.abs(motion.cinematicZoom - motion.cinematicTargetZoom) > 0.001
+        || Math.abs(motion.cinematicFocusX - motion.cinematicTargetFocusX) > 0.004
+        || Math.abs(motion.cinematicFocusZ - motion.cinematicTargetFocusZ) > 0.004;
+      const activeMotion = motion.dragging || cinematicActive || Math.abs(motion.x - motion.targetX) > 0.003 || Math.abs(motion.y - motion.targetY) > 0.003;
       const interval = activeMotion ? 16 : 33;
       if (!document.hidden && !reduced && !coarsePointer && now - lastAmbientPaint >= interval) {
         lastAmbientPaint = now;
         motion.x += (motion.targetX - motion.x) * 0.075;
         motion.y += (motion.targetY - motion.y) * 0.075;
+        motion.cinematicZoom += (motion.cinematicTargetZoom - motion.cinematicZoom) * 0.12;
+        motion.cinematicFocusX += (motion.cinematicTargetFocusX - motion.cinematicFocusX) * 0.11;
+        motion.cinematicFocusZ += (motion.cinematicTargetFocusZ - motion.cinematicFocusZ) * 0.11;
         const basePosition = camera.userData.basePosition;
         const baseTarget = camera.userData.baseTarget;
         if (basePosition && baseTarget) {
@@ -771,9 +780,15 @@ function Board3DCanvas({
           const breathPitch = Math.sin(now * 0.00014 + 1.1) * 0.0022;
           const yaw = (inspectModeRef.current ? motion.yaw : motion.x * 0.025) + breathYaw;
           const pitch = (inspectModeRef.current ? motion.pitch : -motion.y * 0.012) + breathPitch;
-          const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+          const offset = basePosition.clone().sub(baseTarget)
+            .multiplyScalar(1 - motion.cinematicZoom)
+            .applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
           camera.position.copy(baseTarget).add(offset);
-          camera.lookAt(baseTarget.clone().add(new THREE.Vector3(motion.x * 0.035, -motion.y * 0.018, 0)));
+          camera.lookAt(baseTarget.clone().add(new THREE.Vector3(
+            motion.x * 0.035 + motion.cinematicFocusX,
+            -motion.y * 0.018,
+            motion.cinematicFocusZ,
+          )));
           render();
         }
       }
@@ -804,6 +819,8 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       window.cancelAnimationFrame(ambientFrameRef.current);
       ambientFrameRef.current = 0;
+      if (cinematicResetTimeoutRef.current) clearTimeout(cinematicResetTimeoutRef.current);
+      cinematicResetTimeoutRef.current = null;
       observer?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
@@ -1041,6 +1058,32 @@ function Board3DCanvas({
   }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, boardTheme, orientation, showCoordinates]);
 
 useEffect(() => {
+  if (!cinematicMode || !animate?.seq || getEffectiveReducedMotion()) return undefined;
+  const state = sceneStateRef.current;
+  if (!state || state.coarsePointer) return undefined;
+  const motion = cameraMotionRef.current;
+  const target = squarePosition(animate.to);
+  const cueZoom = cinematicCue === 'critical' ? 0.072 : cinematicCue === 'dramatic' ? 0.055 : animate.capture ? 0.048 : 0.032;
+  motion.cinematicTargetZoom = cueZoom;
+  motion.cinematicTargetFocusX = THREE.MathUtils.clamp(target.x * 0.018, -0.065, 0.065);
+  motion.cinematicTargetFocusZ = THREE.MathUtils.clamp(target.z * 0.014, -0.05, 0.05);
+  if (cinematicResetTimeoutRef.current) clearTimeout(cinematicResetTimeoutRef.current);
+  cinematicResetTimeoutRef.current = setTimeout(() => {
+    motion.cinematicTargetZoom = 0;
+    motion.cinematicTargetFocusX = 0;
+    motion.cinematicTargetFocusZ = 0;
+    cinematicResetTimeoutRef.current = null;
+  }, cinematicCue === 'critical' ? 1050 : cinematicCue === 'dramatic' ? 820 : 620);
+  return () => {
+    if (cinematicResetTimeoutRef.current) clearTimeout(cinematicResetTimeoutRef.current);
+    cinematicResetTimeoutRef.current = null;
+    motion.cinematicTargetZoom = 0;
+    motion.cinematicTargetFocusX = 0;
+    motion.cinematicTargetFocusZ = 0;
+  };
+}, [cinematicMode, cinematicCue, animate?.seq, animate?.to, animate?.capture]);
+
+useEffect(() => {
   const state = sceneStateRef.current;
   if (!state) return;
   const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
@@ -1073,12 +1116,13 @@ function handleKeyDown(event) {
       data-board3d-motion="physical-v1"
       data-board3d-camera="micro-parallax"
       data-board3d-inspect={inspectMode ? 'true' : 'false'}
+      data-board3d-cinematic={cinematicMode ? cinematicCue : 'off'}
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
       <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE MANDO · {inspectMode ? 'INSPECCIÓN' : 'CÁMARA TÁCTICA'}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
-      <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
+      {!cinematicMode && <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>}
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
     </div>
   );

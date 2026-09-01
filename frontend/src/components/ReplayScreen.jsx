@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Board from './Board.jsx';
+import Board3D from './Board3D.jsx';
 import { api } from '../api.js';
 import { formatLongMove } from '../notation.js';
 import { toPGN, downloadPGN } from '../pgn.js';
@@ -11,6 +12,8 @@ import WorstMovesPanel, { SEVERITY_LABEL } from './WorstMovesPanel.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { replayFenPositions } from '../chessRules.js';
+import { checkedKingSquare } from '../boardState.js';
+import { replayCinematicCue, replayMatthiasKingColor, replayMoveAnimation } from '../replayCinematic.js';
 import { historyMoveNumber, historyMoverColor } from '../historyTimeline.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { getToken } from '../auth.js';
@@ -60,6 +63,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
   const [analyzeError, setAnalyzeError] = useState(null);
   const [moviePlaying, setMoviePlaying] = useState(false);
   const [movieSpeed, setMovieSpeed] = useState(1);
+  const previousMovieStepRef = useRef(initialStep ?? positions.length - 1);
   const [matthiasPosition, setMatthiasPosition] = useState(null);
   const [matthiasPositionStatus, setMatthiasPositionStatus] = useState('idle');
 
@@ -150,6 +154,15 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
   const moverColor = step > 0 ? historyMoverColor(step - 1, record.initialFen) : null;
   const wasHumanMove = moveAtStep && moverColor === record.humanColor;
   const moveReportAtStep = moveIndexAtStep !== null ? reportByIndex.get(moveIndexAtStep) : null;
+  const previousMovieStep = previousMovieStepRef.current;
+  const cinematicAnimation = replayMoveAnimation(moveAtStep, step, previousMovieStep, movieMode);
+  const cinematicCue = replayCinematicCue(moveReportAtStep);
+  const replayCheckSquare = movieMode ? checkedKingSquare(fen) : null;
+  const replayGameOver = step === positions.length - 1 && Boolean(record.outcome);
+
+  useEffect(() => {
+    previousMovieStepRef.current = step;
+  }, [step]);
 
   // La "pista inversa": si esta jugada tuvo un desliz de verdad, mostramos
   // en el tablero dónde el motor hubiera preferido mover — el mismo
@@ -237,13 +250,28 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
 
       <div className="game-layout">
         <div className="board-column">
-          <Board
-            fen={fen}
-            lastMove={lastMoveSquares}
-            hintMove={hintMove}
-            mistakeMove={mistakeMove}
-            orientation={record.humanColor === 'b' ? 'black' : 'white'}
-          />
+          {movieMode ? (
+            <Board3D
+              fen={fen}
+              lastMove={lastMoveSquares}
+              hintMove={hintMove}
+              orientation={record.humanColor === 'b' ? 'black' : 'white'}
+              animate={cinematicAnimation}
+              checkSquare={replayCheckSquare}
+              gameOver={replayGameOver}
+              matthiasKingColor={replayMatthiasKingColor(record.humanColor)}
+              cinematicMode
+              cinematicCue={cinematicCue}
+            />
+          ) : (
+            <Board
+              fen={fen}
+              lastMove={lastMoveSquares}
+              hintMove={hintMove}
+              mistakeMove={mistakeMove}
+              orientation={record.humanColor === 'b' ? 'black' : 'white'}
+            />
+          )}
           <div className="game-controls">
             <button className="secondary-btn" onClick={() => goTo(0)} disabled={step === 0}>⏮ Inicio</button>
             <button className="secondary-btn" onClick={() => goTo(step - 1)} disabled={step === 0}>← Anterior</button>
