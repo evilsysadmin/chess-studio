@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v6';
+export const PREMIUM_SURFACE_VERSION = 'premium-v7';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
   'ivory',
@@ -166,15 +166,15 @@ export function makePremiumTileMaterial({ color, light = false, coarsePointer = 
   const material = new THREE.MeshPhysicalMaterial({
     color,
     metalness: 0.015,
-    roughness: micro ? (light ? 0.67 : 0.63) : (light ? 0.56 : 0.52),
+    roughness: micro ? (light ? 0.74 : 0.7) : (light ? 0.64 : 0.6),
     roughnessMap: micro,
     bumpMap: micro,
     bumpScale: micro ? (light ? 0.004 : 0.007) : 0,
-    clearcoat: light ? 0.3 : 0.34,
-    clearcoatRoughness: light ? 0.21 : 0.18,
+    clearcoat: light ? 0.18 : 0.21,
+    clearcoatRoughness: light ? 0.38 : 0.34,
     ior: 1.46,
-    specularIntensity: light ? 0.56 : 0.64,
-    envMapIntensity: 0.68,
+    specularIntensity: light ? 0.4 : 0.46,
+    envMapIntensity: 0.5,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = light ? 'board-light' : 'board-dark';

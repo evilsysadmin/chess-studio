@@ -142,23 +142,25 @@ const BASE_PROFILE = [
 
 function addContactShadow(group, coarsePointer = false) {
   if (coarsePointer) return;
-  const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.34, 28),
-    new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.17,
-      depthWrite: false,
-      toneMapped: false,
-    }),
-  );
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.position.y = -0.006;
-  shadow.renderOrder = 1;
-  shadow.castShadow = false;
-  shadow.receiveShadow = false;
-  shadow.userData.contactShadow = true;
-  group.add(shadow);
+  for (const [radius, opacity, y] of [[0.31, 0.2, -0.006], [0.39, 0.075, -0.009]]) {
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(radius, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = y;
+    shadow.renderOrder = 1;
+    shadow.castShadow = false;
+    shadow.receiveShadow = false;
+    shadow.userData.contactShadow = true;
+    group.add(shadow);
+  }
 }
 
 function addSignatureDetail(group, type, accent, coarsePointer = false) {
@@ -587,15 +589,15 @@ function Board3DCanvas({
     scene.add(buildPremiumTableLayer(theme, coarsePointer));
 
     const pedestal = new THREE.Mesh(
-      new THREE.BoxGeometry(9.35, 0.38, 9.35),
-      new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.18, roughness: 0.48, clearcoat: 0.4, clearcoatRoughness: 0.18, envMapIntensity: 0.78 }),
+      new THREE.BoxGeometry(9.35, 0.4, 9.35),
+      new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.08, roughness: 0.67, clearcoat: 0.18, clearcoatRoughness: 0.36, envMapIntensity: 0.48, specularIntensity: 0.42 }),
     );
     pedestal.position.y = -0.22;
     pedestal.receiveShadow = true;
     boardGroup.add(pedestal);
 
     const frameGold = new THREE.MeshPhysicalMaterial({ color: 0xa77a2d, metalness: 0.72, roughness: 0.24, clearcoat: 0.68, clearcoatRoughness: 0.12, envMapIntensity: 1.2 });
-    const frameWood = new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.06, roughness: 0.48, clearcoat: 0.42, clearcoatRoughness: 0.2, envMapIntensity: 0.82 });
+    const frameWood = new THREE.MeshPhysicalMaterial({ color: theme.frame, metalness: 0.025, roughness: 0.7, clearcoat: 0.15, clearcoatRoughness: 0.4, envMapIntensity: 0.42, specularIntensity: 0.36 });
     for (const [x, z, sx, sz] of [
       [0, 4.38, 9.05, 0.28], [0, -4.38, 9.05, 0.28],
       [4.38, 0, 0.28, 9.05], [-4.38, 0, 0.28, 9.05],
@@ -618,10 +620,11 @@ function Board3DCanvas({
         const { x, z } = squarePosition(square);
         const light = (rank + fileIndex) % 2 === 1;
         const tile = new THREE.Mesh(
-          new THREE.BoxGeometry(0.992, 0.09, 0.992),
+          new THREE.BoxGeometry(0.984, 0.105, 0.984),
           light ? lightTileMaterial : darkTileMaterial,
         );
-        tile.position.set(x, 0.045, z);
+        const tileSettling = ((fileIndex * 13 + rank * 7) % 5 - 2) * 0.0008;
+        tile.position.set(x, 0.0525 + tileSettling, z);
         tile.receiveShadow = true;
         tile.userData.square = square;
         boardGroup.add(tile);
