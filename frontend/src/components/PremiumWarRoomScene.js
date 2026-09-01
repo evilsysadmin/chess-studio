@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 
 const COLORS = Object.freeze({
   walnut: 0x3a2114,
@@ -114,7 +115,7 @@ function addBankerLamp(group, x, y, z, facing, segments, coarsePointer) {
     [1.15, 0.48, 0.72],
   );
   shade.castShadow = !coarsePointer;
-  const glow = new THREE.PointLight(0xffc76b, coarsePointer ? 2.1 : 3.8, 5.6, 2);
+  const glow = new THREE.PointLight(0xffc76b, warRoomDecorProfile(coarsePointer).bankerLamp, 5.6, 2);
   glow.position.set(x + facing * 0.14, y + 0.58, z + 0.2);
   group.add(glow);
 }
@@ -125,20 +126,21 @@ function addWallSconce(group, x, y, z, towardBoard, segments, coarsePointer) {
   addBox(group, [0.06, 0.48, 0.08], COLORS.brassDark, [x, y - 0.16, z + towardBoard * 0.14], { metalness: 0.78, roughness: 0.26, rotation: [towardBoard * 0.18, 0, 0] });
   const glass = material(0xf2c875, { roughness: 0.18, clearcoat: 0.62, emissive: 0xff9d35, emissiveIntensity: 1.55, opacity: 0.92 });
   addMesh(group, new THREE.SphereGeometry(0.13, segments, Math.max(10, Math.floor(segments / 2))), glass, [x, y - 0.36, z + towardBoard * 0.2], [0, 0, 0], [0.82, 1.25, 0.82]);
-  const light = new THREE.PointLight(0xffad4f, coarsePointer ? 2.5 : 4.5, 6.8, 2);
+  const light = new THREE.PointLight(0xffad4f, warRoomDecorProfile(coarsePointer).wallSconce, 6.8, 2);
   light.position.set(x, y - 0.33, z + towardBoard * 0.42);
   group.add(light);
 }
 
 function addCurtain(group, x, y, z, towardBoard, side, compact = false) {
   const folds = compact ? 4 : 7;
+  const decor = warRoomDecorProfile(compact);
   const brass = material(COLORS.brass, { metalness: 0.84, roughness: 0.2 });
   addMesh(group, new THREE.CylinderGeometry(0.035, 0.035, 2.5, 12), brass, [x, y + 1.22, z], [0, 0, Math.PI / 2]);
   for (let index = 0; index < folds; index += 1) {
     const width = 0.25;
     const px = x + side * (index * 0.17 + 0.1);
     const pz = z + towardBoard * (0.02 + (index % 2) * 0.06);
-    addBox(group, [width, 2.72 - index * 0.07, 0.14], index % 2 ? COLORS.burgundyDark : COLORS.burgundy, [px, y - index * 0.03, pz], {
+    addBox(group, [width, 2.72 - index * 0.07, 0.14], index % 2 ? decor.curtainDark : decor.curtainLight, [px, y - index * 0.03, pz], {
       roughness: index % 2 ? 0.92 : 0.82,
       clearcoat: 0.04,
       sheen: 0.45,
@@ -255,21 +257,22 @@ function addCommandCabinet(group, x, y, z, towardBoard, segments, compact = fals
 }
 
 function addCinematicAccentLights(group, theme, wallZ, towardBoard, coarsePointer) {
+  const decor = warRoomDecorProfile(coarsePointer);
   const target = new THREE.Object3D();
   target.position.set(0, 3.25, wallZ + towardBoard * 0.62);
   group.add(target);
 
-  const crestSpot = new THREE.SpotLight(0xffd08a, coarsePointer ? 5 : 8.5, 15, Math.PI / 7, 0.6, 2);
+  const crestSpot = new THREE.SpotLight(0xffd08a, decor.crest, 15, Math.PI / 7, 0.6, 2);
   crestSpot.position.set(0, 6.25, wallZ + towardBoard * 3.5);
   crestSpot.target = target;
   crestSpot.castShadow = false;
   group.add(crestSpot);
 
-  const moonFill = new THREE.PointLight(0x6ca7c7, coarsePointer ? 1.1 : 2.2, 10.5, 2);
+  const moonFill = new THREE.PointLight(0x6ca7c7, decor.moon, 10.5, 2);
   moonFill.position.set(whiteSideSign(towardBoard) * 5.2, 4.2, wallZ + towardBoard * 1.7);
   group.add(moonFill);
 
-  const paletteFill = new THREE.PointLight(theme?.felt ?? COLORS.teal, coarsePointer ? 1.2 : 2.3, 10.5, 2);
+  const paletteFill = new THREE.PointLight(theme?.felt ?? COLORS.teal, decor.palette, 10.5, 2);
   paletteFill.position.set(-whiteSideSign(towardBoard) * 4.6, 3.15, wallZ + towardBoard * 1.45);
   group.add(paletteFill);
 }
