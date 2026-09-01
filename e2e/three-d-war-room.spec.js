@@ -75,7 +75,10 @@ async function openQuickGameWarRoom(page, requestLog = []) {
 }
 
 test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({ page }) => {
-  test.setTimeout(45_000);
+  // Three.js/WebGL can be substantially slower on GitHub-hosted runners than
+  // the rest of the E2E suite. Keep this gate blocking, but give rendering time
+  // to settle so runner load is not confused with an input regression.
+  test.setTimeout(75_000);
 
   const requestLog = [];
   const { board3d, canvas } = await openQuickGameWarRoom(page, requestLog);
