@@ -29,7 +29,7 @@ describe('Board3D premium surfaces', () => {
     coarse.dispose();
   });
 
-  it('diferencia marfil, ébano e incrustación sin perder acabado PBR', () => {
+  it('diferencia marfil, ébano e incrustación sin perder acabado PBR ni quemar las blancas', () => {
     const ivory = makePremiumPieceMaterial({ color: 0xf0eadc, skin, side: 'w' });
     const ebony = makePremiumPieceMaterial({ color: 0x262a30, skin, side: 'b' });
     const accent = makePremiumPieceMaterial({ color: 0xc7a34a, skin, side: 'w', accent: true });
@@ -42,6 +42,9 @@ describe('Board3D premium surfaces', () => {
     expect(ebony.bumpMap).toBeTruthy();
     expect(accent.roughnessMap).toBeNull();
     expect(accent.clearcoat).toBeGreaterThan(ivory.clearcoat);
+    expect(ivory.specularIntensity).toBeLessThan(ebony.specularIntensity);
+    expect(ivory.envMapIntensity).toBeLessThan(ebony.envMapIntensity);
+    expect(ivory.roughness).toBeGreaterThan(ebony.roughness);
 
     ivory.roughnessMap.dispose();
     ivory.dispose();
