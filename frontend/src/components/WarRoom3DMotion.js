@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import {
+  MATTHIAS_KING_ANCHOR_EVENT,
+  materiallyDifferentAnchor,
+  projectMatthiasKingAnchor,
+} from './Board3DOverlayAnchor.js';
 
 const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
@@ -41,6 +46,28 @@ export function nextRuntimeRenderScale({
   return { scale, slowFrameCount: 0, downgraded: scale < current };
 }
 
+function publishMatthiasKingAnchor(renderer, scene, camera, state) {
+  const canvas = renderer?.domElement;
+  if (!canvas?.dispatchEvent || typeof CustomEvent === 'undefined') return;
+  let king = state.matthiasKingObject;
+  if (!king?.parent) {
+    king = scene?.getObjectByName?.('matthias-rival-king') || null;
+    state.matthiasKingObject = king;
+  }
+  const anchor = king
+    ? projectMatthiasKingAnchor(king, camera, {
+      width: canvas.clientWidth || canvas.width || 1,
+      height: canvas.clientHeight || canvas.height || 1,
+    })
+    : null;
+  if (!materiallyDifferentAnchor(state.lastMatthiasAnchor, anchor)) return;
+  state.lastMatthiasAnchor = anchor;
+  canvas.dispatchEvent(new CustomEvent(MATTHIAS_KING_ANCHOR_EVENT, {
+    detail: anchor,
+    bubbles: true,
+  }));
+}
+
 function installWarRoomRenderDiscipline() {
   const prototype = THREE.WebGLRenderer?.prototype;
   if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
@@ -65,6 +92,8 @@ function installWarRoomRenderDiscipline() {
       lastShadowAt: Number.NEGATIVE_INFINITY,
       lastRenderAt: Number.NaN,
       slowFrameCount: 0,
+      matthiasKingObject: null,
+      lastMatthiasAnchor: null,
     };
     shadowRefreshState.set(this, state);
 
@@ -95,7 +124,9 @@ function installWarRoomRenderDiscipline() {
       state.lastShadowAt = now;
     }
 
-    return originalRender.call(this, scene, camera);
+    const result = originalRender.call(this, scene, camera);
+    publishMatthiasKingAnchor(this, scene, camera, state);
+    return result;
   };
 }
 
