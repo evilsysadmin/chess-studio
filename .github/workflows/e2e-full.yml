@@ -68,7 +68,7 @@ jobs:
       - name: Prove War Room desktop input
         if: github.event_name == 'pull_request'
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test three-d-war-room.spec.js --grep "Partida rápida · una partida activa · vista 3D" --workers=1 --retries=0
+        run: ./node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0
 
       - name: Run full Playwright suite
         if: github.event_name != 'pull_request'
