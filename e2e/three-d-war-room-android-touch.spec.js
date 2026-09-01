@@ -49,6 +49,21 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
   };
 }
 
+async function touchWithNaturalDrift(cdp, point) {
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: point.x, y: point.y, radiusX: 4, radiusY: 4, force: 0.7, id: 1 }],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: point.x + 8, y: point.y + 5, radiusX: 4, radiusY: 4, force: 0.7, id: 1 }],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  });
+}
+
 test('War Room · Android conserva el gesto táctil y juega e2→e4', async ({ page }) => {
   test.setTimeout(60_000);
   const requestLog = [];
@@ -76,9 +91,10 @@ test('War Room · Android conserva el gesto táctil y juega e2→e4', async ({ p
   expect(rect).not.toBeNull();
   const from = projectWarRoomSquare(rect, 'e2', 0.76);
   const to = projectWarRoomSquare(rect, 'e4');
+  const cdp = await page.context().newCDPSession(page);
 
-  await page.touchscreen.tap(from.x, from.y);
-  await page.touchscreen.tap(to.x, to.y);
+  await touchWithNaturalDrift(cdp, from);
+  await touchWithNaturalDrift(cdp, to);
 
   await expect.poll(
     () => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length,
