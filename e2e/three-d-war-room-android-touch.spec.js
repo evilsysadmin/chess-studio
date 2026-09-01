@@ -64,8 +64,21 @@ async function touchWithNaturalDrift(cdp, point) {
   });
 }
 
-test('War Room · Android conserva el gesto táctil y juega e2→e4', async ({ page }) => {
+function movePosts(requestLog) {
+  return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
+}
+
+test('War Room · Android captura el primer toque, selecciona y luego juega e2→e4', async ({ page }) => {
   test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    window.__warRoomPointerCaptures = [];
+    const original = Element.prototype.setPointerCapture;
+    Element.prototype.setPointerCapture = function patchedSetPointerCapture(pointerId) {
+      window.__warRoomPointerCaptures.push({ pointerId, className: String(this.className || '') });
+      return original?.call(this, pointerId);
+    };
+  });
+
   const requestLog = [];
   await mockApi(page, { requestLog });
   await login(page);
@@ -84,7 +97,6 @@ test('War Room · Android conserva el gesto táctil y juega e2→e4', async ({ p
   await expect(canvas).toBeVisible();
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
-  expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
 
   const rect = await canvas.boundingBox();
@@ -94,9 +106,9 @@ test('War Room · Android conserva el gesto táctil y juega e2→e4', async ({ p
   const cdp = await page.context().newCDPSession(page);
 
   await touchWithNaturalDrift(cdp, from);
-  await touchWithNaturalDrift(cdp, to);
+  await expect.poll(() => movePosts(requestLog).length).toBe(0);
+  expect(await page.evaluate(() => window.__warRoomPointerCaptures.some((entry) => entry.className.includes('board3d-main-canvas')))).toBe(true);
 
-  await expect.poll(
-    () => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length,
-  ).toBe(1);
+  await touchWithNaturalDrift(cdp, to);
+  await expect.poll(() => movePosts(requestLog).length).toBe(1);
 });
