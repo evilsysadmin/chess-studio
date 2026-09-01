@@ -10,8 +10,10 @@ function speechDuration(text) {
 
 export function nextWarRoomGesture(random = Math.random) {
   const roll = random();
-  if (roll < 0.18) return 'coffee';
-  if (roll < 0.42) return 'order';
+  if (roll < 0.08) return 'coffee';
+  if (roll < 0.34) return 'glare';
+  if (roll < 0.56) return 'head-left';
+  if (roll < 0.78) return 'head-right';
   return 'glance';
 }
 
@@ -21,9 +23,22 @@ function normalizeAngerLevel(value) {
   return Math.max(0, Math.min(4, Math.round(parsed)));
 }
 
-export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speechText = '', angerLevel = 0 }) {
+function normalizeReaction(value) {
+  return value === 'disapprove' || value === 'smirk' ? value : 'none';
+}
+
+export default function MatthiasWarRoomPortrait({
+  avatar,
+  speechKey = '',
+  speechText = '',
+  angerLevel = 0,
+  reactionKey = '',
+  reactionType = 'none',
+}) {
   const [speaking, setSpeaking] = useState(false);
   const [gesture, setGesture] = useState('idle');
+  const [blinking, setBlinking] = useState(false);
+  const [reaction, setReaction] = useState('none');
   const normalizedAnger = normalizeAngerLevel(angerLevel);
 
   useEffect(() => {
@@ -34,18 +49,54 @@ export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speech
   }, [speechKey, speechText]);
 
   useEffect(() => {
+    if (!reactionKey || getEffectiveReducedMotion()) return undefined;
+    const next = normalizeReaction(reactionType);
+    if (next === 'none') return undefined;
+    setReaction(next);
+    const timer = window.setTimeout(() => setReaction('none'), next === 'disapprove' ? 1150 : 1350);
+    return () => window.clearTimeout(timer);
+  }, [reactionKey, reactionType]);
+
+  useEffect(() => {
+    if (getEffectiveReducedMotion()) return undefined;
+    let blinkTimer = 0;
+    let reopenTimer = 0;
+    let cancelled = false;
+
+    const scheduleBlink = () => {
+      const delay = 2600 + Math.round(Math.random() * 3800);
+      blinkTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        setBlinking(true);
+        reopenTimer = window.setTimeout(() => {
+          if (cancelled) return;
+          setBlinking(false);
+          scheduleBlink();
+        }, 135);
+      }, delay);
+    };
+
+    scheduleBlink();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(blinkTimer);
+      window.clearTimeout(reopenTimer);
+    };
+  }, []);
+
+  useEffect(() => {
     if (getEffectiveReducedMotion()) return undefined;
     let gestureTimer = 0;
     let resetTimer = 0;
     let cancelled = false;
 
     const schedule = () => {
-      const delay = 15000 + Math.round(Math.random() * 21000);
+      const delay = 3400 + Math.round(Math.random() * 5200);
       gestureTimer = window.setTimeout(() => {
         if (cancelled) return;
         const next = nextWarRoomGesture();
         setGesture(next);
-        const duration = next === 'coffee' ? 4600 : next === 'order' ? 1800 : 2100;
+        const duration = next === 'coffee' ? 3600 : next === 'glare' ? 1900 : 1450;
         resetTimer = window.setTimeout(() => {
           if (cancelled) return;
           setGesture('idle');
@@ -66,8 +117,14 @@ export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speech
   const stateClass = [
     speaking ? 'is-speaking' : '',
     ordering ? 'is-ordering' : '',
+    blinking ? 'is-blinking' : '',
     gesture === 'glance' ? 'is-glancing' : '',
+    gesture === 'glare' ? 'is-glaring' : '',
+    gesture === 'head-left' ? 'is-head-left' : '',
+    gesture === 'head-right' ? 'is-head-right' : '',
     gesture === 'coffee' ? 'has-coffee' : '',
+    reaction === 'disapprove' ? 'is-disapproving' : '',
+    reaction === 'smirk' ? 'is-smirking' : '',
     `anger-level-${normalizedAnger}`,
   ].filter(Boolean).join(' ');
 
@@ -76,10 +133,15 @@ export default function MatthiasWarRoomPortrait({ avatar, speechKey = '', speech
       className={`game-3d-matthias-portrait-wrap ${stateClass}`}
       data-matthias-warroom-gesture={gesture}
       data-matthias-anger-level={normalizedAnger}
+      data-matthias-reaction={reaction}
     >
-      <img src={avatar} alt="Matthias, peón militar" className="game-3d-matthias-portrait" />
-      <span className="game-3d-matthias-brows" aria-hidden="true" />
-      <span className="game-3d-matthias-mouth" aria-hidden="true" />
+      <span className="game-3d-matthias-character" aria-hidden="true">
+        <img src={avatar} alt="" className="game-3d-matthias-portrait" />
+        <span className="game-3d-matthias-brows" />
+        <span className="game-3d-matthias-eyelids" />
+        <span className="game-3d-matthias-mouth" />
+      </span>
+      <span className="sr-only">Matthias, peón militar rival</span>
       <span className="game-3d-matthias-coffee" aria-hidden="true"><i /><b /></span>
       <span className="game-3d-matthias-rank" aria-hidden="true">♟</span>
     </div>
