@@ -151,6 +151,15 @@ test('staging live · alta protegida → login real → Matthias → Home → pa
     expect(gameId).toBeTruthy();
     await expect(gameStatus(page)).toBeVisible({ timeout: 30_000 });
 
+    // Staging estrena 3D por defecto para perfiles sin preferencia guardada.
+    // El smoke lo acredita primero y después vuelve a 2D porque clickBoardMove
+    // usa los botones accesibles de casilla como contrato determinista.
+    const activeThreeD = page.getByRole('button', { name: 'Vista · 3D', exact: true });
+    await expect(activeThreeD).toBeVisible({ timeout: 30_000 });
+    await expect(activeThreeD).toHaveAttribute('aria-pressed', 'true');
+    await activeThreeD.click();
+    await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeVisible();
+
     const moveResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return response.request().method() === 'POST'
