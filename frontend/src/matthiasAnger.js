@@ -45,24 +45,49 @@ export function angerLevelForMaterial(material = 0) {
   return 0;
 }
 
+function captureRecord(index, move) {
+  return {
+    id: `${index + 1}:${move.from}${move.to}:${move.captured}`,
+    ply: index + 1,
+    piece: move.captured,
+    value: MATTHIAS_CAPTURE_VALUES[move.captured] || 0,
+    from: move.from,
+    to: move.to,
+    san: move.san,
+  };
+}
+
 /**
- * Reconstruye capturas del humano desde el historial real de la partida.
+ * Reconstruye capturas desde el historial real de la partida.
  * No inventamos material si un historial especial no puede reproducirse desde
  * la posición inicial estándar: en ese caso devolvemos reconstructable=false.
  */
 export function matthiasAngerState(history = [], humanColor = 'w') {
   if (!Array.isArray(history) || !['w', 'b'].includes(humanColor)) {
-    return { material: 0, level: 0, latestHumanCapture: null, reconstructable: false };
+    return {
+      material: 0,
+      level: 0,
+      latestHumanCapture: null,
+      latestCpuCapture: null,
+      reconstructable: false,
+    };
   }
 
   const chess = new Chess();
   let material = 0;
   let latestHumanCapture = null;
+  let latestCpuCapture = null;
 
   for (let index = 0; index < history.length; index += 1) {
     const record = history[index];
     if (!record?.san) {
-      return { material: 0, level: 0, latestHumanCapture: null, reconstructable: false };
+      return {
+        material: 0,
+        level: 0,
+        latestHumanCapture: null,
+        latestCpuCapture: null,
+        reconstructable: false,
+      };
     }
 
     let move;
@@ -72,21 +97,23 @@ export function matthiasAngerState(history = [], humanColor = 'w') {
       move = null;
     }
     if (!move) {
-      return { material: 0, level: 0, latestHumanCapture: null, reconstructable: false };
+      return {
+        material: 0,
+        level: 0,
+        latestHumanCapture: null,
+        latestCpuCapture: null,
+        reconstructable: false,
+      };
     }
 
-    if (move.color === humanColor && move.captured && MATTHIAS_CAPTURE_VALUES[move.captured]) {
-      const value = MATTHIAS_CAPTURE_VALUES[move.captured];
-      material += value;
-      latestHumanCapture = {
-        id: `${index + 1}:${move.from}${move.to}:${move.captured}`,
-        ply: index + 1,
-        piece: move.captured,
-        value,
-        from: move.from,
-        to: move.to,
-        san: move.san,
-      };
+    if (!move.captured || !MATTHIAS_CAPTURE_VALUES[move.captured]) continue;
+
+    if (move.color === humanColor) {
+      const capture = captureRecord(index, move);
+      material += capture.value;
+      latestHumanCapture = capture;
+    } else {
+      latestCpuCapture = captureRecord(index, move);
     }
   }
 
@@ -94,6 +121,7 @@ export function matthiasAngerState(history = [], humanColor = 'w') {
     material,
     level: angerLevelForMaterial(material),
     latestHumanCapture,
+    latestCpuCapture,
     reconstructable: true,
   };
 }
