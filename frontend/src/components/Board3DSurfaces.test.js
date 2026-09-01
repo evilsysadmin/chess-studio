@@ -58,6 +58,10 @@ describe('Board3D premium surfaces', () => {
     expect(ivory.specularIntensity).toBeLessThan(ebony.specularIntensity);
     expect(ivory.envMapIntensity).toBeLessThan(ebony.envMapIntensity);
     expect(ivory.roughness).toBeGreaterThan(ebony.roughness);
+    expect(ivory.metalness).toBeLessThan(0.05);
+    expect(ivory.specularIntensity).toBeLessThan(0.5);
+    expect(ivory.envMapIntensity).toBeLessThan(0.5);
+    expect(ivory.clearcoat).toBeLessThan(0.4);
 
     disposeMaterial(ivory);
     disposeMaterial(ebony);
@@ -144,7 +148,7 @@ describe('Board3D premium surfaces', () => {
 });
 
 describe('Board3D cinematic framing', () => {
-  it('usa el espacio lateral extra para acercar la mesa en canvas panorámico', () => {
+  it('usa el espacio lateral extra para acercar la mesa sin amputar el borde del jugador', () => {
     const wide = getCameraFramingProfile(1.9);
     const compact = getCameraFramingProfile(1.1);
 
@@ -152,5 +156,7 @@ describe('Board3D cinematic framing', () => {
     expect(wide.padding).toBeLessThan(compact.padding);
     expect(wide.cameraY).toBeLessThan(compact.cameraY);
     expect(wide.maxDistance).toBeLessThan(compact.maxDistance);
+    expect(wide.targetZ).toBeLessThan(0);
+    expect(compact.targetZ).toBeLessThanOrEqual(0);
   });
 });
