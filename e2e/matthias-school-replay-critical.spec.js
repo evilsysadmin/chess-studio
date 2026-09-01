@@ -34,7 +34,7 @@ test('Escuela de Matthias · una lección dominada se puede repetir de verdad', 
   await completeLesson();
 });
 
-test('Escuela de Matthias · suspender un examen permite reintentarlo y aprobarlo', async ({ page }) => {
+test('Escuela de Matthias · suspender un examen reinicia un intento real y permite aprobarlo', async ({ page }) => {
   const schoolProgress = Object.fromEntries(BASIC_LESSONS_BEFORE_EXAM.map((id) => [
     id,
     { completed: true, attempts: 1, completedAt: '2026-08-31T12:00:00.000Z' },
@@ -49,19 +49,28 @@ test('Escuela de Matthias · suspender un examen permite reintentarlo y aprobarl
   await buttonWithHeading(page, 'Escuela de Matthias').click();
   await expect(page.getByRole('heading', { name: 'Examen básico · mate en una', exact: true })).toBeVisible();
 
+  const schoolBoard = page.locator('.matthias-school-board');
+  await expect(schoolBoard).toHaveAttribute('data-school-attempt', '0');
+  await expect(schoolBoard).toHaveAttribute('data-school-renderer', '2d');
+
   const wrongSquare = page.getByRole('button', { name: /^Casilla a1, vacía/ });
   await wrongSquare.click();
   await wrongSquare.click();
   await wrongSquare.click();
 
   const retry = page.getByRole('button', { name: 'Reintentar examen', exact: true });
+  const status = page.getByRole('status');
   await expect(retry).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('Suspendido');
+  await expect(status).toContainText('Suspendido');
   await retry.click();
 
+  await expect(schoolBoard).toHaveAttribute('data-school-attempt', '1');
   await expect(retry).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Reiniciar', exact: true })).toBeVisible();
   await expect(page.getByText('Errores 0/2', { exact: true })).toBeVisible();
+  await expect(status).toContainText('Examen reiniciado');
+  await expect(status).toContainText('posición inicial restaurada');
+
   await page.getByRole('button', { name: /^Casilla f7, dama blanca/ }).click();
   await page.getByRole('button', { name: /^Casilla g7, vacía/ }).click();
 

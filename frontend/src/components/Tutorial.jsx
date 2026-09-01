@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
-import Board from './Board.jsx';
+import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
@@ -51,6 +51,7 @@ export default function Tutorial({ onExit }) {
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
   const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
+  const schoolRenderer = getSchoolBoardRenderer();
 
   useEscapeToClose(section === 'school' ? onExit : () => setSection('school'));
 
@@ -104,13 +105,18 @@ export default function Tutorial({ onExit }) {
     setCoach({ tone: 'retry', text });
   }
 
-  function resetLesson({ keepCoach = false, clearFailure = true } = {}) {
+  function resetLesson({ keepCoach = false, clearFailure = true, announce = false } = {}) {
     setPracticeFen(lesson.fen);
     setSelected(null);
     setLineIndex(0);
     setAttemptEpoch((current) => current + 1);
     if (clearFailure) setMistakes(0);
-    if (!keepCoach) setCoach({ tone: 'neutral', text: initialCoachText(lesson) });
+    if (!keepCoach) {
+      const resetText = lesson.exam
+        ? `Examen reiniciado. Errores a cero y posición inicial restaurada. ${lesson.objective}`
+        : `Lección reiniciada. Volvemos a la posición inicial. ${lesson.objective}`;
+      setCoach({ tone: 'neutral', text: announce ? resetText : initialCoachText(lesson) });
+    }
   }
 
   function finishLesson(finalFen) {
@@ -313,10 +319,15 @@ export default function Tutorial({ onExit }) {
             </aside>
 
             <div className="matthias-school-stage">
-              <div className="board-column matthias-school-board">
-                <Board key={`${lesson.id}:${attemptEpoch}`} fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} />
+              <div
+                key={`${lesson.id}:${attemptEpoch}`}
+                className="board-column matthias-school-board"
+                data-school-attempt={attemptEpoch}
+                data-school-renderer={schoolRenderer}
+              >
+                <SchoolBoard fen={practiceFen} onSquareClick={handleSquareClick} selectedSquare={selected} legalTargets={legalTargets} />
                 <div className="matthias-school-board-actions">
-                  <button type="button" className="secondary-btn" onClick={() => resetLesson()}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
+                  <button type="button" className="secondary-btn" onClick={() => resetLesson({ announce: true })}>{examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}</button>
                   {!lesson.exam && <button type="button" className="secondary-btn" onClick={() => setCoach({ tone: 'hint', text: lesson.hint })}>Dame una pista</button>}
                 </div>
               </div>
