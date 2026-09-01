@@ -13,17 +13,17 @@ export function warRoomDecorProfile(coarsePointer = false) {
   }
 
   // En móvil la resolución, el tone mapping y la geometría compacta aplastan
-  // mucho los negros del fondo. Recuperamos sólo la iluminación del decorado:
-  // estas luces están pegadas a la pared y no suben la exposición global ni
-  // vuelven a quemar las piezas claras.
+  // los fondos y el antiguo burdeos terminaba pareciendo rojo/negro. Conserva
+  // la identidad teutónica, pero mueve el decorado hacia oliva, pizarra cálida,
+  // latón y verde grisáceo para separar mejor la sala de las piezas.
   return Object.freeze({
-    bankerLamp: 2.9,
-    wallSconce: 3.7,
-    crest: 7.8,
-    moon: 2.5,
-    palette: 2.7,
-    curtainLight: 0x6b2a34,
-    curtainDark: 0x3d171e,
-    banner: 0x252e43,
+    bankerLamp: 3.0,
+    wallSconce: 3.8,
+    crest: 8.0,
+    moon: 2.7,
+    palette: 2.9,
+    curtainLight: 0x596650,
+    curtainDark: 0x354039,
+    banner: 0x40564f,
   });
 }
