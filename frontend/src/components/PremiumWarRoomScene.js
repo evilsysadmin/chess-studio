@@ -17,6 +17,8 @@ const COLORS = Object.freeze({
   navy: 0x17283a,
   parchment: 0xcab98e,
   charcoal: 0x11151c,
+  stone: 0x6f6253,
+  stoneLight: 0xa69780,
 });
 
 function material(color, options = {}) {
@@ -62,6 +64,29 @@ function addBox(group, size, color, position, options = {}) {
   mesh.receiveShadow = options.receiveShadow ?? true;
   if (options.name) mesh.name = options.name;
   return mesh;
+}
+
+function nowMs() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function attachFlameKinetics(anchor, light, baseIntensity, phase = 0, coarsePointer = false) {
+  light.userData.baseWarRoomIntensity = baseIntensity;
+  if (coarsePointer) return;
+  anchor.userData.warRoomFlame = true;
+  const baseScale = anchor.scale.clone();
+  const baseRotationZ = anchor.rotation.z;
+  anchor.onBeforeRender = () => {
+    const now = nowMs();
+    const slow = Math.sin(now * 0.0067 + phase);
+    const fast = Math.sin(now * 0.021 + phase * 1.73);
+    const flutter = slow * 0.075 + fast * 0.038;
+    light.intensity = baseIntensity * (1 + flutter);
+    anchor.rotation.z = baseRotationZ + slow * 0.075 + fast * 0.025;
+    anchor.scale.set(baseScale.x * (1 - flutter * 0.12), baseScale.y * (1 + flutter * 0.22), baseScale.z);
+  };
 }
 
 function addBookStack(group, x, y, z, flip = false, compact = false) {
@@ -120,37 +145,92 @@ function addBankerLamp(group, x, y, z, facing, segments, coarsePointer) {
   group.add(glow);
 }
 
-function addWallSconce(group, x, y, z, towardBoard, segments, coarsePointer) {
+function addWallSconce(group, x, y, z, towardBoard, segments, coarsePointer, phase = 0) {
   const brass = material(COLORS.brass, { metalness: 0.88, roughness: 0.18, clearcoat: 0.72 });
   addMesh(group, new THREE.CylinderGeometry(0.19, 0.19, 0.06, segments), brass, [x, y, z], [Math.PI / 2, 0, 0]);
-  addBox(group, [0.06, 0.48, 0.08], COLORS.brassDark, [x, y - 0.16, z + towardBoard * 0.14], { metalness: 0.78, roughness: 0.26, rotation: [towardBoard * 0.18, 0, 0] });
-  const glass = material(0xf2c875, { roughness: 0.18, clearcoat: 0.62, emissive: 0xff9d35, emissiveIntensity: 1.55, opacity: 0.92 });
-  addMesh(group, new THREE.SphereGeometry(0.13, segments, Math.max(10, Math.floor(segments / 2))), glass, [x, y - 0.36, z + towardBoard * 0.2], [0, 0, 0], [0.82, 1.25, 0.82]);
-  const light = new THREE.PointLight(0xffad4f, warRoomDecorProfile(coarsePointer).wallSconce, 6.8, 2);
-  light.position.set(x, y - 0.33, z + towardBoard * 0.42);
+  addBox(group, [0.06, 0.5, 0.08], COLORS.brassDark, [x, y - 0.16, z + towardBoard * 0.14], {
+    metalness: 0.78,
+    roughness: 0.26,
+    rotation: [towardBoard * 0.18, 0, 0],
+  });
+  addMesh(group, new THREE.TorusGeometry(0.13, 0.018, 8, segments), brass, [x, y - 0.38, z + towardBoard * 0.21], [Math.PI / 2, 0, 0]);
+
+  const flameMat = material(0xffc15b, {
+    metalness: 0,
+    roughness: 0.18,
+    clearcoat: 0.1,
+    emissive: 0xff7a19,
+    emissiveIntensity: 2.15,
+  });
+  const flame = addMesh(
+    group,
+    new THREE.ConeGeometry(0.085, 0.27, Math.max(10, Math.floor(segments / 2))),
+    flameMat,
+    [x, y - 0.43, z + towardBoard * 0.22],
+    [0, 0, phase ? 0.035 : -0.035],
+    [0.9, 1.05, 0.9],
+  );
+  flame.name = 'war-room-sconce-flame';
+  const baseIntensity = warRoomDecorProfile(coarsePointer).wallSconce;
+  const light = new THREE.PointLight(0xffa64a, baseIntensity, 7.2, 2);
+  light.position.set(x, y - 0.38, z + towardBoard * 0.48);
   group.add(light);
+  attachFlameKinetics(flame, light, baseIntensity, phase, coarsePointer);
 }
 
 function addCurtain(group, x, y, z, towardBoard, side, compact = false) {
-  const folds = compact ? 4 : 7;
+  const folds = compact ? 5 : 9;
   const decor = warRoomDecorProfile(compact);
   const brass = material(COLORS.brass, { metalness: 0.84, roughness: 0.2 });
-  addMesh(group, new THREE.CylinderGeometry(0.035, 0.035, 2.5, 12), brass, [x, y + 1.22, z], [0, 0, Math.PI / 2]);
+  addMesh(group, new THREE.CylinderGeometry(0.035, 0.035, 2.9, 12), brass, [x, y + 1.28, z], [0, 0, Math.PI / 2]);
+
+  const velvetA = material(decor.curtainLight, {
+    roughness: 0.84,
+    clearcoat: 0.02,
+    sheen: 0.58,
+    sheenRoughness: 0.78,
+    sheenColor: 0xa45d65,
+  });
+  const velvetB = material(decor.curtainDark, {
+    roughness: 0.93,
+    clearcoat: 0.01,
+    sheen: 0.44,
+    sheenRoughness: 0.82,
+    sheenColor: 0x77333e,
+  });
+
   for (let index = 0; index < folds; index += 1) {
-    const width = 0.25;
-    const px = x + side * (index * 0.17 + 0.1);
-    const pz = z + towardBoard * (0.02 + (index % 2) * 0.06);
-    addBox(group, [width, 2.72 - index * 0.07, 0.14], index % 2 ? decor.curtainDark : decor.curtainLight, [px, y - index * 0.03, pz], {
-      roughness: index % 2 ? 0.92 : 0.82,
-      clearcoat: 0.04,
-      sheen: 0.45,
-      sheenRoughness: 0.78,
-      sheenColor: 0xa45d65,
-      rotation: [0, side * 0.02 * index, side * 0.012 * index],
-    });
+    const px = x + side * (index * 0.145 + 0.08);
+    const pz = z + towardBoard * (0.02 + (index % 2) * 0.065);
+    const height = 2.86 - index * 0.055;
+    const fold = addMesh(
+      group,
+      new THREE.CapsuleGeometry(0.105, Math.max(1.9, height - 0.21), 5, 10),
+      index % 2 ? velvetB : velvetA,
+      [px, y - index * 0.02, pz],
+      [0, 0, side * 0.012 * index],
+      [1, 1, 0.7],
+    );
+    fold.name = 'war-room-velvet-curtain-fold';
   }
-  addMesh(group, new THREE.SphereGeometry(0.07, 12, 8), brass, [x - 1.28, y + 1.22, z]);
-  addMesh(group, new THREE.SphereGeometry(0.07, 12, 8), brass, [x + 1.28, y + 1.22, z]);
+
+  // Volante superior y abrazadera: el telón deja de parecer una colección de
+  // tablones rojos y gana la silueta pesada del mockup aprobado.
+  addMesh(
+    group,
+    new THREE.SphereGeometry(0.72, compact ? 14 : 24, compact ? 9 : 14),
+    velvetA,
+    [x + side * 0.6, y + 1.05, z + towardBoard * 0.03],
+    [0, 0, side * 0.1],
+    [1.45, 0.34, 0.34],
+  );
+  const tieX = x + side * (compact ? 0.48 : 0.65);
+  const tieY = y - 0.05;
+  addMesh(group, new THREE.TorusGeometry(0.18, 0.025, 8, 22), brass, [tieX, tieY, z + towardBoard * 0.16], [Math.PI / 2, 0, 0], [0.72, 1, 1]);
+  addMesh(group, new THREE.CylinderGeometry(0.017, 0.02, 0.38, 10), brass, [tieX + side * 0.06, tieY - 0.22, z + towardBoard * 0.17], [0, 0, side * 0.13]);
+  addMesh(group, new THREE.ConeGeometry(0.065, 0.18, 12), brass, [tieX + side * 0.11, tieY - 0.48, z + towardBoard * 0.17], [0, 0, side * 0.08]);
+  addMesh(group, new THREE.SphereGeometry(0.07, 12, 8), brass, [x - 1.48, y + 1.28, z]);
+  addMesh(group, new THREE.SphereGeometry(0.07, 12, 8), brass, [x + 1.48, y + 1.28, z]);
 }
 
 function addLaurel(group, centerX, centerY, z, side, segments) {
@@ -159,9 +239,9 @@ function addLaurel(group, centerX, centerY, z, side, segments) {
   for (let index = 0; index < 9; index += 1) {
     const t = index / 8;
     const angle = THREE.MathUtils.lerp(-1.03, 1.03, t);
-    const x = centerX + side * (0.73 + Math.cos(angle) * 0.38);
-    const y = centerY + Math.sin(angle) * 0.94;
-    addMesh(group, leafGeometry.clone(), leafMaterial, [x, y, z], [0, 0, side * (-angle * 0.72 + 0.48)], [0.55, 1.25, 0.35]);
+    const leafX = centerX + side * (0.73 + Math.cos(angle) * 0.38);
+    const leafY = centerY + Math.sin(angle) * 0.94;
+    addMesh(group, leafGeometry.clone(), leafMaterial, [leafX, leafY, z], [0, 0, side * (-angle * 0.72 + 0.48)], [0.55, 1.25, 0.35]);
   }
 }
 
@@ -193,20 +273,99 @@ function addPawnCrest(group, x, y, z, towardBoard, segments) {
   group.add(crest);
 }
 
-function addPictureFrame(group, x, y, z, towardBoard, flip = false) {
+function addPictureFrame(group, x, y, z, towardBoard, flip = false, coarsePointer = false) {
   const frameMat = material(COLORS.brassDark, { metalness: 0.64, roughness: 0.26, clearcoat: 0.54 });
-  addBox(group, [2.0, 1.42, 0.09], COLORS.walnutWarm, [x, y, z], { roughness: 0.5, clearcoat: 0.4 });
-  addBox(group, [1.72, 1.14, 0.04], flip ? 0x314535 : 0x3f3727, [x, y, z + towardBoard * 0.075], { roughness: 0.86, castShadow: false });
-  for (const [dx, dy, sx, sy] of [[0, 0.65, 1.95, 0.07], [0, -0.65, 1.95, 0.07], [-0.93, 0, 0.07, 1.35], [0.93, 0, 0.07, 1.35]]) {
+  addBox(group, [2.2, 1.62, 0.09], COLORS.walnutWarm, [x, y, z], { roughness: 0.5, clearcoat: 0.4 });
+  addBox(group, [1.92, 1.34, 0.04], flip ? 0x4c5144 : 0x394652, [x, y, z + towardBoard * 0.075], { roughness: 0.86, castShadow: false });
+  for (const [dx, dy, sx, sy] of [[0, 0.75, 2.15, 0.07], [0, -0.75, 2.15, 0.07], [-1.03, 0, 0.07, 1.55], [1.03, 0, 0.07, 1.55]]) {
     addMesh(group, new THREE.BoxGeometry(sx, sy, 0.04), frameMat, [x + dx, y + dy, z + towardBoard * 0.11]);
   }
-  for (let index = 0; index < 4; index += 1) {
-    addBox(group, [1.05 - index * 0.13, 0.025, 0.02], COLORS.parchment, [x + (index - 1.5) * 0.1, y + (index - 1.5) * 0.18, z + towardBoard * 0.12], {
-      roughness: 0.8,
-      rotation: [0, 0, (index % 2 ? -1 : 1) * 0.14],
-      castShadow: false,
-    });
+
+  const artZ = z + towardBoard * 0.13;
+  const mountainMat = material(flip ? 0x5d6252 : 0x65717a, { roughness: 0.95, clearcoat: 0 });
+  const castleMat = material(0xbbb09b, { roughness: 0.88, clearcoat: 0.03 });
+  const roofMat = material(0x4b3130, { roughness: 0.92, clearcoat: 0.02 });
+  const earthMat = material(0x31352d, { roughness: 0.98, clearcoat: 0 });
+  addBox(group, [1.82, 0.32, 0.018], 0x30372f, [x, y - 0.48, artZ], { roughness: 0.96, castShadow: false });
+  addMesh(group, new THREE.ConeGeometry(0.45, 0.85, 3), mountainMat, [x - 0.53, y + 0.06, artZ + towardBoard * 0.006], [0, 0, 0.03], [1.25, 1, 0.18]);
+  addMesh(group, new THREE.ConeGeometry(0.38, 0.72, 3), mountainMat, [x + 0.58, y + 0.1, artZ + towardBoard * 0.007], [0, 0, -0.04], [1.15, 1, 0.18]);
+  addBox(group, [0.58, 0.38, 0.028], 0x8f8776, [x + 0.12, y - 0.14, artZ + towardBoard * 0.02], { roughness: 0.9, castShadow: false });
+  for (const towerX of [x - 0.24, x + 0.43]) {
+    addMesh(group, new THREE.BoxGeometry(0.22, 0.58, 0.03), castleMat, [towerX, y + 0.02, artZ + towardBoard * 0.025]);
+    addMesh(group, new THREE.ConeGeometry(0.16, 0.22, 4), roofMat, [towerX, y + 0.42, artZ + towardBoard * 0.03], [0, Math.PI / 4, 0], [1, 1, 0.22]);
   }
+  addBox(group, [0.08, 0.35, 0.035], castleMat.color?.getHex?.() || 0xbbb09b, [x + 0.1, y + 0.12, artZ + towardBoard * 0.03], { roughness: 0.88, castShadow: false });
+  addBox(group, [1.75, 0.025, 0.02], earthMat.color?.getHex?.() || 0x31352d, [x, y - 0.34, artZ + towardBoard * 0.035], { roughness: 1, castShadow: false });
+
+  if (!coarsePointer) {
+    const troopMat = material(0x201d19, { roughness: 1, clearcoat: 0 });
+    for (let index = 0; index < 7; index += 1) {
+      const troopX = x - 0.7 + index * 0.22;
+      addMesh(group, new THREE.SphereGeometry(0.025, 8, 6), troopMat, [troopX, y - 0.38 + (index % 2) * 0.035, artZ + towardBoard * 0.04]);
+      addBox(group, [0.024, 0.12, 0.012], 0x201d19, [troopX, y - 0.45 + (index % 2) * 0.035, artZ + towardBoard * 0.04], { roughness: 1, castShadow: false });
+    }
+  }
+}
+
+function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = false) {
+  const stone = material(COLORS.stone, {
+    metalness: 0.01,
+    roughness: 0.3,
+    clearcoat: 0.72,
+    clearcoatRoughness: 0.12,
+    specularIntensity: 0.78,
+  });
+  const stoneLight = material(COLORS.stoneLight, {
+    metalness: 0,
+    roughness: 0.26,
+    clearcoat: 0.78,
+    clearcoatRoughness: 0.1,
+    specularIntensity: 0.82,
+  });
+  const iron = material(0x181412, { metalness: 0.58, roughness: 0.58, clearcoat: 0.08 });
+  const ember = material(0x8a2a12, { roughness: 0.75, emissive: 0xff4a13, emissiveIntensity: 0.85 });
+  const fireplace = new THREE.Group();
+  fireplace.name = 'war-room-fireplace';
+
+  addBox(fireplace, [1.76, 1.12, 0.08], 0x0e0b09, [0, 0.62, towardBoard * 0.06], { roughness: 1, clearcoat: 0 });
+  addMesh(fireplace, new THREE.BoxGeometry(0.25, 1.45, 0.35), stone, [-1.03, 0.72, 0]);
+  addMesh(fireplace, new THREE.BoxGeometry(0.25, 1.45, 0.35), stone, [1.03, 0.72, 0]);
+  addMesh(fireplace, new THREE.BoxGeometry(2.3, 0.26, 0.42), stoneLight, [0, 1.47, 0]);
+  addMesh(fireplace, new THREE.BoxGeometry(2.62, 0.16, 0.62), stoneLight, [0, 1.7, towardBoard * 0.02]);
+  addMesh(fireplace, new THREE.BoxGeometry(2.34, 0.12, 0.82), stoneLight, [0, 0.03, towardBoard * 0.18]);
+
+  for (const logY of [0.28, 0.41]) {
+    addMesh(fireplace, new THREE.CylinderGeometry(0.075, 0.09, 0.82, 12), iron, [-0.18, logY, towardBoard * 0.25], [0, 0, Math.PI / 2 - 0.12]);
+    addMesh(fireplace, new THREE.CylinderGeometry(0.07, 0.09, 0.72, 12), iron, [0.22, logY + 0.02, towardBoard * 0.26], [0, 0, Math.PI / 2 + 0.14]);
+  }
+  addMesh(fireplace, new THREE.SphereGeometry(0.16, 12, 8), ember, [-0.24, 0.24, towardBoard * 0.3], [0, 0, 0], [1.5, 0.48, 0.5]);
+  addMesh(fireplace, new THREE.SphereGeometry(0.16, 12, 8), ember, [0.22, 0.23, towardBoard * 0.3], [0, 0, 0], [1.4, 0.45, 0.5]);
+
+  const flameCount = coarsePointer ? 2 : 4;
+  const fireLight = new THREE.PointLight(0xff8b38, coarsePointer ? 2.8 : 4.6, 8.6, 2);
+  fireLight.position.set(0, 0.68, towardBoard * 0.86);
+  fireplace.add(fireLight);
+  for (let index = 0; index < flameCount; index += 1) {
+    const flameMat = material(index % 2 ? 0xffa13d : 0xffd36a, {
+      metalness: 0,
+      roughness: 0.2,
+      emissive: index % 2 ? 0xff571e : 0xff8a27,
+      emissiveIntensity: 2.25,
+      clearcoat: 0.06,
+    });
+    const flame = addMesh(
+      fireplace,
+      new THREE.ConeGeometry(0.12 + index * 0.018, 0.48 + (index % 2) * 0.18, Math.max(10, Math.floor(segments / 2))),
+      flameMat,
+      [-0.38 + index * 0.25, 0.52 + (index % 2) * 0.08, towardBoard * (0.3 + index * 0.015)],
+      [0, 0, (index - 1.5) * 0.035],
+      [1, 1, 0.8],
+    );
+    attachFlameKinetics(flame, fireLight, coarsePointer ? 2.8 : 4.6, 0.9 + index * 1.7, coarsePointer);
+  }
+
+  fireplace.position.set(x, y, z);
+  group.add(fireplace);
 }
 
 function addCofferedPaneling(group, wallZ, towardBoard, coarsePointer) {
@@ -226,8 +385,8 @@ function addCofferedPaneling(group, wallZ, towardBoard, coarsePointer) {
       clearcoat: 0.22,
       castShadow: false,
     });
-    for (const y of [2.36, 4.34]) {
-      addBox(panels, [width * 0.92, 0.035, 0.025], COLORS.brassDark, [x, y, wallZ + towardBoard * 0.54], {
+    for (const panelY of [2.36, 4.34]) {
+      addBox(panels, [width * 0.92, 0.035, 0.025], COLORS.brassDark, [x, panelY, wallZ + towardBoard * 0.54], {
         metalness: 0.68,
         roughness: 0.28,
         castShadow: false,
@@ -247,9 +406,9 @@ function addCommandCabinet(group, x, y, z, towardBoard, segments, compact = fals
   addBox(cabinet, [width * 0.88, 0.82, 0.05], COLORS.walnutDark, [0, 0.52, towardBoard * 0.39], { roughness: 0.6 });
   const drawerCount = compact ? 2 : 3;
   for (let index = 0; index < drawerCount; index += 1) {
-    const yy = 0.25 + index * 0.27;
-    addBox(cabinet, [width * 0.7, 0.17, 0.035], COLORS.mahogany, [0, yy, towardBoard * 0.43], { roughness: 0.5, clearcoat: 0.3 });
-    addMesh(cabinet, new THREE.TorusGeometry(0.075, 0.012, 8, segments, Math.PI), material(COLORS.brass, { metalness: 0.86, roughness: 0.2 }), [0, yy, towardBoard * 0.47], [Math.PI / 2, 0, 0]);
+    const drawerY = 0.25 + index * 0.27;
+    addBox(cabinet, [width * 0.7, 0.17, 0.035], COLORS.mahogany, [0, drawerY, towardBoard * 0.43], { roughness: 0.5, clearcoat: 0.3 });
+    addMesh(cabinet, new THREE.TorusGeometry(0.075, 0.012, 8, segments, Math.PI), material(COLORS.brass, { metalness: 0.86, roughness: 0.2 }), [0, drawerY, towardBoard * 0.47], [Math.PI / 2, 0, 0]);
   }
   addBox(cabinet, [width + 0.14, 0.08, 0.86], COLORS.brassDark, [0, 1.08, 0], { metalness: 0.58, roughness: 0.3 });
   cabinet.position.set(x, y, z);
@@ -285,7 +444,7 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   const group = new THREE.Group();
   group.name = 'premium-war-room-layer';
   group.userData.premiumWarRoom = true;
-  group.userData.premiumPass = 'cinematic-v2';
+  group.userData.premiumPass = 'cinematic-v3-teutonic';
 
   const far = whiteSide ? -1 : 1;
   const towardBoard = -far;
@@ -296,35 +455,36 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   const rightX = -leftX;
 
   addCofferedPaneling(group, wallZ, towardBoard, coarsePointer);
-  addCurtain(group, -1.65, 3.28, wallZ + towardBoard * 0.52, towardBoard, -1, coarsePointer);
-  addCurtain(group, 1.65, 3.28, wallZ + towardBoard * 0.52, towardBoard, 1, coarsePointer);
+  addCurtain(group, -1.72, 3.28, wallZ + towardBoard * 0.52, towardBoard, -1, coarsePointer);
+  addCurtain(group, 1.72, 3.28, wallZ + towardBoard * 0.52, towardBoard, 1, coarsePointer);
   addPawnCrest(group, 0, 3.25, wallZ + towardBoard * 0.62, towardBoard, segments);
-  addWallSconce(group, -3.15, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer);
-  addWallSconce(group, 3.15, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer);
+  addWallSconce(group, -3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 0.7);
+  addWallSconce(group, 3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 3.2);
 
-  addBox(group, [3.25, 0.22, 0.82], COLORS.walnutWarm, [leftX, 1.83, shelfZ], { roughness: 0.46, clearcoat: 0.44 });
-  addBox(group, [3.25, 0.16, 0.84], COLORS.brassDark, [leftX, 1.69, shelfZ], { metalness: 0.58, roughness: 0.28 });
-  addBankerLamp(group, leftX - (whiteSide ? 0.55 : -0.55), 1.92, shelfZ + towardBoard * 0.22, whiteSide ? 1 : -1, segments, coarsePointer);
-  addBookStack(group, leftX + (whiteSide ? 0.62 : -0.62), 1.96, shelfZ + towardBoard * 0.08, !whiteSide, coarsePointer);
-  addVase(group, leftX + (whiteSide ? -1.0 : 1.0), 1.91, shelfZ + towardBoard * 0.06, COLORS.burgundy, segments);
+  // Ala de la chimenea: piedra pulida, llama física y una repisa de madera.
+  addFireplace(group, leftX, 0.34, wallZ + towardBoard * 0.93, towardBoard, segments, coarsePointer);
+  addBox(group, [3.12, 0.18, 0.78], COLORS.walnutWarm, [leftX, 2.02, shelfZ], { roughness: 0.42, clearcoat: 0.5 });
+  addBox(group, [3.14, 0.08, 0.82], COLORS.brassDark, [leftX, 1.89, shelfZ], { metalness: 0.6, roughness: 0.28 });
+  addBookStack(group, leftX + (whiteSide ? 0.72 : -0.72), 2.12, shelfZ + towardBoard * 0.06, !whiteSide, coarsePointer);
+  addVase(group, leftX + (whiteSide ? -1.02 : 1.02), 2.08, shelfZ + towardBoard * 0.05, COLORS.burgundy, segments);
 
+  // Ala de mando: cuadro de castillo alpino, libros, lámpara y cajonera.
   addBox(group, [3.25, 0.22, 0.82], COLORS.walnutWarm, [rightX, 1.83, shelfZ], { roughness: 0.46, clearcoat: 0.44 });
   addBox(group, [3.25, 0.16, 0.84], COLORS.brassDark, [rightX, 1.69, shelfZ], { metalness: 0.58, roughness: 0.28 });
-  addBookStack(group, rightX + (whiteSide ? -0.54 : 0.54), 1.96, shelfZ + towardBoard * 0.08, whiteSide, coarsePointer);
-  addVase(group, rightX + (whiteSide ? 0.96 : -0.96), 1.91, shelfZ + towardBoard * 0.06, COLORS.bottleGreen, segments);
-  addPictureFrame(group, rightX, 3.62, wallZ + towardBoard * 0.54, towardBoard, !whiteSide);
+  addBankerLamp(group, rightX + (whiteSide ? -0.72 : 0.72), 1.92, shelfZ + towardBoard * 0.22, whiteSide ? -1 : 1, segments, coarsePointer);
+  addBookStack(group, rightX + (whiteSide ? 0.46 : -0.46), 1.96, shelfZ + towardBoard * 0.08, whiteSide, coarsePointer);
+  addVase(group, rightX + (whiteSide ? 1.08 : -1.08), 1.91, shelfZ + towardBoard * 0.06, COLORS.bottleGreen, segments);
+  addPictureFrame(group, rightX, 3.66, wallZ + towardBoard * 0.54, towardBoard, !whiteSide, coarsePointer);
+  addCommandCabinet(group, rightX, 0.42, wallZ + towardBoard * 1.08, towardBoard, segments, coarsePointer);
 
-  addCommandCabinet(group, leftX, 0.42, wallZ + towardBoard * 1.08, towardBoard, segments, coarsePointer);
   if (!coarsePointer) {
-    addCommandCabinet(group, rightX, 0.42, wallZ + towardBoard * 1.08, towardBoard, segments, false);
-    addVase(group, leftX + (whiteSide ? 1.18 : -1.18), 3.18, wallZ + towardBoard * 0.58, COLORS.teal, segments);
-    addBookStack(group, rightX + (whiteSide ? 0.82 : -0.82), 3.02, wallZ + towardBoard * 0.58, !whiteSide, false);
+    addVase(group, rightX + (whiteSide ? -1.18 : 1.18), 3.04, wallZ + towardBoard * 0.58, COLORS.teal, segments);
+    addBookStack(group, leftX + (whiteSide ? -0.76 : 0.76), 3.03, wallZ + towardBoard * 0.58, !whiteSide, false);
   }
 
   addCinematicAccentLights(group, theme, wallZ, towardBoard, coarsePointer);
   return group;
 }
-
 
 function addWarTablePapers(group, coarsePointer = false) {
   const paper = material(0xb6a681, { metalness: 0, roughness: 0.9, clearcoat: 0.02, specularIntensity: 0.18 });
@@ -396,7 +556,7 @@ function addTableEdgeWear(group, coarsePointer = false) {
 export function buildPremiumTableLayer(theme, coarsePointer = false) {
   const group = new THREE.Group();
   group.name = 'premium-table-layer';
-  group.userData.premiumPass = 'cinematic-v2';
+  group.userData.premiumPass = 'cinematic-v3-teutonic';
 
   const brass = material(theme?.glow ?? COLORS.brass, { metalness: 0.86, roughness: 0.2, clearcoat: 0.76, clearcoatRoughness: 0.07 });
   const leather = material(COLORS.burgundyDark, { roughness: 0.46, clearcoat: 0.3, clearcoatRoughness: 0.16, sheen: 0.38, sheenColor: 0x8c4c56 });
