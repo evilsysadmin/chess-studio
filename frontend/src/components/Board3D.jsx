@@ -15,6 +15,7 @@ import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../us
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import { COARSE_PIECE_HIT_TARGET, resolveBoardTap } from './WarRoom3DTouch.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
+import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 
@@ -680,13 +681,25 @@ function Board3DCanvas({
         squareMeshes.set(square, tile);
 
         const marker = new THREE.Mesh(
-          new THREE.RingGeometry(0.29, 0.43, 32),
-          new THREE.MeshBasicMaterial({ color: 0xc9a227, transparent: true, opacity: 0.86, side: THREE.DoubleSide, depthWrite: false }),
+          new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE),
+          new THREE.MeshBasicMaterial({
+            color: 0x145f8a,
+            transparent: true,
+            opacity: 0.86,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -2,
+            polygonOffsetUnits: -2,
+            toneMapped: false,
+          }),
         );
         marker.rotation.x = -Math.PI / 2;
-        marker.position.set(x, 0.102, z);
+        // La cara superior de las casillas llega a ~0.107 por el settling.
+        // El antiguo y=0.102 enterraba el marcador dentro de la madera.
+        marker.position.set(x, BOARD3D_HIGHLIGHT_Y, z);
         marker.visible = false;
-        marker.renderOrder = 4;
+        marker.renderOrder = 6;
         boardGroup.add(marker);
         highlightMeshes.set(square, marker);
       }
@@ -1136,18 +1149,21 @@ function Board3DCanvas({
     if (!state) return;
     for (const [square, marker] of state.highlightMeshes.entries()) {
       marker.visible = false;
-      let color = null;
-      let opacity = 0.86;
-      if (focusedSquare === square) { color = 0xe8dfc3; opacity = 0.42; }
-      if (hoveredSquare === square) { color = 0x8bc7e8; opacity = 0.58; }
-      if (lastMove && (square === lastMove.from || square === lastMove.to)) color = 0xb9952e;
-      if (hintMove && (square === hintMove.from || square === hintMove.to)) color = 0x50a4c6;
-      if (legalMap.has(square)) color = legalMap.get(square) ? 0xb4483a : 0x5fa8d3;
-      if (selectedSquare === square) { color = 0xe0b84e; opacity = 0.96; }
-      if (checkSquare === square) { color = 0xe33b32; opacity = 1; }
-      if (color != null) {
-        marker.material.color.setHex(color);
-        marker.material.opacity = opacity;
+      marker.scale.setScalar(1);
+      const style = board3DHighlightStyle({
+        square,
+        focusedSquare,
+        hoveredSquare,
+        lastMove,
+        hintMove,
+        legalMap,
+        selectedSquare,
+        checkSquare,
+      });
+      if (style) {
+        marker.material.color.setHex(style.color);
+        marker.material.opacity = style.opacity;
+        marker.scale.setScalar(style.scale);
         marker.visible = true;
       }
     }
