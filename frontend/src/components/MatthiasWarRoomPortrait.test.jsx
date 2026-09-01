@@ -15,8 +15,9 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('data-matthias-warroom-gesture="idle"');
   });
 
-  it('mantiene el café ocasional y prioriza la mirada la mayor parte del tiempo', () => {
+  it('mezcla café, órdenes y mirada sin convertirlo en un muñeco en bucle', () => {
     expect(nextWarRoomGesture(() => 0.1)).toBe('coffee');
+    expect(nextWarRoomGesture(() => 0.3)).toBe('order');
     expect(nextWarRoomGesture(() => 0.8)).toBe('glance');
   });
 });
