@@ -1,0 +1,6 @@
+.game-screen .board-live-row.is-3d-warroom .game-3d-matthias-portrait {
+  object-fit: contain;
+  object-position: 50% 0%;
+  box-sizing: border-box;
+  padding: .12rem .22rem 0;
+}
