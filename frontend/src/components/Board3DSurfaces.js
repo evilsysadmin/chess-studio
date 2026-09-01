@@ -4,6 +4,20 @@ import './Board3DSurfaces.css';
 
 export const PREMIUM_SURFACE_VERSION = 'premium-v3';
 
+const SURFACE_ROLES_TO_PRESERVE = new Set([
+  'ivory',
+  'ebony',
+  'metal-inlay',
+  'board-light',
+  'board-dark',
+]);
+
+const KNOWN_WOOD_COLORS = new Set([
+  0x3a2114, 0x160c08, 0x5a321c, 0x482217, 0x25140d,
+  0x2a160d, 0x130b07, 0x34251f, 0x302016, 0x100b08,
+]);
+const KNOWN_BURGUNDY_COLORS = new Set([0x5b2028, 0x2e1015, 0x5d2926]);
+
 export function getCameraFramingProfile(aspect) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
   const wide = safeAspect >= 1.42;
@@ -213,6 +227,94 @@ export function makePremiumDecorMaterial({
   return material;
 }
 
+function classifyDecorSurface(material) {
+  if (!material?.isMeshPhysicalMaterial || !material.color) return null;
+  const existingRole = material.userData?.surfaceRole;
+  if (SURFACE_ROLES_TO_PRESERVE.has(existingRole) || String(existingRole || '').startsWith('decor-')) return null;
+
+  if ((material.metalness ?? 0) >= 0.55) return 'metal';
+
+  const hex = material.color.getHex();
+  if (KNOWN_BURGUNDY_COLORS.has(hex)) {
+    return (material.roughness ?? 0.5) >= 0.76 ? 'fabric' : 'leather';
+  }
+  if (KNOWN_WOOD_COLORS.has(hex)) return 'wood';
+
+  const hsl = {};
+  material.color.getHSL(hsl);
+  if ((material.metalness ?? 0) < 0.25 && hsl.h >= 0.015 && hsl.h <= 0.13 && hsl.s >= 0.18 && hsl.l <= 0.38) {
+    return 'wood';
+  }
+  return null;
+}
+
+function tuneExistingDecorMaterial(material, kind, coarsePointer, seed) {
+  const micro = coarsePointer ? null : createMicroSurfaceMap({ seed, kind, coarsePointer });
+  if (kind === 'wood') {
+    material.metalness = Math.min(material.metalness ?? 0.03, 0.08);
+    material.roughness = THREE.MathUtils.clamp((material.roughness ?? 0.5) * 1.03, 0.38, 0.7);
+    material.clearcoat = Math.max(material.clearcoat ?? 0, 0.38);
+    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.16, 0.14);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.82);
+  } else if (kind === 'leather') {
+    material.metalness = Math.min(material.metalness ?? 0.01, 0.04);
+    material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.6, 0.54, 0.72);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.2, 0.24);
+    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.3, 0.28);
+    material.sheen = Math.max(material.sheen ?? 0, 0.25);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.62);
+  } else if (kind === 'fabric') {
+    material.metalness = 0;
+    material.roughness = Math.max(material.roughness ?? 0.85, 0.84);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.02, 0.04);
+    material.sheen = Math.max(material.sheen ?? 0, 0.48);
+    material.sheenRoughness = Math.max(material.sheenRoughness ?? 0.7, 0.72);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.4);
+  } else if (kind === 'metal') {
+    material.metalness = Math.max(material.metalness ?? 0.8, 0.78);
+    material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.26, 0.2, 0.36);
+    material.clearcoat = Math.max(material.clearcoat ?? 0.3, 0.34);
+    material.envMapIntensity = Math.max(material.envMapIntensity ?? 1, 1.02);
+  }
+
+  if (micro && !material.roughnessMap && !material.bumpMap) {
+    material.roughnessMap = micro;
+    material.bumpMap = micro;
+    material.bumpScale = { wood: 0.011, leather: 0.016, fabric: 0.009, metal: 0.0025 }[kind] ?? 0.008;
+  }
+  material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
+  material.userData.surfaceRole = `decor-${kind}`;
+  material.needsUpdate = true;
+}
+
+export function applyPremiumDecorSurfacePass(root, { coarsePointer = false } = {}) {
+  const seen = new Set();
+  const stats = { wood: 0, leather: 0, fabric: 0, metal: 0, total: 0 };
+  let index = 0;
+
+  root?.traverse?.((object) => {
+    const list = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of list) {
+      if (!material || seen.has(material)) continue;
+      seen.add(material);
+      const kind = classifyDecorSurface(material);
+      if (!kind) continue;
+      const hex = material.color?.getHex?.() ?? 0;
+      const seed = (hex ^ Math.imul(index + 1, 2654435761)) >>> 0;
+      tuneExistingDecorMaterial(material, kind, coarsePointer, seed);
+      stats[kind] += 1;
+      stats.total += 1;
+      index += 1;
+    }
+  });
+
+  if (root?.userData) {
+    root.userData.premiumDecorSurfacePass = PREMIUM_SURFACE_VERSION;
+    root.userData.premiumDecorSurfaceStats = stats;
+  }
+  return stats;
+}
+
 function disposeEnvironmentScene(scene) {
   scene?.traverse?.((object) => {
     object.geometry?.dispose?.();
@@ -222,7 +324,18 @@ function disposeEnvironmentScene(scene) {
 }
 
 export function installPremiumEnvironment(renderer, scene, { coarsePointer = false } = {}) {
-  if (coarsePointer || !renderer || !scene) return () => {};
+  if (!renderer || !scene) return () => {};
+  let cancelled = false;
+  const runDecorPass = () => {
+    if (!cancelled) applyPremiumDecorSurfacePass(scene, { coarsePointer });
+  };
+  if (typeof queueMicrotask === 'function') queueMicrotask(runDecorPass);
+  else Promise.resolve().then(runDecorPass);
+
+  if (coarsePointer) {
+    return () => { cancelled = true; };
+  }
+
   const pmrem = new THREE.PMREMGenerator(renderer);
   const room = new RoomEnvironment();
   const target = pmrem.fromScene(room, 0.035);
@@ -232,6 +345,7 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
   pmrem.dispose();
 
   return () => {
+    cancelled = true;
     if (scene.environment === target.texture) scene.environment = null;
     target.dispose();
     disposeEnvironmentScene(room);
