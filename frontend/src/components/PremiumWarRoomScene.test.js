@@ -32,28 +32,50 @@ function dispose(root) {
 describe('PremiumWarRoomScene', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('construye la sala teutónica con cortinas, chimenea, cuadro y luz cálida', () => {
+  it('construye una sala de guerra teutónica habitable con un solo blasón de peón', () => {
     const desktop = buildPremiumWarRoomLayer(theme, true, false);
     const mobile = buildPremiumWarRoomLayer(theme, true, true);
     const desktopStats = sceneStats(desktop);
     const mobileStats = sceneStats(mobile);
+    const crest = desktop.getObjectByName('ceremonial-pawn-crest');
 
     expect(desktop.name).toBe('premium-war-room-layer');
     expect(desktop.userData.premiumWarRoom).toBe(true);
     expect(desktop.userData.premiumPass).toBe('cinematic-v3-teutonic');
     expect(desktop.getObjectByName('coffered-paneling')).toBeTruthy();
-    expect(desktop.getObjectByName('ceremonial-pawn-crest')).toBeTruthy();
+    expect(crest).toBeTruthy();
+    expect(crest.userData.singlePawnDisplay).toBe(true);
+    expect(desktop.getObjectByName('ceremonial-single-pawn')).toBeTruthy();
     expect(desktop.getObjectByName('command-cabinet')).toBeTruthy();
-    expect(desktop.getObjectByName('war-room-fireplace')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-sofa-left')).toBeTruthy();
+    expect(desktop.getObjectByName('war-room-sofa-right')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-velvet-curtain-fold')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sconce-flame')).toBeTruthy();
-    expect(desktopStats.meshes).toBeGreaterThan(100);
+    expect(desktopStats.meshes).toBeGreaterThan(125);
     expect(desktopStats.lights).toBeGreaterThanOrEqual(6);
     expect(desktopStats.spotLights).toBeGreaterThanOrEqual(1);
     expect(desktopStats.meshes).toBeGreaterThan(mobileStats.meshes);
 
     dispose(desktop);
     dispose(mobile);
+  });
+
+  it('usa un fuego multicapa irregular con núcleo, brasas, luz cálida y un ancla renderizable', () => {
+    const room = buildPremiumWarRoomLayer(theme, false, false);
+    const fire = room.getObjectByName('war-room-fireplace');
+    const outerFlame = fire?.getObjectByName('war-room-fire-flame-outer');
+
+    expect(fire).toBeTruthy();
+    expect(fire.getObjectByName('war-room-fire-core')).toBeTruthy();
+    expect(outerFlame).toBeInstanceOf(THREE.Mesh);
+    expect(fire.getObjectByName('war-room-fire-flame-inner')).toBeTruthy();
+    expect(fire.getObjectByName('war-room-fire-ember')).toBeTruthy();
+    expect(fire.getObjectByName('war-room-fire-light')).toBeInstanceOf(THREE.PointLight);
+    expect(fire.getObjectByName('war-room-fire-core').userData.warRoomFireCore).toBe(true);
+    expect(outerFlame.userData.warRoomFireAnimationAnchor).toBe(true);
+    expect(typeof outerFlame.onBeforeRender).toBe('function');
+
+    dispose(room);
   });
 
   it('añade a la mesa cuero, doble rail, latón e inlay verde de mando', () => {

@@ -38,6 +38,7 @@ function material(color, options = {}) {
     emissiveIntensity: options.emissiveIntensity ?? 0,
     transparent: options.opacity != null && options.opacity < 1,
     opacity: options.opacity ?? 1,
+    depthWrite: options.depthWrite ?? true,
   });
 }
 
@@ -86,6 +87,52 @@ function attachFlameKinetics(anchor, light, baseIntensity, phase = 0, coarsePoin
     light.intensity = baseIntensity * (1 + flutter);
     anchor.rotation.z = baseRotationZ + slow * 0.075 + fast * 0.025;
     anchor.scale.set(baseScale.x * (1 - flutter * 0.12), baseScale.y * (1 + flutter * 0.22), baseScale.z);
+  };
+}
+
+function attachFireplaceKinetics(fireCore, flames, embers, light, baseIntensity, coarsePointer = false) {
+  light.userData.baseWarRoomIntensity = baseIntensity;
+  fireCore.userData.warRoomFireCore = true;
+  if (coarsePointer) return;
+
+  const animationAnchor = flames[0];
+  if (!animationAnchor) return;
+  animationAnchor.userData.warRoomFireAnimationAnchor = true;
+
+  const bases = flames.map((flame) => ({
+    scale: flame.scale.clone(),
+    y: flame.position.y,
+    rotationZ: flame.rotation.z,
+  }));
+  const emberBases = embers.map((item) => item.material?.emissiveIntensity ?? 0.8);
+
+  animationAnchor.onBeforeRender = () => {
+    const now = nowMs();
+    const slow = Math.sin(now * 0.0049);
+    const mid = Math.sin(now * 0.0117 + 1.4);
+    const quick = Math.sin(now * 0.0263 + 0.35);
+    const lightFlutter = slow * 0.08 + mid * 0.055 + quick * 0.025;
+    light.intensity = baseIntensity * (1 + lightFlutter);
+
+    flames.forEach((flame, index) => {
+      const base = bases[index];
+      const phase = index * 1.37;
+      const wave = Math.sin(now * (0.0085 + index * 0.0007) + phase);
+      const tremor = Math.sin(now * (0.021 + index * 0.0011) + phase * 0.71);
+      const lean = wave * 0.08 + tremor * 0.028;
+      flame.position.y = base.y + wave * 0.025 + tremor * 0.008;
+      flame.rotation.z = base.rotationZ + lean;
+      flame.scale.set(
+        base.scale.x * (1 - tremor * 0.07),
+        base.scale.y * (1 + wave * 0.12 + tremor * 0.045),
+        base.scale.z * (1 - wave * 0.04),
+      );
+    });
+
+    embers.forEach((item, index) => {
+      if (!item.material) return;
+      item.material.emissiveIntensity = emberBases[index] * (1 + 0.18 * Math.sin(now * 0.006 + index * 1.9));
+    });
   };
 }
 
@@ -214,8 +261,6 @@ function addCurtain(group, x, y, z, towardBoard, side, compact = false) {
     fold.name = 'war-room-velvet-curtain-fold';
   }
 
-  // Volante superior y abrazadera: el telón deja de parecer una colección de
-  // tablones rojos y gana la silueta pesada del mockup aprobado.
   addMesh(
     group,
     new THREE.SphereGeometry(0.72, compact ? 14 : 24, compact ? 9 : 14),
@@ -250,12 +295,14 @@ function addPawnCrest(group, x, y, z, towardBoard, segments) {
   const brass = material(COLORS.brass, { metalness: 0.9, roughness: 0.18, clearcoat: 0.8, clearcoatRoughness: 0.07 });
   const crest = new THREE.Group();
   crest.name = 'ceremonial-pawn-crest';
+  crest.userData.singlePawnDisplay = true;
   addMesh(crest, new THREE.CylinderGeometry(1.42, 1.42, 0.12, segments), plaque, [0, 0, 0], [Math.PI / 2, 0, 0]);
   addMesh(crest, new THREE.TorusGeometry(1.18, 0.055, 10, segments), brass, [0, 0, towardBoard * 0.075]);
   addLaurel(crest, 0, -0.04, towardBoard * 0.11, -1, segments);
   addLaurel(crest, 0, -0.04, towardBoard * 0.11, 1, segments);
 
   const pawn = new THREE.Group();
+  pawn.name = 'ceremonial-single-pawn';
   addMesh(pawn, new THREE.CylinderGeometry(0.34, 0.48, 0.12, segments), brass, [0, -0.7, 0]);
   addMesh(pawn, new THREE.CylinderGeometry(0.22, 0.34, 0.6, segments), brass, [0, -0.35, 0]);
   addMesh(pawn, new THREE.TorusGeometry(0.25, 0.045, 10, segments), brass, [0, -0.02, 0], [Math.PI / 2, 0, 0]);
@@ -307,6 +354,47 @@ function addPictureFrame(group, x, y, z, towardBoard, flip = false, coarsePointe
   }
 }
 
+function addWarRoomSofa(group, x, y, z, towardBoard, side, segments, compact = false) {
+  const sofa = new THREE.Group();
+  sofa.name = side < 0 ? 'war-room-sofa-left' : 'war-room-sofa-right';
+  sofa.userData.warRoomFurniture = 'club-sofa';
+  const leather = material(COLORS.burgundyDark, {
+    roughness: 0.5,
+    clearcoat: 0.26,
+    sheen: 0.42,
+    sheenColor: 0x9b5961,
+  });
+  const leatherHighlight = material(COLORS.burgundy, {
+    roughness: 0.46,
+    clearcoat: 0.34,
+    sheen: 0.52,
+    sheenColor: 0xb36f74,
+  });
+  const timber = material(COLORS.walnutWarm, { roughness: 0.48, clearcoat: 0.42 });
+  const brass = material(COLORS.brassDark, { metalness: 0.7, roughness: 0.3, clearcoat: 0.3 });
+
+  addMesh(sofa, new THREE.BoxGeometry(compact ? 1.42 : 1.7, 0.32, 0.78), leatherHighlight, [0, 0.48, 0]);
+  addMesh(sofa, new THREE.BoxGeometry(compact ? 1.5 : 1.82, 0.86, 0.3), leather, [0, 0.94, -towardBoard * 0.36], [towardBoard * -0.06, 0, 0]);
+  addMesh(sofa, new THREE.BoxGeometry(0.28, 0.62, 0.82), leather, [-(compact ? 0.82 : 0.99), 0.68, 0]);
+  addMesh(sofa, new THREE.BoxGeometry(0.28, 0.62, 0.82), leather, [(compact ? 0.82 : 0.99), 0.68, 0]);
+
+  for (const legX of [-(compact ? 0.62 : 0.76), compact ? 0.62 : 0.76]) {
+    addMesh(sofa, new THREE.CylinderGeometry(0.055, 0.07, 0.32, Math.max(10, Math.floor(segments / 2))), timber, [legX, 0.16, -towardBoard * 0.2]);
+    addMesh(sofa, new THREE.CylinderGeometry(0.055, 0.07, 0.32, Math.max(10, Math.floor(segments / 2))), timber, [legX, 0.16, towardBoard * 0.2]);
+  }
+
+  if (!compact) {
+    for (const buttonX of [-0.48, 0, 0.48]) {
+      const button = addMesh(sofa, new THREE.SphereGeometry(0.035, 10, 7), brass, [buttonX, 0.98, towardBoard * 0.168]);
+      button.castShadow = false;
+    }
+  }
+
+  sofa.position.set(x, y, z);
+  sofa.rotation.y = side * towardBoard * 0.14;
+  group.add(sofa);
+}
+
 function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = false) {
   const stone = material(COLORS.stone, {
     metalness: 0.01,
@@ -323,7 +411,7 @@ function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = fal
     specularIntensity: 0.82,
   });
   const iron = material(0x181412, { metalness: 0.58, roughness: 0.58, clearcoat: 0.08 });
-  const ember = material(0x8a2a12, { roughness: 0.75, emissive: 0xff4a13, emissiveIntensity: 0.85 });
+  const emberMaterial = material(0x8a2a12, { roughness: 0.75, emissive: 0xff4a13, emissiveIntensity: 0.85 });
   const fireplace = new THREE.Group();
   fireplace.name = 'war-room-fireplace';
 
@@ -334,35 +422,82 @@ function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = fal
   addMesh(fireplace, new THREE.BoxGeometry(2.62, 0.16, 0.62), stoneLight, [0, 1.7, towardBoard * 0.02]);
   addMesh(fireplace, new THREE.BoxGeometry(2.34, 0.12, 0.82), stoneLight, [0, 0.03, towardBoard * 0.18]);
 
-  for (const logY of [0.28, 0.41]) {
-    addMesh(fireplace, new THREE.CylinderGeometry(0.075, 0.09, 0.82, 12), iron, [-0.18, logY, towardBoard * 0.25], [0, 0, Math.PI / 2 - 0.12]);
-    addMesh(fireplace, new THREE.CylinderGeometry(0.07, 0.09, 0.72, 12), iron, [0.22, logY + 0.02, towardBoard * 0.26], [0, 0, Math.PI / 2 + 0.14]);
+  for (const [index, logY] of [0.28, 0.41].entries()) {
+    const logA = addMesh(fireplace, new THREE.CylinderGeometry(0.075, 0.09, 0.82, 12), iron, [-0.18, logY, towardBoard * 0.25], [0, 0, Math.PI / 2 - 0.12]);
+    const logB = addMesh(fireplace, new THREE.CylinderGeometry(0.07, 0.09, 0.72, 12), iron, [0.22, logY + 0.02, towardBoard * 0.26], [0, 0, Math.PI / 2 + 0.14]);
+    logA.name = index === 0 ? 'war-room-fire-log' : '';
+    logB.name = index === 0 ? 'war-room-fire-cross-log' : '';
   }
-  addMesh(fireplace, new THREE.SphereGeometry(0.16, 12, 8), ember, [-0.24, 0.24, towardBoard * 0.3], [0, 0, 0], [1.5, 0.48, 0.5]);
-  addMesh(fireplace, new THREE.SphereGeometry(0.16, 12, 8), ember, [0.22, 0.23, towardBoard * 0.3], [0, 0, 0], [1.4, 0.45, 0.5]);
 
-  const flameCount = coarsePointer ? 2 : 4;
-  const fireLight = new THREE.PointLight(0xff8b38, coarsePointer ? 2.8 : 4.6, 8.6, 2);
-  fireLight.position.set(0, 0.68, towardBoard * 0.86);
-  fireplace.add(fireLight);
+  const embers = [];
+  const emberPositions = [
+    [-0.42, 0.23, 1.1], [-0.2, 0.25, 0.88], [0.02, 0.22, 1.0], [0.24, 0.24, 0.92], [0.43, 0.22, 1.08],
+  ];
+  emberPositions.slice(0, coarsePointer ? 3 : 5).forEach(([emberX, emberY, stretch], index) => {
+    const emberMat = emberMaterial.clone();
+    emberMat.emissiveIntensity = 0.72 + index * 0.08;
+    const ember = addMesh(fireplace, new THREE.SphereGeometry(0.12, 12, 8), emberMat, [emberX, emberY, towardBoard * 0.31], [0, 0, 0], [stretch, 0.38, 0.48]);
+    ember.name = index === 0 ? 'war-room-fire-ember' : '';
+    embers.push(ember);
+  });
+
+  const fireCore = new THREE.Group();
+  fireCore.name = 'war-room-fire-core';
+  const flames = [];
+  const flameCount = coarsePointer ? 3 : 6;
   for (let index = 0; index < flameCount; index += 1) {
-    const flameMat = material(index % 2 ? 0xffa13d : 0xffd36a, {
+    const side = index - (flameCount - 1) / 2;
+    const tall = 0.42 + (index % 3) * 0.11;
+    const outerMat = material(index % 2 ? 0xffa03a : 0xffc44f, {
       metalness: 0,
-      roughness: 0.2,
-      emissive: index % 2 ? 0xff571e : 0xff8a27,
-      emissiveIntensity: 2.25,
-      clearcoat: 0.06,
+      roughness: 0.24,
+      emissive: index % 2 ? 0xff511a : 0xff7b22,
+      emissiveIntensity: 2.05,
+      clearcoat: 0.02,
+      opacity: 0.82,
+      depthWrite: false,
     });
-    const flame = addMesh(
-      fireplace,
-      new THREE.ConeGeometry(0.12 + index * 0.018, 0.48 + (index % 2) * 0.18, Math.max(10, Math.floor(segments / 2))),
-      flameMat,
-      [-0.38 + index * 0.25, 0.52 + (index % 2) * 0.08, towardBoard * (0.3 + index * 0.015)],
-      [0, 0, (index - 1.5) * 0.035],
-      [1, 1, 0.8],
+    const outer = addMesh(
+      fireCore,
+      new THREE.ConeGeometry(0.115 + (index % 2) * 0.018, tall, Math.max(10, Math.floor(segments / 2))),
+      outerMat,
+      [side * 0.155, 0.47 + (index % 2) * 0.055, towardBoard * (0.31 + (index % 3) * 0.012)],
+      [0, 0, side * 0.025],
+      [1, 1, 0.72],
     );
-    attachFlameKinetics(flame, fireLight, coarsePointer ? 2.8 : 4.6, 0.9 + index * 1.7, coarsePointer);
+    outer.name = index === 0 ? 'war-room-fire-flame-outer' : '';
+    flames.push(outer);
+
+    if (!coarsePointer || index % 2 === 0) {
+      const innerMat = material(0xffe59b, {
+        metalness: 0,
+        roughness: 0.18,
+        emissive: 0xffa331,
+        emissiveIntensity: 2.4,
+        clearcoat: 0,
+        opacity: 0.88,
+        depthWrite: false,
+      });
+      const inner = addMesh(
+        fireCore,
+        new THREE.ConeGeometry(0.055 + (index % 2) * 0.008, tall * 0.68, Math.max(9, Math.floor(segments / 2))),
+        innerMat,
+        [side * 0.155, 0.4 + (index % 2) * 0.045, towardBoard * 0.345],
+        [0, 0, -side * 0.018],
+        [1, 1, 0.68],
+      );
+      inner.name = index === 0 ? 'war-room-fire-flame-inner' : '';
+      flames.push(inner);
+    }
   }
+  fireplace.add(fireCore);
+
+  const baseIntensity = coarsePointer ? 2.8 : 4.55;
+  const fireLight = new THREE.PointLight(0xff8738, baseIntensity, 8.8, 2);
+  fireLight.name = 'war-room-fire-light';
+  fireLight.position.set(0, 0.69, towardBoard * 0.9);
+  fireplace.add(fireLight);
+  attachFireplaceKinetics(fireCore, flames, embers, fireLight, baseIntensity, coarsePointer);
 
   fireplace.position.set(x, y, z);
   group.add(fireplace);
@@ -461,14 +596,15 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   addWallSconce(group, -3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 0.7);
   addWallSconce(group, 3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 3.2);
 
-  // Ala de la chimenea: piedra pulida, llama física y una repisa de madera.
+  // Ala de la chimenea: piedra pulida, fuego multicapa y cuadro alpino sobre la repisa.
   addFireplace(group, leftX, 0.34, wallZ + towardBoard * 0.93, towardBoard, segments, coarsePointer);
   addBox(group, [3.12, 0.18, 0.78], COLORS.walnutWarm, [leftX, 2.02, shelfZ], { roughness: 0.42, clearcoat: 0.5 });
   addBox(group, [3.14, 0.08, 0.82], COLORS.brassDark, [leftX, 1.89, shelfZ], { metalness: 0.6, roughness: 0.28 });
   addBookStack(group, leftX + (whiteSide ? 0.72 : -0.72), 2.12, shelfZ + towardBoard * 0.06, !whiteSide, coarsePointer);
   addVase(group, leftX + (whiteSide ? -1.02 : 1.02), 2.08, shelfZ + towardBoard * 0.05, COLORS.burgundy, segments);
+  addPictureFrame(group, leftX, 3.65, wallZ + towardBoard * 0.54, towardBoard, whiteSide, coarsePointer);
 
-  // Ala de mando: cuadro de castillo alpino, libros, lámpara y cajonera.
+  // Ala de mando: segundo cuadro, libros, lámpara y cajonera.
   addBox(group, [3.25, 0.22, 0.82], COLORS.walnutWarm, [rightX, 1.83, shelfZ], { roughness: 0.46, clearcoat: 0.44 });
   addBox(group, [3.25, 0.16, 0.84], COLORS.brassDark, [rightX, 1.69, shelfZ], { metalness: 0.58, roughness: 0.28 });
   addBankerLamp(group, rightX + (whiteSide ? -0.72 : 0.72), 1.92, shelfZ + towardBoard * 0.22, whiteSide ? -1 : 1, segments, coarsePointer);
@@ -476,6 +612,11 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   addVase(group, rightX + (whiteSide ? 1.08 : -1.08), 1.91, shelfZ + towardBoard * 0.06, COLORS.bottleGreen, segments);
   addPictureFrame(group, rightX, 3.66, wallZ + towardBoard * 0.54, towardBoard, !whiteSide, coarsePointer);
   addCommandCabinet(group, rightX, 0.42, wallZ + towardBoard * 1.08, towardBoard, segments, coarsePointer);
+
+  // Zona habitable: dos sofás bajos, detrás de la última fila del tablero.
+  // En móvil conservamos la silueta pero quitamos capitoné y segmentos caros.
+  addWarRoomSofa(group, -5.55, 0.02, wallZ + towardBoard * 2.42, towardBoard, -1, segments, coarsePointer);
+  addWarRoomSofa(group, 5.55, 0.02, wallZ + towardBoard * 2.42, towardBoard, 1, segments, coarsePointer);
 
   if (!coarsePointer) {
     addVase(group, rightX + (whiteSide ? -1.18 : 1.18), 3.04, wallZ + towardBoard * 0.58, COLORS.teal, segments);

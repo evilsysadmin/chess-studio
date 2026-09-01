@@ -431,18 +431,7 @@ function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   const bannerX = whiteSide ? -0.6 : 0.6;
   addBox(room, [2.25, 3.25, 0.12], decor.banner, [bannerX, 3.25, wallZ + towardBoard * 0.31], { roughness: 0.88 });
   addBox(room, [2.34, 0.09, 0.18], brass, [bannerX, 4.9, wallZ + towardBoard * 0.38], { metalness: 0.8, roughness: 0.24 });
-  const emblemSkin = { metalness: 0.72, roughness: 0.22, emissive: 0x4b2d00, emissiveIntensity: 0.08 };
-  const emblem = buildPiece('p', 'w', 'regimiento', coarsePointer);
-  emblem.traverse((child) => {
-    if (child.material?.color) {
-      child.material.color.setHex(0xc5963f);
-      child.material.metalness = emblemSkin.metalness;
-      child.material.roughness = emblemSkin.roughness;
-    }
-  });
-  emblem.position.set(bannerX, 2.85, wallZ + towardBoard * 0.55);
-  emblem.scale.setScalar(1.05);
-  room.add(emblem);
+  // El blasón premium es el único peón ceremonial de la pared.
 
   const gold = new THREE.MeshPhysicalMaterial({ color: brass, metalness: 0.82, roughness: 0.22, clearcoat: 0.7, clearcoatRoughness: 0.1, envMapIntensity: 1.18 });
   const shelfZ = wallZ + towardBoard * 0.55;
@@ -605,7 +594,7 @@ function Board3DCanvas({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = coarsePointer ? 1.02 : 1.05;
     renderer.domElement.className = 'board3d-main-canvas';
-    renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en sala de mando. Cámara fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
+    renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
     renderer.domElement.setAttribute('role', 'application');
     renderer.domElement.tabIndex = 0;
     renderer.domElement.style.touchAction = 'manipulation';
@@ -1149,7 +1138,7 @@ function handleKeyDown(event) {
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
-      <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE MANDO · {inspectMode ? 'INSPECCIÓN' : 'CÁMARA TÁCTICA'}</div>
+      <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE GUERRA · {inspectMode ? 'INSPECCIÓN' : 'CÁMARA TÁCTICA'}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}

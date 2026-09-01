@@ -75,9 +75,6 @@ async function openQuickGameWarRoom(page, requestLog = []) {
 }
 
 test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({ page }) => {
-  // Three.js puede tardar en inicializarse en runners compartidos; este gate
-  // termina en cuanto demuestra la interacción crítica y no carga además con
-  // los recorridos responsive del test visual independiente.
   test.setTimeout(45_000);
 
   const requestLog = [];
@@ -88,31 +85,25 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
   const canvasRect = await canvas.boundingBox();
   expect(canvasRect).not.toBeNull();
 
-  // Regresión del antiguo pointermove global y del micro-parallax: mover el
-  // ratón por los extremos del tablero no libera ni inclina la cámara.
   await page.mouse.move(canvasRect.x + canvasRect.width * 0.2, canvasRect.y + canvasRect.height * 0.25);
   await page.mouse.move(canvasRect.x + canvasRect.width * 0.8, canvasRect.y + canvasRect.height * 0.7);
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
-  // El origen se pulsa sobre el cuerpo visible del peón e2: proyectar el suelo
-  // de e2 puede quedar ocluido por piezas de la primera fila con esta cámara.
-  // El destino vacío e4 sí se pulsa sobre el plano de la casilla.
   await clickWarRoomSquare(page, canvasRect, 'e2', 0.76);
   await clickWarRoomSquare(page, canvasRect, 'e4');
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
 });
 
-test('Partida rápida · una partida activa · vista 3D usa la sala de mando y sigue cabiendo en móvil', async ({ page }) => {
-  // Este recorrido mide composición y responsive; no vuelve a probar la
-  // mutación e2→e4, que tiene su gate desktop dedicado arriba.
+test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y sigue cabiendo en móvil', async ({ page }) => {
   test.setTimeout(60_000);
 
   const { warRoom, board3d } = await openQuickGameWarRoom(page);
   await expect(board3d).toHaveAttribute('data-board3d-scene', 'premium');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
-  await expect(warRoom.getByRole('complementary', { name: 'Puesto de mando de Matthias' })).toBeVisible();
+  await expect(warRoom.getByRole('complementary', { name: 'Puesto táctico de Matthias' })).toBeVisible();
   await expect(warRoom.getByText('COMANDANTE RIVAL', { exact: true })).toBeVisible();
+  await expect(warRoom.getByText('SALA DE GUERRA · CÁMARA TÁCTICA', { exact: true })).toBeVisible();
 
   const portrait = warRoom.locator('.game-3d-matthias-portrait');
   await expect(portrait).toBeVisible();
@@ -134,8 +125,6 @@ test('Partida rápida · una partida activa · vista 3D usa la sala de mando y s
   expect(warRoomGeometry.right).toBeLessThanOrEqual(1441);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
-  // Laptop/desktop corto: la escena debe gastar casi todo el hueco inferior
-  // disponible, manteniendo acciones y tablero dentro del viewport.
   await page.setViewportSize({ width: 1662, height: 796 });
   await expect(warRoom).toBeVisible();
   const shortDesktopGeometry = await page.locator('.board3d-main-shell').evaluate((element) => {
