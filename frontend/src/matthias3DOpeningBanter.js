@@ -7,10 +7,10 @@ export const MATTHIAS_3D_OPENING_LINES = Object.freeze([
   'Willkommen. Disponte a ser destruido.',
   'Achtung. He reservado esta sala para tu derrota.',
   'Sehr gut. Has venido voluntariamente. Eso simplifica el papeleo.',
-  'Adelante. Tu rey todavia no sabe lo mal que va a terminar esto.',
+  'Adelante. Tu rey todavía no sabe lo mal que va a terminar esto.',
   'Ordnung. Coloca tus piezas; yo me encargo del desastre.',
-  'Guten Abend. Intentare que tu derrota conserve cierta dignidad.',
-  'Bitte. Mueve. La artilleria intelectual ya esta cargada.',
+  'Guten Abend. Intentaré que tu derrota conserve cierta dignidad.',
+  'Bitte. Mueve. La artillería intelectual ya está cargada.',
   'Bienvenido a mi sala de guerra. Procura no romper nada al perder.',
 ]);
 
@@ -46,10 +46,10 @@ export function pickMatthias3DOpeningLine(roll = Math.random()) {
 }
 
 /**
- * Decide una unica vez por partida si Matthias abre la sala de guerra.
- * Las partidas ya vistas no vuelven a tirar tras F5/remount y una aparicion
+ * Decide una única vez por partida si Matthias abre la sala de guerra.
+ * Las partidas ya vistas no vuelven a tirar tras F5/remount y una aparición
  * fuerza silencio en la siguiente partida 3D elegible para que no se vuelva
- * una coletilla mecanica.
+ * una coletilla mecánica.
  */
 export function resolveMatthias3DOpeningBanter({
   gameId,
