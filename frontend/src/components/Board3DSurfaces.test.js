@@ -3,6 +3,7 @@ import {
   PREMIUM_SURFACE_VERSION,
   createMicroSurfaceMap,
   getCameraFramingProfile,
+  makePremiumDecorMaterial,
   makePremiumPieceMaterial,
   makePremiumTileMaterial,
 } from './Board3DSurfaces.js';
@@ -66,6 +67,29 @@ describe('Board3D premium surfaces', () => {
     desktop.roughnessMap.dispose();
     desktop.dispose();
     mobile.dispose();
+  });
+
+  it('separa madera, cuero, tela y metal en perfiles de superficie reales', () => {
+    const wood = makePremiumDecorMaterial({ color: 0x5a321c, kind: 'wood', seed: 21 });
+    const leather = makePremiumDecorMaterial({ color: 0x2e1015, kind: 'leather', seed: 22 });
+    const fabric = makePremiumDecorMaterial({ color: 0x5b2028, kind: 'fabric', seed: 23 });
+    const metal = makePremiumDecorMaterial({ color: 0xc5963f, kind: 'metal', seed: 24 });
+    const mobileWood = makePremiumDecorMaterial({ color: 0x5a321c, kind: 'wood', seed: 21, coarsePointer: true });
+
+    expect(wood.userData.surfaceRole).toBe('decor-wood');
+    expect(leather.userData.surfaceRole).toBe('decor-leather');
+    expect(fabric.userData.surfaceRole).toBe('decor-fabric');
+    expect(metal.userData.surfaceRole).toBe('decor-metal');
+    expect(metal.metalness).toBeGreaterThan(wood.metalness);
+    expect(fabric.roughness).toBeGreaterThan(leather.roughness);
+    expect(wood.roughnessMap).toBeTruthy();
+    expect(mobileWood.roughnessMap).toBeNull();
+
+    for (const material of [wood, leather, fabric, metal]) {
+      material.roughnessMap?.dispose();
+      material.dispose();
+    }
+    mobileWood.dispose();
   });
 });
 
