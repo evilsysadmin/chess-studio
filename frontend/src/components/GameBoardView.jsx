@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import Board from './Board.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
 import MatthiasWarRoomPortrait from './MatthiasWarRoomPortrait.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import NotationPanel from './NotationPanel.jsx';
@@ -131,7 +132,7 @@ export default function GameBoardView({
         )}
         <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}${isThreeD ? ' is-3d-warroom' : ''}`}>
           {!zenMode && isThreeD && (
-            <aside className="game-3d-command-column" aria-label="Puesto de mando de Matthias">
+            <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
               <div className="game-3d-matthias-card">
                 <MatthiasWarRoomPortrait
                   avatar={CPU_IDENTITY.avatar}
@@ -175,6 +176,12 @@ export default function GameBoardView({
                 <Board3D {...boardProps} />
               </Suspense>
             ) : <Board {...boardProps} />}
+            <Matthias3DOpeningBanter
+              gameId={game.id}
+              isThreeD={isThreeD}
+              historyLength={game.history.length}
+              enabled={!zenMode}
+            />
             {!zenMode && latestBoardBubble && (
               <aside key={latestBoardBubble.id} className="matthias-board-bubble" role="status" aria-label="Comentario de Matthias sobre el tablero">
                 <span>MATTHIAS</span>
