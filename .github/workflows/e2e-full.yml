@@ -1,6 +1,17 @@
-name: Playwright full (informative)
+name: Playwright full / War Room gate
 
 on:
+  pull_request:
+    paths:
+      - 'frontend/src/components/Board3D.jsx'
+      - 'frontend/src/components/Board3D*.js'
+      - 'frontend/src/components/Board3D*.css'
+      - 'frontend/src/components/WarRoom3D*.js'
+      - 'frontend/src/components/WarRoom3D*.css'
+      - 'frontend/src/components/GameBoardView.jsx'
+      - 'e2e/three-d-war-room.spec.js'
+      - 'e2e/helpers.js'
+      - '.github/workflows/e2e-full.yml'
   workflow_dispatch:
   schedule:
     - cron: '17 3 * * *'
@@ -9,12 +20,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: playwright-full-${{ github.ref }}
+  group: playwright-full-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   playwright-full:
-    name: Full browser E2E (non-blocking)
+    name: ${{ github.event_name == 'pull_request' && 'War Room desktop input' || 'Full browser E2E (informative)' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -44,11 +55,23 @@ jobs:
         working-directory: e2e
         run: npm ci
 
+      - name: Install Chromium for War Room gate
+        if: github.event_name == 'pull_request'
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
       - name: Install Chromium + Firefox + WebKit
+        if: github.event_name != 'pull_request'
         working-directory: e2e
         run: ./node_modules/.bin/playwright install --with-deps chromium firefox webkit
 
+      - name: Prove War Room desktop input
+        if: github.event_name == 'pull_request'
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test three-d-war-room.spec.js --grep "Partida rápida · una partida activa · vista 3D" --workers=1 --retries=0
+
       - name: Run full Playwright suite
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         working-directory: e2e
         env:
