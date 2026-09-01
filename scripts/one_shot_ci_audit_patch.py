@@ -2,17 +2,12 @@ from pathlib import Path
 
 path = Path('scripts/test_suite_audit.mjs')
 text = path.read_text()
-old = """  for (const qualityJob of ['frontend', 'backend', 'security', 'e2e']) {
-    const start = mainCiSource.indexOf(`\n  ${qualityJob}:\n`);
-    if (start < 0) fail(`Falta job paralelo ${qualityJob}`);
-    const tail = mainCiSource.slice(start + 1);
-    const nextJobOffset = tail.slice(tail.indexOf('\n') + 1).search(/^  [A-Za-z0-9_-]+:\n/m);
-    const block = nextJobOffset >= 0
-      ? tail.slice(0, tail.indexOf('\n') + 1 + nextJobOffset)
-      : tail;
-    if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender sólo del preflight y poder correr en paralelo`);
-  }
-"""
+start_marker = "  for (const qualityJob of ['frontend', 'backend', 'security', 'e2e']) {"
+end_marker = "  for (const required of [\n    'name: Production · promote',"
+start = text.find(start_marker)
+end = text.find(end_marker, start)
+if start < 0 or end < 0:
+    raise SystemExit(f'CI audit boundaries not found: start={start}, end={end}')
 new = """  for (const qualityJob of ['frontend', 'backend', 'e2e']) {
     const start = mainCiSource.indexOf(`\n  ${qualityJob}:\n`);
     if (start < 0) fail(`Falta job paralelo ${qualityJob}`);
@@ -47,6 +42,4 @@ new = """  for (const qualityJob of ['frontend', 'backend', 'e2e']) {
     if (!mainCiSource.includes(securityInput)) fail(`Detector de seguridad incompleto: falta ${securityInput}`);
   }
 """
-if old not in text:
-    raise SystemExit('CI audit pattern not found')
-path.write_text(text.replace(old, new, 1))
+path.write_text(text[:start] + new + text[end:])
