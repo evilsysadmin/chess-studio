@@ -10,10 +10,10 @@ function speechDuration(text) {
 
 export function nextWarRoomGesture(random = Math.random) {
   const roll = random();
-  if (roll < 0.08) return 'coffee';
-  if (roll < 0.34) return 'glare';
-  if (roll < 0.56) return 'head-left';
-  if (roll < 0.78) return 'head-right';
+  if (roll < 0.07) return 'coffee';
+  if (roll < 0.29) return 'glare';
+  if (roll < 0.52) return 'head-left';
+  if (roll < 0.75) return 'head-right';
   return 'glance';
 }
 
@@ -37,7 +37,6 @@ export default function MatthiasWarRoomPortrait({
 }) {
   const [speaking, setSpeaking] = useState(false);
   const [gesture, setGesture] = useState('idle');
-  const [blinking, setBlinking] = useState(false);
   const [reaction, setReaction] = useState('none');
   const normalizedAnger = normalizeAngerLevel(angerLevel);
 
@@ -59,39 +58,12 @@ export default function MatthiasWarRoomPortrait({
 
   useEffect(() => {
     if (getEffectiveReducedMotion()) return undefined;
-    let blinkTimer = 0;
-    let reopenTimer = 0;
-    let cancelled = false;
-
-    const scheduleBlink = () => {
-      const delay = 2600 + Math.round(Math.random() * 3800);
-      blinkTimer = window.setTimeout(() => {
-        if (cancelled) return;
-        setBlinking(true);
-        reopenTimer = window.setTimeout(() => {
-          if (cancelled) return;
-          setBlinking(false);
-          scheduleBlink();
-        }, 135);
-      }, delay);
-    };
-
-    scheduleBlink();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(blinkTimer);
-      window.clearTimeout(reopenTimer);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (getEffectiveReducedMotion()) return undefined;
     let gestureTimer = 0;
     let resetTimer = 0;
     let cancelled = false;
 
     const schedule = () => {
-      const delay = 3400 + Math.round(Math.random() * 5200);
+      const delay = 3200 + Math.round(Math.random() * 5200);
       gestureTimer = window.setTimeout(() => {
         if (cancelled) return;
         const next = nextWarRoomGesture();
@@ -113,11 +85,8 @@ export default function MatthiasWarRoomPortrait({
     };
   }, []);
 
-  const ordering = speaking || gesture === 'order';
   const stateClass = [
-    speaking ? 'is-speaking' : '',
-    ordering ? 'is-ordering' : '',
-    blinking ? 'is-blinking' : '',
+    speaking ? 'is-speaking is-ordering' : '',
     gesture === 'glance' ? 'is-glancing' : '',
     gesture === 'glare' ? 'is-glaring' : '',
     gesture === 'head-left' ? 'is-head-left' : '',
@@ -134,12 +103,10 @@ export default function MatthiasWarRoomPortrait({
       data-matthias-warroom-gesture={gesture}
       data-matthias-anger-level={normalizedAnger}
       data-matthias-reaction={reaction}
+      data-matthias-face-overlay="none"
     >
       <span className="game-3d-matthias-character" aria-hidden="true">
         <img src={avatar} alt="" className="game-3d-matthias-portrait" />
-        <span className="game-3d-matthias-brows" />
-        <span className="game-3d-matthias-eyelids" />
-        <span className="game-3d-matthias-mouth" />
       </span>
       <span className="sr-only">Matthias, peón militar rival</span>
       <span className="game-3d-matthias-coffee" aria-hidden="true"><i /><b /></span>
