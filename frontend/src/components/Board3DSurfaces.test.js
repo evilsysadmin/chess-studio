@@ -42,7 +42,7 @@ describe('Board3D premium surfaces', () => {
     coarse.dispose();
   });
 
-  it('diferencia marfil, ébano e incrustación sin perder acabado PBR ni quemar las blancas', () => {
+  it('diferencia marfil, ébano e incrustación sin microtexturas efímeras por pieza', () => {
     const ivory = makePremiumPieceMaterial({ color: 0xf0eadc, skin, side: 'w' });
     const ebony = makePremiumPieceMaterial({ color: 0x262a30, skin, side: 'b' });
     const accent = makePremiumPieceMaterial({ color: 0xc7a34a, skin, side: 'w', accent: true });
@@ -53,8 +53,12 @@ describe('Board3D premium surfaces', () => {
     expect(ivory.userData.surfaceRole).toBe('ivory');
     expect(ebony.userData.surfaceRole).toBe('ebony');
     expect(accent.userData.surfaceRole).toBe('metal-inlay');
-    expect(ivory.roughnessMap).toBeTruthy();
-    expect(ebony.bumpMap).toBeTruthy();
+    expect(ivory.userData.microSurface).toBe('stable-scene-only');
+    expect(ebony.userData.microSurface).toBe('stable-scene-only');
+    expect(ivory.roughnessMap).toBeNull();
+    expect(ivory.bumpMap).toBeNull();
+    expect(ebony.roughnessMap).toBeNull();
+    expect(ebony.bumpMap).toBeNull();
     expect(accent.roughnessMap).toBeNull();
     expect(accent.clearcoat).toBeGreaterThan(ivory.clearcoat);
     expect(ivory.specularIntensity).toBeLessThan(ebony.specularIntensity);
