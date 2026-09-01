@@ -106,12 +106,12 @@ describe('Matthias rival king 3D', () => {
     expect(face.scale.x).toBeGreaterThan(1.07);
     expect(face.scale.y).toBeLessThan(0.93);
 
-    // Los extremos interiores de ojos y cejas bajan hacia la nariz: scowl,
-    // no arco triste ni mirada horizontal de cansancio.
+    // La inclinación visual debe seguir el avatar canónico: las cejas suben
+    // hacia fuera y no forman el arco caído que hacía leer a Matthias triste.
     expect(leftEye.rotation.z).toBeLessThan(-0.07);
     expect(rightEye.rotation.z).toBeGreaterThan(0.07);
-    expect(leftBrow.rotation.z).toBeLessThan(-0.32);
-    expect(rightBrow.rotation.z).toBeGreaterThan(0.32);
+    expect(leftBrow.rotation.z).toBeGreaterThan(0.32);
+    expect(rightBrow.rotation.z).toBeLessThan(-0.32);
     expect(leftEye.scale.y).toBeLessThan(0.42);
     expect(rightEye.scale.y).toBeLessThan(0.42);
 
