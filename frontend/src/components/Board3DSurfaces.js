@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v3';
+export const PREMIUM_SURFACE_VERSION = 'premium-v4';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
   'ivory',
@@ -23,22 +23,26 @@ export function getCameraFramingProfile(aspect) {
   const wide = safeAspect >= 1.42;
   return wide
     ? {
-        halfSpan: 4.72,
-        padding: 1.035,
+        halfSpan: 4.78,
+        padding: 1.04,
         minDistance: 12.1,
         maxDistance: 21,
         targetY: 0.34,
-        targetZ: 0.28,
+        // El encuadre anterior apuntaba demasiado hacia el fondo y se comía
+        // el labio delantero del tablero, justo encima de la ficha del jugador.
+        // Un targetZ negativo mueve el punto de mira unas décimas hacia el
+        // lado humano sin cambiar la cámara fija ni la perspectiva general.
+        targetZ: -0.08,
         cameraY: 7.05,
         cameraZ: 10.15,
       }
     : {
-        halfSpan: 5.2,
+        halfSpan: 5.24,
         padding: 1.12,
         minDistance: 13.4,
         maxDistance: 24,
         targetY: 0.48,
-        targetZ: 0.34,
+        targetZ: -0.02,
         cameraY: 8.1,
         cameraZ: 10.2,
       };
@@ -122,6 +126,7 @@ function materialSeed(color, side, accent) {
 export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = false, coarsePointer = false }) {
   const baseMetalness = Math.min(1, skin.metalness + (accent ? 0.2 : 0));
   const baseRoughness = Math.max(0.1, skin.roughness - (accent ? 0.15 : 0.04));
+  const ivory = side === 'w' && !accent;
   const micro = accent || coarsePointer
     ? null
     : createMicroSurfaceMap({
@@ -130,26 +135,29 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
         coarsePointer,
       });
   const surfaceColor = new THREE.Color(color);
-  if (side === 'w' && !accent) surfaceColor.lerp(new THREE.Color(0xcdbd9f), 0.14);
-  const ivoryRoughness = Math.min(0.94, baseRoughness * (micro ? 1.3 : 1.12));
+  // Marfil, no bombilla. Conservamos el tono del skin pero lo llevamos hacia
+  // una crema ligeramente envejecida y, sobre todo, evitamos que herede el
+  // metalness del skin. Eso elimina el fogonazo blanco sin oscurecer la sala.
+  if (ivory) surfaceColor.lerp(new THREE.Color(0xc7b58f), 0.2);
+  const ivoryRoughness = Math.min(0.94, baseRoughness * (micro ? 1.34 : 1.16));
 
   const material = new THREE.MeshPhysicalMaterial({
     color: surfaceColor,
-    metalness: baseMetalness,
-    roughness: side === 'w' && !accent ? ivoryRoughness : (micro ? Math.min(0.92, baseRoughness * 1.18) : baseRoughness),
+    metalness: ivory ? Math.min(baseMetalness, 0.035) : baseMetalness,
+    roughness: ivory ? ivoryRoughness : (micro ? Math.min(0.92, baseRoughness * 1.18) : baseRoughness),
     roughnessMap: micro,
     bumpMap: micro,
     bumpScale: micro ? (side === 'w' ? 0.006 : 0.009) : 0,
     emissive: skin.emissive,
     emissiveIntensity: accent ? skin.emissiveIntensity * 1.25 : skin.emissiveIntensity,
-    clearcoat: accent ? 0.9 : side === 'w' ? 0.52 : 0.74,
-    clearcoatRoughness: accent ? 0.08 : side === 'w' ? 0.24 : 0.13,
-    sheen: accent ? 0.2 : side === 'w' ? 0.07 : 0.14,
-    sheenRoughness: side === 'w' ? 0.5 : 0.32,
-    ior: side === 'w' ? 1.46 : 1.58,
-    specularIntensity: accent ? 1 : side === 'w' ? 0.56 : 0.86,
-    specularColor: side === 'w' ? new THREE.Color(0xf1d9b4) : new THREE.Color(0xa5b0bb),
-    envMapIntensity: accent ? 1.2 : side === 'w' ? 0.62 : 0.94,
+    clearcoat: accent ? 0.9 : ivory ? 0.34 : 0.74,
+    clearcoatRoughness: accent ? 0.08 : ivory ? 0.32 : 0.13,
+    sheen: accent ? 0.2 : ivory ? 0.035 : 0.14,
+    sheenRoughness: ivory ? 0.58 : 0.32,
+    ior: ivory ? 1.45 : 1.58,
+    specularIntensity: accent ? 1 : ivory ? 0.36 : 0.86,
+    specularColor: ivory ? new THREE.Color(0xdfcaa7) : new THREE.Color(0xa5b0bb),
+    envMapIntensity: accent ? 1.2 : ivory ? 0.4 : 0.94,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = accent ? 'metal-inlay' : side === 'w' ? 'ivory' : 'ebony';
