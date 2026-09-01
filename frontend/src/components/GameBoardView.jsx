@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import Board from './Board.jsx';
 import GameChat from './GameChat.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -35,6 +35,7 @@ export default function GameBoardView({
   side,
 }) {
   const [boardRenderer, setBoardRendererState] = useState(() => getBoardRenderer());
+  const threeDSelectionGuardRef = useRef({ square: null, gestureId: null, at: 0 });
   const liveSeriesMoment = context.seriesState ? seriesLiveMoment(context.seriesState) : null;
   const topColor = humanColor === 'w' ? 'b' : 'w';
   const bottomColor = humanColor;
@@ -57,6 +58,35 @@ export default function GameBoardView({
   function toggleBoardRenderer() {
     const next = setBoardRenderer(boardRenderer === '3d' ? '2d' : '3d');
     setBoardRendererState(next);
+  }
+
+  function handleThreeDSquareClick(square, interaction = {}) {
+    const now = Number(interaction?.at) || Date.now();
+    const guard = threeDSelectionGuardRef.current;
+    const duplicateSelectionCommit = Boolean(
+      board.selected
+      && guard.square === board.selected
+      && (
+        (interaction?.gestureId && guard.gestureId === interaction.gestureId)
+        || (now - guard.at) < 220
+      )
+    );
+
+    // Android/Chromium can deliver a second synthetic activation immediately
+    // after the pointer tap. A 3D selection must therefore survive at least one
+    // distinct gesture before it is allowed to become a move.
+    if (duplicateSelectionCommit) return;
+
+    if (!board.selected) {
+      threeDSelectionGuardRef.current = {
+        square,
+        gestureId: interaction?.gestureId || null,
+        at: now,
+      };
+    } else {
+      threeDSelectionGuardRef.current = { square: null, gestureId: null, at: 0 };
+    }
+    board.onSquareClick(square);
   }
 
   function renderPlayerRail({ color, seconds, cpu = false }) {
@@ -89,7 +119,7 @@ export default function GameBoardView({
 
   const boardProps = {
     fen: board.visibleBoardFen,
-    onSquareClick: board.onSquareClick,
+    onSquareClick: isThreeD ? handleThreeDSquareClick : board.onSquareClick,
     selectedSquare: board.selected,
     legalTargets: zenMode ? [] : board.legalTargets,
     lastMove: zenMode ? null : board.lastMoveSquares,
