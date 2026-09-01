@@ -8,6 +8,7 @@ import {
   makePremiumDecorMaterial,
   makePremiumPieceMaterial,
   makePremiumTileMaterial,
+  warRoomRenderBudget,
 } from './Board3DSurfaces.js';
 
 const skin = {
@@ -162,6 +163,25 @@ describe('Board3D premium surfaces', () => {
 
     geometry.dispose();
     disposeMaterial(wood);
+  });
+
+  it('limita DPR y sombras desde el arranque antes de degradar por frames lentos', () => {
+    const desktop = warRoomRenderBudget({ devicePixelRatio: 2.75 });
+    const mobile = warRoomRenderBudget({ coarsePointer: true, devicePixelRatio: 3 });
+    expect(desktop).toMatchObject({ pixelRatio: 1.35, shadowMapSize: 1024 });
+    expect(mobile).toMatchObject({ pixelRatio: 1, shadowMapSize: 512 });
+
+    const scene = new THREE.Group();
+    const key = new THREE.DirectionalLight(0xffffff, 1);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.radius = 2.35;
+    scene.add(key);
+
+    applyPremiumDecorSurfacePass(scene);
+    expect(key.shadow.mapSize.width).toBe(1024);
+    expect(key.shadow.mapSize.height).toBe(1024);
+    expect(key.shadow.radius).toBeLessThanOrEqual(1.8);
   });
 });
 
