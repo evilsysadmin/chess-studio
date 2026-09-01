@@ -40,9 +40,10 @@ function mat(color, options = {}) {
 
 /**
  * Matthias is read from tactical-camera distance, not from a portrait crop.
- * Keep the face intentionally simple: two narrow eyes, two separated brows and
- * one dry mouth line. Tiny cheeks, lip creases and extra brow geometry collapse
- * together at board scale and create accidental expressions.
+ * Keep the face intentionally simple and directional: narrow inward-sloping
+ * eyes, a low command scowl and one short pressed mouth. Tiny cheeks, lip
+ * creases and extra brow geometry collapse together at board scale and create
+ * accidental fear/sadness instead of the intended proud anger.
  */
 export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   coarsePointer = false,
@@ -53,9 +54,9 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   const group = new THREE.Group();
   group.name = 'matthias-rival-king';
   group.userData.matthiasKing = true;
-  group.userData.faceStyle = 'clean-command-scowl-v4';
+  group.userData.faceStyle = 'proud-command-scowl-v5';
   group.userData.capStyle = 'command-peaked-cap-v3';
-  group.userData.posture = 'proud-command-v1';
+  group.userData.posture = 'proud-command-v2';
   group.userData.motionRig = 'head-rig-v1';
   group.userData.pieceColor = pieceColor;
   group.userData.skinId = skinId;
@@ -146,27 +147,30 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   headRig.name = 'matthias-head-rig';
   headRig.userData.basePosition = headRig.position.clone();
   headRig.userData.baseRotation = headRig.rotation.clone();
+  headRig.userData.expression = 'proud-angry-v1';
   group.add(headRig);
 
-  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.012, 0], [0, 0, 0], [1.055, 0.94, 0.93], 'matthias-face');
+  // Slightly broader and flatter than the old soft oval: more officer, less sad doll.
+  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.016, 0], [0, 0, 0], [1.09, 0.90, 0.92], 'matthias-face');
   const faceZ = front * 0.226;
 
-  // Dark eye slits survive downsampling much better than tiny whites + pupils.
-  add(headRig, new THREE.SphereGeometry(0.029, 14, 9), ink, [-0.073, 1.023, faceZ], [0, 0, 0], [1.2, 0.52, 0.38], 'matthias-eye-left');
-  add(headRig, new THREE.SphereGeometry(0.029, 14, 9), ink, [0.073, 1.023, faceZ], [0, 0, 0], [1.2, 0.52, 0.38], 'matthias-eye-right');
+  // Narrow eye slits angle inward to reinforce the scowl instead of reading tired.
+  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [-0.071, 1.029, faceZ], [0, 0, -0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-left');
+  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [0.071, 1.029, faceZ], [0, 0, 0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-right');
 
-  // Angry brows slope toward the nose but stay visibly above the eye line.
-  add(headRig, new THREE.BoxGeometry(0.104, 0.017, 0.018), ink, [-0.066, 1.079, front * 0.229], [0, 0, -0.25 * front], null, 'matthias-brow-left');
-  add(headRig, new THREE.BoxGeometry(0.104, 0.017, 0.018), ink, [0.066, 1.079, front * 0.229], [0, 0, 0.25 * front], null, 'matthias-brow-right');
+  // Low, steep brows: the inner ends point down at the nose, unmistakably angry.
+  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [-0.064, 1.078, front * 0.229], [0, 0, -0.38 * front], null, 'matthias-brow-left');
+  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [0.064, 1.078, front * 0.229], [0, 0, 0.38 * front], null, 'matthias-brow-right');
 
-  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), faceShadow, [0.006, 0.982, front * 0.236], [0, 0, 0], [0.72, 1.2, 0.55], 'matthias-nose');
+  // Keep the nose subordinate so it cannot turn the expression into a droop.
+  add(headRig, new THREE.SphereGeometry(0.022, 14, 9), faceShadow, [0.004, 0.992, front * 0.236], [0, 0, 0], [0.62, 1.05, 0.46], 'matthias-nose');
 
-  // One dry horizontal line. Two angled mouth pieces looked like a frightened grimace.
-  add(headRig, new THREE.BoxGeometry(0.132, 0.012, 0.016), ink, [0, 0.928, front * 0.229], [0, 0, 0.015 * front], null, 'matthias-mouth');
+  // Short, perfectly level pressed mouth: stern, not downturned.
+  add(headRig, new THREE.BoxGeometry(0.108, 0.01, 0.015), ink, [0, 0.939, front * 0.231], [0, 0, 0], null, 'matthias-mouth');
 
   const capGroup = new THREE.Group();
   capGroup.name = 'matthias-officer-cap';
-  capGroup.position.set(0, 1.132, 0);
+  capGroup.position.set(0, 1.14, 0);
   capGroup.rotation.z = -0.042 * front;
   capGroup.rotation.x = -0.018 * front;
   headRig.add(capGroup);
