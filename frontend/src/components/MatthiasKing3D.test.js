@@ -4,10 +4,17 @@ import { buildMatthiasKing3D, isMatthiasRivalKing } from './MatthiasKing3D.js';
 
 function disposeGroup(group) {
   const geometries = new Set();
+  const materials = new Set();
   group.traverse((node) => {
     if (node.geometry && !geometries.has(node.geometry)) {
       geometries.add(node.geometry);
       node.geometry.dispose();
+    }
+    const list = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of list) {
+      if (!material || materials.has(material)) continue;
+      materials.add(material);
+      if (material.userData?.matthiasOwnedMaterial) material.dispose();
     }
   });
 }
@@ -20,17 +27,24 @@ describe('Matthias rival king 3D', () => {
     expect(isMatthiasRivalKing({ type: 'k', color: 'b' }, null)).toBe(false);
   });
 
-  it('mantiene una silueta de peón militar en vez de un rey clásico', () => {
-    const main = new THREE.MeshPhysicalMaterial({ color: 0x25282d });
-    const accent = new THREE.MeshPhysicalMaterial({ color: 0xa23631, metalness: 0.7 });
+  it('mantiene una silueta inequívoca de Matthias y no un rey clásico', () => {
+    const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
+    const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent);
     let meshes = 0;
     group.traverse((node) => { if (node.isMesh) meshes += 1; });
 
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
-    expect(meshes).toBeGreaterThanOrEqual(10);
-    expect(group.scale.x).toBeCloseTo(0.94);
+    expect(meshes).toBeGreaterThanOrEqual(16);
+    expect(group.scale.x).toBeCloseTo(1.03);
+    expect(group.getObjectByName('matthias-side-base')).toBeTruthy();
+    expect(group.getObjectByName('matthias-uniform')).toBeTruthy();
+    expect(group.getObjectByName('matthias-face')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap')).toBeTruthy();
+    expect(group.getObjectByName('matthias-visor')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
+    expect(group.getObjectByName('matthias-insignia')).toBeTruthy();
 
     disposeGroup(group);
     main.dispose();
