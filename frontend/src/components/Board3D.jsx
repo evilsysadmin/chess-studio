@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Board from './Board.jsx';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
+import { buildMatthiasKing3D, isMatthiasRivalKing } from './MatthiasKing3D.js';
 import {
   getCameraFramingProfile,
   installPremiumEnvironment,
@@ -210,10 +211,17 @@ function buildKnight(main, accent, coarsePointer = false) {
   return group;
 }
 
-function buildPiece(type, color, skinId, coarsePointer = false) {
+function buildPiece(type, color, skinId, coarsePointer = false, options = {}) {
   const skin = SKIN_3D[skinId] || SKIN_3D.studio;
   const main = makeMaterial(color === 'w' ? skin.white : skin.black, skin, false, color, coarsePointer);
   const accent = makeMaterial(color === 'w' ? skin.whiteAccent : skin.blackAccent, skin, true, color, coarsePointer);
+
+  if (options.matthiasKing) {
+    return buildMatthiasKing3D(main, accent, {
+      coarsePointer,
+      faceTowardCamera: options.faceTowardCamera !== false,
+    });
+  }
 
   if (type === 'n') {
     const knight = buildKnight(main, accent, coarsePointer);
@@ -448,6 +456,7 @@ function Board3DCanvas({
   hintMove,
   checkSquare,
   showCoordinates = true,
+  matthiasKingColor = null,
   onCustomize,
   onRendererFailure,
 }) {
@@ -731,10 +740,15 @@ function Board3DCanvas({
     state.pieceMeshes.clear();
 
     for (const piece of parseFen(fen)) {
-      const mesh = buildPiece(piece.type, piece.color, skinId, state.coarsePointer);
+      const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
+      const mesh = buildPiece(piece.type, piece.color, skinId, state.coarsePointer, {
+        matthiasKing,
+        faceTowardCamera: orientation !== 'black',
+      });
       const { x, z } = squarePosition(piece.square);
       mesh.position.set(x, 0.1, z);
       mesh.userData.square = piece.square;
+      if (matthiasKing) mesh.userData.matthiasKing = true;
       mesh.traverse((object) => { object.userData.square = piece.square; });
       state.pieceGroup.add(mesh);
       state.pieceMeshes.set(piece.square, mesh);
@@ -786,7 +800,7 @@ function Board3DCanvas({
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
     };
-  }, [fen, skinId, animate, boardTheme, orientation, showCoordinates]);
+  }, [fen, skinId, animate, boardTheme, orientation, showCoordinates, matthiasKingColor]);
 
   const legalMap = useMemo(() => new Map((legalTargets || []).map((target) => {
     const square = target?.to || target?.square || target;
@@ -829,7 +843,13 @@ function Board3DCanvas({
   }
 
   return (
-    <div className="board3d-main-shell" data-board3d-war-room="true" data-board3d-scene="premium" data-board3d-surface="premium-v2">
+    <div
+      className="board3d-main-shell"
+      data-board3d-war-room="true"
+      data-board3d-scene="premium"
+      data-board3d-surface="premium-v2"
+      data-matthias-rival-king={matthiasKingColor || 'off'}
+    >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
       <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE MANDO · CÁMARA FIJA</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
