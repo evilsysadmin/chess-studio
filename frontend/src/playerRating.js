@@ -16,7 +16,7 @@ import { loadGameActivity } from './gameActivity.js';
 
 const RATING_KEY = 'chess-study-player-rating';
 const RATING_HISTORY_KEY = 'chess-study-rating-history';
-const MAX_HISTORY_POINTS = 200; // no hace falta guardar miles de puntos para un gráfico chico
+const MAX_HISTORY_POINTS = 200;
 const DEFAULT_RATING = 400;
 const K_FACTOR = 24;
 const PROVISIONAL_K_FACTOR = 48;
@@ -29,6 +29,7 @@ const ADAPTIVE_MIN_GAMES = 3;
 const ADAPTIVE_DIFFICULTY_BAND = 25;
 const ADAPTIVE_MIN_ADJUSTMENT = -22;
 const ADAPTIVE_MAX_ADJUSTMENT = 8;
+const ADAPTIVE_ABANDON_SCORE = 0.15;
 
 export const RATING_TIERS = [
   { label: 'Principiante', min: 0, max: 699 },
@@ -195,17 +196,56 @@ function baseDifficultyForRating(rating) {
   return Math.max(0, Math.min(100, Math.round((Number(rating) - 200) / 18)));
 }
 
-function competitiveFinishedEvents(activity, baseDifficulty) {
-  return (Array.isArray(activity) ? activity : [])
-    .filter((event) => event?.state === 'finished')
-    .filter((event) => ['win', 'draw', 'loss'].includes(event?.outcome))
+function isDifficultyRelevant(event, baseDifficulty) {
+  const difficulty = Number(event?.difficulty);
+  if (!Number.isFinite(difficulty)) return false;
+
+  // La evidencia es deliberadamente asimétrica. Perder a un nivel MUCHO más
+  // bajo que el que propone el rating es una señal muy fuerte de que el perfil
+  // legacy está inflado y debe contar. En cambio, perder porque el usuario se
+  // puso voluntariamente una CPU 40 puntos más fuerte no debe bajar el auto.
+  if (event?.outcome === 'loss') return difficulty <= baseDifficulty + ADAPTIVE_DIFFICULTY_BAND;
+  // Ganar por encima de la propuesta sí demuestra nivel; machacar una CPU muy
+  // inferior no sirve para subir el automático.
+  if (event?.outcome === 'win') return difficulty >= baseDifficulty - ADAPTIVE_DIFFICULTY_BAND;
+  return Math.abs(difficulty - baseDifficulty) <= ADAPTIVE_DIFFICULTY_BAND;
+}
+
+function competitiveAdaptiveEvents(activity, baseDifficulty) {
+  const rows = Array.isArray(activity) ? activity : [];
+  const adaptiveStarts = new Map(
+    rows
+      .filter((event) => event?.state === 'started' && event?.detail === 'adaptive-difficulty')
+      .map((event) => [event.gameId, event]),
+  );
+
+  return rows
+    .map((event) => {
+      if (event?.state === 'finished' && ['win', 'draw', 'loss'].includes(event?.outcome)) return event;
+      // Un abandono explícito antes de perder material puede no tocar el ELO,
+      // pero repetirlo contra la dificultad automática sí es señal útil de que
+      // el reto estaba por encima del usuario. Lo tratamos como derrota suave,
+      // sólo para elegir la SIGUIENTE CPU y sin reescribir rating/historial.
+      if (event?.state === 'cancelled' && adaptiveStarts.has(event?.gameId)) {
+        const started = adaptiveStarts.get(event.gameId);
+        return {
+          ...event,
+          difficulty: Number.isFinite(Number(event?.difficulty)) ? Number(event.difficulty) : Number(started?.difficulty),
+          outcome: 'loss',
+          adaptiveAbandon: true,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean)
     .filter((event) => ['casual', 'tournament'].includes(event?.mode))
-    .filter((event) => Number.isFinite(Number(event?.difficulty)))
-    // Una paliza voluntaria a nivel 100 no debe convencer al automático de
-    // que el nivel 50 estimado era incorrecto. Sí contamos partidas cercanas
-    // al nivel que realmente estaba proponiendo el sistema.
-    .filter((event) => Math.abs(Number(event.difficulty) - baseDifficulty) <= ADAPTIVE_DIFFICULTY_BAND)
+    .filter((event) => isDifficultyRelevant(event, baseDifficulty))
     .slice(0, ADAPTIVE_RECENT_GAMES);
+}
+
+function adaptiveScore(event) {
+  if (event?.adaptiveAbandon) return ADAPTIVE_ABANDON_SCORE;
+  return ratingScoreForOutcome(event?.outcome);
 }
 
 /**
@@ -215,7 +255,7 @@ function competitiveFinishedEvents(activity, baseDifficulty) {
  * rubber-banding oculto dentro de una partida ya empezada.
  */
 export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) {
-  const recent = competitiveFinishedEvents(activity, baseDifficulty);
+  const recent = competitiveAdaptiveEvents(activity, baseDifficulty);
   if (recent.length < ADAPTIVE_MIN_GAMES) return 0;
 
   // gameActivity está newest-first. Damos algo más de peso a lo ocurrido ayer
@@ -224,7 +264,7 @@ export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0) 
   let weightTotal = 0;
   recent.forEach((event, index) => {
     const weight = Math.max(1, recent.length - index);
-    weightedScore += ratingScoreForOutcome(event.outcome) * weight;
+    weightedScore += adaptiveScore(event) * weight;
     weightTotal += weight;
   });
   const performance = weightTotal ? weightedScore / weightTotal : 0.5;
