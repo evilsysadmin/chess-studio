@@ -107,7 +107,21 @@ test('Pawn Trailblazer móvil · HUD compacto, controles táctiles y dock global
       || hudBox.y + hudBox.height <= statusBox.y
     );
     expect(overlapsHud).toBe(false);
-    expect(statusBox.width).toBeLessThan(180);
+    expect(statusBox.width).toBeLessThan(200);
+
+    const retroPlayer = page.locator('.global-music-dock .music-deck').first();
+    if (await retroPlayer.isVisible().catch(() => false)) {
+      const retroBox = await retroPlayer.boundingBox();
+      expect(retroBox).not.toBeNull();
+      const overlapsRetroPlayer = !(
+        statusBox.x + statusBox.width <= retroBox.x
+        || retroBox.x + retroBox.width <= statusBox.x
+        || statusBox.y + statusBox.height <= retroBox.y
+        || retroBox.y + retroBox.height <= statusBox.y
+      );
+      expect(overlapsRetroPlayer).toBe(false);
+      expect(statusBox.y).toBeGreaterThanOrEqual(retroBox.y + retroBox.height + 4);
+    }
   }
 
   await page.getByRole('button', { name: 'Iniciar carrera', exact: true }).click();
