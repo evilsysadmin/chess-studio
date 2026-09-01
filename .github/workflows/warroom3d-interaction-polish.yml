@@ -22,7 +22,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python3 scripts/apply_warroom3d_interaction_polish.py 2>&1 | tee warroom-patch.log
+          python3 scripts/run_warroom3d_interaction_polish.py 2>&1 | tee warroom-patch.log
 
       - name: Upload patch diagnostics
         if: failure()
