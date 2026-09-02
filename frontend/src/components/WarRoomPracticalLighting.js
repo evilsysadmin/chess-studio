@@ -7,6 +7,7 @@ import { installWarRoomNightWindowDepth } from './WarRoomNightWindowDepth.js';
 import { installWarRoomAmbientLife } from './WarRoomAmbientLife.js';
 import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
 import { applyWarRoomUserPolish } from './WarRoomUserPolish.js';
+import { installWarRoomApprovedMockContract } from './WarRoomApprovedMockContract.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 
 function materialList(object) {
@@ -107,11 +108,13 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomNightWindowDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomAmbientLife(group, { coarsePointer });
   applyWarRoomCompositionPolish(group, { wallZ, towardBoard, coarsePointer });
-  // Wire the legacy/tardy composition driver first. The v16 user pass then wraps
-  // the same render hooks and deliberately runs last, so old v4 placement can
-  // never overwrite the final room balance after the group enters THREE.Scene.
+  // Wire the legacy/tardy composition driver first. The user pass then wraps
+  // the same render hooks, and the approved-mock contract wraps them once more.
+  // That makes the user-approved visual reference the final authority on every
+  // desktop frame, even when older composition drivers still execute.
   attachWarRoomCompositionRootDriver(group, { wallZ, towardBoard, coarsePointer });
   applyWarRoomUserPolish(group, { wallZ, towardBoard, coarsePointer });
+  installWarRoomApprovedMockContract(group, { wallZ, towardBoard, coarsePointer });
 
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
 
