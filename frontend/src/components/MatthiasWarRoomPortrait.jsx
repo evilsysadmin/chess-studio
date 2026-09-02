@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { getEffectiveReducedMotion } from '../userPreferences.js';
+import { getEffectiveReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
 import './MatthiasWarRoomPortrait.css';
+import './MatthiasWarRoomThreeAvatar.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
@@ -51,26 +53,41 @@ export default function MatthiasWarRoomPortrait({
   const [speaking, setSpeaking] = useState(false);
   const [gesture, setGesture] = useState('idle');
   const [reaction, setReaction] = useState('none');
+  const [reducedMotion, setReducedMotionState] = useState(() => getEffectiveReducedMotion());
   const normalizedAnger = normalizeAngerLevel(angerLevel);
 
   useEffect(() => {
-    if (!speechKey || !speechText || getEffectiveReducedMotion()) return undefined;
+    if (typeof window === 'undefined') return undefined;
+    const media = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+    const refresh = () => setReducedMotionState(getEffectiveReducedMotion());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+    media?.addEventListener?.('change', refresh);
+    return () => {
+      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+      media?.removeEventListener?.('change', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!speechKey || !speechText || reducedMotion) return undefined;
     setSpeaking(true);
     const timer = window.setTimeout(() => setSpeaking(false), speechDuration(speechText));
     return () => window.clearTimeout(timer);
-  }, [speechKey, speechText]);
+  }, [reducedMotion, speechKey, speechText]);
 
   useEffect(() => {
-    if (!reactionKey || getEffectiveReducedMotion()) return undefined;
+    if (!reactionKey || reducedMotion) return undefined;
     const next = normalizeReaction(reactionType);
     if (next === 'none') return undefined;
     setReaction(next);
     const timer = window.setTimeout(() => setReaction('none'), next === 'disapprove' ? 1150 : 1350);
     return () => window.clearTimeout(timer);
-  }, [reactionKey, reactionType]);
+  }, [reactionKey, reactionType, reducedMotion]);
 
   useEffect(() => {
-    if (getEffectiveReducedMotion()) return undefined;
+    if (reducedMotion) return undefined;
     let gestureTimer = 0;
     let resetTimer = 0;
     let cancelled = false;
@@ -95,7 +112,7 @@ export default function MatthiasWarRoomPortrait({
       window.clearTimeout(gestureTimer);
       window.clearTimeout(resetTimer);
     };
-  }, []);
+  }, [reducedMotion]);
 
   const stateClass = [
     speaking ? 'is-speaking is-ordering' : '',
@@ -118,11 +135,20 @@ export default function MatthiasWarRoomPortrait({
       data-matthias-anger-level={normalizedAnger}
       data-matthias-reaction={reaction}
       data-matthias-face-overlay="none"
-      data-matthias-motion-version="v2"
+      data-matthias-face-rig="three-mesh-v1"
+      data-matthias-motion-version="v3"
     >
       <span className="game-3d-matthias-presence" aria-hidden="true" />
       <span className="game-3d-matthias-character" aria-hidden="true">
-        <img src={avatar} alt="" className="game-3d-matthias-portrait" />
+        <span className="game-3d-matthias-portrait">
+          <MatthiasThreeAvatar
+            avatar={avatar}
+            scene="war-room-command"
+            activity={reaction === 'disapprove' ? 'Desaprobación táctica' : reaction === 'smirk' ? 'Ventaja táctica' : 'Vigilando el tablero'}
+            speaking={speaking}
+            reducedMotion={reducedMotion}
+          />
+        </span>
       </span>
       <span className="sr-only">Matthias, peón militar rival</span>
       <span className="game-3d-matthias-coffee" aria-hidden="true"><i /><b /></span>
