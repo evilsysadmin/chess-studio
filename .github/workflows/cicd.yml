@@ -21,8 +21,16 @@ jobs:
     name: Preflight · contracts
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      frontend_changed: ${{ steps.scope.outputs.frontend_changed }}
+      backend_changed: ${{ steps.scope.outputs.backend_changed }}
+      e2e_changed: ${{ steps.scope.outputs.e2e_changed }}
+      frontend_deps_changed: ${{ steps.scope.outputs.frontend_deps_changed }}
+      backend_deps_changed: ${{ steps.scope.outputs.backend_deps_changed }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -31,9 +39,121 @@ jobs:
       - name: Static preflight + CI wiring
         run: make static-preflight
 
+      - name: Classify changed surfaces
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          all_true() {
+            {
+              echo 'frontend_changed=true'
+              echo 'backend_changed=true'
+              echo 'e2e_changed=true'
+              echo 'frontend_deps_changed=true'
+              echo 'backend_deps_changed=true'
+            } >> "$GITHUB_OUTPUT"
+          }
+
+          if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
+            all_true
+            exit 0
+          fi
+
+          # Ante una base dudosa no optimizamos: ejecutar todo es más barato que
+          # obtener un falso verde por un diff incompleto.
+          if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            all_true
+            exit 0
+          fi
+
+          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          printf '%s\n' "$files"
+
+          frontend=false
+          backend=false
+          e2e=false
+          frontend_deps=false
+          backend_deps=false
+          unknown=false
+
+          while IFS= read -r file; do
+            [[ -n "$file" ]] || continue
+            case "$file" in
+              frontend/package.json|frontend/package-lock.json)
+                frontend=true
+                e2e=true
+                frontend_deps=true
+                ;;
+              frontend/*)
+                frontend=true
+                e2e=true
+                ;;
+              e2e/*)
+                e2e=true
+                ;;
+              backend-python/requirements*.txt)
+                backend=true
+                backend_deps=true
+                ;;
+              backend-python/*)
+                backend=true
+                ;;
+              scripts/bundle_size_report.mjs|scripts/npm_audit_gate.py)
+                frontend=true
+                ;;
+              scripts/check_python.py|scripts/pip_audit_gate.py)
+                backend=true
+                ;;
+              Makefile|Dockerfile.test|docker-compose.yml|docker-compose.yaml|compose.yml|compose.yaml|.github/workflows/cicd.yml)
+                frontend=true
+                backend=true
+                e2e=true
+                frontend_deps=true
+                backend_deps=true
+                ;;
+              README.md|docs/*|.github/workflows/*|infra/*|render.yaml|scripts/render_*|scripts/cloudflare_*|scripts/synthetic_health_check.py)
+                # Superficies operativas/documentales: las valida preflight y,
+                # cuando toca, el gate Security o su workflow especializado.
+                ;;
+              *)
+                echo "Ruta no clasificada de forma segura: $file"
+                unknown=true
+                ;;
+            esac
+          done <<< "$files"
+
+          if [[ "$unknown" == true ]]; then
+            all_true
+            exit 0
+          fi
+
+          {
+            echo "frontend_changed=$frontend"
+            echo "backend_changed=$backend"
+            echo "e2e_changed=$e2e"
+            echo "frontend_deps_changed=$frontend_deps"
+            echo "backend_deps_changed=$backend_deps"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo '### CI scope'
+            echo
+            echo "- Frontend: \`$frontend\`"
+            echo "- Backend: \`$backend\`"
+            echo "- Browser: \`$e2e\`"
+            echo "- Frontend deps audit: \`$frontend_deps\`"
+            echo "- Backend deps audit: \`$backend_deps\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   frontend:
     name: Tests · Frontend
     needs: preflight
+    if: needs.preflight.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -61,9 +181,11 @@ jobs:
         run: node scripts/bundle_size_report.mjs
 
       - name: Prepare security report
+        if: needs.preflight.outputs.frontend_deps_changed == 'true'
         run: mkdir -p .security
 
       - name: Node dependency audit
+        if: needs.preflight.outputs.frontend_deps_changed == 'true'
         working-directory: frontend
         shell: bash
         run: |
@@ -79,6 +201,7 @@ jobs:
   backend:
     name: Tests · Backend
     needs: preflight
+    if: needs.preflight.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -103,9 +226,11 @@ jobs:
         run: make backend-check
 
       - name: Prepare security report
+        if: needs.preflight.outputs.backend_deps_changed == 'true'
         run: mkdir -p .security
 
       - name: Python dependency audit
+        if: needs.preflight.outputs.backend_deps_changed == 'true'
         run: make security-be
 
   security:
@@ -185,6 +310,7 @@ jobs:
   e2e:
     name: Tests · Playwright
     needs: preflight
+    if: needs.preflight.outputs.e2e_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
