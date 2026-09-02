@@ -81,7 +81,8 @@ describe('WarRoomCompositionPolish', () => {
     expect(room.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
     expect(room.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
     expect(room.getObjectByName('war-room-armor-alcove-right').visible).toBe(false);
-    expect(room.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v25');
+    expect(room.getObjectByName('war-room-gallery-picture-rail').visible).toBe(false);
+    expect(room.getObjectByName('war-room-gallery-picture-rail-brass-line').visible).toBe(false);
 
     dispose(room);
   });
