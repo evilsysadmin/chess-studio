@@ -1,4 +1,4 @@
-name: Chess Studio CI/CD
+name: Quality · CI gate
 
 on:
   push:
