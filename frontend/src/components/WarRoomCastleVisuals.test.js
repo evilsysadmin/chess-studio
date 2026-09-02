@@ -96,12 +96,17 @@ describe('War Room castle visual contract', () => {
     expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
   });
 
-  it('flanquea la sala con armaduras góticas humanas y mandobles texturizados', () => {
+  it('flanquea la sala con armaduras góticas humanas y retira la primera versión de hojalata', () => {
+    const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
+    scene.add(room);
     const left = room.getObjectByName('war-room-teutonic-armor-left');
     const right = room.getObjectByName('war-room-teutonic-armor-right');
     const breast = left?.getObjectByName('war-room-armor-breastplate');
     const sword = left?.getObjectByName('war-room-zweihander');
+    const legacyLeft = room.getObjectByName('war-room-armor-guard-left');
+    const legacyRight = room.getObjectByName('war-room-armor-guard-right');
+    const retirementDriver = room.getObjectByName('war-room-premium-painting-canvas');
 
     expect(left).toBeTruthy();
     expect(right).toBeTruthy();
@@ -116,5 +121,14 @@ describe('War Room castle visual contract', () => {
     expect(sword?.userData?.warRoomSwordFinish).toBe('fullered-ceremonial-v2');
     expect(sword?.getObjectByName('war-room-zweihander-fuller')).toBeTruthy();
     expect(sword?.getObjectByName('war-room-zweihander-parrying-hooks')).toBeTruthy();
+
+    expect(legacyLeft).toBeTruthy();
+    expect(legacyRight).toBeTruthy();
+    expect(retirementDriver?.userData?.warRoomLegacyArmorRetirementDriver).toBe(true);
+    retirementDriver.onBeforeRender();
+    expect(legacyLeft.visible).toBe(false);
+    expect(legacyRight.visible).toBe(false);
+    expect(legacyLeft.userData.replacedByGothicArmor).toBe(true);
+    expect(scene.userData.warRoomLegacyArmorRetired).toBe(true);
   });
 });
