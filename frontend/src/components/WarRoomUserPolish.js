@@ -85,6 +85,7 @@ function landscapeTexture(kind = 'rhine') {
     }
   }
 
+  const subject = alpine ? 'alpine-lake-fortress-v16' : 'rhine-valley-castle-v16';
   const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
   texture.name = alpine ? 'war-room-gallery-alpine-landscape-v16' : 'war-room-gallery-rhine-landscape-v16';
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -92,7 +93,9 @@ function landscapeTexture(kind = 'rhine') {
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
   texture.needsUpdate = true;
-  texture.userData.warRoomLandscape = alpine ? 'alpine-lake-fortress-v16' : 'rhine-valley-castle-v16';
+  texture.userData.warRoomLandscape = subject;
+  texture.userData.warRoomGallerySubject = subject;
+  texture.userData.resolution = [width, height];
   return texture;
 }
 
@@ -110,6 +113,7 @@ function improveGallery(group) {
     previous?.dispose?.();
     frame.userData.warRoomLandscapeVersion = 'v16';
     frame.userData.warRoomLandscapeSubject = canvas.material.map.userData.warRoomLandscape;
+    frame.userData.warRoomGallerySubject = canvas.material.map.userData.warRoomGallerySubject;
     changed += 1;
   }
   return changed;
