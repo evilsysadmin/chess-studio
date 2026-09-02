@@ -11,6 +11,7 @@ import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCa
 import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan, warRoomSceneProfile } from './WarRoom3DAnimation.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
+import { board3DCaptureWarmBoost, board3DHighlightPulse, board3DPieceInteractionPose } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
@@ -230,9 +231,9 @@ function Board3DCanvas({
         const marker = new THREE.Mesh(
           new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE),
           new THREE.MeshBasicMaterial({
-            color: 0x145f8a,
+            color: 0x9c8244,
             transparent: true,
-            opacity: 0.86,
+            opacity: 0.68,
             side: THREE.DoubleSide,
             depthWrite: false,
             polygonOffset: true,
@@ -245,6 +246,21 @@ function Board3DCanvas({
         marker.position.set(x, BOARD3D_HIGHLIGHT_Y, z);
         marker.visible = false;
         marker.renderOrder = 6;
+        marker.userData.highlightKind = null;
+        marker.userData.highlightBaseOpacity = 0.68;
+        marker.userData.highlightBaseScale = 1;
+        marker.userData.highlightReducedMotion = false;
+        marker.onBeforeRender = () => {
+          if (!marker.visible) return;
+          const pulse = board3DHighlightPulse({
+            kind: marker.userData.highlightKind,
+            nowMs: performance.now(),
+            reducedMotion: marker.userData.highlightReducedMotion,
+            coarsePointer,
+          });
+          marker.material.opacity = marker.userData.highlightBaseOpacity * pulse.opacityFactor;
+          marker.scale.setScalar(marker.userData.highlightBaseScale * pulse.scaleFactor);
+        };
         boardGroup.add(marker);
         highlightMeshes.set(square, marker);
       }
@@ -448,8 +464,8 @@ function Board3DCanvas({
             camera.lookAt(baseTarget);
           }
         }
-        // The castle fire updates from onBeforeRender, so the scene needs a
-        // quiet heartbeat even when the player does not move the mouse.
+        // Fire and premium interaction pulses update from onBeforeRender, so
+        // one quiet heartbeat paints both without another animation loop.
         render();
         // Start the idle budget after WebGL finishes. Software renderers can
         // otherwise consume the whole interval and starve pointer handling.
@@ -631,6 +647,8 @@ function Board3DCanvas({
         capturedGhost.scale.multiplyScalar(1 - impact * 0.0016);
         setOpacity(capturedGhost, 1 - impact * 0.92);
         animatedMesh.rotation.z = Math.sin(impact * Math.PI) * 0.045 * side;
+        const baseLights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
+        state.warm.intensity = baseLights.warm + board3DCaptureWarmBoost({ progress: raw, coarsePointer: state.coarsePointer });
       }
 
       if (promotion && raw > 0.62) {
@@ -706,8 +724,13 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
+    const reducedMotion = getEffectiveReducedMotion();
     for (const [square, marker] of state.highlightMeshes.entries()) {
       marker.visible = false;
+      marker.userData.highlightKind = null;
+      marker.userData.highlightBaseOpacity = 1;
+      marker.userData.highlightBaseScale = 1;
+      marker.userData.highlightReducedMotion = reducedMotion;
       marker.scale.setScalar(1);
       const style = board3DHighlightStyle({
         square,
@@ -722,13 +745,33 @@ function Board3DCanvas({
       if (style) {
         marker.material.color.setHex(style.color);
         marker.material.opacity = style.opacity;
+        marker.userData.highlightKind = style.kind;
+        marker.userData.highlightBaseOpacity = style.opacity;
+        marker.userData.highlightBaseScale = style.scale;
         marker.scale.setScalar(style.scale);
         marker.visible = true;
       }
     }
+
+    // Physical emphasis belongs to the piece itself, not only to a square.
+    // Never interfere with the existing move/capture animation.
+    if (!animationFrameRef.current) {
+      for (const [square, mesh] of state.pieceMeshes.entries()) {
+        const baseY = Number(mesh.userData.baseY ?? 0.1);
+        const baseScale = mesh.userData.baseScale;
+        const pose = board3DPieceInteractionPose({
+          selected: square === selectedSquare,
+          hovered: square === hoveredSquare,
+          coarsePointer: state.coarsePointer,
+        });
+        mesh.position.y = baseY + pose.yOffset;
+        if (baseScale?.isVector3) mesh.scale.copy(baseScale).multiplyScalar(pose.scaleFactor);
+      }
+    }
+
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, boardTheme, orientation, showCoordinates]);
+  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, boardTheme, orientation, showCoordinates]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -762,6 +805,7 @@ function Board3DCanvas({
       data-board3d-scene="premium"
       data-board3d-surface="premium-v2"
       data-board3d-motion="physical-v1"
+      data-board3d-interaction-fx="brass-ember-v1"
       data-board3d-camera="fixed-tactical"
       data-board3d-inspect={inspectMode ? 'true' : 'false'}
       data-board3d-selected={selectedSquare || ''}
