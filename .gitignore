@@ -11,9 +11,10 @@ __pycache__/
 venv/
 *.egg-info/
 
-# Local security tooling / reports
+# Local security / performance tooling reports
 .tools/
 .security/
+.performance/
 .trivy-cache/
 # Cloudflare/Terraform local transient state
 infra/cloudflare/.terraform/
