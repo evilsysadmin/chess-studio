@@ -40,13 +40,27 @@ describe('WarRoom3DMotion', () => {
     expect(deriveMoveKinetics({ movingType: 'q', capture: true, coarsePointer: true }).duration).toBeLessThanOrEqual(200);
   });
 
-  it('uses restrained check light and a dimmer terminal tableau', () => {
+  it('uses local practical lights for the normal grade, stronger rim for check and a dim terminal tableau', () => {
     const normal = reactiveLightProfile();
     const check = reactiveLightProfile({ check: true });
     const terminal = reactiveLightProfile({ gameOver: true });
+
+    expect(normal.exposure).toBeGreaterThan(1.05);
+    expect(normal.warm).toBeLessThan(5.5);
+    expect(normal.rim).toBeLessThan(13);
     expect(check.rim).toBeGreaterThan(normal.rim);
+    expect(check.warm).toBeLessThanOrEqual(normal.warm);
     expect(terminal.exposure).toBeLessThan(normal.exposure);
+    expect(terminal.rim).toBeLessThan(normal.rim);
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);
+  });
+
+  it('keeps coarse-pointer lighting readable without adopting the brighter desktop exposure', () => {
+    const desktop = reactiveLightProfile();
+    const mobile = reactiveLightProfile({ coarsePointer: true });
+    expect(mobile.exposure).toBeLessThan(desktop.exposure);
+    expect(mobile.key).toBeGreaterThan(desktop.key);
+    expect(mobile.rim).toBeGreaterThan(desktop.rim);
   });
 
   it('cuts animation resolution before frame loss becomes obvious', () => {

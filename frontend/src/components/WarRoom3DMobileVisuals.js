@@ -1,14 +1,16 @@
 export function warRoomDecorProfile(coarsePointer = false) {
   if (!coarsePointer) {
     return Object.freeze({
-      bankerLamp: 3.8,
-      wallSconce: 4.5,
-      crest: 8.5,
-      moon: 2.2,
-      palette: 2.3,
-      curtainLight: 0x5b2028,
-      curtainDark: 0x2e1015,
-      banner: 0x171c2a,
+      // Desktop v4: local practical lights carry the mood; the old broad cyan/teal
+      // fills were washing out the brushed steel, gilding and canvas textures.
+      bankerLamp: 3.45,
+      wallSconce: 4.7,
+      crest: 7.6,
+      moon: 1.45,
+      palette: 1.55,
+      curtainLight: 0x552029,
+      curtainDark: 0x291016,
+      banner: 0x161b27,
     });
   }
 
