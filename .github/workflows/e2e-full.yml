@@ -10,6 +10,7 @@ on:
       - 'frontend/src/components/WarRoom3D*.css'
       - 'frontend/src/components/PremiumWarRoomScene.js'
       - 'frontend/src/components/WarRoomCastleArchitecture.js'
+      - 'frontend/src/components/WarRoomPremiumPaintings.js'
       - 'frontend/src/components/GameBoardView.jsx'
       - 'frontend/src/styles/19-game-focus.css'
       - 'frontend/src/warRoomPointerCapture.js'
@@ -24,7 +25,7 @@ on:
       - '.github/workflows/e2e-full.yml'
   workflow_dispatch:
   schedule:
-    - cron: '17 3 * * 0'
+    - cron: '17 2 * * 0'
 
 permissions:
   contents: read
@@ -80,10 +81,10 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0
 
-      - name: Prove War Room special-state parity
+      - name: Prove War Room special-state parity in parallel
         if: github.event_name == 'pull_request'
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000
+        run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --fully-parallel --workers=5 --retries=0 --timeout=75000
 
       - name: Prove War Room desktop input
         if: github.event_name == 'pull_request'
