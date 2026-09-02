@@ -11,6 +11,84 @@ function requiredEnv(name) {
   return value;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function frontendEntryAssets(html) {
+  const assets = new Set();
+  const pattern = /(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/gi;
+  for (const match of String(html || '').matchAll(pattern)) {
+    try {
+      assets.add(new URL(match[1], STAGING_URL).toString());
+    } catch {
+      // Una referencia inválida se reflejará como ausencia de assets válidos y
+      // hará fallar el gate con un mensaje más útil que la excepción de URL.
+    }
+  }
+  return [...assets];
+}
+
+function assetMimeIsValid(url, contentType) {
+  const pathname = new URL(url).pathname.toLowerCase();
+  const mime = String(contentType || '').toLowerCase();
+  if (pathname.endsWith('.css')) return mime.includes('text/css');
+  if (pathname.endsWith('.js')) return mime.includes('javascript');
+  return false;
+}
+
+async function waitForFrontendAssetPropagation(request) {
+  let lastProblem = 'sin respuesta del custom domain';
+
+  for (let attempt = 1; attempt <= 20; attempt += 1) {
+    try {
+      const rootUrl = new URL(STAGING_URL);
+      rootUrl.searchParams.set('staging-asset-gate', `${Date.now()}-${attempt}`);
+      const root = await request.get(rootUrl.toString(), {
+        headers: {
+          'Cache-Control': 'no-cache, no-store',
+          Pragma: 'no-cache',
+        },
+      });
+
+      if (!root.ok()) {
+        lastProblem = `raíz HTTP ${root.status()}`;
+      } else {
+        const html = await root.text();
+        const assets = frontendEntryAssets(html);
+        if (!assets.length) {
+          lastProblem = 'index.html no contiene JS/CSS versionados';
+        } else {
+          const failures = [];
+          for (const assetUrl of assets) {
+            const cacheBusted = new URL(assetUrl);
+            cacheBusted.searchParams.set('staging-asset-gate', `${Date.now()}-${attempt}`);
+            const response = await request.get(cacheBusted.toString(), {
+              headers: {
+                'Cache-Control': 'no-cache, no-store',
+                Pragma: 'no-cache',
+              },
+            });
+            const contentType = response.headers()['content-type'] || '';
+            if (!response.ok() || !assetMimeIsValid(assetUrl, contentType)) {
+              failures.push(`${new URL(assetUrl).pathname}: HTTP ${response.status()} · ${contentType || 'sin content-type'}`);
+            }
+          }
+
+          if (!failures.length) return;
+          lastProblem = failures.join(' | ');
+        }
+      }
+    } catch (error) {
+      lastProblem = error instanceof Error ? error.message : String(error);
+    }
+
+    if (attempt < 20) await sleep(2_000);
+  }
+
+  throw new Error(`Pages staging no propagó index + assets ejecutables tras 40s: ${lastProblem}`);
+}
+
 async function assertRegistrationIsGated(request, username, password) {
   const blocked = await request.post(`${STAGING_API_URL}/auth/register`, {
     data: {
@@ -102,6 +180,14 @@ test('staging live · alta protegida → login real → Matthias → Escuela 3D 
     const release = await releaseResponse.json();
     expect(String(release.build || '').toLowerCase()).toBe(EXPECTED_SHA.toLowerCase());
   }
+
+  // Pages puede acreditar release.json unos segundos antes de que todos los
+  // assets hashed del nuevo index estén disponibles a través del custom domain.
+  // En esa ventana el fallback SPA devuelve text/html para un .js y Chromium
+  // deja la aplicación en blanco por MIME estricto. Esperamos únicamente esa
+  // propagación concreta; cualquier asset roto de forma persistente sigue
+  // haciendo fallar staging con diagnóstico explícito.
+  await waitForFrontendAssetPropagation(request);
 
   // Guardarraíl de producto: el endpoint sigue disponible para CI, pero nunca
   // debe aceptar una cuenta pública sin el secreto generado por el bootstrap.
