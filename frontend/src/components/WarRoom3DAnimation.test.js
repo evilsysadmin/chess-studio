@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan } from './WarRoom3DAnimation.js';
+import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan, warRoomSceneProfile } from './WarRoom3DAnimation.js';
 
 describe('War Room ambient render cadence', () => {
   it('mantiene fuego autónomo a ~12 FPS en desktop sin inspección ni input', () => {
@@ -40,5 +40,29 @@ describe('War Room ambient render cadence', () => {
     }
     expect(isSoftwareWebGLRenderer('ANGLE (NVIDIA GeForce RTX 4070)')).toBe(false);
     expect(isSoftwareWebGLRenderer('AMD Radeon RX 7800 XT (RADV NAVI32)')).toBe(false);
+  });
+
+  it('reduce sólo el coste visual en software WebGL sin convertir desktop en input móvil', () => {
+    expect(warRoomSceneProfile()).toEqual({
+      tier: 'full',
+      lite: false,
+      pixelRatioCap: 1.75,
+      shadowMapSize: 2048,
+      shadowsEnabled: true,
+    });
+    expect(warRoomSceneProfile({ coarsePointer: true })).toEqual({
+      tier: 'lite',
+      lite: true,
+      pixelRatioCap: 1.25,
+      shadowMapSize: 512,
+      shadowsEnabled: true,
+    });
+    expect(warRoomSceneProfile({ softwareRenderer: true })).toEqual({
+      tier: 'lite',
+      lite: true,
+      pixelRatioCap: 1,
+      shadowMapSize: 512,
+      shadowsEnabled: false,
+    });
   });
 });
