@@ -32,6 +32,14 @@ function knightHead(root) {
   return head;
 }
 
+function knightSculptDetails(root) {
+  const details = [];
+  root.traverse((child) => {
+    if (child?.isMesh && child.userData?.knightSculptDetail) details.push(child);
+  });
+  return details;
+}
+
 const backRank = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
 const startingArmy = [...backRank, ...Array(8).fill('p')];
 
@@ -77,6 +85,27 @@ describe('Board3D piece resilience', () => {
     expect(g1Disposed).toBe(false);
     expect(g1Head?.geometry?.attributes?.position?.count).toBeGreaterThan(0);
     [g1, black].forEach(disposeObject);
+  });
+
+  it('añade escultura premium al caballo desktop sin cargar el perfil lite', () => {
+    const full = buildPiece('n', 'w', 'studio', false);
+    const lite = buildPiece('n', 'w', 'studio', true);
+    const details = knightSculptDetails(full);
+    const roles = details.map((mesh) => mesh.userData.knightSculptDetail);
+
+    expect(full.userData.board3DKnightDetailVersion).toBe('sculpted-v3');
+    expect(full.userData.board3DKnightPremiumDetailCount).toBe(9);
+    expect(details).toHaveLength(9);
+    expect(roles.filter((role) => role === 'muzzle')).toHaveLength(1);
+    expect(roles.filter((role) => role === 'nostril')).toHaveLength(2);
+    expect(roles.filter((role) => role === 'brow')).toHaveLength(2);
+    expect(roles.filter((role) => role === 'mane')).toHaveLength(4);
+    expect(renderableMeshes(full).every((mesh) => mesh.frustumCulled === false && mesh.visible)).toBe(true);
+
+    expect(lite.userData.board3DKnightDetailVersion).toBe('lite-v1');
+    expect(knightSculptDetails(lite)).toHaveLength(0);
+
+    [full, lite].forEach(disposeObject);
   });
 
   it('mantiene vivo el caballo estacionario mientras el otro se reconstruye repetidamente', () => {
