@@ -20,10 +20,32 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   if (!material?.color) return material;
   const profile = profileFor(skinId);
   const target = new THREE.Color(targetColor);
-  const boost = accent ? Math.min(1, profile.colorBoost + 0.18) : profile.colorBoost;
+  const matteIvory = material.userData?.surfaceRole === 'ivory' && !accent;
+  const boost = matteIvory
+    ? Math.min(0.08, profile.colorBoost)
+    : accent
+      ? Math.min(1, profile.colorBoost + 0.18)
+      : profile.colorBoost;
+
   material.color.lerp(target, boost);
   material.metalness = THREE.MathUtils.clamp((material.metalness || 0) + profile.metalness + (accent ? 0.05 : 0), 0, 1);
   material.roughness = THREE.MathUtils.clamp((material.roughness || 0.5) + profile.roughness - (accent ? 0.03 : 0), 0.08, 1);
+
+  // El acabado marfil base ya viene deliberadamente envejecido y mate desde
+  // Board3DSurfaces. Los skins no deben volver a convertir las blancas en
+  // porcelana brillante: preservamos volumen por sombras y una lectura clara
+  // de las siluetas bajo la iluminación cálida de la War Room.
+  if (matteIvory) {
+    material.color.lerp(new THREE.Color(0xa48c6d), 0.16);
+    material.metalness = Math.min(material.metalness, 0.01);
+    material.roughness = Math.max(material.roughness, 0.86);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.08, 0.055);
+    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.66, 0.72);
+    material.specularIntensity = Math.min(material.specularIntensity ?? 0.12, 0.1);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 0.13, 0.11);
+    material.sheen = Math.min(material.sheen ?? 0.008, 0.006);
+  }
+
   if (profile.emissiveBoost && material.emissive) {
     material.emissive.lerp(target, accent ? 0.72 : 0.32);
     material.emissiveIntensity = Math.max(material.emissiveIntensity || 0, profile.emissiveBoost * (accent ? 1.25 : 0.72));
