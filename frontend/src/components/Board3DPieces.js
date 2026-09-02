@@ -28,8 +28,14 @@ function latheGeometry(profile, segments = 36) {
   return new THREE.LatheGeometry(profile.map(([radius, y]) => new THREE.Vector2(radius, y)), segments);
 }
 
-function addLathe(group, profile, material, y = 0) {
-  return addMesh(group, latheGeometry(profile), material, [0, y, 0]);
+function addLathe(group, profile, material, y = 0, segments = 36) {
+  return addMesh(group, latheGeometry(profile, segments), material, [0, y, 0]);
+}
+
+function pieceDetailProfile(coarsePointer = false) {
+  return coarsePointer
+    ? Object.freeze({ lathe: 18, sphereW: 16, sphereH: 10, torusRadial: 6, torusTubular: 20, cylinder: 18, cone: 12, curve: 8, bevel: 1 })
+    : Object.freeze({ lathe: 36, sphereW: 32, sphereH: 22, torusRadial: 12, torusTubular: 48, cylinder: 40, cone: 22, curve: 16, bevel: 3 });
 }
 
 const BASE_PROFILE = [
@@ -67,7 +73,7 @@ export function addCoarsePieceHitTarget(group, square, coarsePointer = false) {
       COARSE_PIECE_HIT_TARGET.radius,
       COARSE_PIECE_HIT_TARGET.radius,
       COARSE_PIECE_HIT_TARGET.height,
-      16,
+      12,
     ),
     new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -105,9 +111,10 @@ function addSignatureDetail(group, type, accent, coarsePointer = false) {
 }
 
 function buildKnight(main, accent, coarsePointer = false) {
+  const detail = pieceDetailProfile(coarsePointer);
   const group = new THREE.Group();
-  addLathe(group, BASE_PROFILE, main);
-  addLathe(group, [[0.18, 0.29], [0.16, 0.38], [0.13, 0.48], [0.14, 0.57]], main);
+  addLathe(group, BASE_PROFILE, main, 0, detail.lathe);
+  addLathe(group, [[0.18, 0.29], [0.16, 0.38], [0.13, 0.48], [0.14, 0.57]], main, 0, detail.lathe);
 
   const shape = new THREE.Shape();
   shape.moveTo(-0.13, 0);
@@ -122,18 +129,31 @@ function buildKnight(main, accent, coarsePointer = false) {
     bevelEnabled: true,
     bevelThickness: 0.035,
     bevelSize: 0.025,
-    bevelSegments: 3,
-    curveSegments: 16,
+    bevelSegments: detail.bevel,
+    curveSegments: detail.curve,
   });
   head.center();
   const headMesh = addMesh(group, head, main, [0, 0.69, 0], [0, 0, 0]);
   headMesh.scale.set(1.05, 1.05, 1.05);
-  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, 18), accent, [-0.07, 1.02, 0.02], [0.02, 0, -0.32]);
-  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, 18), accent, [0.07, 1.02, 0.02], [0.02, 0, 0.32]);
-  addMesh(group, new THREE.SphereGeometry(0.025, 16, 10), accent, [0.17, 0.82, 0.135]);
-  addMesh(group, new THREE.SphereGeometry(0.025, 16, 10), accent, [0.17, 0.82, -0.135]);
+  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, detail.cone), accent, [-0.07, 1.02, 0.02], [0.02, 0, -0.32]);
+  addMesh(group, new THREE.ConeGeometry(0.06, 0.17, detail.cone), accent, [0.07, 1.02, 0.02], [0.02, 0, 0.32]);
+  addMesh(group, new THREE.SphereGeometry(0.025, Math.max(10, detail.sphereW / 2), Math.max(7, detail.sphereH - 2)), accent, [0.17, 0.82, 0.135]);
+  addMesh(group, new THREE.SphereGeometry(0.025, Math.max(10, detail.sphereW / 2), Math.max(7, detail.sphereH - 2)), accent, [0.17, 0.82, -0.135]);
   addSignatureDetail(group, 'n', accent, coarsePointer);
   addContactShadow(group, coarsePointer);
+  return group;
+}
+
+function buildFallbackPiece(type, main, accent) {
+  const group = new THREE.Group();
+  addMesh(group, new THREE.CylinderGeometry(0.31, 0.36, 0.2, 12), main, [0, 0.1, 0]);
+  const heights = { p: 0.62, n: 0.78, b: 0.86, r: 0.8, q: 1.02, k: 1.06 };
+  const y = heights[type] || 0.7;
+  addMesh(group, new THREE.CylinderGeometry(0.15, 0.22, Math.max(0.3, y - 0.34), 12), main, [0, y * 0.48, 0]);
+  addMesh(group, new THREE.SphereGeometry(type === 'p' ? 0.18 : 0.16, 12, 8), main, [0, y, 0]);
+  addMesh(group, new THREE.TorusGeometry(0.2, 0.018, 6, 18), accent, [0, 0.25, 0], [Math.PI / 2, 0, 0]);
+  group.scale.setScalar(0.9);
+  group.userData.warRoomFallbackPiece = true;
   return group;
 }
 
@@ -143,66 +163,76 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
   const accentColor = color === 'w' ? skin.whiteAccent : skin.blackAccent;
   const main = makeMaterial(mainColor, skin, false, color, coarsePointer, skinId);
   const accent = makeMaterial(accentColor, skin, true, color, coarsePointer, skinId);
+  const detail = pieceDetailProfile(coarsePointer);
 
-  if (options.matthiasKing) {
-    const matthias = buildMatthiasKing3D(main, accent, {
-      coarsePointer,
-      faceTowardCamera: options.faceTowardCamera !== false,
-      pieceColor: color,
-      skinId,
-    });
-    addPieceSkinDetails(matthias, 'k', skinId, accent, coarsePointer);
-    return matthias;
-  }
-
-  if (type === 'n') {
-    const knight = buildKnight(main, accent, coarsePointer);
-    addPieceSkinDetails(knight, type, skinId, accent, coarsePointer);
-    knight.scale.setScalar(0.9);
-    return knight;
-  }
-
-  const group = new THREE.Group();
-  addLathe(group, BASE_PROFILE, main);
-  addMesh(group, new THREE.TorusGeometry(0.245, 0.022, 12, 48), accent, [0, 0.2, 0], [Math.PI / 2, 0, 0]);
-
-  if (type === 'p') {
-    addLathe(group, [[0.18, 0.28], [0.155, 0.36], [0.13, 0.49], [0.15, 0.55], [0.16, 0.59]], main);
-    addMesh(group, new THREE.SphereGeometry(0.19, 32, 22), main, [0, 0.73, 0]);
-    addMesh(group, new THREE.TorusGeometry(0.16, 0.025, 12, 44), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
-  } else if (type === 'b') {
-    addLathe(group, [[0.19, 0.28], [0.16, 0.4], [0.12, 0.58], [0.16, 0.68], [0.19, 0.73]], main);
-    addMesh(group, new THREE.SphereGeometry(0.15, 30, 20), main, [0, 0.84, 0]);
-    addMesh(group, new THREE.ConeGeometry(0.07, 0.22, 22), accent, [0, 1.02, 0]);
-    addMesh(group, new THREE.BoxGeometry(0.04, 0.2, 0.17, 2, 5, 2), accent, [0.035, 0.86, 0], [0, 0, 0.62]);
-  } else if (type === 'r') {
-    addLathe(group, [[0.22, 0.28], [0.2, 0.38], [0.19, 0.68], [0.24, 0.75], [0.28, 0.79]], main);
-    addMesh(group, new THREE.CylinderGeometry(0.29, 0.27, 0.12, 40), accent, [0, 0.83, 0]);
-    for (let index = 0; index < 6; index += 1) {
-      const angle = index * Math.PI / 3;
-      addMesh(group, new THREE.BoxGeometry(0.13, 0.17, 0.13, 2, 3, 2), main, [Math.cos(angle) * 0.22, 0.95, Math.sin(angle) * 0.22], [0, -angle, 0]);
+  try {
+    if (options.matthiasKing) {
+      const matthias = buildMatthiasKing3D(main, accent, {
+        coarsePointer,
+        faceTowardCamera: options.faceTowardCamera !== false,
+        pieceColor: color,
+        skinId,
+      });
+      addPieceSkinDetails(matthias, 'k', skinId, accent, coarsePointer);
+      return matthias;
     }
-  } else if (type === 'q') {
-    addLathe(group, [[0.2, 0.28], [0.17, 0.4], [0.13, 0.61], [0.18, 0.75], [0.22, 0.8]], main);
-    addMesh(group, new THREE.TorusGeometry(0.205, 0.028, 12, 48), accent, [0, 0.84, 0], [Math.PI / 2, 0, 0]);
-    for (let index = 0; index < 7; index += 1) {
-      const angle = index * (Math.PI * 2 / 7);
-      addMesh(group, new THREE.ConeGeometry(0.055, 0.24, 18), accent, [Math.cos(angle) * 0.17, 0.96, Math.sin(angle) * 0.17]);
-      addMesh(group, new THREE.SphereGeometry(0.045, 16, 10), main, [Math.cos(angle) * 0.17, 1.08, Math.sin(angle) * 0.17]);
-    }
-  } else if (type === 'k') {
-    addLathe(group, [[0.2, 0.28], [0.17, 0.42], [0.14, 0.68], [0.19, 0.81], [0.21, 0.85]], main);
-    addMesh(group, new THREE.TorusGeometry(0.195, 0.028, 12, 48), accent, [0, 0.86, 0], [Math.PI / 2, 0, 0]);
-    addMesh(group, new THREE.SphereGeometry(0.1, 24, 18), main, [0, 0.96, 0]);
-    addMesh(group, new THREE.BoxGeometry(0.07, 0.32, 0.07, 2, 5, 2), accent, [0, 1.18, 0]);
-    addMesh(group, new THREE.BoxGeometry(0.25, 0.075, 0.07, 5, 2, 2), accent, [0, 1.15, 0]);
-  }
 
-  addSignatureDetail(group, type, accent, coarsePointer);
-  addPieceSkinDetails(group, type, skinId, accent, coarsePointer);
-  addContactShadow(group, coarsePointer);
-  group.scale.setScalar(0.9);
-  return group;
+    if (type === 'n') {
+      const knight = buildKnight(main, accent, coarsePointer);
+      addPieceSkinDetails(knight, type, skinId, accent, coarsePointer);
+      knight.scale.setScalar(0.9);
+      return knight;
+    }
+
+    const group = new THREE.Group();
+    addLathe(group, BASE_PROFILE, main, 0, detail.lathe);
+    addMesh(group, new THREE.TorusGeometry(0.245, 0.022, detail.torusRadial, detail.torusTubular), accent, [0, 0.2, 0], [Math.PI / 2, 0, 0]);
+
+    if (type === 'p') {
+      addLathe(group, [[0.18, 0.28], [0.155, 0.36], [0.13, 0.49], [0.15, 0.55], [0.16, 0.59]], main, 0, detail.lathe);
+      addMesh(group, new THREE.SphereGeometry(0.19, detail.sphereW, detail.sphereH), main, [0, 0.73, 0]);
+      addMesh(group, new THREE.TorusGeometry(0.16, 0.025, detail.torusRadial, coarsePointer ? 20 : 44), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
+    } else if (type === 'b') {
+      addLathe(group, [[0.19, 0.28], [0.16, 0.4], [0.12, 0.58], [0.16, 0.68], [0.19, 0.73]], main, 0, detail.lathe);
+      addMesh(group, new THREE.SphereGeometry(0.15, coarsePointer ? 16 : 30, coarsePointer ? 10 : 20), main, [0, 0.84, 0]);
+      addMesh(group, new THREE.ConeGeometry(0.07, 0.22, detail.cone), accent, [0, 1.02, 0]);
+      addMesh(group, new THREE.BoxGeometry(0.04, 0.2, 0.17, coarsePointer ? 1 : 2, coarsePointer ? 2 : 5, coarsePointer ? 1 : 2), accent, [0.035, 0.86, 0], [0, 0, 0.62]);
+    } else if (type === 'r') {
+      addLathe(group, [[0.22, 0.28], [0.2, 0.38], [0.19, 0.68], [0.24, 0.75], [0.28, 0.79]], main, 0, detail.lathe);
+      addMesh(group, new THREE.CylinderGeometry(0.29, 0.27, 0.12, detail.cylinder), accent, [0, 0.83, 0]);
+      for (let index = 0; index < 6; index += 1) {
+        const angle = index * Math.PI / 3;
+        addMesh(group, new THREE.BoxGeometry(0.13, 0.17, 0.13, coarsePointer ? 1 : 2, coarsePointer ? 1 : 3, coarsePointer ? 1 : 2), main, [Math.cos(angle) * 0.22, 0.95, Math.sin(angle) * 0.22], [0, -angle, 0]);
+      }
+    } else if (type === 'q') {
+      addLathe(group, [[0.2, 0.28], [0.17, 0.4], [0.13, 0.61], [0.18, 0.75], [0.22, 0.8]], main, 0, detail.lathe);
+      addMesh(group, new THREE.TorusGeometry(0.205, 0.028, detail.torusRadial, detail.torusTubular), accent, [0, 0.84, 0], [Math.PI / 2, 0, 0]);
+      for (let index = 0; index < 7; index += 1) {
+        const angle = index * (Math.PI * 2 / 7);
+        addMesh(group, new THREE.ConeGeometry(0.055, 0.24, coarsePointer ? 10 : 18), accent, [Math.cos(angle) * 0.17, 0.96, Math.sin(angle) * 0.17]);
+        addMesh(group, new THREE.SphereGeometry(0.045, coarsePointer ? 10 : 16, coarsePointer ? 7 : 10), main, [Math.cos(angle) * 0.17, 1.08, Math.sin(angle) * 0.17]);
+      }
+    } else if (type === 'k') {
+      addLathe(group, [[0.2, 0.28], [0.17, 0.42], [0.14, 0.68], [0.19, 0.81], [0.21, 0.85]], main, 0, detail.lathe);
+      addMesh(group, new THREE.TorusGeometry(0.195, 0.028, detail.torusRadial, detail.torusTubular), accent, [0, 0.86, 0], [Math.PI / 2, 0, 0]);
+      addMesh(group, new THREE.SphereGeometry(0.1, coarsePointer ? 14 : 24, coarsePointer ? 10 : 18), main, [0, 0.96, 0]);
+      addMesh(group, new THREE.BoxGeometry(0.07, 0.32, 0.07, coarsePointer ? 1 : 2, coarsePointer ? 2 : 5, coarsePointer ? 1 : 2), accent, [0, 1.18, 0]);
+      addMesh(group, new THREE.BoxGeometry(0.25, 0.075, 0.07, coarsePointer ? 2 : 5, coarsePointer ? 1 : 2, coarsePointer ? 1 : 2), accent, [0, 1.15, 0]);
+    }
+
+    addSignatureDetail(group, type, accent, coarsePointer);
+    addPieceSkinDetails(group, type, skinId, accent, coarsePointer);
+    addContactShadow(group, coarsePointer);
+    group.scale.setScalar(0.9);
+    return group;
+  } catch (error) {
+    // A single geometry allocation must never leave half an army on the board.
+    // Under stressed WebGL/software rendering we degrade that unit rather than
+    // aborting the complete FEN rebuild and keeping only the pieces built so far.
+    const fallback = buildFallbackPiece(type, main, accent);
+    fallback.userData.warRoomBuildError = String(error?.message || error || 'piece build failed');
+    return fallback;
+  }
 }
 
 export function applyMatthiasCheckPose(state, checkSquare, orientation) {

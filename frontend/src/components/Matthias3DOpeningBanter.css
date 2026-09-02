@@ -18,12 +18,12 @@
   left: 50%;
   transform: translateX(-50%);
   max-width: calc(100% - 8.5rem);
-  padding: .34rem .72rem;
-  border: 1px solid rgba(208, 170, 93, .38);
+  padding: .3rem .78rem;
+  border: 1px solid rgba(208, 170, 93, .36);
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(19, 15, 12, .86), rgba(10, 9, 8, .72));
-  box-shadow: 0 .3rem 1.1rem rgba(0, 0, 0, .32), inset 0 1px rgba(255, 230, 170, .06);
-  color: rgba(235, 216, 173, .9);
+  background: linear-gradient(180deg, rgba(18, 14, 11, .92), rgba(8, 8, 8, .82));
+  box-shadow: 0 .28rem .95rem rgba(0, 0, 0, .3), inset 0 1px rgba(255, 230, 170, .055);
+  color: rgba(235, 216, 173, .92);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: clamp(.56rem, 1vw, .68rem);
   font-weight: 800;
@@ -32,6 +32,27 @@
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* En desktop la placa deja de estar pegada a las cortinas: vive visualmente en
+   la misma franja superior que Guardado / Feedback / Mi cuenta. El canvas no
+   desborda su caja, por lo que permitir overflow aquí sólo libera este HUD. */
+@media (min-width: 821px) {
+  .game-board-stack-3d .board3d-main-shell {
+    overflow: visible;
+  }
+
+  .matthias-3d-opening-overlay {
+    overflow: visible;
+  }
+
+  .warroom-chamber-label {
+    top: -2.18rem;
+    min-width: 18.5rem;
+    max-width: 32rem;
+    padding: .28rem .88rem;
+    box-shadow: 0 .18rem .72rem rgba(0, 0, 0, .28), inset 0 1px rgba(255, 230, 170, .05);
+  }
 }
 
 /* En una apertura normal el rey rival está en la fila lejana y ligeramente

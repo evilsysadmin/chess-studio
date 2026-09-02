@@ -64,4 +64,34 @@ describe('War Room castle visual contract', () => {
     expect(Number.isFinite(flame.scale.y)).toBe(true);
     expect(before).toBeGreaterThan(0);
   });
+
+  it('aplica la pasada premium una sola vez y separa sofás, consolas y fuego', () => {
+    const scene = new THREE.Scene();
+    const room = buildPremiumWarRoomLayer(theme, true, false);
+    scene.add(room);
+
+    const premiumDriver = room.getObjectByName('war-room-castle-wall-left');
+    expect(premiumDriver?.userData?.warRoomPremiumRoomDriver).toBe(true);
+    expect(typeof premiumDriver?.onBeforeRender).toBe('function');
+    premiumDriver.onBeforeRender();
+
+    const leftSofa = room.getObjectByName('war-room-sofa-left');
+    const leftConsole = room.getObjectByName('war-room-side-console-left');
+    expect(leftSofa.userData.warRoomPremiumUpholstery).toBe('club-tufted-v2');
+    expect(leftConsole.userData.warRoomPremiumConsole).toBe('campaign-table-v2');
+    expect(Math.abs(leftSofa.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeGreaterThan(4);
+    expect(room.getObjectByName('war-room-sofa-seat-cushion')).toBeTruthy();
+    expect(room.getObjectByName('war-room-console-lower-shelf')).toBeTruthy();
+
+    const fireCore = room.getObjectByName('war-room-fire-core');
+    const flame = fireCore.children.find((child) => child?.isMesh);
+    expect(fireCore.userData.warRoomPremiumFire).toBe('lathed-licks-v2');
+    expect(flame.userData.warRoomPremiumFlame).toBe(true);
+    expect(flame.geometry.type).toBe('LatheGeometry');
+    expect(flame.material.blending).toBe(THREE.AdditiveBlending);
+
+    const canvas = room.getObjectByName('war-room-premium-painting-canvas');
+    expect(canvas.material.map.userData.resolution).toEqual([160, 112]);
+    expect(scene.userData.warRoomPremiumCoherence).toBe('v2');
+  });
 });

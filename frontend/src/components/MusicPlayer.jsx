@@ -24,6 +24,7 @@ import {
 } from '../sound.js';
 import { requestPlaybackAudioSession, syncMediaSessionState } from '../mediaControls.js';
 import { getAudioContextState, resumeAudioContext } from '../audioContext.js';
+import './MusicPlayerFloating.css';
 
 function formatTime(ms) {
   const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
@@ -37,6 +38,7 @@ function snapshot() {
 }
 
 const MUSIC_DECK_EXPANDED_KEY = 'chess-music-deck-expanded';
+const MUSIC_DECK_FLOAT_POSITION_KEY = 'chess-music-deck-float-position-v1';
 
 function loadDeckExpanded() {
   try { return getStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY) === '1'; } catch { return false; }
@@ -44,6 +46,35 @@ function loadDeckExpanded() {
 
 function saveDeckExpanded(value) {
   try { setStorageItem(STORAGE_SESSION, MUSIC_DECK_EXPANDED_KEY, value ? '1' : '0'); } catch { /* storage opcional */ }
+}
+
+function loadFloatPosition() {
+  try {
+    const raw = getStorageItem(STORAGE_SESSION, MUSIC_DECK_FLOAT_POSITION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const x = Number(parsed?.x);
+    const y = Number(parsed?.y);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveFloatPosition(position) {
+  if (!position) return;
+  try { setStorageItem(STORAGE_SESSION, MUSIC_DECK_FLOAT_POSITION_KEY, JSON.stringify(position)); } catch { /* storage opcional */ }
+}
+
+function clampFloatPosition(position, width = 360, height = 520) {
+  if (typeof window === 'undefined') return position;
+  const margin = 12;
+  const maxX = Math.max(margin, window.innerWidth - Math.min(width, window.innerWidth - margin * 2) - margin);
+  const maxY = Math.max(margin, window.innerHeight - Math.min(height, window.innerHeight - margin * 2) - margin);
+  return {
+    x: Math.min(maxX, Math.max(margin, Number(position?.x) || margin)),
+    y: Math.min(maxY, Math.max(margin, Number(position?.y) || margin)),
+  };
 }
 
 export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed = false } = {}) {
@@ -55,7 +86,11 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   const [radioMode, setRadioModeState] = useState(() => getAmbientRadioMode());
   const [favorite, setFavorite] = useState(false);
   const [excluded, setExcluded] = useState(false);
+  const [warRoomFloating, setWarRoomFloating] = useState(false);
+  const [floatPosition, setFloatPosition] = useState(() => loadFloatPosition());
   const seekCommitTimer = useRef(null);
+  const deckRef = useRef(null);
+  const dragRef = useRef(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -80,12 +115,53 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
     if (seekCommitTimer.current) window.clearTimeout(seekCommitTimer.current);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const refreshMode = () => {
+      const desktop = typeof window.matchMedia !== 'function' || window.matchMedia('(min-width: 821px)').matches;
+      setWarRoomFloating(Boolean(desktop && deckRef.current?.closest?.('.game-side-column-3d')));
+    };
+    refreshMode();
+    window.addEventListener('resize', refreshMode);
+    return () => window.removeEventListener('resize', refreshMode);
+  }, [expanded]);
+
+  useEffect(() => {
+    if (!expanded || !warRoomFloating || typeof window === 'undefined') return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const rect = deckRef.current?.getBoundingClientRect?.();
+      const fallback = {
+        x: Math.max(12, window.innerWidth - Math.min(360, window.innerWidth - 24) - 18),
+        y: 58,
+      };
+      const next = clampFloatPosition(floatPosition || fallback, rect?.width || 360, rect?.height || 520);
+      setFloatPosition(next);
+      saveFloatPosition(next);
+    });
+    return () => window.cancelAnimationFrame(frame);
+    // Reclampea también una posición guardada después de un cambio grande de viewport.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, warRoomFloating]);
+
+  useEffect(() => {
+    if (!warRoomFloating || !floatPosition || typeof window === 'undefined') return undefined;
+    const keepVisible = () => {
+      const rect = deckRef.current?.getBoundingClientRect?.();
+      setFloatPosition((current) => {
+        const next = clampFloatPosition(current, rect?.width || 360, rect?.height || 520);
+        saveFloatPosition(next);
+        return next;
+      });
+    };
+    window.addEventListener('resize', keepVisible);
+    return () => window.removeEventListener('resize', keepVisible);
+  }, [warRoomFloating, floatPosition?.x, floatPosition?.y]);
+
   const themeId = state.themeId || getAmbientThemeId();
   const current = useMemo(
     () => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === themeId) || AMBIENT_THEME_OPTIONS[0],
     [themeId],
   );
-
 
   useEffect(() => {
     setFavorite(isAmbientFavorite(themeId));
@@ -219,9 +295,63 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
     saveDeckExpanded(next);
   }
 
+  function beginFloatDrag(event) {
+    if (!warRoomFloating || event.button !== 0) return;
+    const rect = deckRef.current?.getBoundingClientRect?.();
+    if (!rect) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: rect.left,
+      originY: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  function moveFloatDrag(event) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const next = clampFloatPosition({
+      x: drag.originX + event.clientX - drag.startX,
+      y: drag.originY + event.clientY - drag.startY,
+    }, drag.width, drag.height);
+    setFloatPosition(next);
+  }
+
+  function endFloatDrag(event) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    dragRef.current = null;
+    setFloatPosition((current) => {
+      const next = clampFloatPosition(current, drag.width, drag.height);
+      saveFloatPosition(next);
+      return next;
+    });
+  }
+
+  function nudgeFloat(event) {
+    if (!warRoomFloating || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const step = event.shiftKey ? 32 : 10;
+    const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+    const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+    const rect = deckRef.current?.getBoundingClientRect?.();
+    setFloatPosition((current) => {
+      const base = current || { x: rect?.left || 12, y: rect?.top || 58 };
+      const next = clampFloatPosition({ x: base.x + dx, y: base.y + dy }, rect?.width || 360, rect?.height || 520);
+      saveFloatPosition(next);
+      return next;
+    });
+  }
+
   if (!expanded && !forceExpanded) {
     return (
-      <div className="music-deck music-deck-collapsed" role="group" aria-label="Reproductor de audio plegado">
+      <div ref={deckRef} className="music-deck music-deck-collapsed" role="group" aria-label="Reproductor de audio plegado">
         <button type="button" className="music-deck-expand" onClick={() => setDeckExpanded(true)} aria-label="Abrir reproductor de música" title="Abrir reproductor">
           <span className={`music-deck-status-light ${playing ? 'is-playing' : paused ? 'is-paused' : 'is-stopped'}`} aria-hidden="true" />
           <span aria-hidden="true">♫</span>
@@ -241,8 +371,33 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
     );
   }
 
+  const floatingStyle = warRoomFloating && floatPosition
+    ? { '--music-float-x': `${floatPosition.x}px`, '--music-float-y': `${floatPosition.y}px` }
+    : undefined;
+
   return (
-    <div className="music-deck music-deck-expanded" role="group" aria-label="Reproductor y controles de audio">
+    <div
+      ref={deckRef}
+      className={`music-deck music-deck-expanded${warRoomFloating ? ' music-deck-floating' : ''}`}
+      style={floatingStyle}
+      role="group"
+      aria-label="Reproductor y controles de audio"
+    >
+      {warRoomFloating && (
+        <button
+          type="button"
+          className="music-deck-float-handle"
+          onPointerDown={beginFloatDrag}
+          onPointerMove={moveFloatDrag}
+          onPointerUp={endFloatDrag}
+          onPointerCancel={endFloatDrag}
+          onKeyDown={nudgeFloat}
+          aria-label="Mover RetroPlayer"
+          title="Arrastra el RetroPlayer · flechas para ajustar"
+        >
+          RetroPlayer · mover
+        </button>
+      )}
       {!forceExpanded && (
         <button type="button" className="music-deck-collapse" onClick={() => setDeckExpanded(false)} aria-label="Plegar reproductor de música" title="Plegar reproductor">−</button>
       )}
@@ -313,21 +468,21 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
               ))}
             </select>
           </label>
-        <div className="music-deck-radio-row">
-          <label className="music-deck-radio-mode" title="Qué pistas puede elegir la radio automática">
-            <span>RADIO</span>
-            <select value={radioMode} onChange={changeRadioMode} aria-label="Modo de radio musical">
-              <option value="all">Todo</option>
-              <option value="favorites">Favoritos</option>
-              <option value="focus">Concentración</option>
-              {AMBIENT_THEME_GROUPS.map((group) => <option key={group.genre} value={`genre:${group.genre}`}>{group.genre}</option>)}
-            </select>
-          </label>
-          <div className="music-deck-preferences" role="group" aria-label="Preferencias de la pista actual">
-            <button type="button" className={`music-deck-pref ${favorite ? 'active' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label="Marcar pista como favorita" title="Favorito">♥</button>
-            <button type="button" className={`music-deck-pref ${excluded ? 'active danger' : ''}`} onClick={toggleExcluded} aria-pressed={excluded} aria-label="Excluir pista de la radio" title="Excluir de la radio">🚫</button>
+          <div className="music-deck-radio-row">
+            <label className="music-deck-radio-mode" title="Qué pistas puede elegir la radio automática">
+              <span>RADIO</span>
+              <select value={radioMode} onChange={changeRadioMode} aria-label="Modo de radio musical">
+                <option value="all">Todo</option>
+                <option value="favorites">Favoritos</option>
+                <option value="focus">Concentración</option>
+                {AMBIENT_THEME_GROUPS.map((group) => <option key={group.genre} value={`genre:${group.genre}`}>{group.genre}</option>)}
+              </select>
+            </label>
+            <div className="music-deck-preferences" role="group" aria-label="Preferencias de la pista actual">
+              <button type="button" className={`music-deck-pref ${favorite ? 'active' : ''}`} onClick={toggleFavorite} aria-pressed={favorite} aria-label="Marcar pista como favorita" title="Favorito">♥</button>
+              <button type="button" className={`music-deck-pref ${excluded ? 'active danger' : ''}`} onClick={toggleExcluded} aria-pressed={excluded} aria-label="Excluir pista de la radio" title="Excluir de la radio">🚫</button>
+            </div>
           </div>
-        </div>
         </details>
 
         <div className="music-deck-bottom-row">

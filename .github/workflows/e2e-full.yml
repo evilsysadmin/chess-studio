@@ -129,7 +129,11 @@ jobs:
       - name: Install Chromium for PR gates
         if: github.event_name == 'pull_request'
         working-directory: e2e
-        run: ./node_modules/.bin/playwright install --with-deps chromium
+        # ubuntu-latest already satisfies Chromium's runtime libraries; the main
+        # critical smoke uses this same install mode successfully. Re-running
+        # Playwright's OS dependency installer on every War Room PR dominated
+        # the gate's wall clock even when the browser cache was hot.
+        run: ./node_modules/.bin/playwright install chromium
 
       - name: Install Chromium + Firefox + WebKit
         if: github.event_name != 'pull_request'
