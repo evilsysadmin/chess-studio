@@ -113,7 +113,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
           <span className="eyebrow">EXAMEN // POSICIÓN {index + 1} DE {positions.length}</span>
           <h3>Tu turno. Encuentra la jugada.</h3>
         </div>
-        <strong>{score}/{index + (attempt ? 1 : 0)}</strong>
+        <strong>Aciertos · {score}</strong>
       </div>
 
       <div className="post-game-exam-workspace">
