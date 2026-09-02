@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getEffectiveReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
 import './MatthiasWarRoomPortrait.css';
+import './MatthiasWarRoomThreeAvatar.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
