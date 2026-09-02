@@ -5,6 +5,7 @@ import { installWarRoomArchitecturalPatina } from './WarRoomArchitecturalPatina.
 import { installWarRoomTextileFinish } from './WarRoomTextileFinish.js';
 import { installWarRoomNightWindowDepth } from './WarRoomNightWindowDepth.js';
 import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
+import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -102,6 +103,7 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomTextileFinish(group, { coarsePointer });
   installWarRoomNightWindowDepth(group, { wallZ, towardBoard, coarsePointer });
   applyWarRoomCompositionPolish(group, { wallZ, towardBoard, coarsePointer });
+  attachWarRoomCompositionRootDriver(group, { wallZ, towardBoard, coarsePointer });
 
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
 
