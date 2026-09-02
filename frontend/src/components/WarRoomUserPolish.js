@@ -7,6 +7,12 @@ function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
+function sceneRoot(object) {
+  let current = object;
+  while (current?.parent) current = current.parent;
+  return current;
+}
+
 function landscapeTexture(kind = 'rhine') {
   const width = 256;
   const height = 160;
@@ -61,7 +67,6 @@ function landscapeTexture(kind = 'rhine') {
     }
   }
 
-  // Readable focal landmark instead of abstract brown rectangles.
   const castleX = alpine ? 158 : 169;
   const castleY = alpine ? 82 : 71;
   const castleW = alpine ? 42 : 48;
@@ -85,7 +90,6 @@ function landscapeTexture(kind = 'rhine') {
     }
   }
 
-  const subject = alpine ? 'alpine-lake-fortress-v16' : 'rhine-valley-castle-v16';
   const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
   texture.name = alpine ? 'war-room-gallery-alpine-landscape-v16' : 'war-room-gallery-rhine-landscape-v16';
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -93,9 +97,8 @@ function landscapeTexture(kind = 'rhine') {
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
   texture.needsUpdate = true;
-  texture.userData.warRoomLandscape = subject;
-  texture.userData.warRoomGallerySubject = subject;
   texture.userData.resolution = [width, height];
+  texture.userData.warRoomLandscape = alpine ? 'alpine-lake-fortress-v16' : 'rhine-valley-castle-v16';
   return texture;
 }
 
@@ -113,7 +116,6 @@ function improveGallery(group) {
     previous?.dispose?.();
     frame.userData.warRoomLandscapeVersion = 'v16';
     frame.userData.warRoomLandscapeSubject = canvas.material.map.userData.warRoomLandscape;
-    frame.userData.warRoomGallerySubject = canvas.material.map.userData.warRoomGallerySubject;
     changed += 1;
   }
   return changed;
@@ -167,6 +169,7 @@ function finishFireplace(group, towardBoard) {
   const hearth = fireplace.getObjectByName?.('war-room-fireplace-refractory-hearth');
   const left = fireplace.getObjectByName?.('war-room-fireplace-refractory-return-left');
   const right = fireplace.getObjectByName?.('war-room-fireplace-refractory-return-right');
+  if (!back && !hearth && !left && !right) return 0;
 
   if (back) back.position.z = towardBoard * 0.018;
   if (hearth) hearth.position.z = towardBoard * 0.20;
@@ -206,20 +209,51 @@ function retireWallMonograms(group) {
   return changed;
 }
 
+function applyFinalPass(group, options) {
+  separateFurniture(group, options);
+  const armorCount = placeArmor(group, options);
+  const fireplaceCount = finishFireplace(group, options.towardBoard);
+  const landscapeCount = improveGallery(group);
+  const braceCount = retireWallMonograms(group);
+  group.userData.warRoomUserPolishVersion = WAR_ROOM_USER_POLISH_VERSION;
+  return armorCount + fireplaceCount + landscapeCount + braceCount;
+}
+
+function attachFinalDriver(driver, owner, options, key) {
+  if (!driver || driver.userData[key]) return false;
+  driver.userData[key] = true;
+  const previous = driver.onBeforeRender;
+  driver.onBeforeRender = (...args) => {
+    previous?.(...args);
+    const root = sceneRoot(driver);
+    applyFinalPass(root || owner, options);
+  };
+  return true;
+}
+
+function attachUserPolishDrivers(group, options) {
+  const wallDriver = group.getObjectByName?.('war-room-castle-wall-left');
+  const canvasDriver = group.getObjectByName?.('war-room-premium-painting-canvas');
+  let attached = 0;
+  if (attachFinalDriver(wallDriver, group, options, 'warRoomUserPolishWallDriver')) attached += 1;
+  if (attachFinalDriver(canvasDriver, group, options, 'warRoomUserPolishCanvasDriver')) attached += 1;
+  group.userData.warRoomUserPolishDriverCount = attached;
+  return attached;
+}
+
 export function applyWarRoomUserPolish(group, {
   wallZ,
   towardBoard,
   coarsePointer = false,
 } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard) || coarsePointer) return 0;
-  if (group.userData.warRoomUserPolishVersion === WAR_ROOM_USER_POLISH_VERSION) return 0;
+  const options = { wallZ, towardBoard, coarsePointer: false };
+  if (group.userData.warRoomUserPolishVersion === WAR_ROOM_USER_POLISH_VERSION) {
+    attachUserPolishDrivers(group, options);
+    return 0;
+  }
 
-  separateFurniture(group, { wallZ, towardBoard });
-  const armorCount = placeArmor(group, { wallZ, towardBoard });
-  const fireplaceCount = finishFireplace(group, towardBoard);
-  const landscapeCount = improveGallery(group);
-  const braceCount = retireWallMonograms(group);
-
-  group.userData.warRoomUserPolishVersion = WAR_ROOM_USER_POLISH_VERSION;
-  return armorCount + fireplaceCount + landscapeCount + braceCount;
+  const changed = applyFinalPass(group, options);
+  attachUserPolishDrivers(group, options);
+  return changed;
 }
