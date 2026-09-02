@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getEffectiveReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import MatthiasWarRoomRig from './MatthiasWarRoomRig.jsx';
+import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
 import './MatthiasWarRoomPortrait.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
@@ -134,14 +134,16 @@ export default function MatthiasWarRoomPortrait({
       data-matthias-anger-level={normalizedAnger}
       data-matthias-reaction={reaction}
       data-matthias-face-overlay="none"
-      data-matthias-face-rig="canonical-mask-v1"
+      data-matthias-face-rig="three-mesh-v1"
       data-matthias-motion-version="v3"
     >
       <span className="game-3d-matthias-presence" aria-hidden="true" />
       <span className="game-3d-matthias-character" aria-hidden="true">
         <span className="game-3d-matthias-portrait">
-          <MatthiasWarRoomRig
+          <MatthiasThreeAvatar
             avatar={avatar}
+            scene="war-room-command"
+            activity={reaction === 'disapprove' ? 'Desaprobación táctica' : reaction === 'smirk' ? 'Ventaja táctica' : 'Vigilando el tablero'}
             speaking={speaking}
             reducedMotion={reducedMotion}
           />
