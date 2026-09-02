@@ -1,0 +1,201 @@
+.combat-officer-archive {
+  margin-top: .75rem;
+  border: 1px solid rgba(158, 126, 73, .28);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(23, 24, 27, .95), rgba(13, 14, 17, .97));
+  overflow: hidden;
+}
+
+.combat-officer-archive > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  padding: .72rem .82rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.combat-officer-archive > summary::-webkit-details-marker {
+  display: none;
+}
+
+.combat-officer-archive > summary span {
+  color: #c6a56b;
+  font-size: .67rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.combat-officer-archive > summary strong {
+  color: var(--text-muted, #b9b6ad);
+  font-size: .72rem;
+}
+
+.combat-officer-archive[open] > summary {
+  border-bottom: 1px solid rgba(158, 126, 73, .18);
+}
+
+.combat-officer-archive-body {
+  padding: .78rem;
+}
+
+.combat-officer-archive-note {
+  margin: 0 0 .7rem;
+  color: var(--text-muted, #aaa79f);
+  font-size: .72rem;
+  line-height: 1.45;
+}
+
+.combat-officer-dossier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .62rem;
+}
+
+.combat-officer-dossier {
+  min-width: 0;
+  padding: .68rem;
+  border: 1px solid rgba(255, 255, 255, .065);
+  border-radius: 10px;
+  background: rgba(7, 8, 10, .38);
+}
+
+.combat-officer-dossier.is-current {
+  border-color: rgba(197, 149, 68, .48);
+  box-shadow: inset 3px 0 rgba(184, 132, 52, .72);
+}
+
+.combat-officer-dossier > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: .6rem;
+}
+
+.combat-officer-dossier > header > div {
+  display: grid;
+  min-width: 0;
+  gap: .05rem;
+}
+
+.combat-officer-dossier > header small {
+  color: #aa8c58;
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.combat-officer-dossier > header strong {
+  color: #ede3cf;
+  font-size: .9rem;
+}
+
+.combat-officer-dossier > header span {
+  color: var(--text-muted, #aaa79f);
+  font-size: .72rem;
+}
+
+.combat-officer-dossier > header > b {
+  flex: 0 0 auto;
+  padding: .22rem .38rem;
+  border: 1px solid rgba(196, 153, 79, .22);
+  border-radius: 999px;
+  color: #d6bb83;
+  font-size: .68rem;
+  background: rgba(31, 25, 17, .55);
+}
+
+.combat-officer-record {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .34rem;
+  margin: .58rem 0;
+}
+
+.combat-officer-record > div {
+  display: grid;
+  gap: .02rem;
+  padding: .34rem .4rem;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.combat-officer-record dt {
+  color: var(--text-muted, #9d9a92);
+  font-size: .59rem;
+}
+
+.combat-officer-record dd {
+  margin: 0;
+  color: #e5d8bf;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.combat-officer-service {
+  display: grid;
+  gap: .18rem;
+  color: var(--text-muted, #aaa79f);
+  font-size: .65rem;
+  line-height: 1.35;
+}
+
+.combat-officer-history {
+  margin-top: .55rem;
+  border-top: 1px solid rgba(255, 255, 255, .055);
+  padding-top: .45rem;
+}
+
+.combat-officer-history > summary {
+  color: #c2a979;
+  cursor: pointer;
+  font-size: .67rem;
+  font-weight: 700;
+}
+
+.combat-officer-history ol {
+  display: grid;
+  gap: .28rem;
+  margin: .45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.combat-officer-history li {
+  display: grid;
+  grid-template-columns: 1.2rem minmax(0, 1fr);
+  align-items: start;
+  gap: .25rem;
+}
+
+.combat-officer-history li > b {
+  color: #c2a979;
+  text-align: center;
+}
+
+.combat-officer-history li > span {
+  display: grid;
+  gap: .02rem;
+}
+
+.combat-officer-history li strong {
+  color: #d8d0c0;
+  font-size: .67rem;
+}
+
+.combat-officer-history li small {
+  color: var(--text-muted, #939088);
+  font-size: .61rem;
+}
+
+@media (max-width: 760px) {
+  .combat-officer-dossier-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-officer-archive-body {
+    padding: .62rem;
+  }
+}
