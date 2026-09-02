@@ -1,10 +1,11 @@
-name: Grafana dashboards
+name: Observability · Grafana dashboards
 
 on:
   push:
     branches: [main]
     paths:
-      - "infra/grafana/**"
+      - "infra/grafana/terraform/**"
+      - "infra/grafana/dashboards/**"
       - ".github/workflows/grafana-dashboards.yml"
   workflow_dispatch:
 
