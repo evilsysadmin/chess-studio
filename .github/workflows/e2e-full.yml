@@ -81,10 +81,13 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0
 
-      - name: Prove War Room special-state parity in parallel
+      - name: Prove War Room special-state parity with bounded parallelism
         if: github.event_name == 'pull_request'
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --fully-parallel --workers=5 --retries=0 --timeout=75000
+        # Five concurrent WebGL War Rooms saturate the hosted runner and make
+        # every scenario time out before the 3D canvas mounts. Two workers
+        # still reduce wall-clock time while keeping WebGL initialization stable.
+        run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --fully-parallel --workers=2 --retries=0 --timeout=75000
 
       - name: Prove War Room desktop input
         if: github.event_name == 'pull_request'
