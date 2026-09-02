@@ -92,6 +92,6 @@ describe('War Room castle visual contract', () => {
 
     const canvas = room.getObjectByName('war-room-premium-painting-canvas');
     expect(canvas.material.map.userData.resolution).toEqual([160, 112]);
-    expect(room.userData.warRoomPremiumCoherence).toBe('v2');
+    expect(scene.userData.warRoomPremiumCoherence).toBe('v2');
   });
 });
