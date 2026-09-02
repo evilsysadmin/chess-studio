@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { installWarRoomArchitecturalDepth } from './WarRoomArchitecturalDepth.js';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -83,6 +84,12 @@ export function applyWarRoomPracticalLighting(group, {
   coarsePointer = false,
 } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
+
+  // The museum keys only look intentional when the surrounding wall/floor joins
+  // read as one room. This pass is idempotent and desktop-only, so calling it
+  // here keeps the already-established gallery placement contract centralized.
+  installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
+
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
 
   let tunedMaterials = 0;
