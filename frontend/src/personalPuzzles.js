@@ -105,7 +105,10 @@ function stableId(fen, suggested) {
   return `personal-${(hash >>> 0).toString(36)}`;
 }
 
-function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
+// Canonical reconstruction contract shared by persisted personal puzzles and
+// the immediate post-game exam. Callers get the same legal FEN/solution gate;
+// the exam merely withholds the descriptive spoiler until after the attempt.
+export function personalPuzzleFromMistake(history, humanColor, moveReport, meta = {}) {
   if (!moveReport || !Array.isArray(history) || !moveReport.suggested || moveReport.loss < 80) return null;
   if (moveReport.played && moveReport.suggested === moveReport.played) return null;
   let chess;
@@ -156,7 +159,7 @@ export function savePersonalPuzzlesFromReport(history, humanColor, report, meta 
   const candidates = (report?.topMistakes || [])
     .filter((m) => m.loss >= 80)
     .slice(0, 2)
-    .map((m) => puzzleFromMistake(history, humanColor, m, meta))
+    .map((m) => personalPuzzleFromMistake(history, humanColor, m, meta))
     .filter(Boolean);
   if (!candidates.length) return { added: 0, total: loadPersonalPuzzles().length };
 
@@ -218,147 +221,80 @@ function sharesIncident(a, b) {
   return (Array.isArray(b?.incidentKeys) ? b.incidentKeys : []).some((key) => first.has(key));
 }
 
-function recentErrorBonus(puzzle, now) {
-  const createdAt = Date.parse(puzzle?.createdAt || '');
-  if (!Number.isFinite(createdAt)) return 0;
-  const ageDays = Math.max(0, (now - createdAt) / 86_400_000);
-  return Math.max(0, 10 - (ageDays / 3));
-}
-
-function adaptiveScore(puzzle, context) {
-  const loss = Math.max(0, Number(puzzle?.loss || 0));
-  const attempts = Math.max(0, Number(puzzle?.attempts || 0));
-  const cleanSolves = Math.max(0, Number(puzzle?.cleanSolves || 0));
-  const friction = Math.max(0, attempts - cleanSolves);
-  const incidentFrequency = Math.max(0, ...(puzzle?.incidentKeys || []).map((key) => context.incidentCounts.get(key) || 0));
-  const openingFrequency = puzzle?.opening ? (context.openingCounts.get(puzzle.opening) || 0) : 0;
-
+function scoreRelatedScenario(seed, candidate, openingCounts, incidentCounts) {
   let score = 0;
-  score += Math.min(65, loss / 8);                         // gravedad objetiva
-  score += Math.min(56, friction * 14);                   // casos que siguen resistiéndose
-  score += Math.min(36, Math.max(0, incidentFrequency - 1) * 12); // reincidencia táctica
-  score += Math.min(15, Math.max(0, openingFrequency - 1) * 5);    // apertura problemática recurrente
-  score += recentErrorBonus(puzzle, context.now);          // lo nuevo importa, pero no manda solo
-  if (attempts === 0) score += 4;                          // no dejar material nuevo pudriéndose al fondo
-
-  if (context.referencePuzzle) {
-    if (context.hasIncidentAlternative && sharesIncident(context.referencePuzzle, puzzle)) score -= 18;
-    if (context.hasOpeningAlternative && context.referencePuzzle.opening && puzzle.opening === context.referencePuzzle.opening) score -= 6;
+  if (seed.opening && candidate.opening === seed.opening) score += 4 + Math.min(3, openingCounts.get(seed.opening) || 0);
+  if (sharesIncident(seed, candidate)) {
+    const overlap = (seed.incidentKeys || []).filter((key) => (candidate.incidentKeys || []).includes(key));
+    score += overlap.reduce((sum, key) => sum + 5 + Math.min(3, incidentCounts.get(key) || 0), 0);
   }
+  score += Math.min(2, Math.floor(Number(candidate.loss || 0) / 180));
   return score;
 }
 
-export function rankAdaptivePersonalPuzzles(puzzles = [], { excludeId = null, referencePuzzle = null, now = Date.now() } = {}) {
-  const source = Array.isArray(puzzles) ? puzzles.filter(Boolean) : [];
-  if (!source.length) return [];
-  const reference = referencePuzzle || source.find((puzzle) => puzzle.id === excludeId) || null;
-  const withoutExcluded = excludeId ? source.filter((puzzle) => puzzle.id !== excludeId) : source;
-  // Conservamos el comportamiento histórico si sólo existe un caso: Siguiente
-  // puede mantenerlo en pantalla en vez de devolver un vacío artificial.
-  const candidates = withoutExcluded.length ? withoutExcluded : source;
-  const incidentCounts = countOccurrences(source, (puzzle) => Array.isArray(puzzle.incidentKeys) ? puzzle.incidentKeys : []);
+export function relatedPersonalPuzzleSeeds({ limit = 4 } = {}) {
+  const puzzles = loadPersonalPuzzles();
+  const active = puzzles.filter((puzzle) => !isPersonalPuzzleMastered(puzzle));
+  const source = active.length ? active : puzzles;
   const openingCounts = countOccurrences(source, (puzzle) => puzzle.opening ? [puzzle.opening] : []);
-  const hasIncidentAlternative = Boolean(reference) && candidates.some((puzzle) => !sharesIncident(reference, puzzle));
-  const hasOpeningAlternative = Boolean(reference?.opening) && candidates.some((puzzle) => puzzle.opening !== reference.opening);
-  const context = { incidentCounts, openingCounts, referencePuzzle: reference, hasIncidentAlternative, hasOpeningAlternative, now };
-
-  return candidates
-    .map((puzzle) => ({ puzzle, score: adaptiveScore(puzzle, context) }))
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      const lossDelta = Number(b.puzzle.loss || 0) - Number(a.puzzle.loss || 0);
-      if (lossDelta) return lossDelta;
-      const dateDelta = Date.parse(b.puzzle.createdAt || 0) - Date.parse(a.puzzle.createdAt || 0);
-      if (Number.isFinite(dateDelta) && dateDelta) return dateDelta;
-      return String(a.puzzle.id || '').localeCompare(String(b.puzzle.id || ''));
+  const incidentCounts = countOccurrences(source, (puzzle) => puzzle.incidentKeys || []);
+  const ranked = [...source]
+    .map((seed) => {
+      const related = source.filter((candidate) => candidate.id !== seed.id);
+      const strongest = related.reduce((best, candidate) => Math.max(best, scoreRelatedScenario(seed, candidate, openingCounts, incidentCounts)), 0);
+      const recurrence = Math.max(
+        seed.opening ? openingCounts.get(seed.opening) || 0 : 0,
+        ...(seed.incidentKeys || []).map((key) => incidentCounts.get(key) || 0),
+      );
+      return { seed, score: strongest + recurrence };
     })
-    .map(({ puzzle }) => puzzle);
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || Number(b.seed.loss || 0) - Number(a.seed.loss || 0));
+  return ranked.slice(0, limit).map((entry) => entry.seed);
 }
 
-export function adaptivePersonalPuzzle(excludeId, filter = null, { includeMastered = false, fallbackToMastered = false, now = Date.now() } = {}) {
-  const all = loadPersonalPuzzles();
-  let eligible = all.filter((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter) && (includeMastered || !isPersonalPuzzleMastered(puzzle)));
-  if (!eligible.length && fallbackToMastered) {
-    eligible = all.filter((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter) && isPersonalPuzzleMastered(puzzle));
+export function randomPersonalPuzzle(excludeId = null, filter = null, { fallbackToMastered = false } = {}) {
+  const active = personalPuzzlesForFilter(filter).filter((p) => p.id !== excludeId);
+  if (active.length) return active[Math.floor(Math.random() * active.length)];
+  if (fallbackToMastered) {
+    const archived = personalPuzzlesForFilter(filter, { masteredOnly: true }).filter((p) => p.id !== excludeId);
+    return archived[Math.floor(Math.random() * archived.length)] || null;
   }
-  const referencePuzzle = excludeId ? all.find((puzzle) => puzzle.id === excludeId) || null : null;
-  return rankAdaptivePersonalPuzzles(eligible, { excludeId, referencePuzzle, now })[0] || null;
+  return null;
 }
 
-// Fachada compatible con llamadas existentes. La cola dejó de ser aleatoria:
-// ahora elige el ejercicio con mayor valor de entrenamiento demostrado.
-export function randomPersonalPuzzle(excludeId, filter = null, options = {}) {
-  return adaptivePersonalPuzzle(excludeId, filter, options);
-}
-
-export function saveGeneratedPersonalPuzzles(puzzles = []) {
-  const candidates = (Array.isArray(puzzles) ? puzzles : [])
-    .filter((puzzle) => puzzle?.fen && Array.isArray(puzzle?.solution) && puzzle.solution.length > 0)
-    .slice(0, 4)
-    .map((puzzle) => ({
-      ...puzzle,
-      id: puzzle.id || stableId(puzzle.fen, puzzle.solution[0]),
-      kind: 'personal',
-      source: 'workers-ai-validated',
-      createdAt: puzzle.createdAt || new Date().toISOString(),
-      incidentKeys: Array.isArray(puzzle.incidentKeys) ? puzzle.incidentKeys : [],
-    }))
-    // Defensa en profundidad: aunque un caller futuro se salte el validador
-    // de Workers AI, nunca persistimos una línea/FEN imposible en la cola.
-    .filter(isPlayablePersonalPuzzle);
-  if (!candidates.length) return { added: 0, total: loadPersonalPuzzles().length, saved: [] };
-
+export function recordPersonalPuzzleResult(id, { solved = false, clean = false, at = Date.now() } = {}) {
+  if (!id) return loadPersonalPuzzles();
   const current = loadPersonalPuzzles();
-  const byId = new Map(current.map((p) => [p.id, p]));
-  let added = 0;
-  const saved = [];
-  for (const puzzle of candidates) {
-    if (!byId.has(puzzle.id)) added += 1;
-    const merged = { ...(byId.get(puzzle.id) || {}), ...puzzle };
-    byId.set(puzzle.id, merged);
-    saved.push(merged);
-  }
-  const next = [...byId.values()]
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .slice(0, MAX_PUZZLES);
-  setProfileStorageItem(KEY, JSON.stringify(next));
-  return { added, total: next.length, saved };
-}
-
-export function recordPersonalPuzzleResult(id, { solved = false, clean = false, review = false } = {}) {
-  if (!id) return null;
-  const all = loadPersonalPuzzles();
-  const index = all.findIndex((p) => p.id === id);
-  if (index < 0) return null;
-  const now = new Date().toISOString();
-  const previous = all[index];
-  const reviewPatch = spacedReviewResultPatch(previous, {
-    solved,
-    clean,
-    review,
-    now: Date.parse(now),
+  let changed = false;
+  const next = current.map((puzzle) => {
+    if (puzzle.id !== id) return puzzle;
+    changed = true;
+    const attempts = Number(puzzle.attempts || 0) + 1;
+    const solves = Number(puzzle.solves || 0) + (solved ? 1 : 0);
+    const cleanSolves = Number(puzzle.cleanSolves || 0) + (solved && clean ? 1 : 0);
+    const masteredAt = puzzle.masteredAt || (solved && clean ? new Date(at).toISOString() : null);
+    return {
+      ...puzzle,
+      ...spacedReviewResultPatch(puzzle, { solved, clean, at }),
+      attempts,
+      solves,
+      cleanSolves,
+      lastAttemptAt: new Date(at).toISOString(),
+      lastSolvedAt: solved ? new Date(at).toISOString() : puzzle.lastSolvedAt || null,
+      masteredAt,
+    };
   });
-  const updated = {
-    ...previous,
-    attempts: Number(previous.attempts || 0) + 1,
-    solves: Number(previous.solves || 0) + (solved ? 1 : 0),
-    cleanSolves: Number(previous.cleanSolves || 0) + (solved && clean ? 1 : 0),
-    lastAttemptAt: now,
-    lastSolvedAt: solved ? now : (previous.lastSolvedAt || null),
-    masteredAt: solved ? (previous.masteredAt || now) : (previous.masteredAt || null),
-    ...reviewPatch,
-  };
-  all[index] = updated;
-  setProfileStorageItem(KEY, JSON.stringify(all));
-  return updated;
+  if (changed) setProfileStorageItem(KEY, JSON.stringify(next));
+  return next;
 }
 
 export function personalTrainingSummary() {
-  const all = loadPersonalPuzzles();
-  const attempts = all.reduce((sum, p) => sum + Number(p.attempts || 0), 0);
-  const solves = all.reduce((sum, p) => sum + Number(p.solves || 0), 0);
-  const cleanSolves = all.reduce((sum, p) => sum + Number(p.cleanSolves || 0), 0);
-  const mastered = all.filter(isPersonalPuzzleMastered).length;
-  const active = Math.max(0, all.length - mastered);
-  return { total: all.length, active, mastered, attempts, solves, cleanSolves, cleanRate: attempts ? Math.round((cleanSolves / attempts) * 100) : null };
+  const puzzles = loadPersonalPuzzles();
+  const active = puzzles.filter((puzzle) => !isPersonalPuzzleMastered(puzzle));
+  const mastered = puzzles.length - active.length;
+  const attempts = puzzles.reduce((sum, puzzle) => sum + Number(puzzle.attempts || 0), 0);
+  const cleanSolves = puzzles.reduce((sum, puzzle) => sum + Number(puzzle.cleanSolves || 0), 0);
+  const solved = puzzles.reduce((sum, puzzle) => sum + Number(puzzle.solves || 0), 0);
+  return { total: puzzles.length, active: active.length, mastered, attempts, solved, cleanSolves };
 }
