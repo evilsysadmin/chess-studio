@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../cpuIdentity.js', () => ({ CPU_IDENTITY: { name: 'Matthias' } }));
 vi.mock('../matthiasVisuals.js', () => ({
@@ -21,6 +21,10 @@ vi.mock('../userPreferences.js', () => ({
   USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
 }));
 
+import {
+  recordMatthiasSessionPuzzle,
+  recordMatthiasSessionResult,
+} from '../matthiasSessionContext.js';
 import MatthiasHomeVisit, {
   HOME_THREE_MOTION_INTENSITY,
   matthiasCompactViewport,
@@ -34,8 +38,10 @@ const MODEL = {
   actionLabel: 'Ver Así juegas',
   moodCue: 'observant',
   moodLabel: 'Observador',
-  sessionLabel: 'Sesión de prueba',
+  sessionLabel: null,
 };
+
+beforeEach(() => sessionStorage.clear());
 
 describe('MatthiasHomeVisit · residente de Home', () => {
   it('mantiene el arte canónico como textura/fallback y delega la animación de Home a Three.js v2', () => {
@@ -66,10 +72,29 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('Leyendo estrategia');
     expect(html).not.toContain('Mensaje de Matthias');
     expect(html).not.toContain(MODEL.text);
+    expect(html).not.toContain('data-session-summary="true"');
   });
 
-  it('cuando tiene algo real que decir conserva el arte original y activa el perfil Three.js de habla', () => {
-    const model = { ...MODEL, variant: 'comment', text: 'He encontrado una reincidencia real.', meta: '2 casos' };
+  it('muestra un debrief plegable después de varias actividades reales de esta sesión', () => {
+    recordMatthiasSessionResult({ gameId: 'g1', outcome: 'loss' });
+    recordMatthiasSessionResult({ gameId: 'g2', outcome: 'win' });
+    recordMatthiasSessionPuzzle();
+    const model = { ...MODEL, sessionLabel: 'Sesión · 2 partidas · 1V · 0T · 1D · 1 puzzle' };
+    const html = renderToStaticMarkup(
+      <MatthiasHomeVisit model={model} speaking={false} onOpenInsights={() => {}} />,
+    );
+
+    expect(html).toContain('data-session-summary="true"');
+    expect(html).toContain('3 actividades');
+    expect(html).toContain('2 · 1V · 0T · 1D');
+    expect(html).toContain('1 puzzle resuelto en esta sesión.');
+    expect(html).toContain('Ver Así juegas →');
+  });
+
+  it('cuando tiene algo real que decir conserva el arte original y no apila el debrief debajo del bocadillo', () => {
+    recordMatthiasSessionResult({ gameId: 'g1', outcome: 'loss' });
+    recordMatthiasSessionResult({ gameId: 'g2', outcome: 'loss' });
+    const model = { ...MODEL, variant: 'comment', text: 'He encontrado una reincidencia real.', meta: '2 casos', sessionLabel: 'Sesión · 2 partidas · 0V · 0T · 2D' };
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit
         model={model}
@@ -84,8 +109,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias-time.webp"');
     expect(html).toContain('data-three-profile="speak"');
-    expect(html).not.toContain('data-matthias-art-part');
-    expect(html).not.toContain('data-matthias-puppet');
+    expect(html).not.toContain('data-session-summary="true"');
     expect(html).toContain('Mensaje de Matthias');
     expect(html).toContain('He encontrado una reincidencia real.');
     expect(html).toContain('2 casos');

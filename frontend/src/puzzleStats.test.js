@@ -7,18 +7,23 @@ import {
   incrementPuzzleStreak,
   resetPuzzleStreak,
 } from './puzzleStats.js';
+import { matthiasSessionContext } from './matthiasSessionContext.js';
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});
 
 describe('puzzleStats', () => {
   it('empieza en 0', () => {
     expect(loadPuzzlesSolved()).toBe(0);
   });
 
-  it('el total resuelto se incrementa y persiste', () => {
+  it('el total resuelto se incrementa y persiste también en el resumen de la sesión', () => {
     incrementPuzzlesSolved();
     incrementPuzzlesSolved();
     expect(loadPuzzlesSolved()).toBe(2);
+    expect(matthiasSessionContext().puzzlesSolved).toBe(2);
   });
 });
 
@@ -41,7 +46,7 @@ describe('racha de puzzles', () => {
     expect(loadBestPuzzleStreak()).toBe(3);
     resetPuzzleStreak();
     expect(loadPuzzleStreak()).toBe(0);
-    expect(loadBestPuzzleStreak()).toBe(3); // la mejor marca no se pierde al romper la racha actual
+    expect(loadBestPuzzleStreak()).toBe(3);
   });
 
   it('la mejor marca solo sube, nunca baja aunque la racha actual se resetee y vuelva a crecer más chica', () => {
@@ -49,10 +54,10 @@ describe('racha de puzzles', () => {
     incrementPuzzleStreak();
     incrementPuzzleStreak();
     incrementPuzzleStreak();
-    incrementPuzzleStreak(); // racha de 5, mejor marca 5
+    incrementPuzzleStreak();
     resetPuzzleStreak();
-    incrementPuzzleStreak(); // nueva racha de 1
+    incrementPuzzleStreak();
     expect(loadPuzzleStreak()).toBe(1);
-    expect(loadBestPuzzleStreak()).toBe(5); // se mantiene
+    expect(loadBestPuzzleStreak()).toBe(5);
   });
 });
