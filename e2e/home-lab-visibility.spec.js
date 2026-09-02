@@ -77,6 +77,32 @@ test('Home móvil · Experimentos geniales no provoca scroll horizontal', async 
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test('Home móvil · reproductor y usuarios ocupan su propia franja y no pisan la cabecera', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHome(page);
+
+  const dock = page.locator('.global-music-dock');
+  const masthead = page.locator('.masthead');
+  await expect(dock).toBeVisible();
+  await expect(masthead).toBeVisible();
+
+  const [dockBox, mastheadBox] = await Promise.all([dock.boundingBox(), masthead.boundingBox()]);
+  expect(dockBox).not.toBeNull();
+  expect(mastheadBox).not.toBeNull();
+  expect(dockBox.y + dockBox.height).toBeLessThanOrEqual(mastheadBox.y + 1);
+
+  const status = dock.locator('.live-service-status');
+  if (await status.isVisible().catch(() => false)) {
+    const statusBox = await status.boundingBox();
+    expect(statusBox).not.toBeNull();
+    expect(statusBox.y).toBeGreaterThanOrEqual(dockBox.y);
+    expect(statusBox.y + statusBox.height).toBeLessThanOrEqual(dockBox.y + dockBox.height + 1);
+  }
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test('Pawn Trailblazer móvil · HUD compacto, controles táctiles y dock global no se pisan', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openPawnTrailblazer(page);
