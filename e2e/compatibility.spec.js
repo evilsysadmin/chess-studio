@@ -65,6 +65,57 @@ for (const width of [360, 390, 430]) {
     expect(await sections.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   });
+
+  test(`War Room · viewport y controles táctiles caben a ${width}px`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width, height: 844 });
+    await mockApi(page);
+    await login(page);
+    await buttonWithVisibleText(page, 'Partida rápida').click();
+    await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+    await expect(gameTurn(page)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+    await dialog.getByRole('radio', { name: /3D$/ }).click();
+    await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+
+    const board = page.locator('[data-board3d-war-room="true"]');
+    const canvas = page.locator('.board3d-main-canvas');
+    const focus = page.getByRole('button', { name: 'Focus', exact: true });
+    const abandon = page.getByRole('button', { name: 'Abandonar partida', exact: true });
+    const appearance = page.locator('.board3d-customize');
+    await expect(board).toBeVisible({ timeout: 30_000 });
+    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    await expect(focus).toBeVisible();
+    await expect(abandon).toBeVisible();
+    await expect(appearance).toBeVisible();
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    const boardRect = await board.boundingBox();
+    expect(boardRect).not.toBeNull();
+    expect(boardRect.x).toBeGreaterThanOrEqual(-1);
+    expect(boardRect.x + boardRect.width).toBeLessThanOrEqual(width + 1);
+
+    for (const control of [focus, abandon, appearance]) {
+      const rect = await control.boundingBox();
+      expect(rect).not.toBeNull();
+      expect(rect.width).toBeGreaterThanOrEqual(40);
+      expect(rect.height).toBeGreaterThanOrEqual(40);
+    }
+
+    await focus.click();
+    await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'true');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    const exit = page.getByRole('button', { name: 'Salir del modo Focus', exact: true });
+    await expect(exit).toBeVisible();
+    const exitRect = await exit.boundingBox();
+    expect(exitRect).not.toBeNull();
+    expect(exitRect.width).toBeGreaterThanOrEqual(40);
+    expect(exitRect.height).toBeGreaterThanOrEqual(40);
+    await exit.click();
+    await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'false');
+  });
 }
 
 test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse', async ({ page }) => {
