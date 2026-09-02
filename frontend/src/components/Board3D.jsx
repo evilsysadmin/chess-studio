@@ -257,7 +257,6 @@ function Board3DCanvas({
     function render() {
       renderer.render(scene, camera);
     }
-
     function resize() {
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
@@ -423,7 +422,6 @@ function Board3DCanvas({
         elapsedMs: now - lastAmbientPaint,
       });
       if (plan.shouldRender) {
-        lastAmbientPaint = now;
         if (plan.updateCamera) {
           const basePosition = camera.userData.basePosition;
           const baseTarget = camera.userData.baseTarget;
@@ -436,6 +434,9 @@ function Board3DCanvas({
         // The castle fire updates from onBeforeRender, so desktop needs a
         // quiet scene heartbeat even when the player does not move the mouse.
         render();
+        // Start the idle budget after WebGL finishes. Software renderers can
+        // otherwise consume the whole interval and starve pointer handling.
+        lastAmbientPaint = performance.now();
       }
       ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
     }
