@@ -6,12 +6,9 @@ on:
       - 'frontend/src/components/Board3D.jsx'
       - 'frontend/src/components/Board3D*.js'
       - 'frontend/src/components/Board3D*.css'
-      - 'frontend/src/components/WarRoom3D*.js'
-      - 'frontend/src/components/WarRoom3D*.css'
-      - 'frontend/src/components/WarRoom3DAnimation.js'
+      - 'frontend/src/components/WarRoom*.js'
+      - 'frontend/src/components/WarRoom*.css'
       - 'frontend/src/components/PremiumWarRoomScene.js'
-      - 'frontend/src/components/WarRoomCastleArchitecture.js'
-      - 'frontend/src/components/WarRoomPremiumPaintings.js'
       - 'frontend/src/components/GameBoardView.jsx'
       - 'frontend/src/styles/19-game-focus.css'
       - 'frontend/src/warRoomPointerCapture.js'
@@ -68,7 +65,7 @@ jobs:
           while IFS= read -r file; do
             [[ -n "$file" ]] || continue
             case "$file" in
-              frontend/src/components/WarRoomCastleArchitecture.js|frontend/src/components/WarRoomPremiumPaintings.js|frontend/src/components/PremiumWarRoomScene.js|frontend/src/components/WarRoom3DAnimation.js|frontend/src/components/Board3D*.css|frontend/src/components/WarRoom3D*.css|e2e/war-room-desktop-scale.spec.js)
+              frontend/src/components/WarRoomCastleArchitecture.js|frontend/src/components/WarRoomPremiumPaintings.js|frontend/src/components/WarRoomArchitectural*.js|frontend/src/components/WarRoomPracticalLighting.js|frontend/src/components/WarRoomPremiumFinishPass.js|frontend/src/components/WarRoomTeutonicDecor.js|frontend/src/components/PremiumWarRoomScene.js|frontend/src/components/WarRoom3DAnimation.js|frontend/src/components/Board3D*.css|frontend/src/components/WarRoom3D*.css|e2e/war-room-desktop-scale.spec.js)
                 visual=true
                 ;;
               frontend/src/styles/19-game-focus.css|e2e/android-game-focus.spec.js)
