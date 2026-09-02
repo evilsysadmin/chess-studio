@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 export const WAR_ROOM_TEXTILE_FINISH_VERSION = 'microfinish-v1';
 
@@ -76,12 +77,6 @@ function tuneMaterial(material, texture, kind, { bumpScale, roughnessFloor }) {
   return true;
 }
 
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
-}
-
 export function applyWarRoomTextileFinish(root) {
   if (!root || root.userData?.warRoomTextileFinish === WAR_ROOM_TEXTILE_FINISH_VERSION) return 0;
 
@@ -144,17 +139,18 @@ export function applyWarRoomTextileFinish(root) {
 
 export function installWarRoomTextileFinish(group, { coarsePointer = false } = {}) {
   if (!group || coarsePointer) return 0;
-  const driver = group.getObjectByName?.('war-room-castle-wall-left')
+  const markerDriver = group.getObjectByName?.('war-room-castle-wall-left')
     || group.getObjectByName?.('war-room-castle-floor-slab');
-  if (!driver || driver.userData.warRoomTextileFinishDriver) return 0;
+  if (!markerDriver || markerDriver.userData.warRoomTextileFinishDriver) return 0;
 
-  driver.userData.warRoomTextileFinishDriver = WAR_ROOM_TEXTILE_FINISH_VERSION;
-  const previous = driver.onBeforeRender;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    applyWarRoomTextileFinish(sceneRoot(driver));
-  };
+  const registered = registerWarRoomDeferredFinalizer(group, {
+    key: 'textile-finish-v1',
+    coarsePointer,
+    run: (root) => applyWarRoomTextileFinish(root),
+  });
+  if (!registered) return 0;
 
+  markerDriver.userData.warRoomTextileFinishDriver = WAR_ROOM_TEXTILE_FINISH_VERSION;
   group.userData.warRoomTextileFinishDriver = WAR_ROOM_TEXTILE_FINISH_VERSION;
   return 1;
 }
