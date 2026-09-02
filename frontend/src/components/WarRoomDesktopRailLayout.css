@@ -1,0 +1,59 @@
+/* Desktop War Room information architecture.
+   Chat belongs to Matthias on the left; RetroPlayer + move notebook own the
+   right rail. Mobile keeps the stacked layout for first-screen usability. */
+@media (min-width: 1081px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    grid-template-areas:
+      'commander board music'
+      'chat board notation' !important;
+    grid-template-rows: auto minmax(220px, 1fr);
+    align-items: stretch;
+  }
+
+  .game-screen .game-side-column.game-side-column-3d {
+    display: contents !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .game-screen .game-side-column-3d .game-chat {
+    grid-area: chat;
+    align-self: stretch;
+    min-width: 0;
+    min-height: 220px;
+    height: auto;
+    max-height: none;
+    border-color: rgba(173,132,57,.32);
+  }
+
+  .game-screen .game-side-column-3d .game-side-music {
+    grid-area: music;
+    align-self: start;
+    min-width: 0;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure {
+    grid-area: notation;
+    align-self: stretch;
+    min-width: 0;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    overflow: auto;
+  }
+
+  .game-screen .game-3d-command-column {
+    grid-area: commander;
+    align-self: stretch;
+    min-height: 0;
+  }
+
+  .game-screen .game-board-stack.game-board-stack-3d {
+    grid-area: board;
+    align-self: start;
+  }
+}
