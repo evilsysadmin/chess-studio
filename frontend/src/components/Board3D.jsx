@@ -8,6 +8,7 @@ import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { warRoomAmbientFramePlan } from './WarRoom3DAnimation.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { BOARD_THEME_3D, FILES } from './Board3DConfig.js';
@@ -414,17 +415,27 @@ function Board3DCanvas({
     let lastAmbientPaint = 0;
     function ambientFrame(now) {
       const motion = cameraMotionRef.current;
-      const reduced = getEffectiveReducedMotion();
-      if (!document.hidden && !reduced && !coarsePointer && inspectModeRef.current && now - lastAmbientPaint >= 16) {
+      const plan = warRoomAmbientFramePlan({
+        documentHidden: document.hidden,
+        reducedMotion: getEffectiveReducedMotion(),
+        coarsePointer,
+        inspectMode: inspectModeRef.current,
+        elapsedMs: now - lastAmbientPaint,
+      });
+      if (plan.shouldRender) {
         lastAmbientPaint = now;
-        const basePosition = camera.userData.basePosition;
-        const baseTarget = camera.userData.baseTarget;
-        if (basePosition && baseTarget) {
-          const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ'));
-          camera.position.copy(baseTarget).add(offset);
-          camera.lookAt(baseTarget);
-          render();
+        if (plan.updateCamera) {
+          const basePosition = camera.userData.basePosition;
+          const baseTarget = camera.userData.baseTarget;
+          if (basePosition && baseTarget) {
+            const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ'));
+            camera.position.copy(baseTarget).add(offset);
+            camera.lookAt(baseTarget);
+          }
         }
+        // The castle fire updates from onBeforeRender, so desktop needs a
+        // quiet scene heartbeat even when the player does not move the mouse.
+        render();
       }
       ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
     }
