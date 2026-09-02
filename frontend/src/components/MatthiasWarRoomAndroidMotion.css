@@ -1,0 +1,45 @@
+/* Android / compact War Room
+ * The commander portrait is only 50–58 px tall here. Desktop-scale transforms
+ * become sub-pixel and look static, especially when a mobile GPU declines the
+ * optional second WebGL context. Keep Three.js as the fine-motion layer, but
+ * make the whole canonical portrait visibly breathe as a cheap fallback too. */
+
+@keyframes matthias-warroom-mobile-idle {
+  0% { transform: translate3d(-1px, 1px, 0) scale(1.015) rotate(-.35deg); }
+  38% { transform: translate3d(.8px, -.8px, 0) scale(1.034) rotate(.28deg); }
+  72% { transform: translate3d(1.35px, -.35px, 0) scale(1.024) rotate(.42deg); }
+  100% { transform: translate3d(-.45px, .35px, 0) scale(1.027) rotate(-.16deg); }
+}
+
+@keyframes matthias-warroom-mobile-presence {
+  0% { transform: scale(.94) translateY(1px); opacity: .11; }
+  55% { transform: scale(1.06) translateY(-1px); opacity: .22; }
+  100% { transform: scale(1.01); opacity: .16; }
+}
+
+@media (max-width: 820px) and (prefers-reduced-motion: no-preference) {
+  .game-3d-matthias-portrait-wrap.is-compact-motion:not(.is-speaking):not(.is-glancing):not(.is-glaring):not(.is-head-left):not(.is-head-right):not(.is-leaning-in):not(.is-surveying):not(.is-disapproving):not(.is-smirking) .game-3d-matthias-character {
+    animation: matthias-warroom-mobile-idle 3.8s cubic-bezier(.36,0,.2,1) infinite alternate;
+  }
+
+  .game-3d-matthias-portrait-wrap.is-compact-motion .game-3d-matthias-presence {
+    animation: matthias-warroom-mobile-presence 4.2s ease-in-out infinite alternate;
+  }
+
+  /* A 50 px portrait needs a touch more physical travel than desktop to make
+     the existing event gestures readable without becoming cartoonish. */
+  .game-3d-matthias-portrait-wrap.is-compact-motion.is-glancing .game-3d-matthias-character,
+  .game-3d-matthias-portrait-wrap.is-compact-motion.is-head-right .game-3d-matthias-character {
+    transform-origin: 48% 72%;
+  }
+
+  .game-3d-matthias-portrait-wrap.is-compact-motion.is-head-left .game-3d-matthias-character {
+    transform-origin: 52% 72%;
+  }
+}
+
+html[data-reduced-motion='true'] .game-3d-matthias-portrait-wrap.is-compact-motion .game-3d-matthias-character,
+html[data-reduced-motion='true'] .game-3d-matthias-portrait-wrap.is-compact-motion .game-3d-matthias-presence {
+  animation: none !important;
+  transform: none !important;
+}
