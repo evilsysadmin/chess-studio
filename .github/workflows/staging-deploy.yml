@@ -3,7 +3,7 @@ name: Staging · deploy
 on:
   workflow_run:
     workflows:
-      - Chess Studio CI/CD
+      - Quality · CI gate
     types:
       - completed
     branches:
