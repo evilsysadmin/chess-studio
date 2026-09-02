@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
+import { applyCastleFurnitureLayout, buildCastleArchitectureLayer } from './WarRoomCastleArchitecture.js';
 
 const COLORS = Object.freeze({
   walnut: 0x3a2114,
@@ -589,6 +590,7 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   const leftX = whiteSide ? -4.95 : 4.95;
   const rightX = -leftX;
 
+  group.add(buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer }));
   addCofferedPaneling(group, wallZ, towardBoard, coarsePointer);
   addCurtain(group, -1.72, 3.28, wallZ + towardBoard * 0.52, towardBoard, -1, coarsePointer);
   addCurtain(group, 1.72, 3.28, wallZ + towardBoard * 0.52, towardBoard, 1, coarsePointer);
@@ -596,7 +598,6 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   addWallSconce(group, -3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 0.7);
   addWallSconce(group, 3.18, 4.55, wallZ + towardBoard * 0.52, towardBoard, segments, coarsePointer, 3.2);
 
-  // Ala de la chimenea: piedra pulida, fuego multicapa y cuadro alpino sobre la repisa.
   addFireplace(group, leftX, 0.34, wallZ + towardBoard * 0.93, towardBoard, segments, coarsePointer);
   addBox(group, [3.12, 0.18, 0.78], COLORS.walnutWarm, [leftX, 2.02, shelfZ], { roughness: 0.42, clearcoat: 0.5 });
   addBox(group, [3.14, 0.08, 0.82], COLORS.brassDark, [leftX, 1.89, shelfZ], { metalness: 0.6, roughness: 0.28 });
@@ -604,7 +605,6 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   addVase(group, leftX + (whiteSide ? -1.02 : 1.02), 2.08, shelfZ + towardBoard * 0.05, COLORS.burgundy, segments);
   addPictureFrame(group, leftX, 3.65, wallZ + towardBoard * 0.54, towardBoard, whiteSide, coarsePointer);
 
-  // Ala de mando: segundo cuadro, libros, lámpara y cajonera.
   addBox(group, [3.25, 0.22, 0.82], COLORS.walnutWarm, [rightX, 1.83, shelfZ], { roughness: 0.46, clearcoat: 0.44 });
   addBox(group, [3.25, 0.16, 0.84], COLORS.brassDark, [rightX, 1.69, shelfZ], { metalness: 0.58, roughness: 0.28 });
   addBankerLamp(group, rightX + (whiteSide ? -0.72 : 0.72), 1.92, shelfZ + towardBoard * 0.22, whiteSide ? -1 : 1, segments, coarsePointer);
@@ -613,10 +613,10 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
   addPictureFrame(group, rightX, 3.66, wallZ + towardBoard * 0.54, towardBoard, !whiteSide, coarsePointer);
   addCommandCabinet(group, rightX, 0.42, wallZ + towardBoard * 1.08, towardBoard, segments, coarsePointer);
 
-  // Zona habitable: dos sofás bajos, detrás de la última fila del tablero.
-  // En móvil conservamos la silueta pero quitamos capitoné y segmentos caros.
+  // Los sofás abandonan el fondo y pasan a las paredes laterales, mirando hacia la mesa.
   addWarRoomSofa(group, -5.55, 0.02, wallZ + towardBoard * 2.42, towardBoard, -1, segments, coarsePointer);
   addWarRoomSofa(group, 5.55, 0.02, wallZ + towardBoard * 2.42, towardBoard, 1, segments, coarsePointer);
+  applyCastleFurnitureLayout(group, { wallZ, towardBoard });
 
   if (!coarsePointer) {
     addVase(group, rightX + (whiteSide ? -1.18 : 1.18), 3.04, wallZ + towardBoard * 0.58, COLORS.teal, segments);
