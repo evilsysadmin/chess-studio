@@ -8,7 +8,7 @@ import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
-import { warRoomAmbientFramePlan } from './WarRoom3DAnimation.js';
+import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan } from './WarRoom3DAnimation.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { BOARD_THEME_3D, FILES } from './Board3DConfig.js';
@@ -101,6 +101,19 @@ function Board3DCanvas({
     } catch (error) {
       latestPropsRef.current.onRendererFailure?.(error);
       return undefined;
+    }
+
+    let softwareRenderer = false;
+    try {
+      const gl = renderer.getContext();
+      const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info');
+      const rendererName = debugRendererInfo
+        ? gl.getParameter(debugRendererInfo.UNMASKED_RENDERER_WEBGL)
+        : gl.getParameter(gl.RENDERER);
+      softwareRenderer = isSoftwareWebGLRenderer(rendererName);
+    } catch {
+      // Renderer introspection is optional. Unknown renderers keep the normal
+      // heartbeat and can still rely on reduced-motion/coarse-pointer gates.
     }
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -419,6 +432,7 @@ function Board3DCanvas({
         documentHidden: document.hidden,
         reducedMotion: getEffectiveReducedMotion(),
         coarsePointer,
+        softwareRenderer,
         inspectMode: inspectModeRef.current,
         elapsedMs: now - lastAmbientPaint,
       });
