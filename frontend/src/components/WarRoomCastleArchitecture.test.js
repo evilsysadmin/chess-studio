@@ -22,21 +22,35 @@ function dispose(root) {
 describe('War Room castle architecture', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('cierra la sala con suelo de baldosas y paredes laterales europeas', () => {
+  it('cierra la sala con suelo de piedra premium y paredes laterales a profundidad completa', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const architecture = room.getObjectByName('war-room-castle-architecture');
     const floor = room.getObjectByName('war-room-castle-floor');
     const leftWall = room.getObjectByName('war-room-castle-wall-left');
     const rightWall = room.getObjectByName('war-room-castle-wall-right');
+    const warmTiles = room.getObjectByName('war-room-castle-floor-tiles-warm');
+    const coolTiles = room.getObjectByName('war-room-castle-floor-tiles-cool');
 
     expect(architecture).toBeInstanceOf(THREE.Group);
     expect(architecture.userData.warRoomArchitecture).toBe('european-castle');
     expect(floor).toBeInstanceOf(THREE.Group);
     expect(floor.userData.warRoomSurface).toBe('stone-tiles');
+    expect(floor.userData.warRoomFinish).toBe('polished-european-stone');
+    expect(floor.userData.warRoomPremiumTileCount).toBe(72);
+    expect(warmTiles).toBeInstanceOf(THREE.InstancedMesh);
+    expect(coolTiles).toBeInstanceOf(THREE.InstancedMesh);
+    expect(warmTiles.count + coolTiles.count).toBe(72);
+    expect(room.getObjectByName('war-room-castle-floor-inlay-left')).toBeTruthy();
+    expect(room.getObjectByName('war-room-castle-floor-inlay-right')).toBeTruthy();
+
     expect(leftWall).toBeInstanceOf(THREE.Mesh);
     expect(rightWall).toBeInstanceOf(THREE.Mesh);
     expect(leftWall.userData.warRoomWallSide).toBe('left');
     expect(rightWall.userData.warRoomWallSide).toBe('right');
+    expect(leftWall.userData.warRoomFullDepth).toBe(true);
+    expect(rightWall.userData.warRoomFullDepth).toBe(true);
+    expect(leftWall.geometry.parameters.depth).toBeGreaterThan(13);
+    expect(rightWall.geometry.parameters.depth).toBeGreaterThan(13);
 
     dispose(room);
   });
@@ -81,8 +95,15 @@ describe('War Room castle architecture', () => {
 
   it('mantiene la arquitectura simplificada también en móvil', () => {
     const room = buildPremiumWarRoomLayer(theme, true, true);
-    expect(room.getObjectByName('war-room-castle-floor')).toBeTruthy();
+    const floor = room.getObjectByName('war-room-castle-floor');
+    const leftWall = room.getObjectByName('war-room-castle-wall-left');
+    expect(floor).toBeTruthy();
+    expect(floor.userData.warRoomFinish).toBe('simplified-castle-stone');
+    expect(room.getObjectByName('war-room-castle-floor-tiles-warm')).toBeFalsy();
+    expect(room.getObjectByName('war-room-castle-floor-tiles-cool')).toBeFalsy();
     expect(room.getObjectByName('war-room-castle-side-walls')).toBeTruthy();
+    expect(leftWall.geometry.parameters.depth).toBe(8.9);
+    expect(leftWall.userData.warRoomFullDepth).toBe(false);
     expect(room.getObjectByName('war-room-sofa-left').userData.warRoomFurniturePlacement).toBe('side-wall');
     expect(room.getObjectByName('war-room-sofa-right').userData.warRoomFurniturePlacement).toBe('side-wall');
     dispose(room);
