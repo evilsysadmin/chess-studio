@@ -22,12 +22,22 @@
 
   .game-screen .game-side-column-3d .game-chat {
     grid-area: chat;
-    align-self: stretch;
+    align-self: start;
     min-width: 0;
-    min-height: 220px;
-    height: auto;
-    max-height: none;
-    border-color: rgba(173,132,57,.32);
+    min-height: 210px;
+    height: clamp(230px, 34dvh, 360px);
+    max-height: clamp(230px, 34dvh, 360px);
+    overflow: hidden;
+    border-color: rgba(142,121,88,.36);
+  }
+
+  .game-screen .game-side-column-3d .game-chat-log {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 
   .game-screen .game-side-column-3d .game-side-music {
