@@ -15,9 +15,10 @@ function dispose(root) {
     for (const material of list) {
       if (!material || materials.has(material)) continue;
       materials.add(material);
-      if (material.map && !textures.has(material.map)) {
-        textures.add(material.map);
-        material.map.dispose?.();
+      for (const value of Object.values(material)) {
+        if (!value?.isTexture || textures.has(value)) continue;
+        textures.add(value);
+        value.dispose?.();
       }
       material.dispose?.();
     }
@@ -25,13 +26,18 @@ function dispose(root) {
 }
 
 describe('War Room premium paintings', () => {
-  it('superpone dos lienzos pictóricos detallados con moldura premium en desktop', () => {
+  it('superpone dos lienzos pictóricos detallados y el decorado teutón premium en desktop', () => {
     const group = new THREE.Group();
     const count = addPremiumWarRoomPaintings(group, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
 
     expect(count).toBe(2);
     expect(group.userData.warRoomPremiumPaintings).toBe(2);
     expect(group.userData.warRoomPremiumPaintingVersion).toBe('v2');
+    expect(group.userData.warRoomTeutonicArmorCount).toBe(2);
+    expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
+    expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
+    expect(group.getObjectByName('war-room-teutonic-armor-left')).toBeTruthy();
+    expect(group.getObjectByName('war-room-teutonic-armor-right')).toBeTruthy();
 
     for (const index of [0, 1]) {
       const painting = group.getObjectByName(`war-room-premium-painting-${index}`);
@@ -53,12 +59,13 @@ describe('War Room premium paintings', () => {
     dispose(group);
   });
 
-  it('no añade texturas pictóricas extra en coarse pointer/móvil', () => {
+  it('no añade geometría premium extra en coarse pointer/móvil', () => {
     const group = new THREE.Group();
     const count = addPremiumWarRoomPaintings(group, { wallZ: -7.6, towardBoard: 1, coarsePointer: true });
     expect(count).toBe(0);
     expect(group.children).toHaveLength(0);
     expect(group.userData.warRoomPremiumPaintings).toBeUndefined();
+    expect(group.userData.warRoomTeutonicArmorCount).toBeUndefined();
     dispose(group);
   });
 });

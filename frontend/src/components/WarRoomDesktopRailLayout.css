@@ -3,10 +3,14 @@
    right rail. Mobile keeps the stacked layout for first-screen usability. */
 @media (min-width: 1081px) {
   .game-screen .board-live-row.is-3d-warroom {
+    /* Three tracks decouple the two side rails. The commander may be taller
+       than the collapsed RetroPlayer without forcing the notebook to start
+       underneath Matthias: notation begins immediately below music. */
     grid-template-areas:
       'commander board music'
+      'commander board notation'
       'chat board notation' !important;
-    grid-template-rows: auto minmax(220px, 1fr);
+    grid-template-rows: auto auto minmax(220px, 1fr);
     align-items: stretch;
   }
 
@@ -22,12 +26,23 @@
 
   .game-screen .game-side-column-3d .game-chat {
     grid-area: chat;
-    align-self: stretch;
+    align-self: start;
     min-width: 0;
-    min-height: 220px;
-    height: auto;
-    max-height: none;
-    border-color: rgba(173,132,57,.32);
+    min-height: 210px;
+    height: clamp(230px, 34dvh, 360px);
+    max-height: clamp(230px, 34dvh, 360px);
+    overflow: hidden;
+    border-color: rgba(142,121,88,.36);
+  }
+
+  /* Matthias stays put; only the conversation history scrolls. */
+  .game-screen .game-side-column-3d .game-chat-log {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 
   .game-screen .game-side-column-3d .game-side-music {
@@ -36,14 +51,28 @@
     min-width: 0;
   }
 
+  /* The notebook now uses the vertical space that used to be wasted by the
+     tall left commander card. Give it its own bounded viewport so a long game
+     never stretches the whole War Room. */
   .game-screen .game-side-column-3d .game-notation-disclosure {
     grid-area: notation;
-    align-self: stretch;
+    align-self: start;
     min-width: 0;
-    min-height: 0;
-    max-height: none;
+    min-height: 260px;
+    height: clamp(300px, 56dvh, 620px);
+    max-height: clamp(300px, 56dvh, 620px);
     margin: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure > summary {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: color-mix(in srgb, var(--studio-panel-raised) 94%, #17130e 6%);
   }
 
   .game-screen .game-3d-command-column {
