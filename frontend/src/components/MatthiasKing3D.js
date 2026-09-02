@@ -55,7 +55,7 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   group.name = 'matthias-rival-king';
   group.userData.matthiasKing = true;
   group.userData.faceStyle = 'proud-command-scowl-v5';
-  group.userData.capStyle = 'command-peaked-cap-v3';
+  group.userData.capStyle = 'compact-command-peaked-cap-v4';
   group.userData.posture = 'proud-command-v2';
   group.userData.motionRig = 'head-rig-v1';
   group.userData.pieceColor = pieceColor;
@@ -177,30 +177,35 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
 
   const capGroup = new THREE.Group();
   capGroup.name = 'matthias-officer-cap';
-  capGroup.position.set(0, 1.14, 0);
-  capGroup.rotation.z = -0.042 * front;
-  capGroup.rotation.x = -0.018 * front;
+  // Keep the officer silhouette, but lift and compact it so the tactical camera
+  // can still read Matthias' eyes and brows. The old visor was wider than the
+  // entire face and behaved like a canopy at board scale.
+  capGroup.position.set(0, 1.17, -front * 0.006);
+  capGroup.rotation.z = -0.035 * front;
+  capGroup.rotation.x = -0.012 * front;
+  capGroup.userData.faceClearance = 'eyes-and-brows-visible';
   headRig.add(capGroup);
 
-  add(capGroup, new THREE.CylinderGeometry(0.24, 0.265, 0.12, segments), cap, [0, 0.075, 0], [0, 0, 0], [1.13, 1, 0.92], 'matthias-cap');
-  add(capGroup, new THREE.TorusGeometry(0.246, 0.023, 8, segments), capBand, [0, 0.025, 0], [Math.PI / 2, 0, 0], [1.07, 0.9, 1], 'matthias-cap-band');
-  add(capGroup, new THREE.TorusGeometry(0.25, 0.01, 8, segments), brass, [0, 0.041, 0], [Math.PI / 2, 0, 0], [1.07, 0.9, 1], 'matthias-cap-piping');
-  add(capGroup, new THREE.CylinderGeometry(0.235, 0.25, 0.052, segments), cap, [-0.006, 0.145, -front * 0.006], [0, 0, 0.025 * front], [1.17, 1, 0.91], 'matthias-cap-top');
+  add(capGroup, new THREE.CylinderGeometry(0.215, 0.238, 0.105, segments), cap, [0, 0.07, 0], [0, 0, 0], [1.08, 1, 0.94], 'matthias-cap');
+  add(capGroup, new THREE.TorusGeometry(0.221, 0.019, 8, segments), capBand, [0, 0.024, 0], [Math.PI / 2, 0, 0], [1.05, 0.92, 1], 'matthias-cap-band');
+  add(capGroup, new THREE.TorusGeometry(0.225, 0.008, 8, segments), brass, [0, 0.039, 0], [Math.PI / 2, 0, 0], [1.05, 0.92, 1], 'matthias-cap-piping');
+  add(capGroup, new THREE.CylinderGeometry(0.212, 0.226, 0.046, segments), cap, [-0.004, 0.132, -front * 0.004], [0, 0, 0.02 * front], [1.1, 1, 0.93], 'matthias-cap-top');
 
   const visor = add(
     capGroup,
-    new THREE.CylinderGeometry(0.325, 0.35, 0.03, segments, 1, false, -1.02, 2.04),
+    new THREE.CylinderGeometry(0.272, 0.294, 0.024, segments, 1, false, -0.96, 1.92),
     cap,
-    [0, 0.005, front * 0.175],
-    [0.075 * front, 0, 0],
-    [1.04, 1, 0.92],
+    [0, 0.004, front * 0.145],
+    [0.055 * front, 0, 0],
+    [0.98, 1, 0.9],
     'matthias-visor',
   );
   visor.castShadow = true;
+  visor.userData.compactForFaceVisibility = true;
 
-  add(capGroup, new THREE.SphereGeometry(0.052, 14, 9), brass, [0, 0.095, front * 0.247], [0, 0, 0], [1, 0.92, 0.52], 'matthias-cap-badge');
-  add(capGroup, new THREE.CylinderGeometry(0.017, 0.026, 0.042, 10), ink, [0, 0.086, front * 0.278], [Math.PI / 2, 0, 0], null, 'matthias-cap-badge-pawn-body');
-  add(capGroup, new THREE.SphereGeometry(0.022, 10, 7), ink, [0, 0.111, front * 0.28], [0, 0, 0], null, 'matthias-cap-badge-pawn-head');
+  add(capGroup, new THREE.SphereGeometry(0.046, 14, 9), brass, [0, 0.087, front * 0.224], [0, 0, 0], [1, 0.92, 0.52], 'matthias-cap-badge');
+  add(capGroup, new THREE.CylinderGeometry(0.015, 0.023, 0.038, 10), ink, [0, 0.08, front * 0.25], [Math.PI / 2, 0, 0], null, 'matthias-cap-badge-pawn-body');
+  add(capGroup, new THREE.SphereGeometry(0.02, 10, 7), ink, [0, 0.103, front * 0.252], [0, 0, 0], null, 'matthias-cap-badge-pawn-head');
 
   group.scale.setScalar(1.035);
   return group;
