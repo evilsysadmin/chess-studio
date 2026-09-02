@@ -8,16 +8,18 @@
   max-height: min(650px, calc(100dvh - 5.5rem)) !important;
   margin: 0 !important;
   overflow: auto !important;
-  border-color: color-mix(in srgb, var(--brass) 54%, var(--ink-3)) !important;
+  border-color: color-mix(in srgb, var(--brass) 48%, var(--ink-3)) !important;
   background: color-mix(in srgb, var(--ink) 95%, #21160d 5%) !important;
-  box-shadow: 0 1.1rem 3.1rem rgba(0,0,0,.55), 0 0 0 1px rgba(216,176,91,.07), inset 0 1px rgba(255,255,255,.035);
+  box-shadow: 0 1rem 2.7rem rgba(0,0,0,.48), 0 0 0 1px rgba(216,176,91,.055), inset 0 1px rgba(255,255,255,.03);
   backdrop-filter: blur(14px);
-  transition: box-shadow .16s ease, border-color .16s ease;
+  opacity: .86;
+  transition: opacity .16s ease, box-shadow .16s ease, border-color .16s ease, transform .16s ease;
   isolation: isolate;
 }
 
 .music-deck-floating:hover,
 .music-deck-floating:focus-within {
+  opacity: 1;
   border-color: color-mix(in srgb, var(--brass) 72%, var(--ink-3)) !important;
   box-shadow: 0 1.25rem 3.4rem rgba(0,0,0,.62), 0 0 0 1px rgba(216,176,91,.11), inset 0 1px rgba(255,255,255,.045);
 }
@@ -71,7 +73,7 @@
   .app-shell-board-game .masthead-game-compact .masthead-actions {
     margin-left: auto !important;
     padding-right: 0 !important;
-    transform: translateX(clamp(.55rem, 1.15vw, 1.2rem));
+    transform: translateX(clamp(1.25rem, 2vw, 2.25rem));
   }
 }
 
@@ -83,6 +85,7 @@
     max-height: min(470px, calc(100dvh - 10rem)) !important;
     box-shadow: none;
     backdrop-filter: none;
+    opacity: 1;
   }
 
   .music-deck-float-handle {

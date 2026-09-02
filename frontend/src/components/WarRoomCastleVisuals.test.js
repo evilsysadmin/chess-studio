@@ -65,7 +65,7 @@ describe('War Room castle visual contract', () => {
     expect(before).toBeGreaterThan(0);
   });
 
-  it('aplica la pasada premium una sola vez y separa sofás, consolas y fuego', () => {
+  it('separa de verdad sofás y consolas y mantiene el fuego premium', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
@@ -79,7 +79,8 @@ describe('War Room castle visual contract', () => {
     const leftConsole = room.getObjectByName('war-room-side-console-left');
     expect(leftSofa.userData.warRoomPremiumUpholstery).toBe('club-tufted-v2');
     expect(leftConsole.userData.warRoomPremiumConsole).toBe('campaign-table-v2');
-    expect(Math.abs(leftSofa.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeGreaterThan(4);
+    expect(Math.abs(leftSofa.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeGreaterThan(6.4);
+    expect(scene.userData.warRoomFurnitureGap).toBeGreaterThan(6.4);
     expect(room.getObjectByName('war-room-sofa-seat-cushion')).toBeTruthy();
     expect(room.getObjectByName('war-room-console-lower-shelf')).toBeTruthy();
 
@@ -92,6 +93,28 @@ describe('War Room castle visual contract', () => {
 
     const canvas = room.getObjectByName('war-room-premium-painting-canvas');
     expect(canvas.material.map.userData.resolution).toEqual([160, 112]);
-    expect(scene.userData.warRoomPremiumCoherence).toBe('v2');
+    expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
+  });
+
+  it('flanquea la sala con armaduras góticas humanas y mandobles texturizados', () => {
+    const room = buildPremiumWarRoomLayer(theme, true, false);
+    const left = room.getObjectByName('war-room-teutonic-armor-left');
+    const right = room.getObjectByName('war-room-teutonic-armor-right');
+    const breast = left?.getObjectByName('war-room-armor-breastplate');
+    const sword = left?.getObjectByName('war-room-zweihander');
+
+    expect(left).toBeTruthy();
+    expect(right).toBeTruthy();
+    expect(left.userData.warRoomArmorScale).toBe('human');
+    expect(left.userData.warRoomArmorStyle).toBe('german-gothic-plate');
+    expect(left.userData.warRoomArmorFinish).toBe('hammered-fluted-steel-v2');
+    expect(left.getObjectByName('war-room-armor-sallet-visor')).toBeTruthy();
+    expect(left.getObjectByName('war-room-armor-breast-flute')).toBeTruthy();
+    expect(left.getObjectByName('war-room-armor-tasset')).toBeTruthy();
+    expect(breast?.material?.bumpMap?.userData?.warRoomArmorTexture).toBe('hammered-steel-v2');
+    expect(sword?.userData?.warRoomSwordType).toBe('two-handed');
+    expect(sword?.userData?.warRoomSwordFinish).toBe('fullered-ceremonial-v2');
+    expect(sword?.getObjectByName('war-room-zweihander-fuller')).toBeTruthy();
+    expect(sword?.getObjectByName('war-room-zweihander-parrying-hooks')).toBeTruthy();
   });
 });
