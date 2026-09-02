@@ -257,6 +257,7 @@ function Board3DCanvas({
     function render() {
       renderer.render(scene, camera);
     }
+
     function resize() {
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
