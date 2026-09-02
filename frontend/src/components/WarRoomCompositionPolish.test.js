@@ -61,8 +61,8 @@ describe('WarRoomCompositionPolish', () => {
     expect(rightArmor.userData.warRoomArmorPlacement).toBe('floor-sentry-facing-board-v16');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
-    expect(Math.abs(leftArmor.position.x)).toBeGreaterThan(Math.abs(leftConsole.position.x) + 0.2);
-    expect(Math.abs(rightArmor.position.x)).toBeGreaterThan(Math.abs(rightConsole.position.x) + 0.2);
+    expect(leftArmor.position.z).toBeGreaterThan(leftConsole.position.z + 2);
+    expect(rightArmor.position.z).toBeGreaterThan(rightConsole.position.z + 2);
     expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(0.6);
     expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(0.6);
     expect(mortarJoints.length).toBeGreaterThan(10);
