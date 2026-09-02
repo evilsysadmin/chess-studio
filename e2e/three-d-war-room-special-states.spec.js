@@ -3,6 +3,8 @@ import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js'
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const SPECIAL_STATE_TIMEOUT = 30_000;
+const CHECK_END_FEN = '4Q2k/8/8/8/8/8/8/7K b - - 1 1';
+const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
@@ -18,6 +20,52 @@ async function setRendererViaAppearance(page, renderer) {
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 }
 
+function specialStatePayload({ id, scenario, from, to }) {
+  const mate = scenario === 'mate';
+  const expected = mate ? ['g6', 'g7'] : ['e2', 'e8'];
+  if (from !== expected[0] || to !== expected[1]) {
+    throw new Error(`E2E ${scenario} esperaba ${expected.join('-')}, recibió ${from}-${to}`);
+  }
+  const move = {
+    from,
+    to,
+    san: mate ? 'Qg7#' : 'Qe8+',
+    piece: 'q',
+    captured: false,
+    by: 'human',
+  };
+  return {
+    id,
+    fen: mate ? MATE_END_FEN : CHECK_END_FEN,
+    turn: 'b',
+    humanColor: 'w',
+    difficulty: 50,
+    status: mate ? 'checkmate' : 'check',
+    insufficientMatingMaterial: { w: false, b: false },
+    isGameOver: mate,
+    history: [move],
+    lastMove: move,
+    initialFen: null,
+    ghostStyle: null,
+  };
+}
+
+async function installSpecialStateMoveRoute(page, scenario, requestLog) {
+  // mockApi crea la partida/FEN inicial. Esta ruta más específica sólo posee la
+  // respuesta de la jugada especial y cumple deliberadamente GamePayload:
+  // `captured` es booleano tanto en history como en lastMove. El fixture común
+  // predataba ese contrato y el frontend rechazaba correctamente su 200 como
+  // respuesta incoherente, haciendo parecer que War Room perdía jaque/mate.
+  await page.route('http://localhost:4000/api/games/*/move', async (route) => {
+    const url = new URL(route.request().url());
+    const id = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1];
+    const payload = route.request().postDataJSON?.() ?? {};
+    requestLog.push({ method: 'POST', path: url.pathname, idempotencyKey: route.request().headers()['idempotency-key'] || null });
+    const body = specialStatePayload({ id, scenario, from: payload.from, to: payload.to });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+}
+
 async function startScenario(page, scenario, requestLog) {
   // Esta suite valida paridad de estado, no cinemática. En los runners de CI
   // WebGL suele caer a render por software y cada transición física puede
@@ -25,6 +73,7 @@ async function startScenario(page, scenario, requestLog) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page, { gameScenario: scenario, requestLog });
+  await installSpecialStateMoveRoute(page, scenario, requestLog);
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -70,8 +119,6 @@ test('War Room parity · jaque seleccionado en 2D se ejecuta en 3D y vuelve a 2D
   await page.keyboard.press('Enter');
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
-  // La petición puede estar ya interceptada mientras React/Three termina el
-  // commit visual. Esperamos al estado confirmado, no al mero inicio del POST.
   await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
 
