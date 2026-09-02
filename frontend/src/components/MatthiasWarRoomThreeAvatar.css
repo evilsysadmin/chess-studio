@@ -1,0 +1,24 @@
+.game-3d-matthias-portrait-wrap .game-3d-matthias-portrait {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.game-3d-matthias-portrait-wrap .matthias-three-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.game-3d-matthias-portrait-wrap .matthias-three-avatar__canvas,
+.game-3d-matthias-portrait-wrap .matthias-three-avatar__fallback {
+  object-fit: cover;
+  object-position: 50% 44%;
+}
+
+/* The card already owns the large posture/reaction animations. The inner
+ * Three.js mesh only provides facial/head/breathing life, so it must not add
+ * another drop-shadow or surface treatment of its own. */
+.game-3d-matthias-portrait-wrap .matthias-three-avatar {
+  filter: none;
+}
