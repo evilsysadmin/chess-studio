@@ -83,9 +83,6 @@ jobs:
             esac
           done <<< "$files"
 
-          # This workflow only starts for the paths declared above. If a future
-          # path reaches here without classification, fail safe by running every
-          # PR gate instead of returning a false green.
           if [[ "$full_logic" != true && "$visual" != true && "$focus" != true ]]; then
             full_logic=true
             visual=true
@@ -104,7 +101,7 @@ jobs:
             echo "- Rules/input parity: \`$full_logic\`"
             echo "- 3D mount/scale: \`$visual\`"
             echo "- Android Focus: \`$focus\`"
-            echo '- PR gates run on separate hosted runners so heavyweight WebGL scenes stay isolated while wall-clock time is parallelized.'
+            echo '- PR gates run on separate hosted runners; the five special-state scenarios are also sharded so each heavyweight WebGL case owns its VM.'
           } >> "$GITHUB_STEP_SUMMARY"
 
   pr-logic:
@@ -120,12 +117,24 @@ jobs:
           - id: android-selection
             label: Android selection
             command: './node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0'
-          - id: special-state
-            label: special-state parity
-            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000'
           - id: desktop-input
             label: desktop input
             command: './node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000'
+          - id: special-state-1
+            label: special-state 1/5
+            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=1/5'
+          - id: special-state-2
+            label: special-state 2/5
+            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=2/5'
+          - id: special-state-3
+            label: special-state 3/5
+            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=3/5'
+          - id: special-state-4
+            label: special-state 4/5
+            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=4/5'
+          - id: special-state-5
+            label: special-state 5/5
+            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=5/5'
     steps:
       - uses: actions/checkout@v7
 
