@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { addPremiumWarRoomPaintings } from './WarRoomPremiumPaintings.js';
 
 const CASTLE = Object.freeze({
   stone: 0x655d52,
@@ -410,6 +411,7 @@ export function buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer
   addTiledFloor(layer, wallZ, towardBoard, coarsePointer);
   addSideWalls(layer, wallZ, towardBoard, coarsePointer);
   addSideConsoles(layer, wallZ, towardBoard, coarsePointer);
+  addPremiumWarRoomPaintings(layer, { wallZ, towardBoard, coarsePointer });
   attachSceneDriver(layer, coarsePointer);
   return layer;
 }
