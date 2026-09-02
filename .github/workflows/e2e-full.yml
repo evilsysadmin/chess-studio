@@ -8,6 +8,8 @@ on:
       - 'frontend/src/components/Board3D*.css'
       - 'frontend/src/components/WarRoom3D*.js'
       - 'frontend/src/components/WarRoom3D*.css'
+      - 'frontend/src/components/PremiumWarRoomScene.js'
+      - 'frontend/src/components/WarRoomCastleArchitecture.js'
       - 'frontend/src/components/GameBoardView.jsx'
       - 'frontend/src/styles/19-game-focus.css'
       - 'frontend/src/warRoomPointerCapture.js'
