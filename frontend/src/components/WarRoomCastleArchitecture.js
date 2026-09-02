@@ -50,101 +50,78 @@ function addBox(group, size, mat, position, name = '') {
   return addMesh(group, new THREE.BoxGeometry(...size), mat, position, [0, 0, 0], name);
 }
 
-function addPremiumFloorTiles(floor, wallZ, towardBoard, depth, width) {
-  const spacing = 1.62;
-  const columns = 9;
-  const rows = 8;
-  const tileSize = spacing - 0.11;
-  const tileGeometry = new THREE.BoxGeometry(tileSize, 0.018, tileSize);
-  const warmStone = material(0x827565, {
-    roughness: 0.48,
-    clearcoat: 0.22,
-    clearcoatRoughness: 0.34,
-    specularIntensity: 0.42,
-  });
-  const coolStone = material(0x716b63, {
-    roughness: 0.56,
-    clearcoat: 0.16,
-    clearcoatRoughness: 0.4,
-    specularIntensity: 0.36,
-  });
-  const darkInlay = material(0x49423a, {
-    roughness: 0.5,
-    clearcoat: 0.2,
-    clearcoatRoughness: 0.36,
-    specularIntensity: 0.4,
-  });
-
-  const totalTiles = columns * rows;
-  const warmTiles = new THREE.InstancedMesh(tileGeometry, warmStone, Math.ceil(totalTiles / 2));
-  const coolTiles = new THREE.InstancedMesh(tileGeometry, coolStone, Math.floor(totalTiles / 2));
-  warmTiles.name = 'war-room-castle-floor-tiles-warm';
-  coolTiles.name = 'war-room-castle-floor-tiles-cool';
-  warmTiles.castShadow = false;
-  coolTiles.castShadow = false;
-  warmTiles.receiveShadow = true;
-  coolTiles.receiveShadow = true;
-
-  const matrix = new THREE.Matrix4();
-  const startX = -((columns - 1) * spacing) / 2;
-  let warmIndex = 0;
-  let coolIndex = 0;
-  for (let row = 0; row < rows; row += 1) {
-    const offsetZ = 1.29 + row * spacing;
-    const z = wallZ + towardBoard * offsetZ;
-    for (let column = 0; column < columns; column += 1) {
-      const x = startX + column * spacing;
-      const lift = (((row * 2 + column) % 3) - 1) * 0.0015;
-      matrix.makeTranslation(x, -0.241 + lift, z);
-      if ((row + column) % 2 === 0) {
-        warmTiles.setMatrixAt(warmIndex, matrix);
-        warmIndex += 1;
-      } else {
-        coolTiles.setMatrixAt(coolIndex, matrix);
-        coolIndex += 1;
-      }
-    }
-  }
-  warmTiles.instanceMatrix.needsUpdate = true;
-  coolTiles.instanceMatrix.needsUpdate = true;
-  floor.add(warmTiles, coolTiles);
-
-  const edgeX = width / 2 - 0.34;
-  addBox(floor, [0.16, 0.025, depth - 0.35], darkInlay, [-edgeX, -0.242, wallZ + towardBoard * (depth / 2 - 0.15)], 'war-room-castle-floor-inlay-left');
-  addBox(floor, [0.16, 0.025, depth - 0.35], darkInlay, [edgeX, -0.242, wallZ + towardBoard * (depth / 2 - 0.15)], 'war-room-castle-floor-inlay-right');
-  addBox(floor, [width - 0.52, 0.025, 0.16], darkInlay, [0, -0.242, wallZ + towardBoard * 0.34], 'war-room-castle-floor-inlay-near');
-  addBox(floor, [width - 0.52, 0.025, 0.16], darkInlay, [0, -0.242, wallZ + towardBoard * (depth - 0.36)], 'war-room-castle-floor-inlay-far');
-
-  floor.userData.warRoomPremiumTileCount = totalTiles;
-}
-
 function addTiledFloor(group, wallZ, towardBoard, coarsePointer) {
   const floor = new THREE.Group();
   floor.name = 'war-room-castle-floor';
-  floor.userData.warRoomSurface = 'stone-tiles';
-  floor.userData.warRoomFinish = coarsePointer ? 'simplified-castle-stone' : 'polished-european-stone';
+  floor.userData.warRoomSurface = coarsePointer ? 'stone-tiles' : 'stone-slab';
+  floor.userData.warRoomFinish = coarsePointer ? 'simplified-castle-stone' : 'restrained-limestone-slab';
 
   const depth = 13.6;
   const width = 16.5;
   const centerZ = wallZ + towardBoard * (depth / 2 - 0.15);
-  const stone = material(CASTLE.stone, { roughness: 0.78, clearcoat: 0.08, specularIntensity: 0.24 });
-  const grout = material(CASTLE.grout, { roughness: 0.98, clearcoat: 0, specularIntensity: 0.06 });
+  const stone = coarsePointer
+    ? material(CASTLE.stone, { roughness: 0.78, clearcoat: 0.08, specularIntensity: 0.24 })
+    : material(0x8b8173, {
+        roughness: 0.6,
+        clearcoat: 0.12,
+        clearcoatRoughness: 0.5,
+        specularIntensity: 0.3,
+      });
+  const grout = material(coarsePointer ? CASTLE.grout : 0x675f55, {
+    roughness: 0.92,
+    clearcoat: 0,
+    specularIntensity: coarsePointer ? 0.06 : 0.1,
+  });
 
   addBox(floor, [width, 0.09, depth], stone, [0, -0.305, centerZ], 'war-room-castle-floor-slab');
 
-  const spacing = coarsePointer ? 2.55 : 1.62;
-  for (let x = -7.3; x <= 7.3; x += spacing) {
-    const line = addBox(floor, [0.026, 0.012, depth - 0.16], grout, [x, -0.254, centerZ]);
+  // Desktop uses broad, nearly continuous limestone courses. The former 72-tile
+  // alternating checker pattern read as a shopping-centre floor from the tactical
+  // camera, so joints are intentionally sparse and low-contrast now.
+  const spacing = coarsePointer ? 2.55 : 4.18;
+  const jointWidth = coarsePointer ? 0.026 : 0.016;
+  const xStart = coarsePointer ? -7.3 : -6.25;
+  const xEnd = coarsePointer ? 7.3 : 6.25;
+  for (let x = xStart; x <= xEnd; x += spacing) {
+    const line = addBox(floor, [jointWidth, 0.01, depth - 0.16], grout, [x, -0.254, centerZ], 'war-room-castle-floor-joint-longitudinal');
     line.castShadow = false;
   }
-  for (let offset = 0.48; offset < depth - 0.25; offset += spacing) {
+  for (let offset = coarsePointer ? 0.48 : 2.05; offset < depth - 0.25; offset += spacing) {
     const z = wallZ + towardBoard * offset;
-    const line = addBox(floor, [width - 0.18, 0.012, 0.026], grout, [0, -0.253, z]);
+    const line = addBox(floor, [width - 0.18, 0.01, jointWidth], grout, [0, -0.253, z], 'war-room-castle-floor-joint-transverse');
     line.castShadow = false;
   }
-
-  if (!coarsePointer) addPremiumFloorTiles(floor, wallZ, towardBoard, depth, width);
+  floor.userData.warRoomJointSpacing = spacing;
   group.add(floor);
+}
+
+function createCastleWallTexture(coarsePointer = false) {
+  if (coarsePointer) return null;
+  const width = 48;
+  const height = 96;
+  const data = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const broad = Math.sin(x * 0.31 + y * 0.095) * 8 + Math.cos(y * 0.17) * 7;
+      const grain = Math.sin((x + y) * 0.63) * 3 + Math.cos(x * 1.17 - y * 0.21) * 2;
+      const fleck = ((x * 17 + y * 29 + x * y * 3) % 19) - 9;
+      const value = THREE.MathUtils.clamp(Math.round(214 + broad + grain + fleck * 0.42), 174, 239);
+      const index = (y * width + x) * 4;
+      data[index] = value;
+      data[index + 1] = value;
+      data[index + 2] = value;
+      data[index + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.name = 'war-room-warm-limestone-texture';
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1.15, 3.4);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  texture.userData.warRoomWallTexture = 'warm-limestone-plaster-v1';
+  return texture;
 }
 
 function addSideWalls(group, wallZ, towardBoard, coarsePointer) {
@@ -155,9 +132,35 @@ function addSideWalls(group, wallZ, towardBoard, coarsePointer) {
   const depth = coarsePointer ? 8.9 : 13.35;
   const centerZ = wallZ + towardBoard * (depth / 2);
   walls.userData.warRoomDepth = depth;
-  const wallMaterial = material(CASTLE.stoneDark, { roughness: 0.9, clearcoat: 0.035, specularIntensity: 0.16 });
-  const trimMaterial = material(CASTLE.stoneLight, { roughness: 0.72, clearcoat: 0.12, specularIntensity: 0.3 });
-  const recessMaterial = material(CASTLE.recess, { roughness: 0.96, clearcoat: 0, specularIntensity: 0.04 });
+  const wallTexture = createCastleWallTexture(coarsePointer);
+  const wallMaterial = coarsePointer
+    ? material(CASTLE.stoneDark, { roughness: 0.9, clearcoat: 0.035, specularIntensity: 0.16 })
+    : new THREE.MeshPhysicalMaterial({
+        color: 0xa9977b,
+        map: wallTexture,
+        roughness: 0.74,
+        roughnessMap: wallTexture,
+        bumpMap: wallTexture,
+        bumpScale: 0.014,
+        metalness: 0,
+        clearcoat: 0.075,
+        clearcoatRoughness: 0.62,
+        specularIntensity: 0.24,
+        envMapIntensity: 0.34,
+      });
+  wallMaterial.userData.warRoomWallFinish = coarsePointer ? 'simplified-castle-stone' : 'warm-limestone-plaster-v1';
+  const trimMaterial = material(coarsePointer ? CASTLE.stoneLight : 0xb7a78e, {
+    roughness: coarsePointer ? 0.72 : 0.62,
+    clearcoat: coarsePointer ? 0.12 : 0.14,
+    specularIntensity: coarsePointer ? 0.3 : 0.34,
+  });
+  const recessMaterial = material(coarsePointer ? CASTLE.recess : 0x5f5448, { roughness: 0.9, clearcoat: 0.015, specularIntensity: 0.1 });
+  const panelMaterial = coarsePointer ? null : material(0x8f806b, {
+    roughness: 0.68,
+    clearcoat: 0.06,
+    clearcoatRoughness: 0.68,
+    specularIntensity: 0.2,
+  });
 
   for (const side of [-1, 1]) {
     const wallX = side * 8.0;
@@ -184,10 +187,22 @@ function addSideWalls(group, wallZ, towardBoard, coarsePointer) {
     }
 
     if (!coarsePointer) {
-      for (const offset of [2.08, 6.18, 10.18]) {
-        if (offset >= depth - 0.4) continue;
-        const slit = addBox(walls, [0.035, 1.38, 0.34], recessMaterial, [side * 7.755, 3.25, wallZ + towardBoard * offset]);
-        slit.castShadow = false;
+      for (const [index, offset] of [2.15, 6.25, 10.35].entries()) {
+        if (offset >= depth - 0.55) continue;
+        const panelZ = wallZ + towardBoard * offset;
+        const panel = addBox(
+          walls,
+          [0.055, 2.48, 1.42],
+          panelMaterial,
+          [side * 7.755, 2.62, panelZ],
+          `war-room-castle-wall-panel-${side < 0 ? 'left' : 'right'}-${index + 1}`,
+        );
+        panel.castShadow = false;
+        panel.userData.warRoomWallPanel = 'limestone-inset';
+        addBox(walls, [0.075, 0.11, 1.62], trimMaterial, [side * 7.72, 3.91, panelZ]);
+        addBox(walls, [0.075, 0.11, 1.62], trimMaterial, [side * 7.72, 1.33, panelZ]);
+        addBox(walls, [0.075, 2.68, 0.1], trimMaterial, [side * 7.72, 2.62, panelZ - 0.76]);
+        addBox(walls, [0.075, 2.68, 0.1], trimMaterial, [side * 7.72, 2.62, panelZ + 0.76]);
       }
     }
   }
@@ -255,12 +270,14 @@ function addSideConsoles(group, wallZ, towardBoard, coarsePointer) {
   const wood = material(CASTLE.walnut, { roughness: 0.62, clearcoat: 0.16, clearcoatRoughness: 0.4, specularIntensity: 0.28 });
   const woodDark = material(CASTLE.walnutDark, { roughness: 0.76, clearcoat: 0.08, clearcoatRoughness: 0.5, specularIntensity: 0.2 });
   const brass = material(CASTLE.brassDark, { metalness: 0.72, roughness: 0.34, clearcoat: 0.18 });
-  const z = wallZ + towardBoard * (coarsePointer ? 4.05 : 4.75);
+  const offsetFromWall = coarsePointer ? 4.05 : 2.55;
+  const z = wallZ + towardBoard * offsetFromWall;
 
   for (const side of [-1, 1]) {
     const consoleGroup = new THREE.Group();
     consoleGroup.name = side < 0 ? 'war-room-side-console-left' : 'war-room-side-console-right';
     consoleGroup.userData.warRoomFurniture = 'side-console';
+    consoleGroup.userData.warRoomOffsetFromWall = offsetFromWall;
     consoleGroup.position.set(side * 6.92, 0, z);
 
     addBox(consoleGroup, [0.84, 0.13, 2.35], wood, [0, 0.91, 0], 'war-room-side-console-top');
@@ -417,7 +434,8 @@ export function buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer
 }
 
 export function applyCastleFurnitureLayout(root, { wallZ, towardBoard } = {}) {
-  const sofaZ = wallZ + towardBoard * 4.25;
+  const sofaOffsetFromWall = 5.45;
+  const sofaZ = wallZ + towardBoard * sofaOffsetFromWall;
   let moved = 0;
   for (const [name, side] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
     const sofa = root?.getObjectByName?.(name);
@@ -425,6 +443,7 @@ export function applyCastleFurnitureLayout(root, { wallZ, towardBoard } = {}) {
     sofa.position.set(side * 6.48, 0.02, sofaZ);
     sofa.rotation.y = -side * towardBoard * Math.PI / 2;
     sofa.userData.warRoomFurniturePlacement = 'side-wall';
+    sofa.userData.warRoomOffsetFromWall = sofaOffsetFromWall;
     sofa.userData.facesWarTable = true;
     moved += 1;
   }

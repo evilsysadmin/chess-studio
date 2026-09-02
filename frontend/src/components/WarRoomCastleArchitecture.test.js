@@ -14,6 +14,9 @@ function dispose(root) {
     for (const item of list) {
       if (!item || materials.has(item)) continue;
       materials.add(item);
+      item.map?.dispose?.();
+      item.roughnessMap?.dispose?.();
+      item.bumpMap?.dispose?.();
       item.dispose?.();
     }
   });
@@ -22,26 +25,23 @@ function dispose(root) {
 describe('War Room castle architecture', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('cierra la sala con suelo de piedra premium y paredes laterales a profundidad completa', () => {
+  it('cierra la sala con piedra continua y paredes laterales a profundidad completa', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const architecture = room.getObjectByName('war-room-castle-architecture');
     const floor = room.getObjectByName('war-room-castle-floor');
     const leftWall = room.getObjectByName('war-room-castle-wall-left');
     const rightWall = room.getObjectByName('war-room-castle-wall-right');
-    const warmTiles = room.getObjectByName('war-room-castle-floor-tiles-warm');
-    const coolTiles = room.getObjectByName('war-room-castle-floor-tiles-cool');
 
     expect(architecture).toBeInstanceOf(THREE.Group);
     expect(architecture.userData.warRoomArchitecture).toBe('european-castle');
     expect(floor).toBeInstanceOf(THREE.Group);
-    expect(floor.userData.warRoomSurface).toBe('stone-tiles');
-    expect(floor.userData.warRoomFinish).toBe('polished-european-stone');
-    expect(floor.userData.warRoomPremiumTileCount).toBe(72);
-    expect(warmTiles).toBeInstanceOf(THREE.InstancedMesh);
-    expect(coolTiles).toBeInstanceOf(THREE.InstancedMesh);
-    expect(warmTiles.count + coolTiles.count).toBe(72);
-    expect(room.getObjectByName('war-room-castle-floor-inlay-left')).toBeTruthy();
-    expect(room.getObjectByName('war-room-castle-floor-inlay-right')).toBeTruthy();
+    expect(floor.userData.warRoomSurface).toBe('stone-slab');
+    expect(floor.userData.warRoomFinish).toBe('restrained-limestone-slab');
+    expect(floor.userData.warRoomJointSpacing).toBeGreaterThan(4);
+    expect(room.getObjectByName('war-room-castle-floor-tiles-warm')).toBeFalsy();
+    expect(room.getObjectByName('war-room-castle-floor-tiles-cool')).toBeFalsy();
+    expect(room.getObjectByName('war-room-castle-floor-inlay-left')).toBeFalsy();
+    expect(room.getObjectByName('war-room-castle-floor-inlay-right')).toBeFalsy();
 
     expect(leftWall).toBeInstanceOf(THREE.Mesh);
     expect(rightWall).toBeInstanceOf(THREE.Mesh);
@@ -52,14 +52,23 @@ describe('War Room castle architecture', () => {
     expect(leftWall.geometry.parameters.depth).toBeGreaterThan(13);
     expect(rightWall.geometry.parameters.depth).toBeGreaterThan(13);
 
+    expect(leftWall.material.userData.warRoomWallFinish).toBe('warm-limestone-plaster-v1');
+    expect(rightWall.material.userData.warRoomWallFinish).toBe('warm-limestone-plaster-v1');
+    expect(leftWall.material.map).toBeInstanceOf(THREE.DataTexture);
+    expect(leftWall.material.map.userData.warRoomWallTexture).toBe('warm-limestone-plaster-v1');
+    expect(room.getObjectByName('war-room-castle-wall-panel-left-1')?.userData.warRoomWallPanel).toBe('limestone-inset');
+    expect(room.getObjectByName('war-room-castle-wall-panel-right-1')?.userData.warRoomWallPanel).toBe('limestone-inset');
+
     dispose(room);
   });
 
-  it('mueve los dos sofás a los laterales y los orienta hacia la mesa', () => {
+  it('separa sofás y consolas y mantiene los sofás orientados hacia la mesa', () => {
     for (const whiteSide of [true, false]) {
       const room = buildPremiumWarRoomLayer(theme, whiteSide, false);
       const left = room.getObjectByName('war-room-sofa-left');
       const right = room.getObjectByName('war-room-sofa-right');
+      const leftConsole = room.getObjectByName('war-room-side-console-left');
+      const rightConsole = room.getObjectByName('war-room-side-console-right');
 
       expect(left.userData.warRoomFurniturePlacement).toBe('side-wall');
       expect(right.userData.warRoomFurniturePlacement).toBe('side-wall');
@@ -69,6 +78,13 @@ describe('War Room castle architecture', () => {
       expect(right.position.x).toBeGreaterThan(6);
       expect(Math.abs(Math.abs(left.rotation.y) - Math.PI / 2)).toBeLessThan(0.001);
       expect(Math.abs(Math.abs(right.rotation.y) - Math.PI / 2)).toBeLessThan(0.001);
+
+      expect(leftConsole.userData.warRoomFurniture).toBe('side-console');
+      expect(rightConsole.userData.warRoomFurniture).toBe('side-console');
+      expect(Math.abs(left.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeGreaterThanOrEqual(2.8);
+      expect(Math.abs(right.userData.warRoomOffsetFromWall - rightConsole.userData.warRoomOffsetFromWall)).toBeGreaterThanOrEqual(2.8);
+      expect(Math.abs(left.position.z - leftConsole.position.z)).toBeGreaterThanOrEqual(2.8);
+      expect(Math.abs(right.position.z - rightConsole.position.z)).toBeGreaterThanOrEqual(2.8);
 
       dispose(room);
     }
@@ -98,12 +114,17 @@ describe('War Room castle architecture', () => {
     const floor = room.getObjectByName('war-room-castle-floor');
     const leftWall = room.getObjectByName('war-room-castle-wall-left');
     expect(floor).toBeTruthy();
+    expect(floor.userData.warRoomSurface).toBe('stone-tiles');
     expect(floor.userData.warRoomFinish).toBe('simplified-castle-stone');
+    expect(floor.userData.warRoomJointSpacing).toBe(2.55);
     expect(room.getObjectByName('war-room-castle-floor-tiles-warm')).toBeFalsy();
     expect(room.getObjectByName('war-room-castle-floor-tiles-cool')).toBeFalsy();
     expect(room.getObjectByName('war-room-castle-side-walls')).toBeTruthy();
     expect(leftWall.geometry.parameters.depth).toBe(8.9);
     expect(leftWall.userData.warRoomFullDepth).toBe(false);
+    expect(leftWall.material.userData.warRoomWallFinish).toBe('simplified-castle-stone');
+    expect(leftWall.material.map).toBeFalsy();
+    expect(room.getObjectByName('war-room-castle-wall-panel-left-1')).toBeFalsy();
     expect(room.getObjectByName('war-room-sofa-left').userData.warRoomFurniturePlacement).toBe('side-wall');
     expect(room.getObjectByName('war-room-sofa-right').userData.warRoomFurniturePlacement).toBe('side-wall');
     dispose(room);
