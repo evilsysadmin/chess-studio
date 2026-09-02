@@ -448,8 +448,8 @@ function Board3DCanvas({
             camera.lookAt(baseTarget);
           }
         }
-        // The castle fire updates from onBeforeRender, so desktop needs a
-        // quiet scene heartbeat even when the player does not move the mouse.
+        // The castle fire updates from onBeforeRender, so the scene needs a
+        // quiet heartbeat even when the player does not move the mouse.
         render();
         // Start the idle budget after WebGL finishes. Software renderers can
         // otherwise consume the whole interval and starve pointer handling.
@@ -457,7 +457,7 @@ function Board3DCanvas({
       }
       ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
     }
-    if (!coarsePointer) ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
+    if (!softwareRenderer) ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
 
     sceneStateRef.current = {
       scene,

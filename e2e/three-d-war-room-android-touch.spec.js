@@ -111,6 +111,27 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
 
+  const matthiasCard = page.locator('.game-3d-matthias-card');
+  const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
+  const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
+  const appearanceButton = page.locator('.board3d-customize');
+  await expect(matthiasCard).toBeVisible();
+  await expect(focusButton).toBeVisible();
+  await expect(abandonButton).toBeVisible();
+  await expect(appearanceButton).toBeVisible();
+
+  const matthiasRect = await matthiasCard.boundingBox();
+  const boardRect = await board3d.boundingBox();
+  const focusRect = await focusButton.boundingBox();
+  const appearanceRect = await appearanceButton.boundingBox();
+  expect(matthiasRect).not.toBeNull();
+  expect(boardRect).not.toBeNull();
+  expect(focusRect).not.toBeNull();
+  expect(appearanceRect).not.toBeNull();
+  expect(matthiasRect.height).toBeLessThanOrEqual(72);
+  expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 2);
+  expect(appearanceRect.y).toBeLessThan(boardRect.y + 90);
+
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
   expect(await canvas.evaluate((element) => {
     const value = getComputedStyle(element).webkitTapHighlightColor;

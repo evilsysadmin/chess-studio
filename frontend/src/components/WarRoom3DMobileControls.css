@@ -1,0 +1,152 @@
+/* Mobile War Room: gameplay controls win the first screen. Matthias keeps a
+   visible presence without occupying the vertical space needed by the board. */
+
+/* Normal War Room speech belongs to the king on the board, but the card must
+   not cover him. Shift the panel up and left; the tail still points inward. */
+.game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
+  top: 29%;
+  left: 4.5%;
+  right: auto;
+  width: min(22rem, 38%);
+  translate: 0 -100%;
+  transform-origin: 100% 100%;
+}
+
+.game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble)::after {
+  left: auto;
+  right: 1.15rem;
+}
+
+@media (max-width: 820px) {
+  /* Matthias becomes a compact identity rail instead of a full command post. */
+  .game-3d-command-column {
+    display: block;
+    min-height: 0;
+  }
+
+  .game-3d-matthias-card {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    min-height: 58px;
+    overflow: hidden;
+  }
+
+  .game-3d-matthias-portrait-wrap {
+    width: 58px;
+    height: 58px;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px 0 0 10px;
+  }
+
+  .game-3d-matthias-copy {
+    display: grid;
+    align-content: center;
+    min-width: 0;
+    gap: .08rem;
+    padding: .32rem .5rem;
+  }
+
+  .game-3d-matthias-copy h2 {
+    margin: 0;
+    font-size: .82rem;
+    text-align: left;
+  }
+
+  .game-3d-matthias-copy > span,
+  .game-3d-matthias-copy p,
+  .game-3d-matthias-copy small,
+  .game-3d-matthias-card .game-3d-matthias-rank,
+  .game-3d-warroom-message,
+  .game-3d-warroom-status,
+  .game-3d-warroom-controls,
+  .game-3d-command-column blockquote {
+    display: none !important;
+  }
+
+  /* Put the actual game actions before the board. Nonessential controls stay
+     available elsewhere, but the first-screen row is deliberately tiny. */
+  .game-screen .game-board-stack.game-board-stack-3d {
+    display: flex;
+    flex-direction: column;
+    gap: .36rem;
+  }
+
+  .game-board-stack-3d > .game-command-deck {
+    order: -4;
+    width: 100%;
+    margin: 0;
+  }
+
+  .game-board-stack-3d > .board3d-main-shell,
+  .game-board-stack-3d > .board3d-fallback {
+    order: -3;
+  }
+
+  .game-board-stack-3d .game-controls {
+    width: 100%;
+    margin: 0;
+    padding: .28rem;
+  }
+
+  .game-board-stack-3d .game-controls-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .34rem;
+  }
+
+  .game-board-stack-3d .game-controls-actions > :not(.game-mobile-focus-toggle):not(.game-abandon-btn) {
+    display: none !important;
+  }
+
+  .game-board-stack-3d .game-mobile-focus-toggle,
+  .game-board-stack-3d .game-abandon-btn {
+    width: 100%;
+    min-height: 40px;
+    margin: 0;
+    justify-content: center;
+  }
+
+  /* Appearance is useful before the player has scrolled past the room. */
+  .game-board-stack-3d .board3d-customize {
+    top: .48rem;
+    right: .48rem;
+    bottom: auto;
+    min-height: 38px;
+    z-index: 7;
+  }
+
+  /* Keep the king visible on narrow screens too. */
+  .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
+    top: 25%;
+    left: 3.5%;
+    width: min(16.5rem, 66%);
+    padding: .58rem .68rem .64rem;
+  }
+
+  .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) p {
+    font-size: .78rem;
+    line-height: 1.28;
+  }
+}
+
+@media (max-width: 520px) {
+  .game-3d-matthias-card {
+    grid-template-columns: 50px minmax(0, 1fr);
+    min-height: 50px;
+  }
+
+  .game-3d-matthias-portrait-wrap {
+    width: 50px;
+    height: 50px;
+  }
+
+  .game-3d-matthias-copy h2 {
+    font-size: .76rem;
+  }
+
+  .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
+    top: 24%;
+    width: min(15.5rem, 68%);
+  }
+}

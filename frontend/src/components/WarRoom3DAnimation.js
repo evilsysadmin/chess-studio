@@ -21,12 +21,14 @@ export function warRoomAmbientFramePlan({
   inspectMode = false,
   elapsedMs = 0,
 } = {}) {
-  const active = !documentHidden && !reducedMotion && !coarsePointer && !softwareRenderer;
-  // The idle heartbeat exists to keep fire/light alive, not to turn the whole
-  // castle into a 60 FPS game loop. ~12 FPS looks natural for irregular flame
-  // flicker while leaving generous main-thread/GPU headroom for board input.
-  // Inspect mode remains responsive at ~60 FPS because camera motion needs it.
-  const intervalMs = inspectMode ? 16 : 83;
+  const active = !documentHidden && !reducedMotion && !softwareRenderer;
+  // The heartbeat exists mainly to keep fire/light alive. Desktop stays near
+  // 12 FPS; coarse-pointer/mobile devices use ~10 FPS, enough for premium flame
+  // motion without paying for a full game loop. Inspect mode raises cadence only
+  // while the player is actively moving the camera.
+  const intervalMs = inspectMode
+    ? (coarsePointer ? 33 : 16)
+    : (coarsePointer ? 100 : 83);
   const due = active && Number(elapsedMs) >= intervalMs;
 
   return Object.freeze({
