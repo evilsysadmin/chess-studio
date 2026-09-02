@@ -246,7 +246,10 @@ function animateWarmFire(root, coarsePointer) {
 
   const legacyAnchor = fireCore.children.find((child) => child?.userData?.warRoomFireAnimationAnchor);
   if (legacyAnchor?.onBeforeRender && !legacyAnchor.userData.castleDriverOwnsFire) {
-    legacyAnchor.onBeforeRender = null;
+    // Three.js calls onBeforeRender unconditionally for renderable objects.
+    // Replacing the old fire driver with null crashes the entire War Room.
+    // Keep the hook callable while handing motion to the castle scene driver.
+    legacyAnchor.onBeforeRender = () => {};
     legacyAnchor.userData.castleDriverOwnsFire = true;
   }
 
