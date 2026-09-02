@@ -213,13 +213,19 @@ test('War Room parity · respuesta CPU que da jaque se conserva al volver de 3D 
   await page.keyboard.press('Enter');
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
-  await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
 
+  // Separar tablero y texto vuelve el gate diagnóstico: primero demostramos
+  // que la respuesta CPU llegó al estado visual, y sólo después exigimos que
+  // gameStatusView publique el mismo jaque. Si algo vuelve a desincronizarse,
+  // CI dirá cuál de las dos capas quedó atrás en vez de un genérico “no Jaque”.
   await setRendererViaAppearance(page, '2D');
   await expect(page.getByRole('button', { name: /Casilla h1, rey blanco, rey en jaque/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
-  await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible();
+  await expect.poll(
+    async () => (await gameStatus(page).textContent())?.trim() || '',
+    { timeout: SPECIAL_STATE_TIMEOUT, message: 'El tablero ya refleja Re1+, pero el estado público debe converger a Jaque' },
+  ).toBe('Jaque');
   expect(movePosts(requestLog)).toHaveLength(1);
 });
 
