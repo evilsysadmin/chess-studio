@@ -1,0 +1,123 @@
+.matthias-resident__character-stack {
+  display: grid;
+  justify-items: end;
+  gap: .36rem;
+}
+
+.matthias-resident__session-summary {
+  width: min(286px, calc(100vw - 1.6rem));
+  pointer-events: auto;
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--ui-border));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--ui-panel) 95%, black 5%);
+  box-shadow: 0 12px 28px rgba(0,0,0,.24);
+  color: var(--parchment-dim);
+  overflow: hidden;
+}
+
+.matthias-resident__session-summary > summary {
+  min-height: 34px;
+  padding: .42rem .55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .55rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.matthias-resident__session-summary > summary::-webkit-details-marker {
+  display: none;
+}
+
+.matthias-resident__session-summary > summary span {
+  color: color-mix(in srgb, var(--brass) 82%, var(--parchment));
+  font-size: .55rem;
+  font-weight: 850;
+  letter-spacing: .13em;
+}
+
+.matthias-resident__session-summary > summary b {
+  color: var(--parchment);
+  font-size: .62rem;
+}
+
+.matthias-resident__session-summary[open] > summary {
+  border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 72%, transparent);
+}
+
+.matthias-resident__session-facts {
+  padding: .48rem .55rem .1rem;
+  display: grid;
+  gap: .34rem;
+}
+
+.matthias-resident__session-facts p {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  align-items: start;
+  gap: .4rem;
+}
+
+.matthias-resident__session-facts span {
+  color: color-mix(in srgb, var(--brass) 72%, var(--parchment-dim));
+  font-size: .56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.matthias-resident__session-facts strong {
+  color: var(--parchment);
+  font-size: .64rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.matthias-resident__session-facts p[data-tone='positive'] strong {
+  color: color-mix(in srgb, var(--success, #70ad7e) 58%, var(--parchment));
+}
+
+.matthias-resident__session-facts p[data-tone='warning'] strong {
+  color: color-mix(in srgb, var(--danger, #b75b52) 52%, var(--parchment));
+}
+
+.matthias-resident__session-summary > small {
+  padding: .18rem .55rem .48rem;
+  display: block;
+  color: var(--parchment-dim);
+  font-size: .6rem;
+  line-height: 1.42;
+}
+
+.matthias-resident__session-summary > button {
+  width: 100%;
+  min-height: 32px;
+  padding: .34rem .55rem;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--ui-border) 70%, transparent);
+  background: rgba(255,255,255,.018);
+  color: var(--brass);
+  font-size: .62rem;
+  font-weight: 800;
+  text-align: right;
+  cursor: pointer;
+}
+
+.matthias-resident__session-summary > button:hover,
+.matthias-resident__session-summary > button:focus-visible {
+  color: var(--parchment);
+  background: rgba(255,255,255,.04);
+  outline: none;
+}
+
+@media (max-width: 760px) {
+  .matthias-resident__character-stack {
+    justify-items: stretch;
+  }
+
+  .matthias-resident__session-summary {
+    width: 100%;
+  }
+}
