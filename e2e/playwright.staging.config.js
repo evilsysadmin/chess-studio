@@ -23,6 +23,9 @@ export default defineConfig({
     headless: true,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    // Staging is our product-acceptance environment. Keep the short smoke video
+    // even when green so we can inspect the real deployed War Room instead of
+    // inferring visual quality from DOM/WebGL contract tests alone.
+    video: 'on',
   },
 });
