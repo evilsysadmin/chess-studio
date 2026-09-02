@@ -80,15 +80,18 @@ describe('War Room castle visual contract', () => {
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
     expect(leftSofa.userData.warRoomPremiumUpholstery).toBe('club-tufted-v2');
     expect(leftConsole.userData.warRoomPremiumConsole).toBe('campaign-table-v2');
-    expect(leftConsole.userData.warRoomOffsetFromWall).toBeCloseTo(2.35, 5);
-    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.55, 5);
+    expect(leftConsole.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
+    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
     expect(leftSofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
-    expect(Math.abs(leftSofa.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeCloseTo(10, 5);
-    expect(scene.userData.warRoomFurnitureGap).toBeCloseTo(10, 5);
-    expect(scene.userData.warRoomFurnitureOrder).toBe('tables-rear-armors-lower-middle-sofas-front-v24');
-    expect(Math.abs(leftArmor.position.x)).toBeLessThan(Math.abs(leftConsole.position.x) - .5);
+    expect(Math.abs(leftSofa.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeCloseTo(9.05, 5);
+    expect(scene.userData.warRoomApprovedMockTableOffset).toBeCloseTo(3.3, 5);
+    expect(scene.userData.warRoomApprovedMockArmorOffset).toBeCloseTo(8.35, 5);
+    expect(scene.userData.warRoomApprovedMockFurnitureOrder).toBe('tables-rear-armors-lower-sofas-front-v25');
+    expect(Math.abs(leftArmor.position.x)).toBeLessThan(Math.abs(leftConsole.position.x));
     expect(room.getObjectByName('war-room-sofa-seat-cushion')).toBeTruthy();
     expect(room.getObjectByName('war-room-console-lower-shelf')).toBeTruthy();
+    expect(room.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
+    expect(room.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
 
     const fireCore = room.getObjectByName('war-room-fire-core');
     const flame = fireCore.children.find((child) => child?.isMesh);

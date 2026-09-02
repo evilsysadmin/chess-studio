@@ -91,6 +91,80 @@ function addKnightSculptMesh(group, geometry, material, position, scale = [1, 1,
   return mesh;
 }
 
+function knightMeshesByRole(group, suffix) {
+  const matches = [];
+  group.traverse((child) => {
+    const role = child?.geometry?.userData?.board3DKnightGeometryRole;
+    if (child?.isMesh && typeof role === 'string' && role.endsWith(suffix)) matches.push(child);
+  });
+  return matches;
+}
+
+function approvedKnightHeadGeometry(previousGeometry) {
+  const shape = new THREE.Shape();
+  // The approved mock uses a compact Staunton-like horse: a slim rear neck,
+  // a small poll, a forward muzzle and a clean jaw/chest line. The silhouette
+  // does the work; decorative meshes must not create a second shoulder hump.
+  shape.moveTo(-0.13, -0.035);
+  shape.bezierCurveTo(-0.17, 0.13, -0.145, 0.32, -0.075, 0.48);
+  shape.bezierCurveTo(-0.025, 0.59, 0.055, 0.68, 0.145, 0.70);
+  shape.bezierCurveTo(0.235, 0.715, 0.335, 0.66, 0.375, 0.565);
+  shape.bezierCurveTo(0.405, 0.49, 0.345, 0.435, 0.265, 0.415);
+  shape.bezierCurveTo(0.185, 0.395, 0.125, 0.36, 0.105, 0.29);
+  shape.bezierCurveTo(0.085, 0.20, 0.105, 0.095, 0.045, 0.015);
+  shape.bezierCurveTo(-0.01, -0.055, -0.075, -0.07, -0.13, -0.035);
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.205,
+    bevelEnabled: true,
+    bevelThickness: 0.032,
+    bevelSize: 0.023,
+    bevelSegments: 2,
+    curveSegments: 14,
+  });
+  geometry.center();
+  geometry.userData = {
+    ...previousGeometry?.userData,
+    board3DKnightTemplateGeometry: false,
+    board3DKnightGeometryClone: true,
+  };
+  return geometry;
+}
+
+function applyApprovedKnightSilhouette(group, coarsePointer) {
+  if (coarsePointer) return 0;
+  const [head] = knightMeshesByRole(group, ':knight-head');
+  const [neck] = knightMeshesByRole(group, ':knight-neck');
+  const ears = knightMeshesByRole(group, ':knight-ear');
+  const eyes = knightMeshesByRole(group, ':knight-eye');
+  if (!head || !neck) return 0;
+
+  const previous = head.geometry;
+  head.geometry = approvedKnightHeadGeometry(previous);
+  previous?.dispose?.();
+  head.position.set(0.005, 0.695, 0);
+  head.scale.set(0.96, 0.94, 1.0);
+  head.userData.knightHeadProfile = 'approved-mock-staunton-v6';
+
+  neck.scale.set(0.84, 0.90, 0.84);
+  neck.userData.knightNeckProfile = 'slim-staunton-v6';
+
+  if (ears[0]) {
+    ears[0].position.set(-0.052, 0.986, 0.018);
+    ears[0].scale.set(0.86, 0.88, 0.82);
+  }
+  if (ears[1]) {
+    ears[1].position.set(0.052, 0.986, 0.018);
+    ears[1].scale.set(0.86, 0.88, 0.82);
+  }
+  if (eyes[0]) eyes[0].position.set(0.168, 0.815, 0.112);
+  if (eyes[1]) eyes[1].position.set(0.168, 0.815, -0.112);
+
+  group.userData.board3DKnightSilhouetteVersion = 'approved-mock-staunton-v6';
+  group.userData.board3DKnightPosture = 'compact-forward-staunton-v6';
+  return 1;
+}
+
 function addPremiumKnightSculpture(group, accentMaterial, coarsePointer) {
   if (coarsePointer) {
     group.userData.board3DKnightDetailVersion = 'lite-v1';
@@ -100,70 +174,51 @@ function addPremiumKnightSculpture(group, accentMaterial, coarsePointer) {
   const mainMaterial = group.children.find((child) => child?.isMesh && child.material && !child.userData?.contactShadow)?.material || accentMaterial;
   let count = 0;
 
-  // v5 keeps the muzzle readable but narrows it so the head feels carved and
-  // equine rather than bulbous. The main silhouette now comes from the S-neck.
+  // Keep only the details that survive tactical-camera distance. The mock reads
+  // as a carved horse because its silhouette is clean, not because it carries
+  // a pile of micro-meshes.
   addKnightSculptMesh(
     group,
-    new THREE.SphereGeometry(0.112, 20, 14),
+    new THREE.SphereGeometry(0.098, 20, 14),
     mainMaterial,
-    [0.29, 0.705, 0],
-    [1.45, 0.58, 0.84],
-    [0, 0, -0.07],
+    [0.295, 0.712, 0],
+    [1.32, 0.50, 0.76],
+    [0, 0, -0.09],
     'muzzle',
   );
   count += 1;
 
-  for (const z of [-0.074, 0.074]) {
+  for (const z of [-0.07, 0.07]) {
     addKnightSculptMesh(
       group,
-      new THREE.SphereGeometry(0.018, 12, 8),
+      new THREE.BoxGeometry(0.145, 0.018, 0.024, 2, 1, 1),
       accentMaterial,
-      [0.386, 0.698, z],
-      [1, 0.58, 0.7],
-      [0, 0, 0],
-      'nostril',
-    );
-    addKnightSculptMesh(
-      group,
-      new THREE.BoxGeometry(0.115, 0.027, 0.026, 2, 1, 1),
-      mainMaterial,
-      [0.165, 0.846, z * 1.72],
+      [0.17, 0.75, z * 1.62],
       [1, 1, 1],
-      [0, z > 0 ? -0.1 : 0.1, -0.1],
-      'brow',
-    );
-    addKnightSculptMesh(
-      group,
-      new THREE.BoxGeometry(0.17, 0.024, 0.032, 2, 1, 1),
-      accentMaterial,
-      [0.175, 0.755, z * 1.78],
-      [1, 1, 1],
-      [0, z > 0 ? -0.07 : 0.07, -0.27],
+      [0, z > 0 ? -0.06 : 0.06, -0.23],
       'bridle',
     );
-    count += 3;
+    count += 1;
   }
 
-  // Four short, low fins follow the rear S-curve instead of climbing into a
-  // hump. This keeps a recognisable mane without rebuilding Notre-Dame.
-  const maneGeometry = new THREE.ConeGeometry(0.043, 0.13, 10);
-  for (let index = 0; index < 4; index += 1) {
+  const maneGeometry = new THREE.ConeGeometry(0.034, 0.105, 10);
+  for (let index = 0; index < 3; index += 1) {
     addKnightSculptMesh(
       group,
       maneGeometry.clone(),
       mainMaterial,
-      [-0.105 - index * 0.006, 0.64 + index * 0.072, 0],
-      [0.82, 0.9 - index * 0.055, 0.62],
-      [0, 0, -0.11],
+      [-0.11, 0.665 + index * 0.076, 0],
+      [0.72, 0.86 - index * 0.06, 0.55],
+      [0, 0, -0.12],
       'mane',
     );
     count += 1;
   }
   maneGeometry.dispose();
 
-  group.userData.board3DKnightDetailVersion = 'sculpted-v5';
+  group.userData.board3DKnightDetailVersion = 'mock-sculpted-v6';
   group.userData.board3DKnightPremiumDetailCount = count;
-  group.userData.board3DKnightManeProfile = 'low-s-curve-v5';
+  group.userData.board3DKnightManeProfile = 'three-low-carved-locks-v6';
   return count;
 }
 
@@ -187,7 +242,10 @@ export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarseP
     }
   }
 
-  if (type === 'n') addPremiumKnightSculpture(group, accentMaterial, coarsePointer);
+  if (type === 'n') {
+    applyApprovedKnightSilhouette(group, coarsePointer);
+    addPremiumKnightSculpture(group, accentMaterial, coarsePointer);
+  }
 
   group.userData.skin3DId = skinId;
   group.userData.skin3DIdentity = 'distinct-v2';
