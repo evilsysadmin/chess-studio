@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'backend-python/**'
+      - 'backend-python/Dockerfile'
+      - 'backend-python/requirements*.txt'
       - 'scripts/oci_arm64_smoke.sh'
       - '.github/workflows/oci-arm64-readiness.yml'
 
