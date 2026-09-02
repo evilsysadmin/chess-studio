@@ -5,7 +5,15 @@ const MAX_FINISHED_IDS = 24;
 const MAX_OUTCOMES = 8;
 
 function emptyContext() {
-  return { games: 0, wins: 0, draws: 0, losses: 0, recentOutcomes: [], finishedGameIds: [] };
+  return {
+    games: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    puzzlesSolved: 0,
+    recentOutcomes: [],
+    finishedGameIds: [],
+  };
 }
 
 function cleanContext(value) {
@@ -15,6 +23,7 @@ function cleanContext(value) {
     wins: Math.max(0, Number(row.wins) || 0),
     draws: Math.max(0, Number(row.draws) || 0),
     losses: Math.max(0, Number(row.losses) || 0),
+    puzzlesSolved: Math.max(0, Number(row.puzzlesSolved) || 0),
     recentOutcomes: Array.isArray(row.recentOutcomes) ? row.recentOutcomes.filter((v) => ['win', 'draw', 'loss'].includes(v)).slice(-MAX_OUTCOMES) : [],
     finishedGameIds: Array.isArray(row.finishedGameIds) ? row.finishedGameIds.filter((v) => typeof v === 'string').slice(-MAX_FINISHED_IDS) : [],
   };
@@ -41,13 +50,24 @@ export function recordMatthiasSessionResult({ gameId, outcome } = {}) {
   return next;
 }
 
+export function recordMatthiasSessionPuzzle() {
+  const current = matthiasSessionContext();
+  const next = {
+    ...current,
+    puzzlesSolved: current.puzzlesSolved + 1,
+  };
+  writeJsonStorage(STORAGE_SESSION, MATTHIAS_SESSION_CONTEXT_KEY, next);
+  return next;
+}
+
 export function clearMatthiasSessionContext() {
   removeStorageItem(STORAGE_SESSION, MATTHIAS_SESSION_CONTEXT_KEY);
 }
 
 export function matthiasSessionLabel(context = null) {
   const row = cleanContext(context);
-  if (!row.games) return null;
-  const result = `${row.wins}V · ${row.draws}T · ${row.losses}D`;
-  return `Sesión · ${row.games} partida${row.games === 1 ? '' : 's'} · ${result}`;
+  const parts = [];
+  if (row.games) parts.push(`${row.games} partida${row.games === 1 ? '' : 's'} · ${row.wins}V · ${row.draws}T · ${row.losses}D`);
+  if (row.puzzlesSolved) parts.push(`${row.puzzlesSolved} puzzle${row.puzzlesSolved === 1 ? '' : 's'}`);
+  return parts.length ? `Sesión · ${parts.join(' · ')}` : null;
 }
