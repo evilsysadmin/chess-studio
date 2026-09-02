@@ -26,13 +26,15 @@ function dispose(root) {
 }
 
 describe('War Room premium paintings', () => {
-  it('superpone dos lienzos pictóricos detallados y el decorado teutón premium en desktop', () => {
+  it('superpone dos lienzos con acabado museo y decorado teutón premium en desktop', () => {
     const group = new THREE.Group();
     const count = addPremiumWarRoomPaintings(group, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
 
     expect(count).toBe(2);
     expect(group.userData.warRoomPremiumPaintings).toBe(2);
     expect(group.userData.warRoomPremiumPaintingVersion).toBe('v2');
+    expect(group.userData.warRoomPremiumFinishVersion).toBe('museum-gothic-v3');
+    expect(group.userData.warRoomPremiumFinishedObjects).toBe(4);
     expect(group.userData.warRoomTeutonicArmorCount).toBe(2);
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
@@ -44,8 +46,11 @@ describe('War Room premium paintings', () => {
       const canvas = painting?.getObjectByName('war-room-premium-painting-canvas');
       const gilt = painting?.getObjectByName('war-room-premium-frame-gilt-bed');
       const woodBed = painting?.getObjectByName('war-room-premium-frame-wood-bed');
+      const lamp = painting?.getObjectByName(`war-room-picture-lamp-${index}`);
       expect(painting).toBeInstanceOf(THREE.Group);
-      expect(painting.userData.warRoomPaintingFinish).toBe('painterly-canvas-v2');
+      expect(painting.userData.warRoomPaintingFinish).toBe('museum-canvas-and-gilding-v3');
+      expect(painting.userData.warRoomMuseumFinish).toBe('v3');
+      expect(painting.userData.warRoomGalleryFinish).toBe('lit-carved-frame-v3');
       expect(canvas).toBeInstanceOf(THREE.Mesh);
       expect(gilt).toBeInstanceOf(THREE.Mesh);
       expect(woodBed).toBeInstanceOf(THREE.Mesh);
@@ -54,6 +59,18 @@ describe('War Room premium paintings', () => {
       expect(canvas.material.map.userData.warRoomPaintingDetail).toBe('layered-landscape-v2');
       expect(canvas.material.map.userData.resolution).toEqual([160, 112]);
       expect(canvas.material.roughness).toBeGreaterThan(0.7);
+      expect(canvas.material.bumpMap?.userData?.warRoomPremiumSurface).toBe('canvas');
+      expect(canvas.material.userData.warRoomCanvasFinish).toBe('woven-varnished-linen-v3');
+      expect(gilt.material.bumpMap?.userData?.warRoomPremiumSurface).toBe('gilding');
+      expect(gilt.material.userData.warRoomFrameFinish).toBe('aged-water-gilding-v3');
+      expect(woodBed.material.bumpMap?.userData?.warRoomPremiumSurface).toBe('wood');
+      expect(woodBed.material.userData.warRoomFrameFinish).toBe('hand-rubbed-walnut-v3');
+      expect(painting.getObjectByName('war-room-premium-frame-gilt-bead')).toBeTruthy();
+      expect(painting.getObjectByName('war-room-premium-frame-leaf-ornament')).toBeTruthy();
+      expect(painting.getObjectByName('war-room-painting-varnish')).toBeTruthy();
+      expect(lamp?.userData?.warRoomPictureLamp).toBe('brass-gallery-lamp-v3');
+      expect(lamp?.getObjectByName('war-room-picture-lamp-glow')).toBeTruthy();
+      expect(painting.getObjectByName(`war-room-picture-plaque-${index}`)).toBeTruthy();
     }
 
     dispose(group);
@@ -65,6 +82,7 @@ describe('War Room premium paintings', () => {
     expect(count).toBe(0);
     expect(group.children).toHaveLength(0);
     expect(group.userData.warRoomPremiumPaintings).toBeUndefined();
+    expect(group.userData.warRoomPremiumFinishVersion).toBeUndefined();
     expect(group.userData.warRoomTeutonicArmorCount).toBeUndefined();
     dispose(group);
   });
