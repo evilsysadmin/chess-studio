@@ -41,7 +41,7 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomTeutonicArmorCount).toBe(2);
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
     expect(group.userData.warRoomCompositionPolishVersion).toBe('v10');
-    expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v23');
+    expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v24');
     expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
 
@@ -51,8 +51,10 @@ describe('War Room premium paintings', () => {
     expect(rightArmor).toBeTruthy();
     expect(leftArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
     expect(rightArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('lower-centered-sentry-facing-board-v24');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('lower-centered-sentry-facing-board-v24');
+    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.55, 5);
+    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.55, 5);
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
     expect(group.getObjectByName('war-room-armor-alcove-lintel')).toBeTruthy();
