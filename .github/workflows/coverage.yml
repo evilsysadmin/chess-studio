@@ -28,7 +28,7 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Run frontend coverage
+      - name: Coverage frontend (informativo)
         working-directory: frontend
         run: npm run test:coverage
       - name: Upload frontend coverage
@@ -55,7 +55,7 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend-python
         run: pip install -r requirements-dev.txt
-      - name: Run backend coverage
+      - name: Coverage backend (informativo)
         working-directory: backend-python
         run: pytest -q --cov=. --cov-branch --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml --cov-fail-under=0
       - name: Upload backend coverage
