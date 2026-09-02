@@ -1,0 +1,50 @@
+/* Final desktop composition pass for the War Room.
+   This intentionally stays scoped to board-game desktop: mobile/coarse keeps
+   the lighter layout and the existing touch-safe proportions. */
+@media (min-width: 1081px) {
+  .app-shell-board-game .masthead-game-compact .masthead-actions {
+    gap: clamp(.58rem, .72vw, .78rem) !important;
+    padding-right: clamp(.72rem, 1.1vw, 1.2rem) !important;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-actions .save-status-badge {
+    min-width: 82px;
+    padding-inline: .68rem;
+    justify-content: center;
+    margin-right: .08rem;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-feedback-trigger,
+  .app-shell-board-game .masthead-game-compact .masthead-account-trigger {
+    min-width: 110px;
+    padding-inline: .66rem;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-release-trigger {
+    min-width: 82px;
+    padding-inline: .62rem;
+  }
+
+  /* The compact masthead/footer have already bought vertical room. Spend more
+     of it on the diorama instead of preserving the obsolete bottom moat. */
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(620px, calc(100dvh - 5.25rem), 900px) !important;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
+    margin-bottom: 0;
+    padding-bottom: clamp(.3rem, .42vw, .46rem);
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 900px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(555px, calc(100dvh - 7rem), 790px) !important;
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 780px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(495px, calc(100dvh - 8rem), 655px) !important;
+  }
+}
