@@ -10,6 +10,15 @@ function rgb(hex) {
 }
 
 describe('War Room mobile decor profile', () => {
+  it('lets local practical lights dominate broad desktop fills', () => {
+    const desktop = warRoomDecorProfile(false);
+
+    expect(desktop.wallSconce).toBeGreaterThan(desktop.moon * 3);
+    expect(desktop.wallSconce).toBeGreaterThan(desktop.palette * 3);
+    expect(desktop.bankerLamp).toBeGreaterThan(desktop.moon * 2);
+    expect(desktop.crest).toBeGreaterThan(desktop.wallSconce);
+  });
+
   it('recupera luz de pared en coarse pointer sin tocar exposición global', () => {
     const desktop = warRoomDecorProfile(false);
     const mobile = warRoomDecorProfile(true);
