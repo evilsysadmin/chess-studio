@@ -14,6 +14,9 @@ function dispose(root) {
     for (const item of list) {
       if (!item || materials.has(item)) continue;
       materials.add(item);
+      item.map?.dispose?.();
+      item.roughnessMap?.dispose?.();
+      item.bumpMap?.dispose?.();
       item.dispose?.();
     }
   });
@@ -51,6 +54,13 @@ describe('War Room castle architecture', () => {
     expect(rightWall.userData.warRoomFullDepth).toBe(true);
     expect(leftWall.geometry.parameters.depth).toBeGreaterThan(13);
     expect(rightWall.geometry.parameters.depth).toBeGreaterThan(13);
+
+    expect(leftWall.material.userData.warRoomWallFinish).toBe('warm-limestone-plaster-v1');
+    expect(rightWall.material.userData.warRoomWallFinish).toBe('warm-limestone-plaster-v1');
+    expect(leftWall.material.map).toBeInstanceOf(THREE.DataTexture);
+    expect(leftWall.material.map.userData.warRoomWallTexture).toBe('warm-limestone-plaster-v1');
+    expect(room.getObjectByName('war-room-castle-wall-panel-left-1')?.userData.warRoomWallPanel).toBe('limestone-inset');
+    expect(room.getObjectByName('war-room-castle-wall-panel-right-1')?.userData.warRoomWallPanel).toBe('limestone-inset');
 
     dispose(room);
   });
@@ -104,6 +114,9 @@ describe('War Room castle architecture', () => {
     expect(room.getObjectByName('war-room-castle-side-walls')).toBeTruthy();
     expect(leftWall.geometry.parameters.depth).toBe(8.9);
     expect(leftWall.userData.warRoomFullDepth).toBe(false);
+    expect(leftWall.material.userData.warRoomWallFinish).toBe('simplified-castle-stone');
+    expect(leftWall.material.map).toBeFalsy();
+    expect(room.getObjectByName('war-room-castle-wall-panel-left-1')).toBeFalsy();
     expect(room.getObjectByName('war-room-sofa-left').userData.warRoomFurniturePlacement).toBe('side-wall');
     expect(room.getObjectByName('war-room-sofa-right').userData.warRoomFurniturePlacement).toBe('side-wall');
     dispose(room);
