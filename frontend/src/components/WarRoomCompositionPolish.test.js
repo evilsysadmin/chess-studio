@@ -26,6 +26,21 @@ function dispose(root) {
   });
 }
 
+function compositionOwner(root) {
+  let owner = null;
+  root.traverse((object) => {
+    if (!owner && object.userData?.warRoomCompositionPolishVersion === 'v10') owner = object;
+  });
+  return owner;
+}
+
+function runRootDriver(room) {
+  const driver = room.getObjectByName('war-room-premium-painting-canvas');
+  expect(driver?.userData?.warRoomCompositionRootDriver).toBe(true);
+  expect(typeof driver?.onBeforeRender).toBe('function');
+  driver.onBeforeRender();
+}
+
 describe('WarRoomCompositionPolish', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
@@ -39,7 +54,9 @@ describe('WarRoomCompositionPolish', () => {
     room.traverse((object) => {
       if (object.name === 'war-room-teutonic-mortar-joint') mortarJoints.push(object);
     });
+    const owner = compositionOwner(room);
 
+    expect(owner).toBeTruthy();
     expect(leftArmor.userData.warRoomArmorPlacement).toBe('outer-wall-sentry-v10');
     expect(rightArmor.userData.warRoomArmorPlacement).toBe('outer-wall-sentry-v10');
     expect(Math.abs(leftArmor.position.x)).toBeGreaterThan(Math.abs(leftConsole.position.x) + 0.2);
@@ -48,7 +65,7 @@ describe('WarRoomCompositionPolish', () => {
     expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(0.15);
     expect(mortarJoints.length).toBeGreaterThan(10);
     expect(mortarJoints.every((joint) => joint.visible === false)).toBe(true);
-    expect(room.userData.warRoomRetiredMortarJoints).toBe(mortarJoints.length);
+    expect(owner.userData.warRoomRetiredMortarJoints).toBe(mortarJoints.length);
 
     dispose(room);
   });
@@ -73,8 +90,9 @@ describe('WarRoomCompositionPolish', () => {
     dispose(room);
   });
 
-  it('reviste el interior de la chimenea con ladrillo refractario ennegrecido sin luces nuevas', () => {
+  it('reviste el interior de la chimenea con ladrillo refractario ennegrecido al montar la sala completa', () => {
     const room = buildPremiumWarRoomLayer(theme, false, false);
+    runRootDriver(room);
     const fireplace = room.getObjectByName('war-room-fireplace');
     const names = [
       'war-room-fireplace-refractory-back',
@@ -83,6 +101,7 @@ describe('WarRoomCompositionPolish', () => {
       'war-room-fireplace-refractory-return-right',
     ];
 
+    expect(room.userData.warRoomCompositionPolishVersion).toBe('v10');
     expect(fireplace.userData.warRoomInteriorFinish).toBe('refractory-v4');
     expect(fireplace.userData.warRoomInteriorMeshCount).toBe(4);
     for (const name of names) {
@@ -104,8 +123,11 @@ describe('WarRoomCompositionPolish', () => {
   it('es idempotente y no añade el pass pesado en coarse/mobile', () => {
     const desktop = buildPremiumWarRoomLayer(theme, true, false);
     const mobile = buildPremiumWarRoomLayer(theme, true, true);
+    const owner = compositionOwner(desktop);
 
-    expect(desktop.userData.warRoomCompositionPolishVersion).toBe('v10');
+    expect(owner).toBeTruthy();
+    expect(applyWarRoomCompositionPolish(owner, { wallZ: -7.6, towardBoard: 1, coarsePointer: false })).toBe(0);
+    runRootDriver(desktop);
     expect(applyWarRoomCompositionPolish(desktop, { wallZ: -7.6, towardBoard: 1, coarsePointer: false })).toBe(0);
     expect(mobile.userData.warRoomCompositionPolishVersion).toBeUndefined();
     expect(mobile.getObjectByName('war-room-fireplace-refractory-back')).toBeUndefined();
