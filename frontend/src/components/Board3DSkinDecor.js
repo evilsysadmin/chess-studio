@@ -20,9 +20,10 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   if (!material?.color) return material;
   const profile = profileFor(skinId);
   const target = new THREE.Color(targetColor);
-  const matteIvory = material.userData?.surfaceRole === 'ivory' && !accent;
-  const boost = matteIvory
-    ? Math.min(0.08, profile.colorBoost)
+  const polishedIvory = material.userData?.surfaceRole === 'ivory' && !accent;
+  const classicEbony = material.userData?.surfaceRole === 'ebony' && !accent && (material.metalness ?? 0) < 0.58;
+  const boost = polishedIvory
+    ? Math.min(0.14, profile.colorBoost)
     : accent
       ? Math.min(1, profile.colorBoost + 0.18)
       : profile.colorBoost;
@@ -31,19 +32,31 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   material.metalness = THREE.MathUtils.clamp((material.metalness || 0) + profile.metalness + (accent ? 0.05 : 0), 0, 1);
   material.roughness = THREE.MathUtils.clamp((material.roughness || 0.5) + profile.roughness - (accent ? 0.03 : 0), 0.08, 1);
 
-  // El acabado marfil base ya viene deliberadamente envejecido y mate desde
-  // Board3DSurfaces. Los skins no deben volver a convertir las blancas en
-  // porcelana brillante: preservamos volumen por sombras y una lectura clara
-  // de las siluetas bajo la iluminación cálida de la War Room.
-  if (matteIvory) {
-    material.color.lerp(new THREE.Color(0xa48c6d), 0.16);
-    material.metalness = Math.min(material.metalness, 0.01);
-    material.roughness = Math.max(material.roughness, 0.86);
-    material.clearcoat = Math.min(material.clearcoat ?? 0.08, 0.055);
-    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.66, 0.72);
-    material.specularIntensity = Math.min(material.specularIntensity ?? 0.12, 0.1);
-    material.envMapIntensity = Math.min(material.envMapIntensity ?? 0.13, 0.11);
-    material.sheen = Math.min(material.sheen ?? 0.008, 0.006);
+  // Premium carved ivory: not porcelain-white and not chalk-matte. A broad,
+  // restrained satin highlight makes the turning and bevels readable under
+  // the warm War Room lights without turning the army into plastic toys.
+  if (polishedIvory) {
+    material.color.lerp(new THREE.Color(0xb39b7c), 0.13);
+    material.metalness = Math.min(material.metalness, 0.012);
+    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.44, 0.56);
+    material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.08, 0.24, 0.34);
+    material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.5, 0.26, 0.36);
+    material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.3, 0.34, 0.46);
+    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.4, 0.38, 0.52);
+    material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.02, 0.018, 0.05);
+    material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.58, 0.48, 0.68);
+    material.userData.pieceFinish = 'polished-carved-ivory-v3';
+  }
+
+  // Classic black skins get a deep ebony/lacquer response. Highly metallic
+  // skins are intentionally excluded so Cyber/Regimiento keep their own PBR.
+  if (classicEbony) {
+    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.28, 0.44);
+    material.clearcoat = Math.max(material.clearcoat ?? 0, 0.66);
+    material.clearcoatRoughness = Math.min(material.clearcoatRoughness ?? 0.18, 0.2);
+    material.specularIntensity = Math.max(material.specularIntensity ?? 0.7, 0.8);
+    material.envMapIntensity = Math.max(material.envMapIntensity ?? 0.78, 0.86);
+    material.userData.pieceFinish = 'polished-ebony-lacquer-v3';
   }
 
   if (profile.emissiveBoost && material.emissive) {
