@@ -212,6 +212,31 @@ function addPainting(group, x, y, z, towardBoard, warm, index) {
   return frame;
 }
 
+function sceneRoot(object) {
+  let current = object;
+  while (current?.parent) current = current.parent;
+  return current;
+}
+
+function attachLegacyArmorRetirementDriver(group) {
+  const driver = group?.getObjectByName?.('war-room-premium-painting-canvas');
+  if (!driver || driver.userData.warRoomLegacyArmorRetirementDriver) return;
+  driver.userData.warRoomLegacyArmorRetirementDriver = true;
+  const previous = driver.onBeforeRender;
+  driver.onBeforeRender = (...args) => {
+    previous?.(...args);
+    const root = sceneRoot(driver);
+    for (const name of ['war-room-armor-guard-left', 'war-room-armor-guard-right']) {
+      const legacy = root?.getObjectByName?.(name);
+      if (!legacy || legacy.userData.replacedByGothicArmor) continue;
+      legacy.visible = false;
+      legacy.userData.replacedByGothicArmor = true;
+      legacy.userData.replacement = name.endsWith('left') ? 'war-room-teutonic-armor-left' : 'war-room-teutonic-armor-right';
+    }
+    if (root?.userData) root.userData.warRoomLegacyArmorRetired = true;
+  };
+}
+
 export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
 
@@ -221,6 +246,7 @@ export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePo
   const paintingZ = wallZ + towardBoard * 0.72;
   addPainting(group, -4.95, 3.65, paintingZ, towardBoard, false, 0);
   addPainting(group, 4.95, 3.66, paintingZ, towardBoard, true, 1);
+  attachLegacyArmorRetirementDriver(group);
   group.userData.warRoomPremiumPaintings = 2;
   group.userData.warRoomPremiumPaintingVersion = 'v2';
   return 2;
