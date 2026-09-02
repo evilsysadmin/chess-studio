@@ -7,6 +7,7 @@ import { enemyOfficerBriefing } from '../combatEnemyOfficers.js';
 import { campaignMissionOrders, classifiedCampaignMission } from '../combatMissionOrders.js';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
+import CombatEnemyOfficerDossier from './CombatEnemyOfficerDossier.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
@@ -75,6 +76,8 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
           <p>{enemyOfficer.note}{enemyOfficer.known ? ` ${enemyOfficer.record.encounters} encuentros registrados.` : ' No modifica la fuerza de la CPU: es identidad e historial, no un buff oculto.'}</p>
         </article>
       )}
+
+      <CombatEnemyOfficerDossier currentOfficerId={enemyOfficer?.id || null} />
 
       {boss && (
         <article className="campaign-boss-dossier" aria-label={`Boss: ${boss.label}`}>

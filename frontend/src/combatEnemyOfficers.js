@@ -148,6 +148,28 @@ export function enemyOfficerBriefing(campaignSeed, node, history = loadEnemyOffi
   };
 }
 
+export function enemyOfficerDossiers(history = loadEnemyOfficerHistory()) {
+  return OFFICERS
+    .map((officer) => {
+      const record = normalizeRecord(history?.[officer.id]);
+      if (record.encounters <= 0) return null;
+      const service = officerServiceRank(officer, record);
+      return {
+        ...officer,
+        rank: service.rank,
+        baseRank: service.baseRank,
+        serviceScore: service.serviceScore,
+        promotions: service.promotions,
+        nextPromotionIn: service.nextPromotionIn,
+        score: `${record.playerWins}–${record.officerWins}`,
+        record,
+        recentEncounters: record.recentEncounters,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.record.lastSeenAt - a.record.lastSeenAt || b.record.encounters - a.record.encounters || a.name.localeCompare(b.name));
+}
+
 export function recordEnemyOfficerEncounter({ campaignSeed, node, outcome, encounterId, at = Date.now() } = {}) {
   if (!VALID_OUTCOMES.has(outcome) || !encounterId) return loadEnemyOfficerHistory();
   const officer = enemyOfficerForNode(campaignSeed, node);
