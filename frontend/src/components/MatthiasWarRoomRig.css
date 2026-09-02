@@ -1,0 +1,109 @@
+.matthias-war-room-rig {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.matthias-war-room-rig__base,
+.matthias-war-room-rig__part {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 44%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.matthias-war-room-rig__base {
+  z-index: 0;
+}
+
+.matthias-war-room-rig__part {
+  z-index: 1;
+  will-change: transform;
+}
+
+.matthias-war-room-rig__part--head {
+  z-index: 2;
+  transform-origin: 50% 47%;
+  -webkit-mask-image: radial-gradient(ellipse 35% 31% at 50% 37%, #000 0 58%, rgba(0,0,0,.92) 69%, rgba(0,0,0,.38) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 35% 31% at 50% 37%, #000 0 58%, rgba(0,0,0,.92) 69%, rgba(0,0,0,.38) 84%, transparent 100%);
+  animation: matthias-warroom-rig-head 8.8s cubic-bezier(.35,0,.18,1) infinite;
+}
+
+.matthias-war-room-rig__part--eyes {
+  z-index: 5;
+  transform-origin: 50% 40%;
+  -webkit-mask-image: radial-gradient(ellipse 23% 10% at 50% 40%, #000 0 46%, rgba(0,0,0,.9) 63%, rgba(0,0,0,.34) 82%, transparent 100%);
+  mask-image: radial-gradient(ellipse 23% 10% at 50% 40%, #000 0 46%, rgba(0,0,0,.9) 63%, rgba(0,0,0,.34) 82%, transparent 100%);
+  animation: matthias-warroom-rig-eyes 7.7s cubic-bezier(.4,0,.2,1) infinite;
+}
+
+.matthias-war-room-rig__part--mouth {
+  z-index: 6;
+  transform-origin: 50% 47.5%;
+  opacity: 0;
+  -webkit-mask-image: radial-gradient(ellipse 12% 6% at 50% 47%, #000 0 54%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.28) 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse 12% 6% at 50% 47%, #000 0 54%, rgba(0,0,0,.88) 68%, rgba(0,0,0,.28) 84%, transparent 100%);
+}
+
+.matthias-war-room-rig.is-speaking .matthias-war-room-rig__part--mouth {
+  opacity: 1;
+  animation: matthias-warroom-rig-mouth .34s ease-in-out infinite alternate;
+}
+
+.matthias-war-room-rig.is-speaking .matthias-war-room-rig__part--head {
+  animation-duration: 4.2s;
+}
+
+@keyframes matthias-warroom-rig-head {
+  0%, 20%, 100% { transform: translate3d(0,0,0) rotate(0); }
+  32% { transform: translate3d(-1.2px,-.4px,0) rotate(-.42deg); }
+  48% { transform: translate3d(-.45px,-.2px,0) rotate(-.18deg); }
+  66% { transform: translate3d(1px,-.35px,0) rotate(.34deg); }
+  82% { transform: translate3d(.35px,0,0) rotate(.12deg); }
+}
+
+@keyframes matthias-warroom-rig-eyes {
+  0%, 12%, 100% { transform: translate3d(0,0,0) scaleY(1); }
+  20% { transform: translate3d(2.2px,.05px,0) scaleY(1); }
+  31% { transform: translate3d(1.9px,.1px,0) scaleY(1); }
+  42% { transform: translate3d(-1.8px,.04px,0) scaleY(1); }
+  55% { transform: translate3d(-1.2px,.08px,0) scaleY(1); }
+  71.2% { transform: translate3d(.3px,.08px,0) scaleY(1); }
+  72.1% { transform: translate3d(.3px,.36px,0) scaleY(.18); }
+  73.1% { transform: translate3d(.3px,.08px,0) scaleY(1); }
+  86% { transform: translate3d(1.1px,.03px,0) scaleY(1); }
+}
+
+@keyframes matthias-warroom-rig-mouth {
+  from { transform: translate3d(0,0,0) scaleY(.96); }
+  to { transform: translate3d(0,1.15px,0) scaleY(1.09); }
+}
+
+.matthias-war-room-rig.is-reduced .matthias-war-room-rig__part,
+.matthias-war-room-rig.is-reduced .matthias-war-room-rig__part--mouth {
+  animation: none !important;
+  transform: none !important;
+}
+
+.matthias-war-room-rig.is-reduced .matthias-war-room-rig__part--mouth {
+  opacity: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matthias-war-room-rig__part,
+  .matthias-war-room-rig__part--mouth {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .matthias-war-room-rig__part--mouth {
+    opacity: 0 !important;
+  }
+}
