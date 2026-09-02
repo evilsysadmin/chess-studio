@@ -73,7 +73,9 @@ describe('War Room castle visual contract', () => {
     const premiumDriver = room.getObjectByName('war-room-castle-wall-left');
     const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
     expect(premiumDriver?.userData?.warRoomPremiumRoomDriver).toBe(true);
+    expect(typeof premiumDriver?.onBeforeRender).toBe('function');
     expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
+    premiumDriver.onBeforeRender();
     finalizerDriver.onBeforeRender();
 
     const leftSofa = room.getObjectByName('war-room-sofa-left');
