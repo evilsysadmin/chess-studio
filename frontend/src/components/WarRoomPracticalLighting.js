@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { installWarRoomArchitecturalDepth } from './WarRoomArchitecturalDepth.js';
 import { installWarRoomArchitecturalUpper } from './WarRoomArchitecturalUpper.js';
+import { installWarRoomArchitecturalPatina } from './WarRoomArchitecturalPatina.js';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -87,11 +88,12 @@ export function applyWarRoomPracticalLighting(group, {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
 
   // The museum keys only look intentional when the surrounding wall/floor joins
-  // read as one room. Both architectural passes are idempotent and desktop-only;
-  // the upper pass lives in the far third so it frames the room without crossing
-  // the high tactical camera cone over the board.
+  // read as one room. These lightweight passes are idempotent and desktop-only:
+  // depth grounds the furniture, upper framing closes the far silhouette, and
+  // patina breaks showroom symmetry with a few real signs of field use.
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
+  installWarRoomArchitecturalPatina(group, { coarsePointer });
 
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
 
