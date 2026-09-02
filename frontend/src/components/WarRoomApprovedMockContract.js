@@ -1,12 +1,7 @@
 import * as THREE from 'three';
+import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 export const WAR_ROOM_APPROVED_MOCK_VERSION = 'approved-mock-v25';
-
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
-}
 
 function placeFurniture(root, { wallZ, towardBoard }) {
   const tableOffset = 3.30;
@@ -118,17 +113,20 @@ export function installWarRoomApprovedMockContract(group, options = {}) {
   if (!group || options.coarsePointer) return 0;
   applyWarRoomApprovedMockContract(group, options);
 
-  const driver = group.getObjectByName?.('war-room-castle-wall-left')
+  const markerDriver = group.getObjectByName?.('war-room-castle-wall-left')
     || group.getObjectByName?.('war-room-velvet-curtain-fold')
     || group.getObjectByName?.('war-room-castle-floor-slab');
-  if (!driver || driver.userData.warRoomApprovedMockDriver === WAR_ROOM_APPROVED_MOCK_VERSION) return 0;
+  if (!markerDriver || markerDriver.userData.warRoomApprovedMockDriver === WAR_ROOM_APPROVED_MOCK_VERSION) return 0;
 
-  driver.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
-  const previous = driver.onBeforeRender;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    applyWarRoomApprovedMockContract(sceneRoot(driver) || group, options);
-  };
+  const registered = registerWarRoomDeferredFinalizer(group, {
+    key: 'approved-mock-v25',
+    coarsePointer: options.coarsePointer,
+    run: (root) => applyWarRoomApprovedMockContract(root || group, options),
+  });
+  if (!registered) return 0;
+
+  markerDriver.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   group.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
+  group.userData.warRoomApprovedMockExecution = 'shared-deferred-finalizer-v2';
   return 1;
 }
