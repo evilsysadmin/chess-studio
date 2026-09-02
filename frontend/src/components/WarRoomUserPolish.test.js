@@ -51,6 +51,12 @@ function makeRoom() {
     brace.position.y = 5.02;
     room.add(brace);
   }
+  for (let index = 0; index < 4; index += 1) {
+    const arch = new THREE.Mesh(new THREE.BoxGeometry(.1, 1.36, .1), new THREE.MeshBasicMaterial());
+    arch.name = 'war-room-armor-alcove-pointed-arch';
+    arch.rotation.x = index % 2 ? .79 : -.79;
+    room.add(arch);
+  }
   return room;
 }
 
@@ -66,35 +72,38 @@ function dispose(root) {
 }
 
 describe('War Room user polish', () => {
-  it('ordena mesas atrás, armaduras en medio y sofás en el borde delantero', () => {
+  it('ordena mesas abajo del fondo, armaduras centradas en medio y sofás en el borde delantero', () => {
     const room = makeRoom();
     expect(applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
 
     const sofa = room.getObjectByName('war-room-sofa-left');
     const table = room.getObjectByName('war-room-side-console-left');
     const armor = room.getObjectByName('war-room-teutonic-armor-left');
-    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(.72, 5);
-    expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(5.15, 5);
-    expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.15, 5);
-    expect(room.userData.warRoomFurnitureGap).toBeGreaterThan(11);
-    expect(room.userData.warRoomFurnitureOrder).toBe('tables-rear-armors-middle-sofas-front-v20');
-    expect(table.position.z).toBeLessThan(armor.position.z - 4);
-    expect(armor.position.z).toBeLessThan(sofa.position.z - 6);
-    expect(armor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
-    expect(Math.abs(armor.rotation.y)).toBeGreaterThan(.75);
+    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(1.75, 5);
+    expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(5.45, 5);
+    expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
+    expect(room.userData.warRoomFurnitureGap).toBeGreaterThan(10);
+    expect(room.userData.warRoomFurnitureOrder).toBe('tables-rear-armors-middle-sofas-front-v23');
+    expect(table.position.z).toBeLessThan(armor.position.z - 3.5);
+    expect(armor.position.z).toBeLessThan(sofa.position.z - 6.5);
+    expect(Math.abs(armor.position.x)).toBeLessThan(Math.abs(table.position.x));
+    expect(armor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
+    expect(Math.abs(armor.rotation.y)).toBeGreaterThan(.65);
     expect(armor.userData.facesWarTable).toBe(true);
     dispose(room);
   });
 
-  it('elimina por completo los tirantes diagonales heredados que leían como M', () => {
+  it('elimina por completo cualquier tirante o arco diagonal heredado que lea como M', () => {
     const room = makeRoom();
     applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 });
-    const braces = [];
-    room.traverse((object) => { if (object.name === 'war-room-hammerbeam-brace') braces.push(object); });
-    expect(braces).toHaveLength(6);
-    expect(braces.every((brace) => brace.visible === false)).toBe(true);
-    expect(braces.every((brace) => brace.userData.warRoomBraceStyle === 'retired-no-monogram-v20')).toBe(true);
-    expect(room.userData.warRoomDiagonalMonogramsRetired).toBe(6);
+    const diagonals = [];
+    room.traverse((object) => {
+      if (['war-room-hammerbeam-brace', 'war-room-armor-alcove-pointed-arch'].includes(object.name)) diagonals.push(object);
+    });
+    expect(diagonals).toHaveLength(10);
+    expect(diagonals.every((object) => object.visible === false)).toBe(true);
+    expect(diagonals.every((object) => object.userData.warRoomBraceStyle === 'retired-no-monogram-v23')).toBe(true);
+    expect(room.userData.warRoomDiagonalMonogramsRetired).toBe(10);
     expect(room.userData.warRoomMonogramFree).toBe(true);
     dispose(room);
   });
