@@ -83,34 +83,40 @@
       'commander board music'
       'chat board notation';
     background:
-      radial-gradient(circle at 50% -8%, rgba(171,122,52,.12), transparent 34%),
-      linear-gradient(180deg, rgba(23,20,17,.96), rgba(9,10,11,.985) 64%);
+      radial-gradient(circle at 50% -10%, rgba(190,139,61,.16), transparent 35%),
+      radial-gradient(circle at 10% 72%, rgba(139,73,38,.08), transparent 26%),
+      radial-gradient(circle at 91% 25%, rgba(69,93,108,.065), transparent 25%),
+      linear-gradient(180deg, rgba(25,21,17,.965), rgba(8,9,10,.99) 66%);
   }
 
   /* El propio marco deja de parecer un dashboard azul. Piedra ahumada, hierro,
      madera y latón: la misma familia visual que la sala Three.js. */
   .game-screen .board-live-row.is-3d-warroom::before {
     background:
-      linear-gradient(90deg, rgba(18,16,14,.72) 0 15%, transparent 25% 75%, rgba(18,16,14,.72) 85% 100%),
+      linear-gradient(90deg, rgba(18,16,14,.74) 0 15%, transparent 25% 75%, rgba(18,16,14,.74) 85% 100%),
       repeating-linear-gradient(0deg, transparent 0 43px, rgba(112,102,89,.045) 44px 45px),
       repeating-linear-gradient(90deg, transparent 0 86px, rgba(128,112,89,.032) 87px 88px);
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell::before {
     background:
-      linear-gradient(90deg, rgba(12,11,10,.52) 0 12%, rgba(12,11,10,.14) 21%, transparent 30% 70%, rgba(12,11,10,.14) 79%, rgba(12,11,10,.52) 88% 100%),
-      linear-gradient(180deg, rgba(215,167,91,.025), transparent 28% 76%, rgba(0,0,0,.24));
+      linear-gradient(90deg, rgba(10,9,8,.43) 0 10%, rgba(10,9,8,.09) 21%, transparent 31% 69%, rgba(10,9,8,.09) 79%, rgba(10,9,8,.43) 90% 100%),
+      linear-gradient(180deg, rgba(226,175,94,.035), transparent 31% 74%, rgba(0,0,0,.2));
     mix-blend-mode: multiply;
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell::after {
     background:
-      radial-gradient(circle at 11% 37%, rgba(172,91,42,.1), transparent 18%),
-      radial-gradient(circle at 89% 37%, rgba(172,91,42,.1), transparent 18%);
+      radial-gradient(circle at 12% 42%, rgba(184,92,39,.115), transparent 20%),
+      radial-gradient(circle at 88% 38%, rgba(204,151,73,.07), transparent 18%),
+      radial-gradient(circle at 74% 12%, rgba(86,119,139,.052), transparent 23%);
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
     height: clamp(590px, calc(100dvh - 7rem), 880px);
+    box-shadow:
+      inset 0 0 68px rgba(0,0,0,.2),
+      0 16px 34px rgba(0,0,0,.18);
   }
 
   /* Chat a la izquierda, debajo de Matthias. La envolvente derecha se hace
@@ -191,10 +197,10 @@
     overflow-y: auto;
   }
 
-  /* Final post-tone-mapping trim: darker stone without flattening the board or
-     turning the pieces into silhouettes. */
+  /* Final post-tone-mapping trim. v4 deliberately preserves highlights and
+     microtexture: contrast supplies depth, not a blanket brightness penalty. */
   .game-screen .game-board-stack-3d .board3d-main-canvas {
-    filter: saturate(1.02) contrast(1.045) brightness(.91);
+    filter: saturate(1.035) contrast(1.058) brightness(.955);
   }
 }
 
