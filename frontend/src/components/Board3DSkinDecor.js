@@ -82,6 +82,88 @@ function addRing(group, material, y, radius, tube, coarsePointer) {
   return mesh;
 }
 
+function addKnightSculptMesh(group, geometry, material, position, scale = [1, 1, 1], rotation = [0, 0, 0], role = 'detail') {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...position);
+  mesh.scale.set(...scale);
+  mesh.rotation.set(...rotation);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData.skinDetail = true;
+  mesh.userData.knightSculptDetail = role;
+  group.add(mesh);
+  return mesh;
+}
+
+function addPremiumKnightSculpture(group, accentMaterial, coarsePointer) {
+  if (coarsePointer) {
+    group.userData.board3DKnightDetailVersion = 'lite-v1';
+    return 0;
+  }
+
+  const mainMaterial = group.children.find((child) => child?.isMesh && child.material && !child.userData?.contactShadow)?.material || accentMaterial;
+  let count = 0;
+
+  // Rounded muzzle gives the profile an actual horse nose instead of a flat
+  // extruded chess symbol. It projects along +X, matching the existing eyes.
+  addKnightSculptMesh(
+    group,
+    new THREE.SphereGeometry(0.105, 18, 12),
+    mainMaterial,
+    [0.235, 0.705, 0],
+    [1.42, 0.68, 0.82],
+    [0, 0, -0.08],
+    'muzzle',
+  );
+  count += 1;
+
+  // Two tiny nostrils and two low brow ridges add readable carving at normal
+  // desktop distance while remaining symmetric from either side of the board.
+  for (const z of [-0.071, 0.071]) {
+    addKnightSculptMesh(
+      group,
+      new THREE.SphereGeometry(0.018, 12, 8),
+      accentMaterial,
+      [0.325, 0.708, z],
+      [1, 0.58, 0.72],
+      [0, 0, 0],
+      'nostril',
+    );
+    addKnightSculptMesh(
+      group,
+      new THREE.BoxGeometry(0.105, 0.026, 0.025, 2, 1, 1),
+      mainMaterial,
+      [0.155, 0.865, z * 1.76],
+      [1, 1, 1],
+      [0, z > 0 ? -0.12 : 0.12, -0.12],
+      'brow',
+    );
+    count += 2;
+  }
+
+  // Segmented mane follows the rear contour. Using individual carved fins
+  // catches highlights far better than a painted stripe and gives the knight
+  // a richer silhouette without changing its square footprint.
+  const maneGeometry = new THREE.ConeGeometry(0.047, 0.145, 9);
+  for (let index = 0; index < 4; index += 1) {
+    addKnightSculptMesh(
+      group,
+      maneGeometry.clone(),
+      mainMaterial,
+      [-0.11 - index * 0.012, 0.76 + index * 0.083, 0],
+      [1, 1 - index * 0.055, 0.72],
+      [0, 0, -0.22],
+      'mane',
+    );
+    count += 1;
+  }
+  maneGeometry.dispose();
+
+  group.userData.board3DKnightDetailVersion = 'sculpted-v3';
+  group.userData.board3DKnightPremiumDetailCount = count;
+  return count;
+}
+
 export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarsePointer = false) {
   const profile = profileFor(skinId);
   for (const [y, radius, tube] of profile.rings) addRing(group, accentMaterial, y, radius, tube, coarsePointer);
@@ -103,6 +185,8 @@ export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarseP
       group.add(stud);
     }
   }
+
+  if (type === 'n') addPremiumKnightSculpture(group, accentMaterial, coarsePointer);
 
   group.userData.skin3DId = skinId;
   group.userData.skin3DIdentity = 'distinct-v2';
