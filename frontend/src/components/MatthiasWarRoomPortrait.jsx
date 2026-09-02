@@ -3,6 +3,7 @@ import { getEffectiveReducedMotion } from '../userPreferences.js';
 import './MatthiasWarRoomPortrait.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
+import './WarRoom3DMobileControls.css';
 
 function speechDuration(text) {
   return Math.max(1500, Math.min(4200, String(text || '').length * 46));
