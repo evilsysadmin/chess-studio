@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { installWarRoomArchitecturalDepth } from './WarRoomArchitecturalDepth.js';
 import { installWarRoomArchitecturalUpper } from './WarRoomArchitecturalUpper.js';
 import { installWarRoomArchitecturalPatina } from './WarRoomArchitecturalPatina.js';
+import { installWarRoomTextileFinish } from './WarRoomTextileFinish.js';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -89,11 +90,13 @@ export function applyWarRoomPracticalLighting(group, {
 
   // The museum keys only look intentional when the surrounding wall/floor joins
   // read as one room. These lightweight passes are idempotent and desktop-only:
-  // depth grounds the furniture, upper framing closes the far silhouette, and
-  // patina breaks showroom symmetry with a few real signs of field use.
+  // depth grounds the furniture, upper framing closes the far silhouette, patina
+  // breaks showroom symmetry, and textile finish removes perfectly smooth leather,
+  // velvet and wool without adding geometry.
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalPatina(group, { coarsePointer });
+  installWarRoomTextileFinish(group, { coarsePointer });
 
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
 
