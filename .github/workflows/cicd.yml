@@ -21,8 +21,14 @@ jobs:
     name: Preflight · contracts
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
+      run_backend: ${{ steps.quality_paths.outputs.run_backend }}
+      run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -31,9 +37,72 @@ jobs:
       - name: Static preflight + CI wiring
         run: make static-preflight
 
+      - name: Classify quality-test surface
+        id: quality_paths
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          enable_all() {
+            echo 'run_frontend=true' >> "$GITHUB_OUTPUT"
+            echo 'run_backend=true' >> "$GITHUB_OUTPUT"
+            echo 'run_e2e=true' >> "$GITHUB_OUTPUT"
+          }
+
+          # Manual CI is an explicit request for the whole quality battery.
+          if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
+            enable_all
+            exit 0
+          fi
+
+          # Never save minutes by guessing. First push, shallow/broken ancestry
+          # or any other unresolved base falls back to the complete suite.
+          if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            enable_all
+            exit 0
+          fi
+
+          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          printf '%s\n' "$files"
+
+          # Shared quality/build/infra surfaces can affect both stacks or the
+          # routing itself. Keep these deliberately conservative.
+          shared_pattern='^\.github/|^Makefile$|^scripts/|^infra/|^deploy/|^\.githooks/|(^|/)Dockerfile[^/]*$|(^|/)docker-compose[^/]*\.ya?ml$|^compose\.ya?ml$|^render\.ya?ml$'
+          if grep -Eq "$shared_pattern" <<< "$files"; then
+            enable_all
+            exit 0
+          fi
+
+          run_frontend=false
+          run_backend=false
+          run_e2e=false
+
+          if grep -Eq '^frontend/' <<< "$files"; then
+            run_frontend=true
+            # Product UI changes still earn the critical browser smoke.
+            run_e2e=true
+          fi
+          if grep -Eq '^backend-python/' <<< "$files"; then
+            run_backend=true
+            # API changes can invalidate browser/API contracts even if JS did not move.
+            run_e2e=true
+          fi
+          if grep -Eq '^e2e/' <<< "$files"; then
+            run_e2e=true
+          fi
+
+          echo "run_frontend=$run_frontend" >> "$GITHUB_OUTPUT"
+          echo "run_backend=$run_backend" >> "$GITHUB_OUTPUT"
+          echo "run_e2e=$run_e2e" >> "$GITHUB_OUTPUT"
+
   frontend:
     name: Tests · Frontend
     needs: preflight
+    if: needs.preflight.outputs.run_frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -79,6 +148,7 @@ jobs:
   backend:
     name: Tests · Backend
     needs: preflight
+    if: needs.preflight.outputs.run_backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -185,6 +255,7 @@ jobs:
   e2e:
     name: Tests · Playwright
     needs: preflight
+    if: needs.preflight.outputs.run_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
