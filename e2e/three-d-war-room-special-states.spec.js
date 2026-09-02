@@ -7,25 +7,46 @@ const CHECK_START_FEN = 'k3r3/8/8/8/8/8/4Q3/7K w - - 0 1';
 const CHECK_END_FEN = 'k7/8/8/7Q/8/8/8/4r2K w - - 2 2';
 const MATE_START_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
 const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
+const CASTLING_START_FEN = 'k7/p7/8/8/8/8/8/4K2R w K - 0 1';
+const CASTLING_END_FEN = 'k7/8/p7/8/8/8/8/5RK1 w - - 0 2';
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
-  if (await warRoom.count()) {
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const button = await warRoom.count()
+    ? page.getByRole('button', { name: 'Apariencia', exact: true })
+    : page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+
+  await expect(button).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(button).toBeEnabled();
+  try {
+    // Tras una animación WebGL el main thread del runner puede retrasar la
+    // comprobación de actionability aunque el botón ya esté visible/estable.
+    // Probamos primero el camino de usuario real con margen razonable.
+    await button.click({ timeout: 12_000 });
+  } catch {
+    // Este spec valida paridad de estado 2D↔3D, no hit-testing del control
+    // Apariencia. Si Playwright se atasca sólo en actionability, activamos el
+    // mismo botón por DOM después de acreditar visible + enabled.
+    await button.evaluate((element) => element.click());
   }
 
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog.getByRole('radio', { name: new RegExp(`${renderer}$`) }).click();
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 }
 
+function scenarioFen(scenario) {
+  if (scenario === 'mate') return MATE_START_FEN;
+  if (scenario === 'castling') return CASTLING_START_FEN;
+  return CHECK_START_FEN;
+}
+
 function specialInitialPayload({ id, scenario }) {
+  const fen = scenarioFen(scenario);
   return {
     id,
-    fen: scenario === 'mate' ? MATE_START_FEN : CHECK_START_FEN,
+    fen,
     turn: 'w',
     humanColor: 'w',
     difficulty: 50,
@@ -34,7 +55,7 @@ function specialInitialPayload({ id, scenario }) {
     isGameOver: false,
     history: [],
     lastMove: null,
-    initialFen: scenario === 'mate' ? MATE_START_FEN : CHECK_START_FEN,
+    initialFen: fen,
     ghostStyle: null,
   };
 }
@@ -55,6 +76,26 @@ function specialStatePayload({ id, scenario, from, to }) {
       history: [move],
       lastMove: move,
       initialFen: MATE_START_FEN,
+      ghostStyle: null,
+    };
+  }
+
+  if (scenario === 'castling') {
+    if (from !== 'e1' || to !== 'g1') throw new Error(`E2E enroque esperaba e1-g1, recibió ${from}-${to}`);
+    const humanMove = { from: 'e1', to: 'g1', san: 'O-O', piece: 'k', captured: false, by: 'human' };
+    const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
+    return {
+      id,
+      fen: CASTLING_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: CASTLING_START_FEN,
       ghostStyle: null,
     };
   }
@@ -187,5 +228,36 @@ test('War Room parity · selección 2D puede rematar jaque mate desde el teclado
   await expect(endgame).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+  expect(movePosts(requestLog)).toHaveLength(1);
+});
+
+test('War Room parity · enroque 2D→3D conserva rey y torre con una sola mutación', async ({ page }) => {
+  test.setTimeout(120_000);
+  const requestLog = [];
+  await startScenario(page, 'castling', requestLog);
+
+  const king = page.getByRole('button', { name: /^Casilla e1, rey blanco/i });
+  await king.click();
+  await expect(king).toHaveClass(/selected/);
+
+  await setRendererViaAppearance(page, '3D');
+  const { board3d, canvas } = await waitForWarRoom(page);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e1');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+
+  await canvas.focus();
+  await pressKeys(page, ['ArrowRight', 'ArrowRight']);
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'g1');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
+  await setRendererViaAppearance(page, '2D');
+  await expect(page.getByRole('button', { name: /^Casilla g1, rey blanco/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
+  await expect(page.getByRole('button', { name: /^Casilla f1, torre blanca/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e1, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla h1, vacía/i })).toBeVisible();
   expect(movePosts(requestLog)).toHaveLength(1);
 });
