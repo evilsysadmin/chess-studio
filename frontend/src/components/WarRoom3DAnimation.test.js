@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { warRoomAmbientFramePlan } from './WarRoom3DAnimation.js';
 
 describe('War Room ambient render cadence', () => {
-  it('mantiene un repaint autónomo de ~30 FPS en desktop aunque no haya inspección ni input', () => {
-    expect(warRoomAmbientFramePlan({ elapsedMs: 32, inspectMode: false }).shouldRender).toBe(false);
-    const plan = warRoomAmbientFramePlan({ elapsedMs: 33, inspectMode: false });
+  it('mantiene fuego autónomo a ~12 FPS en desktop sin inspección ni input', () => {
+    expect(warRoomAmbientFramePlan({ elapsedMs: 82, inspectMode: false }).shouldRender).toBe(false);
+    const plan = warRoomAmbientFramePlan({ elapsedMs: 83, inspectMode: false });
     expect(plan.active).toBe(true);
-    expect(plan.intervalMs).toBe(33);
+    expect(plan.intervalMs).toBe(83);
     expect(plan.shouldRender).toBe(true);
     expect(plan.updateCamera).toBe(false);
   });
