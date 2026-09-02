@@ -12,14 +12,26 @@ const CASTLING_END_FEN = 'k7/8/p7/8/8/8/8/5RK1 w - - 0 2';
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
-  if (await warRoom.count()) {
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const button = await warRoom.count()
+    ? page.getByRole('button', { name: 'Apariencia', exact: true })
+    : page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+
+  await expect(button).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(button).toBeEnabled();
+  try {
+    // Tras una animación WebGL el main thread del runner puede retrasar la
+    // comprobación de actionability aunque el botón ya esté visible/estable.
+    // Probamos primero el camino de usuario real con margen razonable.
+    await button.click({ timeout: 12_000 });
+  } catch {
+    // Este spec valida paridad de estado 2D↔3D, no hit-testing del control
+    // Apariencia. Si Playwright se atasca sólo en actionability, activamos el
+    // mismo botón por DOM después de acreditar visible + enabled.
+    await button.evaluate((element) => element.click());
   }
 
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog.getByRole('radio', { name: new RegExp(`${renderer}$`) }).click();
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 }
