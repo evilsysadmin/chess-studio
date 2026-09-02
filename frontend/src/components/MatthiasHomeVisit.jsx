@@ -9,6 +9,7 @@ import './MatthiasMotionOverride.css';
 
 const AMBIENT_SCENE_MS = 28_000;
 const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
+export const HOME_THREE_MOTION_INTENSITY = 1.12;
 
 export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
   if (typeof appReduced === 'boolean') return Boolean(appReduced || mediaReduced);
@@ -34,6 +35,19 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   useEffect(() => {
     setPortalReady(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof Image !== 'function') return undefined;
+    const images = ambientVisuals.slice(1).map((scene) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = scene.avatar;
+      return image;
+    });
+    return () => {
+      images.forEach((image) => { image.src = ''; });
+    };
+  }, [ambientVisuals]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -102,6 +116,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
       data-placement={compactViewport ? 'inline' : 'viewport'}
       data-motion-state={motionStatus.effective ? 'reduced' : 'active'}
       data-motion-source={motionStatus.source}
+      data-three-presentation="home-v2"
     >
       <div className="matthias-resident__stage">
         {speaking ? (
@@ -135,6 +150,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
                 activity={visual.label || ''}
                 speaking={speaking}
                 reducedMotion={motionStatus.effective}
+                motionIntensity={HOME_THREE_MOTION_INTENSITY}
               />
             </span>
             <strong>{CPU_IDENTITY.name}</strong>
@@ -151,10 +167,6 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     </aside>
   );
 
-  // En móvil Matthias forma parte del flujo de Home: así nunca tapa tarjetas,
-  // texto ni acciones aunque el bocadillo crezca. En desktop sí lo sacamos a
-  // document.body, porque Home usa transforms y un fixed dentro de un ancestor
-  // transformado dejaría de estar fijado al viewport.
   if (compactViewport) return resident;
   if (!portalReady || typeof document === 'undefined' || !document.body) return resident;
   return createPortal(resident, document.body);
