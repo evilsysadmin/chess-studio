@@ -3,6 +3,7 @@ import { getEffectiveReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../us
 import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
 import './MatthiasWarRoomPortrait.css';
 import './MatthiasWarRoomThreeAvatar.css';
+import './MatthiasWarRoomAndroidMotion.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
