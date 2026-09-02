@@ -1,0 +1,66 @@
+name: Temporary War Room idle-gap patcher
+
+on:
+  push:
+    branches:
+      - visual/war-room-fire-wall-hotfix
+    paths:
+      - .github/workflows/tmp-war-room-idle-gap.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: visual/war-room-fire-wall-hotfix
+          fetch-depth: 0
+      - name: Patch idle gap after render
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/src/components/Board3D.jsx')
+          text = path.read_text(encoding='utf-8')
+          old = '''      if (plan.shouldRender) {
+                lastAmbientPaint = now;
+                if (plan.updateCamera) {'''.replace('        ', '  ', 1)
+          # Use literal anchors separately to avoid rewriting the large component.
+          before = '''      if (plan.shouldRender) {
+        lastAmbientPaint = now;
+        if (plan.updateCamera) {'''
+          after = '''      if (plan.shouldRender) {
+        if (plan.updateCamera) {'''
+          if before not in text:
+              raise SystemExit('ambient pre-render timestamp anchor missing')
+          text = text.replace(before, after, 1)
+          before_render = '''        // quiet scene heartbeat even when the player does not move the mouse.
+        render();
+      }'''
+          after_render = '''        // quiet scene heartbeat even when the player does not move the mouse.
+        render();
+        // Start the idle interval after the expensive WebGL frame completes.
+        // Otherwise a slow software renderer can count its own render time as
+        // "idle" and immediately start another frame, starving board input.
+        lastAmbientPaint = performance.now();
+      }'''
+          if before_render not in text:
+              raise SystemExit('ambient post-render anchor missing')
+          text = text.replace(before_render, after_render, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit source only and remove patcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Linux Pirate Ninja'
+          git config user.email '12677236+evilsysadmin@users.noreply.github.com'
+          git rm .github/workflows/tmp-war-room-idle-gap.yml
+          git add frontend/src/components/Board3D.jsx
+          git diff --cached --check
+          git commit -m 'Leave an idle gap after War Room fire renders'
+          git push origin HEAD:visual/war-room-fire-wall-hotfix
