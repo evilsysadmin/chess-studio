@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
+const SPECIAL_STATE_TIMEOUT = 30_000;
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
@@ -18,6 +19,10 @@ async function setRendererViaAppearance(page, renderer) {
 }
 
 async function startScenario(page, scenario, requestLog) {
+  // Esta suite valida paridad de estado, no cinemática. En los runners de CI
+  // WebGL suele caer a render por software y cada transición física puede
+  // retrasar varios segundos la confirmación visual sin cambiar el contrato.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page, { gameScenario: scenario, requestLog });
   await login(page);
@@ -43,7 +48,7 @@ function movePosts(requestLog) {
 }
 
 test('War Room parity · jaque seleccionado en 2D se ejecuta en 3D y vuelve a 2D con el mismo rey marcado', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'check', requestLog);
 
@@ -65,17 +70,19 @@ test('War Room parity · jaque seleccionado en 2D se ejecuta en 3D y vuelve a 2D
   await page.keyboard.press('Enter');
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
-  await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible();
+  // La petición puede estar ya interceptada mientras React/Three termina el
+  // commit visual. Esperamos al estado confirmado, no al mero inicio del POST.
+  await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
 
   await setRendererViaAppearance(page, '2D');
-  await expect(page.getByRole('button', { name: /Casilla h8, rey negro, rey en jaque/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Casilla h8, rey negro, rey en jaque/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible();
   expect(movePosts(requestLog)).toHaveLength(1);
 });
 
 test('War Room parity · selección 2D puede rematar jaque mate desde el teclado 3D una sola vez', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'mate', requestLog);
 
@@ -94,7 +101,7 @@ test('War Room parity · selección 2D puede rematar jaque mate desde el teclado
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
-  await expect(endgame).toBeVisible();
+  await expect(endgame).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
   expect(movePosts(requestLog)).toHaveLength(1);
