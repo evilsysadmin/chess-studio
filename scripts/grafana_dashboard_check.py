@@ -51,7 +51,6 @@ def main() -> int:
     for filename, uid in required_dashboards.items():
         path = INFRA / "dashboards" / filename
         raw = path.read_text(encoding="utf-8") if path.exists() else ""
-        # templatefile placeholders are strings and valid JSON before interpolation.
         data = load_json(path) if raw else fail(f"falta {path.relative_to(ROOT)}")
         if data.get("uid") != uid:
             fail(f"{filename}: UID esperado {uid}")
@@ -82,11 +81,11 @@ def main() -> int:
         if resource not in tf:
             fail(f"Terraform no declara {resource}")
     workflow = WORKFLOW.read_text(encoding="utf-8") if WORKFLOW.exists() else ""
-    for token in ('infra/grafana/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'Validate Grafana datasources', '/api/datasources/uid/$uid', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform import grafana_dashboard.chess_studio_edge', 'terraform apply -auto-approve tfplan', 'Verify published dashboards', '/api/dashboards/uid/$uid', 'chess-studio-edge'):
+    for token in ('infra/grafana/terraform/**', 'infra/grafana/dashboards/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'Validate Grafana datasources', '/api/datasources/uid/$uid', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform import grafana_dashboard.chess_studio_edge', 'terraform apply -auto-approve tfplan', 'Verify published dashboards', '/api/dashboards/uid/$uid', 'chess-studio-edge'):
         if token not in workflow:
             fail(f"workflow Grafana incompleto: {token}")
-    # El token de publicación no necesita ampliar permisos sólo para este probe.
-    # 403 (sin datasources:read) debe ser warning; 404 de UID sí es error.
+    if 'infra/grafana/**' in workflow:
+        fail('workflow Grafana no debe desplegar por cambios ajenos a Terraform/dashboards')
     for token in ('403)', '::warning::No se puede leer el datasource Grafana', '404)', 'no existe: HTTP 404'):
         if token not in workflow:
             fail(f"workflow Grafana perdió el contrato least-privilege: {token}")
