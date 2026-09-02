@@ -12,11 +12,22 @@ function speechDuration(text) {
 
 export function nextWarRoomGesture(random = Math.random) {
   const roll = random();
-  if (roll < 0.07) return 'coffee';
-  if (roll < 0.29) return 'glare';
-  if (roll < 0.52) return 'head-left';
-  if (roll < 0.75) return 'head-right';
+  if (roll < 0.055) return 'coffee';
+  if (roll < 0.2) return 'lean-in';
+  if (roll < 0.36) return 'glare';
+  if (roll < 0.53) return 'head-left';
+  if (roll < 0.7) return 'head-right';
+  if (roll < 0.85) return 'survey';
   return 'glance';
+}
+
+function gestureDuration(gesture) {
+  if (gesture === 'coffee') return 3400;
+  if (gesture === 'survey') return 2600;
+  if (gesture === 'lean-in') return 2100;
+  if (gesture === 'glare') return 2000;
+  if (gesture === 'head-left' || gesture === 'head-right') return 1650;
+  return 1500;
 }
 
 function normalizeAngerLevel(value) {
@@ -65,17 +76,16 @@ export default function MatthiasWarRoomPortrait({
     let cancelled = false;
 
     const schedule = () => {
-      const delay = 3200 + Math.round(Math.random() * 5200);
+      const delay = 2400 + Math.round(Math.random() * 3800);
       gestureTimer = window.setTimeout(() => {
         if (cancelled) return;
         const next = nextWarRoomGesture();
         setGesture(next);
-        const duration = next === 'coffee' ? 3600 : next === 'glare' ? 1900 : 1450;
         resetTimer = window.setTimeout(() => {
           if (cancelled) return;
           setGesture('idle');
           schedule();
-        }, duration);
+        }, gestureDuration(next));
       }, delay);
     };
 
@@ -93,6 +103,8 @@ export default function MatthiasWarRoomPortrait({
     gesture === 'glare' ? 'is-glaring' : '',
     gesture === 'head-left' ? 'is-head-left' : '',
     gesture === 'head-right' ? 'is-head-right' : '',
+    gesture === 'lean-in' ? 'is-leaning-in' : '',
+    gesture === 'survey' ? 'is-surveying' : '',
     gesture === 'coffee' ? 'has-coffee' : '',
     reaction === 'disapprove' ? 'is-disapproving' : '',
     reaction === 'smirk' ? 'is-smirking' : '',
@@ -106,7 +118,9 @@ export default function MatthiasWarRoomPortrait({
       data-matthias-anger-level={normalizedAnger}
       data-matthias-reaction={reaction}
       data-matthias-face-overlay="none"
+      data-matthias-motion-version="v2"
     >
+      <span className="game-3d-matthias-presence" aria-hidden="true" />
       <span className="game-3d-matthias-character" aria-hidden="true">
         <img src={avatar} alt="" className="game-3d-matthias-portrait" />
       </span>

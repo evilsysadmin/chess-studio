@@ -9,10 +9,12 @@ describe('MatthiasWarRoomPortrait', () => {
       <MatthiasWarRoomPortrait avatar="/matthias.webp" speechKey="m1" speechText="Una observación." />,
     );
 
+    expect(html).toContain('game-3d-matthias-presence');
     expect(html).toContain('game-3d-matthias-character');
     expect(html).toContain('game-3d-matthias-portrait');
     expect(html).toContain('game-3d-matthias-coffee');
     expect(html).toContain('data-matthias-face-overlay="none"');
+    expect(html).toContain('data-matthias-motion-version="v2"');
     expect(html).not.toContain('game-3d-matthias-brows');
     expect(html).not.toContain('game-3d-matthias-eyelids');
     expect(html).not.toContain('game-3d-matthias-mouth');
@@ -40,11 +42,13 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('data-matthias-anger-level="4"');
   });
 
-  it('reparte los microgestos entre café, mirada dura y pequeños giros de cabeza', () => {
-    expect(nextWarRoomGesture(() => 0.05)).toBe('coffee');
-    expect(nextWarRoomGesture(() => 0.2)).toBe('glare');
-    expect(nextWarRoomGesture(() => 0.45)).toBe('head-left');
-    expect(nextWarRoomGesture(() => 0.7)).toBe('head-right');
-    expect(nextWarRoomGesture(() => 0.9)).toBe('glance');
+  it('reparte los microgestos entre café, acercamiento, mirada dura, cabeza y barrido de sala', () => {
+    expect(nextWarRoomGesture(() => 0.04)).toBe('coffee');
+    expect(nextWarRoomGesture(() => 0.12)).toBe('lean-in');
+    expect(nextWarRoomGesture(() => 0.28)).toBe('glare');
+    expect(nextWarRoomGesture(() => 0.46)).toBe('head-left');
+    expect(nextWarRoomGesture(() => 0.62)).toBe('head-right');
+    expect(nextWarRoomGesture(() => 0.78)).toBe('survey');
+    expect(nextWarRoomGesture(() => 0.93)).toBe('glance');
   });
 });
