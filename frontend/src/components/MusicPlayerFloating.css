@@ -67,6 +67,14 @@
   z-index: 6;
 }
 
+@media (min-width: 821px) {
+  .app-shell-board-game .masthead-game-compact .masthead-actions {
+    margin-left: auto !important;
+    padding-right: 0 !important;
+    transform: translateX(clamp(.55rem, 1.15vw, 1.2rem));
+  }
+}
+
 @media (max-width: 820px) {
   .music-deck-floating {
     position: static !important;
