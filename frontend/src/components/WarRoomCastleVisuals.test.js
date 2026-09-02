@@ -96,7 +96,7 @@ describe('War Room castle visual contract', () => {
     expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
   });
 
-  it('flanquea la sala con armaduras góticas humanas y retira la primera versión de hojalata', () => {
+  it('flanquea la sala con armaduras góticas de acabado museo y retira la primera versión de hojalata', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
@@ -112,15 +112,23 @@ describe('War Room castle visual contract', () => {
     expect(right).toBeTruthy();
     expect(left.userData.warRoomArmorScale).toBe('human');
     expect(left.userData.warRoomArmorStyle).toBe('german-gothic-plate');
-    expect(left.userData.warRoomArmorFinish).toBe('hammered-fluted-steel-v2');
+    expect(left.userData.warRoomArmorFinish).toBe('museum-gothic-steel-v3');
+    expect(left.userData.warRoomMuseumFinish).toBe('v3');
+    expect(left.userData.warRoomArmorDetail).toBe('etched-riveted-articulated-v3');
     expect(left.getObjectByName('war-room-armor-sallet-visor')).toBeTruthy();
     expect(left.getObjectByName('war-room-armor-breast-flute')).toBeTruthy();
     expect(left.getObjectByName('war-room-armor-tasset')).toBeTruthy();
-    expect(breast?.material?.bumpMap?.userData?.warRoomArmorTexture).toBe('hammered-steel-v2');
+    expect(left.getObjectByName('war-room-armor-heraldic-medallion')).toBeTruthy();
+    expect(left.getObjectByName('war-room-armor-breast-etched-band')).toBeTruthy();
+    expect(left.getObjectByName('war-room-armor-gauntlet-finger-plate')).toBeTruthy();
+    expect(breast?.material?.bumpMap?.userData?.warRoomPremiumSurface).toBe('steel');
+    expect(breast?.material?.userData?.warRoomPremiumArmorFinish).toBe('brushed-patina-metal-v3');
     expect(sword?.userData?.warRoomSwordType).toBe('two-handed');
     expect(sword?.userData?.warRoomSwordFinish).toBe('fullered-ceremonial-v2');
     expect(sword?.getObjectByName('war-room-zweihander-fuller')).toBeTruthy();
     expect(sword?.getObjectByName('war-room-zweihander-parrying-hooks')).toBeTruthy();
+    expect(sword?.getObjectByName('war-room-zweihander-polished-edge-left')).toBeTruthy();
+    expect(sword?.getObjectByName('war-room-zweihander-pommel-ring')).toBeTruthy();
 
     expect(legacyLeft).toBeTruthy();
     expect(legacyRight).toBeTruthy();
