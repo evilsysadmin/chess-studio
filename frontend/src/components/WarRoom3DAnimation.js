@@ -1,11 +1,16 @@
+export function isSoftwareWebGLRenderer(rendererLabel = '') {
+  return /swiftshader|llvmpipe|lavapipe|software rasterizer|software renderer|mesa offscreen/i.test(String(rendererLabel));
+}
+
 export function warRoomAmbientFramePlan({
   documentHidden = false,
   reducedMotion = false,
   coarsePointer = false,
+  softwareRenderer = false,
   inspectMode = false,
   elapsedMs = 0,
 } = {}) {
-  const active = !documentHidden && !reducedMotion && !coarsePointer;
+  const active = !documentHidden && !reducedMotion && !coarsePointer && !softwareRenderer;
   // The idle heartbeat exists to keep fire/light alive, not to turn the whole
   // castle into a 60 FPS game loop. ~12 FPS looks natural for irregular flame
   // flicker while leaving generous main-thread/GPU headroom for board input.
