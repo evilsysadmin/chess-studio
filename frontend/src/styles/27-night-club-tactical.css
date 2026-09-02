@@ -403,3 +403,181 @@ body {
   .home-footer-shortcuts { grid-template-columns: 1fr; }
   .home-footer-detail { padding-left: .75rem; }
 }
+
+/* -------------------------------------------------------------------------
+   Home Premium v3 · una entrada con jerarquía, no otra capa de widgets.
+   El primer bloque Jugar funciona como hero de producto; el resto mantiene
+   progressive disclosure y la misma estructura semántica.
+   ------------------------------------------------------------------------- */
+.menu.home-friendly {
+  --home-premium-line: color-mix(in srgb, var(--brass) 30%, rgba(255,255,255,.06));
+  padding-top: clamp(.9rem, 1.6vw, 1.3rem);
+}
+
+.home-modes-section {
+  position: relative;
+  isolation: isolate;
+  margin-top: clamp(.65rem, 1.4vw, 1rem);
+  padding: clamp(1rem, 2vw, 1.45rem) clamp(.78rem, 1.6vw, 1.15rem) clamp(1.1rem, 2vw, 1.5rem);
+  border: 1px solid rgba(255,255,255,.055);
+  border-top-color: var(--home-premium-line);
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(201,162,39,.085), transparent 29rem),
+    radial-gradient(ellipse at 92% 18%, rgba(62,78,98,.07), transparent 24rem),
+    linear-gradient(180deg, rgba(24,28,35,.88), rgba(12,15,20,.58));
+  box-shadow: inset 0 1px rgba(255,255,255,.025), 0 24px 54px rgba(0,0,0,.16);
+  overflow: hidden;
+}
+
+.home-modes-section::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(201,162,39,.03) 48%, transparent),
+    repeating-linear-gradient(90deg, transparent 0 79px, rgba(255,255,255,.012) 80px 81px);
+  opacity: .72;
+}
+
+.home-modes-section .home-group-heading {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+  align-items: end;
+  gap: clamp(1rem, 3vw, 2.6rem);
+  padding: .18rem .12rem clamp(.85rem, 1.6vw, 1.15rem);
+  border-bottom-color: color-mix(in srgb, var(--brass) 23%, rgba(255,255,255,.055));
+}
+
+.home-modes-section .home-group-heading::before {
+  content: 'CHESS STUDIO · SALA PRINCIPAL';
+  position: absolute;
+  left: .12rem;
+  top: -.58rem;
+  color: color-mix(in srgb, var(--brass) 68%, var(--parchment-dim));
+  font-family: var(--font-mono);
+  font-size: .52rem;
+  font-weight: 800;
+  letter-spacing: .22em;
+  opacity: .72;
+}
+
+.home-modes-section .home-group-heading > div:first-child { padding-top: .55rem; }
+.home-modes-section .home-group-heading > div:first-child > .section-label { opacity: .74; }
+.home-modes-section .home-group-heading h2 {
+  max-width: 15ch;
+  margin-top: .12rem;
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  line-height: .98;
+  font-weight: 560;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+  text-shadow: 0 14px 34px rgba(0,0,0,.22);
+}
+.home-modes-section .home-heading-actions { align-self: end; padding-bottom: .1rem; }
+.home-modes-section .home-heading-actions p {
+  max-width: 38ch;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--parchment) 72%, var(--parchment-dim));
+  font-size: .8rem;
+  line-height: 1.55;
+}
+.home-modes-section .home-primary-grid {
+  gap: clamp(.8rem, 1.55vw, 1.15rem);
+  margin-top: .15rem;
+}
+.home-modes-section .home-mode-card {
+  min-height: 226px;
+  border-radius: 10px;
+  background-color: rgba(18,22,29,.94);
+  box-shadow: inset 0 1px rgba(255,255,255,.025), 0 16px 34px rgba(0,0,0,.20);
+}
+.home-modes-section .home-mode-card::after {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 24%),
+    linear-gradient(90deg, rgba(6,9,14,.91) 0%, rgba(7,10,15,.60) 47%, rgba(7,10,15,.22) 100%);
+}
+.home-modes-section .home-mode-art,
+.home-modes-section .home-mode-featured .home-mode-art,
+.home-modes-section .home-mode-campaign .home-mode-art,
+.home-modes-section .home-mode-quick .home-mode-art {
+  opacity: .47;
+  filter: saturate(.8) contrast(1.08) brightness(.82);
+}
+.home-modes-section .home-mode-card h3 { font-size: clamp(1.3rem, 1.65vw, 1.58rem); }
+.home-modes-section .home-mode-description {
+  max-width: 31ch;
+  color: color-mix(in srgb, var(--parchment) 72%, var(--parchment-dim));
+}
+.home-modes-section .home-mode-card:not(:disabled):hover,
+.home-modes-section .home-mode-card:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brass) 70%, transparent), 0 22px 44px rgba(0,0,0,.25);
+}
+
+/* Matthias se integra como anfitrión del club en desktop. No cambia su
+   frecuencia narrativa ni su footprint móvil. */
+@media (min-width: 1081px) {
+  .matthias-resident { right: clamp(.85rem, 1.8vw, 1.6rem); }
+  .matthias-resident__character {
+    flex-basis: 124px;
+    width: 124px;
+    padding: .34rem .34rem .4rem;
+    border: 1px solid rgba(201,162,39,.12);
+    background:
+      radial-gradient(circle at 50% 36%, rgba(201,162,39,.08), transparent 58%),
+      linear-gradient(180deg, rgba(16,20,26,.24), rgba(11,14,19,.86));
+    box-shadow: inset 0 1px rgba(255,255,255,.025), 0 18px 34px rgba(0,0,0,.22);
+  }
+  .matthias-resident__portrait-shell {
+    width: 112px;
+    height: 128px;
+    border-color: color-mix(in srgb, var(--brass) 44%, transparent);
+    background:
+      radial-gradient(circle at 50% 68%, rgba(198,164,93,.14), transparent 45%),
+      linear-gradient(180deg, rgba(13,17,22,.7), rgba(7,10,14,.92));
+    box-shadow: inset 0 1px rgba(255,255,255,.04), 0 10px 26px rgba(0,0,0,.16);
+  }
+  .matthias-resident.is-quiet .matthias-resident__character { opacity: .9; }
+}
+
+@media (max-width: 920px) {
+  .home-modes-section .home-group-heading {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: .55rem;
+  }
+  .home-modes-section .home-group-heading h2 {
+    max-width: none;
+    font-size: clamp(1.75rem, 7vw, 2.35rem);
+    line-height: 1.02;
+  }
+  .home-modes-section .home-heading-actions p { margin-left: 0; }
+}
+
+@media (max-width: 640px) {
+  .menu.home-friendly { padding-top: .72rem; }
+  .home-modes-section {
+    margin-inline: -.1rem;
+    padding: .9rem .62rem 1rem;
+    border-radius: 11px;
+  }
+  .home-modes-section::before { opacity: .42; }
+  .home-modes-section .home-group-heading::before {
+    top: -.42rem;
+    font-size: .47rem;
+    letter-spacing: .16em;
+  }
+  .home-modes-section .home-group-heading > div:first-child { padding-top: .5rem; }
+  .home-modes-section .home-mode-card { min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-modes-section .home-mode-card:not(:disabled):hover,
+  .home-modes-section .home-mode-card:not(:disabled):focus-visible { transform: none; }
+}
+html[data-reduced-motion='true'] .home-modes-section .home-mode-card:not(:disabled):hover,
+html[data-reduced-motion='true'] .home-modes-section .home-mode-card:not(:disabled):focus-visible { transform: none; }
