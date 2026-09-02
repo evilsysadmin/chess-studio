@@ -9,6 +9,8 @@ const MATE_START_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
 const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
 const CASTLING_START_FEN = 'k7/p7/8/8/8/8/8/4K2R w K - 0 1';
 const CASTLING_END_FEN = 'k7/8/p7/8/8/8/8/5RK1 w - - 0 2';
+const EN_PASSANT_START_FEN = 'k7/p7/8/3pP3/8/8/8/7K w - d6 0 1';
+const EN_PASSANT_END_FEN = 'k7/8/p2P4/8/8/8/8/7K w - - 0 2';
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
@@ -39,6 +41,7 @@ async function setRendererViaAppearance(page, renderer) {
 function scenarioFen(scenario) {
   if (scenario === 'mate') return MATE_START_FEN;
   if (scenario === 'castling') return CASTLING_START_FEN;
+  if (scenario === 'en-passant') return EN_PASSANT_START_FEN;
   return CHECK_START_FEN;
 }
 
@@ -96,6 +99,26 @@ function specialStatePayload({ id, scenario, from, to }) {
       history: [humanMove, cpuMove],
       lastMove: cpuMove,
       initialFen: CASTLING_START_FEN,
+      ghostStyle: null,
+    };
+  }
+
+  if (scenario === 'en-passant') {
+    if (from !== 'e5' || to !== 'd6') throw new Error(`E2E en passant esperaba e5-d6, recibió ${from}-${to}`);
+    const humanMove = { from: 'e5', to: 'd6', san: 'exd6', piece: 'p', captured: true, by: 'human' };
+    const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
+    return {
+      id,
+      fen: EN_PASSANT_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: EN_PASSANT_START_FEN,
       ghostStyle: null,
     };
   }
@@ -259,5 +282,38 @@ test('War Room parity · enroque 2D→3D conserva rey y torre con una sola mutac
   await expect(page.getByRole('button', { name: /^Casilla f1, torre blanca/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Casilla e1, vacía/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Casilla h1, vacía/i })).toBeVisible();
+  expect(movePosts(requestLog)).toHaveLength(1);
+});
+
+test('War Room parity · en passant 2D→3D retira el peón lateral con una sola mutación', async ({ page }) => {
+  test.setTimeout(120_000);
+  const requestLog = [];
+  await startScenario(page, 'en-passant', requestLog);
+
+  const pawn = page.getByRole('button', { name: /^Casilla e5, peón blanco/i });
+  await pawn.click();
+  await expect(pawn).toHaveClass(/selected/);
+
+  await setRendererViaAppearance(page, '3D');
+  const { board3d, canvas } = await waitForWarRoom(page);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e5');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+
+  // El destino d6 está vacío antes de la jugada; el peón capturado vive en d5.
+  // Este recorrido acredita que War Room no confunde "captura" con "pieza en to".
+  await canvas.focus();
+  await pressKeys(page, ['ArrowLeft', ...Array(5).fill('ArrowUp')]);
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'd6');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
+  await setRendererViaAppearance(page, '2D');
+  await expect(page.getByRole('button', { name: /^Casilla d6, peón blanco/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
+  await expect(page.getByRole('button', { name: /^Casilla d5, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e5, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla a6, peón negro/i })).toBeVisible();
   expect(movePosts(requestLog)).toHaveLength(1);
 });
