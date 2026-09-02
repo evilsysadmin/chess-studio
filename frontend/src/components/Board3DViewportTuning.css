@@ -72,8 +72,57 @@
 }
 
 @media (min-width: 1081px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    align-items: stretch;
+  }
+
   .game-screen .game-board-stack-3d .board3d-main-shell {
     height: clamp(590px, calc(100dvh - 7rem), 880px);
+  }
+
+  /* Los laterales son columnas de la sala, no tarjetas que se acaban a mitad
+     de pared. El fondo común ocupa toda la altura y los módulos interiores se
+     distribuyen dentro; así desaparecen los dos pozos negros inferiores. */
+  .game-screen .game-3d-command-column,
+  .game-screen .game-side-column.game-side-column-3d {
+    align-self: stretch;
+    min-height: 100%;
+    box-sizing: border-box;
+    border: 1px solid rgba(173,132,57,.25);
+    border-radius: 14px;
+    background:
+      linear-gradient(180deg, rgba(20,26,37,.94), rgba(8,12,18,.97)),
+      radial-gradient(circle at 50% 0, rgba(195,148,62,.08), transparent 34%);
+    box-shadow: inset 0 1px rgba(255,255,255,.035), inset 0 -42px 72px rgba(0,0,0,.18);
+  }
+
+  .game-screen .game-3d-command-column {
+    padding: .42rem;
+    grid-template-rows: auto auto auto minmax(.25rem, 1fr) auto;
+  }
+
+  .game-screen .game-3d-command-column blockquote {
+    align-self: end;
+    margin-top: auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .game-screen .game-side-column.game-side-column-3d {
+    height: 100%;
+    padding: .42rem;
+    overflow: hidden;
+  }
+
+  .game-screen .game-side-column-3d .game-chat {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+  }
+
+  .game-screen .game-side-column-3d .game-chat-log {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   /* Final post-tone-mapping trim: keep highlights readable without flattening the room. */
