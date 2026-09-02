@@ -15,6 +15,7 @@ on:
       - 'frontend/src/main.jsx'
       - 'e2e/three-d-war-room.spec.js'
       - 'e2e/three-d-war-room-android-touch.spec.js'
+      - 'e2e/three-d-war-room-special-states.spec.js'
       - 'e2e/android-game-focus.spec.js'
       - 'e2e/helpers.js'
       - '.github/workflows/e2e-full.yml'
@@ -75,6 +76,11 @@ jobs:
         if: github.event_name == 'pull_request'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0
+
+      - name: Prove War Room check and mate parity
+        if: github.event_name == 'pull_request'
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000
 
       - name: Prove War Room desktop input
         if: github.event_name == 'pull_request'
