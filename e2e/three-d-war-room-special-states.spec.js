@@ -23,8 +23,14 @@ async function setRendererViaAppearance(page, renderer) {
   await expect(button).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(button).toBeEnabled();
   try {
+    // Tras una animación WebGL el main thread del runner puede retrasar la
+    // comprobación de actionability aunque el botón ya esté visible/estable.
+    // Probamos primero el camino de usuario real con margen razonable.
     await button.click({ timeout: 12_000 });
   } catch {
+    // Este spec valida paridad de estado 2D↔3D, no hit-testing del control
+    // Apariencia. Si Playwright se atasca sólo en actionability, activamos el
+    // mismo botón por DOM después de acreditar visible + enabled.
     await button.evaluate((element) => element.click());
   }
 
@@ -64,34 +70,101 @@ function specialStatePayload({ id, scenario, from, to, promotion = null }) {
   if (scenario === 'mate') {
     if (from !== 'g6' || to !== 'g7') throw new Error(`E2E mate esperaba g6-g7, recibió ${from}-${to}`);
     const move = { from, to, san: 'Qg7#', piece: 'q', captured: false, by: 'human' };
-    return { id, fen: MATE_END_FEN, turn: 'b', humanColor: 'w', difficulty: 50, status: 'checkmate', insufficientMatingMaterial: { w: false, b: false }, isGameOver: true, history: [move], lastMove: move, initialFen: MATE_START_FEN, ghostStyle: null };
+    return {
+      id,
+      fen: MATE_END_FEN,
+      turn: 'b',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'checkmate',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: true,
+      history: [move],
+      lastMove: move,
+      initialFen: MATE_START_FEN,
+      ghostStyle: null,
+    };
   }
 
   if (scenario === 'castling') {
     if (from !== 'e1' || to !== 'g1') throw new Error(`E2E enroque esperaba e1-g1, recibió ${from}-${to}`);
     const humanMove = { from: 'e1', to: 'g1', san: 'O-O', piece: 'k', captured: false, by: 'human' };
     const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
-    return { id, fen: CASTLING_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'playing', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: CASTLING_START_FEN, ghostStyle: null };
+    return {
+      id,
+      fen: CASTLING_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: CASTLING_START_FEN,
+      ghostStyle: null,
+    };
   }
 
   if (scenario === 'en-passant') {
     if (from !== 'e5' || to !== 'd6') throw new Error(`E2E en passant esperaba e5-d6, recibió ${from}-${to}`);
     const humanMove = { from: 'e5', to: 'd6', san: 'exd6', piece: 'p', captured: true, by: 'human' };
     const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
-    return { id, fen: EN_PASSANT_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'playing', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: EN_PASSANT_START_FEN, ghostStyle: null };
+    return {
+      id,
+      fen: EN_PASSANT_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: EN_PASSANT_START_FEN,
+      ghostStyle: null,
+    };
   }
 
   if (scenario === 'promotion') {
-    if (from !== 'g7' || to !== 'g8' || promotion !== 'n') throw new Error(`E2E promoción esperaba g7-g8=N, recibió ${from}-${to}=${promotion || '?'}`);
+    if (from !== 'g7' || to !== 'g8' || promotion !== 'n') {
+      throw new Error(`E2E promoción esperaba g7-g8=N, recibió ${from}-${to}=${promotion || '?'}`);
+    }
     const humanMove = { from: 'g7', to: 'g8', san: 'g8=N', piece: 'p', captured: false, by: 'human' };
     const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
-    return { id, fen: PROMOTION_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'playing', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: PROMOTION_START_FEN, ghostStyle: null };
+    return {
+      id,
+      fen: PROMOTION_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: PROMOTION_START_FEN,
+      ghostStyle: null,
+    };
   }
 
   if (from !== 'e2' || to !== 'h5') throw new Error(`E2E check esperaba e2-h5, recibió ${from}-${to}`);
   const humanMove = { from: 'e2', to: 'h5', san: 'Qh5', piece: 'q', captured: false, by: 'human' };
   const cpuMove = { from: 'e8', to: 'e1', san: 'Re1+', piece: 'r', captured: false, by: 'cpu' };
-  return { id, fen: CHECK_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'check', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: CHECK_START_FEN, ghostStyle: null };
+  return {
+    id,
+    fen: CHECK_END_FEN,
+    turn: 'w',
+    humanColor: 'w',
+    difficulty: 50,
+    status: 'check',
+    insufficientMatingMaterial: { w: false, b: false },
+    isGameOver: false,
+    history: [humanMove, cpuMove],
+    lastMove: cpuMove,
+    initialFen: CHECK_START_FEN,
+    ghostStyle: null,
+  };
 }
 
 async function installSpecialStateRoutes(page, scenario, requestLog) {
@@ -116,7 +189,13 @@ async function installSpecialStateRoutes(page, scenario, requestLog) {
     const routeId = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1];
     const payload = route.request().postDataJSON?.() ?? {};
     requestLog.push({ method: 'POST', path: url.pathname, idempotencyKey: route.request().headers()['idempotency-key'] || null });
-    currentGame = specialStatePayload({ id: routeId, scenario, from: payload.from, to: payload.to, promotion: payload.promotion || null });
+    currentGame = specialStatePayload({
+      id: routeId,
+      scenario,
+      from: payload.from,
+      to: payload.to,
+      promotion: payload.promotion || null,
+    });
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentGame) });
   });
 }
@@ -152,83 +231,138 @@ test('War Room parity · respuesta CPU que da jaque se conserva al volver de 3D 
   test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'check', requestLog);
+
   const queen = page.getByRole('button', { name: /^Casilla e2, dama blanca/i });
   await queen.click();
   await expect(queen).toHaveClass(/selected/);
+
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+
   await canvas.focus();
   await pressKeys(page, ['ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp']);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'h5');
   await page.keyboard.press('Enter');
+
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
   await setRendererViaAppearance(page, '2D');
   await expect(page.getByRole('button', { name: /Casilla h1, rey blanco, rey en jaque/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
-  await expect.poll(async () => (await gameStatus(page).textContent())?.trim() || '', { timeout: SPECIAL_STATE_TIMEOUT }).toBe('Jaque');
+  await expect.poll(
+    async () => (await gameStatus(page).textContent())?.trim() || '',
+    { timeout: SPECIAL_STATE_TIMEOUT, message: 'El tablero ya refleja Re1+, pero el estado público debe converger a Jaque' },
+  ).toBe('Jaque');
+  expect(movePosts(requestLog)).toHaveLength(1);
 });
 
 test('War Room parity · selección 2D puede rematar jaque mate desde el teclado 3D una sola vez', async ({ page }) => {
   test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'mate', requestLog);
+
   const queen = page.getByRole('button', { name: /^Casilla g6, dama blanca/i });
   await queen.click();
+  await expect(queen).toHaveClass(/selected/);
+
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'g6');
+
   await canvas.focus();
   await pressKeys(page, ['ArrowRight', 'ArrowRight', ...Array(6).fill('ArrowUp')]);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'g7');
   await page.keyboard.press('Enter');
+
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
   await expect(endgame).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
+  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+  expect(movePosts(requestLog)).toHaveLength(1);
 });
 
 test('War Room parity · enroque 2D→3D conserva rey y torre con una sola mutación', async ({ page }) => {
   test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'castling', requestLog);
+
   const king = page.getByRole('button', { name: /^Casilla e1, rey blanco/i });
   await king.click();
+  await expect(king).toHaveClass(/selected/);
+
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e1');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+
   await canvas.focus();
   await pressKeys(page, ['ArrowRight', 'ArrowRight']);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'g1');
   await page.keyboard.press('Enter');
+
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
   await setRendererViaAppearance(page, '2D');
   await expect(page.getByRole('button', { name: /^Casilla g1, rey blanco/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('button', { name: /^Casilla f1, torre blanca/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e1, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla h1, vacía/i })).toBeVisible();
+  expect(movePosts(requestLog)).toHaveLength(1);
 });
 
 test('War Room parity · en passant 2D→3D retira el peón lateral con una sola mutación', async ({ page }) => {
   test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'en-passant', requestLog);
+
   const pawn = page.getByRole('button', { name: /^Casilla e5, peón blanco/i });
   await pawn.click();
+  await expect(pawn).toHaveClass(/selected/);
+
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e5');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+
+  // El destino d6 está vacío antes de la jugada; el peón capturado vive en d5.
+  // Este recorrido acredita que War Room no confunde "captura" con "pieza en to".
   await canvas.focus();
   await pressKeys(page, ['ArrowLeft', ...Array(5).fill('ArrowUp')]);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'd6');
   await page.keyboard.press('Enter');
+
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
   await setRendererViaAppearance(page, '2D');
   await expect(page.getByRole('button', { name: /^Casilla d6, peón blanco/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('button', { name: /^Casilla d5, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e5, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla a6, peón negro/i })).toBeVisible();
+  expect(movePosts(requestLog)).toHaveLength(1);
 });
 
 test('War Room parity · promoción 3D abre selector y conserva la pieza elegida al volver a 2D', async ({ page }) => {
   test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'promotion', requestLog);
+
   const pawn = page.getByRole('button', { name: /^Casilla g7, peón blanco/i });
   await pawn.click();
+  await expect(pawn).toHaveClass(/selected/);
+
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'g7');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+
   await canvas.focus();
   await pressKeys(page, ['ArrowRight', 'ArrowRight', ...Array(7).fill('ArrowUp')]);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'g8');
@@ -248,8 +382,12 @@ test('War Room parity · promoción 3D abre selector y conserva la pieza elegida
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await expect(promotionDialog).toBeHidden();
+  await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
   await setRendererViaAppearance(page, '2D');
   await expect(page.getByRole('button', { name: /^Casilla g8, caballo blanco/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('button', { name: /^Casilla g7, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla a6, peón negro/i })).toBeVisible();
   expect(movePosts(requestLog)).toHaveLength(1);
 });
