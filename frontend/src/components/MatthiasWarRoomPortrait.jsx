@@ -3,13 +3,25 @@ import { getEffectiveReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../us
 import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
 import './MatthiasWarRoomPortrait.css';
 import './MatthiasWarRoomThreeAvatar.css';
+import './MatthiasWarRoomAndroidMotion.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
 import './WarRoomDesktopRailLayout.css';
 
+const COMPACT_WAR_ROOM_QUERY = '(max-width: 820px)';
+export const WAR_ROOM_COMPACT_MOTION_INTENSITY = 1.35;
+
 function speechDuration(text) {
   return Math.max(1500, Math.min(4200, String(text || '').length * 46));
+}
+
+export function warRoomCompactViewport({ mediaMatches, innerWidth } = {}) {
+  if (typeof mediaMatches === 'boolean') return mediaMatches;
+  if (typeof window === 'undefined') return false;
+  if (typeof window.matchMedia === 'function') return window.matchMedia(COMPACT_WAR_ROOM_QUERY).matches;
+  const width = innerWidth ?? window.innerWidth;
+  return Number.isFinite(width) && width <= 820;
 }
 
 export function nextWarRoomGesture(random = Math.random) {
@@ -54,6 +66,7 @@ export default function MatthiasWarRoomPortrait({
   const [gesture, setGesture] = useState('idle');
   const [reaction, setReaction] = useState('none');
   const [reducedMotion, setReducedMotionState] = useState(() => getEffectiveReducedMotion());
+  const [compactViewport, setCompactViewport] = useState(() => warRoomCompactViewport());
   const normalizedAnger = normalizeAngerLevel(angerLevel);
 
   useEffect(() => {
@@ -67,6 +80,24 @@ export default function MatthiasWarRoomPortrait({
     return () => {
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
       media?.removeEventListener?.('change', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const media = typeof window.matchMedia === 'function'
+      ? window.matchMedia(COMPACT_WAR_ROOM_QUERY)
+      : null;
+    const refresh = () => setCompactViewport(warRoomCompactViewport({
+      mediaMatches: media?.matches,
+      innerWidth: window.innerWidth,
+    }));
+    refresh();
+    media?.addEventListener?.('change', refresh);
+    if (!media) window.addEventListener('resize', refresh);
+    return () => {
+      media?.removeEventListener?.('change', refresh);
+      if (!media) window.removeEventListener('resize', refresh);
     };
   }, []);
 
@@ -125,6 +156,7 @@ export default function MatthiasWarRoomPortrait({
     gesture === 'coffee' ? 'has-coffee' : '',
     reaction === 'disapprove' ? 'is-disapproving' : '',
     reaction === 'smirk' ? 'is-smirking' : '',
+    compactViewport ? 'is-compact-motion' : '',
     `anger-level-${normalizedAnger}`,
   ].filter(Boolean).join(' ');
 
@@ -136,7 +168,8 @@ export default function MatthiasWarRoomPortrait({
       data-matthias-reaction={reaction}
       data-matthias-face-overlay="none"
       data-matthias-face-rig="three-mesh-v1"
-      data-matthias-motion-version="v3"
+      data-matthias-motion-version="v4-android"
+      data-matthias-compact-motion={compactViewport ? 'true' : 'false'}
     >
       <span className="game-3d-matthias-presence" aria-hidden="true" />
       <span className="game-3d-matthias-character" aria-hidden="true">
@@ -147,6 +180,7 @@ export default function MatthiasWarRoomPortrait({
             activity={reaction === 'disapprove' ? 'Desaprobación táctica' : reaction === 'smirk' ? 'Ventaja táctica' : 'Vigilando el tablero'}
             speaking={speaking}
             reducedMotion={reducedMotion}
+            motionIntensity={compactViewport ? WAR_ROOM_COMPACT_MOTION_INTENSITY : 1}
           />
         </span>
       </span>
