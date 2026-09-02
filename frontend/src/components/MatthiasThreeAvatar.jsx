@@ -23,6 +23,22 @@ export function matthiasThreeMotionProfile({ scene = '', activity = '', speaking
   return 'idle';
 }
 
+export function matthiasThreeMotionPhase({ scene = '', activity = '' } = {}) {
+  const key = `${cue(scene)}|${cue(activity)}`;
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) % 3600) / 1000;
+}
+
+function normalizeMotionIntensity(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(.65, Math.min(1.35, parsed));
+}
+
 function clamp01(value) {
   return Math.max(0, Math.min(1, value));
 }
@@ -93,7 +109,6 @@ function deformVertex(profile, x, y, imageAspect, time, speaking) {
     dz += head * action * .008;
     energy = action;
   } else if (profile === 'sip') {
-    // Mano + taza/vaso llegan de verdad a la cara, se detienen un instante y vuelven.
     const action = gestureCycle(time, { period: 8.4, delay: .45, rise: 1.05, hold: .85, fall: 1.12 });
     const swallow = action > .94 ? Math.sin(time * 8.2) * .5 + .5 : 0;
     dy += rightArm * action * .205;
@@ -106,8 +121,6 @@ function deformVertex(profile, x, y, imageAspect, time, speaking) {
     dz += (rightArm + rightProp) * action * .022;
     energy = action;
   } else if (profile === 'bite') {
-    // El bocata/hamburguesa no puede quedarse flotando a media asta: manos y comida
-    // suben hasta la boca, Matthias inclina la cabeza, muerde y sólo entonces baja.
     const action = gestureCycle(time + .15, { period: 9.2, delay: .5, rise: 1.15, hold: .95, fall: 1.18 });
     const chew = action > .9 ? (Math.sin(time * 10.5) * .5 + .5) : 0;
     dy += centerProp * action * .355;
@@ -182,8 +195,6 @@ function deformVertex(profile, x, y, imageAspect, time, speaking) {
     energy = action;
   }
 
-  // Un parpadeo geométrico muy discreto evita el efecto de foto rígida sin
-  // convertir los ojos en goma. Se suprime al dormir porque el cabeceo manda.
   if (profile !== 'sleep') {
     const blink = gestureCycle(time + 5.1, { period: 7.4, delay: 0, rise: .06, hold: .025, fall: .09 });
     dy -= eyeBand * blink * .012;
@@ -200,8 +211,16 @@ export function matthiasThreeMotionSample({
   imageAspect = 1,
   time = 0,
   speaking = false,
+  motionIntensity = 1,
 } = {}) {
-  return deformVertex(profile, x, y, imageAspect, time, speaking);
+  const motion = deformVertex(profile, x, y, imageAspect, time, speaking);
+  const intensity = normalizeMotionIntensity(motionIntensity);
+  return {
+    dx: motion.dx * intensity,
+    dy: motion.dy * intensity,
+    dz: motion.dz * intensity,
+    energy: motion.energy,
+  };
 }
 
 function resizeRenderer(renderer, camera, canvas, imageAspect, mesh) {
@@ -224,6 +243,7 @@ export default function MatthiasThreeAvatar({
   activity = '',
   speaking = false,
   reducedMotion = false,
+  motionIntensity = 1,
 }) {
   const canvasRef = useRef(null);
   const rootRef = useRef(null);
@@ -233,6 +253,8 @@ export default function MatthiasThreeAvatar({
     () => matthiasThreeMotionProfile({ scene, activity, speaking }),
     [activity, scene, speaking],
   );
+  const phase = useMemo(() => matthiasThreeMotionPhase({ scene, activity }), [activity, scene]);
+  const normalizedIntensity = normalizeMotionIntensity(motionIntensity);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -244,9 +266,14 @@ export default function MatthiasThreeAvatar({
     let disposed = false;
     let resizeObserver = null;
     let resizeFallback = null;
+    let visibilityListener = null;
+    let intersectionObserver = null;
     let geometry = null;
     let material = null;
     let texture = null;
+    let renderFrame = null;
+    let inViewport = true;
+    let documentVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
 
     setReady(false);
     setFailed(false);
@@ -255,6 +282,19 @@ export default function MatthiasThreeAvatar({
     root.dataset.threeFrame = '0';
     root.dataset.threeEnergy = '0';
     root.dataset.threeReach = '0';
+    root.dataset.threeVisibility = documentVisible ? 'visible' : 'hidden';
+
+    const cancelFrame = () => {
+      if (!raf) return;
+      window.cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    const canAnimate = () => !reducedMotion && documentVisible && inViewport;
+    const requestFrame = () => {
+      if (disposed || !renderFrame || raf || !canAnimate()) return;
+      raf = window.requestAnimationFrame(renderFrame);
+    };
 
     try {
       const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -311,9 +351,10 @@ export default function MatthiasThreeAvatar({
         let peakEnergy = 0;
         let peakReach = 0;
         const startedAt = performance.now();
-        const render = (stamp) => {
+        renderFrame = (stamp) => {
+          raf = 0;
           if (disposed) return;
-          const time = Math.max(0, stamp - startedAt) / 1000;
+          const time = Math.max(0, stamp - startedAt) / 1000 + phase;
           const positions = geometry.attributes.position;
           let energy = 0;
           let reach = 0;
@@ -324,7 +365,15 @@ export default function MatthiasThreeAvatar({
             const z = basePositions[offset + 2];
             const motion = reducedMotion
               ? { dx: 0, dy: 0, dz: 0, energy: 0 }
-              : deformVertex(profile, x, y, imageAspect, time, speaking);
+              : matthiasThreeMotionSample({
+                profile,
+                x,
+                y,
+                imageAspect,
+                time,
+                speaking,
+                motionIntensity: normalizedIntensity,
+              });
             positions.array[offset] = x + motion.dx;
             positions.array[offset + 1] = y + motion.dy;
             positions.array[offset + 2] = z + motion.dz;
@@ -333,8 +382,8 @@ export default function MatthiasThreeAvatar({
           }
           positions.needsUpdate = true;
           if (!reducedMotion) {
-            mesh.rotation.z = Math.sin(time * 1.05) * .0035;
-            mesh.rotation.y = Math.sin(time * .72) * .0045;
+            mesh.rotation.z = Math.sin(time * 1.05) * .0035 * normalizedIntensity;
+            mesh.rotation.y = Math.sin(time * .72) * .0045 * normalizedIntensity;
           } else {
             mesh.rotation.set(0, 0, 0);
           }
@@ -351,10 +400,32 @@ export default function MatthiasThreeAvatar({
             root.dataset.threeEnergy = peakEnergy.toFixed(3);
             root.dataset.threeReach = peakReach.toFixed(3);
           }
-          if (!reducedMotion) raf = window.requestAnimationFrame(render);
+          requestFrame();
         };
 
-        raf = window.requestAnimationFrame(render);
+        visibilityListener = () => {
+          documentVisible = document.visibilityState !== 'hidden';
+          root.dataset.threeVisibility = documentVisible ? 'visible' : 'hidden';
+          if (!documentVisible) cancelFrame();
+          else requestFrame();
+        };
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', visibilityListener);
+
+        if (typeof IntersectionObserver === 'function') {
+          intersectionObserver = new IntersectionObserver((entries) => {
+            const entry = entries[0];
+            inViewport = Boolean(entry?.isIntersecting ?? true);
+            root.dataset.threeViewport = inViewport ? 'visible' : 'paused';
+            if (!inViewport) cancelFrame();
+            else requestFrame();
+          }, { rootMargin: '80px' });
+          intersectionObserver.observe(root);
+        } else {
+          root.dataset.threeViewport = 'visible';
+        }
+
+        // Always paint one frame so the WebGL canvas can replace the fallback.
+        raf = window.requestAnimationFrame(renderFrame);
       },
       undefined,
       () => {
@@ -367,15 +438,17 @@ export default function MatthiasThreeAvatar({
 
     return () => {
       disposed = true;
-      if (raf) window.cancelAnimationFrame(raf);
+      cancelFrame();
       resizeObserver?.disconnect?.();
+      intersectionObserver?.disconnect?.();
       if (resizeFallback) window.removeEventListener('resize', resizeFallback);
+      if (visibilityListener && typeof document !== 'undefined') document.removeEventListener('visibilitychange', visibilityListener);
       geometry?.dispose?.();
       material?.dispose?.();
       texture?.dispose?.();
       renderer?.dispose?.();
     };
-  }, [avatar, profile, reducedMotion, speaking]);
+  }, [avatar, normalizedIntensity, phase, profile, reducedMotion, speaking]);
 
   return (
     <span
@@ -386,11 +459,15 @@ export default function MatthiasThreeAvatar({
       data-three-activity={activity || ''}
       data-three-profile={profile}
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
+      data-three-motion-intensity={normalizedIntensity.toFixed(2)}
+      data-three-motion-phase={phase.toFixed(3)}
       data-three-ready={ready ? 'true' : 'false'}
       data-three-failed={failed ? 'true' : 'false'}
       data-three-frame="0"
       data-three-energy="0"
       data-three-reach="0"
+      data-three-visibility="visible"
+      data-three-viewport="visible"
     >
       <canvas ref={canvasRef} className="matthias-three-avatar__canvas" aria-hidden="true" />
       <img
