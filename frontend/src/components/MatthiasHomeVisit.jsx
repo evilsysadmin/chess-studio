@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.js';
+import { matthiasSessionContext } from '../matthiasSessionContext.js';
+import { buildSessionSummary } from '../sessionSummary.js';
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
 import './MatthiasHomeResident.css';
+import './MatthiasHomeSessionSummary.css';
 import './MatthiasMotionOverride.css';
 
 const AMBIENT_SCENE_MS = 28_000;
@@ -31,6 +34,10 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const [motionStatus, setMotionStatus] = useState(() => reducedMotionStatus());
   const [compactViewport, setCompactViewport] = useState(() => matthiasCompactViewport());
   const [portalReady, setPortalReady] = useState(false);
+  const sessionSummary = useMemo(
+    () => buildSessionSummary(matthiasSessionContext()),
+    [model?.sessionLabel],
+  );
 
   useEffect(() => {
     setPortalReady(true);
@@ -157,6 +164,26 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
             <small>{speaking ? mood : visual.label}</small>
             {speaking && model.sessionLabel ? <em>{model.sessionLabel}</em> : null}
           </button>
+
+          {!speaking && sessionSummary ? (
+            <details className="matthias-resident__session-summary" data-session-summary="true">
+              <summary>
+                <span>SESIÓN</span>
+                <b>{sessionSummary.activityCount} actividad{sessionSummary.activityCount === 1 ? '' : 'es'}</b>
+              </summary>
+              <div className="matthias-resident__session-facts">
+                {sessionSummary.facts.map((fact) => (
+                  <p key={fact.id} data-tone={fact.tone}>
+                    <span>{fact.label}</span>
+                    <strong>{fact.text}</strong>
+                  </p>
+                ))}
+              </div>
+              <small>{sessionSummary.nextStep}</small>
+              <button type="button" onClick={onOpenInsights}>Ver Así juegas →</button>
+            </details>
+          ) : null}
+
           {motionStatus.effective ? (
             <button type="button" className="matthias-resident__motion-override" onClick={enableMotion}>
               {motionOverrideLabel}
