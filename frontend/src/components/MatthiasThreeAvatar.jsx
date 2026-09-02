@@ -201,11 +201,13 @@ function deformVertex(profile, x, y, imageAspect, time, speaking) {
     energy = Math.max(action * .55, page);
   } else if (profile === 'think') {
     const action = gestureCycle(time + .2, { period: 8.2, delay: .5, rise: .95, hold: 1.2, fall: 1.0 });
+    // Chess scenes use a canonical raster portrait. Move the hand and torso,
+    // but never locally rotate the head: warping facial pixels makes Matthias
+    // look melted instead of thoughtful. The whole plane still receives the
+    // subtle rigid Three.js rotation below, so the portrait remains alive.
     dy += rightArm * action * .17;
     dx -= rightArm * action * .055;
-    const rot = rotateRegion(nx, y, 0, .17, -.05 * action, head);
-    dx += rot.dx * imageAspect;
-    dy += rot.dy - head * action * .022;
+    dy += body * action * .006;
     dz += rightArm * action * .02;
     energy = action;
   } else if (profile === 'sleep') {
@@ -231,6 +233,16 @@ function deformVertex(profile, x, y, imageAspect, time, speaking) {
     const blink = gestureCycle(time + 5.1, { period: 7.4, delay: 0, rise: .06, hold: .025, fall: .09 });
     dy -= eyeBand * blink * .012;
     energy = Math.max(energy, blink * .3);
+  }
+
+  if (profile === 'think') {
+    // Smoothly freeze the facial core while keeping shoulders/arm free. This
+    // also removes the mesh-based blink inside the protected zone for chess
+    // scenes, avoiding seams across eyes, mouth and cap/forehead.
+    const faceProtection = 1 - gaussian(nx, y, 0, .31, .30, .26);
+    dx *= faceProtection;
+    dy *= faceProtection;
+    dz *= faceProtection;
   }
 
   return { dx, dy, dz, energy };

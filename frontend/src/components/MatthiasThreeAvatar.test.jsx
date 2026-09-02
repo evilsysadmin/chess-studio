@@ -90,6 +90,19 @@ describe('MatthiasThreeAvatar', () => {
     expect(speak.energy).toBeGreaterThan(.4);
   });
 
+  it('mantiene rígido el núcleo facial cuando juega al ajedrez sin apagar el gesto corporal', () => {
+    const face = matthiasThreeMotionSample({ profile: 'think', x: 0, y: .31, time: 1.8, motionIntensity: 1.2 });
+    const brow = matthiasThreeMotionSample({ profile: 'think', x: .08, y: .34, time: 1.8, motionIntensity: 1.2 });
+    const arm = matthiasThreeMotionSample({ profile: 'think', x: .36, y: -.18, time: 1.8, motionIntensity: 1.2 });
+
+    expect(Math.abs(face.dx)).toBeLessThan(.0001);
+    expect(Math.abs(face.dy)).toBeLessThan(.0001);
+    expect(Math.abs(face.dz)).toBeLessThan(.0001);
+    expect(Math.abs(brow.dy)).toBeLessThan(.005);
+    expect(arm.dy).toBeGreaterThan(.14);
+    expect(arm.energy).toBeGreaterThan(.8);
+  });
+
   it('renders one canonical fallback plus a Three.js canvas instead of raster body-part layers', () => {
     const html = renderToStaticMarkup(
       <MatthiasThreeAvatar
