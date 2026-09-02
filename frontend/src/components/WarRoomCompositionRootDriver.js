@@ -1,10 +1,5 @@
 import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
-
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
-}
+import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 export function attachWarRoomCompositionRootDriver(group, {
   wallZ,
@@ -15,13 +10,16 @@ export function attachWarRoomCompositionRootDriver(group, {
   const driver = group.getObjectByName?.('war-room-premium-painting-canvas');
   if (!driver || driver.userData.warRoomCompositionRootDriver) return false;
 
+  const registered = registerWarRoomDeferredFinalizer(group, {
+    key: 'composition-root-v1',
+    coarsePointer,
+    run: (root) => {
+      if (!root || root === group) return 0;
+      return applyWarRoomCompositionPolish(root, { wallZ, towardBoard, coarsePointer: false });
+    },
+  });
+  if (!registered) return false;
+
   driver.userData.warRoomCompositionRootDriver = true;
-  const previous = driver.onBeforeRender;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    const root = sceneRoot(driver);
-    if (!root || root === group) return;
-    applyWarRoomCompositionPolish(root, { wallZ, towardBoard, coarsePointer: false });
-  };
   return true;
 }
