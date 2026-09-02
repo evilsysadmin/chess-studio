@@ -21,7 +21,11 @@ vi.mock('../userPreferences.js', () => ({
   USER_PREFERENCES_CHANGED_EVENT: 'chess-study-user-preferences-changed',
 }));
 
-import MatthiasHomeVisit, { matthiasCompactViewport, matthiasMotionReduced } from './MatthiasHomeVisit.jsx';
+import MatthiasHomeVisit, {
+  HOME_THREE_MOTION_INTENSITY,
+  matthiasCompactViewport,
+  matthiasMotionReduced,
+} from './MatthiasHomeVisit.jsx';
 
 const MODEL = {
   variant: 'quiet',
@@ -34,19 +38,25 @@ const MODEL = {
 };
 
 describe('MatthiasHomeVisit · residente de Home', () => {
-  it('mantiene el arte canónico como textura/fallback y delega la animación de Home a Three.js', () => {
+  it('mantiene el arte canónico como textura/fallback y delega la animación de Home a Three.js v2', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit model={MODEL} speaking={false} onOpenInsights={() => {}} />,
     );
 
+    expect(HOME_THREE_MOTION_INTENSITY).toBeGreaterThan(1);
     expect(html).toContain('aria-label="Rincón de Matthias"');
     expect(html).toContain('data-viewport-resident="true"');
     expect(html).toContain('data-placement="viewport"');
     expect(html).toContain('data-motion-state="active"');
     expect(html).toContain('data-motion-source="none"');
+    expect(html).toContain('data-three-presentation="home-v2"');
     expect(html).toContain('data-ambient-scene="reading"');
     expect(html).toContain('data-matthias-three-avatar="true"');
     expect(html).toContain('data-three-profile="read"');
+    expect(html).toContain(`data-three-motion-intensity="${HOME_THREE_MOTION_INTENSITY.toFixed(2)}"`);
+    expect(html).toContain('data-three-motion-phase=');
+    expect(html).toContain('data-three-visibility="visible"');
+    expect(html).toContain('data-three-viewport="visible"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias-reading.webp"');
     expect(html).not.toContain('data-matthias-art-part');
