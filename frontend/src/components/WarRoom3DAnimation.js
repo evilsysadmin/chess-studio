@@ -2,6 +2,17 @@ export function isSoftwareWebGLRenderer(rendererLabel = '') {
   return /swiftshader|llvmpipe|lavapipe|software rasterizer|software renderer|mesa offscreen/i.test(String(rendererLabel));
 }
 
+export function warRoomSceneProfile({ coarsePointer = false, softwareRenderer = false } = {}) {
+  const lite = Boolean(coarsePointer || softwareRenderer);
+  return Object.freeze({
+    tier: lite ? 'lite' : 'full',
+    lite,
+    pixelRatioCap: softwareRenderer ? 1 : (coarsePointer ? 1.25 : 1.75),
+    shadowMapSize: lite ? 512 : 2048,
+    shadowsEnabled: !softwareRenderer,
+  });
+}
+
 export function warRoomAmbientFramePlan({
   documentHidden = false,
   reducedMotion = false,

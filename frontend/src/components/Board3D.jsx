@@ -8,7 +8,7 @@ import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
-import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan } from './WarRoom3DAnimation.js';
+import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan, warRoomSceneProfile } from './WarRoom3DAnimation.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { BOARD_THEME_3D, FILES } from './Board3DConfig.js';
@@ -117,6 +117,8 @@ function Board3DCanvas({
     }
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
+    const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer });
+    const renderLite = sceneProfile.lite;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const raycaster = new THREE.Raycaster();
@@ -133,12 +135,12 @@ function Board3DCanvas({
     scene.background = new THREE.Color(0x080a0f);
     scene.fog = new THREE.FogExp2(0x080a0f, 0.018);
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.25 : 1.75));
-    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap));
+    renderer.shadowMap.enabled = sceneProfile.shadowsEnabled;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = coarsePointer ? 1.02 : 1.05;
+    renderer.toneMappingExposure = renderLite ? 1.02 : 1.05;
     renderer.domElement.className = 'board3d-main-canvas';
     renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
     renderer.domElement.setAttribute('role', 'application');
@@ -146,13 +148,13 @@ function Board3DCanvas({
     renderer.domElement.style.touchAction = 'none';
     host.appendChild(renderer.domElement);
 
-    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer });
+    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
 
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
     const key = new THREE.DirectionalLight(0xffe1aa, 2.35);
     key.position.set(-5.4, 10, whiteSide ? 6.6 : -6.6);
-    key.castShadow = true;
-    key.shadow.mapSize.set(coarsePointer ? 512 : 2048, coarsePointer ? 512 : 2048);
+    key.castShadow = sceneProfile.shadowsEnabled;
+    key.shadow.mapSize.set(sceneProfile.shadowMapSize, sceneProfile.shadowMapSize);
     key.shadow.camera.left = -8;
     key.shadow.camera.right = 8;
     key.shadow.camera.top = 8;
@@ -161,7 +163,7 @@ function Board3DCanvas({
     key.shadow.camera.far = 28;
     key.shadow.bias = -0.00045;
     key.shadow.normalBias = 0.018;
-    key.shadow.radius = coarsePointer ? 1.1 : 2.35;
+    key.shadow.radius = renderLite ? 1.1 : 2.35;
     scene.add(key);
     const rim = new THREE.PointLight(theme.glow, 14.5, 19, 2);
     rim.position.set(4.8, 3.6, whiteSide ? -4.8 : 4.8);
@@ -170,9 +172,9 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const warRoom = buildWarRoom(theme, whiteSide, coarsePointer);
+    const warRoom = buildWarRoom(theme, whiteSide, renderLite);
     scene.add(warRoom);
-    scene.add(buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer));
+    scene.add(buildPremiumWarRoomLayer(theme, whiteSide, renderLite));
 
     const table = new THREE.Mesh(
       new THREE.BoxGeometry(11.6, 0.55, 11.6),
@@ -181,7 +183,7 @@ function Board3DCanvas({
     table.position.y = -0.48;
     table.receiveShadow = true;
     scene.add(table);
-    scene.add(buildPremiumTableLayer(theme, coarsePointer));
+    scene.add(buildPremiumTableLayer(theme, renderLite));
 
     const pedestal = new THREE.Mesh(
       new THREE.BoxGeometry(9.35, 0.4, 9.35),
@@ -206,8 +208,8 @@ function Board3DCanvas({
       addMesh(boardGroup, new THREE.BoxGeometry(sx, 0.08, sz), frameGold, [x, 0.135, z]);
     }
 
-    const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer, seed: 0x531f });
-    const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer, seed: 0xa72d });
+    const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
+    const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
 
     for (let rank = 1; rank <= 8; rank += 1) {
       for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
@@ -465,11 +467,12 @@ function Board3DCanvas({
       pieceMeshes,
       highlightMeshes,
       coarsePointer,
+      renderLite,
       key,
       rim,
       warm,
       render,
-      renderScale: Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.25 : 1.75),
+      renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
       slowFrameCount: 0,
     };
     setRendererLabel(renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL');
@@ -523,7 +526,7 @@ function Board3DCanvas({
 
     for (const piece of nextPieces) {
       const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
-      const mesh = buildPiece(piece.type, piece.color, skinId, state.coarsePointer, {
+      const mesh = buildPiece(piece.type, piece.color, skinId, state.renderLite, {
         matthiasKing,
         faceTowardCamera: orientation !== 'black',
       });
@@ -577,7 +580,7 @@ function Board3DCanvas({
     let castleTo = null;
 
     if (capturedPiece) {
-      capturedGhost = buildPiece(capturedPiece.type, capturedPiece.color, skinId, state.coarsePointer, {
+      capturedGhost = buildPiece(capturedPiece.type, capturedPiece.color, skinId, state.renderLite, {
         matthiasKing: isMatthiasRivalKing(capturedPiece, matthiasKingColor),
         faceTowardCamera: orientation !== 'black',
       });
