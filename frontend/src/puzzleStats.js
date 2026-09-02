@@ -1,5 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { recordMatthiasSessionPuzzle } from './matthiasSessionContext.js';
 
 // puzzleStats.js — Cuántos puzzles resolviste en total, de por vida (no solo
 // en la sesión actual). PuzzleScreen ya lleva su propio contador en estado
@@ -18,6 +19,7 @@ export function loadPuzzlesSolved() {
 export function incrementPuzzlesSolved() {
   const next = loadPuzzlesSolved() + 1;
   setProfileStorageItem(KEY, String(next));
+  recordMatthiasSessionPuzzle();
   return next;
 }
 
