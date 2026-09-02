@@ -1,16 +1,11 @@
 import * as THREE from 'three';
+import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 import './WarRoomUserPolish.css';
 
 export const WAR_ROOM_USER_POLISH_VERSION = 'room-balance-v24';
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
-}
-
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
 }
 
 function softNoise(x, y) {
@@ -291,26 +286,21 @@ function applyFinalPass(group, options) {
   return armorCount + fireplaceCount + landscapeCount + braceCount;
 }
 
-function attachFinalDriver(driver, owner, options, key) {
-  if (!driver || driver.userData[key]) return false;
-  driver.userData[key] = true;
-  const previous = driver.onBeforeRender;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    const root = sceneRoot(driver);
-    applyFinalPass(root || owner, options);
-  };
-  return true;
-}
-
-function attachUserPolishDrivers(group, options) {
+function registerUserPolishFinalizer(group, options) {
   const wallDriver = group.getObjectByName?.('war-room-castle-wall-left');
   const canvasDriver = group.getObjectByName?.('war-room-premium-painting-canvas');
-  let attached = 0;
-  if (attachFinalDriver(wallDriver, group, options, 'warRoomUserPolishWallDriver')) attached += 1;
-  if (attachFinalDriver(canvasDriver, group, options, 'warRoomUserPolishCanvasDriver')) attached += 1;
-  group.userData.warRoomUserPolishDriverCount = attached;
-  return attached;
+  const registered = registerWarRoomDeferredFinalizer(group, {
+    key: 'user-polish-v24',
+    coarsePointer: options.coarsePointer,
+    run: (root) => applyFinalPass(root || group, options),
+  });
+  if (!registered) return 0;
+
+  if (wallDriver) wallDriver.userData.warRoomUserPolishWallDriver = true;
+  if (canvasDriver) canvasDriver.userData.warRoomUserPolishCanvasDriver = true;
+  group.userData.warRoomUserPolishDriverCount = Number(Boolean(wallDriver)) + Number(Boolean(canvasDriver));
+  group.userData.warRoomUserPolishExecution = 'shared-deferred-finalizer-v2';
+  return 1;
 }
 
 export function applyWarRoomUserPolish(group, {
@@ -321,11 +311,11 @@ export function applyWarRoomUserPolish(group, {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard) || coarsePointer) return 0;
   const options = { wallZ, towardBoard, coarsePointer: false };
   if (group.userData.warRoomUserPolishVersion === WAR_ROOM_USER_POLISH_VERSION) {
-    attachUserPolishDrivers(group, options);
+    registerUserPolishFinalizer(group, options);
     return 0;
   }
 
   const changed = applyFinalPass(group, options);
-  attachUserPolishDrivers(group, options);
+  registerUserPolishFinalizer(group, options);
   return changed;
 }
