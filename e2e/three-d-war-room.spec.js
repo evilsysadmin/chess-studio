@@ -74,11 +74,10 @@ async function setRendererViaAppearance(page, renderer) {
 async function waitForWarRoomRenderer(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
-  const preparing = page.getByText('Preparando sala 3D…', { exact: true });
 
-  if (await preparing.count()) {
-    await expect(preparing).toBeVisible();
-  }
+  // The Suspense placeholder is intentionally ephemeral. Testing that it is
+  // visible after first observing it races against a fast chunk/Three mount:
+  // the useful contract is that the final War Room and canvas become visible.
   await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   return { board3d, canvas };

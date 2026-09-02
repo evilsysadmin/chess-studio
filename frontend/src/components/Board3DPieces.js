@@ -43,17 +43,17 @@ const BASE_PROFILE = [
   [0.23, 0.21], [0.22, 0.26], [0.18, 0.29],
 ];
 
-const SHARED_KNIGHT_GEOMETRY = new Map();
+const KNIGHT_GEOMETRY_TEMPLATES = new Map();
 
-function markSharedGeometry(geometry, role) {
-  geometry.userData.board3DSharedGeometry = true;
-  geometry.userData.board3DSharedGeometryRole = role;
+function markKnightTemplateGeometry(geometry, role) {
+  geometry.userData.board3DKnightTemplateGeometry = true;
+  geometry.userData.board3DKnightGeometryRole = role;
   return geometry;
 }
 
-function knightGeometrySet(coarsePointer = false) {
+function knightGeometryTemplateSet(coarsePointer = false) {
   const key = coarsePointer ? 'lite' : 'full';
-  if (SHARED_KNIGHT_GEOMETRY.has(key)) return SHARED_KNIGHT_GEOMETRY.get(key);
+  if (KNIGHT_GEOMETRY_TEMPLATES.has(key)) return KNIGHT_GEOMETRY_TEMPLATES.get(key);
 
   const detail = pieceDetailProfile(coarsePointer);
   const shape = new THREE.Shape();
@@ -75,17 +75,38 @@ function knightGeometrySet(coarsePointer = false) {
   head.center();
 
   const geometries = Object.freeze({
-    base: markSharedGeometry(latheGeometry(BASE_PROFILE, detail.lathe), `${key}:knight-base`),
-    neck: markSharedGeometry(latheGeometry([[0.18, 0.29], [0.16, 0.38], [0.13, 0.48], [0.14, 0.57]], detail.lathe), `${key}:knight-neck`),
-    head: markSharedGeometry(head, `${key}:knight-head`),
-    ear: markSharedGeometry(new THREE.ConeGeometry(0.06, 0.17, detail.cone), `${key}:knight-ear`),
-    eye: markSharedGeometry(
+    base: markKnightTemplateGeometry(latheGeometry(BASE_PROFILE, detail.lathe), `${key}:knight-base`),
+    neck: markKnightTemplateGeometry(latheGeometry([[0.18, 0.29], [0.16, 0.38], [0.13, 0.48], [0.14, 0.57]], detail.lathe), `${key}:knight-neck`),
+    head: markKnightTemplateGeometry(head, `${key}:knight-head`),
+    ear: markKnightTemplateGeometry(new THREE.ConeGeometry(0.06, 0.17, detail.cone), `${key}:knight-ear`),
+    eye: markKnightTemplateGeometry(
       new THREE.SphereGeometry(0.025, Math.max(10, Math.floor(detail.sphereW / 2)), Math.max(7, detail.sphereH - 2)),
       `${key}:knight-eye`,
     ),
   });
-  SHARED_KNIGHT_GEOMETRY.set(key, geometries);
+  KNIGHT_GEOMETRY_TEMPLATES.set(key, geometries);
   return geometries;
+}
+
+function cloneKnightGeometry(template) {
+  const geometry = template.clone();
+  geometry.userData = {
+    ...geometry.userData,
+    board3DKnightTemplateGeometry: false,
+    board3DKnightGeometryClone: true,
+  };
+  return geometry;
+}
+
+function knightGeometrySet(coarsePointer = false) {
+  const template = knightGeometryTemplateSet(coarsePointer);
+  return {
+    base: cloneKnightGeometry(template.base),
+    neck: cloneKnightGeometry(template.neck),
+    head: cloneKnightGeometry(template.head),
+    ear: cloneKnightGeometry(template.ear),
+    eye: cloneKnightGeometry(template.eye),
+  };
 }
 
 function addContactShadow(group, coarsePointer = false) {
@@ -155,10 +176,30 @@ function addSignatureDetail(group, type, accent, coarsePointer = false) {
   }
 }
 
+function finalizePiece(group, type) {
+  let renderableMeshCount = 0;
+  group?.traverse?.((child) => {
+    if (!child?.isMesh || child.userData?.touchHitTarget) return;
+    // Every chess piece lives permanently inside the fixed tactical camera.
+    // Frustum culling buys nothing here and a false negative is catastrophic:
+    // it looks exactly like a piece vanished from the game. Keep these meshes
+    // explicit members of every render pass instead.
+    child.frustumCulled = false;
+    child.visible = true;
+    renderableMeshCount += 1;
+  });
+  if (group?.userData) {
+    group.userData.board3DVisibilityGuard = 'fixed-board-no-frustum-v1';
+    group.userData.board3DRenderableMeshCount = renderableMeshCount;
+    if (type === 'n') group.userData.board3DKnightVisibilityGuard = 'isolated-geometry-v2';
+  }
+  return group;
+}
+
 function buildKnight(main, accent, coarsePointer = false) {
   const geometry = knightGeometrySet(coarsePointer);
   const group = new THREE.Group();
-  group.userData.board3DUsesSharedKnightGeometry = true;
+  group.userData.board3DKnightGeometryIsolation = 'per-piece-v2';
   addMesh(group, geometry.base, main);
   addMesh(group, geometry.neck, main);
 
@@ -203,14 +244,14 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
         skinId,
       });
       addPieceSkinDetails(matthias, 'k', skinId, accent, coarsePointer);
-      return matthias;
+      return finalizePiece(matthias, 'k');
     }
 
     if (type === 'n') {
       const knight = buildKnight(main, accent, coarsePointer);
       addPieceSkinDetails(knight, type, skinId, accent, coarsePointer);
       knight.scale.setScalar(0.9);
-      return knight;
+      return finalizePiece(knight, type);
     }
 
     const group = new THREE.Group();
@@ -253,14 +294,14 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
     addPieceSkinDetails(group, type, skinId, accent, coarsePointer);
     addContactShadow(group, coarsePointer);
     group.scale.setScalar(0.9);
-    return group;
+    return finalizePiece(group, type);
   } catch (error) {
     // A single geometry allocation must never leave half an army on the board.
     // Under stressed WebGL/software rendering we degrade that unit rather than
     // aborting the complete FEN rebuild and keeping only the pieces built so far.
     const fallback = buildFallbackPiece(type, main, accent);
     fallback.userData.warRoomBuildError = String(error?.message || error || 'piece build failed');
-    return fallback;
+    return finalizePiece(fallback, type);
   }
 }
 
