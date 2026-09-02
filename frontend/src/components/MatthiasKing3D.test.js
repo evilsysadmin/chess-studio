@@ -27,7 +27,7 @@ describe('Matthias rival king 3D', () => {
     expect(isMatthiasRivalKing({ type: 'k', color: 'b' }, null)).toBe(false);
   });
 
-  it('usa cuerpo de rey, rig de cabeza, ceño limpio y gorra de plato', () => {
+  it('usa cuerpo de rey, rig de cabeza, ceño limpio y gorra de plato compacta', () => {
     const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
     const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent, { pieceColor: 'w', skinId: 'studio' });
@@ -37,7 +37,7 @@ describe('Matthias rival king 3D', () => {
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
     expect(group.userData.faceStyle).toBe('proud-command-scowl-v5');
-    expect(group.userData.capStyle).toBe('command-peaked-cap-v3');
+    expect(group.userData.capStyle).toBe('compact-command-peaked-cap-v4');
     expect(group.userData.posture).toBe('proud-command-v2');
     expect(group.userData.motionRig).toBe('head-rig-v1');
     expect(meshes).toBeGreaterThanOrEqual(24);
@@ -55,6 +55,16 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-cap')).toBeTruthy();
     expect(group.getObjectByName('matthias-visor')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge-pawn-head')).toBeTruthy();
+
+    const capGroup = group.getObjectByName('matthias-officer-cap');
+    const visor = group.getObjectByName('matthias-visor');
+    const cap = group.getObjectByName('matthias-cap');
+    expect(capGroup.userData.faceClearance).toBe('eyes-and-brows-visible');
+    expect(capGroup.position.y).toBeGreaterThanOrEqual(1.17);
+    expect(visor.userData.compactForFaceVisibility).toBe(true);
+    expect(visor.geometry.parameters.radiusBottom).toBeLessThan(0.3);
+    expect(visor.geometry.parameters.radiusTop).toBeLessThan(0.28);
+    expect(cap.geometry.parameters.radiusBottom).toBeLessThan(0.24);
 
     // No vuelva el Frankenstein de micro-geometrías faciales que se apilaban
     // al reducir el rey a tamaño de tablero.
@@ -106,8 +116,6 @@ describe('Matthias rival king 3D', () => {
     expect(face.scale.x).toBeGreaterThan(1.07);
     expect(face.scale.y).toBeLessThan(0.93);
 
-    // La inclinación visual debe seguir el avatar canónico: las cejas suben
-    // hacia fuera y no forman el arco caído que hacía leer a Matthias triste.
     expect(leftEye.rotation.z).toBeLessThan(-0.07);
     expect(rightEye.rotation.z).toBeGreaterThan(0.07);
     expect(leftBrow.rotation.z).toBeGreaterThan(0.32);
@@ -115,7 +123,6 @@ describe('Matthias rival king 3D', () => {
     expect(leftEye.scale.y).toBeLessThan(0.42);
     expect(rightEye.scale.y).toBeLessThan(0.42);
 
-    // La boca no puede volver a convertirse en frown: corta, plana y comprimida.
     expect(mouth.geometry.parameters.width).toBeLessThanOrEqual(0.11);
     expect(Math.abs(mouth.rotation.z)).toBeLessThan(0.001);
 
