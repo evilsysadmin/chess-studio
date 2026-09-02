@@ -41,7 +41,8 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomTeutonicArmorCount).toBe(2);
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
     expect(group.userData.warRoomCompositionPolishVersion).toBe('v10');
-    expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v20');
+    expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v23');
+    expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
 
     const leftArmor = group.getObjectByName('war-room-teutonic-armor-left');
@@ -50,10 +51,13 @@ describe('War Room premium paintings', () => {
     expect(rightArmor).toBeTruthy();
     expect(leftArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
     expect(rightArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
+    expect(group.getObjectByName('war-room-armor-alcove-lintel')).toBeTruthy();
+    expect(group.getObjectByName('war-room-armor-alcove-keystone')).toBeTruthy();
+    expect(group.getObjectByName('war-room-armor-alcove-pointed-arch')).toBeFalsy();
 
     const breast = leftArmor.getObjectByName('war-room-armor-breastplate');
     expect(breast.material.userData.warRoomPracticalFinish).toBe('museum-steel-response-v4');
