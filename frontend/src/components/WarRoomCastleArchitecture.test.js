@@ -60,6 +60,25 @@ describe('War Room castle architecture', () => {
     }
   });
 
+  it('mantiene callable el hook de render del fuego al ceder la animación al driver del castillo', () => {
+    const room = buildPremiumWarRoomLayer(theme, true, false);
+    const driver = room.getObjectByName('war-room-castle-floor-slab');
+    const flame = room.getObjectByName('war-room-fire-flame-outer');
+
+    expect(typeof driver.onBeforeRender).toBe('function');
+    expect(typeof flame.onBeforeRender).toBe('function');
+
+    driver.onBeforeRender();
+
+    expect(flame.userData.castleDriverOwnsFire).toBe(true);
+    expect(typeof flame.onBeforeRender).toBe('function');
+    expect(() => flame.onBeforeRender()).not.toThrow();
+    expect(room.getObjectByName('war-room-fire-core').userData.warRoomWarmFireAnimated).toBe(true);
+    expect(room.getObjectByName('war-room-fire-bounce-light')).toBeInstanceOf(THREE.PointLight);
+
+    dispose(room);
+  });
+
   it('mantiene la arquitectura simplificada también en móvil', () => {
     const room = buildPremiumWarRoomLayer(theme, true, true);
     expect(room.getObjectByName('war-room-castle-floor')).toBeTruthy();
