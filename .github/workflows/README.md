@@ -34,7 +34,7 @@ El antiguo nombre `staging-pages.yml` también se retiró: el workflow sigue sie
 
 | Workflow | Estado | Responsabilidad |
 | --- | --- | --- |
-| `e2e-full.yml` | Activo | War Room/Focus en PRs relevantes; los cinco estados especiales se mantienen secuenciales por estabilidad WebGL. El sweep Chromium+Firefox+WebKit completo pasa de diario a semanal/manual. |
+| `e2e-full.yml` | Activo · scope por diff | En PRs de decoración 3D prueba montaje/escala; sólo cambios de Board3D core, reglas o input pagan Android + estados especiales + input; Focus corre cuando cambia su superficie. Los estados especiales se mantienen secuenciales por estabilidad WebGL. El sweep Chromium+Firefox+WebKit completo es semanal/manual. |
 | `matthias-visual.yml` | Activo · PR/manual | Protege pintura/movimiento de Matthias sólo cuando cambia su superficie; no repite el gate después del merge a `main`. |
 | `coverage.yml` | Activo · informativo | Coverage semanal/manual; no bloquea releases por porcentajes arbitrarios. |
 
@@ -57,7 +57,7 @@ Son preparación deliberada de una migración futura, no rutas de despliegue act
 
 ## Política de coste
 
-1. Un cambio puramente visual no debe provocar QEMU, Terraform OCI o guardrails de Render ajenos.
+1. Un cambio puramente visual no debe provocar QEMU, Terraform OCI, guardrails de Render ni paridad de reglas ajenos.
 2. Un browser gate especializado se ejecuta en la PR donde puede impedir una regresión; no se repite automáticamente después del merge si el SHA no ha cambiado funcionalmente.
 3. Sweeps multi-browser y coverage informativos son semanales/manuales.
 4. Paralelizar browser tests sólo cuando la medición demuestra estabilidad y ahorro. War Room WebGL es una excepción explícita: `workers=5` y `workers=2` saturaron hosted runners, introdujeron timeouts y empeoraron el tiempo total; sus estados especiales quedan secuenciales.
@@ -74,6 +74,7 @@ Son preparación deliberada de una migración futura, no rutas de despliegue act
 - OCI ARM64: deja de correr ante cualquier `.py` del backend;
 - OCI Terraform: elimina la repetición post-merge;
 - Render production guardrail: deja de correr por cada cambio de producto y conserva comprobación semanal + por superficie;
+- War Room: decoración 3D deja de pagar paridad de reglas/input; el gate completo queda reservado a cambios que pueden afectar esa lógica;
 - paridad especial de War Room: se conserva secuencial tras medir que 5 y 2 workers concurrentes degradan estabilidad y tiempo.
 
 La cadena staging→producción se conserva intacta en esta PR. Su optimización path-aware requiere una PR específica porque afecta acreditación de componentes, promoción y rollback.
