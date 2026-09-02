@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { installTeutonicWarRoomDecor } from './WarRoomTeutonicDecor.js';
 import { applyWarRoomPremiumFinishPass } from './WarRoomPremiumFinishPass.js';
+import { applyWarRoomPracticalLighting } from './WarRoomPracticalLighting.js';
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -248,6 +249,7 @@ export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePo
   addPainting(group, -4.95, 3.65, paintingZ, towardBoard, false, 0);
   addPainting(group, 4.95, 3.66, paintingZ, towardBoard, true, 1);
   applyWarRoomPremiumFinishPass(group, { towardBoard });
+  applyWarRoomPracticalLighting(group, { wallZ, towardBoard, coarsePointer });
   attachLegacyArmorRetirementDriver(group);
   group.userData.warRoomPremiumPaintings = 2;
   group.userData.warRoomPremiumPaintingVersion = 'v2';
