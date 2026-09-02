@@ -45,15 +45,18 @@
 /* The compact masthead, floating turn pill and one-line footer bought real
    space. Spend it on the board instead of leaving a black moat around it.
    Desktop deliberately gives the tactical board first claim on horizontal
-   space; commander/chat remain readable but stop dictating the room width. */
+   space; commander/chat remain readable but stop dictating the room width.
+   Width is relative to the app-shell content box, never to the raw viewport:
+   the shell has its own gutter and a vw-sized child would otherwise protrude. */
 @media (min-width: 1261px) {
   .game-screen .game-layout.game-layout-3d {
-    width: min(99.8vw, 1920px);
-    max-width: 1920px;
+    width: min(100%, 1920px);
+    max-width: min(100%, 1920px);
+    box-sizing: border-box;
   }
 
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(188px, 220px) minmax(780px, 1fr) minmax(220px, 252px);
+    grid-template-columns: minmax(184px, 204px) minmax(780px, 1fr) minmax(212px, 224px);
     gap: clamp(.38rem, .5vw, .52rem);
     padding: clamp(.38rem, .48vw, .5rem);
   }
@@ -61,11 +64,13 @@
 
 @media (min-width: 1081px) and (max-width: 1260px) {
   .game-screen .game-layout.game-layout-3d {
-    width: min(99.8vw, 1258px);
+    width: min(100%, 1258px);
+    max-width: min(100%, 1258px);
+    box-sizing: border-box;
   }
 
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(176px, 198px) minmax(610px, 1fr) minmax(200px, 224px);
+    grid-template-columns: minmax(176px, 192px) minmax(610px, 1fr) minmax(200px, 216px);
     gap: .4rem;
     padding: .4rem;
   }
