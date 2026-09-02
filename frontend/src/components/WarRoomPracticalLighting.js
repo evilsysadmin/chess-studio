@@ -6,6 +6,7 @@ import { installWarRoomTextileFinish } from './WarRoomTextileFinish.js';
 import { installWarRoomNightWindowDepth } from './WarRoomNightWindowDepth.js';
 import { installWarRoomAmbientLife } from './WarRoomAmbientLife.js';
 import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
+import { applyWarRoomUserPolish } from './WarRoomUserPolish.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 
 function materialList(object) {
@@ -97,8 +98,8 @@ export function applyWarRoomPracticalLighting(group, {
   // depth grounds the furniture, upper framing closes the far silhouette, patina
   // breaks showroom symmetry, textile finish removes perfectly smooth surfaces,
   // the night-window pass adds depth, ambient life gives the existing velvet a
-  // restrained fire-breath, and the final composition pass separates armor from
-  // consoles while giving paintings/fireplace their finished surfaces.
+  // restrained fire-breath, and the final composition passes finish both the
+  // architectural baseline and the user-facing room balance.
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalPatina(group, { coarsePointer });
@@ -106,6 +107,7 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomNightWindowDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomAmbientLife(group, { coarsePointer });
   applyWarRoomCompositionPolish(group, { wallZ, towardBoard, coarsePointer });
+  applyWarRoomUserPolish(group, { wallZ, towardBoard, coarsePointer });
   attachWarRoomCompositionRootDriver(group, { wallZ, towardBoard, coarsePointer });
 
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
