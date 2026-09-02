@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import MatthiasWarRoomPortrait, { nextWarRoomGesture } from './MatthiasWarRoomPortrait.jsx';
 
 describe('MatthiasWarRoomPortrait', () => {
-  it('anima el retrato canónico sin pegarle prótesis faciales encima', () => {
+  it('usa Three.js para dar vida al retrato canónico sin prótesis faciales raster', () => {
     const html = renderToStaticMarkup(
       <MatthiasWarRoomPortrait avatar="/matthias.webp" speechKey="m1" speechText="Una observación." />,
     );
@@ -14,7 +14,15 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('game-3d-matthias-portrait');
     expect(html).toContain('game-3d-matthias-coffee');
     expect(html).toContain('data-matthias-face-overlay="none"');
-    expect(html).toContain('data-matthias-motion-version="v2"');
+    expect(html).toContain('data-matthias-face-rig="three-mesh-v1"');
+    expect(html).toContain('data-matthias-motion-version="v3"');
+    expect(html).toContain('data-matthias-three-avatar="true"');
+    expect(html).toContain('data-three-scene="war-room-command"');
+    expect(html).toContain('<canvas');
+    expect(html).toContain('data-matthias-canonical-art="true"');
+    expect(html).toContain('src="/matthias.webp"');
+    expect(html).not.toContain('data-matthias-art-part');
+    expect(html).not.toContain('matthias-war-room-rig__part');
     expect(html).not.toContain('game-3d-matthias-brows');
     expect(html).not.toContain('game-3d-matthias-eyelids');
     expect(html).not.toContain('game-3d-matthias-mouth');
@@ -31,6 +39,7 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('anger-level-3');
     expect(html).toContain('data-matthias-anger-level="3"');
     expect(html).toContain('src="/matthias.webp"');
+    expect(html).toContain('data-three-profile="idle"');
   });
 
   it('limita el nivel visual de rabia al rango soportado', () => {
