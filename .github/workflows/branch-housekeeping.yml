@@ -1,13 +1,9 @@
-name: Branch housekeeping
+name: Maintenance · branch housekeeping
 
 on:
   workflow_dispatch:
   schedule:
     - cron: '41 4 * * 0'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/branch-housekeeping.yml'
 
 permissions:
   contents: write
@@ -19,13 +15,13 @@ concurrency:
 
 jobs:
   prune:
-    name: Prune merged and verified stale branches
+    name: Prune merged branches
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Delete verified stale branches
+      - name: Delete merged branches that are safe to remove
         shell: bash
         run: |
           set -euo pipefail
@@ -35,8 +31,6 @@ jobs:
 
           protected_branch() {
             case "$1" in
-              # Retired one-off archive: audited below and intentionally prunable.
-              artifact/zfrm-complete) return 1 ;;
               main|artifact/*) return 0 ;;
               *) return 1 ;;
             esac
@@ -56,7 +50,6 @@ jobs:
             fi
 
             if ! gh api "repos/$repo/git/ref/heads/$branch" >/dev/null 2>&1; then
-              echo "Ya no existe: $branch"
               return 0
             fi
 
@@ -71,25 +64,9 @@ jobs:
             echo "Eliminada: $branch"
           }
 
-          # Excepciones históricas auditadas tras las podas y migraciones:
-          # - gh-pages quedó obsoleta al completar el cutover del frontend a
-          #   Cloudflare Pages; no debe seguir protegida ni servir de fallback.
-          # - zfrm-complete sólo generaba un ZIP de una release antigua.
-          # - zfrh-matthias-brand-tests fue sustituida por la rama -clean de PR #1
-          #   y posteriormente por el hotfix de assets de PR #2.
-          retired_stale=(
-            'gh-pages'
-            'artifact/zfrm-complete'
-            'chatgpt/zfrh-matthias-brand-tests'
-          )
-
-          for branch in "${retired_stale[@]}"; do
-            delete_branch_if_safe "$branch"
-          done
-
-          # Previene que vuelva a crecer el cementerio: sólo ramas de PRs ya
-          # mergeadas en este mismo repo, sin PR abierta y fuera de la lista
-          # protegida. La operación es idempotente.
+          # Sólo ramas de PR ya mergeadas en este repo. Nada de listas de
+          # cadáveres versionados: si una rama histórica ya no existe, deja de
+          # formar parte de la política en vez de vivir eternamente en YAML.
           while IFS=$'\t' read -r head_repo branch; do
             [[ "$head_repo" == "$repo" ]] || continue
             delete_branch_if_safe "$branch"

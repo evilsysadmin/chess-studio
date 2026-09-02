@@ -1,4 +1,4 @@
-name: Cloudflare · Prometheus exporter
+name: Observability · Cloudflare metrics exporter
 
 on:
   workflow_dispatch:
@@ -7,7 +7,6 @@ on:
     paths:
       - '.github/workflows/cloudflare-prometheus-exporter.yml'
       - 'infra/grafana/alloy/cloudflare-exporter.alloy.example'
-      - 'infra/grafana/README.md'
 
 permissions:
   contents: read
