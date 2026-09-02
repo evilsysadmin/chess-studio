@@ -25,24 +25,28 @@ function dispose(root) {
 }
 
 describe('War Room premium paintings', () => {
-  it('superpone dos lienzos pictóricos suaves con doble moldura en desktop', () => {
+  it('superpone dos lienzos pictóricos detallados con moldura premium en desktop', () => {
     const group = new THREE.Group();
     const count = addPremiumWarRoomPaintings(group, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
 
     expect(count).toBe(2);
     expect(group.userData.warRoomPremiumPaintings).toBe(2);
+    expect(group.userData.warRoomPremiumPaintingVersion).toBe('v2');
 
     for (const index of [0, 1]) {
       const painting = group.getObjectByName(`war-room-premium-painting-${index}`);
       const canvas = painting?.getObjectByName('war-room-premium-painting-canvas');
       const gilt = painting?.getObjectByName('war-room-premium-frame-gilt-bed');
+      const woodBed = painting?.getObjectByName('war-room-premium-frame-wood-bed');
       expect(painting).toBeInstanceOf(THREE.Group);
-      expect(painting.userData.warRoomPaintingFinish).toBe('painterly-canvas-v1');
+      expect(painting.userData.warRoomPaintingFinish).toBe('painterly-canvas-v2');
       expect(canvas).toBeInstanceOf(THREE.Mesh);
       expect(gilt).toBeInstanceOf(THREE.Mesh);
+      expect(woodBed).toBeInstanceOf(THREE.Mesh);
       expect(canvas.material.map).toBeInstanceOf(THREE.DataTexture);
       expect(canvas.material.map.userData.warRoomPainterly).toBe(true);
-      expect(canvas.material.map.userData.resolution).toEqual([96, 64]);
+      expect(canvas.material.map.userData.warRoomPaintingDetail).toBe('layered-landscape-v2');
+      expect(canvas.material.map.userData.resolution).toEqual([160, 112]);
       expect(canvas.material.roughness).toBeGreaterThan(0.7);
     }
 
