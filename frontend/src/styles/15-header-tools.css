@@ -90,3 +90,41 @@
     text-decoration: none;
   }
 }
+
+/* Home empieza debajo de sus herramientas globales. El dock comparte aquí la
+   misma columna visual que el resto de la página y, sobre todo, ocupa altura
+   real: el contador de usuarios/backend ya no puede tapar Chess Studio, Hoy o
+   las primeras tarjetas. En otras vistas conserva el comportamiento flotante. */
+body:has(.home-friendly) .global-music-dock {
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: 30;
+  width: min(460px, calc(100vw - 1.5rem));
+  margin: max(.7rem, env(safe-area-inset-top)) 0 .65rem max(.75rem, env(safe-area-inset-left));
+}
+
+body:has(.home-friendly) .global-music-dock:has(.music-deck-collapsed) {
+  width: min(290px, calc(100vw - 1.5rem));
+}
+
+body:has(.home-friendly) .global-music-dock .live-service-status,
+body:has(.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-status {
+  position: static;
+  top: auto;
+  left: auto;
+  width: max-content;
+  max-width: 100%;
+  margin: .34rem 0 0;
+}
+
+@media (max-width: 520px) {
+  body:has(.home-friendly) .global-music-dock {
+    width: calc(100vw - 1rem);
+    margin: max(.5rem, env(safe-area-inset-top)) 0 .55rem max(.5rem, env(safe-area-inset-left));
+  }
+
+  body:has(.home-friendly) .global-music-dock:has(.music-deck-collapsed) {
+    width: min(190px, calc(100vw - 1rem));
+  }
+}
