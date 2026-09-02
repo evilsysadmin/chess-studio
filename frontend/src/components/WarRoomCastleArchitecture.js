@@ -6,7 +6,20 @@ const CASTLE = Object.freeze({
   stoneDark: 0x3d3933,
   grout: 0x24211e,
   recess: 0x17191b,
+  walnut: 0x3b2417,
+  walnutDark: 0x1b100a,
+  brass: 0xb88a3d,
+  brassDark: 0x6f4a20,
+  parchment: 0xb7a67e,
+  leather: 0x321816,
 });
+
+const TABLE_PROP_NAMES = Object.freeze([
+  'war-table-field-folio',
+  'war-table-map-pencil',
+  'war-table-command-chronometer',
+  'matthias-command-relic',
+]);
 
 function material(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -16,17 +29,24 @@ function material(color, options = {}) {
     clearcoat: options.clearcoat ?? 0.08,
     clearcoatRoughness: options.clearcoatRoughness ?? 0.48,
     specularIntensity: options.specularIntensity ?? 0.28,
+    emissive: options.emissive ?? 0x000000,
+    emissiveIntensity: options.emissiveIntensity ?? 0,
   });
 }
 
-function addBox(group, size, mat, position, name = '') {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
+function addMesh(group, geometry, mat, position, rotation = [0, 0, 0], name = '') {
+  const mesh = new THREE.Mesh(geometry, mat);
   mesh.position.set(...position);
+  mesh.rotation.set(...rotation);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   if (name) mesh.name = name;
   group.add(mesh);
   return mesh;
+}
+
+function addBox(group, size, mat, position, name = '') {
+  return addMesh(group, new THREE.BoxGeometry(...size), mat, position, [0, 0, 0], name);
 }
 
 function addTiledFloor(group, wallZ, towardBoard, coarsePointer) {
@@ -100,12 +120,220 @@ function addSideWalls(group, wallZ, towardBoard, coarsePointer) {
   group.add(walls);
 }
 
+function addFolio(consoleGroup, side, coarsePointer) {
+  const folio = new THREE.Group();
+  folio.name = 'war-room-console-field-folio';
+  const leather = material(CASTLE.leather, { roughness: 0.72, clearcoat: 0.08, specularIntensity: 0.2 });
+  const paper = material(CASTLE.parchment, { roughness: 0.91, clearcoat: 0.01, specularIntensity: 0.12 });
+  const ink = material(0x2a251e, { roughness: 0.98, clearcoat: 0, specularIntensity: 0.04 });
+  addMesh(folio, new THREE.BoxGeometry(0.7, 0.035, 0.98), leather, [0, 1.02, -0.47], [0, side * 0.05, 0]);
+  addMesh(folio, new THREE.BoxGeometry(0.59, 0.018, 0.84), paper, [0.02, 1.055, -0.44], [0, side * 0.035, 0.012]);
+  if (!coarsePointer) {
+    for (let index = 0; index < 4; index += 1) {
+      addMesh(folio, new THREE.BoxGeometry(0.38 - index * 0.035, 0.004, 0.012), ink,
+        [-0.06 + index * 0.02, 1.067 + index * 0.001, -0.67 + index * 0.15], [0, side * 0.035, 0]);
+    }
+  }
+  consoleGroup.add(folio);
+}
+
+function addPawnRelic(consoleGroup, coarsePointer) {
+  const relic = new THREE.Group();
+  relic.name = 'war-room-console-matthias-relic';
+  const dark = material(0x16191e, { metalness: 0.08, roughness: 0.74, clearcoat: 0.05 });
+  const brass = material(CASTLE.brass, { metalness: 0.82, roughness: 0.3, clearcoat: 0.22 });
+  addMesh(relic, new THREE.CylinderGeometry(0.18, 0.22, 0.07, coarsePointer ? 12 : 22), brass, [0, 1.02, 0.48]);
+  addMesh(relic, new THREE.CylinderGeometry(0.105, 0.145, 0.28, coarsePointer ? 12 : 22), dark, [0, 1.2, 0.48]);
+  addMesh(relic, new THREE.SphereGeometry(0.12, coarsePointer ? 12 : 20, coarsePointer ? 8 : 14), material(0x80684d, { roughness: 0.86 }), [0, 1.41, 0.48]);
+  addMesh(relic, new THREE.CylinderGeometry(0.14, 0.16, 0.05, coarsePointer ? 12 : 22), dark, [0, 1.52, 0.48]);
+  consoleGroup.add(relic);
+}
+
+function addChronometer(consoleGroup, coarsePointer) {
+  const watch = new THREE.Group();
+  watch.name = 'war-room-console-command-chronometer';
+  const brass = material(CASTLE.brass, { metalness: 0.9, roughness: 0.34, clearcoat: 0.2 });
+  const face = material(0x91876e, { roughness: 0.84, clearcoat: 0.03, specularIntensity: 0.13 });
+  const dark = material(0x15171a, { metalness: 0.12, roughness: 0.72 });
+  addMesh(watch, new THREE.CylinderGeometry(0.2, 0.2, 0.05, coarsePointer ? 16 : 28), brass, [0, 1.03, -0.5]);
+  addMesh(watch, new THREE.CylinderGeometry(0.16, 0.16, 0.014, coarsePointer ? 16 : 28), face, [0, 1.065, -0.5]);
+  if (!coarsePointer) {
+    addMesh(watch, new THREE.BoxGeometry(0.014, 0.006, 0.11), dark, [0, 1.075, -0.53], [0, 0.42, 0]);
+    addMesh(watch, new THREE.BoxGeometry(0.01, 0.007, 0.075), dark, [0, 1.077, -0.5], [0, -0.72, 0]);
+  }
+  consoleGroup.add(watch);
+}
+
+function addMapPencil(consoleGroup) {
+  const pencil = new THREE.Group();
+  pencil.name = 'war-room-console-map-pencil';
+  const wood = material(0x7a4b27, { roughness: 0.8, clearcoat: 0.03 });
+  const tip = material(0x25201c, { roughness: 0.95, clearcoat: 0 });
+  addMesh(pencil, new THREE.CylinderGeometry(0.018, 0.018, 0.76, 10), wood, [0.02, 1.055, 0.45], [Math.PI / 2, 0, 0.16]);
+  addMesh(pencil, new THREE.ConeGeometry(0.024, 0.09, 10), tip, [0.08, 1.055, 0.82], [Math.PI / 2, 0, 0.16]);
+  consoleGroup.add(pencil);
+}
+
+function addSideConsoles(group, wallZ, towardBoard, coarsePointer) {
+  const furniture = new THREE.Group();
+  furniture.name = 'war-room-side-consoles';
+  const wood = material(CASTLE.walnut, { roughness: 0.62, clearcoat: 0.16, clearcoatRoughness: 0.4, specularIntensity: 0.28 });
+  const woodDark = material(CASTLE.walnutDark, { roughness: 0.76, clearcoat: 0.08, clearcoatRoughness: 0.5, specularIntensity: 0.2 });
+  const brass = material(CASTLE.brassDark, { metalness: 0.72, roughness: 0.34, clearcoat: 0.18 });
+  const z = wallZ + towardBoard * (coarsePointer ? 4.05 : 4.75);
+
+  for (const side of [-1, 1]) {
+    const consoleGroup = new THREE.Group();
+    consoleGroup.name = side < 0 ? 'war-room-side-console-left' : 'war-room-side-console-right';
+    consoleGroup.userData.warRoomFurniture = 'side-console';
+    consoleGroup.position.set(side * 6.92, 0, z);
+
+    addBox(consoleGroup, [0.84, 0.13, 2.35], wood, [0, 0.91, 0], 'war-room-side-console-top');
+    addBox(consoleGroup, [0.9, 0.045, 2.38], brass, [0, 0.995, 0]);
+    for (const localX of [-0.29, 0.29]) {
+      for (const localZ of [-0.89, 0.89]) {
+        addBox(consoleGroup, [0.09, 0.85, 0.09], woodDark, [localX, 0.45, localZ]);
+      }
+    }
+    addBox(consoleGroup, [0.09, 0.14, 1.78], woodDark, [side * -0.27, 0.34, 0]);
+
+    if (side < 0) {
+      addFolio(consoleGroup, side, coarsePointer);
+      addPawnRelic(consoleGroup, coarsePointer);
+    } else {
+      addChronometer(consoleGroup, coarsePointer);
+      addMapPencil(consoleGroup);
+    }
+    furniture.add(consoleGroup);
+  }
+
+  group.add(furniture);
+}
+
+function sceneRoot(object) {
+  let current = object;
+  while (current?.parent) current = current.parent;
+  return current;
+}
+
+function retireWarTableClutter(root) {
+  if (!root || root.userData?.warRoomTableClutterRetired) return;
+  for (const name of TABLE_PROP_NAMES) {
+    const object = root.getObjectByName?.(name);
+    if (!object) continue;
+    object.visible = false;
+    object.userData.relocatedToRoomDecor = true;
+  }
+  root.userData.warRoomTableClutterRetired = true;
+}
+
+function ensureWarmBounceLight(root, fireplace, coarsePointer) {
+  let bounce = root.getObjectByName?.('war-room-fire-bounce-light');
+  if (bounce) return bounce;
+  bounce = new THREE.PointLight(0xffa85c, coarsePointer ? 0.55 : 1.15, coarsePointer ? 4.6 : 6.2, 2);
+  bounce.name = 'war-room-fire-bounce-light';
+  bounce.position.set(0, 0.92, 0.72);
+  bounce.castShadow = false;
+  fireplace.add(bounce);
+  return bounce;
+}
+
+function animateWarmFire(root, coarsePointer) {
+  const fireCore = root?.getObjectByName?.('war-room-fire-core');
+  const light = root?.getObjectByName?.('war-room-fire-light');
+  const fireplace = root?.getObjectByName?.('war-room-fireplace');
+  if (!fireCore || !light || !fireplace) return;
+
+  const legacyAnchor = fireCore.children.find((child) => child?.userData?.warRoomFireAnimationAnchor);
+  if (legacyAnchor?.onBeforeRender && !legacyAnchor.userData.castleDriverOwnsFire) {
+    legacyAnchor.onBeforeRender = null;
+    legacyAnchor.userData.castleDriverOwnsFire = true;
+  }
+
+  const flames = fireCore.children.filter((child) => child?.isMesh);
+  if (!flames.length) return;
+
+  if (!fireCore.userData.castleFireBases) {
+    fireCore.userData.castleFireBases = flames.map((flame) => ({
+      x: flame.position.x,
+      y: flame.position.y,
+      z: flame.position.z,
+      rotationZ: flame.rotation.z,
+      scaleX: flame.scale.x,
+      scaleY: flame.scale.y,
+      scaleZ: flame.scale.z,
+      emissiveIntensity: flame.material?.emissiveIntensity ?? 1.5,
+    }));
+    fireCore.userData.warRoomWarmFireAnimated = true;
+  }
+
+  const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+  const lowPower = coarsePointer ? 0.62 : 1;
+  const slow = Math.sin(now * 0.0047);
+  const medium = Math.sin(now * 0.0113 + 1.17);
+  const fast = Math.sin(now * 0.0271 + 0.44);
+  const irregular = Math.sin(now * 0.0189 + Math.sin(now * 0.0017) * 2.3);
+  const flutter = slow * 0.07 + medium * 0.055 + fast * 0.035 + irregular * 0.025;
+  const baseIntensity = light.userData.baseWarRoomIntensity || (coarsePointer ? 2.8 : 4.55);
+
+  light.intensity = baseIntensity * (1 + flutter * lowPower);
+  light.color.setHSL(0.068 + irregular * 0.006, 0.94, 0.56 + slow * 0.025);
+
+  const bounce = ensureWarmBounceLight(root, fireplace, coarsePointer);
+  bounce.intensity = (coarsePointer ? 0.55 : 1.15) * (1 + (slow * 0.09 + medium * 0.05) * lowPower);
+  bounce.color.setHSL(0.078 + medium * 0.004, 0.88, 0.62);
+
+  flames.forEach((flame, index) => {
+    const base = fireCore.userData.castleFireBases[index];
+    if (!base) return;
+    const phase = index * 1.31;
+    const wave = Math.sin(now * (0.0083 + index * 0.00065) + phase);
+    const tremor = Math.sin(now * (0.022 + index * 0.00105) + phase * 0.73);
+    const lick = Math.sin(now * (0.034 + index * 0.0017) + phase * 1.9);
+    flame.position.x = base.x + tremor * 0.012 * lowPower;
+    flame.position.y = base.y + (wave * 0.032 + lick * 0.012) * lowPower;
+    flame.position.z = base.z + tremor * 0.008 * lowPower;
+    flame.rotation.z = base.rotationZ + (wave * 0.105 + tremor * 0.038) * lowPower;
+    flame.scale.set(
+      base.scaleX * (1 - tremor * 0.08 * lowPower),
+      base.scaleY * (1 + (wave * 0.16 + lick * 0.055) * lowPower),
+      base.scaleZ * (1 - wave * 0.055 * lowPower),
+    );
+    if (flame.material) {
+      flame.material.emissiveIntensity = base.emissiveIntensity * (1 + (medium * 0.12 + lick * 0.08) * lowPower);
+    }
+  });
+
+  const embers = fireplace.children.filter((child) => child?.name === 'war-room-fire-ember' || child?.material?.emissive?.getHex?.() === 0xff4a13);
+  for (let index = 0; index < embers.length; index += 1) {
+    const ember = embers[index];
+    if (!ember.material) continue;
+    if (ember.userData.castleBaseEmissive == null) ember.userData.castleBaseEmissive = ember.material.emissiveIntensity || 0.8;
+    ember.material.emissiveIntensity = ember.userData.castleBaseEmissive * (1 + 0.2 * Math.sin(now * 0.0064 + index * 1.83));
+  }
+}
+
+function attachSceneDriver(layer, coarsePointer) {
+  const driver = layer.getObjectByName('war-room-castle-floor-slab');
+  if (!driver) return;
+  driver.userData.warRoomCastleSceneDriver = true;
+  driver.onBeforeRender = () => {
+    const root = sceneRoot(driver);
+    retireWarTableClutter(root);
+    animateWarmFire(root, coarsePointer);
+  };
+}
+
 export function buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer = false } = {}) {
   const layer = new THREE.Group();
   layer.name = 'war-room-castle-architecture';
   layer.userData.warRoomArchitecture = 'european-castle';
   addTiledFloor(layer, wallZ, towardBoard, coarsePointer);
   addSideWalls(layer, wallZ, towardBoard, coarsePointer);
+  addSideConsoles(layer, wallZ, towardBoard, coarsePointer);
+  attachSceneDriver(layer, coarsePointer);
   return layer;
 }
 
