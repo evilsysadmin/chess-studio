@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import './WarRoomUserPolish.css';
 
-export const WAR_ROOM_USER_POLISH_VERSION = 'room-balance-v20';
+export const WAR_ROOM_USER_POLISH_VERSION = 'room-balance-v23';
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -56,8 +56,6 @@ function blackForestPixel(u, v, x, y) {
     b = 39;
   }
 
-  // Dense conifer silhouette: enough individual crowns to read as forest,
-  // without paying for image assets or making the painting look pixel-art.
   const treeWave = Math.abs(Math.sin(u * 96 + Math.sin(u * 17) * 2.2));
   const treeLine = 0.56 - treeWave * 0.055 - Math.abs(Math.sin(u * 43)) * 0.025;
   if (v > treeLine && v < 0.72) {
@@ -77,8 +75,6 @@ function blackForestPixel(u, v, x, y) {
     if (reflectedForest) { r -= 9; g -= 7; b -= 8; }
   }
 
-  // A small warm clearing gives the eye a focal point without drawing a
-  // literal blocky castle into the texture.
   const dx = u - 0.57;
   const dy = v - 0.61;
   const clearing = Math.max(0, 1 - Math.sqrt(dx * dx * 8 + dy * dy * 20) * 7);
@@ -123,7 +119,6 @@ function northSeaPixel(u, v, x, y) {
     if (v > 0.73) { r -= 9; g -= 7; b -= 4; }
   }
 
-  // Distant amber break in the clouds; deliberately diffuse and painterly.
   const dx = u - 0.69;
   const dy = v - 0.34;
   const glow = Math.max(0, 1 - Math.sqrt(dx * dx * 4.2 + dy * dy * 12) * 7.5);
@@ -192,32 +187,32 @@ function improveGallery(group) {
 }
 
 function separateFurniture(group, { wallZ, towardBoard }) {
-  const sofaOffset = 12.15;
-  const consoleOffset = 0.72;
+  const sofaOffset = 12.35;
+  const consoleOffset = 1.75;
 
   for (const [name, side] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
     const sofa = group.getObjectByName?.(name);
     if (!sofa) continue;
-    sofa.position.set(side * 6.82, 0.02, wallZ + towardBoard * sofaOffset);
+    sofa.position.set(side * 6.95, 0.02, wallZ + towardBoard * sofaOffset);
     sofa.userData.warRoomOffsetFromWall = sofaOffset;
-    sofa.userData.warRoomFurniturePlacement = 'front-edge-club-sofa-v20';
+    sofa.userData.warRoomFurniturePlacement = 'front-corner-club-sofa-v23';
   }
 
   for (const [name, side] of [['war-room-side-console-left', -1], ['war-room-side-console-right', 1]]) {
     const table = group.getObjectByName?.(name);
     if (!table) continue;
-    table.position.x = side * 6.88;
+    table.position.x = side * 6.62;
     table.position.z = wallZ + towardBoard * consoleOffset;
     table.userData.warRoomOffsetFromWall = consoleOffset;
-    table.userData.warRoomFurniturePlacement = 'rear-wall-campaign-table-v20';
+    table.userData.warRoomFurniturePlacement = 'rear-lower-campaign-table-v23';
   }
 
   group.userData.warRoomFurnitureGap = sofaOffset - consoleOffset;
-  group.userData.warRoomFurnitureOrder = 'tables-rear-armors-middle-sofas-front-v20';
+  group.userData.warRoomFurnitureOrder = 'tables-rear-armors-middle-sofas-front-v23';
 }
 
 function placeArmor(group, { wallZ, towardBoard }) {
-  const armorOffset = 5.15;
+  const armorOffset = 5.45;
   let count = 0;
   for (const [name, side] of [
     ['war-room-teutonic-armor-left', -1],
@@ -225,14 +220,14 @@ function placeArmor(group, { wallZ, towardBoard }) {
   ]) {
     const armor = group.getObjectByName?.(name);
     if (!armor) continue;
-    armor.position.set(side * 7.08, 0, wallZ + towardBoard * armorOffset);
-    armor.rotation.y = -side * towardBoard * 0.82;
+    armor.position.set(side * 6.35, 0, wallZ + towardBoard * armorOffset);
+    armor.rotation.y = -side * towardBoard * 0.72;
     armor.userData.warRoomOffsetFromWall = armorOffset;
-    armor.userData.warRoomArmorPlacement = 'middle-floor-sentry-facing-board-v20';
+    armor.userData.warRoomArmorPlacement = 'centered-middle-sentry-facing-board-v23';
     armor.userData.facesWarTable = true;
     count += 1;
   }
-  group.userData.warRoomArmorComposition = 'middle-sentries-facing-board-v20';
+  group.userData.warRoomArmorComposition = 'centered-middle-sentries-v23';
   return count;
 }
 
@@ -271,13 +266,14 @@ function finishFireplace(group, towardBoard) {
 
 function retireWallMonograms(group) {
   let changed = 0;
+  const retiredNames = new Set([
+    'war-room-hammerbeam-brace',
+    'war-room-armor-alcove-pointed-arch',
+  ]);
   group.traverse?.((object) => {
-    if (object?.name !== 'war-room-hammerbeam-brace') return;
-    // Legacy scenes/tests can still contain the old diagonal brace. Do not
-    // merely rotate it: hide it entirely so no render order can reconstruct
-    // the accidental repeated-M wall motif.
+    if (!retiredNames.has(object?.name)) return;
     object.visible = false;
-    object.userData.warRoomBraceStyle = 'retired-no-monogram-v20';
+    object.userData.warRoomBraceStyle = 'retired-no-monogram-v23';
     changed += 1;
   });
   group.userData.warRoomDiagonalMonogramsRetired = changed;
