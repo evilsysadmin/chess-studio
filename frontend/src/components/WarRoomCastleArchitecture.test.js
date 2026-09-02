@@ -25,7 +25,7 @@ function dispose(root) {
 describe('War Room castle architecture', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('cierra la sala con piedra continua y paredes laterales a profundidad completa', () => {
+  it('cierra la sala con sillería oscura coherente y paredes laterales a profundidad completa', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const architecture = room.getObjectByName('war-room-castle-architecture');
     const floor = room.getObjectByName('war-room-castle-floor');
@@ -34,6 +34,7 @@ describe('War Room castle architecture', () => {
 
     expect(architecture).toBeInstanceOf(THREE.Group);
     expect(architecture.userData.warRoomArchitecture).toBe('european-castle');
+    expect(architecture.userData.warRoomCastleStyle).toBe('dark-germanic-ashlar-v3');
     expect(floor).toBeInstanceOf(THREE.Group);
     expect(floor.userData.warRoomSurface).toBe('stone-slab');
     expect(floor.userData.warRoomFinish).toBe('restrained-limestone-slab');
@@ -52,12 +53,48 @@ describe('War Room castle architecture', () => {
     expect(leftWall.geometry.parameters.depth).toBeGreaterThan(13);
     expect(rightWall.geometry.parameters.depth).toBeGreaterThan(13);
 
-    expect(leftWall.material.userData.warRoomWallFinish).toBe('warm-limestone-plaster-v1');
-    expect(rightWall.material.userData.warRoomWallFinish).toBe('warm-limestone-plaster-v1');
+    expect(leftWall.material.userData.warRoomWallFinish).toBe('dark-germanic-ashlar-v3');
+    expect(rightWall.material.userData.warRoomWallFinish).toBe('dark-germanic-ashlar-v3');
     expect(leftWall.material.map).toBeInstanceOf(THREE.DataTexture);
-    expect(leftWall.material.map.userData.warRoomWallTexture).toBe('warm-limestone-plaster-v1');
-    expect(room.getObjectByName('war-room-castle-wall-panel-left-1')?.userData.warRoomWallPanel).toBe('limestone-inset');
-    expect(room.getObjectByName('war-room-castle-wall-panel-right-1')?.userData.warRoomWallPanel).toBe('limestone-inset');
+    expect(leftWall.material.map.userData.warRoomWallTexture).toBe('dark-germanic-ashlar-v3');
+    expect(leftWall.material.map.userData.resolution).toEqual([96, 96]);
+    expect(room.getObjectByName('war-room-castle-wall-panel-left-1')?.userData.warRoomWallPanel).toBe('dark-ashlar-inset');
+    expect(room.getObjectByName('war-room-castle-wall-panel-right-1')?.userData.warRoomWallPanel).toBe('dark-ashlar-inset');
+
+    dispose(room);
+  });
+
+  it('mantiene las armaduras a escala humana del decorado, no como gigantes', () => {
+    const room = buildPremiumWarRoomLayer(theme, true, false);
+    const left = room.getObjectByName('war-room-armor-guard-left');
+    const right = room.getObjectByName('war-room-armor-guard-right');
+
+    expect(left).toBeInstanceOf(THREE.Group);
+    expect(right).toBeInstanceOf(THREE.Group);
+    expect(left.userData.warRoomScaleReference).toBe('two-piece-heights');
+    expect(right.userData.warRoomScaleReference).toBe('two-piece-heights');
+    expect(left.getObjectByName('war-room-armor-zweihander')).toBeTruthy();
+    expect(right.getObjectByName('war-room-armor-zweihander')).toBeTruthy();
+
+    const size = new THREE.Box3().setFromObject(left).getSize(new THREE.Vector3());
+    expect(size.y).toBeGreaterThan(1.8);
+    expect(size.y).toBeLessThan(2.8);
+    expect(size.x).toBeLessThan(1.5);
+
+    dispose(room);
+  });
+
+  it('da a los cuadros dos siluetas de galería distintas', () => {
+    const room = buildPremiumWarRoomLayer(theme, true, false);
+    const left = room.getObjectByName('war-room-premium-painting-0');
+    const right = room.getObjectByName('war-room-premium-painting-1');
+
+    expect(left.userData.warRoomGalleryVariant).toBe('alpine-fortress');
+    expect(right.userData.warRoomGalleryVariant).toBe('rhine-castle');
+    expect(left.scale.x).not.toBe(right.scale.x);
+    expect(left.scale.y).not.toBe(right.scale.y);
+    expect(left.getObjectByName('war-room-gallery-finial')).toBeTruthy();
+    expect(right.getObjectByName('war-room-gallery-medallion')).toBeTruthy();
 
     dispose(room);
   });
@@ -122,9 +159,11 @@ describe('War Room castle architecture', () => {
     expect(room.getObjectByName('war-room-castle-side-walls')).toBeTruthy();
     expect(leftWall.geometry.parameters.depth).toBe(8.9);
     expect(leftWall.userData.warRoomFullDepth).toBe(false);
-    expect(leftWall.material.userData.warRoomWallFinish).toBe('simplified-castle-stone');
+    expect(leftWall.material.userData.warRoomWallFinish).toBe('simplified-dark-castle-stone');
     expect(leftWall.material.map).toBeFalsy();
     expect(room.getObjectByName('war-room-castle-wall-panel-left-1')).toBeFalsy();
+    expect(room.getObjectByName('war-room-armor-guard-left')).toBeTruthy();
+    expect(room.getObjectByName('war-room-armor-guard-right')).toBeTruthy();
     expect(room.getObjectByName('war-room-sofa-left').userData.warRoomFurniturePlacement).toBe('side-wall');
     expect(room.getObjectByName('war-room-sofa-right').userData.warRoomFurniturePlacement).toBe('side-wall');
     dispose(room);

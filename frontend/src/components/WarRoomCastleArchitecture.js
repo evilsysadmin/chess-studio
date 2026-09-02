@@ -75,9 +75,6 @@ function addTiledFloor(group, wallZ, towardBoard, coarsePointer) {
 
   addBox(floor, [width, 0.09, depth], stone, [0, -0.305, centerZ], 'war-room-castle-floor-slab');
 
-  // Desktop uses broad, nearly continuous limestone courses. The former 72-tile
-  // alternating checker pattern read as a shopping-centre floor from the tactical
-  // camera, so joints are intentionally sparse and low-contrast now.
   const spacing = coarsePointer ? 2.55 : 4.18;
   const jointWidth = coarsePointer ? 0.026 : 0.016;
   const xStart = coarsePointer ? -7.3 : -6.25;
@@ -97,30 +94,43 @@ function addTiledFloor(group, wallZ, towardBoard, coarsePointer) {
 
 function createCastleWallTexture(coarsePointer = false) {
   if (coarsePointer) return null;
-  const width = 48;
+  const width = 96;
   const height = 96;
   const data = new Uint8Array(width * height * 4);
+  const courseHeight = 12;
+
   for (let y = 0; y < height; y += 1) {
+    const course = Math.floor(y / courseHeight);
+    const localY = y % courseHeight;
+    const horizontalMortar = localY <= 1 || localY >= courseHeight - 1;
+    const stagger = course % 2 ? 13 : 0;
     for (let x = 0; x < width; x += 1) {
-      const broad = Math.sin(x * 0.31 + y * 0.095) * 8 + Math.cos(y * 0.17) * 7;
-      const grain = Math.sin((x + y) * 0.63) * 3 + Math.cos(x * 1.17 - y * 0.21) * 2;
-      const fleck = ((x * 17 + y * 29 + x * y * 3) % 19) - 9;
-      const value = THREE.MathUtils.clamp(Math.round(214 + broad + grain + fleck * 0.42), 174, 239);
+      const localX = (x + stagger) % 26;
+      const verticalMortar = localX <= 1;
+      const mortar = horizontalMortar || verticalMortar;
+      const broad = Math.sin(x * 0.19 + y * 0.071) * 11 + Math.cos(y * 0.13) * 8;
+      const grain = Math.sin((x + y) * 0.57) * 4 + Math.cos(x * 0.83 - y * 0.19) * 3;
+      const base = mortar ? 66 : 171 + broad + grain;
       const index = (y * width + x) * 4;
-      data[index] = value;
-      data[index + 1] = value;
-      data[index + 2] = value;
+      data[index] = THREE.MathUtils.clamp(Math.round(base * 0.92), 42, 205);
+      data[index + 1] = THREE.MathUtils.clamp(Math.round(base * 0.88), 40, 198);
+      data[index + 2] = THREE.MathUtils.clamp(Math.round(base * 0.8), 36, 188);
       data[index + 3] = 255;
     }
   }
+
   const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = 'war-room-warm-limestone-texture';
+  texture.name = 'war-room-dark-germanic-ashlar';
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(1.15, 3.4);
-  texture.colorSpace = THREE.NoColorSpace;
+  texture.repeat.set(1.5, 3.25);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
   texture.needsUpdate = true;
-  texture.userData.warRoomWallTexture = 'warm-limestone-plaster-v1';
+  texture.userData.warRoomWallTexture = 'dark-germanic-ashlar-v3';
+  texture.userData.resolution = [width, height];
   return texture;
 }
 
@@ -134,32 +144,31 @@ function addSideWalls(group, wallZ, towardBoard, coarsePointer) {
   walls.userData.warRoomDepth = depth;
   const wallTexture = createCastleWallTexture(coarsePointer);
   const wallMaterial = coarsePointer
-    ? material(CASTLE.stoneDark, { roughness: 0.9, clearcoat: 0.035, specularIntensity: 0.16 })
+    ? material(0x403b35, { roughness: 0.92, clearcoat: 0.025, specularIntensity: 0.14 })
     : new THREE.MeshPhysicalMaterial({
-        color: 0xa9977b,
+        color: 0x686057,
         map: wallTexture,
-        roughness: 0.74,
+        roughness: 0.84,
         roughnessMap: wallTexture,
         bumpMap: wallTexture,
-        bumpScale: 0.014,
+        bumpScale: 0.022,
         metalness: 0,
-        clearcoat: 0.075,
-        clearcoatRoughness: 0.62,
-        specularIntensity: 0.24,
-        envMapIntensity: 0.34,
+        clearcoat: 0.035,
+        clearcoatRoughness: 0.72,
+        specularIntensity: 0.19,
+        envMapIntensity: 0.28,
       });
-  wallMaterial.userData.warRoomWallFinish = coarsePointer ? 'simplified-castle-stone' : 'warm-limestone-plaster-v1';
-  const trimMaterial = material(coarsePointer ? CASTLE.stoneLight : 0xb7a78e, {
-    roughness: coarsePointer ? 0.72 : 0.62,
-    clearcoat: coarsePointer ? 0.12 : 0.14,
-    specularIntensity: coarsePointer ? 0.3 : 0.34,
+  wallMaterial.userData.warRoomWallFinish = coarsePointer ? 'simplified-dark-castle-stone' : 'dark-germanic-ashlar-v3';
+  const trimMaterial = material(coarsePointer ? 0x6c655d : 0x817667, {
+    roughness: coarsePointer ? 0.8 : 0.76,
+    clearcoat: 0.05,
+    specularIntensity: coarsePointer ? 0.2 : 0.24,
   });
-  const recessMaterial = material(coarsePointer ? CASTLE.recess : 0x5f5448, { roughness: 0.9, clearcoat: 0.015, specularIntensity: 0.1 });
-  const panelMaterial = coarsePointer ? null : material(0x8f806b, {
-    roughness: 0.68,
-    clearcoat: 0.06,
-    clearcoatRoughness: 0.68,
-    specularIntensity: 0.2,
+  const panelMaterial = coarsePointer ? null : material(0x514a42, {
+    roughness: 0.88,
+    clearcoat: 0.025,
+    clearcoatRoughness: 0.8,
+    specularIntensity: 0.14,
   });
 
   for (const side of [-1, 1]) {
@@ -198,7 +207,7 @@ function addSideWalls(group, wallZ, towardBoard, coarsePointer) {
           `war-room-castle-wall-panel-${side < 0 ? 'left' : 'right'}-${index + 1}`,
         );
         panel.castShadow = false;
-        panel.userData.warRoomWallPanel = 'limestone-inset';
+        panel.userData.warRoomWallPanel = 'dark-ashlar-inset';
         addBox(walls, [0.075, 0.11, 1.62], trimMaterial, [side * 7.72, 3.91, panelZ]);
         addBox(walls, [0.075, 0.11, 1.62], trimMaterial, [side * 7.72, 1.33, panelZ]);
         addBox(walls, [0.075, 2.68, 0.1], trimMaterial, [side * 7.72, 2.62, panelZ - 0.76]);
@@ -302,6 +311,81 @@ function addSideConsoles(group, wallZ, towardBoard, coarsePointer) {
   group.add(furniture);
 }
 
+function addArmorGuard(group, side, wallZ, towardBoard, coarsePointer) {
+  const guard = new THREE.Group();
+  guard.name = side < 0 ? 'war-room-armor-guard-left' : 'war-room-armor-guard-right';
+  guard.userData.warRoomDecor = 'human-scale-plate-armor';
+  guard.userData.warRoomScaleReference = 'two-piece-heights';
+  guard.userData.warRoomNominalHeight = 2.22;
+
+  const segments = coarsePointer ? 10 : 16;
+  const steel = material(0x666b6d, { metalness: 0.82, roughness: 0.32, clearcoat: 0.24, specularIntensity: 0.66 });
+  const steelDark = material(0x303538, { metalness: 0.74, roughness: 0.42, clearcoat: 0.14, specularIntensity: 0.48 });
+  const leather = material(0x2b1712, { roughness: 0.76, clearcoat: 0.06, specularIntensity: 0.18 });
+  const brass = material(0x80602d, { metalness: 0.74, roughness: 0.34, clearcoat: 0.18, specularIntensity: 0.5 });
+
+  for (const legX of [-0.15, 0.15]) {
+    addMesh(guard, new THREE.CylinderGeometry(0.085, 0.11, 0.63, segments), steelDark, [legX, 0.44, 0]);
+    addMesh(guard, new THREE.SphereGeometry(0.105, segments, coarsePointer ? 7 : 10), steel, [legX, 0.77, 0]);
+    addBox(guard, [0.23, 0.1, 0.34], steelDark, [legX, 0.1, towardBoard * 0.06]);
+  }
+
+  addMesh(guard, new THREE.CylinderGeometry(0.27, 0.34, 0.78, segments), steel, [0, 1.18, 0]);
+  addBox(guard, [0.42, 0.08, 0.28], brass, [0, 1.02, towardBoard * 0.02]);
+  addMesh(guard, new THREE.SphereGeometry(0.19, segments, coarsePointer ? 8 : 12), steelDark, [0, 1.72, 0]);
+  addMesh(guard, new THREE.CylinderGeometry(0.2, 0.22, 0.14, segments), steel, [0, 1.86, 0]);
+  addBox(guard, [0.34, 0.055, 0.12], steelDark, [0, 1.82, towardBoard * 0.16], 'war-room-armor-visor');
+  addMesh(guard, new THREE.ConeGeometry(0.055, 0.2, segments), brass, [0, 2.04, 0]);
+
+  for (const armSide of [-1, 1]) {
+    addMesh(guard, new THREE.SphereGeometry(0.13, segments, coarsePointer ? 7 : 10), steel, [armSide * 0.33, 1.48, 0]);
+    addMesh(guard, new THREE.CylinderGeometry(0.065, 0.085, 0.55, segments), steelDark, [armSide * 0.4, 1.18, 0], [0, 0, armSide * 0.13]);
+    addMesh(guard, new THREE.SphereGeometry(0.075, segments, coarsePointer ? 7 : 9), leather, [armSide * 0.42, 0.92, towardBoard * 0.02]);
+  }
+
+  const sword = new THREE.Group();
+  sword.name = 'war-room-armor-zweihander';
+  const blade = addMesh(sword, new THREE.BoxGeometry(0.055, 1.62, 0.025), steel, [0, 0.55, 0]);
+  blade.castShadow = !coarsePointer;
+  addBox(sword, [0.52, 0.055, 0.055], brass, [0, -0.27, 0], 'war-room-armor-sword-crossguard');
+  addMesh(sword, new THREE.CylinderGeometry(0.035, 0.04, 0.43, segments), leather, [0, -0.5, 0]);
+  addMesh(sword, new THREE.SphereGeometry(0.065, segments, coarsePointer ? 7 : 9), brass, [0, -0.74, 0]);
+  sword.position.set(side * 0.43, 0.82, towardBoard * 0.18);
+  sword.rotation.z = side * -0.11;
+  guard.add(sword);
+
+  guard.position.set(side * 6.92, 0, wallZ + towardBoard * (coarsePointer ? 2.9 : 3.35));
+  guard.rotation.y = -side * towardBoard * 0.16;
+  group.add(guard);
+  return guard;
+}
+
+function refinePremiumGallery(group, towardBoard, coarsePointer) {
+  if (coarsePointer) return;
+  const left = group.getObjectByName('war-room-premium-painting-0');
+  const right = group.getObjectByName('war-room-premium-painting-1');
+  if (left) {
+    left.scale.set(0.9, 1.08, 1);
+    left.position.y += 0.08;
+    left.userData.warRoomGalleryVariant = 'alpine-fortress';
+  }
+  if (right) {
+    right.scale.set(1.08, 0.93, 1);
+    right.position.y -= 0.05;
+    right.userData.warRoomGalleryVariant = 'rhine-castle';
+  }
+
+  const gold = material(0x8c672e, { metalness: 0.7, roughness: 0.31, clearcoat: 0.2, specularIntensity: 0.52 });
+  if (left) {
+    const finial = addMesh(left, new THREE.ConeGeometry(0.11, 0.23, 12), gold, [0, 1.06, towardBoard * 0.13], [0, 0, 0], 'war-room-gallery-finial');
+    finial.castShadow = false;
+  }
+  if (right) {
+    const crest = addMesh(right, new THREE.CylinderGeometry(0.12, 0.12, 0.035, 16), gold, [0, 1.03, towardBoard * 0.13], [Math.PI / 2, 0, 0], 'war-room-gallery-medallion');
+    crest.castShadow = false;
+  }
+}
+
 function sceneRoot(object) {
   let current = object;
   while (current?.parent) current = current.parent;
@@ -338,9 +422,6 @@ function animateWarmFire(root, coarsePointer) {
 
   const legacyAnchor = fireCore.children.find((child) => child?.userData?.warRoomFireAnimationAnchor);
   if (legacyAnchor?.onBeforeRender && !legacyAnchor.userData.castleDriverOwnsFire) {
-    // Three.js calls onBeforeRender unconditionally for renderable objects.
-    // Replacing the old fire driver with null crashes the entire War Room.
-    // Keep the hook callable while handing motion to the castle scene driver.
     legacyAnchor.onBeforeRender = () => {};
     legacyAnchor.userData.castleDriverOwnsFire = true;
   }
@@ -396,9 +477,7 @@ function animateWarmFire(root, coarsePointer) {
       base.scaleY * (1 + (wave * 0.16 + lick * 0.055) * lowPower),
       base.scaleZ * (1 - wave * 0.055 * lowPower),
     );
-    if (flame.material) {
-      flame.material.emissiveIntensity = base.emissiveIntensity * (1 + (medium * 0.12 + lick * 0.08) * lowPower);
-    }
+    if (flame.material) flame.material.emissiveIntensity = base.emissiveIntensity * (1 + (medium * 0.12 + lick * 0.08) * lowPower);
   });
 
   const embers = fireplace.children.filter((child) => child?.name === 'war-room-fire-ember' || child?.material?.emissive?.getHex?.() === 0xff4a13);
@@ -408,6 +487,31 @@ function animateWarmFire(root, coarsePointer) {
     if (ember.userData.castleBaseEmissive == null) ember.userData.castleBaseEmissive = ember.material.emissiveIntensity || 0.8;
     ember.material.emissiveIntensity = ember.userData.castleBaseEmissive * (1 + 0.2 * Math.sin(now * 0.0064 + index * 1.83));
   }
+}
+
+function finalizeFurnitureBalance(root, wallZ, towardBoard, coarsePointer) {
+  if (!root || root.userData?.warRoomFurnitureBalance === 'centered-v3') return;
+  const sofaOffset = coarsePointer ? 6.45 : 7.05;
+  const consoleOffset = coarsePointer ? 3.7 : 4.2;
+
+  for (const [name, side] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
+    const sofa = root.getObjectByName?.(name);
+    if (!sofa) continue;
+    sofa.position.set(side * 6.28, 0.02, wallZ + towardBoard * sofaOffset);
+    sofa.rotation.y = -side * towardBoard * Math.PI / 2;
+    sofa.userData.warRoomOffsetFromWall = sofaOffset;
+    sofa.userData.warRoomFurniturePlacement = 'side-wall-centered-v3';
+    sofa.userData.facesWarTable = true;
+  }
+
+  for (const [name, side] of [['war-room-side-console-left', -1], ['war-room-side-console-right', 1]]) {
+    const consoleGroup = root.getObjectByName?.(name);
+    if (!consoleGroup) continue;
+    consoleGroup.position.set(side * 6.72, 0, wallZ + towardBoard * consoleOffset);
+    consoleGroup.userData.warRoomOffsetFromWall = consoleOffset;
+    consoleGroup.userData.warRoomFurniturePlacement = 'side-console-centered-v3';
+  }
+  root.userData.warRoomFurnitureBalance = 'centered-v3';
 }
 
 function attachSceneDriver(layer, coarsePointer) {
@@ -421,15 +525,31 @@ function attachSceneDriver(layer, coarsePointer) {
   };
 }
 
+function attachFinalRefinementDriver(layer, wallZ, towardBoard, coarsePointer) {
+  const driver = layer.getObjectByName('war-room-armor-visor') || layer.getObjectByName('war-room-armor-guard-right');
+  if (!driver) return;
+  driver.userData.warRoomFinalRefinementDriver = true;
+  const previous = driver.onBeforeRender;
+  driver.onBeforeRender = (...args) => {
+    previous?.(...args);
+    finalizeFurnitureBalance(sceneRoot(driver), wallZ, towardBoard, coarsePointer);
+  };
+}
+
 export function buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer = false } = {}) {
   const layer = new THREE.Group();
   layer.name = 'war-room-castle-architecture';
   layer.userData.warRoomArchitecture = 'european-castle';
+  layer.userData.warRoomCastleStyle = 'dark-germanic-ashlar-v3';
   addTiledFloor(layer, wallZ, towardBoard, coarsePointer);
   addSideWalls(layer, wallZ, towardBoard, coarsePointer);
   addSideConsoles(layer, wallZ, towardBoard, coarsePointer);
   addPremiumWarRoomPaintings(layer, { wallZ, towardBoard, coarsePointer });
+  refinePremiumGallery(layer, towardBoard, coarsePointer);
+  addArmorGuard(layer, -1, wallZ, towardBoard, coarsePointer);
+  addArmorGuard(layer, 1, wallZ, towardBoard, coarsePointer);
   attachSceneDriver(layer, coarsePointer);
+  attachFinalRefinementDriver(layer, wallZ, towardBoard, coarsePointer);
   return layer;
 }
 

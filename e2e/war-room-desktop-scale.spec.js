@@ -23,7 +23,7 @@ async function openDesktopWarRoom(page) {
   return { warRoom, shell };
 }
 
-test('War Room · desktop dedica la mayor parte del salón al tablero', async ({ page }) => {
+test('War Room · desktop dedica el salón al tablero y atraca el chat bajo Matthias', async ({ page }) => {
   test.setTimeout(90_000);
   const { warRoom, shell } = await openDesktopWarRoom(page);
 
@@ -31,17 +31,28 @@ test('War Room · desktop dedica la mayor parte del salón al tablero', async ({
     const room = document.querySelector('.board-live-row.is-3d-warroom')?.getBoundingClientRect();
     const board = document.querySelector('.board3d-main-shell')?.getBoundingClientRect();
     const commander = document.querySelector('.game-3d-command-column')?.getBoundingClientRect();
-    const chat = document.querySelector('.game-side-column-3d')?.getBoundingClientRect();
-    if (!room || !board || !commander || !chat) return null;
+    const chat = document.querySelector('.game-side-column-3d .game-chat')?.getBoundingClientRect();
+    const music = document.querySelector('.game-side-column-3d .game-side-music')?.getBoundingClientRect();
+    const notation = document.querySelector('.game-side-column-3d .game-notation-disclosure')?.getBoundingClientRect();
+    if (!room || !board || !commander || !chat || !music || !notation) return null;
     return {
       roomWidth: room.width,
-      roomHeight: room.height,
+      boardLeft: board.left,
+      boardRight: board.right,
       boardWidth: board.width,
       boardHeight: board.height,
+      commanderLeft: commander.left,
+      commanderRight: commander.right,
+      commanderBottom: commander.bottom,
       commanderWidth: commander.width,
-      commanderHeight: commander.height,
+      chatLeft: chat.left,
+      chatRight: chat.right,
+      chatTop: chat.top,
       chatWidth: chat.width,
-      chatHeight: chat.height,
+      musicLeft: music.left,
+      musicWidth: music.width,
+      notationLeft: notation.left,
+      notationWidth: notation.width,
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,
     };
@@ -52,9 +63,14 @@ test('War Room · desktop dedica la mayor parte del salón al tablero', async ({
   expect(geometry.boardHeight).toBeGreaterThan(830);
   expect(geometry.boardWidth / geometry.roomWidth).toBeGreaterThan(.63);
   expect(geometry.commanderWidth).toBeGreaterThan(180);
-  expect(geometry.chatWidth).toBeGreaterThan(210);
-  expect(geometry.commanderHeight / geometry.roomHeight).toBeGreaterThan(.96);
-  expect(geometry.chatHeight / geometry.roomHeight).toBeGreaterThan(.96);
+  expect(geometry.chatWidth).toBeGreaterThan(180);
+  expect(Math.abs(geometry.chatLeft - geometry.commanderLeft)).toBeLessThan(4);
+  expect(geometry.chatRight).toBeLessThanOrEqual(geometry.boardLeft - 2);
+  expect(geometry.chatTop).toBeGreaterThanOrEqual(geometry.commanderBottom - 4);
+  expect(geometry.musicLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
+  expect(geometry.notationLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
+  expect(geometry.musicWidth).toBeGreaterThan(190);
+  expect(geometry.notationWidth).toBeGreaterThan(190);
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
 
   await expect(warRoom).toBeVisible();
