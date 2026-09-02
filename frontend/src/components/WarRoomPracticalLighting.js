@@ -4,6 +4,8 @@ import { installWarRoomArchitecturalUpper } from './WarRoomArchitecturalUpper.js
 import { installWarRoomArchitecturalPatina } from './WarRoomArchitecturalPatina.js';
 import { installWarRoomTextileFinish } from './WarRoomTextileFinish.js';
 import { installWarRoomNightWindowDepth } from './WarRoomNightWindowDepth.js';
+import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
+import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -74,7 +76,7 @@ function addMuseumSideKey(group, { side, wallZ, towardBoard }) {
 
   const target = new THREE.Object3D();
   target.name = side < 0 ? 'war-room-museum-side-target-left' : 'war-room-museum-side-target-right';
-  target.position.set(side * 5.72, 2.55, wallZ + towardBoard * 1.72);
+  target.position.set(side * 6.05, 2.58, wallZ + towardBoard * 2.7);
   light.target = target;
 
   group.add(target);
@@ -93,12 +95,15 @@ export function applyWarRoomPracticalLighting(group, {
   // read as one room. These lightweight passes are idempotent and desktop-only:
   // depth grounds the furniture, upper framing closes the far silhouette, patina
   // breaks showroom symmetry, textile finish removes perfectly smooth surfaces,
-  // and the night-window pass adds depth behind the existing moon/skyline.
+  // the night-window pass adds depth, and the final composition pass separates
+  // armor from consoles while giving paintings/fireplace their finished surfaces.
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalPatina(group, { coarsePointer });
   installWarRoomTextileFinish(group, { coarsePointer });
   installWarRoomNightWindowDepth(group, { wallZ, towardBoard, coarsePointer });
+  applyWarRoomCompositionPolish(group, { wallZ, towardBoard, coarsePointer });
+  attachWarRoomCompositionRootDriver(group, { wallZ, towardBoard, coarsePointer });
 
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
 

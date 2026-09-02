@@ -92,7 +92,7 @@ describe('War Room castle visual contract', () => {
     expect(flame.material.blending).toBe(THREE.AdditiveBlending);
 
     const canvas = room.getObjectByName('war-room-premium-painting-canvas');
-    expect(canvas.material.map.userData.resolution).toEqual([160, 112]);
+    expect(canvas.material.map.userData.resolution).toEqual([192, 128]);
     expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
   });
 
