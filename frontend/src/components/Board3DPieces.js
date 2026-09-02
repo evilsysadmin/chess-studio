@@ -57,22 +57,22 @@ function knightGeometryTemplateSet(coarsePointer = false) {
 
   const detail = pieceDetailProfile(coarsePointer);
   const shape = new THREE.Shape();
-  // A more pronounced stallion profile: deeper rear neck, proud forehead and
-  // a longer jaw. It remains a single isolated template clone per knight, so
-  // the resilience fix is untouched while the silhouette now reads at range.
-  shape.moveTo(-0.17, -0.02);
-  shape.bezierCurveTo(-0.24, 0.13, -0.23, 0.31, -0.12, 0.43);
-  shape.bezierCurveTo(-0.045, 0.52, -0.01, 0.66, 0.025, 0.76);
-  shape.bezierCurveTo(0.09, 0.89, 0.22, 0.92, 0.31, 0.83);
-  shape.bezierCurveTo(0.39, 0.75, 0.42, 0.64, 0.36, 0.57);
-  shape.bezierCurveTo(0.31, 0.51, 0.26, 0.48, 0.22, 0.43);
-  shape.bezierCurveTo(0.17, 0.36, 0.22, 0.25, 0.13, 0.12);
-  shape.bezierCurveTo(0.055, 0.025, -0.055, -0.035, -0.17, -0.02);
+  // v5 follows a cleaner classical knight profile. The rear line rises in a
+  // controlled S-curve instead of ballooning into the shoulder/head mass that
+  // made v4 read as a hunchback at tactical camera distance.
+  shape.moveTo(-0.11, -0.04);
+  shape.bezierCurveTo(-0.16, 0.10, -0.15, 0.24, -0.085, 0.36);
+  shape.bezierCurveTo(-0.03, 0.47, 0.025, 0.56, 0.09, 0.63);
+  shape.bezierCurveTo(0.15, 0.70, 0.24, 0.72, 0.31, 0.66);
+  shape.bezierCurveTo(0.38, 0.60, 0.40, 0.52, 0.35, 0.46);
+  shape.bezierCurveTo(0.30, 0.41, 0.24, 0.39, 0.20, 0.34);
+  shape.bezierCurveTo(0.15, 0.27, 0.16, 0.16, 0.10, 0.07);
+  shape.bezierCurveTo(0.04, -0.02, -0.04, -0.07, -0.11, -0.04);
   const head = new THREE.ExtrudeGeometry(shape, {
-    depth: coarsePointer ? 0.22 : 0.255,
+    depth: coarsePointer ? 0.22 : 0.24,
     bevelEnabled: true,
-    bevelThickness: coarsePointer ? 0.035 : 0.045,
-    bevelSize: coarsePointer ? 0.025 : 0.032,
+    bevelThickness: coarsePointer ? 0.035 : 0.04,
+    bevelSize: coarsePointer ? 0.025 : 0.029,
     bevelSegments: detail.bevel,
     curveSegments: detail.curve,
   });
@@ -80,11 +80,11 @@ function knightGeometryTemplateSet(coarsePointer = false) {
 
   const geometries = Object.freeze({
     base: markKnightTemplateGeometry(latheGeometry(BASE_PROFILE, detail.lathe), `${key}:knight-base`),
-    neck: markKnightTemplateGeometry(latheGeometry([[0.19, 0.29], [0.175, 0.39], [0.14, 0.51], [0.15, 0.61]], detail.lathe), `${key}:knight-neck`),
+    neck: markKnightTemplateGeometry(latheGeometry([[0.19, 0.29], [0.16, 0.39], [0.12, 0.51], [0.105, 0.6]], detail.lathe), `${key}:knight-neck`),
     head: markKnightTemplateGeometry(head, `${key}:knight-head`),
-    ear: markKnightTemplateGeometry(new THREE.ConeGeometry(coarsePointer ? 0.06 : 0.072, coarsePointer ? 0.17 : 0.215, detail.cone), `${key}:knight-ear`),
+    ear: markKnightTemplateGeometry(new THREE.ConeGeometry(coarsePointer ? 0.055 : 0.064, coarsePointer ? 0.16 : 0.185, detail.cone), `${key}:knight-ear`),
     eye: markKnightTemplateGeometry(
-      new THREE.SphereGeometry(coarsePointer ? 0.025 : 0.031, Math.max(10, Math.floor(detail.sphereW / 2)), Math.max(7, detail.sphereH - 2)),
+      new THREE.SphereGeometry(coarsePointer ? 0.024 : 0.028, Math.max(10, Math.floor(detail.sphereW / 2)), Math.max(7, detail.sphereH - 2)),
       `${key}:knight-eye`,
     ),
   });
@@ -200,16 +200,18 @@ function buildKnight(main, accent, coarsePointer = false) {
   const geometry = knightGeometrySet(coarsePointer);
   const group = new THREE.Group();
   group.userData.board3DKnightGeometryIsolation = 'per-piece-v2';
-  group.userData.board3DKnightSilhouetteVersion = coarsePointer ? 'lite-v1' : 'carved-stallion-v4';
+  group.userData.board3DKnightSilhouetteVersion = coarsePointer ? 'lite-v1' : 'classical-s-knight-v5';
+  group.userData.board3DKnightPosture = coarsePointer ? 'lite' : 'upright-s-neck-v5';
   addMesh(group, geometry.base, main);
   addMesh(group, geometry.neck, main);
 
-  const headMesh = addMesh(group, geometry.head, main, [0.015, coarsePointer ? 0.69 : 0.735, 0]);
-  headMesh.scale.set(coarsePointer ? 1.05 : 1.18, coarsePointer ? 1.05 : 1.13, coarsePointer ? 1.05 : 1.12);
-  addMesh(group, geometry.ear, accent, [-0.075, coarsePointer ? 1.02 : 1.105, 0.026], [0.02, 0, -0.34]);
-  addMesh(group, geometry.ear, accent, [0.075, coarsePointer ? 1.02 : 1.105, 0.026], [0.02, 0, 0.34]);
-  addMesh(group, geometry.eye, accent, [coarsePointer ? 0.17 : 0.22, coarsePointer ? 0.82 : 0.89, coarsePointer ? 0.135 : 0.15]);
-  addMesh(group, geometry.eye, accent, [coarsePointer ? 0.17 : 0.22, coarsePointer ? 0.82 : 0.89, coarsePointer ? -0.135 : -0.15]);
+  const headMesh = addMesh(group, geometry.head, main, [0.02, coarsePointer ? 0.68 : 0.72, 0]);
+  headMesh.scale.set(coarsePointer ? 1.04 : 1.10, coarsePointer ? 1.03 : 1.04, coarsePointer ? 1.04 : 1.08);
+  headMesh.userData.knightHeadProfile = coarsePointer ? 'lite' : 'classical-s-neck-v5';
+  addMesh(group, geometry.ear, accent, [-0.06, coarsePointer ? 0.99 : 1.045, 0.022], [0.02, 0, -0.28]);
+  addMesh(group, geometry.ear, accent, [0.06, coarsePointer ? 0.99 : 1.045, 0.022], [0.02, 0, 0.28]);
+  addMesh(group, geometry.eye, accent, [coarsePointer ? 0.16 : 0.185, coarsePointer ? 0.80 : 0.835, coarsePointer ? 0.125 : 0.135]);
+  addMesh(group, geometry.eye, accent, [coarsePointer ? 0.16 : 0.185, coarsePointer ? 0.80 : 0.835, coarsePointer ? -0.125 : -0.135]);
   addSignatureDetail(group, 'n', accent, coarsePointer);
   addContactShadow(group, coarsePointer);
   return group;

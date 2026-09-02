@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import './WarRoomUserPolish.css';
 
-export const WAR_ROOM_USER_POLISH_VERSION = 'room-balance-v23';
+export const WAR_ROOM_USER_POLISH_VERSION = 'room-balance-v24';
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -188,14 +188,14 @@ function improveGallery(group) {
 
 function separateFurniture(group, { wallZ, towardBoard }) {
   const sofaOffset = 12.35;
-  const consoleOffset = 1.75;
+  const consoleOffset = 2.35;
 
   for (const [name, side] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
     const sofa = group.getObjectByName?.(name);
     if (!sofa) continue;
     sofa.position.set(side * 6.95, 0.02, wallZ + towardBoard * sofaOffset);
     sofa.userData.warRoomOffsetFromWall = sofaOffset;
-    sofa.userData.warRoomFurniturePlacement = 'front-corner-club-sofa-v23';
+    sofa.userData.warRoomFurniturePlacement = 'front-corner-club-sofa-v24';
   }
 
   for (const [name, side] of [['war-room-side-console-left', -1], ['war-room-side-console-right', 1]]) {
@@ -204,15 +204,15 @@ function separateFurniture(group, { wallZ, towardBoard }) {
     table.position.x = side * 6.62;
     table.position.z = wallZ + towardBoard * consoleOffset;
     table.userData.warRoomOffsetFromWall = consoleOffset;
-    table.userData.warRoomFurniturePlacement = 'rear-lower-campaign-table-v23';
+    table.userData.warRoomFurniturePlacement = 'rear-lower-campaign-table-v24';
   }
 
   group.userData.warRoomFurnitureGap = sofaOffset - consoleOffset;
-  group.userData.warRoomFurnitureOrder = 'tables-rear-armors-middle-sofas-front-v23';
+  group.userData.warRoomFurnitureOrder = 'tables-rear-armors-lower-middle-sofas-front-v24';
 }
 
 function placeArmor(group, { wallZ, towardBoard }) {
-  const armorOffset = 5.45;
+  const armorOffset = 6.55;
   let count = 0;
   for (const [name, side] of [
     ['war-room-teutonic-armor-left', -1],
@@ -220,14 +220,14 @@ function placeArmor(group, { wallZ, towardBoard }) {
   ]) {
     const armor = group.getObjectByName?.(name);
     if (!armor) continue;
-    armor.position.set(side * 6.35, 0, wallZ + towardBoard * armorOffset);
+    armor.position.set(side * 5.95, 0, wallZ + towardBoard * armorOffset);
     armor.rotation.y = -side * towardBoard * 0.72;
     armor.userData.warRoomOffsetFromWall = armorOffset;
-    armor.userData.warRoomArmorPlacement = 'centered-middle-sentry-facing-board-v23';
+    armor.userData.warRoomArmorPlacement = 'lower-centered-sentry-facing-board-v24';
     armor.userData.facesWarTable = true;
     count += 1;
   }
-  group.userData.warRoomArmorComposition = 'centered-middle-sentries-v23';
+  group.userData.warRoomArmorComposition = 'lower-centered-sentries-v24';
   return count;
 }
 
@@ -273,7 +273,7 @@ function retireWallMonograms(group) {
   group.traverse?.((object) => {
     if (!retiredNames.has(object?.name)) return;
     object.visible = false;
-    object.userData.warRoomBraceStyle = 'retired-no-monogram-v23';
+    object.userData.warRoomBraceStyle = 'retired-no-monogram-v24';
     changed += 1;
   });
   group.userData.warRoomDiagonalMonogramsRetired = changed;

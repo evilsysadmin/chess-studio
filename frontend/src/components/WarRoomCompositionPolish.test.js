@@ -44,7 +44,7 @@ function runRootDriver(room) {
 describe('WarRoomCompositionPolish', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('coloca las armaduras centradas en la franja media y retira las juntas que dibujaban M accidentales', () => {
+  it('coloca las armaduras más abajo y centradas y retira las juntas que dibujaban M accidentales', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
     const rightArmor = room.getObjectByName('war-room-teutonic-armor-right');
@@ -57,16 +57,16 @@ describe('WarRoomCompositionPolish', () => {
     const owner = compositionOwner(room);
 
     expect(owner).toBeTruthy();
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
-    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(5.45, 5);
-    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(5.45, 5);
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('lower-centered-sentry-facing-board-v24');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('lower-centered-sentry-facing-board-v24');
+    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.55, 5);
+    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.55, 5);
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
-    expect(leftArmor.position.z).toBeGreaterThan(leftConsole.position.z + 3.5);
-    expect(rightArmor.position.z).toBeGreaterThan(rightConsole.position.z + 3.5);
-    expect(Math.abs(leftArmor.position.x)).toBeLessThan(Math.abs(leftConsole.position.x));
-    expect(Math.abs(rightArmor.position.x)).toBeLessThan(Math.abs(rightConsole.position.x));
+    expect(leftArmor.position.z).toBeGreaterThan(leftConsole.position.z + 4);
+    expect(rightArmor.position.z).toBeGreaterThan(rightConsole.position.z + 4);
+    expect(Math.abs(leftArmor.position.x)).toBeLessThan(Math.abs(leftConsole.position.x) - .5);
+    expect(Math.abs(rightArmor.position.x)).toBeLessThan(Math.abs(rightConsole.position.x) - .5);
     expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(0.65);
     expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(0.65);
     expect(mortarJoints.length).toBeGreaterThan(10);

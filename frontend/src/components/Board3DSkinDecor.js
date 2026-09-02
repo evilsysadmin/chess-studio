@@ -32,10 +32,6 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   material.metalness = THREE.MathUtils.clamp((material.metalness || 0) + profile.metalness + (accent ? 0.05 : 0), 0, 1);
   material.roughness = THREE.MathUtils.clamp((material.roughness || 0.5) + profile.roughness - (accent ? 0.03 : 0), 0.08, 1);
 
-  // v4 deliberately reads at normal tactical-camera distance. The previous
-  // satin profile was technically richer but visually too close to the matte
-  // baseline. Keep ivory carved rather than plastic, while giving bevels a
-  // broad warm highlight that survives the room's dark exposure.
   if (polishedIvory) {
     material.color.lerp(new THREE.Color(0xfff4dc), 0.17);
     material.metalness = Math.min(material.metalness, 0.01);
@@ -49,9 +45,6 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
     material.userData.pieceFinish = 'polished-carved-ivory-v4';
   }
 
-  // Lift ebony just enough that the carved volumes remain readable, then use a
-  // tighter lacquer highlight. Very metallic skins remain excluded so Cyber,
-  // Regimiento, etc. preserve their own visual identity.
   if (classicEbony) {
     material.color.lerp(new THREE.Color(0x3a3c42), 0.12);
     material.roughness = THREE.MathUtils.clamp(material.roughness, 0.22, 0.33);
@@ -107,70 +100,70 @@ function addPremiumKnightSculpture(group, accentMaterial, coarsePointer) {
   const mainMaterial = group.children.find((child) => child?.isMesh && child.material && !child.userData?.contactShadow)?.material || accentMaterial;
   let count = 0;
 
-  // A pronounced muzzle changes the actual silhouette, rather than adding a
-  // detail that disappears at tactical distance.
+  // v5 keeps the muzzle readable but narrows it so the head feels carved and
+  // equine rather than bulbous. The main silhouette now comes from the S-neck.
   addKnightSculptMesh(
     group,
-    new THREE.SphereGeometry(0.128, 20, 14),
+    new THREE.SphereGeometry(0.112, 20, 14),
     mainMaterial,
-    [0.285, 0.735, 0],
-    [1.58, 0.72, 0.94],
-    [0, 0, -0.09],
+    [0.29, 0.705, 0],
+    [1.45, 0.58, 0.84],
+    [0, 0, -0.07],
     'muzzle',
   );
   count += 1;
 
-  for (const z of [-0.082, 0.082]) {
+  for (const z of [-0.074, 0.074]) {
     addKnightSculptMesh(
       group,
-      new THREE.SphereGeometry(0.021, 12, 8),
+      new THREE.SphereGeometry(0.018, 12, 8),
       accentMaterial,
-      [0.402, 0.724, z],
-      [1, 0.62, 0.76],
+      [0.386, 0.698, z],
+      [1, 0.58, 0.7],
       [0, 0, 0],
       'nostril',
     );
     addKnightSculptMesh(
       group,
-      new THREE.BoxGeometry(0.13, 0.032, 0.03, 2, 1, 1),
+      new THREE.BoxGeometry(0.115, 0.027, 0.026, 2, 1, 1),
       mainMaterial,
-      [0.18, 0.895, z * 1.78],
+      [0.165, 0.846, z * 1.72],
       [1, 1, 1],
-      [0, z > 0 ? -0.12 : 0.12, -0.14],
+      [0, z > 0 ? -0.1 : 0.1, -0.1],
       'brow',
     );
     addKnightSculptMesh(
       group,
-      new THREE.BoxGeometry(0.19, 0.028, 0.035, 2, 1, 1),
+      new THREE.BoxGeometry(0.17, 0.024, 0.032, 2, 1, 1),
       accentMaterial,
-      [0.175, 0.79, z * 1.82],
+      [0.175, 0.755, z * 1.78],
       [1, 1, 1],
-      [0, z > 0 ? -0.08 : 0.08, -0.34],
+      [0, z > 0 ? -0.07 : 0.07, -0.27],
       'bridle',
     );
     count += 3;
   }
 
-  // Five larger carved mane fins make the back of the neck readable from the
-  // player's distant perspective. They use the body material so they remain a
-  // sculpture, while the bridle carries the gold/red skin identity.
-  const maneGeometry = new THREE.ConeGeometry(0.058, 0.18, 10);
-  for (let index = 0; index < 5; index += 1) {
+  // Four short, low fins follow the rear S-curve instead of climbing into a
+  // hump. This keeps a recognisable mane without rebuilding Notre-Dame.
+  const maneGeometry = new THREE.ConeGeometry(0.043, 0.13, 10);
+  for (let index = 0; index < 4; index += 1) {
     addKnightSculptMesh(
       group,
       maneGeometry.clone(),
       mainMaterial,
-      [-0.13 - index * 0.012, 0.74 + index * 0.088, 0],
-      [1.08, 1 - index * 0.045, 0.8],
-      [0, 0, -0.24],
+      [-0.105 - index * 0.006, 0.64 + index * 0.072, 0],
+      [0.82, 0.9 - index * 0.055, 0.62],
+      [0, 0, -0.11],
       'mane',
     );
     count += 1;
   }
   maneGeometry.dispose();
 
-  group.userData.board3DKnightDetailVersion = 'sculpted-v4';
+  group.userData.board3DKnightDetailVersion = 'sculpted-v5';
   group.userData.board3DKnightPremiumDetailCount = count;
+  group.userData.board3DKnightManeProfile = 'low-s-curve-v5';
   return count;
 }
 

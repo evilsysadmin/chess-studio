@@ -72,22 +72,22 @@ function dispose(root) {
 }
 
 describe('War Room user polish', () => {
-  it('ordena mesas abajo del fondo, armaduras centradas en medio y sofás en el borde delantero', () => {
+  it('baja mesas y armaduras, centra las sentinelas y conserva los sofás en el borde delantero', () => {
     const room = makeRoom();
     expect(applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
 
     const sofa = room.getObjectByName('war-room-sofa-left');
     const table = room.getObjectByName('war-room-side-console-left');
     const armor = room.getObjectByName('war-room-teutonic-armor-left');
-    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(1.75, 5);
-    expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(5.45, 5);
+    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(2.35, 5);
+    expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(6.55, 5);
     expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
-    expect(room.userData.warRoomFurnitureGap).toBeGreaterThan(10);
-    expect(room.userData.warRoomFurnitureOrder).toBe('tables-rear-armors-middle-sofas-front-v23');
-    expect(table.position.z).toBeLessThan(armor.position.z - 3.5);
-    expect(armor.position.z).toBeLessThan(sofa.position.z - 6.5);
-    expect(Math.abs(armor.position.x)).toBeLessThan(Math.abs(table.position.x));
-    expect(armor.userData.warRoomArmorPlacement).toBe('centered-middle-sentry-facing-board-v23');
+    expect(room.userData.warRoomFurnitureGap).toBeCloseTo(10, 5);
+    expect(room.userData.warRoomFurnitureOrder).toBe('tables-rear-armors-lower-middle-sofas-front-v24');
+    expect(table.position.z).toBeLessThan(armor.position.z - 4);
+    expect(armor.position.z).toBeLessThan(sofa.position.z - 5.5);
+    expect(Math.abs(armor.position.x)).toBeLessThan(Math.abs(table.position.x) - .5);
+    expect(armor.userData.warRoomArmorPlacement).toBe('lower-centered-sentry-facing-board-v24');
     expect(Math.abs(armor.rotation.y)).toBeGreaterThan(.65);
     expect(armor.userData.facesWarTable).toBe(true);
     dispose(room);
@@ -102,7 +102,7 @@ describe('War Room user polish', () => {
     });
     expect(diagonals).toHaveLength(10);
     expect(diagonals.every((object) => object.visible === false)).toBe(true);
-    expect(diagonals.every((object) => object.userData.warRoomBraceStyle === 'retired-no-monogram-v23')).toBe(true);
+    expect(diagonals.every((object) => object.userData.warRoomBraceStyle === 'retired-no-monogram-v24')).toBe(true);
     expect(room.userData.warRoomDiagonalMonogramsRetired).toBe(10);
     expect(room.userData.warRoomMonogramFree).toBe(true);
     dispose(room);
