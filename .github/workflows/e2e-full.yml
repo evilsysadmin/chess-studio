@@ -8,8 +8,10 @@ on:
       - 'frontend/src/components/Board3D*.css'
       - 'frontend/src/components/WarRoom3D*.js'
       - 'frontend/src/components/WarRoom3D*.css'
+      - 'frontend/src/components/WarRoom3DAnimation.js'
       - 'frontend/src/components/PremiumWarRoomScene.js'
       - 'frontend/src/components/WarRoomCastleArchitecture.js'
+      - 'frontend/src/components/WarRoomPremiumPaintings.js'
       - 'frontend/src/components/GameBoardView.jsx'
       - 'frontend/src/styles/19-game-focus.css'
       - 'frontend/src/warRoomPointerCapture.js'
@@ -24,7 +26,7 @@ on:
       - '.github/workflows/e2e-full.yml'
   workflow_dispatch:
   schedule:
-    - cron: '17 3 * * *'
+    - cron: '17 2 * * 0'
 
 permissions:
   contents: read
@@ -40,6 +42,65 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Classify War Room PR surface
+        if: github.event_name == 'pull_request'
+        id: scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          printf '%s\n' "$files"
+
+          full_logic=false
+          visual=false
+          focus=false
+
+          while IFS= read -r file; do
+            [[ -n "$file" ]] || continue
+            case "$file" in
+              frontend/src/components/WarRoomCastleArchitecture.js|frontend/src/components/WarRoomPremiumPaintings.js|frontend/src/components/PremiumWarRoomScene.js|frontend/src/components/WarRoom3DAnimation.js|frontend/src/components/Board3D*.css|frontend/src/components/WarRoom3D*.css|e2e/war-room-desktop-scale.spec.js)
+                visual=true
+                ;;
+              frontend/src/styles/19-game-focus.css|e2e/android-game-focus.spec.js)
+                visual=true
+                focus=true
+                ;;
+              frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/helpers.js|.github/workflows/e2e-full.yml)
+                full_logic=true
+                visual=true
+                focus=true
+                ;;
+            esac
+          done <<< "$files"
+
+          # The workflow only starts for the paths declared above. If a future
+          # path somehow reaches here without classification, fail safe by
+          # running the complete PR gate rather than returning a false green.
+          if [[ "$full_logic" != true && "$visual" != true && "$focus" != true ]]; then
+            full_logic=true
+            visual=true
+            focus=true
+          fi
+
+          {
+            echo "full_logic=$full_logic"
+            echo "visual=$visual"
+            echo "focus=$focus"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo '### War Room browser scope'
+            echo
+            echo "- Rules/input parity: \`$full_logic\`"
+            echo "- 3D mount/scale: \`$visual\`"
+            echo "- Android Focus: \`$focus\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/setup-node@v7
         with:
@@ -76,27 +137,31 @@ jobs:
         run: ./node_modules/.bin/playwright install --with-deps chromium firefox webkit
 
       - name: Prove War Room Android selection and movement
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.scope.outputs.full_logic == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0
 
       - name: Prove War Room special-state parity
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.scope.outputs.full_logic == 'true'
         working-directory: e2e
+        # Hosted runners cannot initialize multiple heavyweight WebGL War Rooms
+        # reliably: both 5 and 2 concurrent workers produced mount/actionability
+        # timeouts and worse wall-clock time. Keep the proven deterministic gate
+        # sequential; save time by not running it for decor-only diffs.
         run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000
 
       - name: Prove War Room desktop input
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.scope.outputs.full_logic == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000
 
       - name: Prove War Room desktop board scale
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.scope.outputs.visual == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --timeout=75000
 
       - name: Prove Android game Focus
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.scope.outputs.focus == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000
 
