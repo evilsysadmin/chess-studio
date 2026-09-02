@@ -337,8 +337,8 @@ jobs:
           fi
           python3 scripts/staging_smoke_user_cleanup.py
 
-      - name: Upload staging browser diagnostics on failure
-        if: failure()
+      - name: Upload staging browser evidence
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: staging-live-playwright-${{ env.DEPLOY_SHA }}
@@ -362,5 +362,6 @@ jobs:
             echo '- Mongo staging: `ready`'
             echo '- Release gate: `OK`'
             echo '- Live browser smoke: `login → Home → Partida rápida → e2-e4 · OK`'
+            echo '- Visual evidence: `vídeo Chromium retenido 7 días en el artefacto staging-live-playwright-*`'
             echo '- Identidad CI: `eliminada y verificada`'
           } >> "$GITHUB_STEP_SUMMARY"
