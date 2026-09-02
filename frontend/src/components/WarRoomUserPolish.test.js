@@ -66,37 +66,40 @@ function dispose(root) {
 }
 
 describe('War Room user polish', () => {
-  it('separa claramente mesas y sofás y saca las armaduras de encima de las mesas', () => {
+  it('ordena mesas atrás, armaduras en medio y sofás en el borde delantero', () => {
     const room = makeRoom();
     expect(applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
 
     const sofa = room.getObjectByName('war-room-sofa-left');
     const table = room.getObjectByName('war-room-side-console-left');
     const armor = room.getObjectByName('war-room-teutonic-armor-left');
-    expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(9.15, 5);
-    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(.82, 5);
-    expect(room.userData.warRoomFurnitureGap).toBeGreaterThan(8);
-    expect(armor.userData.warRoomArmorPlacement).toBe('floor-sentry-facing-board-v16');
-    expect(armor.position.z).toBeGreaterThan(table.position.z + 2);
-    expect(armor.position.z).toBeLessThan(sofa.position.z - 4);
-    expect(Math.abs(armor.rotation.y)).toBeGreaterThan(.6);
+    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(.72, 5);
+    expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(5.15, 5);
+    expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.15, 5);
+    expect(room.userData.warRoomFurnitureGap).toBeGreaterThan(11);
+    expect(room.userData.warRoomFurnitureOrder).toBe('tables-rear-armors-middle-sofas-front-v20');
+    expect(table.position.z).toBeLessThan(armor.position.z - 4);
+    expect(armor.position.z).toBeLessThan(sofa.position.z - 6);
+    expect(armor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
+    expect(Math.abs(armor.rotation.y)).toBeGreaterThan(.75);
     expect(armor.userData.facesWarTable).toBe(true);
     dispose(room);
   });
 
-  it('elimina la lectura de M diagonal en las paredes sin retirar la estructura', () => {
+  it('elimina por completo los tirantes diagonales heredados que leían como M', () => {
     const room = makeRoom();
     applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 });
     const braces = [];
     room.traverse((object) => { if (object.name === 'war-room-hammerbeam-brace') braces.push(object); });
     expect(braces).toHaveLength(6);
-    expect(braces.every((brace) => brace.rotation.z === 0)).toBe(true);
-    expect(braces.every((brace) => brace.userData.warRoomBraceStyle === 'horizontal-hammerbeam-v16')).toBe(true);
+    expect(braces.every((brace) => brace.visible === false)).toBe(true);
+    expect(braces.every((brace) => brace.userData.warRoomBraceStyle === 'retired-no-monogram-v20')).toBe(true);
     expect(room.userData.warRoomDiagonalMonogramsRetired).toBe(6);
+    expect(room.userData.warRoomMonogramFree).toBe(true);
     dispose(room);
   });
 
-  it('lleva el ladrillo al fondo, lo ennegrece y convierte ambos cuadros en paisajes inequívocos', () => {
+  it('mantiene la chimenea enrasada y monta bosque y mar con acabado premium', () => {
     const room = makeRoom();
     applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 });
     const fire = room.getObjectByName('war-room-fireplace');
@@ -104,14 +107,19 @@ describe('War Room user polish', () => {
     expect(back.position.z).toBeCloseTo(.018, 5);
     expect(back.material.color.getHex()).toBe(0x8f5548);
     expect(back.material.emissive.getHex()).toBe(0x210604);
-    expect(fire.userData.warRoomFirebrickPalette).toBe('red-black-sooted-v16');
+    expect(fire.userData.warRoomFirebrickPalette).toBe('red-black-sooted-v20');
 
     const left = room.getObjectByName('war-room-premium-painting-0');
     const right = room.getObjectByName('war-room-premium-painting-1');
-    expect(left.userData.warRoomLandscapeSubject).toBe('rhine-valley-castle-v16');
-    expect(right.userData.warRoomLandscapeSubject).toBe('alpine-lake-fortress-v16');
-    expect(left.getObjectByName('war-room-premium-painting-canvas').material.map.image.width).toBe(256);
-    expect(right.getObjectByName('war-room-premium-painting-canvas').material.map.image.height).toBe(160);
+    const leftCanvas = left.getObjectByName('war-room-premium-painting-canvas');
+    const rightCanvas = right.getObjectByName('war-room-premium-painting-canvas');
+    expect(left.userData.warRoomLandscapeSubject).toBe('black-forest-lake-dusk-v20');
+    expect(right.userData.warRoomLandscapeSubject).toBe('north-sea-cliffs-v20');
+    expect(leftCanvas.material.map.image.width).toBe(384);
+    expect(rightCanvas.material.map.image.height).toBe(240);
+    expect(leftCanvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
+    expect(leftCanvas.material.clearcoat).toBeGreaterThanOrEqual(.14);
+    expect(leftCanvas.material.roughness).toBeLessThan(.7);
     expect(room.userData.warRoomUserPolishVersion).toBe(WAR_ROOM_USER_POLISH_VERSION);
     dispose(room);
   });
