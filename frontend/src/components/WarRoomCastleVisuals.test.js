@@ -79,8 +79,8 @@ describe('War Room castle visual contract', () => {
     const leftConsole = room.getObjectByName('war-room-side-console-left');
     expect(leftSofa.userData.warRoomPremiumUpholstery).toBe('club-tufted-v2');
     expect(leftConsole.userData.warRoomPremiumConsole).toBe('campaign-table-v2');
-    expect(Math.abs(leftSofa.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeGreaterThan(6.4);
-    expect(scene.userData.warRoomFurnitureGap).toBeGreaterThan(6.4);
+    expect(Math.abs(leftSofa.userData.warRoomOffsetFromWall - leftConsole.userData.warRoomOffsetFromWall)).toBeGreaterThan(8);
+    expect(scene.userData.warRoomFurnitureGap).toBeGreaterThan(8);
     expect(room.getObjectByName('war-room-sofa-seat-cushion')).toBeTruthy();
     expect(room.getObjectByName('war-room-console-lower-shelf')).toBeTruthy();
 
@@ -92,7 +92,8 @@ describe('War Room castle visual contract', () => {
     expect(flame.material.blending).toBe(THREE.AdditiveBlending);
 
     const canvas = room.getObjectByName('war-room-premium-painting-canvas');
-    expect(canvas.material.map.userData.resolution).toEqual([192, 128]);
+    expect(canvas.material.map.userData.resolution).toEqual([256, 160]);
+    expect(canvas.material.map.userData.warRoomLandscape).toBe('rhine-valley-castle-v16');
     expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
   });
 
