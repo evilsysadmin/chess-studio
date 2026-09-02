@@ -143,10 +143,36 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 }
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  const baseExposure = coarsePointer ? 1.02 : 1.05;
-  if (gameOver) return { key: 1.65, rim: 8.4, warm: 3.1, exposure: baseExposure - 0.08, fogDensity: 0.022 };
-  if (check) return { key: 2.7, rim: 18.5, warm: 5.2, exposure: baseExposure + 0.01, fogDensity: 0.0195 };
-  return { key: 2.35, rim: 14.5, warm: 5.8, exposure: baseExposure, fogDensity: 0.018 };
+  // v4 art direction: preserve deep castle blacks, but stop crushing the new
+  // brushed steel, gilding and canvas micro-surface work under broad coloured fills.
+  // Local sources (fire/sconces/banker lamp) do more of the storytelling now;
+  // the global key/rim stay restrained and exposure carries the fine material detail.
+  const baseExposure = coarsePointer ? 1.025 : 1.085;
+  if (gameOver) {
+    return {
+      key: coarsePointer ? 1.58 : 1.5,
+      rim: coarsePointer ? 7.1 : 6.8,
+      warm: coarsePointer ? 3.0 : 2.75,
+      exposure: baseExposure - 0.075,
+      fogDensity: coarsePointer ? 0.0215 : 0.0225,
+    };
+  }
+  if (check) {
+    return {
+      key: coarsePointer ? 2.55 : 2.48,
+      rim: coarsePointer ? 16.8 : 16.4,
+      warm: coarsePointer ? 4.9 : 4.55,
+      exposure: baseExposure + 0.005,
+      fogDensity: coarsePointer ? 0.019 : 0.0192,
+    };
+  }
+  return {
+    key: coarsePointer ? 2.2 : 2.12,
+    rim: coarsePointer ? 12.6 : 12.15,
+    warm: coarsePointer ? 5.0 : 4.85,
+    exposure: baseExposure,
+    fogDensity: coarsePointer ? 0.0178 : 0.0172,
+  };
 }
 
 export function adaptiveRenderScale({ coarsePointer = false, slowFrameCount = 0 } = {}) {
