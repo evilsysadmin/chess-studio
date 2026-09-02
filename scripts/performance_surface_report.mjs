@@ -3,8 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = process.cwd();
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(SCRIPT_DIR, '..');
 const FRONTEND_SRC = path.join(ROOT, 'frontend', 'src');
 const OUTPUT_DIR = path.join(ROOT, '.performance');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'runtime-surface.json');
