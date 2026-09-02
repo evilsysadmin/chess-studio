@@ -179,7 +179,7 @@ export function installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, co
   const layer = new THREE.Group();
   layer.name = 'war-room-architectural-depth';
   layer.userData.warRoomArchitecturalDepth = 'v5-grounded-gallery';
-  layer.userData.warRoomArchitecturalDepthMeshBudget = 22;
+  layer.userData.warRoomArchitecturalDepthMeshBudget = 24;
 
   addCommandCarpet(layer, materials);
   addContinuousWallJoinery(layer, wallZ, towardBoard, materials);
@@ -188,6 +188,6 @@ export function installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, co
 
   group.add(layer);
   group.userData.warRoomArchitecturalDepth = 'v5-grounded-gallery';
-  group.userData.warRoomArchitecturalDepthMeshBudget = 22;
-  return 22;
+  group.userData.warRoomArchitecturalDepthMeshBudget = 24;
+  return 24;
 }
