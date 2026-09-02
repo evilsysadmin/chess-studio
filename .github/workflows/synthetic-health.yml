@@ -1,4 +1,4 @@
-name: Synthetic health (production)
+name: Observability · production synthetic
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      CHESS_SYNTHETIC_BASE_URL: ${{ vars.VITE_API_URL || 'https://api.chess-studio.shadowops.dpdns.org/api' }}
+      CHESS_SYNTHETIC_BASE_URL: ${{ vars.CHESS_SYNTHETIC_BASE_URL || 'https://api.chess-studio.shadowops.dpdns.org/api' }}
       CHESS_SYNTHETIC_USERNAME: ${{ secrets.CHESS_SYNTHETIC_USERNAME }}
       CHESS_SYNTHETIC_PASSWORD: ${{ secrets.CHESS_SYNTHETIC_PASSWORD }}
     steps:
