@@ -5,6 +5,7 @@ import MatthiasThreeAvatar, {
   matthiasThreeMotionPhase,
   matthiasThreeMotionProfile,
   matthiasThreeMotionSample,
+  matthiasThreeRenderProfile,
 } from './MatthiasThreeAvatar.jsx';
 
 describe('MatthiasThreeAvatar', () => {
@@ -29,6 +30,29 @@ describe('MatthiasThreeAvatar', () => {
     expect(coffeeA).toBeGreaterThanOrEqual(0);
     expect(coffeeA).toBeLessThan(3.6);
     expect(dossier).not.toBe(coffeeA);
+  });
+
+  it('reduce vértices y cadence en superficies compactas sin degradar desktop', () => {
+    const compact = matthiasThreeRenderProfile({ coarsePointer: true, width: 50, height: 50 });
+    const coarse = matthiasThreeRenderProfile({ coarsePointer: true, width: 180, height: 180 });
+    const desktop = matthiasThreeRenderProfile({ coarsePointer: false, width: 320, height: 420 });
+
+    expect(compact).toEqual({
+      tier: 'compact',
+      widthSegments: 14,
+      heightSegments: 16,
+      maxFps: 30,
+      pixelRatioCap: 1,
+    });
+    expect(coarse.widthSegments * coarse.heightSegments).toBeLessThan(desktop.widthSegments * desktop.heightSegments);
+    expect(coarse.maxFps).toBe(45);
+    expect(desktop).toEqual({
+      tier: 'full',
+      widthSegments: 28,
+      heightSegments: 32,
+      maxFps: 60,
+      pixelRatioCap: 1.5,
+    });
   });
 
   it('lleva bebida y comida hasta la cara en vez de levantarlas a medias', () => {

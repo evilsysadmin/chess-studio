@@ -38,6 +38,11 @@ test('War Room · Android mantiene a Matthias vivo con Three.js y fallback corpo
   await expect(three).toHaveAttribute('data-three-motion', 'active');
   await expect(three).toHaveAttribute('data-three-motion-intensity', '1.35');
 
+  // The 50–58 px command portrait must not pay desktop mesh/render cost.
+  await expect(three).toHaveAttribute('data-three-render-tier', 'compact');
+  await expect(three).toHaveAttribute('data-three-segments', '14x16');
+  await expect(three).toHaveAttribute('data-three-max-fps', '30');
+
   // Primary path: the optional portrait Three.js context must actually paint
   // and keep advancing alongside the main War Room renderer on a Pixel profile.
   await expect(three).toHaveAttribute('data-three-ready', 'true', { timeout: 30_000 });

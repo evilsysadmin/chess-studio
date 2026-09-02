@@ -39,6 +39,38 @@ function normalizeMotionIntensity(value) {
   return Math.max(.65, Math.min(1.35, parsed));
 }
 
+export function matthiasThreeRenderProfile({ coarsePointer = false, width = 0, height = 0 } = {}) {
+  const safeWidth = Math.max(0, Number(width) || 0);
+  const safeHeight = Math.max(0, Number(height) || 0);
+  const compactSurface = coarsePointer && safeWidth > 0 && safeHeight > 0 && Math.min(safeWidth, safeHeight) <= 96;
+
+  if (compactSurface) {
+    return {
+      tier: 'compact',
+      widthSegments: 14,
+      heightSegments: 16,
+      maxFps: 30,
+      pixelRatioCap: 1,
+    };
+  }
+  if (coarsePointer) {
+    return {
+      tier: 'coarse',
+      widthSegments: 20,
+      heightSegments: 24,
+      maxFps: 45,
+      pixelRatioCap: 1.15,
+    };
+  }
+  return {
+    tier: 'full',
+    widthSegments: 28,
+    heightSegments: 32,
+    maxFps: 60,
+    pixelRatioCap: 1.5,
+  };
+}
+
 function clamp01(value) {
   return Math.max(0, Math.min(1, value));
 }
@@ -274,6 +306,7 @@ export default function MatthiasThreeAvatar({
     let renderFrame = null;
     let inViewport = true;
     let documentVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+    let lastRenderedAt = -Infinity;
 
     setReady(false);
     setFailed(false);
@@ -283,6 +316,16 @@ export default function MatthiasThreeAvatar({
     root.dataset.threeEnergy = '0';
     root.dataset.threeReach = '0';
     root.dataset.threeVisibility = documentVisible ? 'visible' : 'hidden';
+
+    const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
+    const renderProfile = matthiasThreeRenderProfile({
+      coarsePointer,
+      width: canvas.clientWidth,
+      height: canvas.clientHeight,
+    });
+    root.dataset.threeRenderTier = renderProfile.tier;
+    root.dataset.threeSegments = `${renderProfile.widthSegments}x${renderProfile.heightSegments}`;
+    root.dataset.threeMaxFps = String(renderProfile.maxFps);
 
     const cancelFrame = () => {
       if (!raf) return;
@@ -297,7 +340,6 @@ export default function MatthiasThreeAvatar({
     };
 
     try {
-      const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
@@ -306,7 +348,7 @@ export default function MatthiasThreeAvatar({
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.setClearColor(0x000000, 0);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.15 : 1.5));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, renderProfile.pixelRatioCap));
     } catch {
       setFailed(true);
       root.dataset.threeFailed = 'true';
@@ -326,7 +368,12 @@ export default function MatthiasThreeAvatar({
         loaded.magFilter = THREE.LinearFilter;
         loaded.needsUpdate = true;
         const imageAspect = Math.max(.1, (loaded.image?.naturalWidth || loaded.image?.width || 1) / (loaded.image?.naturalHeight || loaded.image?.height || 1));
-        geometry = new THREE.PlaneGeometry(2 * imageAspect, 2, 28, 32);
+        geometry = new THREE.PlaneGeometry(
+          2 * imageAspect,
+          2,
+          renderProfile.widthSegments,
+          renderProfile.heightSegments,
+        );
         const basePositions = new Float32Array(geometry.attributes.position.array);
         material = new THREE.MeshBasicMaterial({
           map: loaded,
@@ -351,9 +398,15 @@ export default function MatthiasThreeAvatar({
         let peakEnergy = 0;
         let peakReach = 0;
         const startedAt = performance.now();
+        const minFrameInterval = 1000 / renderProfile.maxFps;
         renderFrame = (stamp) => {
           raf = 0;
           if (disposed) return;
+          if (frames > 0 && stamp - lastRenderedAt < minFrameInterval) {
+            requestFrame();
+            return;
+          }
+          lastRenderedAt = stamp;
           const time = Math.max(0, stamp - startedAt) / 1000 + phase;
           const positions = geometry.attributes.position;
           let energy = 0;
