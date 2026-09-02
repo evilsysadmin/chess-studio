@@ -7,8 +7,31 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
-async function startQuickGame(page, requestLog) {
-  await mockApi(page, { requestLog });
+function rivalryWithTwoLosses() {
+  return JSON.stringify({
+    version: 3,
+    totalGames: 2,
+    record: {
+      games: 2,
+      wins: 0,
+      draws: 0,
+      losses: 2,
+      currentStreak: -2,
+      bestHumanStreak: 0,
+      bestCpuStreak: 2,
+      incidents: {},
+      recentGames: [],
+      milestones: {},
+      byTimeControl: {},
+      byOpening: {},
+      memories: [],
+    },
+    incidents: {},
+  });
+}
+
+async function startQuickGame(page, requestLog, mockOptions = {}) {
+  await mockApi(page, { requestLog, ...mockOptions });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -56,17 +79,23 @@ test('Android · Focus deja sólo el tablero, sigue siendo jugable y puede salir
 test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos temporales', async ({ page }) => {
   test.setTimeout(30_000);
   const requestLog = [];
-  await startQuickGame(page, requestLog);
+  await startQuickGame(page, requestLog, {
+    profileSeed: {
+      'chess-study-cpu-rivalry': rivalryWithTwoLosses(),
+    },
+  });
 
   await page.getByRole('button', { name: 'Focus', exact: true }).click();
   await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'true');
 
-  // El saludo/memoria inicial de partida se publica con un pequeño delay desde
-  // GameScreen. Al entrar en Focus antes de que llegue, debe aparecer como
-  // bocadillo sobre el tablero en vez de abrir chat/panel lateral.
+  // Dos derrotas consecutivas hacen que startMemoryComment produzca una frase
+  // determinista a los 700 ms. Entramos en Focus antes de ese callback: ese
+  // comentario NUEVO debe convertirse en bocadillo, sin depender de azar ni de
+  // que exista un saludo genérico en esta partida concreta.
   const bubble = page.getByRole('status', { name: 'Comentario de Matthias en Focus' });
   await expect(bubble).toBeVisible({ timeout: 6_000 });
   await expect(bubble).toContainText('MATTHIAS');
+  await expect(bubble).toContainText('2 derrotas consecutivas');
   await expect(page.locator('.game-side-column')).toHaveCount(0);
 
   // El bocadillo es un popup, no un panel permanente.
