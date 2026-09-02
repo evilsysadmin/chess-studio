@@ -87,22 +87,31 @@ describe('Board3D piece resilience', () => {
     [g1, black].forEach(disposeObject);
   });
 
-  it('añade escultura premium al caballo desktop sin cargar el perfil lite', () => {
+  it('da al caballo desktop una silueta y escultura premium legibles sin cargar el perfil lite', () => {
     const full = buildPiece('n', 'w', 'studio', false);
     const lite = buildPiece('n', 'w', 'studio', true);
     const details = knightSculptDetails(full);
     const roles = details.map((mesh) => mesh.userData.knightSculptDetail);
+    const fullHead = knightHead(full);
+    const liteHead = knightHead(lite);
 
-    expect(full.userData.board3DKnightDetailVersion).toBe('sculpted-v3');
-    expect(full.userData.board3DKnightPremiumDetailCount).toBe(9);
-    expect(details).toHaveLength(9);
+    expect(full.userData.board3DKnightSilhouetteVersion).toBe('carved-stallion-v4');
+    expect(full.userData.board3DKnightDetailVersion).toBe('sculpted-v4');
+    expect(full.userData.board3DKnightPremiumDetailCount).toBe(12);
+    expect(full.userData.board3DPremiumPieceScale).toBeCloseTo(.96, 5);
+    expect(fullHead.scale.x).toBeGreaterThan(liteHead.scale.x);
+    expect(fullHead.scale.y).toBeGreaterThan(liteHead.scale.y);
+    expect(details).toHaveLength(12);
     expect(roles.filter((role) => role === 'muzzle')).toHaveLength(1);
     expect(roles.filter((role) => role === 'nostril')).toHaveLength(2);
     expect(roles.filter((role) => role === 'brow')).toHaveLength(2);
-    expect(roles.filter((role) => role === 'mane')).toHaveLength(4);
+    expect(roles.filter((role) => role === 'bridle')).toHaveLength(2);
+    expect(roles.filter((role) => role === 'mane')).toHaveLength(5);
     expect(renderableMeshes(full).every((mesh) => mesh.frustumCulled === false && mesh.visible)).toBe(true);
 
+    expect(lite.userData.board3DKnightSilhouetteVersion).toBe('lite-v1');
     expect(lite.userData.board3DKnightDetailVersion).toBe('lite-v1');
+    expect(lite.userData.board3DPremiumPieceScale).toBeCloseTo(.9, 5);
     expect(knightSculptDetails(lite)).toHaveLength(0);
 
     [full, lite].forEach(disposeObject);

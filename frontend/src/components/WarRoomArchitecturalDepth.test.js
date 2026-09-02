@@ -37,7 +37,7 @@ function dispose(root) {
 }
 
 describe('War Room architectural depth', () => {
-  it('grounds the desktop room with a bounded castle/gallery pass', () => {
+  it('grounds the desktop room with a bounded monogram-free castle/gallery pass', () => {
     const group = new THREE.Group();
     const added = installWarRoomArchitecturalDepth(group, {
       wallZ: -7.6,
@@ -46,8 +46,9 @@ describe('War Room architectural depth', () => {
     });
 
     expect(added).toBe(24);
-    expect(group.userData.warRoomArchitecturalDepth).toBe('v5-grounded-gallery');
+    expect(group.userData.warRoomArchitecturalDepth).toBe('v6-monogram-free-gallery');
     expect(group.userData.warRoomArchitecturalDepthMeshBudget).toBe(24);
+    expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(meshCount(group)).toBe(24);
 
     const carpet = group.getObjectByName('war-room-command-carpet');
@@ -60,9 +61,12 @@ describe('War Room architectural depth', () => {
       const alcove = group.getObjectByName(`war-room-armor-alcove-${side}`);
       expect(alcove).toBeInstanceOf(THREE.Group);
       expect(alcove.userData.warRoomArmorBackdrop).toBe(true);
+      expect(alcove.userData.warRoomMonogramFree).toBe(true);
       expect(alcove.getObjectByName('war-room-armor-alcove-recess')).toBeTruthy();
       expect(namedCount(alcove, 'war-room-armor-alcove-jamb')).toBe(2);
-      expect(namedCount(alcove, 'war-room-armor-alcove-pointed-arch')).toBe(2);
+      expect(namedCount(alcove, 'war-room-armor-alcove-pointed-arch')).toBe(0);
+      expect(namedCount(alcove, 'war-room-armor-alcove-lintel')).toBe(1);
+      expect(namedCount(alcove, 'war-room-armor-alcove-keystone')).toBe(1);
       expect(alcove.getObjectByName('war-room-armor-alcove-plinth')).toBeTruthy();
     }
 

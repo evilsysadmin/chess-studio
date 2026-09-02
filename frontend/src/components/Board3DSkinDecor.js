@@ -32,31 +32,34 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   material.metalness = THREE.MathUtils.clamp((material.metalness || 0) + profile.metalness + (accent ? 0.05 : 0), 0, 1);
   material.roughness = THREE.MathUtils.clamp((material.roughness || 0.5) + profile.roughness - (accent ? 0.03 : 0), 0.08, 1);
 
-  // Premium carved ivory: not porcelain-white and not chalk-matte. A broad,
-  // restrained satin highlight makes the turning and bevels readable under
-  // the warm War Room lights without turning the army into plastic toys.
+  // v4 deliberately reads at normal tactical-camera distance. The previous
+  // satin profile was technically richer but visually too close to the matte
+  // baseline. Keep ivory carved rather than plastic, while giving bevels a
+  // broad warm highlight that survives the room's dark exposure.
   if (polishedIvory) {
-    material.color.lerp(new THREE.Color(0xb39b7c), 0.13);
-    material.metalness = Math.min(material.metalness, 0.012);
-    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.44, 0.56);
-    material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.08, 0.24, 0.34);
-    material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.5, 0.26, 0.36);
-    material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.3, 0.34, 0.46);
-    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.4, 0.38, 0.52);
-    material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.02, 0.018, 0.05);
-    material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.58, 0.48, 0.68);
-    material.userData.pieceFinish = 'polished-carved-ivory-v3';
+    material.color.lerp(new THREE.Color(0xfff4dc), 0.17);
+    material.metalness = Math.min(material.metalness, 0.01);
+    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.31, 0.4);
+    material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.08, 0.4, 0.48);
+    material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.5, 0.2, 0.28);
+    material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.3, 0.5, 0.62);
+    material.envMapIntensity = THREE.MathUtils.clamp(material.envMapIntensity ?? 0.4, 0.58, 0.72);
+    material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.02, 0.02, 0.055);
+    material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.58, 0.46, 0.62);
+    material.userData.pieceFinish = 'polished-carved-ivory-v4';
   }
 
-  // Classic black skins get a deep ebony/lacquer response. Highly metallic
-  // skins are intentionally excluded so Cyber/Regimiento keep their own PBR.
+  // Lift ebony just enough that the carved volumes remain readable, then use a
+  // tighter lacquer highlight. Very metallic skins remain excluded so Cyber,
+  // Regimiento, etc. preserve their own visual identity.
   if (classicEbony) {
-    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.28, 0.44);
-    material.clearcoat = Math.max(material.clearcoat ?? 0, 0.66);
-    material.clearcoatRoughness = Math.min(material.clearcoatRoughness ?? 0.18, 0.2);
-    material.specularIntensity = Math.max(material.specularIntensity ?? 0.7, 0.8);
-    material.envMapIntensity = Math.max(material.envMapIntensity ?? 0.78, 0.86);
-    material.userData.pieceFinish = 'polished-ebony-lacquer-v3';
+    material.color.lerp(new THREE.Color(0x3a3c42), 0.12);
+    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.22, 0.33);
+    material.clearcoat = Math.max(material.clearcoat ?? 0, 0.78);
+    material.clearcoatRoughness = Math.min(material.clearcoatRoughness ?? 0.16, 0.17);
+    material.specularIntensity = Math.max(material.specularIntensity ?? 0.7, 0.9);
+    material.envMapIntensity = Math.max(material.envMapIntensity ?? 0.78, 0.96);
+    material.userData.pieceFinish = 'polished-ebony-lacquer-v4';
   }
 
   if (profile.emissiveBoost && material.emissive) {
@@ -104,62 +107,69 @@ function addPremiumKnightSculpture(group, accentMaterial, coarsePointer) {
   const mainMaterial = group.children.find((child) => child?.isMesh && child.material && !child.userData?.contactShadow)?.material || accentMaterial;
   let count = 0;
 
-  // Rounded muzzle gives the profile an actual horse nose instead of a flat
-  // extruded chess symbol. It projects along +X, matching the existing eyes.
+  // A pronounced muzzle changes the actual silhouette, rather than adding a
+  // detail that disappears at tactical distance.
   addKnightSculptMesh(
     group,
-    new THREE.SphereGeometry(0.105, 18, 12),
+    new THREE.SphereGeometry(0.128, 20, 14),
     mainMaterial,
-    [0.235, 0.705, 0],
-    [1.42, 0.68, 0.82],
-    [0, 0, -0.08],
+    [0.285, 0.735, 0],
+    [1.58, 0.72, 0.94],
+    [0, 0, -0.09],
     'muzzle',
   );
   count += 1;
 
-  // Two tiny nostrils and two low brow ridges add readable carving at normal
-  // desktop distance while remaining symmetric from either side of the board.
-  for (const z of [-0.071, 0.071]) {
+  for (const z of [-0.082, 0.082]) {
     addKnightSculptMesh(
       group,
-      new THREE.SphereGeometry(0.018, 12, 8),
+      new THREE.SphereGeometry(0.021, 12, 8),
       accentMaterial,
-      [0.325, 0.708, z],
-      [1, 0.58, 0.72],
+      [0.402, 0.724, z],
+      [1, 0.62, 0.76],
       [0, 0, 0],
       'nostril',
     );
     addKnightSculptMesh(
       group,
-      new THREE.BoxGeometry(0.105, 0.026, 0.025, 2, 1, 1),
+      new THREE.BoxGeometry(0.13, 0.032, 0.03, 2, 1, 1),
       mainMaterial,
-      [0.155, 0.865, z * 1.76],
+      [0.18, 0.895, z * 1.78],
       [1, 1, 1],
-      [0, z > 0 ? -0.12 : 0.12, -0.12],
+      [0, z > 0 ? -0.12 : 0.12, -0.14],
       'brow',
     );
-    count += 2;
+    addKnightSculptMesh(
+      group,
+      new THREE.BoxGeometry(0.19, 0.028, 0.035, 2, 1, 1),
+      accentMaterial,
+      [0.175, 0.79, z * 1.82],
+      [1, 1, 1],
+      [0, z > 0 ? -0.08 : 0.08, -0.34],
+      'bridle',
+    );
+    count += 3;
   }
 
-  // Segmented mane follows the rear contour. Using individual carved fins
-  // catches highlights far better than a painted stripe and gives the knight
-  // a richer silhouette without changing its square footprint.
-  const maneGeometry = new THREE.ConeGeometry(0.047, 0.145, 9);
-  for (let index = 0; index < 4; index += 1) {
+  // Five larger carved mane fins make the back of the neck readable from the
+  // player's distant perspective. They use the body material so they remain a
+  // sculpture, while the bridle carries the gold/red skin identity.
+  const maneGeometry = new THREE.ConeGeometry(0.058, 0.18, 10);
+  for (let index = 0; index < 5; index += 1) {
     addKnightSculptMesh(
       group,
       maneGeometry.clone(),
       mainMaterial,
-      [-0.11 - index * 0.012, 0.76 + index * 0.083, 0],
-      [1, 1 - index * 0.055, 0.72],
-      [0, 0, -0.22],
+      [-0.13 - index * 0.012, 0.74 + index * 0.088, 0],
+      [1.08, 1 - index * 0.045, 0.8],
+      [0, 0, -0.24],
       'mane',
     );
     count += 1;
   }
   maneGeometry.dispose();
 
-  group.userData.board3DKnightDetailVersion = 'sculpted-v3';
+  group.userData.board3DKnightDetailVersion = 'sculpted-v4';
   group.userData.board3DKnightPremiumDetailCount = count;
   return count;
 }
@@ -168,8 +178,6 @@ export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarseP
   const profile = profileFor(skinId);
   for (const [y, radius, tube] of profile.rings) addRing(group, accentMaterial, y, radius, tube, coarsePointer);
 
-  // Las firmas más expresivas siguen siendo simétricas para no crear una falsa
-  // noción de "frontal" en piezas que pueden verse desde ambos lados del tablero.
   if (skinId === 'cyber') {
     addRing(group, accentMaterial, type === 'p' ? 0.56 : 0.43, type === 'p' ? 0.155 : 0.17, 0.01, coarsePointer);
   } else if (skinId === 'shogunate') {

@@ -34,8 +34,9 @@ function addArmorAlcove(group, side, wallZ, towardBoard, materials) {
   const innerWallX = side * 7.735;
   const alcove = new THREE.Group();
   alcove.name = side < 0 ? 'war-room-armor-alcove-left' : 'war-room-armor-alcove-right';
-  alcove.userData.warRoomArchitecturalRole = 'gothic-armor-alcove';
+  alcove.userData.warRoomArchitecturalRole = 'castle-armor-alcove';
   alcove.userData.warRoomArmorBackdrop = true;
+  alcove.userData.warRoomMonogramFree = true;
 
   const back = addBox(
     alcove,
@@ -58,18 +59,28 @@ function addArmorAlcove(group, side, wallZ, towardBoard, materials) {
     );
   }
 
-  const beamLength = 1.36;
-  for (const roofSide of [-1, 1]) {
-    const roof = addBox(
-      alcove,
-      [0.105, beamLength, 0.105],
-      materials.stoneTrim,
-      [side * 7.69, 3.04, armorZ + roofSide * 0.48],
-      [roofSide * 0.79, 0, 0],
-      'war-room-armor-alcove-pointed-arch',
-    );
-    roof.castShadow = false;
-  }
+  // The previous pointed Gothic pair was attractive in isolation but, from the
+  // tactical camera, the two diagonals plus jambs read as a giant letter M on
+  // each side wall. Use a restrained horizontal stone lintel and a small
+  // keystone instead: still castle architecture, no accidental Matthias logo.
+  const lintel = addBox(
+    alcove,
+    [0.115, 0.18, 2.02],
+    materials.stoneTrim,
+    [side * 7.69, 3.06, armorZ],
+    [0, 0, 0],
+    'war-room-armor-alcove-lintel',
+  );
+  lintel.castShadow = false;
+  const keystone = addBox(
+    alcove,
+    [0.125, 0.34, 0.24],
+    materials.darkStone,
+    [side * 7.675, 3.18, armorZ],
+    [0, 0, 0],
+    'war-room-armor-alcove-keystone',
+  );
+  keystone.castShadow = false;
 
   const plinth = addBox(
     alcove,
@@ -164,7 +175,7 @@ function addContinuousWallJoinery(group, wallZ, towardBoard, materials) {
 
 export function installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
   if (!group || coarsePointer || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
-  if (group.userData.warRoomArchitecturalDepth === 'v5-grounded-gallery') return 0;
+  if (group.userData.warRoomArchitecturalDepth === 'v6-monogram-free-gallery') return 0;
 
   const materials = {
     recess: physical(0x111315, { roughness: 0.96, clearcoat: 0, specularIntensity: 0.08 }),
@@ -178,8 +189,9 @@ export function installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, co
 
   const layer = new THREE.Group();
   layer.name = 'war-room-architectural-depth';
-  layer.userData.warRoomArchitecturalDepth = 'v5-grounded-gallery';
+  layer.userData.warRoomArchitecturalDepth = 'v6-monogram-free-gallery';
   layer.userData.warRoomArchitecturalDepthMeshBudget = 24;
+  layer.userData.warRoomMonogramFree = true;
 
   addCommandCarpet(layer, materials);
   addContinuousWallJoinery(layer, wallZ, towardBoard, materials);
@@ -187,7 +199,8 @@ export function installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, co
   addArmorAlcove(layer, 1, wallZ, towardBoard, materials);
 
   group.add(layer);
-  group.userData.warRoomArchitecturalDepth = 'v5-grounded-gallery';
+  group.userData.warRoomArchitecturalDepth = 'v6-monogram-free-gallery';
   group.userData.warRoomArchitecturalDepthMeshBudget = 24;
+  group.userData.warRoomMonogramFree = true;
   return 24;
 }

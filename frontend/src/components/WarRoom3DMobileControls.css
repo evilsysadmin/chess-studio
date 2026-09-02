@@ -1,20 +1,22 @@
 /* Mobile War Room: gameplay controls win the first screen. Matthias keeps a
    visible presence without occupying the vertical space needed by the board. */
 
-/* Normal War Room speech belongs to the king on the board, but the card must
-   not cover him. Shift the panel up and left; the tail still points inward. */
+/* Normal War Room speech belongs to the king on the board. Keep the panel
+   horizontally anchored to the board centre on every viewport so its tail
+   lands on Matthias instead of drifting toward an arbitrary corner. */
 .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
   top: 29%;
-  left: 4.5%;
+  left: 50%;
   right: auto;
-  width: min(22rem, 38%);
-  translate: 0 -100%;
-  transform-origin: 100% 100%;
+  width: min(27rem, 44%);
+  translate: -50% -100%;
+  transform-origin: 50% 100%;
 }
 
 .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble)::after {
-  left: auto;
-  right: 1.15rem;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) rotate(45deg);
 }
 
 @media (max-width: 820px) {
@@ -116,12 +118,20 @@
     z-index: 7;
   }
 
-  /* Keep the king visible on narrow screens too. */
+  /* Keep king speech centred even on narrow screens; only the vertical anchor
+     and width compact, never the ownership point. */
   .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
     top: 25%;
-    left: 3.5%;
-    width: min(16.5rem, 66%);
+    left: 50%;
+    right: auto;
+    width: min(17rem, 70%);
     padding: .58rem .68rem .64rem;
+    translate: -50% -100%;
+  }
+
+  .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble)::after {
+    left: 50%;
+    right: auto;
   }
 
   .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) p {
@@ -147,6 +157,8 @@
 
   .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
     top: 24%;
-    width: min(15.5rem, 68%);
+    left: 50%;
+    width: min(16rem, 74%);
+    translate: -50% -100%;
   }
 }

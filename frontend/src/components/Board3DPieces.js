@@ -57,18 +57,22 @@ function knightGeometryTemplateSet(coarsePointer = false) {
 
   const detail = pieceDetailProfile(coarsePointer);
   const shape = new THREE.Shape();
-  shape.moveTo(-0.13, 0);
-  shape.bezierCurveTo(-0.2, 0.12, -0.2, 0.26, -0.1, 0.36);
-  shape.bezierCurveTo(-0.03, 0.44, 0.03, 0.54, 0.04, 0.69);
-  shape.bezierCurveTo(0.11, 0.8, 0.22, 0.84, 0.28, 0.74);
-  shape.bezierCurveTo(0.22, 0.61, 0.2, 0.5, 0.17, 0.39);
-  shape.bezierCurveTo(0.14, 0.29, 0.19, 0.2, 0.11, 0.1);
-  shape.bezierCurveTo(0.04, 0.02, -0.04, -0.02, -0.13, 0);
+  // A more pronounced stallion profile: deeper rear neck, proud forehead and
+  // a longer jaw. It remains a single isolated template clone per knight, so
+  // the resilience fix is untouched while the silhouette now reads at range.
+  shape.moveTo(-0.17, -0.02);
+  shape.bezierCurveTo(-0.24, 0.13, -0.23, 0.31, -0.12, 0.43);
+  shape.bezierCurveTo(-0.045, 0.52, -0.01, 0.66, 0.025, 0.76);
+  shape.bezierCurveTo(0.09, 0.89, 0.22, 0.92, 0.31, 0.83);
+  shape.bezierCurveTo(0.39, 0.75, 0.42, 0.64, 0.36, 0.57);
+  shape.bezierCurveTo(0.31, 0.51, 0.26, 0.48, 0.22, 0.43);
+  shape.bezierCurveTo(0.17, 0.36, 0.22, 0.25, 0.13, 0.12);
+  shape.bezierCurveTo(0.055, 0.025, -0.055, -0.035, -0.17, -0.02);
   const head = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.22,
+    depth: coarsePointer ? 0.22 : 0.255,
     bevelEnabled: true,
-    bevelThickness: 0.035,
-    bevelSize: 0.025,
+    bevelThickness: coarsePointer ? 0.035 : 0.045,
+    bevelSize: coarsePointer ? 0.025 : 0.032,
     bevelSegments: detail.bevel,
     curveSegments: detail.curve,
   });
@@ -76,11 +80,11 @@ function knightGeometryTemplateSet(coarsePointer = false) {
 
   const geometries = Object.freeze({
     base: markKnightTemplateGeometry(latheGeometry(BASE_PROFILE, detail.lathe), `${key}:knight-base`),
-    neck: markKnightTemplateGeometry(latheGeometry([[0.18, 0.29], [0.16, 0.38], [0.13, 0.48], [0.14, 0.57]], detail.lathe), `${key}:knight-neck`),
+    neck: markKnightTemplateGeometry(latheGeometry([[0.19, 0.29], [0.175, 0.39], [0.14, 0.51], [0.15, 0.61]], detail.lathe), `${key}:knight-neck`),
     head: markKnightTemplateGeometry(head, `${key}:knight-head`),
-    ear: markKnightTemplateGeometry(new THREE.ConeGeometry(0.06, 0.17, detail.cone), `${key}:knight-ear`),
+    ear: markKnightTemplateGeometry(new THREE.ConeGeometry(coarsePointer ? 0.06 : 0.072, coarsePointer ? 0.17 : 0.215, detail.cone), `${key}:knight-ear`),
     eye: markKnightTemplateGeometry(
-      new THREE.SphereGeometry(0.025, Math.max(10, Math.floor(detail.sphereW / 2)), Math.max(7, detail.sphereH - 2)),
+      new THREE.SphereGeometry(coarsePointer ? 0.025 : 0.031, Math.max(10, Math.floor(detail.sphereW / 2)), Math.max(7, detail.sphereH - 2)),
       `${key}:knight-eye`,
     ),
   });
@@ -163,7 +167,7 @@ function addSignatureDetail(group, type, accent, coarsePointer = false) {
   if (type === 'p') {
     addMesh(group, new THREE.TorusGeometry(0.115, 0.009, 7, 24), accent, [0, 0.37, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'n') {
-    addMesh(group, new THREE.TorusGeometry(0.14, 0.012, 7, 26), accent, [0, 0.55, 0], [Math.PI / 2, 0, 0]);
+    addMesh(group, new THREE.TorusGeometry(0.145, 0.014, 8, 30), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'b') {
     addMesh(group, new THREE.TorusGeometry(0.135, 0.011, 7, 28), accent, [0, 0.7, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'r') {
@@ -180,10 +184,6 @@ function finalizePiece(group, type) {
   let renderableMeshCount = 0;
   group?.traverse?.((child) => {
     if (!child?.isMesh || child.userData?.touchHitTarget) return;
-    // Every chess piece lives permanently inside the fixed tactical camera.
-    // Frustum culling buys nothing here and a false negative is catastrophic:
-    // it looks exactly like a piece vanished from the game. Keep these meshes
-    // explicit members of every render pass instead.
     child.frustumCulled = false;
     child.visible = true;
     renderableMeshCount += 1;
@@ -200,15 +200,16 @@ function buildKnight(main, accent, coarsePointer = false) {
   const geometry = knightGeometrySet(coarsePointer);
   const group = new THREE.Group();
   group.userData.board3DKnightGeometryIsolation = 'per-piece-v2';
+  group.userData.board3DKnightSilhouetteVersion = coarsePointer ? 'lite-v1' : 'carved-stallion-v4';
   addMesh(group, geometry.base, main);
   addMesh(group, geometry.neck, main);
 
-  const headMesh = addMesh(group, geometry.head, main, [0, 0.69, 0]);
-  headMesh.scale.set(1.05, 1.05, 1.05);
-  addMesh(group, geometry.ear, accent, [-0.07, 1.02, 0.02], [0.02, 0, -0.32]);
-  addMesh(group, geometry.ear, accent, [0.07, 1.02, 0.02], [0.02, 0, 0.32]);
-  addMesh(group, geometry.eye, accent, [0.17, 0.82, 0.135]);
-  addMesh(group, geometry.eye, accent, [0.17, 0.82, -0.135]);
+  const headMesh = addMesh(group, geometry.head, main, [0.015, coarsePointer ? 0.69 : 0.735, 0]);
+  headMesh.scale.set(coarsePointer ? 1.05 : 1.18, coarsePointer ? 1.05 : 1.13, coarsePointer ? 1.05 : 1.12);
+  addMesh(group, geometry.ear, accent, [-0.075, coarsePointer ? 1.02 : 1.105, 0.026], [0.02, 0, -0.34]);
+  addMesh(group, geometry.ear, accent, [0.075, coarsePointer ? 1.02 : 1.105, 0.026], [0.02, 0, 0.34]);
+  addMesh(group, geometry.eye, accent, [coarsePointer ? 0.17 : 0.22, coarsePointer ? 0.82 : 0.89, coarsePointer ? 0.135 : 0.15]);
+  addMesh(group, geometry.eye, accent, [coarsePointer ? 0.17 : 0.22, coarsePointer ? 0.82 : 0.89, coarsePointer ? -0.135 : -0.15]);
   addSignatureDetail(group, 'n', accent, coarsePointer);
   addContactShadow(group, coarsePointer);
   return group;
@@ -225,6 +226,11 @@ function buildFallbackPiece(type, main, accent) {
   group.scale.setScalar(0.9);
   group.userData.warRoomFallbackPiece = true;
   return group;
+}
+
+function premiumPieceScale(type, coarsePointer) {
+  if (coarsePointer) return 0.9;
+  return type === 'n' ? 0.96 : 0.94;
 }
 
 export function buildPiece(type, color, skinId, coarsePointer = false, options = {}) {
@@ -250,7 +256,8 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
     if (type === 'n') {
       const knight = buildKnight(main, accent, coarsePointer);
       addPieceSkinDetails(knight, type, skinId, accent, coarsePointer);
-      knight.scale.setScalar(0.9);
+      knight.scale.setScalar(premiumPieceScale(type, coarsePointer));
+      knight.userData.board3DPremiumPieceScale = knight.scale.x;
       return finalizePiece(knight, type);
     }
 
@@ -293,12 +300,10 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
     addSignatureDetail(group, type, accent, coarsePointer);
     addPieceSkinDetails(group, type, skinId, accent, coarsePointer);
     addContactShadow(group, coarsePointer);
-    group.scale.setScalar(0.9);
+    group.scale.setScalar(premiumPieceScale(type, coarsePointer));
+    group.userData.board3DPremiumPieceScale = group.scale.x;
     return finalizePiece(group, type);
   } catch (error) {
-    // A single geometry allocation must never leave half an army on the board.
-    // Under stressed WebGL/software rendering we degrade that unit rather than
-    // aborting the complete FEN rebuild and keeping only the pieces built so far.
     const fallback = buildFallbackPiece(type, main, accent);
     fallback.userData.warRoomBuildError = String(error?.message || error || 'piece build failed');
     return finalizePiece(fallback, type);
