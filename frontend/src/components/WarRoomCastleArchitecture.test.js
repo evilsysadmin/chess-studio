@@ -102,7 +102,7 @@ describe('War Room castle architecture', () => {
   it('separa sofás y consolas y mantiene los sofás orientados hacia la mesa', () => {
     for (const whiteSide of [true, false]) {
       const room = buildPremiumWarRoomLayer(theme, whiteSide, false);
-      const driver = room.getObjectByName('war-room-castle-wall-left');
+      const driver = room.getObjectByName('war-room-premium-painting-canvas');
       const left = room.getObjectByName('war-room-sofa-left');
       const right = room.getObjectByName('war-room-sofa-right');
       const leftConsole = room.getObjectByName('war-room-side-console-left');

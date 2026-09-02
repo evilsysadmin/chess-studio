@@ -71,9 +71,10 @@ describe('War Room castle visual contract', () => {
     scene.add(room);
 
     const premiumDriver = room.getObjectByName('war-room-castle-wall-left');
+    const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
     expect(premiumDriver?.userData?.warRoomPremiumRoomDriver).toBe(true);
-    expect(typeof premiumDriver?.onBeforeRender).toBe('function');
-    premiumDriver.onBeforeRender();
+    expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
+    finalizerDriver.onBeforeRender();
 
     const leftSofa = room.getObjectByName('war-room-sofa-left');
     const leftConsole = room.getObjectByName('war-room-side-console-left');
@@ -100,7 +101,7 @@ describe('War Room castle visual contract', () => {
     expect(flame.geometry.type).toBe('LatheGeometry');
     expect(flame.material.blending).toBe(THREE.AdditiveBlending);
 
-    const canvas = room.getObjectByName('war-room-premium-painting-canvas');
+    const canvas = finalizerDriver;
     expect(canvas.material.map.userData.resolution).toEqual([384, 240]);
     expect(canvas.material.map.userData.warRoomLandscape).toBe('black-forest-lake-dusk-v20');
     expect(canvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
