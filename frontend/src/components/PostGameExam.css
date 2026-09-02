@@ -1,0 +1,153 @@
+.post-game-exam {
+  margin-top: 1rem;
+  padding: .9rem;
+  border: 1px solid rgba(185, 148, 82, .3);
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(30, 27, 23, .96), rgba(18, 19, 22, .97)),
+    radial-gradient(circle at 15% 10%, rgba(172, 116, 53, .08), transparent 46%);
+  box-shadow: inset 0 1px rgba(255, 241, 207, .045), 0 12px 28px rgba(0, 0, 0, .16);
+}
+
+.post-game-exam h3,
+.post-game-exam p {
+  margin: 0;
+}
+
+.post-game-exam-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.post-game-exam-intro > div {
+  display: grid;
+  gap: .28rem;
+  min-width: 0;
+}
+
+.post-game-exam-intro p,
+.post-game-exam-finished p {
+  color: var(--text-muted, #b9b6ad);
+  line-height: 1.45;
+}
+
+.post-game-exam-intro .primary-btn {
+  flex: 0 0 auto;
+}
+
+.post-game-exam-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: .8rem;
+  margin-bottom: .75rem;
+}
+
+.post-game-exam-heading > div {
+  display: grid;
+  gap: .22rem;
+}
+
+.post-game-exam-heading > strong {
+  flex: 0 0 auto;
+  padding: .3rem .55rem;
+  border: 1px solid rgba(205, 164, 86, .25);
+  border-radius: 999px;
+  color: #ddc18a;
+  font-size: .72rem;
+  letter-spacing: .04em;
+  background: rgba(15, 13, 11, .55);
+}
+
+.post-game-exam-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(180px, .8fr);
+  align-items: center;
+  gap: .85rem;
+}
+
+.post-game-exam-board {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.post-game-exam-board .board {
+  width: 100%;
+  max-width: 100%;
+}
+
+.post-game-exam-result {
+  display: grid;
+  align-content: center;
+  gap: .45rem;
+  min-height: 132px;
+  padding: .75rem;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 10px;
+  background: rgba(8, 10, 12, .38);
+}
+
+.post-game-exam-result > b {
+  color: #e0c58e;
+}
+
+.post-game-exam-result > span,
+.post-game-exam-result > small {
+  color: var(--text-muted, #b9b6ad);
+  line-height: 1.4;
+}
+
+.post-game-exam-result.is-revealed {
+  border-color: rgba(185, 148, 82, .24);
+  background: rgba(24, 21, 17, .52);
+}
+
+.post-game-exam-result .primary-btn {
+  width: 100%;
+  margin-top: .15rem;
+}
+
+.post-game-exam-finished {
+  display: grid;
+  gap: .32rem;
+}
+
+@media (max-width: 820px) {
+  .post-game-exam {
+    padding: .72rem;
+  }
+
+  .post-game-exam-intro,
+  .post-game-exam-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .post-game-exam-intro {
+    display: grid;
+  }
+
+  .post-game-exam-intro .primary-btn {
+    width: 100%;
+  }
+
+  .post-game-exam-heading {
+    display: grid;
+  }
+
+  .post-game-exam-heading > strong {
+    justify-self: start;
+  }
+
+  .post-game-exam-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .post-game-exam-board {
+    max-width: min(100%, 420px);
+  }
+}

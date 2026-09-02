@@ -8,6 +8,7 @@ import { cleanGameEvidence, recordCleanGameEvidence } from '../cleanGames.js';
 import { keyGameMoments } from '../postGameHighlights.js';
 import { glossaryEntry } from '../chessGlossary.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
+import PostGameExam from './PostGameExam.jsx';
 import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildMatthiasPositionDossier, buildPostGameAutopsyDossier } from '../aiNarrativeTasks.js';
@@ -157,6 +158,8 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             {aiAutopsy && <div className="ai-task-card"><small>MATTHIAS // DEBRIEF</small><p>{aiAutopsy}</p></div>}
 
             {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
+
+            <PostGameExam history={history} humanColor={humanColor} report={report} meta={meta} />
 
             <div className="autopsy-actions">
               {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver el peor momento · jugada {report.worst.moveNumber}</button>}

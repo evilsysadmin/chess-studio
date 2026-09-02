@@ -105,7 +105,10 @@ function stableId(fen, suggested) {
   return `personal-${(hash >>> 0).toString(36)}`;
 }
 
-function puzzleFromMistake(history, humanColor, moveReport, meta = {}) {
+// Canonical reconstruction contract shared by persisted personal puzzles and
+// the immediate post-game exam. The exam only hides the explanatory spoiler
+// until after the move; it does not bypass the legal FEN/solution gate.
+export function personalPuzzleFromMistake(history, humanColor, moveReport, meta = {}) {
   if (!moveReport || !Array.isArray(history) || !moveReport.suggested || moveReport.loss < 80) return null;
   if (moveReport.played && moveReport.suggested === moveReport.played) return null;
   let chess;
@@ -156,7 +159,7 @@ export function savePersonalPuzzlesFromReport(history, humanColor, report, meta 
   const candidates = (report?.topMistakes || [])
     .filter((m) => m.loss >= 80)
     .slice(0, 2)
-    .map((m) => puzzleFromMistake(history, humanColor, m, meta))
+    .map((m) => personalPuzzleFromMistake(history, humanColor, m, meta))
     .filter(Boolean);
   if (!candidates.length) return { added: 0, total: loadPersonalPuzzles().length };
 
@@ -234,12 +237,12 @@ function adaptiveScore(puzzle, context) {
   const openingFrequency = puzzle?.opening ? (context.openingCounts.get(puzzle.opening) || 0) : 0;
 
   let score = 0;
-  score += Math.min(65, loss / 8);                         // gravedad objetiva
-  score += Math.min(56, friction * 14);                   // casos que siguen resistiéndose
-  score += Math.min(36, Math.max(0, incidentFrequency - 1) * 12); // reincidencia táctica
-  score += Math.min(15, Math.max(0, openingFrequency - 1) * 5);    // apertura problemática recurrente
-  score += recentErrorBonus(puzzle, context.now);          // lo nuevo importa, pero no manda solo
-  if (attempts === 0) score += 4;                          // no dejar material nuevo pudriéndose al fondo
+  score += Math.min(65, loss / 8);
+  score += Math.min(56, friction * 14);
+  score += Math.min(36, Math.max(0, incidentFrequency - 1) * 12);
+  score += Math.min(15, Math.max(0, openingFrequency - 1) * 5);
+  score += recentErrorBonus(puzzle, context.now);
+  if (attempts === 0) score += 4;
 
   if (context.referencePuzzle) {
     if (context.hasIncidentAlternative && sharesIncident(context.referencePuzzle, puzzle)) score -= 18;
