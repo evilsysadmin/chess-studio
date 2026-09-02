@@ -1,5 +1,101 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, gameTurn, login, mockApi } from './helpers.js';
+
+const FOOLS_MATE_START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const FOOLS_MATE_AFTER_FIRST_PAIR = 'rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq e6 0 2';
+const FOOLS_MATE_END = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3';
+
+async function installFoolsMatePostGameScenario(page) {
+  let game = null;
+  let analysisIndex = 0;
+  const analysis = [
+    {
+      suggested: { san: 'e4', from: 'e2', to: 'e4', piece: 'p' },
+      evalAfterSuggested: 20,
+      evalAfterPlayed: -40,
+    },
+    {
+      suggested: { san: 'g3', from: 'g2', to: 'g3', piece: 'p' },
+      evalAfterSuggested: -20,
+      evalAfterPlayed: -900,
+    },
+  ];
+
+  await page.route('http://localhost:4000/api/analyze', async (route) => {
+    const result = analysis[Math.min(analysisIndex, analysis.length - 1)];
+    analysisIndex += 1;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(result) });
+  });
+
+  await page.route('http://localhost:4000/api/games**', async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    const method = route.request().method();
+    const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+
+    if (path.endsWith('/games') && method === 'POST') {
+      const payload = route.request().postDataJSON?.() ?? {};
+      game = {
+        id: 'e2e-fools-mate',
+        fen: FOOLS_MATE_START,
+        turn: 'w',
+        humanColor: payload.color === 'b' ? 'b' : 'w',
+        difficulty: Math.round(Number(payload.difficulty ?? 50)),
+        status: 'playing',
+        insufficientMatingMaterial: { w: false, b: false },
+        isGameOver: false,
+        history: [],
+        lastMove: null,
+        initialFen: FOOLS_MATE_START,
+        ghostStyle: null,
+      };
+      return json(game, 201);
+    }
+
+    const moveMatch = path.match(/\/games\/([^/]+)\/move$/);
+    if (moveMatch && method === 'POST' && game) {
+      const payload = route.request().postDataJSON?.() ?? {};
+      if (game.history.length === 0 && payload.from === 'f2' && payload.to === 'f3') {
+        game = {
+          ...game,
+          fen: FOOLS_MATE_AFTER_FIRST_PAIR,
+          turn: 'w',
+          history: [
+            { from: 'f2', to: 'f3', san: 'f3', piece: 'p', by: 'human' },
+            { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' },
+          ],
+          lastMove: { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' },
+        };
+        return json(game);
+      }
+      if (game.history.length === 2 && payload.from === 'g2' && payload.to === 'g4') {
+        game = {
+          ...game,
+          fen: FOOLS_MATE_END,
+          turn: 'w',
+          status: 'checkmate',
+          isGameOver: true,
+          history: [
+            ...game.history,
+            { from: 'g2', to: 'g4', san: 'g4', piece: 'p', by: 'human' },
+            { from: 'd8', to: 'h4', san: 'Qh4#', piece: 'q', by: 'cpu' },
+          ],
+          lastMove: { from: 'd8', to: 'h4', san: 'Qh4#', piece: 'q', by: 'cpu' },
+        };
+        return json(game);
+      }
+      return json({ detail: `E2E Fool's Mate no esperaba ${payload.from}-${payload.to}` }, 400);
+    }
+
+    const gameMatch = path.match(/\/games\/([^/]+)$/);
+    if (gameMatch && method === 'GET') return game ? json(game) : json({ detail: 'Partida no encontrada' }, 404);
+    if (gameMatch && method === 'DELETE') {
+      game = null;
+      return route.fulfill({ status: 204, body: '' });
+    }
+    return route.fallback();
+  });
+}
 
 test('storage bloqueado · login y navegación básica siguen utilizables', async ({ page }) => {
   await page.addInitScript(() => {
@@ -117,6 +213,102 @@ for (const width of [360, 390, 430]) {
     await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'false');
   });
 }
+
+test('Postpartida · autopsia y Examen caben a 360/390/430 sin spoilers ni targets diminutos', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await installFoolsMatePostGameScenario(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  await clickBoardMove(page, 'f2', 'f3');
+  await expect(gameTurn(page)).toBeVisible();
+  await clickBoardMove(page, 'g2', 'g4');
+
+  const endgame = page.locator('.endgame-dialog');
+  await expect(endgame).toBeVisible();
+  await expect(endgame.getByText('PARTIDA FINALIZADA', { exact: true })).toBeVisible();
+  const reportButton = endgame.getByRole('button', { name: 'Resumen de la partida', exact: true });
+  await expect(reportButton).toBeVisible();
+
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    const rect = await endgame.boundingBox();
+    expect(rect).not.toBeNull();
+    expect(rect.x).toBeGreaterThanOrEqual(-1);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(width + 1);
+    const buttonRect = await reportButton.boundingBox();
+    expect(buttonRect).not.toBeNull();
+    expect(buttonRect.height).toBeGreaterThanOrEqual(40);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await reportButton.click();
+  const report = page.getByRole('dialog', { name: 'Resumen de la partida' });
+  await expect(report).toBeVisible();
+  await expect(report.getByText('Precisión estimada', { exact: true })).toBeVisible({ timeout: 15_000 });
+  const examIntro = report.locator('[data-post-game-exam="ready"]');
+  await expect(examIntro).toBeVisible();
+  await expect(examIntro.getByText('EXAMEN // SIN PISTAS', { exact: true })).toBeVisible();
+  await expect(examIntro).not.toContainText('g4');
+  await expect(examIntro).not.toContainText('g3');
+
+  const close = report.getByRole('button', { name: 'Cerrar', exact: true });
+  const fullAutopsy = report.locator('details.autopsy-full-details');
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    const rect = await report.boundingBox();
+    expect(rect).not.toBeNull();
+    expect(rect.x).toBeGreaterThanOrEqual(-1);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(width + 1);
+    const closeRect = await close.boundingBox();
+    expect(closeRect).not.toBeNull();
+    expect(closeRect.width).toBeGreaterThanOrEqual(40);
+    expect(closeRect.height).toBeGreaterThanOrEqual(40);
+  }
+
+  await fullAutopsy.locator('summary').click();
+  await expect(fullAutopsy).toHaveAttribute('open', '');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
+  const startExam = examIntro.getByRole('button', { name: 'Hacer examen', exact: true });
+  await startExam.click();
+  const activeExam = report.locator('[data-post-game-exam="active"]');
+  await expect(activeExam).toBeVisible();
+  await expect(activeExam.getByText('Sin pista.', { exact: true })).toBeVisible();
+  await expect(activeExam).not.toContainText('g4');
+  await expect(activeExam).not.toContainText('g3');
+
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    const board = activeExam.locator('.post-game-exam-board');
+    const boardRect = await board.boundingBox();
+    expect(boardRect).not.toBeNull();
+    expect(boardRect.x).toBeGreaterThanOrEqual(-1);
+    expect(boardRect.x + boardRect.width).toBeLessThanOrEqual(width + 1);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await clickBoardMove(page, 'g2', 'g3', activeExam);
+  await expect(activeExam.getByText('✓ Correcto.', { exact: true })).toBeVisible();
+  await expect(activeExam).toContainText('En la partida jugaste g4');
+  await expect(activeExam).toContainText('La alternativa era g3');
+  const resultButton = activeExam.getByRole('button', { name: 'Ver resultado', exact: true });
+  const resultRect = await resultButton.boundingBox();
+  expect(resultRect).not.toBeNull();
+  expect(resultRect.height).toBeGreaterThanOrEqual(40);
+  await resultButton.click();
+  await expect(report.locator('[data-post-game-exam="finished"]')).toContainText('1/1 a la primera');
+
+  await page.keyboard.press('Escape');
+  await expect(report).toHaveCount(0);
+});
 
 test('Home · la guía inicial no bloquea, recuerda el cierre y puede reabrirse', async ({ page }) => {
   await mockApi(page);
