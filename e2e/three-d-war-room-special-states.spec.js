@@ -111,11 +111,14 @@ function specialStatePayload({ id, scenario, from, to }) {
 
 async function installSpecialStateRoutes(page, scenario, requestLog) {
   const id = `e2e-war-room-${scenario}`;
+  let currentGame = specialInitialPayload({ id, scenario });
 
-  // mockApi sigue poseyendo auth/perfil/resto de superficie. Estas dos rutas
-  // específicas sólo modelan la creación y la mutación ajedrecística que este
-  // gate necesita, para no contaminar los fixtures globales con posiciones de
-  // laboratorio exclusivas de War Room.
+  // mockApi sigue poseyendo auth/perfil/resto de superficie. Estas rutas
+  // específicas modelan una única partida persistida, incluido el GET de
+  // reconciliación. Antes el POST especial devolvía una foto correcta pero el
+  // store interno del mock común no conocía ese id: un GET posterior podía
+  // responder 404/foto antigua y pisar el jaque no terminal. Mate no sufría el
+  // mismo camino de reconciliación, de ahí la falsa asimetría del gate.
   await page.route('http://localhost:4000/api/games', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     const url = new URL(route.request().url());
@@ -124,10 +127,20 @@ async function installSpecialStateRoutes(page, scenario, requestLog) {
       path: url.pathname,
       idempotencyKey: route.request().headers()['idempotency-key'] || null,
     });
+    currentGame = specialInitialPayload({ id, scenario });
     await route.fulfill({
       status: 201,
       contentType: 'application/json',
-      body: JSON.stringify(specialInitialPayload({ id, scenario })),
+      body: JSON.stringify(currentGame),
+    });
+  });
+
+  await page.route(`http://localhost:4000/api/games/${id}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(currentGame),
     });
   });
 
@@ -140,8 +153,8 @@ async function installSpecialStateRoutes(page, scenario, requestLog) {
       path: url.pathname,
       idempotencyKey: route.request().headers()['idempotency-key'] || null,
     });
-    const body = specialStatePayload({ id: routeId, scenario, from: payload.from, to: payload.to });
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    currentGame = specialStatePayload({ id: routeId, scenario, from: payload.from, to: payload.to });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentGame) });
   });
 }
 
