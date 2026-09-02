@@ -11,6 +11,8 @@ const CASTLING_START_FEN = 'k7/p7/8/8/8/8/8/4K2R w K - 0 1';
 const CASTLING_END_FEN = 'k7/8/p7/8/8/8/8/5RK1 w - - 0 2';
 const EN_PASSANT_START_FEN = 'k7/p7/8/3pP3/8/8/8/7K w - d6 0 1';
 const EN_PASSANT_END_FEN = 'k7/8/p2P4/8/8/8/8/7K w - - 0 2';
+const PROMOTION_START_FEN = 'k7/p5P1/8/8/8/8/8/7K w - - 0 1';
+const PROMOTION_END_FEN = 'k5N1/8/p7/8/8/8/8/7K w - - 0 2';
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
@@ -42,6 +44,7 @@ function scenarioFen(scenario) {
   if (scenario === 'mate') return MATE_START_FEN;
   if (scenario === 'castling') return CASTLING_START_FEN;
   if (scenario === 'en-passant') return EN_PASSANT_START_FEN;
+  if (scenario === 'promotion') return PROMOTION_START_FEN;
   return CHECK_START_FEN;
 }
 
@@ -63,7 +66,7 @@ function specialInitialPayload({ id, scenario }) {
   };
 }
 
-function specialStatePayload({ id, scenario, from, to }) {
+function specialStatePayload({ id, scenario, from, to, promotion = null }) {
   if (scenario === 'mate') {
     if (from !== 'g6' || to !== 'g7') throw new Error(`E2E mate esperaba g6-g7, recibió ${from}-${to}`);
     const move = { from, to, san: 'Qg7#', piece: 'q', captured: false, by: 'human' };
@@ -123,6 +126,28 @@ function specialStatePayload({ id, scenario, from, to }) {
     };
   }
 
+  if (scenario === 'promotion') {
+    if (from !== 'g7' || to !== 'g8' || promotion !== 'n') {
+      throw new Error(`E2E promoción esperaba g7-g8=N, recibió ${from}-${to}=${promotion || '?'}`);
+    }
+    const humanMove = { from: 'g7', to: 'g8', san: 'g8=N', piece: 'p', captured: false, by: 'human' };
+    const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
+    return {
+      id,
+      fen: PROMOTION_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: PROMOTION_START_FEN,
+      ghostStyle: null,
+    };
+  }
+
   if (from !== 'e2' || to !== 'h5') throw new Error(`E2E check esperaba e2-h5, recibió ${from}-${to}`);
   const humanMove = { from: 'e2', to: 'h5', san: 'Qh5', piece: 'q', captured: false, by: 'human' };
   const cpuMove = { from: 'e8', to: 'e1', san: 'Re1+', piece: 'r', captured: false, by: 'cpu' };
@@ -164,7 +189,13 @@ async function installSpecialStateRoutes(page, scenario, requestLog) {
     const routeId = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1];
     const payload = route.request().postDataJSON?.() ?? {};
     requestLog.push({ method: 'POST', path: url.pathname, idempotencyKey: route.request().headers()['idempotency-key'] || null });
-    currentGame = specialStatePayload({ id: routeId, scenario, from: payload.from, to: payload.to });
+    currentGame = specialStatePayload({
+      id: routeId,
+      scenario,
+      from: payload.from,
+      to: payload.to,
+      promotion: payload.promotion || null,
+    });
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentGame) });
   });
 }
@@ -314,6 +345,42 @@ test('War Room parity · en passant 2D→3D retira el peón lateral con una sola
   await expect(page.getByRole('button', { name: /^Casilla d6, peón blanco/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('button', { name: /^Casilla d5, vacía/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Casilla e5, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla a6, peón negro/i })).toBeVisible();
+  expect(movePosts(requestLog)).toHaveLength(1);
+});
+
+test('War Room parity · promoción 3D abre selector y conserva la pieza elegida al volver a 2D', async ({ page }) => {
+  test.setTimeout(120_000);
+  const requestLog = [];
+  await startScenario(page, 'promotion', requestLog);
+
+  const pawn = page.getByRole('button', { name: /^Casilla g7, peón blanco/i });
+  await pawn.click();
+  await expect(pawn).toHaveClass(/selected/);
+
+  await setRendererViaAppearance(page, '3D');
+  const { board3d, canvas } = await waitForWarRoom(page);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'g7');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+
+  await canvas.focus();
+  await pressKeys(page, ['ArrowRight', 'ArrowRight', ...Array(7).fill('ArrowUp')]);
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'g8');
+  await page.keyboard.press('Enter');
+
+  const promotionDialog = page.getByRole('dialog', { name: 'Promoción de peón' });
+  await expect(promotionDialog).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
+  expect(movePosts(requestLog)).toHaveLength(0);
+  await promotionDialog.getByRole('button', { name: 'Caballo', exact: true }).click();
+
+  await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await expect(promotionDialog).toBeHidden();
+  await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
+  await setRendererViaAppearance(page, '2D');
+  await expect(page.getByRole('button', { name: /^Casilla g8, caballo blanco/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
+  await expect(page.getByRole('button', { name: /^Casilla g7, vacía/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Casilla a6, peón negro/i })).toBeVisible();
   expect(movePosts(requestLog)).toHaveLength(1);
 });
