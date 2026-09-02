@@ -6,14 +6,13 @@ on:
     paths:
       - 'infra/oci/**'
       - '.github/workflows/oci-terraform-readiness.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'infra/oci/**'
-      - '.github/workflows/oci-terraform-readiness.yml'
 
 permissions:
   contents: read
+
+concurrency:
+  group: oci-terraform-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
