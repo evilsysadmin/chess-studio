@@ -3,7 +3,9 @@ import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js'
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const SPECIAL_STATE_TIMEOUT = 30_000;
-const CHECK_END_FEN = '4Q2k/8/8/8/8/8/8/7K b - - 1 1';
+const CHECK_START_FEN = 'k3r3/8/8/8/8/8/4Q3/7K w - - 0 1';
+const CHECK_END_FEN = 'k7/8/8/7Q/8/8/8/4r2K w - - 2 2';
+const MATE_START_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
 const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
 
 async function setRendererViaAppearance(page, renderer) {
@@ -20,48 +22,125 @@ async function setRendererViaAppearance(page, renderer) {
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 }
 
-function specialStatePayload({ id, scenario, from, to }) {
-  const mate = scenario === 'mate';
-  const expected = mate ? ['g6', 'g7'] : ['e2', 'e8'];
-  if (from !== expected[0] || to !== expected[1]) {
-    throw new Error(`E2E ${scenario} esperaba ${expected.join('-')}, recibió ${from}-${to}`);
-  }
-  const move = {
-    from,
-    to,
-    san: mate ? 'Qg7#' : 'Qe8+',
-    piece: 'q',
-    captured: false,
-    by: 'human',
-  };
+function specialInitialPayload({ id, scenario }) {
   return {
     id,
-    fen: mate ? MATE_END_FEN : CHECK_END_FEN,
-    turn: 'b',
+    fen: scenario === 'mate' ? MATE_START_FEN : CHECK_START_FEN,
+    turn: 'w',
     humanColor: 'w',
     difficulty: 50,
-    status: mate ? 'checkmate' : 'check',
+    status: 'playing',
     insufficientMatingMaterial: { w: false, b: false },
-    isGameOver: mate,
-    history: [move],
-    lastMove: move,
-    initialFen: null,
+    isGameOver: false,
+    history: [],
+    lastMove: null,
+    initialFen: scenario === 'mate' ? MATE_START_FEN : CHECK_START_FEN,
     ghostStyle: null,
   };
 }
 
-async function installSpecialStateMoveRoute(page, scenario, requestLog) {
-  // mockApi crea la partida/FEN inicial. Esta ruta más específica sólo posee la
-  // respuesta de la jugada especial y cumple deliberadamente GamePayload:
-  // `captured` es booleano tanto en history como en lastMove. El fixture común
-  // predataba ese contrato y el frontend rechazaba correctamente su 200 como
-  // respuesta incoherente, haciendo parecer que War Room perdía jaque/mate.
+function specialStatePayload({ id, scenario, from, to }) {
+  if (scenario === 'mate') {
+    if (from !== 'g6' || to !== 'g7') {
+      throw new Error(`E2E mate esperaba g6-g7, recibió ${from}-${to}`);
+    }
+    const move = {
+      from,
+      to,
+      san: 'Qg7#',
+      piece: 'q',
+      captured: false,
+      by: 'human',
+    };
+    return {
+      id,
+      fen: MATE_END_FEN,
+      turn: 'b',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'checkmate',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: true,
+      history: [move],
+      lastMove: move,
+      initialFen: MATE_START_FEN,
+      ghostStyle: null,
+    };
+  }
+
+  // Producción no devuelve el estado intermedio justo después de una jugada
+  // humana no terminal: el backend calcula la respuesta CPU y serializa ambas
+  // medias jugadas dentro del mismo POST /move. Por eso el escenario de jaque
+  // debe terminar con una respuesta realista de Matthias. Qh5 libera la columna
+  // e y Matthias replica Re1+, dejando al rey humano h1 en jaque y el turno de
+  // nuevo en blancas.
+  if (from !== 'e2' || to !== 'h5') {
+    throw new Error(`E2E check esperaba e2-h5, recibió ${from}-${to}`);
+  }
+  const humanMove = {
+    from: 'e2',
+    to: 'h5',
+    san: 'Qh5',
+    piece: 'q',
+    captured: false,
+    by: 'human',
+  };
+  const cpuMove = {
+    from: 'e8',
+    to: 'e1',
+    san: 'Re1+',
+    piece: 'r',
+    captured: false,
+    by: 'cpu',
+  };
+  return {
+    id,
+    fen: CHECK_END_FEN,
+    turn: 'w',
+    humanColor: 'w',
+    difficulty: 50,
+    status: 'check',
+    insufficientMatingMaterial: { w: false, b: false },
+    isGameOver: false,
+    history: [humanMove, cpuMove],
+    lastMove: cpuMove,
+    initialFen: CHECK_START_FEN,
+    ghostStyle: null,
+  };
+}
+
+async function installSpecialStateRoutes(page, scenario, requestLog) {
+  const id = `e2e-war-room-${scenario}`;
+
+  // mockApi sigue poseyendo auth/perfil/resto de superficie. Estas dos rutas
+  // específicas sólo modelan la creación y la mutación ajedrecística que este
+  // gate necesita, para no contaminar los fixtures globales con posiciones de
+  // laboratorio exclusivas de War Room.
+  await page.route('http://localhost:4000/api/games', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const url = new URL(route.request().url());
+    requestLog.push({
+      method: 'POST',
+      path: url.pathname,
+      idempotencyKey: route.request().headers()['idempotency-key'] || null,
+    });
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify(specialInitialPayload({ id, scenario })),
+    });
+  });
+
   await page.route('http://localhost:4000/api/games/*/move', async (route) => {
     const url = new URL(route.request().url());
-    const id = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1];
+    const routeId = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1];
     const payload = route.request().postDataJSON?.() ?? {};
-    requestLog.push({ method: 'POST', path: url.pathname, idempotencyKey: route.request().headers()['idempotency-key'] || null });
-    const body = specialStatePayload({ id, scenario, from: payload.from, to: payload.to });
+    requestLog.push({
+      method: 'POST',
+      path: url.pathname,
+      idempotencyKey: route.request().headers()['idempotency-key'] || null,
+    });
+    const body = specialStatePayload({ id: routeId, scenario, from: payload.from, to: payload.to });
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
 }
@@ -72,8 +151,8 @@ async function startScenario(page, scenario, requestLog) {
   // retrasar varios segundos la confirmación visual sin cambiar el contrato.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 960 });
-  await mockApi(page, { gameScenario: scenario, requestLog });
-  await installSpecialStateMoveRoute(page, scenario, requestLog);
+  await mockApi(page, { requestLog });
+  await installSpecialStateRoutes(page, scenario, requestLog);
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -96,7 +175,7 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
-test('War Room parity · jaque seleccionado en 2D se ejecuta en 3D y vuelve a 2D con el mismo rey marcado', async ({ page }) => {
+test('War Room parity · respuesta CPU que da jaque se conserva al volver de 3D a 2D', async ({ page }) => {
   test.setTimeout(120_000);
   const requestLog = [];
   await startScenario(page, 'check', requestLog);
@@ -110,20 +189,23 @@ test('War Room parity · jaque seleccionado en 2D se ejecuta en 3D y vuelve a 2D
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
 
-  // Focus the WebGL surface once, then send native keyboard events through the
-  // page. Re-resolving the canvas locator for every key can race React's focus
-  // state updates even though the canvas itself remains mounted.
+  // Desde el foco táctico inicial e1 llevamos el cursor a h5 y ejecutamos Qh5.
+  // La misma respuesta HTTP contiene la réplica CPU Re1+, como en producción.
   await canvas.focus();
-  await pressKeys(page, Array(7).fill('ArrowUp'));
-  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e8');
+  await pressKeys(page, [
+    'ArrowRight', 'ArrowRight', 'ArrowRight',
+    'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+  ]);
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'h5');
   await page.keyboard.press('Enter');
 
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(page.getByRole('dialog', { name: /partida finalizada/i })).toHaveCount(0);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
 
   await setRendererViaAppearance(page, '2D');
-  await expect(page.getByRole('button', { name: /Casilla h8, rey negro, rey en jaque/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
+  await expect(page.getByRole('button', { name: /Casilla h1, rey blanco, rey en jaque/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
   await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible();
   expect(movePosts(requestLog)).toHaveLength(1);
 });
