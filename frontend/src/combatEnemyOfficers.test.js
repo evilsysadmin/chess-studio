@@ -4,6 +4,7 @@ import {
   COMBAT_ENEMY_OFFICERS_KEY,
   campaignOfficerContext,
   enemyOfficerBriefing,
+  enemyOfficerDossiers,
   enemyOfficerForNode,
   loadEnemyOfficerHistory,
   officerServiceRank,
@@ -104,6 +105,45 @@ describe('oficiales enemigos persistentes de Combat Chess', () => {
       rank: 'General',
       promotions: 1,
       nextPromotionIn: null,
+    });
+  });
+
+  it('proyecta al archivo sólo oficiales realmente encontrados y ordena por contacto reciente', () => {
+    const history = {
+      adler: {
+        officerId: 'adler', encounters: 4, playerWins: 1, officerWins: 1, draws: 2,
+        firstSeenAt: 100, lastSeenAt: 500, lastOutcome: 'draw', lastNodeLabel: 'Puente roto',
+        recentEncounters: [{ id: 'a4', outcome: 'draw', at: 500, nodeLabel: 'Puente roto' }],
+      },
+      falk: {
+        officerId: 'falk', encounters: 2, playerWins: 2, officerWins: 0, draws: 0,
+        firstSeenAt: 200, lastSeenAt: 900, lastOutcome: 'win', lastNodeLabel: 'Fábrica oeste',
+        recentEncounters: [{ id: 'f2', outcome: 'win', at: 900, nodeLabel: 'Fábrica oeste' }],
+      },
+      vega: { officerId: 'vega', encounters: 0, lastSeenAt: 1200 },
+    };
+
+    const dossiers = enemyOfficerDossiers(history);
+    expect(dossiers.map((officer) => officer.id)).toEqual(['falk', 'adler']);
+    expect(dossiers[0]).toMatchObject({ name: 'Mara Falk', score: '2–0' });
+    expect(dossiers[1].recentEncounters[0]).toMatchObject({ id: 'a4', nodeLabel: 'Puente roto' });
+  });
+
+  it('refleja en el dossier los ascensos derivados del historial real, no un rango inventado por UI', () => {
+    const dossiers = enemyOfficerDossiers({
+      adler: {
+        officerId: 'adler', encounters: 4, playerWins: 0, officerWins: 3, draws: 0,
+        firstSeenAt: 100, lastSeenAt: 500, lastOutcome: 'loss',
+      },
+    });
+
+    expect(dossiers).toHaveLength(1);
+    expect(dossiers[0]).toMatchObject({
+      id: 'adler',
+      baseRank: 'Teniente',
+      rank: 'Mayor',
+      promotions: 2,
+      serviceScore: 10,
     });
   });
 });
