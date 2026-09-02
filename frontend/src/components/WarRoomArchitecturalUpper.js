@@ -35,13 +35,16 @@ function addHammerbeamFrame(group, offset, wallZ, towardBoard, materials) {
   );
 
   for (const side of [-1, 1]) {
+    // The old diagonal braces read as a repeated letter M from the tactical
+    // camera. Keep the same structural density, but use short horizontal
+    // hammerbeam ties instead: architectural, quiet and deliberately non-logo.
     addBeam(
       group,
-      [1.92, 0.16, 0.16],
+      [1.62, 0.16, 0.18],
       materials.oakWarm,
-      [side * 6.36, 5.02, z + towardBoard * 0.035],
-      [0, 0, side * -0.58],
-      'war-room-hammerbeam-brace',
+      [side * 6.36, 5.03, z + towardBoard * 0.035],
+      [0, 0, 0],
+      'war-room-hammerbeam-side-tie',
     );
 
     addBeam(
@@ -61,7 +64,7 @@ export function installWarRoomArchitecturalUpper(group, {
   coarsePointer = false,
 } = {}) {
   if (!group || coarsePointer || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
-  if (group.userData.warRoomUpperArchitecture === 'hammerbeam-v6') return 0;
+  if (group.userData.warRoomUpperArchitecture === 'hammerbeam-v7') return 0;
 
   const materials = {
     oak: physical(0x26160e, {
@@ -86,9 +89,10 @@ export function installWarRoomArchitecturalUpper(group, {
 
   const layer = new THREE.Group();
   layer.name = 'war-room-upper-architecture';
-  layer.userData.warRoomUpperArchitecture = 'hammerbeam-v6';
+  layer.userData.warRoomUpperArchitecture = 'hammerbeam-v7';
   layer.userData.warRoomUpperArchitectureMeshBudget = 19;
   layer.userData.warRoomUpperArchitectureZone = 'far-third-camera-clear';
+  layer.userData.warRoomMonogramFree = true;
 
   const frameOffsets = [0.72, 1.9, 3.08];
   for (const offset of frameOffsets) {
@@ -108,8 +112,9 @@ export function installWarRoomArchitecturalUpper(group, {
   }
 
   group.add(layer);
-  group.userData.warRoomUpperArchitecture = 'hammerbeam-v6';
+  group.userData.warRoomUpperArchitecture = 'hammerbeam-v7';
   group.userData.warRoomUpperArchitectureMeshBudget = 19;
   group.userData.warRoomUpperArchitectureMaxOffsetFromWall = Math.max(...frameOffsets);
+  group.userData.warRoomMonogramFree = true;
   return 19;
 }

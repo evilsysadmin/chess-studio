@@ -44,7 +44,7 @@ function runRootDriver(room) {
 describe('WarRoomCompositionPolish', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('separa las armaduras de las consolas y retira las juntas que dibujaban M accidentales', () => {
+  it('coloca las armaduras en la franja media y retira las juntas que dibujaban M accidentales', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
     const rightArmor = room.getObjectByName('war-room-teutonic-armor-right');
@@ -57,17 +57,26 @@ describe('WarRoomCompositionPolish', () => {
     const owner = compositionOwner(room);
 
     expect(owner).toBeTruthy();
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('floor-sentry-facing-board-v16');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('floor-sentry-facing-board-v16');
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
+    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(5.15, 5);
+    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(5.15, 5);
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
-    expect(leftArmor.position.z).toBeGreaterThan(leftConsole.position.z + 2);
-    expect(rightArmor.position.z).toBeGreaterThan(rightConsole.position.z + 2);
-    expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(0.6);
-    expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(0.6);
+    expect(leftArmor.position.z).toBeGreaterThan(leftConsole.position.z + 4);
+    expect(rightArmor.position.z).toBeGreaterThan(rightConsole.position.z + 4);
+    expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(0.75);
+    expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(0.75);
     expect(mortarJoints.length).toBeGreaterThan(10);
     expect(mortarJoints.every((joint) => joint.visible === false)).toBe(true);
     expect(owner.userData.warRoomRetiredMortarJoints).toBe(mortarJoints.length);
+
+    const diagonalBraces = [];
+    room.traverse((object) => {
+      if (object.name === 'war-room-hammerbeam-brace') diagonalBraces.push(object);
+    });
+    expect(diagonalBraces).toHaveLength(0);
+    expect(room.getObjectByName('war-room-hammerbeam-side-tie')).toBeTruthy();
 
     dispose(room);
   });
@@ -79,15 +88,17 @@ describe('WarRoomCompositionPolish', () => {
     const leftCanvas = left.getObjectByName('war-room-premium-painting-canvas');
     const rightCanvas = right.getObjectByName('war-room-premium-painting-canvas');
 
-    expect(left.userData.warRoomLandscapeVersion).toBe('v16');
-    expect(right.userData.warRoomLandscapeVersion).toBe('v16');
-    expect(left.userData.warRoomLandscapeSubject).toBe('rhine-valley-castle-v16');
-    expect(right.userData.warRoomLandscapeSubject).toBe('alpine-lake-fortress-v16');
+    expect(left.userData.warRoomLandscapeVersion).toBe('v20');
+    expect(right.userData.warRoomLandscapeVersion).toBe('v20');
+    expect(left.userData.warRoomLandscapeSubject).toBe('black-forest-lake-dusk-v20');
+    expect(right.userData.warRoomLandscapeSubject).toBe('north-sea-cliffs-v20');
     expect(left.userData.warRoomLandscapeSubject).not.toBe(right.userData.warRoomLandscapeSubject);
-    expect(leftCanvas.material.map.name).toBe('war-room-gallery-rhine-landscape-v16');
-    expect(rightCanvas.material.map.name).toBe('war-room-gallery-alpine-landscape-v16');
-    expect(leftCanvas.material.map.userData.resolution).toEqual([256, 160]);
-    expect(rightCanvas.material.map.userData.resolution).toEqual([256, 160]);
+    expect(leftCanvas.material.map.name).toBe('war-room-gallery-black-forest-v20');
+    expect(rightCanvas.material.map.name).toBe('war-room-gallery-north-sea-v20');
+    expect(leftCanvas.material.map.userData.resolution).toEqual([384, 240]);
+    expect(rightCanvas.material.map.userData.resolution).toEqual([384, 240]);
+    expect(leftCanvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
+    expect(rightCanvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
     expect(leftCanvas.material.roughnessMap?.userData?.warRoomPremiumSurface).toBe('canvas');
     expect(rightCanvas.material.roughnessMap?.userData?.warRoomPremiumSurface).toBe('canvas');
 
@@ -107,8 +118,8 @@ describe('WarRoomCompositionPolish', () => {
 
     expect(room.userData.warRoomCompositionPolishVersion).toBe('v10');
     expect(fireplace.userData.warRoomInteriorFinish).toBe('refractory-v4');
-    expect(fireplace.userData.warRoomUserFireplaceFinish).toBe('v16');
-    expect(fireplace.userData.warRoomFirebrickPalette).toBe('red-black-sooted-v16');
+    expect(fireplace.userData.warRoomUserFireplaceFinish).toBe('v20');
+    expect(fireplace.userData.warRoomFirebrickPalette).toBe('red-black-sooted-v20');
     expect(fireplace.userData.warRoomFirebrickBackFlush).toBe(true);
     expect(fireplace.userData.warRoomInteriorMeshCount).toBe(4);
     for (const name of names) {

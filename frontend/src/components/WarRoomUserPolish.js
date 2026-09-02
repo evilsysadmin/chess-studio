@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import './WarRoomUserPolish.css';
 
-export const WAR_ROOM_USER_POLISH_VERSION = 'room-balance-v16';
+export const WAR_ROOM_USER_POLISH_VERSION = 'room-balance-v20';
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -13,138 +13,211 @@ function sceneRoot(object) {
   return current;
 }
 
-function landscapeTexture(kind = 'rhine') {
-  const width = 256;
-  const height = 160;
+function softNoise(x, y) {
+  return (
+    Math.sin(x * 0.173 + y * 0.117)
+    + Math.sin(x * 0.057 - y * 0.231 + 1.7)
+    + Math.cos(x * 0.319 + y * 0.041 + 0.8)
+  ) / 3;
+}
+
+function applyCanvasFinish(rgb, x, y, width, height) {
+  const u = x / Math.max(1, width - 1);
+  const v = y / Math.max(1, height - 1);
+  const edge = Math.max(Math.abs(u - 0.5) * 2, Math.abs(v - 0.5) * 2);
+  const vignette = Math.max(0.78, 1 - Math.max(0, edge - 0.55) * 0.22);
+  const weave = ((x % 3 === 0 ? 1 : -0.25) + (y % 3 === 0 ? 1 : -0.25)) * 0.9;
+  const grain = softNoise(x * 1.7, y * 1.55) * 3.4;
+  return rgb.map((channel) => clampByte(channel * vignette + weave + grain));
+}
+
+function blackForestPixel(u, v, x, y) {
+  const skyT = Math.min(1, v / 0.56);
+  let r = 33 + skyT * 72;
+  let g = 43 + skyT * 69;
+  let b = 55 + skyT * 58;
+
+  const cloud = Math.max(0, softNoise(x * 0.19, y * 0.12) - 0.18);
+  r += cloud * 22;
+  g += cloud * 20;
+  b += cloud * 18;
+
+  const farRidge = 0.43 + Math.sin(u * 8.6 + 0.4) * 0.035 + Math.sin(u * 21.5) * 0.016;
+  const nearRidge = 0.52 + Math.sin(u * 10.2 + 1.1) * 0.045 + Math.sin(u * 31.4) * 0.018;
+  if (v > farRidge) {
+    const haze = Math.min(1, (v - farRidge) / 0.12);
+    r = 58 - haze * 13;
+    g = 70 - haze * 12;
+    b = 67 - haze * 18;
+  }
+  if (v > nearRidge) {
+    r = 29;
+    g = 48;
+    b = 39;
+  }
+
+  // Dense conifer silhouette: enough individual crowns to read as forest,
+  // without paying for image assets or making the painting look pixel-art.
+  const treeWave = Math.abs(Math.sin(u * 96 + Math.sin(u * 17) * 2.2));
+  const treeLine = 0.56 - treeWave * 0.055 - Math.abs(Math.sin(u * 43)) * 0.025;
+  if (v > treeLine && v < 0.72) {
+    const depth = Math.min(1, (v - treeLine) / 0.15);
+    r = 22 + depth * 8;
+    g = 42 + depth * 10;
+    b = 32 + depth * 7;
+  }
+
+  if (v >= 0.70) {
+    const waterT = Math.min(1, (v - 0.70) / 0.30);
+    const ripple = Math.sin(y * 1.9 + x * 0.18) * 4.5 + Math.sin(y * 0.71 - x * 0.09) * 2.6;
+    r = 32 + waterT * 8 + ripple;
+    g = 49 + waterT * 7 + ripple;
+    b = 52 + waterT * 9 + ripple * 0.75;
+    const reflectedForest = Math.sin(x * 0.62 + y * 0.11) > 0.67 && v < 0.84;
+    if (reflectedForest) { r -= 9; g -= 7; b -= 8; }
+  }
+
+  // A small warm clearing gives the eye a focal point without drawing a
+  // literal blocky castle into the texture.
+  const dx = u - 0.57;
+  const dy = v - 0.61;
+  const clearing = Math.max(0, 1 - Math.sqrt(dx * dx * 8 + dy * dy * 20) * 7);
+  r += clearing * 48;
+  g += clearing * 32;
+  b += clearing * 12;
+  return [r, g, b];
+}
+
+function northSeaPixel(u, v, x, y) {
+  const horizon = 0.55;
+  const skyT = Math.min(1, v / horizon);
+  let r = 34 + skyT * 73;
+  let g = 43 + skyT * 75;
+  let b = 57 + skyT * 80;
+
+  const cloudBand = softNoise(x * 0.14, y * 0.09) + Math.sin(u * 13 + v * 4) * 0.2;
+  if (v < horizon && cloudBand > 0.15) {
+    const cloud = (cloudBand - 0.15) * 28;
+    r += cloud;
+    g += cloud;
+    b += cloud * 0.9;
+  }
+
+  if (v >= horizon) {
+    const seaT = (v - horizon) / (1 - horizon);
+    const wave = Math.sin(y * 2.25 + x * 0.16) * 5.2 + Math.sin(y * 0.91 - x * 0.23) * 3.1;
+    r = 28 + seaT * 8 + wave * 0.55;
+    g = 49 + seaT * 10 + wave * 0.72;
+    b = 62 + seaT * 12 + wave;
+    const foam = Math.sin(y * 3.7 + x * 0.41) > 0.91 && seaT > 0.15;
+    if (foam) { r += 38; g += 40; b += 37; }
+  }
+
+  const leftCliffEdge = 0.11 + Math.max(0, v - 0.47) * 0.62 + Math.sin(v * 31) * 0.012;
+  const rightCliffEdge = 0.91 - Math.max(0, v - 0.58) * 0.28;
+  if ((u < leftCliffEdge && v > 0.43) || (u > rightCliffEdge && v > 0.6)) {
+    const rock = softNoise(x * 0.55, y * 0.47) * 13;
+    r = 55 + rock;
+    g = 54 + rock * 0.72;
+    b = 50 + rock * 0.58;
+    if (v > 0.73) { r -= 9; g -= 7; b -= 4; }
+  }
+
+  // Distant amber break in the clouds; deliberately diffuse and painterly.
+  const dx = u - 0.69;
+  const dy = v - 0.34;
+  const glow = Math.max(0, 1 - Math.sqrt(dx * dx * 4.2 + dy * dy * 12) * 7.5);
+  r += glow * 55;
+  g += glow * 35;
+  b += glow * 10;
+  return [r, g, b];
+}
+
+function landscapeTexture(kind = 'forest') {
+  const width = 384;
+  const height = 240;
   const data = new Uint8Array(width * height * 4);
-  const alpine = kind === 'alpine';
+  const sea = kind === 'sea';
 
   for (let y = 0; y < height; y += 1) {
     const v = y / Math.max(1, height - 1);
     for (let x = 0; x < width; x += 1) {
       const u = x / Math.max(1, width - 1);
-      const grain = Math.sin(x * 0.31 + y * 0.17) * 3 + Math.cos(x * 0.07 - y * 0.23) * 2;
-      let r;
-      let g;
-      let b;
-
-      if (alpine) {
-        const sky = Math.min(1, v / 0.62);
-        r = 25 + sky * 72;
-        g = 34 + sky * 75;
-        b = 50 + sky * 74;
-        const ridge = 0.54 + Math.sin(u * 8.4) * 0.055 + Math.sin(u * 19.2 + 1.1) * 0.025;
-        const snow = ridge - 0.055;
-        if (v > snow) { r = 156 + grain; g = 158 + grain; b = 153 + grain; }
-        if (v > ridge) { r = 49 + grain; g = 58 + grain; b = 57 + grain; }
-        if (v > 0.73) { r = 29 + grain; g = 43 + grain; b = 41 + grain; }
-        if (v > 0.83) {
-          const reflection = Math.sin((u * 18 + v * 31) * Math.PI) * 4;
-          r = 35 + reflection; g = 49 + reflection; b = 52 + reflection;
-        }
-      } else {
-        const sky = Math.min(1, v / 0.58);
-        r = 35 + sky * 132;
-        g = 43 + sky * 81;
-        b = 58 + sky * 39;
-        const farHill = 0.5 + Math.sin(u * 7.2 + 0.6) * 0.045 + Math.sin(u * 15.8) * 0.018;
-        if (v > farHill) { r = 48 + grain; g = 58 + grain; b = 44 + grain; }
-        if (v > 0.69) { r = 35 + grain; g = 48 + grain; b = 40 + grain; }
-        if (v > 0.78) {
-          const river = Math.abs(u - 0.48) < (v - 0.73) * 1.48 + 0.045;
-          if (river) {
-            const glint = Math.sin((x + y) * 0.22) * 5;
-            r = 72 + glint; g = 70 + glint; b = 61 + glint;
-          }
-        }
-      }
-
+      const raw = sea ? northSeaPixel(u, v, x, y) : blackForestPixel(u, v, x, y);
+      const [r, g, b] = applyCanvasFinish(raw, x, y, width, height);
       const index = (y * width + x) * 4;
-      data[index] = clampByte(r);
-      data[index + 1] = clampByte(g);
-      data[index + 2] = clampByte(b);
+      data[index] = r;
+      data[index + 1] = g;
+      data[index + 2] = b;
       data[index + 3] = 255;
     }
   }
 
-  const castleX = alpine ? 158 : 169;
-  const castleY = alpine ? 82 : 71;
-  const castleW = alpine ? 42 : 48;
-  for (let y = castleY; y < castleY + 25; y += 1) {
-    for (let x = castleX; x < castleX + castleW; x += 1) {
-      if (x < 0 || y < 0 || x >= width || y >= height) continue;
-      const p = (y * width + x) * 4;
-      const edge = x < castleX + 4 || x > castleX + castleW - 5 || y < castleY + 4;
-      data[p] = edge ? 89 : 112;
-      data[p + 1] = edge ? 82 : 101;
-      data[p + 2] = edge ? 72 : 87;
-    }
-  }
-  for (const towerX of [castleX + 4, castleX + castleW - 12]) {
-    for (let y = castleY - 15; y < castleY + 23; y += 1) {
-      for (let x = towerX; x < towerX + 8; x += 1) {
-        if (x < 0 || y < 0 || x >= width || y >= height) continue;
-        const p = (y * width + x) * 4;
-        data[p] = 121; data[p + 1] = 109; data[p + 2] = 91;
-      }
-    }
-  }
-
   const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = alpine ? 'war-room-gallery-alpine-landscape-v16' : 'war-room-gallery-rhine-landscape-v16';
+  texture.name = sea ? 'war-room-gallery-north-sea-v20' : 'war-room-gallery-black-forest-v20';
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
+  texture.anisotropy = 4;
   texture.needsUpdate = true;
   texture.userData.resolution = [width, height];
-  texture.userData.warRoomLandscape = alpine ? 'alpine-lake-fortress-v16' : 'rhine-valley-castle-v16';
+  texture.userData.warRoomLandscape = sea ? 'north-sea-cliffs-v20' : 'black-forest-lake-dusk-v20';
+  texture.userData.warRoomGalleryFinish = 'layered-canvas-v20';
   return texture;
 }
 
 function improveGallery(group) {
   let changed = 0;
-  for (const [index, kind] of [[0, 'rhine'], [1, 'alpine']]) {
+  for (const [index, kind] of [[0, 'forest'], [1, 'sea']]) {
     const frame = group.getObjectByName?.(`war-room-premium-painting-${index}`);
     const canvas = frame?.getObjectByName?.('war-room-premium-painting-canvas');
-    if (!canvas?.material || frame.userData.warRoomLandscapeVersion === 'v16') continue;
+    if (!canvas?.material || frame.userData.warRoomLandscapeVersion === 'v20') continue;
     const previous = canvas.material.map;
     canvas.material.map = landscapeTexture(kind);
     canvas.material.color?.setHex?.(0xffffff);
-    canvas.material.roughness = Math.max(canvas.material.roughness ?? 0.8, 0.86);
+    canvas.material.roughness = 0.62;
+    canvas.material.clearcoat = Math.max(canvas.material.clearcoat ?? 0, 0.14);
+    canvas.material.clearcoatRoughness = 0.48;
+    canvas.material.specularIntensity = Math.max(canvas.material.specularIntensity ?? 0.18, 0.28);
+    canvas.material.envMapIntensity = Math.max(canvas.material.envMapIntensity ?? 0.2, 0.36);
     canvas.material.needsUpdate = true;
     previous?.dispose?.();
-    frame.userData.warRoomLandscapeVersion = 'v16';
+    frame.userData.warRoomLandscapeVersion = 'v20';
     frame.userData.warRoomLandscapeSubject = canvas.material.map.userData.warRoomLandscape;
+    frame.userData.warRoomGalleryFinish = 'varnished-canvas-v20';
     changed += 1;
   }
   return changed;
 }
 
 function separateFurniture(group, { wallZ, towardBoard }) {
-  const sofaOffset = 9.15;
-  const consoleOffset = 0.82;
+  const sofaOffset = 12.15;
+  const consoleOffset = 0.72;
 
   for (const [name, side] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
     const sofa = group.getObjectByName?.(name);
     if (!sofa) continue;
-    sofa.position.set(side * 6.62, 0.02, wallZ + towardBoard * sofaOffset);
+    sofa.position.set(side * 6.82, 0.02, wallZ + towardBoard * sofaOffset);
     sofa.userData.warRoomOffsetFromWall = sofaOffset;
-    sofa.userData.warRoomFurniturePlacement = 'wide-club-separation-v16';
+    sofa.userData.warRoomFurniturePlacement = 'front-edge-club-sofa-v20';
   }
 
-  for (const name of ['war-room-side-console-left', 'war-room-side-console-right']) {
+  for (const [name, side] of [['war-room-side-console-left', -1], ['war-room-side-console-right', 1]]) {
     const table = group.getObjectByName?.(name);
     if (!table) continue;
+    table.position.x = side * 6.88;
     table.position.z = wallZ + towardBoard * consoleOffset;
     table.userData.warRoomOffsetFromWall = consoleOffset;
-    table.userData.warRoomFurniturePlacement = 'rear-campaign-table-v16';
+    table.userData.warRoomFurniturePlacement = 'rear-wall-campaign-table-v20';
   }
 
   group.userData.warRoomFurnitureGap = sofaOffset - consoleOffset;
+  group.userData.warRoomFurnitureOrder = 'tables-rear-armors-middle-sofas-front-v20';
 }
 
 function placeArmor(group, { wallZ, towardBoard }) {
+  const armorOffset = 5.15;
   let count = 0;
   for (const [name, side] of [
     ['war-room-teutonic-armor-left', -1],
@@ -152,19 +225,20 @@ function placeArmor(group, { wallZ, towardBoard }) {
   ]) {
     const armor = group.getObjectByName?.(name);
     if (!armor) continue;
-    armor.position.set(side * 7.03, 0, wallZ + towardBoard * 3.45);
-    armor.rotation.y = -side * towardBoard * 0.72;
-    armor.userData.warRoomArmorPlacement = 'floor-sentry-facing-board-v16';
+    armor.position.set(side * 7.08, 0, wallZ + towardBoard * armorOffset);
+    armor.rotation.y = -side * towardBoard * 0.82;
+    armor.userData.warRoomOffsetFromWall = armorOffset;
+    armor.userData.warRoomArmorPlacement = 'middle-floor-sentry-facing-board-v20';
     armor.userData.facesWarTable = true;
     count += 1;
   }
-  group.userData.warRoomArmorComposition = 'floor-sentries-facing-board-v16';
+  group.userData.warRoomArmorComposition = 'middle-sentries-facing-board-v20';
   return count;
 }
 
 function finishFireplace(group, towardBoard) {
   const fireplace = group.getObjectByName?.('war-room-fireplace');
-  if (!fireplace || fireplace.userData.warRoomUserFireplaceFinish === 'v16') return 0;
+  if (!fireplace || fireplace.userData.warRoomUserFireplaceFinish === 'v20') return 0;
   const back = fireplace.getObjectByName?.('war-room-fireplace-refractory-back');
   const hearth = fireplace.getObjectByName?.('war-room-fireplace-refractory-hearth');
   const left = fireplace.getObjectByName?.('war-room-fireplace-refractory-return-left');
@@ -189,8 +263,8 @@ function finishFireplace(group, towardBoard) {
     material.needsUpdate = true;
   }
 
-  fireplace.userData.warRoomUserFireplaceFinish = 'v16';
-  fireplace.userData.warRoomFirebrickPalette = 'red-black-sooted-v16';
+  fireplace.userData.warRoomUserFireplaceFinish = 'v20';
+  fireplace.userData.warRoomFirebrickPalette = 'red-black-sooted-v20';
   fireplace.userData.warRoomFirebrickBackFlush = true;
   return 1;
 }
@@ -199,13 +273,15 @@ function retireWallMonograms(group) {
   let changed = 0;
   group.traverse?.((object) => {
     if (object?.name !== 'war-room-hammerbeam-brace') return;
-    object.rotation.z = 0;
-    object.scale.x = Math.min(object.scale.x, 0.68);
-    object.position.y = Math.max(object.position.y, 5.08);
-    object.userData.warRoomBraceStyle = 'horizontal-hammerbeam-v16';
+    // Legacy scenes/tests can still contain the old diagonal brace. Do not
+    // merely rotate it: hide it entirely so no render order can reconstruct
+    // the accidental repeated-M wall motif.
+    object.visible = false;
+    object.userData.warRoomBraceStyle = 'retired-no-monogram-v20';
     changed += 1;
   });
   group.userData.warRoomDiagonalMonogramsRetired = changed;
+  group.userData.warRoomMonogramFree = true;
   return changed;
 }
 

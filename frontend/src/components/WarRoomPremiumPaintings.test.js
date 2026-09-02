@@ -41,7 +41,7 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomTeutonicArmorCount).toBe(2);
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
     expect(group.userData.warRoomCompositionPolishVersion).toBe('v10');
-    expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v16');
+    expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v20');
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
 
     const leftArmor = group.getObjectByName('war-room-teutonic-armor-left');
@@ -50,8 +50,8 @@ describe('War Room premium paintings', () => {
     expect(rightArmor).toBeTruthy();
     expect(leftArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
     expect(rightArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('floor-sentry-facing-board-v16');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('floor-sentry-facing-board-v16');
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('middle-floor-sentry-facing-board-v20');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
 
@@ -76,19 +76,21 @@ describe('War Room premium paintings', () => {
       expect(painting).toBeInstanceOf(THREE.Group);
       expect(painting.userData.warRoomPaintingFinish).toBe('museum-canvas-and-gilding-v3');
       expect(painting.userData.warRoomMuseumFinish).toBe('v3');
-      expect(painting.userData.warRoomGalleryFinish).toBe('lit-carved-frame-v3');
+      expect(painting.userData.warRoomGalleryFinish).toBe('varnished-canvas-v20');
       expect(painting.userData.warRoomPracticalMaterialPass).toBe('v4');
       expect(painting.userData.warRoomGalleryLandscapeVersion).toBe('v4');
-      expect(painting.userData.warRoomLandscapeVersion).toBe('v16');
+      expect(painting.userData.warRoomLandscapeVersion).toBe('v20');
       expect(canvas).toBeInstanceOf(THREE.Mesh);
       expect(gilt).toBeInstanceOf(THREE.Mesh);
       expect(woodBed).toBeInstanceOf(THREE.Mesh);
       expect(canvas.material.map).toBeInstanceOf(THREE.DataTexture);
       expect(canvas.material.map.userData.warRoomLandscape).toBe(index === 0
-        ? 'rhine-valley-castle-v16'
-        : 'alpine-lake-fortress-v16');
-      expect(canvas.material.map.userData.resolution).toEqual([256, 160]);
-      expect(canvas.material.roughness).toBeGreaterThan(0.7);
+        ? 'black-forest-lake-dusk-v20'
+        : 'north-sea-cliffs-v20');
+      expect(canvas.material.map.userData.resolution).toEqual([384, 240]);
+      expect(canvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
+      expect(canvas.material.roughness).toBeLessThan(0.7);
+      expect(canvas.material.clearcoat).toBeGreaterThanOrEqual(0.14);
       expect(canvas.material.bumpMap?.userData?.warRoomPremiumSurface).toBe('canvas');
       expect(canvas.material.userData.warRoomCanvasFinish).toBe('woven-varnished-linen-v3');
       expect(canvas.material.userData.warRoomPracticalFinish).toBe('museum-canvas-response-v4');

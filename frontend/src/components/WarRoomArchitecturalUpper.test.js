@@ -45,7 +45,7 @@ function dispose(root) {
 }
 
 describe('War Room architectural upper framing', () => {
-  it('suggests a 19-mesh hammerbeam roof only in the far camera-clear zone', () => {
+  it('suggests a 19-mesh monogram-free hammerbeam roof only in the far camera-clear zone', () => {
     const group = new THREE.Group();
     const wallZ = -7.6;
     const towardBoard = 1;
@@ -56,17 +56,26 @@ describe('War Room architectural upper framing', () => {
     });
 
     expect(added).toBe(19);
-    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v6');
+    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v7');
     expect(group.userData.warRoomUpperArchitectureMeshBudget).toBe(19);
     expect(group.userData.warRoomUpperArchitectureMaxOffsetFromWall).toBeLessThan(3.5);
+    expect(group.userData.warRoomMonogramFree).toBe(true);
 
     const layer = group.getObjectByName('war-room-upper-architecture');
     expect(layer).toBeInstanceOf(THREE.Group);
     expect(layer.userData.warRoomUpperArchitectureZone).toBe('far-third-camera-clear');
+    expect(layer.userData.warRoomMonogramFree).toBe(true);
     expect(namedCount(layer, 'war-room-hammerbeam-transverse')).toBe(3);
-    expect(namedCount(layer, 'war-room-hammerbeam-brace')).toBe(6);
+    expect(namedCount(layer, 'war-room-hammerbeam-brace')).toBe(0);
+    expect(namedCount(layer, 'war-room-hammerbeam-side-tie')).toBe(6);
     expect(namedCount(layer, 'war-room-hammerbeam-corbel')).toBe(6);
     expect(namedCount(layer, 'war-room-hammerbeam-longitudinal')).toBe(4);
+
+    const ties = [];
+    layer.traverse((object) => {
+      if (object.name === 'war-room-hammerbeam-side-tie') ties.push(object);
+    });
+    expect(ties.every((tie) => tie.rotation.z === 0)).toBe(true);
 
     const roofMeshes = meshes(layer);
     expect(roofMeshes).toHaveLength(19);
@@ -110,8 +119,9 @@ describe('War Room architectural upper framing', () => {
 
     const upper = group.getObjectByName('war-room-upper-architecture');
     expect(upper).toBeTruthy();
-    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v6');
+    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v7');
     expect(group.userData.warRoomUpperArchitectureMeshBudget).toBe(19);
+    expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(group.userData.warRoomPracticalLightCount).toBe(2);
 
     dispose(group);
