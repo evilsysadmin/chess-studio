@@ -17,6 +17,7 @@ import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObj
 import { addMesh, buildWarRoom, fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
+import './WarRoomDesktopRailLayout.css';
 
 function Board3DCanvas({
   fen,
@@ -258,265 +259,85 @@ function Board3DCanvas({
       const fileOrder = whiteSide ? FILES : [...FILES].reverse();
       const rankOrder = whiteSide ? ['1','2','3','4','5','6','7','8'] : ['8','7','6','5','4','3','2','1'];
       fileOrder.forEach((file, index) => {
-        const sprite = makeTextSprite(file.toUpperCase(), '#d4aa54');
-        sprite.position.set(index - 3.5, 0.16, whiteSide ? 4.68 : -4.68);
-        coordinateGroup.add(sprite);
+        const { x } = squarePosition(`${FILES[index]}1`);
+        const label = makeTextSprite(file, '#dfcfaa', 0.42);
+        label.position.set(x, 0.2, whiteSide ? 4.72 : -4.72);
+        coordinateGroup.add(label);
       });
       rankOrder.forEach((rank, index) => {
-        const sprite = makeTextSprite(rank, '#d4aa54');
-        sprite.position.set(whiteSide ? -4.68 : 4.68, 0.16, whiteSide ? 3.5 - index : -3.5 + index);
-        coordinateGroup.add(sprite);
+        const { z } = squarePosition(`a${index + 1}`);
+        const label = makeTextSprite(rank, '#dfcfaa', 0.42);
+        label.position.set(whiteSide ? -4.72 : 4.72, 0.2, z);
+        coordinateGroup.add(label);
       });
     }
 
-    function render() {
-      renderer.render(scene, camera);
-    }
+    fitBoardCamera(camera, host, orientation);
+    camera.userData.basePosition = camera.position.clone();
+    camera.userData.baseTarget = new THREE.Vector3(0, 0.35, 0);
 
-    function resize() {
-      const width = Math.max(280, host.clientWidth || 280);
-      const height = Math.max(300, host.clientHeight || 300);
-      renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide);
+    const render = () => renderer.render(scene, camera);
+    const resize = () => {
+      if (!host.clientWidth || !host.clientHeight) return;
+      renderer.setSize(host.clientWidth, host.clientHeight, false);
+      camera.aspect = host.clientWidth / host.clientHeight;
+      camera.updateProjectionMatrix();
+      fitBoardCamera(camera, host, orientation);
+      camera.userData.basePosition = camera.position.clone();
+      camera.userData.baseTarget = new THREE.Vector3(0, 0.35, 0);
       render();
-    }
+    };
+
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(host);
     resize();
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
-    observer?.observe(host);
 
-    function squareFromPointer(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.set(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointer, camera);
-      const intersections = raycaster.intersectObjects([...pieceGroup.children, ...squareMeshes.values()], true);
-      for (const hit of intersections) {
-        let object = hit.object;
-        while (object && !object.userData?.square) object = object.parent;
-        if (object?.userData?.square) return object.userData.square;
-      }
-      return null;
-    }
-
-    function selectSquareFromTouch(event) {
-      const square = squareFromPointer(event);
-      renderer.domElement.dataset.warRoomLastSquare = square || '';
-      if (!square) return false;
-      setFocusedSquare(square);
-      latestPropsRef.current.onSquareClick?.(square);
-      return true;
-    }
-
-    function onPointerDown(event) {
-      const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
-      pointerStartRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        id: event.pointerId,
-        pointerType: event.pointerType,
-        handled: false,
-      };
-      if (inspectModeRef.current) {
-        const motion = cameraMotionRef.current;
-        motion.dragging = true;
-        motion.lastX = event.clientX;
-        motion.lastY = event.clientY;
-        renderer.domElement.setPointerCapture?.(event.pointerId);
-        return;
-      }
-      if (!touchLike) return;
-      renderer.domElement.setPointerCapture?.(event.pointerId);
-      renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectSquareFromTouch(event);
-      if (pointerStartRef.current) pointerStartRef.current.handled = handled;
-    }
-
-    function onPointerMove(event) {
-      const motion = cameraMotionRef.current;
-      if (inspectModeRef.current) {
-        renderer.domElement.style.cursor = motion.dragging ? 'grabbing' : 'grab';
-        if (motion.dragging) {
-          const dx = event.clientX - motion.lastX;
-          const dy = event.clientY - motion.lastY;
-          motion.lastX = event.clientX;
-          motion.lastY = event.clientY;
-          motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -0.14, 0.14);
-          motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, -0.08, 0.075);
-        }
-        return;
-      }
-      if (coarsePointer) return;
-      const square = squareFromPointer(event);
-      const pieceHover = square && pieceMeshes.has(square) ? square : null;
-      renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
-      setHoveredSquare((current) => current === pieceHover ? current : pieceHover);
-    }
-
-    function onPointerLeave() {
-      const motion = cameraMotionRef.current;
-      motion.targetX = 0;
-      motion.targetY = 0;
-      motion.dragging = false;
-      renderer.domElement.style.cursor = 'default';
-      setHoveredSquare(null);
-    }
-
-    function releasePointer(event) {
-      try {
-        if (renderer.domElement.hasPointerCapture?.(event.pointerId)) {
-          renderer.domElement.releasePointerCapture?.(event.pointerId);
-        }
-      } catch {
-        // Android/WebView can already have released capture on cancellation.
-      }
-    }
-
-    function onPointerCancel(event) {
-      pointerStartRef.current = null;
-      cameraMotionRef.current.dragging = false;
-      renderer.domElement.dataset.warRoomTouchStage = 'cancel';
-      releasePointer(event);
-    }
-
-    function onPointerUp(event) {
-      const start = pointerStartRef.current;
-      pointerStartRef.current = null;
-      if (inspectModeRef.current) {
-        cameraMotionRef.current.dragging = false;
-        renderer.domElement.style.cursor = 'grab';
-        releasePointer(event);
-        return;
-      }
-      if (start?.handled) {
-        renderer.domElement.dataset.warRoomTouchStage = 'up';
-        releasePointer(event);
-        return;
-      }
-      const touchLike = coarsePointer || start?.pointerType === 'touch' || start?.pointerType === 'pen';
-      const tap = resolveBoardTap(
-        start,
-        { x: event.clientX, y: event.clientY, id: event.pointerId },
-        { coarsePointer: touchLike },
-      );
-      if (!tap) {
-        releasePointer(event);
-        return;
-      }
-      const square = squareFromPointer({ clientX: tap.x, clientY: tap.y });
-      renderer.domElement.dataset.warRoomLastSquare = square || '';
-      if (!square) {
-        releasePointer(event);
-        return;
-      }
-      setFocusedSquare(square);
-      latestPropsRef.current.onSquareClick?.(square);
-      releasePointer(event);
-    }
-
-    function onContextLost(event) {
-      event.preventDefault();
-      latestPropsRef.current.onRendererFailure?.(new Error('WebGL context lost'));
-    }
-
-    renderer.domElement.addEventListener('pointerdown', onPointerDown, { passive: true });
-    renderer.domElement.addEventListener('pointermove', onPointerMove, { passive: true });
-    renderer.domElement.addEventListener('pointerleave', onPointerLeave, { passive: true });
-    renderer.domElement.addEventListener('pointerup', onPointerUp, { passive: true });
-    renderer.domElement.addEventListener('pointercancel', onPointerCancel, { passive: true });
-    renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
-
-    let lastAmbientPaint = 0;
-    function ambientFrame(now) {
-      const motion = cameraMotionRef.current;
-      const plan = warRoomAmbientFramePlan({
-        documentHidden: document.hidden,
-        reducedMotion: getEffectiveReducedMotion(),
-        coarsePointer,
-        softwareRenderer,
-        inspectMode: inspectModeRef.current,
-        elapsedMs: now - lastAmbientPaint,
-      });
-      if (plan.shouldRender) {
-        if (plan.updateCamera) {
-          const basePosition = camera.userData.basePosition;
-          const baseTarget = camera.userData.baseTarget;
-          if (basePosition && baseTarget) {
-            const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ'));
-            camera.position.copy(baseTarget).add(offset);
-            camera.lookAt(baseTarget);
-          }
-        }
-        // The castle fire updates from onBeforeRender, so the scene needs a
-        // quiet heartbeat even when the player does not move the mouse.
-        render();
-        // Start the idle budget after WebGL finishes. Software renderers can
-        // otherwise consume the whole interval and starve pointer handling.
-        lastAmbientPaint = performance.now();
-      }
-      ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
-    }
-    if (!softwareRenderer) ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
-
-    sceneStateRef.current = {
+    const state = {
       scene,
       camera,
       renderer,
-      pieceGroup,
-      pieceMeshes,
-      highlightMeshes,
-      coarsePointer,
-      renderLite,
-      key,
-      rim,
-      warm,
       render,
-      renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
-      slowFrameCount: 0,
+      resize,
+      releaseEnvironment,
+      raycaster,
+      pointer,
+      squareMeshes,
+      highlightMeshes,
+      pieceMeshes,
+      pieceGroup,
+      coordinateGroup,
+      boardGroup,
+      renderLite,
+      coarsePointer,
+      softwareRenderer,
+      theme,
+      whiteSide,
+      disposed: false,
     };
-    setRendererLabel(renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL');
-    render();
+    sceneStateRef.current = state;
 
     return () => {
-      window.cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = 0;
-      window.cancelAnimationFrame(ambientFrameRef.current);
-      ambientFrameRef.current = 0;
-      observer?.disconnect();
-      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-      renderer.domElement.removeEventListener('pointermove', onPointerMove);
-      renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
-      renderer.domElement.removeEventListener('pointerup', onPointerUp);
-      renderer.domElement.removeEventListener('pointercancel', onPointerCancel);
-      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
-      scene.traverse((object) => {
-        if (object.userData?.ownedTexture) object.userData.ownedTexture.dispose();
-      });
-      releaseEnvironment();
-      disposeObject(scene);
+      state.disposed = true;
+      resizeObserver.disconnect();
+      releaseEnvironment?.();
       renderer.dispose();
       renderer.forceContextLoss?.();
-      if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
+      host.removeChild(renderer.domElement);
+      scene.traverse((object) => {
+        if (object.geometry) object.geometry.dispose?.();
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.forEach((mat) => mat?.dispose?.());
+      });
       sceneStateRef.current = null;
     };
-  }, [boardTheme, orientation, showCoordinates]);
+  }, [boardTheme, orientation]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
-    if (!state) return undefined;
-    window.cancelAnimationFrame(animationFrameRef.current);
-    animationFrameRef.current = 0;
-
-    const previousPieces = parseFen(previousFenRef.current);
+    if (!state) return;
     const nextPieces = parseFen(fen);
-    const movingBefore = animate?.from ? previousPieces.find((piece) => piece.square === animate.from) : null;
-    const movingAfter = animate?.to ? nextPieces.find((piece) => piece.square === animate.to) : null;
-    const capturedPiece = inferCapturedPiece(previousPieces, nextPieces, animate);
-    const promotion = Boolean(movingBefore?.type === 'p' && movingAfter && movingAfter.type !== 'p');
-    const fromFile = FILES.indexOf(animate?.from?.[0]);
-    const toFile = FILES.indexOf(animate?.to?.[0]);
-    const castling = Boolean(movingBefore?.type === 'k' && fromFile >= 0 && toFile >= 0 && Math.abs(toFile - fromFile) === 2);
+    const previousPieces = parseFen(previousFenRef.current || fen);
+    const moved = deriveMoveKinetics(previousPieces, nextPieces, animate, orientation);
 
     for (const child of [...state.pieceGroup.children]) {
       state.pieceGroup.remove(child);
@@ -525,271 +346,260 @@ function Board3DCanvas({
     state.pieceMeshes.clear();
 
     for (const piece of nextPieces) {
-      const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
-      const mesh = buildPiece(piece.type, piece.color, skinId, state.renderLite, {
-        matthiasKing,
-        faceTowardCamera: orientation !== 'black',
-      });
+      const mesh = buildPiece(piece, skinId, state.renderLite);
       const { x, z } = squarePosition(piece.square);
-      mesh.position.set(x, 0.1, z);
+      mesh.position.set(x, 0.17, z);
       mesh.userData.square = piece.square;
-      mesh.userData.type = piece.type;
-      mesh.userData.color = piece.color;
-      mesh.userData.baseY = 0.1;
-      mesh.userData.baseScale = mesh.scale.clone();
-      if (matthiasKing) mesh.userData.matthiasKing = true;
-      mesh.traverse((object) => { object.userData.square = piece.square; });
-      addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer);
+      mesh.userData.piece = piece;
+      if (state.renderLite) addCoarsePieceHitTarget(mesh, piece.square);
+      if (isMatthiasRivalKing(piece, matthiasKingColor)) {
+        mesh.userData.matthiasKing = true;
+        applyMatthiasCheckPose(mesh, checkSquare === piece.square, gameOver);
+      }
       state.pieceGroup.add(mesh);
       state.pieceMeshes.set(piece.square, mesh);
     }
 
     previousFenRef.current = fen;
-    const animatedMesh = animate?.to ? state.pieceMeshes.get(animate.to) : null;
-    const shouldAnimate = Boolean(
-      animatedMesh
-      && animate?.from
-      && animate?.to
-      && animate?.seq
-      && animate.seq !== lastAnimatedSeqRef.current
-      && !getEffectiveReducedMotion(),
-    );
-
-    if (!shouldAnimate) {
-      if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
-      applyMatthiasCheckPose(state, checkSquare, orientation);
-      state.render();
-      return undefined;
+    if (moved && animate?.seq && animate.seq !== lastAnimatedSeqRef.current) {
+      lastAnimatedSeqRef.current = animate.seq;
     }
-
-    lastAnimatedSeqRef.current = animate.seq;
-    const from = squarePosition(animate.from);
-    const to = squarePosition(animate.to);
-    const kinetics = deriveMoveKinetics({
-      movingType: movingBefore?.type || movingAfter?.type,
-      capture: Boolean(animate.capture),
-      promotion,
-      castling,
-      coarsePointer: state.coarsePointer,
-    });
-    const start = performance.now();
-    const baseScale = animatedMesh.scale.clone();
-    let capturedGhost = null;
-    let castleRook = null;
-    let castleFrom = null;
-    let castleTo = null;
-
-    if (capturedPiece) {
-      capturedGhost = buildPiece(capturedPiece.type, capturedPiece.color, skinId, state.renderLite, {
-        matthiasKing: isMatthiasRivalKing(capturedPiece, matthiasKingColor),
-        faceTowardCamera: orientation !== 'black',
-      });
-      const capturedPosition = squarePosition(capturedPiece.square);
-      capturedGhost.position.set(capturedPosition.x, 0.1, capturedPosition.z);
-      capturedGhost.userData.captureGhost = true;
-      state.pieceGroup.add(capturedGhost);
-    }
-
-    if (castling) {
-      const rank = animate.to[1];
-      const kingSide = toFile > fromFile;
-      const rookFromSquare = `${kingSide ? 'h' : 'a'}${rank}`;
-      const rookToSquare = `${kingSide ? 'f' : 'd'}${rank}`;
-      castleRook = state.pieceMeshes.get(rookToSquare) || null;
-      castleFrom = squarePosition(rookFromSquare);
-      castleTo = squarePosition(rookToSquare);
-      if (castleRook) castleRook.position.set(castleFrom.x, 0.1, castleFrom.z);
-    }
-
-    function setOpacity(group, opacity) {
-      group?.traverse?.((object) => {
-        const materials = Array.isArray(object.material) ? object.material : [object.material];
-        materials.forEach((material) => {
-          if (!material) return;
-          material.transparent = opacity < 0.999;
-          material.opacity = opacity;
-          if (opacity < 0.999) material.depthWrite = false;
-        });
-      });
-    }
-
-    function frame(now) {
-      const raw = Math.min(1, Math.max(0, (now - start) / kinetics.duration));
-      const progress = animate.kind === 'miss'
-        ? (raw < 0.5 ? raw * 0.72 : (1 - raw) * 0.72)
-        : easeOutCubic(raw);
-      animatedMesh.position.x = to.x + (from.x - to.x) * (1 - progress);
-      animatedMesh.position.z = to.z + (from.z - to.z) * (1 - progress);
-      animatedMesh.position.y = 0.1 + Math.sin(raw * Math.PI) * (animate.kind === 'miss' ? 0.08 : kinetics.lift);
-
-      if (animate.capture && capturedGhost) {
-        const impact = smoothstep(kinetics.impactStart, 0.9, raw);
-        const side = orientation === 'black' ? -1 : 1;
-        capturedGhost.rotation.z = side * kinetics.captureTilt * impact;
-        capturedGhost.rotation.x = impact * 0.16;
-        capturedGhost.position.y = 0.1 - impact * 0.075;
-        capturedGhost.scale.multiplyScalar(1 - impact * 0.0016);
-        setOpacity(capturedGhost, 1 - impact * 0.92);
-        animatedMesh.rotation.z = Math.sin(impact * Math.PI) * 0.045 * side;
-      }
-
-      if (promotion && raw > 0.62) {
-        const pulseT = (raw - 0.62) / 0.38;
-        const pulse = Math.sin(Math.min(1, pulseT) * Math.PI) * kinetics.promotionPulse;
-        animatedMesh.scale.copy(baseScale).multiplyScalar(1 + pulse);
-        state.rim.intensity = 14.5 + pulse * 56;
-      }
-
-      if (castleRook && castleFrom && castleTo) {
-        const rookRaw = clamp01((raw - kinetics.rookDelay) / Math.max(0.01, 1 - kinetics.rookDelay));
-        const rookProgress = easeOutCubic(rookRaw);
-        castleRook.position.x = castleTo.x + (castleFrom.x - castleTo.x) * (1 - rookProgress);
-        castleRook.position.z = castleTo.z + (castleFrom.z - castleTo.z) * (1 - rookProgress);
-        castleRook.position.y = 0.1 + Math.sin(rookRaw * Math.PI) * 0.075;
-      }
-
-      const dt = state.lastAnimationFrameAt ? now - state.lastAnimationFrameAt : 16;
-      state.lastAnimationFrameAt = now;
-      state.slowFrameCount = dt > 23 ? state.slowFrameCount + 1 : Math.max(0, state.slowFrameCount - 1);
-      const requestedScale = adaptiveRenderScale({ coarsePointer: state.coarsePointer, slowFrameCount: state.slowFrameCount });
-      const cappedScale = Math.min(window.devicePixelRatio || 1, requestedScale);
-      if (cappedScale + 0.05 < state.renderScale) {
-        state.renderScale = cappedScale;
-        state.renderer.setPixelRatio(cappedScale);
-        const host = hostRef.current;
-        if (host) state.renderer.setSize(Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), false);
-      }
-
-      state.render();
-      if (raw < 1) animationFrameRef.current = window.requestAnimationFrame(frame);
-      else {
-        animatedMesh.position.set(to.x, 0.1, to.z);
-        animatedMesh.rotation.z = 0;
-        animatedMesh.scale.copy(baseScale);
-        if (castleRook && castleTo) castleRook.position.set(castleTo.x, 0.1, castleTo.z);
-        if (capturedGhost) {
-          state.pieceGroup.remove(capturedGhost);
-          disposeObject(capturedGhost);
-          capturedGhost = null;
-        }
-        const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
-        state.key.intensity = lights.key;
-        state.rim.intensity = lights.rim;
-        state.warm.intensity = lights.warm;
-        state.renderer.toneMappingExposure = lights.exposure;
-        applyMatthiasCheckPose(state, checkSquare, orientation);
-        state.render();
-        animationFrameRef.current = 0;
-        state.lastAnimationFrameAt = 0;
-      }
-    }
-
-    animatedMesh.position.set(from.x, 0.1, from.z);
     state.render();
-    animationFrameRef.current = window.requestAnimationFrame(frame);
+  }, [fen, skinId, orientation, animate?.seq, checkSquare, gameOver, matthiasKingColor]);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state) return;
+    const style = board3DHighlightStyle({ selectedSquare, legalTargets, lastMove, hintMove, checkSquare });
+    for (const [square, marker] of state.highlightMeshes.entries()) {
+      const next = style.get(square);
+      marker.visible = Boolean(next);
+      if (!next) continue;
+      marker.material.color.set(next.color);
+      marker.material.opacity = next.opacity;
+      marker.scale.setScalar(next.scale ?? 1);
+      marker.renderOrder = next.renderOrder ?? 6;
+    }
+    state.render();
+  }, [selectedSquare, legalTargets, lastMove, hintMove, checkSquare]);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state) return undefined;
+    const reducedMotion = getEffectiveReducedMotion();
+    const plan = warRoomAmbientFramePlan({
+      visible: typeof document === 'undefined' ? true : document.visibilityState === 'visible',
+      reducedMotion,
+      coarsePointer: state.coarsePointer,
+      softwareRenderer: state.softwareRenderer,
+    });
+    if (!plan.enabled) return undefined;
+
+    let cancelled = false;
+    let last = 0;
+    const tick = (time) => {
+      if (cancelled || state.disposed) return;
+      if (time - last >= plan.frameIntervalMs) {
+        last = time;
+        state.render();
+      }
+      ambientFrameRef.current = window.requestAnimationFrame(tick);
+    };
+    ambientFrameRef.current = window.requestAnimationFrame(tick);
     return () => {
-      window.cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = 0;
-      if (capturedGhost) {
-        state.pieceGroup.remove(capturedGhost);
-        disposeObject(capturedGhost);
+      cancelled = true;
+      if (ambientFrameRef.current) window.cancelAnimationFrame(ambientFrameRef.current);
+      ambientFrameRef.current = 0;
+    };
+  }, [boardTheme, orientation]);
+
+  const eventSquare = useCallback((event) => {
+    const state = sceneStateRef.current;
+    const canvas = state?.renderer?.domElement;
+    if (!state || !canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX ?? event.touches?.[0]?.clientX;
+    const y = event.clientY ?? event.touches?.[0]?.clientY;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !rect.width || !rect.height) return null;
+    state.pointer.x = ((x - rect.left) / rect.width) * 2 - 1;
+    state.pointer.y = -((y - rect.top) / rect.height) * 2 + 1;
+    state.raycaster.setFromCamera(state.pointer, state.camera);
+    return resolveBoardTap(state.raycaster, state.pieceGroup, state.squareMeshes);
+  }, []);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    const canvas = state?.renderer?.domElement;
+    if (!state || !canvas) return undefined;
+
+    const onPointerDown = (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      pointerStartRef.current = { x: event.clientX, y: event.clientY, at: performance.now() };
+      if (inspectModeRef.current) {
+        const motion = cameraMotionRef.current;
+        motion.dragging = true;
+        motion.lastX = event.clientX;
+        motion.lastY = event.clientY;
+        canvas.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
       }
     };
-  }, [fen, skinId, animate, boardTheme, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);
 
-  const legalMap = useMemo(() => new Map((legalTargets || []).map((target) => {
-    const square = target?.to || target?.square || target;
-    const capture = Boolean(target?.captured || target?.san?.includes?.('x'));
-    return [square, capture];
-  })), [legalTargets]);
-
-  useEffect(() => {
-    const state = sceneStateRef.current;
-    if (!state) return;
-    for (const [square, marker] of state.highlightMeshes.entries()) {
-      marker.visible = false;
-      marker.scale.setScalar(1);
-      const style = board3DHighlightStyle({
-        square,
-        focusedSquare,
-        hoveredSquare,
-        lastMove,
-        hintMove,
-        legalMap,
-        selectedSquare,
-        checkSquare,
-      });
-      if (style) {
-        marker.material.color.setHex(style.color);
-        marker.material.opacity = style.opacity;
-        marker.scale.setScalar(style.scale);
-        marker.visible = true;
+    const onPointerMove = (event) => {
+      if (inspectModeRef.current && cameraMotionRef.current.dragging) {
+        const motion = cameraMotionRef.current;
+        const dx = event.clientX - motion.lastX;
+        const dy = event.clientY - motion.lastY;
+        motion.lastX = event.clientX;
+        motion.lastY = event.clientY;
+        motion.targetX = THREE.MathUtils.clamp(motion.targetX + dx * 0.004, -0.65, 0.65);
+        motion.targetY = THREE.MathUtils.clamp(motion.targetY + dy * 0.0035, -0.34, 0.34);
+        motion.x = motion.targetX;
+        motion.y = motion.targetY;
+        const basePosition = state.camera.userData.basePosition;
+        const baseTarget = state.camera.userData.baseTarget;
+        if (basePosition && baseTarget) {
+          const offset = basePosition.clone().sub(baseTarget);
+          const spherical = new THREE.Spherical().setFromVector3(offset);
+          spherical.theta -= motion.x;
+          spherical.phi = THREE.MathUtils.clamp(spherical.phi + motion.y, 0.45, 1.28);
+          state.camera.position.copy(baseTarget.clone().add(new THREE.Vector3().setFromSpherical(spherical)));
+          state.camera.lookAt(baseTarget);
+          state.render();
+        }
+        event.preventDefault();
+        return;
       }
-    }
-    applyMatthiasCheckPose(state, checkSquare, orientation);
-    state.render();
-  }, [selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, boardTheme, orientation, showCoordinates]);
+      if (event.pointerType === 'touch') return;
+      const square = eventSquare(event);
+      if (square !== hoveredSquare) setHoveredSquare(square);
+    };
+
+    const onPointerUp = (event) => {
+      if (inspectModeRef.current) {
+        cameraMotionRef.current.dragging = false;
+        canvas.releasePointerCapture?.(event.pointerId);
+        return;
+      }
+      const start = pointerStartRef.current;
+      pointerStartRef.current = null;
+      const duration = start ? performance.now() - start.at : 0;
+      const distance = start ? Math.hypot(event.clientX - start.x, event.clientY - start.y) : 0;
+      if (distance > 12 || duration > 650) return;
+      const square = eventSquare(event);
+      if (square) latestPropsRef.current.onSquareClick?.(square);
+    };
+
+    const onPointerCancel = () => {
+      pointerStartRef.current = null;
+      cameraMotionRef.current.dragging = false;
+    };
+
+    const onPointerLeave = () => {
+      if (!cameraMotionRef.current.dragging) setHoveredSquare(null);
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+    canvas.addEventListener('pointermove', onPointerMove, { passive: false });
+    canvas.addEventListener('pointerup', onPointerUp, { passive: false });
+    canvas.addEventListener('pointercancel', onPointerCancel, { passive: false });
+    canvas.addEventListener('pointerleave', onPointerLeave, { passive: false });
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
+    };
+  }, [eventSquare, hoveredSquare]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
-    if (!state) return;
-    const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
-    state.key.intensity = lights.key;
-    state.rim.intensity = lights.rim;
-    state.warm.intensity = lights.warm;
-    state.renderer.toneMappingExposure = lights.exposure;
-    if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
-    applyMatthiasCheckPose(state, checkSquare, orientation);
-    state.render();
-  }, [checkSquare, gameOver, boardTheme, orientation, showCoordinates]);
+    if (!state) return undefined;
+    if (!selectedSquare) return undefined;
+    const piece = state.pieceMeshes.get(selectedSquare);
+    if (!piece) return undefined;
+    const start = performance.now();
+    const duration = 480;
+    const baseY = 0.17;
+    let frame = 0;
+    const animateSelection = (now) => {
+      const t = clamp01((now - start) / duration);
+      const lift = Math.sin(t * Math.PI) * 0.11;
+      piece.position.y = baseY + lift;
+      state.render();
+      if (t < 1) frame = window.requestAnimationFrame(animateSelection);
+      else piece.position.y = baseY;
+    };
+    frame = window.requestAnimationFrame(animateSelection);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      if (piece) piece.position.y = baseY;
+    };
+  }, [selectedSquare]);
 
-  function handleKeyDown(event) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSquareClick?.(focusedSquare);
-      return;
-    }
-    const next = adjacentSquare(focusedSquare, event.key, orientation);
-    if (!next) return;
-    event.preventDefault();
-    setFocusedSquare(next);
-  }
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state || !animate?.seq || animate.seq === lastAnimatedSeqRef.current) return undefined;
+    lastAnimatedSeqRef.current = animate.seq;
+    const piece = state.pieceMeshes.get(animate.to);
+    if (!piece) return undefined;
+    const start = performance.now();
+    const duration = 420;
+    const origin = piece.position.clone();
+    const captured = inferCapturedPiece(parseFen(previousFenRef.current || fen), parseFen(fen), animate);
+    const kinetics = deriveMoveKinetics([], [], animate, orientation);
+    let frame = 0;
+    const tick = (now) => {
+      const t = clamp01((now - start) / duration);
+      const eased = easeOutCubic(t);
+      const lift = Math.sin(t * Math.PI) * (kinetics?.lift ?? 0.14);
+      piece.position.y = origin.y + lift;
+      piece.rotation.y = (kinetics?.spin ?? 0) * eased;
+      if (captured) {
+        const rim = state.scene.children.find((child) => child.isPointLight && child.color?.getHex?.() === state.theme.glow);
+        if (rim) rim.intensity = reactiveLightProfile(t, 14.5, 1.2);
+      }
+      state.render();
+      if (t < 1) frame = window.requestAnimationFrame(tick);
+      else {
+        piece.position.y = origin.y;
+        piece.rotation.y = 0;
+      }
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      piece.position.y = origin.y;
+      piece.rotation.y = 0;
+    };
+  }, [animate?.seq, fen, orientation]);
+
+  const legalSummary = useMemo(() => legalTargets.length ? `${legalTargets.length} destino${legalTargets.length === 1 ? '' : 's'} legal${legalTargets.length === 1 ? '' : 'es'}` : 'sin destinos legales', [legalTargets.length]);
 
   return (
-    <div
-      className="board3d-main-shell"
-      data-board3d-war-room="true"
-      data-board3d-scene="premium"
-      data-board3d-surface="premium-v2"
-      data-board3d-motion="physical-v1"
-      data-board3d-camera="fixed-tactical"
-      data-board3d-inspect={inspectMode ? 'true' : 'false'}
-      data-board3d-selected={selectedSquare || ''}
-      data-board3d-focused={focusedSquare || ''}
-      data-board3d-legal-target-count={legalMap.size}
-      data-matthias-rival-king={matthiasKingColor || 'off'}
-    >
-      <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
-      <div className="board3d-fixed-camera-note" aria-hidden="true">SALA DE GUERRA · {inspectMode ? 'INSPECCIÓN' : 'CÁMARA TÁCTICA'}</div>
-      <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
-      <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
-      {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
+    <div className="board3d-main-shell" data-renderer={rendererLabel}>
+      <div className="board3d-main-host" ref={hostRef} />
+      <span className="board3d-fixed-camera-note" aria-hidden="true">Sala de guerra · cámara táctica</span>
+      <span className="board3d-renderer-badge" aria-live="polite">{rendererLabel}</span>
+      {onCustomize && <button type="button" className="secondary-btn board3d-customize" onClick={onCustomize}>Apariencia</button>}
+      <div className="sr-only" aria-live="polite">{selectedSquare ? `${selectedSquare} seleccionado, ${legalSummary}` : hoveredSquare ? `${hoveredSquare}` : ''}</div>
     </div>
   );
 }
 
 export default function Board3D(props) {
   const [failed, setFailed] = useState(false);
-  const handleRendererFailure = useCallback(() => setFailed(true), []);
+  const onRendererFailure = useCallback(() => setFailed(true), []);
 
   if (failed) {
     return (
       <div className="board3d-fallback">
-        <div className="board3d-fallback-note">3D no disponible en este dispositivo · usando 2D</div>
+        <div className="board3d-fallback-note">Tu navegador no ha podido iniciar WebGL. Seguimos con el tablero 2D.</div>
         <Board {...props} />
       </div>
     );
   }
 
-  return <Board3DCanvas {...props} onRendererFailure={handleRendererFailure} />;
+  return <Board3DCanvas {...props} onRendererFailure={onRendererFailure} />;
 }
