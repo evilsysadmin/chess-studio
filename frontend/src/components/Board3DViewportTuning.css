@@ -81,7 +81,7 @@
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
       'commander board music'
-      'war-chat board notation';
+      'chat board notation';
     background:
       radial-gradient(circle at 50% -8%, rgba(171,122,52,.12), transparent 34%),
       linear-gradient(180deg, rgba(23,20,17,.96), rgba(9,10,11,.985) 64%);
@@ -162,7 +162,7 @@
   }
 
   .game-screen .game-side-column-3d .game-chat {
-    grid-area: war-chat;
+    grid-area: chat;
     align-self: start;
     width: 100%;
     min-width: 0;
