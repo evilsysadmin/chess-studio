@@ -23,18 +23,25 @@ async function openDesktopWarRoom(page) {
   return { warRoom, shell };
 }
 
-test('War Room · desktop dedica el salón al tablero y atraca el chat bajo Matthias', async ({ page }) => {
+test('War Room · desktop dedica el salón al tablero y atraca chat/cuaderno en sus rails', async ({ page }) => {
   test.setTimeout(90_000);
   const { warRoom, shell } = await openDesktopWarRoom(page);
 
   const geometry = await page.evaluate(() => {
-    const room = document.querySelector('.board-live-row.is-3d-warroom')?.getBoundingClientRect();
-    const board = document.querySelector('.board3d-main-shell')?.getBoundingClientRect();
-    const commander = document.querySelector('.game-3d-command-column')?.getBoundingClientRect();
-    const chat = document.querySelector('.game-side-column-3d .game-chat')?.getBoundingClientRect();
-    const music = document.querySelector('.game-side-column-3d .game-side-music')?.getBoundingClientRect();
-    const notation = document.querySelector('.game-side-column-3d .game-notation-disclosure')?.getBoundingClientRect();
-    if (!room || !board || !commander || !chat || !music || !notation) return null;
+    const roomNode = document.querySelector('.board-live-row.is-3d-warroom');
+    const boardNode = document.querySelector('.board3d-main-shell');
+    const commanderNode = document.querySelector('.game-3d-command-column');
+    const chatNode = document.querySelector('.game-side-column-3d .game-chat');
+    const chatLogNode = document.querySelector('.game-side-column-3d .game-chat-log');
+    const musicNode = document.querySelector('.game-side-column-3d .game-side-music');
+    const notationNode = document.querySelector('.game-side-column-3d .game-notation-disclosure');
+    const room = roomNode?.getBoundingClientRect();
+    const board = boardNode?.getBoundingClientRect();
+    const commander = commanderNode?.getBoundingClientRect();
+    const chat = chatNode?.getBoundingClientRect();
+    const music = musicNode?.getBoundingClientRect();
+    const notation = notationNode?.getBoundingClientRect();
+    if (!room || !board || !commander || !chat || !music || !notation || !chatLogNode || !notationNode) return null;
     return {
       roomWidth: room.width,
       boardLeft: board.left,
@@ -48,11 +55,17 @@ test('War Room · desktop dedica el salón al tablero y atraca el chat bajo Matt
       chatLeft: chat.left,
       chatRight: chat.right,
       chatTop: chat.top,
+      chatHeight: chat.height,
       chatWidth: chat.width,
+      chatLogOverflowY: getComputedStyle(chatLogNode).overflowY,
       musicLeft: music.left,
+      musicBottom: music.bottom,
       musicWidth: music.width,
       notationLeft: notation.left,
+      notationTop: notation.top,
+      notationHeight: notation.height,
       notationWidth: notation.width,
+      notationOverflowY: getComputedStyle(notationNode).overflowY,
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,
     };
@@ -67,10 +80,18 @@ test('War Room · desktop dedica el salón al tablero y atraca el chat bajo Matt
   expect(Math.abs(geometry.chatLeft - geometry.commanderLeft)).toBeLessThan(4);
   expect(geometry.chatRight).toBeLessThanOrEqual(geometry.boardLeft - 2);
   expect(geometry.chatTop).toBeGreaterThanOrEqual(geometry.commanderBottom - 4);
+  expect(geometry.chatHeight).toBeLessThanOrEqual(361);
+  expect(geometry.chatLogOverflowY).toBe('auto');
   expect(geometry.musicLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
   expect(geometry.notationLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
   expect(geometry.musicWidth).toBeGreaterThan(190);
   expect(geometry.notationWidth).toBeGreaterThan(190);
+  // The notebook belongs immediately below RetroPlayer; Matthias' tall card
+  // on the opposite rail must no longer push it towards the bottom.
+  expect(geometry.notationTop).toBeGreaterThanOrEqual(geometry.musicBottom - 4);
+  expect(geometry.notationTop - geometry.musicBottom).toBeLessThan(20);
+  expect(geometry.notationHeight).toBeLessThanOrEqual(621);
+  expect(geometry.notationOverflowY).toBe('auto');
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
 
   await expect(warRoom).toBeVisible();
