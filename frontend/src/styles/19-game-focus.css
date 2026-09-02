@@ -53,3 +53,157 @@
   .game-side-column { width: 100%; }
   .game-side-column .game-chat { min-height: 220px; }
 }
+
+/* Android / móvil · Focus es sólo presentación. No cambia FEN, ayudas,
+   renderer, clocks ni reglas: quita el chrome alrededor del tablero y deja
+   accesibles únicamente overlays necesarios y una salida explícita. */
+.game-mobile-focus-toggle,
+.game-mobile-focus-exit {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .game-mobile-focus-toggle {
+    display: inline-flex;
+  }
+
+  body.game-mobile-focus-active {
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #080b10;
+  }
+
+  body.game-mobile-focus-active .global-music-dock,
+  body.game-mobile-focus-active .app-shell-board-game > .masthead {
+    display: none !important;
+  }
+
+  body.game-mobile-focus-active .app-shell-board-game {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0 !important;
+  }
+
+  body.game-mobile-focus-active .game-screen {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    margin: 0;
+    padding: max(.25rem, env(safe-area-inset-top)) max(.2rem, env(safe-area-inset-right)) max(.25rem, env(safe-area-inset-bottom)) max(.2rem, env(safe-area-inset-left));
+    box-sizing: border-box;
+  }
+
+  .game-layout.game-layout-focus,
+  .game-layout-focus .board-column,
+  .game-layout-focus .board-live-row,
+  .game-layout-focus .game-board-stack {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .game-layout-focus .board-live-row {
+    display: block;
+  }
+
+  .game-layout-focus .status-line,
+  .game-layout-focus .audience-reaction,
+  .game-layout-focus .matthias-silent-beat,
+  .game-layout-focus .sudden-strip,
+  .game-layout-focus .series-strip,
+  .game-layout-focus .achievement-toast,
+  .game-layout-focus .game-3d-command-column,
+  .game-layout-focus .game-player-rail,
+  .game-layout-focus .game-command-deck,
+  .game-layout-focus .game-side-column,
+  .game-layout-focus .move-availability-note,
+  .game-layout-focus .board-appearance-tab,
+  .game-layout-focus .board3d-inspect,
+  .game-layout-focus .board3d-customize,
+  .game-layout-focus .board3d-fixed-camera-note,
+  .game-layout-focus .board3d-renderer-badge,
+  .game-layout-focus > .board-column > .hint-caption,
+  .game-layout-focus > .board-column > .capture-feedback {
+    display: none !important;
+  }
+
+  /* Una decisión bloqueante nunca puede desaparecer dentro de Focus. */
+  .game-layout-focus .control-check-strip {
+    position: fixed;
+    z-index: 190;
+    left: max(.6rem, env(safe-area-inset-left));
+    right: max(.6rem, env(safe-area-inset-right));
+    bottom: max(.7rem, env(safe-area-inset-bottom));
+    width: auto;
+    margin: 0;
+  }
+
+  .game-layout-focus .game-board-stack {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    min-height: calc(100dvh - max(.5rem, env(safe-area-inset-top)) - max(.5rem, env(safe-area-inset-bottom)));
+  }
+
+  .game-layout-focus .board-wrap {
+    width: min(100%, calc(100dvh - 1rem));
+    max-width: none;
+    margin: auto;
+  }
+
+  .game-layout-focus .board3d-main-shell,
+  .game-layout-focus.game-layout-3d .board3d-main-shell {
+    width: 100%;
+    height: calc(100dvh - max(.5rem, env(safe-area-inset-top)) - max(.5rem, env(safe-area-inset-bottom))) !important;
+    min-height: 430px;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .game-mobile-focus-exit {
+    display: inline-flex;
+    position: fixed;
+    z-index: 210;
+    top: max(.55rem, env(safe-area-inset-top));
+    right: max(.55rem, env(safe-area-inset-right));
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    padding: .48rem .72rem;
+    border: 1px solid rgba(220,185,82,.72);
+    border-radius: 999px;
+    background: rgba(8,11,16,.88);
+    box-shadow: 0 .35rem 1rem rgba(0,0,0,.38);
+    color: var(--parchment);
+    font: 800 .72rem var(--font-body);
+    backdrop-filter: blur(8px);
+  }
+
+  .game-mobile-focus-bubble {
+    position: absolute;
+    z-index: 205;
+    top: clamp(3.2rem, 10dvh, 5.4rem);
+    left: 50%;
+    right: auto;
+    width: min(86%, 25rem);
+    margin: 0;
+    translate: -50% 0;
+    pointer-events: none;
+  }
+
+  .game-mobile-focus-bubble::after {
+    left: 58%;
+    right: auto;
+  }
+}
+
+@media (max-width: 820px) and (prefers-reduced-motion: reduce) {
+  .game-mobile-focus-bubble {
+    animation: none !important;
+  }
+}
