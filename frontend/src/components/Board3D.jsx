@@ -8,6 +8,7 @@ import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan } from './WarRoom3DAnimation.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { BOARD_THEME_3D, FILES } from './Board3DConfig.js';
@@ -100,6 +101,19 @@ function Board3DCanvas({
     } catch (error) {
       latestPropsRef.current.onRendererFailure?.(error);
       return undefined;
+    }
+
+    let softwareRenderer = false;
+    try {
+      const gl = renderer.getContext();
+      const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info');
+      const rendererName = debugRendererInfo
+        ? gl.getParameter(debugRendererInfo.UNMASKED_RENDERER_WEBGL)
+        : gl.getParameter(gl.RENDERER);
+      softwareRenderer = isSoftwareWebGLRenderer(rendererName);
+    } catch {
+      // Renderer introspection is optional. Unknown renderers keep the normal
+      // heartbeat and can still rely on reduced-motion/coarse-pointer gates.
     }
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -414,17 +428,30 @@ function Board3DCanvas({
     let lastAmbientPaint = 0;
     function ambientFrame(now) {
       const motion = cameraMotionRef.current;
-      const reduced = getEffectiveReducedMotion();
-      if (!document.hidden && !reduced && !coarsePointer && inspectModeRef.current && now - lastAmbientPaint >= 16) {
-        lastAmbientPaint = now;
-        const basePosition = camera.userData.basePosition;
-        const baseTarget = camera.userData.baseTarget;
-        if (basePosition && baseTarget) {
-          const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ'));
-          camera.position.copy(baseTarget).add(offset);
-          camera.lookAt(baseTarget);
-          render();
+      const plan = warRoomAmbientFramePlan({
+        documentHidden: document.hidden,
+        reducedMotion: getEffectiveReducedMotion(),
+        coarsePointer,
+        softwareRenderer,
+        inspectMode: inspectModeRef.current,
+        elapsedMs: now - lastAmbientPaint,
+      });
+      if (plan.shouldRender) {
+        if (plan.updateCamera) {
+          const basePosition = camera.userData.basePosition;
+          const baseTarget = camera.userData.baseTarget;
+          if (basePosition && baseTarget) {
+            const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ'));
+            camera.position.copy(baseTarget).add(offset);
+            camera.lookAt(baseTarget);
+          }
         }
+        // The castle fire updates from onBeforeRender, so desktop needs a
+        // quiet scene heartbeat even when the player does not move the mouse.
+        render();
+        // Start the idle budget after WebGL finishes. Software renderers can
+        // otherwise consume the whole interval and starve pointer handling.
+        lastAmbientPaint = performance.now();
       }
       ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
     }
