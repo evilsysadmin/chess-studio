@@ -1,20 +1,22 @@
-name: Staging · bootstrap Render
+name: Staging · Render maintenance
 
 # Maintenance escape hatch only. Normal staging mutations must flow through
-# Chess Studio CI/CD -> Staging · deploy so every deployed SHA is accredited.
+# the quality gate -> Staging · deploy so every deployed SHA is accredited.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Manual Render reconciliation and the normal staging deploy mutate the same
+# service. They must never run concurrently.
 concurrency:
-  group: chess-studio-staging-bootstrap
+  group: chess-studio-staging-deploy
   cancel-in-progress: false
 
 jobs:
   render:
-    name: Crear o reconciliar backend staging
+    name: Reconcile Render staging
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment: staging
