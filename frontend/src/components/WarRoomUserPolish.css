@@ -1,0 +1,87 @@
+/* War Room v16 · final user-facing composition corrections.
+   Keep all header/notation overrides scoped to active board-game views. */
+
+@media (min-width: 821px) {
+  .app-shell-board-game .masthead-game-compact {
+    position: relative;
+    z-index: 240;
+    overflow: visible !important;
+    width: 100%;
+    max-width: none;
+    padding-right: clamp(.35rem, 1vw, 1rem);
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-top-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-text {
+    min-width: 0;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-actions {
+    position: relative;
+    z-index: 260;
+    justify-self: end;
+    margin-left: 0;
+    margin-right: 0;
+    padding-right: 0;
+    overflow: visible;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-account-stack,
+  .app-shell-board-game .masthead-game-compact .masthead-account-menu {
+    position: relative;
+    z-index: 270;
+    overflow: visible;
+  }
+
+  .app-shell-board-game .masthead-game-compact .masthead-account-popover {
+    z-index: 420;
+    top: calc(100% + .38rem);
+    right: 0;
+    pointer-events: auto;
+  }
+}
+
+/* The notebook is intentionally parchment-like, not black ink on black glass. */
+.app-shell-board-game .notation-panel,
+.app-shell-board-game .game-notation-row .notation-panel {
+  color: #d9ccb2;
+}
+
+.app-shell-board-game .notation-panel h3 {
+  color: #d8b977;
+  text-shadow: 0 1px 0 rgba(0,0,0,.55);
+}
+
+.app-shell-board-game .notation-panel .opening-tag,
+.app-shell-board-game .notation-panel .notation-empty,
+.app-shell-board-game .notation-panel .notation-meta {
+  color: #aaa18f;
+}
+
+.app-shell-board-game .notation-panel .move-number,
+.app-shell-board-game .notation-panel .move-chip,
+.app-shell-board-game .notation-panel button.move-chip {
+  color: #ddd0b7;
+  opacity: 1;
+}
+
+.app-shell-board-game .notation-panel .move-chip:hover,
+.app-shell-board-game .notation-panel .move-chip:focus-visible,
+.app-shell-board-game .notation-panel .move-chip.current {
+  color: #fff1cf;
+}
+
+.app-shell-board-game .game-notation-disclosure > summary {
+  color: #cfc1a6;
+}
+
+.app-shell-board-game .game-notation-disclosure[open] > summary {
+  color: #f0dfbc;
+}
