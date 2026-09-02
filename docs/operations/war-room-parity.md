@@ -19,23 +19,23 @@ No se eleva una fila a GATE por inspección de código o porque “parece que de
 | Misma posición/FEN | **GATE** | `three-d-war-room.spec.js`: una partida creada en 2D monta War Room sobre el mismo estado; `GameBoardView` entrega los mismos `boardProps` a ambos renderers. | Mantener dentro de todos los slices especiales. |
 | Selección al pasar 2D → 3D | **GATE** | `three-d-war-room.spec.js`: e2 queda seleccionada y el renderer 3D expone `data-board3d-selected=e2`. | Añadir también selección 3D → 2D en una pasada repetida. |
 | Cancelar y reseleccionar | **GATE** | `three-d-war-room.spec.js`: Enter cancela/reselecciona usando el estado común. | Repetir tras varios cambios de renderer. |
-| Targets legales | **GATE** | `three-d-war-room.spec.js`: e3/e4 sobreviven 2D → 3D; `Board3DHighlights.test.js` protege estilo/precedencia. | Añadir captura y movimientos especiales. |
+| Targets legales | **GATE** | `three-d-war-room.spec.js`: e3/e4 sobreviven 2D → 3D; `Board3DHighlights.test.js` protege estilo/precedencia. | Añadir captura normal y mantener especiales. |
 | Jugada ordinaria | **GATE** | `three-d-war-room.spec.js`: e2→e4 desde teclado 3D produce una sola mutación backend. | Repetición 2D↔3D + restore. |
 | Touch/coarse pointer | **GATE** | `three-d-war-room-android-touch.spec.js`: selección/movimiento sin duplicar POST. | Mantener 360/390/430 y orientación/resize en gate de última milla. |
 | Focus Android | **GATE** | `android-game-focus.spec.js`: Pixel 5 entra en Focus, conserva tablero jugable, ejecuta una sola mutación, muestra comentario de Matthias como bocadillo temporal y restaura la UI al salir. | Añadir orientación/resize durante Focus. |
-| Teclado | **GATE** | `three-d-war-room.spec.js`: foco roving equivalente y movimiento por flechas + Enter. | Cubrir especiales y orientación negra. |
-| Highlights selección/targets/captura/jaque | **CUBIERTO** | `Board3DHighlights.test.js` define precedencias y colores; la escena 3D dibuja estados físicos sobre la losa. | Acreditar captura normal y especiales durante flujo cross-renderer. |
+| Teclado | **GATE** | `three-d-war-room.spec.js`: foco roving equivalente y movimiento por flechas + Enter. | Cubrir orientación negra. |
+| Highlights selección/targets/captura/jaque | **CUBIERTO** | `Board3DHighlights.test.js` define precedencias y colores; la escena 3D dibuja estados físicos sobre la losa. | Acreditar captura normal durante flujo cross-renderer. |
 | Jaque | **GATE** | `three-d-war-room-special-states.spec.js` (#212): selección 2D Qe2 → ejecución 3D Qh5 → misma respuesta backend con `...Re1+` → vuelta a 2D con h1 marcado en jaque y status `Jaque`; una sola mutación. | Mantener como contrato al añadir otros especiales. |
 | Jaque mate | **GATE** | `three-d-war-room-special-states.spec.js` (#212): g6→g7# por teclado 3D produce una sola mutación y diálogo real de `Jaque mate`/victoria. | Mantener como contrato terminal. |
 | Captura normal | **CUBIERTO** | Renderer 3D anima captura y dispone `capturedGhost`; reglas/gameplay general tienen cobertura. | E2E cross-renderer que verifique pieza retirada + una sola mutación. |
-| En passant | **CUBIERTO** | Backend/rules protegen legalidad y `WarRoom3DMotion.test.js` acredita inferencia de la pieza capturada fuera de la casilla destino. | E2E 2D↔3D que verifique peón retirado, FEN final y una sola mutación. |
-| Enroque | **CUBIERTO** | Reglas backend cubiertas; `Board3D.jsx` tiene animación explícita de torre durante castling. | E2E 2D↔3D que verifique rey + torre y una sola mutación. |
-| Promoción | **CUBIERTO** | Reglas backend cubiertas; `Board3D.jsx` detecta promoción y anima el cambio. | E2E 2D↔3D que atraviese selector de promoción y confirme pieza/FEN final. |
+| En passant | **GATE** | `three-d-war-room-special-states.spec.js` (#215): e5xd6 e.p. desde 3D retira el peón lateral de d5, conserva el peón blanco en d6 al volver a 2D y produce una sola mutación. | Mantener como contrato de captura fuera de la casilla destino. |
+| Enroque | **GATE** | `three-d-war-room-special-states.spec.js` (#214): O-O desde 3D conserva rey en g1 y torre en f1 al volver a 2D, con e1/h1 vacías y una sola mutación. | Mantener como contrato de movimiento compuesto. |
+| Promoción | **GATE** | `three-d-war-room-special-states.spec.js` (#216): g7→g8 abre el selector real en 3D, no muta antes de elegir, promociona a Caballo y vuelve a 2D con caballo blanco real en g8; una sola mutación. | Mantener selector + pieza elegida como contrato. |
 | Orientación negras | **CUBIERTO** | `Board3D` comparte `orientation`, invierte foco/cámara/entrada; unit/helpers contemplan orientación. | Gate real jugando como negras y alternando renderer. |
 | Tooltip/inspección | **CUBIERTO** | War Room expone modo `Inspeccionar`; 2D mantiene info contextual. | Definir equivalencia accesible exacta y probar móvil/teclado. |
 | Clocks | **CUBIERTO** | Clocks pertenecen a `GameBoardView`, fuera del renderer; rail/estado se conserva en montaje normal. | E2E con reloj corriendo durante varios cambios 2D↔3D y sin reset/salto. |
 | Chat/comentarios Matthias | **CUBIERTO** | `GameBoardView` mantiene chat/contexto fuera del renderer; War Room reutiliza los mismos mensajes. | Cambiar repetidamente de renderer durante comentario y verificar no duplicación. |
-| Renderer switch repetido | **PENDIENTE** | Existe el cambio por Apariencia y selección 2D→3D, pero no torture test de ida/vuelta repetida. | 2D→3D→2D→3D conservando FEN, turno, selección limpia y una sola mutación. |
+| Renderer switch repetido | **PENDIENTE** | Existe el cambio por Apariencia y varios gates 2D→3D→2D, pero no torture test de ida/vuelta repetida. | 2D→3D→2D→3D conservando FEN, turno, selección limpia y una sola mutación. |
 | Limpieza de estado efímero | **PENDIENTE** | `Board3D` reinicia hover/foco por orientación y desmonta escena; no hay contrato E2E completo. | Verificar selección/hover/inspect/cámara al desmontar/remontar. |
 | Resize / orientation change | **CUBIERTO** | Gates War Room verifican desktop y Android sin overflow; lógica de resize existe. | Añadir resize/orientation durante partida con selección activa y después mover. |
 | F5 / restore | **PENDIENTE cross-renderer** | La app tiene gates generales de continuidad/reload, `safeStorage` y restore; falta un gate que restaure específicamente una partida activa en War Room 3D. | Jugar, dejar renderer=3D, F5, reconciliar backend y comprobar FEN/turno/renderer/clock. |
@@ -58,10 +58,10 @@ Un renderer **no puede**:
 
 ## Orden de cierre recomendado
 
-1. Añadir gates cross-renderer de **enroque**, **en passant** y **promoción**, en slices separados y deterministas.
-2. Añadir captura normal si no queda subsumida de forma suficientemente clara por en passant.
-3. Añadir torture test **2D→3D→2D→3D**, incluyendo selección/cancelación y un movimiento final único.
-4. Añadir **F5/restore en renderer 3D** y después reconnect con red interrumpida.
-5. Añadir clocks + orientación negra + reduced-motion/fallback a la última milla.
+1. Añadir gate cross-renderer de **captura normal** para cubrir la captura ordinaria aparte del caso especial en passant.
+2. Añadir torture test **2D→3D→2D→3D**, incluyendo selección/cancelación y un movimiento final único.
+3. Añadir **F5/restore en renderer 3D** y después reconnect con red interrumpida.
+4. Añadir clocks + orientación negra + resize/orientation + reduced-motion/fallback a la última milla.
+5. Mantener en cada slice los gates ya cerrados de jaque, mate, enroque, en passant, promoción, Android y Focus.
 
 El P0.1 no se considera cerrado mientras las filas marcadas **PENDIENTE** sigan dependiendo de confianza manual.
