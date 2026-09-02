@@ -36,17 +36,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  playwright-full:
-    name: ${{ github.event_name == 'pull_request' && 'War Room + mobile Focus gates' || 'Full browser E2E (informative)' }}
+  scope:
+    name: Classify War Room PR surface
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    outputs:
+      full_logic: ${{ steps.scope.outputs.full_logic }}
+      visual: ${{ steps.scope.outputs.visual }}
+      focus: ${{ steps.scope.outputs.focus }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Classify War Room PR surface
-        if: github.event_name == 'pull_request'
+      - name: Classify changed surface
         id: scope
         shell: bash
         env:
@@ -79,9 +83,9 @@ jobs:
             esac
           done <<< "$files"
 
-          # The workflow only starts for the paths declared above. If a future
-          # path somehow reaches here without classification, fail safe by
-          # running the complete PR gate rather than returning a false green.
+          # This workflow only starts for the paths declared above. If a future
+          # path reaches here without classification, fail safe by running every
+          # PR gate instead of returning a false green.
           if [[ "$full_logic" != true && "$visual" != true && "$focus" != true ]]; then
             full_logic=true
             visual=true
@@ -100,7 +104,179 @@ jobs:
             echo "- Rules/input parity: \`$full_logic\`"
             echo "- 3D mount/scale: \`$visual\`"
             echo "- Android Focus: \`$focus\`"
+            echo '- PR gates run on separate hosted runners so heavyweight WebGL scenes stay isolated while wall-clock time is parallelized.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  pr-logic:
+    name: War Room · ${{ matrix.label }}
+    if: github.event_name == 'pull_request' && needs.scope.outputs.full_logic == 'true'
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: android-selection
+            label: Android selection
+            command: './node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0'
+          - id: special-state
+            label: special-state parity
+            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000'
+          - id: desktop-input
+            label: desktop input
+            command: './node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install + build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Playwright runner
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright install chromium
+
+      - name: Run ${{ matrix.label }}
+        working-directory: e2e
+        run: ${{ matrix.command }}
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-war-room-${{ matrix.id }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  pr-visual:
+    name: War Room · desktop board scale
+    if: github.event_name == 'pull_request' && needs.scope.outputs.visual == 'true'
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install + build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Playwright runner
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright install chromium
+
+      - name: Prove War Room desktop board scale
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --timeout=75000
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-war-room-desktop-scale
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  pr-focus:
+    name: War Room · Android Focus
+    if: github.event_name == 'pull_request' && needs.scope.outputs.focus == 'true'
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install + build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Playwright runner
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright install chromium
+
+      - name: Prove Android game Focus
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-war-room-android-focus
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  playwright-full:
+    name: Full browser E2E (informative)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
@@ -126,51 +302,11 @@ jobs:
         working-directory: e2e
         run: npm ci
 
-      - name: Install Chromium for PR gates
-        if: github.event_name == 'pull_request'
-        working-directory: e2e
-        # ubuntu-latest already satisfies Chromium's runtime libraries; the main
-        # critical smoke uses this same install mode successfully. Re-running
-        # Playwright's OS dependency installer on every War Room PR dominated
-        # the gate's wall clock even when the browser cache was hot.
-        run: ./node_modules/.bin/playwright install chromium
-
       - name: Install Chromium + Firefox + WebKit
-        if: github.event_name != 'pull_request'
         working-directory: e2e
         run: ./node_modules/.bin/playwright install --with-deps chromium firefox webkit
 
-      - name: Prove War Room Android selection and movement
-        if: github.event_name == 'pull_request' && steps.scope.outputs.full_logic == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0
-
-      - name: Prove War Room special-state parity
-        if: github.event_name == 'pull_request' && steps.scope.outputs.full_logic == 'true'
-        working-directory: e2e
-        # Hosted runners cannot initialize multiple heavyweight WebGL War Rooms
-        # reliably: both 5 and 2 concurrent workers produced mount/actionability
-        # timeouts and worse wall-clock time. Keep the proven deterministic gate
-        # sequential; save time by not running it for decor-only diffs.
-        run: ./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000
-
-      - name: Prove War Room desktop input
-        if: github.event_name == 'pull_request' && steps.scope.outputs.full_logic == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000
-
-      - name: Prove War Room desktop board scale
-        if: github.event_name == 'pull_request' && steps.scope.outputs.visual == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --timeout=75000
-
-      - name: Prove Android game Focus
-        if: github.event_name == 'pull_request' && steps.scope.outputs.focus == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000
-
       - name: Run full Playwright suite
-        if: github.event_name != 'pull_request'
         continue-on-error: true
         working-directory: e2e
         env:
