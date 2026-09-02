@@ -8,18 +8,31 @@ function physical(color, options = {}) {
     clearcoat: options.clearcoat ?? 0.08,
     clearcoatRoughness: options.clearcoatRoughness ?? 0.42,
     specularIntensity: options.specularIntensity ?? 0.24,
+    sheen: options.sheen ?? 0,
+    sheenRoughness: options.sheenRoughness ?? 0.6,
+    sheenColor: new THREE.Color(options.sheenColor ?? color),
+    emissive: options.emissive ?? 0x000000,
+    emissiveIntensity: options.emissiveIntensity ?? 0,
+    transparent: options.opacity != null && options.opacity < 1,
+    opacity: options.opacity ?? 1,
+    depthWrite: options.depthWrite ?? true,
     map: options.map ?? null,
   });
 }
 
-function addBox(group, size, material, position, name = '') {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+function addMesh(group, geometry, material, position, rotation = [0, 0, 0], name = '') {
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(...position);
+  mesh.rotation.set(...rotation);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   if (name) mesh.name = name;
   group.add(mesh);
   return mesh;
+}
+
+function addBox(group, size, material, position, name = '') {
+  return addMesh(group, new THREE.BoxGeometry(...size), material, position, [0, 0, 0], name);
 }
 
 function seededNoise(x, y, seed) {
@@ -83,8 +96,6 @@ function createPainterlyTexture(seed, warm = false) {
     }
   }
 
-  // Capas de sierra con niebla atmosférica: dan profundidad real desde la cámara
-  // táctica sin convertir el cuadro en una colección de polígonos infantiles.
   const mountainLayers = warm
     ? [[0.42, [82, 70, 60]], [0.47, [61, 55, 49]], [0.51, [45, 42, 37]]]
     : [[0.44, [76, 86, 88]], [0.49, [56, 68, 67]], [0.53, [39, 52, 49]]];
@@ -95,13 +106,10 @@ function createPainterlyTexture(seed, warm = false) {
         + Math.sin(u * Math.PI * 7.1 + layerIndex) * 3;
       const top = Math.round(height * baseV - peak);
       const bottom = Math.round(height * (0.58 + layerIndex * 0.025));
-      for (let y = top; y < bottom; y += 1) {
-        putPixel(data, width, height, x, y, tone, 0.55 + layerIndex * 0.12);
-      }
+      for (let y = top; y < bottom; y += 1) putPixel(data, width, height, x, y, tone, 0.55 + layerIndex * 0.12);
     }
   });
 
-  // Castillo teutón más legible: cuerpo escalonado, torres, ventanas y camino.
   const castleX = warm ? 98 : 45;
   const castleY = 50;
   const stone = warm ? [139, 126, 103] : [126, 128, 120];
@@ -130,7 +138,6 @@ function createPainterlyTexture(seed, warm = false) {
     }
   }
 
-  // Nubes y luces en pincel seco, muy contenidas.
   for (let cloud = 0; cloud < 7; cloud += 1) {
     const cx = Math.floor(seededNoise(cloud, seed, 77) * width);
     const cy = 12 + Math.floor(seededNoise(seed, cloud, 91) * 28);
@@ -138,8 +145,7 @@ function createPainterlyTexture(seed, warm = false) {
     for (let y = cy - 3; y <= cy + 3; y += 1) {
       for (let x = cx - radius; x <= cx + radius; x += 1) {
         const falloff = 1 - Math.abs(x - cx) / Math.max(1, radius);
-        if (falloff <= 0) continue;
-        putPixel(data, width, height, x, y, warm ? [178, 151, 118] : [151, 161, 160], falloff * 0.09);
+        if (falloff > 0) putPixel(data, width, height, x, y, warm ? [178, 151, 118] : [151, 161, 160], falloff * 0.09);
       }
     }
   }
@@ -158,33 +164,10 @@ function createPainterlyTexture(seed, warm = false) {
 }
 
 function addPainting(group, x, y, z, towardBoard, warm, index) {
-  const frameDark = physical(0x2d1a11, {
-    metalness: 0.03,
-    roughness: 0.48,
-    clearcoat: 0.34,
-    clearcoatRoughness: 0.32,
-    specularIntensity: 0.36,
-  });
-  const frameWarm = physical(0x5b3821, {
-    metalness: 0.04,
-    roughness: 0.42,
-    clearcoat: 0.42,
-    clearcoatRoughness: 0.25,
-    specularIntensity: 0.42,
-  });
-  const gilding = physical(0xb78a43, {
-    metalness: 0.78,
-    roughness: 0.25,
-    clearcoat: 0.44,
-    clearcoatRoughness: 0.2,
-    specularIntensity: 0.66,
-  });
-  const agedGold = physical(0x725126, {
-    metalness: 0.62,
-    roughness: 0.37,
-    clearcoat: 0.25,
-    specularIntensity: 0.46,
-  });
+  const frameDark = physical(0x2d1a11, { metalness: 0.03, roughness: 0.48, clearcoat: 0.34, clearcoatRoughness: 0.32, specularIntensity: 0.36 });
+  const frameWarm = physical(0x5b3821, { metalness: 0.04, roughness: 0.42, clearcoat: 0.42, clearcoatRoughness: 0.25, specularIntensity: 0.42 });
+  const gilding = physical(0xb78a43, { metalness: 0.78, roughness: 0.25, clearcoat: 0.44, clearcoatRoughness: 0.2, specularIntensity: 0.66 });
+  const agedGold = physical(0x725126, { metalness: 0.62, roughness: 0.37, clearcoat: 0.25, specularIntensity: 0.46 });
   const linen = physical(0xffffff, {
     roughness: 0.81,
     clearcoat: 0.018,
@@ -218,8 +201,6 @@ function addPainting(group, x, y, z, towardBoard, warm, index) {
     trim.castShadow = false;
   }
 
-  // Rosetas y clavos envejecidos: pequeños a propósito, pero rompen la lectura
-  // de “cuatro cajas alrededor de una textura” de la versión anterior.
   for (const [cx, cy] of [[-1.13, 0.8], [1.13, 0.8], [-1.13, -0.8], [1.13, -0.8]]) {
     const rosette = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.03, 12), agedGold);
     rosette.position.set(cx, cy, towardBoard * 0.132);
@@ -232,8 +213,185 @@ function addPainting(group, x, y, z, towardBoard, warm, index) {
   return frame;
 }
 
+function sceneRoot(object) {
+  let current = object;
+  while (current?.parent) current = current.parent;
+  return current;
+}
+
+function tuneGroupMaterials(group, multiplier, maxMetalness = 0.45) {
+  if (!group) return;
+  const seen = new Set();
+  group.traverse((child) => {
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((material) => {
+      if (!material?.color || seen.has(material) || (material.metalness ?? 0) > maxMetalness) return;
+      seen.add(material);
+      material.color.multiplyScalar(multiplier);
+      if (typeof material.roughness === 'number') material.roughness = Math.min(1, material.roughness + 0.035);
+      material.needsUpdate = true;
+    });
+  });
+}
+
+function addPremiumSofaDetails(sofa, towardBoard, coarsePointer) {
+  if (!sofa || sofa.userData.warRoomPremiumUpholstery) return;
+  sofa.userData.warRoomPremiumUpholstery = 'club-tufted-v2';
+  const leather = physical(0x35161a, {
+    roughness: 0.48,
+    clearcoat: 0.22,
+    clearcoatRoughness: 0.3,
+    sheen: 0.5,
+    sheenRoughness: 0.68,
+    sheenColor: 0x8f4a53,
+  });
+  const leatherHi = physical(0x532229, {
+    roughness: 0.43,
+    clearcoat: 0.28,
+    clearcoatRoughness: 0.24,
+    sheen: 0.56,
+    sheenColor: 0xac6369,
+  });
+  const walnut = physical(0x3b2114, { roughness: 0.52, clearcoat: 0.3, clearcoatRoughness: 0.28, specularIntensity: 0.34 });
+  const brass = physical(0x8b6329, { metalness: 0.76, roughness: 0.31, clearcoat: 0.28, specularIntensity: 0.62 });
+
+  const cushionXs = coarsePointer ? [0] : [-0.43, 0.43];
+  for (const x of cushionXs) {
+    const cushion = addMesh(
+      sofa,
+      new THREE.CapsuleGeometry(coarsePointer ? 0.2 : 0.17, coarsePointer ? 0.84 : 0.45, coarsePointer ? 2 : 4, coarsePointer ? 8 : 12),
+      leatherHi,
+      [x, 0.69, 0],
+      [0, 0, Math.PI / 2],
+      'war-room-sofa-seat-cushion',
+    );
+    cushion.scale.z = coarsePointer ? 1.35 : 1.72;
+  }
+
+  addBox(sofa, [1.54, 0.08, 0.08], walnut, [0, 0.77, -towardBoard * 0.49], 'war-room-sofa-walnut-rail');
+  const backPad = addMesh(
+    sofa,
+    new THREE.CapsuleGeometry(0.22, 1.12, coarsePointer ? 2 : 4, coarsePointer ? 8 : 14),
+    leather,
+    [0, 1.03, -towardBoard * 0.42],
+    [0, 0, Math.PI / 2],
+    'war-room-sofa-back-cushion',
+  );
+  backPad.scale.z = 0.58;
+
+  if (!coarsePointer) {
+    for (const x of [-0.55, -0.18, 0.18, 0.55]) {
+      const stud = addMesh(sofa, new THREE.SphereGeometry(0.026, 10, 7), brass, [x, 1.04, towardBoard * -0.29], [0, 0, 0], 'war-room-sofa-tuft-button');
+      stud.castShadow = false;
+    }
+    for (const side of [-1, 1]) {
+      for (let index = 0; index < 4; index += 1) {
+        const nail = addMesh(sofa, new THREE.SphereGeometry(0.018, 8, 6), brass, [side * 0.91, 0.54 + index * 0.11, towardBoard * 0.32], [0, 0, 0], 'war-room-sofa-brass-nail');
+        nail.castShadow = false;
+      }
+    }
+  }
+}
+
+function addPremiumConsoleDetails(consoleGroup, coarsePointer) {
+  if (!consoleGroup || consoleGroup.userData.warRoomPremiumConsole) return;
+  consoleGroup.userData.warRoomPremiumConsole = 'campaign-table-v2';
+  const wood = physical(0x2b180f, { roughness: 0.58, clearcoat: 0.26, clearcoatRoughness: 0.32, specularIntensity: 0.3 });
+  const brass = physical(0x8a6128, { metalness: 0.78, roughness: 0.3, clearcoat: 0.28, specularIntensity: 0.62 });
+  addBox(consoleGroup, [0.72, 0.07, 1.72], wood, [0, 0.24, 0], 'war-room-console-lower-shelf');
+  addBox(consoleGroup, [0.71, 0.27, 0.05], wood, [0, 0.7, -1.06], 'war-room-console-apron');
+  if (!coarsePointer) {
+    for (const [x, z] of [[-0.31, -1.02], [0.31, -1.02], [-0.31, 1.02], [0.31, 1.02]]) {
+      addMesh(consoleGroup, new THREE.CylinderGeometry(0.04, 0.05, 0.12, 10), brass, [x, 0.08, z], [0, 0, 0], 'war-room-console-brass-foot');
+    }
+  }
+}
+
+function replaceConeFireWithLicks(fireCore, coarsePointer) {
+  if (!fireCore || fireCore.userData.warRoomPremiumFire === 'lathed-licks-v2') return;
+  const flames = fireCore.children.filter((child) => child?.isMesh);
+  const radialSegments = coarsePointer ? 9 : 16;
+  flames.forEach((flame, index) => {
+    const old = flame.geometry;
+    old?.computeBoundingBox?.();
+    const oldHeight = old?.boundingBox ? Math.max(0.2, old.boundingBox.max.y - old.boundingBox.min.y) : 0.5;
+    const profile = [
+      [0.018, -0.32], [0.105 + (index % 2) * 0.018, -0.25], [0.145, -0.1],
+      [0.115, 0.08], [0.072, 0.25], [0.032, 0.38], [0.006, 0.49],
+    ].map(([radius, y]) => new THREE.Vector2(radius, y));
+    const geometry = new THREE.LatheGeometry(profile, radialSegments);
+    const profileHeight = 0.81;
+    geometry.scale(1, oldHeight / profileHeight, 0.78 + (index % 3) * 0.08);
+    old?.dispose?.();
+    flame.geometry = geometry;
+    flame.userData.warRoomPremiumFlame = true;
+    if (flame.material) {
+      flame.material.transparent = true;
+      flame.material.depthWrite = false;
+      flame.material.blending = THREE.AdditiveBlending;
+      flame.material.opacity = Math.min(flame.material.opacity ?? 0.82, index % 2 ? 0.72 : 0.8);
+      flame.material.needsUpdate = true;
+    }
+  });
+  fireCore.userData.warRoomPremiumFire = 'lathed-licks-v2';
+}
+
+function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
+  if (!root || root.userData.warRoomPremiumCoherence === 'v2') return;
+  root.userData.warRoomPremiumCoherence = 'v2';
+
+  // Más oscuro y coherente: piedra ahumada, terciopelo profundo y madera con
+  // menos brillo. Conservamos el latón para que la iluminación cálida tenga
+  // puntos de lectura y la sala no se convierta en una cueva gris.
+  tuneGroupMaterials(root.getObjectByName?.('war-room-castle-side-walls'), coarsePointer ? 0.78 : 0.64, 0.46);
+  tuneGroupMaterials(root.getObjectByName?.('coffered-paneling'), coarsePointer ? 0.86 : 0.76, 0.46);
+  const curtainMaterials = new Set();
+  root.traverse?.((child) => {
+    if (!child?.name?.includes?.('war-room-velvet-curtain') || !child.material?.color || curtainMaterials.has(child.material)) return;
+    curtainMaterials.add(child.material);
+    child.material.color.multiplyScalar(coarsePointer ? 0.82 : 0.7);
+    child.material.roughness = Math.max(child.material.roughness ?? 0.8, 0.86);
+    child.material.needsUpdate = true;
+  });
+
+  const sofaOffset = coarsePointer ? 5.95 : 6.38;
+  for (const [name, side] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
+    const sofa = root.getObjectByName?.(name);
+    if (!sofa) continue;
+    sofa.position.set(side * 6.55, 0.02, wallZ + towardBoard * sofaOffset);
+    sofa.userData.warRoomOffsetFromWall = sofaOffset;
+    sofa.userData.warRoomFurniturePlacement = 'side-wall-premium-spaced';
+    addPremiumSofaDetails(sofa, towardBoard, coarsePointer);
+  }
+
+  const consoleOffset = coarsePointer ? 3.65 : 1.92;
+  for (const name of ['war-room-side-console-left', 'war-room-side-console-right']) {
+    const consoleGroup = root.getObjectByName?.(name);
+    if (!consoleGroup) continue;
+    consoleGroup.position.z = wallZ + towardBoard * consoleOffset;
+    consoleGroup.userData.warRoomOffsetFromWall = consoleOffset;
+    consoleGroup.userData.warRoomFurniturePlacement = 'rear-console-premium-spaced';
+    addPremiumConsoleDetails(consoleGroup, coarsePointer);
+  }
+
+  replaceConeFireWithLicks(root.getObjectByName?.('war-room-fire-core'), coarsePointer);
+}
+
+function attachPremiumRoomDriver(group, options) {
+  const driver = group?.getObjectByName?.('war-room-castle-wall-left') || group?.getObjectByName?.('war-room-castle-floor-slab');
+  if (!driver || driver.userData.warRoomPremiumRoomDriver) return;
+  driver.userData.warRoomPremiumRoomDriver = true;
+  const previous = driver.onBeforeRender;
+  driver.onBeforeRender = (...args) => {
+    previous?.(...args);
+    applyPremiumRoomPass(sceneRoot(driver), options);
+  };
+}
+
 export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
-  if (coarsePointer || !group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
+  if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
+  attachPremiumRoomDriver(group, { wallZ, towardBoard, coarsePointer });
+  if (coarsePointer) return 0;
   const paintingZ = wallZ + towardBoard * 0.72;
   addPainting(group, -4.95, 3.65, paintingZ, towardBoard, false, 0);
   addPainting(group, 4.95, 3.66, paintingZ, towardBoard, true, 1);
