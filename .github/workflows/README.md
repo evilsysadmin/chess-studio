@@ -9,8 +9,8 @@ Regla simple: cada workflow debe tener un dueño, un trigger justificable y un c
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal de calidad para PR/main: preflight, frontend, backend, seguridad condicionada y smoke crítico. Es path-aware y **no despliega**. |
-| `staging-preview.yml` | Preview manual de cualquier rama/tag/SHA no-main. Sustituye temporalmente **sólo el frontend canónico de staging** por ese ref, compilado contra el backend de staging. Comparte mutex con el deploy oficial, no ejecuta Render/Workers AI, no acredita staging y no puede disparar producción. |
-| `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Cloudflare Pages staging y acredita backend/frontend. También sirve para restaurar manualmente staging a `main`; un dispatch manual no acredita producción. |
+| `staging-preview.yml` | Operación manual y frontend-only sobre staging. En modo `preview` carga cualquier rama/tag/SHA no-main; en `restore-main` devuelve el frontend al `main` actual. Ambos compilan contra el backend canónico de staging, comparten mutex con el deploy oficial, no ejecutan Render/Workers AI, no acreditan staging y no pueden disparar producción. |
+| `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Cloudflare Pages staging y acredita backend/frontend. Su ruta automática forma parte de la cadena de promoción. |
 | `staging-ai-worker.yml` | Despliega/acredita Workers AI staging después de `Staging · deploy`; rechaza como acreditación un upstream manual. |
 | `production-promote.yml` | Promueve a producción sólo el SHA acreditado por toda la cadena automática de staging. |
 | `production-rollback.yml` | Rollback manual a un SHA previamente promocionado y conocido bueno. Comparte mutex con promoción. |
@@ -41,9 +41,9 @@ Regla simple: cada workflow debe tener un dueño, un trigger justificable y un c
 1. Un cambio visual no dispara QEMU, Terraform OCI ni seguridad Docker si no toca esas superficies.
 2. Los browser gates de PR corren sólo donde pueden impedir una regresión; el sweep multibrowser queda semanal/manual.
 3. War Room paraleliza **entre runners**, nunca varias escenas WebGL pesadas dentro de la misma VM.
-4. `staging-preview.yml` sólo se ejecuta manualmente desde el workflow de `main`, rechaza un ref que sea `main` o resuelva al SHA actual de `main`, y toca únicamente Cloudflare Pages staging; el código a previsualizar se checkouta aparte del orquestador.
+4. `staging-preview.yml` sólo se ejecuta manualmente desde el workflow de `main`; el orquestador queda en `main` y el código objetivo se checkouta aparte. `preview` rechaza `main` y cualquier ref que resuelva al SHA actual de `main`; `restore-main` exige exactamente ese SHA.
 5. `staging-preview.yml`, `staging-deploy.yml` y el mantenimiento de staging se serializan donde escriben sobre el entorno; producción promote/rollback comparten su propio mutex.
-6. Las rutas manuales de preview/staging no acreditan producción. La promoción exige procedencia automática `workflow_run`, SHA actual de `main` e identidad de build comprobada.
-7. Para restaurar el frontend de staging después de un preview, se ejecuta manualmente `Staging · deploy` desde `main`; ese upstream manual es rechazado por `Staging · AI Worker` como acreditación de producción.
+6. Las operaciones `preview` y `restore-main` tocan únicamente Cloudflare Pages staging. No modifican Render ni Workers AI y no acreditan producción.
+7. La promoción exige procedencia automática `workflow_run`, SHA actual de `main` e identidad de build comprobada; `Production · promote` nunca escucha `Staging · preview`.
 8. Workflows y documentación no deben conservar nombres de releases, ramas retiradas ni excepciones históricas una vez cumplida su función.
 9. El fichero `cicd.yml` conserva su nombre por compatibilidad con contratos/scripts del repo; su responsabilidad real es calidad, no despliegue.
