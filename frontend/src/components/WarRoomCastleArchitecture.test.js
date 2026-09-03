@@ -107,12 +107,14 @@ describe('War Room castle architecture', () => {
       const right = room.getObjectByName('war-room-sofa-right');
       const leftConsole = room.getObjectByName('war-room-side-console-left');
       const rightConsole = room.getObjectByName('war-room-side-console-right');
+      const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
+      const rightArmor = room.getObjectByName('war-room-teutonic-armor-right');
 
       expect(typeof driver?.onBeforeRender).toBe('function');
       driver.onBeforeRender();
 
-      expect(left.userData.warRoomFurniturePlacement).toBe('front-corner-club-sofa-v24');
-      expect(right.userData.warRoomFurniturePlacement).toBe('front-corner-club-sofa-v24');
+      expect(left.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v26');
+      expect(right.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v26');
       expect(left.userData.facesWarTable).toBe(true);
       expect(right.userData.facesWarTable).toBe(true);
       expect(left.position.x).toBeLessThan(-6);
@@ -122,14 +124,18 @@ describe('War Room castle architecture', () => {
 
       expect(leftConsole.userData.warRoomFurniture).toBe('side-console');
       expect(rightConsole.userData.warRoomFurniture).toBe('side-console');
-      expect(leftConsole.userData.warRoomFurniturePlacement).toBe('approved-mock-rear-table-v25');
-      expect(rightConsole.userData.warRoomFurniturePlacement).toBe('approved-mock-rear-table-v25');
+      expect(leftConsole.userData.warRoomFurniturePlacement).toBe('approved-mock-rear-table-v26');
+      expect(rightConsole.userData.warRoomFurniturePlacement).toBe('approved-mock-rear-table-v26');
       expect(leftConsole.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
       expect(rightConsole.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
+      expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
+      expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
       expect(left.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
       expect(right.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
       expect(Math.abs(left.position.z - leftConsole.position.z)).toBeGreaterThanOrEqual(8.9);
       expect(Math.abs(right.position.z - rightConsole.position.z)).toBeGreaterThanOrEqual(8.9);
+      expect(Math.abs(left.position.z - leftArmor.position.z)).toBeGreaterThanOrEqual(3.9);
+      expect(Math.abs(right.position.z - rightArmor.position.z)).toBeGreaterThanOrEqual(3.9);
 
       dispose(room);
     }

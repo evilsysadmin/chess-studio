@@ -32,6 +32,15 @@ function knightHead(root) {
   return head;
 }
 
+function knightMeshesByRole(root, suffix) {
+  const meshes = [];
+  root.traverse((child) => {
+    const role = child?.geometry?.userData?.board3DKnightGeometryRole;
+    if (child?.isMesh && typeof role === 'string' && role.endsWith(suffix)) meshes.push(child);
+  });
+  return meshes;
+}
+
 function knightSculptDetails(root) {
   const details = [];
   root.traverse((child) => {
@@ -87,30 +96,42 @@ describe('Board3D piece resilience', () => {
     [g1, black].forEach(disposeObject);
   });
 
-  it('usa el caballo limpio del mock aprobado y recorta microdetalle que deformaba la silueta', () => {
+  it('usa un caballo equino reconocible con cuello fuerte, hocico largo y orejas bien orientadas', () => {
     const full = buildPiece('n', 'w', 'studio', false);
     const lite = buildPiece('n', 'w', 'studio', true);
     const details = knightSculptDetails(full);
     const roles = details.map((mesh) => mesh.userData.knightSculptDetail);
     const manes = details.filter((mesh) => mesh.userData.knightSculptDetail === 'mane');
+    const muzzle = details.find((mesh) => mesh.userData.knightSculptDetail === 'muzzle');
     const fullHead = knightHead(full);
     const liteHead = knightHead(lite);
+    const [neck] = knightMeshesByRole(full, ':knight-neck');
+    const ears = knightMeshesByRole(full, ':knight-ear');
 
-    expect(full.userData.board3DKnightSilhouetteVersion).toBe('approved-mock-staunton-v6');
-    expect(full.userData.board3DKnightPosture).toBe('compact-forward-staunton-v6');
-    expect(full.userData.board3DKnightDetailVersion).toBe('mock-sculpted-v6');
-    expect(full.userData.board3DKnightManeProfile).toBe('three-low-carved-locks-v6');
-    expect(full.userData.board3DKnightPremiumDetailCount).toBe(6);
+    expect(full.userData.board3DKnightSilhouetteVersion).toBe('equestrian-staunton-v7');
+    expect(full.userData.board3DKnightPosture).toBe('arched-equestrian-v7');
+    expect(full.userData.board3DKnightDetailVersion).toBe('equestrian-sculpted-v7');
+    expect(full.userData.board3DKnightManeProfile).toBe('four-rear-carved-locks-v7');
+    expect(full.userData.board3DKnightPremiumDetailCount).toBe(7);
     expect(full.userData.board3DPremiumPieceScale).toBeCloseTo(.96, 5);
-    expect(fullHead.userData.knightHeadProfile).toBe('approved-mock-staunton-v6');
-    expect(fullHead.scale.x).toBeLessThan(liteHead.scale.x);
+    expect(fullHead.userData.knightHeadProfile).toBe('equestrian-staunton-v7');
+    expect(fullHead.scale.x).toBeCloseTo(1.04, 5);
     expect(fullHead.scale.y).toBeLessThan(liteHead.scale.y);
-    expect(details).toHaveLength(6);
+    expect(neck.userData.knightNeckProfile).toBe('strong-arched-neck-v7');
+    expect(neck.scale.x).toBeGreaterThan(1);
+    expect(neck.scale.y).toBeGreaterThan(1);
+    expect(ears).toHaveLength(2);
+    expect(ears[0].position.x).toBeCloseTo(ears[1].position.x, 5);
+    expect(ears[0].position.z).toBeGreaterThan(0.05);
+    expect(ears[1].position.z).toBeLessThan(-0.05);
+    expect(details).toHaveLength(7);
     expect(roles.filter((role) => role === 'muzzle')).toHaveLength(1);
     expect(roles.filter((role) => role === 'bridle')).toHaveLength(2);
     expect(roles.filter((role) => role === 'nostril')).toHaveLength(0);
     expect(roles.filter((role) => role === 'brow')).toHaveLength(0);
-    expect(manes).toHaveLength(3);
+    expect(muzzle.position.x).toBeGreaterThan(0.35);
+    expect(muzzle.scale.x).toBeGreaterThan(1.4);
+    expect(manes).toHaveLength(4);
     expect(Math.max(...manes.map((mesh) => mesh.position.y))).toBeLessThan(.85);
     expect(renderableMeshes(full).every((mesh) => mesh.frustumCulled === false && mesh.visible)).toBe(true);
 
