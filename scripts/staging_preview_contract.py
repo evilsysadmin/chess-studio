@@ -62,15 +62,46 @@ def main() -> int:
         if forbidden in preview:
             errors.append(f"preview/restore contiene trigger o mutación prohibida: {forbidden!r}")
 
-    # Production remains provenance-bound to the canonical AI staging workflow.
+    # Canonical staging owns all mutations for one generation. Once the initial
+    # stale guard passes, backend, frontend and Worker must finish inside the
+    # same serialized workflow before the browser smoke can accredit anything.
+    for needle, label in (
+        ("Backend + frontend + AI staging generation", "canonical generation job"),
+        ("Refuse stale staging commit", "single stale guard before mutation"),
+        ("Deploy exact backend commit to Render staging", "generation backend deploy"),
+        ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
+        ("Deploy exact staging Worker and synchronize shared secret", "generation Worker deploy"),
+        ("deploy_staging_ai_worker.py --service-id", "generation Worker exact checkout helper"),
+        ("Verify staging generation parity before browser smoke", "generation parity gate"),
+        ("Live browser smoke against deployed staging", "generation live smoke"),
+    ):
+        require(staging_deploy, needle, label, errors)
+
+    worker_step = staging_deploy.find("Deploy exact staging Worker and synchronize shared secret")
+    parity_step = staging_deploy.find("Verify staging generation parity before browser smoke")
+    smoke_step = staging_deploy.find("Live browser smoke against deployed staging")
+    if min(worker_step, parity_step, smoke_step) >= 0 and not (worker_step < parity_step < smoke_step):
+        errors.append("staging generation: Worker/parity/smoke no están en orden fail-closed")
+
+    # Production remains provenance-bound to the canonical AI accreditation workflow.
     require(promote, "workflows:\n      - Staging · AI Worker", "production source workflow", errors)
     require(promote, "branches:\n      - main", "production main-only source", errors)
     if "Staging · preview" in promote:
         errors.append("production-promote escucha Staging · preview")
 
-    # AI staging remains downstream of canonical Staging · deploy, never this workflow.
+    # Staging AI remains downstream of canonical Staging · deploy, but it is now
+    # read-only accreditation. A second deploy/stale guard here would reintroduce
+    # the generation race we are explicitly trying to remove.
     require(staging_ai, "workflows:\n      - Staging · deploy", "staging AI canonical source", errors)
     require(staging_ai, "UPSTREAM_EVENT", "staging AI upstream provenance guard", errors)
+    require(staging_ai, "Accredit coherent staging generation", "staging AI read-only accreditation", errors)
+    require(staging_ai, "Verify staging backend still serves approved SHA", "staging AI backend attestation", errors)
+    require(staging_ai, "Verify staging frontend still serves approved SHA", "staging AI frontend attestation", errors)
+    require(staging_ai, "Verify staging AI health contract", "staging AI health attestation", errors)
+    if "deploy_staging_ai_worker.py" in staging_ai:
+        errors.append("staging AI accreditation vuelve a desplegar el Worker")
+    if "Refuse stale staging Worker commit" in staging_ai:
+        errors.append("staging AI accreditation contiene un stale guard tardío")
     if "Staging · preview" in staging_ai:
         errors.append("staging AI escucha Staging · preview")
 
@@ -80,7 +111,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview and restore are frontend-only, serialized, and cannot accredit production")
+    print("staging-preview-contract OK · preview is isolated; canonical staging mutates one serialized generation and AI only accredits it")
     return 0
 
 
