@@ -298,9 +298,21 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
     await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible({ timeout: 30_000 });
     expect(failedBoard3DChunkOnce, '2D no debe cargar Board3D durante el reload fresco').toBe(false);
 
-    // Guardarraíl directo para #286: ahora sí provocamos el primer import lazy
-    // de Board3D y lo fallamos una sola vez. El selector sólo aplica el renderer
-    // al cerrar Ajustes, así que cerramos antes de exigir el fallo de módulo.
+    // Guardarraíl directo para #286: provocamos el primer import lazy de Board3D
+    // y lo fallamos una sola vez. Según el runtime/browser, el fallo puede llegar
+    // al ErrorBoundary o provocar una recarga limpia antes de que el boundary se
+    // pinte. El contrato importante es que la misma partida se rehidrata desde API
+    // y vuelve a una War Room utilizable, no que una pantalla de error sea visible.
+    const restoreAfterChunkFailure = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'GET'
+        && Boolean(gameId)
+        && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}`;
+    }, { timeout: 60_000 });
+    const automaticReload = page.waitForEvent('load', { timeout: 8_000 })
+      .then(() => true)
+      .catch(() => false);
+
     await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
     appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
@@ -308,10 +320,15 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
     await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     await expect.poll(() => failedBoard3DChunkOnce, { timeout: 10_000 }).toBe(true);
-    await expect(page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true })).toBeVisible({ timeout: 30_000 });
-    const recoverRuntime = page.getByRole('button', { name: 'Recargar y recuperar sesión', exact: true });
-    await expect(recoverRuntime).toBeVisible();
-    await recoverRuntime.click();
+    const runtimeReloadedItself = await automaticReload;
+    if (!runtimeReloadedItself) {
+      await expect(page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true })).toBeVisible({ timeout: 10_000 });
+      const recoverRuntime = page.getByRole('button', { name: 'Recargar y recuperar', exact: true });
+      await expect(recoverRuntime).toBeVisible();
+      await recoverRuntime.click();
+    }
+
+    expect((await restoreAfterChunkFailure).status()).toBe(200);
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(warRoomStatus).toBeVisible();
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
