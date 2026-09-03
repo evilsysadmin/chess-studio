@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 export const WAR_ROOM_APPROVED_MOCK_VERSION = 'approved-mock-v27';
+const NOOP_RENDER_HOOK = () => {};
 
 function sceneRoot(object) {
   let current = object;
@@ -125,16 +126,25 @@ function installPostArchitectureFurnitureLock(group, options) {
   if (architectureDriver.userData.warRoomApprovedMockPostArchitectureDriver === WAR_ROOM_APPROVED_MOCK_VERSION) return 0;
 
   const previous = architectureDriver.onBeforeRender;
+  let completed = false;
   architectureDriver.onBeforeRender = (...args) => {
+    if (completed) return;
     previous?.(...args);
     // The armor visor lives inside war-room-castle-architecture while the
     // sofas live in the parent premium-war-room-layer. Using the registration
     // group here silently missed the real sofas and allowed the legacy
     // architecture pass to win. Always resolve the live scene root.
     placeFurniture(sceneRoot(architectureDriver) || group, options);
+    completed = true;
+    architectureDriver.userData.warRoomApprovedMockPostArchitectureCompleted = WAR_ROOM_APPROVED_MOCK_VERSION;
+    // The old architecture callback is static layout work. Once the approved
+    // layout has won the first paint, retire the entire chain so a visor can no
+    // longer keep moving furniture on every render heartbeat.
+    architectureDriver.onBeforeRender = NOOP_RENDER_HOOK;
   };
   architectureDriver.userData.warRoomApprovedMockPostArchitectureDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   architectureDriver.userData.warRoomApprovedMockPostArchitectureScope = 'scene-root-v27';
+  architectureDriver.userData.warRoomApprovedMockPostArchitectureRetirement = 'one-shot-v27';
   group.userData.warRoomApprovedMockPostArchitectureDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   return 1;
 }
@@ -171,6 +181,6 @@ export function installWarRoomApprovedMockContract(group, options = {}) {
 
   markerDriver.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   group.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
-  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-plus-post-architecture-scene-root-lock-v4';
+  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-plus-retired-post-architecture-lock-v5';
   return 1;
 }
