@@ -76,12 +76,18 @@ def main() -> int:
         if forbidden in preview:
             errors.append(f"preview/restore contiene trigger o mutación prohibida: {forbidden!r}")
 
-    # Canonical staging owns all mutations for one generation. Once the initial
-    # stale guard passes, backend, frontend and Worker must finish inside the
-    # same serialized workflow before the browser smoke can accredit anything.
+    # Canonical staging owns all mutations for one generation. A CI-approved SHA
+    # that has already been superseded by a newer main HEAD is not an outage: the
+    # stale run must cancel itself before the first mutation. Once admitted,
+    # backend, frontend and Worker finish inside the same serialized workflow.
     for needle, label in (
         ("Backend + frontend + AI staging generation", "canonical generation job"),
-        ("Refuse stale staging commit", "single stale guard before mutation"),
+        ("Supersede stale staging commit", "single stale guard before mutation"),
+        ("actions: write", "stale supersede cancellation permission"),
+        ("GH_TOKEN: ${{ github.token }}", "stale supersede token wiring"),
+        ("/actions/runs/$GITHUB_RUN_ID/cancel", "stale supersede self-cancel endpoint"),
+        ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
+        ("while :; do", "stale supersede fail-closed wait"),
         ("Deploy exact backend commit to Render staging", "generation backend deploy"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy exact staging Worker and synchronize shared secret", "generation Worker deploy"),
@@ -93,11 +99,18 @@ def main() -> int:
     ):
         require(staging_deploy, needle, label, errors)
 
+    stale_step = staging_deploy.find("Supersede stale staging commit")
+    backend_step = staging_deploy.find("Deploy exact backend commit to Render staging")
     worker_step = staging_deploy.find("Deploy exact staging Worker and synchronize shared secret")
     parity_step = staging_deploy.find("Verify staging generation parity before browser smoke")
     smoke_step = staging_deploy.find("Live browser smoke against deployed staging")
+    if min(stale_step, backend_step) >= 0 and not stale_step < backend_step:
+        errors.append("staging generation: stale supersede guard no está antes de la primera mutación Render")
     if min(worker_step, parity_step, smoke_step) >= 0 and not (worker_step < parity_step < smoke_step):
         errors.append("staging generation: Worker/parity/smoke no están en orden fail-closed")
+
+    if "::error::CI aprobó" in staging_deploy:
+        errors.append("staging generation: un SHA superseded vuelve a clasificarse como error")
 
     if parity_step >= 0 and smoke_step > parity_step:
         parity_block = staging_deploy[parity_step:smoke_step]
@@ -151,7 +164,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; canonical staging owns N/N/N and waits for runtime convergence")
+    print("staging-preview-contract OK · preview isolated; stale main generations self-cancel before mutation; canonical staging owns N/N/N")
     return 0
 
 
