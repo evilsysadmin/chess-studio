@@ -109,29 +109,34 @@ function preserveKnightGeometryRole(geometry, previousGeometry) {
   return geometry;
 }
 
-function mockKnightBodyGeometry(previousGeometry, coarsePointer = false) {
+function stauntonKnightBodyGeometry(previousGeometry, coarsePointer = false) {
   const shape = new THREE.Shape();
-  // v10 is a single sculptural silhouette taken from the approved generated
-  // mock: long arched neck, restrained angular muzzle and a deep throat cut.
-  // The old stacked muzzle/jaw/ear masses are deliberately gone.
-  shape.moveTo(-0.205, 0.035);
-  shape.bezierCurveTo(-0.255, 0.26, -0.245, 0.60, -0.155, 0.86);
-  shape.bezierCurveTo(-0.095, 1.035, 0.015, 1.115, 0.145, 1.125);
-  shape.bezierCurveTo(0.255, 1.13, 0.325, 1.065, 0.355, 0.965);
-  shape.bezierCurveTo(0.39, 0.885, 0.485, 0.845, 0.545, 0.77);
-  shape.bezierCurveTo(0.575, 0.705, 0.545, 0.635, 0.455, 0.61);
-  shape.bezierCurveTo(0.355, 0.585, 0.275, 0.535, 0.225, 0.455);
-  shape.bezierCurveTo(0.17, 0.365, 0.145, 0.255, 0.17, 0.17);
-  shape.bezierCurveTo(0.09, 0.075, -0.075, 0.02, -0.205, 0.035);
+  // v11 deliberately stops trying to make a pseudo-realistic horse from bulky
+  // stacked primitives. This is a classic carved Staunton side profile: low
+  // poll, one readable ear, long narrow muzzle, deep throat and an S-neck.
+  shape.moveTo(-0.17, 0.02);
+  shape.bezierCurveTo(-0.205, 0.28, -0.165, 0.59, -0.07, 0.73);
+  shape.lineTo(-0.028, 0.91);
+  shape.lineTo(0.022, 0.78);
+  shape.bezierCurveTo(0.10, 0.80, 0.16, 0.77, 0.205, 0.72);
+  shape.bezierCurveTo(0.30, 0.695, 0.42, 0.665, 0.505, 0.60);
+  shape.bezierCurveTo(0.535, 0.572, 0.52, 0.535, 0.47, 0.515);
+  shape.bezierCurveTo(0.39, 0.49, 0.305, 0.485, 0.245, 0.455);
+  shape.bezierCurveTo(0.185, 0.415, 0.155, 0.355, 0.15, 0.295);
+  shape.bezierCurveTo(0.145, 0.23, 0.155, 0.175, 0.11, 0.115);
+  shape.bezierCurveTo(0.05, 0.045, -0.075, 0.01, -0.17, 0.02);
 
-  const depth = coarsePointer ? 0.255 : 0.285;
+  // Perspective was the hidden v10 problem: 0.285 units of extrusion made the
+  // profile look swollen from the tactical 3/4 camera. v11 is intentionally
+  // much shallower and uses a restrained bevel.
+  const depth = coarsePointer ? 0.165 : 0.18;
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth,
     bevelEnabled: true,
-    bevelThickness: coarsePointer ? 0.03 : 0.038,
-    bevelSize: coarsePointer ? 0.024 : 0.03,
-    bevelSegments: coarsePointer ? 1 : 3,
-    curveSegments: coarsePointer ? 10 : 20,
+    bevelThickness: coarsePointer ? 0.014 : 0.017,
+    bevelSize: coarsePointer ? 0.011 : 0.014,
+    bevelSegments: coarsePointer ? 1 : 2,
+    curveSegments: coarsePointer ? 10 : 18,
   });
   geometry.translate(0, 0, -depth / 2);
   return preserveKnightGeometryRole(geometry, previousGeometry);
@@ -153,46 +158,59 @@ function applyApprovedKnightSilhouette(group, coarsePointer) {
   if (!head) return 0;
 
   const previousHead = head.geometry;
-  head.geometry = mockKnightBodyGeometry(previousHead, coarsePointer);
+  head.geometry = stauntonKnightBodyGeometry(previousHead, coarsePointer);
   previousHead?.dispose?.();
-  head.position.set(-0.015, coarsePointer ? 0.275 : 0.285, 0);
-  head.scale.set(1, 1, 1);
-  head.userData.knightHeadProfile = coarsePointer ? 'approved-generated-mock-lite-v10' : 'approved-generated-mock-v10';
+  head.position.set(-0.025, coarsePointer ? 0.315 : 0.325, 0);
+  head.scale.set(coarsePointer ? 0.92 : 0.94, coarsePointer ? 0.92 : 0.94, coarsePointer ? 0.84 : 0.86);
+  head.userData.knightHeadProfile = coarsePointer ? 'classic-staunton-lite-v11' : 'classic-staunton-v11';
 
   let retired = 0;
-  retired += retireLegacyKnightPart(neck, 'single-slab-mock-v10');
-  for (const ear of ears) retired += retireLegacyKnightPart(ear, 'single-slab-mock-v10');
-  for (const eye of eyes) retired += retireLegacyKnightPart(eye, 'single-slab-mock-v10');
+  retired += retireLegacyKnightPart(neck, 'staunton-profile-v11');
+  for (const ear of ears) retired += retireLegacyKnightPart(ear, 'staunton-profile-v11');
+  for (const eye of eyes) retired += retireLegacyKnightPart(eye, 'staunton-profile-v11');
 
-  group.userData.board3DKnightSilhouetteVersion = coarsePointer ? 'approved-generated-mock-lite-v10' : 'approved-generated-mock-v10';
-  group.userData.board3DKnightPosture = coarsePointer ? 'sleek-arched-neck-lite-v10' : 'sleek-arched-neck-v10';
+  group.userData.board3DKnightSilhouetteVersion = coarsePointer ? 'classic-staunton-lite-v11' : 'classic-staunton-v11';
+  group.userData.board3DKnightPosture = coarsePointer ? 'forward-carved-profile-lite-v11' : 'forward-carved-profile-v11';
+  group.userData.board3DKnightDepthProfile = coarsePointer ? 'slim-0165-v11' : 'slim-018-v11';
+  group.userData.board3DKnightHeightProfile = 'compact-091-v11';
   group.userData.board3DKnightRetiredLegacyParts = retired;
   return 1;
 }
 
-function addMockKnightSculpture(group, accentMaterial, coarsePointer) {
+function addStauntonKnightSculpture(group, accentMaterial, coarsePointer) {
   const mainMaterial = group.children.find((child) => child?.isMesh && child.material && !child.userData?.contactShadow)?.material || accentMaterial;
   let count = 0;
 
-  const manePoints = [
-    new THREE.Vector3(-0.205, 0.53, 0),
-    new THREE.Vector3(-0.235, 0.76, 0),
-    new THREE.Vector3(-0.185, 1.02, 0),
-    new THREE.Vector3(-0.07, 1.235, 0),
-    new THREE.Vector3(0.13, 1.285, 0),
-    new THREE.Vector3(0.305, 1.185, 0),
-  ];
-  const railZs = coarsePointer ? [0.141] : [-0.151, 0.151];
-  for (const z of railZs) {
-    const curve = new THREE.CatmullRomCurve3(manePoints.map((point) => point.clone().setZ(z)), false, 'catmullrom', 0.38);
+  // One thin rear ear gives the 3/4 camera a second equine cue without
+  // rebuilding the old bulky template ears.
+  addKnightSculptMesh(
+    group,
+    new THREE.ConeGeometry(coarsePointer ? 0.021 : 0.023, coarsePointer ? 0.095 : 0.11, 3),
+    mainMaterial,
+    [-0.018, coarsePointer ? 1.12 : 1.15, -0.068],
+    [0.72, 1, 0.52],
+    [0.04, 0, -0.09],
+    'ear-fin',
+  );
+  count += 1;
+
+  if (!coarsePointer) {
+    const manePoints = [
+      new THREE.Vector3(-0.185, 0.65, -0.082),
+      new THREE.Vector3(-0.19, 0.82, -0.082),
+      new THREE.Vector3(-0.145, 0.98, -0.082),
+      new THREE.Vector3(-0.075, 1.09, -0.082),
+      new THREE.Vector3(0.005, 1.115, -0.082),
+    ];
+    const curve = new THREE.CatmullRomCurve3(manePoints, false, 'catmullrom', 0.4);
     addKnightSculptMesh(
       group,
-      new THREE.TubeGeometry(curve, coarsePointer ? 16 : 28, coarsePointer ? 0.016 : 0.018, coarsePointer ? 6 : 8, false),
+      new THREE.TubeGeometry(curve, 20, 0.0115, 6, false),
       mainMaterial,
       [0, 0, 0],
       [1, 1, 1],
       [0, 0, 0],
-      'mane-rail',
+      'mane-ridge',
     );
     count += 1;
   }
@@ -213,10 +231,11 @@ function addMockKnightSculpture(group, accentMaterial, coarsePointer) {
     count += 1;
   }
 
-  group.userData.board3DKnightDetailVersion = coarsePointer ? 'approved-generated-mock-lite-v10' : 'approved-generated-mock-v10';
+  group.userData.board3DKnightDetailVersion = coarsePointer ? 'classic-staunton-lite-v11' : 'classic-staunton-v11';
   group.userData.board3DKnightPremiumDetailCount = count;
-  group.userData.board3DKnightManeProfile = coarsePointer ? 'single-raised-rail-lite-v10' : 'double-raised-rail-v10';
-  group.userData.board3DKnightBaseAccentProfile = coarsePointer ? 'two-inset-slots-lite-v10' : 'three-inset-slots-v10';
+  group.userData.board3DKnightManeProfile = coarsePointer ? 'no-extra-mane-lite-v11' : 'single-rear-ridge-v11';
+  group.userData.board3DKnightEarProfile = 'single-thin-rear-ear-v11';
+  group.userData.board3DKnightBaseAccentProfile = coarsePointer ? 'two-inset-slots-lite-v11' : 'three-inset-slots-v11';
   return count;
 }
 
@@ -242,7 +261,7 @@ export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarseP
 
   if (type === 'n') {
     applyApprovedKnightSilhouette(group, coarsePointer);
-    addMockKnightSculpture(group, accentMaterial, coarsePointer);
+    addStauntonKnightSculpture(group, accentMaterial, coarsePointer);
   }
 
   group.userData.skin3DId = skinId;
