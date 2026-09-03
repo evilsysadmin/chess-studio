@@ -38,27 +38,20 @@ export default function GameWarRoomCommandColumn({
         </div>
       </div>
 
-      {!compactViewport && (
-        <GameChat messages={side.gameChat} contextMessages={side.gameContextMessages} />
-      )}
-
-      <div className="game-3d-warroom-message" aria-live="polite">
-        <span>ÚLTIMA OBSERVACIÓN</span>
-        <p>{activeMatthiasMessage?.text || 'Silencio táctico. Matthias todavía no ha considerado necesario abrir la boca.'}</p>
-      </div>
-
       <div className="game-3d-warroom-status">
         <span>SITUACIÓN</span>
         <strong>{status.statusText}</strong>
       </div>
+
+      {!compactViewport && (
+        <GameChat messages={side.gameChat} contextMessages={side.gameContextMessages} />
+      )}
 
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
         <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
         <button type="button" className="secondary-btn" onClick={onToggleBoardRenderer}>2D</button>
         {board.onCustomize && <button type="button" className="secondary-btn" onClick={board.onCustomize}>Apariencia</button>}
       </div>
-
-      <blockquote>«Nací peón. Siempre seré peón.»</blockquote>
     </aside>
   );
 }
