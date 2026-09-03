@@ -1,6 +1,7 @@
 import GameChat from './GameChat.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import NotationPanel from './NotationPanel.jsx';
+import './GameSideColumn.css';
 
 export default function GameSideColumn({ game, side, isThreeD, compactViewport }) {
   return (
