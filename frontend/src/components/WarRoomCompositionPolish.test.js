@@ -44,7 +44,7 @@ function runRootDriver(room) {
 describe('WarRoomCompositionPolish', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('coloca las armaduras según el mock aprobado y retira juntas y arquitectura lateral ruidosa', () => {
+  it('coloca las armaduras v28 contra pared mirando al tablero y retira juntas y mesas laterales', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
     const rightArmor = room.getObjectByName('war-room-teutonic-armor-right');
@@ -57,18 +57,24 @@ describe('WarRoomCompositionPolish', () => {
     const owner = compositionOwner(room);
 
     expect(owner).toBeTruthy();
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
-    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
-    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-wall-sentry-v28');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-wall-sentry-v28');
+    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.95, 5);
+    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.95, 5);
+    expect(leftArmor.userData.warRoomWallClearance).toBeCloseTo(0.19, 5);
+    expect(rightArmor.userData.warRoomWallClearance).toBeCloseTo(0.19, 5);
+    expect(leftArmor.userData.warRoomArmorLegProfile).toBe('heavy-gothic-v28');
+    expect(rightArmor.userData.warRoomArmorLegProfile).toBe('heavy-gothic-v28');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
-    expect(leftArmor.position.z).toBeGreaterThan(leftConsole.position.z + 4.5);
-    expect(rightArmor.position.z).toBeGreaterThan(rightConsole.position.z + 4.5);
-    expect(Math.abs(leftArmor.position.x)).toBeLessThan(Math.abs(leftConsole.position.x));
-    expect(Math.abs(rightArmor.position.x)).toBeLessThan(Math.abs(rightConsole.position.x));
-    expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(0.7);
-    expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(0.7);
+    expect(leftConsole.visible).toBe(false);
+    expect(rightConsole.visible).toBe(false);
+    expect(leftConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
+    expect(rightConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
+    expect(Math.abs(leftArmor.position.x)).toBeGreaterThan(Math.abs(leftConsole.position.x));
+    expect(Math.abs(rightArmor.position.x)).toBeGreaterThan(Math.abs(rightConsole.position.x));
+    expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(1.3);
+    expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(mortarJoints.length).toBeGreaterThan(10);
     expect(mortarJoints.every((joint) => joint.visible === false)).toBe(true);
     expect(owner.userData.warRoomRetiredMortarJoints).toBe(mortarJoints.length);
