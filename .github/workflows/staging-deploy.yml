@@ -349,21 +349,23 @@ jobs:
           [[ "$frontend_status" == 200 ]] || { echo "::error::Generation parity: frontend HTTP $frontend_status"; exit 1; }
           [[ "$ai_status" == 200 ]] || { echo "::error::Generation parity: AI HTTP $ai_status"; exit 1; }
 
-          python3 - "$backend" "$frontend" "$DEPLOY_SHA" <<'PY'
+          python3 scripts/cloudflare_health_contract.py "$ai"
+          python3 - "$backend" "$frontend" "$ai" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
-          expected = sys.argv[3].lower()
+          expected = sys.argv[4].lower()
           backend = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
           frontend = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
-          actual_backend = str(backend.get('build') or '').lower()
-          actual_frontend = str(frontend.get('build') or '').lower()
-          if actual_backend != expected or actual_frontend != expected:
-              raise SystemExit(
-                  f"generation skew: backend={actual_backend or '<sin build>'} "
-                  f"frontend={actual_frontend or '<sin build>'} expected={expected}"
-              )
+          ai = json.loads(pathlib.Path(sys.argv[3]).read_text(encoding='utf-8'))
+          actual = {
+              'backend': str(backend.get('build') or '').lower(),
+              'frontend': str(frontend.get('build') or '').lower(),
+              'worker': str(ai.get('build') or '').lower(),
+          }
+          mismatched = {name: value for name, value in actual.items() if value != expected}
+          if mismatched:
+              raise SystemExit(f"generation skew: {mismatched} expected={expected}")
           PY
-          python3 scripts/cloudflare_health_contract.py "$ai"
-          echo "Staging generation coherent: backend=$DEPLOY_SHA frontend=$DEPLOY_SHA Worker=exact checkout + health OK"
+          echo "Staging generation coherent: backend=$DEPLOY_SHA frontend=$DEPLOY_SHA Worker=$DEPLOY_SHA"
 
       - name: Prepare and sweep staging smoke janitor
         env:
@@ -445,10 +447,10 @@ jobs:
             echo "- Generation SHA: \`$DEPLOY_SHA\`"
             echo '- Backend SHA: `mismo generation SHA · verificado`'
             echo '- Frontend SHA: `mismo generation SHA · verificado`'
-            echo '- Worker: `desplegado desde el checkout exacto de la generación + health/routing OK`'
+            echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo "- Web Analytics: \`${{ steps.pages_bootstrap.outputs.analytics || 'revisar permiso Account Settings' }}\`"
             echo '- Mongo staging: `ready`'
-            echo '- Generation parity gate: `OK`'
+            echo '- Generation parity gate: `N/N/N · OK`'
             echo '- Live browser smoke: `login → Home → War Room → F5 → chunk recovery → e2-e4 · OK`'
             echo '- Visual evidence: `vídeo Chromium retenido 7 días en el artefacto staging-live-playwright-*`'
             echo '- Identidad CI: `eliminada y verificada`'
