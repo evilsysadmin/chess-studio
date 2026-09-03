@@ -55,7 +55,7 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   group.name = 'matthias-rival-king';
   group.userData.matthiasKing = true;
   group.userData.faceStyle = 'command-fury-scowl-v6';
-  group.userData.capStyle = 'premium-command-peaked-cap-v5';
+  group.userData.capStyle = 'premium-command-peaked-cap-v6';
   group.userData.posture = 'proud-command-v2';
   group.userData.motionRig = 'head-rig-v1';
   group.userData.pieceColor = pieceColor;
@@ -192,34 +192,38 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   // fitted band, a structured flared crown, restrained red piping, braided
   // brass cord and a short curved visor. At tactical distance the crown must
   // read as an officer cap without covering the eyes or becoming a canopy.
-  capGroup.position.set(0, 1.175, -front * 0.004);
-  capGroup.rotation.z = -0.018 * front;
-  capGroup.rotation.x = -0.008 * front;
+  capGroup.position.set(0, 1.168, -front * 0.003);
+  capGroup.rotation.z = -0.012 * front;
+  capGroup.rotation.x = -0.026 * front;
   capGroup.userData.faceClearance = 'eyes-and-brows-visible';
-  capGroup.userData.silhouette = 'premium-plate-cap';
-  capGroup.userData.reference = 'home-command-cap-v1';
+  capGroup.userData.silhouette = 'home-hero-plate-cap';
+  capGroup.userData.reference = 'home-command-cap-v2';
+  capGroup.userData.crownFlare = 'structured-high-flare';
   headRig.add(capGroup);
 
-  // Fitted lower band. The crown above deliberately flares wider, which is
-  // the defining plate-cap silhouette missing from the old cylindrical hat.
-  add(capGroup, new THREE.CylinderGeometry(0.207, 0.213, 0.076, segments), cap, [0, 0.035, 0], [0, 0, 0], [1.02, 1, 0.94], 'matthias-cap');
-  add(capGroup, new THREE.CylinderGeometry(0.248, 0.208, 0.105, segments), cap, [0, 0.124, 0], [0, 0, 0], [1.025, 1, 0.91], 'matthias-cap-crown');
-  add(capGroup, new THREE.CylinderGeometry(0.252, 0.247, 0.024, segments), cap, [-0.003, 0.188, -front * 0.002], [0, 0, 0.012 * front], [1.03, 1, 0.91], 'matthias-cap-top');
+  // The Home mock reads as a real plate cap because the fitted band gives way
+  // to a taller crown with a decisive shoulder before the broad top. Keep the
+  // mass above the face: Matthias gets command presence, not a larger visor.
+  add(capGroup, new THREE.CylinderGeometry(0.205, 0.212, 0.078, segments), cap, [0, 0.037, 0], [0, 0, 0], [1.02, 1, 0.94], 'matthias-cap');
+  add(capGroup, new THREE.CylinderGeometry(0.269, 0.207, 0.132, segments), cap, [-0.002, 0.141, -front * 0.004], [0, 0, 0.008 * front], [1.025, 1, 0.92], 'matthias-cap-crown');
+  add(capGroup, new THREE.CylinderGeometry(0.276, 0.268, 0.026, segments), cap, [-0.006, 0.226, -front * 0.009], [0, 0, 0.018 * front], [1.025, 1, 0.92], 'matthias-cap-top');
+  add(capGroup, new THREE.TorusGeometry(0.267, 0.0075, 8, segments), cap, [-0.004, 0.211, -front * 0.007], [Math.PI / 2, 0, 0], [1.025, 0.92, 1], 'matthias-cap-crown-break');
 
-  // Wine-red band and fine top piping from the approved mock. They stay dark
-  // enough to belong to the black uniform rather than reading as neon trim.
-  add(capGroup, new THREE.TorusGeometry(0.211, 0.0115, 8, segments), capBand, [0, 0.061, 0], [Math.PI / 2, 0, 0], [1.02, 0.94, 1], 'matthias-cap-band');
-  add(capGroup, new THREE.TorusGeometry(0.247, 0.0055, 7, segments), capBand, [-0.003, 0.199, -front * 0.002], [Math.PI / 2, 0, 0], [1.03, 0.91, 1], 'matthias-cap-red-piping');
+  // The mock has a readable wine band, not merely a hairline. A shallow sleeve
+  // gives it body at board scale; fine piping then frames the top plate.
+  add(capGroup, new THREE.CylinderGeometry(0.214, 0.216, 0.034, segments), capBand, [0, 0.058, front * 0.001], [0, 0, 0], [1.02, 1, 0.94], 'matthias-cap-band-fill');
+  add(capGroup, new THREE.TorusGeometry(0.213, 0.0085, 8, segments), brass, [0, 0.077, front * 0.002], [Math.PI / 2, 0, 0], [1.02, 0.94, 1], 'matthias-cap-band');
+  add(capGroup, new THREE.TorusGeometry(0.271, 0.0055, 7, segments), capBand, [-0.006, 0.237, -front * 0.009], [Math.PI / 2, 0, 0], [1.025, 0.92, 1], 'matthias-cap-red-piping');
 
   // A real short peaked visor: bespoke curved slab rather than the previous
   // giant cylinder sector. Width stays well inside the face silhouette and the
   // forward projection is intentionally modest.
   const visorShape = new THREE.Shape();
-  visorShape.moveTo(-0.17, 0);
-  visorShape.quadraticCurveTo(-0.165, 0.092, -0.105, 0.126);
-  visorShape.quadraticCurveTo(0, 0.154, 0.105, 0.126);
-  visorShape.quadraticCurveTo(0.165, 0.092, 0.17, 0);
-  visorShape.quadraticCurveTo(0, -0.012, -0.17, 0);
+  visorShape.moveTo(-0.162, 0);
+  visorShape.quadraticCurveTo(-0.158, 0.082, -0.101, 0.115);
+  visorShape.quadraticCurveTo(0, 0.139, 0.101, 0.115);
+  visorShape.quadraticCurveTo(0.158, 0.082, 0.162, 0);
+  visorShape.quadraticCurveTo(0, -0.01, -0.162, 0);
   const visorGeometry = new THREE.ExtrudeGeometry(visorShape, {
     depth: 0.018,
     bevelEnabled: true,
@@ -234,8 +238,8 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
     capGroup,
     visorGeometry,
     cap,
-    [0, -0.006, front * 0.14],
-    [front * Math.PI / 2, 0, 0],
+    [0, -0.004, front * 0.137],
+    [front * (Math.PI / 2 - 0.052), 0, 0],
     null,
     'matthias-visor',
   );
@@ -246,22 +250,22 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   // Braided brass cord across the front, with restrained end studs. A tube
   // curve gives the mock's slight central droop without adding fragile detail.
   const cordCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.158, 0.027, front * 0.195),
-    new THREE.Vector3(-0.082, 0.018, front * 0.211),
-    new THREE.Vector3(0, 0.014, front * 0.216),
-    new THREE.Vector3(0.082, 0.018, front * 0.211),
-    new THREE.Vector3(0.158, 0.027, front * 0.195),
+    new THREE.Vector3(-0.162, 0.068, front * 0.195),
+    new THREE.Vector3(-0.083, 0.057, front * 0.214),
+    new THREE.Vector3(0, 0.052, front * 0.22),
+    new THREE.Vector3(0.083, 0.057, front * 0.214),
+    new THREE.Vector3(0.162, 0.068, front * 0.195),
   ]);
-  add(capGroup, new THREE.TubeGeometry(cordCurve, coarsePointer ? 12 : 22, 0.0065, 7, false), brass, [0, 0, 0], [0, 0, 0], null, 'matthias-cap-cord');
-  add(capGroup, new THREE.SphereGeometry(0.012, 10, 7), brass, [-0.164, 0.03, front * 0.194], [0, 0, 0], null, 'matthias-cap-cord-stud-left');
-  add(capGroup, new THREE.SphereGeometry(0.012, 10, 7), brass, [0.164, 0.03, front * 0.194], [0, 0, 0], null, 'matthias-cap-cord-stud-right');
+  add(capGroup, new THREE.TubeGeometry(cordCurve, coarsePointer ? 12 : 22, 0.0072, 7, false), brass, [0, 0, 0], [0, 0, 0], null, 'matthias-cap-cord');
+  add(capGroup, new THREE.SphereGeometry(0.013, 10, 7), brass, [-0.168, 0.071, front * 0.194], [0, 0, 0], null, 'matthias-cap-cord-stud-left');
+  add(capGroup, new THREE.SphereGeometry(0.013, 10, 7), brass, [0.168, 0.071, front * 0.194], [0, 0, 0], null, 'matthias-cap-cord-stud-right');
 
   // Premium command crest: gold diamond/shield, dark inset and red centre.
   // Deliberately broad enough to read from the tactical camera, but still
   // subordinate to Matthias' face.
-  add(capGroup, new THREE.BoxGeometry(0.068, 0.068, 0.014), brass, [0, 0.102, front * 0.211], [0, 0, Math.PI / 4], [1, 1.12, 1], 'matthias-cap-badge');
-  add(capGroup, new THREE.BoxGeometry(0.046, 0.046, 0.016), ink, [0, 0.102, front * 0.22], [0, 0, Math.PI / 4], [1, 1.08, 1], 'matthias-cap-badge-inset');
-  add(capGroup, new THREE.BoxGeometry(0.022, 0.022, 0.018), capBand, [0, 0.102, front * 0.231], [0, 0, Math.PI / 4], [1, 1.05, 1], 'matthias-cap-badge-gem');
+  add(capGroup, new THREE.BoxGeometry(0.072, 0.076, 0.014), brass, [0, 0.119, front * 0.214], [0, 0, Math.PI / 4], [1, 1.12, 1], 'matthias-cap-badge');
+  add(capGroup, new THREE.BoxGeometry(0.048, 0.052, 0.016), ink, [0, 0.119, front * 0.223], [0, 0, Math.PI / 4], [1, 1.08, 1], 'matthias-cap-badge-inset');
+  add(capGroup, new THREE.BoxGeometry(0.023, 0.025, 0.018), capBand, [0, 0.119, front * 0.234], [0, 0, Math.PI / 4], [1, 1.05, 1], 'matthias-cap-badge-gem');
 
   group.scale.setScalar(1.035);
   return group;
