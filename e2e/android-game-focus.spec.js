@@ -96,6 +96,7 @@ test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos te
   test.setTimeout(30_000);
   const requestLog = [];
   let releaseOpeningNarrative;
+  let openingNarrativeRequested = false;
   const openingNarrativeGate = new Promise((resolve) => { releaseOpeningNarrative = resolve; });
 
   await mockApi(page, {
@@ -105,19 +106,24 @@ test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos te
     },
   });
 
-  // #320 moved opening banter to an asynchronous Workers-AI request. Hold that
-  // request deliberately until Focus is active, then return an unavailable
-  // provider response so the real procedural fallback emits the measured
-  // two-loss streak. This proves the Focus popup contract without depending on
-  // an obsolete fixed 700 ms timer or on runner speed.
+  // #320 moved opening banter to an asynchronous Workers-AI request. Prove the
+  // request is genuinely in flight before entering Focus, then release one
+  // deterministic Cloudflare response. The test therefore covers exactly the
+  // contract it names: a *new* Matthias message arriving while Focus is active
+  // becomes a temporary bubble, without depending on profile-hydration timing.
   await page.route('http://localhost:4000/api/narrative', async (route) => {
     const payload = route.request().postDataJSON?.() ?? {};
     if (payload.eventType !== 'game_opening_banter') return route.fallback();
+    openingNarrativeRequested = true;
     await openingNarrativeGate;
     return route.fulfill({
-      status: 503,
+      status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ detail: 'E2E opening narrative delayed on purpose' }),
+      body: JSON.stringify({
+        text: 'Vienes de 2 derrotas consecutivas. Bonito volver a ver a un cliente recurrente.',
+        provider: 'cloudflare',
+        latencyMs: 35,
+      }),
     });
   });
 
@@ -126,6 +132,10 @@ test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos te
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => openingNarrativeRequested, {
+    timeout: 6_000,
+    message: 'La pulla inicial debe estar solicitada antes de entrar en Focus',
+  }).toBe(true);
 
   await page.getByRole('button', { name: 'Focus', exact: true }).click();
   await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'true');
