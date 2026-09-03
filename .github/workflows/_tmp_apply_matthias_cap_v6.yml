@@ -1,0 +1,29 @@
+name: tmp-apply-matthias-cap-v6
+
+on:
+  push:
+    branches:
+      - visual/matthias-cap-v6
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply cap geometry and tests
+        run: node .github/scripts/_tmp_apply_matthias_cap_v6.mjs
+      - name: Remove temporary helpers and commit
+        run: |
+          rm .github/scripts/_tmp_apply_matthias_cap_v6.mjs
+          rm .github/workflows/_tmp_apply_matthias_cap_v6.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/components/MatthiasKing3D.js frontend/src/components/MatthiasKing3D.test.js .github/scripts/_tmp_apply_matthias_cap_v6.mjs .github/workflows/_tmp_apply_matthias_cap_v6.yml
+          git commit -m "Refine Matthias plate cap toward Home mock"
+          git push
