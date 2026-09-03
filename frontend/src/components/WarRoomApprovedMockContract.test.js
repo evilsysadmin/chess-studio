@@ -5,6 +5,7 @@ import {
   installWarRoomApprovedMockContract,
   WAR_ROOM_APPROVED_MOCK_VERSION,
 } from './WarRoomApprovedMockContract.js';
+import { applyWarRoomUserPolish } from './WarRoomUserPolish.js';
 
 function namedGroup(name) {
   const group = new THREE.Group();
@@ -108,6 +109,27 @@ describe('War Room approved mock contract', () => {
     expect(fold.rotation.z).toBe(0);
     expect(root.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
     expect(root.userData.warRoomApprovedMockDriver).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
+    dispose(root);
+  });
+
+  it('mantiene el mock v25 como autoridad final después de UserPolish en el finalizador compartido', () => {
+    const { root, wall } = mockRoom();
+    const armor = root.getObjectByName('war-room-teutonic-armor-left');
+    const table = root.getObjectByName('war-room-side-console-left');
+
+    expect(applyWarRoomUserPolish(root, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
+    expect(installWarRoomApprovedMockContract(root, { wallZ: -7.6, towardBoard: 1 })).toBe(1);
+
+    armor.position.set(-1, 0, -3);
+    table.position.set(-1, 0, -3);
+    wall.onBeforeRender();
+
+    expect(root.userData.warRoomDeferredFinalizedTasks).toEqual(['user-polish-v24', 'approved-mock-v25']);
+    expect(armor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v25');
+    expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
+    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
+    expect(armor.position.z).toBeCloseTo(0.75, 5);
+    expect(table.position.z).toBeCloseTo(-4.3, 5);
     dispose(root);
   });
 
