@@ -72,6 +72,12 @@ export default function MatthiasWarRoomPortrait({
     : machine.mode === MATTHIAS_WAR_ROOM_STATES.SMIRK
       ? 'smirk'
       : 'none';
+  // Keep the Three.js renderer stable for posture-only microstates. Only coffee
+  // needs a different inner mesh profile (`sip`); glance/glare/etc. belong to
+  // the outer actor rig and must not recreate a WebGL context every few seconds.
+  const motionActivity = machine.mode === MATTHIAS_WAR_ROOM_STATES.COFFEE
+    ? descriptor.activity
+    : 'Vigilando el tablero';
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -192,7 +198,7 @@ export default function MatthiasWarRoomPortrait({
           <MatthiasThreeAvatar
             avatar={avatar}
             scene="war-room-command"
-            activity={descriptor.activity}
+            activity={motionActivity}
             speaking={machine.speaking}
             reducedMotion={reducedMotion}
             motionIntensity={compactViewport ? WAR_ROOM_COMPACT_MOTION_INTENSITY : 1}
