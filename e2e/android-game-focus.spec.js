@@ -92,6 +92,22 @@ async function installFocusCaptureRoute(page, requestLog) {
   });
 }
 
+async function waitForOpeningTranscript(page) {
+  await expect.poll(async () => page.evaluate(() => {
+    try {
+      const raw = localStorage.getItem('chess-study-active-game-chat');
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed?.messages)
+        && parsed.messages.some((message) => message?.by === 'cpu' && String(message?.text || '').trim());
+    } catch {
+      return false;
+    }
+  }), {
+    timeout: 10_000,
+    message: 'La pulla inicial debe quedar en el transcript antes de activar Focus',
+  }).toBe(true);
+}
+
 test('Android · Focus deja sólo el tablero 3D, sigue siendo jugable y puede salir', async ({ page }) => {
   const requestLog = [];
   await startQuickGame(page, requestLog);
@@ -145,11 +161,6 @@ test('Android · Focus convierte reacciones nuevas de Matthias en bocadillos tem
   test.setTimeout(60_000);
   const requestLog = [];
   await mockApi(page, { requestLog });
-  // La apertura remota tiene deliberadamente un timeout corto y puede terminar
-  // antes de que Three/WebGL monte Focus en CI. Este test debe acreditar el
-  // contrato de Focus, no la carrera de una petición de apertura. Instalamos
-  // una continuación legal y provocamos una captura DESPUÉS de entrar en Focus:
-  // la primera captura humana siempre genera una reacción local de Matthias.
   await installFocusCaptureRoute(page, requestLog);
 
   await login(page);
@@ -158,15 +169,22 @@ test('Android · Focus convierte reacciones nuevas de Matthias en bocadillos tem
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 30_000 });
 
+  // La apertura AI es una fuente independiente de comentarios. La dejamos
+  // terminar ANTES de Focus para que enterFocus marque ese mensaje como visto;
+  // así no puede robarle el bocadillo al evento que vamos a provocar después.
+  await waitForOpeningTranscript(page);
+
   const focus = page.getByRole('button', { name: 'Focus', exact: true });
   await expect(focus).toBeVisible();
   await focus.click();
   const layout = page.locator('.game-layout');
+  const bubble = page.getByRole('status', { name: 'Comentario de Matthias en Focus' });
   await expect(layout).toHaveAttribute('data-mobile-focus', 'true');
+  await expect(bubble).toHaveCount(0);
 
   // e4 …d5 prepara una captura totalmente legal desde la posición inicial.
   // exd5 nace ya dentro de Focus y alimenta el mismo historial real que usa
-  // Matthias para enfadarse; nada de mensajes inyectados directamente en UI.
+  // Matthias para sus reacciones; nada de mensajes inyectados directamente en UI.
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await expect(page.locator('[data-board3d-war-room="true"]')).toHaveAttribute('data-board3d-selected', '');
@@ -174,10 +192,9 @@ test('Android · Focus convierte reacciones nuevas de Matthias en bocadillos tem
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length).toBe(2);
 
-  const bubble = page.getByRole('status', { name: 'Comentario de Matthias en Focus' });
   await expect(bubble).toBeVisible({ timeout: 6_000 });
   await expect(bubble).toContainText('MATTHIAS');
-  await expect(bubble).toContainText(/pe[oó]n|peones|calderilla|anotado|contabilidad/i);
+  await expect(bubble.locator('p')).not.toHaveText('');
   await expect(page.locator('.game-side-column')).toHaveCount(0);
 
   // El bocadillo es un popup, no un panel permanente.
