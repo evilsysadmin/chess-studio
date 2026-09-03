@@ -272,10 +272,21 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       addMesh(group, new THREE.SphereGeometry(0.19, detail.sphereW, detail.sphereH), main, [0, 0.73, 0]);
       addMesh(group, new THREE.TorusGeometry(0.16, 0.025, detail.torusRadial, coarsePointer ? 20 : 36), accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
     } else if (type === 'b') {
-      addLathe(group, [[0.19, 0.28], [0.16, 0.4], [0.12, 0.58], [0.16, 0.68], [0.19, 0.73]], main, 0, detail.lathe);
-      addMesh(group, new THREE.SphereGeometry(0.15, coarsePointer ? 16 : 26, coarsePointer ? 10 : 17), main, [0, 0.84, 0]);
-      addMesh(group, new THREE.ConeGeometry(0.07, 0.22, detail.cone), accent, [0, 1.02, 0]);
-      addMesh(group, new THREE.BoxGeometry(0.04, 0.2, 0.17, coarsePointer ? 1 : 2, coarsePointer ? 2 : 4, coarsePointer ? 1 : 2), accent, [0.035, 0.86, 0], [0, 0, 0.62]);
+      group.userData.board3DBishopSilhouetteVersion = coarsePointer ? 'staunton-mitre-lite-v1' : 'staunton-mitre-v1';
+      group.userData.board3DBishopHeightProfile = 'tall-123-v1';
+      group.userData.board3DBishopSlashProfile = coarsePointer ? 'wide-diagonal-band-lite-v1' : 'wide-diagonal-band-v1';
+      addLathe(group, [[0.205, 0.28], [0.19, 0.34], [0.16, 0.43], [0.125, 0.58], [0.11, 0.67], [0.15, 0.74], [0.205, 0.79]], main, 0, detail.lathe);
+      addMesh(group, new THREE.TorusGeometry(0.205, 0.025, detail.torusRadial, coarsePointer ? 22 : 38), accent, [0, 0.79, 0], [Math.PI / 2, 0, 0]);
+      const mitre = addLathe(group, [[0.13, 0.78], [0.17, 0.84], [0.185, 0.92], [0.17, 1.0], [0.13, 1.1], [0.075, 1.18], [0.018, 1.23]], main, 0, coarsePointer ? 18 : 34);
+      mitre.userData.bishopPart = 'mitre';
+      const slash = addMesh(
+        group,
+        new THREE.BoxGeometry(coarsePointer ? 0.055 : 0.06, coarsePointer ? 0.27 : 0.3, coarsePointer ? 0.24 : 0.27, 1, coarsePointer ? 2 : 4, 1),
+        accent,
+        [0.035, 1.01, 0],
+        [0, 0, 0.68],
+      );
+      slash.userData.bishopPart = 'slash';
     } else if (type === 'r') {
       addLathe(group, [[0.22, 0.28], [0.2, 0.38], [0.19, 0.68], [0.24, 0.75], [0.28, 0.79]], main, 0, detail.lathe);
       addMesh(group, new THREE.CylinderGeometry(0.29, 0.27, 0.12, detail.cylinder), accent, [0, 0.83, 0]);
