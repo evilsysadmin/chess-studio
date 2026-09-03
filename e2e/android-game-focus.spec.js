@@ -95,19 +95,42 @@ test('Android · Focus deja sólo el tablero 3D, sigue siendo jugable y puede sa
 test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos temporales', async ({ page }) => {
   test.setTimeout(30_000);
   const requestLog = [];
-  await startQuickGame(page, requestLog, {
+  let releaseOpeningNarrative;
+  const openingNarrativeGate = new Promise((resolve) => { releaseOpeningNarrative = resolve; });
+
+  await mockApi(page, {
+    requestLog,
     profileSeed: {
       'chess-study-cpu-rivalry': rivalryWithTwoLosses(),
     },
   });
 
+  // #320 moved opening banter to an asynchronous Workers-AI request. Hold that
+  // request deliberately until Focus is active, then return an unavailable
+  // provider response so the real procedural fallback emits the measured
+  // two-loss streak. This proves the Focus popup contract without depending on
+  // an obsolete fixed 700 ms timer or on runner speed.
+  await page.route('http://localhost:4000/api/narrative', async (route) => {
+    const payload = route.request().postDataJSON?.() ?? {};
+    if (payload.eventType !== 'game_opening_banter') return route.fallback();
+    await openingNarrativeGate;
+    return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'E2E opening narrative delayed on purpose' }),
+    });
+  });
+
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 30_000 });
+
   await page.getByRole('button', { name: 'Focus', exact: true }).click();
   await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'true');
+  releaseOpeningNarrative();
 
-  // Dos derrotas consecutivas hacen que startMemoryComment produzca una frase
-  // determinista a los 700 ms. Entramos en Focus antes de ese callback: ese
-  // comentario NUEVO debe convertirse en bocadillo, sin depender de azar ni de
-  // que exista un saludo genérico en esta partida concreta.
   const bubble = page.getByRole('status', { name: 'Comentario de Matthias en Focus' });
   await expect(bubble).toBeVisible({ timeout: 6_000 });
   await expect(bubble).toContainText('MATTHIAS');
