@@ -436,8 +436,9 @@ function replaceConeFireWithLicks(fireCore, coarsePointer) {
 }
 
 function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
-  if (!root || root.userData.warRoomPremiumCoherence === 'v5-mobile-foreground') return 0;
-  root.userData.warRoomPremiumCoherence = 'v5-mobile-foreground';
+  const coherenceVersion = coarsePointer ? 'v5-mobile-foreground' : 'v4-gothic';
+  if (!root || root.userData.warRoomPremiumCoherence === coherenceVersion) return 0;
+  root.userData.warRoomPremiumCoherence = coherenceVersion;
 
   recolorCastleWalls(root, coarsePointer);
   tuneGroupMaterials(root.getObjectByName?.('coffered-paneling'), coarsePointer ? 0.78 : 0.66, 0.46);
