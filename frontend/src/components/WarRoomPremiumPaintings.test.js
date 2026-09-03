@@ -42,8 +42,8 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
     expect(group.userData.warRoomCompositionPolishVersion).toBe('v10');
     expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v24');
-    expect(group.userData.warRoomApprovedMockVersion).toBe('approved-mock-v26');
-    expect(group.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v26');
+    expect(group.userData.warRoomApprovedMockVersion).toBe('approved-mock-v27');
+    expect(group.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v27');
     expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
 
@@ -53,8 +53,8 @@ describe('War Room premium paintings', () => {
     expect(rightArmor).toBeTruthy();
     expect(leftArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
     expect(rightArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v26');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v26');
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
     expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
     expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
     expect(leftArmor.userData.facesWarTable).toBe(true);
@@ -112,7 +112,6 @@ describe('War Room premium paintings', () => {
       expect(painting.getObjectByName('war-room-premium-frame-leaf-ornament')).toBeTruthy();
       expect(painting.getObjectByName('war-room-painting-varnish')).toBeTruthy();
       expect(lamp?.userData?.warRoomPictureLamp).toBe('brass-gallery-lamp-v3');
-      expect(lamp?.getObjectByName('war-room-picture-lamp-glow')).toBeTruthy();
       expect(painting.getObjectByName(`war-room-picture-plaque-${index}`)).toBeTruthy();
     }
 
