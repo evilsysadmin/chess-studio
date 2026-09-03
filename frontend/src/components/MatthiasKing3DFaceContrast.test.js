@@ -35,11 +35,14 @@ describe('Matthias black king face contrast', () => {
     const eye = group.getObjectByName('matthias-eye-left');
     const brow = group.getObjectByName('matthias-brow-left');
     const mouth = group.getObjectByName('matthias-mouth');
+    const eyeWhite = group.getObjectByName('matthias-eye-white-left');
 
-    expect(face.material.color.getHex()).toBe(0xeee1c9);
-    expect(nose.material.color.getHex()).toBe(0xbda78b);
+    expect(face.material.color.getHex()).toBe(0xf2eadb);
+    expect(nose.material.color.getHex()).toBe(0xc1ad91);
     expect(brightness(face.material)).toBeGreaterThan(brightness(jacket.material) * 2.5);
     expect(brightness(face.material)).toBeGreaterThan(brightness(eye.material) * 8);
+    expect(eyeWhite).toBeTruthy();
+    expect(brightness(eyeWhite.material)).toBeGreaterThan(brightness(eye.material) * 5);
     expect(brow.material).toBe(eye.material);
     expect(mouth.material).toBe(eye.material);
 

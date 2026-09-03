@@ -36,7 +36,7 @@ describe('Matthias rival king 3D', () => {
 
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
-    expect(group.userData.faceStyle).toBe('proud-command-scowl-v5');
+    expect(group.userData.faceStyle).toBe('command-fury-scowl-v6');
     expect(group.userData.capStyle).toBe('premium-command-peaked-cap-v5');
     expect(group.userData.posture).toBe('proud-command-v2');
     expect(group.userData.motionRig).toBe('head-rig-v1');
@@ -49,6 +49,7 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-head-rig')).toBeTruthy();
     expect(group.getObjectByName('matthias-face')).toBeTruthy();
     expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-eye-white-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-brow-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-mouth')).toBeTruthy();
     expect(group.getObjectByName('matthias-officer-cap')).toBeTruthy();
@@ -111,10 +112,10 @@ describe('Matthias rival king 3D', () => {
     const eye = group.getObjectByName('matthias-eye-left');
     const mouth = group.getObjectByName('matthias-mouth');
 
-    expect(brow.position.y - eye.position.y).toBeGreaterThan(0.045);
+    expect(brow.position.y - eye.position.y).toBeGreaterThan(0.038);
     expect(eye.position.y - mouth.position.y).toBeGreaterThan(0.085);
-    expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.1);
-    expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.01);
+    expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.105);
+    expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.012);
 
     disposeGroup(group);
     main.dispose();
@@ -133,19 +134,21 @@ describe('Matthias rival king 3D', () => {
     const rightBrow = group.getObjectByName('matthias-brow-right');
     const mouth = group.getObjectByName('matthias-mouth');
 
-    expect(headRig.userData.expression).toBe('proud-angry-v1');
-    expect(face.scale.x).toBeGreaterThan(1.07);
-    expect(face.scale.y).toBeLessThan(0.93);
+    expect(headRig.userData.expression).toBe('command-fury-v2');
+    expect(face.scale.x).toBeGreaterThan(1.04);
+    expect(face.scale.y).toBeGreaterThan(0.92);
+    expect(face.scale.y).toBeLessThan(0.96);
 
     expect(leftEye.rotation.z).toBeLessThan(-0.07);
     expect(rightEye.rotation.z).toBeGreaterThan(0.07);
-    expect(leftBrow.rotation.z).toBeGreaterThan(0.32);
-    expect(rightBrow.rotation.z).toBeLessThan(-0.32);
+    expect(leftBrow.rotation.z).toBeLessThan(-0.40);
+    expect(rightBrow.rotation.z).toBeGreaterThan(0.40);
     expect(leftEye.scale.y).toBeLessThan(0.42);
     expect(rightEye.scale.y).toBeLessThan(0.42);
 
-    expect(mouth.geometry.parameters.width).toBeLessThanOrEqual(0.11);
-    expect(Math.abs(mouth.rotation.z)).toBeLessThan(0.001);
+    expect(mouth.geometry.parameters.width).toBeLessThanOrEqual(0.105);
+    expect(Math.abs(mouth.rotation.z)).toBeGreaterThan(0.04);
+    expect(Math.abs(mouth.rotation.z)).toBeLessThan(0.07);
 
     disposeGroup(group);
     main.dispose();
@@ -181,6 +184,8 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-brow-right')).toBeTruthy();
     expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-eye-right')).toBeTruthy();
+    expect(group.getObjectByName('matthias-eye-white-left')).toBeTruthy();
+    expect(group.getObjectByName('matthias-eye-white-right')).toBeTruthy();
     expect(group.getObjectByName('matthias-mouth')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-cord')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();

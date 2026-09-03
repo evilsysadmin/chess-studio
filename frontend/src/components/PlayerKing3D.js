@@ -112,7 +112,11 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
     'cross-horizontal',
   );
 
-  group.scale.setScalar(coarsePointer ? 0.97 : 1.0);
+  group.scale.set(
+    coarsePointer ? 0.92 : 0.94,
+    coarsePointer ? 0.97 : 1.0,
+    coarsePointer ? 0.92 : 0.94,
+  );
   group.userData.board3DPremiumPieceScale = group.scale.x;
   return group;
 }

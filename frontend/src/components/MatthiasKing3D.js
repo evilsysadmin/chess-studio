@@ -54,7 +54,7 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   const group = new THREE.Group();
   group.name = 'matthias-rival-king';
   group.userData.matthiasKing = true;
-  group.userData.faceStyle = 'proud-command-scowl-v5';
+  group.userData.faceStyle = 'command-fury-scowl-v6';
   group.userData.capStyle = 'premium-command-peaked-cap-v5';
   group.userData.posture = 'proud-command-v2';
   group.userData.motionRig = 'head-rig-v1';
@@ -66,7 +66,7 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   // The black king still has Matthias' pale face. Piece allegiance belongs to
   // the body/uniform; darkening the skin with the black set erases his eyes,
   // brows and mouth at tactical-camera distance.
-  const face = mat(pieceColor === 'b' ? 0xeee1c9 : 0xd3bea0, {
+  const face = mat(0xf2eadb, {
     metalness: 0,
     roughness: 0.82,
     clearcoat: 0.025,
@@ -74,7 +74,7 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
     envMapIntensity: 0.18,
     specularIntensity: 0.14,
   });
-  const faceShadow = mat(pieceColor === 'b' ? 0xbda78b : 0x9b7659, {
+  const faceShadow = mat(0xc1ad91, {
     metalness: 0,
     roughness: 0.92,
     clearcoat: 0.01,
@@ -102,6 +102,13 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
     clearcoatRoughness: 0.22,
     envMapIntensity: 0.62,
     specularIntensity: 0.62,
+  });
+  const eyeWhite = mat(0xd8d8d2, {
+    metalness: 0,
+    roughness: 0.88,
+    clearcoat: 0.01,
+    envMapIntensity: 0.08,
+    specularIntensity: 0.06,
   });
   const ink = mat(0x05070a, {
     metalness: 0.02,
@@ -153,27 +160,31 @@ export function buildMatthiasKing3D(mainMaterial, accentMaterial, {
   headRig.name = 'matthias-head-rig';
   headRig.userData.basePosition = headRig.position.clone();
   headRig.userData.baseRotation = headRig.rotation.clone();
-  headRig.userData.expression = 'proud-angry-v1';
+  headRig.userData.expression = 'command-fury-v2';
   group.add(headRig);
 
-  // Slightly broader and flatter than the old soft oval: more officer, less sad doll.
-  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.016, 0], [0, 0, 0], [1.09, 0.90, 0.92], 'matthias-face');
+  // Approved king-pawn reference: a pale, nearly round face under the plate cap.
+  // The expression must survive board scale without reading tired or sad.
+  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.016, 0], [0, 0, 0], [1.06, 0.94, 0.94], 'matthias-face');
   const faceZ = front * 0.226;
 
-  // Narrow eye slits angle inward to reinforce the scowl instead of reading tired.
-  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [-0.071, 1.029, faceZ], [0, 0, -0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-left');
-  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [0.071, 1.029, faceZ], [0, 0, 0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-right');
+  // Small pale sclera make the glare readable; the existing named eye meshes remain
+  // the dark pupils so animation/consumers keep their stable handles.
+  add(headRig, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [-0.071, 1.028, faceZ], [0, 0, -0.12 * front], [1.34, 0.48, 0.36], 'matthias-eye-white-left');
+  add(headRig, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [0.071, 1.028, faceZ], [0, 0, 0.12 * front], [1.34, 0.48, 0.36], 'matthias-eye-white-right');
+  add(headRig, new THREE.SphereGeometry(0.024, 14, 9), ink, [-0.069, 1.026, front * 0.233], [0, 0, -0.12 * front], [1.18, 0.34, 0.30], 'matthias-eye-left');
+  add(headRig, new THREE.SphereGeometry(0.024, 14, 9), ink, [0.069, 1.026, front * 0.233], [0, 0, 0.12 * front], [1.18, 0.34, 0.30], 'matthias-eye-right');
 
-  // Match Matthias' canonical avatar: brows rise toward the outside corners.
-  // From the tactical camera this reads as proud/angry, not drooping/sad.
-  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [-0.064, 1.078, front * 0.229], [0, 0, 0.38 * front], null, 'matthias-brow-left');
-  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [0.064, 1.078, front * 0.229], [0, 0, -0.38 * front], null, 'matthias-brow-right');
+  // Critical sign convention: inner brow ends sit LOWER than the outer ends.
+  // The previous signs did the opposite and produced the recurring sad Matthias.
+  add(headRig, new THREE.BoxGeometry(0.105, 0.019, 0.019), ink, [-0.064, 1.069, front * 0.231], [0, 0, -0.44 * front], null, 'matthias-brow-left');
+  add(headRig, new THREE.BoxGeometry(0.105, 0.019, 0.019), ink, [0.064, 1.069, front * 0.231], [0, 0, 0.44 * front], null, 'matthias-brow-right');
 
   // Keep the nose subordinate so it cannot turn the expression into a droop.
   add(headRig, new THREE.SphereGeometry(0.022, 14, 9), faceShadow, [0.004, 0.992, front * 0.236], [0, 0, 0], [0.62, 1.05, 0.46], 'matthias-nose');
 
-  // Short, perfectly level pressed mouth: stern, not downturned.
-  add(headRig, new THREE.BoxGeometry(0.108, 0.01, 0.015), ink, [0, 0.939, front * 0.231], [0, 0, 0], null, 'matthias-mouth');
+  // Short, slightly skewed command sneer. It is deliberately NOT downturned.
+  add(headRig, new THREE.BoxGeometry(0.104, 0.012, 0.015), ink, [0.004, 0.939, front * 0.232], [0, 0, -0.055 * front], null, 'matthias-mouth');
 
   const capGroup = new THREE.Group();
   capGroup.name = 'matthias-officer-cap';
