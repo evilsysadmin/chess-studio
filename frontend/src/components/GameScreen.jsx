@@ -119,6 +119,7 @@ export default function GameScreen({
   const mutationCoordinatorRef = useRef(null);
   if (!mutationCoordinatorRef.current) mutationCoordinatorRef.current = createGameMutationCoordinator();
   const mutationCoordinator = mutationCoordinatorRef.current;
+  const hintSessionGenerationRef = useRef(0);
   const hintRequestRef = useRef(null);
   const pressureMovesRef = useRef(0);
   const pressureIncidentsRef = useRef(0);
@@ -168,6 +169,7 @@ export default function GameScreen({
     // Nueva partida = nueva generación async. Cualquier respuesta, prompt o
     // request de la partida anterior deja de tener permiso para tocar estado.
     mutationCoordinator.invalidateSession('Game changed', { clearRetry: true });
+    hintSessionGenerationRef.current += 1;
     hintRequestRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
     hintRequestRef.current = null;
     if (controlResolveRef.current) {
@@ -228,6 +230,7 @@ export default function GameScreen({
   useEffect(() => {
     if (!flagFallen) return;
     mutationCoordinator.invalidateSession('Clock flag fell', { clearRetry: false });
+    hintSessionGenerationRef.current += 1;
     hintRequestRef.current?.controller?.abort(new DOMException('Clock flag fell', 'AbortError'));
     hintRequestRef.current = null;
     if (controlResolveRef.current) {
@@ -650,14 +653,14 @@ export default function GameScreen({
 
   async function handleHint() {
     if (!canHint || hintRequestRef.current) return;
-    const session = mutationCoordinator.sessionGeneration?.() ?? null;
+    const session = hintSessionGenerationRef.current;
     const controller = new AbortController();
     const requestToken = { token: Symbol('hint'), controller, session };
     hintRequestRef.current = requestToken;
     setHintLoading(true);
     try {
       const suggestion = await api.getHint(game.id, { signal: controller.signal });
-      if (hintRequestRef.current !== requestToken) return;
+      if (hintRequestRef.current !== requestToken || hintSessionGenerationRef.current !== session) return;
       setHint(suggestion);
       setSelected(suggestion.from);
       if (hintMode === 'paid') {
@@ -665,7 +668,7 @@ export default function GameScreen({
         setHintsUsedThisGame((n) => n + 1);
       }
     } catch (e) {
-      if (hintRequestRef.current === requestToken && !isAbortError(e)) onError?.(e.message);
+      if (hintRequestRef.current === requestToken && hintSessionGenerationRef.current === session && !isAbortError(e)) onError?.(e.message);
     } finally {
       if (hintRequestRef.current === requestToken) {
         hintRequestRef.current = null;
