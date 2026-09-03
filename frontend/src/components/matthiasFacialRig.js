@@ -1,4 +1,4 @@
-export const MATTHIAS_FACIAL_RIG_VERSION = 'face-v2';
+export const MATTHIAS_FACIAL_RIG_VERSION = 'face-v1';
 
 const SUPPORTED_EXPRESSIONS = new Set([
   'stern',
@@ -73,42 +73,20 @@ export function normalizeMatthiasFacialGesture(value = 'idle') {
 }
 
 function blinkAmount(time, expression) {
-  const first = shortPulse(time + 1.11, 5.3, .12, .048, .018, .075);
-  const second = shortPulse(time + 2.47, 8.7, .22, .052, .022, .082);
-  const doubleBlink = shortPulse(time + .61, 13.1, .58, .042, .015, .065) * .68;
-  const raw = Math.max(first, second, doubleBlink);
-  if (expression === 'glare' || expression === 'grumble-hot') return raw * .48;
-  if (expression === 'smirk' || expression === 'focus') return raw * .78;
-  return raw;
+  if (expression === 'glare' || expression === 'grumble-hot') return 0;
+  const first = shortPulse(time + 1.37, 5.9, .08, .055, .025, .085);
+  const doubleBlink = shortPulse(time + 1.37, 11.8, .36, .045, .018, .07) * .72;
+  return Math.max(first, doubleBlink);
 }
 
 function expressionStrength(expression) {
   if (expression === 'grumble-hot') return 1;
-  if (expression === 'simmer' || expression === 'glare') return .9;
-  if (expression === 'grumble' || expression === 'focus') return .78;
-  if (expression === 'smirk') return .74;
-  if (expression === 'alert') return .52;
-  if (expression === 'coffee') return .34;
-  return .3;
-}
-
-function surveyDirection(time) {
-  const local = ((time % 2.35) + 2.35) % 2.35;
-  if (local < .18) return -smooth01(local / .18);
-  if (local < .72) return -1;
-  if (local < .96) return -(1 - smooth01((local - .72) / .24));
-  if (local < 1.16) return smooth01((local - .96) / .20);
-  if (local < 1.76) return 1;
-  if (local < 2.02) return 1 - smooth01((local - 1.76) / .26);
-  return 0;
-}
-
-function gazeDirection(time, gesture) {
-  if (gesture === 'head-left') return -1;
-  if (gesture === 'head-right') return 1;
-  if (gesture === 'survey') return surveyDirection(time);
-  if (gesture === 'glance') return (Math.floor((time + .7) / 2.7) % 2 === 0 ? 1 : -1) * .88;
-  return signedHold(time + .35, 8.9, .7, 4.95) * .42;
+  if (expression === 'simmer' || expression === 'glare') return .86;
+  if (expression === 'grumble' || expression === 'focus') return .72;
+  if (expression === 'smirk') return .68;
+  if (expression === 'alert') return .48;
+  if (expression === 'coffee') return .32;
+  return .26;
 }
 
 function speechSyllable(time) {
@@ -133,9 +111,6 @@ export function matthiasFacialMotionSample({
   const nx = imageAspect ? x / imageAspect : x;
   const strength = expressionStrength(face) * clamp(Number(intensity) || 1, .75, 1.45);
 
-  // Landmarks stay broad and low-amplitude. The v2 rig adds intention and
-  // irregular cadence, but keeps the canonical raster inside the same hard
-  // anti-melt envelope as v1.
   const leftEye = gaussian(nx, y, -.105, .395, .105, .055);
   const rightEye = gaussian(nx, y, .105, .395, .105, .055);
   const leftBrow = gaussian(nx, y, -.105, .475, .135, .07);
@@ -163,58 +138,73 @@ export function matthiasFacialMotionSample({
   }
 
   if (face === 'alert') {
-    dy += (leftBrow + rightBrow) * .0042 * strength;
-    dy += (leftEye + rightEye) * .0028 * strength;
+    dy += (leftBrow + rightBrow) * .0038 * strength;
+    dy += (leftEye + rightEye) * .0025 * strength;
   } else if (face === 'focus') {
-    dx += leftBrow * .0062 * strength;
-    dx -= rightBrow * .0062 * strength;
-    dy -= (leftBrow + rightBrow) * .0053 * strength;
-    dy -= (leftEye + rightEye) * .0025 * strength;
+    dx += leftBrow * .0055 * strength;
+    dx -= rightBrow * .0055 * strength;
+    dy -= (leftBrow + rightBrow) * .0048 * strength;
+    dy -= (leftEye + rightEye) * .0022 * strength;
   } else if (face === 'glare' || face === 'simmer') {
     const glareScale = face === 'glare' ? 1 : .84;
-    dx += leftBrow * .0081 * strength * glareScale;
-    dx -= rightBrow * .0081 * strength * glareScale;
-    dy -= (leftBrow + rightBrow) * .0076 * strength * glareScale;
-    dy -= (leftEye + rightEye) * .0049 * strength * glareScale;
-    dy -= jaw * .0027 * strength;
+    dx += leftBrow * .0075 * strength * glareScale;
+    dx -= rightBrow * .0075 * strength * glareScale;
+    dy -= (leftBrow + rightBrow) * .0072 * strength * glareScale;
+    dy -= (leftEye + rightEye) * .0046 * strength * glareScale;
+    dy -= jaw * .0025 * strength;
   } else if (face === 'smirk') {
-    const smugPulse = .88 + shortPulse(time + .2, 3.7, .4, .18, .42, .28) * .12;
-    dy += rightMouth * .0122 * strength * smugPulse;
-    dx += rightMouth * .0072 * strength * smugPulse;
-    dy += rightCheek * .0046 * strength;
-    dy -= leftMouth * .0022 * strength;
-    dz += rightCheek * .003 * strength;
+    dy += rightMouth * .0115 * strength;
+    dx += rightMouth * .0068 * strength;
+    dy += rightCheek * .0042 * strength;
+    dy -= leftMouth * .002 * strength;
+    dz += rightCheek * .0028 * strength;
   } else if (face === 'grumble' || face === 'grumble-hot') {
     const hot = face === 'grumble-hot' ? 1 : .72;
-    const jawTension = .86 + shortPulse(time + .18, 2.9, .36, .08, .22, .12) * .14;
-    dx += leftBrow * .009 * strength * hot;
-    dx -= rightBrow * .009 * strength * hot;
-    dy -= (leftBrow + rightBrow) * .0086 * strength * hot;
-    dy -= (leftEye + rightEye) * .005 * strength * hot;
-    dy -= (leftMouth + rightMouth) * .0072 * strength * hot;
-    dx -= leftMouth * .004 * strength * hot;
-    dx += rightMouth * .004 * strength * hot;
-    dy -= jaw * .0072 * strength * hot * jawTension;
-    dz += jaw * .0037 * strength * hot;
+    dx += leftBrow * .0085 * strength * hot;
+    dx -= rightBrow * .0085 * strength * hot;
+    dy -= (leftBrow + rightBrow) * .0082 * strength * hot;
+    dy -= (leftEye + rightEye) * .0048 * strength * hot;
+    dy -= (leftMouth + rightMouth) * .0068 * strength * hot;
+    dx -= leftMouth * .0038 * strength * hot;
+    dx += rightMouth * .0038 * strength * hot;
+    dy -= jaw * .0068 * strength * hot;
+    dz += jaw * .0035 * strength * hot;
   } else if (face === 'coffee') {
     const swallow = shortPulse(time + .55, 4.7, 1.45, .12, .08, .18);
-    dy -= jaw * swallow * .0048 * strength;
-    dy += mouthCenter * swallow * .002 * strength;
+    dy -= jaw * swallow * .0045 * strength;
+    dy += mouthCenter * swallow * .0018 * strength;
   } else {
-    dx += leftBrow * .0031 * strength;
-    dx -= rightBrow * .0031 * strength;
-    dy -= (leftBrow + rightBrow) * .0025 * strength;
+    dx += leftBrow * .0028 * strength;
+    dx -= rightBrow * .0028 * strength;
+    dy -= (leftBrow + rightBrow) * .0022 * strength;
   }
 
-  const direction = gazeDirection(time, faceGesture);
-  const gazeScale = faceGesture === 'survey' ? 1 : faceGesture === 'glance' ? .9 : .72;
-  if (direction !== 0) {
-    const eyeShift = direction * .0052 * strength * gazeScale;
+  if (speaking) {
+    const syllable = faceGesture === 'speaking'
+      ? speechSyllable(time)
+      : (Math.sin(time * 11.2) * .5 + .5);
+    const cadence = faceGesture === 'speaking'
+      ? .62 + (Math.sin(time * 2.75 + .2) * .5 + .5) * .38
+      : .45 + (Math.sin(time * 3.1) * .5 + .5) * .55;
+    dy -= jaw * syllable * cadence * .0062 * strength;
+    dy += mouthCenter * syllable * .0025 * strength;
+    dz += jaw * syllable * .0028 * strength;
+    energy = Math.max(energy, syllable * .65);
+  }
+
+  if (faceGesture === 'glance' || faceGesture === 'survey' || faceGesture === 'head-left' || faceGesture === 'head-right') {
+    let direction = 0;
+    if (faceGesture === 'head-left') direction = -1;
+    else if (faceGesture === 'head-right') direction = 1;
+    else direction = Math.sin(time * (faceGesture === 'survey' ? 2.1 : 1.55));
+    const eyeShift = direction * .0048 * strength;
     dx += (leftEye + rightEye) * eyeShift;
-    dx += (leftBrow + rightBrow) * eyeShift * .26;
+    dx += (leftBrow + rightBrow) * eyeShift * .35;
     energy = Math.max(energy, Math.abs(direction) * .28);
   }
 
+  // War Room-only intent cues. These gesture names were not accepted by v1,
+  // so Home and existing callers retain their previous motion contract.
   if (faceGesture === 'glare') {
     dx += leftEye * .0019 * strength;
     dx -= rightEye * .0019 * strength;
@@ -226,8 +216,10 @@ export function matthiasFacialMotionSample({
     dy -= (leftEye + rightEye) * .0012 * strength;
     dz += (leftEye + rightEye + leftCheek + rightCheek) * .0018 * strength;
   } else if (faceGesture === 'smirk') {
-    dy -= rightEye * .0019 * strength;
-    dy += rightBrow * .0013 * strength;
+    const smugPulse = .82 + shortPulse(time + .2, 3.7, .4, .18, .42, .28) * .18;
+    dy += rightMouth * .0015 * strength * smugPulse;
+    dy -= rightEye * .0019 * strength * smugPulse;
+    dy += rightBrow * .0013 * strength * smugPulse;
   } else if (faceGesture === 'grumble') {
     const twitch = signedHold(time + .14, 2.35, .22, 1.34);
     dx += (leftMouth + rightMouth) * twitch * .0014 * strength;
@@ -235,15 +227,6 @@ export function matthiasFacialMotionSample({
   } else if (faceGesture === 'coffee') {
     const settle = shortPulse(time + .3, 4.7, 1.72, .12, .12, .18);
     dy -= (leftEye + rightEye) * settle * .0011 * strength;
-  }
-
-  if (speaking || faceGesture === 'speaking') {
-    const syllable = speechSyllable(time);
-    const cadence = .62 + (Math.sin(time * 2.75 + .2) * .5 + .5) * .38;
-    dy -= jaw * syllable * cadence * .0064 * strength;
-    dy += mouthCenter * syllable * .0027 * strength;
-    dz += jaw * syllable * .0029 * strength;
-    energy = Math.max(energy, syllable * .65);
   }
 
   dx *= faceEnvelope * coreProtection;
