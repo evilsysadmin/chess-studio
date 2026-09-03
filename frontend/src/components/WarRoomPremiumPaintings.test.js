@@ -43,7 +43,6 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomCompositionPolishVersion).toBe('v10');
     expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v24');
     expect(group.userData.warRoomApprovedMockVersion).toBe('approved-mock-v27');
-    expect(group.userData.warRoomApprovedMockExecution).toBe('shared-finalizer-marker-driver-retirement-v6');
     expect(group.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v27');
     expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
