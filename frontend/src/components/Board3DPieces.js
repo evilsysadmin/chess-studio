@@ -171,7 +171,7 @@ function addSignatureDetail(group, type, accent, coarsePointer = false) {
   } else if (type === 'b') {
     addMesh(group, new THREE.TorusGeometry(0.135, 0.011, 7, 28), accent, [0, 0.7, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'r') {
-    addMesh(group, new THREE.TorusGeometry(0.255, 0.012, 7, 30), accent, [0, 0.77, 0], [Math.PI / 2, 0, 0]);
+    addMesh(group, new THREE.TorusGeometry(0.255, 0.013, 7, 32), accent, [0, 0.845, 0], [Math.PI / 2, 0, 0]);
   } else if (type === 'q') {
     addMesh(group, new THREE.SphereGeometry(0.052, 14, 9), accent, [0, 1.13, 0]);
   } else if (type === 'k') {
@@ -288,11 +288,53 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       );
       slash.userData.bishopPart = 'slash';
     } else if (type === 'r') {
-      addLathe(group, [[0.22, 0.28], [0.2, 0.38], [0.19, 0.68], [0.24, 0.75], [0.28, 0.79]], main, 0, detail.lathe);
-      addMesh(group, new THREE.CylinderGeometry(0.29, 0.27, 0.12, detail.cylinder), accent, [0, 0.83, 0]);
+      group.userData.board3DRookSilhouetteVersion = coarsePointer ? 'premium-castle-lite-v1' : 'premium-castle-v1';
+      group.userData.board3DRookBodyProfile = 'concave-staunton-v1';
+      group.userData.board3DRookCrownProfile = 'six-wide-crenellations-v1';
+      group.userData.board3DRookLuxuryBandProfile = coarsePointer ? 'fluted-band-8-v1' : 'fluted-band-16-v1';
+
+      const body = addLathe(
+        group,
+        [[0.245, 0.28], [0.26, 0.32], [0.242, 0.36], [0.215, 0.41], [0.185, 0.49], [0.158, 0.62], [0.15, 0.71], [0.165, 0.78], [0.205, 0.83], [0.247, 0.865]],
+        main,
+        0,
+        detail.lathe,
+      );
+      body.userData.rookPart = 'body';
+
+      const lowerRing = addMesh(group, new THREE.TorusGeometry(0.268, 0.018, detail.torusRadial, coarsePointer ? 22 : 40), accent, [0, 0.315, 0], [Math.PI / 2, 0, 0]);
+      lowerRing.userData.rookPart = 'lower-ring';
+      const band = addMesh(group, new THREE.CylinderGeometry(0.252, 0.252, 0.055, detail.cylinder), accent, [0, 0.37, 0]);
+      band.userData.rookPart = 'ornamental-band';
+      const fluteCount = coarsePointer ? 8 : 16;
+      for (let index = 0; index < fluteCount; index += 1) {
+        const angle = index * (Math.PI * 2 / fluteCount);
+        const flute = addMesh(
+          group,
+          new THREE.BoxGeometry(coarsePointer ? 0.036 : 0.026, 0.045, coarsePointer ? 0.052 : 0.045),
+          main,
+          [Math.cos(angle) * 0.254, 0.37, Math.sin(angle) * 0.254],
+          [0, -angle, 0],
+        );
+        flute.userData.rookPart = 'band-flute';
+      }
+      const upperBaseRing = addMesh(group, new THREE.TorusGeometry(0.248, 0.014, detail.torusRadial, coarsePointer ? 22 : 38), accent, [0, 0.415, 0], [Math.PI / 2, 0, 0]);
+      upperBaseRing.userData.rookPart = 'upper-base-ring';
+
+      const crownBase = addMesh(group, new THREE.CylinderGeometry(0.292, 0.263, 0.135, detail.cylinder), main, [0, 0.92, 0]);
+      crownBase.userData.rookPart = 'crown-base';
+      const crownLip = addMesh(group, new THREE.TorusGeometry(0.276, 0.018, detail.torusRadial, coarsePointer ? 22 : 40), accent, [0, 0.852, 0], [Math.PI / 2, 0, 0]);
+      crownLip.userData.rookPart = 'crown-lip';
       for (let index = 0; index < 6; index += 1) {
         const angle = index * Math.PI / 3;
-        addMesh(group, new THREE.BoxGeometry(0.13, 0.17, 0.13, 1, coarsePointer ? 1 : 2, 1), main, [Math.cos(angle) * 0.22, 0.95, Math.sin(angle) * 0.22], [0, -angle, 0]);
+        const battlement = addMesh(
+          group,
+          new THREE.BoxGeometry(coarsePointer ? 0.16 : 0.17, 0.185, coarsePointer ? 0.16 : 0.17, 1, coarsePointer ? 1 : 2, 1),
+          main,
+          [Math.cos(angle) * 0.225, 1.045, Math.sin(angle) * 0.225],
+          [0, -angle, 0],
+        );
+        battlement.userData.rookPart = 'battlement';
       }
     } else if (type === 'q') {
       addLathe(group, [[0.2, 0.28], [0.17, 0.4], [0.13, 0.61], [0.18, 0.75], [0.22, 0.8]], main, 0, detail.lathe);
