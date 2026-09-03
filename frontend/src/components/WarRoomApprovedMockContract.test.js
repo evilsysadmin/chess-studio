@@ -178,7 +178,7 @@ describe('War Room approved mock contract', () => {
     };
 
     expect(installWarRoomApprovedMockContract(castle, { wallZ: -7.6, towardBoard: 1 })).toBe(1);
-    expect(castle.getObjectByName('war-room-sofa-left')).toBeNull();
+    expect(castle.getObjectByName('war-room-sofa-left')).toBeUndefined();
     armorVisor.onBeforeRender();
 
     expect(sofa.position.z).toBeCloseTo(4.75, 5);
