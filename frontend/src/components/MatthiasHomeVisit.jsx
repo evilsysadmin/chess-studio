@@ -5,7 +5,7 @@ import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.j
 import { matthiasSessionContext } from '../matthiasSessionContext.js';
 import { buildSessionSummary } from '../sessionSummary.js';
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
+import MatthiasHomePresenceAvatar from './MatthiasHomePresenceAvatar.jsx';
 import './MatthiasHomeResident.css';
 import './HomeCastleCoherence.css';
 import './MatthiasHomeSessionSummary.css';
@@ -124,7 +124,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
       data-placement={compactViewport ? 'inline' : 'viewport'}
       data-motion-state={motionStatus.effective ? 'reduced' : 'active'}
       data-motion-source={motionStatus.source}
-      data-three-presentation="home-v2"
+      data-three-presentation="home-v3"
     >
       <div className="matthias-resident__stage">
         {speaking ? (
@@ -152,7 +152,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
             title="Matthias · abrir Así juegas"
           >
             <span className="matthias-resident__portrait-shell" aria-hidden="true" data-portrait-frame="true">
-              <MatthiasThreeAvatar
+              <MatthiasHomePresenceAvatar
                 avatar={visual.avatar}
                 scene={visual.key || 'base'}
                 activity={visual.label || ''}

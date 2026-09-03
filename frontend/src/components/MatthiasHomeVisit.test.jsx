@@ -44,7 +44,7 @@ const MODEL = {
 beforeEach(() => sessionStorage.clear());
 
 describe('MatthiasHomeVisit · residente de Home', () => {
-  it('mantiene el arte canónico como textura/fallback y delega la animación de Home a Three.js v2', () => {
+  it('mantiene el arte canónico y delega Home al renderer rígido de presencia v3', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit model={MODEL} speaking={false} onOpenInsights={() => {}} />,
     );
@@ -55,9 +55,13 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-placement="viewport"');
     expect(html).toContain('data-motion-state="active"');
     expect(html).toContain('data-motion-source="none"');
-    expect(html).toContain('data-three-presentation="home-v2"');
+    expect(html).toContain('data-three-presentation="home-v3"');
     expect(html).toContain('data-ambient-scene="reading"');
     expect(html).toContain('data-matthias-three-avatar="true"');
+    expect(html).toContain('data-home-presence-version="home-presence-v1"');
+    expect(html).toContain('data-three-deformation="rigid-only"');
+    expect(html).toContain('data-three-face-rig="home-rigid-v1"');
+    expect(html).toContain('data-three-face-warp="0.000"');
     expect(html).toContain('data-three-profile="read"');
     expect(html).toContain(`data-three-motion-intensity="${HOME_THREE_MOTION_INTENSITY.toFixed(2)}"`);
     expect(html).toContain('data-three-motion-phase=');
@@ -91,7 +95,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('Ver Así juegas →');
   });
 
-  it('cuando tiene algo real que decir conserva el arte original y no apila el debrief debajo del bocadillo', () => {
+  it('cuando tiene algo real que decir conserva la cara canónica y no apila el debrief', () => {
     recordMatthiasSessionResult({ gameId: 'g1', outcome: 'loss' });
     recordMatthiasSessionResult({ gameId: 'g2', outcome: 'loss' });
     const model = { ...MODEL, variant: 'comment', text: 'He encontrado una reincidencia real.', meta: '2 casos', sessionLabel: 'Sesión · 2 partidas · 0V · 0T · 2D' };
@@ -109,6 +113,8 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias-time.webp"');
     expect(html).toContain('data-three-profile="speak"');
+    expect(html).toContain('data-three-deformation="rigid-only"');
+    expect(html).toContain('data-three-face-warp="0.000"');
     expect(html).not.toContain('data-session-summary="true"');
     expect(html).toContain('Mensaje de Matthias');
     expect(html).toContain('He encontrado una reincidencia real.');
