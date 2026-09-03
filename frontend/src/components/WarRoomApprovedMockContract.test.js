@@ -146,9 +146,8 @@ describe('War Room approved mock contract', () => {
     const sofa = room.getObjectByName('war-room-sofa-left');
     const armor = castle.getObjectByName('war-room-teutonic-armor-left');
 
-    // Mirrors the real constructor order: premium/approved setup happens first;
-    // the legacy armor guard and its layout driver are attached afterwards.
     expect(installWarRoomApprovedMockContract(castle, { wallZ: -7.6, towardBoard: 1 })).toBe(1);
+    expect(castle.userData.warRoomApprovedMockExecution).toBe('shared-finalizer-marker-driver-retirement-v6');
     const { driver, executions } = addLateLegacyLayoutDriver(castle, sofa);
     expect(driver.userData.warRoomApprovedMockLayoutDriverRetired).toBeUndefined();
 
