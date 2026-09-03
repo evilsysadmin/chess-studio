@@ -14,6 +14,7 @@ import {
   transitionMatthiasWarRoom,
 } from './matthiasWarRoomStateMachine.js';
 import './MatthiasWarRoomPortrait.css';
+import './MatthiasWarRoomStateExpressions.css';
 import './MatthiasWarRoomThreeAvatar.css';
 import './MatthiasWarRoomAndroidMotion.css';
 import './WarRoomReferencePolish.css';
