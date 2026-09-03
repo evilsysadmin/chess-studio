@@ -91,4 +91,49 @@ test('Home · cuando Matthias habla Three.js usa un perfil de atención y conser
   const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
   await expect(bubble).toBeVisible();
   await expectThreeScene(corner, 'speak', 'habla');
+
+  const geometry = await corner.evaluate((node) => {
+    const bubbleNode = node.querySelector('.matthias-resident__bubble');
+    const characterNode = node.querySelector('.matthias-resident__character');
+    const bubbleRect = bubbleNode?.getBoundingClientRect();
+    const characterRect = characterNode?.getBoundingClientRect();
+    return {
+      gap: bubbleRect && characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
+      bubbleFontSize: bubbleNode ? Number.parseFloat(getComputedStyle(bubbleNode.querySelector('p')).fontSize) : 0,
+    };
+  });
+  expect(geometry.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
+  expect(geometry.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
+  expect(geometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
+});
+
+test('Home · 390px mantiene materiales premium, texto legible y cero overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const corner = await openHomeAt(page, 10, { dismissSpeech: false });
+  const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
+  const home = page.locator('.menu.home-friendly');
+  const primaryCard = home.locator('.home-mode-card').first();
+
+  await expect(home).toBeVisible();
+  await expect(bubble).toBeVisible();
+  await expect(primaryCard).toBeVisible();
+  await expect(corner).toHaveAttribute('data-placement', 'inline');
+
+  const contract = await page.evaluate(() => {
+    const bubbleText = document.querySelector('.matthias-resident__bubble p');
+    const description = document.querySelector('.home-mode-description');
+    const homeNode = document.querySelector('.menu.home-friendly');
+    const homeStyle = homeNode ? getComputedStyle(homeNode) : null;
+    return {
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+      bubbleFontSize: bubbleText ? Number.parseFloat(getComputedStyle(bubbleText).fontSize) : 0,
+      descriptionFontSize: description ? Number.parseFloat(getComputedStyle(description).fontSize) : 0,
+      homeBackground: homeStyle?.backgroundImage || '',
+    };
+  });
+
+  expect(contract.overflow, 'Home no puede generar scroll horizontal en Android').toBeLessThanOrEqual(1);
+  expect(contract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
+  expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);
+  expect(contract.homeBackground).toContain('linear-gradient');
 });
