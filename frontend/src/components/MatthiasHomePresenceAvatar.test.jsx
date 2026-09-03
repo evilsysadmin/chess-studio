@@ -29,11 +29,13 @@ describe('MatthiasHomePresenceAvatar', () => {
   });
 
   it('anima café y comida con pose rígida suficiente sin morph facial', () => {
-    const sip = matthiasHomeRigidPoseSample({ profile: 'sip', time: 1.7, motionIntensity: 1.12 });
-    const bite = matthiasHomeRigidPoseSample({ profile: 'bite', time: 1.8, motionIntensity: 1.12 });
+    // Picos conocidos de las cadencias. El contrato mide intención del gesto,
+    // no una captura accidental de una fase floja del seno.
+    const sip = matthiasHomeRigidPoseSample({ profile: 'sip', time: .56, motionIntensity: 1.12 });
+    const bite = matthiasHomeRigidPoseSample({ profile: 'bite', time: .34, motionIntensity: 1.12 });
 
-    expect(sip.reach).toBeGreaterThan(.25);
-    expect(bite.reach).toBeGreaterThan(.3);
+    expect(sip.reach).toBeGreaterThan(.45);
+    expect(bite.reach).toBeGreaterThan(.55);
     expect(Math.abs(sip.rx)).toBeLessThan(.03);
     expect(Math.abs(bite.rx)).toBeLessThan(.03);
     expect(sip.scale).toBeGreaterThan(.99);
