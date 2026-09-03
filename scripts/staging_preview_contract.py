@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed if manual staging preview can enter the production chain."""
+"""Fail closed if manual staging preview/restore can enter production."""
 from __future__ import annotations
 
 import pathlib
@@ -32,22 +32,25 @@ def main() -> int:
     staging_ai = STAGING_AI.read_text(encoding="utf-8")
     promote = PROMOTE.read_text(encoding="utf-8")
 
-    require(preview, "name: Staging · preview", "preview name", errors)
-    require(preview, "workflow_dispatch:", "preview manual-only trigger", errors)
-    require(preview, "ORCHESTRATOR_REF: ${{ github.ref }}", "preview orchestrator provenance", errors)
-    require(preview, "refs/heads/main", "preview orchestrator main-only guard", errors)
-    require(preview, "PAGES_PROJECT: chess-studio-staging", "preview staging Pages project", errors)
-    require(preview, "STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org", "preview canonical staging URL", errors)
-    require(preview, "path: preview-source", "preview source isolated checkout", errors)
-    require(preview, "El ref resuelve al SHA actual de main", "preview source main SHA refusal", errors)
-    require(preview, "production_branch != 'main'", "preview verifies Pages production branch", errors)
-    require(preview, "--branch main", "preview writes canonical staging frontend", errors)
-    require(preview, "Staging no sirve el SHA de preview solicitado", "preview live build identity gate", errors)
-    require(preview, "No acreditado:", "preview non-accreditation summary", errors)
-    require(preview, "group: chess-studio-staging-deploy", "preview staging write mutex", errors)
+    require(preview, "name: Staging · preview", "workflow name", errors)
+    require(preview, "workflow_dispatch:", "manual-only trigger", errors)
+    require(preview, "- preview\n          - restore-main", "preview/restore mode allowlist", errors)
+    require(preview, "TARGET_REF: ${{ inputs.mode == 'restore-main' && 'main' || inputs.ref }}", "target ref selection", errors)
+    require(preview, "ORCHESTRATOR_REF: ${{ github.ref }}", "orchestrator provenance", errors)
+    require(preview, "refs/heads/main", "orchestrator main-only guard", errors)
+    require(preview, "PAGES_PROJECT: chess-studio-staging", "staging Pages project", errors)
+    require(preview, "STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org", "canonical staging URL", errors)
+    require(preview, "path: preview-source", "isolated target checkout", errors)
+    require(preview, "main no es un preview; usa el modo restore-main", "preview main refusal", errors)
+    require(preview, "restore-main resolvió", "restore exact-main guard", errors)
+    require(preview, "production_branch != 'main'", "Pages production branch verification", errors)
+    require(preview, "--branch main", "canonical staging frontend deployment", errors)
+    require(preview, "Staging no sirve el SHA solicitado", "live build identity gate", errors)
+    require(preview, "No acreditado:", "non-accreditation summary", errors)
+    require(preview, "group: chess-studio-staging-deploy", "staging write mutex", errors)
     require(staging_deploy, "group: chess-studio-staging-deploy", "canonical staging write mutex", errors)
 
-    # Preview is deliberately frontend-only: no Render mutation and no AI deploy.
+    # This workflow is deliberately frontend-only: no Render mutation or AI deploy.
     for forbidden in (
         "workflow_run:",
         "pull_request:",
@@ -57,7 +60,7 @@ def main() -> int:
         "deploy_staging_ai_worker.py",
     ):
         if forbidden in preview:
-            errors.append(f"preview contiene trigger/mutación prohibida: {forbidden!r}")
+            errors.append(f"preview/restore contiene trigger o mutación prohibida: {forbidden!r}")
 
     # Production remains provenance-bound to the canonical AI staging workflow.
     require(promote, "workflows:\n      - Staging · AI Worker", "production source workflow", errors)
@@ -65,7 +68,7 @@ def main() -> int:
     if "Staging · preview" in promote:
         errors.append("production-promote escucha Staging · preview")
 
-    # AI staging also remains downstream of canonical Staging · deploy, not preview.
+    # AI staging remains downstream of canonical Staging · deploy, never this workflow.
     require(staging_ai, "workflows:\n      - Staging · deploy", "staging AI canonical source", errors)
     require(staging_ai, "UPSTREAM_EVENT", "staging AI upstream provenance guard", errors)
     if "Staging · preview" in staging_ai:
@@ -77,7 +80,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · manual frontend preview is serialized on staging and cannot accredit production")
+    print("staging-preview-contract OK · preview and restore are frontend-only, serialized, and cannot accredit production")
     return 0
 
 
