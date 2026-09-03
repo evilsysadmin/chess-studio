@@ -42,8 +42,8 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
     expect(group.userData.warRoomCompositionPolishVersion).toBe('v10');
     expect(group.userData.warRoomUserPolishVersion).toBe('room-balance-v24');
-    expect(group.userData.warRoomApprovedMockVersion).toBe('approved-mock-v27');
-    expect(group.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v27');
+    expect(group.userData.warRoomApprovedMockVersion).toBe('approved-mock-v28');
+    expect(group.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v28');
     expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
 
@@ -53,10 +53,16 @@ describe('War Room premium paintings', () => {
     expect(rightArmor).toBeTruthy();
     expect(leftArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
     expect(rightArmor.userData.warRoomPracticalMaterialPass).toBe('v4');
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
-    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
-    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-wall-sentry-v28');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-wall-sentry-v28');
+    expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.95, 5);
+    expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.95, 5);
+    expect(Math.abs(leftArmor.position.x)).toBeGreaterThan(7);
+    expect(Math.abs(rightArmor.position.x)).toBeGreaterThan(7);
+    expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(1.3);
+    expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(1.3);
+    expect(leftArmor.userData.warRoomArmorLegProfile).toBe('heavy-gothic-v28');
+    expect(rightArmor.userData.warRoomArmorLegProfile).toBe('heavy-gothic-v28');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
     expect(group.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
