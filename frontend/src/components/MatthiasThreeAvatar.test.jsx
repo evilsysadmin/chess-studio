@@ -112,7 +112,14 @@ describe('MatthiasThreeAvatar', () => {
       motionIntensity: 1.2,
       facialExpression: 'grumble-hot',
     });
-    const brow = matthiasThreeMotionSample({
+    const neutralBrow = matthiasThreeMotionSample({
+      profile: 'think',
+      x: .105,
+      y: .475,
+      time: 1.8,
+      motionIntensity: 1.2,
+    });
+    const glareBrow = matthiasThreeMotionSample({
       profile: 'think',
       x: .105,
       y: .475,
@@ -123,7 +130,7 @@ describe('MatthiasThreeAvatar', () => {
 
     expect(Math.abs(center.dx)).toBeLessThan(.003);
     expect(Math.abs(center.dy)).toBeLessThan(.003);
-    expect(brow.dy).toBeLessThan(-.002);
+    expect(glareBrow.dy).toBeLessThan(neutralBrow.dy - .002);
   });
 
   it('renders one canonical fallback plus a Three.js canvas instead of raster body-part layers', () => {
