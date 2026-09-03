@@ -3,12 +3,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import MatthiasWarRoomPortrait, {
   nextWarRoomGesture,
+  shouldUseWarRoomAngryArt,
   WAR_ROOM_COMPACT_MOTION_INTENSITY,
   warRoomCompactViewport,
 } from './MatthiasWarRoomPortrait.jsx';
 
 describe('MatthiasWarRoomPortrait', () => {
-  it('usa Three.js para dar vida al retrato canónico sin prótesis faciales raster', () => {
+  it('usa Three.js para dar vida al retrato canónico con rig facial real y sin prótesis raster', () => {
     const html = renderToStaticMarkup(
       <MatthiasWarRoomPortrait avatar="/matthias.webp" speechKey="m1" speechText="Una observación." />,
     );
@@ -18,12 +19,15 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('game-3d-matthias-portrait');
     expect(html).toContain('game-3d-matthias-coffee');
     expect(html).toContain('data-matthias-face-overlay="none"');
-    expect(html).toContain('data-matthias-face-rig="three-mesh-v1"');
+    expect(html).toContain('data-matthias-face-rig="three-mesh-face-v1"');
+    expect(html).toContain('data-matthias-avatar-mode="stern-closed-mouth"');
     expect(html).toContain('data-matthias-motion-version="v4-android"');
     expect(html).toContain('data-matthias-compact-motion="false"');
     expect(html).toContain('data-matthias-three-avatar="true"');
     expect(html).toContain('data-three-scene="war-room-command"');
     expect(html).toContain('data-three-motion-intensity="1.00"');
+    expect(html).toContain('data-three-face-rig="face-v1"');
+    expect(html).toContain('data-three-face-expression="stern"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias.webp"');
@@ -44,15 +48,26 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(warRoomCompactViewport({ mediaMatches: false, innerWidth: 1440 })).toBe(false);
   });
 
-  it('hace legible una rabia alta sin sustituir el retrato suministrado', () => {
+  it('reserva el Matthias de boca abierta para un gruñido con rabia de verdad', () => {
+    expect(shouldUseWarRoomAngryArt({ reaction: 'disapprove', angerLevel: 2, angryAvatar: '/angry.webp' })).toBe(false);
+    expect(shouldUseWarRoomAngryArt({ reaction: 'smirk', angerLevel: 4, angryAvatar: '/angry.webp' })).toBe(false);
+    expect(shouldUseWarRoomAngryArt({ reaction: 'disapprove', angerLevel: 3, angryAvatar: '/angry.webp' })).toBe(true);
+    expect(shouldUseWarRoomAngryArt({ reaction: 'disapprove', angerLevel: 4, angryAvatar: '/angry.webp' })).toBe(true);
+    expect(shouldUseWarRoomAngryArt({ reaction: 'disapprove', angerLevel: 4 })).toBe(false);
+  });
+
+  it('hace legible una rabia alta sin sustituir el retrato mientras no haya reacción fuerte', () => {
     const html = renderToStaticMarkup(
-      <MatthiasWarRoomPortrait avatar="/matthias.webp" angerLevel={3} />,
+      <MatthiasWarRoomPortrait avatar="/matthias.webp" angryAvatar="/angry.webp" angerLevel={3} />,
     );
 
     expect(html).toContain('anger-level-3');
     expect(html).toContain('data-matthias-anger-level="3"');
+    expect(html).toContain('data-matthias-avatar-mode="stern-closed-mouth"');
     expect(html).toContain('src="/matthias.webp"');
+    expect(html).not.toContain('src="/angry.webp"');
     expect(html).toContain('data-three-profile="idle"');
+    expect(html).toContain('data-three-face-expression="simmer"');
   });
 
   it('limita el nivel visual de rabia al rango soportado', () => {
