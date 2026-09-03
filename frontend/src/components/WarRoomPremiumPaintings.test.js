@@ -69,6 +69,24 @@ describe('War Room premium paintings', () => {
     expect(group.getObjectByName('war-room-armor-alcove-right').visible).toBe(false);
     expect(group.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
 
+    for (const armor of [leftArmor, rightArmor]) {
+      expect(armor.userData.warRoomArmorPose).toBe('chest-high-zweihander-guard-v28');
+      expect(armor.userData.warRoomArmorArtReference).toBe('generated-heavy-sentry-chest-guard-v28');
+      const sword = armor.getObjectByName('war-room-zweihander');
+      expect(sword).toBeTruthy();
+      expect(sword.position.y).toBeCloseTo(0.7, 5);
+      expect(sword.userData.warRoomSwordCarry).toBe('chest-high-guard-v28');
+
+      const gauntlets = [];
+      armor.traverse((object) => {
+        if (object.name === 'war-room-armor-gauntlet') gauntlets.push(object);
+      });
+      expect(gauntlets).toHaveLength(2);
+      const handHeights = gauntlets.map((hand) => hand.position.y);
+      expect(Math.min(...handHeights)).toBeGreaterThanOrEqual(1.33);
+      expect(Math.max(...handHeights)).toBeGreaterThanOrEqual(1.49);
+    }
+
     const breast = leftArmor.getObjectByName('war-room-armor-breastplate');
     expect(breast.material.userData.warRoomPracticalFinish).toBe('museum-steel-response-v4');
     expect(breast.material.envMapIntensity).toBeGreaterThanOrEqual(1.12);
