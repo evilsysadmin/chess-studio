@@ -436,8 +436,8 @@ function replaceConeFireWithLicks(fireCore, coarsePointer) {
 }
 
 function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
-  if (!root || root.userData.warRoomPremiumCoherence === 'v4-gothic') return 0;
-  root.userData.warRoomPremiumCoherence = 'v4-gothic';
+  if (!root || root.userData.warRoomPremiumCoherence === 'v5-mobile-foreground') return 0;
+  root.userData.warRoomPremiumCoherence = 'v5-mobile-foreground';
 
   recolorCastleWalls(root, coarsePointer);
   tuneGroupMaterials(root.getObjectByName?.('coffered-paneling'), coarsePointer ? 0.78 : 0.66, 0.46);
@@ -450,13 +450,18 @@ function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
     child.material.needsUpdate = true;
   });
 
-  const sofaOffset = coarsePointer ? 6.25 : 7.8;
+  const sofaOffset = coarsePointer ? 9.35 : 7.8;
+  const sofaX = coarsePointer ? 4.75 : 6.6;
   for (const [name, sofaSide] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
     const sofa = root.getObjectByName?.(name);
     if (!sofa) continue;
-    sofa.position.set(sofaSide * 6.6, 0.02, wallZ + towardBoard * sofaOffset);
+    sofa.position.set(sofaSide * sofaX, 0.02, wallZ + towardBoard * sofaOffset);
+    if (coarsePointer) sofa.rotation.y = -sofaSide * towardBoard * 0.72;
     sofa.userData.warRoomOffsetFromWall = sofaOffset;
-    sofa.userData.warRoomFurniturePlacement = 'side-wall-premium-spaced-v4';
+    sofa.userData.warRoomFurniturePlacement = coarsePointer
+      ? 'mobile-foreground-safe-frame-v5'
+      : 'side-wall-premium-spaced-v4';
+    sofa.userData.facesWarTable = true;
     addPremiumSofaDetails(sofa, towardBoard, coarsePointer);
   }
 
@@ -471,6 +476,8 @@ function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
   }
 
   root.userData.warRoomFurnitureGap = Math.abs(sofaOffset - consoleOffset);
+  root.userData.warRoomMobileForegroundSofaX = coarsePointer ? sofaX : null;
+  root.userData.warRoomMobileForegroundSofaOffset = coarsePointer ? sofaOffset : null;
   replaceConeFireWithLicks(root.getObjectByName?.('war-room-fire-core'), coarsePointer);
   return 1;
 }
