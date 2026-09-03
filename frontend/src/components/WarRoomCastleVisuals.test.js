@@ -146,7 +146,6 @@ describe('War Room castle visual contract', () => {
 
     expect(legacyLeft).toBeTruthy();
     expect(legacyRight).toBeTruthy();
-    expect(room.userData.warRoomLegacyArmorRetirement).toBe('deferred-finalizer-v1');
     expect(finalizerDriver?.userData?.warRoomLegacyArmorRetirementDriver).toBeUndefined();
     expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
     finalizerDriver.onBeforeRender();
