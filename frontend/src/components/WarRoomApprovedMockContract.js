@@ -301,6 +301,62 @@ function bulkUpArmorLegs(armor) {
   return changed;
 }
 
+function poseArmorChestHighGuard(armor, towardBoard) {
+  if (!armor) return 0;
+  let changed = 0;
+
+  armor.traverse?.((object) => {
+    const armSide = Math.sign(object?.position?.x || 0);
+    switch (object?.name) {
+      case 'war-room-armor-rerebrace':
+        if (!armSide) break;
+        object.position.set(armSide * 0.355, 1.56, towardBoard * 0.08);
+        object.rotation.set(0, 0, armSide * 0.48);
+        changed += 1;
+        break;
+      case 'war-room-armor-couter':
+        if (!armSide) break;
+        object.position.set(armSide * 0.27, 1.41, towardBoard * 0.13);
+        changed += 1;
+        break;
+      case 'war-room-armor-elbow-wing':
+        if (!armSide) break;
+        object.position.set(armSide * 0.39, 1.41, towardBoard * 0.12);
+        object.rotation.set(0, 0, -armSide * Math.PI / 2);
+        changed += 1;
+        break;
+      case 'war-room-armor-vambrace':
+        if (!armSide) break;
+        object.position.set(armSide * 0.18, armSide < 0 ? 1.455 : 1.375, towardBoard * 0.23);
+        object.rotation.set(0, 0, armSide * 1.05);
+        changed += 1;
+        break;
+      case 'war-room-armor-vambrace-flute':
+        if (!armSide) break;
+        object.position.set(armSide * 0.18, armSide < 0 ? 1.455 : 1.375, towardBoard * 0.295);
+        object.rotation.set(0, 0, armSide * 1.05);
+        changed += 1;
+        break;
+      case 'war-room-armor-gauntlet':
+        if (!armSide) break;
+        object.position.set(armSide * 0.07, armSide < 0 ? 1.5 : 1.34, towardBoard * 0.39);
+        changed += 1;
+        break;
+      case 'war-room-zweihander':
+        object.position.set(0, 0.7, towardBoard * 0.44);
+        object.userData.warRoomSwordCarry = 'chest-high-guard-v28';
+        changed += 1;
+        break;
+      default:
+        break;
+    }
+  });
+
+  armor.userData.warRoomArmorPose = 'chest-high-zweihander-guard-v28';
+  armor.userData.warRoomArmorArtReference = 'generated-heavy-sentry-chest-guard-v28';
+  return changed;
+}
+
 function placeFurniture(root, { wallZ, towardBoard }) {
   const deskOffset = 1.45;
   const chairOffset = 0.55;
@@ -342,6 +398,7 @@ function placeFurniture(root, { wallZ, towardBoard }) {
     armor.position.set(side * 7.08, 0, wallZ + towardBoard * armorOffset);
     armor.rotation.y = Math.atan2((-armor.position.x) * towardBoard, (-armor.position.z) * towardBoard);
     bulkUpArmorLegs(armor);
+    poseArmorChestHighGuard(armor, towardBoard);
     armor.userData.warRoomOffsetFromWall = armorOffset;
     armor.userData.warRoomArmorPlacement = 'approved-mock-wall-sentry-v28';
     armor.userData.warRoomWallClearance = 0.19;
