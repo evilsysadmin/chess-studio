@@ -12,7 +12,7 @@ replacements = [
     ("  // Slightly broader and flatter than the old soft oval: more officer, less sad doll.\n  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.016, 0], [0, 0, 0], [1.09, 0.90, 0.92], 'matthias-face');\n  const faceZ = front * 0.226;\n\n  // Narrow eye slits angle inward to reinforce the scowl instead of reading tired.\n  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [-0.071, 1.029, faceZ], [0, 0, -0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-left');\n  add(headRig, new THREE.SphereGeometry(0.027, 14, 9), ink, [0.071, 1.029, faceZ], [0, 0, 0.11 * front], [1.28, 0.36, 0.34], 'matthias-eye-right');\n\n  // Match Matthias' canonical avatar: brows rise toward the outside corners.\n  // From the tactical camera this reads as proud/angry, not drooping/sad.\n  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [-0.064, 1.078, front * 0.229], [0, 0, 0.38 * front], null, 'matthias-brow-left');\n  add(headRig, new THREE.BoxGeometry(0.1, 0.016, 0.018), ink, [0.064, 1.078, front * 0.229], [0, 0, -0.38 * front], null, 'matthias-brow-right');",
      "  // Approved king-pawn reference: a pale, nearly round face under the plate cap.\n  // The expression must survive board scale without reading tired or sad.\n  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.016, 0], [0, 0, 0], [1.06, 0.94, 0.94], 'matthias-face');\n  const faceZ = front * 0.226;\n\n  // Small pale sclera make the glare readable; the existing named eye meshes remain\n  // the dark pupils so animation/consumers keep their stable handles.\n  add(headRig, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [-0.071, 1.028, faceZ], [0, 0, -0.12 * front], [1.34, 0.48, 0.36], 'matthias-eye-white-left');\n  add(headRig, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [0.071, 1.028, faceZ], [0, 0, 0.12 * front], [1.34, 0.48, 0.36], 'matthias-eye-white-right');\n  add(headRig, new THREE.SphereGeometry(0.024, 14, 9), ink, [-0.069, 1.026, front * 0.233], [0, 0, -0.12 * front], [1.18, 0.34, 0.30], 'matthias-eye-left');\n  add(headRig, new THREE.SphereGeometry(0.024, 14, 9), ink, [0.069, 1.026, front * 0.233], [0, 0, 0.12 * front], [1.18, 0.34, 0.30], 'matthias-eye-right');\n\n  // Critical sign convention: inner brow ends sit LOWER than the outer ends.\n  // The previous signs did the opposite and produced the recurring sad Matthias.\n  add(headRig, new THREE.BoxGeometry(0.105, 0.019, 0.019), ink, [-0.064, 1.069, front * 0.231], [0, 0, -0.44 * front], null, 'matthias-brow-left');\n  add(headRig, new THREE.BoxGeometry(0.105, 0.019, 0.019), ink, [0.064, 1.069, front * 0.231], [0, 0, 0.44 * front], null, 'matthias-brow-right');"),
     ("  // Short, perfectly level pressed mouth: stern, not downturned.\n  add(headRig, new THREE.BoxGeometry(0.108, 0.01, 0.015), ink, [0, 0.939, front * 0.231], [0, 0, 0], null, 'matthias-mouth');",
-     "  // Short, slightly skewed command sneer. It is deliberately NOT downturned.\n  add(headRig, new THREE.BoxGeometry(0.104, 0.012, 0.015), ink, [0.004, 0.942, front * 0.232], [0, 0, -0.055 * front], null, 'matthias-mouth');"),
+     "  // Short, slightly skewed command sneer. It is deliberately NOT downturned.\n  add(headRig, new THREE.BoxGeometry(0.104, 0.012, 0.015), ink, [0.004, 0.939, front * 0.232], [0, 0, -0.055 * front], null, 'matthias-mouth');"),
 ]
 
 for old, new in replacements:
@@ -34,6 +34,8 @@ t = t.replace("expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();\
 t = t.replace("expect(group.getObjectByName('matthias-eye-right')).toBeTruthy();\n    expect(group.getObjectByName('matthias-mouth')).toBeTruthy();", "expect(group.getObjectByName('matthias-eye-right')).toBeTruthy();\n    expect(group.getObjectByName('matthias-eye-white-left')).toBeTruthy();\n    expect(group.getObjectByName('matthias-eye-white-right')).toBeTruthy();\n    expect(group.getObjectByName('matthias-mouth')).toBeTruthy();")
 # New brow is closer to the eye on purpose: aggression, not surprise.
 t = t.replace("expect(brow.position.y - eye.position.y).toBeGreaterThan(0.045);", "expect(brow.position.y - eye.position.y).toBeGreaterThan(0.038);")
+t = t.replace("expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.1);", "expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.105);")
+t = t.replace("expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.01);", "expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.012);")
 test_path.write_text(t)
 
 contrast_path = Path('frontend/src/components/MatthiasKing3DFaceContrast.test.js')
@@ -43,3 +45,14 @@ c = c.replace("expect(nose.material.color.getHex()).toBe(0xbda78b);", "expect(no
 c = c.replace("const mouth = group.getObjectByName('matthias-mouth');", "const mouth = group.getObjectByName('matthias-mouth');\n    const eyeWhite = group.getObjectByName('matthias-eye-white-left');")
 c = c.replace("expect(brow.material).toBe(eye.material);", "expect(eyeWhite).toBeTruthy();\n    expect(brightness(eyeWhite.material)).toBeGreaterThan(brightness(eye.material) * 5);\n    expect(brow.material).toBe(eye.material);")
 contrast_path.write_text(c)
+
+# The approved player king is tall but deliberately slimmer in X/Z. Scaling the
+# whole group laterally also contains skin decorations that are attached after
+# the core model is built; Y stays untouched so king height remains authoritative.
+player_path = Path('frontend/src/components/PlayerKing3D.js')
+p = player_path.read_text()
+old_scale = "  group.scale.setScalar(coarsePointer ? 0.97 : 1.0);\n  group.userData.board3DPremiumPieceScale = group.scale.x;"
+new_scale = "  group.scale.set(\n    coarsePointer ? 0.92 : 0.94,\n    coarsePointer ? 0.97 : 1.0,\n    coarsePointer ? 0.92 : 0.94,\n  );\n  group.userData.board3DPremiumPieceScale = group.scale.x;"
+if old_scale not in p:
+    raise SystemExit('Player king scale anchor not found')
+player_path.write_text(p.replace(old_scale, new_scale, 1))
