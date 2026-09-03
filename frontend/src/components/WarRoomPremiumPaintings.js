@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { installTeutonicWarRoomDecor } from './WarRoomTeutonicDecor.js';
 import { applyWarRoomPremiumFinishPass } from './WarRoomPremiumFinishPass.js';
 import { applyWarRoomPracticalLighting } from './WarRoomPracticalLighting.js';
+import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -214,29 +215,18 @@ function addPainting(group, x, y, z, towardBoard, warm, index) {
   return frame;
 }
 
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
-}
-
-function attachLegacyArmorRetirementDriver(group) {
-  const driver = group?.getObjectByName?.('war-room-premium-painting-canvas');
-  if (!driver || driver.userData.warRoomLegacyArmorRetirementDriver) return;
-  driver.userData.warRoomLegacyArmorRetirementDriver = true;
-  const previous = driver.onBeforeRender;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    const root = sceneRoot(driver);
-    for (const name of ['war-room-armor-guard-left', 'war-room-armor-guard-right']) {
-      const legacy = root?.getObjectByName?.(name);
-      if (!legacy || legacy.userData.replacedByGothicArmor) continue;
-      legacy.visible = false;
-      legacy.userData.replacedByGothicArmor = true;
-      legacy.userData.replacement = name.endsWith('left') ? 'war-room-teutonic-armor-left' : 'war-room-teutonic-armor-right';
-    }
-    if (root?.userData) root.userData.warRoomLegacyArmorRetired = true;
-  };
+function retireLegacyArmors(root) {
+  let retired = 0;
+  for (const name of ['war-room-armor-guard-left', 'war-room-armor-guard-right']) {
+    const legacy = root?.getObjectByName?.(name);
+    if (!legacy || legacy.userData.replacedByGothicArmor) continue;
+    legacy.visible = false;
+    legacy.userData.replacedByGothicArmor = true;
+    legacy.userData.replacement = name.endsWith('left') ? 'war-room-teutonic-armor-left' : 'war-room-teutonic-armor-right';
+    retired += 1;
+  }
+  if (root?.userData) root.userData.warRoomLegacyArmorRetired = true;
+  return retired;
 }
 
 export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
@@ -250,7 +240,11 @@ export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePo
   addPainting(group, 4.95, 3.66, paintingZ, towardBoard, true, 1);
   applyWarRoomPremiumFinishPass(group, { towardBoard });
   applyWarRoomPracticalLighting(group, { wallZ, towardBoard, coarsePointer });
-  attachLegacyArmorRetirementDriver(group);
+  const retirementRegistered = registerWarRoomDeferredFinalizer(group, {
+    key: 'legacy-armor-retirement-v1',
+    run: retireLegacyArmors,
+  });
+  group.userData.warRoomLegacyArmorRetirement = retirementRegistered ? 'deferred-finalizer-v1' : 'already-finalized';
   group.userData.warRoomPremiumPaintings = 2;
   group.userData.warRoomPremiumPaintingVersion = 'v2';
   return 2;
