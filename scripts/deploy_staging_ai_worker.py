@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Deploy the isolated staging Workers AI service with least privilege.
 
-Wrangler uploads only the Worker script and secret. The Custom Domain is then
+Wrangler uploads only the Worker script and bindings. The Custom Domain is then
 attached through the account-level Workers Domains API, which needs Workers
 Scripts Write but not the broader zone-level Workers Routes permission.
 
 The shared secret already lives on the Render staging service. This helper
 validates that service, reads the secret through the authenticated Render API
 and streams it to Wrangler's stdin. The secret is never written to disk, argv
-or logs.
+or logs. The non-sensitive generation SHA is installed through the same binding
+mechanism so /health can prove the exact Worker generation at runtime.
 """
 from __future__ import annotations
 
@@ -232,8 +233,11 @@ def main() -> None:
         service_id = str(resolve_staging_service()["id"])
 
     secret = validate_service(service_id)
-    wrangler(["deploy", "--var", f"BUILD_SHA:{deploy_sha}"])
+    wrangler(["deploy"])
     wrangler(["secret", "put", "CHESS_AI_SHARED_SECRET"], stdin=secret + "\n")
+    # Instalado al final para que el runtime que acreditamos siempre publique la
+    # generación exacta incluso si un secret update crea una nueva versión.
+    wrangler(["secret", "put", "BUILD_SHA"], stdin=deploy_sha + "\n")
     domain_state = ensure_custom_domain()
     print(
         f"Workers AI staging desplegado: {WORKER_NAME} · build={deploy_sha} · "
