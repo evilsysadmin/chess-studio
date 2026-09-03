@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './styles.css';
+import './styles/30-home-castle-structural.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
