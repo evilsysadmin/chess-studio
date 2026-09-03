@@ -37,7 +37,15 @@ async function setRendererViaAppearance(page, renderer) {
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog.getByRole('radio', { name: new RegExp(`${renderer}$`) }).click();
-  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+
+  // El radio sí debe cambiar el renderer real. Cerrar el modal no es el
+  // contrato bajo prueba y el remount de Three puede mantener a Playwright
+  // esperando actionability aun con el botón visible, enabled y estable.
+  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
+  await expect(close).toBeVisible();
+  await expect(close).toBeEnabled();
+  await close.evaluate((element) => element.click());
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
 }
 
 function scenarioFen(scenario) {
