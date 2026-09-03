@@ -40,22 +40,30 @@ describe('War Room castle visual contract', () => {
     }
   });
 
-  it('mantiene un fuego animado y cálido incluso en el perfil ligero', () => {
+  it('mantiene un fuego animado y cálido y finaliza el acabado premium también en el perfil ligero', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, true);
     scene.add(room);
 
     const driver = room.getObjectByName('war-room-castle-floor-slab');
+    const premiumFinalizer = room.getObjectByName('war-room-castle-wall-left');
     const fireCore = room.getObjectByName('war-room-fire-core');
     const fireLight = room.getObjectByName('war-room-fire-light');
     expect(driver).toBeTruthy();
+    expect(premiumFinalizer?.userData?.warRoomPremiumRoomDriver).toBeUndefined();
+    expect(premiumFinalizer?.userData?.warRoomDeferredFinalizer).toBe('deferred-finalizer-v1');
+    expect(typeof premiumFinalizer?.onBeforeRender).toBe('function');
     expect(fireCore).toBeTruthy();
     expect(fireLight).toBeTruthy();
 
+    premiumFinalizer.onBeforeRender();
     const flame = fireCore.children.find((child) => child?.isMesh);
     const before = flame.scale.y;
     driver.onBeforeRender();
 
+    expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
+    expect(scene.userData.warRoomDeferredFinalizedTasks).toContain('premium-room-pass-v4');
+    expect(scene.userData.warRoomDeferredFinalizerResults['premium-room-pass-v4']).toBe(1);
     expect(fireCore.userData.warRoomWarmFireAnimated).toBe(true);
     expect(room.getObjectByName('war-room-fire-bounce-light')).toBeTruthy();
     expect(fireLight.intensity).toBeGreaterThan(0);
@@ -70,14 +78,15 @@ describe('War Room castle visual contract', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
 
-    const premiumDriver = room.getObjectByName('war-room-castle-wall-left');
+    const formerPremiumDriver = room.getObjectByName('war-room-castle-wall-left');
     const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
-    expect(premiumDriver?.userData?.warRoomPremiumRoomDriver).toBe(true);
-    expect(typeof premiumDriver?.onBeforeRender).toBe('function');
+    expect(formerPremiumDriver?.userData?.warRoomPremiumRoomDriver).toBeUndefined();
+    expect(finalizerDriver?.userData?.warRoomDeferredFinalizer).toBe('deferred-finalizer-v1');
     expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
-    premiumDriver.onBeforeRender();
     finalizerDriver.onBeforeRender();
 
+    expect(scene.userData.warRoomDeferredFinalizedTasks[0]).toBe('premium-room-pass-v4');
+    expect(scene.userData.warRoomDeferredFinalizerResults['premium-room-pass-v4']).toBe(1);
     const leftSofa = room.getObjectByName('war-room-sofa-left');
     const leftConsole = room.getObjectByName('war-room-side-console-left');
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
