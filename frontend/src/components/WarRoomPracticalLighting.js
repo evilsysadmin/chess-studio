@@ -9,6 +9,7 @@ import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
 import { applyWarRoomUserPolish } from './WarRoomUserPolish.js';
 import { installWarRoomApprovedMockContract } from './WarRoomApprovedMockContract.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
+import { armWarRoomOneShotHookRetirement } from './WarRoomDeferredFinalizer.js';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -94,13 +95,10 @@ export function applyWarRoomPracticalLighting(group, {
 } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
 
-  // The museum keys only look intentional when the surrounding wall/floor joins
-  // read as one room. These lightweight passes are idempotent and desktop-only:
-  // depth grounds the furniture, upper framing closes the far silhouette, patina
-  // breaks showroom symmetry, textile finish removes perfectly smooth surfaces,
-  // the night-window pass adds depth, ambient life gives the existing velvet a
-  // restrained fire-breath, and the final composition passes finish both the
-  // architectural baseline and the user-facing room balance.
+  // Static refinement now converges through the shared deferred finalizer. The
+  // only continuous work kept in render hooks is actual animation: castle/fire
+  // kinetics plus AmbientLife on the floor slab. Legacy static wall/canvas hooks
+  // are armed to run once on first paint and then retire themselves.
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalPatina(group, { coarsePointer });
@@ -108,13 +106,24 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomNightWindowDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomAmbientLife(group, { coarsePointer });
   applyWarRoomCompositionPolish(group, { wallZ, towardBoard, coarsePointer });
-  // Wire the legacy/tardy composition driver first. The user pass then wraps
-  // the same render hooks, and the approved-mock contract wraps them once more.
-  // That makes the user-approved visual reference the final authority on every
-  // desktop frame, even when older composition drivers still execute.
   attachWarRoomCompositionRootDriver(group, { wallZ, towardBoard, coarsePointer });
   applyWarRoomUserPolish(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomApprovedMockContract(group, { wallZ, towardBoard, coarsePointer });
+
+  // The side-wall chain contains only the legacy PremiumRoom static pass now
+  // that AmbientLife owns the dynamic floor anchor. The canvas contains the
+  // shared finalizer and may later be wrapped by legacy armor retirement. Both
+  // chains are allowed one first-paint execution, then become no-ops.
+  armWarRoomOneShotHookRetirement(group, {
+    anchorName: 'war-room-castle-wall-left',
+    key: 'premium-room-static-first-paint-v1',
+    coarsePointer,
+  });
+  armWarRoomOneShotHookRetirement(group, {
+    anchorName: 'war-room-premium-painting-canvas',
+    key: 'canvas-static-first-paint-v1',
+    coarsePointer,
+  });
 
   if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
 
