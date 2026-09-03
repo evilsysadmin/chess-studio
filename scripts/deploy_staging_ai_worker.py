@@ -26,6 +26,7 @@ import render_staging_bootstrap as render
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "infra/cloudflare/wrangler.staging.toml"
+STAGING_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 CF_API = "https://api.cloudflare.com/client/v4"
 ZONE_NAME = "shadowops.dpdns.org"
 SERVICE_NAME = "chess-study-backend-staging"
@@ -38,6 +39,13 @@ def required(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
         raise SystemExit(f"Falta {name} para desplegar Workers AI de staging")
+    return value
+
+
+def required_deploy_sha() -> str:
+    value = required("DEPLOY_SHA").lower()
+    if len(value) != 40 or any(char not in "0123456789abcdef" for char in value):
+        raise SystemExit(f"DEPLOY_SHA inválido para Workers AI staging: {value!r}")
     return value
 
 
@@ -179,10 +187,16 @@ def self_test() -> None:
 
     if config.get("name") != WORKER_NAME:
         raise SystemExit(f"Wrangler staging usa identidad inesperada: {config.get('name')!r}")
+    if config.get("main") != "worker/staging.js":
+        raise SystemExit("Wrangler staging debe usar el wrapper que publica BUILD_SHA")
     if config.get("workers_dev") is not False:
         raise SystemExit("Wrangler staging debe mantener workers_dev=false")
     if "routes" in config:
         raise SystemExit("Wrangler staging no debe declarar routes; Custom Domains se gestionan por API account-level")
+
+    wrapper = STAGING_WRAPPER.read_text(encoding="utf-8") if STAGING_WRAPPER.exists() else ""
+    if "BUILD_SHA" not in wrapper or "./index.js" not in wrapper or "'/health'" not in wrapper:
+        raise SystemExit("Wrapper staging no acredita build ni delega en el Worker compartido")
 
     ai = config.get("ai")
     if not isinstance(ai, dict) or ai.get("binding") != "AI":
@@ -200,7 +214,7 @@ def self_test() -> None:
     production = (ROOT / "infra/cloudflare/wrangler.toml").read_text(encoding="utf-8")
     if f'name = "{WORKER_NAME}"' in production or WORKER_HOSTNAME in production:
         raise SystemExit("La configuración de producción contiene identidad/ruta de staging")
-    print("staging-ai-worker self-test OK · script route-free, identidad y rate-limit aislados")
+    print("staging-ai-worker self-test OK · wrapper build-aware, script route-free, identidad y rate-limit aislados")
 
 
 def main() -> None:
@@ -212,17 +226,18 @@ def main() -> None:
         self_test()
         return
 
+    deploy_sha = required_deploy_sha()
     service_id = str(args.service_id or "").strip()
     if not service_id:
         service_id = str(resolve_staging_service()["id"])
 
     secret = validate_service(service_id)
-    wrangler(["deploy"])
+    wrangler(["deploy", "--var", f"BUILD_SHA:{deploy_sha}"])
     wrangler(["secret", "put", "CHESS_AI_SHARED_SECRET"], stdin=secret + "\n")
     domain_state = ensure_custom_domain()
     print(
-        f"Workers AI staging desplegado: {WORKER_NAME} · secreto sincronizado sin exponerlo · "
-        f"Custom Domain={domain_state}"
+        f"Workers AI staging desplegado: {WORKER_NAME} · build={deploy_sha} · "
+        f"secreto sincronizado sin exponerlo · Custom Domain={domain_state}"
     )
 
 
