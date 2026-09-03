@@ -141,8 +141,11 @@ test('Home · 390px conserva microgestos, materiales premium, texto legible y ce
   const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
   const home = page.locator('.menu.home-friendly');
   const primaryCard = home.locator('.home-mode-card').first();
+  const castleLife = home.getByRole('region', { name: 'La estancia de Chess Studio' });
 
   await expect(home).toBeVisible();
+  await expect(castleLife).toBeVisible();
+  await expect(castleLife).toHaveAttribute('data-castle-life', 'real-state-v1');
   await expect(bubble).toBeVisible();
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
@@ -165,11 +168,13 @@ test('Home · 390px conserva microgestos, materiales premium, texto legible y ce
       bubbleFontSize: bubbleText ? Number.parseFloat(getComputedStyle(bubbleText).fontSize) : 0,
       descriptionFontSize: description ? Number.parseFloat(getComputedStyle(description).fontSize) : 0,
       homeBackground: homeStyle?.backgroundImage || '',
+      castleWidth: document.querySelector('.home-castle-life')?.getBoundingClientRect().width || 0,
     };
   });
 
   expect(contract.overflow, 'Home no puede generar scroll horizontal en Android').toBeLessThanOrEqual(1);
   expect(contract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
   expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);
+  expect(contract.castleWidth, 'la repisa viva debe caber en Home a 390px').toBeLessThanOrEqual(390);
   expect(contract.homeBackground).toContain('linear-gradient');
 });

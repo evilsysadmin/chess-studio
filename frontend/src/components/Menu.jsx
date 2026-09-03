@@ -28,6 +28,7 @@ import { loadRivalry } from '../rivalry.js';
 import { buildMatthiasHomeCardModel, buildMatthiasHomeVisit, buildMatthiasIntroVisit, buildMatthiasLoginGreeting, markMatthiasHomeShown, markMatthiasOnboarded, matthiasHomeLastShownAt, matthiasHomeSessionSeen, matthiasIntroPlacement, matthiasOnboarded, shouldShowMatthiasHome } from '../matthiasHome.js';
 import { consumeMatthiasLoginGreeting, matthiasLoginGreetingPending } from '../matthiasSession.js';
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
+import HomeCastleLife from './HomeCastleLife.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 import { matthiasSessionContext } from '../matthiasSessionContext.js';
@@ -83,6 +84,7 @@ export default function Menu({
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const [matthiasGuidesInitialWelcome] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1' && !matthiasOnboarded());
   const matthiasRollRef = useRef(Math.random());
+  const castleLifeRollRef = useRef(Math.random());
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
@@ -354,6 +356,16 @@ export default function Menu({
           }}>{nextAction.label} →</button>
         </section>
       )}
+
+      <HomeCastleLife
+        hasSavedGame={hasSavedGame}
+        combatProgress={combatProgress}
+        tournamentLevel={tournamentLevel}
+        tournamentProgress={tournamentProgress}
+        today={today}
+        rivalry={rivalry}
+        rareRoll={castleLifeRollRef.current}
+      />
 
       {!showHomeGuide && !matthiasCornerBlocked && (
         <MatthiasHomeVisit
