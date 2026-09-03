@@ -27,8 +27,8 @@ describe('matthiasHomePresenceStateMachine', () => {
   });
 
   it('sesga lectura a inspección/asentimiento y sueño a cabeceo', () => {
-    expect(nextMatthiasHomeAmbientState({ random: () => .31, profile: 'read' })).toBe(MATTHIAS_HOME_STATES.SURVEY);
-    expect(nextMatthiasHomeAmbientState({ random: () => .52, profile: 'sleep' })).toBe(MATTHIAS_HOME_STATES.NOD);
+    expect(nextMatthiasHomeAmbientState({ random: () => .4, profile: 'read' })).toBe(MATTHIAS_HOME_STATES.SURVEY);
+    expect(nextMatthiasHomeAmbientState({ random: () => .7, profile: 'sleep' })).toBe(MATTHIAS_HOME_STATES.NOD);
   });
 
   it('hablar interrumpe el ambiente y bloquea tics hasta terminar', () => {
