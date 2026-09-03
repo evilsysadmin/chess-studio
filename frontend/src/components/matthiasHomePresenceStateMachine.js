@@ -69,25 +69,27 @@ export function matthiasHomeStateDescriptor(mode) {
 
 export function matthiasHomeIdleDelay(random = Math.random, profile = 'idle') {
   const value = clamp01(random());
-  if (profile === 'sleep') return Math.round(6200 + value * 6200);
-  if (profile === 'read' || profile === 'dossier') return Math.round(4800 + value * 5600);
-  if (profile === 'sip' || profile === 'bite') return Math.round(5200 + value * 5200);
-  return Math.round(4000 + value * 5000);
+  // Home gestures need enough air to feel ambient, but a 4–9 second default
+  // silence made a technically animated Matthias look completely embalmed.
+  if (profile === 'sleep') return Math.round(4600 + value * 3600);
+  if (profile === 'read' || profile === 'dossier') return Math.round(2200 + value * 2800);
+  if (profile === 'sip' || profile === 'bite') return Math.round(2400 + value * 2600);
+  return Math.round(1800 + value * 2600);
 }
 
 export function matthiasHomeStateDuration(mode) {
   switch (normalizeMatthiasHomeState(mode)) {
     case MATTHIAS_HOME_STATES.GLANCE_LEFT:
     case MATTHIAS_HOME_STATES.GLANCE_RIGHT:
-      return 880;
+      return 1250;
     case MATTHIAS_HOME_STATES.SURVEY:
-      return 1380;
+      return 1900;
     case MATTHIAS_HOME_STATES.LEAN_IN:
-      return 1120;
+      return 1750;
     case MATTHIAS_HOME_STATES.NOD:
-      return 920;
+      return 1450;
     case MATTHIAS_HOME_STATES.SKEPTICAL:
-      return 1260;
+      return 1850;
     case MATTHIAS_HOME_STATES.ATTEND:
       return 0;
     default:
@@ -100,30 +102,40 @@ export function nextMatthiasHomeAmbientState({
   lastAmbient = null,
   profile = 'idle',
 } = {}) {
+  // Glances are intentionally lighter-weight than gestures that visibly alter
+  // posture/expression. The old near-even mix often selected sub-degree glances
+  // that were measurable in browser gates but practically invisible to humans.
   const weights = new Map([
-    [MATTHIAS_HOME_STATES.GLANCE_LEFT, 18],
-    [MATTHIAS_HOME_STATES.GLANCE_RIGHT, 18],
-    [MATTHIAS_HOME_STATES.SURVEY, 17],
-    [MATTHIAS_HOME_STATES.LEAN_IN, 13],
-    [MATTHIAS_HOME_STATES.NOD, 17],
-    [MATTHIAS_HOME_STATES.SKEPTICAL, 17],
+    [MATTHIAS_HOME_STATES.GLANCE_LEFT, 10],
+    [MATTHIAS_HOME_STATES.GLANCE_RIGHT, 10],
+    [MATTHIAS_HOME_STATES.SURVEY, 22],
+    [MATTHIAS_HOME_STATES.LEAN_IN, 20],
+    [MATTHIAS_HOME_STATES.NOD, 19],
+    [MATTHIAS_HOME_STATES.SKEPTICAL, 19],
   ]);
 
   if (profile === 'read' || profile === 'dossier' || profile === 'write') {
-    weights.set(MATTHIAS_HOME_STATES.SURVEY, 26);
-    weights.set(MATTHIAS_HOME_STATES.NOD, 22);
-    weights.set(MATTHIAS_HOME_STATES.LEAN_IN, 9);
+    weights.set(MATTHIAS_HOME_STATES.SURVEY, 32);
+    weights.set(MATTHIAS_HOME_STATES.NOD, 25);
+    weights.set(MATTHIAS_HOME_STATES.LEAN_IN, 15);
+    weights.set(MATTHIAS_HOME_STATES.GLANCE_LEFT, 7);
+    weights.set(MATTHIAS_HOME_STATES.GLANCE_RIGHT, 7);
   } else if (profile === 'sleep') {
-    weights.set(MATTHIAS_HOME_STATES.NOD, 42);
-    weights.set(MATTHIAS_HOME_STATES.SURVEY, 5);
-    weights.set(MATTHIAS_HOME_STATES.SKEPTICAL, 5);
+    weights.set(MATTHIAS_HOME_STATES.NOD, 50);
+    weights.set(MATTHIAS_HOME_STATES.SURVEY, 4);
+    weights.set(MATTHIAS_HOME_STATES.SKEPTICAL, 3);
+    weights.set(MATTHIAS_HOME_STATES.LEAN_IN, 5);
   } else if (profile === 'sip' || profile === 'bite') {
-    weights.set(MATTHIAS_HOME_STATES.GLANCE_LEFT, 23);
-    weights.set(MATTHIAS_HOME_STATES.GLANCE_RIGHT, 23);
-    weights.set(MATTHIAS_HOME_STATES.LEAN_IN, 9);
+    weights.set(MATTHIAS_HOME_STATES.GLANCE_LEFT, 14);
+    weights.set(MATTHIAS_HOME_STATES.GLANCE_RIGHT, 14);
+    weights.set(MATTHIAS_HOME_STATES.LEAN_IN, 17);
+    weights.set(MATTHIAS_HOME_STATES.SKEPTICAL, 21);
   } else if (profile === 'think') {
-    weights.set(MATTHIAS_HOME_STATES.SKEPTICAL, 27);
-    weights.set(MATTHIAS_HOME_STATES.LEAN_IN, 22);
+    weights.set(MATTHIAS_HOME_STATES.SKEPTICAL, 31);
+    weights.set(MATTHIAS_HOME_STATES.LEAN_IN, 27);
+    weights.set(MATTHIAS_HOME_STATES.SURVEY, 20);
+    weights.set(MATTHIAS_HOME_STATES.GLANCE_LEFT, 6);
+    weights.set(MATTHIAS_HOME_STATES.GLANCE_RIGHT, 6);
   }
 
   let candidates = AMBIENT_STATES

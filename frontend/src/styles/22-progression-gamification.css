@@ -87,6 +87,78 @@
   line-height: 1.2;
 }
 
+.achievement-showcase-note {
+  display: grid;
+  gap: .14rem;
+  margin: .62rem 0 .3rem;
+  padding: .58rem .68rem;
+  border: 1px solid rgba(198,164,93,.22);
+  border-radius: 9px;
+  background: linear-gradient(105deg, rgba(198,164,93,.08), rgba(198,164,93,.025));
+}
+
+.achievement-showcase-note > strong {
+  color: var(--brass);
+  font: 800 .65rem var(--font-mono);
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.achievement-showcase-note > span,
+.achievement-showcase-note > small {
+  color: var(--parchment-dim);
+  font-size: .64rem;
+  line-height: 1.35;
+}
+
+.achievement-showcase-note > small { color: var(--danger); }
+
+.achievement-record-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.achievement-record-heading .army-row-name { min-width: 0; }
+
+.achievement-favorite-toggle {
+  flex: 0 0 auto;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(198,164,93,.2);
+  border-radius: 50%;
+  color: var(--parchment-dim);
+  background: rgba(8,10,14,.32);
+  cursor: pointer;
+  font-size: .9rem;
+  line-height: 1;
+}
+
+.achievement-favorite-toggle:hover,
+.achievement-favorite-toggle:focus-visible,
+.achievement-favorite-toggle.is-favorite {
+  border-color: rgba(198,164,93,.58);
+  color: var(--brass);
+  background: rgba(198,164,93,.08);
+}
+
+.achievement-evidence {
+  display: block;
+  margin-top: .16rem;
+  color: color-mix(in srgb, var(--parchment-dim) 82%, var(--brass));
+  font: .56rem var(--font-mono);
+  line-height: 1.4;
+}
+
+.achievement-evidence.is-legacy {
+  opacity: .72;
+  font-style: italic;
+}
+
 .achievement-progress {
   position: relative;
   display: block;
@@ -145,4 +217,6 @@
   .achievement-daily-summary span { font-size: .58rem; }
   .achievement-daily-summary > div { padding: .45rem .28rem; }
   .achievement-progress { width: min(130px, calc(100% - 2.2rem)); }
+  .achievement-favorite-toggle { width: 2rem; height: 2rem; }
+  .achievement-evidence { font-size: .54rem; }
 }

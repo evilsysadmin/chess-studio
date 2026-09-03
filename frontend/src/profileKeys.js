@@ -38,6 +38,8 @@ export const PROFILE_PROGRESS_KEYS = Object.freeze([
   'chess-study-player-rating',
   'chess-study-rating-history',
   'chess-study-achievements',
+  'chess-study-achievement-ledger-v2',
+  'chess-study-achievement-favorites-v1',
   'chess-study-puzzles-solved',
   'chess-study-puzzle-streak',
   'chess-study-puzzle-best-streak',
