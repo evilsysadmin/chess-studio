@@ -325,32 +325,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          backend="$RUNNER_TEMP/generation-backend.json"
-          frontend="$RUNNER_TEMP/generation-frontend.json"
-          ai="$RUNNER_TEMP/generation-ai.json"
+          parity_ok=false
+          for attempt in {1..60}; do
+            backend="$RUNNER_TEMP/generation-backend-$attempt.json"
+            frontend="$RUNNER_TEMP/generation-frontend-$attempt.json"
+            ai="$RUNNER_TEMP/generation-ai-$attempt.json"
 
-          backend_status="$(curl --fail-with-body --silent --show-error \
-            --connect-timeout 5 --max-time 15 \
-            --output "$backend" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_API_URL/release?sha=$DEPLOY_SHA")"
-          frontend_status="$(curl --fail-with-body --silent --show-error \
-            --connect-timeout 5 --max-time 15 \
-            --output "$frontend" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_URL/release.json?sha=$DEPLOY_SHA")"
-          ai_status="$(curl --fail-with-body --silent --show-error \
-            --connect-timeout 5 --max-time 15 \
-            --output "$ai" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_AI_URL/health")"
+            backend_status="$(curl --silent --show-error \
+              --connect-timeout 5 --max-time 15 \
+              --output "$backend" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+            frontend_status="$(curl --silent --show-error \
+              --connect-timeout 5 --max-time 15 \
+              --output "$frontend" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
+            ai_status="$(curl --silent --show-error \
+              --connect-timeout 5 --max-time 15 \
+              --output "$ai" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$STAGING_AI_URL/health" || true)"
 
-          [[ "$backend_status" == 200 ]] || { echo "::error::Generation parity: backend HTTP $backend_status"; exit 1; }
-          [[ "$frontend_status" == 200 ]] || { echo "::error::Generation parity: frontend HTTP $frontend_status"; exit 1; }
-          [[ "$ai_status" == 200 ]] || { echo "::error::Generation parity: AI HTTP $ai_status"; exit 1; }
-
-          python3 scripts/cloudflare_health_contract.py "$ai"
-          python3 - "$backend" "$frontend" "$ai" "$DEPLOY_SHA" <<'PY'
+            if [[ "$backend_status" == 200 && "$frontend_status" == 200 && "$ai_status" == 200 ]] && \
+              python3 scripts/cloudflare_health_contract.py "$ai" >/dev/null 2>&1 && \
+              python3 - "$backend" "$frontend" "$ai" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
           expected = sys.argv[4].lower()
           backend = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
@@ -361,11 +360,32 @@ jobs:
               'frontend': str(frontend.get('build') or '').lower(),
               'worker': str(ai.get('build') or '').lower(),
           }
-          mismatched = {name: value for name, value in actual.items() if value != expected}
-          if mismatched:
-              raise SystemExit(f"generation skew: {mismatched} expected={expected}")
+          raise SystemExit(0 if all(value == expected for value in actual.values()) else 1)
           PY
-          echo "Staging generation coherent: backend=$DEPLOY_SHA frontend=$DEPLOY_SHA Worker=$DEPLOY_SHA"
+            then
+              parity_ok=true
+              echo "Staging generation coherent: backend=$DEPLOY_SHA frontend=$DEPLOY_SHA Worker=$DEPLOY_SHA"
+              break
+            fi
+
+            readarray -t observed < <(python3 - "$backend" "$frontend" "$ai" <<'PY'
+          import json, pathlib, sys
+
+          def build(path: str) -> str:
+              try:
+                  payload = json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
+              except (OSError, json.JSONDecodeError):
+                  return 'unreadable'
+              return str(payload.get('build') or 'missing').lower()
+
+          for path in sys.argv[1:]:
+              print(build(path))
+          PY
+          )
+            echo "Staging generation aún no converge: backend=${observed[0]:-unknown} (HTTP ${backend_status:-curl-error}), frontend=${observed[1]:-unknown} (HTTP ${frontend_status:-curl-error}), worker=${observed[2]:-unknown} (HTTP ${ai_status:-curl-error}), expected=$DEPLOY_SHA (intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$parity_ok" == true ]] || { echo '::error::Generation parity no convergió a N/N/N tras 5 minutos'; exit 1; }
 
       - name: Prepare and sweep staging smoke janitor
         env:
