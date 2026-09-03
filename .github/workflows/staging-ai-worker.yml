@@ -90,7 +90,7 @@ jobs:
           raise SystemExit(0 if actual == expected else f"Frontend staging sirve {actual or '<sin build>'}, esperaba {expected}")
           PY
 
-      - name: Verify staging AI health contract
+      - name: Verify staging AI health and build identity
         shell: bash
         run: |
           set -euo pipefail
@@ -102,6 +102,13 @@ jobs:
             "$STAGING_AI_URL/health")"
           [[ "$status" == 200 ]] || { echo "::error::Workers AI staging health HTTP $status"; exit 1; }
           python3 scripts/cloudflare_health_contract.py "$body"
+          python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          expected = sys.argv[2].lower()
+          actual = str(payload.get('build') or '').lower()
+          raise SystemExit(0 if actual == expected else f"Workers AI staging sirve {actual or '<sin build>'}, esperaba {expected}")
+          PY
 
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
@@ -115,7 +122,7 @@ jobs:
             echo "- Source SHA: \`$DEPLOY_SHA\`"
             echo '- Backend: `mismo SHA · OK`'
             echo '- Frontend: `mismo SHA · OK`'
-            echo '- Workers AI: `health + routing · OK`'
+            echo '- Workers AI: `mismo SHA + health + routing · OK`'
             echo '- Este workflow ya no despliega: sólo acredita la generación aplicada y probada por `Staging · deploy`.'
             echo "- Upstream event: \`${UPSTREAM_EVENT:-manual}\`"
           } >> "$GITHUB_STEP_SUMMARY"
