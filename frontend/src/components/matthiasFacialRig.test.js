@@ -7,8 +7,8 @@ import {
 } from './matthiasFacialRig.js';
 
 describe('matthiasFacialRig', () => {
-  it('expone un contrato v2 y cae a stern/idle para valores desconocidos', () => {
-    expect(MATTHIAS_FACIAL_RIG_VERSION).toBe('face-v2');
+  it('mantiene el contrato compartido face-v1 y acepta intención específica de War Room', () => {
+    expect(MATTHIAS_FACIAL_RIG_VERSION).toBe('face-v1');
     expect(normalizeMatthiasFacialExpression('SMIRK')).toBe('smirk');
     expect(normalizeMatthiasFacialExpression('derretido')).toBe('stern');
     expect(normalizeMatthiasFacialGesture('GLARE')).toBe('glare');
@@ -46,7 +46,7 @@ describe('matthiasFacialRig', () => {
     expect(jawHot.dy).toBeLessThan(-.002);
   });
 
-  it('mantiene parpadeo y habla irregulares dentro del límite anti-melt', () => {
+  it('da al habla de War Room una cadencia menos periódica sin romper los límites', () => {
     const eyeA = matthiasFacialMotionSample({ expression: 'stern', x: .105, y: .395, time: 1.2 });
     const eyeB = matthiasFacialMotionSample({ expression: 'stern', x: .105, y: .395, time: 1.9 });
     const jawA = matthiasFacialMotionSample({ expression: 'stern', gesture: 'speaking', x: 0, y: .095, time: 1.23, speaking: true });
