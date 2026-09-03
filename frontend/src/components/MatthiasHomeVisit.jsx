@@ -7,6 +7,7 @@ import { buildSessionSummary } from '../sessionSummary.js';
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
 import './MatthiasHomeResident.css';
+import './HomeCastleCoherence.css';
 import './MatthiasHomeSessionSummary.css';
 import './MatthiasMotionOverride.css';
 
