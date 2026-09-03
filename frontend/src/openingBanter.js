@@ -142,7 +142,7 @@ export function normalizeOpeningBanter(text) {
   const clean = String(text || '').replace(/\s+/g, ' ').trim();
   if (!clean) return null;
   const sentences = clean.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) || [clean];
-  const compact = sentences.slice(0, 2).join(' ').trim();
+  const compact = sentences.slice(0, 2).map((sentence) => sentence.trim()).join(' ').trim();
   if (compact.length <= MAX_OPENING_CHARS) return compact;
 
   const head = compact.slice(0, MAX_OPENING_CHARS + 1);
