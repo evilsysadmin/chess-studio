@@ -659,7 +659,7 @@ def _percentile(values: list[float], percentile: float) -> float | None:
     if not values:
         return None
     ordered = sorted(values)
-    idx = max(0, math.ceil(percentile * len(ordered)) - 1
+    idx = max(0, math.ceil(percentile * len(ordered)) - 1)
     return round(float(ordered[idx]), 2)
 
 
