@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const CAPTURE_READY_FEN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
+const CAPTURE_END_FEN = 'rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3';
 
 function normalized(vector) {
   const length = Math.hypot(...vector);
@@ -56,14 +59,20 @@ async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
-  if (await warRoom.count()) {
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
-  } else {
-    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const button = await warRoom.count()
+    ? page.getByRole('button', { name: 'Apariencia', exact: true })
+    : page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+
+  await expect(button).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(button).toBeEnabled();
+  try {
+    await button.click({ timeout: 12_000 });
+  } catch {
+    await button.evaluate((element) => element.click());
   }
 
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
   await expect(dialog.getByRole('radio', { name: /2D$/ })).toBeVisible();
   await expect(dialog.getByRole('radio', { name: /3D$/ })).toBeVisible();
   await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
@@ -83,9 +92,68 @@ async function waitForWarRoomRenderer(page) {
   return { board3d, canvas };
 }
 
-async function openQuickGameWarRoom(page, requestLog = []) {
+function captureContinuationPayload(id, from, to) {
+  if (from === 'e2' && to === 'e4') {
+    const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+    const cpuMove = { from: 'd7', to: 'd5', san: 'd5', piece: 'p', captured: false, by: 'cpu' };
+    return {
+      id,
+      fen: CAPTURE_READY_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: START_FEN,
+      ghostStyle: null,
+    };
+  }
+  if (from === 'e4' && to === 'd5') {
+    const firstHuman = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+    const firstCpu = { from: 'd7', to: 'd5', san: 'd5', piece: 'p', captured: false, by: 'cpu' };
+    const capture = { from: 'e4', to: 'd5', san: 'exd5', piece: 'p', captured: true, by: 'human' };
+    const cpuMove = { from: 'g8', to: 'f6', san: 'Nf6', piece: 'n', captured: false, by: 'cpu' };
+    return {
+      id,
+      fen: CAPTURE_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [firstHuman, firstCpu, capture, cpuMove],
+      lastMove: cpuMove,
+      initialFen: START_FEN,
+      ghostStyle: null,
+    };
+  }
+  throw new Error(`E2E captura cross-renderer no simulada: ${from}-${to}`);
+}
+
+async function installCaptureContinuationRoute(page, requestLog) {
+  await page.route('http://localhost:4000/api/games/*/move', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const url = new URL(route.request().url());
+    const id = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1] || '1';
+    const payload = route.request().postDataJSON?.() ?? {};
+    requestLog.push({
+      method: 'POST',
+      path: url.pathname,
+      idempotencyKey: route.request().headers()['idempotency-key'] || null,
+    });
+    const game = captureContinuationPayload(id, payload.from, payload.to);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(game) });
+  });
+}
+
+async function openQuickGameWarRoom(page, requestLog = [], { afterMockApi = null } = {}) {
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page, { requestLog });
+  if (afterMockApi) await afterMockApi();
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -144,10 +212,12 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
 });
 
 test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
 
   const requestLog = [];
-  const { board3d, canvas } = await openQuickGameWarRoom(page, requestLog);
+  const { board3d, canvas } = await openQuickGameWarRoom(page, requestLog, {
+    afterMockApi: () => installCaptureContinuationRoute(page, requestLog),
+  });
   await expect(board3d).toHaveAttribute('data-board3d-scene', 'premium');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
@@ -162,6 +232,39 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
   await clickWarRoomSquare(page, canvasRect, 'e2', 0.76);
   await clickWarRoomSquare(page, canvasRect, 'e4');
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
+
+  // Primera vuelta 3D→2D: la respuesta CPU deja d5 capturable y el estado
+  // común debe conservar exactamente esa posición, no una copia del renderer.
+  await setRendererViaAppearance(page, '2D');
+  const e4 = page.getByRole('button', { name: /^Casilla e4, peón blanco/i });
+  const d5 = page.getByRole('button', { name: /^Casilla d5, peón negro/i });
+  await expect(e4).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(d5).toBeVisible();
+  await e4.click();
+  await expect(e4).toHaveClass(/selected/);
+  await expect(d5).toHaveClass(/legal-capture/);
+
+  // Segunda vuelta 2D→3D: la selección e4 debe sobrevivir al remount. La
+  // captura ordinaria se ejecuta en 3D y sólo puede producir una mutación.
+  await setRendererViaAppearance(page, '3D');
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e4');
+  const captureRect = await canvas.boundingBox();
+  expect(captureRect).not.toBeNull();
+  await clickWarRoomSquare(page, captureRect, 'd5');
+  await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(2);
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
+  // Vuelta final a 2D: la torre/ghost/copia visual 3D no puede conservar al
+  // peón negro capturado ni dejar selección efímera pegada al renderer.
+  await setRendererViaAppearance(page, '2D');
+  await expect(page.getByRole('button', { name: /^Casilla d5, peón blanco/i })).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(page.getByRole('button', { name: /^Casilla e4, vacía/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla d5, peón negro/i })).toHaveCount(0);
+  await expect(page.locator('.square.selected')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Casilla f6, caballo negro/i })).toBeVisible();
+  expect(requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path))).toHaveLength(2);
 });
 
 test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y sigue cabiendo en móvil', async ({ page }) => {
