@@ -167,7 +167,7 @@ async function seedStableSmokeProfile(request, token) {
   expect(response.status(), `seed de perfil staging: ${await response.text()}`).toBe(200);
 }
 
-test('staging live · alta protegida → login real → Matthias → Escuela 3D → partida rápida → jugada real', async ({ page, request }) => {
+test('staging live · login real → War Room → F5 recupera → chunk 3D fallido recupera → jugada real', async ({ page, request }) => {
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
   const inviteCode = requiredEnv('STAGING_INVITE_CODE');
@@ -212,13 +212,9 @@ test('staging live · alta protegida → login real → Matthias → Escuela 3D 
     expect((await browserLogin).status()).toBe(200);
 
     await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible({ timeout: 25_000 });
-    // Staging debe acreditar también la experiencia narrativa real. Un login
-    // correcto con Home visible pero sin Matthias es una regresión de producto,
-    // aunque API, Pages y el tablero sigan funcionando.
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
 
-    // La Escuela sirve de canario del rollout 3D: staging usa el modelado nuevo,
-    // mientras producción conserva de momento el Board 2D/Studio Marfil.
+    // La Escuela sirve de canario del rollout 3D antes de crear una partida real.
     await buttonWithHeading(page, 'Escuela de Matthias').click();
     const schoolBoard = page.locator('.matthias-school-board');
     await expect(schoolBoard).toHaveAttribute('data-school-renderer', '3d', { timeout: 30_000 });
@@ -246,24 +242,64 @@ test('staging live · alta protegida → login real → Matthias → Escuela 3D 
     gameId = created.id || null;
     expect(gameId).toBeTruthy();
 
-    // En 3D la columna táctica es el único dueño visible del estado. La antigua
-    // píldora superior se retiró deliberadamente porque duplicaba SITUACIÓN y
-    // tapaba el decorado de la War Room.
     const warRoom3d = page.locator('[data-board3d-war-room="true"]');
+    const warRoomStatus = page.locator('.game-3d-warroom-status');
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
-    const warRoomStatus = page.locator('.game-3d-warroom-status');
     await expect(warRoomStatus).toBeVisible();
     await expect(warRoomStatus.getByText('SITUACIÓN', { exact: true })).toBeVisible();
     await expect(warRoomStatus.locator('strong')).not.toHaveText('');
 
-    // Staging estrena 3D por defecto para perfiles sin preferencia guardada.
-    // El selector duplicado 2D/3D ya no forma parte de la partida: el contrato
-    // real es War Room → Apariencia → representación del tablero. Acreditamos
-    // primero el 3D desplegado y luego elegimos 2D para que clickBoardMove use
-    // los botones accesibles de casilla como contrato determinista.
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+    // Incidente zfrp: una partida 3D ya activa debe sobrevivir un runtime nuevo.
+    // Exigimos un GET real de Mongo/API y después la misma War Room, no sólo que
+    // el snapshot local conserve una ruta visual.
+    const restoreAfterReload = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'GET'
+        && Boolean(gameId)
+        && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}`;
+    }, { timeout: 60_000 });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    expect((await restoreAfterReload).status()).toBe(200);
+    await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+    await expect(warRoomStatus).toBeVisible();
+    await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 
+    // Guardarraíl directo para #286: fallamos una sola vez el chunk REAL de
+    // Board3D del build desplegado. El primer reload debe caer en el boundary
+    // recuperable; su CTA debe reconstruir el runtime y el segundo intento debe
+    // volver a la partida sin borrar la sesión.
+    const board3dChunkUrl = await page.evaluate(() => (
+      performance.getEntriesByType('resource')
+        .map((entry) => entry.name)
+        .find((name) => /\/assets\/Board3D-[^/]+\.js(?:\?|$)/.test(name)) || ''
+    ));
+    expect(board3dChunkUrl, 'el build debe exponer un chunk dinámico identificable de Board3D').toBeTruthy();
+    const board3dChunkPath = new URL(board3dChunkUrl).pathname;
+    let failedBoard3DChunkOnce = false;
+    await page.route('**/assets/*.js', async (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      if (!failedBoard3DChunkOnce && pathname === board3dChunkPath) {
+        failedBoard3DChunkOnce = true;
+        await route.abort('failed');
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true })).toBeVisible({ timeout: 30_000 });
+    const recoverRuntime = page.getByRole('button', { name: 'Recargar y recuperar sesión', exact: true });
+    await expect(recoverRuntime).toBeVisible();
+    await recoverRuntime.click();
+    await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+    expect(failedBoard3DChunkOnce).toBe(true);
+    await page.unroute('**/assets/*.js');
+
+    // Tras demostrar continuidad en 3D, cambiamos a 2D únicamente para usar el
+    // helper accesible/determinista de casillas y acreditar una jugada backend real.
+    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
     const appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
     await expect(appearanceDialog.getByRole('radiogroup', { name: 'Representación del tablero' })).toBeVisible();
