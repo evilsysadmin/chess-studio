@@ -7,29 +7,6 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
-function rivalryWithTwoLosses() {
-  return JSON.stringify({
-    version: 3,
-    totalGames: 2,
-    record: {
-      games: 2,
-      wins: 0,
-      draws: 0,
-      losses: 2,
-      currentStreak: -2,
-      bestHumanStreak: 0,
-      bestCpuStreak: 2,
-      incidents: {},
-      recentGames: [],
-      milestones: {},
-      byTimeControl: {},
-      byOpening: {},
-      memories: [],
-    },
-    incidents: {},
-  });
-}
-
 async function startQuickGame(page, requestLog, mockOptions = {}) {
   await mockApi(page, { requestLog, ...mockOptions });
   await login(page);
@@ -98,19 +75,16 @@ test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos te
   let releaseOpeningNarrative;
   let openingNarrativeRequested = false;
   const openingNarrativeGate = new Promise((resolve) => { releaseOpeningNarrative = resolve; });
+  const remoteFocusLine = 'Focus activo. Ahora sí te estoy hablando desde dentro.';
 
-  await mockApi(page, {
-    requestLog,
-    profileSeed: {
-      'chess-study-cpu-rivalry': rivalryWithTwoLosses(),
-    },
-  });
+  await mockApi(page, { requestLog });
 
-  // #320 moved opening banter to an asynchronous Workers-AI request. Prove the
-  // request is genuinely in flight before entering Focus, then release one
-  // deterministic Cloudflare response. The test therefore covers exactly the
-  // contract it names: a *new* Matthias message arriving while Focus is active
-  // becomes a temporary bubble, without depending on profile-hydration timing.
+  // The opening request has a real 4.5 s product timeout. The old E2E waited
+  // for the whole Three canvas before entering Focus, so CI legitimately timed
+  // the request out and installed the local fallback *before* Focus. Hold the
+  // remote response only long enough to prove the request exists, enter Focus
+  // immediately, then release a unique Cloudflare line. If that exact line
+  // becomes a bubble, the message was born after Focus became authoritative.
   await page.route('http://localhost:4000/api/narrative', async (route) => {
     const payload = route.request().postDataJSON?.() ?? {};
     if (payload.eventType !== 'game_opening_banter') return route.fallback();
@@ -120,7 +94,7 @@ test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos te
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        text: 'Vienes de 2 derrotas consecutivas. Bonito volver a ver a un cliente recurrente.',
+        text: remoteFocusLine,
         provider: 'cloudflare',
         latencyMs: 35,
       }),
@@ -130,21 +104,24 @@ test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos te
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 30_000 });
+
   await expect.poll(() => openingNarrativeRequested, {
-    timeout: 6_000,
-    message: 'La pulla inicial debe estar solicitada antes de entrar en Focus',
+    timeout: 3_000,
+    message: 'La pulla inicial debe arrancar antes del timeout remoto de producto',
   }).toBe(true);
 
-  await page.getByRole('button', { name: 'Focus', exact: true }).click();
-  await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'true');
+  const focus = page.getByRole('button', { name: 'Focus', exact: true });
+  await expect(focus).toBeVisible({ timeout: 3_000 });
+  await focus.click();
+  const layout = page.locator('.game-layout');
+  await expect(layout).toHaveAttribute('data-mobile-focus', 'true', { timeout: 3_000 });
+
   releaseOpeningNarrative();
 
   const bubble = page.getByRole('status', { name: 'Comentario de Matthias en Focus' });
   await expect(bubble).toBeVisible({ timeout: 6_000 });
   await expect(bubble).toContainText('MATTHIAS');
-  await expect(bubble).toContainText('2 derrotas consecutivas');
+  await expect(bubble).toContainText(remoteFocusLine);
   await expect(page.locator('.game-side-column')).toHaveCount(0);
 
   // El bocadillo es un popup, no un panel permanente.
