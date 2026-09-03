@@ -34,6 +34,18 @@ function runRenderHooks(root) {
   return hooks.map((object) => object.name || object.type);
 }
 
+function findApprovedLayoutDriver(root) {
+  let owner = null;
+  const visorCandidates = [];
+  root.traverse((object) => {
+    if (object.name === 'war-room-armor-visor') visorCandidates.push(object);
+    if (!owner && object.userData?.warRoomApprovedMockPostArchitectureDriver === WAR_ROOM_APPROVED_MOCK_VERSION) {
+      owner = object;
+    }
+  });
+  return { owner, visorCandidates };
+}
+
 function dispose(root) {
   const geometries = new Set();
   const materials = new Set();
@@ -66,11 +78,14 @@ describe('War Room render-driver ownership', () => {
     const sofa = room.getObjectByName('war-room-sofa-left');
     const armor = room.getObjectByName('war-room-teutonic-armor-left');
     const table = room.getObjectByName('war-room-side-console-left');
-    const visor = room.getObjectByName('war-room-armor-visor');
+    const { owner: visor, visorCandidates } = findApprovedLayoutDriver(room);
 
     expect(sofa).toBeTruthy();
     expect(armor).toBeTruthy();
     expect(table).toBeTruthy();
+    expect(visorCandidates.length).toBeGreaterThanOrEqual(1);
+    expect(visor).toBeTruthy();
+    expect(visor?.name).toBe('war-room-armor-visor');
     expect(visor?.userData?.warRoomApprovedMockPostArchitectureScope).toBe('scene-root-v27');
     expect(visor?.userData?.warRoomApprovedMockPostArchitectureRetirement).toBe('one-shot-v27');
 
@@ -94,7 +109,7 @@ describe('War Room render-driver ownership', () => {
     dispose(scene);
   });
 
-  it('no cambia el contrato coarse/mobile, donde el mock desktop no participa', () => {
+  it('no activa el contrato desktop en coarse/mobile y conserva su driver legacy existente', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, true);
     scene.add(room);
@@ -102,8 +117,9 @@ describe('War Room render-driver ownership', () => {
 
     runRenderHooks(scene);
 
-    expect(sofa.userData.warRoomFurniturePlacement).toBe('side-wall');
+    expect(sofa.userData.warRoomFurniturePlacement).toBe('side-wall-centered-v3');
     expect(scene.userData.warRoomFurnitureLayoutOwner).toBeUndefined();
+    expect(findApprovedLayoutDriver(room).owner).toBeNull();
     dispose(scene);
   });
 });
