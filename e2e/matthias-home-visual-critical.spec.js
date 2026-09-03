@@ -24,7 +24,7 @@ async function openHomeAt(page, hour, { dismissSpeech = true } = {}) {
   await dismissHomeGuide(page);
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner).toBeVisible();
-  await expect(corner).toHaveAttribute('data-three-presentation', 'home-v3');
+  await expect(corner).toHaveAttribute('data-three-presentation', 'home-v4');
   if (dismissSpeech) {
     const dismiss = corner.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
@@ -41,12 +41,13 @@ async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   await expect(frame).toBeVisible();
   await expect(avatar).toBeVisible();
   await expect(avatar).toHaveAttribute('data-home-presence-version', 'home-presence-v1');
+  await expect(avatar).toHaveAttribute('data-home-microgesture-version', 'home-face-v2');
   await expect(avatar).toHaveAttribute('data-three-profile', profile);
   await expect(avatar).toHaveAttribute('data-three-motion', 'active');
-  await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-only');
-  await expect(avatar).toHaveAttribute('data-three-face-rig', 'home-rigid-v1');
-  await expect(avatar).toHaveAttribute('data-three-face-expression', 'canonical');
-  await expect(avatar).toHaveAttribute('data-three-face-warp', '0.000');
+  await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-body+bounded-face');
+  await expect(avatar).toHaveAttribute('data-three-face-rig', 'face-v1');
+  await expect(avatar).toHaveAttribute('data-three-face-warp-limit', '0.019');
+  await expect(avatar).not.toHaveAttribute('data-three-segments', '1x1');
   await expect(fallback).toHaveAttribute('src', /\.webp(?:$|\?)/);
   await expect.poll(
     () => fallback.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
@@ -61,6 +62,8 @@ async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   await expect(canvas).toBeVisible();
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-frame')) || 0, { timeout: 4_000 }).toBeGreaterThan(6);
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 4_000 }).toBeGreaterThan(.08);
+  const warp = Number(await avatar.getAttribute('data-three-face-warp')) || 0;
+  expect(warp, `${label}: el rig facial debe permanecer dentro del límite anti-melt`).toBeLessThanOrEqual(.019);
   if (minReach > 0) {
     await expect.poll(
       async () => Number(await avatar.getAttribute('data-three-reach')) || 0,
@@ -86,18 +89,36 @@ for (const [hour, profile, label, minReach] of [
   [23, 'read', 'estudio y lectura', 0],
   [2, 'sleep', 'sueño', 0],
 ]) {
-  test(`Home · Three.js anima ${label} con pose rígida y cara canónica`, async ({ page }) => {
+  test(`Home · Three.js anima ${label} con cuerpo rígido y cara expresiva acotada`, async ({ page }) => {
     const corner = await openHomeAt(page, hour);
     await expectThreeScene(corner, profile, label, { minReach });
   });
 }
 
-test('Home · cuando Matthias habla adopta atención antropomórfica sin lip-sync deformante', async ({ page }) => {
+test('Home · lectura conserva microgestos faciales visibles y acotados', async ({ page }) => {
+  const corner = await openHomeAt(page, 23);
+  const avatar = await expectThreeScene(corner, 'read', 'microgestos de lectura');
+  await expect(avatar).toHaveAttribute('data-three-face-expression', 'focus');
+  await expect(avatar).toHaveAttribute('data-three-face-gesture', 'survey');
+  await expect.poll(
+    async () => Number(await avatar.getAttribute('data-three-face-warp')) || 0,
+    { timeout: 4_000, message: 'Home debe mover de verdad ojos/cejas; energía corporal sola no basta' },
+  ).toBeGreaterThan(.0003);
+  const warp = Number(await avatar.getAttribute('data-three-face-warp')) || 0;
+  expect(warp).toBeLessThanOrEqual(.019);
+});
+
+test('Home · cuando Matthias habla usa mandíbula/expresión acotadas además de la postura de atención', async ({ page }) => {
   const corner = await openHomeAt(page, 10, { dismissSpeech: false });
   const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
   await expect(bubble).toBeVisible();
   const avatar = await expectThreeScene(corner, 'speak', 'habla');
   await expect(avatar).toHaveAttribute('data-home-presence-state', 'attend');
+  await expect(avatar).toHaveAttribute('data-three-face-expression', 'alert');
+  await expect.poll(
+    async () => Number(await avatar.getAttribute('data-three-face-warp')) || 0,
+    { timeout: 4_000, message: 'hablar debe producir microgesto facial real, no sólo mover la postal entera' },
+  ).toBeGreaterThan(.0005);
 
   const geometry = await corner.evaluate((node) => {
     const bubbleNode = node.querySelector('.matthias-resident__bubble');
@@ -114,7 +135,7 @@ test('Home · cuando Matthias habla adopta atención antropomórfica sin lip-syn
   expect(geometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
 });
 
-test('Home · 390px mantiene materiales premium, texto legible y cero overflow', async ({ page }) => {
+test('Home · 390px conserva microgestos, materiales premium, texto legible y cero overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const corner = await openHomeAt(page, 10, { dismissSpeech: false });
   const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
@@ -126,8 +147,13 @@ test('Home · 390px mantiene materiales premium, texto legible y cero overflow',
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
-  await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-only');
-  await expect(avatar).toHaveAttribute('data-three-face-warp', '0.000');
+  await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-body+bounded-face');
+  await expect(avatar).toHaveAttribute('data-three-face-rig', 'face-v1');
+  await expect.poll(
+    async () => Number(await avatar.getAttribute('data-three-face-warp')) || 0,
+    { timeout: 4_000 },
+  ).toBeGreaterThan(.0005);
+  expect(Number(await avatar.getAttribute('data-three-face-warp')) || 0).toBeLessThanOrEqual(.019);
 
   const contract = await page.evaluate(() => {
     const bubbleText = document.querySelector('.matthias-resident__bubble p');
