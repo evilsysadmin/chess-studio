@@ -25,20 +25,19 @@ function lathe(group, profile, material, segments, name = '', part = '') {
 }
 
 /**
- * The human king needs to read as a sovereign from the fixed tactical camera,
- * not as the bishop with a cross glued on top. Keep the silhouette deliberately
- * broad through the base/shoulders, then finish it with a heavy crown block and
- * oversized cross. Detail is structural rather than humanoid so it remains a
- * chess piece next to Matthias' character model.
+ * The human king should read as a sovereign from the fixed tactical camera,
+ * not as the bishop with a cross glued on top. Keep a confident base and a
+ * clear shoulder line, but avoid the bodybuilder silhouette that overwhelms
+ * neighbouring pieces in perspective. Height/crown remain the primary king cue.
  */
 export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer = false } = {}) {
   const group = new THREE.Group();
   group.name = 'player-sovereign-king';
   group.userData.board3DPlayerKing = true;
   group.userData.board3DPlayerKingSilhouetteVersion = coarsePointer
-    ? 'armored-sovereign-lite-v1'
-    : 'armored-sovereign-v1';
-  group.userData.board3DPlayerKingBodyProfile = 'broad-shouldered-v1';
+    ? 'armored-sovereign-lite-v2'
+    : 'armored-sovereign-v2';
+  group.userData.board3DPlayerKingBodyProfile = 'athletic-shouldered-v2';
   group.userData.board3DPlayerKingCrownProfile = coarsePointer
     ? 'four-buttress-crown-v1'
     : 'six-buttress-crown-v1';
@@ -47,15 +46,15 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
   const radialSegments = coarsePointer ? 8 : 12;
   const crownButtresses = coarsePointer ? 4 : 6;
 
-  // Heavy footprint: wider than the common Staunton base, but still safely
-  // inside a 1x1 board square even with interaction motion applied.
+  // Still broader than a common Staunton base, but no longer fills the square
+  // like a small armoured refrigerator when seen through the tactical camera.
   lathe(group, [
-    [0.385, 0], [0.43, 0.045], [0.43, 0.095], [0.39, 0.135],
-    [0.345, 0.175], [0.315, 0.22], [0.285, 0.275], [0.27, 0.325],
+    [0.36, 0], [0.395, 0.045], [0.395, 0.095], [0.365, 0.135],
+    [0.325, 0.175], [0.30, 0.22], [0.275, 0.275], [0.265, 0.325],
   ], mainMaterial, segments, 'player-king-base', 'base');
   add(
     group,
-    new THREE.TorusGeometry(0.325, coarsePointer ? 0.024 : 0.029, radialSegments, segments),
+    new THREE.TorusGeometry(0.305, coarsePointer ? 0.022 : 0.026, radialSegments, segments),
     accentMaterial,
     [0, 0.205, 0],
     [Math.PI / 2, 0, 0],
@@ -63,16 +62,16 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
     'base-band',
   );
 
-  // Broad armored torso and a pronounced shoulder line prevent the bishop-like
-  // narrow waist that the old generic king inherited.
+  // A strong torso remains, but the upper body tapers instead of exploding into
+  // shoulders. This keeps the king imposing without dwarfing rooks and bishops.
   lathe(group, [
-    [0.27, 0.30], [0.265, 0.37], [0.245, 0.47], [0.23, 0.60],
-    [0.225, 0.70], [0.25, 0.79], [0.305, 0.86], [0.33, 0.90],
-    [0.315, 0.94], [0.27, 0.975],
+    [0.255, 0.30], [0.25, 0.37], [0.235, 0.47], [0.225, 0.60],
+    [0.22, 0.70], [0.24, 0.79], [0.285, 0.86], [0.30, 0.90],
+    [0.29, 0.94], [0.255, 0.975],
   ], mainMaterial, segments, 'player-king-body', 'body');
   add(
     group,
-    new THREE.TorusGeometry(0.325, coarsePointer ? 0.026 : 0.032, radialSegments, segments),
+    new THREE.TorusGeometry(0.295, coarsePointer ? 0.023 : 0.028, radialSegments, segments),
     accentMaterial,
     [0, 0.895, 0],
     [Math.PI / 2, 0, 0],
@@ -80,25 +79,25 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
     'shoulder-ring',
   );
 
-  // Four/six compact shoulder guards read as mass at tactical distance without
-  // turning the piece into a literal little human in armour.
+  // Compact guards preserve the armoured cue without giving him linebacker pads.
   for (let index = 0; index < 4; index += 1) {
     const angle = Math.PI / 4 + index * Math.PI / 2;
     add(
       group,
-      new THREE.BoxGeometry(coarsePointer ? 0.13 : 0.15, 0.095, coarsePointer ? 0.10 : 0.115),
+      new THREE.BoxGeometry(coarsePointer ? 0.105 : 0.12, 0.085, coarsePointer ? 0.09 : 0.10),
       mainMaterial,
-      [Math.cos(angle) * 0.285, 0.88, Math.sin(angle) * 0.285],
+      [Math.cos(angle) * 0.255, 0.88, Math.sin(angle) * 0.255],
       [0, -angle, 0],
       `player-king-shoulder-guard-${index + 1}`,
       'shoulder-guard',
     );
   }
 
-  // Crown pedestal is deliberately blockier and wider than the bishop's mitre.
+  // Crown stays substantial: authority should come from the crown/height rather
+  // than from turning the entire piece into a steroid experiment.
   add(
     group,
-    new THREE.CylinderGeometry(0.285, 0.255, 0.13, segments),
+    new THREE.CylinderGeometry(0.27, 0.245, 0.13, segments),
     mainMaterial,
     [0, 1.015, 0],
     [0, 0, 0],
@@ -107,7 +106,7 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
   );
   add(
     group,
-    new THREE.TorusGeometry(0.277, coarsePointer ? 0.021 : 0.026, radialSegments, segments),
+    new THREE.TorusGeometry(0.262, coarsePointer ? 0.020 : 0.024, radialSegments, segments),
     accentMaterial,
     [0, 0.955, 0],
     [Math.PI / 2, 0, 0],
@@ -119,17 +118,17 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
     const angle = index * (Math.PI * 2 / crownButtresses);
     add(
       group,
-      new THREE.ConeGeometry(coarsePointer ? 0.055 : 0.063, coarsePointer ? 0.19 : 0.22, radialSegments),
+      new THREE.ConeGeometry(coarsePointer ? 0.052 : 0.058, coarsePointer ? 0.19 : 0.22, radialSegments),
       accentMaterial,
-      [Math.cos(angle) * 0.205, 1.155, Math.sin(angle) * 0.205],
+      [Math.cos(angle) * 0.195, 1.155, Math.sin(angle) * 0.195],
       [0, 0, 0],
       `player-king-crown-buttress-${index + 1}`,
       'crown-buttress',
     );
   }
 
-  // The cross is intentionally oversized and thick. It is the final king cue,
-  // not the entire identity of the piece as in the old model.
+  // Keep the cross intentionally prominent. It remains the final king cue and
+  // survives the reduced body mass cleanly at both desktop and coarse-pointer sizes.
   add(
     group,
     new THREE.BoxGeometry(coarsePointer ? 0.095 : 0.105, coarsePointer ? 0.34 : 0.37, coarsePointer ? 0.095 : 0.105),
