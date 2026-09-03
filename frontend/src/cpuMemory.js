@@ -24,6 +24,9 @@ export function startMemoryComment(rivalry, context = {}) {
   const streak = Number(record.currentStreak || 0);
   const recent = Array.isArray(record.recentGames) ? record.recentGames : [];
 
+  // Rehidratar una partida pendiente no es empezar otra conversación. El
+  // transcript ya conserva lo que Matthias dijo antes del F5/Continuar.
+  if (context.resumed) return null;
   if (context.rescue) return 'Has vuelto a una de tus derrotas para intentar salvarla. Eso es formación o necromancia; veremos cuál de las dos.';
   if (context.lab) return 'Laboratorio abierto. Esta vez no puedes alegar que la posición te pilló por sorpresa.';
   if (context.runMode === 'cup') return 'Copa personal. Ocho partidas, un acta y suficientes oportunidades para que la estadística pierda la paciencia.';
