@@ -265,21 +265,21 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
     await expect(warRoomStatus).toBeVisible();
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 
-    // Guardarraíl directo para #286: fallamos una sola vez el chunk REAL de
-    // Board3D del build desplegado. El primer reload debe caer en el boundary
-    // recuperable; su CTA debe reconstruir el runtime y el segundo intento debe
-    // volver a la partida sin borrar la sesión.
-    const board3dChunkUrl = await page.evaluate(() => (
-      performance.getEntriesByType('resource')
-        .map((entry) => entry.name)
-        .find((name) => /\/assets\/Board3D-[^/]+\.js(?:\?|$)/.test(name)) || ''
-    ));
-    expect(board3dChunkUrl, 'el build debe exponer un chunk dinámico identificable de Board3D').toBeTruthy();
-    const board3dChunkPath = new URL(board3dChunkUrl).pathname;
+    // Para sabotear de verdad el primer import de Board3D necesitamos un runtime
+    // donde ese módulo todavía no exista. Bajamos a 2D, persistimos la preferencia
+    // y recargamos: la sesión sigue siendo la misma, pero el nuevo runtime no pide
+    // Board3D hasta que volvamos a elegir 3D explícitamente.
+    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+    let appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
+    await expect(appearanceDialog).toBeVisible();
+    await appearanceDialog.getByRole('radio', { name: /2D$/ }).click();
+    await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+    await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible({ timeout: 30_000 });
+
+    const board3dChunkPattern = /\/assets\/Board3D-[^/]+\.js(?:\?.*)?$/;
     let failedBoard3DChunkOnce = false;
-    await page.route('**/assets/*.js', async (route) => {
-      const pathname = new URL(route.request().url()).pathname;
-      if (!failedBoard3DChunkOnce && pathname === board3dChunkPath) {
+    await page.route(board3dChunkPattern, async (route) => {
+      if (!failedBoard3DChunkOnce) {
         failedBoard3DChunkOnce = true;
         await route.abort('failed');
         return;
@@ -287,20 +287,40 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
       await route.continue();
     });
 
+    const restoreFresh2D = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'GET'
+        && Boolean(gameId)
+        && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}`;
+    }, { timeout: 60_000 });
     await page.reload({ waitUntil: 'domcontentloaded' });
+    expect((await restoreFresh2D).status()).toBe(200);
+    await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible({ timeout: 30_000 });
+    expect(failedBoard3DChunkOnce, '2D no debe cargar Board3D durante el reload fresco').toBe(false);
+
+    // Guardarraíl directo para #286: ahora sí provocamos el primer import lazy
+    // de Board3D y lo fallamos una sola vez. ErrorBoundary debe ofrecer reload
+    // controlado; como la preferencia 3D ya quedó persistida, el segundo runtime
+    // reintenta el chunk, lo dejamos pasar y debe reconstruir la War Room.
+    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+    appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
+    await expect(appearanceDialog).toBeVisible();
+    await appearanceDialog.getByRole('radio', { name: /3D$/ }).click();
+
     await expect(page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true })).toBeVisible({ timeout: 30_000 });
+    expect(failedBoard3DChunkOnce).toBe(true);
     const recoverRuntime = page.getByRole('button', { name: 'Recargar y recuperar sesión', exact: true });
     await expect(recoverRuntime).toBeVisible();
     await recoverRuntime.click();
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+    await expect(warRoomStatus).toBeVisible();
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
-    expect(failedBoard3DChunkOnce).toBe(true);
-    await page.unroute('**/assets/*.js');
+    await page.unroute(board3dChunkPattern);
 
-    // Tras demostrar continuidad en 3D, cambiamos a 2D únicamente para usar el
-    // helper accesible/determinista de casillas y acreditar una jugada backend real.
+    // Finalmente volvemos a 2D sólo para usar el helper accesible/determinista
+    // de casillas y acreditar que la misma partida todavía acepta una jugada real.
     await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
-    const appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
+    appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
     await expect(appearanceDialog.getByRole('radiogroup', { name: 'Representación del tablero' })).toBeVisible();
     await expect(appearanceDialog.getByRole('radio', { name: /3D$/ })).toHaveAttribute('aria-checked', 'true');
