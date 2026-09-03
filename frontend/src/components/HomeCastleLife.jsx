@@ -2,7 +2,7 @@ import './HomeCastleLife.css';
 
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
-// Progress objects are descriptive only: no entry exists without backing state.
+// Progress objects are descriptive only: every visible claim must have backing state.
 
 function asNumber(value) {
   const n = Number(value);
