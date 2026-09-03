@@ -23,6 +23,31 @@ describe('HomeCastleLife', () => {
     expect(model.objects[2].detail).toContain('2/3');
   });
 
+  it('los méritos de juego fuerte desplazan señales mundanas del castillo', () => {
+    const model = buildHomeCastleLifeModel({
+      combatProgress: { credits: 36, nextProgress: .2, rank: { label: 'Recluta' } },
+      tournamentLevel: 3,
+      tournamentProgress: 9,
+      rivalry: { record: { wins: 4 } },
+      achievementIds: ['rating_master', 'rivalry_hard_75', 'feat_mate', 'crime_queen_to_pawn'],
+      achievementLedger: {
+        records: {
+          rating_master: { legacy: false },
+          rivalry_hard_75: { legacy: false },
+          feat_mate: { legacy: true },
+          crime_queen_to_pawn: { legacy: false },
+        },
+      },
+      rareRoll: 1,
+    });
+
+    expect(model.objects.map((entry) => entry.id)).toEqual(['master-crown', 'giantslayer-helm', 'fallen-king']);
+    expect(model.objects.every((entry) => entry.kind === 'honour')).toBe(true);
+    expect(model.objects[0]).toEqual(expect.objectContaining({ prestige: 100, evidence: 'recorded' }));
+    expect(model.objects[2]).toEqual(expect.objectContaining({ evidence: 'legacy' }));
+    expect(model.objects.some((entry) => entry.id.includes('queen'))).toBe(false);
+  });
+
   it('la rare sighting es ambiental y no se mezcla con los objetos de progreso', () => {
     const model = buildHomeCastleLifeModel({ rivalry: { record: { wins: 2 } }, rareRoll: .01 });
     expect(model.objects).toEqual([expect.objectContaining({ id: 'rivalry-plaque' })]);
