@@ -53,6 +53,31 @@ describe('checkAchievements', () => {
     expect(unlocked.has('combat_flawless')).toBe(true);
   });
 
+  it('acredita victoria perfecta con la batalla real cuando el caller la conoce', () => {
+    checkAchievements({
+      combatFlawlessWin: true,
+      achievementEvidence: {
+        combat_flawless: {
+          source: 'combat-battle',
+          battleId: 'combat-42',
+          occurredAt: '2026-09-03T21:30:00.000Z',
+          difficulty: 78,
+          color: 'b',
+          mode: 'roguelike',
+        },
+      },
+    });
+    const record = achievementRecord('combat_flawless');
+    expect(record?.source).toBe('combat-battle');
+    expect(record?.provenance).toEqual({
+      battleId: 'combat-42',
+      mode: 'roguelike',
+      color: 'b',
+      difficulty: 78,
+      occurredAt: '2026-09-03T21:30:00.000Z',
+    });
+  });
+
   it('detecta una pieza dorada (nivel 6+) en el roster de combate', () => {
     localStorage.setItem('chess-study-combat-roster', JSON.stringify({
       pieces: { 'n-b': { strengthPoints: 3, speedPoints: 3, bankedXp: 0, alive: true } },

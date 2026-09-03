@@ -394,7 +394,13 @@ export default function GameScreen({
       }
     }
     if (presentation.audience) showAudienceReaction(presentation.text);
-    const [unlocked] = recordNoteworthyAchievement(comment.event, actor);
+    const [unlocked] = recordNoteworthyAchievement(comment.event, actor, {
+      gameId: game.id,
+      difficulty: game.difficulty,
+      color: humanColor,
+      opening,
+      ply,
+    });
     if (!unlocked) return;
     setAchievementToast(unlocked);
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);

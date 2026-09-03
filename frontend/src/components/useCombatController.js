@@ -567,7 +567,22 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     setServiceRecord(serviceResult.record);
     saveCombatBattle(battleRecord);
 
-    checkAchievements({ combatFlawlessWin: isWin && survivorCount === 16 });
+    const combatFlawlessWin = isWin && survivorCount === 16;
+    checkAchievements({
+      combatFlawlessWin,
+      achievementEvidence: combatFlawlessWin
+        ? {
+            combat_flawless: {
+              source: 'combat-battle',
+              battleId: battleRecord.id,
+              occurredAt: battleRecord.date,
+              difficulty: battleRecord.difficulty,
+              color: battleRecord.humanColor,
+              mode: battleRecord.variant,
+            },
+          }
+        : {},
+    });
 
     clearBattleSession();
 
