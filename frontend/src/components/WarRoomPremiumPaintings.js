@@ -38,6 +38,14 @@ function addBox(group, size, material, position, name = '') {
   return addMesh(group, new THREE.BoxGeometry(...size), material, position, [0, 0, 0], name);
 }
 
+const PAINTING_LAYER_DEPTH = Object.freeze({
+  canvas: 0.104,
+  varnish: 0.112,
+  outerFrame: 0.122,
+  innerFrame: 0.136,
+  rosette: 0.148,
+});
+
 function seededNoise(x, y, seed) {
   const value = Math.sin((x * 12.9898 + y * 78.233 + seed * 37.719) * 0.91) * 43758.5453;
   return value - Math.floor(value);
@@ -182,31 +190,46 @@ function addPainting(group, x, y, z, towardBoard, warm, index) {
   const frame = new THREE.Group();
   frame.name = `war-room-premium-painting-${index}`;
   frame.userData.warRoomPaintingFinish = 'painterly-canvas-v2';
+  frame.userData.warRoomPaintingLayering = 'canvas-behind-frame-v1';
   frame.position.set(x, y, z);
 
   addBox(frame, [2.48, 1.86, 0.08], frameDark, [0, 0, 0], 'war-room-premium-frame-back');
   addBox(frame, [2.34, 1.72, 0.042], frameWarm, [0, 0, towardBoard * 0.05], 'war-room-premium-frame-wood-bed');
   addBox(frame, [2.18, 1.56, 0.034], gilding, [0, 0, towardBoard * 0.079], 'war-room-premium-frame-gilt-bed');
-  addBox(frame, [1.94, 1.32, 0.028], linen, [0, 0, towardBoard * 0.104], 'war-room-premium-painting-canvas');
+  addBox(frame, [1.94, 1.32, 0.028], linen, [0, 0, towardBoard * PAINTING_LAYER_DEPTH.canvas], 'war-room-premium-painting-canvas');
 
   const outerBars = [
     [0, 0.86, 2.42, 0.085], [0, -0.86, 2.42, 0.085],
     [-1.19, 0, 0.085, 1.76], [1.19, 0, 0.085, 1.76],
   ];
-  for (const [dx, dy, sx, sy] of outerBars) addBox(frame, [sx, sy, 0.052], gilding, [dx, dy, towardBoard * 0.104]);
+  for (const [dx, dy, sx, sy] of outerBars) {
+    addBox(
+      frame,
+      [sx, sy, 0.052],
+      gilding,
+      [dx, dy, towardBoard * PAINTING_LAYER_DEPTH.outerFrame],
+      'war-room-premium-frame-outer-bar',
+    );
+  }
 
   const innerBars = [
     [0, 0.7, 2.06, 0.035], [0, -0.7, 2.06, 0.035],
     [-1.01, 0, 0.035, 1.42], [1.01, 0, 0.035, 1.42],
   ];
   for (const [dx, dy, sx, sy] of innerBars) {
-    const trim = addBox(frame, [sx, sy, 0.032], agedGold, [dx, dy, towardBoard * 0.122]);
+    const trim = addBox(
+      frame,
+      [sx, sy, 0.032],
+      agedGold,
+      [dx, dy, towardBoard * PAINTING_LAYER_DEPTH.innerFrame],
+      'war-room-premium-frame-inner-bar',
+    );
     trim.castShadow = false;
   }
 
   for (const [cx, cy] of [[-1.13, 0.8], [1.13, 0.8], [-1.13, -0.8], [1.13, -0.8]]) {
     const rosette = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.03, 12), agedGold);
-    rosette.position.set(cx, cy, towardBoard * 0.132);
+    rosette.position.set(cx, cy, towardBoard * PAINTING_LAYER_DEPTH.rosette);
     rosette.rotation.x = Math.PI / 2;
     rosette.castShadow = false;
     frame.add(rosette);
@@ -214,6 +237,23 @@ function addPainting(group, x, y, z, towardBoard, warm, index) {
 
   group.add(frame);
   return frame;
+}
+
+function enforcePaintingLayering(group, towardBoard) {
+  let corrected = 0;
+  for (const index of [0, 1]) {
+    const frame = group.getObjectByName?.(`war-room-premium-painting-${index}`);
+    const canvas = frame?.getObjectByName?.('war-room-premium-painting-canvas');
+    const varnish = frame?.getObjectByName?.('war-room-painting-varnish');
+    if (!frame || !canvas) continue;
+    canvas.position.z = towardBoard * PAINTING_LAYER_DEPTH.canvas;
+    if (varnish) varnish.position.z = towardBoard * PAINTING_LAYER_DEPTH.varnish;
+    frame.userData.warRoomPaintingLayering = 'canvas-behind-frame-v1';
+    corrected += 1;
+  }
+  group.userData.warRoomPaintingLayeringVersion = 'frame-over-canvas-v1';
+  group.userData.warRoomPaintingLayeringCorrected = corrected;
+  return corrected;
 }
 
 function retireLegacyArmors(root) {
@@ -244,6 +284,7 @@ export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePo
   addPainting(group, 4.95, 3.66, paintingZ, towardBoard, true, 1);
   registerPremiumRoomFinalization(group, { wallZ, towardBoard, coarsePointer });
   applyWarRoomPremiumFinishPass(group, { towardBoard });
+  enforcePaintingLayering(group, towardBoard);
   bindWarRoomArmorArticulation(group, towardBoard);
   applyWarRoomPracticalLighting(group, { wallZ, towardBoard, coarsePointer });
   registerWarRoomDeferredFinalizer(group, {
