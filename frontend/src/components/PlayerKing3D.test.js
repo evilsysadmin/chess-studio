@@ -26,52 +26,55 @@ function width(root) {
 }
 
 describe('Board3D player king silhouette', () => {
-  it('se lee como un soberano alto y fuerte sin comerse media casilla a hombrazos', () => {
+  it('se lee como rey clásico por altura y cruz, no por volumen', () => {
     const king = buildPiece('k', 'w', 'studio', false);
     const bishop = buildPiece('b', 'w', 'studio', false);
     const pawn = buildPiece('p', 'w', 'studio', false);
 
     expect(king.userData.warRoomFallbackPiece).not.toBe(true);
     expect(king.userData.board3DPlayerKing).toBe(true);
-    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('armored-sovereign-v2');
-    expect(king.userData.board3DPlayerKingBodyProfile).toBe('athletic-shouldered-v2');
-    expect(king.userData.board3DPlayerKingCrownProfile).toBe('six-buttress-crown-v1');
+    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('classic-sovereign-v3');
+    expect(king.userData.board3DPlayerKingBodyProfile).toBe('staunton-taper-v3');
+    expect(king.userData.board3DPlayerKingCrownProfile).toBe('clean-cross-crown-v2');
     expect(parts(king, 'body')).toHaveLength(1);
-    expect(parts(king, 'shoulder-guard')).toHaveLength(4);
+    expect(parts(king, 'shoulder-guard')).toHaveLength(0);
     expect(parts(king, 'crown-base')).toHaveLength(1);
-    expect(parts(king, 'crown-buttress')).toHaveLength(6);
+    expect(parts(king, 'crown-buttress')).toHaveLength(0);
     expect(parts(king, 'cross-vertical')).toHaveLength(1);
     expect(parts(king, 'cross-horizontal')).toHaveLength(1);
     expect(height(king)).toBeGreaterThan(height(bishop) * 1.12);
     expect(height(king)).toBeGreaterThan(height(pawn) * 1.55);
-    expect(width(king)).toBeGreaterThan(width(bishop) * 1.05);
-    expect(width(king)).toBeLessThanOrEqual(0.80);
+    expect(width(king)).toBeLessThanOrEqual(0.74);
 
     [king, bishop, pawn].forEach(disposeObject);
   });
 
-  it('mantiene presencia en coarse pointer sin recuperar los esteroides', () => {
+  it('mantiene la misma lectura limpia en coarse pointer', () => {
     const king = buildPiece('k', 'b', 'studio', true);
 
     expect(king.userData.warRoomFallbackPiece).not.toBe(true);
-    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('armored-sovereign-lite-v2');
-    expect(king.userData.board3DPlayerKingBodyProfile).toBe('athletic-shouldered-v2');
-    expect(king.userData.board3DPlayerKingCrownProfile).toBe('four-buttress-crown-v1');
-    expect(parts(king, 'shoulder-guard')).toHaveLength(4);
-    expect(parts(king, 'crown-buttress')).toHaveLength(4);
+    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('classic-sovereign-lite-v3');
+    expect(king.userData.board3DPlayerKingBodyProfile).toBe('staunton-taper-v3');
+    expect(king.userData.board3DPlayerKingCrownProfile).toBe('clean-cross-crown-v2');
+    expect(parts(king, 'shoulder-guard')).toHaveLength(0);
+    expect(parts(king, 'crown-buttress')).toHaveLength(0);
     expect(parts(king, 'cross-horizontal')[0]?.geometry?.type).toBe('BoxGeometry');
-    expect(width(king)).toBeLessThanOrEqual(0.78);
+    expect(width(king)).toBeLessThanOrEqual(0.71);
 
     disposeObject(king);
   });
 
-  it('no sustituye el rey-personaje de Matthias', () => {
+  it('no sustituye el rey-personaje de Matthias ni hereda rasgos antropomórficos', () => {
+    const king = buildPiece('k', 'w', 'studio', false);
     const matthias = buildPiece('k', 'w', 'studio', false, { matthiasKing: true });
 
+    expect(king.userData.matthiasKing).not.toBe(true);
+    expect(king.getObjectByName('matthias-face')).toBeFalsy();
+    expect(king.getObjectByName('matthias-officer-cap')).toBeFalsy();
     expect(matthias.userData.matthiasKing).toBe(true);
     expect(matthias.userData.board3DPlayerKing).not.toBe(true);
     expect(parts(matthias, 'body')).toHaveLength(0);
 
-    disposeObject(matthias);
+    [king, matthias].forEach(disposeObject);
   });
 });
