@@ -125,11 +125,12 @@
     line-height: 1;
   }
 
-  /* Appearance remains reachable without colliding with the chamber label. */
+  /* Keep Appearance in the established upper interaction rail, but below the
+     centred chamber label so the two controls no longer overlap. */
   .game-board-stack-3d .board3d-customize {
-    top: auto;
+    top: 2.35rem;
     right: .4rem;
-    bottom: .4rem;
+    bottom: auto;
     min-height: 30px;
     max-width: 5.2rem;
     padding: .26rem .42rem;
