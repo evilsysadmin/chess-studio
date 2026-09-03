@@ -139,12 +139,14 @@ export function applyWarRoomApprovedMockContract(root, {
   coarsePointer = false,
 } = {}) {
   if (!root || coarsePointer || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
-  // This function runs once during construction and again through the shared
-  // first-paint finalizer. The legacy castle refinement driver is created only
-  // after the premium pass, so retirement deliberately happens here: the
-  // construction call sees zero drivers, while the first-paint call sees the
-  // complete scene and disables any marker-owned static layout callback before
-  // it can move the sofas back beside the armours.
+  // Single desktop layout authority: this function runs once during premium
+  // construction and again through the shared first-paint finalizer. The
+  // castle creates its legacy refinement callback only after the premium pass,
+  // so the construction call intentionally sees no driver. The first-paint
+  // call sees the complete scene, retires every marker-owned static layout
+  // callback, and only then writes the final furniture positions. Continuous
+  // render hooks remain reserved for genuinely animated work such as fire and
+  // ambient life.
   const retiredDrivers = retireLegacyLayoutDrivers(root);
   const furniture = placeFurniture(root, { wallZ, towardBoard });
   const walls = retireWallClutter(root);
