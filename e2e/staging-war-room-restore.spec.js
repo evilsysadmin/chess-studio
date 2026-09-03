@@ -45,10 +45,15 @@ async function authenticateOrCreate(request, username, password, inviteCode) {
 }
 
 async function seedRestoreProfile(request, token) {
+  const tutorialProgress = {
+    'quick-match-rules': { seen: true },
+    practice: { seen: true },
+  };
   const response = await request.put(`${STAGING_API_URL}/profile`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       data: {
+        'chess-study-mechanic-tutorial-progress-v1': JSON.stringify(tutorialProgress),
         'chess-study-home-guide-dismissed-v1': '1',
         'matthias.onboarded': '2',
         'chess-study-onboarding-insights-seen-v1': '1',
@@ -132,7 +137,9 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
       data: { from: 'e2', to: 'e4', promotion: null },
       timeout: 60_000,
     });
-    expect(mutatedResponse.status(), `mutación externa staging: ${await mutatedResponse.text()}`).toBe(200);
+    if (mutatedResponse.status() !== 200) {
+      throw new Error(`Mutación externa staging devolvió HTTP ${mutatedResponse.status()}: ${await mutatedResponse.text()}`);
+    }
     const mutated = await mutatedResponse.json();
     expect(mutated.fen).toBeTruthy();
     expect(mutated.fen).not.toBe(created.fen);
@@ -165,11 +172,13 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     await expect(warRoomStatus.locator('strong')).toHaveText(/Tu turno/i);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 
-    // 2D sólo actúa como sonda accesible del estado común: la posición visible
+    // 2D actúa sólo como sonda accesible del estado común: la posición visible
     // debe corresponder al FEN rehidratado, no al snapshot local deliberadamente viejo.
-    const warRoomControls = page.locator('.game-3d-warroom-controls');
-    await expect(warRoomControls).toBeVisible();
-    await warRoomControls.getByRole('button', { name: '2D', exact: true }).click();
+    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+    const appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
+    await expect(appearanceDialog).toBeVisible();
+    await appearanceDialog.getByRole('radio', { name: /2D$/ }).click();
+    await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
     await expect(page.locator('.square[aria-label^="Casilla e4, peón blanco"]')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.square[aria-label^="Casilla e2, vacía"]')).toBeVisible();
   } finally {
