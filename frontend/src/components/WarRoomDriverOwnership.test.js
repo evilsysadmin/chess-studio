@@ -58,7 +58,7 @@ function dispose(root) {
 }
 
 describe('War Room render-driver ownership', () => {
-  it('mantiene el layout aprobado aunque los drivers anidados se ejecuten después del finalizador', () => {
+  it('mantiene el layout aprobado y jubila el driver estático del visor tras el primer paint', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
@@ -72,6 +72,7 @@ describe('War Room render-driver ownership', () => {
     expect(armor).toBeTruthy();
     expect(table).toBeTruthy();
     expect(visor?.userData?.warRoomApprovedMockPostArchitectureScope).toBe('scene-root-v27');
+    expect(visor?.userData?.warRoomApprovedMockPostArchitectureRetirement).toBe('one-shot-v27');
 
     const hookNames = runRenderHooks(scene);
     expect(hookNames).toContain('war-room-premium-painting-canvas');
@@ -82,9 +83,12 @@ describe('War Room render-driver ownership', () => {
     expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
     expect(sofa.position.z).toBeGreaterThan(armor.position.z + 3.5);
     expect(scene.userData.warRoomFurnitureLayoutOwner).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
+    expect(visor.userData.warRoomApprovedMockPostArchitectureCompleted).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
 
+    const retiredHook = visor.onBeforeRender;
     const afterFirstPaint = snapshotFurniture(scene);
     runRenderHooks(scene);
+    expect(visor.onBeforeRender).toBe(retiredHook);
     expect(snapshotFurniture(scene)).toEqual(afterFirstPaint);
 
     dispose(scene);
