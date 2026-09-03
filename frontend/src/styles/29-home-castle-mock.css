@@ -1,0 +1,515 @@
+/* Home castle mock · visual-only prototype.
+ * Keep all Home behavior intact and test whether the landing screen can feel
+ * like a private room in the same Teutonic castle as War Room.
+ */
+
+.app-shell:has(.home-friendly) {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  overflow-x: clip;
+  background:
+    radial-gradient(ellipse at 8% 12%, rgba(138, 176, 198, .10) 0 8%, transparent 28%),
+    radial-gradient(ellipse at 88% 24%, rgba(214, 112, 42, .14) 0 7%, transparent 31%),
+    radial-gradient(ellipse at 51% -8%, rgba(194, 151, 79, .075), transparent 32%),
+    linear-gradient(180deg, #15110e 0%, #0d0b09 46%, #090807 100%);
+}
+
+/* Stone blocks: deliberately subtle. This should read as architecture, not a
+ * tiled videogame texture. */
+.app-shell:has(.home-friendly)::before {
+  content: '';
+  position: fixed;
+  z-index: -2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 8%, rgba(55, 24, 18, .48) 8.2% 13%, transparent 13.2% 87%, rgba(55, 24, 18, .48) 87.2% 92%, transparent 92.2%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 78px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0 1px, transparent 1px 136px),
+    linear-gradient(180deg, rgba(84, 70, 59, .22), rgba(33, 27, 23, .25));
+  opacity: .8;
+  mask-image: linear-gradient(180deg, #000 0 72%, transparent 100%);
+}
+
+/* Warm hearth on the right, cold moonlit window on the left and a dark wood
+ * foreground. No bitmap art: just enough scenic light to judge the direction. */
+.app-shell:has(.home-friendly)::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 88% 33%, rgba(255, 168, 76, .20) 0 2%, rgba(157, 65, 24, .13) 9%, transparent 27%),
+    linear-gradient(112deg, transparent 0 6%, rgba(111, 32, 26, .20) 6.2% 10%, rgba(35, 9, 12, .36) 10.2% 13%, transparent 13.2% 88%, rgba(80, 21, 21, .16) 88.2% 93%, transparent 93.2%),
+    linear-gradient(0deg, rgba(24, 13, 8, .84) 0 8%, transparent 8.2%);
+  box-shadow: inset 0 -130px 150px rgba(0,0,0,.46), inset 0 100px 160px rgba(0,0,0,.24);
+}
+
+/* The old Home panel becomes the contents of the room instead of one giant
+ * frosted dashboard sheet. */
+.menu.home-friendly {
+  position: relative;
+  isolation: isolate;
+  width: min(1380px, calc(100vw - 2 * var(--shell-gutter, 1rem)));
+  margin-inline: auto;
+  padding: clamp(.9rem, 2.2vw, 1.65rem);
+  gap: clamp(1rem, 2.2vw, 1.55rem);
+  border: 1px solid rgba(188, 145, 78, .12);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(20, 14, 11, .44), rgba(10, 8, 7, .62)),
+    radial-gradient(circle at 85% 4%, rgba(196, 131, 56, .07), transparent 32%);
+  box-shadow:
+    0 30px 90px rgba(0,0,0,.42),
+    inset 0 1px rgba(255, 236, 199, .035);
+  backdrop-filter: none;
+}
+
+.menu.home-friendly::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(143, 101, 52, .07), transparent 7% 93%, rgba(143, 101, 52, .06)),
+    repeating-linear-gradient(90deg, transparent 0 47px, rgba(255,255,255,.008) 48px);
+  opacity: .9;
+}
+
+.menu.home-friendly::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 7%;
+  right: 7%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(217, 177, 105, .44), transparent);
+  pointer-events: none;
+}
+
+/* Headings feel engraved / editorial rather than SaaS dashboard chrome. */
+.home-friendly .home-group-heading {
+  position: relative;
+  align-items: end;
+  padding: 0 .15rem .58rem;
+  border-bottom: 1px solid rgba(190, 145, 77, .16);
+}
+
+.home-friendly .home-group-heading::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: clamp(64px, 12vw, 150px);
+  height: 1px;
+  background: linear-gradient(90deg, rgba(218, 176, 99, .9), transparent);
+}
+
+.home-friendly .home-group-heading h2 {
+  color: #eadcc2;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.28rem, 2.25vw, 1.62rem);
+  font-weight: 650;
+  letter-spacing: .006em;
+  text-shadow: 0 1px 10px rgba(0,0,0,.48);
+}
+
+.home-friendly .section-label {
+  color: #caa86b;
+  letter-spacing: .105em;
+}
+
+.home-friendly .home-heading-actions > p,
+.home-friendly .home-group-heading > p {
+  color: rgba(224, 210, 184, .62);
+}
+
+/* Major Home zones become dark walnut / leather furniture. */
+.home-friendly .home-primary-group {
+  position: relative;
+  padding: clamp(.72rem, 1.4vw, 1rem);
+  border: 1px solid rgba(137, 96, 54, .24);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(45, 27, 18, .66), rgba(17, 13, 11, .74) 44%, rgba(11, 10, 9, .82)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.008) 0 1px, transparent 1px 42px);
+  box-shadow:
+    0 18px 38px rgba(0,0,0,.25),
+    inset 0 1px rgba(236, 209, 162, .035),
+    inset 0 0 0 3px rgba(0,0,0,.12);
+}
+
+.home-friendly .home-primary-group::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 5px;
+  border: 1px solid rgba(196, 151, 83, .055);
+  border-radius: 10px;
+}
+
+/* Daily challenge = the notice sitting closest to the player. */
+.home-friendly .home-today-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(202, 159, 83, .34);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 7% 30%, rgba(218, 164, 71, .095), transparent 25%),
+    linear-gradient(100deg, rgba(52, 34, 21, .92), rgba(20, 16, 13, .92) 46%, rgba(13, 12, 11, .96));
+  box-shadow:
+    0 16px 32px rgba(0,0,0,.26),
+    inset 0 1px rgba(255,236,196,.045);
+}
+
+.home-friendly .home-today-card::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  right: -26px;
+  top: -50px;
+  width: 170px;
+  height: 170px;
+  border: 1px solid rgba(198, 159, 88, .09);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 12px rgba(198,159,88,.018), inset 0 0 0 28px rgba(198,159,88,.012);
+}
+
+.home-friendly .home-today-emblem {
+  border-color: rgba(218, 174, 96, .46);
+  border-radius: 9px;
+  background: linear-gradient(145deg, rgba(114, 73, 32, .56), rgba(34, 25, 17, .72));
+  color: #e0bd78;
+  box-shadow: inset 0 0 18px rgba(215,169,83,.08), 0 7px 16px rgba(0,0,0,.2);
+}
+
+.home-friendly .home-today-missions button {
+  border-color: rgba(194, 151, 78, .16);
+  background: rgba(8, 7, 6, .28);
+}
+
+.home-friendly .home-today-missions button:hover,
+.home-friendly .home-today-missions button:focus-visible {
+  border-color: rgba(221, 178, 101, .38);
+  background: rgba(105, 72, 35, .14);
+}
+
+/* Continue / next action read as physical plaques rather than notification bars. */
+.home-friendly .home-continue-card,
+.home-friendly .home-next-action {
+  border: 1px solid rgba(196, 153, 80, .28);
+  background:
+    linear-gradient(105deg, rgba(65, 42, 24, .80), rgba(22, 17, 13, .91) 54%, rgba(13,12,11,.94));
+  box-shadow: 0 15px 30px rgba(0,0,0,.23), inset 0 1px rgba(255,238,202,.04);
+}
+
+.home-friendly .home-continue-card:hover,
+.home-friendly .home-continue-card:focus-visible {
+  border-color: rgba(225, 181, 102, .58);
+  background:
+    linear-gradient(105deg, rgba(79, 51, 28, .86), rgba(26, 19, 14, .94) 54%, rgba(14,13,12,.96));
+}
+
+/* Main cards: matte leather/walnut, warm metallic rim. Their existing art is
+ * retained but no longer washed into generic blue/purple glass. */
+.home-friendly .home-mode-card,
+.home-friendly .compact-mode-grid .menu-card {
+  border-color: rgba(165, 121, 65, .26);
+  border-radius: 11px;
+  background:
+    linear-gradient(150deg, rgba(47, 31, 21, .90), rgba(20, 16, 13, .94) 48%, rgba(13, 12, 11, .97));
+  box-shadow:
+    0 14px 28px rgba(0,0,0,.26),
+    inset 0 1px rgba(250, 225, 183, .035),
+    inset 0 0 0 2px rgba(0,0,0,.12);
+  backdrop-filter: none;
+}
+
+.home-friendly .home-mode-card::before {
+  opacity: .095;
+  filter: blur(42px);
+}
+
+.home-friendly .home-mode-card::after,
+.home-friendly .compact-mode-grid .menu-card::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  inset: 5px;
+  border: 1px solid rgba(218, 174, 100, .045);
+  border-radius: 7px;
+}
+
+.home-friendly .home-mode-art {
+  opacity: .22;
+  mix-blend-mode: soft-light;
+  filter: sepia(.22) saturate(.78) contrast(1.06) brightness(.76);
+}
+
+.home-friendly .home-mode-featured {
+  border-color: rgba(221, 176, 95, .53);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(197, 146, 64, .13), transparent 34%),
+    linear-gradient(145deg, rgba(71, 46, 25, .94), rgba(25, 18, 13, .96) 52%, rgba(13,12,10,.98));
+  box-shadow:
+    0 18px 38px rgba(0,0,0,.30),
+    inset 0 1px rgba(255,235,191,.06),
+    0 0 24px rgba(182, 128, 53, .035);
+}
+
+.home-friendly .home-mode-card:not(:disabled):hover,
+.home-friendly .home-mode-card:not(:disabled):focus-visible,
+.home-friendly .compact-mode-grid .menu-card:not(:disabled):hover,
+.home-friendly .compact-mode-grid .menu-card:not(:disabled):focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(218, 173, 96, .50);
+  background:
+    linear-gradient(150deg, rgba(58, 38, 24, .94), rgba(23, 17, 13, .97) 52%, rgba(14,13,11,.98));
+  box-shadow: 0 21px 42px rgba(0,0,0,.34), inset 0 1px rgba(255,235,191,.05);
+}
+
+.home-friendly .home-mode-icon {
+  border-color: rgba(209, 165, 91, .26);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(91, 60, 31, .42), rgba(18, 14, 11, .72));
+  box-shadow: inset 0 1px rgba(255,230,180,.035);
+}
+
+.home-friendly .home-mode-card.accent-hint .home-mode-icon,
+.home-friendly .home-mode-card.accent-success .home-mode-icon,
+.home-friendly .home-mode-card.accent-danger .home-mode-icon {
+  color: #c8aa75;
+}
+
+.home-friendly .home-mode-card h3,
+.home-friendly .compact-mode-grid .menu-card h3 {
+  color: #eadcc2;
+}
+
+.home-friendly .home-mode-description,
+.home-friendly .compact-mode-grid .menu-card p,
+.home-friendly .home-mode-kicker,
+.home-friendly .home-mode-progress small {
+  color: rgba(225, 211, 185, .64);
+}
+
+.home-friendly .home-mode-card .menu-card-cta {
+  border-top-color: rgba(185, 139, 72, .16);
+  color: #cdaa6b;
+}
+
+.home-friendly .home-mode-progress > span {
+  background: rgba(0,0,0,.42);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.3);
+}
+
+.home-friendly .home-mode-progress > span > i {
+  background: linear-gradient(90deg, #7d5c2c, #d4ad67, #9c7136);
+  box-shadow: 0 0 8px rgba(206,161,84,.16);
+}
+
+/* The three play choices become the visual centrepiece on desktop. */
+@media (min-width: 980px) {
+  .home-friendly .home-modes-section .home-primary-grid {
+    grid-template-columns: minmax(0, 1.18fr) repeat(2, minmax(0, .91fr));
+    align-items: stretch;
+  }
+
+  .home-friendly .home-modes-section .home-mode-featured {
+    min-height: 194px;
+  }
+}
+
+/* Learning is deliberately quieter than Play. */
+.home-friendly .home-learning-grid .home-mode-card {
+  background:
+    linear-gradient(150deg, rgba(38, 28, 21, .86), rgba(17, 14, 12, .93) 55%, rgba(12,11,10,.96));
+}
+
+.home-friendly .home-learning-grid .home-mode-art {
+  opacity: .12;
+}
+
+/* Progressive-disclosure shelves. */
+.home-friendly .friendly-disclosure {
+  border: 1px solid rgba(150, 108, 59, .20);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(32, 23, 18, .72), rgba(13, 11, 10, .82));
+  box-shadow: inset 0 1px rgba(246,219,174,.025);
+}
+
+.home-friendly .friendly-disclosure > summary {
+  color: rgba(219, 198, 164, .74);
+}
+
+.home-friendly .friendly-disclosure > summary:hover,
+.home-friendly .friendly-disclosure > summary:focus-visible {
+  background: rgba(110, 73, 36, .12);
+  color: #eadcc2;
+}
+
+/* Onboarding gets the same desk / dossier material language. */
+.home-friendly .home-start-guide {
+  border-color: rgba(204, 159, 83, .34);
+  background:
+    radial-gradient(circle at 8% 15%, rgba(198,145,65,.10), transparent 30%),
+    linear-gradient(135deg, rgba(55,36,22,.95), rgba(17,14,12,.97) 60%);
+  box-shadow: 0 20px 42px rgba(0,0,0,.30), inset 0 1px rgba(255,235,194,.045);
+}
+
+.home-friendly .home-start-guide-path > button {
+  border-color: rgba(176, 130, 69, .21);
+  background: rgba(5, 5, 4, .22);
+}
+
+.home-friendly .home-start-guide-path > button:hover,
+.home-friendly .home-start-guide-path > button:focus-visible {
+  border-color: rgba(213, 168, 92, .48);
+  background: rgba(103, 68, 34, .16);
+}
+
+/* Footer reads as the edge of the desk instead of another nav panel. */
+.home-friendly .home-footer {
+  position: relative;
+  padding-top: .55rem;
+  border-top: 1px solid rgba(171, 126, 65, .16);
+}
+
+.home-friendly .home-footer::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 22%;
+  height: 1px;
+  background: linear-gradient(90deg, #a77a3d, transparent);
+  opacity: .55;
+}
+
+.home-friendly .home-footer-bar,
+.home-friendly .home-footer-panel {
+  border-color: rgba(145, 104, 58, .16);
+  background: rgba(18, 13, 10, .64);
+}
+
+/* Matthias remains the existing Three.js resident. Give his viewport card a
+ * piece of the same furniture so he belongs to the room rather than hovering
+ * above it. */
+body:has(.home-friendly) .matthias-resident__character {
+  border: 1px solid rgba(184, 137, 72, .22);
+  border-radius: 14px 14px 10px 10px;
+  background:
+    linear-gradient(180deg, rgba(52, 34, 22, .52), rgba(14, 11, 9, .92));
+  box-shadow: 0 14px 28px rgba(0,0,0,.32), inset 0 1px rgba(255,235,194,.04);
+}
+
+body:has(.home-friendly) .matthias-resident__portrait-shell {
+  border-color: rgba(207, 164, 91, .38);
+  background:
+    radial-gradient(circle at 50% 72%, rgba(198, 149, 72, .12), transparent 42%),
+    linear-gradient(180deg, rgba(52,36,24,.88), rgba(12,10,9,.94));
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.18), 0 8px 18px rgba(0,0,0,.22);
+}
+
+body:has(.home-friendly) .matthias-resident__bubble,
+body:has(.home-friendly) .matthias-resident__bubble::after {
+  background: #1a130f;
+}
+
+body:has(.home-friendly) .matthias-resident__bubble {
+  border-color: rgba(205, 159, 84, .38);
+  box-shadow: 0 18px 38px rgba(0,0,0,.34), inset 0 1px rgba(255,233,191,.035);
+}
+
+body:has(.home-friendly) .matthias-resident__bubble::after {
+  border-color: rgba(205, 159, 84, .38);
+}
+
+/* Warm practical-light breathing. Extremely slow and disabled by both motion
+ * preference systems. */
+@keyframes home-castle-hearth {
+  0%, 100% { filter: brightness(1); }
+  46% { filter: brightness(1.035); }
+  58% { filter: brightness(.985); }
+}
+
+.app-shell:has(.home-friendly)::after {
+  animation: home-castle-hearth 7.5s ease-in-out infinite;
+}
+
+@media (max-width: 900px) {
+  .menu.home-friendly {
+    width: calc(100vw - 2 * var(--shell-gutter, .8rem));
+  }
+
+  .home-friendly .home-primary-group {
+    padding: .72rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell:has(.home-friendly)::before {
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 66px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.010) 0 1px, transparent 1px 112px),
+      linear-gradient(180deg, rgba(77,64,53,.16), rgba(25,21,18,.22));
+  }
+
+  .app-shell:has(.home-friendly)::after {
+    background:
+      radial-gradient(ellipse at 93% 16%, rgba(225, 131, 53, .12), transparent 28%),
+      linear-gradient(0deg, rgba(22,12,8,.72) 0 6%, transparent 6.2%);
+  }
+
+  .menu.home-friendly {
+    padding: .8rem;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(18,13,10,.50), rgba(9,8,7,.66));
+  }
+
+  .home-friendly .home-primary-group {
+    border-radius: 12px;
+  }
+
+  .home-friendly .home-group-heading h2 {
+    font-size: 1.26rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .menu.home-friendly {
+    width: calc(100vw - 2 * var(--shell-gutter, .55rem));
+    padding: .62rem;
+    gap: .9rem;
+    border-color: rgba(188,145,78,.09);
+  }
+
+  .home-friendly .home-primary-group {
+    padding: .58rem;
+  }
+
+  .home-friendly .home-mode-card,
+  .home-friendly .compact-mode-grid .menu-card {
+    border-radius: 9px;
+  }
+
+  .home-friendly .home-mode-art {
+    opacity: .12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell:has(.home-friendly)::after { animation: none; }
+}
+
+html[data-reduced-motion='true'] .app-shell:has(.home-friendly)::after {
+  animation: none;
+}
