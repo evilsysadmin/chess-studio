@@ -69,34 +69,30 @@ function dispose(root) {
 }
 
 describe('War Room render-driver ownership', () => {
-  it('mantiene el layout v28 y jubila por marker el refinador legacy antes de que pueda mover muebles', () => {
+  it('desktop nace sin refinador legacy y v28 conserva el layout estable entre paints', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
 
+    const architecture = room.getObjectByName('war-room-castle-architecture');
     const sofa = room.getObjectByName('war-room-sofa-left');
     const armor = room.getObjectByName('war-room-teutonic-armor-left');
     const table = room.getObjectByName('war-room-side-console-left');
     const desk = room.getObjectByName('command-cabinet');
     const chair = room.getObjectByName('war-room-teutonic-command-chair');
-    const drivers = legacyLayoutDrivers(room);
 
     expect(sofa).toBeTruthy();
     expect(armor).toBeTruthy();
     expect(table).toBeTruthy();
     expect(desk).toBeTruthy();
     expect(chair).toBeTruthy();
-    expect(drivers).toHaveLength(1);
-    expect(drivers[0].userData.warRoomApprovedMockLayoutDriverRetired).toBeUndefined();
+    expect(legacyLayoutDrivers(room)).toHaveLength(0);
+    expect(architecture.userData.warRoomDesktopLegacyLayoutDriverRetired).toBe(true);
 
+    const beforeFirstPaint = snapshotFurniture(scene);
     const hookNames = runRenderHooks(scene);
     expect(hookNames).toContain('war-room-premium-painting-canvas');
-    expect(hookNames).toContain(drivers[0].name || drivers[0].type);
-
-    expect(drivers[0].userData.warRoomApprovedMockLayoutDriverRetired).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
-    expect(drivers[0].userData.warRoomApprovedMockLayoutDriverRetirement).toBe('marker-owned-one-shot-v28');
-    expect(scene.userData.warRoomLegacyLayoutDriverRetirementVersion).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
-    expect(scene.userData.warRoomLegacyLayoutDriversRetired).toHaveLength(1);
+    expect(legacyLayoutDrivers(scene)).toHaveLength(0);
 
     expect(table.visible).toBe(false);
     expect(desk.position.x).toBe(0);
@@ -107,24 +103,27 @@ describe('War Room render-driver ownership', () => {
     expect(sofa.position.z).toBeGreaterThan(armor.position.z + 5.5);
     expect(scene.userData.warRoomApprovedMockArmorSofaGap).toBeCloseTo(5.6, 5);
     expect(scene.userData.warRoomFurnitureLayoutOwner).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
+    expect(snapshotFurniture(scene)).toEqual(beforeFirstPaint);
 
-    const retiredHook = drivers[0].onBeforeRender;
     const afterFirstPaint = snapshotFurniture(scene);
     runRenderHooks(scene);
-    expect(drivers[0].onBeforeRender).toBe(retiredHook);
+    expect(legacyLayoutDrivers(scene)).toHaveLength(0);
     expect(snapshotFurniture(scene)).toEqual(afterFirstPaint);
 
     dispose(scene);
   });
 
-  it('no activa el contrato desktop en coarse/mobile y conserva su driver legacy existente', () => {
+  it('coarse/mobile conserva explícitamente su refinador de layout actual', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, true);
     scene.add(room);
+    const architecture = room.getObjectByName('war-room-castle-architecture');
     const sofa = room.getObjectByName('war-room-sofa-left');
     const drivers = legacyLayoutDrivers(room);
 
     expect(drivers).toHaveLength(1);
+    expect(drivers[0].userData.warRoomFinalRefinementScope).toBe('coarse-mobile-only');
+    expect(architecture.userData.warRoomDesktopLegacyLayoutDriverRetired).toBeUndefined();
     runRenderHooks(scene);
 
     expect(sofa.userData.warRoomFurniturePlacement).toBe('side-wall-centered-v3');
