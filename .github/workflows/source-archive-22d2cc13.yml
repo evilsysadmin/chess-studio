@@ -1,0 +1,27 @@
+name: Source archive 22d2cc13
+
+on:
+  push:
+    branches:
+      - artifact/22d2cc13-source-zip
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: 22d2cc1372d510c1e02df14ef825b1efcd96660e
+          fetch-depth: 0
+      - name: Create exact source ZIP
+        run: git archive --format=zip --prefix=ChessStudio_22d2cc13_COMPLETE/ -o ChessStudio_22d2cc13_COMPLETE.zip 22d2cc1372d510c1e02df14ef825b1efcd96660e
+      - name: Upload exact source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChessStudio_22d2cc13_COMPLETE
+          path: ChessStudio_22d2cc13_COMPLETE.zip
+          if-no-files-found: error
+          retention-days: 7
