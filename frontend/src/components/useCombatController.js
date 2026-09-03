@@ -43,6 +43,7 @@ import { awardCombatCredits, battleCreditReward, buyEquipment, combatCreditSigna
 import { useCombatSessionBootstrap, useCombatSessionPersistence } from '../useCombatSessionPersistence.js';
 import { useCombatDeploymentGate } from '../useCombatDeploymentGate.js';
 import { isAbortError } from '../asyncControl.js';
+import { createCombatAsyncCoordinator } from '../combatAsyncCoordinator.js';
 import { chessFromFen } from '../chessRules.js';
 import { COMBAT_FLOW_EVENT, combatFlowTransition } from '../combatFlowMachine.js';
 import { reportStateInvariant } from '../stateMachine.js';
@@ -143,51 +144,22 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   const battleStartRosterRef = useRef(restoredSession?.battleStartRoster || null);
   const battleParticipantsRef = useRef(restoredSession?.battleParticipants || []);
   const unitBattleStatsRef = useRef(restoredSession?.unitBattleStats || emptyUnitBattleStats());
-  const mountedRef = useRef(true);
-  const battleGenerationRef = useRef(0);
-  const cpuAbortRef = useRef(null);
-  const scheduledTimersRef = useRef(new Set());
-
-  function scheduleCombatTimer(callback, delay) {
-    const generation = battleGenerationRef.current;
-    const timer = window.setTimeout(() => {
-      scheduledTimersRef.current.delete(timer);
-      if (!mountedRef.current || battleGenerationRef.current !== generation) return;
-      try {
-        const pending = callback();
-        if (pending && typeof pending.catch === 'function') {
-          pending.catch((error) => {
-            if (!mountedRef.current || battleGenerationRef.current !== generation || isAbortError(error)) return;
-            setBusy(false);
-            onError?.(error?.message || 'Una acción diferida de Combat falló. La batalla sigue disponible.');
-          });
-        }
-      } catch (error) {
-        if (!mountedRef.current || battleGenerationRef.current !== generation) return;
+  const deferredCombatErrorRef = useRef(onError);
+  deferredCombatErrorRef.current = onError;
+  const combatAsyncRef = useRef(null);
+  if (!combatAsyncRef.current) {
+    combatAsyncRef.current = createCombatAsyncCoordinator({
+      onDeferredError: (error) => {
         setBusy(false);
-        onError?.(error?.message || 'Una acción diferida de Combat falló. La batalla sigue disponible.');
-      }
-    }, delay);
-    scheduledTimersRef.current.add(timer);
-    return timer;
+        deferredCombatErrorRef.current?.(error?.message || 'Una acción diferida de Combat falló. La batalla sigue disponible.');
+      },
+    });
   }
-
-  function cancelScheduledCombatTimers() {
-    for (const timer of scheduledTimersRef.current) window.clearTimeout(timer);
-    scheduledTimersRef.current.clear();
-  }
-
-  function invalidateCombatAsync(reason = 'Combat state changed') {
-    battleGenerationRef.current += 1;
-    cpuAbortRef.current?.abort(new DOMException(reason, 'AbortError'));
-    cpuAbortRef.current = null;
-    cancelScheduledCombatTimers();
-  }
+  const combatAsync = combatAsyncRef.current;
 
   useEffect(() => () => {
-    mountedRef.current = false;
-    invalidateCombatAsync('Combat unmounted');
-  }, []);
+    combatAsync.dispose('Combat unmounted');
+  }, [combatAsync]);
 
   // Nunca permitimos que un FEN corrupto durante una batalla atraviese el
   // render y derribe toda la pantalla. Conservamos la última posición válida
@@ -349,7 +321,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function startBattle(options = {}) {
-    invalidateCombatAsync('New Combat battle');
+    combatAsync.invalidate('New Combat battle');
     const rosterOverride = options?.rosterOverride || null;
     const deploymentValidated = options?.deploymentValidated === true;
     if (!deploymentValidated && !guardBattleStart()) return;
@@ -446,7 +418,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
     // la partida se queda esperando para siempre a que "alguien" mueva.
     if (resolved === 'b') {
       setBusy(true);
-      scheduleCombatTimer(() => void runCpuTurn(startFen, initialRegistry, resolved, []), CPU_DELAY_MS);
+      combatAsync.schedule(() => void runCpuTurn(startFen, initialRegistry, resolved, []), CPU_DELAY_MS);
     } else {
       setBusy(false);
     }
@@ -487,7 +459,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
   }
 
   function finalizeBattle(outcome, finalRegistry, updatedLog, currentHumanColor) {
-    invalidateCombatAsync('Combat battle finished');
+    combatAsync.invalidate('Combat battle finished');
     setBusy(false);
     const isWin = outcome === 'win';
     if (isWin) playSuccessSound();
@@ -866,7 +838,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         }
         if (chessAfter.isCheckmate()) {
           setBusy(true);
-          scheduleCombatTimer(() => resetBossPhase(currentHumanColor, finalRegistry), 650);
+          combatAsync.schedule(() => resetBossPhase(currentHumanColor, finalRegistry), 650);
           return;
         }
       }
@@ -891,15 +863,13 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
 
     if (chessAfter.turn() !== currentHumanColor) {
       setBusy(true);
-      scheduleCombatTimer(() => void runCpuTurn(result.fen, finalRegistry, currentHumanColor, updatedLog), CPU_DELAY_MS);
+      combatAsync.schedule(() => void runCpuTurn(result.fen, finalRegistry, currentHumanColor, updatedLog), CPU_DELAY_MS);
     }
   }
 
   async function runCpuTurn(currentFen, currentRegistry, currentHumanColor, currentCombatLog) {
-    const generation = battleGenerationRef.current;
-    const controller = new AbortController();
-    cpuAbortRef.current?.abort(new DOMException('Superseded Combat CPU turn', 'AbortError'));
-    cpuAbortRef.current = controller;
+    const cpuOperation = combatAsync.beginCpuTurn();
+    const { controller } = cpuOperation;
     setCpuRetryNeeded(false);
     cpuRetryContextRef.current = { fen: currentFen, registry: currentRegistry, humanColor: currentHumanColor, combatLog: currentCombatLog };
     let suggestion;
@@ -910,29 +880,29 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
         difficulty,
         analyzePosition: (positionFen, level) => api.analyzePosition(positionFen, level, { signal: controller.signal }, cpuDoctrine?.style || null),
       });
-      if (!mountedRef.current || controller.signal.aborted || battleGenerationRef.current !== generation) return;
+      if (!combatAsync.isCurrent(cpuOperation)) return;
       suggestion = resolved.suggestion;
       recoveredLocally = resolved.source === 'local';
       if (recoveredLocally) {
         pushLog({ text: 'Análisis remoto no disponible · la CPU continúa con cálculo local. La batalla sigue.', tone: 'neutral', kind: 'event' });
       }
     } catch (e) {
-      if (!mountedRef.current || controller.signal.aborted || battleGenerationRef.current !== generation || isAbortError(e)) return;
+      if (!combatAsync.isCurrent(cpuOperation) || isAbortError(e)) return;
       onError?.(e?.message || 'La CPU no pudo completar su turno.');
       pushLog({ text: 'La CPU no pudo completar su turno. Reintentar conserva exactamente esta batalla y sus bajas actuales.', tone: 'bad', kind: 'event' });
       setCpuRetryNeeded(true);
       setBusy(false);
       return;
     } finally {
-      if (cpuAbortRef.current === controller) cpuAbortRef.current = null;
+      combatAsync.finishCpuTurn(cpuOperation);
     }
-    if (!mountedRef.current || battleGenerationRef.current !== generation) return;
+    if (!combatAsync.isGenerationCurrent(cpuOperation)) return;
     try {
       performMove(currentFen, currentRegistry, currentHumanColor, currentCombatLog, suggestion.from, suggestion.to, suggestion.promotion);
       cpuRetryContextRef.current = null;
       if (recoveredLocally) setCpuRetryNeeded(false);
     } catch (e) {
-      if (!mountedRef.current || battleGenerationRef.current !== generation) return;
+      if (!combatAsync.isGenerationCurrent(cpuOperation)) return;
       // Nunca dejamos una batalla secuestrada por un estado imposible o un
       // snapshot antiguo: se conserva el contexto exacto para poder reintentar.
       cpuRetryContextRef.current = { fen: currentFen, registry: currentRegistry, humanColor: currentHumanColor, combatLog: currentCombatLog };
@@ -940,7 +910,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       onError?.(e?.message || 'La CPU no pudo aplicar su jugada.');
       pushLog({ text: 'La jugada de la CPU no se pudo aplicar. La batalla sigue intacta; puedes reintentar el turno.', tone: 'bad', kind: 'event' });
     } finally {
-      if (mountedRef.current && battleGenerationRef.current === generation) setBusy(false);
+      if (combatAsync.isGenerationCurrent(cpuOperation)) setBusy(false);
     }
   }
 
@@ -1125,14 +1095,14 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       onError?.('No se pudo guardar la batalla antes de salir. Sigue en el tablero e inténtalo de nuevo.');
       return;
     }
-    invalidateCombatAsync('Combat suspended');
+    combatAsync.invalidate('Combat suspended');
     setBusy(false);
     onExit?.();
   }
 
   function retireBattle() {
     if (phase !== 'battle') return;
-    invalidateCombatAsync('Combat retired');
+    combatAsync.invalidate('Combat retired');
     setBusy(false);
 
     // En Roguelike, "Salir del combate" no puede ser un reset gratuito del
@@ -1218,7 +1188,7 @@ export function useCombatController({ onExit, onError, onHistory, onViewBattle, 
       console.error('[Combat] Transición battle -> setup bloqueada durante una operación activa.', { combatSessionId });
       return;
     }
-    invalidateCombatAsync('Combat returned to setup');
+    combatAsync.invalidate('Combat returned to setup');
     setBusy(false);
     clearBattleSession();
     advanceCombatPhase(COMBAT_FLOW_EVENT.RESET);
