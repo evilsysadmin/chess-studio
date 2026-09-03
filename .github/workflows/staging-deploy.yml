@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: read
 
 concurrency:
@@ -52,18 +53,40 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Este es el único stale guard de la generación. Una vez que empieza la
+      # Este es el único stale guard de la generación. Si main ya avanzó antes
+      # de la primera mutación, esta ejecución queda superseded y se autocancela
+      # sin ensuciar staging ni marcar una avería falsa. Una vez que empieza la
       # primera mutación, el SHA queda fijado y backend/frontend/Worker deben
       # completar juntos aunque main avance mientras tanto.
-      - name: Refuse stale staging commit
+      - name: Supersede stale staging commit
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::error::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. No despliego staging obsoleto."
-            exit 1
+            echo "::notice title=Staging superseded::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. Cancelo esta generación antes de cualquier mutación."
+            {
+              echo '### Staging superseded por un main más nuevo'
+              echo
+              echo "- CI-approved SHA: \`$DEPLOY_SHA\`"
+              echo "- Current main: \`$current_main\`"
+              echo '- Acción: `autocancelar esta ejecución antes de Render/Pages/Worker`'
+              echo '- Siguiente generación: `la dispara el CI normal del HEAD actual cuando quede verde`'
+              echo '- Rebase/retry artificial: `no necesario`'
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            gh api --method POST \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
+
+            echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
+            while :; do
+              sleep 30
+            done
           fi
+          echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
       - name: Install pinned Render CLI
         shell: bash
