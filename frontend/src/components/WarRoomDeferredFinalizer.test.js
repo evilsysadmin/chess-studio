@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import {
   WAR_ROOM_DEFERRED_FINALIZER_VERSION,
+  WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION,
+  armWarRoomOneShotHookRetirement,
   registerWarRoomDeferredFinalizer,
 } from './WarRoomDeferredFinalizer.js';
 
@@ -76,5 +78,39 @@ describe('WarRoomDeferredFinalizer', () => {
       coarsePointer: true,
     })).toBe(0);
     expect(mobile.userData.warRoomDeferredFinalizer).toBeUndefined();
+  });
+
+  it('retires a static render chain after its first paint, including a later outer wrapper', () => {
+    const owner = new THREE.Group();
+    const wall = mesh('war-room-castle-wall-left');
+    const staticPass = vi.fn();
+    const outerLegacyPass = vi.fn();
+    wall.onBeforeRender = staticPass;
+    owner.add(wall);
+
+    expect(armWarRoomOneShotHookRetirement(owner, {
+      anchorName: 'war-room-castle-wall-left',
+      key: 'static-room-pass',
+    })).toBe(1);
+    expect(armWarRoomOneShotHookRetirement(owner, {
+      anchorName: 'war-room-castle-wall-left',
+      key: 'static-room-pass',
+    })).toBe(0);
+
+    const armedHook = wall.onBeforeRender;
+    wall.onBeforeRender = (...args) => {
+      armedHook(...args);
+      outerLegacyPass(...args);
+    };
+
+    wall.onBeforeRender();
+    expect(staticPass).toHaveBeenCalledTimes(1);
+    expect(outerLegacyPass).toHaveBeenCalledTimes(1);
+    expect(wall.userData.warRoomOneShotRetirementCompleted).toBe('static-room-pass');
+    expect(owner.userData.warRoomOneShotRetirementVersion).toBe(WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION);
+
+    wall.onBeforeRender();
+    expect(staticPass).toHaveBeenCalledTimes(1);
+    expect(outerLegacyPass).toHaveBeenCalledTimes(1);
   });
 });
