@@ -38,6 +38,8 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
     const chatTitleNode = document.querySelector('.game-3d-command-column .game-chat-heading h3');
     const musicNode = document.querySelector('.game-side-column-3d .game-side-music');
     const notationNode = document.querySelector('.game-side-column-3d .game-notation-disclosure');
+    const notationTitleNode = document.querySelector('.game-side-column-3d .game-notation-row .notation-panel h3');
+    const notationEmptyNode = document.querySelector('.game-side-column-3d .game-notation-row .notation-empty');
     const room = roomNode?.getBoundingClientRect();
     const board = boardNode?.getBoundingClientRect();
     const commander = commanderNode?.getBoundingClientRect();
@@ -46,8 +48,12 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
     const chat = chatNode?.getBoundingClientRect();
     const music = musicNode?.getBoundingClientRect();
     const notation = notationNode?.getBoundingClientRect();
-    if (!room || !board || !commander || !matthiasCard || !status || !chat || !music || !notation || !chatLogNode || !chatTitleNode || !notationNode) return null;
+    if (!room || !board || !commander || !matthiasCard || !status || !chat || !music || !notation || !chatLogNode || !chatTitleNode || !notationNode || !notationTitleNode || !notationEmptyNode) return null;
     const commanderChildren = [...commanderNode.children];
+    const colourChannelSum = (node) => {
+      const channels = getComputedStyle(node).color.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [];
+      return channels.reduce((sum, value) => sum + value, 0);
+    };
     return {
       roomWidth: room.width,
       boardLeft: board.left,
@@ -82,6 +88,10 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
       notationHeight: notation.height,
       notationWidth: notation.width,
       notationOverflowY: getComputedStyle(notationNode).overflowY,
+      notationTitleColourSum: colourChannelSum(notationTitleNode),
+      notationBodyColourSum: colourChannelSum(notationEmptyNode),
+      notationTitleFontStyle: getComputedStyle(notationTitleNode).fontStyle,
+      notationTitleFontWeight: Number(getComputedStyle(notationTitleNode).fontWeight),
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,
     };
@@ -118,6 +128,10 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
   expect(geometry.notationTop - geometry.musicBottom).toBeLessThan(20);
   expect(geometry.notationHeight).toBeLessThanOrEqual(621);
   expect(geometry.notationOverflowY).toBe('auto');
+  expect(geometry.notationTitleColourSum).toBeGreaterThan(560);
+  expect(geometry.notationBodyColourSum).toBeGreaterThan(560);
+  expect(geometry.notationTitleFontStyle).toBe('normal');
+  expect(geometry.notationTitleFontWeight).toBeGreaterThanOrEqual(700);
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
 
   await expect(warRoom).toBeVisible();
