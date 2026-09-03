@@ -44,6 +44,38 @@ function runRootDriver(room) {
 describe('WarRoomCompositionPolish', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
+  it('no recoloca armaduras: el transform pertenece al contrato de layout v28', () => {
+    const room = new THREE.Group();
+    const leftArmor = new THREE.Group();
+    leftArmor.name = 'war-room-teutonic-armor-left';
+    leftArmor.position.set(-8.7, .15, -1.2);
+    leftArmor.rotation.y = 1.31;
+    const rightArmor = new THREE.Group();
+    rightArmor.name = 'war-room-teutonic-armor-right';
+    rightArmor.position.set(8.2, .12, -1.6);
+    rightArmor.rotation.y = -1.47;
+    const mortar = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    mortar.name = 'war-room-teutonic-mortar-joint';
+    room.add(leftArmor, rightArmor, mortar);
+    const before = {
+      leftPosition: leftArmor.position.toArray(),
+      leftRotationY: leftArmor.rotation.y,
+      rightPosition: rightArmor.position.toArray(),
+      rightRotationY: rightArmor.rotation.y,
+    };
+
+    expect(applyWarRoomCompositionPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
+
+    expect(leftArmor.position.toArray()).toEqual(before.leftPosition);
+    expect(leftArmor.rotation.y).toBe(before.leftRotationY);
+    expect(rightArmor.position.toArray()).toEqual(before.rightPosition);
+    expect(rightArmor.rotation.y).toBe(before.rightRotationY);
+    expect(mortar.visible).toBe(false);
+    expect(room.userData.warRoomCompositionLayoutWritesRetired).toBe(true);
+    expect(room.userData.warRoomCompositionArmorCount).toBe(0);
+    dispose(room);
+  });
+
   it('coloca las armaduras v28 contra pared mirando al tablero y retira juntas y mesas laterales', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
@@ -78,6 +110,7 @@ describe('WarRoomCompositionPolish', () => {
     expect(mortarJoints.length).toBeGreaterThan(10);
     expect(mortarJoints.every((joint) => joint.visible === false)).toBe(true);
     expect(owner.userData.warRoomRetiredMortarJoints).toBe(mortarJoints.length);
+    expect(owner.userData.warRoomCompositionLayoutWritesRetired).toBe(true);
 
     const diagonalBraces = [];
     room.traverse((object) => {
