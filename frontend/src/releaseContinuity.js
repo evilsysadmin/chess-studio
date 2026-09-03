@@ -3,13 +3,13 @@ import {
   getStorageItem,
   setStorageItem,
 } from './safeStorage.js';
+import { isLikelyModuleLoadError } from './moduleLoadRecovery.js';
 
 const RELOAD_GUARD_KEY = 'chess-study-release-reload-at';
 const RELOAD_COOLDOWN_MS = 15_000;
 
 export function isChunkLoadFailure(reason) {
-  const message = String(reason?.message || reason || '');
-  return /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk .* failed|ChunkLoadError|error loading dynamically imported module/i.test(message);
+  return isLikelyModuleLoadError(reason);
 }
 
 function readGuard(storage) {
