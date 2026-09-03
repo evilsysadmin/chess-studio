@@ -1,4 +1,7 @@
-const CACHE = 'chess-studio-shell-v16.6dm46zc';
+// La identidad de esta caché describe el esquema del shell, no una release concreta.
+// La URL de registro del service worker lleva ?build=<SHA>, de modo que cada
+// despliegue reinstala el worker y cache.addAll() refresca estas entradas.
+const CACHE = 'chess-studio-shell-v2';
 const SHELL = ['./', './manifest.webmanifest', './favicon.svg', './favicon-32.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
