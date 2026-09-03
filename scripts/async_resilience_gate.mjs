@@ -49,7 +49,15 @@ function requirePattern(file, pattern, message) {
   if (!pattern.test(text)) contractErrors.push(`${file}: ${message}`);
 }
 requirePattern('frontend/src/components/GameScreen.jsx', /api\.playMove\([^\n]+\{\s*signal:\s*controller\.signal[^}]*\}/, 'playMove debe ser cancelable por sesión');
-requirePattern('frontend/src/components/GameScreen.jsx', /mutationRef\.current/, 'debe existir exclusión mutua síncrona de mutaciones');
+requirePattern('frontend/src/components/GameScreen.jsx', /createGameMutationCoordinator/, 'GameScreen debe delegar ownership de mutaciones al coordinador');
+requirePattern('frontend/src/components/GameScreen.jsx', /mutationCoordinator\.begin\(/, 'GameScreen debe adquirir exclusión mutua síncrona antes de mutar');
+requirePattern('frontend/src/components/GameScreen.jsx', /mutationCoordinator\.isCurrent\(operation\)/, 'GameScreen debe rechazar respuestas de mutaciones obsoletas');
+requirePattern('frontend/src/components/GameScreen.jsx', /mutationCoordinator\.invalidateSession\(/, 'GameScreen debe invalidar mutaciones al cambiar o terminar la sesión');
+requirePattern('frontend/src/gameMutationCoordinator.js', /if\s*\(currentOperation\)\s*return\s+null/, 'el coordinador debe impedir mutaciones concurrentes síncronamente');
+requirePattern('frontend/src/gameMutationCoordinator.js', /currentOperation\.controller\.abort\(/, 'el coordinador debe poder abortar la mutación activa');
+requirePattern('frontend/src/gameMutationCoordinator.js', /operation\?\.session\s*===\s*sessionGeneration/, 'el coordinador debe rechazar operaciones de generaciones antiguas');
+requirePattern('frontend/src/gameMutationCoordinator.js', /operationFingerprint\(/, 'el coordinador debe conservar fingerprint de idempotencia para retries');
+requirePattern('frontend/src/gameMutationCoordinator.js', /retryOperation[\s\S]{0,520}?retryWindowMs/, 'el coordinador debe limitar la reutilización de Idempotency-Key a una ventana acotada');
 requirePattern('frontend/src/components/GameScreen.jsx', /controlResolveRef\.current\?\.\(\)/, 'la Promise de Control táctico debe resolverse al cambiar/desmontar sesión');
 requirePattern('frontend/src/components/SpectatorScreen.jsx', /abortableDelay\(/, 'el loop espectador debe usar esperas cancelables');
 requirePattern('frontend/src/components/SpectatorScreen.jsx', /analyzePosition\([^\n]+\{\s*signal\s*\}/, 'análisis espectador debe cancelarse');
