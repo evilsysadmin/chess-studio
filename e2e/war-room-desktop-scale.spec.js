@@ -54,6 +54,8 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
       const channels = getComputedStyle(node).color.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [];
       return channels.reduce((sum, value) => sum + value, 0);
     };
+    const musicStyle = getComputedStyle(musicNode);
+    const notationStyle = getComputedStyle(notationNode);
     return {
       roomWidth: room.width,
       boardLeft: board.left,
@@ -83,11 +85,15 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
       musicLeft: music.left,
       musicBottom: music.bottom,
       musicWidth: music.width,
+      musicPosition: musicStyle.position,
+      musicZIndex: Number(musicStyle.zIndex),
       notationLeft: notation.left,
       notationTop: notation.top,
       notationHeight: notation.height,
       notationWidth: notation.width,
-      notationOverflowY: getComputedStyle(notationNode).overflowY,
+      notationOverflowY: notationStyle.overflowY,
+      notationPosition: notationStyle.position,
+      notationZIndex: Number(notationStyle.zIndex),
       notationTitleColourSum: colourChannelSum(notationTitleNode),
       notationBodyColourSum: colourChannelSum(notationEmptyNode),
       notationTitleFontStyle: getComputedStyle(notationTitleNode).fontStyle,
@@ -128,6 +134,10 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
   expect(geometry.notationTop - geometry.musicBottom).toBeLessThan(20);
   expect(geometry.notationHeight).toBeLessThanOrEqual(621);
   expect(geometry.notationOverflowY).toBe('auto');
+  expect(geometry.musicPosition).toBe('relative');
+  expect(geometry.musicZIndex).toBeGreaterThanOrEqual(1);
+  expect(geometry.notationPosition).toBe('relative');
+  expect(geometry.notationZIndex).toBeGreaterThanOrEqual(1);
   expect(geometry.notationTitleColourSum).toBeGreaterThan(560);
   expect(geometry.notationBodyColourSum).toBeGreaterThan(560);
   expect(geometry.notationTitleFontStyle).toBe('normal');
