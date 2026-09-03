@@ -26,15 +26,15 @@ function width(root) {
 }
 
 describe('Board3D player king silhouette', () => {
-  it('se lee como un soberano ancho y alto, no como un alfil con cruz', () => {
+  it('se lee como un soberano alto y fuerte sin comerse media casilla a hombrazos', () => {
     const king = buildPiece('k', 'w', 'studio', false);
     const bishop = buildPiece('b', 'w', 'studio', false);
     const pawn = buildPiece('p', 'w', 'studio', false);
 
     expect(king.userData.warRoomFallbackPiece).not.toBe(true);
     expect(king.userData.board3DPlayerKing).toBe(true);
-    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('armored-sovereign-v1');
-    expect(king.userData.board3DPlayerKingBodyProfile).toBe('broad-shouldered-v1');
+    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('armored-sovereign-v2');
+    expect(king.userData.board3DPlayerKingBodyProfile).toBe('athletic-shouldered-v2');
     expect(king.userData.board3DPlayerKingCrownProfile).toBe('six-buttress-crown-v1');
     expect(parts(king, 'body')).toHaveLength(1);
     expect(parts(king, 'shoulder-guard')).toHaveLength(4);
@@ -44,20 +44,23 @@ describe('Board3D player king silhouette', () => {
     expect(parts(king, 'cross-horizontal')).toHaveLength(1);
     expect(height(king)).toBeGreaterThan(height(bishop) * 1.12);
     expect(height(king)).toBeGreaterThan(height(pawn) * 1.55);
-    expect(width(king)).toBeGreaterThan(width(bishop) * 1.1);
+    expect(width(king)).toBeGreaterThan(width(bishop) * 1.05);
+    expect(width(king)).toBeLessThanOrEqual(0.80);
 
     [king, bishop, pawn].forEach(disposeObject);
   });
 
-  it('mantiene una silueta fuerte en coarse pointer con menos corona decorativa', () => {
+  it('mantiene presencia en coarse pointer sin recuperar los esteroides', () => {
     const king = buildPiece('k', 'b', 'studio', true);
 
     expect(king.userData.warRoomFallbackPiece).not.toBe(true);
-    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('armored-sovereign-lite-v1');
+    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('armored-sovereign-lite-v2');
+    expect(king.userData.board3DPlayerKingBodyProfile).toBe('athletic-shouldered-v2');
     expect(king.userData.board3DPlayerKingCrownProfile).toBe('four-buttress-crown-v1');
     expect(parts(king, 'shoulder-guard')).toHaveLength(4);
     expect(parts(king, 'crown-buttress')).toHaveLength(4);
     expect(parts(king, 'cross-horizontal')[0]?.geometry?.type).toBe('BoxGeometry');
+    expect(width(king)).toBeLessThanOrEqual(0.78);
 
     disposeObject(king);
   });
