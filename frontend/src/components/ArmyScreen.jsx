@@ -18,6 +18,7 @@ import { unitRecordForKey, unitDecorations } from '../combatUnitService.js';
 import { veteranLegacy } from '../combatVeteranLegacy.js';
 import { deploymentSummary } from '../combatDeployment.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import CombatHonoursRoom from './CombatHonoursRoom.jsx';
 import { equipmentBonus, equipmentById } from '../combatEconomy.js';
 
 const PIECE_GLYPH = Object.freeze({ k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' });
@@ -37,56 +38,6 @@ function basePieceFor(slot, saved, activeType = slot.type) {
     unlockedTechniques: Array.isArray(saved?.unlockedTechniques) ? saved.unlockedTechniques : [],
     equippedTechnique: saved?.equippedTechnique || null,
   };
-}
-
-function formatMemorialDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('es-ES');
-}
-
-function Memorial({ roster }) {
-  const entries = Array.isArray(roster?.memorial) ? [...roster.memorial].reverse().slice(0, 8) : [];
-  if (entries.length === 0) return null;
-  return (
-    <section className="army-memorial" aria-label="Memorial de Caídos">
-      <div className="army-memorial-heading">
-        <div>
-          <span className="army-memorial-kicker">EXPEDIENTE CERRADO</span>
-          <div className="combat-heading-row">
-            <h4>Memorial de Caídos</h4>
-            <MechanicTutorialHelp tutorialId="combat-casualties" label="Tutorial de bajas, revive y Memorial" />
-          </div>
-        </div>
-        <b>{roster.memorial.length}</b>
-      </div>
-      <p className="hint-text">Identidades perdidas de forma definitiva. El reemplazo ocupa el mismo puesto, pero no hereda nombre, rango, técnicas ni historial.</p>
-      <div className="army-memorial-list">
-        {entries.map((entry) => {
-          const stats = entry.stats || {};
-          const origin = BASE_STATS[entry.originType]?.name || 'Unidad';
-          const decorations = unitDecorations(entry);
-          return (
-            <article className="army-memorial-entry" key={entry.identityId}>
-              <div>
-                <strong>{entry.alias}</strong>
-                <span>{entry.finalRankLabel || 'Recluta'} · {origin} · nivel {entry.finalLevel || 1}</span>
-              </div>
-              <span className="army-memorial-record">
-                {stats.battles || 0} batallas · {stats.survivals || 0} supervivencias · {stats.kills || 0} bajas
-                {entry.permanentDeathAt ? ` · ${formatMemorialDate(entry.permanentDeathAt)}` : ''}
-              </span>
-              {decorations.length > 0 && (
-                <span className="army-unit-medals">
-                  {decorations.map((medal) => <i key={medal.id} title={medal.label}>✦ {medal.short}</i>)}
-                </span>
-              )}
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
 }
 
 function UnitRosterCard({ roster, slot, onOpen, deployedSlotKey = null }) {
@@ -480,7 +431,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
         </section>
       )}
 
-      {showMemorial && <Memorial roster={roster} />}
+      {showMemorial && <CombatHonoursRoom roster={roster} onOpenUnit={setSelectedKey} />}
 
       {selectedKey && (
         <UnitDossier

@@ -1,0 +1,360 @@
+.combat-honours-room {
+  position: relative;
+  display: grid;
+  gap: .85rem;
+  margin: 1rem 0 1.15rem;
+  padding: 1rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--brass) 24%, var(--ink-3));
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% -15%, rgba(205,169,91,.09), transparent 38%),
+    linear-gradient(180deg, rgba(28,25,22,.97), rgba(10,12,15,.98));
+  box-shadow: inset 0 1px rgba(255,255,255,.035), inset 0 -32px 60px rgba(0,0,0,.22), 0 18px 38px rgba(0,0,0,.2);
+}
+
+.combat-honours-room::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 49.6%, rgba(255,255,255,.018) 50%, transparent 50.4%),
+    repeating-linear-gradient(0deg, transparent 0 35px, rgba(255,255,255,.014) 36px, transparent 37px);
+  opacity: .7;
+}
+
+.combat-honours-heading,
+.combat-memorial-heading {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.combat-honours-heading > div,
+.combat-memorial-heading > div {
+  display: grid;
+  gap: .12rem;
+}
+
+.combat-honours-heading span,
+.combat-memorial-heading span {
+  color: var(--brass-dim);
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.combat-honours-heading h4,
+.combat-memorial-heading strong {
+  margin: 0;
+  color: var(--parchment);
+  font-family: var(--font-display);
+}
+
+.combat-honours-heading small {
+  max-width: 25rem;
+  color: var(--parchment-dim);
+  font-size: .69rem;
+  text-align: right;
+}
+
+.combat-honours-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .8rem;
+  padding: .65rem .35rem 1rem;
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+
+.combat-honours-stage::after {
+  content: '';
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  bottom: .18rem;
+  height: 18px;
+  transform: rotateX(68deg);
+  transform-origin: 50% 100%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0,0,0,.5), transparent 68%);
+  pointer-events: none;
+}
+
+.combat-honours-plinth {
+  position: relative;
+  min-width: 0;
+  min-height: 9.7rem;
+  display: grid;
+  grid-template-rows: 4.9rem auto;
+  align-items: end;
+  padding: .35rem .6rem .55rem;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  transform-style: preserve-3d;
+  transform: rotateX(1.5deg) translateZ(0);
+}
+
+.combat-honours-plinth::before {
+  content: '';
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  bottom: 0;
+  height: 4rem;
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.04), transparent 20% 78%, rgba(0,0,0,.22)),
+    linear-gradient(180deg, #34302b, #17191b);
+  border-top: 2px solid color-mix(in srgb, var(--brass) 34%, #5c5140);
+  box-shadow: 0 13px 20px rgba(0,0,0,.32), inset 0 -12px 24px rgba(0,0,0,.24);
+  transform: translateZ(-7px);
+}
+
+.combat-honours-plinth.is-clickable { cursor: pointer; }
+.combat-honours-plinth.is-clickable:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+  border-radius: 7px;
+}
+
+.combat-honours-object {
+  position: relative;
+  z-index: 2;
+  justify-self: center;
+  align-self: end;
+  display: grid;
+  place-items: center;
+  width: 3.7rem;
+  height: 4.5rem;
+  color: #cab37c;
+  font-size: 2.65rem;
+  line-height: 1;
+  text-shadow: 0 4px 5px rgba(0,0,0,.55), 0 0 18px rgba(202,179,124,.12);
+  filter: drop-shadow(0 8px 7px rgba(0,0,0,.38));
+  transform: translateZ(18px);
+}
+
+.tone-boss .combat-honours-object { color: #c7866d; }
+.tone-steel .combat-honours-object { color: #aeb8c0; }
+
+.combat-honours-plaque {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  gap: .12rem;
+  min-height: 3.2rem;
+  padding: .42rem .5rem;
+  border: 1px solid rgba(205,169,91,.2);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(31,28,24,.95), rgba(14,15,17,.96));
+  box-shadow: inset 0 1px rgba(255,255,255,.025), 0 4px 10px rgba(0,0,0,.28);
+  transform: translateZ(14px);
+}
+
+.combat-honours-plaque strong {
+  color: var(--parchment);
+  font-size: .76rem;
+}
+.combat-honours-plaque small {
+  color: var(--parchment-dim);
+  font-size: .66rem;
+  line-height: 1.32;
+}
+.combat-honours-plaque em {
+  color: var(--brass-dim);
+  font-size: .58rem;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+.combat-memorial-wall {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: .65rem;
+  padding: .85rem;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  background:
+    linear-gradient(100deg, rgba(255,255,255,.025), transparent 24% 76%, rgba(0,0,0,.18)),
+    #141618;
+  box-shadow: inset 0 0 35px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.025);
+  perspective: 1000px;
+}
+
+.combat-memorial-wall > p {
+  margin: 0;
+  color: var(--parchment-dim);
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+.combat-memorial-heading b {
+  display: grid;
+  place-items: center;
+  min-width: 2.1rem;
+  min-height: 2.1rem;
+  border: 1px solid rgba(205,169,91,.22);
+  border-radius: 50%;
+  color: var(--parchment);
+  background: rgba(0,0,0,.18);
+}
+
+.combat-memorial-plaques {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .45rem;
+  transform-style: preserve-3d;
+}
+
+.combat-memorial-plaques button {
+  min-width: 0;
+  min-height: 4.15rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: .12rem .42rem;
+  padding: .5rem .55rem;
+  border: 1px solid #4b4842;
+  border-radius: 4px;
+  color: var(--parchment);
+  text-align: left;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.045), transparent 25%),
+    linear-gradient(180deg, #292824, #17191a);
+  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 7px 11px rgba(0,0,0,.24);
+  transform: rotateX(-1deg) translateZ(5px);
+}
+
+.combat-memorial-plaques button > span {
+  grid-row: 1 / 3;
+  color: #8e8b82;
+  font-size: 1.25rem;
+}
+.combat-memorial-plaques button strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: .72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.combat-memorial-plaques button small {
+  color: var(--parchment-dim);
+  font-size: .61rem;
+}
+.combat-memorial-plaques button.is-selected {
+  border-color: color-mix(in srgb, var(--brass) 55%, #4b4842);
+  box-shadow: inset 0 0 0 1px rgba(205,169,91,.12), 0 8px 16px rgba(0,0,0,.3);
+}
+.combat-memorial-plaques button:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.combat-memorial-dossier {
+  display: grid;
+  gap: .7rem;
+  padding: .75rem;
+  border-left: 3px solid rgba(205,169,91,.48);
+  background: rgba(0,0,0,.17);
+}
+.combat-memorial-dossier > div:first-child {
+  display: grid;
+  gap: .08rem;
+}
+.combat-memorial-dossier > div:first-child span {
+  color: var(--brass-dim);
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+.combat-memorial-dossier > div:first-child strong { color: var(--parchment); }
+.combat-memorial-dossier > div:first-child small { color: var(--parchment-dim); }
+.combat-memorial-dossier dl {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: .4rem;
+  margin: 0;
+}
+.combat-memorial-dossier dl > div {
+  display: grid;
+  gap: .12rem;
+  min-width: 0;
+  padding: .42rem;
+  background: rgba(255,255,255,.018);
+}
+.combat-memorial-dossier dt {
+  color: var(--parchment-dim);
+  font-size: .56rem;
+  text-transform: uppercase;
+}
+.combat-memorial-dossier dd {
+  margin: 0;
+  color: var(--parchment);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  overflow-wrap: anywhere;
+}
+
+.combat-memorial-medals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .38rem;
+}
+.combat-memorial-medals > span {
+  display: grid;
+  gap: .08rem;
+  padding: .32rem .42rem;
+  border: 1px solid rgba(205,169,91,.16);
+  background: rgba(205,169,91,.04);
+}
+.combat-memorial-medals b { color: #ccb377; font-size: .64rem; }
+.combat-memorial-medals small { color: var(--parchment-dim); font-size: .57rem; }
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .combat-honours-plinth.is-clickable:hover { transform: rotateX(0deg) translateY(-2px); }
+  .combat-memorial-plaques button:hover { transform: rotateX(0deg) translateZ(8px); }
+}
+
+@media (max-width: 820px) {
+  .combat-honours-stage { grid-template-columns: 1fr; gap: .25rem; perspective: none; }
+  .combat-honours-plinth { min-height: 6.3rem; grid-template-columns: 4.5rem 1fr; grid-template-rows: auto; align-items: center; }
+  .combat-honours-plinth::before { left: .1rem; right: auto; width: 4.2rem; height: 2.6rem; bottom: .4rem; }
+  .combat-honours-object { width: 4rem; height: 4rem; font-size: 2.1rem; transform: none; }
+  .combat-honours-plaque { transform: none; }
+  .combat-memorial-plaques { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .combat-memorial-dossier dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .combat-honours-room { padding: .75rem; }
+  .combat-honours-heading { align-items: start; flex-direction: column; }
+  .combat-honours-heading small { text-align: left; }
+  .combat-memorial-plaques { grid-template-columns: 1fr; }
+  .combat-memorial-dossier dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-honours-plinth,
+  .combat-honours-object,
+  .combat-honours-plaque,
+  .combat-memorial-plaques button { transform: none !important; transition: none !important; }
+}
+
+html[data-reduced-motion='true'] .combat-honours-plinth,
+html[data-reduced-motion='true'] .combat-honours-object,
+html[data-reduced-motion='true'] .combat-honours-plaque,
+html[data-reduced-motion='true'] .combat-memorial-plaques button {
+  transform: none !important;
+  transition: none !important;
+}
