@@ -18,15 +18,6 @@ function cleanString(value, max = 96) {
   return text ? text.slice(0, max) : null;
 }
 
-function compactOutcomeRow(row = {}) {
-  return {
-    games: Math.max(0, finiteNumber(row.games)),
-    wins: Math.max(0, finiteNumber(row.wins)),
-    draws: Math.max(0, finiteNumber(row.draws)),
-    losses: Math.max(0, finiteNumber(row.losses)),
-  };
-}
-
 function openingMode(context = {}) {
   if (context.rescue) return 'rescue';
   if (context.lab) return 'lab';
@@ -73,10 +64,11 @@ export function buildOpeningBanterFacts(rivalry, context = {}) {
 
   const last = recent[0];
   if (last) {
+    // Opening names describe the shared game, not who chose the opening. Opening
+    // banter only receives facts that are safe to attribute to the human.
     facts.last_game = {
       outcome: cleanString(last.outcome, 16),
       difficulty: Number.isFinite(Number(last.difficulty)) ? Number(last.difficulty) : null,
-      opening: cleanString(last.opening, 96),
       half_moves: Math.max(0, finiteNumber(last.moves)),
     };
   }
@@ -88,12 +80,9 @@ export function buildOpeningBanterFacts(rivalry, context = {}) {
     .slice(0, 3);
   if (repeatedIncidents.length) facts.repeated_incidents = repeatedIncidents;
 
-  const openingRows = Object.entries(record.byOpening && typeof record.byOpening === 'object' ? record.byOpening : {})
-    .map(([name, row]) => ({ name: cleanString(name, 96), ...compactOutcomeRow(row) }))
-    .filter((row) => row.name && row.games >= 3)
-    .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name))
-    .slice(0, 2);
-  if (openingRows.length) facts.opening_history = openingRows;
+  // record.byOpening intentionally stays out of this dossier. It tracks the
+  // opening reached by both players, so treating it as a human preference can
+  // make Matthias blame the player for an opening the CPU itself steered into.
 
   if (Number.isFinite(difficulty)) {
     const sameDifficulty = recent.filter((game) => Number(game?.difficulty) === difficulty);
