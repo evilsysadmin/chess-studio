@@ -1,0 +1,62 @@
+name: Cache exact Node dependencies
+description: Restore an exact node_modules tree keyed by OS, architecture, Node major and package-lock hash; run npm ci only on cache miss.
+
+inputs:
+  working-directory:
+    description: Directory containing package.json, package-lock.json and node_modules.
+    required: true
+  lockfile:
+    description: Repository-relative package-lock.json path used for the cache key and integrity stamp.
+    required: true
+  node-version:
+    description: Node major used by the runner.
+    required: false
+    default: '22'
+  cache-version:
+    description: Manual cache namespace bump for installed dependency layout changes.
+    required: false
+    default: 'v1'
+
+outputs:
+  cache-hit:
+    description: Whether the exact installed dependency tree came from Actions cache.
+    value: ${{ steps.modules-cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Restore exact node_modules tree
+      id: modules-cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ inputs.working-directory }}/node_modules
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-node${{ inputs.node-version }}-${{ inputs.cache-version }}-${{ hashFiles(inputs.lockfile) }}
+
+    - name: Install dependencies on cache miss
+      if: steps.modules-cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CHESS_LOCKFILE: ${{ github.workspace }}/${{ inputs.lockfile }}
+      run: |
+        set -euo pipefail
+        # Prefer the setup-node npm download cache, but permit the registry when
+        # this is the first ever cache population for a new lockfile.
+        npm ci --prefer-offline --no-audit --fund=false
+        sha256sum "$CHESS_LOCKFILE" | awk '{print $1}' > node_modules/.chess-package-lock.sha256
+
+    - name: Verify installed dependency cache identity
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CHESS_LOCKFILE: ${{ github.workspace }}/${{ inputs.lockfile }}
+      run: |
+        set -euo pipefail
+        test -d node_modules
+        expected="$(sha256sum "$CHESS_LOCKFILE" | awk '{print $1}')"
+        actual="$(cat node_modules/.chess-package-lock.sha256 2>/dev/null || true)"
+        if [[ "$actual" != "$expected" ]]; then
+          echo "::error::node_modules cache stamp does not match $CHESS_LOCKFILE"
+          exit 1
+        fi
+        echo "Exact node_modules tree ready for ${{ inputs.working-directory }}."
