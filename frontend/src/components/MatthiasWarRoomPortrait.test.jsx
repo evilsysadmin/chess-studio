@@ -26,7 +26,7 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('data-matthias-three-avatar="true"');
     expect(html).toContain('data-three-scene="war-room-command"');
     expect(html).toContain('data-three-motion-intensity="1.00"');
-    expect(html).toContain('data-three-face-rig="face-v1"');
+    expect(html).toContain('data-three-face-rig="face-v2"');
     expect(html).toContain('data-three-face-expression="stern"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
@@ -79,13 +79,13 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('data-matthias-anger-level="4"');
   });
 
-  it('reparte los microgestos entre café, acercamiento, mirada dura, cabeza y barrido de sala', () => {
-    expect(nextWarRoomGesture(() => 0.04)).toBe('coffee');
-    expect(nextWarRoomGesture(() => 0.12)).toBe('lean-in');
-    expect(nextWarRoomGesture(() => 0.28)).toBe('glare');
-    expect(nextWarRoomGesture(() => 0.46)).toBe('head-left');
-    expect(nextWarRoomGesture(() => 0.62)).toBe('head-right');
-    expect(nextWarRoomGesture(() => 0.78)).toBe('survey');
-    expect(nextWarRoomGesture(() => 0.93)).toBe('glance');
+  it('prioriza microgestos pequeños y deja los gestos grandes menos frecuentes', () => {
+    expect(nextWarRoomGesture(() => 0.02)).toBe('coffee');
+    expect(nextWarRoomGesture(() => 0.10)).toBe('glance');
+    expect(nextWarRoomGesture(() => 0.38)).toBe('head-left');
+    expect(nextWarRoomGesture(() => 0.48)).toBe('head-right');
+    expect(nextWarRoomGesture(() => 0.60)).toBe('survey');
+    expect(nextWarRoomGesture(() => 0.75)).toBe('lean-in');
+    expect(nextWarRoomGesture(() => 0.92)).toBe('glare');
   });
 });
