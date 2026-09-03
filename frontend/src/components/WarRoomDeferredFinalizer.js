@@ -69,8 +69,9 @@ export function registerWarRoomDeferredFinalizer(group, {
   key,
   run,
   coarsePointer = false,
+  allowCoarse = false,
 } = {}) {
-  if (!group || coarsePointer || typeof key !== 'string' || !key || typeof run !== 'function') return 0;
+  if (!group || (coarsePointer && !allowCoarse) || typeof key !== 'string' || !key || typeof run !== 'function') return 0;
 
   const driver = finalizerDriver(group);
   if (!driver) return 0;
