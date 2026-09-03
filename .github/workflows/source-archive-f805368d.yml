@@ -1,0 +1,27 @@
+name: Source archive f805368d
+
+on:
+  push:
+    branches:
+      - artifact/f805368d-source-zip
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: f805368de0ea6ae64b45b4e0604dc361ed2854c9
+          fetch-depth: 0
+      - name: Create exact source ZIP
+        run: git archive --format=zip --prefix=ChessStudio_f805368d_COMPLETE/ -o ChessStudio_f805368d_COMPLETE.zip f805368de0ea6ae64b45b4e0604dc361ed2854c9
+      - name: Upload exact source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChessStudio_f805368d_COMPLETE
+          path: ChessStudio_f805368d_COMPLETE.zip
+          if-no-files-found: error
+          retention-days: 7
