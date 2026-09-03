@@ -1,6 +1,6 @@
 # GitHub Actions · inventario operativo
 
-Última auditoría: 2026-09-02.
+Última auditoría: 2026-09-03.
 
 Regla simple: cada workflow debe tener un dueño, un trigger justificable y un coste proporcional. Nada de arqueología de releases, runners dedicados para señales duplicadas ni mutaciones concurrentes del mismo entorno.
 
@@ -9,9 +9,10 @@ Regla simple: cada workflow debe tener un dueño, un trigger justificable y un c
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal de calidad para PR/main: preflight, frontend, backend, seguridad condicionada y smoke crítico. Es path-aware y **no despliega**. |
-| `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Cloudflare Pages staging y acredita backend/frontend. |
-| `staging-ai-worker.yml` | Despliega/acredita Workers AI staging después de `Staging · deploy`. |
-| `production-promote.yml` | Promueve a producción sólo el SHA acreditado por toda la cadena de staging. |
+| `staging-preview.yml` | Preview manual de cualquier rama/tag/SHA no-main. Sustituye temporalmente **sólo el frontend canónico de staging** por ese ref, compilado contra el backend de staging. Comparte mutex con el deploy oficial, no ejecuta Render/Workers AI, no acredita staging y no puede disparar producción. |
+| `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Cloudflare Pages staging y acredita backend/frontend. También sirve para restaurar manualmente staging a `main`; un dispatch manual no acredita producción. |
+| `staging-ai-worker.yml` | Despliega/acredita Workers AI staging después de `Staging · deploy`; rechaza como acreditación un upstream manual. |
+| `production-promote.yml` | Promueve a producción sólo el SHA acreditado por toda la cadena automática de staging. |
 | `production-rollback.yml` | Rollback manual a un SHA previamente promocionado y conocido bueno. Comparte mutex con promoción. |
 | `staging-bootstrap.yml` | Mantenimiento manual de Render staging. Comparte mutex con `staging-deploy.yml`; nunca puede pisar un deploy normal. |
 | `render-production-guardrail.yml` | Verifica/corrige `auto-deploy=off` en Render production. Manual, semanal y por cambios de su propia superficie. |
@@ -40,7 +41,9 @@ Regla simple: cada workflow debe tener un dueño, un trigger justificable y un c
 1. Un cambio visual no dispara QEMU, Terraform OCI ni seguridad Docker si no toca esas superficies.
 2. Los browser gates de PR corren sólo donde pueden impedir una regresión; el sweep multibrowser queda semanal/manual.
 3. War Room paraleliza **entre runners**, nunca varias escenas WebGL pesadas dentro de la misma VM.
-4. `staging-deploy.yml` y el mantenimiento manual de staging comparten mutex; producción promote/rollback también comparten mutex.
-5. Las rutas manuales de staging no acreditan producción. La promoción exige procedencia `workflow_run`, SHA actual de `main` e identidad de build comprobada.
-6. Workflows y documentación no deben conservar nombres de releases, ramas retiradas ni excepciones históricas una vez cumplida su función.
-7. El fichero `cicd.yml` conserva su nombre por compatibilidad con contratos/scripts del repo; su responsabilidad real es calidad, no despliegue.
+4. `staging-preview.yml` sólo se ejecuta manualmente desde el workflow de `main`, rechaza un ref que sea `main` o resuelva al SHA actual de `main`, y toca únicamente Cloudflare Pages staging; el código a previsualizar se checkouta aparte del orquestador.
+5. `staging-preview.yml`, `staging-deploy.yml` y el mantenimiento de staging se serializan donde escriben sobre el entorno; producción promote/rollback comparten su propio mutex.
+6. Las rutas manuales de preview/staging no acreditan producción. La promoción exige procedencia automática `workflow_run`, SHA actual de `main` e identidad de build comprobada.
+7. Para restaurar el frontend de staging después de un preview, se ejecuta manualmente `Staging · deploy` desde `main`; ese upstream manual es rechazado por `Staging · AI Worker` como acreditación de producción.
+8. Workflows y documentación no deben conservar nombres de releases, ramas retiradas ni excepciones históricas una vez cumplida su función.
+9. El fichero `cicd.yml` conserva su nombre por compatibilidad con contratos/scripts del repo; su responsabilidad real es calidad, no despliegue.
