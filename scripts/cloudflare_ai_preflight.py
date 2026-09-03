@@ -19,6 +19,7 @@ TF_MAIN = ROOT / "infra/cloudflare/main.tf"
 BACKEND = ROOT / "backend-python/narrative_cloudflare.py"
 FRONTEND_REMOTE = ROOT / "frontend/src/narrativeRemote.js"
 CI_WORKFLOW = ROOT / ".github/workflows/cicd.yml"
+STAGING_AI_WORKFLOW = ROOT / ".github/workflows/staging-ai-worker.yml"
 PROMOTION_WORKFLOW = ROOT / ".github/workflows/production-promote.yml"
 ROLLBACK_WORKFLOW = ROOT / ".github/workflows/production-rollback.yml"
 PAGES_HELPER = ROOT / "scripts/cloudflare_production_pages.py"
@@ -38,6 +39,17 @@ def require_pattern(text: str, pattern: str, label: str, errors: list[str]) -> N
         errors.append(f"{label}: no cumple el patrón esperado {pattern!r}")
 
 
+def require_order(text: str, first: str, second: str, label: str, errors: list[str]) -> None:
+    first_at = text.find(first)
+    second_at = text.find(second)
+    if first_at < 0:
+        errors.append(f"{label}: falta {first!r}")
+    elif second_at < 0:
+        errors.append(f"{label}: falta {second!r}")
+    elif first_at >= second_at:
+        errors.append(f"{label}: {first!r} debe aparecer antes de {second!r}")
+
+
 def static_check() -> list[str]:
     errors: list[str] = []
     worker = WORKER.read_text(encoding="utf-8")
@@ -46,12 +58,15 @@ def static_check() -> list[str]:
     backend = BACKEND.read_text(encoding="utf-8")
     frontend = FRONTEND_REMOTE.read_text(encoding="utf-8")
     ci = CI_WORKFLOW.read_text(encoding="utf-8")
+    if not STAGING_AI_WORKFLOW.exists():
+        return ["pipeline: falta .github/workflows/staging-ai-worker.yml"]
     if not PROMOTION_WORKFLOW.exists():
         return ["pipeline: falta .github/workflows/production-promote.yml"]
     if not ROLLBACK_WORKFLOW.exists():
         return ["pipeline: falta .github/workflows/production-rollback.yml"]
     if not PAGES_HELPER.exists():
         return ["pipeline: falta scripts/cloudflare_production_pages.py"]
+    staging_ai = STAGING_AI_WORKFLOW.read_text(encoding="utf-8")
     promotion = PROMOTION_WORKFLOW.read_text(encoding="utf-8")
     rollback = ROLLBACK_WORKFLOW.read_text(encoding="utf-8")
     pages_helper = PAGES_HELPER.read_text(encoding="utf-8")
@@ -136,15 +151,55 @@ def static_check() -> list[str]:
     if "workflow_run:" in ci:
         errors.append("CI principal no debe usar workflow_run; staging lo encadena después del quality gate")
 
-    # Promotion must be provenance-bound to the staging AI workflow, use the
-    # exact accredited SHA everywhere and serialize Worker -> backend -> frontend.
+    # Staging accreditation is a read-only provenance boundary. A completed
+    # staging generation that is no longer main may still be a valid smoke, but
+    # it must self-cancel before emitting a production accreditation artifact.
+    for needle, label in (
+        ("name: Staging · AI Worker", "staging AI workflow name"),
+        ("actions: write", "staging AI self-cancel permission"),
+        ("UPSTREAM_EVENT: ${{ github.event.workflow_run.event", "staging AI upstream provenance"),
+        ("Supersede stale staging accreditation", "staging AI stale accreditation guard"),
+        ("git ls-remote --exit-code origin refs/heads/main", "staging AI compares accredited SHA to main"),
+        ("Write immutable production accreditation", "staging AI immutable accreditation writer"),
+        ("staging_deploy_run_id", "staging AI binds deploy run id"),
+        ("staging_ai_run_id", "staging AI binds accreditation run id"),
+        ("actions/upload-artifact@v6", "staging AI accreditation artifact upload"),
+        ("staging-promotion-accreditation", "staging AI accreditation artifact name"),
+    ):
+        require(staging_ai, needle, label, errors)
+    require_order(
+        staging_ai,
+        "Supersede stale staging accreditation",
+        "Verify staging backend still serves approved SHA",
+        "staging AI stale guard ordering",
+        errors,
+    )
+    require_order(
+        staging_ai,
+        "Shared Workers AI live contract",
+        "Write immutable production accreditation",
+        "staging AI accreditation emitted only after live verification",
+        errors,
+    )
+
+    # Promotion must consume the immutable artifact emitted by the exact
+    # triggering Staging AI run. A second-hop workflow_run head_sha is merely
+    # wrapper metadata and can point at a newer main commit than the SHA that was
+    # actually accredited, so it is forbidden as active promotion provenance.
     for needle, label in (
         ("name: Production · promote", "promotion workflow name"),
         ("workflow_run:", "promotion workflow_run trigger"),
         ("Staging · AI Worker", "promotion staging AI source"),
         ("github.event.workflow_run.conclusion == 'success'", "promotion requires successful staging AI"),
         ("github.event.workflow_run.event == 'workflow_run'", "promotion rejects manual AI runs"),
-        ('DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}', "promotion exact source SHA"),
+        ("actions: write", "promotion self-cancel permission"),
+        ("actions/download-artifact@v6", "promotion downloads immutable accreditation"),
+        ("staging-promotion-accreditation", "promotion accreditation artifact name"),
+        ("run-id: ${{ github.event.workflow_run.id }}", "promotion artifact bound to exact triggering run"),
+        ("github-token: ${{ secrets.GITHUB_TOKEN }}", "promotion cross-run artifact permission"),
+        ("Read accredited source SHA", "promotion reads accredited SHA"),
+        ("staging_ai_run_id", "promotion validates artifact run provenance"),
+        ("deploy_sha: ${{ steps.accreditation.outputs.deploy_sha }}", "promotion exports accredited SHA"),
         ("Gate · staging accredited SHA", "promotion staging gate"),
         ("Require current main before starting promotion", "promotion stale-start guard"),
         ("git ls-remote --exit-code origin refs/heads/main", "promotion compares accredited SHA to main"),
@@ -152,6 +207,7 @@ def static_check() -> list[str]:
         ("Verify staging frontend still serves approved SHA", "promotion rechecks staging frontend"),
         ("Verify staging AI health contract", "promotion rechecks staging AI"),
         ("Production · Cloudflare Worker", "promotion Worker stage"),
+        ("Supersede stale production promotion before first mutation", "promotion final stale admission guard"),
         ("Production · Render backend", "promotion Render stage"),
         ("needs: cloudflare", "Render waits for Worker"),
         ('python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"', "Render exact commit deploy"),
@@ -168,6 +224,20 @@ def static_check() -> list[str]:
         ("Verify production frontend build identity", "Pages live identity gate"),
     ):
         require(promotion, needle, label, errors)
+    require_order(
+        promotion,
+        "Supersede stale production promotion before first mutation",
+        "- name: Terraform apply",
+        "promotion final stale guard ordering",
+        errors,
+    )
+    active_wrapper_sha = re.search(
+        r"^\s*DEPLOY_SHA:\s*\$\{\{\s*github\.event\.workflow_run\.head_sha\s*\}\}\s*$",
+        promotion,
+        flags=re.MULTILINE,
+    )
+    if active_wrapper_sha is not None:
+        errors.append("promotion: workflow_run.head_sha no puede ser la procedencia activa tras un segundo salto")
 
     # The helper, not Terraform, owns production frontend DNS so it can enforce
     # verify-before-cutover. The direct Pages origin is deployed first; only then
