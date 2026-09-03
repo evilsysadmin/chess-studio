@@ -1,0 +1,157 @@
+name: Temporary premium Matthias cap patch
+
+on:
+  push:
+    branches:
+      - visual/matthias-premium-peaked-cap
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: visual/matthias-premium-peaked-cap
+          fetch-depth: 0
+      - name: Apply premium peaked cap geometry
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/components/MatthiasKing3D.js')
+          text = path.read_text()
+          text = text.replace("group.userData.capStyle = 'compact-command-peaked-cap-v4';", "group.userData.capStyle = 'premium-command-peaked-cap-v5';")
+          start = text.index('  const capGroup = new THREE.Group();')
+          end = text.index('\n  group.scale.setScalar(1.035);', start)
+          new_block = r'''  const capGroup = new THREE.Group();
+  capGroup.name = 'matthias-officer-cap';
+  // Premium plate cap based on Matthias' canonical Home silhouette: a narrow
+  // fitted band, a structured flared crown, restrained red piping, braided
+  // brass cord and a short curved visor. At tactical distance the crown must
+  // read as an officer cap without covering the eyes or becoming a canopy.
+  capGroup.position.set(0, 1.175, -front * 0.004);
+  capGroup.rotation.z = -0.018 * front;
+  capGroup.rotation.x = -0.008 * front;
+  capGroup.userData.faceClearance = 'eyes-and-brows-visible';
+  capGroup.userData.silhouette = 'premium-plate-cap';
+  capGroup.userData.reference = 'home-command-cap-v1';
+  headRig.add(capGroup);
+
+  // Fitted lower band. The crown above deliberately flares wider, which is
+  // the defining plate-cap silhouette missing from the old cylindrical hat.
+  add(capGroup, new THREE.CylinderGeometry(0.207, 0.213, 0.076, segments), cap, [0, 0.035, 0], [0, 0, 0], [1.02, 1, 0.94], 'matthias-cap');
+  add(capGroup, new THREE.CylinderGeometry(0.248, 0.208, 0.105, segments), cap, [0, 0.124, 0], [0, 0, 0], [1.025, 1, 0.91], 'matthias-cap-crown');
+  add(capGroup, new THREE.CylinderGeometry(0.252, 0.247, 0.024, segments), cap, [-0.003, 0.188, -front * 0.002], [0, 0, 0.012 * front], [1.03, 1, 0.91], 'matthias-cap-top');
+
+  // Wine-red band and fine top piping from the approved mock. They stay dark
+  // enough to belong to the black uniform rather than reading as neon trim.
+  add(capGroup, new THREE.TorusGeometry(0.211, 0.0115, 8, segments), capBand, [0, 0.061, 0], [Math.PI / 2, 0, 0], [1.02, 0.94, 1], 'matthias-cap-band');
+  add(capGroup, new THREE.TorusGeometry(0.247, 0.0055, 7, segments), capBand, [-0.003, 0.199, -front * 0.002], [Math.PI / 2, 0, 0], [1.03, 0.91, 1], 'matthias-cap-red-piping');
+
+  // A real short peaked visor: bespoke curved slab rather than the previous
+  // giant cylinder sector. Width stays well inside the face silhouette and the
+  // forward projection is intentionally modest.
+  const visorShape = new THREE.Shape();
+  visorShape.moveTo(-0.17, 0);
+  visorShape.quadraticCurveTo(-0.165, 0.092, -0.105, 0.126);
+  visorShape.quadraticCurveTo(0, 0.154, 0.105, 0.126);
+  visorShape.quadraticCurveTo(0.165, 0.092, 0.17, 0);
+  visorShape.quadraticCurveTo(0, -0.012, -0.17, 0);
+  const visorGeometry = new THREE.ExtrudeGeometry(visorShape, {
+    depth: 0.018,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    bevelSize: 0.004,
+    bevelThickness: 0.0025,
+    curveSegments: coarsePointer ? 5 : 9,
+    steps: 1,
+  });
+  visorGeometry.translate(0, 0, -0.009);
+  const visor = add(
+    capGroup,
+    visorGeometry,
+    cap,
+    [0, -0.006, front * 0.14],
+    [front * Math.PI / 2, 0, 0],
+    null,
+    'matthias-visor',
+  );
+  visor.castShadow = true;
+  visor.userData.compactForFaceVisibility = true;
+  visor.userData.shortPremiumBrim = true;
+
+  // Braided brass cord across the front, with restrained end studs. A tube
+  // curve gives the mock's slight central droop without adding fragile detail.
+  const cordCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.158, 0.027, front * 0.195),
+    new THREE.Vector3(-0.082, 0.018, front * 0.211),
+    new THREE.Vector3(0, 0.014, front * 0.216),
+    new THREE.Vector3(0.082, 0.018, front * 0.211),
+    new THREE.Vector3(0.158, 0.027, front * 0.195),
+  ]);
+  add(capGroup, new THREE.TubeGeometry(cordCurve, coarsePointer ? 12 : 22, 0.0065, 7, false), brass, [0, 0, 0], [0, 0, 0], null, 'matthias-cap-cord');
+  add(capGroup, new THREE.SphereGeometry(0.012, 10, 7), brass, [-0.164, 0.03, front * 0.194], [0, 0, 0], null, 'matthias-cap-cord-stud-left');
+  add(capGroup, new THREE.SphereGeometry(0.012, 10, 7), brass, [0.164, 0.03, front * 0.194], [0, 0, 0], null, 'matthias-cap-cord-stud-right');
+
+  // Premium command crest: gold diamond/shield, dark inset and red centre.
+  // Deliberately broad enough to read from the tactical camera, but still
+  // subordinate to Matthias' face.
+  add(capGroup, new THREE.BoxGeometry(0.068, 0.068, 0.014), brass, [0, 0.102, front * 0.211], [0, 0, Math.PI / 4], [1, 1.12, 1], 'matthias-cap-badge');
+  add(capGroup, new THREE.BoxGeometry(0.046, 0.046, 0.016), ink, [0, 0.102, front * 0.22], [0, 0, Math.PI / 4], [1, 1.08, 1], 'matthias-cap-badge-inset');
+  add(capGroup, new THREE.BoxGeometry(0.022, 0.022, 0.018), capBand, [0, 0.102, front * 0.231], [0, 0, Math.PI / 4], [1, 1.05, 1], 'matthias-cap-badge-gem');
+'''
+          text = text[:start] + new_block + text[end:]
+          path.write_text(text)
+
+          test_path = Path('frontend/src/components/MatthiasKing3D.test.js')
+          test = test_path.read_text()
+          test = test.replace("expect(group.userData.capStyle).toBe('compact-command-peaked-cap-v4');", "expect(group.userData.capStyle).toBe('premium-command-peaked-cap-v5');")
+          test = test.replace("expect(meshes).toBeGreaterThanOrEqual(24);", "expect(meshes).toBeGreaterThanOrEqual(28);")
+          test = test.replace("    expect(group.getObjectByName('matthias-cap-badge-pawn-head')).toBeTruthy();\n", "    expect(group.getObjectByName('matthias-cap-crown')).toBeTruthy();\n    expect(group.getObjectByName('matthias-cap-red-piping')).toBeTruthy();\n    expect(group.getObjectByName('matthias-cap-cord')).toBeTruthy();\n    expect(group.getObjectByName('matthias-cap-badge-inset')).toBeTruthy();\n    expect(group.getObjectByName('matthias-cap-badge-gem')).toBeTruthy();\n")
+          old_assertions = """    expect(capGroup.userData.faceClearance).toBe('eyes-and-brows-visible');
+    expect(capGroup.position.y).toBeGreaterThanOrEqual(1.17);
+    expect(visor.userData.compactForFaceVisibility).toBe(true);
+    expect(visor.geometry.parameters.radiusBottom).toBeLessThan(0.3);
+    expect(visor.geometry.parameters.radiusTop).toBeLessThan(0.28);
+    expect(cap.geometry.parameters.radiusBottom).toBeLessThan(0.24);
+"""
+          new_assertions = """    const crown = group.getObjectByName('matthias-cap-crown');
+    const cord = group.getObjectByName('matthias-cap-cord');
+    visor.geometry.computeBoundingBox();
+    const visorBox = visor.geometry.boundingBox;
+    const visorWidth = visorBox.max.x - visorBox.min.x;
+    const visorProjection = visorBox.max.y - visorBox.min.y;
+
+    expect(capGroup.userData.faceClearance).toBe('eyes-and-brows-visible');
+    expect(capGroup.userData.silhouette).toBe('premium-plate-cap');
+    expect(capGroup.userData.reference).toBe('home-command-cap-v1');
+    expect(capGroup.position.y).toBeGreaterThanOrEqual(1.17);
+    expect(visor.userData.compactForFaceVisibility).toBe(true);
+    expect(visor.userData.shortPremiumBrim).toBe(true);
+    expect(visor.geometry.type).toBe('ExtrudeGeometry');
+    expect(visorWidth).toBeLessThanOrEqual(0.36);
+    expect(visorProjection).toBeLessThanOrEqual(0.18);
+    expect(cap.geometry.parameters.radiusTop).toBeLessThanOrEqual(0.21);
+    expect(crown.geometry.parameters.radiusTop).toBeGreaterThan(0.24);
+    expect(crown.geometry.parameters.radiusTop).toBeGreaterThan(cap.geometry.parameters.radiusTop);
+    expect(cord.geometry.type).toBe('TubeGeometry');
+"""
+          if old_assertions not in test:
+              raise SystemExit('cap assertion block not found')
+          test = test.replace(old_assertions, new_assertions)
+          test = test.replace("it('mantiene la cara mínima e insignia de peón en móvil/coarse pointer'", "it('mantiene la cara mínima y la gorra premium en móvil/coarse pointer'")
+          test = test.replace("    expect(group.getObjectByName('matthias-cap-badge-pawn-body')).toBeTruthy();\n", "    expect(group.getObjectByName('matthias-cap-cord')).toBeTruthy();\n    expect(group.getObjectByName('matthias-cap-badge-gem')).toBeTruthy();\n")
+          test_path.write_text(test)
+          PY
+
+          git rm .github/workflows/tmp-premium-cap-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/components/MatthiasKing3D.js frontend/src/components/MatthiasKing3D.test.js
+          git commit -m "Give Matthias the premium peaked cap"
+          git push origin HEAD:visual/matthias-premium-peaked-cap
