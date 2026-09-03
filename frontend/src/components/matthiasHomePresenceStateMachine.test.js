@@ -54,12 +54,13 @@ describe('matthiasHomePresenceStateMachine', () => {
     expect(state.speaking).toBe(false);
   });
 
-  it('usa pausas largas e irregulares y gestos breves', () => {
-    expect(matthiasHomeIdleDelay(() => 0, 'idle')).toBe(4000);
-    expect(matthiasHomeIdleDelay(() => 1, 'idle')).toBe(9000);
-    expect(matthiasHomeIdleDelay(() => 0, 'sleep')).toBeGreaterThan(6000);
-    expect(matthiasHomeStateDuration(MATTHIAS_HOME_STATES.SURVEY)).toBeGreaterThan(1000);
-    expect(matthiasHomeStateDuration(MATTHIAS_HOME_STATES.GLANCE_LEFT)).toBeLessThan(1000);
+  it('mantiene aire ambiental sin dejar a Matthias visualmente embalsamado', () => {
+    expect(matthiasHomeIdleDelay(() => 0, 'idle')).toBe(1800);
+    expect(matthiasHomeIdleDelay(() => 1, 'idle')).toBe(4400);
+    expect(matthiasHomeIdleDelay(() => 0, 'sleep')).toBeGreaterThan(4500);
+    expect(matthiasHomeStateDuration(MATTHIAS_HOME_STATES.SURVEY)).toBeGreaterThanOrEqual(1800);
+    expect(matthiasHomeStateDuration(MATTHIAS_HOME_STATES.GLANCE_LEFT)).toBeGreaterThanOrEqual(1200);
+    expect(matthiasHomeStateDuration(MATTHIAS_HOME_STATES.SKEPTICAL)).toBeLessThanOrEqual(2000);
   });
 
   it('describe estados como gestos de presencia, no como morphs faciales', () => {
