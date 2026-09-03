@@ -29,7 +29,7 @@ import { checkedKingSquare } from '../boardState.js';
 import { gameStatusView } from '../gameStatusView.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { chessFromFen, safeChessMove } from '../chessRules.js';
-import { createOperationId, operationFingerprint } from '../operationId.js';
+import { createGameMutationCoordinator } from '../gameMutationCoordinator.js';
 
 
 const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una torre', q: 'la dama' };
@@ -116,22 +116,9 @@ export default function GameScreen({
   const [suddenLives, setSuddenLives] = useState(3);
   const [controlPrompt, setControlPrompt] = useState(null);
   const controlResolveRef = useRef(null);
-  const sessionGenerationRef = useRef(0);
-  const mutationRef = useRef(null); // { token, controller, session } · move/undo excluyentes
-  const mutationRetryRef = useRef(null); // conserva Idempotency-Key tras timeout para que reintentar no duplique la mutación
-
-  function mutationOperationId(kind, parts) {
-    const fingerprint = operationFingerprint([kind, ...parts]);
-    const retry = mutationRetryRef.current;
-    if (retry && retry.fingerprint === fingerprint && (Date.now() - retry.failedAt) < 5 * 60_000) return retry.operationId;
-    const operationId = createOperationId(kind);
-    mutationRetryRef.current = { fingerprint, operationId, failedAt: Date.now() };
-    return operationId;
-  }
-
-  function confirmMutation(operationId) {
-    if (operationId && mutationRetryRef.current?.operationId === operationId) mutationRetryRef.current = null;
-  }
+  const mutationCoordinatorRef = useRef(null);
+  if (!mutationCoordinatorRef.current) mutationCoordinatorRef.current = createGameMutationCoordinator();
+  const mutationCoordinator = mutationCoordinatorRef.current;
   const hintRequestRef = useRef(null);
   const pressureMovesRef = useRef(0);
   const pressureIncidentsRef = useRef(0);
@@ -180,10 +167,7 @@ export default function GameScreen({
   useEffect(() => {
     // Nueva partida = nueva generación async. Cualquier respuesta, prompt o
     // request de la partida anterior deja de tener permiso para tocar estado.
-    sessionGenerationRef.current += 1;
-    mutationRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
-    mutationRef.current = null;
-    mutationRetryRef.current = null;
+    mutationCoordinator.invalidateSession('Game changed', { clearRetry: true });
     hintRequestRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
     hintRequestRef.current = null;
     if (controlResolveRef.current) {
@@ -243,9 +227,7 @@ export default function GameScreen({
   // puntos ni sobrescribir el tablero después del resultado por tiempo.
   useEffect(() => {
     if (!flagFallen) return;
-    sessionGenerationRef.current += 1;
-    mutationRef.current?.controller?.abort(new DOMException('Clock flag fell', 'AbortError'));
-    mutationRef.current = null;
+    mutationCoordinator.invalidateSession('Clock flag fell', { clearRetry: false });
     hintRequestRef.current?.controller?.abort(new DOMException('Clock flag fell', 'AbortError'));
     hintRequestRef.current = null;
     if (controlResolveRef.current) {
@@ -420,8 +402,7 @@ export default function GameScreen({
     if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
     if (openingMemoryTimeout.current) clearTimeout(openingMemoryTimeout.current);
     stopCpuSpeech();
-    mutationRef.current?.controller?.abort(new DOMException('Screen unmounted', 'AbortError'));
-    mutationRef.current = null;
+    mutationCoordinator.abortCurrent('Screen unmounted');
     hintRequestRef.current?.controller?.abort(new DOMException('Screen unmounted', 'AbortError'));
     hintRequestRef.current = null;
     // Si el usuario abandona/cambia de vista mientras está abierto el control
@@ -475,13 +456,11 @@ export default function GameScreen({
       setSelected(null);
       return;
     }
-    // `busy` tarda un render en propagarse. Este ref cierra la pequeña ventana
-    // donde dos clics/eventos síncronos podían disparar dos mutaciones iguales.
-    if (mutationRef.current) return;
-    const session = sessionGenerationRef.current;
-    const controller = new AbortController();
-    const operation = { token: Symbol('game-mutation'), controller, session };
-    mutationRef.current = operation;
+    // `busy` tarda un render en propagarse. El coordinador cierra la pequeña
+    // ventana donde dos clics/eventos síncronos podían disparar mutaciones iguales.
+    const operation = mutationCoordinator.begin('game-mutation');
+    if (!operation) return;
+    const { controller } = operation;
 
     setBoardFen(optimistic.fen());
     setLastMoveSquares({ from, to });
@@ -506,7 +485,7 @@ export default function GameScreen({
       if (nextLives <= 0) {
         const forcedGame = { ...game, history: [...(game.history || []), humanMove], fen: optimistic.fen(), isGameOver: true, status: 'sudden-death' };
         setGame(forcedGame); setForcedOutcome('loss'); setBusy(false);
-        if (mutationRef.current === operation) mutationRef.current = null;
+        mutationCoordinator.finish(operation);
         controller.abort(new DOMException('Game finished', 'AbortError'));
         showNoteworthy(humanComment, 'human', { allowRemote: false });
         if (!reportedResultRef.current) {
@@ -534,17 +513,17 @@ export default function GameScreen({
         controlResolveRef.current = null;
         setControlPrompt(null);
       }
-      if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
+      if (!mutationCoordinator.isCurrent(operation)) return;
     }
 
     const minThink = abortableDelay(MIN_CPU_THINK_MS, controller.signal);
 
     try {
-      const operationId = mutationOperationId('move', [game.id, from, to, promotion || 'q']);
+      const operationId = mutationCoordinator.operationId('move', [game.id, from, to, promotion || 'q']);
       operation.operationId = operationId;
       const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion, { signal: controller.signal, operationId }), minThink]);
-      confirmMutation(operationId);
-      if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
+      mutationCoordinator.confirm(operationId);
+      if (!mutationCoordinator.isCurrent(operation)) return;
 
       // Sólo una jugada confirmada por el backend puede conceder incremento o
       // puntos de torneo. Antes estos efectos se aplicaban al tablero optimista:
@@ -602,7 +581,7 @@ export default function GameScreen({
         }
       }
     } catch (e) {
-      const stillCurrent = mutationRef.current === operation && sessionGenerationRef.current === session;
+      const stillCurrent = mutationCoordinator.isCurrent(operation);
       if (stillCurrent && !isAbortError(e)) {
         onPersistenceState?.('error');
         onError?.(e.message);
@@ -612,10 +591,7 @@ export default function GameScreen({
         setLastMoveSquares(game.lastMove);
       }
     } finally {
-      if (mutationRef.current === operation) {
-        mutationRef.current = null;
-        setBusy(false);
-      }
+      if (mutationCoordinator.finish(operation)) setBusy(false);
     }
   }
 
@@ -674,14 +650,14 @@ export default function GameScreen({
 
   async function handleHint() {
     if (!canHint || hintRequestRef.current) return;
-    const session = sessionGenerationRef.current;
+    const session = mutationCoordinator.sessionGeneration?.() ?? null;
     const controller = new AbortController();
     const requestToken = { token: Symbol('hint'), controller, session };
     hintRequestRef.current = requestToken;
     setHintLoading(true);
     try {
       const suggestion = await api.getHint(game.id, { signal: controller.signal });
-      if (hintRequestRef.current !== requestToken || sessionGenerationRef.current !== session) return;
+      if (hintRequestRef.current !== requestToken) return;
       setHint(suggestion);
       setSelected(suggestion.from);
       if (hintMode === 'paid') {
@@ -689,7 +665,7 @@ export default function GameScreen({
         setHintsUsedThisGame((n) => n + 1);
       }
     } catch (e) {
-      if (hintRequestRef.current === requestToken && sessionGenerationRef.current === session && !isAbortError(e)) onError?.(e.message);
+      if (hintRequestRef.current === requestToken && !isAbortError(e)) onError?.(e.message);
     } finally {
       if (hintRequestRef.current === requestToken) {
         hintRequestRef.current = null;
@@ -699,21 +675,20 @@ export default function GameScreen({
   }
 
   async function handleUndo() {
-    if (busy || flagFallen || game.history.length === 0 || mutationRef.current) return;
-    const session = sessionGenerationRef.current;
-    const controller = new AbortController();
-    const operation = { token: Symbol('undo'), controller, session };
-    mutationRef.current = operation;
+    if (busy || flagFallen || game.history.length === 0 || mutationCoordinator.hasCurrent()) return;
+    const operation = mutationCoordinator.begin('undo');
+    if (!operation) return;
+    const { controller } = operation;
     setBusy(true);
     onPersistenceState?.('saving');
     setHint(null);
     setTurnBanner(null);
     try {
-      const operationId = mutationOperationId('undo', [game.id, game.history.length]);
+      const operationId = mutationCoordinator.operationId('undo', [game.id, game.history.length]);
       operation.operationId = operationId;
       const updated = await api.undoMove(game.id, { signal: controller.signal, operationId });
-      confirmMutation(operationId);
-      if (mutationRef.current !== operation || sessionGenerationRef.current !== session) return;
+      mutationCoordinator.confirm(operationId);
+      if (!mutationCoordinator.isCurrent(operation)) return;
       setGame(updated);
       setBoardFen(updated.fen);
       setLastMoveSquares(updated.lastMove);
@@ -721,15 +696,12 @@ export default function GameScreen({
       setPendingAnim(null); // el deshacer salta directo, no se anima
       onPersistenceState?.('saving');
     } catch (e) {
-      if (mutationRef.current === operation && sessionGenerationRef.current === session && !isAbortError(e)) {
+      if (mutationCoordinator.isCurrent(operation) && !isAbortError(e)) {
         onPersistenceState?.('error');
         onError?.(e.message);
       }
     } finally {
-      if (mutationRef.current === operation) {
-        mutationRef.current = null;
-        setBusy(false);
-      }
+      if (mutationCoordinator.finish(operation)) setBusy(false);
     }
   }
 
