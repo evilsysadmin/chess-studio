@@ -109,53 +109,40 @@ function preserveKnightGeometryRole(geometry, previousGeometry) {
   return geometry;
 }
 
-function equestrianKnightHeadGeometry(previousGeometry, coarsePointer = false) {
+function mockKnightBodyGeometry(previousGeometry, coarsePointer = false) {
   const shape = new THREE.Shape();
-  // Exaggerate the poll, forehead and muzzle so the horse silhouette remains
-  // readable from the fixed tactical camera, including the coarse/mobile mesh.
-  shape.moveTo(-0.205, -0.10);
-  shape.bezierCurveTo(-0.235, 0.12, -0.205, 0.42, -0.105, 0.62);
-  shape.bezierCurveTo(-0.035, 0.76, 0.065, 0.845, 0.165, 0.855);
-  shape.bezierCurveTo(0.265, 0.865, 0.335, 0.79, 0.365, 0.70);
-  shape.bezierCurveTo(0.415, 0.64, 0.555, 0.615, 0.625, 0.525);
-  shape.bezierCurveTo(0.665, 0.445, 0.595, 0.365, 0.465, 0.34);
-  shape.bezierCurveTo(0.335, 0.315, 0.235, 0.255, 0.195, 0.155);
-  shape.bezierCurveTo(0.155, 0.045, 0.10, -0.065, 0.015, -0.12);
-  shape.bezierCurveTo(-0.07, -0.17, -0.16, -0.155, -0.205, -0.10);
+  // v10 is a single sculptural silhouette taken from the approved generated
+  // mock: long arched neck, restrained angular muzzle and a deep throat cut.
+  // The old stacked muzzle/jaw/ear masses are deliberately gone.
+  shape.moveTo(-0.205, 0.035);
+  shape.bezierCurveTo(-0.255, 0.26, -0.245, 0.60, -0.155, 0.86);
+  shape.bezierCurveTo(-0.095, 1.035, 0.015, 1.115, 0.145, 1.125);
+  shape.bezierCurveTo(0.255, 1.13, 0.325, 1.065, 0.355, 0.965);
+  shape.bezierCurveTo(0.39, 0.885, 0.485, 0.845, 0.545, 0.77);
+  shape.bezierCurveTo(0.575, 0.705, 0.545, 0.635, 0.455, 0.61);
+  shape.bezierCurveTo(0.355, 0.585, 0.275, 0.535, 0.225, 0.455);
+  shape.bezierCurveTo(0.17, 0.365, 0.145, 0.255, 0.17, 0.17);
+  shape.bezierCurveTo(0.09, 0.075, -0.075, 0.02, -0.205, 0.035);
 
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: coarsePointer ? 0.235 : 0.245,
-    bevelEnabled: true,
-    bevelThickness: coarsePointer ? 0.032 : 0.038,
-    bevelSize: coarsePointer ? 0.024 : 0.028,
-    bevelSegments: coarsePointer ? 1 : 2,
-    curveSegments: coarsePointer ? 10 : 18,
-  });
-  geometry.center();
-  return preserveKnightGeometryRole(geometry, previousGeometry);
-}
-
-function equestrianKnightNeckGeometry(previousGeometry, coarsePointer = false) {
-  const shape = new THREE.Shape();
-  // The asymmetric S-neck is the strongest knight cue at small screen sizes.
-  shape.moveTo(-0.235, 0.245);
-  shape.bezierCurveTo(-0.265, 0.39, -0.235, 0.575, -0.145, 0.705);
-  shape.bezierCurveTo(-0.08, 0.795, 0.035, 0.805, 0.13, 0.735);
-  shape.bezierCurveTo(0.205, 0.675, 0.195, 0.585, 0.145, 0.515);
-  shape.bezierCurveTo(0.10, 0.45, 0.105, 0.365, 0.205, 0.285);
-  shape.bezierCurveTo(0.09, 0.225, -0.105, 0.205, -0.235, 0.245);
-
-  const depth = coarsePointer ? 0.22 : 0.23;
+  const depth = coarsePointer ? 0.255 : 0.285;
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth,
     bevelEnabled: true,
-    bevelThickness: coarsePointer ? 0.025 : 0.03,
-    bevelSize: coarsePointer ? 0.018 : 0.022,
-    bevelSegments: coarsePointer ? 1 : 2,
-    curveSegments: coarsePointer ? 9 : 16,
+    bevelThickness: coarsePointer ? 0.03 : 0.038,
+    bevelSize: coarsePointer ? 0.024 : 0.03,
+    bevelSegments: coarsePointer ? 1 : 3,
+    curveSegments: coarsePointer ? 10 : 20,
   });
   geometry.translate(0, 0, -depth / 2);
   return preserveKnightGeometryRole(geometry, previousGeometry);
+}
+
+function retireLegacyKnightPart(mesh, marker) {
+  if (!mesh?.parent) return 0;
+  mesh.userData.knightTemplatePartRetired = marker;
+  mesh.geometry?.dispose?.();
+  mesh.parent.remove(mesh);
+  return 1;
 }
 
 function applyApprovedKnightSilhouette(group, coarsePointer) {
@@ -163,154 +150,73 @@ function applyApprovedKnightSilhouette(group, coarsePointer) {
   const [neck] = knightMeshesByRole(group, ':knight-neck');
   const ears = knightMeshesByRole(group, ':knight-ear');
   const eyes = knightMeshesByRole(group, ':knight-eye');
-  if (!head || !neck) return 0;
+  if (!head) return 0;
 
   const previousHead = head.geometry;
-  head.geometry = equestrianKnightHeadGeometry(previousHead, coarsePointer);
+  head.geometry = mockKnightBodyGeometry(previousHead, coarsePointer);
   previousHead?.dispose?.();
-  head.position.set(coarsePointer ? 0.06 : 0.055, coarsePointer ? 0.675 : 0.69, 0);
-  head.scale.set(coarsePointer ? 1.12 : 1.08, coarsePointer ? 1.01 : 0.99, coarsePointer ? 1.06 : 1.08);
-  head.userData.knightHeadProfile = coarsePointer ? 'equestrian-staunton-lite-v9' : 'equestrian-staunton-v8';
+  head.position.set(-0.015, coarsePointer ? 0.275 : 0.285, 0);
+  head.scale.set(1, 1, 1);
+  head.userData.knightHeadProfile = coarsePointer ? 'approved-generated-mock-lite-v10' : 'approved-generated-mock-v10';
 
-  const previousNeck = neck.geometry;
-  neck.geometry = equestrianKnightNeckGeometry(previousNeck, coarsePointer);
-  previousNeck?.dispose?.();
-  neck.position.set(coarsePointer ? -0.025 : -0.015, 0, 0);
-  neck.scale.set(coarsePointer ? 1.10 : 1.08, coarsePointer ? 1.08 : 1.06, coarsePointer ? 1.04 : 1.06);
-  neck.userData.knightNeckProfile = coarsePointer ? 'sculpted-s-neck-lite-v9' : 'sculpted-s-neck-v8';
+  let retired = 0;
+  retired += retireLegacyKnightPart(neck, 'single-slab-mock-v10');
+  for (const ear of ears) retired += retireLegacyKnightPart(ear, 'single-slab-mock-v10');
+  for (const eye of eyes) retired += retireLegacyKnightPart(eye, 'single-slab-mock-v10');
 
-  if (ears[0]) {
-    ears[0].position.set(coarsePointer ? 0 : -0.005, coarsePointer ? 1.055 : 1.075, coarsePointer ? 0.08 : 0.085);
-    ears[0].rotation.set(0.035, 0, -0.11);
-    ears[0].scale.set(coarsePointer ? 0.9 : 0.82, coarsePointer ? 1.08 : 1.04, 0.78);
-  }
-  if (ears[1]) {
-    ears[1].position.set(coarsePointer ? 0 : -0.005, coarsePointer ? 1.055 : 1.075, coarsePointer ? -0.08 : -0.085);
-    ears[1].rotation.set(-0.035, 0, 0.11);
-    ears[1].scale.set(coarsePointer ? 0.9 : 0.82, coarsePointer ? 1.08 : 1.04, 0.78);
-  }
-  if (eyes[0]) eyes[0].position.set(coarsePointer ? 0.255 : 0.245, coarsePointer ? 0.84 : 0.855, coarsePointer ? 0.125 : 0.135);
-  if (eyes[1]) eyes[1].position.set(coarsePointer ? 0.255 : 0.245, coarsePointer ? 0.84 : 0.855, coarsePointer ? -0.125 : -0.135);
-
-  group.userData.board3DKnightSilhouetteVersion = coarsePointer ? 'equestrian-staunton-lite-v9' : 'equestrian-staunton-v8';
-  group.userData.board3DKnightPosture = coarsePointer ? 'sculpted-s-neck-lite-v9' : 'sculpted-s-neck-v8';
+  group.userData.board3DKnightSilhouetteVersion = coarsePointer ? 'approved-generated-mock-lite-v10' : 'approved-generated-mock-v10';
+  group.userData.board3DKnightPosture = coarsePointer ? 'sleek-arched-neck-lite-v10' : 'sleek-arched-neck-v10';
+  group.userData.board3DKnightRetiredLegacyParts = retired;
   return 1;
 }
 
-function addPremiumKnightSculpture(group, accentMaterial, coarsePointer) {
+function addMockKnightSculpture(group, accentMaterial, coarsePointer) {
   const mainMaterial = group.children.find((child) => child?.isMesh && child.material && !child.userData?.contactShadow)?.material || accentMaterial;
   let count = 0;
 
-  if (coarsePointer) {
+  const manePoints = [
+    new THREE.Vector3(-0.205, 0.53, 0),
+    new THREE.Vector3(-0.235, 0.76, 0),
+    new THREE.Vector3(-0.185, 1.02, 0),
+    new THREE.Vector3(-0.07, 1.235, 0),
+    new THREE.Vector3(0.13, 1.285, 0),
+    new THREE.Vector3(0.305, 1.185, 0),
+  ];
+  const railZs = coarsePointer ? [0.141] : [-0.151, 0.151];
+  for (const z of railZs) {
+    const curve = new THREE.CatmullRomCurve3(manePoints.map((point) => point.clone().setZ(z)), false, 'catmullrom', 0.38);
     addKnightSculptMesh(
       group,
-      new THREE.SphereGeometry(0.11, 12, 8),
+      new THREE.TubeGeometry(curve, coarsePointer ? 16 : 28, coarsePointer ? 0.016 : 0.018, coarsePointer ? 6 : 8, false),
       mainMaterial,
-      [0.50, 0.705, 0],
-      [1.78, 0.58, 0.82],
-      [0, 0, -0.08],
-      'muzzle',
-    );
-    count += 1;
-
-    addKnightSculptMesh(
-      group,
-      new THREE.SphereGeometry(0.105, 12, 8),
-      mainMaterial,
-      [0.405, 0.645, 0],
-      [1.42, 0.45, 0.76],
-      [0, 0, -0.16],
-      'jaw',
-    );
-    count += 1;
-
-    const maneGeometry = new THREE.ConeGeometry(0.044, 0.13, 7);
-    for (let index = 0; index < 4; index += 1) {
-      addKnightSculptMesh(
-        group,
-        maneGeometry.clone(),
-        mainMaterial,
-        [-0.18, 0.555 + index * 0.095, 0],
-        [0.92, 1.03 - index * 0.06, 0.66],
-        [0, 0, -0.25],
-        'mane',
-      );
-      count += 1;
-    }
-    maneGeometry.dispose();
-
-    group.userData.board3DKnightDetailVersion = 'equestrian-lite-v9';
-    group.userData.board3DKnightPremiumDetailCount = count;
-    group.userData.board3DKnightManeProfile = 'four-rear-readable-locks-lite-v9';
-    return count;
-  }
-
-  addKnightSculptMesh(
-    group,
-    new THREE.SphereGeometry(0.11, 24, 16),
-    mainMaterial,
-    [0.50, 0.72, 0],
-    [1.82, 0.60, 0.84],
-    [0, 0, -0.07],
-    'muzzle',
-  );
-  count += 1;
-
-  addKnightSculptMesh(
-    group,
-    new THREE.SphereGeometry(0.105, 22, 15),
-    mainMaterial,
-    [0.405, 0.655, 0],
-    [1.48, 0.46, 0.78],
-    [0, 0, -0.16],
-    'jaw',
-  );
-  count += 1;
-
-  for (const z of [-0.078, 0.078]) {
-    addKnightSculptMesh(
-      group,
-      new THREE.BoxGeometry(0.20, 0.018, 0.025, 2, 1, 1),
-      accentMaterial,
-      [0.255, 0.785, z * 1.62],
-      [1, 1, 1],
-      [0, z > 0 ? -0.055 : 0.055, -0.18],
-      'bridle',
-    );
-    count += 1;
-  }
-
-  for (const z of [-0.068, 0.068]) {
-    addKnightSculptMesh(
-      group,
-      new THREE.SphereGeometry(0.018, 10, 7),
-      accentMaterial,
-      [0.615, 0.73, z],
-      [1.18, 0.72, 0.86],
       [0, 0, 0],
-      'nostril',
+      [1, 1, 1],
+      [0, 0, 0],
+      'mane-rail',
     );
     count += 1;
   }
 
-  const maneGeometry = new THREE.ConeGeometry(0.043, 0.135, 10);
-  for (let index = 0; index < 5; index += 1) {
-    addKnightSculptMesh(
+  const slotAngles = coarsePointer ? [-0.42, 0.42] : [-0.62, 0, 0.62];
+  for (const angle of slotAngles) {
+    const radius = 0.347;
+    const slot = addKnightSculptMesh(
       group,
-      maneGeometry.clone(),
-      mainMaterial,
-      [-0.175, 0.545 + index * 0.082, 0],
-      [0.90, 1.02 - index * 0.055, 0.64],
-      [0, 0, -0.24],
-      'mane',
+      new THREE.BoxGeometry(0.026, coarsePointer ? 0.10 : 0.115, 0.018),
+      accentMaterial,
+      [Math.sin(angle) * radius, 0.105, Math.cos(angle) * radius],
+      [1, 1, 1],
+      [0, angle, 0],
+      'base-slot',
     );
+    slot.castShadow = false;
     count += 1;
   }
-  maneGeometry.dispose();
 
-  group.userData.board3DKnightDetailVersion = 'equestrian-sculpted-v8';
+  group.userData.board3DKnightDetailVersion = coarsePointer ? 'approved-generated-mock-lite-v10' : 'approved-generated-mock-v10';
   group.userData.board3DKnightPremiumDetailCount = count;
-  group.userData.board3DKnightManeProfile = 'five-rear-carved-locks-v8';
+  group.userData.board3DKnightManeProfile = coarsePointer ? 'single-raised-rail-lite-v10' : 'double-raised-rail-v10';
+  group.userData.board3DKnightBaseAccentProfile = coarsePointer ? 'two-inset-slots-lite-v10' : 'three-inset-slots-v10';
   return count;
 }
 
@@ -336,7 +242,7 @@ export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarseP
 
   if (type === 'n') {
     applyApprovedKnightSilhouette(group, coarsePointer);
-    addPremiumKnightSculpture(group, accentMaterial, coarsePointer);
+    addMockKnightSculpture(group, accentMaterial, coarsePointer);
   }
 
   group.userData.skin3DId = skinId;
