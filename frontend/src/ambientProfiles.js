@@ -25,13 +25,47 @@ const GRANADA_MELODIC_PROFILE = Object.freeze({
   }),
 });
 
-// Facade deliberadamente pequeño: conserva todas las identidades existentes
-// y profundiza sólo Granada. La guitarra de nylon vuelve a llevar las frases
-// completas; el qanun responde como contrapunto y la firma queda como detalle
-// ocasional. Sigue sin batería para mantener el carácter nocturno/de cámara.
+const REACTOR_GAMBIT_PROFILE = Object.freeze({
+  family: 'synth-metal-reactor-melodic-drive',
+  preserveSectionOrder: true,
+  harmonyPath: Object.freeze([0, 0, 3, -2, 5]),
+  swing: 0.015,
+  warmth: 0.62,
+  releaseScale: 0.92,
+  space: 0.11,
+  delayMs: 108,
+  leadInstrument: 'guitar2',
+  counterInstrument: 'synth',
+  chordInstrument: 'pad',
+  bassInstrument: 'synthbass',
+  chordHoldSteps: 10,
+  bassHoldSteps: 2,
+  layers: Object.freeze({ lead: true, counter: true, chords: true, bass: true, drums: true, signature: true }),
+  mix: Object.freeze({ lead: 0.72, counter: 0.46, bass: 1.02, chord: 0.36 }),
+  percussion: Object.freeze({
+    period: 16,
+    kit: 'legacy',
+    punch: 1.26,
+    pattern: Object.freeze({ 0:'K', 3:'H', 4:'K', 8:'S', 10:'H', 12:'K', 14:'H' }),
+  }),
+  signature: Object.freeze({
+    instrument: 'synth',
+    sections: Object.freeze([1, 2, 4]),
+    everyCycles: 2,
+    repeatPeriod: 64,
+    durationSteps: 3.2,
+    volume: 0.24,
+    motif: Object.freeze({ 7: 76, 23: 79, 39: 83, 55: 79 }),
+  }),
+});
+
+// Facade deliberadamente pequeño: conserva las identidades legacy y
+// permite profundizar temas concretos sin volver a engordar el motor WebAudio.
 export function structuredFeel(theme) {
   const legacy = legacyStructuredFeel(theme);
-  if (!legacy || !GRANADA_THEME_IDS.has(theme?.id)) return legacy;
+  if (!legacy) return legacy;
+  if (theme?.id === 'reactorGambit') return Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
+  if (!GRANADA_THEME_IDS.has(theme?.id)) return legacy;
   return Object.freeze({
     ...legacy,
     ...GRANADA_MELODIC_PROFILE,

@@ -3,6 +3,7 @@ import { difficultyLabel } from '../difficulty.js';
 import { levelForPoints, pointsIntoLevel, POINTS_PER_LEVEL } from '../tournament.js';
 import { IconBookmark, IconTrophy, IconBulb, IconBook, IconPuzzle, IconSword, IconEye, IconPawn } from './Icons.jsx';
 import QuickMatchModal from './QuickMatchModal.jsx';
+import PracticeMatchModal from './PracticeMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import ModeTutorialTip from './ModeTutorialTip.jsx';
 import HomePlayNudge from './HomePlayNudge.jsx';
@@ -74,6 +75,7 @@ export default function Menu({
   const [suddenDeath, setSuddenDeath] = useState(false);
   const [threatCheck, setThreatCheck] = useState(false);
   const [showQuickMatch, setShowQuickMatch] = useState(false);
+  const [showPracticeMatch, setShowPracticeMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [footerPanel, setFooterPanel] = useState(null);
   const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
@@ -85,10 +87,10 @@ export default function Menu({
   const tournamentProgress = pointsIntoLevel(tournament.progressPoints || 0);
   const tournamentProgressPct = Math.round((tournamentProgress / POINTS_PER_LEVEL) * 100);
   const matthiasIntroPending = !matthiasOnboarded();
-  const matthiasIntroBlocked = suppressHomeNudge || hasSavedGame || showQuickMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
+  const matthiasIntroBlocked = suppressHomeNudge || hasSavedGame || showQuickMatch || showPracticeMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
   // Una acción prioritaria (p. ej. Continuar partida) silencia el bocadillo,
   // pero no debe borrar al personaje residente de Home. Los overlays reales sí.
-  const matthiasCornerBlocked = suppressHomeNudge || showQuickMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
+  const matthiasCornerBlocked = suppressHomeNudge || showQuickMatch || showPracticeMatch || showMirrorMode || Boolean(footerPanel) || Boolean(error);
   const blockingHomeOverlay = matthiasIntroBlocked || showHomeGuide;
   const hasOpenOverlay = blockingHomeOverlay || Boolean(matthiasVisit);
   const homePlayNudgeEnabled = shouldEnableHomePlayNudge({ suppressHomeNudge, hasOpenOverlay, loggingOut: false, hasSavedGame });
@@ -307,7 +309,7 @@ export default function Menu({
         </section>
       )}
 
-      {error && !showQuickMatch && !showMirrorMode && <div className="home-error-banner" role="alert"><b>No se pudo completar la acción.</b><span>{error}</span></div>}
+      {error && !showQuickMatch && !showPracticeMatch && !showMirrorMode && <div className="home-error-banner" role="alert"><b>No se pudo completar la acción.</b><span>{error}</span></div>}
 
       <section className={`home-today-card ${today.dailyFull ? 'is-complete' : today.dailySolved ? 'is-active' : ''}`} aria-label="Hoy en Chess Studio">
         <div className="home-today-emblem" aria-hidden="true">♞</div>
@@ -346,7 +348,7 @@ export default function Menu({
         <section className="home-next-action" aria-label="Recomendación para tu próxima partida">
           <div><span className="section-label">{nextAction.eyebrow}</span><strong>{nextAction.title}</strong><small>{nextAction.detail}</small></div>
           <button type="button" className="secondary-btn" onClick={() => {
-            if (nextAction.id === 'practice') onNewGame(difficulty, color, { learning: true, timeControlId });
+            if (nextAction.id === 'practice') setShowPracticeMatch(true);
             else if (nextAction.id === 'tournament') onTournament();
             else setShowQuickMatch(true);
           }}>{nextAction.label} →</button>
@@ -456,7 +458,7 @@ export default function Menu({
               {onboardingCue('puzzle')}
               <span className="home-mode-icon" aria-hidden="true"><IconPuzzle className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Táctica</b><i>Diario</i></span><h3>Puzzles</h3><span className="home-mode-description">Casos clásicos y un reto nuevo cada día.</span></span><span className="menu-card-cta">Resolver <b aria-hidden="true">→</b></span>
             </TutorialModeCard>
-            <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-mode-card home-tool-card" disabled={loading} onClick={() => onNewGame(difficulty, color, { learning: true, timeControlId })}>
+            <TutorialModeCard tutorialId="practice" className="menu-card accent-success home-mode-card home-tool-card" disabled={loading} onClick={() => setShowPracticeMatch(true)}>
               <span className="home-mode-icon" aria-hidden="true"><IconBulb className="menu-card-icon" /></span><span className="home-mode-copy"><span className="home-mode-kicker"><b>Sin presión</b><i>No afecta al rating</i></span><h3>Partida de práctica</h3><span className="home-mode-description">Juega con pistas gratuitas y aplica lo aprendido.</span></span><span className="menu-card-cta">Empezar práctica <b aria-hidden="true">→</b></span>
             </TutorialModeCard>
             <TutorialModeCard tutorialId="openings" className="menu-card accent-success home-mode-card home-tool-card" onClick={onOpenings}>
@@ -574,6 +576,22 @@ export default function Menu({
           onClose={() => setShowQuickMatch(false)}
         />
       )}
+{showPracticeMatch && (
+<PracticeMatchModal
+  color={color}
+  setColor={setColor}
+  timeControlId={timeControlId}
+  setTimeControlId={setTimeControlId}
+  loading={loading}
+  error={error}
+  rating={rating}
+  onStart={async ({ difficulty: practiceDifficulty, adaptiveDifficulty }) => {
+    const started = await onNewGame(practiceDifficulty, color, { learning: true, timeControlId, adaptiveDifficulty });
+    if (started) setShowPracticeMatch(false);
+  }}
+  onClose={() => setShowPracticeMatch(false)}
+/>
+    )}
       {showMirrorMode && (
         <MirrorModeModal
           loading={loading}

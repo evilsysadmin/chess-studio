@@ -1824,14 +1824,52 @@ Object.assign(AMBIENT_THEMES, {
     ],
   },
   reactorGambit: {
-    id:'reactorGambit', genre:'Energía', engine:'structured', label:'Synth metal · gambito del reactor',
-    description:'Metal industrial a medio tiempo: bombo enorme, caja espaciada y golpes metálicos. Menos velocidad, más peso.',
-    stepMs:136, stepsPerSection:64, longFormMs:340000, leadInstrument:'guitar2', counterInstrument:'synth', chordInstrument:'pad', bassInstrument:'synthbass',
-    sections:[
-      {lead:{0:47,8:47,12:50,16:52,24:50,28:47,32:45,40:45,44:48,48:50,56:48,60:45},counter:{4:71,20:74,36:69,52:72},chords:{0:[35,42,47],16:[40,47,52],32:[33,40,45],48:[38,45,50]},bass:{0:23,4:23,8:23,12:26,16:28,20:28,24:26,28:23,32:21,36:21,40:21,44:24,48:26,52:26,56:24,60:21},drums:{0:'K',4:'H',8:'S',10:'K',12:'H',16:'K',20:'H',24:'S',26:'K',28:'H',32:'K',36:'H',40:'S',42:'K',44:'H',48:'K',52:'H',56:'S',58:'K',60:'H'}},
-      {lead:{0:50,8:50,12:53,16:55,24:53,28:50,32:48,40:48,44:52,48:53,56:52,60:48},counter:{4:74,20:77,36:72,52:76},chords:{0:[38,45,50],16:[43,50,55],32:[36,43,48],48:[41,48,53]},bass:{0:26,4:26,8:26,12:29,16:31,20:31,24:29,28:26,32:24,36:24,40:24,44:28,48:29,52:29,56:28,60:24},drums:{0:'K',4:'H',8:'S',10:'K',12:'H',16:'K',20:'H',24:'S',26:'K',28:'H',32:'K',36:'H',40:'S',42:'K',44:'H',48:'K',52:'H',56:'S',58:'K',60:'H'}}
-    ],
-  },
+  id:'reactorGambit', genre:'Energía', engine:'structured', label:'Synth metal · gambito del reactor',
+  description:'Synth metal melódico y nocturno: riff de guitarra, sintetizador de respuesta y una subida clara hacia estribillo, breakdown y reprise final.',
+  stepMs:120, stepsPerSection:64, longFormMs:360000, leadInstrument:'guitar2', counterInstrument:'synth', chordInstrument:'pad', bassInstrument:'synthbass',
+  sections:[
+    {
+      // Arranque contenido: el reactor despierta, pero todavía no pisa al oyente con botas industriales.
+      lead:{0:52,8:55,16:59,24:57,32:52,40:55,48:60,56:59},
+      counter:{12:64,28:67,44:69,60:67},
+      chords:{0:[40,47,52],16:[43,50,55],32:[45,52,57],48:[40,47,52]},
+      bass:{0:28,4:28,8:31,12:28,16:31,20:31,24:33,28:31,32:33,36:33,40:35,44:33,48:28,52:35,56:31,60:28},
+      drums:{0:'K',8:'S',16:'K',24:'S',32:'K',40:'S',48:'K',56:'S'},
+    },
+    {
+      // Riff principal sincopado, con huecos suficientes para que el synth conteste en vez de chillar encima.
+      lead:{0:52,3:52,6:55,10:59,14:57,16:52,19:55,22:60,26:59,30:55,32:50,35:52,38:55,42:59,46:57,48:52,51:55,54:62,58:60,62:59},
+      counter:{7:67,15:64,23:69,31:67,39:64,47:71,55:69,63:67},
+      chords:{0:[40,47,52],16:[38,45,50],32:[43,50,55],48:[40,47,52]},
+      bass:{0:28,2:28,6:31,8:28,12:35,16:26,20:33,24:31,28:26,32:31,36:38,40:35,44:31,48:28,52:35,56:40,60:35},
+      drums:{0:'K',4:'H',8:'S',12:'K',16:'K',20:'H',24:'S',28:'K',32:'K',36:'H',40:'S',44:'K',48:'K',52:'H',56:'S',60:'K'},
+    },
+    {
+      // Estribillo: la melodía sube de registro y por fin abre el techo sin convertirse en una ametralladora de notas.
+      lead:{0:64,4:67,8:71,12:69,16:67,20:64,24:62,28:64,32:67,36:71,40:74,44:72,48:71,52:67,56:64,60:62},
+      counter:{2:76,10:74,18:79,26:76,34:81,42:79,50:76,58:74},
+      chords:{0:[45,52,57],16:[43,50,55],32:[47,54,59],48:[40,47,52]},
+      bass:{0:33,4:40,8:33,12:40,16:31,20:38,24:31,28:38,32:35,36:42,40:35,44:42,48:28,52:35,56:40,60:35},
+      drums:{0:'K',4:'H',8:'S',10:'K',12:'H',16:'K',20:'H',24:'S',28:'K',32:'K',36:'H',40:'S',42:'K',44:'H',48:'K',52:'H',56:'S',60:'K'},
+    },
+    {
+      // Breakdown: baja el riff, deja respirar al pad y prepara la última subida con tensión en vez de simple volumen.
+      lead:{0:52,8:50,16:47,24:50,32:52,40:55,48:57,56:59},
+      counter:{6:64,14:62,22:59,30:62,38:64,46:67,54:69,62:71},
+      chords:{0:[40,47,52],16:[38,45,50],32:[35,42,47],48:[43,50,55]},
+      bass:{0:28,8:26,16:23,24:26,32:28,40:31,48:33,56:35},
+      drums:{0:'K',8:'S',16:'K',24:'S',32:'K',40:'S',48:'K',56:'S'},
+    },
+    {
+      // Reprise final: vuelve el riff y lo cruza con la melodía del estribillo para que la pieza cierre con identidad propia.
+      lead:{0:52,3:55,6:59,10:64,14:62,16:55,19:59,22:67,26:64,30:62,32:57,35:60,38:64,42:69,46:67,48:59,51:62,54:71,58:69,62:64},
+      counter:{4:76,12:79,20:81,28:79,36:83,44:81,52:79,60:76},
+      chords:{0:[40,47,52],16:[43,50,55],32:[45,52,57],48:[47,54,59]},
+      bass:{0:28,4:35,8:31,12:35,16:31,20:38,24:35,28:38,32:33,36:40,40:36,44:40,48:35,52:42,56:40,60:35},
+      drums:{0:'K',4:'H',8:'S',12:'K',16:'K',20:'H',24:'S',28:'K',32:'K',36:'H',40:'S',44:'K',48:'K',52:'H',56:'S',60:'K'},
+    },
+  ],
+},
 });
 
 
