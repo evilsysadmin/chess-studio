@@ -451,34 +451,40 @@ function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
     child.material.needsUpdate = true;
   });
 
-  const sofaOffset = coarsePointer ? 9.35 : 7.8;
-  const sofaX = coarsePointer ? 4.75 : 6.6;
+  const mobileSofaOffset = 9.35;
+  const mobileSofaX = 4.75;
   for (const [name, sofaSide] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
     const sofa = root.getObjectByName?.(name);
     if (!sofa) continue;
-    sofa.position.set(sofaSide * sofaX, 0.02, wallZ + towardBoard * sofaOffset);
-    if (coarsePointer) sofa.rotation.y = -sofaSide * towardBoard * 0.72;
-    sofa.userData.warRoomOffsetFromWall = sofaOffset;
-    sofa.userData.warRoomFurniturePlacement = coarsePointer
-      ? 'mobile-foreground-safe-frame-v5'
-      : 'side-wall-premium-spaced-v4';
-    sofa.userData.facesWarTable = true;
+    if (coarsePointer) {
+      sofa.position.set(sofaSide * mobileSofaX, 0.02, wallZ + towardBoard * mobileSofaOffset);
+      sofa.rotation.y = -sofaSide * towardBoard * 0.72;
+      sofa.userData.warRoomOffsetFromWall = mobileSofaOffset;
+      sofa.userData.warRoomFurniturePlacement = 'mobile-foreground-safe-frame-v5';
+      sofa.userData.facesWarTable = true;
+    }
     addPremiumSofaDetails(sofa, towardBoard, coarsePointer);
   }
 
-  const consoleOffset = coarsePointer ? 3.3 : 1.15;
+  const mobileConsoleOffset = 3.3;
   for (const name of ['war-room-side-console-left', 'war-room-side-console-right']) {
     const consoleGroup = root.getObjectByName?.(name);
     if (!consoleGroup) continue;
-    consoleGroup.position.z = wallZ + towardBoard * consoleOffset;
-    consoleGroup.userData.warRoomOffsetFromWall = consoleOffset;
-    consoleGroup.userData.warRoomFurniturePlacement = 'rear-console-premium-spaced-v4';
+    if (coarsePointer) {
+      consoleGroup.position.z = wallZ + towardBoard * mobileConsoleOffset;
+      consoleGroup.userData.warRoomOffsetFromWall = mobileConsoleOffset;
+      consoleGroup.userData.warRoomFurniturePlacement = 'rear-console-premium-spaced-v4';
+    }
     addPremiumConsoleDetails(consoleGroup, coarsePointer);
   }
 
-  root.userData.warRoomFurnitureGap = Math.abs(sofaOffset - consoleOffset);
-  root.userData.warRoomMobileForegroundSofaX = coarsePointer ? sofaX : null;
-  root.userData.warRoomMobileForegroundSofaOffset = coarsePointer ? sofaOffset : null;
+  if (coarsePointer) {
+    root.userData.warRoomFurnitureGap = Math.abs(mobileSofaOffset - mobileConsoleOffset);
+    root.userData.warRoomMobileForegroundSofaX = mobileSofaX;
+    root.userData.warRoomMobileForegroundSofaOffset = mobileSofaOffset;
+  } else {
+    root.userData.warRoomPremiumDesktopLayoutWritesRetired = true;
+  }
   replaceConeFireWithLicks(root.getObjectByName?.('war-room-fire-core'), coarsePointer);
   return 1;
 }
