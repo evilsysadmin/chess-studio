@@ -60,15 +60,17 @@ describe('matthiasWarRoomStateMachine', () => {
     expect(matthiasWarRoomIdleDelay(() => 0, 4)).toBeLessThan(matthiasWarRoomIdleDelay(() => 0, 0));
   });
 
-  it('expone intención facial real para cada estado importante', () => {
+  it('separa gesto corporal de intención facial para no contaminar Home', () => {
     expect(MATTHIAS_WAR_ROOM_STATE_VERSION).toBe('fsm-v2');
-    expect(matthiasWarRoomStateDescriptor('coffee', 0)).toMatchObject({ expression: 'coffee', gesture: 'coffee' });
-    expect(matthiasWarRoomStateDescriptor('glare', 0).gesture).toBe('glare');
-    expect(matthiasWarRoomStateDescriptor('lean-in', 0).gesture).toBe('lean-in');
-    expect(matthiasWarRoomStateDescriptor('smirk', 0)).toMatchObject({ expression: 'smirk', gesture: 'smirk' });
-    expect(matthiasWarRoomStateDescriptor('grumble', 4)).toMatchObject({ expression: 'grumble-hot', gesture: 'grumble' });
-    expect(matthiasWarRoomStateDescriptor('speaking', 0).gesture).toBe('speaking');
-    expect(matthiasWarRoomStateDescriptor('idle', 4).expression).toBe('simmer');
+    expect(matthiasWarRoomStateDescriptor('coffee', 0)).toMatchObject({
+      expression: 'coffee', gesture: 'coffee', facialGesture: 'war-coffee',
+    });
+    expect(matthiasWarRoomStateDescriptor('glare', 0)).toMatchObject({ gesture: 'glare', facialGesture: 'war-glare' });
+    expect(matthiasWarRoomStateDescriptor('lean-in', 0)).toMatchObject({ gesture: 'lean-in', facialGesture: 'war-lean-in' });
+    expect(matthiasWarRoomStateDescriptor('smirk', 0)).toMatchObject({ expression: 'smirk', gesture: 'idle', facialGesture: 'war-smirk' });
+    expect(matthiasWarRoomStateDescriptor('grumble', 4)).toMatchObject({ expression: 'grumble-hot', gesture: 'idle', facialGesture: 'war-grumble' });
+    expect(matthiasWarRoomStateDescriptor('speaking', 0)).toMatchObject({ gesture: 'idle', facialGesture: 'war-speaking' });
+    expect(matthiasWarRoomStateDescriptor('idle', 4)).toMatchObject({ expression: 'simmer', facialGesture: 'war-idle' });
     expect(matthiasWarRoomStateDuration('grumble', 4)).toBeGreaterThan(matthiasWarRoomStateDuration('grumble', 0));
     expect(normalizeWarRoomAnger(99)).toBe(4);
   });
