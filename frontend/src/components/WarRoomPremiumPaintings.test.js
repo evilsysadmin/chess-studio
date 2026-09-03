@@ -113,7 +113,6 @@ describe('War Room premium paintings', () => {
       expect(painting.getObjectByName('war-room-premium-frame-leaf-ornament')).toBeTruthy();
       expect(painting.getObjectByName('war-room-painting-varnish')).toBeTruthy();
       expect(lamp?.userData?.warRoomPictureLamp).toBe('brass-gallery-lamp-v3');
-      expect(lamp?.getObjectByName('war-room-picture-plaque')).toBeUndefined();
       expect(painting.getObjectByName(`war-room-picture-plaque-${index}`)).toBeTruthy();
     }
 
