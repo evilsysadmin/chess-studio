@@ -99,12 +99,18 @@ def main() -> int:
     if min(worker_step, parity_step, smoke_step) >= 0 and not (worker_step < parity_step < smoke_step):
         errors.append("staging generation: Worker/parity/smoke no están en orden fail-closed")
 
-    # Staging Worker must expose the exact canonical generation at runtime.
+    # Staging Worker must expose the exact canonical generation at runtime and
+    # the deploy helper must wait for the Custom Domain to serve it. A generic
+    # 200 health response is insufficient because the previous Worker version
+    # can remain healthy during Cloudflare edge propagation.
     require(staging_wrangler, 'main = "worker/staging.js"', "staging Worker wrapper entrypoint", errors)
     require(staging_worker_wrapper, "BUILD_SHA", "staging Worker runtime build field", errors)
     require(staging_worker_wrapper, "./index.js", "staging Worker delegates shared runtime", errors)
     require(staging_worker_deploy, 'secret", "put", "BUILD_SHA"', "staging Worker generation binding", errors)
     require(staging_worker_deploy, "required_deploy_sha()", "staging Worker full SHA validation", errors)
+    require(staging_worker_deploy, "def wait_for_runtime_build", "staging Worker propagation wait", errors)
+    require(staging_worker_deploy, "wait_for_runtime_build(deploy_sha)", "staging Worker runtime identity gate", errors)
+    require(staging_worker_deploy, "last_build == deploy_sha", "staging Worker exact runtime SHA convergence", errors)
 
     # Production remains provenance-bound to the canonical AI accreditation workflow.
     require(promote, "workflows:\n      - Staging · AI Worker", "production source workflow", errors)
@@ -135,7 +141,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; canonical staging owns N/N/N and AI only accredits it")
+    print("staging-preview-contract OK · preview isolated; canonical staging owns N/N/N and waits for Worker runtime convergence")
     return 0
 
 
