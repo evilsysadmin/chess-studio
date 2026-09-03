@@ -27,7 +27,7 @@ describe('Matthias rival king 3D', () => {
     expect(isMatthiasRivalKing({ type: 'k', color: 'b' }, null)).toBe(false);
   });
 
-  it('usa cuerpo de rey, rig de cabeza, ceño limpio y gorra de plato compacta', () => {
+  it('usa cuerpo de rey, rig de cabeza, ceño limpio y gorra de plato premium', () => {
     const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
     const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent, { pieceColor: 'w', skinId: 'studio' });
@@ -37,10 +37,10 @@ describe('Matthias rival king 3D', () => {
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
     expect(group.userData.faceStyle).toBe('proud-command-scowl-v5');
-    expect(group.userData.capStyle).toBe('compact-command-peaked-cap-v4');
+    expect(group.userData.capStyle).toBe('premium-command-peaked-cap-v5');
     expect(group.userData.posture).toBe('proud-command-v2');
     expect(group.userData.motionRig).toBe('head-rig-v1');
-    expect(meshes).toBeGreaterThanOrEqual(24);
+    expect(meshes).toBeGreaterThanOrEqual(28);
     expect(group.scale.x).toBeCloseTo(1.035);
     expect(group.getObjectByName('matthias-king-body')).toBeTruthy();
     expect(group.getObjectByName('matthias-command-jacket')).toBeTruthy();
@@ -53,18 +53,39 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-mouth')).toBeTruthy();
     expect(group.getObjectByName('matthias-officer-cap')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-crown')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-top')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-band')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-red-piping')).toBeTruthy();
     expect(group.getObjectByName('matthias-visor')).toBeTruthy();
-    expect(group.getObjectByName('matthias-cap-badge-pawn-head')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-cord')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-badge-inset')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-badge-gem')).toBeTruthy();
 
     const capGroup = group.getObjectByName('matthias-officer-cap');
     const visor = group.getObjectByName('matthias-visor');
     const cap = group.getObjectByName('matthias-cap');
+    const crown = group.getObjectByName('matthias-cap-crown');
+    const cord = group.getObjectByName('matthias-cap-cord');
+    visor.geometry.computeBoundingBox();
+    const visorBox = visor.geometry.boundingBox;
+    const visorWidth = visorBox.max.x - visorBox.min.x;
+    const visorProjection = visorBox.max.y - visorBox.min.y;
+
     expect(capGroup.userData.faceClearance).toBe('eyes-and-brows-visible');
+    expect(capGroup.userData.silhouette).toBe('premium-plate-cap');
+    expect(capGroup.userData.reference).toBe('home-command-cap-v1');
     expect(capGroup.position.y).toBeGreaterThanOrEqual(1.17);
     expect(visor.userData.compactForFaceVisibility).toBe(true);
-    expect(visor.geometry.parameters.radiusBottom).toBeLessThan(0.3);
-    expect(visor.geometry.parameters.radiusTop).toBeLessThan(0.28);
-    expect(cap.geometry.parameters.radiusBottom).toBeLessThan(0.24);
+    expect(visor.userData.shortPremiumBrim).toBe(true);
+    expect(visor.geometry.type).toBe('ExtrudeGeometry');
+    expect(visorWidth).toBeLessThanOrEqual(0.36);
+    expect(visorProjection).toBeLessThanOrEqual(0.18);
+    expect(cap.geometry.parameters.radiusTop).toBeLessThanOrEqual(0.21);
+    expect(crown.geometry.parameters.radiusTop).toBeGreaterThan(0.24);
+    expect(crown.geometry.parameters.radiusTop).toBeGreaterThan(cap.geometry.parameters.radiusTop);
+    expect(cord.geometry.type).toBe('TubeGeometry');
 
     // No vuelva el Frankenstein de micro-geometrías faciales que se apilaban
     // al reducir el rey a tamaño de tablero.
@@ -151,7 +172,7 @@ describe('Matthias rival king 3D', () => {
     accent.dispose();
   });
 
-  it('mantiene la cara mínima e insignia de peón en móvil/coarse pointer', () => {
+  it('mantiene la cara mínima y la gorra premium en móvil/coarse pointer', () => {
     const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
     const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
     const group = buildMatthiasKing3D(main, accent, { coarsePointer: true });
@@ -161,8 +182,13 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-eye-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-eye-right')).toBeTruthy();
     expect(group.getObjectByName('matthias-mouth')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-cord')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
-    expect(group.getObjectByName('matthias-cap-badge-pawn-body')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-badge-gem')).toBeTruthy();
+
+    const visor = group.getObjectByName('matthias-visor');
+    visor.geometry.computeBoundingBox();
+    expect(visor.geometry.boundingBox.max.x - visor.geometry.boundingBox.min.x).toBeLessThanOrEqual(0.36);
 
     disposeGroup(group);
     main.dispose();
