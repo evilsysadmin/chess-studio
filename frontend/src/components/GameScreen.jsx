@@ -12,10 +12,11 @@ import { flagOutcome } from '../clock.js';
 import { noteworthyComment } from '../cpuCommentary.js';
 import { recordNoteworthyAchievement } from '../achievements.js';
 import { loadRivalry, recordRivalryIncident, recurrenceSuffix } from '../rivalry.js';
-import { startMemoryComment, openingMemoryComment, resultMemoryComment, noteworthyMemoryFacts, noteworthyMemorySuffix } from '../cpuMemory.js';
+import { openingMemoryComment, resultMemoryComment, noteworthyMemoryFacts, noteworthyMemorySuffix } from '../cpuMemory.js';
 import { loadSeriesHistory, seriesHistoryStats } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
+import { hasOpeningBanterMessage, OPENING_EVENT, requestOpeningBanter } from '../openingBanter.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
 import { loadZenMode, saveZenMode } from '../zenMode.js';
 import { identifyOpening } from '../openings.js';
@@ -149,8 +150,8 @@ export default function GameScreen({
   const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
   const openingMemoryShownRef = useRef(false);
+  const openingBanterShownRef = useRef(null);
   const resultMemoryTimeout = useRef(null);
-  const startMemoryTimeout = useRef(null);
   const openingMemoryTimeout = useRef(null);
 
   // Pista: sugerencia del motor para la jugada del humano.
@@ -192,7 +193,6 @@ export default function GameScreen({
     reportedResultRef.current = false;
     openingMemoryShownRef.current = false;
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
-    if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
     if (openingMemoryTimeout.current) clearTimeout(openingMemoryTimeout.current);
     setSuddenLives(3);
     setForcedOutcome(null);
@@ -208,20 +208,34 @@ export default function GameScreen({
   }, [zenMode]);
 
   useEffect(() => {
+    const existingTranscript = loadActiveGameChat(game.id);
+    if (hasOpeningBanterMessage(existingTranscript)) {
+      openingBanterShownRef.current = game.id;
+      return undefined;
+    }
+
     const historicalSeries = seriesState ? loadSeriesHistory() : [];
-    const text = startMemoryComment(loadRivalry(), {
+    const rivalry = loadRivalry();
+    const openingContext = {
       difficulty: game.difficulty,
       humanColor,
       series: seriesState,
       seriesHistory: historicalSeries,
       seriesHistoryStats: seriesState ? seriesHistoryStats(historicalSeries) : null,
       ...memoryContext,
-    });
-    if (!text) return undefined;
-    startMemoryTimeout.current = setTimeout(() => showCpuComment({ text }), 700);
-    return () => {
-      if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
     };
+    let active = true;
+    void requestOpeningBanter({
+      gameId: game.id,
+      rivalry,
+      context: openingContext,
+      token: getToken(),
+    }).then((text) => {
+      if (!active || !text || openingBanterShownRef.current === game.id) return;
+      openingBanterShownRef.current = game.id;
+      showCpuComment({ text }, { event: OPENING_EVENT, actor: 'cpu', ply: 0 });
+    });
+    return () => { active = false; };
   }, [game.id]);
 
   // La bandera es terminal para la UI. Si cae mientras una jugada/hint está
@@ -402,7 +416,6 @@ export default function GameScreen({
     if (matthiasSilentBeatTimeout.current) clearTimeout(matthiasSilentBeatTimeout.current);
     if (achievementToastTimeout.current) clearTimeout(achievementToastTimeout.current);
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
-    if (startMemoryTimeout.current) clearTimeout(startMemoryTimeout.current);
     if (openingMemoryTimeout.current) clearTimeout(openingMemoryTimeout.current);
     stopCpuSpeech();
     mutationCoordinator.abortCurrent('Screen unmounted');

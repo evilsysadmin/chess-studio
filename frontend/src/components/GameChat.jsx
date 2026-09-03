@@ -37,7 +37,7 @@ export default function GameChat({ messages = [], contextMessages = [], compact 
         ) : visibleMessages.map((message) => (
           <div className={`game-chat-message${message.by === 'system' ? ' is-system' : ''}`} key={message.id || `${message.at}-${message.text}`}>
             <div className="game-chat-meta">
-              <span className="game-chat-author">{message.by === 'system' && message.event ? String(message.event).replaceAll('_', ' ') : message.by === 'system' ? 'PARTIDA' : CPU_IDENTITY.name}</span>
+              <span className="game-chat-author">{message.by === 'system' && message.event ? String(message.event).replaceAll('_', ' ') : message.by === 'system' ? 'PARTIDA' : CPU_IDENTITY.name.toUpperCase()}</span>
               {message.by !== 'system' && message.event && <span className="game-chat-event">{String(message.event).replaceAll('_', ' ')}</span>}
               {message.at && <time dateTime={message.at}>{timeLabel(message.at)}</time>}
             </div>
