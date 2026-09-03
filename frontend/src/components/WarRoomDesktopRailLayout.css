@@ -1,11 +1,11 @@
 /* Desktop War Room information architecture.
-   Matthias + chat are one left rail; RetroPlayer + move notebook are one right
-   rail. Mobile keeps the stacked layout for first-screen usability. */
+   Matthias + situation + chat are one left rail; RetroPlayer + move notebook are
+   one right rail. Mobile keeps the stacked layout for first-screen usability. */
 @media (min-width: 1081px) {
   .game-screen .board-live-row.is-3d-warroom {
-    /* Each rail now owns its own vertical stack. The commander spans both grid
-       rows, so its internal chat can sit immediately below the portrait without
-       changing the independent RetroPlayer -> notebook handoff on the right. */
+    /* Each rail owns its own vertical stack. The commander spans both rows so
+       its chat can consume the remaining height without moving the independent
+       RetroPlayer -> notebook handoff on the right. */
     grid-template-areas:
       'commander board music'
       'commander board notation' !important;
@@ -23,18 +23,81 @@
     overflow: visible !important;
   }
 
+  .game-screen .game-3d-command-column {
+    grid-area: commander;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    gap: .5rem;
+  }
+
+  .game-screen .game-3d-command-column .game-3d-matthias-card,
+  .game-screen .game-3d-command-column .game-3d-warroom-status {
+    flex: 0 0 auto;
+  }
+
+  .game-screen .game-3d-command-column .game-3d-warroom-status {
+    margin: 0;
+  }
+
   .game-screen .game-3d-command-column .game-chat {
     width: 100%;
     min-width: 0;
-    min-height: 210px;
-    height: clamp(230px, 31dvh, 330px);
-    max-height: clamp(230px, 31dvh, 330px);
-    margin-top: .55rem;
+    min-height: 250px;
+    height: auto;
+    max-height: none;
+    flex: 1 1 auto;
+    margin: 0;
     overflow: hidden;
     border-color: rgba(142,121,88,.36);
+    display: flex;
+    flex-direction: column;
   }
 
-  /* Matthias stays put; only the conversation history scrolls. */
+  /* The narrow command rail gets one clean line for the chat title instead of
+     the old MATTHIAS // EN DIRECTO + title staircase. */
+  .game-screen .game-3d-command-column .game-chat-heading {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .38rem;
+    padding: .46rem .5rem;
+  }
+
+  .game-screen .game-3d-command-column .game-chat-title-block.game-chat-matthias {
+    min-width: 0;
+    grid-template-columns: 26px minmax(0, 1fr);
+    column-gap: .38rem;
+  }
+
+  .game-screen .game-3d-command-column .game-chat-matthias-avatar {
+    width: 26px;
+    height: 26px;
+  }
+
+  .game-screen .game-3d-command-column .game-chat-kicker {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .46rem;
+    letter-spacing: .08em;
+  }
+
+  .game-screen .game-3d-command-column .game-chat-heading h3 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .9rem;
+    line-height: 1.08;
+  }
+
+  .game-screen .game-3d-command-column .game-chat-tools {
+    flex: 0 0 auto;
+    gap: .24rem;
+  }
+
+  /* Matthias and status stay put; only the conversation history scrolls. */
   .game-screen .game-3d-command-column .game-chat-log,
   .game-screen .game-side-column-3d .game-chat-log {
     flex: 1 1 auto;
@@ -72,12 +135,6 @@
     top: 0;
     z-index: 2;
     background: color-mix(in srgb, var(--studio-panel-raised) 94%, #17130e 6%);
-  }
-
-  .game-screen .game-3d-command-column {
-    grid-area: commander;
-    align-self: start;
-    min-height: 0;
   }
 
   .game-screen .game-board-stack.game-board-stack-3d {
