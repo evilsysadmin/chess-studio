@@ -299,16 +299,16 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
     expect(failedBoard3DChunkOnce, '2D no debe cargar Board3D durante el reload fresco').toBe(false);
 
     // Guardarraíl directo para #286: ahora sí provocamos el primer import lazy
-    // de Board3D y lo fallamos una sola vez. ErrorBoundary debe ofrecer reload
-    // controlado; como la preferencia 3D ya quedó persistida, el segundo runtime
-    // reintenta el chunk, lo dejamos pasar y debe reconstruir la War Room.
+    // de Board3D y lo fallamos una sola vez. El selector sólo aplica el renderer
+    // al cerrar Ajustes, así que cerramos antes de exigir el fallo de módulo.
     await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
     appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
     await appearanceDialog.getByRole('radio', { name: /3D$/ }).click();
+    await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
+    await expect.poll(() => failedBoard3DChunkOnce, { timeout: 10_000 }).toBe(true);
     await expect(page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true })).toBeVisible({ timeout: 30_000 });
-    expect(failedBoard3DChunkOnce).toBe(true);
     const recoverRuntime = page.getByRole('button', { name: 'Recargar y recuperar sesión', exact: true });
     await expect(recoverRuntime).toBeVisible();
     await recoverRuntime.click();
