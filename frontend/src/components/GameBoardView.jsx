@@ -9,8 +9,10 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
+import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
 import { formatLongMove } from '../notation.js';
+import './Matthias3DBubbleAnchor.css';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
 
@@ -62,6 +64,17 @@ export default function GameBoardView({
     activeMessage: activeMatthiasMessage,
     activeMessageKey: activeMatthiasKey,
   });
+  const boardOrientation = humanColor === 'b' ? 'black' : 'white';
+  const {
+    stageRef: matthias3DStageRef,
+    bubbleStyle: matthias3DBubbleStyle,
+    trackedSquare: matthias3DTrackedSquare,
+  } = useMatthias3DBubbleAnchor({
+    fen: board.visibleBoardFen,
+    matthiasKingColor: topColor,
+    orientation: boardOrientation,
+    enabled: Boolean(isThreeD && !zenMode && !focusActive && activeBoardBubble),
+  });
 
   function enterFocus() {
     markCurrentMessageSeen(activeMatthiasKey);
@@ -84,7 +97,7 @@ export default function GameBoardView({
     checkSquare: zenMode ? null : board.kingInCheckSquare,
     gameOver: Boolean(game.isGameOver || clocks.flagFallen || clocks.forcedOutcome),
     turnState: board.boardTurnState,
-    orientation: humanColor === 'b' ? 'black' : 'white',
+    orientation: boardOrientation,
     showCoordinates: !zenMode && board.showBoardCoordinates,
     matthiasKingColor: topColor,
     onCustomize: board.onCustomize,
@@ -131,9 +144,24 @@ export default function GameBoardView({
             )}
 
             {isThreeD ? (
-              <Suspense fallback={<div className="hint-text">Preparando sala 3D…</div>}>
-                <Board3D {...boardProps} />
-              </Suspense>
+              <div ref={matthias3DStageRef} className="game-board-3d-stage">
+                <Suspense fallback={<div className="hint-text">Preparando sala 3D…</div>}>
+                  <Board3D {...boardProps} />
+                </Suspense>
+                {!zenMode && !focusActive && activeBoardBubble && matthias3DBubbleStyle && (
+                  <aside
+                    key={activeBoardBubble.id}
+                    className="matthias-board-bubble matthias-board-bubble-tracked"
+                    style={matthias3DBubbleStyle}
+                    data-matthias-square={matthias3DTrackedSquare || ''}
+                    role="status"
+                    aria-label="Comentario de Matthias sobre el tablero"
+                  >
+                    <span>MATTHIAS</span>
+                    <p>{activeBoardBubble.text}</p>
+                  </aside>
+                )}
+              </div>
             ) : <Board {...boardProps} />}
 
             <Matthias3DOpeningBanter
@@ -143,7 +171,7 @@ export default function GameBoardView({
               enabled={!zenMode}
             />
 
-            {!zenMode && !focusActive && activeBoardBubble && (
+            {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (
               <aside key={activeBoardBubble.id} className="matthias-board-bubble" role="status" aria-label="Comentario de Matthias sobre el tablero">
                 <span>MATTHIAS</span>
                 <p>{activeBoardBubble.text}</p>
