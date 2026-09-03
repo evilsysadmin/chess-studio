@@ -1,0 +1,331 @@
+/* Home · castle coherence
+ * Local visual skin for Home only. The product stays simple: one room, one
+ * material vocabulary, one clear play hierarchy. No new runtime behaviour. */
+
+.menu.home-friendly {
+  --home-stone: #171a1f;
+  --home-stone-deep: #0d1015;
+  --home-oak: #241b16;
+  --home-velvet: #24181b;
+  --home-brass-soft: color-mix(in srgb, var(--brass) 48%, #8b7650);
+  --home-line: color-mix(in srgb, var(--brass) 25%, rgba(255,255,255,.065));
+  --home-line-soft: rgba(255,255,255,.065);
+  --home-text-dim: color-mix(in srgb, var(--parchment) 68%, var(--parchment-dim));
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  border-color: color-mix(in srgb, var(--brass) 15%, rgba(255,255,255,.05));
+  background:
+    radial-gradient(ellipse at 50% -8%, rgba(197,157,78,.085), transparent 28rem),
+    linear-gradient(90deg, rgba(7,9,13,.3), transparent 12%, transparent 88%, rgba(7,9,13,.34)),
+    linear-gradient(180deg, rgba(27,30,36,.94), rgba(12,15,20,.92));
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.025),
+    inset 0 -1px rgba(0,0,0,.45),
+    0 28px 68px rgba(0,0,0,.28);
+}
+
+.menu.home-friendly::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 10px;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,.025);
+  border-top-color: color-mix(in srgb, var(--brass) 12%, transparent);
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 118px, rgba(255,255,255,.008) 119px 120px),
+    linear-gradient(180deg, rgba(255,255,255,.009), transparent 18rem);
+}
+
+.home-friendly .section-label {
+  color: color-mix(in srgb, var(--brass) 82%, var(--parchment));
+  text-shadow: 0 1px 10px rgba(0,0,0,.28);
+}
+
+.home-friendly :where(.home-heading-actions p, .home-mode-description, .home-next-action small, .home-today-copy small) {
+  color: var(--home-text-dim);
+}
+
+/* Sala principal: piedra, latón y una pequeña insinuación de madera. */
+.home-friendly .home-modes-section {
+  border-color: var(--home-line-soft);
+  border-top-color: color-mix(in srgb, var(--brass) 38%, rgba(255,255,255,.07));
+  background:
+    radial-gradient(ellipse at 16% -4%, rgba(205,166,83,.105), transparent 28rem),
+    radial-gradient(ellipse at 92% 15%, rgba(79,91,108,.07), transparent 24rem),
+    linear-gradient(180deg, rgba(28,31,36,.95), rgba(13,16,21,.92));
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.035),
+    inset 0 -18px 42px rgba(0,0,0,.12),
+    0 26px 58px rgba(0,0,0,.22);
+}
+
+.home-friendly .home-modes-section::before {
+  background:
+    linear-gradient(90deg, transparent, rgba(198,157,70,.038) 48%, transparent),
+    repeating-linear-gradient(90deg, transparent 0 95px, rgba(255,255,255,.009) 96px 97px),
+    linear-gradient(180deg, transparent 72%, rgba(52,35,25,.075));
+  opacity: .78;
+}
+
+.home-friendly .home-modes-section .home-group-heading {
+  border-bottom-color: color-mix(in srgb, var(--brass) 23%, rgba(255,255,255,.06));
+}
+
+.home-friendly .home-modes-section .home-group-heading::after {
+  content: '';
+  position: absolute;
+  right: .12rem;
+  bottom: -1px;
+  width: min(150px, 24%);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brass) 58%, transparent));
+}
+
+.home-friendly .home-modes-section .home-group-heading h2 {
+  color: color-mix(in srgb, var(--parchment) 96%, #fff 4%);
+  text-shadow: 0 10px 28px rgba(0,0,0,.32);
+}
+
+/* Las tres puertas principales son placas de la misma sala, no tiles SaaS. */
+.home-friendly .home-modes-section .home-mode-card {
+  border-color: rgba(255,255,255,.075);
+  background-color: rgba(16,19,24,.97);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.035),
+    inset 0 -1px rgba(0,0,0,.34),
+    0 18px 38px rgba(0,0,0,.22);
+}
+
+.home-friendly .home-modes-section .home-mode-card::after {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.042), transparent 22%),
+    linear-gradient(90deg, rgba(6,8,12,.94) 0%, rgba(8,10,14,.64) 48%, rgba(8,10,14,.21) 100%),
+    linear-gradient(0deg, rgba(57,38,27,.08), transparent 38%);
+}
+
+.home-friendly .home-modes-section .home-mode-art,
+.home-friendly .home-modes-section .home-mode-featured .home-mode-art,
+.home-friendly .home-modes-section .home-mode-campaign .home-mode-art,
+.home-friendly .home-modes-section .home-mode-quick .home-mode-art {
+  opacity: .5;
+  filter: saturate(.76) contrast(1.1) brightness(.84);
+}
+
+.home-friendly .home-modes-section .home-mode-card h3 {
+  color: color-mix(in srgb, var(--parchment) 94%, white 6%);
+  text-shadow: 0 5px 16px rgba(0,0,0,.3);
+}
+
+.home-friendly .home-modes-section .home-mode-description {
+  font-size: .81rem;
+  line-height: 1.56;
+}
+
+.home-friendly .home-mode-kicker,
+.home-friendly .home-mode-progress small {
+  color: color-mix(in srgb, var(--parchment-dim) 84%, var(--brass));
+  opacity: .9;
+}
+
+.home-friendly .home-mode-card .menu-card-cta {
+  color: color-mix(in srgb, var(--parchment) 82%, var(--brass));
+  border-top-color: rgba(255,255,255,.085);
+}
+
+.home-friendly .home-modes-section .home-mode-card:not(:disabled):hover,
+.home-friendly .home-modes-section .home-mode-card:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--brass) 42%, rgba(255,255,255,.1));
+  box-shadow:
+    inset 2px 0 0 color-mix(in srgb, var(--brass) 70%, transparent),
+    inset 0 1px rgba(255,255,255,.045),
+    0 22px 48px rgba(0,0,0,.29);
+}
+
+/* Contexto y herramientas secundarias: mismo material, mucha menos presencia. */
+.home-friendly :where(.home-today-card, .home-next-action, .home-continue-card) {
+  color: var(--parchment);
+}
+
+.home-friendly .home-today-card {
+  border-top-color: color-mix(in srgb, var(--brass) 35%, transparent);
+  border-bottom-color: rgba(255,255,255,.065);
+  background:
+    linear-gradient(90deg, rgba(50,34,25,.11), transparent 25%),
+    linear-gradient(90deg, rgba(201,162,39,.04), transparent 54%);
+}
+
+.home-friendly .home-next-action {
+  border-left-color: color-mix(in srgb, var(--home-brass-soft) 70%, transparent);
+  background:
+    linear-gradient(90deg, rgba(55,36,26,.095), transparent 22%),
+    linear-gradient(90deg, rgba(201,162,39,.035), transparent 58%);
+}
+
+.home-friendly .home-continue-card {
+  border-color: color-mix(in srgb, var(--brass) 24%, rgba(255,255,255,.07));
+  background:
+    radial-gradient(circle at 5% 50%, rgba(201,162,39,.08), transparent 18rem),
+    linear-gradient(180deg, rgba(27,29,32,.96), rgba(15,17,21,.95));
+  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 14px 34px rgba(0,0,0,.18);
+}
+
+.home-friendly .compact-mode-grid .menu-card {
+  border-color: rgba(255,255,255,.065);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.018), transparent 34%),
+    rgba(12,15,20,.62);
+}
+
+.home-friendly .compact-mode-grid .menu-card:hover,
+.home-friendly .compact-mode-grid .menu-card:focus-visible {
+  border-color: color-mix(in srgb, var(--brass) 28%, rgba(255,255,255,.08));
+  background-color: rgba(16,19,24,.78);
+}
+
+/* Matthias pertenece físicamente a la habitación: misma piedra/latón, no una
+ * tarjeta flotante de otro producto. La cola debe tocar su pedestal visual. */
+.matthias-resident__character {
+  border-color: color-mix(in srgb, var(--brass) 22%, rgba(255,255,255,.05));
+  background:
+    radial-gradient(circle at 50% 34%, rgba(201,162,39,.08), transparent 52%),
+    linear-gradient(180deg, rgba(20,22,25,.32), rgba(10,12,16,.9));
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.03),
+    0 17px 34px rgba(0,0,0,.25);
+}
+
+.matthias-resident__portrait-shell {
+  border-color: color-mix(in srgb, var(--brass) 42%, rgba(255,255,255,.04));
+  background:
+    radial-gradient(circle at 50% 68%, rgba(198,164,93,.14), transparent 44%),
+    linear-gradient(180deg, rgba(17,19,22,.78), rgba(7,9,12,.96));
+}
+
+.matthias-resident__bubble {
+  max-width: 336px;
+  margin-bottom: 27px;
+  padding: .78rem .84rem .7rem;
+  gap: .29rem;
+  border-color: color-mix(in srgb, var(--brass) 44%, rgba(255,255,255,.07));
+  border-radius: 10px 10px 6px 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent 32%),
+    linear-gradient(135deg, rgba(45,31,23,.16), transparent 46%),
+    #11151b;
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.035),
+    0 18px 42px rgba(0,0,0,.32);
+}
+
+.matthias-resident__bubble::after {
+  right: -7px;
+  bottom: 22px;
+  width: 13px;
+  height: 13px;
+  border-color: color-mix(in srgb, var(--brass) 44%, rgba(255,255,255,.07));
+  background: #11151b;
+}
+
+.matthias-resident__bubble p {
+  color: color-mix(in srgb, var(--parchment) 96%, white 4%);
+  font-size: .82rem;
+  line-height: 1.56;
+  text-wrap: pretty;
+}
+
+.matthias-resident__bubble > small {
+  color: color-mix(in srgb, var(--parchment-dim) 88%, var(--parchment));
+  font-size: .64rem;
+  line-height: 1.4;
+}
+
+.matthias-resident__cta {
+  color: color-mix(in srgb, var(--brass) 82%, var(--parchment));
+  text-underline-offset: .2em;
+}
+
+/* Una entrada muy corta: habitación, no splash screen. */
+@media (prefers-reduced-motion: no-preference) {
+  .home-friendly .home-modes-section {
+    animation: home-castle-room-in .22s cubic-bezier(.2,.75,.25,1) both;
+  }
+}
+
+@keyframes home-castle-room-in {
+  from { opacity: .82; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .menu.home-friendly {
+    --home-text-dim: color-mix(in srgb, var(--parchment) 72%, var(--parchment-dim));
+  }
+
+  .menu.home-friendly::after {
+    inset: 6px;
+    border-radius: 9px;
+    opacity: .68;
+  }
+
+  .home-friendly .home-modes-section .home-mode-description {
+    font-size: .8rem;
+    line-height: 1.54;
+  }
+
+  .home-friendly .section-label {
+    letter-spacing: .14em;
+  }
+
+  .matthias-resident__bubble {
+    max-width: min(320px, calc(100vw - 92px));
+    margin-bottom: 9px;
+    padding: .68rem .72rem .6rem;
+    border-radius: 9px 9px 5px 9px;
+  }
+
+  .matthias-resident__bubble::after {
+    right: -6px;
+    bottom: 17px;
+    width: 11px;
+    height: 11px;
+  }
+
+  .matthias-resident__bubble p {
+    font-size: .81rem;
+    line-height: 1.52;
+  }
+}
+
+@media (max-width: 430px) {
+  .menu.home-friendly {
+    overflow-x: clip;
+  }
+
+  .home-friendly .home-modes-section {
+    border-radius: 10px;
+    box-shadow: inset 0 1px rgba(255,255,255,.03), 0 18px 42px rgba(0,0,0,.18);
+  }
+
+  .home-friendly .home-mode-card .menu-card-cta {
+    font-size: .64rem;
+  }
+
+  .matthias-resident__stage {
+    gap: .42rem;
+  }
+
+  .matthias-resident__bubble {
+    max-width: min(300px, calc(100vw - 88px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-friendly .home-modes-section { animation: none; }
+}
+
+html[data-reduced-motion='true'] .home-friendly .home-modes-section {
+  animation: none;
+}
