@@ -10,6 +10,14 @@ on:
       - 'frontend/src/components/WarRoom*.css'
       - 'frontend/src/components/PremiumWarRoomScene.js'
       - 'frontend/src/components/GameBoardView.jsx'
+      - 'frontend/src/components/GameCommandDeck.jsx'
+      - 'frontend/src/components/GamePlayerRail.jsx'
+      - 'frontend/src/components/GameSideColumn.jsx'
+      - 'frontend/src/components/GameStatusStrips.jsx'
+      - 'frontend/src/components/GameWarRoomCommandColumn.jsx'
+      - 'frontend/src/components/useGameBoardRenderer.js'
+      - 'frontend/src/components/useGameMobileFocus.js'
+      - 'frontend/src/components/useMatthiasBoardReactions.js'
       - 'frontend/src/styles/19-game-focus.css'
       - 'frontend/src/warRoomPointerCapture.js'
       - 'frontend/src/warRoomPointerCapture.test.js'
@@ -72,7 +80,7 @@ jobs:
                 visual=true
                 focus=true
                 ;;
-              frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/helpers.js|.github/workflows/e2e-full.yml)
+              frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/components/GameCommandDeck.jsx|frontend/src/components/GamePlayerRail.jsx|frontend/src/components/GameSideColumn.jsx|frontend/src/components/GameStatusStrips.jsx|frontend/src/components/GameWarRoomCommandColumn.jsx|frontend/src/components/useGameBoardRenderer.js|frontend/src/components/useGameMobileFocus.js|frontend/src/components/useMatthiasBoardReactions.js|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/helpers.js|.github/workflows/e2e-full.yml)
                 full_logic=true
                 visual=true
                 focus=true
