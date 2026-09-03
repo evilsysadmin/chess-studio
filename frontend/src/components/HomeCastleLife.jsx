@@ -9,21 +9,21 @@ const RARE_SIGHTING_THRESHOLD = 0.025;
 const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map((achievement) => [achievement.id, achievement]));
 
 const HONOUR_RELICS = Object.freeze([
-  { achievementId: 'rating_master', id: 'master-crown', label: 'Corona del Maestro', glyph: '♚', tone: 'brass', prestige: 100 },
-  { achievementId: 'rivalry_hard_75', id: 'giantslayer-helm', label: 'Yelmo del Tumbagigantes', glyph: '♞', tone: 'steel', prestige: 94 },
-  { achievementId: 'tournament_level_10', id: 'imperial-cup', label: 'Copa imperial', glyph: '♛', tone: 'brass', prestige: 90 },
-  { achievementId: 'combat_flawless', id: 'flawless-standard', label: 'Estandarte intacto', glyph: '⚑', tone: 'ember', prestige: 88 },
-  { achievementId: 'feat_pawn_queen', id: 'golden-pawn', label: 'Peón de oro', glyph: '♟', tone: 'brass', prestige: 86 },
-  { achievementId: 'rating_advanced', id: 'officer-blade', label: 'Espada de oficial', glyph: '⚔︎', tone: 'steel', prestige: 84 },
-  { achievementId: 'combat_gold_piece', id: 'veteran-reliquary', label: 'Relicario del veterano', glyph: '♜', tone: 'ember', prestige: 80 },
-  { achievementId: 'feat_skewer', id: 'royal-halberd', label: 'Alabarda real', glyph: '†', tone: 'steel', prestige: 78 },
-  { achievementId: 'rivalry_streak_3', id: 'three-in-row-plaque', label: 'Placa de tres al hilo', glyph: 'III', tone: 'steel', prestige: 74 },
-  { achievementId: 'feat_mate', id: 'fallen-king', label: 'Rey derribado', glyph: '♚', tone: 'brass', prestige: 72 },
-  { achievementId: 'feat_promotion', id: 'promotion-crown', label: 'Corona de ascenso', glyph: '♕', tone: 'brass', prestige: 68 },
-  { achievementId: 'tournament_level_5', id: 'officer-cup', label: 'Copa de oficial', glyph: '♛', tone: 'brass', prestige: 64 },
-  { achievementId: 'daily_clean_full_3', id: 'clean-seal', label: 'Sello impecable', glyph: '✦', tone: 'parchment', prestige: 60 },
-  { achievementId: 'puzzles_50', id: 'tactics-volume', label: 'Tratado de táctica', glyph: '▤', tone: 'parchment', prestige: 58 },
-  { achievementId: 'rating_intermediate', id: 'academy-blade', label: 'Hoja de academia', glyph: '⚔︎', tone: 'steel', prestige: 56 },
+  { achievementId: 'rating_master', family: 'rating', id: 'master-crown', label: 'Corona del Maestro', glyph: '♚', tone: 'brass', prestige: 100 },
+  { achievementId: 'rivalry_hard_75', family: 'rivalry', id: 'giantslayer-helm', label: 'Yelmo del Tumbagigantes', glyph: '♞', tone: 'steel', prestige: 94 },
+  { achievementId: 'tournament_level_10', family: 'tournament', id: 'imperial-cup', label: 'Copa imperial', glyph: '♛', tone: 'brass', prestige: 90 },
+  { achievementId: 'combat_flawless', family: 'combat-flawless', id: 'flawless-standard', label: 'Estandarte intacto', glyph: '⚑', tone: 'ember', prestige: 88 },
+  { achievementId: 'feat_pawn_queen', family: 'tactic-pawn-queen', id: 'golden-pawn', label: 'Peón de oro', glyph: '♟', tone: 'brass', prestige: 86 },
+  { achievementId: 'rating_advanced', family: 'rating', id: 'officer-blade', label: 'Espada de oficial', glyph: '⚔︎', tone: 'steel', prestige: 84 },
+  { achievementId: 'combat_gold_piece', family: 'combat-veteran', id: 'veteran-reliquary', label: 'Relicario del veterano', glyph: '♜', tone: 'ember', prestige: 80 },
+  { achievementId: 'feat_skewer', family: 'tactic-skewer', id: 'royal-halberd', label: 'Alabarda real', glyph: '†', tone: 'steel', prestige: 78 },
+  { achievementId: 'rivalry_streak_3', family: 'rivalry', id: 'three-in-row-plaque', label: 'Placa de tres al hilo', glyph: 'III', tone: 'steel', prestige: 74 },
+  { achievementId: 'feat_mate', family: 'tactic-mate', id: 'fallen-king', label: 'Rey derribado', glyph: '♚', tone: 'brass', prestige: 72 },
+  { achievementId: 'feat_promotion', family: 'tactic-promotion', id: 'promotion-crown', label: 'Corona de ascenso', glyph: '♕', tone: 'brass', prestige: 68 },
+  { achievementId: 'tournament_level_5', family: 'tournament', id: 'officer-cup', label: 'Copa de oficial', glyph: '♛', tone: 'brass', prestige: 64 },
+  { achievementId: 'daily_clean_full_3', family: 'daily-discipline', id: 'clean-seal', label: 'Sello impecable', glyph: '✦', tone: 'parchment', prestige: 60 },
+  { achievementId: 'puzzles_50', family: 'puzzles', id: 'tactics-volume', label: 'Tratado de táctica', glyph: '▤', tone: 'parchment', prestige: 58 },
+  { achievementId: 'rating_intermediate', family: 'rating', id: 'academy-blade', label: 'Hoja de academia', glyph: '⚔︎', tone: 'steel', prestige: 56 },
 ]);
 
 function asNumber(value) {
@@ -38,8 +38,16 @@ function achievementIdSet(value) {
 
 function honourObjects(achievementIds, achievementLedger) {
   const unlocked = achievementIdSet(achievementIds);
-  return HONOUR_RELICS
-    .filter((relic) => unlocked.has(relic.achievementId))
+  const strongestByFamily = new Map();
+
+  for (const relic of HONOUR_RELICS) {
+    if (!unlocked.has(relic.achievementId)) continue;
+    const family = relic.family || relic.id;
+    const current = strongestByFamily.get(family);
+    if (!current || relic.prestige > current.prestige) strongestByFamily.set(family, relic);
+  }
+
+  return [...strongestByFamily.values()]
     .map((relic) => {
       const achievement = ACHIEVEMENT_BY_ID.get(relic.achievementId);
       const record = achievementLedger?.records?.[relic.achievementId] || null;
