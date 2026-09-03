@@ -99,6 +99,16 @@ def main() -> int:
     if min(worker_step, parity_step, smoke_step) >= 0 and not (worker_step < parity_step < smoke_step):
         errors.append("staging generation: Worker/parity/smoke no están en orden fail-closed")
 
+    if parity_step >= 0 and smoke_step > parity_step:
+        parity_block = staging_deploy[parity_step:smoke_step]
+        for needle, label in (
+            ("parity_ok=false", "generation parity retry state"),
+            ("for attempt in {1..60}; do", "generation parity bounded polling"),
+            ("Staging generation aún no converge:", "generation parity skew diagnostics"),
+            ("Generation parity no convergió a N/N/N tras 5 minutos", "generation parity bounded timeout"),
+        ):
+            require(parity_block, needle, label, errors)
+
     # Staging Worker must expose the exact canonical generation at runtime and
     # the deploy helper must wait for the Custom Domain to serve it. A generic
     # 200 health response is insufficient because the previous Worker version
@@ -141,7 +151,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; canonical staging owns N/N/N and waits for Worker runtime convergence")
+    print("staging-preview-contract OK · preview isolated; canonical staging owns N/N/N and waits for runtime convergence")
     return 0
 
 
