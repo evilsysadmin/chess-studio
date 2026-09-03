@@ -576,22 +576,22 @@ export default function Menu({
           onClose={() => setShowQuickMatch(false)}
         />
       )}
-{showPracticeMatch && (
-<PracticeMatchModal
-  color={color}
-  setColor={setColor}
-  timeControlId={timeControlId}
-  setTimeControlId={setTimeControlId}
-  loading={loading}
-  error={error}
-  rating={rating}
-  onStart={async ({ difficulty: practiceDifficulty, adaptiveDifficulty }) => {
-    const started = await onNewGame(practiceDifficulty, color, { learning: true, timeControlId, adaptiveDifficulty });
-    if (started) setShowPracticeMatch(false);
-  }}
-  onClose={() => setShowPracticeMatch(false)}
-/>
-    )}
+      {showPracticeMatch && (
+        <PracticeMatchModal
+          color={color}
+          setColor={setColor}
+          timeControlId={timeControlId}
+          setTimeControlId={setTimeControlId}
+          loading={loading}
+          error={error}
+          rating={rating}
+          onStart={async ({ difficulty: practiceDifficulty, adaptiveDifficulty }) => {
+            const started = await onNewGame(practiceDifficulty, color, { learning: true, timeControlId, adaptiveDifficulty });
+            if (started) setShowPracticeMatch(false);
+          }}
+          onClose={() => setShowPracticeMatch(false)}
+        />
+      )}
       {showMirrorMode && (
         <MirrorModeModal
           loading={loading}
