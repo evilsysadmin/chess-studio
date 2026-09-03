@@ -12,13 +12,13 @@ describe('War Room 3D premium highlight visibility', () => {
     expect(BOARD3D_HIGHLIGHT_SIZE).toBeGreaterThan(0.8);
   });
 
-  it('uses brass and ember instead of the old electric-blue interaction palette', () => {
-    expect(BOARD3D_HIGHLIGHT_COLORS.legal).toBe(0x9c8244);
+  it('uses a cool high-contrast blue for legal destinations while preserving warm semantics', () => {
+    expect(BOARD3D_HIGHLIGHT_COLORS.legal).toBe(0x245f9f);
     expect(BOARD3D_HIGHLIGHT_COLORS.selected).toBe(0xc99a43);
     expect(BOARD3D_HIGHLIGHT_COLORS.capture).toBe(0x96462e);
     const legal = board3DHighlightStyle({ square: 'e4', legalMap: new Map([['e4', false]]) });
     const selected = board3DHighlightStyle({ square: 'e2', selectedSquare: 'e2', legalMap: new Map() });
-    expect(legal).toMatchObject({ kind: 'legal', color: 0x9c8244, opacity: 0.68 });
+    expect(legal).toMatchObject({ kind: 'legal', color: 0x245f9f, opacity: 0.84, scale: 0.82 });
     expect(selected).toMatchObject({ kind: 'selected', color: 0xc99a43, opacity: 0.82 });
   });
 
