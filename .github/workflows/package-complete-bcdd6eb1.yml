@@ -1,0 +1,44 @@
+name: Artifact · complete bcdd6eb1
+
+on:
+  push:
+    branches:
+      - artifact/complete-bcdd6eb1
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout artifact branch with source history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Create exact tracked-source ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='bcdd6eb10709f8bcb746fde730659188147a4b9e'
+          name='ChessStudio_bcdd6eb1_COMPLETE.zip'
+          git cat-file -e "${target}^{commit}"
+          git archive --format=zip --output="$name" "$target"
+          unzip -tq "$name"
+          unzip -Z1 "$name" | grep -Fx '.github/workflows/cicd.yml'
+          unzip -Z1 "$name" | grep -Fx '.githooks/pre-push'
+          unzip -Z1 "$name" | grep -Fx 'frontend/src/components/HomeCastleCoherence.css'
+          unzip -Z1 "$name" | grep -Fx 'docs/VISUAL_LANGUAGE.md'
+          zipinfo -l "$name" .githooks/pre-push | grep -Eq '^-rwx'
+          sha256sum "$name" | tee "${name}.sha256"
+
+      - name: Upload exact complete project snapshot
+        uses: actions/upload-artifact@v7
+        with:
+          name: ChessStudio-bcdd6eb1-COMPLETE
+          path: |
+            ChessStudio_bcdd6eb1_COMPLETE.zip
+            ChessStudio_bcdd6eb1_COMPLETE.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
