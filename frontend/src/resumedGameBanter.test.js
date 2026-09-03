@@ -68,4 +68,23 @@ describe('Matthias banter after active-game restore', () => {
     const next = appendActiveGameChat('g-4', { text: 'Eso sí era una jugada nueva.' });
     expect(next).toHaveLength(2);
   });
+
+  it('cleans duplicate generic banter already persisted before the fix', () => {
+    const text = 'Vienes de 3 derrotas consecutivas. Bonito volver a ver a un cliente recurrente.';
+    localStorage.setItem('chess-study-active-game-chat', JSON.stringify({
+      gameId: 'g-legacy',
+      messages: [
+        { id: 'a', by: 'cpu', text, event: null },
+        { id: 'b', by: 'cpu', text, event: null },
+        { id: 'c', by: 'cpu', text: 'Táctica real.', event: 'KNIGHT_FORK' },
+        { id: 'd', by: 'cpu', text: 'Táctica real.', event: 'KNIGHT_FORK' },
+      ],
+    }));
+
+    const loaded = loadActiveGameChat('g-legacy');
+    expect(loaded.map((message) => message.id)).toEqual(['a', 'c', 'd']);
+
+    const persisted = JSON.parse(localStorage.getItem('chess-study-active-game-chat'));
+    expect(persisted.messages.map((message) => message.id)).toEqual(['a', 'c', 'd']);
+  });
 });
