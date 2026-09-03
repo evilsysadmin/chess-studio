@@ -3,30 +3,41 @@ name: Staging · preview
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: 'Rama, tag o SHA a previsualizar en el frontend de staging (main no está permitido)'
+      mode:
+        description: 'Qué hacer con el frontend de staging'
         required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - restore-main
+      ref:
+        description: 'Rama, tag o SHA a previsualizar (sólo se usa en modo preview)'
+        required: false
+        default: ''
         type: string
 
 permissions:
   contents: read
 
-# Preview y staging oficial comparten el mismo frontend. Nunca deben escribir
-# Cloudflare Pages a la vez.
+# Preview, restauración y staging oficial escriben sobre el mismo frontend.
+# Nunca deben tocar Cloudflare Pages staging a la vez.
 concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Frontend preview en staging
+    name: Frontend staging · ${{ inputs.mode }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment:
       name: staging
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
+      MODE: ${{ inputs.mode }}
       SOURCE_REF: ${{ inputs.ref }}
+      TARGET_REF: ${{ inputs.mode == 'restore-main' && 'main' || inputs.ref }}
       ORCHESTRATOR_REF: ${{ github.ref }}
       PAGES_PROJECT: chess-studio-staging
       STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
@@ -40,15 +51,18 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$ORCHESTRATOR_REF" == 'refs/heads/main' ]] || { echo '::error::Staging · preview sólo puede ejecutarse desde el workflow de main.'; exit 1; }
-          [[ -n "${SOURCE_REF:-}" ]] || { echo '::error::Falta el ref a previsualizar'; exit 1; }
+          [[ "$MODE" == 'preview' || "$MODE" == 'restore-main' ]] || { echo "::error::Modo no permitido: $MODE"; exit 1; }
           [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
           [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-          case "$SOURCE_REF" in
-            main|refs/heads/main|origin/main)
-              echo '::error::main usa Staging · deploy; este flow sólo acepta refs de preview.'
-              exit 1
-              ;;
-          esac
+          if [[ "$MODE" == 'preview' ]]; then
+            [[ -n "${SOURCE_REF:-}" ]] || { echo '::error::Falta el ref a previsualizar'; exit 1; }
+            case "$SOURCE_REF" in
+              main|refs/heads/main|origin/main)
+                echo '::error::main no es un preview; usa el modo restore-main.'
+                exit 1
+                ;;
+            esac
+          fi
 
       - name: Checkout preview orchestrator
         uses: actions/checkout@v7
@@ -59,14 +73,14 @@ jobs:
       - name: Verify preview cannot enter production chain
         run: python3 scripts/staging_preview_contract.py
 
-      - name: Checkout requested preview source
+      - name: Checkout target frontend source
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.SOURCE_REF }}
+          ref: ${{ env.TARGET_REF }}
           path: preview-source
           fetch-depth: 0
 
-      - name: Resolve immutable preview SHA
+      - name: Resolve immutable target SHA
         id: source
         shell: bash
         run: |
@@ -74,8 +88,12 @@ jobs:
           deploy_sha="$(git -C preview-source rev-parse HEAD)"
           current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
           [[ "$deploy_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SHA resuelto inválido: $deploy_sha"; exit 1; }
-          if [[ "$deploy_sha" == "$current_main" ]]; then
-            echo '::error::El ref resuelve al SHA actual de main; usa Staging · deploy para ese commit.'
+          if [[ "$MODE" == 'preview' && "$deploy_sha" == "$current_main" ]]; then
+            echo '::error::El ref de preview resuelve al SHA actual de main; usa restore-main.'
+            exit 1
+          fi
+          if [[ "$MODE" == 'restore-main' && "$deploy_sha" != "$current_main" ]]; then
+            echo "::error::restore-main resolvió $deploy_sha, pero main actual es $current_main"
             exit 1
           fi
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
@@ -100,7 +118,7 @@ jobs:
               raise SystemExit(f'Pages production_branch inesperada: {production_branch!r}; se esperaba main')
           PY
 
-      - name: Static preflight of preview source
+      - name: Static preflight of target source
         working-directory: preview-source
         run: make static-preflight
 
@@ -111,11 +129,11 @@ jobs:
           cache: npm
           cache-dependency-path: preview-source/frontend/package-lock.json
 
-      - name: Install preview frontend dependencies
+      - name: Install target frontend dependencies
         working-directory: preview-source
         run: make frontend-install
 
-      - name: Build preview against staging API
+      - name: Build target against staging API
         working-directory: preview-source/frontend
         env:
           VITE_API_URL: ${{ env.STAGING_API_URL }}
@@ -124,7 +142,7 @@ jobs:
           VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
         run: npm run build
 
-      - name: Deploy preview to canonical staging frontend
+      - name: Deploy target to canonical staging frontend
         working-directory: preview-source/frontend
         shell: bash
         run: |
@@ -135,7 +153,7 @@ jobs:
             --commit-hash "${{ steps.source.outputs.deploy_sha }}" \
             --commit-dirty=false
 
-      - name: Verify canonical staging serves preview SHA
+      - name: Verify canonical staging serves target SHA
         shell: bash
         run: |
           set -euo pipefail
@@ -159,20 +177,23 @@ jobs:
             fi
             sleep 2
           done
-          [[ "$ok" == true ]] || { echo '::error::Staging no sirve el SHA de preview solicitado'; cat "$body" 2>/dev/null || true; exit 1; }
+          [[ "$ok" == true ]] || { echo '::error::Staging no sirve el SHA solicitado'; cat "$body" 2>/dev/null || true; exit 1; }
 
       - name: Preview summary
         shell: bash
         run: |
           {
-            echo '### Chess Studio · preview desplegado en staging'
+            echo '### Chess Studio · frontend staging actualizado'
             echo
-            echo "- Ref solicitado: \`$SOURCE_REF\`"
+            echo "- Modo: \`$MODE\`"
+            if [[ "$MODE" == 'preview' ]]; then
+              echo "- Ref solicitado: \`$SOURCE_REF\`"
+            else
+              echo '- Ref restaurado: `main`'
+            fi
             echo "- SHA: \`${{ steps.source.outputs.deploy_sha }}\`"
             echo "- Frontend: $STAGING_URL"
             echo "- API: \`$STAGING_API_URL\` (backend canónico de staging)"
             echo
             echo '**No acreditado:** este workflow no dispara `Staging · AI Worker` ni `Production · promote`.'
-            echo
-            echo 'Para restaurar staging a `main` sin promocionar producción, ejecuta manualmente `Staging · deploy` desde `main`.'
           } >> "$GITHUB_STEP_SUMMARY"
