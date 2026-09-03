@@ -1,0 +1,59 @@
+name: tmp-castle-life-wave-a
+
+on:
+  push:
+    branches:
+      - visual/castle-life-wave-a
+    paths:
+      - .github/workflows/_tmp_castle_life_wave_a.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: visual/castle-life-wave-a
+          fetch-depth: 0
+      - name: Wire Home castle life
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          menu_path = Path('frontend/src/components/Menu.jsx')
+          menu = menu_path.read_text(encoding='utf-8')
+          needle = "import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';\n"
+          assert needle in menu
+          menu = menu.replace(needle, needle + "import HomeCastleLife from './HomeCastleLife.jsx';\n", 1)
+          needle = "  const matthiasRollRef = useRef(Math.random());\n"
+          assert needle in menu
+          menu = menu.replace(needle, needle + "  const castleLifeRollRef = useRef(Math.random());\n", 1)
+          needle = "      {!showHomeGuide && !matthiasCornerBlocked && (\n        <MatthiasHomeVisit\n"
+          assert needle in menu
+          block = "      <HomeCastleLife\n        hasSavedGame={hasSavedGame}\n        combatProgress={combatProgress}\n        tournamentLevel={tournamentLevel}\n        tournamentProgress={tournamentProgress}\n        today={today}\n        rivalry={rivalry}\n        rareRoll={castleLifeRollRef.current}\n      />\n\n"
+          menu = menu.replace(needle, block + needle, 1)
+          menu_path.write_text(menu, encoding='utf-8')
+
+          e2e_path = Path('e2e/matthias-home-visual-critical.spec.js')
+          e2e = e2e_path.read_text(encoding='utf-8')
+          needle = "  const primaryCard = home.locator('.home-mode-card').first();\n\n  await expect(home).toBeVisible();\n"
+          assert needle in e2e
+          replacement = "  const primaryCard = home.locator('.home-mode-card').first();\n  const castleLife = home.getByRole('region', { name: 'La estancia de Chess Studio' });\n\n  await expect(home).toBeVisible();\n  await expect(castleLife).toBeVisible();\n  await expect(castleLife).toHaveAttribute('data-castle-life', 'real-state-v1');\n"
+          e2e = e2e.replace(needle, replacement, 1)
+          needle = "      homeBackground: homeStyle?.backgroundImage || '',\n"
+          assert needle in e2e
+          e2e = e2e.replace(needle, needle + "      castleWidth: document.querySelector('.home-castle-life')?.getBoundingClientRect().width || 0,\n", 1)
+          needle = "  expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);\n"
+          assert needle in e2e
+          e2e = e2e.replace(needle, needle + "  expect(contract.castleWidth, 'la repisa viva debe caber en Home a 390px').toBeLessThanOrEqual(390);\n", 1)
+          e2e_path.write_text(e2e, encoding='utf-8')
+          PY
+          rm .github/workflows/_tmp_castle_life_wave_a.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/components/Menu.jsx e2e/matthias-home-visual-critical.spec.js .github/workflows/_tmp_castle_life_wave_a.yml
+          git commit -m "Wire living castle state into Home"
+          git push origin HEAD:visual/castle-life-wave-a
