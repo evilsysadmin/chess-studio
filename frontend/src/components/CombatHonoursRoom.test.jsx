@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCombatHonoursModel } from './CombatHonoursRoom.jsx';
 
+// A visual trophy is not allowed to exist unless the service record proves it.
 function record(overrides = {}) {
   return {
     identityId: overrides.identityId || 'u-1',
