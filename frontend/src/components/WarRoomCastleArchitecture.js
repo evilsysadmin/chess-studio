@@ -489,10 +489,10 @@ function animateWarmFire(root, coarsePointer) {
   }
 }
 
-function finalizeFurnitureBalance(root, wallZ, towardBoard, coarsePointer) {
+function finalizeCoarseFurnitureBalance(root, wallZ, towardBoard) {
   if (!root || root.userData?.warRoomFurnitureBalance === 'centered-v3') return;
-  const sofaOffset = coarsePointer ? 6.45 : 7.05;
-  const consoleOffset = coarsePointer ? 3.7 : 4.2;
+  const sofaOffset = 6.45;
+  const consoleOffset = 3.7;
 
   for (const [name, side] of [['war-room-sofa-left', -1], ['war-room-sofa-right', 1]]) {
     const sofa = root.getObjectByName?.(name);
@@ -525,14 +525,15 @@ function attachSceneDriver(layer, coarsePointer) {
   };
 }
 
-function attachFinalRefinementDriver(layer, wallZ, towardBoard, coarsePointer) {
+function attachCoarseFinalRefinementDriver(layer, wallZ, towardBoard) {
   const driver = layer.getObjectByName('war-room-armor-visor') || layer.getObjectByName('war-room-armor-guard-right');
   if (!driver) return;
   driver.userData.warRoomFinalRefinementDriver = true;
+  driver.userData.warRoomFinalRefinementScope = 'coarse-mobile-only';
   const previous = driver.onBeforeRender;
   driver.onBeforeRender = (...args) => {
     previous?.(...args);
-    finalizeFurnitureBalance(sceneRoot(driver), wallZ, towardBoard, coarsePointer);
+    finalizeCoarseFurnitureBalance(sceneRoot(driver), wallZ, towardBoard);
   };
 }
 
@@ -549,7 +550,11 @@ export function buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer
   addArmorGuard(layer, -1, wallZ, towardBoard, coarsePointer);
   addArmorGuard(layer, 1, wallZ, towardBoard, coarsePointer);
   attachSceneDriver(layer, coarsePointer);
-  attachFinalRefinementDriver(layer, wallZ, towardBoard, coarsePointer);
+  if (coarsePointer) {
+    attachCoarseFinalRefinementDriver(layer, wallZ, towardBoard);
+  } else {
+    layer.userData.warRoomDesktopLegacyLayoutDriverRetired = true;
+  }
   return layer;
 }
 
