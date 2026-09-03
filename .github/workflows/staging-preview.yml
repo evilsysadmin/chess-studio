@@ -34,7 +34,6 @@ jobs:
       PAGES_BRANCH: ${{ inputs.slot }}
       PAGES_PROJECT: chess-studio-staging
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
-      CANONICAL_STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
@@ -74,6 +73,9 @@ jobs:
           fi
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
           echo "short_sha=${deploy_sha:0:12}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify preview cannot enter production chain
+        run: python3 scripts/staging_preview_contract.py
 
       - name: Verify Pages project isolation
         shell: bash
