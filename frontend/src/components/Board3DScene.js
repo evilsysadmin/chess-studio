@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
+import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
 
 export function addMesh(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0]) {
   const mesh = new THREE.Mesh(geometry, material);
@@ -135,7 +136,13 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
 
 export function fitBoardCamera(camera, width, height, whiteSide) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
-  const profile = getCameraFramingProfile(aspect);
+  const coarsePointer = typeof window !== 'undefined'
+    && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
+  const viewportWidth = typeof window !== 'undefined'
+    ? Number(window.innerWidth) || width
+    : width;
+  const mobileProfile = getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
+  const profile = mobileProfile || getCameraFramingProfile(aspect);
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
@@ -151,5 +158,6 @@ export function fitBoardCamera(camera, width, height, whiteSide) {
   camera.lookAt(target);
   camera.userData.basePosition = camera.position.clone();
   camera.userData.baseTarget = target.clone();
+  camera.userData.framingProfile = mobileProfile?.version || 'standard';
   camera.updateProjectionMatrix();
 }
