@@ -101,6 +101,8 @@ describe('War Room castle visual contract', () => {
     expect(scene.userData.warRoomApprovedMockArmorOffset).toBeCloseTo(8.35, 5);
     expect(scene.userData.warRoomApprovedMockSofaOffset).toBeCloseTo(12.35, 5);
     expect(scene.userData.warRoomApprovedMockFurnitureOrder).toBe('tables-rear-armors-lower-sofas-foreground-v27');
+    expect(scene.userData.warRoomLegacyLayoutDriverRetirementVersion).toBe('approved-mock-v27');
+    expect(scene.userData.warRoomLegacyLayoutDriversRetired.length).toBeGreaterThanOrEqual(1);
     expect(Math.abs(leftArmor.position.x)).toBeLessThan(Math.abs(leftConsole.position.x));
     expect(room.getObjectByName('war-room-sofa-seat-cushion')).toBeTruthy();
     expect(room.getObjectByName('war-room-console-lower-shelf')).toBeTruthy();
