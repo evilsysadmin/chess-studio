@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TIME_CONTROLS } from '../clock.js';
 import { getAmbientVolume, isFxMuted, isMusicMuted, setAmbientVolume, setFxMuted, setMusicMuted } from '../sound.js';
 import { BOARD_RENDERERS, getBoardCoordinates, getBoardRenderer, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setBoardRenderer, setDefaultTimeControlId, setReducedMotion, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
@@ -24,6 +24,24 @@ const SKIN_PREVIEWS = {
   ...GENERATED_SKIN_PREVIEWS,
 };
 
+export function stageRendererForSettingsClose({
+  boardRenderer,
+  currentBoardRenderer,
+  pendingRendererRef,
+  onClose,
+}) {
+  pendingRendererRef.current = boardRenderer !== currentBoardRenderer ? boardRenderer : null;
+  onClose?.();
+  return pendingRendererRef.current;
+}
+
+export function applyStagedRendererAfterSettingsUnmount({ pendingRendererRef, applyBoardRenderer }) {
+  const pendingRenderer = pendingRendererRef.current;
+  pendingRendererRef.current = null;
+  if (pendingRenderer) applyBoardRenderer?.(pendingRenderer);
+  return pendingRenderer;
+}
+
 export default function UserSettingsPanelContent({ onClose, onBoard3D, isAdminUser = false }) {
   const [timeControlId, setTimeControlIdState] = useState(() => getDefaultTimeControlId());
   const [language, setLanguageState] = useState(() => getUiLanguage());
@@ -34,15 +52,27 @@ export default function UserSettingsPanelContent({ onClose, onBoard3D, isAdminUs
   const [boardRenderer, setBoardRendererState] = useState(() => getBoardRenderer());
   const [reducedMotion, setReducedMotionState] = useState(() => getReducedMotion());
   const [boardCoordinates, setBoardCoordinatesState] = useState(() => getBoardCoordinates());
+  const pendingBoardRendererRef = useRef(null);
   const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
   const availableSkinIds = new Set(unlockedSkins(tournamentLevel, { isAdmin: isAdminUser }).map((skin) => skin.id));
 
+  useEffect(() => () => {
+    // El cambio 2D↔3D puede montar o desmontar Three.js. Aplicarlo desde el
+    // cleanup crea una barrera real de ciclo de vida: React ya ha retirado el
+    // modal y su botón Cerrar antes de emitir la preferencia que remonta tablero.
+    applyStagedRendererAfterSettingsUnmount({
+      pendingRendererRef: pendingBoardRendererRef,
+      applyBoardRenderer: setBoardRenderer,
+    });
+  }, []);
+
   function closeSettings() {
-    // Cambiar 2D/3D puede montar o desmontar Three.js. Lo aplicamos después de
-    // cerrar el modal para que el propio cambio de renderer no mueva el botón
-    // Cerrar bajo el dedo, especialmente en Android/WebView.
-    if (boardRenderer !== getBoardRenderer()) setBoardRenderer(boardRenderer);
-    onClose?.();
+    stageRendererForSettingsClose({
+      boardRenderer,
+      currentBoardRenderer: getBoardRenderer(),
+      pendingRendererRef: pendingBoardRendererRef,
+      onClose,
+    });
   }
 
   useEscapeToClose(closeSettings);
