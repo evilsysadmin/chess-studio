@@ -4,35 +4,32 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Rama, tag o SHA del repo a previsualizar (main no está permitido)'
+        description: 'Rama, tag o SHA a previsualizar en el frontend de staging (main no está permitido)'
         required: true
         type: string
-      slot:
-        description: 'Slot de preview de Cloudflare Pages'
-        required: true
-        default: preview
-        type: choice
-        options:
-          - preview
-          - preview-a
-          - preview-b
 
 permissions:
   contents: read
 
+# Preview y staging oficial comparten el mismo frontend. Nunca deben escribir
+# Cloudflare Pages a la vez.
 concurrency:
-  group: chess-studio-staging-preview-${{ inputs.slot }}
-  cancel-in-progress: true
+  group: chess-studio-staging-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Frontend preview · ${{ inputs.slot }}
+    name: Frontend preview en staging
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       SOURCE_REF: ${{ inputs.ref }}
-      PAGES_BRANCH: ${{ inputs.slot }}
+      ORCHESTRATOR_REF: ${{ github.ref }}
       PAGES_PROJECT: chess-studio-staging
+      STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -42,21 +39,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          [[ "$ORCHESTRATOR_REF" == 'refs/heads/main' ]] || { echo '::error::Staging · preview sólo puede ejecutarse desde el workflow de main.'; exit 1; }
           [[ -n "${SOURCE_REF:-}" ]] || { echo '::error::Falta el ref a previsualizar'; exit 1; }
           [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
           [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-          [[ "$PAGES_BRANCH" =~ ^preview(-[ab])?$ ]] || { echo "::error::Slot de preview no permitido: $PAGES_BRANCH"; exit 1; }
           case "$SOURCE_REF" in
             main|refs/heads/main|origin/main)
-              echo '::error::main usa el pipeline oficial de staging; este flow sólo acepta ramas/tags/SHA de preview.'
+              echo '::error::main usa Staging · deploy; este flow sólo acepta refs de preview.'
               exit 1
               ;;
           esac
 
-      - name: Checkout requested source
+      - name: Checkout preview orchestrator
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify preview cannot enter production chain
+        run: python3 scripts/staging_preview_contract.py
+
+      - name: Checkout requested preview source
         uses: actions/checkout@v7
         with:
           ref: ${{ env.SOURCE_REF }}
+          path: preview-source
           fetch-depth: 0
 
       - name: Resolve immutable preview SHA
@@ -64,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          deploy_sha="$(git rev-parse HEAD)"
+          deploy_sha="$(git -C preview-source rev-parse HEAD)"
           current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
           [[ "$deploy_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SHA resuelto inválido: $deploy_sha"; exit 1; }
           if [[ "$deploy_sha" == "$current_main" ]]; then
@@ -74,10 +81,7 @@ jobs:
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
           echo "short_sha=${deploy_sha:0:12}" >> "$GITHUB_OUTPUT"
 
-      - name: Verify preview cannot enter production chain
-        run: python3 scripts/staging_preview_contract.py
-
-      - name: Verify Pages project isolation
+      - name: Verify canonical staging Pages project
         shell: bash
         run: |
           set -euo pipefail
@@ -88,19 +92,16 @@ jobs:
             -H 'Accept: application/json' \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT")"
           [[ "$status" == 200 ]] || { cat "$body" >&2; exit 1; }
-          python3 - "$body" "$PAGES_BRANCH" <<'PY'
+          python3 - "$body" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          result = payload.get('result') or {}
-          production_branch = str(result.get('production_branch') or '')
-          preview_branch = sys.argv[2]
+          production_branch = str((payload.get('result') or {}).get('production_branch') or '')
           if production_branch != 'main':
               raise SystemExit(f'Pages production_branch inesperada: {production_branch!r}; se esperaba main')
-          if preview_branch == production_branch:
-              raise SystemExit('El slot preview no puede coincidir con production_branch')
           PY
 
-      - name: Static preflight
+      - name: Static preflight of preview source
+        working-directory: preview-source
         run: make static-preflight
 
       - name: Setup Node
@@ -108,13 +109,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: preview-source/frontend/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install preview frontend dependencies
+        working-directory: preview-source
         run: make frontend-install
 
       - name: Build preview against staging API
-        working-directory: frontend
+        working-directory: preview-source/frontend
         env:
           VITE_API_URL: ${{ env.STAGING_API_URL }}
           VITE_PUBLIC_BASE: /
@@ -122,69 +124,30 @@ jobs:
           VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
         run: npm run build
 
-      - name: Deploy isolated Cloudflare Pages branch
-        working-directory: frontend
+      - name: Deploy preview to canonical staging frontend
+        working-directory: preview-source/frontend
         shell: bash
         run: |
           set -euo pipefail
           npx --yes wrangler@4 pages deploy dist \
             --project-name "$PAGES_PROJECT" \
-            --branch "$PAGES_BRANCH" \
+            --branch main \
             --commit-hash "${{ steps.source.outputs.deploy_sha }}" \
             --commit-dirty=false
 
-      - name: Resolve deployed preview URL
-        id: pages
+      - name: Verify canonical staging serves preview SHA
         shell: bash
         run: |
           set -euo pipefail
           deploy_sha='${{ steps.source.outputs.deploy_sha }}'
-          body="$RUNNER_TEMP/pages-deployments.json"
-          found=''
-          for attempt in {1..20}; do
-            status="$(curl --fail-with-body --silent --show-error \
-              --output "$body" --write-out '%{http_code}' \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H 'Accept: application/json' \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT/deployments")"
-            [[ "$status" == 200 ]] || { cat "$body" >&2; exit 1; }
-            found="$(python3 - "$body" "$deploy_sha" "$PAGES_BRANCH" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          sha, branch = sys.argv[2], sys.argv[3]
-          for item in payload.get('result') or []:
-              trigger = item.get('deployment_trigger') or {}
-              meta = trigger.get('metadata') or {}
-              if str(meta.get('commit_hash') or '').lower() != sha.lower():
-                  continue
-              if str(meta.get('branch') or '') != branch:
-                  continue
-              url = str(item.get('url') or '')
-              if url:
-                  print(url)
-                  break
-          PY
-          )"
-            [[ -n "$found" ]] && break
-            sleep 2
-          done
-          [[ "$found" =~ ^https://.*\.pages\.dev/?$ ]] || { echo "::error::No pude resolver la URL del preview para $deploy_sha / $PAGES_BRANCH"; exit 1; }
-          echo "url=${found%/}" >> "$GITHUB_OUTPUT"
-
-      - name: Verify preview build identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          preview_url='${{ steps.pages.outputs.url }}'
-          deploy_sha='${{ steps.source.outputs.deploy_sha }}'
-          body="$RUNNER_TEMP/preview-release.json"
+          body="$RUNNER_TEMP/staging-preview-release.json"
           ok=false
           for attempt in {1..30}; do
             status="$(curl --silent --show-error \
               --connect-timeout 5 --max-time 12 \
               --output "$body" --write-out '%{http_code}' \
               -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$preview_url/release.json?sha=$deploy_sha" || true)"
+              "$STAGING_URL/release.json?sha=$deploy_sha" || true)"
             if [[ "$status" == 200 ]] && python3 - "$body" "$deploy_sha" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
@@ -196,19 +159,20 @@ jobs:
             fi
             sleep 2
           done
-          [[ "$ok" == true ]] || { echo '::error::El preview no acredita el SHA solicitado'; cat "$body" 2>/dev/null || true; exit 1; }
+          [[ "$ok" == true ]] || { echo '::error::Staging no sirve el SHA de preview solicitado'; cat "$body" 2>/dev/null || true; exit 1; }
 
       - name: Preview summary
         shell: bash
         run: |
           {
-            echo '### Chess Studio · staging preview'
+            echo '### Chess Studio · preview desplegado en staging'
             echo
             echo "- Ref solicitado: \`$SOURCE_REF\`"
             echo "- SHA: \`${{ steps.source.outputs.deploy_sha }}\`"
-            echo "- Slot Pages: \`$PAGES_BRANCH\`"
-            echo "- URL: ${{ steps.pages.outputs.url }}"
-            echo "- API: \`$STAGING_API_URL\`"
+            echo "- Frontend: $STAGING_URL"
+            echo "- API: \`$STAGING_API_URL\` (backend canónico de staging)"
             echo
-            echo '**Este workflow no acredita staging oficial y no puede disparar Production · promote.**'
+            echo '**No acreditado:** este workflow no dispara `Staging · AI Worker` ni `Production · promote`.'
+            echo
+            echo 'Para restaurar staging a `main` sin promocionar producción, ejecuta manualmente `Staging · deploy` desde `main`.'
           } >> "$GITHUB_STEP_SUMMARY"
