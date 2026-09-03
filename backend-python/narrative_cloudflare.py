@@ -31,7 +31,7 @@ DEFAULT_MAX_OUTPUT_CHARS = 420
 PLAYER_PORTRAIT_MAX_OUTPUT_CHARS = 900
 RICH_ANALYSIS_MAX_OUTPUT_CHARS = 900
 PERSONAL_PUZZLE_BATCH_MAX_OUTPUT_CHARS = 3200
-RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily", "matthias_position"})
+RICH_ANALYSIS_EVENT_TYPES = frozenset({"post_game_autopsy", "combat_briefing", "combat_debrief", "observability_summary", "training_plan", "personal_puzzle_batch", "matthias_daily", "matthias_position", "game_opening_banter"})
 MAX_FACT_DEPTH = 3
 MAX_FACT_STRING = 240
 MAX_FACT_ARRAY = 12
@@ -659,7 +659,7 @@ def _percentile(values: list[float], percentile: float) -> float | None:
     if not values:
         return None
     ordered = sorted(values)
-    idx = max(0, math.ceil(percentile * len(ordered)) - 1)
+    idx = max(0, math.ceil(percentile * len(ordered)) - 1
     return round(float(ordered[idx]), 2)
 
 
