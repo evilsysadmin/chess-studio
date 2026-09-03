@@ -233,6 +233,9 @@ REGLAS INVIOLABLES:
 - No llames "fortaleza", "debilidad" o "tendencia" a algo basado en una sola
   muestra si los HECHOS indican que hay pocos datos. Sé proporcional al tamaño
   de la muestra.
+- Para game_opening_banter responde exclusivamente en español de España y con alfabeto latino.
+  Si mencionas nivel o dificultad, copia EXACTAMENTE HECHOS.game.difficulty; nunca inventes,
+  transformes ni sustituyas ese número. No mezcles chino, cirílico, árabe u otros alfabetos.
 - Para comentarios de partida escribe una o dos frases cortas y no narres lo
   obvio como un comentarista de televisión.
 - Si HECHOS incluye memory, es un expediente real y acotado de la rivalidad.
@@ -460,7 +463,7 @@ async function handleNarrative(request, env) {
 
   const tasks = {
     player_portrait: "Diagnostica el juego con datos: acierto principal, problema principal y siguiente acción. Mantén una sola pulla breve. Nada de adornos.",
-    game_opening_banter: "Abre esta partida con una pulla de Matthias en una o dos frases muy cortas. Prioriza un único hecho relevante del historial si HECHOS lo demuestra; si la muestra es pobre, usa sólo dificultad, color o modo actuales. Nada de consejo, informe, resumen ni historial inventado.",
+    game_opening_banter: "Abre esta partida con una pulla de Matthias en una o dos frases muy cortas y sólo en español de España. Si citas nivel o dificultad, copia literalmente HECHOS.game.difficulty; no introduzcas ningún número ausente de HECHOS y no mezcles alfabetos. Prioriza un único hecho relevante del historial si HECHOS lo demuestra; si la muestra es pobre, usa sólo dificultad, color o modo actuales. Nada de consejo, informe, resumen ni historial inventado.",
     training_plan: "Convierte las prioridades ya calculadas por Chess Studio en un plan corto y accionable. No añadas diagnósticos nuevos.",
     personal_puzzle_batch: "Crea un lote compacto de nuevos escenarios tácticos inspirados en las semillas. Devuelve exclusivamente el JSON exigido; nada más.",
     matthias_daily: "Responde a la audiencia diaria de Matthias. Sigue question_kind, usa sólo hechos reales y termina con una acción concreta cuando proceda.",

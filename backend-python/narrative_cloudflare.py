@@ -282,6 +282,18 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         # El cliente no muestra ni persiste este fallback: una bio de unidad
         # sólo se considera válida cuando procede realmente de Workers AI.
         return "Expediente pendiente de redacción por el archivo de campaña."
+    if event_type == "game_opening_banter":
+        game = clean.get("game", {}) if isinstance(clean, dict) else {}
+        difficulty = game.get("difficulty") if isinstance(game, dict) else None
+        human_color = str(game.get("human_color") or "white") if isinstance(game, dict) else "white"
+        if isinstance(difficulty, (int, float)) and not isinstance(difficulty, bool):
+            level = int(difficulty) if float(difficulty).is_integer() else round(float(difficulty), 1)
+            if human_color == "white":
+                return f"Nivel {level} y tú con blancas. Empiezas tú; no malgastes el privilegio."
+            return f"Nivel {level} y yo con blancas. Qué detalle dejarme empezar el interrogatorio."
+        if human_color == "white":
+            return "Tú llevas blancas. Empiezas tú; la primera decisión cuestionable también te pertenece."
+        return "Yo llevo blancas. Qué detalle dejarme empezar el interrogatorio."
     if event_type in RICH_ANALYSIS_EVENT_TYPES:
         return "Siguiente paso: revisa la posición crítica, compara dos jugadas candidatas y practica una vez el patrón que decidió la partida."
     return "Antes de tu próxima jugada, revisa jaques, capturas y amenazas; esa pausa de diez segundos evita más errores que mover por intuición."
@@ -333,6 +345,47 @@ def validate_grounded_output(text: str, event_type: str, facts: dict[str, Any]) 
         grounding_terms = _GROUNDED_CONCEPTS[concept]
         if not any(term in haystack for term in grounding_terms):
             return False, concept
+    return True, None
+
+
+_OPENING_FOREIGN_SCRIPT_RE = re.compile(
+    r"[\u0370-\u052f\u0600-\u06ff\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]"
+)
+_OPENING_LEVEL_RE = re.compile(r"\b(?:nivel|dificultad|difficulty)\s*(?:de\s*)?([0-9]{1,3})\b", re.IGNORECASE)
+_OPENING_NUMBER_RE = re.compile(r"(?<![\w])([0-9]+(?:[.,][0-9]+)?)(?![\w])")
+
+
+def validate_opening_banter_contract(text: str, facts: dict[str, Any]) -> tuple[bool, str | None]:
+    """Fail closed when an opening quip changes script or invents numeric facts."""
+    clean_text = " ".join(str(text or "").split()).strip()
+    if not clean_text:
+        return False, "empty"
+    if _OPENING_FOREIGN_SCRIPT_RE.search(clean_text):
+        return False, "foreign_script"
+
+    clean_facts = _sanitize(facts or {})
+    game = clean_facts.get("game", {}) if isinstance(clean_facts, dict) else {}
+    difficulty = game.get("difficulty") if isinstance(game, dict) else None
+    expected_level = None
+    if isinstance(difficulty, (int, float)) and not isinstance(difficulty, bool) and math.isfinite(float(difficulty)):
+        expected_level = int(round(float(difficulty)))
+
+    for match in _OPENING_LEVEL_RE.finditer(clean_text):
+        mentioned = int(match.group(1))
+        if expected_level is None or mentioned != expected_level:
+            return False, "difficulty"
+
+    allowed_numbers = _numeric_facts(facts)
+    for match in _OPENING_NUMBER_RE.finditer(clean_text):
+        raw = match.group(1).replace(",", ".")
+        try:
+            value = float(raw)
+        except ValueError:
+            return False, "number"
+        normalized = str(int(value)) if value.is_integer() else str(value).rstrip("0").rstrip(".")
+        if normalized not in allowed_numbers:
+            return False, "invented_number"
+
     return True, None
 
 
@@ -891,6 +944,14 @@ async def request_cloud_narrative(
             if not valid_daily:
                 return _provider_failure(
                     f"matthias_daily_contract_rejected:{daily_reason or 'unknown'}",
+                    elapsed,
+                    channel=channel,
+                )
+        if event_type == "game_opening_banter":
+            valid_opening, opening_reason = validate_opening_banter_contract(text, facts)
+            if not valid_opening:
+                return _provider_failure(
+                    f"opening_banter_contract_rejected:{opening_reason or 'unknown'}",
                     elapsed,
                     channel=channel,
                 )
