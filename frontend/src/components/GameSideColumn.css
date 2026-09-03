@@ -70,3 +70,16 @@
   opacity: 1;
   text-shadow: 0 1px 1px rgba(0, 0, 0, .68);
 }
+
+/* Desktop War Room flattens this wrapper with display: contents. That means
+   the generic `.board-live-row.is-3d-warroom > * { z-index: 1 }` no longer
+   lifts these grandchildren above the room's decorative ::before layer.
+   Give the real right-rail surfaces their own stacking level so the scene
+   tint cannot darken otherwise-correct notebook/music colours. */
+@media (min-width: 1081px) {
+  .game-screen .game-side-column.game-side-column-3d > .game-side-music,
+  .game-screen .game-side-column.game-side-column-3d > .game-notation-disclosure {
+    position: relative;
+    z-index: 1;
+  }
+}
