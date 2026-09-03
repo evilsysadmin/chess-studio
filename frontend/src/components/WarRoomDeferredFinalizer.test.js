@@ -56,7 +56,7 @@ describe('WarRoomDeferredFinalizer', () => {
     expect(second).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to the castle wall, rejects duplicates and skips coarse rendering', () => {
+  it('falls back to the castle wall, rejects duplicates and only runs coarse tasks when explicitly allowed', () => {
     const owner = new THREE.Group();
     const wall = mesh('war-room-castle-wall-left');
     const task = vi.fn(() => 1);
@@ -71,13 +71,23 @@ describe('WarRoomDeferredFinalizer', () => {
     expect(registerWarRoomDeferredFinalizer(owner, { key: 'late-task', run: task })).toBe(0);
 
     const mobile = new THREE.Group();
-    mobile.add(mesh('war-room-castle-wall-left'));
+    const mobileWall = mesh('war-room-castle-wall-left');
+    const mobileTask = vi.fn(() => 5);
+    mobile.add(mobileWall);
     expect(registerWarRoomDeferredFinalizer(mobile, {
       key: 'mobile-task',
-      run: task,
+      run: mobileTask,
       coarsePointer: true,
     })).toBe(0);
-    expect(mobile.userData.warRoomDeferredFinalizer).toBeUndefined();
+    expect(registerWarRoomDeferredFinalizer(mobile, {
+      key: 'mobile-opt-in-task',
+      run: mobileTask,
+      coarsePointer: true,
+      allowCoarse: true,
+    })).toBe(1);
+    expect(mobile.userData.warRoomDeferredFinalizer).toBe(WAR_ROOM_DEFERRED_FINALIZER_VERSION);
+    mobileWall.onBeforeRender();
+    expect(mobileTask).toHaveBeenCalledTimes(1);
   });
 
   it('retires a static render chain after its first paint, including a later outer wrapper', () => {

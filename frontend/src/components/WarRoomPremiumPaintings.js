@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { installTeutonicWarRoomDecor } from './WarRoomTeutonicDecor.js';
+import { installTeutonicWarRoomDecor, registerPremiumRoomFinalization } from './WarRoomTeutonicDecor.js';
 import { applyWarRoomPremiumFinishPass } from './WarRoomPremiumFinishPass.js';
 import { applyWarRoomPracticalLighting } from './WarRoomPracticalLighting.js';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
@@ -233,18 +233,21 @@ export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePo
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
 
   installTeutonicWarRoomDecor(group, { wallZ, towardBoard, coarsePointer });
-  if (coarsePointer) return 0;
+  if (coarsePointer) {
+    registerPremiumRoomFinalization(group, { wallZ, towardBoard, coarsePointer });
+    return 0;
+  }
 
   const paintingZ = wallZ + towardBoard * 0.72;
   addPainting(group, -4.95, 3.65, paintingZ, towardBoard, false, 0);
   addPainting(group, 4.95, 3.66, paintingZ, towardBoard, true, 1);
+  registerPremiumRoomFinalization(group, { wallZ, towardBoard, coarsePointer });
   applyWarRoomPremiumFinishPass(group, { towardBoard });
   applyWarRoomPracticalLighting(group, { wallZ, towardBoard, coarsePointer });
-  const retirementRegistered = registerWarRoomDeferredFinalizer(group, {
+  registerWarRoomDeferredFinalizer(group, {
     key: 'legacy-armor-retirement-v1',
     run: retireLegacyArmors,
   });
-  group.userData.warRoomLegacyArmorRetirement = retirementRegistered ? 'deferred-finalizer-v1' : 'already-finalized';
   group.userData.warRoomPremiumPaintings = 2;
   group.userData.warRoomPremiumPaintingVersion = 'v2';
   return 2;
