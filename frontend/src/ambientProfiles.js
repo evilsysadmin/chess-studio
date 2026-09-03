@@ -1,4 +1,20 @@
 import { structuredFeel as legacyStructuredFeel } from './ambientProfilesLegacy.js';
+import {
+  AMBIENT_GENRE_ORDER,
+  AMBIENT_THEMES,
+  AMBIENT_THEME_GROUPS,
+  AMBIENT_THEME_OPTIONS,
+  CURATED_HIDDEN_THEME_IDS,
+} from './ambientCatalog.js';
+import { installRadioMatthiasExpansion } from './ambientRadioMatthiasExpansion.js';
+
+installRadioMatthiasExpansion({
+  themes: AMBIENT_THEMES,
+  options: AMBIENT_THEME_OPTIONS,
+  groups: AMBIENT_THEME_GROUPS,
+  genreOrder: AMBIENT_GENRE_ORDER,
+  hiddenIds: CURATED_HIDDEN_THEME_IDS,
+});
 
 const GRANADA_THEME_IDS = new Set(['granadaPatio', 'granadaCopperRain0232']);
 
