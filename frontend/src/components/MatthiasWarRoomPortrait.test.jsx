@@ -26,7 +26,7 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('data-matthias-three-avatar="true"');
     expect(html).toContain('data-three-scene="war-room-command"');
     expect(html).toContain('data-three-motion-intensity="1.00"');
-    expect(html).toContain('data-three-face-rig="face-v2"');
+    expect(html).toContain('data-three-face-rig="face-v1"');
     expect(html).toContain('data-three-face-expression="stern"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
