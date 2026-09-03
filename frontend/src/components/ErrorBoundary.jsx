@@ -1,6 +1,7 @@
 import React from 'react';
 import { buildClientDiagnostic, copyDiagnosticText } from '../clientDiagnostics.js';
 import { isLikelyModuleLoadError, reloadClientRuntime } from '../moduleLoadRecovery.js';
+import { requestReleaseReload } from '../releaseContinuity.js';
 
 // Red de seguridad a nivel de toda la app. Si una pantalla revienta durante
 // render, mantenemos la app viva y, cuando existe una partida activa, damos
@@ -19,6 +20,16 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
     console.error('Error atrapado por ErrorBoundary:', error, info);
+
+    // React.lazy puede convertir un chunk de una generación antigua en un error
+    // de render (por ejemplo `undefined.default`) antes de que llegue a
+    // unhandledrejection/vite:preloadError. En ese caso reconstruimos el runtime
+    // sin pedir un clic. requestReleaseReload comparte el guard de sessionStorage:
+    // si el runtime nuevo también falla, no entra en bucle y este boundary queda
+    // visible como recuperación manual de último recurso.
+    if (isLikelyModuleLoadError(error)) {
+      requestReleaseReload({ reload: this.props.onReload || undefined });
+    }
   }
 
   handleRecover = async () => {
