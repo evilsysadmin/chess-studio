@@ -51,37 +51,50 @@
 /* The notebook is intentionally parchment-like, not black ink on black glass. */
 .app-shell-board-game .notation-panel,
 .app-shell-board-game .game-notation-row .notation-panel {
-  color: #d9ccb2;
+  color: #eee1c8;
 }
 
 .app-shell-board-game .notation-panel h3 {
-  color: #d8b977;
+  color: #e5c985;
   text-shadow: 0 1px 0 rgba(0,0,0,.55);
 }
 
 .app-shell-board-game .notation-panel .opening-tag,
 .app-shell-board-game .notation-panel .notation-empty,
-.app-shell-board-game .notation-panel .notation-meta {
-  color: #aaa18f;
+.app-shell-board-game .notation-panel .notation-meta,
+.app-shell-board-game .notation-panel .difficulty-tag {
+  color: #c9bba1;
+  opacity: 1;
 }
 
-.app-shell-board-game .notation-panel .move-number,
+/* NotationPanel uses num/white-move/black-move rather than the newer move-chip
+   vocabulary. Keep both families bright enough to read against smoked glass. */
+.app-shell-board-game .notation-panel .notation-row .num,
+.app-shell-board-game .notation-panel .move-number {
+  color: #d2b36f;
+  opacity: 1;
+}
+
+.app-shell-board-game .notation-panel .notation-row .white-move,
+.app-shell-board-game .notation-panel .notation-row .black-move,
 .app-shell-board-game .notation-panel .move-chip,
 .app-shell-board-game .notation-panel button.move-chip {
-  color: #ddd0b7;
+  color: #f0e3c8;
   opacity: 1;
+  font-weight: 560;
+  text-shadow: 0 1px 0 rgba(0,0,0,.5);
 }
 
 .app-shell-board-game .notation-panel .move-chip:hover,
 .app-shell-board-game .notation-panel .move-chip:focus-visible,
 .app-shell-board-game .notation-panel .move-chip.current {
-  color: #fff1cf;
+  color: #fff4d8;
 }
 
 .app-shell-board-game .game-notation-disclosure > summary {
-  color: #cfc1a6;
+  color: #ddcfb5;
 }
 
 .app-shell-board-game .game-notation-disclosure[open] > summary {
-  color: #f0dfbc;
+  color: #f3e3c2;
 }
