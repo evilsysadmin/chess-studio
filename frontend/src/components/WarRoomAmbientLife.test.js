@@ -8,8 +8,12 @@ import {
 
 function makeRoom({ sharedMaterial = true } = {}) {
   const room = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  wall.name = 'war-room-castle-wall-left';
+  room.add(wall);
+
   const driver = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
-  driver.name = 'war-room-castle-wall-left';
+  driver.name = 'war-room-castle-floor-slab';
   room.add(driver);
 
   const shared = new THREE.MeshPhysicalMaterial({
@@ -29,7 +33,7 @@ function makeRoom({ sharedMaterial = true } = {}) {
     room.add(fold);
   }
 
-  return { room, driver };
+  return { room, driver, wall };
 }
 
 function countSceneBudget(root) {
@@ -92,18 +96,24 @@ describe('War Room ambient life', () => {
     expect(fold.material.emissiveIntensity).toBeCloseTo(0.055, 6);
   });
 
-  it('chains the existing room driver and is idempotent', () => {
-    const { room, driver } = makeRoom();
+  it('chains the dynamic floor driver and leaves the static wall hook untouched', () => {
+    const { room, driver, wall } = makeRoom();
     let previousCalls = 0;
+    let wallCalls = 0;
     driver.onBeforeRender = () => { previousCalls += 1; };
+    wall.onBeforeRender = () => { wallCalls += 1; };
+    const wallHook = wall.onBeforeRender;
 
     expect(installWarRoomAmbientLife(room)).toBe(1);
     expect(installWarRoomAmbientLife(room)).toBe(0);
     expect(driver.userData.warRoomAmbientLifeDriver).toBe(WAR_ROOM_AMBIENT_LIFE_VERSION);
+    expect(room.userData.warRoomAmbientLifeAnchor).toBe('war-room-castle-floor-slab');
+    expect(wall.onBeforeRender).toBe(wallHook);
     expect(typeof driver.onBeforeRender).toBe('function');
 
     driver.onBeforeRender();
     expect(previousCalls).toBe(1);
+    expect(wallCalls).toBe(0);
     expect(room.userData.warRoomAmbientLifeVersion).toBe(WAR_ROOM_AMBIENT_LIFE_VERSION);
   });
 
