@@ -1,0 +1,28 @@
+name: Temporary opening banter apply
+on:
+  push:
+    branches: [fix/opening-banter-grounding]
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/opening-banter-grounding
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python scripts/tmp_patch_opening_banter.py
+      - run: python -m py_compile backend-python/narrative_cloudflare.py backend-python/test_opening_banter_ai.py
+      - run: node --check infra/cloudflare/worker/index.js
+      - run: git diff --check
+      - name: Commit patch
+        run: |
+          rm scripts/tmp_patch_opening_banter.py .github/workflows/tmp-opening-banter-apply.yml
+          git config user.name "Chess Studio patch bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Reject ungrounded opening banter language and numbers"
+          git push
