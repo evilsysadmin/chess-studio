@@ -242,9 +242,18 @@ jobs:
             frontend/package-lock.json
             e2e/package-lock.json
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
+      - name: Restore exact frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Restore cached Wrangler toolchain
+        uses: ./.github/actions/setup-wrangler
+        with:
+          version: '4.127.1'
+          node-version: '22'
 
       - name: Reconcile Pages project, domains and staging DNS
         id: pages_bootstrap
@@ -441,9 +450,12 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
 
-      - name: Install staging E2E dependencies
-        working-directory: e2e
-        run: npm ci
+      - name: Restore exact staging E2E dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: e2e
+          lockfile: e2e/package-lock.json
+          node-version: '22'
 
       - name: Ensure cached Chromium is present
         working-directory: e2e
