@@ -4,12 +4,6 @@ import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js'
 export const WAR_ROOM_APPROVED_MOCK_VERSION = 'approved-mock-v27';
 const NOOP_RENDER_HOOK = () => {};
 
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
-}
-
 function placeFurniture(root, { wallZ, towardBoard }) {
   const tableOffset = 3.30;
   const armorOffset = 8.35;
@@ -120,33 +114,23 @@ function straightenCurtains(root) {
   return folds + pelmets;
 }
 
-function installPostArchitectureFurnitureLock(group, options) {
-  const architectureDriver = group.getObjectByName?.('war-room-armor-visor');
-  if (!architectureDriver) return 0;
-  if (architectureDriver.userData.warRoomApprovedMockPostArchitectureDriver === WAR_ROOM_APPROVED_MOCK_VERSION) return 0;
+function retireLegacyLayoutDrivers(root) {
+  let retired = 0;
+  const retiredDrivers = [];
+  root.traverse?.((object) => {
+    if (object?.userData?.warRoomFinalRefinementDriver !== true) return;
+    if (object.userData.warRoomApprovedMockLayoutDriverRetired === WAR_ROOM_APPROVED_MOCK_VERSION) return;
 
-  const previous = architectureDriver.onBeforeRender;
-  let completed = false;
-  architectureDriver.onBeforeRender = (...args) => {
-    if (completed) return;
-    previous?.(...args);
-    // The armor visor lives inside war-room-castle-architecture while the
-    // sofas live in the parent premium-war-room-layer. Using the registration
-    // group here silently missed the real sofas and allowed the legacy
-    // architecture pass to win. Always resolve the live scene root.
-    placeFurniture(sceneRoot(architectureDriver) || group, options);
-    completed = true;
-    architectureDriver.userData.warRoomApprovedMockPostArchitectureCompleted = WAR_ROOM_APPROVED_MOCK_VERSION;
-    // The old architecture callback is static layout work. Once the approved
-    // layout has won the first paint, retire the entire chain so a visor can no
-    // longer keep moving furniture on every render heartbeat.
-    architectureDriver.onBeforeRender = NOOP_RENDER_HOOK;
-  };
-  architectureDriver.userData.warRoomApprovedMockPostArchitectureDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
-  architectureDriver.userData.warRoomApprovedMockPostArchitectureScope = 'scene-root-v27';
-  architectureDriver.userData.warRoomApprovedMockPostArchitectureRetirement = 'one-shot-v27';
-  group.userData.warRoomApprovedMockPostArchitectureDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
-  return 1;
+    object.onBeforeRender = NOOP_RENDER_HOOK;
+    object.userData.warRoomApprovedMockLayoutDriverRetired = WAR_ROOM_APPROVED_MOCK_VERSION;
+    object.userData.warRoomApprovedMockLayoutDriverRetirement = 'marker-owned-one-shot-v27';
+    retiredDrivers.push(object.name || object.type || 'unnamed');
+    retired += 1;
+  });
+
+  root.userData.warRoomLegacyLayoutDriversRetired = retiredDrivers;
+  root.userData.warRoomLegacyLayoutDriverRetirementVersion = WAR_ROOM_APPROVED_MOCK_VERSION;
+  return retired;
 }
 
 export function applyWarRoomApprovedMockContract(root, {
@@ -155,17 +139,23 @@ export function applyWarRoomApprovedMockContract(root, {
   coarsePointer = false,
 } = {}) {
   if (!root || coarsePointer || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
+  // This function runs once during construction and again through the shared
+  // first-paint finalizer. The legacy castle refinement driver is created only
+  // after the premium pass, so retirement deliberately happens here: the
+  // construction call sees zero drivers, while the first-paint call sees the
+  // complete scene and disables any marker-owned static layout callback before
+  // it can move the sofas back beside the armours.
+  const retiredDrivers = retireLegacyLayoutDrivers(root);
   const furniture = placeFurniture(root, { wallZ, towardBoard });
   const walls = retireWallClutter(root);
   const curtains = straightenCurtains(root);
   root.userData.warRoomApprovedMockVersion = WAR_ROOM_APPROVED_MOCK_VERSION;
-  return furniture + walls + curtains;
+  return retiredDrivers + furniture + walls + curtains;
 }
 
 export function installWarRoomApprovedMockContract(group, options = {}) {
   if (!group || options.coarsePointer) return 0;
   applyWarRoomApprovedMockContract(group, options);
-  installPostArchitectureFurnitureLock(group, options);
 
   const markerDriver = group.getObjectByName?.('war-room-castle-wall-left')
     || group.getObjectByName?.('war-room-velvet-curtain-fold')
@@ -181,6 +171,6 @@ export function installWarRoomApprovedMockContract(group, options = {}) {
 
   markerDriver.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   group.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
-  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-plus-retired-post-architecture-lock-v5';
+  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-marker-driver-retirement-v6';
   return 1;
 }
