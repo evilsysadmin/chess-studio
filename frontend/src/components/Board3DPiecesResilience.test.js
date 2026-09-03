@@ -56,7 +56,7 @@ describe('Board3D piece resilience', () => {
     }
 
     expect(roots).toHaveLength(32);
-    expect(roots.every(Boolean).toBe(true));
+    expect(roots.every(Boolean)).toBe(true);
     expect(roots.every((root) => meshCount(root) > 0)).toBe(true);
     expect(roots.filter((root) => root.userData.warRoomFallbackPiece)).toHaveLength(0);
     expect(roots.every((root) => root.userData.board3DVisibilityGuard === 'fixed-board-no-frustum-v1')).toBe(true);
