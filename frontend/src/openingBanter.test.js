@@ -50,7 +50,6 @@ describe('openingBanter', () => {
     expect(facts.last_game).toEqual({ outcome: 'loss', difficulty: 50, opening: 'Defensa Siciliana', half_moves: 42 });
     expect(facts.repeated_incidents).toEqual([
       { key: 'human:MISSED_MATE', count: 3 },
-      { key: 'cpu:KNIGHT_FORK', count: 2 },
     ]);
     expect(facts.opening_history).toEqual([
       { name: 'Defensa Siciliana', games: 5, wins: 1, draws: 1, losses: 3 },
@@ -58,6 +57,7 @@ describe('openingBanter', () => {
     expect(facts.current_difficulty_recent).toEqual({ level: 50, games: 3, wins: 1, draws: 0, losses: 2 });
     expect(JSON.stringify(facts)).not.toContain('DO_NOT_LEAK');
     expect(JSON.stringify(facts)).not.toContain('NOPE');
+    expect(JSON.stringify(facts)).not.toContain('cpu:KNIGHT_FORK');
   });
 
   it('treats a restored game as the same conversation', () => {
