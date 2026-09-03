@@ -1,6 +1,6 @@
 # GitHub Actions · inventario operativo
 
-Última auditoría: 2026-09-02.
+Última auditoría: 2026-09-03.
 
 Regla simple: cada workflow debe tener un dueño, un trigger justificable y un coste proporcional. Nada de arqueología de releases, runners dedicados para señales duplicadas ni mutaciones concurrentes del mismo entorno.
 
@@ -9,6 +9,7 @@ Regla simple: cada workflow debe tener un dueño, un trigger justificable y un c
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal de calidad para PR/main: preflight, frontend, backend, seguridad condicionada y smoke crítico. Es path-aware y **no despliega**. |
+| `staging-preview.yml` | Preview manual de cualquier rama/tag/SHA no-main. Despliega sólo el frontend a un slot de branch preview de Cloudflare Pages (`preview`, `preview-a`, `preview-b`) contra la API de staging. No pisa staging canónico, no acredita staging y no puede disparar producción. |
 | `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Cloudflare Pages staging y acredita backend/frontend. |
 | `staging-ai-worker.yml` | Despliega/acredita Workers AI staging después de `Staging · deploy`. |
 | `production-promote.yml` | Promueve a producción sólo el SHA acreditado por toda la cadena de staging. |
@@ -40,7 +41,8 @@ Regla simple: cada workflow debe tener un dueño, un trigger justificable y un c
 1. Un cambio visual no dispara QEMU, Terraform OCI ni seguridad Docker si no toca esas superficies.
 2. Los browser gates de PR corren sólo donde pueden impedir una regresión; el sweep multibrowser queda semanal/manual.
 3. War Room paraleliza **entre runners**, nunca varias escenas WebGL pesadas dentro de la misma VM.
-4. `staging-deploy.yml` y el mantenimiento manual de staging comparten mutex; producción promote/rollback también comparten mutex.
-5. Las rutas manuales de staging no acreditan producción. La promoción exige procedencia `workflow_run`, SHA actual de `main` e identidad de build comprobada.
-6. Workflows y documentación no deben conservar nombres de releases, ramas retiradas ni excepciones históricas una vez cumplida su función.
-7. El fichero `cicd.yml` conserva su nombre por compatibilidad con contratos/scripts del repo; su responsabilidad real es calidad, no despliegue.
+4. `staging-preview.yml` usa únicamente branch deployments de Pages y rechaza `main` y el SHA actual de `main`; nunca modifica la production branch `main` del proyecto `chess-studio-staging`.
+5. `staging-deploy.yml` y el mantenimiento manual de staging comparten mutex; producción promote/rollback también comparten mutex.
+6. Las rutas manuales de preview/staging no acreditan producción. La promoción exige procedencia `workflow_run`, SHA actual de `main` e identidad de build comprobada.
+7. Workflows y documentación no deben conservar nombres de releases, ramas retiradas ni excepciones históricas una vez cumplida su función.
+8. El fichero `cicd.yml` conserva su nombre por compatibilidad con contratos/scripts del repo; su responsabilidad real es calidad, no despliegue.
