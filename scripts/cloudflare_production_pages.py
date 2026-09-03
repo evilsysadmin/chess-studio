@@ -23,6 +23,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from frontend_asset_convergence import wait_for_frontend_assets
+
 API = "https://api.cloudflare.com/client/v4"
 ZONE_NAME = "shadowops.dpdns.org"
 PAGES_PROJECT = "chess-studio-production"
@@ -383,10 +385,27 @@ def main() -> None:
         )
         return
 
+    # release.json can converge before every hashed module referenced by the
+    # new index. Never move public traffic until the real entry graph is
+    # executable on pages.dev.
+    wait_for_frontend_assets(
+        f"https://{PAGES_TARGET}",
+        label="Production Pages origin",
+    )
+
     zone_id = find_zone_id()
     domain = ensure_pages_domain()
     dns = ensure_pages_cname(zone_id)
     domain_status = wait_pages_domain_active()
+
+    # The custom domain has its own edge propagation window. Prove that the
+    # public hostname serves a coherent index + hashed JS/CSS before declaring
+    # activation complete.
+    wait_for_frontend_assets(
+        f"https://{PAGES_HOSTNAME}",
+        label="Production custom domain",
+    )
+
     analytics = ensure_web_analytics(zone_id)
     write_outputs(
         pages_project=PAGES_PROJECT,
