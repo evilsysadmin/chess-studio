@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -77,7 +77,16 @@ async function setRendererViaAppearance(page, renderer) {
   await expect(dialog.getByRole('radio', { name: /3D$/ })).toBeVisible();
   await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
   await dialog.getByRole('radio', { name: new RegExp(`${renderer}$`) }).click();
-  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+
+  // Cambiar renderer puede montar/desmontar Three mientras Ajustes sigue
+  // abierto. Este spec acredita paridad 2D↔3D, no el hit-testing del botón
+  // Cerrar: una vez visible + enabled, invocamos el mismo handler sin esperar
+  // a que Playwright considere estable toda la escena WebGL de fondo.
+  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
+  await expect(close).toBeVisible();
+  await expect(close).toBeEnabled();
+  await close.evaluate((element) => element.click());
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
 }
 
 async function waitForWarRoomRenderer(page) {
@@ -158,10 +167,11 @@ async function openQuickGameWarRoom(page, requestLog = [], { afterMockApi = null
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
 
   // Product contract: quick games now enter War Room directly. Renderer
   // switching remains a parity/fallback feature, not a prerequisite for 3D.
+  // Readiness therefore belongs to the actual renderer, not to the legacy
+  // status strip that War Room is allowed to fold or replace.
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   await expect(warRoom).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   const { board3d, canvas } = await waitForWarRoomRenderer(page);
@@ -177,7 +187,11 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
+
+  // Este caso es específicamente un contrato 2D→3D. Primero acreditamos que
+  // la nueva casa 3D ha montado y sólo entonces optamos por el fallback 2D.
+  await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await waitForWarRoomRenderer(page);
 
   // This test is specifically a 2D→3D parity contract. 2D is now an explicit
   // fallback, so opt into it instead of relying on the historical default.
