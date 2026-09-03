@@ -1,9 +1,10 @@
 import GameChat from './GameChat.jsx';
 import MatthiasWarRoomPortrait from './MatthiasWarRoomPortrait.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
-import { matthiasMoodAvatar } from '../matthiasVisuals.js';
+import { MATTHIAS_BASE_AVATAR, matthiasMoodAvatar } from '../matthiasVisuals.js';
 
-const WAR_ROOM_MATTHIAS_AVATAR = matthiasMoodAvatar('annoyed');
+const WAR_ROOM_MATTHIAS_AVATAR = MATTHIAS_BASE_AVATAR;
+const WAR_ROOM_MATTHIAS_ANGRY_AVATAR = matthiasMoodAvatar('annoyed');
 
 export default function GameWarRoomCommandColumn({
   game,
@@ -22,6 +23,7 @@ export default function GameWarRoomCommandColumn({
       <div className="game-3d-matthias-card">
         <MatthiasWarRoomPortrait
           avatar={WAR_ROOM_MATTHIAS_AVATAR}
+          angryAvatar={WAR_ROOM_MATTHIAS_ANGRY_AVATAR}
           speechKey={activeMatthiasMessage?.id || activeMatthiasMessage?.text || ''}
           speechText={activeMatthiasMessage?.text || ''}
           angerLevel={matthiasAnger.level}
