@@ -57,5 +57,29 @@ runs:
         }
         test -x "$tool_dir/bin/wrangler"
         "$tool_dir/bin/wrangler" --version
+
+        # Existing workflows and the staging Worker helper currently call
+        # `npx --yes wrangler@4`. Keep those call sites stable while making
+        # Wrangler registry-independent on cache hits. Every other npx command
+        # is delegated to the runner's original npx binary unchanged.
+        real_npx="$(command -v npx)"
+        printf '%s\n' "$real_npx" > "$tool_dir/.chess-real-npx"
+        cat > "$tool_dir/bin/npx" <<'SH'
+        #!/usr/bin/env bash
+        set -euo pipefail
+        tool_dir="$(cd "$(dirname "$0")/.." && pwd)"
+        if [[ "${1:-}" == "--yes" && "${2:-}" == "wrangler@4" ]]; then
+          shift 2
+          exec "$tool_dir/bin/wrangler" "$@"
+        fi
+        if [[ "${1:-}" == "wrangler@4" ]]; then
+          shift
+          exec "$tool_dir/bin/wrangler" "$@"
+        fi
+        real_npx="$(cat "$tool_dir/.chess-real-npx")"
+        exec "$real_npx" "$@"
+        SH
+        chmod +x "$tool_dir/bin/npx"
+
         echo "$tool_dir/bin" >> "$GITHUB_PATH"
         echo "WRANGLER_BIN=$tool_dir/bin/wrangler" >> "$GITHUB_ENV"
