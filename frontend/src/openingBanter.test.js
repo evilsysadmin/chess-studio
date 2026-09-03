@@ -36,7 +36,7 @@ function rivalry(overrides = {}) {
 }
 
 describe('openingBanter', () => {
-  it('builds a compact dossier only from grounded chess facts', () => {
+  it('builds a compact dossier only from facts safe to attribute to the human', () => {
     const facts = buildOpeningBanterFacts(rivalry(), {
       difficulty: 50,
       humanColor: 'w',
@@ -47,17 +47,37 @@ describe('openingBanter', () => {
 
     expect(facts.game).toEqual({ difficulty: 50, human_color: 'white', mode: 'standard', rematch: true });
     expect(facts.rivalry).toEqual({ games: 8, wins: 3, draws: 1, losses: 4, current_streak: -2 });
-    expect(facts.last_game).toEqual({ outcome: 'loss', difficulty: 50, opening: 'Defensa Siciliana', half_moves: 42 });
+    expect(facts.last_game).toEqual({ outcome: 'loss', difficulty: 50, half_moves: 42 });
     expect(facts.repeated_incidents).toEqual([
       { key: 'human:MISSED_MATE', count: 3 },
     ]);
-    expect(facts.opening_history).toEqual([
-      { name: 'Defensa Siciliana', games: 5, wins: 1, draws: 1, losses: 3 },
-    ]);
+    expect(facts.opening_history).toBeUndefined();
     expect(facts.current_difficulty_recent).toEqual({ level: 50, games: 3, wins: 1, draws: 0, losses: 2 });
     expect(JSON.stringify(facts)).not.toContain('DO_NOT_LEAK');
     expect(JSON.stringify(facts)).not.toContain('NOPE');
     expect(JSON.stringify(facts)).not.toContain('cpu:KNIGHT_FORK');
+    expect(JSON.stringify(facts)).not.toContain('Defensa Siciliana');
+    expect(JSON.stringify(facts)).not.toContain('Apertura Italiana');
+  });
+
+  it('does not expose a shared opening as a personal preference when Matthias had white', () => {
+    const facts = buildOpeningBanterFacts(rivalry({
+      recentGames: [
+        { outcome: 'loss', difficulty: 11, humanColor: 'b', opening: 'Apertura Réti', moves: 36 },
+        { outcome: 'loss', difficulty: 11, humanColor: 'b', opening: 'Apertura Réti', moves: 40 },
+        { outcome: 'loss', difficulty: 11, humanColor: 'b', opening: 'Apertura Réti', moves: 44 },
+      ],
+      byOpening: {
+        'Apertura Réti': { games: 7, wins: 0, draws: 1, losses: 6 },
+      },
+    }), {
+      difficulty: 11,
+      humanColor: 'b',
+    });
+
+    expect(facts.game.human_color).toBe('black');
+    expect(facts.current_difficulty_recent).toEqual({ level: 11, games: 3, wins: 0, draws: 0, losses: 3 });
+    expect(JSON.stringify(facts)).not.toContain('Réti');
   });
 
   it('treats a restored game as the same conversation', () => {
