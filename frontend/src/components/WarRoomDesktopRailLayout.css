@@ -1,16 +1,15 @@
 /* Desktop War Room information architecture.
-   Chat belongs to Matthias on the left; RetroPlayer + move notebook own the
-   right rail. Mobile keeps the stacked layout for first-screen usability. */
+   Matthias + chat are one left rail; RetroPlayer + move notebook are one right
+   rail. Mobile keeps the stacked layout for first-screen usability. */
 @media (min-width: 1081px) {
   .game-screen .board-live-row.is-3d-warroom {
-    /* Three tracks decouple the two side rails. The commander may be taller
-       than the collapsed RetroPlayer without forcing the notebook to start
-       underneath Matthias: notation begins immediately below music. */
+    /* Each rail now owns its own vertical stack. The commander spans both grid
+       rows, so its internal chat can sit immediately below the portrait without
+       changing the independent RetroPlayer -> notebook handoff on the right. */
     grid-template-areas:
       'commander board music'
-      'commander board notation'
-      'chat board notation' !important;
-    grid-template-rows: auto auto minmax(220px, 1fr);
+      'commander board notation' !important;
+    grid-template-rows: auto minmax(220px, 1fr);
     align-items: stretch;
   }
 
@@ -24,18 +23,19 @@
     overflow: visible !important;
   }
 
-  .game-screen .game-side-column-3d .game-chat {
-    grid-area: chat;
-    align-self: start;
+  .game-screen .game-3d-command-column .game-chat {
+    width: 100%;
     min-width: 0;
     min-height: 210px;
-    height: clamp(230px, 34dvh, 360px);
-    max-height: clamp(230px, 34dvh, 360px);
+    height: clamp(230px, 31dvh, 330px);
+    max-height: clamp(230px, 31dvh, 330px);
+    margin-top: .55rem;
     overflow: hidden;
     border-color: rgba(142,121,88,.36);
   }
 
   /* Matthias stays put; only the conversation history scrolls. */
+  .game-screen .game-3d-command-column .game-chat-log,
   .game-screen .game-side-column-3d .game-chat-log {
     flex: 1 1 auto;
     min-height: 0;
@@ -51,9 +51,8 @@
     min-width: 0;
   }
 
-  /* The notebook now uses the vertical space that used to be wasted by the
-     tall left commander card. Give it its own bounded viewport so a long game
-     never stretches the whole War Room. */
+  /* The notebook owns the second right-hand row and remains independently
+     scrollable, so a long score never stretches the War Room. */
   .game-screen .game-side-column-3d .game-notation-disclosure {
     grid-area: notation;
     align-self: start;
@@ -77,7 +76,7 @@
 
   .game-screen .game-3d-command-column {
     grid-area: commander;
-    align-self: stretch;
+    align-self: start;
     min-height: 0;
   }
 

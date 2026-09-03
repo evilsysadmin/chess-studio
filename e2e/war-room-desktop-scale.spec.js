@@ -31,17 +31,19 @@ test('War Room · desktop dedica el salón al tablero y atraca chat/cuaderno en 
     const roomNode = document.querySelector('.board-live-row.is-3d-warroom');
     const boardNode = document.querySelector('.board3d-main-shell');
     const commanderNode = document.querySelector('.game-3d-command-column');
-    const chatNode = document.querySelector('.game-side-column-3d .game-chat');
-    const chatLogNode = document.querySelector('.game-side-column-3d .game-chat-log');
+    const matthiasCardNode = document.querySelector('.game-3d-command-column .game-3d-matthias-card');
+    const chatNode = document.querySelector('.game-3d-command-column .game-chat');
+    const chatLogNode = document.querySelector('.game-3d-command-column .game-chat-log');
     const musicNode = document.querySelector('.game-side-column-3d .game-side-music');
     const notationNode = document.querySelector('.game-side-column-3d .game-notation-disclosure');
     const room = roomNode?.getBoundingClientRect();
     const board = boardNode?.getBoundingClientRect();
     const commander = commanderNode?.getBoundingClientRect();
+    const matthiasCard = matthiasCardNode?.getBoundingClientRect();
     const chat = chatNode?.getBoundingClientRect();
     const music = musicNode?.getBoundingClientRect();
     const notation = notationNode?.getBoundingClientRect();
-    if (!room || !board || !commander || !chat || !music || !notation || !chatLogNode || !notationNode) return null;
+    if (!room || !board || !commander || !matthiasCard || !chat || !music || !notation || !chatLogNode || !notationNode) return null;
     return {
       roomWidth: room.width,
       boardLeft: board.left,
@@ -49,14 +51,15 @@ test('War Room · desktop dedica el salón al tablero y atraca chat/cuaderno en 
       boardWidth: board.width,
       boardHeight: board.height,
       commanderLeft: commander.left,
-      commanderRight: commander.right,
-      commanderBottom: commander.bottom,
       commanderWidth: commander.width,
+      matthiasCardLeft: matthiasCard.left,
+      matthiasCardBottom: matthiasCard.bottom,
       chatLeft: chat.left,
       chatRight: chat.right,
       chatTop: chat.top,
       chatHeight: chat.height,
       chatWidth: chat.width,
+      chatOwnedByCommander: chatNode.parentElement === commanderNode,
       chatLogOverflowY: getComputedStyle(chatLogNode).overflowY,
       musicLeft: music.left,
       musicBottom: music.bottom,
@@ -77,17 +80,21 @@ test('War Room · desktop dedica el salón al tablero y atraca chat/cuaderno en 
   expect(geometry.boardWidth / geometry.roomWidth).toBeGreaterThan(.63);
   expect(geometry.commanderWidth).toBeGreaterThan(180);
   expect(geometry.chatWidth).toBeGreaterThan(180);
-  expect(Math.abs(geometry.chatLeft - geometry.commanderLeft)).toBeLessThan(4);
+  expect(geometry.chatOwnedByCommander).toBe(true);
+  // Chat aligns with Matthias' actual card inside the command post padding,
+  // not with the command post's outer border.
+  expect(Math.abs(geometry.chatLeft - geometry.matthiasCardLeft)).toBeLessThan(4);
   expect(geometry.chatRight).toBeLessThanOrEqual(geometry.boardLeft - 2);
-  expect(geometry.chatTop).toBeGreaterThanOrEqual(geometry.commanderBottom - 4);
-  expect(geometry.chatHeight).toBeLessThanOrEqual(361);
+  expect(geometry.chatTop).toBeGreaterThanOrEqual(geometry.matthiasCardBottom - 4);
+  expect(geometry.chatTop - geometry.matthiasCardBottom).toBeLessThan(20);
+  expect(geometry.chatHeight).toBeLessThanOrEqual(331);
   expect(geometry.chatLogOverflowY).toBe('auto');
   expect(geometry.musicLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
   expect(geometry.notationLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
   expect(geometry.musicWidth).toBeGreaterThan(190);
   expect(geometry.notationWidth).toBeGreaterThan(190);
-  // The notebook belongs immediately below RetroPlayer; Matthias' tall card
-  // on the opposite rail must no longer push it towards the bottom.
+  // Right rail remains independent: Matthias + chat must never push the
+  // notebook away from the collapsed RetroPlayer.
   expect(geometry.notationTop).toBeGreaterThanOrEqual(geometry.musicBottom - 4);
   expect(geometry.notationTop - geometry.musicBottom).toBeLessThan(20);
   expect(geometry.notationHeight).toBeLessThanOrEqual(621);

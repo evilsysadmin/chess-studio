@@ -108,6 +108,8 @@ export default function GameBoardView({
               rivalryRecord={rivalryRecord}
               status={status}
               board={board}
+              side={side}
+              compactViewport={compactViewport}
               activeMatthiasMessage={activeMatthiasMessage}
               matthiasAnger={matthiasAnger}
               portraitReaction={portraitReaction}
@@ -193,7 +195,7 @@ export default function GameBoardView({
           </div>
 
           {!zenMode && !focusActive && (
-            <GameSideColumn game={game} side={side} isThreeD={isThreeD} />
+            <GameSideColumn game={game} side={side} isThreeD={isThreeD} compactViewport={compactViewport} />
           )}
         </div>
 

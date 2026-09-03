@@ -1,3 +1,4 @@
+import GameChat from './GameChat.jsx';
 import MatthiasWarRoomPortrait from './MatthiasWarRoomPortrait.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { matthiasMoodAvatar } from '../matthiasVisuals.js';
@@ -9,6 +10,8 @@ export default function GameWarRoomCommandColumn({
   rivalryRecord,
   status,
   board,
+  side,
+  compactViewport,
   activeMatthiasMessage,
   matthiasAnger,
   portraitReaction,
@@ -34,6 +37,10 @@ export default function GameWarRoomCommandColumn({
           )}
         </div>
       </div>
+
+      {!compactViewport && (
+        <GameChat messages={side.gameChat} contextMessages={side.gameContextMessages} />
+      )}
 
       <div className="game-3d-warroom-message" aria-live="polite">
         <span>ÚLTIMA OBSERVACIÓN</span>
