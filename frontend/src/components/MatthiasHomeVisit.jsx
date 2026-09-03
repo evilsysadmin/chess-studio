@@ -5,7 +5,7 @@ import { matthiasAmbientVisuals, matthiasTimeVisual } from '../matthiasVisuals.j
 import { matthiasSessionContext } from '../matthiasSessionContext.js';
 import { buildSessionSummary } from '../sessionSummary.js';
 import { reducedMotionStatus, setReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import MatthiasHomePresenceAvatar from './MatthiasHomePresenceAvatar.jsx';
+import MatthiasHomePresenceAvatar from './MatthiasHomeMicrogestureAvatar.jsx';
 import './MatthiasHomeResident.css';
 import './HomeCastleCoherence.css';
 import './MatthiasHomeSessionSummary.css';
@@ -124,7 +124,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
       data-placement={compactViewport ? 'inline' : 'viewport'}
       data-motion-state={motionStatus.effective ? 'reduced' : 'active'}
       data-motion-source={motionStatus.source}
-      data-three-presentation="home-v3"
+      data-three-presentation="home-v4"
     >
       <div className="matthias-resident__stage">
         {speaking ? (
