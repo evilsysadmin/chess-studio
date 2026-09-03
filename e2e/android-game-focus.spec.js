@@ -1,5 +1,5 @@
 import { devices, expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 test.use({ ...devices['Pixel 5'] });
 
@@ -35,10 +35,15 @@ async function startQuickGame(page, requestLog, mockOptions = {}) {
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
+
+  // Mobile follows the same product contract as desktop: a fresh quick game
+  // lands directly in War Room. Waiting for the actual renderer avoids coupling
+  // readiness to a status strip that compact layouts are allowed to fold away.
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 30_000 });
 }
 
-test('Android · Focus deja sólo el tablero, sigue siendo jugable y puede salir', async ({ page }) => {
+test('Android · Focus deja sólo el tablero 3D, sigue siendo jugable y puede salir', async ({ page }) => {
   const requestLog = [];
   await startQuickGame(page, requestLog);
 
@@ -47,6 +52,8 @@ test('Android · Focus deja sólo el tablero, sigue siendo jugable y puede salir
   await focus.click();
 
   const layout = page.locator('.game-layout');
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
   await expect(layout).toHaveAttribute('data-mobile-focus', 'true');
   await expect(page.locator('body')).toHaveClass(/game-mobile-focus-active/);
   await expect(page.locator('.app-shell-board-game > .masthead')).toBeHidden();
@@ -57,13 +64,22 @@ test('Android · Focus deja sólo el tablero, sigue siendo jugable y puede salir
 
   const exit = page.getByRole('button', { name: 'Salir del modo Focus', exact: true });
   await expect(exit).toBeVisible();
-  await expect(page.locator('.board-wrap')).toBeVisible();
+  await expect(board3d).toBeVisible();
+  await expect(canvas).toBeVisible();
 
-  const e2 = page.getByRole('button', { name: /^Casilla e2, peón blanco/i });
-  const e4 = page.getByRole('button', { name: /^Casilla e4,/i });
-  await e2.click();
-  await expect(e2).toHaveClass(/selected/);
-  await e4.click();
+  // Board3D starts keyboard focus at e1 for White. The same selection/move
+  // state used by touch remains live in Focus; e1→e2 selects the pawn, then
+  // e2→e4 sends exactly one real move.
+  await canvas.focus();
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect.poll(async () => Number(await board3d.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
+  await canvas.press('ArrowUp');
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e4');
+  await canvas.press('Enter');
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

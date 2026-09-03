@@ -209,6 +209,10 @@ async function startScenario(page, scenario, requestLog) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameStatus(page)).toBeVisible();
+  // Estos journeys acreditan expresamente la paridad 2D→3D. El producto nace
+  // ahora en War Room, así que el test debe elegir el fallback 2D en vez de
+  // depender de un default histórico implícito.
+  await setRendererViaAppearance(page, '2D');
 }
 
 async function waitForWarRoom(page) {

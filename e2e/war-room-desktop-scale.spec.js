@@ -10,12 +10,6 @@ async function openDesktopWarRoom(page) {
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('radio', { name: /3D$/ }).click();
-  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
-
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const shell = page.locator('.board3d-main-shell');
   await expect(warRoom).toBeVisible({ timeout: 45_000 });

@@ -160,11 +160,10 @@ async function openQuickGameWarRoom(page, requestLog = [], { afterMockApi = null
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 
-  await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
-  await setRendererViaAppearance(page, '3D');
-
+  // Product contract: quick games now enter War Room directly. Renderer
+  // switching remains a parity/fallback feature, not a prerequisite for 3D.
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
-  await expect(warRoom).toBeVisible();
+  await expect(warRoom).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   const { board3d, canvas } = await waitForWarRoomRenderer(page);
   return { warRoom, board3d, canvas };
 }
@@ -180,6 +179,9 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 
+  // This test is specifically a 2D→3D parity contract. 2D is now an explicit
+  // fallback, so opt into it instead of relying on the historical default.
+  await setRendererViaAppearance(page, '2D');
   const e2 = page.locator('.square[aria-label^="Casilla e2,"]');
   const e3 = page.locator('.square[aria-label^="Casilla e3,"]');
   const e4 = page.locator('.square[aria-label^="Casilla e4,"]');

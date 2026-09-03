@@ -6,11 +6,12 @@ import {
 } from './safeStorage.js';
 
 export const STORAGE_SCHEMA_KEY = 'chess-study-storage-schema-version';
-export const STORAGE_SCHEMA_VERSION = 2;
+export const STORAGE_SCHEMA_VERSION = 3;
 
 const LEGACY_MUTE_KEY = 'chess-study-muted';
 const MUSIC_MUTED_KEY = 'chess-study-music-muted';
 const FX_MUTED_KEY = 'chess-study-fx-muted';
+const BOARD_RENDERER_KEY = 'chess-study-board-renderer';
 const OBSOLETE_KEYS = Object.freeze([
   'chess-study-cpu-personality',
   'chess-study-ambient-theme',
@@ -43,9 +44,21 @@ function migrateV1ToV2() {
   for (const key of OBSOLETE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
 }
 
+function migrateV2ToV3() {
+  // War Room pasa a ser la experiencia principal. Esta migración es deliberada
+  // y one-shot: perfiles existentes que estaban en 2D reciben 3D una vez. Si
+  // después vuelven manualmente a 2D, la versión 3 ya queda marcada y esa
+  // elección futura se respeta.
+  if (getStorageItem(STORAGE_LOCAL, BOARD_RENDERER_KEY) === '2d') {
+    const migrated = setStorageItem(STORAGE_LOCAL, BOARD_RENDERER_KEY, '3d');
+    if (!migrated) throw new Error('board renderer migration was not durable');
+  }
+}
+
 const MIGRATIONS = Object.freeze({
   0: migrateV0ToV1,
   1: migrateV1ToV2,
+  2: migrateV2ToV3,
 });
 
 export function migratePersistentStorage() {
