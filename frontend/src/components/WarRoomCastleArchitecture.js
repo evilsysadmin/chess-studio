@@ -559,6 +559,12 @@ export function buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer
 }
 
 export function applyCastleFurnitureLayout(root, { wallZ, towardBoard } = {}) {
+  const architecture = root?.getObjectByName?.('war-room-castle-architecture');
+  if (architecture?.userData?.warRoomDesktopLegacyLayoutDriverRetired === true) {
+    root.userData.warRoomDesktopCastleFurniturePrelayoutRetired = true;
+    return 0;
+  }
+
   const sofaOffsetFromWall = 5.45;
   const sofaZ = wallZ + towardBoard * sofaOffsetFromWall;
   let moved = 0;
