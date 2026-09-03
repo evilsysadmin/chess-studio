@@ -1,6 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { getEffectiveReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import MatthiasThreeAvatar from './MatthiasThreeAvatar.jsx';
+import {
+  createMatthiasWarRoomMachine,
+  MATTHIAS_WAR_ROOM_STATES,
+  MATTHIAS_WAR_ROOM_STATE_VERSION,
+  matthiasWarRoomIdleDelay,
+  matthiasWarRoomStateDescriptor,
+  matthiasWarRoomStateDuration,
+  nextMatthiasAmbientState,
+  normalizeWarRoomAnger,
+  normalizeWarRoomReaction,
+  transitionMatthiasWarRoom,
+} from './matthiasWarRoomStateMachine.js';
 import './MatthiasWarRoomPortrait.css';
 import './MatthiasWarRoomThreeAvatar.css';
 import './MatthiasWarRoomAndroidMotion.css';
@@ -11,6 +23,16 @@ import './WarRoomDesktopRailLayout.css';
 
 const COMPACT_WAR_ROOM_QUERY = '(max-width: 820px)';
 export const WAR_ROOM_COMPACT_MOTION_INTENSITY = 1.35;
+
+const AMBIENT_STATES = new Set([
+  MATTHIAS_WAR_ROOM_STATES.GLANCE,
+  MATTHIAS_WAR_ROOM_STATES.GLARE,
+  MATTHIAS_WAR_ROOM_STATES.HEAD_LEFT,
+  MATTHIAS_WAR_ROOM_STATES.HEAD_RIGHT,
+  MATTHIAS_WAR_ROOM_STATES.LEAN_IN,
+  MATTHIAS_WAR_ROOM_STATES.SURVEY,
+  MATTHIAS_WAR_ROOM_STATES.COFFEE,
+]);
 
 function speechDuration(text) {
   return Math.max(1500, Math.min(4200, String(text || '').length * 46));
@@ -24,34 +46,8 @@ export function warRoomCompactViewport({ mediaMatches, innerWidth } = {}) {
   return Number.isFinite(width) && width <= 820;
 }
 
-export function nextWarRoomGesture(random = Math.random) {
-  const roll = random();
-  if (roll < 0.055) return 'coffee';
-  if (roll < 0.2) return 'lean-in';
-  if (roll < 0.36) return 'glare';
-  if (roll < 0.53) return 'head-left';
-  if (roll < 0.7) return 'head-right';
-  if (roll < 0.85) return 'survey';
-  return 'glance';
-}
-
-function gestureDuration(gesture) {
-  if (gesture === 'coffee') return 3400;
-  if (gesture === 'survey') return 2600;
-  if (gesture === 'lean-in') return 2100;
-  if (gesture === 'glare') return 2000;
-  if (gesture === 'head-left' || gesture === 'head-right') return 1650;
-  return 1500;
-}
-
-function normalizeAngerLevel(value) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.min(4, Math.round(parsed)));
-}
-
-function normalizeReaction(value) {
-  return value === 'disapprove' || value === 'smirk' ? value : 'none';
+export function nextWarRoomGesture(random = Math.random, angerLevel = 0, lastAmbient = null) {
+  return nextMatthiasAmbientState({ random, angerLevel, lastAmbient });
 }
 
 export default function MatthiasWarRoomPortrait({
@@ -62,12 +58,19 @@ export default function MatthiasWarRoomPortrait({
   reactionKey = '',
   reactionType = 'none',
 }) {
-  const [speaking, setSpeaking] = useState(false);
-  const [gesture, setGesture] = useState('idle');
-  const [reaction, setReaction] = useState('none');
+  const [machine, dispatch] = useReducer(transitionMatthiasWarRoom, undefined, createMatthiasWarRoomMachine);
   const [reducedMotion, setReducedMotionState] = useState(() => getEffectiveReducedMotion());
   const [compactViewport, setCompactViewport] = useState(() => warRoomCompactViewport());
-  const normalizedAnger = normalizeAngerLevel(angerLevel);
+  const normalizedAnger = normalizeWarRoomAnger(angerLevel);
+  const descriptor = useMemo(
+    () => matthiasWarRoomStateDescriptor(machine.mode, normalizedAnger),
+    [machine.mode, normalizedAnger],
+  );
+  const reaction = machine.mode === MATTHIAS_WAR_ROOM_STATES.GRUMBLE
+    ? 'disapprove'
+    : machine.mode === MATTHIAS_WAR_ROOM_STATES.SMIRK
+      ? 'smirk'
+      : 'none';
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -102,68 +105,79 @@ export default function MatthiasWarRoomPortrait({
   }, []);
 
   useEffect(() => {
-    if (!speechKey || !speechText || reducedMotion) return undefined;
-    setSpeaking(true);
-    const timer = window.setTimeout(() => setSpeaking(false), speechDuration(speechText));
+    if (!reducedMotion) return;
+    dispatch({ type: 'RESET' });
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    if (!speechKey || !speechText || reducedMotion || typeof window === 'undefined') return undefined;
+    dispatch({ type: 'SPEECH_START' });
+    const timer = window.setTimeout(
+      () => dispatch({ type: 'SPEECH_END' }),
+      speechDuration(speechText),
+    );
     return () => window.clearTimeout(timer);
   }, [reducedMotion, speechKey, speechText]);
 
   useEffect(() => {
-    if (!reactionKey || reducedMotion) return undefined;
-    const next = normalizeReaction(reactionType);
-    if (next === 'none') return undefined;
-    setReaction(next);
-    const timer = window.setTimeout(() => setReaction('none'), next === 'disapprove' ? 1150 : 1350);
+    if (!reactionKey || reducedMotion || typeof window === 'undefined') return undefined;
+    const reactionMode = normalizeWarRoomReaction(reactionType);
+    if (!reactionMode) return undefined;
+    dispatch({ type: 'REACTION_START', reaction: reactionType });
+    const timer = window.setTimeout(
+      () => dispatch({ type: 'REACTION_END', reaction: reactionType }),
+      matthiasWarRoomStateDuration(reactionMode, normalizedAnger),
+    );
     return () => window.clearTimeout(timer);
-  }, [reactionKey, reactionType, reducedMotion]);
+  }, [reactionKey, reactionType, reducedMotion, normalizedAnger]);
 
   useEffect(() => {
-    if (reducedMotion) return undefined;
-    let gestureTimer = 0;
-    let resetTimer = 0;
-    let cancelled = false;
+    if (reducedMotion || typeof window === 'undefined') return undefined;
+    let timer = 0;
 
-    const schedule = () => {
-      const delay = 2400 + Math.round(Math.random() * 3800);
-      gestureTimer = window.setTimeout(() => {
-        if (cancelled) return;
-        const next = nextWarRoomGesture();
-        setGesture(next);
-        resetTimer = window.setTimeout(() => {
-          if (cancelled) return;
-          setGesture('idle');
-          schedule();
-        }, gestureDuration(next));
-      }, delay);
-    };
+    if (machine.mode === MATTHIAS_WAR_ROOM_STATES.IDLE && !machine.speaking) {
+      const next = nextMatthiasAmbientState({
+        angerLevel: normalizedAnger,
+        lastAmbient: machine.lastAmbient,
+      });
+      timer = window.setTimeout(
+        () => dispatch({ type: 'AMBIENT_START', mode: next }),
+        matthiasWarRoomIdleDelay(Math.random, normalizedAnger),
+      );
+    } else if (AMBIENT_STATES.has(machine.mode)) {
+      timer = window.setTimeout(
+        () => dispatch({ type: 'AMBIENT_END', mode: machine.mode }),
+        matthiasWarRoomStateDuration(machine.mode, normalizedAnger),
+      );
+    }
 
-    schedule();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(gestureTimer);
-      window.clearTimeout(resetTimer);
-    };
-  }, [reducedMotion]);
+    return () => window.clearTimeout(timer);
+  }, [machine.mode, machine.speaking, machine.lastAmbient, normalizedAnger, reducedMotion]);
 
   const stateClass = [
-    speaking ? 'is-speaking is-ordering' : '',
-    gesture === 'glance' ? 'is-glancing' : '',
-    gesture === 'glare' ? 'is-glaring' : '',
-    gesture === 'head-left' ? 'is-head-left' : '',
-    gesture === 'head-right' ? 'is-head-right' : '',
-    gesture === 'lean-in' ? 'is-leaning-in' : '',
-    gesture === 'survey' ? 'is-surveying' : '',
-    gesture === 'coffee' ? 'has-coffee' : '',
+    machine.speaking ? 'is-speaking is-ordering' : '',
+    descriptor.gesture === 'glance' ? 'is-glancing' : '',
+    descriptor.gesture === 'glare' ? 'is-glaring' : '',
+    descriptor.gesture === 'head-left' ? 'is-head-left' : '',
+    descriptor.gesture === 'head-right' ? 'is-head-right' : '',
+    descriptor.gesture === 'lean-in' ? 'is-leaning-in' : '',
+    descriptor.gesture === 'survey' ? 'is-surveying' : '',
+    descriptor.gesture === 'coffee' ? 'has-coffee' : '',
     reaction === 'disapprove' ? 'is-disapproving' : '',
     reaction === 'smirk' ? 'is-smirking' : '',
     compactViewport ? 'is-compact-motion' : '',
     `anger-level-${normalizedAnger}`,
+    `expression-${descriptor.expression}`,
   ].filter(Boolean).join(' ');
 
   return (
     <div
       className={`game-3d-matthias-portrait-wrap ${stateClass}`}
-      data-matthias-warroom-gesture={gesture}
+      data-matthias-warroom-state={machine.mode}
+      data-matthias-warroom-state-version={MATTHIAS_WAR_ROOM_STATE_VERSION}
+      data-matthias-warroom-gesture={descriptor.gesture}
+      data-matthias-expression={descriptor.expression}
+      data-matthias-speaking={machine.speaking ? 'true' : 'false'}
       data-matthias-anger-level={normalizedAnger}
       data-matthias-reaction={reaction}
       data-matthias-face-overlay="none"
@@ -177,8 +191,8 @@ export default function MatthiasWarRoomPortrait({
           <MatthiasThreeAvatar
             avatar={avatar}
             scene="war-room-command"
-            activity={reaction === 'disapprove' ? 'Desaprobación táctica' : reaction === 'smirk' ? 'Ventaja táctica' : 'Vigilando el tablero'}
-            speaking={speaking}
+            activity={descriptor.activity}
+            speaking={machine.speaking}
             reducedMotion={reducedMotion}
             motionIntensity={compactViewport ? WAR_ROOM_COMPACT_MOTION_INTENSITY : 1}
           />
