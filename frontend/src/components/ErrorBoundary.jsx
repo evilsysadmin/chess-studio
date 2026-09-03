@@ -1,5 +1,6 @@
 import React from 'react';
 import { buildClientDiagnostic, copyDiagnosticText } from '../clientDiagnostics.js';
+import { isLikelyModuleLoadError, reloadClientRuntime } from '../moduleLoadRecovery.js';
 
 // Red de seguridad a nivel de toda la app. Si una pantalla revienta durante
 // render, mantenemos la app viva y, cuando existe una partida activa, damos
@@ -21,7 +22,26 @@ export default class ErrorBoundary extends React.Component {
   }
 
   handleRecover = async () => {
-    if (!this.props.onRecover || this.state.recovering) return;
+    if (this.state.recovering) return;
+
+    // Un fallo de módulo/chunk no se arregla re-renderizando el mismo heap:
+    // React.lazy conservaría la Promise rechazada o el módulo incompleto y el
+    // usuario volvería inmediatamente a este boundary. La sesión ya está
+    // persistida, así que reconstruimos el runtime completo y dejamos que el
+    // restore normal recupere la partida al arrancar de nuevo.
+    if (isLikelyModuleLoadError(this.state.lastError)) {
+      this.setState({ recovering: true, recoveryError: null });
+      const reloaded = reloadClientRuntime(this.props.onReload);
+      if (!reloaded) {
+        this.setState({
+          recovering: false,
+          recoveryError: 'No pudimos recargar la interfaz automáticamente. Tu partida sigue guardada.',
+        });
+      }
+      return;
+    }
+
+    if (!this.props.onRecover) return;
     this.setState({ recovering: true, recoveryError: null });
     try {
       const recovered = await this.props.onRecover();
@@ -64,19 +84,25 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const moduleLoadError = isLikelyModuleLoadError(this.state.lastError);
       const canRecover = Boolean(this.props.canRecover && this.props.onRecover);
+      const canRebuildRuntime = moduleLoadError;
       return (
         <div className="error-boundary-screen" role="alert">
           <span className="eyebrow">Incidencia recuperable</span>
           <h2>La pantalla ha tropezado</h2>
           <p className="hint-text">
-            Algo falló en la interfaz. Tu progreso guardado sigue intacto y no vamos a borrarlo por este error.
+            {moduleLoadError
+              ? 'El código de la interfaz quedó desincronizado durante una actualización. Tu progreso guardado sigue intacto.'
+              : 'Algo falló en la interfaz. Tu progreso guardado sigue intacto y no vamos a borrarlo por este error.'}
           </p>
 
-          {canRecover && (
+          {(canRecover || canRebuildRuntime) && (
             <div className="error-boundary-recovery">
-              <strong>Hay una sesión en curso.</strong>
-              <span>Podemos reconstruir la pantalla desde el último estado recuperable.</span>
+              <strong>{canRecover ? 'Hay una sesión en curso.' : 'Podemos reconstruir la interfaz.'}</strong>
+              <span>{moduleLoadError
+                ? 'Recargaremos el runtime y recuperaremos el último estado guardado.'
+                : 'Podemos reconstruir la pantalla desde el último estado recuperable.'}</span>
               {this.state.recoveryError && <span className="error-boundary-recovery-error">{this.state.recoveryError}</span>}
               <button
                 type="button"
@@ -84,19 +110,23 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleRecover}
                 disabled={this.state.recovering}
               >
-                {this.state.recovering ? 'Recuperando sesión…' : 'Recuperar sesión'}
+                {this.state.recovering
+                  ? (moduleLoadError ? 'Recargando interfaz…' : 'Recuperando sesión…')
+                  : (moduleLoadError ? 'Recargar y recuperar' : 'Recuperar sesión')}
               </button>
             </div>
           )}
 
-          {!canRecover && (
+          {!canRecover && !canRebuildRuntime && (
             <p className="hint-text">No hay progreso activo recuperable en esta sesión.</p>
           )}
 
           <div className="error-boundary-actions">
-            <button type="button" className="secondary-btn" onClick={this.handleRetry} disabled={this.state.recovering}>
-              Reintentar pantalla
-            </button>
+            {!moduleLoadError && (
+              <button type="button" className="secondary-btn" onClick={this.handleRetry} disabled={this.state.recovering}>
+                Reintentar pantalla
+              </button>
+            )}
             <button type="button" className="secondary-btn" onClick={this.handleReset} disabled={this.state.recovering}>
               Volver al menú
             </button>
