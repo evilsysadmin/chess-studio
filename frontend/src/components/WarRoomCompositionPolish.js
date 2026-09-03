@@ -248,21 +248,7 @@ function addFireplaceInterior(group, towardBoard) {
   return 4;
 }
 
-function recomposeArmorAndMasonry(group, { wallZ, towardBoard }) {
-  let moved = 0;
-  for (const [name, side] of [
-    ['war-room-teutonic-armor-left', -1],
-    ['war-room-teutonic-armor-right', 1],
-  ]) {
-    const armor = group.getObjectByName?.(name);
-    if (!armor) continue;
-    armor.position.x = side * 7.18;
-    armor.position.z = wallZ + towardBoard * 4.95;
-    armor.rotation.y = side * towardBoard * 0.16;
-    armor.userData.warRoomArmorPlacement = 'outer-wall-sentry-v10';
-    moved += 1;
-  }
-
+function refineMasonryAndLightingTargets(group, { wallZ, towardBoard }) {
   let retiredJoints = 0;
   group.traverse?.((object) => {
     if (object?.name !== 'war-room-teutonic-mortar-joint') return;
@@ -280,9 +266,9 @@ function recomposeArmorAndMasonry(group, { wallZ, towardBoard }) {
     target.position.set(side * 6.05, 2.58, wallZ + towardBoard * 2.7);
   }
 
-  group.userData.warRoomArmorComposition = 'outer-wall-sentries-v10';
   group.userData.warRoomRetiredMortarJoints = retiredJoints;
-  return moved;
+  group.userData.warRoomCompositionLayoutWritesRetired = true;
+  return retiredJoints;
 }
 
 export function applyWarRoomCompositionPolish(group, {
@@ -293,13 +279,14 @@ export function applyWarRoomCompositionPolish(group, {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard) || coarsePointer) return 0;
   if (group.userData.warRoomCompositionPolishVersion === 'v10') return 0;
 
-  const armorCount = recomposeArmorAndMasonry(group, { wallZ, towardBoard });
+  const masonryCount = refineMasonryAndLightingTargets(group, { wallZ, towardBoard });
   const paintingCount = installGalleryLandscapes(group);
   const fireplaceMeshCount = addFireplaceInterior(group, towardBoard);
 
   group.userData.warRoomCompositionPolishVersion = 'v10';
-  group.userData.warRoomCompositionArmorCount = armorCount;
+  group.userData.warRoomCompositionArmorCount = 0;
+  group.userData.warRoomCompositionMasonryCount = masonryCount;
   group.userData.warRoomCompositionPaintingCount = paintingCount;
   group.userData.warRoomCompositionFireplaceMeshCount = fireplaceMeshCount;
-  return armorCount + paintingCount + fireplaceMeshCount;
+  return masonryCount + paintingCount + fireplaceMeshCount;
 }

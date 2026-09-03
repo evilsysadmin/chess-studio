@@ -72,24 +72,37 @@ function dispose(root) {
 }
 
 describe('War Room user polish', () => {
-  it('baja mesas y armaduras, centra las sentinelas y conserva los sofás en el borde delantero', () => {
+  it('conserva intactos muebles y armaduras porque el layout pertenece al contrato v28', () => {
     const room = makeRoom();
-    expect(applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
-
     const sofa = room.getObjectByName('war-room-sofa-left');
     const table = room.getObjectByName('war-room-side-console-left');
     const armor = room.getObjectByName('war-room-teutonic-armor-left');
-    expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(2.35, 5);
-    expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(6.55, 5);
-    expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
-    expect(room.userData.warRoomFurnitureGap).toBeCloseTo(10, 5);
-    expect(room.userData.warRoomFurnitureOrder).toBe('tables-rear-armors-lower-middle-sofas-front-v24');
-    expect(table.position.z).toBeLessThan(armor.position.z - 4);
-    expect(armor.position.z).toBeLessThan(sofa.position.z - 5.5);
-    expect(Math.abs(armor.position.x)).toBeLessThan(Math.abs(table.position.x) - .5);
-    expect(armor.userData.warRoomArmorPlacement).toBe('lower-centered-sentry-facing-board-v24');
-    expect(Math.abs(armor.rotation.y)).toBeGreaterThan(.65);
-    expect(armor.userData.facesWarTable).toBe(true);
+    sofa.position.set(-8.4, .12, 3.7);
+    sofa.rotation.y = .61;
+    table.position.set(-5.3, .24, -4.1);
+    table.rotation.y = -.17;
+    armor.position.set(-7.08, 0, -0.65);
+    armor.rotation.y = 1.73;
+    const before = {
+      sofaPosition: sofa.position.toArray(),
+      sofaRotationY: sofa.rotation.y,
+      tablePosition: table.position.toArray(),
+      tableRotationY: table.rotation.y,
+      armorPosition: armor.position.toArray(),
+      armorRotationY: armor.rotation.y,
+    };
+
+    expect(applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
+
+    expect(sofa.position.toArray()).toEqual(before.sofaPosition);
+    expect(sofa.rotation.y).toBe(before.sofaRotationY);
+    expect(table.position.toArray()).toEqual(before.tablePosition);
+    expect(table.rotation.y).toBe(before.tableRotationY);
+    expect(armor.position.toArray()).toEqual(before.armorPosition);
+    expect(armor.rotation.y).toBe(before.armorRotationY);
+    expect(room.userData.warRoomUserPolishLayoutWritesRetired).toBe(true);
+    expect(room.userData.warRoomFurnitureGap).toBeUndefined();
+    expect(room.userData.warRoomFurnitureOrder).toBeUndefined();
     dispose(room);
   });
 

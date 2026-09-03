@@ -196,7 +196,8 @@ describe('War Room approved mock contract', () => {
     const table = root.getObjectByName('war-room-side-console-left');
     const sofa = root.getObjectByName('war-room-sofa-left');
 
-    expect(applyWarRoomUserPolish(root, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
+    expect(applyWarRoomUserPolish(root, { wallZ: -7.6, towardBoard: 1 })).toBe(0);
+    expect(root.userData.warRoomUserPolishLayoutWritesRetired).toBe(true);
     expect(installWarRoomApprovedMockContract(root, { wallZ: -7.6, towardBoard: 1 })).toBe(1);
     const { driver, executions } = addLateLegacyLayoutDriver(root, sofa);
 
