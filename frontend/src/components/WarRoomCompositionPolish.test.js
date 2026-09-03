@@ -57,8 +57,8 @@ describe('WarRoomCompositionPolish', () => {
     const owner = compositionOwner(room);
 
     expect(owner).toBeTruthy();
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v25');
-    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v25');
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v26');
+    expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v26');
     expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
     expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
     expect(leftArmor.userData.facesWarTable).toBe(true);
