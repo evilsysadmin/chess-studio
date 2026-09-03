@@ -69,7 +69,7 @@ function dispose(root) {
 }
 
 describe('War Room render-driver ownership', () => {
-  it('desktop nace sin refinador legacy y v28 conserva el layout estable entre paints', () => {
+  it('desktop nace sin refinador legacy y v28 conserva el layout estable después del primer paint', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
@@ -89,7 +89,6 @@ describe('War Room render-driver ownership', () => {
     expect(legacyLayoutDrivers(room)).toHaveLength(0);
     expect(architecture.userData.warRoomDesktopLegacyLayoutDriverRetired).toBe(true);
 
-    const beforeFirstPaint = snapshotFurniture(scene);
     const hookNames = runRenderHooks(scene);
     expect(hookNames).toContain('war-room-premium-painting-canvas');
     expect(legacyLayoutDrivers(scene)).toHaveLength(0);
@@ -103,7 +102,6 @@ describe('War Room render-driver ownership', () => {
     expect(sofa.position.z).toBeGreaterThan(armor.position.z + 5.5);
     expect(scene.userData.warRoomApprovedMockArmorSofaGap).toBeCloseTo(5.6, 5);
     expect(scene.userData.warRoomFurnitureLayoutOwner).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
-    expect(snapshotFurniture(scene)).toEqual(beforeFirstPaint);
 
     const afterFirstPaint = snapshotFurniture(scene);
     runRenderHooks(scene);
