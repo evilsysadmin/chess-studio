@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -316,12 +317,6 @@ function addTeutonicArmor(group, { side, wallZ, towardBoard }) {
   return armor;
 }
 
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
-}
-
 function tuneGroupMaterials(group, multiplier, maxMetalness = 0.45) {
   if (!group) return;
   const seen = new Set();
@@ -441,7 +436,7 @@ function replaceConeFireWithLicks(fireCore, coarsePointer) {
 }
 
 function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
-  if (!root || root.userData.warRoomPremiumCoherence === 'v4-gothic') return;
+  if (!root || root.userData.warRoomPremiumCoherence === 'v4-gothic') return 0;
   root.userData.warRoomPremiumCoherence = 'v4-gothic';
 
   recolorCastleWalls(root, coarsePointer);
@@ -477,22 +472,21 @@ function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
 
   root.userData.warRoomFurnitureGap = Math.abs(sofaOffset - consoleOffset);
   replaceConeFireWithLicks(root.getObjectByName?.('war-room-fire-core'), coarsePointer);
+  return 1;
 }
 
-function attachPremiumRoomDriver(group, options) {
-  const driver = group?.getObjectByName?.('war-room-castle-wall-left') || group?.getObjectByName?.('war-room-castle-floor-slab');
-  if (!driver || driver.userData.warRoomPremiumRoomDriver) return;
-  driver.userData.warRoomPremiumRoomDriver = true;
-  const previous = driver.onBeforeRender;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    applyPremiumRoomPass(sceneRoot(driver), options);
-  };
+export function registerPremiumRoomFinalization(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
+  if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
+  return registerWarRoomDeferredFinalizer(group, {
+    key: 'premium-room-pass-v4',
+    coarsePointer,
+    allowCoarse: true,
+    run: (root) => applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }),
+  });
 }
 
 export function installTeutonicWarRoomDecor(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
-  attachPremiumRoomDriver(group, { wallZ, towardBoard, coarsePointer });
   if (coarsePointer) return 0;
 
   addTeutonicMasonry(group, { wallZ, towardBoard });
