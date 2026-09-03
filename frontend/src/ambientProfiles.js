@@ -7,6 +7,7 @@ import {
   CURATED_HIDDEN_THEME_IDS,
 } from './ambientCatalog.js';
 import { installRadioMatthiasExpansion } from './ambientRadioMatthiasExpansion.js';
+import { radioMatthiasStructuredFeel } from './ambientRadioMatthiasProfiles.js';
 import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecompositions.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
@@ -116,6 +117,9 @@ const TANGIER_SMOKE_PROFILE = Object.freeze({
 // Facade deliberadamente pequeño: conserva las identidades legacy y
 // permite profundizar temas concretos sin volver a engordar el motor WebAudio.
 export function structuredFeel(theme) {
+  const radioMatthias = radioMatthiasStructuredFeel(theme);
+  if (radioMatthias) return radioMatthias;
+
   const legacy = legacyStructuredFeel(theme);
   if (!legacy) return legacy;
   if (theme?.id === 'reactorGambit') return Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
