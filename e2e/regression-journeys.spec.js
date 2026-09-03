@@ -276,7 +276,9 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
   await expect(notice.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
 
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 10_000 });
-  await expect(gameStatus(page)).toBeVisible({ timeout: 5_000 });
+  // Reload restores the default Three/WebGL room; hosted software rendering can
+  // legitimately exceed the old 2D-era 5 s assertion while continuity remains intact.
+  await expect(gameStatus(page)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
 });
 
