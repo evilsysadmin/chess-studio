@@ -120,7 +120,7 @@ describe('War Room castle visual contract', () => {
     const sword = left?.getObjectByName('war-room-zweihander');
     const legacyLeft = room.getObjectByName('war-room-armor-guard-left');
     const legacyRight = room.getObjectByName('war-room-armor-guard-right');
-    const retirementDriver = room.getObjectByName('war-room-premium-painting-canvas');
+    const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
 
     expect(left).toBeTruthy();
     expect(right).toBeTruthy();
@@ -146,11 +146,15 @@ describe('War Room castle visual contract', () => {
 
     expect(legacyLeft).toBeTruthy();
     expect(legacyRight).toBeTruthy();
-    expect(retirementDriver?.userData?.warRoomLegacyArmorRetirementDriver).toBe(true);
-    retirementDriver.onBeforeRender();
+    expect(room.userData.warRoomLegacyArmorRetirement).toBe('deferred-finalizer-v1');
+    expect(finalizerDriver?.userData?.warRoomLegacyArmorRetirementDriver).toBeUndefined();
+    expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
+    finalizerDriver.onBeforeRender();
     expect(legacyLeft.visible).toBe(false);
     expect(legacyRight.visible).toBe(false);
     expect(legacyLeft.userData.replacedByGothicArmor).toBe(true);
     expect(scene.userData.warRoomLegacyArmorRetired).toBe(true);
+    expect(scene.userData.warRoomDeferredFinalizedTasks).toContain('legacy-armor-retirement-v1');
+    expect(scene.userData.warRoomDeferredFinalizerResults['legacy-armor-retirement-v1']).toBe(2);
   });
 });
