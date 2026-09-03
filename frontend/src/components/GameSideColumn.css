@@ -1,0 +1,72 @@
+/* Game-side notebook readability belongs to the game rail itself, not to the
+   optional War Room scene. Keep this scoped so replay/combat notation can keep
+   their own semantic colours. */
+.game-side-column .game-notation-disclosure > summary {
+  color: #eadbc2;
+}
+
+.game-side-column .game-notation-disclosure[open] > summary {
+  color: #fff0d2;
+}
+
+.game-side-column .game-notation-row .notation-panel {
+  color: #f7ead2;
+}
+
+.game-side-column .game-notation-row .notation-panel h3 {
+  margin-bottom: .78rem;
+  padding-bottom: .62rem;
+  color: #f3d89a;
+  font-family: var(--font-body);
+  font-size: 1.04rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.28;
+  letter-spacing: .005em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .72);
+}
+
+.game-side-column .game-notation-row .opening-tag,
+.game-side-column .game-notation-row .notation-empty,
+.game-side-column .game-notation-row .difficulty-tag {
+  color: #e7d7bc;
+  font-family: var(--font-body);
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1.4;
+  opacity: 1;
+}
+
+.game-side-column .game-notation-row .notation-list,
+.game-side-column .game-notation-row .notation-row,
+.game-side-column .game-notation-row .white-move,
+.game-side-column .game-notation-row .black-move {
+  font-family: var(--font-body);
+  font-style: normal;
+}
+
+.game-side-column .game-notation-row .notation-list {
+  color: #f7ead2;
+  font-size: .88rem;
+  line-height: 1.48;
+}
+
+.game-side-column .game-notation-row .notation-row {
+  color: #f7ead2;
+  row-gap: .12rem;
+}
+
+.game-side-column .game-notation-row .notation-row .num {
+  color: #e8c978;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+}
+
+.game-side-column .game-notation-row .notation-row .white-move,
+.game-side-column .game-notation-row .notation-row .black-move {
+  color: #fff0d6;
+  font-weight: 700;
+  opacity: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .68);
+}
