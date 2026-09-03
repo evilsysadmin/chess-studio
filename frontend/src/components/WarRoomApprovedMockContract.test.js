@@ -13,8 +13,7 @@ function namedGroup(name) {
   return group;
 }
 
-function mockRoom() {
-  const root = new THREE.Group();
+function addStaticRoomObjects(root) {
   for (const name of [
     'war-room-side-console-left',
     'war-room-side-console-right',
@@ -58,7 +57,40 @@ function mockRoom() {
   pelmet.scale.set(1.45, 0.34, 0.34);
   pelmet.name = 'legacy-curtain-upper-doublet';
   root.add(pelmet);
+  return { wall, armorVisor, pelmet };
+}
+
+function mockRoom() {
+  const root = new THREE.Group();
+  const { wall, armorVisor, pelmet } = addStaticRoomObjects(root);
   return { root, wall, armorVisor, pelmet };
+}
+
+function nestedRuntimeRoom() {
+  const scene = new THREE.Scene();
+  const room = new THREE.Group();
+  room.name = 'premium-war-room-layer';
+  const castle = new THREE.Group();
+  castle.name = 'war-room-castle-architecture';
+  scene.add(room);
+  room.add(castle);
+
+  for (const name of [
+    'war-room-side-console-left',
+    'war-room-side-console-right',
+    'war-room-teutonic-armor-left',
+    'war-room-teutonic-armor-right',
+  ]) castle.add(namedGroup(name));
+  for (const name of ['war-room-sofa-left', 'war-room-sofa-right']) room.add(namedGroup(name));
+
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  wall.name = 'war-room-castle-wall-left';
+  castle.add(wall);
+  const armorVisor = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  armorVisor.name = 'war-room-armor-visor';
+  castle.add(armorVisor);
+
+  return { scene, room, castle, wall, armorVisor };
 }
 
 function dispose(root) {
@@ -89,14 +121,15 @@ describe('War Room approved mock contract', () => {
     expect(leftSofa.position.z).toBeGreaterThan(leftArmor.position.z + 3.5);
     expect(Math.abs(leftArmor.position.x)).toBeLessThan(Math.abs(leftTable.position.x));
     expect(Math.abs(leftSofa.position.x)).toBeGreaterThan(Math.abs(leftArmor.position.x));
-    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v26');
-    expect(leftSofa.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v26');
+    expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
+    expect(leftSofa.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v27');
+    expect(root.userData.warRoomFurnitureLayoutOwner).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
     expect(root.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
     expect(root.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
-    expect(root.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v26');
+    expect(root.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v27');
     expect(folds.every((fold) => fold.rotation.z === 0)).toBe(true);
     expect(pelmet.visible).toBe(false);
-    expect(root.userData.warRoomApprovedMockCurtainStyle).toBe('straight-no-upper-doubling-v26');
+    expect(root.userData.warRoomApprovedMockCurtainStyle).toBe('straight-no-upper-doubling-v27');
     expect(root.userData.warRoomApprovedMockVersion).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
     dispose(root);
   });
@@ -125,7 +158,7 @@ describe('War Room approved mock contract', () => {
     expect(sofa.position.z).toBeCloseTo(4.75, 5);
     expect(sofa.position.x).toBeCloseTo(-6.95, 5);
     expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
-    expect(sofa.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v26');
+    expect(sofa.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v27');
     expect(fold.rotation.z).toBe(0);
     expect(root.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
     expect(root.userData.warRoomApprovedMockDriver).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
@@ -133,7 +166,32 @@ describe('War Room approved mock contract', () => {
     dispose(root);
   });
 
-  it('mantiene el mock v26 como autoridad final después de UserPolish y del refinador de arquitectura', () => {
+  it('corrige el árbol real cuando el visor vive en arquitectura y los sofás son hermanos del castillo', () => {
+    const { scene, room, castle, armorVisor } = nestedRuntimeRoom();
+    const sofa = room.getObjectByName('war-room-sofa-left');
+    const armor = castle.getObjectByName('war-room-teutonic-armor-left');
+
+    armorVisor.onBeforeRender = () => {
+      sofa.position.set(-6.28, 0.02, -0.55);
+      sofa.userData.warRoomOffsetFromWall = 7.05;
+      sofa.userData.warRoomFurniturePlacement = 'side-wall-centered-v3';
+    };
+
+    expect(installWarRoomApprovedMockContract(castle, { wallZ: -7.6, towardBoard: 1 })).toBe(1);
+    expect(castle.getObjectByName('war-room-sofa-left')).toBeNull();
+    armorVisor.onBeforeRender();
+
+    expect(sofa.position.z).toBeCloseTo(4.75, 5);
+    expect(sofa.position.x).toBeCloseTo(-6.95, 5);
+    expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
+    expect(sofa.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v27');
+    expect(armor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
+    expect(armorVisor.userData.warRoomApprovedMockPostArchitectureScope).toBe('scene-root-v27');
+    expect(scene.userData.warRoomFurnitureLayoutOwner).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
+    dispose(scene);
+  });
+
+  it('mantiene el mock v27 como autoridad final después de UserPolish y del refinador de arquitectura', () => {
     const { root, wall, armorVisor } = mockRoom();
     const armor = root.getObjectByName('war-room-teutonic-armor-left');
     const table = root.getObjectByName('war-room-side-console-left');
@@ -152,8 +210,8 @@ describe('War Room approved mock contract', () => {
     wall.onBeforeRender();
     armorVisor.onBeforeRender();
 
-    expect(root.userData.warRoomDeferredFinalizedTasks).toEqual(['user-polish-v24', 'approved-mock-v26']);
-    expect(armor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v26');
+    expect(root.userData.warRoomDeferredFinalizedTasks).toEqual(['user-polish-v24', 'approved-mock-v27']);
+    expect(armor.userData.warRoomArmorPlacement).toBe('approved-mock-lower-sentry-v27');
     expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
     expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
     expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
