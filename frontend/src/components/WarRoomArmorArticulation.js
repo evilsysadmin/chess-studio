@@ -15,13 +15,16 @@ export function bindArmorGauntletFingerPlates(armor, towardBoard = 1) {
   if (!armor || armor.userData.warRoomGauntletArticulation === 'parented-finger-plates-v1') return 0;
 
   const plates = collectNamedMeshes(armor, 'war-room-armor-gauntlet-finger-plate');
+  const platesBySide = new Map([
+    [-1, plates.filter((plate) => Math.sign(plate.position.x) === -1)],
+    [1, plates.filter((plate) => Math.sign(plate.position.x) === 1)],
+  ]);
   let bound = 0;
 
   for (const handSide of [-1, 1]) {
     const gauntlet = gauntletForSide(armor, handSide);
     if (!gauntlet) continue;
-    const sidePlates = plates
-      .filter((plate) => Math.sign(plate.position.x) === handSide)
+    const sidePlates = [...(platesBySide.get(handSide) || [])]
       .sort((a, b) => Math.abs(a.position.y - gauntlet.position.y) - Math.abs(b.position.y - gauntlet.position.y));
 
     sidePlates.forEach((plate, finger) => {
