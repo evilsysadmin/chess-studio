@@ -47,22 +47,27 @@ describe('matthiasWarRoomStateMachine', () => {
   });
 
   it('evita repetir el mismo tic ambiental dos veces seguidas', () => {
-    expect(nextMatthiasAmbientState({ random: () => 0.04, lastAmbient: 'coffee' })).toBe('survey');
-    expect(nextMatthiasAmbientState({ random: () => 0.46, lastAmbient: 'head-left' })).toBe('head-right');
+    expect(nextMatthiasAmbientState({ random: () => 0.02, lastAmbient: 'coffee' })).toBe('glance');
+    expect(nextMatthiasAmbientState({ random: () => 0.38, lastAmbient: 'head-left' })).toBe('head-right');
   });
 
-  it('sube vigilancia con la rabia y reduce el café sin eliminarlo', () => {
-    expect(nextMatthiasAmbientState({ random: () => 0.04, angerLevel: 0 })).toBe('coffee');
-    expect(nextMatthiasAmbientState({ random: () => 0.04, angerLevel: 4 })).toBe('lean-in');
-    expect(nextMatthiasAmbientState({ random: () => 0.01, angerLevel: 4 })).toBe('coffee');
+  it('hace la presencia más escasa en calma y más vigilante con rabia', () => {
+    expect(nextMatthiasAmbientState({ random: () => 0.02, angerLevel: 0 })).toBe('coffee');
+    expect(nextMatthiasAmbientState({ random: () => 0.02, angerLevel: 4 })).toBe('glance');
+    expect(nextMatthiasAmbientState({ random: () => 0.005, angerLevel: 4 })).toBe('coffee');
+    expect(nextMatthiasAmbientState({ random: () => 0.90, angerLevel: 4 })).toBe('glare');
+    expect(matthiasWarRoomIdleDelay(() => 0, 0)).toBeGreaterThanOrEqual(4000);
     expect(matthiasWarRoomIdleDelay(() => 0, 4)).toBeLessThan(matthiasWarRoomIdleDelay(() => 0, 0));
   });
 
-  it('da intención visual y corporal a café, smirk, gruñido y rabia', () => {
-    expect(MATTHIAS_WAR_ROOM_STATE_VERSION).toBe('fsm-v1');
-    expect(matthiasWarRoomStateDescriptor('coffee', 0)).toMatchObject({ expression: 'coffee', activity: 'Café de campaña' });
-    expect(matthiasWarRoomStateDescriptor('smirk', 0).expression).toBe('smirk');
-    expect(matthiasWarRoomStateDescriptor('grumble', 4).expression).toBe('grumble-hot');
+  it('expone intención facial real para cada estado importante', () => {
+    expect(MATTHIAS_WAR_ROOM_STATE_VERSION).toBe('fsm-v2');
+    expect(matthiasWarRoomStateDescriptor('coffee', 0)).toMatchObject({ expression: 'coffee', gesture: 'coffee' });
+    expect(matthiasWarRoomStateDescriptor('glare', 0).gesture).toBe('glare');
+    expect(matthiasWarRoomStateDescriptor('lean-in', 0).gesture).toBe('lean-in');
+    expect(matthiasWarRoomStateDescriptor('smirk', 0)).toMatchObject({ expression: 'smirk', gesture: 'smirk' });
+    expect(matthiasWarRoomStateDescriptor('grumble', 4)).toMatchObject({ expression: 'grumble-hot', gesture: 'grumble' });
+    expect(matthiasWarRoomStateDescriptor('speaking', 0).gesture).toBe('speaking');
     expect(matthiasWarRoomStateDescriptor('idle', 4).expression).toBe('simmer');
     expect(matthiasWarRoomStateDuration('grumble', 4)).toBeGreaterThan(matthiasWarRoomStateDuration('grumble', 0));
     expect(normalizeWarRoomAnger(99)).toBe(4);
