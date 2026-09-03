@@ -1,0 +1,526 @@
+/* Home one-screen prototype
+ * Desktop goal: arrive, choose, play. One viewport for the useful Home path.
+ * Mobile keeps the existing vertical flow.
+ */
+
+@media (min-width: 1180px) and (min-height: 760px) {
+  body:has(.home-friendly:not(:has(.home-start-guide))) {
+    overflow-y: hidden;
+    background:
+      radial-gradient(ellipse at 12% 34%, rgba(102,132,150,.08), transparent 28%),
+      radial-gradient(ellipse at 88% 30%, rgba(209,115,47,.13), transparent 29%),
+      linear-gradient(180deg, #17130f 0%, #0d0b09 54%, #090807 100%);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .masthead:not(.masthead-game-compact) {
+    min-height: 78px;
+    margin-bottom: .18rem;
+    padding-block: .18rem .28rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .masthead:not(.masthead-game-compact) .masthead-top-row {
+    min-height: 48px;
+    align-items: center;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .masthead:not(.masthead-game-compact) .masthead-text {
+    display: flex;
+    align-items: baseline;
+    gap: .8rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .masthead:not(.masthead-game-compact) .masthead-kicker {
+    order: 2;
+    margin: 0;
+    font-size: .52rem;
+    opacity: .64;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .masthead:not(.masthead-game-compact) h1 {
+    margin: 0;
+    font-size: clamp(2rem, 3vw, 2.65rem);
+    line-height: 1;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .menu.home-friendly {
+    --home-shell-width: min(1540px, calc(100vw - 3rem));
+    position: relative;
+    isolation: isolate;
+    width: var(--home-shell-width);
+    height: calc(100dvh - 162px);
+    min-height: 590px;
+    max-height: 760px;
+    margin: .1rem auto 0;
+    padding: .72rem;
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr) 286px;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    gap: .72rem;
+    overflow: visible;
+    border: 1px solid rgba(191,148,80,.11);
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, rgba(24,17,13,.50), rgba(10,8,7,.66)),
+      radial-gradient(circle at 86% 4%, rgba(193,126,52,.07), transparent 31%);
+    box-shadow: 0 28px 72px rgba(0,0,0,.34), inset 0 1px rgba(255,235,194,.03);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .menu.home-friendly::before {
+    content: '';
+    position: absolute;
+    z-index: -2;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(72,40,28,.22) 0 14.8%, transparent 15% 82%, rgba(91,45,27,.19) 82.2% 100%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.009) 0 1px, transparent 1px 72px);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .menu.home-friendly::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 89% 37%, rgba(255,166,74,.11), transparent 26%),
+      linear-gradient(90deg, rgba(0,0,0,.14), transparent 18% 78%, rgba(0,0,0,.08));
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-error-banner {
+    position: fixed;
+    z-index: 70;
+    top: 92px;
+    left: 50%;
+    width: min(740px, calc(100vw - 2rem));
+    transform: translateX(-50%);
+    box-shadow: 0 14px 34px rgba(0,0,0,.34);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-continue-group {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    z-index: 5;
+    margin: 0;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-continue-card {
+    min-height: 54px;
+    padding: .55rem .7rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-continue-copy small {
+    display: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 0;
+    margin: 0;
+    padding: .72rem;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: .58rem;
+    border: 1px solid rgba(167,119,64,.20);
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(39,25,17,.69), rgba(13,11,10,.79));
+    box-shadow: inset 0 1px rgba(255,232,190,.025), 0 16px 34px rgba(0,0,0,.20);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-group-heading {
+    min-height: 52px;
+    padding: 0 .1rem .48rem;
+    align-items: end;
+    border-bottom: 1px solid rgba(194,149,80,.15);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-group-heading h2 {
+    margin: .05rem 0 0;
+    font-size: clamp(1.55rem, 2.25vw, 2rem);
+    line-height: 1;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-heading-actions p {
+    max-width: 29ch;
+    margin: 0;
+    font-size: .7rem;
+    line-height: 1.35;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-primary-grid {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.22fr) repeat(2, minmax(0, .89fr));
+    gap: .62rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .menu-card-shell {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-card {
+    height: 100%;
+    min-height: 0;
+    padding: .82rem .8rem .7rem;
+    gap: .38rem;
+    border-radius: 10px;
+    background:
+      linear-gradient(150deg, rgba(41,28,20,.86), rgba(15,13,11,.94) 55%, rgba(9,9,8,.97));
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-featured {
+    border-color: rgba(218,174,93,.48);
+    background:
+      radial-gradient(circle at 14% 8%, rgba(198,144,62,.11), transparent 34%),
+      linear-gradient(145deg, rgba(59,39,23,.91), rgba(17,14,11,.96) 58%);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-card h3 {
+    font-size: clamp(1.08rem, 1.35vw, 1.35rem);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-description {
+    max-width: 28ch;
+    font-size: .71rem;
+    line-height: 1.38;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-progress {
+    margin-top: auto;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-art {
+    opacity: .28;
+    filter: sepia(.16) saturate(.76) contrast(1.08) brightness(.72);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-more-modes {
+    position: relative;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid rgba(185,139,72,.13);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-more-modes > summary {
+    min-height: 30px;
+    padding: .3rem .1rem 0;
+    color: rgba(220,201,170,.66);
+    font-size: .61rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-more-modes[open] > .friendly-disclosure-body {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    bottom: 34px;
+    padding: .7rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid rgba(196,153,83,.28);
+    border-radius: 12px;
+    background: rgba(16,12,10,.98);
+    box-shadow: 0 18px 46px rgba(0,0,0,.46);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-card {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+    min-width: 0;
+    padding: .72rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .48rem;
+    border: 1px solid rgba(195,149,79,.23);
+    border-radius: 12px;
+    background: linear-gradient(155deg, rgba(45,30,20,.84), rgba(14,12,10,.94));
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-emblem {
+    display: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-copy {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .12rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-copy strong {
+    font-size: 1rem;
+    white-space: normal;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-copy small {
+    grid-column: 1;
+    font-size: .64rem;
+    white-space: normal;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-missions {
+    display: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-streaks {
+    justify-content: flex-start;
+    font-size: .58rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-actions {
+    justify-items: stretch;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-today-actions > button {
+    width: 100%;
+    min-height: 36px;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-next-action {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: end;
+    min-width: 0;
+    margin: 0;
+    padding: .72rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .48rem;
+    border: 1px solid rgba(167,119,64,.20);
+    border-radius: 12px;
+    background: linear-gradient(155deg, rgba(34,24,18,.83), rgba(13,11,10,.93));
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-next-action > div {
+    min-width: 0;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-next-action strong {
+    display: block;
+    margin: .18rem 0 .2rem;
+    font-size: 1rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-next-action small {
+    display: block;
+    font-size: .66rem;
+    line-height: 1.4;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-next-action .secondary-btn {
+    width: 100%;
+    min-height: 34px;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide)):has(.home-continue-group)) .home-next-action {
+    display: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .menu.home-friendly > .home-primary-group:not(.home-modes-section) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    min-height: 66px;
+    margin: 0;
+    padding: .5rem .58rem;
+    border: 1px solid rgba(155,111,60,.16);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(31,22,17,.72), rgba(13,11,10,.83));
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-group-heading,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-more {
+    display: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-grid {
+    height: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .5rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-grid .menu-card-shell,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-grid > .menu-card {
+    min-height: 0;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-card,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-school-card {
+    min-height: 54px;
+    height: 100%;
+    padding: .5rem .62rem;
+    display: grid;
+    grid-template-columns: 30px minmax(0,1fr) auto;
+    align-items: center;
+    gap: .5rem;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-card .home-mode-icon,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-school-card .home-mode-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-card .home-mode-kicker,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-school-card .home-mode-kicker,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-card .home-mode-description,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-school-card .home-mode-description,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-card .home-mode-art,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-school-card .home-mode-art {
+    display: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-card h3,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-school-card h3 {
+    margin: 0;
+    font-size: .84rem;
+    line-height: 1.15;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-learning-card .menu-card-cta,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-school-card .menu-card-cta {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: .56rem;
+    white-space: nowrap;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-footer {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: end;
+    margin: 0;
+    padding: .15rem .25rem 0;
+    border-top: 0;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-footer-bar {
+    min-height: 26px;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-footer-links button {
+    min-height: 24px;
+    font-size: .57rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-footer-detail {
+    position: absolute;
+    z-index: 35;
+    left: .72rem;
+    right: .72rem;
+    bottom: 34px;
+    max-height: 46vh;
+    overflow: auto;
+    background: rgba(15,12,10,.98);
+    box-shadow: 0 20px 48px rgba(0,0,0,.48);
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport {
+    left: max(1.5rem, calc((100vw - min(1540px, calc(100vw - 3rem))) / 2 + .78rem));
+    right: auto;
+    top: 170px;
+    bottom: auto;
+    width: 210px;
+    z-index: 24;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__stage {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .5rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__character-stack {
+    width: 100%;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__character {
+    width: 100%;
+    min-width: 0;
+    padding: .38rem .38rem .42rem;
+    border: 1px solid rgba(184,137,72,.21);
+    border-radius: 15px;
+    background: linear-gradient(180deg, rgba(48,32,21,.55), rgba(12,10,9,.89));
+    filter: drop-shadow(0 16px 22px rgba(0,0,0,.30));
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__portrait-shell {
+    width: 196px;
+    height: 224px;
+    border-radius: 14px 14px 10px 10px;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__character strong {
+    margin-top: .22rem;
+    font-size: .66rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__character small,
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__character em {
+    max-width: 190px;
+    font-size: .54rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__session-summary {
+    width: 100%;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__bubble {
+    order: 2;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    flex: none;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__bubble::after {
+    display: none;
+  }
+}
+
+@media (min-width: 1180px) and (min-height: 760px) and (max-height: 900px) {
+  body:has(.home-friendly:not(:has(.home-start-guide))) .menu.home-friendly {
+    height: calc(100dvh - 146px);
+    min-height: 570px;
+    padding: .58rem;
+    gap: .58rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section {
+    padding: .58rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .home-modes-section .home-mode-description {
+    font-size: .67rem;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport {
+    top: 150px;
+  }
+
+  body:has(.home-friendly:not(:has(.home-start-guide))) .matthias-resident.is-viewport .matthias-resident__portrait-shell {
+    height: 205px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.home-friendly) .home-mode-card,
+  body:has(.home-friendly) .matthias-resident__character {
+    transition: none !important;
+  }
+}
