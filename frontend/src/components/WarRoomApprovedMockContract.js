@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
-export const WAR_ROOM_APPROVED_MOCK_VERSION = 'approved-mock-v26';
+export const WAR_ROOM_APPROVED_MOCK_VERSION = 'approved-mock-v27';
+
+function sceneRoot(object) {
+  let current = object;
+  while (current?.parent) current = current.parent;
+  return current;
+}
 
 function placeFurniture(root, { wallZ, towardBoard }) {
   const tableOffset = 3.30;
@@ -18,7 +24,7 @@ function placeFurniture(root, { wallZ, towardBoard }) {
     table.position.x = side * 6.58;
     table.position.z = wallZ + towardBoard * tableOffset;
     table.userData.warRoomOffsetFromWall = tableOffset;
-    table.userData.warRoomFurniturePlacement = 'approved-mock-rear-table-v26';
+    table.userData.warRoomFurniturePlacement = 'approved-mock-rear-table-v27';
     changed += 1;
   }
 
@@ -31,7 +37,7 @@ function placeFurniture(root, { wallZ, towardBoard }) {
     armor.position.set(side * 6.05, 0, wallZ + towardBoard * armorOffset);
     armor.rotation.y = -side * towardBoard * 0.78;
     armor.userData.warRoomOffsetFromWall = armorOffset;
-    armor.userData.warRoomArmorPlacement = 'approved-mock-lower-sentry-v26';
+    armor.userData.warRoomArmorPlacement = 'approved-mock-lower-sentry-v27';
     armor.userData.facesWarTable = true;
     changed += 1;
   }
@@ -45,12 +51,13 @@ function placeFurniture(root, { wallZ, towardBoard }) {
     sofa.position.set(side * 6.95, 0.02, wallZ + towardBoard * sofaOffset);
     sofa.rotation.y = -side * towardBoard * Math.PI / 2;
     sofa.userData.warRoomOffsetFromWall = sofaOffset;
-    sofa.userData.warRoomFurniturePlacement = 'approved-mock-front-corner-sofa-v26';
+    sofa.userData.warRoomFurniturePlacement = 'approved-mock-front-corner-sofa-v27';
     sofa.userData.facesWarTable = true;
     changed += 1;
   }
 
-  root.userData.warRoomApprovedMockFurnitureOrder = 'tables-rear-armors-lower-sofas-foreground-v26';
+  root.userData.warRoomFurnitureLayoutOwner = WAR_ROOM_APPROVED_MOCK_VERSION;
+  root.userData.warRoomApprovedMockFurnitureOrder = 'tables-rear-armors-lower-sofas-foreground-v27';
   root.userData.warRoomApprovedMockTableOffset = tableOffset;
   root.userData.warRoomApprovedMockArmorOffset = armorOffset;
   root.userData.warRoomApprovedMockSofaOffset = sofaOffset;
@@ -74,10 +81,10 @@ function retireWallClutter(root) {
     if (!WALL_CLUTTER_NAMES.has(object?.name)) return;
     if (object.visible !== false) retired += 1;
     object.visible = false;
-    object.userData.warRoomApprovedMockWall = 'clean-panel-v26';
+    object.userData.warRoomApprovedMockWall = 'clean-panel-v27';
   });
   root.userData.warRoomApprovedMockWallClutterRetired = retired;
-  root.userData.warRoomApprovedMockWallStyle = 'plain-dark-castle-panel-v26';
+  root.userData.warRoomApprovedMockWallStyle = 'plain-dark-castle-panel-v27';
   return retired;
 }
 
@@ -97,18 +104,18 @@ function straightenCurtains(root) {
   root.traverse?.((object) => {
     if (object?.name?.includes?.('war-room-velvet-curtain-fold')) {
       object.rotation.z = 0;
-      object.userData.warRoomCurtainProfile = 'straight-drop-v26';
+      object.userData.warRoomCurtainProfile = 'straight-drop-v27';
       folds += 1;
       return;
     }
     if (!isCurtainPelmet(object)) return;
     object.visible = false;
-    object.userData.warRoomCurtainPelmet = 'retired-v26';
+    object.userData.warRoomCurtainPelmet = 'retired-v27';
     pelmets += 1;
   });
   root.userData.warRoomApprovedMockCurtainFolds = folds;
   root.userData.warRoomApprovedMockCurtainPelmetsRetired = pelmets;
-  root.userData.warRoomApprovedMockCurtainStyle = 'straight-no-upper-doubling-v26';
+  root.userData.warRoomApprovedMockCurtainStyle = 'straight-no-upper-doubling-v27';
   return folds + pelmets;
 }
 
@@ -120,9 +127,14 @@ function installPostArchitectureFurnitureLock(group, options) {
   const previous = architectureDriver.onBeforeRender;
   architectureDriver.onBeforeRender = (...args) => {
     previous?.(...args);
-    placeFurniture(group, options);
+    // The armor visor lives inside war-room-castle-architecture while the
+    // sofas live in the parent premium-war-room-layer. Using the registration
+    // group here silently missed the real sofas and allowed the legacy
+    // architecture pass to win. Always resolve the live scene root.
+    placeFurniture(sceneRoot(architectureDriver) || group, options);
   };
   architectureDriver.userData.warRoomApprovedMockPostArchitectureDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
+  architectureDriver.userData.warRoomApprovedMockPostArchitectureScope = 'scene-root-v27';
   group.userData.warRoomApprovedMockPostArchitectureDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   return 1;
 }
@@ -151,7 +163,7 @@ export function installWarRoomApprovedMockContract(group, options = {}) {
   if (!markerDriver || markerDriver.userData.warRoomApprovedMockDriver === WAR_ROOM_APPROVED_MOCK_VERSION) return 0;
 
   const registered = registerWarRoomDeferredFinalizer(group, {
-    key: 'approved-mock-v26',
+    key: 'approved-mock-v27',
     coarsePointer: options.coarsePointer,
     run: (root) => applyWarRoomApprovedMockContract(root || group, options),
   });
@@ -159,6 +171,6 @@ export function installWarRoomApprovedMockContract(group, options = {}) {
 
   markerDriver.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
   group.userData.warRoomApprovedMockDriver = WAR_ROOM_APPROVED_MOCK_VERSION;
-  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-plus-post-architecture-lock-v3';
+  group.userData.warRoomApprovedMockExecution = 'shared-finalizer-plus-post-architecture-scene-root-lock-v4';
   return 1;
 }
