@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import {
+  MATTHIAS_FACIAL_RIG_VERSION,
+  matthiasFacialMotionSample,
+  normalizeMatthiasFacialExpression,
+  normalizeMatthiasFacialGesture,
+} from './matthiasFacialRig.js';
 import './MatthiasThreeAvatar.css';
 
 function cue(value = '') {
@@ -115,7 +121,7 @@ function rotateRegion(x, y, pivotX, pivotY, angle, weight) {
   };
 }
 
-function deformVertex(profile, x, y, imageAspect, time, speaking) {
+function deformVertex(profile, x, y, imageAspect, time, speaking, facialRigActive = false) {
   const nx = imageAspect ? x / imageAspect : x;
   const head = gaussian(nx, y, 0, .30, .42, .42);
   const mouth = gaussian(nx, y, 0, .18, .20, .12);
@@ -201,10 +207,8 @@ function deformVertex(profile, x, y, imageAspect, time, speaking) {
     energy = Math.max(action * .55, page);
   } else if (profile === 'think') {
     const action = gestureCycle(time + .2, { period: 8.2, delay: .5, rise: .95, hold: 1.2, fall: 1.0 });
-    // Chess scenes use a canonical raster portrait. Move the hand and torso,
-    // but never locally rotate the head: warping facial pixels makes Matthias
-    // look melted instead of thoughtful. The whole plane still receives the
-    // subtle rigid Three.js rotation below, so the portrait remains alive.
+    // Chess scenes keep broad head warping disabled. The explicit facial rig may
+    // add tiny bounded expression deltas later, after this body deformation.
     dy += rightArm * action * .17;
     dx -= rightArm * action * .055;
     dy += body * action * .006;
@@ -224,21 +228,18 @@ function deformVertex(profile, x, y, imageAspect, time, speaking) {
     const syllable = speaking ? Math.sin(time * 11.5) : 0;
     const rot = rotateRegion(nx, y, 0, .16, Math.sin(time * 2.4) * .017 * action, head);
     dx += rot.dx * imageAspect;
-    dy += rot.dy - body * action * .006 + mouth * syllable * .009;
+    dy += rot.dy - body * action * .006 + (facialRigActive ? 0 : mouth * syllable * .009);
     dz += head * action * .01;
     energy = action;
   }
 
-  if (profile !== 'sleep') {
+  if (profile !== 'sleep' && !facialRigActive) {
     const blink = gestureCycle(time + 5.1, { period: 7.4, delay: 0, rise: .06, hold: .025, fall: .09 });
     dy -= eyeBand * blink * .012;
     energy = Math.max(energy, blink * .3);
   }
 
   if (profile === 'think') {
-    // Smoothly freeze the facial core while keeping shoulders/arm free. This
-    // also removes the mesh-based blink inside the protected zone for chess
-    // scenes, avoiding seams across eyes, mouth and cap/forehead.
     const faceProtection = 1 - gaussian(nx, y, 0, .31, .30, .26);
     dx *= faceProtection;
     dy *= faceProtection;
@@ -256,14 +257,29 @@ export function matthiasThreeMotionSample({
   time = 0,
   speaking = false,
   motionIntensity = 1,
+  facialExpression = '',
+  facialGesture = 'idle',
 } = {}) {
-  const motion = deformVertex(profile, x, y, imageAspect, time, speaking);
+  const facialRigActive = Boolean(facialExpression);
+  const motion = deformVertex(profile, x, y, imageAspect, time, speaking, facialRigActive);
   const intensity = normalizeMotionIntensity(motionIntensity);
+  const faceMotion = facialRigActive
+    ? matthiasFacialMotionSample({
+      expression: facialExpression,
+      gesture: facialGesture,
+      x,
+      y,
+      imageAspect,
+      time,
+      speaking,
+      intensity,
+    })
+    : { dx: 0, dy: 0, dz: 0, energy: 0 };
   return {
-    dx: motion.dx * intensity,
-    dy: motion.dy * intensity,
-    dz: motion.dz * intensity,
-    energy: motion.energy,
+    dx: motion.dx * intensity + faceMotion.dx,
+    dy: motion.dy * intensity + faceMotion.dy,
+    dz: motion.dz * intensity + faceMotion.dz,
+    energy: Math.max(motion.energy, faceMotion.energy),
   };
 }
 
@@ -288,9 +304,13 @@ export default function MatthiasThreeAvatar({
   speaking = false,
   reducedMotion = false,
   motionIntensity = 1,
+  facialExpression = '',
+  facialGesture = 'idle',
 }) {
   const canvasRef = useRef(null);
   const rootRef = useRef(null);
+  const facialExpressionRef = useRef(normalizeMatthiasFacialExpression(facialExpression));
+  const facialGestureRef = useRef(normalizeMatthiasFacialGesture(facialGesture));
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const profile = useMemo(
@@ -299,6 +319,11 @@ export default function MatthiasThreeAvatar({
   );
   const phase = useMemo(() => matthiasThreeMotionPhase({ scene, activity }), [activity, scene]);
   const normalizedIntensity = normalizeMotionIntensity(motionIntensity);
+  const faceRigActive = Boolean(facialExpression);
+  const normalizedFacialExpression = faceRigActive ? normalizeMatthiasFacialExpression(facialExpression) : '';
+  const normalizedFacialGesture = normalizeMatthiasFacialGesture(facialGesture);
+  facialExpressionRef.current = normalizedFacialExpression || 'stern';
+  facialGestureRef.current = normalizedFacialGesture;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -438,6 +463,8 @@ export default function MatthiasThreeAvatar({
                 time,
                 speaking,
                 motionIntensity: normalizedIntensity,
+                facialExpression: faceRigActive ? facialExpressionRef.current : '',
+                facialGesture: facialGestureRef.current,
               });
             positions.array[offset] = x + motion.dx;
             positions.array[offset + 1] = y + motion.dy;
@@ -513,7 +540,7 @@ export default function MatthiasThreeAvatar({
       texture?.dispose?.();
       renderer?.dispose?.();
     };
-  }, [avatar, normalizedIntensity, phase, profile, reducedMotion, speaking]);
+  }, [avatar, faceRigActive, normalizedIntensity, phase, profile, reducedMotion, speaking]);
 
   return (
     <span
@@ -526,6 +553,9 @@ export default function MatthiasThreeAvatar({
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
       data-three-motion-intensity={normalizedIntensity.toFixed(2)}
       data-three-motion-phase={phase.toFixed(3)}
+      data-three-face-rig={faceRigActive ? MATTHIAS_FACIAL_RIG_VERSION : 'legacy'}
+      data-three-face-expression={normalizedFacialExpression || 'none'}
+      data-three-face-gesture={normalizedFacialGesture}
       data-three-ready={ready ? 'true' : 'false'}
       data-three-failed={failed ? 'true' : 'false'}
       data-three-frame="0"
