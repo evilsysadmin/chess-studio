@@ -26,10 +26,11 @@ export function shouldLeaveActiveRouteAfterRestoreFailure(error) {
 }
 
 export function resolveRestoredGameContext(saved, found, storedRun) {
-  if (saved?.gameContext && Object.keys(saved.gameContext).length) return saved.gameContext;
-  if (storedRun?.active && storedRun.currentGameId === found?.id) return { runMode: storedRun.mode };
-  if (found?.ghostStyle) return { ghost: true, ghostStyle: found.ghostStyle };
-  return {};
+  const resumed = found?.id || saved?.gameId || true;
+  if (saved?.gameContext && Object.keys(saved.gameContext).length) return { ...saved.gameContext, resumed };
+  if (storedRun?.active && storedRun.currentGameId === found?.id) return { runMode: storedRun.mode, resumed };
+  if (found?.ghostStyle) return { ghost: true, ghostStyle: found.ghostStyle, resumed };
+  return { resumed };
 }
 
 export function buildLegacySessionDescriptor({ gameId, learningMode = false, timeControlId = null } = {}) {

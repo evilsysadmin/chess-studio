@@ -18,11 +18,11 @@ describe('active session restore helpers', () => {
   it('prioriza el contexto persistido y cae a run/ghost sólo cuando falta', () => {
     const found = { id: 'g-1', ghostStyle: 'solid' };
     expect(resolveRestoredGameContext({ gameContext: { lab: true } }, found, { active: true, currentGameId: 'g-1', mode: 'cup' }))
-      .toEqual({ lab: true });
+      .toEqual({ lab: true, resumed: 'g-1' });
     expect(resolveRestoredGameContext({ gameContext: {} }, found, { active: true, currentGameId: 'g-1', mode: 'cup' }))
-      .toEqual({ runMode: 'cup' });
+      .toEqual({ runMode: 'cup', resumed: 'g-1' });
     expect(resolveRestoredGameContext({ gameContext: {} }, found, null))
-      .toEqual({ ghost: true, ghostStyle: 'solid' });
+      .toEqual({ ghost: true, ghostStyle: 'solid', resumed: 'g-1' });
   });
 
   it('construye un descriptor mínimo para saves anteriores a dm6', () => {

@@ -25,12 +25,23 @@ export function loadActiveGameChat(gameId) {
   return saved.messages;
 }
 
+export function isDuplicateActiveGameComment(messages, text) {
+  const clean = String(text || '').trim();
+  if (!clean || !Array.isArray(messages)) return false;
+  return messages.some((message) => message?.by === 'cpu' && String(message?.text || '').trim() === clean);
+}
+
 export function appendActiveGameChat(gameId, comment, meta = {}) {
   if (!gameId || !comment) return [];
   const text = typeof comment === 'string' ? comment : comment.text;
   if (!text) return loadActiveGameChat(gameId);
 
   const current = loadActiveGameChat(gameId);
+  // El transcript activo sobrevive a F5/"Continuar partida". GameScreen puede
+  // volver a montar sus efectos de apertura al rehidratar, pero Matthias no
+  // debe repetir literalmente una brasa que ya consta en esta misma partida.
+  if (isDuplicateActiveGameComment(current, text)) return current;
+
   const message = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     at: new Date().toISOString(),
