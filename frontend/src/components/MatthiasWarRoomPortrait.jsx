@@ -51,8 +51,13 @@ export function nextWarRoomGesture(random = Math.random, angerLevel = 0, lastAmb
   return nextMatthiasAmbientState({ random, angerLevel, lastAmbient });
 }
 
+export function shouldUseWarRoomAngryArt({ reaction = 'none', angerLevel = 0, angryAvatar = '' } = {}) {
+  return Boolean(angryAvatar) && reaction === 'disapprove' && normalizeWarRoomAnger(angerLevel) >= 3;
+}
+
 export default function MatthiasWarRoomPortrait({
   avatar,
+  angryAvatar = '',
   speechKey = '',
   speechText = '',
   angerLevel = 0,
@@ -72,9 +77,13 @@ export default function MatthiasWarRoomPortrait({
     : machine.mode === MATTHIAS_WAR_ROOM_STATES.SMIRK
       ? 'smirk'
       : 'none';
+  const angryArtActive = shouldUseWarRoomAngryArt({ reaction, angerLevel: normalizedAnger, angryAvatar });
+  const portraitAvatar = angryArtActive ? angryAvatar : avatar;
+
   // Keep the Three.js renderer stable for posture-only microstates. Only coffee
-  // needs a different inner mesh profile (`sip`); glance/glare/etc. belong to
-  // the outer actor rig and must not recreate a WebGL context every few seconds.
+  // needs a different inner mesh profile (`sip`); facial state is passed through
+  // refs inside MatthiasThreeAvatar, so a smirk/blink/glare does not recreate a
+  // WebGL context every few seconds.
   const motionActivity = machine.mode === MATTHIAS_WAR_ROOM_STATES.COFFEE
     ? descriptor.activity
     : 'Vigilando el tablero';
@@ -187,8 +196,9 @@ export default function MatthiasWarRoomPortrait({
       data-matthias-speaking={machine.speaking ? 'true' : 'false'}
       data-matthias-anger-level={normalizedAnger}
       data-matthias-reaction={reaction}
+      data-matthias-avatar-mode={angryArtActive ? 'angry-open-mouth' : 'stern-closed-mouth'}
       data-matthias-face-overlay="none"
-      data-matthias-face-rig="three-mesh-v1"
+      data-matthias-face-rig="three-mesh-face-v1"
       data-matthias-motion-version="v4-android"
       data-matthias-compact-motion={compactViewport ? 'true' : 'false'}
     >
@@ -196,12 +206,14 @@ export default function MatthiasWarRoomPortrait({
       <span className="game-3d-matthias-character" aria-hidden="true">
         <span className="game-3d-matthias-portrait">
           <MatthiasThreeAvatar
-            avatar={avatar}
+            avatar={portraitAvatar}
             scene="war-room-command"
             activity={motionActivity}
             speaking={machine.speaking}
             reducedMotion={reducedMotion}
             motionIntensity={compactViewport ? WAR_ROOM_COMPACT_MOTION_INTENSITY : 1}
+            facialExpression={descriptor.expression}
+            facialGesture={descriptor.gesture}
           />
         </span>
       </span>
