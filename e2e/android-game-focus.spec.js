@@ -1,7 +1,11 @@
 import { devices, expect, test } from '@playwright/test';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
 
 test.use({ ...devices['Pixel 5'] });
+
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const CAPTURE_READY_FEN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
+const CAPTURE_END_FEN = 'rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3';
 
 function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
@@ -18,6 +22,74 @@ async function startQuickGame(page, requestLog, mockOptions = {}) {
   // readiness to a status strip that compact layouts are allowed to fold away.
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 30_000 });
+}
+
+async function installFocusCaptureRoute(page, requestLog) {
+  await page.route('http://localhost:4000/api/games/*/move', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const url = new URL(route.request().url());
+    const id = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1] || 'e2e-game-1';
+    const payload = route.request().postDataJSON?.() ?? {};
+    requestLog.push({
+      method: 'POST',
+      path: url.pathname,
+      idempotencyKey: route.request().headers()['idempotency-key'] || null,
+    });
+
+    if (payload.from === 'e2' && payload.to === 'e4') {
+      const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+      const cpuMove = { from: 'd7', to: 'd5', san: 'd5', piece: 'p', captured: false, by: 'cpu' };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id,
+          fen: CAPTURE_READY_FEN,
+          turn: 'w',
+          humanColor: 'w',
+          difficulty: 50,
+          status: 'playing',
+          insufficientMatingMaterial: { w: false, b: false },
+          isGameOver: false,
+          history: [humanMove, cpuMove],
+          lastMove: cpuMove,
+          initialFen: START_FEN,
+          ghostStyle: null,
+        }),
+      });
+    }
+
+    if (payload.from === 'e4' && payload.to === 'd5') {
+      const firstHuman = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+      const firstCpu = { from: 'd7', to: 'd5', san: 'd5', piece: 'p', captured: false, by: 'cpu' };
+      const capture = { from: 'e4', to: 'd5', san: 'exd5', piece: 'p', captured: true, by: 'human' };
+      const cpuMove = { from: 'g8', to: 'f6', san: 'Nf6', piece: 'n', captured: false, by: 'cpu' };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id,
+          fen: CAPTURE_END_FEN,
+          turn: 'w',
+          humanColor: 'w',
+          difficulty: 50,
+          status: 'playing',
+          insufficientMatingMaterial: { w: false, b: false },
+          isGameOver: false,
+          history: [firstHuman, firstCpu, capture, cpuMove],
+          lastMove: cpuMove,
+          initialFen: START_FEN,
+          ghostStyle: null,
+        }),
+      });
+    }
+
+    return route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: `Focus E2E no simula ${payload.from || '?'}-${payload.to || '?'}` }),
+    });
+  });
 }
 
 test('Android · Focus deja sólo el tablero 3D, sigue siendo jugable y puede salir', async ({ page }) => {
@@ -69,65 +141,43 @@ test('Android · Focus deja sólo el tablero 3D, sigue siendo jugable y puede sa
   await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
 });
 
-test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos temporales', async ({ page }) => {
-  test.setTimeout(30_000);
+test('Android · Focus convierte reacciones nuevas de Matthias en bocadillos temporales', async ({ page }) => {
+  test.setTimeout(60_000);
   const requestLog = [];
-  let releaseOpeningNarrative;
-  let openingNarrativeRequested = false;
-  const openingNarrativeGate = new Promise((resolve) => { releaseOpeningNarrative = resolve; });
-  const remoteFocusLine = 'Focus activo. Ahora sí te estoy hablando desde dentro.';
-
   await mockApi(page, { requestLog });
-
-  // The opening request has a real 4.5 s product timeout. The old E2E waited
-  // for the whole Three canvas before entering Focus, so CI legitimately timed
-  // the request out and installed the local fallback *before* Focus. Hold the
-  // remote response only long enough to prove the request exists, enter Focus
-  // immediately, then release a unique Cloudflare line. If that exact line
-  // becomes a bubble, the message was born after Focus became authoritative.
-  await page.route('http://localhost:4000/api/narrative', async (route) => {
-    const payload = route.request().postDataJSON?.() ?? {};
-    if (payload.eventType !== 'game_opening_banter') return route.fallback();
-    openingNarrativeRequested = true;
-    await openingNarrativeGate;
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        text: remoteFocusLine,
-        provider: 'cloudflare',
-        latencyMs: 35,
-      }),
-    });
-  });
+  // La apertura remota tiene deliberadamente un timeout corto y puede terminar
+  // antes de que Three/WebGL monte Focus en CI. Este test debe acreditar el
+  // contrato de Focus, no la carrera de una petición de apertura. Instalamos
+  // una continuación legal y provocamos una captura DESPUÉS de entrar en Focus:
+  // la primera captura humana siempre genera una reacción local de Matthias.
+  await installFocusCaptureRoute(page, requestLog);
 
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-
-  await expect.poll(() => openingNarrativeRequested, {
-    timeout: 3_000,
-    message: 'La pulla inicial debe arrancar antes del timeout remoto de producto',
-  }).toBe(true);
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 30_000 });
 
   const focus = page.getByRole('button', { name: 'Focus', exact: true });
-  await expect(focus).toBeVisible({ timeout: 3_000 });
-  await expect(focus).toBeEnabled();
-  // El primer test ya acredita el click de usuario real. Aquí el contrato bajo
-  // prueba es comentario-nuevo→bocadillo; WebGL puede retener el chequeo de
-  // actionability de Playwright más de los 4,5 s del timeout remoto real.
-  // Disparamos el mismo handler por DOM en cuanto el control está disponible
-  // para no convertir el timeout de red en parte accidental de este test.
-  await focus.evaluate((element) => element.click());
+  await expect(focus).toBeVisible();
+  await focus.click();
   const layout = page.locator('.game-layout');
-  await expect(layout).toHaveAttribute('data-mobile-focus', 'true', { timeout: 3_000 });
+  await expect(layout).toHaveAttribute('data-mobile-focus', 'true');
 
-  releaseOpeningNarrative();
+  // e4 …d5 prepara una captura totalmente legal desde la posición inicial.
+  // exd5 nace ya dentro de Focus y alimenta el mismo historial real que usa
+  // Matthias para enfadarse; nada de mensajes inyectados directamente en UI.
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  await expect(page.locator('[data-board3d-war-room="true"]')).toHaveAttribute('data-board3d-selected', '');
+
+  await clickBoardMove(page, 'e4', 'd5');
+  await expect.poll(() => movePosts(requestLog).length).toBe(2);
 
   const bubble = page.getByRole('status', { name: 'Comentario de Matthias en Focus' });
   await expect(bubble).toBeVisible({ timeout: 6_000 });
   await expect(bubble).toContainText('MATTHIAS');
-  await expect(bubble).toContainText(remoteFocusLine);
+  await expect(bubble).toContainText(/pe[oó]n|peones|calderilla|anotado|contabilidad/i);
   await expect(page.locator('.game-side-column')).toHaveCount(0);
 
   // El bocadillo es un popup, no un panel permanente.
