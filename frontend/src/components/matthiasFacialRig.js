@@ -12,18 +12,26 @@ const SUPPORTED_EXPRESSIONS = new Set([
   'coffee',
 ]);
 
-const SUPPORTED_GESTURES = new Set([
+const LEGACY_GESTURES = new Set([
   'idle',
   'glance',
-  'glare',
   'head-left',
   'head-right',
-  'lean-in',
   'survey',
-  'coffee',
-  'speaking',
-  'smirk',
-  'grumble',
+]);
+
+const WAR_ROOM_GESTURES = new Set([
+  'war-idle',
+  'war-glance',
+  'war-glare',
+  'war-head-left',
+  'war-head-right',
+  'war-lean-in',
+  'war-survey',
+  'war-coffee',
+  'war-speaking',
+  'war-smirk',
+  'war-grumble',
 ]);
 
 function clamp(value, min, max) {
@@ -69,14 +77,33 @@ export function normalizeMatthiasFacialExpression(value = 'stern') {
 
 export function normalizeMatthiasFacialGesture(value = 'idle') {
   const key = String(value || '').trim().toLowerCase();
-  return SUPPORTED_GESTURES.has(key) ? key : 'idle';
+  if (LEGACY_GESTURES.has(key) || WAR_ROOM_GESTURES.has(key)) return key;
+  return 'idle';
 }
 
-function blinkAmount(time, expression) {
+function isWarRoomGesture(gesture) {
+  return WAR_ROOM_GESTURES.has(gesture);
+}
+
+function baseGesture(gesture) {
+  return isWarRoomGesture(gesture) ? gesture.slice(4) : gesture;
+}
+
+function legacyBlinkAmount(time, expression) {
   if (expression === 'glare' || expression === 'grumble-hot') return 0;
   const first = shortPulse(time + 1.37, 5.9, .08, .055, .025, .085);
   const doubleBlink = shortPulse(time + 1.37, 11.8, .36, .045, .018, .07) * .72;
   return Math.max(first, doubleBlink);
+}
+
+function warRoomBlinkAmount(time, expression) {
+  const first = shortPulse(time + 1.11, 5.3, .12, .048, .018, .075);
+  const second = shortPulse(time + 2.47, 8.7, .22, .052, .022, .082);
+  const doubleBlink = shortPulse(time + .61, 13.1, .58, .042, .015, .065) * .68;
+  const raw = Math.max(first, second, doubleBlink);
+  if (expression === 'glare' || expression === 'grumble-hot') return raw * .48;
+  if (expression === 'smirk' || expression === 'focus') return raw * .78;
+  return raw;
 }
 
 function expressionStrength(expression) {
@@ -89,11 +116,31 @@ function expressionStrength(expression) {
   return .26;
 }
 
-function speechSyllable(time) {
+function warRoomSpeechSyllable(time) {
   const fast = Math.sin(time * 9.7) * .5 + .5;
   const slow = Math.sin(time * 14.9 + .83) * .5 + .5;
   const gate = Math.sin(time * 3.05 + .4) * .5 + .5;
   return smooth01(clamp01(.12 + fast * .47 + slow * .29 + gate * .12));
+}
+
+function warRoomSurveyDirection(time) {
+  const local = ((time % 2.35) + 2.35) % 2.35;
+  if (local < .18) return -smooth01(local / .18);
+  if (local < .72) return -1;
+  if (local < .96) return -(1 - smooth01((local - .72) / .24));
+  if (local < 1.16) return smooth01((local - .96) / .20);
+  if (local < 1.76) return 1;
+  if (local < 2.02) return 1 - smooth01((local - 1.76) / .26);
+  return 0;
+}
+
+function warRoomGazeDirection(time, gesture) {
+  if (gesture === 'head-left') return -1;
+  if (gesture === 'head-right') return 1;
+  if (gesture === 'survey') return warRoomSurveyDirection(time);
+  if (gesture === 'glance') return (Math.floor((time + .7) / 2.7) % 2 === 0 ? 1 : -1) * .88;
+  if (gesture === 'idle') return signedHold(time + .35, 8.9, .7, 4.95) * .42;
+  return 0;
 }
 
 export function matthiasFacialMotionSample({
@@ -108,6 +155,8 @@ export function matthiasFacialMotionSample({
 } = {}) {
   const face = normalizeMatthiasFacialExpression(expression);
   const faceGesture = normalizeMatthiasFacialGesture(gesture);
+  const warRoom = isWarRoomGesture(faceGesture);
+  const gestureKey = baseGesture(faceGesture);
   const nx = imageAspect ? x / imageAspect : x;
   const strength = expressionStrength(face) * clamp(Number(intensity) || 1, .75, 1.45);
 
@@ -130,7 +179,7 @@ export function matthiasFacialMotionSample({
   let dz = 0;
   let energy = 0;
 
-  const blink = blinkAmount(time, face);
+  const blink = warRoom ? warRoomBlinkAmount(time, face) : legacyBlinkAmount(time, face);
   if (blink > 0) {
     dy -= (leftEye + rightEye) * blink * .0125;
     dz -= (leftEye + rightEye) * blink * .0025;
@@ -180,10 +229,10 @@ export function matthiasFacialMotionSample({
   }
 
   if (speaking) {
-    const syllable = faceGesture === 'speaking'
-      ? speechSyllable(time)
+    const syllable = warRoom && gestureKey === 'speaking'
+      ? warRoomSpeechSyllable(time)
       : (Math.sin(time * 11.2) * .5 + .5);
-    const cadence = faceGesture === 'speaking'
+    const cadence = warRoom && gestureKey === 'speaking'
       ? .62 + (Math.sin(time * 2.75 + .2) * .5 + .5) * .38
       : .45 + (Math.sin(time * 3.1) * .5 + .5) * .55;
     dy -= jaw * syllable * cadence * .0062 * strength;
@@ -192,41 +241,50 @@ export function matthiasFacialMotionSample({
     energy = Math.max(energy, syllable * .65);
   }
 
-  if (faceGesture === 'glance' || faceGesture === 'survey' || faceGesture === 'head-left' || faceGesture === 'head-right') {
+  if (!warRoom && (gestureKey === 'glance' || gestureKey === 'survey' || gestureKey === 'head-left' || gestureKey === 'head-right')) {
     let direction = 0;
-    if (faceGesture === 'head-left') direction = -1;
-    else if (faceGesture === 'head-right') direction = 1;
-    else direction = Math.sin(time * (faceGesture === 'survey' ? 2.1 : 1.55));
+    if (gestureKey === 'head-left') direction = -1;
+    else if (gestureKey === 'head-right') direction = 1;
+    else direction = Math.sin(time * (gestureKey === 'survey' ? 2.1 : 1.55));
     const eyeShift = direction * .0048 * strength;
     dx += (leftEye + rightEye) * eyeShift;
     dx += (leftBrow + rightBrow) * eyeShift * .35;
     energy = Math.max(energy, Math.abs(direction) * .28);
   }
 
-  // War Room-only intent cues. These gesture names were not accepted by v1,
-  // so Home and existing callers retain their previous motion contract.
-  if (faceGesture === 'glare') {
-    dx += leftEye * .0019 * strength;
-    dx -= rightEye * .0019 * strength;
-    dy -= (leftBrow + rightBrow) * .0018 * strength;
-    dz += (leftEye + rightEye) * .0012 * strength;
-  } else if (faceGesture === 'lean-in') {
-    dx += leftBrow * .0017 * strength;
-    dx -= rightBrow * .0017 * strength;
-    dy -= (leftEye + rightEye) * .0012 * strength;
-    dz += (leftEye + rightEye + leftCheek + rightCheek) * .0018 * strength;
-  } else if (faceGesture === 'smirk') {
-    const smugPulse = .82 + shortPulse(time + .2, 3.7, .4, .18, .42, .28) * .18;
-    dy += rightMouth * .0015 * strength * smugPulse;
-    dy -= rightEye * .0019 * strength * smugPulse;
-    dy += rightBrow * .0013 * strength * smugPulse;
-  } else if (faceGesture === 'grumble') {
-    const twitch = signedHold(time + .14, 2.35, .22, 1.34);
-    dx += (leftMouth + rightMouth) * twitch * .0014 * strength;
-    dy -= jaw * Math.abs(twitch) * .0012 * strength;
-  } else if (faceGesture === 'coffee') {
-    const settle = shortPulse(time + .3, 4.7, 1.72, .12, .12, .18);
-    dy -= (leftEye + rightEye) * settle * .0011 * strength;
+  if (warRoom) {
+    const direction = warRoomGazeDirection(time, gestureKey);
+    if (direction !== 0) {
+      const gazeScale = gestureKey === 'survey' ? 1 : gestureKey === 'glance' ? .9 : .72;
+      const eyeShift = direction * .0052 * strength * gazeScale;
+      dx += (leftEye + rightEye) * eyeShift;
+      dx += (leftBrow + rightBrow) * eyeShift * .26;
+      energy = Math.max(energy, Math.abs(direction) * .28);
+    }
+
+    if (gestureKey === 'glare') {
+      dx += leftEye * .0019 * strength;
+      dx -= rightEye * .0019 * strength;
+      dy -= (leftBrow + rightBrow) * .0018 * strength;
+      dz += (leftEye + rightEye) * .0012 * strength;
+    } else if (gestureKey === 'lean-in') {
+      dx += leftBrow * .0017 * strength;
+      dx -= rightBrow * .0017 * strength;
+      dy -= (leftEye + rightEye) * .0012 * strength;
+      dz += (leftEye + rightEye + leftCheek + rightCheek) * .0018 * strength;
+    } else if (gestureKey === 'smirk') {
+      const smugPulse = .82 + shortPulse(time + .2, 3.7, .4, .18, .42, .28) * .18;
+      dy += rightMouth * .0015 * strength * smugPulse;
+      dy -= rightEye * .0019 * strength * smugPulse;
+      dy += rightBrow * .0013 * strength * smugPulse;
+    } else if (gestureKey === 'grumble') {
+      const twitch = signedHold(time + .14, 2.35, .22, 1.34);
+      dx += (leftMouth + rightMouth) * twitch * .0014 * strength;
+      dy -= jaw * Math.abs(twitch) * .0012 * strength;
+    } else if (gestureKey === 'coffee') {
+      const settle = shortPulse(time + .3, 4.7, 1.72, .12, .12, .18);
+      dy -= (leftEye + rightEye) * settle * .0011 * strength;
+    }
   }
 
   dx *= faceEnvelope * coreProtection;
