@@ -112,7 +112,13 @@ test('Android · Focus convierte comentarios nuevos de Matthias en bocadillos te
 
   const focus = page.getByRole('button', { name: 'Focus', exact: true });
   await expect(focus).toBeVisible({ timeout: 3_000 });
-  await focus.click();
+  await expect(focus).toBeEnabled();
+  // El primer test ya acredita el click de usuario real. Aquí el contrato bajo
+  // prueba es comentario-nuevo→bocadillo; WebGL puede retener el chequeo de
+  // actionability de Playwright más de los 4,5 s del timeout remoto real.
+  // Disparamos el mismo handler por DOM en cuanto el control está disponible
+  // para no convertir el timeout de red en parte accidental de este test.
+  await focus.evaluate((element) => element.click());
   const layout = page.locator('.game-layout');
   await expect(layout).toHaveAttribute('data-mobile-focus', 'true', { timeout: 3_000 });
 
