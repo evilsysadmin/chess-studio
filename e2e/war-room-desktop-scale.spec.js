@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 async function openDesktopWarRoom(page) {
   await page.setViewportSize({ width: 1440, height: 960 });
@@ -8,8 +8,10 @@ async function openDesktopWarRoom(page) {
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
 
+  // This gate measures the War Room itself. With 3D as the product default the
+  // truthful readiness signal is the mounted room/shell, not the old 2D status
+  // strip racing a lazy Three/WebGL import during CI startup.
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const shell = page.locator('.board3d-main-shell');
   await expect(warRoom).toBeVisible({ timeout: 45_000 });
