@@ -9,6 +9,7 @@ import { applyWarRoomCompositionPolish } from './WarRoomCompositionPolish.js';
 import { applyWarRoomUserPolish } from './WarRoomUserPolish.js';
 import { installWarRoomApprovedMockContract } from './WarRoomApprovedMockContract.js';
 import { installWarRoomCommandDeskStudy } from './WarRoomCommandDeskStudy.js';
+import { installWarRoomCommandDeskLuxury } from './WarRoomCommandDeskLuxury.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 import { armWarRoomOneShotHookRetirement } from './WarRoomDeferredFinalizer.js';
 
@@ -111,6 +112,7 @@ export function applyWarRoomPracticalLighting(group, {
   applyWarRoomUserPolish(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomApprovedMockContract(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomCommandDeskStudy(group, { towardBoard, coarsePointer });
+  installWarRoomCommandDeskLuxury(group, { towardBoard, coarsePointer });
 
   // Desktop static work shares the painting canvas and gets exactly one first
   // paint before the whole static chain becomes a no-op. Coarse rendering has
