@@ -34,16 +34,12 @@ function runRenderHooks(root) {
   return hooks.map((object) => object.name || object.type);
 }
 
-function findApprovedLayoutDriver(root) {
-  let owner = null;
-  const visorCandidates = [];
+function legacyLayoutDrivers(root) {
+  const drivers = [];
   root.traverse((object) => {
-    if (object.name === 'war-room-armor-visor') visorCandidates.push(object);
-    if (!owner && object.userData?.warRoomApprovedMockPostArchitectureDriver === WAR_ROOM_APPROVED_MOCK_VERSION) {
-      owner = object;
-    }
+    if (object?.userData?.warRoomFinalRefinementDriver === true) drivers.push(object);
   });
-  return { owner, visorCandidates };
+  return drivers;
 }
 
 function dispose(root) {
@@ -70,7 +66,7 @@ function dispose(root) {
 }
 
 describe('War Room render-driver ownership', () => {
-  it('mantiene el layout aprobado y jubila el driver estático del visor tras el primer paint', () => {
+  it('mantiene el layout aprobado y jubila por marker el refinador legacy antes de que pueda mover muebles', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
@@ -78,32 +74,33 @@ describe('War Room render-driver ownership', () => {
     const sofa = room.getObjectByName('war-room-sofa-left');
     const armor = room.getObjectByName('war-room-teutonic-armor-left');
     const table = room.getObjectByName('war-room-side-console-left');
-    const { owner: visor, visorCandidates } = findApprovedLayoutDriver(room);
+    const drivers = legacyLayoutDrivers(room);
 
     expect(sofa).toBeTruthy();
     expect(armor).toBeTruthy();
     expect(table).toBeTruthy();
-    expect(visorCandidates.length).toBeGreaterThanOrEqual(1);
-    expect(visor).toBeTruthy();
-    expect(visor?.name).toBe('war-room-armor-visor');
-    expect(visor?.userData?.warRoomApprovedMockPostArchitectureScope).toBe('scene-root-v27');
-    expect(visor?.userData?.warRoomApprovedMockPostArchitectureRetirement).toBe('one-shot-v27');
+    expect(drivers).toHaveLength(1);
+    expect(drivers[0].userData.warRoomApprovedMockLayoutDriverRetired).toBeUndefined();
 
     const hookNames = runRenderHooks(scene);
     expect(hookNames).toContain('war-room-premium-painting-canvas');
-    expect(hookNames).toContain('war-room-armor-visor');
+    expect(hookNames).toContain(drivers[0].name || drivers[0].type);
+
+    expect(drivers[0].userData.warRoomApprovedMockLayoutDriverRetired).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
+    expect(drivers[0].userData.warRoomApprovedMockLayoutDriverRetirement).toBe('marker-owned-one-shot-v27');
+    expect(scene.userData.warRoomLegacyLayoutDriverRetirementVersion).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
+    expect(scene.userData.warRoomLegacyLayoutDriversRetired).toHaveLength(1);
 
     expect(sofa.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
     expect(armor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
     expect(table.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
     expect(sofa.position.z).toBeGreaterThan(armor.position.z + 3.5);
     expect(scene.userData.warRoomFurnitureLayoutOwner).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
-    expect(visor.userData.warRoomApprovedMockPostArchitectureCompleted).toBe(WAR_ROOM_APPROVED_MOCK_VERSION);
 
-    const retiredHook = visor.onBeforeRender;
+    const retiredHook = drivers[0].onBeforeRender;
     const afterFirstPaint = snapshotFurniture(scene);
     runRenderHooks(scene);
-    expect(visor.onBeforeRender).toBe(retiredHook);
+    expect(drivers[0].onBeforeRender).toBe(retiredHook);
     expect(snapshotFurniture(scene)).toEqual(afterFirstPaint);
 
     dispose(scene);
@@ -114,12 +111,14 @@ describe('War Room render-driver ownership', () => {
     const room = buildPremiumWarRoomLayer(theme, true, true);
     scene.add(room);
     const sofa = room.getObjectByName('war-room-sofa-left');
+    const drivers = legacyLayoutDrivers(room);
 
+    expect(drivers).toHaveLength(1);
     runRenderHooks(scene);
 
     expect(sofa.userData.warRoomFurniturePlacement).toBe('side-wall-centered-v3');
     expect(scene.userData.warRoomFurnitureLayoutOwner).toBeUndefined();
-    expect(findApprovedLayoutDriver(room).owner).toBeNull();
+    expect(drivers[0].userData.warRoomApprovedMockLayoutDriverRetired).toBeUndefined();
     dispose(scene);
   });
 });
