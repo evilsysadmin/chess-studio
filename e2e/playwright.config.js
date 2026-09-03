@@ -18,7 +18,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: ciMode,
   retries: 0,
-  expect: { timeout: ciMode ? 10_000 : 4_000 },
+  // Cold/restored War Room mounts are consistently >10 s on hosted software
+  // rendering while staying well below 20 s. Keep local assertions sharp; CI
+  // gets the measured renderer budget instead of treating a slow GPU-less mount
+  // as a product failure.
+  expect: { timeout: ciMode ? 20_000 : 4_000 },
   workers: ciMode ? 2 : undefined,
   projects: allBrowsers ? [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
