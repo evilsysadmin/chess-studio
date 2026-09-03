@@ -1,5 +1,5 @@
 name = "chess-studio-narrative-ai-staging"
-main = "worker/index.js"
+main = "worker/staging.js"
 compatibility_date = "2026-08-22"
 workers_dev = false
 
@@ -7,6 +7,9 @@ workers_dev = false
 # de subir script + secret. No usamos [[routes]] aquí: Wrangler lo traduce a
 # la API de Workers Routes de zona, que exigiría un permiso adicional que el
 # pipeline no necesita para un Custom Domain.
+#
+# staging.js envuelve únicamente /health para publicar BUILD_SHA. El runtime
+# funcional sigue delegando en worker/index.js, compartido con producción.
 
 [ai]
 binding = "AI"

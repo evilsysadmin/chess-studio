@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Backend + frontend staging
+    name: Backend + frontend + AI staging generation
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
@@ -35,6 +35,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+      STAGING_AI_URL: https://ai-staging.shadowops.dpdns.org
 
     steps:
       - name: Validate staging credentials and commit
@@ -51,6 +52,9 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
+      # Este es el único stale guard de la generación. Una vez que empieza la
+      # primera mutación, el SHA queda fijado y backend/frontend/Worker deben
+      # completar juntos aunque main avance mientras tanto.
       - name: Refuse stale staging commit
         shell: bash
         run: |
@@ -280,6 +284,89 @@ jobs:
           root_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$STAGING_URL/")"
           [[ "$root_status" == 200 ]] || { echo "::error::Frontend staging raíz devuelve HTTP $root_status"; exit 1; }
 
+      # El Worker forma parte de la misma generación serializada. Ya no existe
+      # un segundo stale guard entre Pages y Workers AI que pueda dejar la app
+      # a N y el Worker a N-1 cuando main avanza durante el despliegue.
+      - name: Staging Worker isolation contract
+        run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
+
+      - name: Deploy exact staging Worker and synchronize shared secret
+        run: python3 scripts/deploy_staging_ai_worker.py --service-id '${{ steps.render_bootstrap.outputs.service_id }}'
+
+      - name: Wait for staging Worker Custom Domain and health
+        shell: bash
+        run: |
+          set -euo pipefail
+          health_ok=false
+          for attempt in {1..60}; do
+            body="$RUNNER_TEMP/staging-ai-health-$attempt.json"
+            status="$(curl --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 10 \
+              --output "$body" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/json' \
+              -H 'Cache-Control: no-cache' \
+              -H 'User-Agent: chess-studio-staging-ai-health/2' \
+              "$STAGING_AI_URL/health" || true)"
+            if [[ "$status" == 200 ]] && python3 scripts/cloudflare_health_contract.py "$body"; then
+              health_ok=true
+              break
+            fi
+            echo "Workers AI staging aún no está healthy (HTTP ${status:-curl-error}, intento $attempt/60)"
+            sleep 5
+          done
+          [[ "$health_ok" == true ]] || { echo '::error::Workers AI staging no quedó healthy tras 5 minutos'; exit 1; }
+
+      - name: Shared Workers AI live contract
+        run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
+
+      - name: Verify staging generation parity before browser smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          backend="$RUNNER_TEMP/generation-backend.json"
+          frontend="$RUNNER_TEMP/generation-frontend.json"
+          ai="$RUNNER_TEMP/generation-ai.json"
+
+          backend_status="$(curl --fail-with-body --silent --show-error \
+            --connect-timeout 5 --max-time 15 \
+            --output "$backend" --write-out '%{http_code}' \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            "$STAGING_API_URL/release?sha=$DEPLOY_SHA")"
+          frontend_status="$(curl --fail-with-body --silent --show-error \
+            --connect-timeout 5 --max-time 15 \
+            --output "$frontend" --write-out '%{http_code}' \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            "$STAGING_URL/release.json?sha=$DEPLOY_SHA")"
+          ai_status="$(curl --fail-with-body --silent --show-error \
+            --connect-timeout 5 --max-time 15 \
+            --output "$ai" --write-out '%{http_code}' \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            "$STAGING_AI_URL/health")"
+
+          [[ "$backend_status" == 200 ]] || { echo "::error::Generation parity: backend HTTP $backend_status"; exit 1; }
+          [[ "$frontend_status" == 200 ]] || { echo "::error::Generation parity: frontend HTTP $frontend_status"; exit 1; }
+          [[ "$ai_status" == 200 ]] || { echo "::error::Generation parity: AI HTTP $ai_status"; exit 1; }
+
+          python3 scripts/cloudflare_health_contract.py "$ai"
+          python3 - "$backend" "$frontend" "$ai" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          expected = sys.argv[4].lower()
+          backend = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          frontend = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+          ai = json.loads(pathlib.Path(sys.argv[3]).read_text(encoding='utf-8'))
+          actual = {
+              'backend': str(backend.get('build') or '').lower(),
+              'frontend': str(frontend.get('build') or '').lower(),
+              'worker': str(ai.get('build') or '').lower(),
+          }
+          mismatched = {name: value for name, value in actual.items() if value != expected}
+          if mismatched:
+              raise SystemExit(f"generation skew: {mismatched} expected={expected}")
+          PY
+          echo "Staging generation coherent: backend=$DEPLOY_SHA frontend=$DEPLOY_SHA Worker=$DEPLOY_SHA"
+
       - name: Prepare and sweep staging smoke janitor
         env:
           RENDER_STAGING_SERVICE_ID: ${{ steps.render_bootstrap.outputs.service_id }}
@@ -350,18 +437,21 @@ jobs:
         shell: bash
         run: |
           {
-            echo '### Staging desplegado, alineado y probado'
+            echo '### Staging desplegado como una generación coherente'
             echo
             echo '- Frontend: `https://staging.chess-studio.shadowops.dpdns.org`'
             echo '- API: `https://api-staging.chess-studio.shadowops.dpdns.org/api`'
+            echo '- Workers AI: `https://ai-staging.shadowops.dpdns.org`'
             echo '- Render: `chess-study-backend-staging`'
             echo '- Pages project: `chess-studio-staging`'
-            echo "- Backend SHA: \`$DEPLOY_SHA\`"
-            echo "- Frontend SHA: \`$DEPLOY_SHA\`"
+            echo "- Generation SHA: \`$DEPLOY_SHA\`"
+            echo '- Backend SHA: `mismo generation SHA · verificado`'
+            echo '- Frontend SHA: `mismo generation SHA · verificado`'
+            echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo "- Web Analytics: \`${{ steps.pages_bootstrap.outputs.analytics || 'revisar permiso Account Settings' }}\`"
             echo '- Mongo staging: `ready`'
-            echo '- Release gate: `OK`'
-            echo '- Live browser smoke: `login → Home → Partida rápida → e2-e4 · OK`'
+            echo '- Generation parity gate: `N/N/N · OK`'
+            echo '- Live browser smoke: `login → Home → War Room → F5 → chunk recovery → e2-e4 · OK`'
             echo '- Visual evidence: `vídeo Chromium retenido 7 días en el artefacto staging-live-playwright-*`'
             echo '- Identidad CI: `eliminada y verificada`'
           } >> "$GITHUB_STEP_SUMMARY"

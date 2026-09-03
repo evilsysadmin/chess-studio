@@ -18,13 +18,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Workers AI staging
+  accredit:
+    name: Accredit coherent staging generation
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     environment:
       name: staging
       url: https://ai-staging.shadowops.dpdns.org
@@ -32,99 +32,83 @@ jobs:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       TRIGGER_EVENT: ${{ github.event_name }}
       UPSTREAM_EVENT: ${{ github.event.workflow_run.event || '' }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
       STAGING_AI_URL: https://ai-staging.shadowops.dpdns.org
 
     steps:
-      - name: Validate credentials and source commit
+      - name: Validate accredited source commit
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "${RENDER_API_KEY:-}" ]] || { echo '::error::Falta RENDER_API_KEY'; exit 1; }
-          [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
-          [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
           if [[ "$TRIGGER_EVENT" == 'workflow_run' && "$UPSTREAM_EVENT" != 'workflow_run' ]]; then
             echo "::error::Staging AI fue encadenado desde un Staging · deploy manual ($UPSTREAM_EVENT); puede probar staging, pero no acreditar producción."
             exit 1
           fi
 
-      - name: Checkout staging-approved commit
+      - name: Checkout staging-accredited commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      - name: Refuse stale staging Worker commit
+      - name: Verify staging backend still serves approved SHA
         shell: bash
         run: |
           set -euo pipefail
-          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
-          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::error::Staging aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. No despliego AI obsoleta."
-            exit 1
-          fi
-
-      - name: Verify staging app still serves the approved SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          body="$RUNNER_TEMP/staging-release.json"
+          body="$RUNNER_TEMP/staging-backend-release.json"
           status="$(curl --fail-with-body --silent --show-error \
-            --connect-timeout 5 \
-            --max-time 15 \
-            --output "$body" \
-            --write-out '%{http_code}' \
-            -H 'Accept: application/json' \
-            -H 'Cache-Control: no-cache' \
+            --connect-timeout 5 --max-time 15 \
+            --output "$body" --write-out '%{http_code}' \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
             "$STAGING_API_URL/release?sha=$DEPLOY_SHA")"
-          [[ "$status" == 200 ]] || { echo "::error::Release staging devolvió HTTP $status"; exit 1; }
+          [[ "$status" == 200 ]] || { echo "::error::Backend staging release HTTP $status"; exit 1; }
           python3 - "$body" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
           expected = sys.argv[2].lower()
           actual = str(payload.get('build') or '').lower()
-          if actual != expected:
-              raise SystemExit(f"Backend staging sirve {actual or '<sin build>'}, esperaba {expected}")
+          raise SystemExit(0 if actual == expected else f"Backend staging sirve {actual or '<sin build>'}, esperaba {expected}")
           PY
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
-      - name: Staging Worker isolation contract
-        run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
-
-      - name: Deploy exact staging Worker and synchronize shared secret
-        run: python3 scripts/deploy_staging_ai_worker.py
-
-      - name: Wait for staging Worker Custom Domain and health
+      - name: Verify staging frontend still serves approved SHA
         shell: bash
         run: |
           set -euo pipefail
-          health_ok=false
-          for attempt in {1..60}; do
-            body="$RUNNER_TEMP/staging-ai-health-$attempt.json"
-            status="$(curl --silent --show-error \
-              --connect-timeout 5 \
-              --max-time 10 \
-              --output "$body" \
-              --write-out '%{http_code}' \
-              -H 'Accept: application/json' \
-              -H 'Cache-Control: no-cache' \
-              -H 'User-Agent: chess-studio-staging-ai-health/1' \
-              "$STAGING_AI_URL/health" || true)"
-            if [[ "$status" == 200 ]] && python3 scripts/cloudflare_health_contract.py "$body"; then
-              health_ok=true
-              break
-            fi
-            echo "Workers AI staging aún no está healthy (HTTP ${status:-curl-error}, intento $attempt/60)"
-            sleep 5
-          done
-          [[ "$health_ok" == true ]] || { echo '::error::Workers AI staging no quedó healthy tras 5 minutos'; exit 1; }
+          body="$RUNNER_TEMP/staging-frontend-release.json"
+          status="$(curl --fail-with-body --silent --show-error \
+            --connect-timeout 5 --max-time 15 \
+            --output "$body" --write-out '%{http_code}' \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            "$STAGING_URL/release.json?sha=$DEPLOY_SHA")"
+          [[ "$status" == 200 ]] || { echo "::error::Frontend staging release HTTP $status"; exit 1; }
+          python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          expected = sys.argv[2].lower()
+          actual = str(payload.get('build') or '').lower()
+          raise SystemExit(0 if actual == expected else f"Frontend staging sirve {actual or '<sin build>'}, esperaba {expected}")
+          PY
+
+      - name: Verify staging AI health and build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/staging-ai-health.json"
+          status="$(curl --fail-with-body --silent --show-error \
+            --connect-timeout 5 --max-time 15 \
+            --output "$body" --write-out '%{http_code}' \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            "$STAGING_AI_URL/health")"
+          [[ "$status" == 200 ]] || { echo "::error::Workers AI staging health HTTP $status"; exit 1; }
+          python3 scripts/cloudflare_health_contract.py "$body"
+          python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          expected = sys.argv[2].lower()
+          actual = str(payload.get('build') or '').lower()
+          raise SystemExit(0 if actual == expected else f"Workers AI staging sirve {actual or '<sin build>'}, esperaba {expected}")
+          PY
 
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
@@ -133,13 +117,12 @@ jobs:
         shell: bash
         run: |
           {
-            echo '### Workers AI staging acreditado'
+            echo '### Staging acreditado para promoción'
             echo
-            echo '- Worker: `chess-studio-narrative-ai-staging`'
-            echo '- Custom Domain: `https://ai-staging.shadowops.dpdns.org`'
-            echo '- workers.dev: `off`'
-            echo '- Shared secret: `sincronizado desde Render staging sin exponerlo`'
             echo "- Source SHA: \`$DEPLOY_SHA\`"
-            echo '- Health + routing contract: `OK`'
+            echo '- Backend: `mismo SHA · OK`'
+            echo '- Frontend: `mismo SHA · OK`'
+            echo '- Workers AI: `mismo SHA + health + routing · OK`'
+            echo '- Este workflow ya no despliega: sólo acredita la generación aplicada y probada por `Staging · deploy`.'
             echo "- Upstream event: \`${UPSTREAM_EVENT:-manual}\`"
           } >> "$GITHUB_STEP_SUMMARY"
