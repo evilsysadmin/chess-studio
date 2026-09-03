@@ -17,10 +17,35 @@ function compactError(error) {
   return `${name}: ${message}`;
 }
 
+function sanitizeStackUrl(raw) {
+  try {
+    const parsed = new URL(raw);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return String(raw || '').split(/[?#]/, 1)[0];
+  }
+}
+
+function compactStack(error) {
+  const stack = String(error?.stack || '').trim();
+  if (!stack) return '';
+  return stack
+    .split(/\r?\n/)
+    .slice(1, 5)
+    .map((line) => String(line)
+      .replace(/https?:\/\/[^\s)]+/g, sanitizeStackUrl)
+      .replace(/\s+/g, ' ')
+      .trim())
+    .filter(Boolean)
+    .join(' | ')
+    .slice(0, 700);
+}
+
 export function buildClientDiagnostic({ error = null, view = null, canRecover = false, now = new Date() } = {}) {
   const requestId = String(error?.requestId || '').trim().slice(0, 64);
   const route = String(view || globalThis?.location?.pathname || 'desconocida').slice(0, 80);
   const online = typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean' ? 'desconocido' : (navigator.onLine ? 'sí' : 'no');
+  const stack = compactStack(error);
   const lines = [
     'Chess Studio · diagnóstico cliente',
     `release: ${APP_RELEASE}`,
@@ -32,6 +57,7 @@ export function buildClientDiagnostic({ error = null, view = null, canRecover = 
     `error: ${compactError(error)}`,
     `hora UTC: ${now.toISOString()}`,
   ];
+  if (stack) lines.splice(lines.length - 1, 0, `stack: ${stack}`);
   if (requestId) lines.splice(lines.length - 1, 0, `requestId: ${requestId}`);
   lines.push('privacidad: sin token, usuario, FEN, jugadas ni contenido de partida');
   return lines.join('\n');
