@@ -18,11 +18,32 @@ function safeParse(raw) {
   }
 }
 
+export function compactRepeatedCpuBanter(messages) {
+  if (!Array.isArray(messages)) return [];
+  const seenGeneric = new Set();
+  return messages.filter((message) => {
+    // Sólo limpiamos brasa genérica sin evento táctico. Dos comentarios de una
+    // misma táctica pueden coincidir en texto y siguen siendo hechos distintos.
+    if (message?.by !== 'cpu' || message?.event) return true;
+    const clean = String(message?.text || '').trim();
+    if (!clean) return true;
+    if (seenGeneric.has(clean)) return false;
+    seenGeneric.add(clean);
+    return true;
+  });
+}
+
 export function loadActiveGameChat(gameId) {
   if (!gameId) return [];
   const saved = safeParse(getStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY));
   if (!saved || saved.gameId !== gameId || !Array.isArray(saved.messages)) return [];
-  return saved.messages;
+  const messages = compactRepeatedCpuBanter(saved.messages);
+  // Migra también transcripts que ya quedaron duplicados antes del fix. Se
+  // escribe una sola vez: las cargas siguientes ya tienen la longitud correcta.
+  if (messages.length !== saved.messages.length) {
+    setStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY, JSON.stringify({ ...saved, messages }));
+  }
+  return messages;
 }
 
 export function isDuplicateActiveGameComment(messages, text) {
