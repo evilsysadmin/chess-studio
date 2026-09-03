@@ -11,7 +11,11 @@ export default defineConfig({
     : ['**/chaos-local.spec.js', stagingLiveSpec],
   reporter: process.env.CI ? [['list']] : [['line']],
   timeout: 20_000,
-  fullyParallel: true,
+  // 3D is now the product default, so a single CI file must not fan out into
+  // several simultaneous headless WebGL contexts. Files can still run in
+  // parallel (the configured CI worker budget remains 2), while tests inside
+  // each file stay sequential and stop starving Chromium's main thread.
+  fullyParallel: !process.env.CI,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   expect: { timeout: 4_000 },
