@@ -83,7 +83,7 @@ export function buildOpeningBanterFacts(rivalry, context = {}) {
 
   const repeatedIncidents = Object.entries(record.incidents && typeof record.incidents === 'object' ? record.incidents : {})
     .map(([key, count]) => ({ key: cleanString(key, 60), count: Math.max(0, finiteNumber(count)) }))
-    .filter((row) => row.key && row.count >= 2)
+    .filter((row) => row.key?.startsWith('human:') && row.count >= 2)
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
     .slice(0, 3);
   if (repeatedIncidents.length) facts.repeated_incidents = repeatedIncidents;
