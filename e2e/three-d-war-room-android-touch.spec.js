@@ -1,5 +1,6 @@
 import { devices, expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { getWarRoomMobileFramingProfile } from '../frontend/src/components/WarRoomMobileFraming.js';
 
 test.use({ ...devices['Pixel 5'] });
 
@@ -22,9 +23,14 @@ function dot(a, b) {
 
 function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
-  const profile = aspect >= 1.42
+  const mobileProfile = getWarRoomMobileFramingProfile({
+    aspect,
+    coarsePointer: true,
+    viewportWidth: rect.width,
+  });
+  const profile = mobileProfile || (aspect >= 1.42
     ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, maxDistance: 22.6, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
-    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, maxDistance: 25.6, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 };
+    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, maxDistance: 25.6, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 });
   const verticalFov = 40 * Math.PI / 180;
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
