@@ -28,16 +28,16 @@ const REACTION_STATES = new Set([
 ]);
 
 const AMBIENT_FALLBACK = Object.freeze({
-  [MATTHIAS_WAR_ROOM_STATES.GLANCE]: MATTHIAS_WAR_ROOM_STATES.SURVEY,
-  [MATTHIAS_WAR_ROOM_STATES.GLARE]: MATTHIAS_WAR_ROOM_STATES.LEAN_IN,
+  [MATTHIAS_WAR_ROOM_STATES.GLANCE]: MATTHIAS_WAR_ROOM_STATES.HEAD_LEFT,
+  [MATTHIAS_WAR_ROOM_STATES.GLARE]: MATTHIAS_WAR_ROOM_STATES.GLANCE,
   [MATTHIAS_WAR_ROOM_STATES.HEAD_LEFT]: MATTHIAS_WAR_ROOM_STATES.HEAD_RIGHT,
   [MATTHIAS_WAR_ROOM_STATES.HEAD_RIGHT]: MATTHIAS_WAR_ROOM_STATES.HEAD_LEFT,
-  [MATTHIAS_WAR_ROOM_STATES.LEAN_IN]: MATTHIAS_WAR_ROOM_STATES.GLARE,
+  [MATTHIAS_WAR_ROOM_STATES.LEAN_IN]: MATTHIAS_WAR_ROOM_STATES.GLANCE,
   [MATTHIAS_WAR_ROOM_STATES.SURVEY]: MATTHIAS_WAR_ROOM_STATES.GLANCE,
-  [MATTHIAS_WAR_ROOM_STATES.COFFEE]: MATTHIAS_WAR_ROOM_STATES.SURVEY,
+  [MATTHIAS_WAR_ROOM_STATES.COFFEE]: MATTHIAS_WAR_ROOM_STATES.GLANCE,
 });
 
-export const MATTHIAS_WAR_ROOM_STATE_VERSION = 'fsm-v1';
+export const MATTHIAS_WAR_ROOM_STATE_VERSION = 'fsm-v2';
 
 export function normalizeWarRoomAnger(value) {
   const parsed = Number(value);
@@ -123,20 +123,20 @@ export function transitionMatthiasWarRoom(state = createMatthiasWarRoomMachine()
 
 function pickRawAmbientState(roll, angerLevel) {
   const anger = normalizeWarRoomAnger(angerLevel);
-  const coffeeCutoff = anger >= 4 ? 0.018 : anger >= 2 ? 0.035 : 0.055;
-  const leanCutoff = coffeeCutoff + (anger >= 3 ? 0.19 : 0.145);
-  const glareCutoff = leanCutoff + (anger >= 2 ? 0.20 : 0.16);
-  const leftCutoff = glareCutoff + 0.17;
-  const rightCutoff = leftCutoff + 0.17;
-  const surveyCutoff = Math.min(0.9, rightCutoff + 0.15);
+  const coffeeCutoff = anger >= 4 ? 0.012 : anger >= 2 ? 0.022 : 0.035;
+  const glanceCutoff = coffeeCutoff + (anger >= 3 ? 0.24 : 0.30);
+  const leftCutoff = glanceCutoff + 0.10;
+  const rightCutoff = leftCutoff + 0.10;
+  const surveyCutoff = rightCutoff + 0.16;
+  const leanCutoff = surveyCutoff + (anger >= 3 ? 0.18 : 0.14);
 
   if (roll < coffeeCutoff) return MATTHIAS_WAR_ROOM_STATES.COFFEE;
-  if (roll < leanCutoff) return MATTHIAS_WAR_ROOM_STATES.LEAN_IN;
-  if (roll < glareCutoff) return MATTHIAS_WAR_ROOM_STATES.GLARE;
+  if (roll < glanceCutoff) return MATTHIAS_WAR_ROOM_STATES.GLANCE;
   if (roll < leftCutoff) return MATTHIAS_WAR_ROOM_STATES.HEAD_LEFT;
   if (roll < rightCutoff) return MATTHIAS_WAR_ROOM_STATES.HEAD_RIGHT;
   if (roll < surveyCutoff) return MATTHIAS_WAR_ROOM_STATES.SURVEY;
-  return MATTHIAS_WAR_ROOM_STATES.GLANCE;
+  if (roll < leanCutoff) return MATTHIAS_WAR_ROOM_STATES.LEAN_IN;
+  return MATTHIAS_WAR_ROOM_STATES.GLARE;
 }
 
 export function nextMatthiasAmbientState({ random = Math.random, angerLevel = 0, lastAmbient = null } = {}) {
@@ -148,21 +148,21 @@ export function nextMatthiasAmbientState({ random = Math.random, angerLevel = 0,
 
 export function matthiasWarRoomStateDuration(mode, angerLevel = 0) {
   const anger = normalizeWarRoomAnger(angerLevel);
-  if (mode === MATTHIAS_WAR_ROOM_STATES.COFFEE) return 3400;
-  if (mode === MATTHIAS_WAR_ROOM_STATES.SURVEY) return 2600;
-  if (mode === MATTHIAS_WAR_ROOM_STATES.LEAN_IN) return 2100;
-  if (mode === MATTHIAS_WAR_ROOM_STATES.GLARE) return 2000;
-  if (mode === MATTHIAS_WAR_ROOM_STATES.HEAD_LEFT || mode === MATTHIAS_WAR_ROOM_STATES.HEAD_RIGHT) return 1650;
-  if (mode === MATTHIAS_WAR_ROOM_STATES.SMIRK) return 1450;
-  if (mode === MATTHIAS_WAR_ROOM_STATES.GRUMBLE) return anger >= 3 ? 1450 : 1180;
-  if (mode === MATTHIAS_WAR_ROOM_STATES.GLANCE) return 1500;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.COFFEE) return 3600;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.SURVEY) return 2300;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.LEAN_IN) return 1750;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.GLARE) return anger >= 3 ? 1650 : 1450;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.HEAD_LEFT || mode === MATTHIAS_WAR_ROOM_STATES.HEAD_RIGHT) return 1150;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.SMIRK) return 1120;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.GRUMBLE) return anger >= 3 ? 1120 : 920;
+  if (mode === MATTHIAS_WAR_ROOM_STATES.GLANCE) return 900;
   return 0;
 }
 
 export function matthiasWarRoomIdleDelay(random = Math.random, angerLevel = 0) {
   const anger = normalizeWarRoomAnger(angerLevel);
-  const min = anger >= 3 ? 1800 : 2400;
-  const spread = anger >= 3 ? 3200 : 3800;
+  const min = anger >= 3 ? 2600 : anger >= 1 ? 3400 : 4200;
+  const spread = anger >= 3 ? 3600 : anger >= 1 ? 4400 : 5200;
   const roll = Math.max(0, Math.min(0.999999, Number(random?.()) || 0));
   return min + Math.round(roll * spread);
 }
@@ -182,9 +182,9 @@ export function matthiasWarRoomStateDescriptor(mode, angerLevel = 0) {
     [MATTHIAS_WAR_ROOM_STATES.LEAN_IN]: { expression: 'focus', activity: 'Calculando', gesture: 'lean-in' },
     [MATTHIAS_WAR_ROOM_STATES.SURVEY]: { expression: 'alert', activity: 'Barriendo la sala', gesture: 'survey' },
     [MATTHIAS_WAR_ROOM_STATES.COFFEE]: { expression: 'coffee', activity: 'Café de campaña', gesture: 'coffee' },
-    [MATTHIAS_WAR_ROOM_STATES.SPEAKING]: { expression: anger >= 3 ? 'simmer' : 'stern', activity: 'Dictando sentencia', gesture: 'idle' },
-    [MATTHIAS_WAR_ROOM_STATES.SMIRK]: { expression: 'smirk', activity: 'Ventaja táctica', gesture: 'idle' },
-    [MATTHIAS_WAR_ROOM_STATES.GRUMBLE]: { expression: anger >= 3 ? 'grumble-hot' : 'grumble', activity: 'Desaprobación táctica', gesture: 'idle' },
+    [MATTHIAS_WAR_ROOM_STATES.SPEAKING]: { expression: anger >= 3 ? 'simmer' : 'stern', activity: 'Dictando sentencia', gesture: 'speaking' },
+    [MATTHIAS_WAR_ROOM_STATES.SMIRK]: { expression: 'smirk', activity: 'Ventaja táctica', gesture: 'smirk' },
+    [MATTHIAS_WAR_ROOM_STATES.GRUMBLE]: { expression: anger >= 3 ? 'grumble-hot' : 'grumble', activity: 'Desaprobación táctica', gesture: 'grumble' },
   };
   return descriptors[mode] || descriptors[MATTHIAS_WAR_ROOM_STATES.IDLE];
 }
