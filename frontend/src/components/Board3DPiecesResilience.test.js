@@ -45,6 +45,16 @@ function knightSculptDetails(root) {
   return details;
 }
 
+function effectiveGeometrySize(mesh) {
+  mesh.geometry.computeBoundingBox();
+  const box = mesh.geometry.boundingBox;
+  return {
+    x: (box.max.x - box.min.x) * mesh.scale.x,
+    y: (box.max.y - box.min.y) * mesh.scale.y,
+    z: (box.max.z - box.min.z) * mesh.scale.z,
+  };
+}
+
 const backRank = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
 const startingArmy = [...backRank, ...Array(8).fill('p')];
 
@@ -92,7 +102,7 @@ describe('Board3D piece resilience', () => {
     [g1, black].forEach(disposeObject);
   });
 
-  it('usa el caballo limpio del mock aprobado sin capas de hocico o mandíbula que deformen la silueta', () => {
+  it('usa un perfil Staunton delgado y evita que la perspectiva convierta el caballo en un bloque', () => {
     const full = buildPiece('n', 'w', 'studio', false);
     const lite = buildPiece('n', 'w', 'studio', true);
     const details = knightSculptDetails(full);
@@ -101,45 +111,63 @@ describe('Board3D piece resilience', () => {
     const liteRoles = liteDetails.map((mesh) => mesh.userData.knightSculptDetail);
     const fullHead = knightHead(full);
     const liteHead = knightHead(lite);
+    const fullSize = effectiveGeometrySize(fullHead);
+    const liteSize = effectiveGeometrySize(liteHead);
 
-    expect(full.userData.board3DKnightSilhouetteVersion).toBe('approved-generated-mock-v10');
-    expect(full.userData.board3DKnightPosture).toBe('sleek-arched-neck-v10');
-    expect(full.userData.board3DKnightDetailVersion).toBe('approved-generated-mock-v10');
-    expect(full.userData.board3DKnightManeProfile).toBe('double-raised-rail-v10');
-    expect(full.userData.board3DKnightBaseAccentProfile).toBe('three-inset-slots-v10');
+    expect(full.userData.board3DKnightSilhouetteVersion).toBe('classic-staunton-v11');
+    expect(full.userData.board3DKnightPosture).toBe('forward-carved-profile-v11');
+    expect(full.userData.board3DKnightDepthProfile).toBe('slim-018-v11');
+    expect(full.userData.board3DKnightHeightProfile).toBe('compact-091-v11');
+    expect(full.userData.board3DKnightDetailVersion).toBe('classic-staunton-v11');
+    expect(full.userData.board3DKnightManeProfile).toBe('single-rear-ridge-v11');
+    expect(full.userData.board3DKnightEarProfile).toBe('single-thin-rear-ear-v11');
+    expect(full.userData.board3DKnightBaseAccentProfile).toBe('three-inset-slots-v11');
     expect(full.userData.board3DKnightPremiumDetailCount).toBe(5);
     expect(full.userData.board3DKnightRetiredLegacyParts).toBe(5);
     expect(full.userData.board3DPremiumPieceScale).toBeCloseTo(.96, 5);
-    expect(fullHead.userData.knightHeadProfile).toBe('approved-generated-mock-v10');
+    expect(fullHead.userData.knightHeadProfile).toBe('classic-staunton-v11');
     expect(fullHead.geometry.type).toBe('ExtrudeGeometry');
-    expect(fullHead.position.y).toBeCloseTo(.285, 5);
-    expect(fullHead.scale.x).toBeCloseTo(1, 5);
+    expect(fullHead.position.y).toBeCloseTo(.325, 5);
+    expect(fullHead.scale.x).toBeCloseTo(.94, 5);
+    expect(fullHead.scale.z).toBeCloseTo(.86, 5);
+    expect(fullSize.y).toBeLessThan(.92);
+    expect(fullSize.z).toBeLessThan(.21);
+    expect(fullSize.z / fullSize.x).toBeLessThan(.34);
     expect(knightMeshesByRole(full, ':knight-neck')).toHaveLength(0);
     expect(knightMeshesByRole(full, ':knight-ear')).toHaveLength(0);
     expect(knightMeshesByRole(full, ':knight-eye')).toHaveLength(0);
     expect(details).toHaveLength(5);
-    expect(roles.filter((role) => role === 'mane-rail')).toHaveLength(2);
+    expect(roles.filter((role) => role === 'ear-fin')).toHaveLength(1);
+    expect(roles.filter((role) => role === 'mane-ridge')).toHaveLength(1);
     expect(roles.filter((role) => role === 'base-slot')).toHaveLength(3);
     expect(roles).not.toContain('muzzle');
     expect(roles).not.toContain('jaw');
     expect(renderableMeshes(full).every((mesh) => mesh.frustumCulled === false && mesh.visible)).toBe(true);
 
-    expect(lite.userData.board3DKnightSilhouetteVersion).toBe('approved-generated-mock-lite-v10');
-    expect(lite.userData.board3DKnightPosture).toBe('sleek-arched-neck-lite-v10');
-    expect(lite.userData.board3DKnightDetailVersion).toBe('approved-generated-mock-lite-v10');
-    expect(lite.userData.board3DKnightManeProfile).toBe('single-raised-rail-lite-v10');
-    expect(lite.userData.board3DKnightBaseAccentProfile).toBe('two-inset-slots-lite-v10');
+    expect(lite.userData.board3DKnightSilhouetteVersion).toBe('classic-staunton-lite-v11');
+    expect(lite.userData.board3DKnightPosture).toBe('forward-carved-profile-lite-v11');
+    expect(lite.userData.board3DKnightDepthProfile).toBe('slim-0165-v11');
+    expect(lite.userData.board3DKnightHeightProfile).toBe('compact-091-v11');
+    expect(lite.userData.board3DKnightDetailVersion).toBe('classic-staunton-lite-v11');
+    expect(lite.userData.board3DKnightManeProfile).toBe('no-extra-mane-lite-v11');
+    expect(lite.userData.board3DKnightEarProfile).toBe('single-thin-rear-ear-v11');
+    expect(lite.userData.board3DKnightBaseAccentProfile).toBe('two-inset-slots-lite-v11');
     expect(lite.userData.board3DKnightPremiumDetailCount).toBe(3);
     expect(lite.userData.board3DKnightRetiredLegacyParts).toBe(5);
     expect(lite.userData.board3DPremiumPieceScale).toBeCloseTo(.9, 5);
-    expect(liteHead.userData.knightHeadProfile).toBe('approved-generated-mock-lite-v10');
+    expect(liteHead.userData.knightHeadProfile).toBe('classic-staunton-lite-v11');
     expect(liteHead.geometry.type).toBe('ExtrudeGeometry');
-    expect(liteHead.position.y).toBeCloseTo(.275, 5);
+    expect(liteHead.position.y).toBeCloseTo(.315, 5);
+    expect(liteHead.scale.x).toBeCloseTo(.92, 5);
+    expect(liteHead.scale.z).toBeCloseTo(.84, 5);
+    expect(liteSize.y).toBeLessThan(fullSize.y);
+    expect(liteSize.z).toBeLessThan(.19);
     expect(knightMeshesByRole(lite, ':knight-neck')).toHaveLength(0);
     expect(knightMeshesByRole(lite, ':knight-ear')).toHaveLength(0);
     expect(knightMeshesByRole(lite, ':knight-eye')).toHaveLength(0);
     expect(liteDetails).toHaveLength(3);
-    expect(liteRoles.filter((role) => role === 'mane-rail')).toHaveLength(1);
+    expect(liteRoles.filter((role) => role === 'ear-fin')).toHaveLength(1);
+    expect(liteRoles.filter((role) => role === 'mane-ridge')).toHaveLength(0);
     expect(liteRoles.filter((role) => role === 'base-slot')).toHaveLength(2);
     expect(liteRoles).not.toContain('muzzle');
     expect(liteRoles).not.toContain('jaw');
