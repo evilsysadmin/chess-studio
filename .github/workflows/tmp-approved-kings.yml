@@ -1,0 +1,45 @@
+name: Temporary approved kings patch
+
+on:
+  push:
+    branches:
+      - visual/approved-kings
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: visual/approved-kings
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Apply approved Matthias face
+        run: python tools/tmp_patch_approved_kings.py
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Focused king tests
+        working-directory: frontend
+        run: npm test -- --run src/components/MatthiasKing3D.test.js src/components/MatthiasKing3DFaceContrast.test.js src/components/PlayerKing3D.test.js
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Diff sanity
+        run: git diff --check
+      - name: Commit approved king models
+        shell: bash
+        run: |
+          rm tools/tmp_patch_approved_kings.py
+          rm .github/workflows/tmp-approved-kings.yml
+          git config user.name "Chess Studio patch bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add frontend/src/components/MatthiasKing3D.js frontend/src/components/MatthiasKing3D.test.js frontend/src/components/MatthiasKing3DFaceContrast.test.js frontend/src/components/PlayerKing3D.js frontend/src/components/PlayerKing3D.test.js tools/tmp_patch_approved_kings.py .github/workflows/tmp-approved-kings.yml
+          git commit -m "Apply approved Matthias and player king designs"
+          git push
