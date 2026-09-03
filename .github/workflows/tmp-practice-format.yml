@@ -1,0 +1,49 @@
+name: Temporary practice formatting cleanup
+
+on:
+  push:
+    branches:
+      - feat/practice-adaptive-reactor-gambit
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: ${{ !contains(github.event.head_commit.message, '[practice-format-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/practice-adaptive-reactor-gambit
+      - name: Clean JSX formatting
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/components/Menu.jsx')
+          s = p.read_text()
+          old = '''{showPracticeMatch && (\n<PracticeMatchModal\n  color={color}\n  setColor={setColor}\n  timeControlId={timeControlId}\n  setTimeControlId={setTimeControlId}\n  loading={loading}\n  error={error}\n  rating={rating}\n  onStart={async ({ difficulty: practiceDifficulty, adaptiveDifficulty }) => {\n    const started = await onNewGame(practiceDifficulty, color, { learning: true, timeControlId, adaptiveDifficulty });\n    if (started) setShowPracticeMatch(false);\n  }}\n  onClose={() => setShowPracticeMatch(false)}\n/>\n    )}'''
+          new = '''      {showPracticeMatch && (\n        <PracticeMatchModal\n          color={color}\n          setColor={setColor}\n          timeControlId={timeControlId}\n          setTimeControlId={setTimeControlId}\n          loading={loading}\n          error={error}\n          rating={rating}\n          onStart={async ({ difficulty: practiceDifficulty, adaptiveDifficulty }) => {\n            const started = await onNewGame(practiceDifficulty, color, { learning: true, timeControlId, adaptiveDifficulty });\n            if (started) setShowPracticeMatch(false);\n          }}\n          onClose={() => setShowPracticeMatch(false)}\n        />\n      )}'''
+          if old not in s:
+              raise SystemExit('practice modal block did not match expected formatting')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npm run build
+      - name: Commit cleanup and remove workflow
+        shell: bash
+        run: |
+          rm .github/workflows/tmp-practice-format.yml
+          git config user.name "Chess Studio patch bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Polish practice modal integration [practice-format-applied]"
+          git push origin HEAD:feat/practice-adaptive-reactor-gambit
