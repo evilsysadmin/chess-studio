@@ -24,10 +24,18 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
-  await expect(page.getByText('Matthias', { exact: true })).toBeVisible();
-  const matthiasAvatar = page.locator('.game-player-rail.is-cpu .game-player-avatar.has-portrait img');
-  await expect(matthiasAvatar).toBeVisible();
-  expect(await matthiasAvatar.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+
+  const warRoomMatthias = page.getByRole('complementary', { name: 'Puesto táctico de Matthias' });
+  if (await warRoomMatthias.isVisible().catch(() => false)) {
+    await expect(warRoomMatthias.getByRole('heading', { name: 'Matthias', exact: true })).toBeVisible();
+    await expect(warRoomMatthias.locator('[data-three-face-rig="face-v1"]')).toBeVisible();
+  } else {
+    // Explicit 2D remains a supported user preference; keep the old portrait
+    // assertion as the fallback branch instead of assuming either renderer.
+    const matthiasAvatar = page.locator('.game-player-rail.is-cpu .game-player-avatar.has-portrait img');
+    await expect(matthiasAvatar).toBeVisible();
+    expect(await matthiasAvatar.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  }
 
   await page.reload();
   await expect(gameTurn(page)).toBeVisible();

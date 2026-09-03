@@ -4,11 +4,15 @@ import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 test.use({ ...devices['Pixel 5'] });
 
 async function open3DFromAppearance(page) {
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  if (await board3d.isVisible().catch(() => false)) return;
+
   await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('radio', { name: /3D$/ }).click();
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(board3d).toBeVisible({ timeout: 30_000 });
 }
 
 test('War Room · Android mantiene a Matthias vivo con Three.js y fallback corporal', async ({ page }) => {

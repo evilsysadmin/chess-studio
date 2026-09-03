@@ -2,12 +2,15 @@ import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
 async function setWarRoom3D(page) {
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('radio', { name: /3D$/ }).click();
-  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  if (!(await board3d.isVisible().catch(() => false))) {
+    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('radio', { name: /3D$/ }).click();
+    await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  }
+  await expect(board3d).toBeVisible({ timeout: 45_000 });
   await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
 }
 

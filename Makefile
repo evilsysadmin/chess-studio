@@ -11,12 +11,13 @@ TRIVY := .tools/trivy
 SECURITY_DIR := .security
 ifeq ($(GITHUB_ACTIONS),true)
 TRIVY_CACHE ?= $(CURDIR)/.trivy-cache
+CRITICAL_E2E_WORKERS ?= 2
 else
 TRIVY_CACHE ?= $(HOME)/.cache/trivy
+CRITICAL_E2E_WORKERS ?= 4
 endif
 TRIVY_DB_TTL_MINUTES ?= 720
 NODE_CHECK_JOBS ?= 8
-CRITICAL_E2E_WORKERS ?= 4
 CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
@@ -527,6 +528,7 @@ help:
 	@echo "  make security-images - construye y escanea frontend/backend Docker reales"
 	@echo "  make security-full   - security + security-images"
 	@echo "  make deps-status     - muestra PyJWT del requirements/venv y versión de Trivy"
+	@echo "  Trivy cache: $(TRIVY_CACHE)"
 
 
 # BEGIN chess-studio-ai-contract

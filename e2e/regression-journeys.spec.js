@@ -229,7 +229,10 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
 });
 
 test('deploy · una release nueva no fuerza reload mientras la partida está activa', async ({ page }) => {
-  test.setTimeout(30_000);
+  // The same continuity contract now restores the real default Three/WebGL
+  // surface. Hosted software rendering measures around 32 s end-to-end; 60 s
+  // keeps the test meaningful without racing an implementation-independent GPU.
+  test.setTimeout(60_000);
   let publishedRelease = APP_RELEASE;
   const servedReleases = [];
 

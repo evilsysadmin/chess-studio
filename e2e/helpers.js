@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import { clickWarRoomMove } from './war-room-board-input.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const CHECK_START_FEN = '7k/8/8/8/8/8/4Q3/7K w - - 0 1';
@@ -468,10 +469,19 @@ export async function loginAndOpenDeployment(page) {
 export async function clickBoardMove(page, from, to, scope = page) {
   const fromSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${from},`) });
   const toSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${to},`) });
+
+  if (await fromSquare.isVisible().catch(() => false)) {
+    await fromSquare.click();
+    await expect(toSquare).toBeVisible();
+    await toSquare.click();
+    return;
+  }
+
+  if (scope === page && await clickWarRoomMove(page, from, to)) return;
+
+  // Keep the old semantic failure when neither renderer is available so a
+  // broken board does not get disguised as a helper timeout.
   await expect(fromSquare).toBeVisible();
-  await fromSquare.click();
-  await expect(toSquare).toBeVisible();
-  await toSquare.click();
 }
 
 export async function startQuickGame(page) {

@@ -278,7 +278,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
 
+      # The critical list now boots the real default Three/WebGL surface in
+      # several journeys. Run those journeys serially on the hosted runner so
+      # two software-rendered WebGL contexts cannot starve each other's React
+      # assertions. Dedicated War Room workflows remain parallel/sharded.
       - name: Critical browser smoke
+        env:
+          CRITICAL_E2E_WORKERS: 1
         run: make e2e-critical
 
       - name: Upload Playwright diagnostics on failure

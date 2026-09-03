@@ -81,6 +81,9 @@ function movePosts(requestLog) {
 }
 
 async function open3DFromAppearance(page) {
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  if (await board3d.isVisible().catch(() => false)) return;
+
   await expect(page.getByRole('button', { name: 'Vista · 2D', exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
@@ -88,6 +91,7 @@ async function open3DFromAppearance(page) {
   await expect(dialog.getByRole('radiogroup', { name: 'Estilo de piezas' })).toBeVisible();
   await dialog.getByRole('radio', { name: /3D$/ }).click();
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(board3d).toBeVisible({ timeout: 30_000 });
 }
 
 test('War Room · Android selecciona una pieza en pointerdown y muestra destinos reales', async ({ page }) => {

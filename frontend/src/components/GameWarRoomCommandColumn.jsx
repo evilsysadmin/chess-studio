@@ -40,7 +40,12 @@ export default function GameWarRoomCommandColumn({
         </div>
       </div>
 
-      <div className="game-3d-warroom-status">
+      <div
+        className="game-3d-warroom-status"
+        role="status"
+        aria-label="Estado de la partida"
+        aria-live="polite"
+      >
         <span>SITUACIÓN</span>
         <strong>{status.statusText}</strong>
       </div>

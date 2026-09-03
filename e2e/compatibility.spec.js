@@ -171,12 +171,14 @@ for (const width of [360, 390, 430]) {
     await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
     await expect(gameTurn(page)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-    await dialog.getByRole('radio', { name: /3D$/ }).click();
-    await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
-
     const board = page.locator('[data-board3d-war-room="true"]');
+    if (!(await board.isVisible().catch(() => false))) {
+      await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+      await dialog.getByRole('radio', { name: /3D$/ }).click();
+      await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+    }
+
     const canvas = page.locator('.board3d-main-canvas');
     const focus = page.getByRole('button', { name: 'Focus', exact: true });
     const abandon = page.getByRole('button', { name: 'Abandonar partida', exact: true });
@@ -367,7 +369,7 @@ test('Registro · permite elegir inglés y localiza el acceso', async ({ page })
 });
 
 test('Partida · la mesa principal no expone PGN ni una franja avanzada', async ({ page }) => {
-  await mockApi(page);
+  await mockApi(page, { profileSeed: { 'chess-study-board-renderer': '2d-explicit-v1' } });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();

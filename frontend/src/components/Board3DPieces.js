@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildMatthiasKing3D } from './MatthiasKing3D.js';
+import { buildPlayerKing3D } from './PlayerKing3D.js';
 import { makePremiumPieceMaterial } from './Board3DSurfaces.js';
 import { SKIN_3D } from './Board3DConfig.js';
 import { addPieceSkinDetails, reinforcePieceSkinMaterial } from './Board3DSkinDecor.js';
@@ -253,6 +254,13 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       });
       addPieceSkinDetails(matthias, 'k', skinId, accent, coarsePointer);
       return finalizePiece(matthias, 'k');
+    }
+
+    if (type === 'k') {
+      const playerKing = buildPlayerKing3D(main, accent, { coarsePointer });
+      addPieceSkinDetails(playerKing, 'k', skinId, accent, coarsePointer);
+      addContactShadow(playerKing, coarsePointer);
+      return finalizePiece(playerKing, 'k');
     }
 
     if (type === 'n') {

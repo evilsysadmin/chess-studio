@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
+const ciMode = Boolean(process.env.CI);
 const stagingLiveSpec = '**/staging-live.spec.js';
 
 export default defineConfig({
@@ -9,13 +10,20 @@ export default defineConfig({
   testIgnore: chaosMode
     ? [stagingLiveSpec]
     : ['**/chaos-local.spec.js', stagingLiveSpec],
-  reporter: process.env.CI ? [['list']] : [['line']],
-  timeout: 20_000,
+  reporter: ciMode ? [['list']] : [['line']],
+  // Production/staging now enter Three/WebGL by default. Hosted CI has no GPU
+  // budget comparable to a developer browser, so give *CI only* enough time to
+  // mount/reload the real renderer while keeping the tighter local feedback loop.
+  timeout: ciMode ? 45_000 : 20_000,
   fullyParallel: true,
-  forbidOnly: Boolean(process.env.CI),
+  forbidOnly: ciMode,
   retries: 0,
-  expect: { timeout: 4_000 },
-  workers: process.env.CI ? 2 : undefined,
+  // Cold/restored War Room mounts are consistently >10 s on hosted software
+  // rendering while staying well below 20 s. Keep local assertions sharp; CI
+  // gets the measured renderer budget instead of treating a slow GPU-less mount
+  // as a product failure.
+  expect: { timeout: ciMode ? 20_000 : 4_000 },
+  workers: ciMode ? 2 : undefined,
   projects: allBrowsers ? [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
@@ -30,8 +38,12 @@ export default defineConfig({
     // mocks como release.json. Las pruebas específicas de PWA deben vivir en una
     // suite separada con serviceWorkers habilitado.
     serviceWorkers: 'block',
-    actionTimeout: 5_000,
-    navigationTimeout: 10_000,
+    // Switching 2D↔3D remounts WebGL while the settings control is still
+    // settling. The dedicated War Room helpers already budget 12 s for the
+    // opening action; use the same ceiling for the close/actionability phase.
+    // Subsequent renderer assertions still fail if the interaction did not land.
+    actionTimeout: 12_000,
+    navigationTimeout: ciMode ? 20_000 : 10_000,
     headless: true,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -40,7 +52,7 @@ export default defineConfig({
   webServer: {
     command: 'npm --prefix ../frontend run preview -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173/chess-studio/',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !ciMode,
     timeout: 20_000,
   },
 });

@@ -7,14 +7,15 @@ export const UI_LANGUAGE_KEY = 'chess-study-ui-language';
 export const REDUCED_MOTION_KEY = 'chess-study-reduced-motion';
 export const BOARD_COORDINATES_KEY = 'chess-study-board-coordinates';
 export const BOARD_RENDERER_KEY = 'chess-study-board-renderer';
+export const EXPLICIT_2D_BOARD_RENDERER_VALUE = '2d-explicit-v1';
 export const USER_PREFERENCES_CHANGED_EVENT = 'chess-study-user-preferences-changed';
 export const SUPPORTED_UI_LANGUAGES = [
   { id: 'es', label: 'Español' },
   { id: 'en', label: 'English' },
 ];
 export const BOARD_RENDERERS = [
-  { id: '2d', label: '2D' },
   { id: '3d', label: '3D' },
+  { id: '2d', label: '2D' },
 ];
 
 export function getDefaultTimeControlId() {
@@ -106,19 +107,25 @@ export function setBoardCoordinates(value) {
 export function getConfiguredBoardRendererDefault() {
   const configured = String(import.meta.env?.VITE_DEFAULT_BOARD_RENDERER || '').trim().toLowerCase();
   if (BOARD_RENDERERS.some((row) => row.id === configured)) return configured;
-  const apiUrl = String(import.meta.env?.VITE_API_URL || '').trim().toLowerCase();
-  return apiUrl.includes('api-staging.') ? '3d' : '2d';
+  return '3d';
 }
 
 export function getBoardRenderer() {
   const stored = getStorageItem(STORAGE_LOCAL, BOARD_RENDERER_KEY);
-  if (BOARD_RENDERERS.some((row) => row.id === stored)) return stored;
+  if (stored === EXPLICIT_2D_BOARD_RENDERER_VALUE) return '2d';
+  // Plain `2d` is the legacy value written before War Room became the product
+  // default. Treating it as 3D here also migrates an old Mongo/profile value
+  // that arrives after local storage migrations already ran (for example on a
+  // fresh browser). A new, deliberate 2D choice is encoded separately above.
+  if (stored === '2d') return '3d';
+  if (stored === '3d') return '3d';
   return getConfiguredBoardRendererDefault();
 }
 
 export function setBoardRenderer(value) {
-  const normalized = BOARD_RENDERERS.some((row) => row.id === value) ? value : '2d';
-  setProfileStorageItem(BOARD_RENDERER_KEY, normalized);
+  const normalized = BOARD_RENDERERS.some((row) => row.id === value) ? value : '3d';
+  const persisted = normalized === '2d' ? EXPLICIT_2D_BOARD_RENDERER_VALUE : '3d';
+  setProfileStorageItem(BOARD_RENDERER_KEY, persisted);
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
   return normalized;
 }
