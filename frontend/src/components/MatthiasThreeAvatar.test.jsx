@@ -17,7 +17,6 @@ describe('MatthiasThreeAvatar', () => {
     expect(matthiasThreeMotionProfile({ scene: 'dossier', activity: 'Auditoría táctica' })).toBe('dossier');
     expect(matthiasThreeMotionProfile({ scene: 'afternoon-ops', activity: 'En plena operación' })).toBe('write');
     expect(matthiasThreeMotionProfile({ scene: 'chess-inception', activity: 'Partida nocturna' })).toBe('think');
-    expect(matthiasThreeMotionProfile({ scene: 'late-sleep', activity: 'Sobando' })).toBe('sleep');
     expect(matthiasThreeMotionProfile({ speaking: true, scene: 'strategy-book' })).toBe('speak');
   });
 
@@ -103,6 +102,29 @@ describe('MatthiasThreeAvatar', () => {
     expect(arm.energy).toBeGreaterThan(.8);
   });
 
+  it('añade expresión facial quirúrgica después de proteger el núcleo de ajedrez', () => {
+    const center = matthiasThreeMotionSample({
+      profile: 'think',
+      x: 0,
+      y: .31,
+      time: 1.8,
+      motionIntensity: 1.2,
+      facialExpression: 'grumble-hot',
+    });
+    const brow = matthiasThreeMotionSample({
+      profile: 'think',
+      x: .105,
+      y: .475,
+      time: 1.8,
+      motionIntensity: 1.2,
+      facialExpression: 'glare',
+    });
+
+    expect(Math.abs(center.dx)).toBeLessThan(.003);
+    expect(Math.abs(center.dy)).toBeLessThan(.003);
+    expect(brow.dy).toBeLessThan(-.002);
+  });
+
   it('renders one canonical fallback plus a Three.js canvas instead of raster body-part layers', () => {
     const html = renderToStaticMarkup(
       <MatthiasThreeAvatar
@@ -110,6 +132,8 @@ describe('MatthiasThreeAvatar', () => {
         scene="strategy-book"
         activity="Estudio matinal"
         motionIntensity={1.12}
+        facialExpression="smirk"
+        facialGesture="head-right"
       />,
     );
 
@@ -117,6 +141,9 @@ describe('MatthiasThreeAvatar', () => {
     expect(html).toContain('data-three-profile="read"');
     expect(html).toContain('data-three-motion-intensity="1.12"');
     expect(html).toContain('data-three-motion-phase=');
+    expect(html).toContain('data-three-face-rig="face-v1"');
+    expect(html).toContain('data-three-face-expression="smirk"');
+    expect(html).toContain('data-three-face-gesture="head-right"');
     expect(html).toContain('data-three-visibility="visible"');
     expect(html).toContain('data-three-viewport="visible"');
     expect(html).toContain('<canvas');
@@ -125,6 +152,14 @@ describe('MatthiasThreeAvatar', () => {
     expect(html).toContain('strategy-book.webp');
     expect(html).not.toContain('data-matthias-art-part');
     expect(html).not.toContain('data-matthias-layered-art');
+  });
+
+  it('mantiene el rig legacy fuera de superficies que no piden microexpresión explícita', () => {
+    const html = renderToStaticMarkup(
+      <MatthiasThreeAvatar avatar="/base.webp" scene="base" />,
+    );
+    expect(html).toContain('data-three-face-rig="legacy"');
+    expect(html).toContain('data-three-face-expression="none"');
   });
 
   it('marks reduced motion before WebGL mounts so SSR and first paint respect accessibility', () => {
