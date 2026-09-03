@@ -28,6 +28,7 @@ describe('MatthiasWarRoomPortrait', () => {
     expect(html).toContain('data-three-motion-intensity="1.00"');
     expect(html).toContain('data-three-face-rig="face-v1"');
     expect(html).toContain('data-three-face-expression="stern"');
+    expect(html).toContain('data-three-face-gesture="war-idle"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias.webp"');
