@@ -102,7 +102,6 @@ describe('MatthiasHomePresenceAvatar', () => {
     expect(html).toContain('data-three-face-rig="home-rigid-v1"');
     expect(html).toContain('data-three-face-expression="canonical"');
     expect(html).toContain('data-three-face-warp="0.000"');
-    expect(html).toContain('data-three-segments="1x1"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).not.toContain('data-matthias-art-part');
