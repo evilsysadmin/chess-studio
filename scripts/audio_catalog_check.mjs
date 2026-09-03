@@ -112,7 +112,7 @@ assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.percussion
 assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.family)).size === energyIds.length, 'los temas de Energía necesitan identidades distintas');
 assert(getAmbientThemeSoundProfile('neonSiege').estimatedBpm >= 210, 'Asedio de neón debe sentirse thrash');
 assert(getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm >= 145 && getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm <= 155, 'Caballo overclocked debe galopar alrededor de 150 BPM');
-assert(getAmbientThemeSoundProfile('reactorGambit').estimatedBpm >= 105 && getAmbientThemeSoundProfile('reactorGambit').estimatedBpm <= 115, 'Gambito del reactor debe ser medio tiempo pesado');
+assert(getAmbientThemeSoundProfile('reactorGambit').estimatedBpm >= 123 && getAmbientThemeSoundProfile('reactorGambit').estimatedBpm <= 127, 'Gambito del reactor debe rondar 125 BPM con empuje melódico');
 assert(['postRockMidnight','rookGarage','desertDriveRock'].every((id) => getAmbientThemeSoundProfile(id)?.estimatedBpm >= 130), 'los temas rock de Ecléctica necesitan más pulso');
 const cairoQuiet = getAmbientThemeSoundProfile('cairoQuietHours');
 const nileBalcony = getAmbientThemeSoundProfile('nileBalcony0152');
