@@ -95,10 +95,10 @@ export function applyWarRoomPracticalLighting(group, {
 } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
 
-  // Static refinement now converges through the shared deferred finalizer. The
+  // Static refinement converges through the shared deferred finalizer. The
   // only continuous work kept in render hooks is actual animation: castle/fire
-  // kinetics plus AmbientLife on the floor slab. Legacy static wall/canvas hooks
-  // are armed to run once on first paint and then retire themselves.
+  // kinetics plus AmbientLife on the floor slab. PremiumRoom is another task in
+  // that same queue, so the side wall no longer owns a static render chain.
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalPatina(group, { coarsePointer });
@@ -110,15 +110,9 @@ export function applyWarRoomPracticalLighting(group, {
   applyWarRoomUserPolish(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomApprovedMockContract(group, { wallZ, towardBoard, coarsePointer });
 
-  // The side-wall chain contains only the legacy PremiumRoom static pass now
-  // that AmbientLife owns the dynamic floor anchor. The canvas contains the
-  // shared finalizer and may later be wrapped by legacy armor retirement. Both
-  // chains are allowed one first-paint execution, then become no-ops.
-  armWarRoomOneShotHookRetirement(group, {
-    anchorName: 'war-room-castle-wall-left',
-    key: 'premium-room-static-first-paint-v1',
-    coarsePointer,
-  });
+  // Desktop static work shares the painting canvas and gets exactly one first
+  // paint before the whole static chain becomes a no-op. Coarse rendering has
+  // no canvas and therefore keeps its opt-in wall finalizer intact.
   armWarRoomOneShotHookRetirement(group, {
     anchorName: 'war-room-premium-painting-canvas',
     key: 'canvas-static-first-paint-v1',
