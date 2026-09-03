@@ -17,6 +17,7 @@ describe('MatthiasThreeAvatar', () => {
     expect(matthiasThreeMotionProfile({ scene: 'dossier', activity: 'Auditoría táctica' })).toBe('dossier');
     expect(matthiasThreeMotionProfile({ scene: 'afternoon-ops', activity: 'En plena operación' })).toBe('write');
     expect(matthiasThreeMotionProfile({ scene: 'chess-inception', activity: 'Partida nocturna' })).toBe('think');
+    expect(matthiasThreeMotionProfile({ scene: 'late-sleep', activity: 'Sobando' })).toBe('sleep');
     expect(matthiasThreeMotionProfile({ speaking: true, scene: 'strategy-book' })).toBe('speak');
   });
 
