@@ -19,9 +19,10 @@ function fakeWindow() {
 }
 
 describe('continuidad entre releases', () => {
-  it('reconoce los errores típicos de chunks viejos de Vite', () => {
+  it('reconoce los errores típicos de chunks viejos de Vite y React.lazy', () => {
     expect(isChunkLoadFailure(new TypeError('Failed to fetch dynamically imported module: /assets/Game.js'))).toBe(true);
     expect(isChunkLoadFailure(new Error('Loading chunk 42 failed'))).toBe(true);
+    expect(isChunkLoadFailure(new TypeError("Cannot read properties of undefined (reading 'default')"))).toBe(true);
     expect(isChunkLoadFailure(new Error('movimiento ilegal'))).toBe(false);
   });
 
