@@ -98,10 +98,10 @@ const TANGIER_SMOKE_PROFILE = Object.freeze({
   layers: Object.freeze({ lead: true, counter: true, chords: true, bass: true, drums: true, signature: true }),
   mix: Object.freeze({ lead: 0.72, counter: 0.46, bass: 0.92, chord: 0.48 }),
   percussion: Object.freeze({
-    period: 16,
+    period: 12,
     kit: 'maghreb-hand',
     punch: 0.98,
-    pattern: Object.freeze({ 0:'K', 6:'H', 8:'S', 12:'B', 14:'H' }),
+    pattern: Object.freeze({ 0:'K', 4:'H', 7:'S', 10:'B' }),
   }),
   signature: Object.freeze({
     instrument: 'clarinet',
