@@ -18,6 +18,7 @@ import json
 import os
 import pathlib
 import subprocess
+import time
 import tomllib
 import urllib.error
 import urllib.parse
@@ -163,6 +164,59 @@ def ensure_custom_domain() -> str:
     return "updated" if matches else "created"
 
 
+def runtime_health() -> tuple[int, dict]:
+    request = urllib.request.Request(
+        f"{WORKER_URL}/health?generation_probe={time.time_ns()}",
+        method="GET",
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache, no-store",
+            "Pragma": "no-cache",
+            "User-Agent": "chess-studio-staging-worker-generation/1",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            raw = response.read()
+            try:
+                body = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                body = {}
+            return response.status, body if isinstance(body, dict) else {}
+    except urllib.error.HTTPError as exc:
+        return exc.code, {}
+    except (urllib.error.URLError, TimeoutError):
+        return 0, {}
+
+
+def wait_for_runtime_build(deploy_sha: str, *, attempts: int = 60, interval: float = 2.0) -> None:
+    """Wait until the Custom Domain serves the exact version just deployed.
+
+    Cloudflare version/deployment updates are asynchronous at the edge. A plain
+    HTTP-200 health check can therefore observe the previous healthy version for
+    a short window after `wrangler secret put BUILD_SHA` returns. Accreditation
+    must wait for identity, not merely liveness.
+    """
+    last_status = 0
+    last_build = ""
+    for attempt in range(1, attempts + 1):
+        last_status, body = runtime_health()
+        last_build = str(body.get("build") or "").lower()
+        if last_status == 200 and last_build == deploy_sha:
+            print(f"Workers AI staging runtime converge: build={deploy_sha} (intento {attempt}/{attempts})")
+            return
+        print(
+            "Workers AI staging aún sirve otra generación "
+            f"(HTTP {last_status or 'curl-error'}, build={last_build or '<vacío>'}, intento {attempt}/{attempts})"
+        )
+        if attempt < attempts:
+            time.sleep(interval)
+    raise SystemExit(
+        "Workers AI staging no convergió a la generación exacta tras "
+        f"{attempts * interval:.0f}s: HTTP {last_status or 'error'}, build={last_build or '<vacío>'}, esperaba {deploy_sha}"
+    )
+
+
 def wrangler(args: list[str], *, stdin: str | None = None) -> None:
     required("CLOUDFLARE_API_TOKEN")
     required("CLOUDFLARE_ACCOUNT_ID")
@@ -239,6 +293,7 @@ def main() -> None:
     # generación exacta incluso si un secret update crea una nueva versión.
     wrangler(["secret", "put", "BUILD_SHA"], stdin=deploy_sha + "\n")
     domain_state = ensure_custom_domain()
+    wait_for_runtime_build(deploy_sha)
     print(
         f"Workers AI staging desplegado: {WORKER_NAME} · build={deploy_sha} · "
         f"secreto sincronizado sin exponerlo · Custom Domain={domain_state}"
