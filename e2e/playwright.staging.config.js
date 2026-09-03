@@ -4,7 +4,7 @@ const baseURL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowo
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['staging-live.spec.js'],
+  testMatch: ['staging-live.spec.js', 'staging-war-room-restore.spec.js'],
   reporter: [['list']],
   timeout: 90_000,
   fullyParallel: false,
