@@ -37,7 +37,7 @@ describe('Matthias rival king 3D', () => {
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
     expect(group.userData.faceStyle).toBe('command-fury-scowl-v6');
-    expect(group.userData.capStyle).toBe('premium-command-peaked-cap-v5');
+    expect(group.userData.capStyle).toBe('premium-command-peaked-cap-v6');
     expect(group.userData.posture).toBe('proud-command-v2');
     expect(group.userData.motionRig).toBe('head-rig-v1');
     expect(meshes).toBeGreaterThanOrEqual(28);
@@ -56,6 +56,8 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-cap')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-crown')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-top')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-crown-break')).toBeTruthy();
+    expect(group.getObjectByName('matthias-cap-band-fill')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-band')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-red-piping')).toBeTruthy();
     expect(group.getObjectByName('matthias-visor')).toBeTruthy();
@@ -75,17 +77,21 @@ describe('Matthias rival king 3D', () => {
     const visorProjection = visorBox.max.y - visorBox.min.y;
 
     expect(capGroup.userData.faceClearance).toBe('eyes-and-brows-visible');
-    expect(capGroup.userData.silhouette).toBe('premium-plate-cap');
-    expect(capGroup.userData.reference).toBe('home-command-cap-v1');
-    expect(capGroup.position.y).toBeGreaterThanOrEqual(1.17);
+    expect(capGroup.userData.silhouette).toBe('home-hero-plate-cap');
+    expect(capGroup.userData.reference).toBe('home-command-cap-v2');
+    expect(capGroup.userData.crownFlare).toBe('structured-high-flare');
+    expect(capGroup.position.y).toBeGreaterThanOrEqual(1.16);
     expect(visor.userData.compactForFaceVisibility).toBe(true);
     expect(visor.userData.shortPremiumBrim).toBe(true);
     expect(visor.geometry.type).toBe('ExtrudeGeometry');
-    expect(visorWidth).toBeLessThanOrEqual(0.36);
-    expect(visorProjection).toBeLessThanOrEqual(0.18);
+    expect(visorWidth).toBeLessThanOrEqual(0.35);
+    expect(visorProjection).toBeLessThanOrEqual(0.16);
     expect(cap.geometry.parameters.radiusTop).toBeLessThanOrEqual(0.21);
-    expect(crown.geometry.parameters.radiusTop).toBeGreaterThan(0.24);
-    expect(crown.geometry.parameters.radiusTop).toBeGreaterThan(cap.geometry.parameters.radiusTop);
+    expect(crown.geometry.parameters.radiusTop).toBeGreaterThanOrEqual(0.265);
+    expect(crown.geometry.parameters.height).toBeGreaterThanOrEqual(0.13);
+    expect(crown.geometry.parameters.radiusTop / cap.geometry.parameters.radiusTop).toBeGreaterThanOrEqual(1.29);
+    expect(group.getObjectByName('matthias-cap-top').position.y).toBeGreaterThanOrEqual(0.22);
+    expect(Math.abs(capGroup.rotation.x)).toBeGreaterThanOrEqual(0.02);
     expect(cord.geometry.type).toBe('TubeGeometry');
 
     // No vuelva el Frankenstein de micro-geometrías faciales que se apilaban
@@ -193,7 +199,7 @@ describe('Matthias rival king 3D', () => {
 
     const visor = group.getObjectByName('matthias-visor');
     visor.geometry.computeBoundingBox();
-    expect(visor.geometry.boundingBox.max.x - visor.geometry.boundingBox.min.x).toBeLessThanOrEqual(0.36);
+    expect(visor.geometry.boundingBox.max.x - visor.geometry.boundingBox.min.x).toBeLessThanOrEqual(0.35);
 
     disposeGroup(group);
     main.dispose();
