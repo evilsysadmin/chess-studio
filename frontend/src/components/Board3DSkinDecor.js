@@ -100,27 +100,29 @@ function knightMeshesByRole(group, suffix) {
   return matches;
 }
 
-function approvedKnightHeadGeometry(previousGeometry) {
+function equestrianKnightHeadGeometry(previousGeometry) {
   const shape = new THREE.Shape();
-  // The approved mock uses a compact Staunton-like horse: a slim rear neck,
-  // a small poll, a forward muzzle and a clean jaw/chest line. The silhouette
-  // does the work; decorative meshes must not create a second shoulder hump.
-  shape.moveTo(-0.13, -0.035);
-  shape.bezierCurveTo(-0.17, 0.13, -0.145, 0.32, -0.075, 0.48);
-  shape.bezierCurveTo(-0.025, 0.59, 0.055, 0.68, 0.145, 0.70);
-  shape.bezierCurveTo(0.235, 0.715, 0.335, 0.66, 0.375, 0.565);
-  shape.bezierCurveTo(0.405, 0.49, 0.345, 0.435, 0.265, 0.415);
-  shape.bezierCurveTo(0.185, 0.395, 0.125, 0.36, 0.105, 0.29);
-  shape.bezierCurveTo(0.085, 0.20, 0.105, 0.095, 0.045, 0.015);
-  shape.bezierCurveTo(-0.01, -0.055, -0.075, -0.07, -0.13, -0.035);
+  // v7 is deliberately anatomical at tactical-camera distance: a broad chest,
+  // an arched rear neck, a distinct poll/forehead and a long horse muzzle.
+  // The negative space below the jaw is kept open so the piece cannot read as
+  // a round-headed bird once it is projected from the War Room camera.
+  shape.moveTo(-0.18, -0.08);
+  shape.bezierCurveTo(-0.205, 0.13, -0.18, 0.39, -0.10, 0.58);
+  shape.bezierCurveTo(-0.045, 0.715, 0.045, 0.80, 0.135, 0.815);
+  shape.bezierCurveTo(0.225, 0.83, 0.29, 0.765, 0.315, 0.68);
+  shape.bezierCurveTo(0.355, 0.625, 0.47, 0.60, 0.515, 0.525);
+  shape.bezierCurveTo(0.545, 0.455, 0.485, 0.385, 0.385, 0.355);
+  shape.bezierCurveTo(0.285, 0.325, 0.205, 0.27, 0.175, 0.18);
+  shape.bezierCurveTo(0.145, 0.075, 0.105, -0.035, 0.02, -0.095);
+  shape.bezierCurveTo(-0.055, -0.145, -0.135, -0.13, -0.18, -0.08);
 
   const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.205,
+    depth: 0.225,
     bevelEnabled: true,
-    bevelThickness: 0.032,
-    bevelSize: 0.023,
+    bevelThickness: 0.034,
+    bevelSize: 0.025,
     bevelSegments: 2,
-    curveSegments: 14,
+    curveSegments: 16,
   });
   geometry.center();
   geometry.userData = {
@@ -140,28 +142,35 @@ function applyApprovedKnightSilhouette(group, coarsePointer) {
   if (!head || !neck) return 0;
 
   const previous = head.geometry;
-  head.geometry = approvedKnightHeadGeometry(previous);
+  head.geometry = equestrianKnightHeadGeometry(previous);
   previous?.dispose?.();
-  head.position.set(0.005, 0.695, 0);
-  head.scale.set(0.96, 0.94, 1.0);
-  head.userData.knightHeadProfile = 'approved-mock-staunton-v6';
+  head.position.set(0.03, 0.68, 0);
+  head.scale.set(1.04, 0.96, 1.06);
+  head.userData.knightHeadProfile = 'equestrian-staunton-v7';
 
-  neck.scale.set(0.84, 0.90, 0.84);
-  neck.userData.knightNeckProfile = 'slim-staunton-v6';
+  // A stronger neck/chest is essential at the War Room camera distance. The
+  // previous slim neck was the main reason the head detached visually into a
+  // bird-like blob.
+  neck.scale.set(1.12, 1.16, 1.05);
+  neck.userData.knightNeckProfile = 'strong-arched-neck-v7';
 
+  // Pair the ears across the head width (Z), not across the muzzle axis (X).
+  // This reads as a horse poll from both white and black camera orientations.
   if (ears[0]) {
-    ears[0].position.set(-0.052, 0.986, 0.018);
-    ears[0].scale.set(0.86, 0.88, 0.82);
+    ears[0].position.set(0.015, 1.055, 0.065);
+    ears[0].rotation.set(0.04, 0, -0.13);
+    ears[0].scale.set(0.72, 0.86, 0.72);
   }
   if (ears[1]) {
-    ears[1].position.set(0.052, 0.986, 0.018);
-    ears[1].scale.set(0.86, 0.88, 0.82);
+    ears[1].position.set(0.015, 1.055, -0.065);
+    ears[1].rotation.set(-0.04, 0, 0.13);
+    ears[1].scale.set(0.72, 0.86, 0.72);
   }
-  if (eyes[0]) eyes[0].position.set(0.168, 0.815, 0.112);
-  if (eyes[1]) eyes[1].position.set(0.168, 0.815, -0.112);
+  if (eyes[0]) eyes[0].position.set(0.205, 0.82, 0.125);
+  if (eyes[1]) eyes[1].position.set(0.205, 0.82, -0.125);
 
-  group.userData.board3DKnightSilhouetteVersion = 'approved-mock-staunton-v6';
-  group.userData.board3DKnightPosture = 'compact-forward-staunton-v6';
+  group.userData.board3DKnightSilhouetteVersion = 'equestrian-staunton-v7';
+  group.userData.board3DKnightPosture = 'arched-equestrian-v7';
   return 1;
 }
 
@@ -174,51 +183,50 @@ function addPremiumKnightSculpture(group, accentMaterial, coarsePointer) {
   const mainMaterial = group.children.find((child) => child?.isMesh && child.material && !child.userData?.contactShadow)?.material || accentMaterial;
   let count = 0;
 
-  // Keep only the details that survive tactical-camera distance. The mock reads
-  // as a carved horse because its silhouette is clean, not because it carries
-  // a pile of micro-meshes.
+  // The muzzle is intentionally long and low. It merges into the extruded head
+  // and gives the silhouette a recognisable horse snout instead of a beak.
   addKnightSculptMesh(
     group,
-    new THREE.SphereGeometry(0.098, 20, 14),
+    new THREE.SphereGeometry(0.105, 22, 15),
     mainMaterial,
-    [0.295, 0.712, 0],
-    [1.32, 0.50, 0.76],
-    [0, 0, -0.09],
+    [0.385, 0.715, 0],
+    [1.55, 0.54, 0.78],
+    [0, 0, -0.08],
     'muzzle',
   );
   count += 1;
 
-  for (const z of [-0.07, 0.07]) {
+  for (const z of [-0.072, 0.072]) {
     addKnightSculptMesh(
       group,
-      new THREE.BoxGeometry(0.145, 0.018, 0.024, 2, 1, 1),
+      new THREE.BoxGeometry(0.17, 0.018, 0.024, 2, 1, 1),
       accentMaterial,
-      [0.17, 0.75, z * 1.62],
+      [0.20, 0.765, z * 1.62],
       [1, 1, 1],
-      [0, z > 0 ? -0.06 : 0.06, -0.23],
+      [0, z > 0 ? -0.055 : 0.055, -0.20],
       'bridle',
     );
     count += 1;
   }
 
-  const maneGeometry = new THREE.ConeGeometry(0.034, 0.105, 10);
-  for (let index = 0; index < 3; index += 1) {
+  const maneGeometry = new THREE.ConeGeometry(0.036, 0.11, 10);
+  for (let index = 0; index < 4; index += 1) {
     addKnightSculptMesh(
       group,
       maneGeometry.clone(),
       mainMaterial,
-      [-0.11, 0.665 + index * 0.076, 0],
-      [0.72, 0.86 - index * 0.06, 0.55],
-      [0, 0, -0.12],
+      [-0.13, 0.60 + index * 0.078, 0],
+      [0.78, 0.86 - index * 0.045, 0.58],
+      [0, 0, -0.19],
       'mane',
     );
     count += 1;
   }
   maneGeometry.dispose();
 
-  group.userData.board3DKnightDetailVersion = 'mock-sculpted-v6';
+  group.userData.board3DKnightDetailVersion = 'equestrian-sculpted-v7';
   group.userData.board3DKnightPremiumDetailCount = count;
-  group.userData.board3DKnightManeProfile = 'three-low-carved-locks-v6';
+  group.userData.board3DKnightManeProfile = 'four-rear-carved-locks-v7';
   return count;
 }
 
