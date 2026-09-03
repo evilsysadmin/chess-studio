@@ -101,8 +101,10 @@ export function applyWarRoomAmbientLife(root, {
 
 export function installWarRoomAmbientLife(group, { coarsePointer = false } = {}) {
   if (!group || coarsePointer) return 0;
-  const driver = group.getObjectByName?.('war-room-castle-wall-left')
-    || group.getObjectByName?.('war-room-castle-floor-slab');
+  // Continuous animation belongs on the floor/castle animation chain. Keeping
+  // it off the side wall lets static room-layout work retire after first paint.
+  const driver = group.getObjectByName?.('war-room-castle-floor-slab')
+    || group.getObjectByName?.('war-room-castle-wall-left');
   if (!driver || driver.userData.warRoomAmbientLifeDriver) return 0;
 
   driver.userData.warRoomAmbientLifeDriver = WAR_ROOM_AMBIENT_LIFE_VERSION;
@@ -116,5 +118,6 @@ export function installWarRoomAmbientLife(group, { coarsePointer = false } = {})
   };
 
   group.userData.warRoomAmbientLifeDriver = WAR_ROOM_AMBIENT_LIFE_VERSION;
+  group.userData.warRoomAmbientLifeAnchor = driver.name;
   return 1;
 }
