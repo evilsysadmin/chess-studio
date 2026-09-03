@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { achievementProgress, checkAchievements, loadUnlocked, recordNoteworthyAchievement, ACHIEVEMENTS, featuredAchievements } from './achievements.js';
+import {
+  ACHIEVEMENTS,
+  ACHIEVEMENT_LEDGER_VERSION,
+  MAX_ACHIEVEMENT_FAVORITES,
+  achievementProgress,
+  achievementRecord,
+  checkAchievements,
+  featuredAchievements,
+  loadAchievementFavorites,
+  loadAchievementLedger,
+  loadUnlocked,
+  recordNoteworthyAchievement,
+  toggleAchievementFavorite,
+} from './achievements.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -59,7 +72,6 @@ describe('checkAchievements', () => {
     const { unlocked } = checkAchievements();
     expect(unlocked.has('combat_gold_piece')).toBe(false);
   });
-
 
   it('registra trofeos tácticos puntuales sin duplicarlos', () => {
     const first = recordNoteworthyAchievement({ type: 'MISSED_MATE' }, 'human');
@@ -129,7 +141,7 @@ describe('checkAchievements', () => {
 
   it('selecciona pocos distintivos destacados y nunca enseña bloqueados', () => {
     const unlocked = new Set(['ten_games', 'crime_missed_mate', 'rivalry_hard_75']);
-    const featured = featuredAchievements(unlocked, 2);
+    const featured = featuredAchievements(unlocked, 2, []);
     expect(featured.map((item) => item.id)).toEqual(['rivalry_hard_75', 'crime_missed_mate']);
   });
 
@@ -138,6 +150,106 @@ describe('checkAchievements', () => {
     checkAchievements();
     const reloaded = loadUnlocked();
     expect(reloaded.has('first_game')).toBe(true);
+  });
+});
+
+describe('Logros 2.0 · provenance', () => {
+  it('convierte logros antiguos en registros legado sin inventar fecha ni partida', () => {
+    localStorage.setItem('chess-study-achievements', JSON.stringify(['feat_mate']));
+    const ledger = loadAchievementLedger();
+    expect(ledger.version).toBe(ACHIEVEMENT_LEDGER_VERSION);
+    expect(achievementRecord('feat_mate', ledger)).toEqual({
+      id: 'feat_mate',
+      version: ACHIEVEMENT_LEDGER_VERSION,
+      source: 'legacy',
+      legacy: true,
+      recordedAt: null,
+      provenance: {},
+    });
+  });
+
+  it('registra un hito nuevo como observado sin fabricar una partida concreta', () => {
+    localStorage.setItem('chess-study-player-rating', JSON.stringify({ rating: 800, games: 1 }));
+    checkAchievements();
+    const record = achievementRecord('first_game');
+    expect(record?.legacy).toBe(false);
+    expect(record?.source).toBe('derived-milestone');
+    expect(record?.recordedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(record?.provenance).toEqual({});
+  });
+
+  it('guarda sólo provenance explícita y factual para un incidente de partida', () => {
+    recordNoteworthyAchievement(
+      { type: 'PAWN_TAKES_QUEEN' },
+      'human',
+      {
+        gameId: 'game-42',
+        difficulty: 73,
+        color: 'w',
+        ply: 19,
+        occurredAt: '2026-09-03T20:15:00.000Z',
+        inventedGarbage: 'no entra',
+      },
+    );
+    const record = achievementRecord('feat_pawn_queen');
+    expect(record?.source).toBe('noteworthy-game-event');
+    expect(record?.legacy).toBe(false);
+    expect(record?.provenance).toEqual({
+      gameId: 'game-42',
+      color: 'w',
+      eventType: 'PAWN_TAKES_QUEEN',
+      actor: 'human',
+      difficulty: 73,
+      ply: 19,
+      occurredAt: '2026-09-03T20:15:00.000Z',
+    });
+    expect(record?.provenance?.inventedGarbage).toBeUndefined();
+  });
+
+  it('no reatribuye un logro legado a un incidente posterior', () => {
+    localStorage.setItem('chess-study-achievements', JSON.stringify(['feat_mate']));
+    expect(recordNoteworthyAchievement({ type: 'MATE_FOUND' }, 'human', { gameId: 'new-game' })).toEqual([]);
+    const record = achievementRecord('feat_mate');
+    expect(record?.legacy).toBe(true);
+    expect(record?.provenance).toEqual({});
+  });
+});
+
+describe('Logros 2.0 · favoritos', () => {
+  beforeEach(() => {
+    localStorage.setItem('chess-study-achievements', JSON.stringify([
+      'feat_mate', 'feat_pawn_queen', 'feat_promotion', 'feat_skewer',
+    ]));
+  });
+
+  it('permite fijar sólo logros desbloqueados y limita la vitrina a tres', () => {
+    expect(MAX_ACHIEVEMENT_FAVORITES).toBe(3);
+    expect(toggleAchievementFavorite('feat_mate').favorites).toEqual(['feat_mate']);
+    toggleAchievementFavorite('feat_pawn_queen');
+    toggleAchievementFavorite('feat_promotion');
+    const fourth = toggleAchievementFavorite('feat_skewer');
+    expect(fourth.changed).toBe(false);
+    expect(fourth.limitReached).toBe(true);
+    expect(loadAchievementFavorites()).toEqual(['feat_mate', 'feat_pawn_queen', 'feat_promotion']);
+  });
+
+  it('permite quitar un favorito y pone los fijados primero en destacados', () => {
+    toggleAchievementFavorite('feat_skewer');
+    toggleAchievementFavorite('feat_mate');
+    const featured = featuredAchievements(
+      new Set(['feat_mate', 'feat_pawn_queen', 'feat_skewer']),
+      3,
+      loadAchievementFavorites(),
+    );
+    expect(featured.map((item) => item.id).slice(0, 2)).toEqual(['feat_skewer', 'feat_mate']);
+    expect(toggleAchievementFavorite('feat_skewer').favorites).toEqual(['feat_mate']);
+  });
+
+  it('ignora intentos de fijar logros bloqueados', () => {
+    const result = toggleAchievementFavorite('rivalry_hard_75');
+    expect(result.changed).toBe(false);
+    expect(result.limitReached).toBe(false);
+    expect(result.favorites).toEqual([]);
   });
 });
 
