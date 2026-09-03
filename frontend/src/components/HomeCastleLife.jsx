@@ -2,6 +2,7 @@ import './HomeCastleLife.css';
 
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
+// Progress objects are descriptive only: no entry exists without backing state.
 
 function asNumber(value) {
   const n = Number(value);
