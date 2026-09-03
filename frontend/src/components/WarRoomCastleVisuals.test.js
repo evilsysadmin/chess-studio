@@ -61,7 +61,7 @@ describe('War Room castle visual contract', () => {
     const before = flame.scale.y;
     driver.onBeforeRender();
 
-    expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
+    expect(scene.userData.warRoomPremiumCoherence).toBe('v5-mobile-foreground');
     expect(scene.userData.warRoomDeferredFinalizedTasks).toContain('premium-room-pass-v4');
     expect(scene.userData.warRoomDeferredFinalizerResults['premium-room-pass-v4']).toBe(1);
     expect(fireCore.userData.warRoomWarmFireAnimated).toBe(true);
