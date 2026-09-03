@@ -117,8 +117,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend dependencies
-        run: make frontend-install
+      - name: Restore exact frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
 
       - name: Frontend tests
         run: make test-frontend
@@ -271,6 +275,20 @@ jobs:
           cache-dependency-path: |
             frontend/package-lock.json
             e2e/package-lock.json
+
+      - name: Restore exact frontend dependencies for E2E
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Restore exact E2E dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: e2e
+          lockfile: e2e/package-lock.json
+          node-version: '22'
 
       - name: Cache Playwright Chromium
         uses: actions/cache@v6
