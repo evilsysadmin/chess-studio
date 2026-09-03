@@ -1,0 +1,53 @@
+/*
+ * Finite-state expression cues. These deliberately grade the canonical portrait
+ * instead of painting fake eyebrows/mouths over it; actual blink/speech/sip
+ * movement stays in the Three.js mesh.
+ */
+.game-3d-matthias-portrait-wrap.expression-alert .game-3d-matthias-character,
+.game-3d-matthias-portrait-wrap.expression-focus .game-3d-matthias-character {
+  filter: contrast(1.025) brightness(1.005);
+}
+
+.game-3d-matthias-portrait-wrap.expression-glare .game-3d-matthias-character {
+  filter: contrast(1.055) brightness(.982) saturate(1.035);
+}
+
+.game-3d-matthias-portrait-wrap.expression-smirk .game-3d-matthias-character {
+  filter: contrast(1.018) brightness(1.012) saturate(1.025);
+}
+
+.game-3d-matthias-portrait-wrap.expression-grumble .game-3d-matthias-character {
+  filter: contrast(1.04) brightness(.986) saturate(1.04);
+}
+
+.game-3d-matthias-portrait-wrap.expression-grumble-hot .game-3d-matthias-character,
+.game-3d-matthias-portrait-wrap.expression-simmer .game-3d-matthias-character {
+  filter: contrast(1.065) brightness(.972) saturate(1.065);
+}
+
+.game-3d-matthias-portrait-wrap.expression-coffee .game-3d-matthias-character {
+  filter: contrast(1.008) brightness(1.01) saturate(.985);
+}
+
+.game-3d-matthias-portrait-wrap.expression-smirk .game-3d-matthias-presence {
+  background:
+    radial-gradient(circle at 50% 62%, rgba(192,133,54,.23), transparent 52%),
+    radial-gradient(circle at 50% 28%, rgba(102,119,131,.09), transparent 47%);
+}
+
+.game-3d-matthias-portrait-wrap.expression-grumble-hot .game-3d-matthias-presence,
+.game-3d-matthias-portrait-wrap.expression-simmer .game-3d-matthias-presence {
+  background:
+    radial-gradient(circle at 50% 62%, rgba(151,55,24,.25), transparent 53%),
+    radial-gradient(circle at 50% 28%, rgba(86,96,103,.13), transparent 47%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-3d-matthias-portrait-wrap .game-3d-matthias-character {
+    filter: none !important;
+  }
+}
+
+html[data-reduced-motion='true'] .game-3d-matthias-portrait-wrap .game-3d-matthias-character {
+  filter: none !important;
+}
