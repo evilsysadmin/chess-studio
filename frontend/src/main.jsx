@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './styles.css';
+// Deliberately outside the checksumed production cascade while this Home
+// direction is being evaluated. Remove this import to revert the prototype.
+import './styles/29-home-castle-mock.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
