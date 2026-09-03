@@ -99,7 +99,7 @@ describe('War Room castle architecture', () => {
     dispose(room);
   });
 
-  it('separa sofás y consolas y mantiene los sofás orientados hacia la mesa', () => {
+  it('deja un escritorio central, armaduras contra pared y sofás separados en primer plano', () => {
     for (const whiteSide of [true, false]) {
       const room = buildPremiumWarRoomLayer(theme, whiteSide, false);
       const driver = room.getObjectByName('war-room-premium-painting-canvas');
@@ -107,35 +107,50 @@ describe('War Room castle architecture', () => {
       const right = room.getObjectByName('war-room-sofa-right');
       const leftConsole = room.getObjectByName('war-room-side-console-left');
       const rightConsole = room.getObjectByName('war-room-side-console-right');
+      const desk = room.getObjectByName('command-cabinet');
+      const chair = room.getObjectByName('war-room-teutonic-command-chair');
       const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
       const rightArmor = room.getObjectByName('war-room-teutonic-armor-right');
 
       expect(typeof driver?.onBeforeRender).toBe('function');
       driver.onBeforeRender();
 
-      expect(left.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v27');
-      expect(right.userData.warRoomFurniturePlacement).toBe('approved-mock-front-corner-sofa-v27');
+      expect(left.userData.warRoomFurniturePlacement).toBe('approved-mock-front-sofa-v28');
+      expect(right.userData.warRoomFurniturePlacement).toBe('approved-mock-front-sofa-v28');
       expect(left.userData.facesWarTable).toBe(true);
       expect(right.userData.facesWarTable).toBe(true);
       expect(left.position.x).toBeLessThan(-6);
       expect(right.position.x).toBeGreaterThan(6);
       expect(Math.abs(Math.abs(left.rotation.y) - Math.PI / 2)).toBeLessThan(0.001);
       expect(Math.abs(Math.abs(right.rotation.y) - Math.PI / 2)).toBeLessThan(0.001);
+      expect(left.getObjectByName('war-room-teutonic-sofa-art-v28')).toBeTruthy();
+      expect(right.getObjectByName('war-room-teutonic-sofa-art-v28')).toBeTruthy();
 
-      expect(leftConsole.userData.warRoomFurniture).toBe('side-console');
-      expect(rightConsole.userData.warRoomFurniture).toBe('side-console');
-      expect(leftConsole.userData.warRoomFurniturePlacement).toBe('approved-mock-rear-table-v27');
-      expect(rightConsole.userData.warRoomFurniturePlacement).toBe('approved-mock-rear-table-v27');
-      expect(leftConsole.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
-      expect(rightConsole.userData.warRoomOffsetFromWall).toBeCloseTo(3.3, 5);
-      expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
-      expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(8.35, 5);
-      expect(left.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
-      expect(right.userData.warRoomOffsetFromWall).toBeCloseTo(12.35, 5);
-      expect(Math.abs(left.position.z - leftConsole.position.z)).toBeGreaterThanOrEqual(8.9);
-      expect(Math.abs(right.position.z - rightConsole.position.z)).toBeGreaterThanOrEqual(8.9);
-      expect(Math.abs(left.position.z - leftArmor.position.z)).toBeGreaterThanOrEqual(3.9);
-      expect(Math.abs(right.position.z - rightArmor.position.z)).toBeGreaterThanOrEqual(3.9);
+      expect(leftConsole.visible).toBe(false);
+      expect(rightConsole.visible).toBe(false);
+      expect(leftConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
+      expect(rightConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
+      expect(desk.visible).toBe(true);
+      expect(desk.position.x).toBe(0);
+      expect(desk.userData.warRoomOffsetFromWall).toBeCloseTo(1.45, 5);
+      expect(desk.getObjectByName('war-room-teutonic-command-desk-v28')).toBeTruthy();
+      expect(chair).toBeTruthy();
+      expect(chair.position.x).toBe(0);
+      expect(chair.userData.warRoomOffsetFromWall).toBeCloseTo(0.55, 5);
+
+      expect(leftArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.95, 5);
+      expect(rightArmor.userData.warRoomOffsetFromWall).toBeCloseTo(6.95, 5);
+      expect(leftArmor.userData.warRoomArmorPlacement).toBe('approved-mock-wall-sentry-v28');
+      expect(rightArmor.userData.warRoomArmorPlacement).toBe('approved-mock-wall-sentry-v28');
+      expect(Math.abs(leftArmor.position.x)).toBeGreaterThan(7);
+      expect(Math.abs(rightArmor.position.x)).toBeGreaterThan(7);
+      expect(leftArmor.userData.facesWarTable).toBe(true);
+      expect(rightArmor.userData.facesWarTable).toBe(true);
+
+      expect(left.userData.warRoomOffsetFromWall).toBeCloseTo(12.55, 5);
+      expect(right.userData.warRoomOffsetFromWall).toBeCloseTo(12.55, 5);
+      expect(Math.abs(left.position.z - leftArmor.position.z)).toBeGreaterThanOrEqual(5.5);
+      expect(Math.abs(right.position.z - rightArmor.position.z)).toBeGreaterThanOrEqual(5.5);
 
       dispose(room);
     }
