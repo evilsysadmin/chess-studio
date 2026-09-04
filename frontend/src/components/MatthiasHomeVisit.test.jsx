@@ -44,7 +44,7 @@ const MODEL = {
 beforeEach(() => sessionStorage.clear());
 
 describe('MatthiasHomeVisit · residente de Home', () => {
-  it('mantiene identidad canónica con Matthias full 3D en Home v4', () => {
+  it('mantiene arte rígido canónico con articulación acotada en Home v4', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeVisit model={MODEL} speaking={false} onOpenInsights={() => {}} />,
     );
@@ -59,15 +59,11 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-ambient-scene="reading"');
     expect(html).toContain('data-matthias-three-avatar="true"');
     expect(html).toContain('data-home-presence-version="home-presence-v1"');
-    expect(html).toContain('data-home-microgesture-version="home-face-v3"');
-    expect(html).toContain('data-three-model="matthias-full3d-v1"');
-    expect(html).toContain('data-three-fidelity="canonical-front-v1"');
-    expect(html).toContain('data-three-deformation="rigid-geometry+facial-rig"');
-    expect(html).toContain('data-three-render-mode="full-3d-rig"');
-    expect(html).toContain('data-three-render-contract="full-3d-rig-v1"');
-    expect(html).toContain('data-three-full-3d="true"');
+    expect(html).toContain('data-home-microgesture-version="home-face-v2"');
+    expect(html).toContain('data-three-deformation="rigid-layer-articulation"');
+    expect(html).toContain('data-three-render-mode="canonical-layer-rig"');
     expect(html).toContain('data-three-art-version="angry-mock-v1"');
-    expect(html).toContain('data-three-articulated-face-rig="full3d-face-rig-v1"');
+    expect(html).toContain('data-three-articulated-face-rig="canonical-layer-rig-v1"');
     expect(html).toContain('data-three-face-rig="face-v1"');
     expect(html).toContain('data-three-face-expression="focus"');
     expect(html).toContain('data-three-face-gesture="survey"');
@@ -106,7 +102,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('Ver Así juegas →');
   });
 
-  it('cuando tiene algo real que decir activa boca y atención del rig full 3D', () => {
+  it('cuando tiene algo real que decir conserva la identidad canónica y activa habla acotada', () => {
     recordMatthiasSessionResult({ gameId: 'g1', outcome: 'loss' });
     recordMatthiasSessionResult({ gameId: 'g2', outcome: 'loss' });
     const model = { ...MODEL, variant: 'comment', text: 'He encontrado una reincidencia real.', meta: '2 casos', sessionLabel: 'Sesión · 2 partidas · 0V · 0T · 2D' };
@@ -124,9 +120,8 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/matthias-time.webp"');
     expect(html).toContain('data-three-profile="speak"');
-    expect(html).toContain('data-three-model="matthias-full3d-v1"');
-    expect(html).toContain('data-three-deformation="rigid-geometry+facial-rig"');
-    expect(html).toContain('data-three-render-mode="full-3d-rig"');
+    expect(html).toContain('data-three-deformation="rigid-layer-articulation"');
+    expect(html).toContain('data-three-render-mode="canonical-layer-rig"');
     expect(html).toContain('data-three-face-rig="face-v1"');
     expect(html).toContain('data-three-face-expression="alert"');
     expect(html).toContain('data-three-face-warp-limit="0.019"');

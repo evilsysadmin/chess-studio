@@ -37,7 +37,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     });
   });
 
-  it('mantiene el sampler legacy facial acotado aunque el renderer vivo sea full 3D', () => {
+  it('mueve cejas/ojos de verdad sin arrastrar el núcleo de la cara', () => {
     const brow = matthiasHomeFacialMotionSample({
       profile: 'read',
       presenceState: MATTHIAS_HOME_STATES.SURVEY,
@@ -70,7 +70,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(Math.abs(nose.dx) + Math.abs(nose.dy)).toBeLessThan(.0015);
   });
 
-  it('mantiene todos los deltas legacy dentro del contrato anti-melt', () => {
+  it('mantiene todos los deltas faciales dentro del contrato anti-melt', () => {
     const samples = [];
     for (const state of [
       MATTHIAS_HOME_STATES.IDLE,
@@ -103,7 +103,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     }
   });
 
-  it('publica el contrato full 3D y conserva el mock sólo como fallback', () => {
+  it('publica el contrato del rig canónico articulado sin volver al cuerpo de goma', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
         avatar="/assets/matthias-scenes/strategy-book.webp"
@@ -113,16 +113,12 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
       />,
     );
 
-    expect(MATTHIAS_HOME_MICROGESTURE_VERSION).toBe('home-face-v3');
-    expect(html).toContain('data-home-microgesture-version="home-face-v3"');
-    expect(html).toContain('data-three-model="matthias-full3d-v1"');
-    expect(html).toContain('data-three-fidelity="canonical-front-v1"');
-    expect(html).toContain('data-three-deformation="rigid-geometry+facial-rig"');
-    expect(html).toContain('data-three-render-mode="full-3d-rig"');
-    expect(html).toContain('data-three-render-contract="full-3d-rig-v1"');
-    expect(html).toContain('data-three-full-3d="true"');
+    expect(MATTHIAS_HOME_MICROGESTURE_VERSION).toBe('home-face-v2');
+    expect(html).toContain('data-home-microgesture-version="home-face-v2"');
+    expect(html).toContain('data-three-deformation="rigid-layer-articulation"');
+    expect(html).toContain('data-three-render-mode="canonical-layer-rig"');
     expect(html).toContain('data-three-art-version="angry-mock-v1"');
-    expect(html).toContain('data-three-articulated-face-rig="full3d-face-rig-v1"');
+    expect(html).toContain('data-three-articulated-face-rig="canonical-layer-rig-v1"');
     expect(html).toContain('data-three-face-rig="face-v1"');
     expect(html).toContain('data-three-face-expression="focus"');
     expect(html).toContain('data-three-face-gesture="survey"');
@@ -138,7 +134,6 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
       <MatthiasHomeMicrogestureAvatar avatar="/base.webp" scene="base" reducedMotion />,
     );
     expect(html).toContain('data-three-motion="reduced"');
-    expect(html).toContain('data-three-full-3d="true"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/base.webp"');
   });

@@ -20,28 +20,27 @@ import {
   transitionMatthiasHomePresence,
 } from './matthiasHomePresenceStateMachine.js';
 import {
+  applyMatthiasCanonicalPose,
   canonicalMatthiasDataUrl,
+  createMatthiasCanonicalRig,
+  disposeMatthiasCanonicalRig,
   MATTHIAS_CANONICAL_ART_VERSION,
+  MATTHIAS_CANONICAL_ASPECT,
   MATTHIAS_CANONICAL_ASSET_URL,
+  MATTHIAS_CANONICAL_RIG_VERSION,
 } from './MatthiasCanonicalMock.js';
 import {
-  applyMatthiasFull3DPose,
-  createMatthiasFull3D,
-  disposeMatthiasFull3D,
-  MATTHIAS_FULL3D_FACE_RIG_VERSION,
-  MATTHIAS_FULL3D_FIDELITY_VERSION,
-  MATTHIAS_FULL3D_MODEL_VERSION,
-  MATTHIAS_FULL3D_RENDER_CONTRACT,
   MATTHIAS_PAWN_EMBLEM,
+  MATTHIAS_PAWN_FIDELITY_VERSION,
+  MATTHIAS_PAWN_MODEL_VERSION,
   matthiasPawnPoseSample,
-} from './MatthiasFull3D.js';
+} from './MatthiasPawn3D.js';
 import './MatthiasThreeAvatar.css';
-import './MatthiasFull3D.css';
 
-// Compatibility contract for old callers/tests. Full 3D motion no longer warps
-// the face texture at all; the number remains as a hard anti-melt ceiling.
+// Compatibility contract for old callers/tests. The live renderer now has zero
+// local face warp: Matthias is the approved art, articulated as rigid layers.
 export const MATTHIAS_HOME_FACE_WARP_LIMIT = .019;
-export const MATTHIAS_HOME_MICROGESTURE_VERSION = 'home-face-v3';
+export const MATTHIAS_HOME_MICROGESTURE_VERSION = 'home-face-v2';
 
 function normalizeIntensity(value) {
   const parsed = Number(value);
@@ -82,8 +81,6 @@ export function matthiasHomeFacialCue({
   return { expression: 'stern', gesture: 'idle' };
 }
 
-// Retained for consumers that sample the old bounded facial field. The live
-// Home renderer now uses actual 3D geometry instead of these deltas.
 export function matthiasHomeFacialMotionSample({
   profile = 'idle',
   presenceState = MATTHIAS_HOME_STATES.IDLE,
@@ -109,9 +106,9 @@ export function matthiasHomeFacialMotionSample({
 
 function renderPolicy({ coarsePointer = false, width = 0, height = 0 } = {}) {
   const compact = coarsePointer && Math.min(Number(width) || 0, Number(height) || 0) <= 96;
-  if (compact) return { tier: 'compact', maxFps: 30, pixelRatioCap: 1.15 };
-  if (coarsePointer) return { tier: 'coarse', maxFps: 45, pixelRatioCap: 1.35 };
-  return { tier: 'full', maxFps: 60, pixelRatioCap: 1.7 };
+  if (compact) return { tier: 'compact', maxFps: 30, pixelRatioCap: 1.2 };
+  if (coarsePointer) return { tier: 'coarse', maxFps: 45, pixelRatioCap: 1.45 };
+  return { tier: 'full', maxFps: 60, pixelRatioCap: 1.85 };
 }
 
 function resizeRenderer(renderer, camera, canvas) {
@@ -119,12 +116,20 @@ function resizeRenderer(renderer, camera, canvas) {
   const height = Math.max(1, canvas.clientHeight || 1);
   renderer.setSize(width, height, false);
 
-  // Orthographic projection is deliberate. Matthias is now true 3D geometry,
-  // but Home keeps the approved frontal proportions instead of a wide-angle
-  // mascot look. Depth is read through lighting and controlled head rotation.
-  const aspect = width / height;
-  const viewHeight = 2.82;
-  const viewWidth = viewHeight * aspect;
+  // Orthographic cover semantics mirror the canonical fallback image without
+  // stretching it. Wider shells crop vertically; taller shells crop laterally.
+  const viewportAspect = width / height;
+  const artHeight = 4;
+  const artWidth = artHeight * MATTHIAS_CANONICAL_ASPECT;
+  let viewWidth;
+  let viewHeight;
+  if (viewportAspect >= MATTHIAS_CANONICAL_ASPECT) {
+    viewWidth = artWidth;
+    viewHeight = artWidth / viewportAspect;
+  } else {
+    viewHeight = artHeight;
+    viewWidth = artHeight * viewportAspect;
+  }
   camera.left = -viewWidth / 2;
   camera.right = viewWidth / 2;
   camera.top = viewHeight / 2;
@@ -144,10 +149,6 @@ export default function MatthiasHomeMicrogestureAvatar({
   const rootRef = useRef(null);
   const modeRef = useRef(MATTHIAS_HOME_STATES.IDLE);
   const modeStartedAtRef = useRef(0);
-  const profileRef = useRef('idle');
-  const phaseRef = useRef(0);
-  const intensityRef = useRef(1);
-  const speakingRef = useRef(false);
   const [machine, dispatch] = useReducer(
     transitionMatthiasHomePresence,
     undefined,
@@ -164,15 +165,7 @@ export default function MatthiasHomeMicrogestureAvatar({
   const intensity = normalizeIntensity(motionIntensity);
   const descriptor = matthiasHomeStateDescriptor(machine.mode);
   const facialCue = matthiasHomeFacialCue({ profile, presenceState: machine.mode, speaking });
-
-  // These are live animation inputs, not renderer-construction inputs. Keeping
-  // them in refs lets one WebGL scene survive speech/profile/FSM changes instead
-  // of destroying and recreating Matthias whenever he opens his mouth.
   modeRef.current = machine.mode;
-  profileRef.current = profile;
-  phaseRef.current = phase;
-  intensityRef.current = intensity;
-  speakingRef.current = speaking;
 
   useEffect(() => {
     modeStartedAtRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -208,11 +201,11 @@ export default function MatthiasHomeMicrogestureAvatar({
     return () => window.clearTimeout(timer);
   }, [machine.lastAmbient, machine.mode, profile, reducedMotion, speaking]);
 
-  // The approved mock remains the fallback/reference while WebGL starts. It no
-  // longer supplies geometry or moving texture layers to the live renderer.
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     let cancelled = false;
+    const root = rootRef.current;
+
     request(MATTHIAS_CANONICAL_ASSET_URL, { cache: 'force-cache' })
       .then((response) => {
         if (!response.ok) throw new Error(`Canonical Matthias asset ${response.status}`);
@@ -220,12 +213,15 @@ export default function MatthiasHomeMicrogestureAvatar({
       })
       .then((payload) => canonicalMatthiasDataUrl(payload))
       .then((src) => {
-        if (!cancelled) setCanonicalSrc(src);
+        if (cancelled) return;
+        setCanonicalSrc(src);
       })
       .catch(() => {
-        // The scene can still render full 3D; the caller-provided avatar remains
-        // available as a fallback if the canonical reference cannot be fetched.
+        if (cancelled) return;
+        setFailed(true);
+        if (root) root.dataset.threeFailed = 'true';
       });
+
     return () => {
       cancelled = true;
     };
@@ -234,7 +230,7 @@ export default function MatthiasHomeMicrogestureAvatar({
   useEffect(() => {
     const canvas = canvasRef.current;
     const root = rootRef.current;
-    if (!canvas || !root) return undefined;
+    if (!canvas || !root || !canonicalSrc) return undefined;
 
     let renderer;
     let rig = null;
@@ -291,8 +287,6 @@ export default function MatthiasHomeMicrogestureAvatar({
         powerPreference: coarsePointer ? 'low-power' : 'high-performance',
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.03;
       renderer.setClearColor(0x000000, 0);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, policy.pixelRatioCap));
     } catch {
@@ -303,21 +297,8 @@ export default function MatthiasHomeMicrogestureAvatar({
 
     const scene3d = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 20);
-    camera.position.set(0, .02, 5.2);
-    camera.lookAt(0, -.03, 0);
-
-    const hemi = new THREE.HemisphereLight(0xffead0, 0x101217, 1.95);
-    scene3d.add(hemi);
-    const key = new THREE.DirectionalLight(0xffd7a0, 2.85);
-    key.position.set(-2.2, 3.4, 4.3);
-    scene3d.add(key);
-    const rim = new THREE.DirectionalLight(0xb9c8ee, 1.05);
-    rim.position.set(3.2, 1.6, 2.4);
-    scene3d.add(rim);
-
-    rig = createMatthiasFull3D({ compact: policy.tier === 'compact' });
-    rig.root.scale.setScalar(.95);
-    scene3d.add(rig.root);
+    camera.position.set(0, 0, 5);
+    camera.lookAt(0, 0, 0);
 
     const doResize = () => resizeRenderer(renderer, camera, canvas);
     doResize();
@@ -348,10 +329,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       }
       lastRenderedAt = stamp;
 
-      const liveProfile = profileRef.current;
-      const liveSpeaking = speakingRef.current;
-      const liveIntensity = intensityRef.current;
-      const time = Math.max(0, stamp - startedAt) / 1000 + phaseRef.current;
+      const time = Math.max(0, stamp - startedAt) / 1000 + phase;
       const stateElapsed = Math.max(0, stamp - modeStartedAtRef.current) / 1000;
       const pose = reducedMotion
         ? matthiasPawnPoseSample({
@@ -363,16 +341,16 @@ export default function MatthiasHomeMicrogestureAvatar({
           motionIntensity: 0,
         })
         : matthiasPawnPoseSample({
-          profile: liveProfile,
+          profile,
           presenceState: modeRef.current,
           time,
           stateElapsed,
           stateDurationMs: matthiasHomeStateDuration(modeRef.current),
-          speaking: liveSpeaking,
-          motionIntensity: liveIntensity,
+          speaking,
+          motionIntensity: intensity,
         });
 
-      applyMatthiasFull3DPose(rig, pose);
+      applyMatthiasCanonicalPose(rig, pose);
       renderer.render(scene3d, camera);
 
       frames += 1;
@@ -389,9 +367,9 @@ export default function MatthiasHomeMicrogestureAvatar({
       }
       if (frames % 6 === 0 || frames === 1) {
         const currentCue = matthiasHomeFacialCue({
-          profile: liveProfile,
+          profile,
           presenceState: modeRef.current,
-          speaking: liveSpeaking,
+          speaking,
         });
         root.dataset.threeFrame = String(frames);
         root.dataset.threeEnergy = peakEnergy.toFixed(3);
@@ -406,6 +384,27 @@ export default function MatthiasHomeMicrogestureAvatar({
       }
       requestFrame();
     };
+
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(
+      canonicalSrc,
+      (texture) => {
+        if (disposed) {
+          texture.dispose?.();
+          return;
+        }
+        rig = createMatthiasCanonicalRig(texture);
+        scene3d.add(rig.root);
+        doResize();
+        raf = window.requestAnimationFrame(renderFrame);
+      },
+      undefined,
+      () => {
+        if (disposed) return;
+        setFailed(true);
+        root.dataset.threeFailed = 'true';
+      },
+    );
 
     visibilityListener = () => {
       documentVisible = document.visibilityState !== 'hidden';
@@ -428,10 +427,6 @@ export default function MatthiasHomeMicrogestureAvatar({
       root.dataset.threeViewport = 'visible';
     }
 
-    // Always paint one frame before fading out the approved fallback, including
-    // reduced-motion mode. Subsequent frames obey visibility/reduced-motion.
-    raf = window.requestAnimationFrame(renderFrame);
-
     return () => {
       disposed = true;
       cancelFrame();
@@ -441,10 +436,10 @@ export default function MatthiasHomeMicrogestureAvatar({
       if (visibilityListener && typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', visibilityListener);
       }
-      disposeMatthiasFull3D(rig);
+      disposeMatthiasCanonicalRig(rig);
       renderer?.dispose?.();
     };
-  }, [reducedMotion]);
+  }, [canonicalSrc, intensity, phase, profile, reducedMotion, speaking]);
 
   const fallbackSrc = canonicalSrc || avatar || '';
 
@@ -463,16 +458,14 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
       data-three-motion-intensity={intensity.toFixed(2)}
       data-three-motion-phase={phase.toFixed(3)}
-      data-three-model={MATTHIAS_FULL3D_MODEL_VERSION}
-      data-three-fidelity={MATTHIAS_FULL3D_FIDELITY_VERSION}
+      data-three-model={MATTHIAS_PAWN_MODEL_VERSION}
+      data-three-fidelity={MATTHIAS_PAWN_FIDELITY_VERSION}
       data-three-emblem={MATTHIAS_PAWN_EMBLEM}
       data-three-art-version={MATTHIAS_CANONICAL_ART_VERSION}
-      data-three-deformation="rigid-geometry+facial-rig"
-      data-three-render-mode="full-3d-rig"
-      data-three-render-contract={MATTHIAS_FULL3D_RENDER_CONTRACT}
-      data-three-full-3d="true"
+      data-three-deformation="rigid-layer-articulation"
+      data-three-render-mode="canonical-layer-rig"
       data-three-face-rig={MATTHIAS_FACIAL_RIG_VERSION}
-      data-three-articulated-face-rig={MATTHIAS_FULL3D_FACE_RIG_VERSION}
+      data-three-articulated-face-rig={MATTHIAS_CANONICAL_RIG_VERSION}
       data-three-face-expression={facialCue.expression}
       data-three-face-gesture={facialCue.gesture}
       data-three-face-warp="0.0000"
