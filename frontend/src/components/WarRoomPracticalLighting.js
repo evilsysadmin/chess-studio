@@ -12,6 +12,7 @@ import { installWarRoomCommandDeskStudy } from './WarRoomCommandDeskStudy.js';
 import { installWarRoomCommandDeskLuxury } from './WarRoomCommandDeskLuxury.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 import { armWarRoomOneShotHookRetirement } from './WarRoomDeferredFinalizer.js';
+import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -113,6 +114,7 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomApprovedMockContract(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomCommandDeskStudy(group, { towardBoard, coarsePointer });
   installWarRoomCommandDeskLuxury(group, { towardBoard, coarsePointer });
+  installWarRoomMilitaryGallery(group, { wallZ, towardBoard, coarsePointer });
 
   // Desktop static work shares the painting canvas and gets exactly one first
   // paint before the whole static chain becomes a no-op. Coarse rendering has
