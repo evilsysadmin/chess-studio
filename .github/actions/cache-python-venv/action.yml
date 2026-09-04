@@ -1,0 +1,56 @@
+name: Cache exact Python virtualenv
+description: Restore the project .venv keyed by runner, exact Python runtime and requirements hashes; install only on cache miss.
+
+inputs:
+  cache-version:
+    description: Manual cache namespace bump for virtualenv layout changes.
+    required: false
+    default: 'v1'
+
+outputs:
+  cache-hit:
+    description: Whether the exact virtualenv came from Actions cache.
+    value: ${{ steps.venv-cache.outputs.cache-hit }}
+  python-version:
+    description: Exact Python runtime used to key the virtualenv.
+    value: ${{ steps.runtime.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve exact Python runtime
+      id: runtime
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="$(python3 -c 'import platform; print(platform.python_version())')"
+        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Python runtime inesperado: $version"; exit 1; }
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    - name: Restore exact backend virtualenv
+      id: venv-cache
+      uses: actions/cache@v6
+      with:
+        path: .venv
+        key: python-venv-${{ runner.os }}-${{ runner.arch }}-py${{ steps.runtime.outputs.version }}-${{ inputs.cache-version }}-${{ hashFiles('backend-python/requirements.txt', 'backend-python/requirements-dev.txt') }}
+
+    - name: Install backend dependencies on cache miss
+      if: steps.venv-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        make backend-install
+
+    - name: Verify virtualenv identity and imports
+      shell: bash
+      run: |
+        set -euo pipefail
+        test -x .venv/bin/python
+        runtime="$(python3 -c 'import platform; print(platform.python_version())')"
+        cached="$(.venv/bin/python -c 'import platform; print(platform.python_version())')"
+        [[ "$cached" == "$runtime" ]] || { echo "::error::.venv usa Python $cached, runner usa $runtime"; exit 1; }
+        expected="$(sha256sum backend-python/requirements.txt backend-python/requirements-dev.txt | sha256sum | cut -d' ' -f1)"
+        actual="$(cat .venv/.chess-requirements.sha256 2>/dev/null || true)"
+        [[ "$actual" == "$expected" ]] || { echo '::error::.venv cache stamp no coincide con requirements'; exit 1; }
+        .venv/bin/python -c 'import pytest, chess, fastapi, httpx, jwt, pip_audit'
+        echo "Exact Python virtualenv ready (Python $runtime)."
