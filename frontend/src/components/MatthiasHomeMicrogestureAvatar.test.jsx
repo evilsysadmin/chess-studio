@@ -70,7 +70,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     }
   });
 
-  it('publica el contrato premium 3D y conserva el original sólo como fallback', () => {
+  it('publica el contrato premium 3D, el activity rig y conserva el original sólo como fallback', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
         avatar="/assets/matthias-scenes/strategy-book.webp"
@@ -91,11 +91,30 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('data-three-full-3d="true"');
     expect(html).toContain('data-three-face-rig="premium-pawn-face-v1"');
     expect(html).toContain('data-three-articulated-face-rig="premium-pawn-face-v1"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v1"');
+    expect(html).toContain('data-three-activity-profile="read"');
+    expect(html).toContain('data-three-activity-prop="book"');
     expect(html).toContain('data-three-face-warp-limit="0.019"');
     expect(html).toContain('data-three-face-warp="0.0000"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/assets/matthias-scenes/strategy-book.webp"');
+  });
+
+  it('hablar domina la cara pero conserva la actividad física que Matthias ya hacía', () => {
+    const html = renderToStaticMarkup(
+      <MatthiasHomeMicrogestureAvatar
+        avatar="/assets/matthias-scenes/strategy-book.webp"
+        scene="strategy-book"
+        activity="Leyendo estrategia"
+        speaking
+      />,
+    );
+
+    expect(html).toContain('data-three-profile="speak"');
+    expect(html).toContain('data-three-activity-profile="read"');
+    expect(html).toContain('data-three-activity-prop="book"');
+    expect(html).toContain('data-three-face-expression="alert"');
   });
 
   it('reduced-motion conserva el fallback y publica movimiento reducido desde primer paint', () => {
@@ -104,6 +123,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     );
     expect(html).toContain('data-three-motion="reduced"');
     expect(html).toContain('data-three-full-3d="true"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v1"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/base.webp"');
   });
