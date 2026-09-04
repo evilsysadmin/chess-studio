@@ -386,7 +386,10 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   torch.add(light);
   attachTorchKinetics(outer, inner, light, phase);
 
-  torch.position.set(side * 7.61, 4.18, wallZ + towardBoard * offset);
+  // Keep the sconce visually related to the artwork, but do not let the two
+  // silhouettes touch in perspective. A slight lift makes the torch read as
+  // architectural lighting rather than a prop bolted onto the picture frame.
+  torch.position.set(side * 7.61, 4.32, wallZ + towardBoard * offset);
   torch.rotation.y = -side * Math.PI / 2;
   torch.userData.warRoomOffsetFromWall = offset;
   group.add(torch);
@@ -422,8 +425,8 @@ export function installWarRoomMilitaryGallery(group, {
     title: 'Gloria perfectamente modesta de Matthias',
     offset: 3.95,
   });
-  addSideTorch(group, { side: -1, wallZ, towardBoard, offset: 6.05, phase: 0.7 });
-  addSideTorch(group, { side: 1, wallZ, towardBoard, offset: 6.05, phase: 3.1 });
+  addSideTorch(group, { side: -1, wallZ, towardBoard, offset: 6.75, phase: 0.7 });
+  addSideTorch(group, { side: 1, wallZ, towardBoard, offset: 6.75, phase: 3.1 });
 
   group.userData.warRoomMilitaryGalleryVersion = 'approved-mock-v1';
   group.userData.warRoomMilitaryGalleryCentralCanvases = centralReplaced;
@@ -431,6 +434,7 @@ export function installWarRoomMilitaryGallery(group, {
   group.userData.warRoomMilitaryGalleryTorches = 2;
   group.userData.warRoomCampaignTextureCache = 'module-prototype-v1';
   group.userData.warRoomTorchArt = 'approved-premium-mock-v2';
+  group.userData.warRoomTorchSpacing = 'gallery-breathing-room-v3';
   registerCampaignArtFinalizer(group);
   return centralReplaced + 4;
 }
