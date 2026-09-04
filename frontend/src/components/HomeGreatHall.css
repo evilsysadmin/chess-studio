@@ -1,10 +1,11 @@
 @import './CastleVisualTokens.css';
 
-/* Home · Great Hall P0
+/* Home · Great Hall v2
  *
- * Structural 2.5D treatment. The DOM and gameplay stay untouched: depth comes
- * from architecture, light, overlap and material hierarchy rather than a new
- * WebGL scene or decorative runtime loop.
+ * The first pass had the right material language but hid it behind extremely
+ * restrained opacity. v2 makes the room legible at a glance while keeping the
+ * implementation intentionally boring: CSS architecture only, no new runtime,
+ * no WebGL scene, no timers and no gameplay/state changes.
  */
 
 .menu.home-friendly {
@@ -12,165 +13,219 @@
   --home-stone-deep: var(--castle-stone-950);
   --home-oak: var(--castle-oak-800);
   --home-velvet: var(--castle-velvet-deep);
-  --home-brass-soft: color-mix(in srgb, var(--castle-brass) 52%, var(--castle-brass-muted));
+  --home-brass-soft: color-mix(in srgb, var(--castle-brass) 58%, var(--castle-brass-muted));
   --home-line: var(--castle-brass-line);
   --home-line-soft: var(--castle-mortar);
-  --home-text-dim: color-mix(in srgb, var(--castle-parchment) 72%, var(--castle-parchment-dim));
+  --home-text-dim: color-mix(in srgb, var(--castle-parchment) 74%, var(--castle-parchment-dim));
   position: relative;
   isolation: isolate;
   overflow: clip;
-  padding-top: clamp(1.05rem, 2vw, 1.65rem);
-  border-color: rgba(180,145,81,.15);
+  padding-top: clamp(1.1rem, 2vw, 1.7rem);
+  border: 1px solid rgba(180,145,81,.22);
+  border-top-color: rgba(205,171,105,.28);
+  border-radius: 12px;
   background:
-    /* cold window pools */
-    radial-gradient(ellipse 20% 38% at 18% 2%, rgba(111,137,163,.14), transparent 70%),
-    radial-gradient(ellipse 18% 34% at 78% 0%, rgba(107,130,154,.10), transparent 72%),
-    /* hearth glow */
-    radial-gradient(ellipse 28% 25% at 91% 34%, rgba(182,106,53,.14), transparent 72%),
-    /* room vignette */
-    linear-gradient(90deg, rgba(4,6,9,.48), transparent 13%, transparent 84%, rgba(5,7,10,.55)),
-    linear-gradient(180deg, var(--castle-stone-800) 0%, var(--castle-stone-850) 45%, var(--castle-stone-950) 100%);
+    /* cold daylight spilling from the two tall windows */
+    radial-gradient(ellipse 25% 46% at 18% -2%, rgba(117,148,179,.23), transparent 67%),
+    radial-gradient(ellipse 23% 44% at 79% -2%, rgba(104,136,168,.19), transparent 68%),
+    /* warm hearth / inhabited-room balance */
+    radial-gradient(ellipse 31% 30% at 94% 31%, rgba(182,106,53,.21), transparent 71%),
+    radial-gradient(ellipse 24% 25% at 5% 42%, rgba(122,72,38,.11), transparent 72%),
+    /* deep side walls frame the nave */
+    linear-gradient(90deg, rgba(4,6,8,.72) 0%, rgba(8,10,13,.26) 11%, transparent 22% 79%, rgba(7,9,12,.28) 89%, rgba(4,6,8,.76) 100%),
+    /* visible stone courses behind the UI */
+    repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 63px, rgba(255,255,255,.052) 64px, rgba(0,0,0,.12) 65px 66px),
+    repeating-linear-gradient(90deg, transparent 0 127px, rgba(255,255,255,.028) 128px, rgba(0,0,0,.06) 129px 130px),
+    linear-gradient(180deg, #1b2025 0%, #14191e 45%, #0b0e12 100%);
   box-shadow:
-    inset 0 1px rgba(255,255,255,.025),
-    inset 0 -3rem 7rem rgba(0,0,0,.22),
-    0 32px 72px rgba(0,0,0,.30);
+    inset 0 1px rgba(255,255,255,.045),
+    inset 34px 0 54px rgba(0,0,0,.35),
+    inset -34px 0 54px rgba(0,0,0,.40),
+    inset 0 -5rem 9rem rgba(0,0,0,.34),
+    0 34px 80px rgba(0,0,0,.34);
 }
 
-/* Back wall: masonry, two tall window suggestions and restrained burgundy
- * curtains. Pure CSS, pointer transparent, zero animation. */
+/* Back wall: recognisable windows, mullions, stone piers and burgundy drapery.
+ * Multiple gradients deliberately read as architecture rather than atmosphere. */
 .menu.home-friendly::before {
   content: '';
   position: absolute;
   z-index: -2;
-  inset: 0 0 38%;
+  inset: 0 0 35%;
   pointer-events: none;
-  opacity: .88;
+  opacity: 1;
   background:
-    /* mullions */
-    linear-gradient(90deg, transparent 0 11.5%, rgba(6,9,13,.78) 11.7% 12.1%, transparent 12.3% 23.5%, rgba(6,9,13,.78) 23.7% 24.1%, transparent 24.3%),
-    linear-gradient(90deg, transparent 0 68.5%, rgba(6,9,13,.75) 68.7% 69.1%, transparent 69.3% 80.5%, rgba(6,9,13,.75) 80.7% 81.1%, transparent 81.3%),
-    /* cool glazing */
-    radial-gradient(ellipse 11% 30% at 18% 4%, rgba(113,140,166,.13), rgba(38,48,60,.05) 65%, transparent 68%),
-    radial-gradient(ellipse 10% 29% at 75% 4%, rgba(103,129,155,.10), rgba(38,48,60,.04) 65%, transparent 68%),
-    /* curtain falls */
-    linear-gradient(100deg, transparent 0 6%, rgba(45,14,20,.48) 6.5% 10%, rgba(76,27,35,.38) 11%, transparent 15%),
-    linear-gradient(80deg, transparent 0 82%, rgba(70,24,31,.34) 86%, rgba(42,14,19,.50) 90% 94%, transparent 96%),
-    /* large stone blocks */
-    repeating-linear-gradient(0deg, transparent 0 61px, rgba(255,255,255,.018) 62px 63px),
-    repeating-linear-gradient(90deg, transparent 0 118px, rgba(255,255,255,.015) 119px 120px),
-    linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.04));
+    /* brass curtain rails */
+    linear-gradient(90deg, transparent 4%, rgba(180,145,81,.55) 4.2% 29.7%, transparent 30%),
+    linear-gradient(90deg, transparent 68%, rgba(180,145,81,.48) 68.2% 94%, transparent 94.2%),
+    /* heavy burgundy curtain falls, clearly separate from glazing */
+    linear-gradient(100deg, transparent 0 3.5%, rgba(29,9,13,.90) 4% 7%, rgba(83,28,37,.82) 8.5% 11.5%, rgba(36,11,16,.88) 13%, transparent 16%),
+    linear-gradient(80deg, transparent 0 82%, rgba(37,12,17,.86) 84%, rgba(84,28,37,.78) 87.5% 90.5%, rgba(28,9,13,.92) 93% 96%, transparent 96.5%),
+    /* black mullions over both windows */
+    linear-gradient(90deg,
+      transparent 0 10.8%, rgba(4,7,10,.92) 11% 11.7%, transparent 11.9% 18%,
+      rgba(4,7,10,.88) 18.2% 18.75%, transparent 18.95% 25.2%, rgba(4,7,10,.92) 25.4% 26.1%, transparent 26.3%),
+    linear-gradient(90deg,
+      transparent 0 70.5%, rgba(4,7,10,.92) 70.7% 71.4%, transparent 71.6% 77.4%,
+      rgba(4,7,10,.88) 77.6% 78.15%, transparent 78.35% 84.4%, rgba(4,7,10,.92) 84.6% 85.3%, transparent 85.5%),
+    /* tall cold glazing: now visible rather than implied */
+    radial-gradient(ellipse 12% 41% at 18.5% 2%, rgba(132,164,194,.28) 0%, rgba(75,99,121,.19) 52%, rgba(19,25,31,.20) 69%, transparent 70%),
+    radial-gradient(ellipse 11.5% 40% at 78% 2%, rgba(121,151,181,.25) 0%, rgba(69,91,112,.17) 53%, rgba(18,24,30,.20) 69%, transparent 70%),
+    /* side stone piers / room frame */
+    linear-gradient(90deg,
+      rgba(6,8,10,.80) 0 2.5%, rgba(74,78,80,.22) 2.8% 3.5%, rgba(17,20,23,.74) 4% 7.5%, transparent 8% 91.5%,
+      rgba(17,20,23,.78) 92% 95.5%, rgba(74,78,80,.20) 96% 96.7%, rgba(6,8,10,.82) 97.2% 100%),
+    /* stronger masonry behind the architectural elements */
+    repeating-linear-gradient(0deg, transparent 0 58px, rgba(255,255,255,.038) 59px, rgba(0,0,0,.10) 60px 61px),
+    repeating-linear-gradient(90deg, transparent 0 119px, rgba(255,255,255,.026) 120px, rgba(0,0,0,.055) 121px 122px),
+    linear-gradient(180deg, rgba(255,255,255,.028), rgba(0,0,0,.12));
+  filter: drop-shadow(0 20px 28px rgba(0,0,0,.20));
 }
 
-/* Stone floor / carpet perspective. This deliberately replaces the old inner
- * border pseudo-element: the room now reads as physical depth, not a card. */
+/* Stone floor and central runner. Perspective is intentionally obvious on
+ * desktop, then simplified on mobile. */
 .menu.home-friendly::after {
   content: '';
   position: absolute;
   z-index: -1;
-  left: -7%;
-  right: -7%;
+  left: -8%;
+  right: -8%;
   bottom: -1px;
-  height: 43%;
+  height: 46%;
   pointer-events: none;
   border: 0;
   border-radius: 0;
   transform-origin: 50% 100%;
   background:
-    linear-gradient(90deg, transparent 44%, rgba(75,25,31,.12) 46%, rgba(104,37,45,.18) 50%, rgba(75,25,31,.12) 54%, transparent 56%),
-    repeating-linear-gradient(92deg, transparent 0 104px, rgba(255,255,255,.013) 105px 106px),
-    linear-gradient(180deg, rgba(31,33,34,.20), rgba(10,12,15,.66));
-  clip-path: polygon(6% 0, 94% 0, 100% 100%, 0 100%);
-  box-shadow: inset 0 1px rgba(180,145,81,.08);
+    /* brass edging and burgundy runner */
+    linear-gradient(90deg,
+      transparent 0 37.2%, rgba(180,145,81,.24) 37.7% 38.1%,
+      rgba(58,18,25,.30) 38.4% 61.6%,
+      rgba(180,145,81,.24) 61.9% 62.3%, transparent 62.8%),
+    linear-gradient(90deg, transparent 42%, rgba(99,32,41,.22) 45%, rgba(125,41,51,.28) 50%, rgba(99,32,41,.22) 55%, transparent 58%),
+    /* floor joints */
+    repeating-linear-gradient(92deg, transparent 0 106px, rgba(255,255,255,.035) 107px, rgba(0,0,0,.10) 108px 109px),
+    repeating-linear-gradient(0deg, transparent 0 61px, rgba(255,255,255,.026) 62px, rgba(0,0,0,.10) 63px 64px),
+    linear-gradient(180deg, rgba(45,46,45,.28), rgba(9,11,14,.80));
+  clip-path: polygon(5% 0, 95% 0, 100% 100%, 0 100%);
+  box-shadow:
+    inset 0 2px rgba(180,145,81,.13),
+    inset 0 32px 50px rgba(0,0,0,.18);
 }
 
 /* Context belongs to a sideboard, not to the architectural centre. */
 .home-friendly .home-today-card,
 .home-friendly .home-next-action {
-  width: min(72%, 920px);
+  width: min(76%, 960px);
   margin-left: auto;
   margin-right: auto;
   border-radius: var(--castle-panel-radius);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(6px);
 }
 
 .home-friendly .home-today-card {
-  border: 1px solid rgba(180,145,81,.13);
+  border: 1px solid rgba(180,145,81,.22);
+  border-top-color: rgba(210,176,111,.30);
   background:
-    linear-gradient(90deg, rgba(52,34,23,.24), rgba(16,19,23,.80) 34%, rgba(13,16,20,.70)),
-    rgba(12,15,19,.76);
-  box-shadow: inset 0 1px rgba(255,255,255,.025), 0 10px 28px rgba(0,0,0,.16);
+    linear-gradient(90deg, rgba(77,47,29,.32), rgba(18,21,24,.90) 31%, rgba(12,15,18,.84)),
+    rgba(12,15,19,.82);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.04),
+    inset 4px 0 rgba(180,145,81,.08),
+    0 12px 30px rgba(0,0,0,.24);
 }
 
 .home-friendly .home-next-action {
   border: 0;
-  border-left: 2px solid rgba(180,145,81,.36);
-  background: linear-gradient(90deg, rgba(35,24,19,.34), rgba(11,14,18,.50) 70%, transparent);
-  box-shadow: none;
+  border-left: 3px solid rgba(180,145,81,.50);
+  background: linear-gradient(90deg, rgba(50,31,22,.52), rgba(12,15,19,.72) 72%, transparent);
+  box-shadow: 0 10px 24px rgba(0,0,0,.14);
 }
 
-/* The play area becomes the room's central table / dais. The section itself
- * stops behaving like a giant panel; the three actions are the furniture. */
+/* The play area is the Great Hall command table / dais. */
 .home-friendly .home-modes-section {
   position: relative;
-  margin-top: clamp(1.15rem, 2.6vw, 2rem);
-  padding: clamp(1rem, 2vw, 1.45rem) clamp(.8rem, 2vw, 1.35rem) clamp(1.15rem, 2.4vw, 1.7rem);
-  border: 0;
-  border-radius: var(--castle-surface-radius);
+  margin-top: clamp(1.3rem, 2.8vw, 2.2rem);
+  padding: clamp(1.1rem, 2vw, 1.6rem) clamp(.9rem, 2vw, 1.45rem) clamp(1.35rem, 2.5vw, 1.95rem);
+  border: 1px solid rgba(180,145,81,.14);
+  border-top-color: rgba(205,166,96,.22);
+  border-radius: 10px;
   background:
-    radial-gradient(ellipse at 50% 8%, rgba(180,145,81,.095), transparent 54%),
-    linear-gradient(180deg, rgba(22,19,17,.44), rgba(9,11,14,.24));
+    radial-gradient(ellipse at 50% 0%, rgba(196,155,82,.16), transparent 49%),
+    linear-gradient(180deg, rgba(28,21,17,.70), rgba(10,12,15,.46));
   box-shadow:
-    inset 0 1px rgba(180,145,81,.12),
-    0 30px 56px rgba(0,0,0,.18);
+    inset 0 1px rgba(224,190,124,.13),
+    inset 0 -20px 44px rgba(0,0,0,.20),
+    0 34px 62px rgba(0,0,0,.28);
 }
 
+/* Table top under the playable cards. */
 .home-friendly .home-modes-section::before {
   content: '';
   position: absolute;
   z-index: -1;
-  inset: 16% 3.5% -5%;
-  border: 1px solid rgba(118,78,46,.24);
-  border-radius: 2px 2px 14px 14px;
+  inset: 14% 2.6% -4%;
+  border: 1px solid rgba(153,103,60,.42);
+  border-top-color: rgba(207,161,92,.32);
+  border-radius: 4px 4px 15px 15px;
   background:
-    linear-gradient(90deg, rgba(83,51,34,.18), rgba(37,24,18,.33) 17%, rgba(30,20,16,.35) 83%, rgba(83,51,34,.17)),
-    var(--castle-oak-900);
+    repeating-linear-gradient(90deg, transparent 0 155px, rgba(224,174,105,.035) 156px, rgba(0,0,0,.11) 158px 160px),
+    linear-gradient(90deg, rgba(94,57,36,.36), rgba(39,25,19,.78) 17%, rgba(31,20,16,.82) 83%, rgba(94,57,36,.34)),
+    #17100d;
   box-shadow:
-    inset 0 1px rgba(213,171,104,.06),
-    inset 0 -18px 36px rgba(0,0,0,.22),
-    0 18px 45px rgba(0,0,0,.24);
-  transform: perspective(900px) rotateX(1.15deg);
+    inset 0 2px rgba(221,174,105,.09),
+    inset 0 -24px 46px rgba(0,0,0,.32),
+    0 22px 50px rgba(0,0,0,.34);
+  transform: perspective(900px) rotateX(1.4deg);
   transform-origin: 50% 0;
+}
+
+/* Front apron makes the table read as furniture, not another panel. */
+.home-friendly .home-modes-section::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 7%;
+  right: 7%;
+  bottom: -13px;
+  height: 18px;
+  border: 1px solid rgba(127,82,49,.36);
+  border-top-color: rgba(199,151,87,.24);
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(180deg, #352319, #1b120e 72%, #0f0b09);
+  box-shadow: 0 14px 28px rgba(0,0,0,.34);
 }
 
 .home-friendly .home-modes-section .home-group-heading {
   position: relative;
   z-index: 1;
-  max-width: 940px;
+  max-width: 960px;
   margin-inline: auto;
-  padding-inline: .25rem;
-  border-bottom: 1px solid rgba(180,145,81,.18);
+  padding: .2rem .35rem .55rem;
+  border-bottom: 1px solid rgba(180,145,81,.27);
 }
 
 .home-friendly .home-primary-grid {
   position: relative;
   z-index: 1;
-  gap: clamp(.7rem, 1.7vw, 1.1rem);
+  gap: clamp(.75rem, 1.8vw, 1.15rem);
   max-width: 1120px;
   margin-inline: auto;
 }
 
-/* Main mode cards become carved plaques / doors with restrained depth. */
+/* Main mode cards are inset brass-edged plaques on the table. */
 .home-friendly .home-modes-section .home-mode-card {
   min-height: clamp(13.5rem, 23vw, 18rem);
   overflow: hidden;
-  border: 1px solid rgba(180,145,81,.16);
-  border-top-color: rgba(214,183,119,.25);
-  border-radius: 7px 7px 10px 10px;
-  background-color: rgba(11,13,16,.92);
+  border: 1px solid rgba(190,151,82,.32);
+  border-top-color: rgba(224,190,122,.42);
+  border-radius: 5px 5px 8px 8px;
+  background-color: rgba(9,11,14,.94);
   box-shadow:
-    inset 0 1px rgba(255,255,255,.035),
-    inset 0 -18px 32px rgba(0,0,0,.22),
-    0 20px 38px rgba(0,0,0,.28);
+    inset 0 1px rgba(255,255,255,.055),
+    inset 3px 0 rgba(180,145,81,.09),
+    inset 0 -20px 36px rgba(0,0,0,.30),
+    0 18px 34px rgba(0,0,0,.36);
   transform: translateZ(0);
 }
 
@@ -180,75 +235,84 @@
   z-index: 1;
   inset: 5px;
   pointer-events: none;
-  border: 1px solid rgba(180,145,81,.09);
-  border-radius: 4px 4px 7px 7px;
+  border: 1px solid rgba(208,171,103,.16);
+  border-radius: 2px 2px 5px 5px;
+  box-shadow: inset 0 0 18px rgba(180,145,81,.025);
 }
 
 .home-friendly .home-modes-section .home-mode-card::after {
   background:
-    linear-gradient(180deg, rgba(255,255,255,.04), transparent 21%),
-    linear-gradient(90deg, rgba(7,9,12,.96) 0%, rgba(8,10,13,.76) 47%, rgba(8,10,13,.28) 100%),
-    linear-gradient(0deg, rgba(55,33,22,.13), transparent 42%);
+    linear-gradient(180deg, rgba(255,255,255,.055), transparent 19%),
+    linear-gradient(90deg, rgba(5,7,10,.97) 0%, rgba(7,9,12,.78) 45%, rgba(7,9,12,.24) 100%),
+    linear-gradient(0deg, rgba(82,47,27,.17), transparent 45%);
 }
 
 .home-friendly .home-modes-section .home-mode-card:not(:disabled):hover,
 .home-friendly .home-modes-section .home-mode-card:not(:disabled):focus-visible {
-  transform: translateY(-2px);
-  border-color: rgba(200,164,95,.36);
+  transform: translateY(-3px);
+  border-color: rgba(220,177,100,.52);
   box-shadow:
-    inset 0 1px rgba(255,255,255,.05),
-    inset 2px 0 rgba(180,145,81,.28),
-    0 25px 46px rgba(0,0,0,.34);
+    inset 0 1px rgba(255,255,255,.07),
+    inset 3px 0 rgba(180,145,81,.24),
+    0 27px 48px rgba(0,0,0,.42);
 }
 
-/* Learning becomes the library wing: flatter, darker, quieter than the main
- * table so optional depth remains available without shouting. */
+/* Learning becomes the library wing: quieter than the central table, but now
+ * materially different enough to read as another part of the room. */
 .home-friendly > .home-primary-group:not(.home-modes-section) {
   position: relative;
-  margin-top: clamp(1.4rem, 3vw, 2.2rem);
-  padding: clamp(1rem, 2vw, 1.35rem);
-  border: 1px solid rgba(255,255,255,.045);
-  border-top-color: rgba(180,145,81,.13);
-  border-radius: var(--castle-surface-radius);
+  margin-top: clamp(1.7rem, 3.2vw, 2.5rem);
+  padding: clamp(1rem, 2vw, 1.4rem);
+  border: 1px solid rgba(137,95,58,.24);
+  border-top-color: rgba(180,145,81,.24);
+  border-radius: 9px;
   background:
-    linear-gradient(90deg, rgba(52,34,24,.14), transparent 22%, transparent 78%, rgba(52,34,24,.10)),
-    rgba(11,14,18,.58);
-  box-shadow: inset 0 1px rgba(255,255,255,.018), 0 20px 44px rgba(0,0,0,.14);
+    repeating-linear-gradient(90deg, transparent 0 176px, rgba(197,147,86,.028) 177px, rgba(0,0,0,.07) 179px 181px),
+    linear-gradient(90deg, rgba(79,48,31,.29), rgba(15,17,20,.78) 18%, rgba(12,15,18,.78) 82%, rgba(73,45,29,.25)),
+    rgba(11,14,18,.72);
+  box-shadow:
+    inset 0 1px rgba(224,185,117,.055),
+    inset 12px 0 30px rgba(66,38,24,.10),
+    inset -12px 0 30px rgba(66,38,24,.08),
+    0 24px 48px rgba(0,0,0,.20);
 }
 
 .home-friendly .home-learning-grid .home-mode-card,
 .home-friendly .home-tools-grid .home-mode-card {
-  border-color: rgba(255,255,255,.055);
+  border-color: rgba(180,145,81,.13);
   background:
-    linear-gradient(180deg, rgba(255,255,255,.018), transparent 30%),
-    rgba(13,16,20,.74);
-  box-shadow: inset 0 1px rgba(255,255,255,.018), 0 10px 22px rgba(0,0,0,.12);
+    linear-gradient(180deg, rgba(255,255,255,.028), transparent 28%),
+    linear-gradient(90deg, rgba(48,31,23,.20), rgba(12,15,18,.86) 24%),
+    rgba(13,16,20,.80);
+  box-shadow: inset 0 1px rgba(255,255,255,.028), 0 12px 25px rgba(0,0,0,.18);
 }
 
 .home-friendly .home-learning-grid .home-mode-card:hover,
 .home-friendly .home-learning-grid .home-mode-card:focus-visible,
 .home-friendly .home-tools-grid .home-mode-card:hover,
 .home-friendly .home-tools-grid .home-mode-card:focus-visible {
-  border-color: rgba(180,145,81,.24);
-  background-color: rgba(17,20,24,.82);
+  border-color: rgba(190,151,82,.32);
+  background-color: rgba(17,20,24,.88);
 }
 
-/* The continue action is physically a book/board waiting on the central table,
- * so it is prominent without becoming a coloured SaaS alert. */
+/* Continue is a saved board/book waiting on the central furniture. */
 .home-friendly .home-continue-card {
-  border: 1px solid rgba(180,145,81,.24);
-  border-top-color: rgba(213,178,110,.35);
-  border-radius: 7px;
+  border: 1px solid rgba(196,155,86,.34);
+  border-top-color: rgba(226,188,117,.44);
+  border-radius: 6px;
   background:
-    linear-gradient(100deg, rgba(86,53,31,.22), rgba(18,19,20,.93) 28%, rgba(13,15,18,.92)),
+    linear-gradient(100deg, rgba(101,61,35,.34), rgba(21,20,18,.96) 28%, rgba(12,14,17,.94)),
     var(--castle-oak-900);
-  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 14px 32px rgba(0,0,0,.22);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.05),
+    inset 4px 0 rgba(180,145,81,.10),
+    0 16px 34px rgba(0,0,0,.28);
 }
 
 .home-friendly .home-footer {
   position: relative;
   z-index: 3;
-  border-top-color: rgba(180,145,81,.11);
+  border-top-color: rgba(180,145,81,.16);
 }
 
 @media (max-width: 900px) {
@@ -260,35 +324,63 @@
   .home-friendly .home-modes-section::before {
     inset-inline: 1.5%;
   }
+
+  .menu.home-friendly::before {
+    background:
+      linear-gradient(100deg, transparent 0 2%, rgba(50,15,22,.58) 5% 9%, transparent 13%),
+      linear-gradient(80deg, transparent 0 87%, rgba(50,15,22,.54) 91% 95%, transparent 98%),
+      radial-gradient(ellipse 15% 36% at 18% 2%, rgba(117,148,179,.19), transparent 70%),
+      radial-gradient(ellipse 14% 35% at 79% 2%, rgba(104,136,168,.16), transparent 70%),
+      repeating-linear-gradient(0deg, transparent 0 57px, rgba(255,255,255,.027) 58px 59px),
+      linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.10));
+  }
 }
 
 @media (max-width: 760px) {
   .menu.home-friendly {
     padding-top: .8rem;
+    border-radius: 9px;
     background:
-      radial-gradient(ellipse 38% 22% at 88% 16%, rgba(182,106,53,.10), transparent 72%),
-      linear-gradient(180deg, var(--castle-stone-800), var(--castle-stone-950));
+      radial-gradient(ellipse 42% 24% at 88% 15%, rgba(182,106,53,.15), transparent 72%),
+      radial-gradient(ellipse 40% 24% at 13% 0%, rgba(111,137,163,.14), transparent 72%),
+      repeating-linear-gradient(0deg, transparent 0 56px, rgba(255,255,255,.025) 57px 58px),
+      linear-gradient(180deg, #181d22, #0a0d11);
+    box-shadow:
+      inset 16px 0 26px rgba(0,0,0,.22),
+      inset -16px 0 26px rgba(0,0,0,.25),
+      0 22px 52px rgba(0,0,0,.27);
   }
 
   .menu.home-friendly::before {
-    inset-bottom: 54%;
-    opacity: .52;
+    inset-bottom: 55%;
+    opacity: .68;
+    background:
+      linear-gradient(100deg, transparent 0 1%, rgba(67,20,29,.48) 4% 10%, transparent 14%),
+      linear-gradient(80deg, transparent 0 86%, rgba(65,20,28,.46) 90% 96%, transparent 99%),
+      radial-gradient(ellipse 18% 32% at 18% 0%, rgba(117,148,179,.15), transparent 71%),
+      repeating-linear-gradient(0deg, transparent 0 53px, rgba(255,255,255,.022) 54px 55px),
+      linear-gradient(180deg, rgba(255,255,255,.016), rgba(0,0,0,.08));
   }
 
   .menu.home-friendly::after {
-    height: 30%;
-    opacity: .72;
+    height: 31%;
+    opacity: .76;
   }
 
   .home-friendly .home-modes-section {
-    padding: .78rem .62rem 1rem;
-    background: rgba(10,13,17,.44);
+    padding: .8rem .62rem 1rem;
+    border-color: rgba(180,145,81,.13);
+    background: rgba(12,14,17,.62);
   }
 
   .home-friendly .home-modes-section::before {
     inset: 18% 0 -2%;
-    opacity: .72;
+    opacity: .78;
     transform: none;
+  }
+
+  .home-friendly .home-modes-section::after {
+    display: none;
   }
 
   .home-friendly .home-modes-section .home-mode-card {
@@ -296,15 +388,17 @@
   }
 
   .home-friendly > .home-primary-group:not(.home-modes-section) {
-    padding: .78rem .62rem;
+    padding: .8rem .62rem;
   }
 }
 
 @media (max-width: 430px) {
   .menu.home-friendly::before {
+    opacity: .55;
     background:
-      radial-gradient(ellipse 23% 24% at 18% 2%, rgba(113,140,166,.09), transparent 70%),
-      repeating-linear-gradient(0deg, transparent 0 52px, rgba(255,255,255,.014) 53px 54px),
+      linear-gradient(90deg, rgba(46,14,20,.34), transparent 14% 86%, rgba(46,14,20,.32)),
+      radial-gradient(ellipse 25% 22% at 18% 0%, rgba(113,140,166,.12), transparent 70%),
+      repeating-linear-gradient(0deg, transparent 0 51px, rgba(255,255,255,.019) 52px 53px),
       linear-gradient(180deg, rgba(255,255,255,.014), transparent);
   }
 
@@ -313,7 +407,7 @@
   .home-friendly .home-continue-card,
   .home-friendly .home-modes-section,
   .home-friendly > .home-primary-group:not(.home-modes-section) {
-    border-radius: 7px;
+    border-radius: 6px;
   }
 }
 
