@@ -148,11 +148,28 @@ jobs:
                   'command': './node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000',
               })
           if matthias:
-              cases.append({
-                  'id': 'matthias-motion',
-                  'label': 'Matthias · browser motion',
-                  'command': './node_modules/.bin/playwright test matthias-home-visual-critical.spec.js matthias-read-book-regression.spec.js matthias-war-room-android-motion.spec.js insights-matthias-motion.spec.js --workers=4 --retries=0',
-              })
+              cases.extend([
+                  {
+                      'id': 'matthias-home-motion',
+                      'label': 'Matthias · Home motion',
+                      'command': './node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0',
+                  },
+                  {
+                      'id': 'matthias-reading',
+                      'label': 'Matthias · reading regression',
+                      'command': './node_modules/.bin/playwright test matthias-read-book-regression.spec.js --workers=1 --retries=0',
+                  },
+                  {
+                      'id': 'matthias-war-room',
+                      'label': 'Matthias · War Room Android',
+                      'command': './node_modules/.bin/playwright test matthias-war-room-android-motion.spec.js --workers=1 --retries=0',
+                  },
+                  {
+                      'id': 'matthias-insights',
+                      'label': 'Matthias · Así juegas motion',
+                      'command': './node_modules/.bin/playwright test insights-matthias-motion.spec.js --workers=1 --retries=0',
+                  },
+              ])
           print(json.dumps({'include': cases}, separators=(',', ':')))
           PY
           )"
