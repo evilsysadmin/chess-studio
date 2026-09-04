@@ -1,0 +1,85 @@
+/* Home Great Hall · final cascade ownership
+ *
+ * The legacy global visual layer in styles/27-night-club-tactical.css still
+ * targets Home directly and used to overwrite the hall background after the
+ * component-scoped Great Hall stylesheet had loaded. This bridge is imported
+ * from main.jsx after styles.css so the castle remains the final visual owner
+ * without !important or changes to the historical CSS manifest.
+ */
+
+body .menu.home-friendly {
+  border: 1px solid rgba(180,145,81,.22);
+  border-top-color: rgba(205,171,105,.28);
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse 25% 46% at 18% -2%, rgba(117,148,179,.23), transparent 67%),
+    radial-gradient(ellipse 23% 44% at 79% -2%, rgba(104,136,168,.19), transparent 68%),
+    radial-gradient(ellipse 31% 30% at 94% 31%, rgba(182,106,53,.21), transparent 71%),
+    radial-gradient(ellipse 24% 25% at 5% 42%, rgba(122,72,38,.11), transparent 72%),
+    linear-gradient(90deg, rgba(4,6,8,.72) 0%, rgba(8,10,13,.26) 11%, transparent 22% 79%, rgba(7,9,12,.28) 89%, rgba(4,6,8,.76) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 63px, rgba(255,255,255,.052) 64px, rgba(0,0,0,.12) 65px 66px),
+    repeating-linear-gradient(90deg, transparent 0 127px, rgba(255,255,255,.028) 128px, rgba(0,0,0,.06) 129px 130px),
+    linear-gradient(180deg, #1b2025 0%, #14191e 45%, #0b0e12 100%);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.045),
+    inset 34px 0 54px rgba(0,0,0,.35),
+    inset -34px 0 54px rgba(0,0,0,.40),
+    inset 0 -5rem 9rem rgba(0,0,0,.34),
+    0 34px 80px rgba(0,0,0,.34);
+}
+
+body .menu.home-friendly::before {
+  opacity: 1;
+  background:
+    linear-gradient(90deg, transparent 4%, rgba(180,145,81,.55) 4.2% 29.7%, transparent 30%),
+    linear-gradient(90deg, transparent 68%, rgba(180,145,81,.48) 68.2% 94%, transparent 94.2%),
+    linear-gradient(100deg, transparent 0 3.5%, rgba(29,9,13,.90) 4% 7%, rgba(83,28,37,.82) 8.5% 11.5%, rgba(36,11,16,.88) 13%, transparent 16%),
+    linear-gradient(80deg, transparent 0 82%, rgba(37,12,17,.86) 84%, rgba(84,28,37,.78) 87.5% 90.5%, rgba(28,9,13,.92) 93% 96%, transparent 96.5%),
+    linear-gradient(90deg,
+      transparent 0 10.8%, rgba(4,7,10,.92) 11% 11.7%, transparent 11.9% 18%,
+      rgba(4,7,10,.88) 18.2% 18.75%, transparent 18.95% 25.2%, rgba(4,7,10,.92) 25.4% 26.1%, transparent 26.3%),
+    linear-gradient(90deg,
+      transparent 0 70.5%, rgba(4,7,10,.92) 70.7% 71.4%, transparent 71.6% 77.4%,
+      rgba(4,7,10,.88) 77.6% 78.15%, transparent 78.35% 84.4%, rgba(4,7,10,.92) 84.6% 85.3%, transparent 85.5%),
+    radial-gradient(ellipse 12% 41% at 18.5% 2%, rgba(132,164,194,.28) 0%, rgba(75,99,121,.19) 52%, rgba(19,25,31,.20) 69%, transparent 70%),
+    radial-gradient(ellipse 11.5% 40% at 78% 2%, rgba(121,151,181,.25) 0%, rgba(69,91,112,.17) 53%, rgba(18,24,30,.20) 69%, transparent 70%),
+    linear-gradient(90deg,
+      rgba(6,8,10,.80) 0 2.5%, rgba(74,78,80,.22) 2.8% 3.5%, rgba(17,20,23,.74) 4% 7.5%, transparent 8% 91.5%,
+      rgba(17,20,23,.78) 92% 95.5%, rgba(74,78,80,.20) 96% 96.7%, rgba(6,8,10,.82) 97.2% 100%),
+    repeating-linear-gradient(0deg, transparent 0 58px, rgba(255,255,255,.038) 59px, rgba(0,0,0,.10) 60px 61px),
+    repeating-linear-gradient(90deg, transparent 0 119px, rgba(255,255,255,.026) 120px, rgba(0,0,0,.055) 121px 122px),
+    linear-gradient(180deg, rgba(255,255,255,.028), rgba(0,0,0,.12));
+}
+
+body .home-friendly .home-today-card {
+  border: 1px solid rgba(180,145,81,.22);
+  border-top-color: rgba(210,176,111,.30);
+  border-radius: var(--castle-panel-radius);
+  background:
+    linear-gradient(90deg, rgba(77,47,29,.32), rgba(18,21,24,.90) 31%, rgba(12,15,18,.84)),
+    rgba(12,15,19,.82);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.04),
+    inset 4px 0 rgba(180,145,81,.08),
+    0 12px 30px rgba(0,0,0,.24);
+}
+
+@media (max-width: 760px) {
+  body .menu.home-friendly {
+    border-radius: 9px;
+    background:
+      radial-gradient(ellipse 42% 24% at 88% 13%, rgba(182,106,53,.14), transparent 72%),
+      radial-gradient(ellipse 34% 28% at 18% 1%, rgba(113,140,166,.12), transparent 70%),
+      linear-gradient(180deg, #181d22, #0b0e12);
+  }
+
+  body .menu.home-friendly::before {
+    opacity: .66;
+  }
+}
+
+@media (max-width: 430px) {
+  body .menu.home-friendly::before {
+    opacity: .42;
+  }
+}
